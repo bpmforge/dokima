@@ -104,8 +104,10 @@
         "claimable = ready AND unowned AND deps done, recomputed on every event; blocked<->ready auto-resolve only; stale-blocked detection exported for the UI"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-11: done. lanes.ts: glob-overlap detector (segment/char-level DP over the same */**/? dialect as packages/git/src/glob.ts, duplicated not imported — tickets may not depend on git per ARCHITECTURE.md §4) + findLaneScopeViolations/validateLaneWriteScopes: same-lane overlap flagged only between active (claimed/in_progress/in_review) tickets, cross-lane overlap flagged at any status (FR-T3, schema error at plan load). reflow.ts: claimable = ready AND unowned AND deps done, recomputed fresh on every call (no cached state to go stale); blocked is a pure overlay over ready+unmet-deps — the six verbs never write it, so blocked<->ready is auto-resolving by construction; isStaleBlocked flags a stored blocked status whose blockers have since completed (board.stale_blocked). Did not touch index.ts (barrel exports) — outside this ticket's write_scope glob; deferred to whichever ticket first wires lanes/reflow into a consumer (board projection, harbormaster claim loop, or a plan-load validator). 29 new tests (13 lanes.test.ts, 5 lanes.property.test.ts fast-check glob-overlap + violation-detection properties, 10 reflow.test.ts, 2 reflow.property.test.ts). Gate: pnpm lint && pnpm typecheck && pnpm test = 167 passed | 1 skipped (168) workspace-wide, 35 test files."
+      ]
     },
     {
       "id": "W0-05",
