@@ -80,8 +80,10 @@
         "Conformance tests adapted from source-system ticket semantics (docs/research/source-system-experts.md §6) all green"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-11: done. Ticket contract + six lifecycle verbs (claim/start/close/accept/release/comment) as the ONLY mutators, folding an in-memory Map<string,Ticket> projection from @shipwright/events (rebuildProjection). Transition graph enforced in one place (transitions.ts); WIP=1 per actor on claim (in_review does NOT count — close is what frees the worker, per BLUEPRINT §3.6 and source-system-amplifier.md \"close-before-next-claim\"); close refused without >=1 file, >=1 commit, verify exit 0, minting a close receipt embedded verbatim in the manifest; accept reads only the stored manifest (no caller override), refuses self-accept (reviewer==owner) or a missing close receipt. Deps-unmet and lane/write-scope disjointness are explicitly deferred to W0-04 (reflow/lanes), matching its write_scope. 23 tests: verbs.test.ts (FR-T1/FR-T2 named), conformance.test.ts (adapted from docs/research/source-system-experts.md §6), and a fast-check property test proving WIP=1 and done-implies-verified-receipt hold after any random verb sequence. Gate: pnpm lint && pnpm typecheck && pnpm test = 138 passed | 1 skipped (pre-existing) workspace-wide."
+      ]
     },
     {
       "id": "W0-04",

@@ -100,7 +100,15 @@ importers:
 
   packages/shared: {}
 
-  packages/tickets: {}
+  packages/tickets:
+    dependencies:
+      '@shipwright/events':
+        specifier: workspace:*
+        version: link:../events
+    devDependencies:
+      fast-check:
+        specifier: ^4.9.0
+        version: 4.9.0
 
   packages/validators: {}
 
