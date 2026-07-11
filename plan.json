@@ -52,9 +52,10 @@
         "Single-writer discipline (C6): concurrent write attempt from a second connection fails loudly, test-covered"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
-        "CONDUCTOR 2026-07-11T14:14:42.004Z: blocked after 3 attempts. Branch feat/w0-02-auto kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-11T14:14:42.004Z: blocked after 3 attempts. Branch feat/w0-02-auto kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "CONDUCTOR 2026-07-11: reset to todo after conductor fixes (ENOBUFS maxBuffer + stale-blocked retry reset). Attempt 1 had passed all gates with 1 review finding; retries failed on mechanics, now fixed."
       ]
     },
     {

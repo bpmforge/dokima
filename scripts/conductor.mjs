@@ -52,7 +52,9 @@ const log = (kind, data) => {
   try { mkdirSync(dirname(LOG), { recursive: true }); appendFileSync(LOG, JSON.stringify(row) + '\n'); } catch {}
 };
 const sh = (cmd, cmdArgs, opts = {}) =>
-  execFileSync(cmd, cmdArgs, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts });
+  // 512MB buffer: git diffs on large tickets (e.g. the full expert-library import)
+  // blow past execFileSync's 1MB default and throw ENOBUFS, killing the run.
+  execFileSync(cmd, cmdArgs, { cwd: ROOT, encoding: 'utf8', maxBuffer: 512 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], ...opts });
 const git = (...a) => sh('git', a).trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -207,7 +209,13 @@ async function executeTicket(t) {
   let gaps = null;
   for (let i = 0; i < attempts.length; i++) {
     const model = attempts[i];
-    if (i > 0) log('ticket.retry', { ticket: t.id, msg: `attempt ${i + 1} on ${model}` });
+    if (i > 0) {
+      log('ticket.retry', { ticket: t.id, msg: `attempt ${i + 1} on ${model}` });
+      // Clear any stale status a prior attempt left on the branch (e.g. a session
+      // that gave up and wrote status:blocked). Otherwise the fresh attempt's gate
+      // auto-fails on "status is 'blocked'" before its work is even read.
+      resetStatusOnBranch(t.id);
+    }
     const s = await runSession(codingPrompt(t, gaps), model, `code:${t.id}`);
     if (DRY) return { ok: true, dry: true };
     gaps = runGates(t, branch);
@@ -233,6 +241,17 @@ async function executeTicket(t) {
 function parseJson(text) {
   const m = text.match(/\{[\s\S]*\}/);
   try { return m ? JSON.parse(m[0]) : null; } catch { return null; }
+}
+
+// Reset a ticket's status to in_progress on the current branch so a stale
+// blocked/done left by a prior attempt doesn't pre-fail the next attempt's gate.
+function resetStatusOnBranch(id) {
+  const plan = loadPlan();
+  const row = plan.tickets.find((x) => x.id === id);
+  if (!row || row.status === 'in_progress') return;
+  row.status = 'in_progress';
+  writeFileSync(PLAN, JSON.stringify(plan, null, 2) + '\n');
+  try { git('add', 'plan.json'); git('commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch {}
 }
 
 function land(t, branch) {
