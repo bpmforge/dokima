@@ -20,3 +20,21 @@ Append one line per merged ticket; a short gate section per wave
   push under APPROVALS A-001/A-002, provider-limit sleep/resume.
 - Runbook: docs/work/CONDUCTOR_RUNBOOK.md. Dry-run verified (claims W0-01).
 - Product twin: FR-G8 + ticket W3-07 (gateway-native limit resilience).
+
+## 2026-07-11 W0-01 done — monorepo scaffold + toolchain
+
+- pnpm workspace live: apps/{server,web} + 12 packages (shared, events,
+  tickets, loop, validators, gateway, harbormaster, pipeline, git, forge,
+  mcp, memory), each with a placeholder `src/index.ts` + one vitest test.
+- apps/server: Fastify 5 stub (`GET /health`, tested via `fastify.inject`).
+  apps/web: Vite 6 + React 19 stub, builds clean (`vite build`).
+- Toolchain: TypeScript 5.9 strict/NodeNext, ESLint 9 flat config
+  (typescript-eslint recommended), Prettier, vitest 3 workspace runner.
+  `pnpm lint && pnpm typecheck && pnpm test` green — 14/14 test files pass.
+- Versions match docs/TECH_STACK.md pins (Node 22, pnpm 11, TS 5, ESLint 9,
+  vitest 3, Fastify 5, React 19, Vite 6); no deviations to record.
+- Scope note: ARCHITECTURE §4 dependency-matrix lint enforcement
+  (eslint-plugin-boundaries + red fixtures) is deliberately deferred — no
+  cross-package imports exist yet to enforce against, and W0-01's
+  acceptance criteria don't require it. Needs its own ticket before real
+  package code lands.
