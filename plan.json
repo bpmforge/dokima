@@ -1,0 +1,968 @@
+{
+  "$schema_note": "Ticket board for coding agents. id=W<wave>-<nn>. Claim: set status in_progress + commit. Close: acceptance + full gate green. status: todo|in_progress|blocked|done. notes: append-only strings for HANDOFF/blockers. Lanes: same-lane tickets never run in parallel; write_scope is exclusive while in_progress.",
+  "version": 1,
+  "tickets": [
+    {
+      "id": "W0-01",
+      "title": "Monorepo scaffold + lint/typecheck/test toolchain",
+      "phase": 0,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": ["pnpm-workspace.yaml", "package.json", "tsconfig.base.json", "eslint.config.js", ".prettierrc.json", "vitest.workspace.ts", "apps/**", "packages/**", ".nvmrc", ".gitignore"],
+      "depends_on": [],
+      "acceptance": [
+        "pnpm install succeeds on Node 22; workspaces apps/server (Fastify stub), apps/web (Vite React stub) and packages/{shared,events,tickets,loop,validators,gateway,harbormaster,pipeline,git,forge,mcp,memory} exist per docs/ARCHITECTURE.md, each with placeholder src/index.ts and one placeholder test",
+        "pnpm lint && pnpm typecheck && pnpm test pass from repo root",
+        "Dependency versions match docs/TECH_STACK.md; deviations recorded there in the same commit"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-02",
+      "title": "Event log + projections engine (SQLite WAL, hash-chained, actor identities)",
+      "phase": 0,
+      "module": "events",
+      "lane": "core",
+      "write_scope": ["packages/events/**", "packages/shared/src/events/**"],
+      "depends_on": ["W0-01"],
+      "acceptance": [
+        "Append-only events table per docs/DATABASE.md: id, type, actor_id, payload JSON, ts, prev_hash, hash; identities table with kind(human|machine)+auth_provider (D-005); hash chain verifiable by an exported verifyChain()",
+        "Projection framework: registered reducers rebuild projections from the log; rebuild-from-zero equals incremental state (property test)",
+        "Persist-before-execute helper + orphan sweep on open (NFR-3): tests prove no record stuck in a transient state after simulated crash",
+        "Single-writer discipline (C6): concurrent write attempt from a second connection fails loudly, test-covered"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-03",
+      "title": "Ticket engine: schema + six lifecycle verbs + invariants",
+      "phase": 0,
+      "module": "tickets",
+      "lane": "core",
+      "write_scope": ["packages/tickets/**"],
+      "depends_on": ["W0-02"],
+      "acceptance": [
+        "Ticket contract fields per docs/DATABASE.md (lane, write_scope, depends_on, acceptance, verify, manifest, history, evidence, claimed_at); verbs claim/start/close/accept/release/comment as the ONLY mutators, each emitting events",
+        "Transition graph enforced; WIP=1 per actor on claim; close refused without manifest + verify exit 0 + attached commits; accept refused when reviewer==owner or manifest lacks the close receipt (FR-T1/T2)",
+        "Conformance tests adapted from source-system ticket semantics (docs/research/source-system-experts.md §6) all green"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-04",
+      "title": "Lane/write-scope invariants + claimable-set reflow",
+      "phase": 0,
+      "module": "tickets",
+      "lane": "core",
+      "write_scope": ["packages/tickets/src/lanes*", "packages/tickets/src/reflow*", "packages/tickets/test/**"],
+      "depends_on": ["W0-03"],
+      "acceptance": [
+        "Same-lane active tickets with overlapping write_scope rejected; cross-lane overlap at any status is a schema error (FR-T3); glob-overlap detection property-tested",
+        "claimable = ready AND unowned AND deps done, recomputed on every event; blocked<->ready auto-resolve only; stale-blocked detection exported for the UI"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-05",
+      "title": "Receipt primitive (gate/close/waiver receipts, input-tree hash)",
+      "phase": 0,
+      "module": "events",
+      "lane": "core",
+      "write_scope": ["packages/events/src/receipts*", "packages/events/test/receipts*"],
+      "depends_on": ["W0-02"],
+      "acceptance": [
+        "Receipt record: what ran (validator list/command), exit codes, gap counts, input-file content hash, ts, actor; minted ONLY by real runs through the receipt API (C3); waiver receipts require human signature, agent-name blocklist enforced (FR-P2)",
+        "Verification API: recompute input hash + confirm required-validator currency (the two-way re-check from BLUEPRINT §3.2)",
+        "Red fixtures (docs/TESTING.md planted-defect harness, first slice): touched lock-file equivalent, fabricated receipt JSON, and stale-hash receipt all FAIL verification"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-06",
+      "title": "Git worktree service (per-ticket worktrees, explicit-path staging)",
+      "phase": 0,
+      "module": "git",
+      "lane": "integrations",
+      "write_scope": ["packages/git/**"],
+      "depends_on": ["W0-01"],
+      "acceptance": [
+        "Create/destroy worktree per ticket on branch sw/<ticket-id>-<slug>; commits stage explicit paths only; write-scope enforcement by diff check — paths outside scope refuse to commit (SC per docs/SECURITY_CONTROLS.md)",
+        "Local merge path (no forge) with --no-ff; worktree cleanup verified leak-free in tests"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-07",
+      "title": "Config layer: three-scope settings + OS keychain credential refs",
+      "phase": 0,
+      "module": "shared",
+      "lane": "infra",
+      "write_scope": ["packages/shared/src/config/**", "packages/shared/test/config*"],
+      "depends_on": ["W0-01"],
+      "acceptance": [
+        "Global (~/.shipwright/config.json) / project (.shipwright/settings.json) / run scopes with run>project>global precedence; effective-settings resolver returns winning scope per key (FR-S1)",
+        "Credential refs resolve via OS keychain (keytar or equivalent per docs/TECH_STACK.md); settings files never contain secrets (FR-S2); settings changes emit events (FR-S3)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W0-08",
+      "title": "CLI: verbs + text board over projections",
+      "phase": 0,
+      "module": "cli",
+      "lane": "infra",
+      "write_scope": ["apps/server/src/cli/**"],
+      "depends_on": ["W0-03", "W0-04", "W0-05"],
+      "acceptance": [
+        "shipwright board renders lanes/columns from projections; shipwright claim/start/close/accept/release/comment drive the verbs with refusal reasons printed (W0 exit criterion: a board that cannot lie, moved by CLI)",
+        "shipwright verify-chain checks the event-log hash chain"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-01",
+      "title": "One-time content import: full expert system + validator packs",
+      "phase": 1,
+      "module": "content",
+      "lane": "content",
+      "write_scope": ["content/**", "scripts/import-content.mjs"],
+      "depends_on": ["W0-01"],
+      "acceptance": [
+        "content/experts/ holds the ENTIRE roster (coordinators, phase specialists, security/code-health/perf clusters + synthesizers, game cluster, onboard specialists, challenger) and content/validators/ the full validator pack, each file with a provenance header (source repo, path, import date) per D-008/D-011",
+        "content/protocols/ holds HANDOFF, micro-loop, gate-scoring, autonomy protocol docs; a manifest content/index.json lists every item with role/cluster metadata",
+        "Import is a one-time script run recorded in the commit; no build-time dependency on the source repo remains (C8)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-02",
+      "title": "Validator runner (exit 0/1 + JSON gaps contract, pack loading)",
+      "phase": 1,
+      "module": "validators",
+      "lane": "engine",
+      "write_scope": ["packages/validators/**"],
+      "depends_on": ["W1-01", "W0-05"],
+      "acceptance": [
+        "Runs any executable validator honoring the contract (exit 0/1, JSON gap list on stdout); loads packs from content/validators/ with per-project selection (FR-S1); results mint receipts via the W0-05 API only",
+        "Timeout + sandbox-cwd per run; a misbehaving validator (hang, garbage output) is reported as a validator failure, never a silent pass",
+        "At least 10 imported validators run green against a fixture project; red fixtures prove 3 of them fail when they should"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-03",
+      "title": "Micro-loop core (criterion, passes, gap feedback, refuse-to-loop)",
+      "phase": 1,
+      "module": "loop",
+      "lane": "engine",
+      "write_scope": ["packages/loop/src/micro-loop*", "packages/loop/test/micro-loop*"],
+      "depends_on": ["W0-02"],
+      "acceptance": [
+        "runItemMicroLoop equivalent per BLUEPRINT §3.5: criterion restatement (refuse-to-loop returns BLOCKED when no checkable criterion), bounded passes, specific-gap feedback, no-progress kill on identical gap checksum (FR-L1)",
+        "Conformance tests adapted from source micro-loop semantics (docs/research/source-system-foreman-jarvis.md §2) green with a fake model"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-04",
+      "title": "Coverage tracker (DONE/WAIVED/SKIPPED/BLOCKED/FAILED + reports)",
+      "phase": 1,
+      "module": "loop",
+      "lane": "engine",
+      "write_scope": ["packages/loop/src/coverage*", "packages/loop/test/coverage*"],
+      "depends_on": ["W1-03"],
+      "acceptance": [
+        "Every expected unit ends in exactly one status; required PENDING/RUNNING at phase end surfaces as SKIPPED; WAIVED always carries attribution (FR-L4); emits COVERAGE_REPORT.md + .json as artifacts + events",
+        "Coverage report is a gate input: phase gate fails on any SKIPPED required unit"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-05",
+      "title": "Anchor framework + calibration clamp",
+      "phase": 1,
+      "module": "loop",
+      "lane": "engine",
+      "write_scope": ["packages/loop/src/anchors*", "packages/loop/src/calibration*", "packages/loop/test/anchors*"],
+      "depends_on": ["W1-03"],
+      "acceptance": [
+        "Anchor interface (gather -> facts into prompt); tool anchor wired to validator/scanner output; challenger + memory anchor interfaces defined with stub implementations (full wiring W5/W7) (FR-L2)",
+        "Calibration bias per (model,phase): rescue-only, clamped, min-sample gated, applied only when an anchor is present — property tests prove a DONE can never be manufactured from ungrounded confidence (FR-L3)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-06",
+      "title": "HANDOFF contract + agent session runner",
+      "phase": 1,
+      "module": "loop",
+      "lane": "engine",
+      "write_scope": ["packages/loop/src/handoff*", "packages/loop/src/session*", "packages/loop/test/session*"],
+      "depends_on": ["W1-03", "W0-06"],
+      "acceptance": [
+        "Typed HANDOFF (role, ticket, context packet, write-scope, produce, verify) rendered to the universal block format (BLUEPRINT §4); child-process session runner returns a Completion Manifest; thinking-strip removes reasoning blocks from history and artifacts",
+        "Session runs inside the ticket worktree; write-scope violations detected by diff and reported; session output parsed defensively (JSON contract -> embedded JSON -> fenced fallback)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W1-07",
+      "title": "Toy-project E2E: one agent, one ticket, full trust chain",
+      "phase": 1,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": ["e2e/toy-project/**"],
+      "depends_on": ["W1-02", "W1-04", "W1-05", "W1-06", "W0-08"],
+      "acceptance": [
+        "With a fake-model gateway, a fixture ticket flows claim->session->micro-loop->manifest->out-of-session verify->close receipt->accept by a second identity; every transition has its event + receipt; W1 exit criterion recorded in docs/STATUS.md",
+        "Negative path: fabricated manifest (file listed but absent) and self-accept both refused, receipts show why"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-01",
+      "title": "Provider framework + OpenAI-compatible/LM Studio/Ollama adapters",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/providers/**", "packages/gateway/test/providers*"],
+      "depends_on": ["W0-07"],
+      "acceptance": [
+        "Provider interface: chat, discovery, context-length introspection, health; OpenAI-compatible adapter covers LM Studio + Ollama + generic endpoints; warm-up pings and per-endpoint request queues (one-at-a-time default for local) (FR-G1)",
+        "Usage metering normalized (tokens in/out, cost table; local = $0 but metered); recorded fixtures, never live calls in CI (docs/TESTING.md)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-02",
+      "title": "Anthropic + OpenAI adapters",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/providers/anthropic*", "packages/gateway/src/providers/openai*"],
+      "depends_on": ["W2-01"],
+      "acceptance": [
+        "Both adapters pass the provider contract suite against recorded fixtures; streaming + non-streaming; API keys via credential refs only (FR-S2)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-03",
+      "title": "GitHub Copilot adapter (device-auth first-run flow)",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/providers/copilot*"],
+      "depends_on": ["W2-01"],
+      "acceptance": [
+        "Device-code auth flow persists token via credential ref; chat-completions calls pass contract suite on recorded fixtures (D-007); token refresh handled; graceful error when the subscription lacks API access, with remediation text"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-04",
+      "title": "Google Vertex AI adapter (ADC/service-account)",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/providers/vertex*"],
+      "depends_on": ["W2-01"],
+      "acceptance": [
+        "Auth via google-auth-library ADC or service-account JSON ref; region + project settings per docs/TECH_STACK.md; contract suite on recorded fixtures (D-007)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-05",
+      "title": "Role->model matrix + task routing + maker!=verifier defaults",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/routing/**", "packages/gateway/test/routing*"],
+      "depends_on": ["W2-01"],
+      "acceptance": [
+        "Role matrix with fallback chains from three-scope settings; task types reasoning/code/verification/embed/escalation; presets All-local/Hybrid/All-cloud ship (FR-G2, FR-S3)",
+        "Reviewer/challenger roles refuse the maker's model by default; override requires explicit setting + event"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-06",
+      "title": "Escalation ladder R0-R4 + escalation events",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/escalation/**"],
+      "depends_on": ["W2-05", "W1-05"],
+      "acceptance": [
+        "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-07",
+      "title": "Budget service: ledger + 70/85/100% breakers",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/budget/**"],
+      "depends_on": ["W2-01"],
+      "acceptance": [
+        "Cost ledger keyed by project/run/ticket; breakers: 70% warn event, 85% downshift (skip optional passes, prefer cheaper rungs), 100% hard stop at ticket boundary + approval card (FR-G4); breakers aggregate across berths (FR-H5)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W2-08",
+      "title": "Model fitness check (planted-defect bench + fitness cards)",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": ["packages/gateway/src/fitness/**", "e2e/fitness-fixtures/**"],
+      "depends_on": ["W2-05"],
+      "acceptance": [
+        "Bench of fixed oracle tasks per role (code-with-tests, review-with-planted-bugs, challenge-with-known-false-claim); outputs a fitness card per (model, role) stored + surfaced when the matrix assigns that pair (BLUEPRINT §12.1)",
+        "Assigning an unfit pair warns with the card; proceeding requires explicit ack event"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-01",
+      "title": "Harbormaster ticket loop (out-of-session gates)",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/loop*", "packages/harbormaster/test/loop*"],
+      "depends_on": ["W1-07", "W2-06", "W2-07"],
+      "acceptance": [
+        "claim -> fresh session (HANDOFF + role model) -> out-of-session gates (scope diff, manifest truth-check: stat files + re-run verify) -> close receipt -> checkpoint commit -> repeat; no close receipt => failure comment, never forward progress (FR-H1)",
+        "Per-ticket session counter (2 -> auto-blocked with evidence); kill-file/pause checked between tickets",
+        "Red fixtures: promise-token in output is ignored; spoofed manifest fails; graded entity never grades itself (verify runs in Harbormaster context)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-02",
+      "title": "Watchdog + dead-letter escalation",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/watchdog*"],
+      "depends_on": ["W3-01"],
+      "acceptance": [
+        "Max-session-seconds + heartbeat stall detection terminate the session tree; breach -> dead-letter event + ticket blocked-with-evidence within seconds (NFR-3, BLUEPRINT §7.1)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-03",
+      "title": "Breakpoints + pause + receipt-based resume",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/resume*", "packages/harbormaster/src/breakpoints*"],
+      "depends_on": ["W3-01"],
+      "acceptance": [
+        "Breakpoints ticket/wave/never; global pause finishes current ticket, checkpoints, stops; resume re-verifies claimed-but-unclosed tickets from receipts (never redoes) and REFUSES with a drift report when event log, receipts, and disk disagree (FR-H3)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-04",
+      "title": "Berths 1-N: parallel lanes, per-berth identities/worktrees",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/berths*", "packages/harbormaster/test/berths*"],
+      "depends_on": ["W3-01", "W3-03"],
+      "acceptance": [
+        "Concurrency dial 1-N per project (three-scope setting + run override); at most one berth per lane; per-berth machine identity + worktree; landing serialized through review; autorun = breakpoint never x berths N (D-010, FR-H5)",
+        "Property test: N berths over a fixture board never produce overlapping write-scope edits; budget breaker on one berth halts all berths at their next ticket boundary"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-05",
+      "title": "Morning-review queue + NEVER-AUTO enforcement",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/review-queue*"],
+      "depends_on": ["W3-01"],
+      "acceptance": [
+        "NEVER-AUTO actions (main merges, releases/deploys, destructive ops, auth/crypto, new stack, scope breaks) never execute in-loop; work is staged (PR opened/drafted), ticket parked in_review, other lanes continue (FR-H4)",
+        "Queue projection sorted by leverage (merges first); each card carries diff-stat + receipts"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-06",
+      "title": "Autonomy modes + runtime-validated approvals ledger",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/autonomy*"],
+      "depends_on": ["W3-01"],
+      "acceptance": [
+        "interactive/auto per project; auto takes documented defaults at gated sites + appends machine-parseable ledger rows; NEVER-AUTO rows require human signature (agent-name blocklist); ledger validated at runtime — a missing/malformed row blocks the next claim (FR-N3)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-01",
+      "title": "Web app scaffold + auth middleware + WS projections",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/**", "apps/server/src/api/**"],
+      "depends_on": ["W0-08"],
+      "acceptance": [
+        "React/Vite SPA served by apps/server; REST per docs/API_DESIGN.md; WebSocket projection subscriptions with heartbeats; auth middleware in single-user token mode (D-005); localhost binding + origin allowlist (docs/SECURITY_CONTROLS.md)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-02",
+      "title": "Fleet home screen (multi-project portfolio)",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/fleet/**", "apps/server/src/api/projects*"],
+      "depends_on": ["W4-01"],
+      "acceptance": [
+        "Project cards: phase, board stats, running berths + heartbeat freshness, pending Decide count, spend today; create/onboard/import/archive; per-project DB isolation (.shipwright/state.db travels with the repo dir) (FR-F1/F2)",
+        "Global gateway fairness: two fixture projects autorunning against one fake endpoint share the queue fairly; total-berth governor enforced (FR-F3)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-03",
+      "title": "Kanban board UI (verb-driven, refusal explanations)",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/board/**"],
+      "depends_on": ["W4-01"],
+      "acceptance": [
+        "Lanes x columns x typed cards from projections <=1s lag (FR-C4); drag fires verbs, refusals explained inline with the violated invariant (FR-T4); stale-blocked badges; claim-now strip; shipped-today ticker; active-berths strip with heartbeats"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-04",
+      "title": "Chat workspace (structured agent cards, provenance)",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/chat/**"],
+      "depends_on": ["W4-01"],
+      "acceptance": [
+        "Program thread + per-concern agent threads; question/finding/manifest cards render structured with agent, model, ticket, cost provenance and click-through to receipts (FR-C2)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-05",
+      "title": "Artifact viewer + receipt inspector",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/artifacts/**"],
+      "depends_on": ["W4-01"],
+      "acceptance": [
+        "Markdown + client-side Mermaid + per-ticket live diffs (CodeMirror) with version history (FR-C3); receipt/coverage/challenge/ledger structured views (FR-C5)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-06",
+      "title": "Settings UI: matrix, autonomy dial, budgets, berths, scopes",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/settings/**"],
+      "depends_on": ["W4-01", "W2-05"],
+      "acceptance": [
+        "Model matrix editor with fitness-card surfacing (W2-08); autonomy dial with immutable NEVER-AUTO list displayed; budget panel; berths slider; effective-settings 'why this value' resolution view (FR-S1); first-run wizard preset->provider->forge->sample (FR-S4)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-07",
+      "title": "Notification center: Decide/Review/Record + aggregated morning queue",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/notifications/**", "apps/server/src/api/notifications*"],
+      "depends_on": ["W4-01", "W3-05"],
+      "acceptance": [
+        "Emitters declare a tier; Record never pops; Review batches into digests; Decide promotes to push only when idle-blocked (FR-N4); morning queue aggregates across projects, sorted by leverage, per-project filters (FR-F4); ten-minute-review target documented in docs/design/UX_SPEC.md honored in card design"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W4-08",
+      "title": "Dry-run cost estimate",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/estimate/**", "packages/gateway/src/estimate/**"],
+      "depends_on": ["W2-07", "W4-03"],
+      "acceptance": [
+        "Pre-autorun estimate from ticket points x role matrix x historical per-ticket actuals, with per-wave breakdown and what-if on matrix changes (BLUEPRINT §12.2)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-01",
+      "title": "Phase machine + gate receipts + waiver flow",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/phases/**"],
+      "depends_on": ["W1-02", "W1-04"],
+      "acceptance": [
+        "Six phases with per-phase validator sets; receipts + two-way prereq re-verification (FR-P1/P2); human-signed waiver receipts; edits to deliverables invalidate downstream receipts visibly (FR-P3)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-02",
+      "title": "Discovery interview (phases 0-2)",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/interview/**", "content/experts/pm-interviewer*"],
+      "depends_on": ["W5-01"],
+      "acceptance": [
+        "Adaptive-depth interview drives VISION/SCOPE/personas/SRS/stories drafts through chat cards; deliverables editable in the artifact viewer; interview is NEVER-AUTO (NA-1 heritage)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-03",
+      "title": "Decision slates + DECISIONS ledger",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/decisions/**", "apps/web/src/decisions/**"],
+      "depends_on": ["W5-01", "W4-04"],
+      "acceptance": [
+        "Slate cards: 2-4 options, trade-offs, recommended default; choice + rationale appends to docs/DECISIONS.md with stable D-IDs; agents hitting a founder-owned fork must emit a slate, never assume (FR-P6); downstream docs cite D-IDs"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-04",
+      "title": "Blueprint stage (Phase 2.5) + decision-complete gate",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/blueprint/**"],
+      "depends_on": ["W5-03"],
+      "acceptance": [
+        "Synthesizes BLUEPRINT.md (condensed SRS + architecture + open questions) from phase 0-2 deliverables; revision loop via slates; Phases 3-4 locked while unresolved founder-decision markers remain (FR-P7); the gate is a validator with red fixtures"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-05",
+      "title": "Research path: depths, citations, fact bank, challenger wiring",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/research/**"],
+      "depends_on": ["W5-01"],
+      "acceptance": [
+        "quick/standard/deep research runs producing cited reports in docs/research/ (tiered sources, per-claim citations); HIGH-impact claims require a Challenger verdict before a decision may cite them; confirmed findings enter the R0 fact bank (FR-P8)",
+        "Phase 0 market, Phase 1 feasibility, Phase 3 design-options + build-vs-adopt, Phase 4 pre-code API verification templates shipped as content"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-06",
+      "title": "Challenger service (reports, verdicts, revision handoffs)",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/challenger/**"],
+      "depends_on": ["W5-01", "W2-05"],
+      "acceptance": [
+        "CHALLENGE_REPORT artifacts with per-claim CONFIRMED/CONTRADICTED/UNVERIFIABLE; citation-less challenges discarded (downgrade to UNVERIFIABLE, never CONTRADICTED); CONTRADICTED forces revision HANDOFF (FR-P4); challenger model must differ from maker model (W2-05); tool-call cap per claim"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-07",
+      "title": "Task decomposer (design -> ticket DAG)",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/decompose/**"],
+      "depends_on": ["W5-01", "W0-04"],
+      "acceptance": [
+        "Design docs -> typed ticket DAG with lanes derived from write-scope disjointness, acceptance criteria, executable verify per ticket; human can edit the DAG before build; DAG renders as mermaid in the artifact viewer (BLUEPRINT §4 step 4)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-08",
+      "title": "Modes: Onboard / Feature / Improve",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["packages/pipeline/src/modes/**"],
+      "depends_on": ["W5-01", "W5-07"],
+      "acceptance": [
+        "Onboard maps an existing repo (landscape, entry points, components, health) using imported onboard specialists; Feature runs a scoped mini-program; Improve produces an audit + fix backlog as tickets (FR-P5)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W5-09",
+      "title": "Guided first-15-minutes sample project",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": ["content/samples/**", "apps/web/src/onboarding/**"],
+      "depends_on": ["W5-02", "W5-04", "W4-06"],
+      "acceptance": [
+        "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT §12.3, FR-S4)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W6-01",
+      "title": "Forge framework + GitHub adapter (PRs, protection, webhooks)",
+      "phase": 6,
+      "module": "forge",
+      "lane": "integrations",
+      "write_scope": ["packages/forge/src/github*", "packages/forge/src/types*"],
+      "depends_on": ["W0-06"],
+      "acceptance": [
+        "Adapter contract: repo ops, branch protection setup on connect (reviewer!=author, no force-push, required checks), PR lifecycle, issue mirror, commit status, identity/token mgmt (FR-I1); recorded-fixture contract tests"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W6-02",
+      "title": "Gitea adapter + generic git fallback",
+      "phase": 6,
+      "module": "forge",
+      "lane": "integrations",
+      "write_scope": ["packages/forge/src/gitea*", "packages/forge/src/generic*"],
+      "depends_on": ["W6-01"],
+      "acceptance": [
+        "Gitea passes the same contract suite; generic SSH-git fallback degrades gracefully (no PRs/issues -> local merge path + explicit capability flags) (FR-I2)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W6-03",
+      "title": "Forge mirror: per-identity write-through + reconciliation",
+      "phase": 6,
+      "module": "forge",
+      "lane": "integrations",
+      "write_scope": ["packages/forge/src/mirror/**"],
+      "depends_on": ["W6-01", "W0-03"],
+      "acceptance": [
+        "Two machine identities provisioned (maker/reviewer) with separate scoped tokens; reviewer token held only by Harbormaster, never in agent env (docs/SECURITY_CONTROLS.md); verbs write through (claim=assign+label, evidence=comment, close=state+receipt comment, accept=reviewer comment) (FR-T5)",
+        "Offline queue in ticket history flushes when reachable; reconciliation audit grades tickets VERIFIED/UNVERIFIED/ORPHAN against issues + git history, two-way drift report"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W6-04",
+      "title": "MCP host (per-role allowlists, approval flags, audited calls)",
+      "phase": 6,
+      "module": "mcp",
+      "lane": "integrations",
+      "write_scope": ["packages/mcp/**"],
+      "depends_on": ["W1-06"],
+      "acceptance": [
+        "Register MCP servers per project; per-role tool allowlists; requiresApproval flags (dynamic for shell) route through the approval card flow; every tool call is an event with args digest + cost (FR-I3); servers run outside the agent trust boundary — core executes calls under policy"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W6-05",
+      "title": "Dual-remote sync + parity validator",
+      "phase": 6,
+      "module": "forge",
+      "lane": "integrations",
+      "write_scope": ["packages/forge/src/dual-remote*", "content/validators/remote-parity*"],
+      "depends_on": ["W6-02"],
+      "acceptance": [
+        "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W6-06",
+      "title": "Execution sandbox (process default, container profile)",
+      "phase": 6,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": ["packages/harbormaster/src/sandbox/**"],
+      "depends_on": ["W3-01"],
+      "acceptance": [
+        "Verify/test runs execute in the worktree under a restricted process (no network by default, opt-in per project); optional Podman/Docker profile; sandbox results are what receipts attest to (FR-I4)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W7-01",
+      "title": "Memory service: working + long-term (FTS5, budgeted assembly)",
+      "phase": 7,
+      "module": "memory",
+      "lane": "memory",
+      "write_scope": ["packages/memory/src/store/**"],
+      "depends_on": ["W0-02"],
+      "acceptance": [
+        "Per-project working memory (findings, calibration) + long-term store (facts, error->solution pairs, decisions) with FTS5 + optional local embeddings, token-budgeted assembly, BM25 fallback (FR-M1); loop memory hooks wired in packages/loop from day one — a test proves recall fires in a micro-loop run (the anti-Jarvis-gap test, docs/research/source-system-foreman-jarvis.md §5)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W7-02",
+      "title": "Playbook (ACE deltas, verified-before-stored) + R0 advisor + global promotion",
+      "phase": 7,
+      "module": "memory",
+      "lane": "memory",
+      "write_scope": ["packages/memory/src/playbook/**"],
+      "depends_on": ["W7-01", "W2-06"],
+      "acceptance": [
+        "Delta-edit-only playbook; only tool/challenger-confirmed outcomes stored (FR-M2); R0 escalation rung consults playbook + fact bank before any model call, with hit/miss events; per-project by default, explicit provenance-carrying promotion to the global playbook, never automatic (FR-F5)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W7-03",
+      "title": "Sleep consolidation + error-first recall",
+      "phase": 7,
+      "module": "memory",
+      "lane": "memory",
+      "write_scope": ["packages/memory/src/consolidation/**"],
+      "depends_on": ["W7-01"],
+      "acceptance": [
+        "Scheduled idle-hours job: dedupe, decay, consolidate, pre-brief the morning queue; ON by default (FR-M3); before a task class that previously failed, the failure fact + fix inject first (error-first recall), test-proven"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W7-04",
+      "title": "Context packer (relevance ranking, core block, stable prefix)",
+      "phase": 7,
+      "module": "memory",
+      "lane": "memory",
+      "write_scope": ["packages/memory/src/packer/**"],
+      "depends_on": ["W7-01", "W1-06"],
+      "acceptance": [
+        "Token-budgeted packets: relevance-ranked file slices (never naive truncation), repo-map skeleton, pinned core block <=1k tokens, stable-prefix ordering for KV-cache hits (BLUEPRINT §7.2); budget scales with model window; HANDOFF assembly switches to the packer"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W7-05",
+      "title": "Lessons intake -> playbook pipeline",
+      "phase": 7,
+      "module": "memory",
+      "lane": "memory",
+      "write_scope": ["packages/memory/src/lessons/**", "apps/web/src/lessons/**"],
+      "depends_on": ["W7-02"],
+      "acceptance": [
+        "Structured field-report form (from a user or the trace viewer); triage flow turns accepted reports into playbook entries or validator-fix tickets (BLUEPRINT §12.6)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W8-01",
+      "title": "Dogfood gate: Shipwright runs its own pipeline on itself",
+      "phase": 8,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": ["docs/dogfood/**"],
+      "depends_on": ["W5-08", "W6-06", "W7-02"],
+      "acceptance": [
+        "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT §9 W8)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W8-02",
+      "title": "Session trace viewer",
+      "phase": 8,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": ["apps/web/src/trace/**"],
+      "depends_on": ["W4-05"],
+      "acceptance": [
+        "Replay any agent session from its events: prompt, tool calls, gate results per pass; linked from ticket cards; feeds the lessons form (BLUEPRINT §12.4)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W8-03",
+      "title": "Secrets vault + redaction + close-gate scanner",
+      "phase": 8,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": ["packages/shared/src/secrets/**", "content/validators/secrets-scan*"],
+      "depends_on": ["W7-04", "W1-02"],
+      "acceptance": [
+        "Project secrets vault (keychain-backed); automatic redaction in context packets AND the event log; secrets-scanner validator wired into every close gate (BLUEPRINT §12.5); red fixture: a planted key in a diff blocks close"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W8-04",
+      "title": "Board export/import bundle",
+      "phase": 8,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": ["packages/shared/src/export/**", "apps/server/src/api/export*"],
+      "depends_on": ["W0-05"],
+      "acceptance": [
+        "Board + receipts + ledgers serialize to a portable JSON bundle; import reconstructs projections and verifies the hash chain (BLUEPRINT §12.8)"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W8-05",
+      "title": "Packaging: npx entry, config dirs, upgrade migrations",
+      "phase": 8,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": ["package.json", "apps/server/src/bootstrap/**", "docs/DEPLOYMENT.md"],
+      "depends_on": ["W4-01"],
+      "acceptance": [
+        "npx shipwright boots the server + opens the canvas; ~/.shipwright/ + per-project .shipwright/ created per docs/DEPLOYMENT.md; event-log schema migrations run on upgrade with backup-first; macOS/Linux verified, WSL smoke-tested (D-009)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": []
+    }
+  ]
+}

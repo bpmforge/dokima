@@ -1,6 +1,6 @@
 # Shipwright — SRS & System Architecture Blueprint
 
-**Version:** 0.3.0 · **Date:** 2026-07-10 · **Status:** Approved — decision-complete (decisions in §11); SDLC package cut from this document
+**Version:** 0.4.0 · **Date:** 2026-07-10 · **Status:** Approved — decision-complete (decisions in §11); SDLC package cut from this document
 **Author:** Principal Architect session (Claude Fable 5) with Brad Matthews
 
 > **Shipwright** is a local-first, human-in-the-loop developer platform where a person takes an idea to a secure, well-built, shipped product. It acts as their product manager and their agentic development team: a guided SDLC program with expert AI agents, gated pipelines, per-item micro-loops, cheapest-model-first execution with escalation, a native Kanban/ticket engine, and an evidence-based trust model in which **the platform holds the gates, not the agents**.
@@ -90,6 +90,7 @@ flowchart TB
         A1["Anthropic API"]
         A2["OpenAI API"]
         A3["GitHub Copilot API"]
+        A4["Google Vertex AI"]
         L1["LM Studio"]
         L2["Ollama"]
         L3["OpenAI-compatible<br/>local endpoints"]
@@ -113,7 +114,7 @@ flowchart TB
     HM --> BUD
     LOOP --> MEM
     HM --> ROUTE
-    ROUTE --> A1 & A2 & A3 & L1 & L2 & L3
+    ROUTE --> A1 & A2 & A3 & A4 & L1 & L2 & L3
     LOOP --> SBX
     HM --> GIT
     GIT --> FORGE
@@ -195,6 +196,8 @@ The productized six-phase SDLC, run as a state machine per project:
   - Phase 4 — pre-code API verification (library APIs checked against current documentation, never from model training data).
   Research discipline: depth is selectable (`quick` / `standard` / `deep` — deep fans out multi-source with adversarial verification); every report uses a tiered source catalog (primary docs > maintainer statements > community posts) with per-claim citations; HIGH-impact claims pass the **Challenger** (CONFIRMED / CONTRADICTED / UNVERIFIABLE) before a decision may cite them; confirmed findings enter the research fact bank, which is consulted at escalation rung R0 before any new research spend.
 - **Modes**: `New Product` (full program), `Onboard` (map an existing codebase: landscape, entry points, components, health assessment), `Feature` (scoped mini-program over an onboarded repo), `Improve` (audit + fix backlog). All four ship at v1 in the UI as "What are we doing today?"
+
+**The full expert system ships in the box.** Shipwright launches with the *entire* expert-system content library, one-time imported (D-008): all coordinators and phase specialists, the security / code-health / performance micro-agent clusters with their synthesizers, the game-dev cluster, the onboard specialists, the Challenger, all 66+ validators, and the shared protocols (HANDOFF, micro-loop, gate scoring, autonomy). Nothing is held back for a "pro tier" (D-006). Equally important: Shipwright is the **go-forward home of the expert-system roadmap** — the amplifier program's designed improvements land here as native subsystems rather than bolt-ons (ticket-lifecycle integrity → the Ticket Engine's verbs; gate integrity → the receipts layer; the Conductor → the Harbormaster; lessons intake → the learning pipeline §12.6; advisor/tier-guard → escalation rung R0 and the role matrix guards).
 
 ### 3.3 Model Gateway (LLM-agnostic)
 
@@ -297,6 +300,28 @@ Built-in (in-process, not an optional sidecar — the #1 lesson from the source 
 
 **Execution sandbox.** Agent-generated code runs in the project worktree under a restricted process (no network by default for test runs; opt-in per project), or in a container (Podman/Docker) when configured. The sandbox is where verify commands, test suites, and tool anchors execute — its results are what receipts attest to.
 
+### 3.10 Settings & configuration model
+
+Three scopes with strict precedence (**run > project > global**), all file-backed and inspectable:
+
+| Scope | Location | Contains |
+|---|---|---|
+| **Global** | `~/.shipwright/config.json` | Provider registrations + credential *references*, default model-matrix presets (All-local / Hybrid / All-cloud), notification preferences + quiet hours, UI prefs, telemetry opt-in, global concurrency governor (max total berths, per-endpoint queue limits) |
+| **Project** | `<repo>/.shipwright/settings.json` | Model matrix overrides, autonomy dial, budgets, default berths, forge connection (by credential ref), MCP server registrations + per-role tool allowlists, validator-pack selection, expert overrides/additions |
+| **Run** | ephemeral (UI/CLI flags) | Breakpoint mode, berths for this run, run budget, depth (quick/standard/deep) for research |
+
+Rules: **credentials never live in any settings file** — they go to the OS keychain (macOS Keychain / libsecret) under named refs that settings files point to, so `.shipwright/settings.json` is safe to commit (a project can share its matrix and autonomy policy with collaborators without leaking keys). Every effective-settings resolution is computable and visible in the UI ("why is this role on this model?" shows the winning scope). Settings changes are events — the audit trail covers configuration, not just execution. First-run onboarding is a settings wizard: pick a preset, register one provider (or point at LM Studio), optionally connect a forge — then the guided sample project (§12.3).
+
+### 3.11 Multi-project — the Fleet
+
+A user runs several programs at once; Shipwright treats that as the normal case:
+
+- **Fleet home screen** — the app opens on a portfolio view: one card per project (current phase, board stats ready/blocked/done, running berths with heartbeat freshness, pending Decide count, today's spend). New Product / Onboard / Import start here.
+- **Isolation per project** — each project owns its SQLite event log + projections (`.shipwright/state.db` beside the repo) and its own Harbormaster instance. State travels with the repo directory; archiving a project is closing a folder. Nothing cross-contaminates: memory facts, calibration, receipts, and budgets are per-project.
+- **Shared global services** — the Model Gateway is one process-wide pool: per-endpoint request queues with **fair scheduling across projects**, so three autorunning projects can't thrash a single LM Studio host; the global concurrency governor caps total berths across all projects. The credential store and provider registry are global (register Copilot once, use it everywhere).
+- **One inbox** — the notification center and morning queue aggregate across all projects (sorted by leverage, filterable per project). A night of three autorunning programs is still one ten-minute review.
+- **Cross-project learning (opt-in)** — the playbook is two-level: per-project entries by default; a lesson that is project-agnostic (a library trap, a validator fix, a pattern) can be **promoted to the global playbook** with provenance, and global entries are consulted at R0 for every project. Promotion is explicit (human or reviewer-gated), never automatic — one project's convention must not silently become another's rule.
+
 ---
 
 ## 4. Agent communication flow protocol — from idea to shipped epic
@@ -319,9 +344,11 @@ sequenceDiagram
     PM->>U: Discovery interview (adaptive depth)
     PM->>HM: Draft VISION + SCOPE + personas
     HM->>VAL: Phase 0–1 gates → receipts
+    PM->>HM: SRS + USER_STORIES (epics & stories born here)
+    HM->>VAL: Phase 2 gates → receipts
     PM->>U: Gate review card (approve / edit / redo)
     U->>PM: Approve (Gate A)
-    PM->>HM: SRS + USER_STORIES (epics & stories born here)
+    Note over PM,U: Phase 2.5 — Blueprint stage:<br/>synthesis + decision slates → DECISIONS.md
     Note over HM: Phase 3 — design fan-out
     HM->>AG: HANDOFFs: architect, api-designer,<br/>db-architect, ux, threat-modeler
     AG-->>HM: Deliverables + manifests
@@ -418,6 +445,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-C3: Artifact viewer renders markdown, live diffs, and Mermaid diagrams client-side; deliverables are versioned with inline diffs.
 - FR-C4: Board renders lanes/columns/typed cards from live projections ≤1s after the underlying event.
 - FR-C5: Receipt inspector renders gate/coverage/challenge/ledger artifacts as structured views.
+- FR-C6: Guided first-fifteen-minutes sample project wired into the first-run wizard.
 
 **FR-PIPE (Pipeline)**
 - FR-P1: Six-phase program with per-phase validator sets and receipt-minting gates (validator list, exit codes, gap counts, input hash).
@@ -435,6 +463,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-T3: Same-lane write-scope disjointness enforced; cross-lane overlap is a schema error; claimable set recomputed on every event.
 - FR-T4: Human board actions fire the same verbs with the same invariants; refusals are explained inline.
 - FR-T5: Optional forge mirror with per-identity machine tokens (maker/reviewer); verbs write through; offline queue + flush; reconciliation audit (two-way drift report).
+- FR-T6: Human/agent edit-conflict policy per §7.3: leases visible, human edits win, loops re-ground after rebase, material conflicts park as Decide cards.
 
 **FR-GW (Model gateway)**
 - FR-G1: Provider adapters at MVP: Anthropic, OpenAI, GitHub Copilot, Google Vertex AI, LM Studio, Ollama, OpenAI-compatible endpoints; discovery, warm-up, queueing, usage metering. Copilot device-auth and Vertex ADC/service-account flows are first-run onboarding paths, not advanced settings.
@@ -442,19 +471,22 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-G3: Escalation ladder R0–R4 per §3.3, evidence-triggered, fully ledgered.
 - FR-G4: Budget circuit breakers (70/85/100%) per run and per project; hard stop lands at a ticket boundary.
 - FR-G5: Soft-gate waivers permitted on phases 0–3 only; build/verify gates never soften.
+- FR-G6: Model fitness check: planted-defect bench per (model, role) producing fitness cards; unfit assignments warn and require explicit acknowledgement.
+- FR-G7: Dry-run cost estimate before autorun from ticket sizes × matrix × historical actuals.
 
 **FR-LOOP (Loop engine)**
 - FR-L1: Per-item micro-loop with criterion restatement, bounded passes, gap feedback, no-progress kill, refuse-to-loop on undecidable criteria.
 - FR-L2: Anchor framework (tool, memory, challenger, adaptive budget); challenger fires on borderline confidence only.
 - FR-L3: Calibration bias is rescue-only, clamped, min-sample gated, anchor-required.
 - FR-L4: Coverage tracker with DONE/WAIVED/BLOCKED/FAILED/SKIPPED; end-of-phase report is a gate input.
+- FR-L5: Context packets assembled by the token-budgeted Context Packer (§7.2); reasoning-model thinking stripped from history and artifacts.
 
 **FR-HM (Harbormaster)**
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
 - FR-H2: Fresh session per ticket; per-ticket session cap; watchdog (time + heartbeat) with dead-letter escalation.
 - FR-H3: Breakpoints ticket/wave/never; global pause; idempotent receipt-based resume that refuses on state drift.
-- FR-H5: User-selectable build concurrency (berths 1–N) per project; one berth per lane; per-berth worktrees and identities; serialized landing; budget breakers aggregate across berths; autorun = breakpoint never × berths N.
 - FR-H4: Morning-review queue for NEVER-AUTO actions; parked tickets don't stall unblocked lanes.
+- FR-H5: User-selectable build concurrency (berths 1–N) per project; one berth per lane; per-berth worktrees and identities; serialized landing; budget breakers aggregate across berths; autorun = breakpoint never × berths N.
 
 **FR-HITL**
 - FR-N1: Clarification cards suspend only dependent work; answer resumes at checkpoint; dismissal takes the documented default + ledger row.
@@ -472,6 +504,22 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-M1: Working + long-term memory in-process; token-budgeted assembly; hybrid retrieval with BM25 fallback.
 - FR-M2: ACE playbook: delta-edits only, verified-before-stored; playbook is escalation rung R0.
 - FR-M3: Scheduled sleep-time consolidation on by default; error-first recall.
+
+**FR-SET (Settings & configuration)**
+- FR-S1: Three-scope settings (global/project/run) with run > project > global precedence; effective-settings resolution visible in UI.
+- FR-S2: Credentials stored only in the OS keychain under named refs; settings files contain refs, never secrets; project settings safe to commit.
+- FR-S3: Matrix presets (All-local, Hybrid, All-cloud) shipped and user-definable; settings changes are audited events.
+- FR-S4: First-run wizard: preset → one provider → optional forge → guided sample project.
+
+**FR-FLEET (Multi-project)**
+- FR-F1: Fleet home screen: per-project cards (phase, board stats, berths + heartbeats, pending Decide count, spend today); create/onboard/import/archive.
+- FR-F2: Per-project isolation: own event log/DB (`.shipwright/state.db` with the repo), own Harbormaster, own memory/calibration/budgets; state travels with the directory.
+- FR-F3: Global gateway pool: per-endpoint queues with fair cross-project scheduling; global governor caps total berths across projects.
+- FR-F4: Aggregated notification center + morning queue across projects with per-project filtering.
+- FR-F5: Two-level playbook: per-project by default; explicit, provenance-carrying promotion to a global playbook consulted at R0 everywhere; promotion never automatic.
+
+**FR-EXP (Expert content)**
+- FR-E1: Full expert-system library imported at W1 as `content/` (all experts, clusters + synthesizers, validators, shared protocols) with provenance headers; expert definitions are data (markdown + frontmatter), user-extensible per project.
 
 ### 6.2 Non-functional requirements
 
@@ -541,7 +589,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - **W1 Loop engine:** micro-loop + coverage tracker + validator runner port; single-agent build of a toy project end-to-end.
 - **W2 Model gateway:** providers (incl. Copilot + Vertex onboarding flows), role matrix, escalation ladder, budget breakers, spend ledger.
 - **W3 Harbormaster:** unattended ticket loop, breakpoints, watchdog, morning queue, resume, **berths 1–N parallelism**.
-- **W4 Canvas:** the three-pane UI over the projections; settings matrix; notification taxonomy.
+- **W4 Canvas:** the three-pane UI over the projections; Fleet home screen; settings matrix + scopes; notification taxonomy + aggregated morning queue.
 - **W5 Pipeline & PM:** interview-driven phases 0–3, decision slates + Blueprint stage + DECISIONS ledger, the research path (cited reports, depth levels, fact bank), Challenger, gate receipts UI, the four modes.
 - **W6 Integrations:** forge adapters + mirror + branch protection; MCP host; dual-remote.
 - **W7 Memory & learning:** playbook, consolidation, error-first recall, R0 advisor.
@@ -556,6 +604,8 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 ---
 
 ## 11. Decisions from founder review (2026-07-10)
+
+Canonical ledger with stable IDs: [`docs/DECISIONS.md`](DECISIONS.md) (D-001…D-013). The numbered items below correspond to D-005…D-010; D-011…D-013 (full expert system in the box, settings scopes, multi-project Fleet) were added in the v0.4.0 review.
 
 1. **Multi-user → v2, with SSO/auth.** v1 stays single-operator. v2 adds first-class auth: SSO (OIDC/SAML), per-human identities alongside the machine identities, and role-based rights over the NEVER-AUTO surface (who may merge, who may deploy). Architectural pre-commitment now so v2 isn't a rewrite: every event already carries an actor identity; the identity table gets a `kind: human|machine` and an `auth_provider` column from W0, and the API gateway is built behind an auth middleware that v1 simply runs in single-user mode.
 2. **Expert content ships open** — adoption is the goal. The expert/validator library is open source with the platform; the moat is the integrated trust runtime + the compounding playbook, not withheld markdown. Community-contributed expert/validator packs become an adoption flywheel (with a signed-pack mechanism so users know what they're installing).
@@ -579,6 +629,6 @@ Reviewing the design as a whole, these are the gaps I'd close next, ranked by le
 
 Items 1–3 belong in the v1 roadmap (fold into W2/W5/W4 respectively); 4–8 are fast-follow candidates for the plan.json when the SDLC package is cut.
 
-*— End of blueprint v0.3.0 —*
+*— End of blueprint v0.4.0 —*
 
 

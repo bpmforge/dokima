@@ -6,6 +6,13 @@ Productizes three proven internal systems: **bpm-opencode-experts** (the expert/
 
 ## Status
 
-Founding blueprint under review — see [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) (SRS + System Architecture, v0.1.0-draft).
+**Full SDLC package cut 2026-07-10 — ready for executor sessions.**
 
-Next step after blueprint approval: full SDLC package (docs tree, plan.json ticket board, MASTER_PROMPT/PLAYBOOK) via the standard pipeline.
+- Founding blueprint (approved, decision-complete): [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) v0.4.0
+- Founder decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md) (D-001…D-013 + pending slates)
+- Ticket board: [`plan.json`](plan.json) — 62 tickets / 258 pts, waves W0–W8
+- Executor entry: [`MASTER_PROMPT.md`](MASTER_PROMPT.md) → `plan.json` → [`PLAYBOOK.md`](PLAYBOOK.md)
+- Wave exit criteria: [`docs/ROADMAP.md`](docs/ROADMAP.md) · progress: [`docs/STATUS.md`](docs/STATUS.md)
+- Founding research path: [`docs/research/`](docs/research/)
+
+First claimable: W0-01 (scaffold), then W0-02/06/07 + W1-01 open up in parallel lanes.
