@@ -94,3 +94,43 @@ Append one line per merged ticket; a short gate section per wave
   deviation to record.
 - 20/20 tests in packages/git (33/33 workspace-wide); `pnpm lint && pnpm
   typecheck && pnpm test` green.
+
+## 2026-07-11 W0-02 done — event log + projections engine
+
+- packages/events: append-only `events` + `identities` tables per
+  DATABASE.md §2 (numbered SQL migrations, `PRAGMA user_version`); FK from
+  `events.actor_id` to `identities.id`; `kind CHECK(human|machine)`;
+  `BEFORE UPDATE`/`DELETE` triggers `RAISE(ABORT)` on `events` — tamper
+  attempts fail at the DB layer.
+- `appendEvent`: seq and prev_hash resolved from the tail row inside one
+  `db.transaction()` — no AUTOINCREMENT-then-update race window.
+  `computeEventHash`/`verifyChain` implement
+  `sha256(prev_hash‖seq‖type‖actor‖payload)` (ARCHITECTURE §3), hashed over
+  the literal stored payload text; `verifyChain` catches tampered
+  payloads/hashes, truncation, and reordering.
+- Projection framework (`Projection<S>`, `rebuildProjection`,
+  `ProjectionRegistry`): fast-check property tests prove rebuild-from-zero
+  equals incremental fold across arbitrary event sequences.
+- `persistBeforeExecute` appends `<op>.started` before running and
+  `<op>.completed`/`.failed` after; `sweepOrphans` (wired into
+  `openEventLog` via `systemActorId`) appends `<op>.orphaned` for any
+  `.started` left unresolved by a crash — tested via a pending-operations
+  projection that is empty after every scenario, including a simulated
+  crash (close mid-flight, reopen, sweep).
+- Single-writer (C6): writer connections open with `timeout: 0`; a second
+  connection's write while the first holds an open transaction throws
+  `SQLITE_BUSY` immediately (<500ms, test-asserted) — no app-level
+  lockfile, native SQLite behavior under the synchronous better-sqlite3
+  API.
+- packages/shared/src/events/: `EventEnvelopeContract`/`IdentityContract`
+  + `isIdentityKind` — canonical boundary shapes (D-005). Not yet imported
+  by packages/events: wiring a subpath export touches
+  packages/shared/package.json / src/index.ts, outside this ticket's
+  write_scope glob — deferred to a follow-up ticket (noted in plan.json).
+- Dependencies added: better-sqlite3 12.11.1, @types/better-sqlite3
+  7.6.13, fast-check 4.9.0 (per docs/TECH_STACK.md pins) — no deviation to
+  record; pnpm-lock.yaml/pnpm-workspace.yaml updated (same pattern as
+  W0-06/execa).
+- 26/26 tests in packages/events, 4/4 new in packages/shared (113/114
+  workspace-wide, 1 pre-existing opt-in skip); `pnpm lint && pnpm
+  typecheck && pnpm test` green.
