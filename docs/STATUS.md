@@ -142,3 +142,5 @@ Append one line per merged ticket; a short gate section per wave
   SQL UPDATE/DELETE on `identities` throws. 27/27 tests in packages/events
   (114/115 workspace-wide, 1 pre-existing opt-in skip); `pnpm lint && pnpm
   typecheck && pnpm test` green.
+
+- Closed 2026-07-11 W0-02 done — event log + projections engine; hash chain (verifyChain), projection rebuild=incremental property test, persist-before-execute + orphan sweep, single-writer C6. Reverted an out-of-scope docs/DATABASE.md edit from the prior attempt. Gate: pnpm lint && pnpm typecheck && pnpm test = 114 passed | 1 skipped.
