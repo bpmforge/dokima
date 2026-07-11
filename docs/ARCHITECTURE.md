@@ -2,7 +2,7 @@
 
 Traces to: BLUEPRINT.md §2–3/§7, DECISIONS.md D-003 (local-first Node/Fastify/SQLite/React),
 D-004 (native board + forge mirror), D-005 (identity model), D-008 (standalone runtime),
-D-010 (berths). Versions: docs/TECH_STACK.md. This is the load-bearing doc: module
+D-010 (berths), D-013 (multi-project Fleet). Versions: docs/TECH_STACK.md. This is the load-bearing doc: module
 boundaries in §4 are lint-enforced; the trust boundary in §2 is the product.
 
 ## 1. System context
@@ -92,7 +92,9 @@ accepted / released / commented`, `gate.receipt_minted`, `gate.waived`,
 `loop.pass_completed`, `loop.heartbeat`, `loop.escalated`, `model.call_completed`
 (tokens + cost), `approval.requested / decided`, `clarification.asked / answered /
 dismissed`, `decision.slated / decided`, `artifact.written`, `git.commit`,
-`git.pr_opened`, `budget.threshold_crossed`, `conflict.detected`, `human.file_edited`.
+`git.pr_opened`, `budget.threshold_crossed`, `conflict.detected`, `human.file_edited`,
+`settings.changed` (configuration is audited, not just execution — FR-S3),
+`playbook.promoted` (FR-F5).
 
 **Projections** (DATABASE.md §3): `tickets` (contract + live status), `board` (claimable
 set, lanes, stale-blocked flags — recomputed on every event), `budget_ledger`/`spend`,
@@ -187,7 +189,29 @@ identity (machine identity row, DATABASE.md §2) running the Harbormaster claim 
 WIP=1 per actor holds per berth; the claim step re-checks lane occupancy atomically
 (single-writer event append is the serialization point — no distributed locking needed).
 
-## 6. Crash safety & resume
+## 6. Fleet & process model (FR-F2/F3, D-013)
+
+**One core process serves N registered projects** (BLUEPRINT §3.11):
+
+- **Per-project isolation (FR-F2):** each project owns its event log + projections
+  (`.shipwright/state.db` beside the repo) and its **own Harbormaster instance**; memory
+  facts, calibration, receipts, and budgets are per-project. State travels with the repo
+  directory — archiving a project is closing a folder. Nothing cross-contaminates.
+- **Shared global services (FR-F3):** the Model Gateway is one process-wide pool —
+  per-endpoint request queues with **fair cross-project scheduling** (three autorunning
+  projects cannot thrash a single LM Studio host) — and a **global concurrency governor**
+  caps total berths across all projects; the per-project berth dial (§5) allocates within
+  that cap. Credential store and provider registry are global (register Copilot once,
+  use it everywhere — DATABASE.md §7).
+- **One inbox (FR-F4):** the notification center and morning queue aggregate across all
+  projects, sorted by leverage, filterable per project — a night of three autorunning
+  programs is still one ten-minute review.
+- **Two-level playbook (FR-F5):** entries are per-project by default; a project-agnostic
+  lesson can be **promoted** to the global playbook with provenance (`playbook.promoted`
+  event), and global entries are consulted at R0 for every project. Promotion is explicit
+  (human or reviewer-gated), never automatic.
+
+## 7. Crash safety & resume
 
 Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute**.
 
@@ -205,7 +229,7 @@ Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute*
    leased scope → `conflict.detected` → checkpoint, rebase, re-ground; the human always
    wins (BLUEPRINT §7.3).
 
-## 7. Failure modes
+## 8. Failure modes
 
 | Failure | Detection | Behavior | User-visible |
 |---|---|---|---|

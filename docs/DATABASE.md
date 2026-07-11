@@ -1,9 +1,10 @@
 # Shipwright — Database Design (SQLite WAL, per project)
 
-Traces to: BLUEPRINT.md §2.3/§3.4/§3.8, ARCHITECTURE.md §3/§4 law 4, DECISIONS.md D-003
-(SQLite WAL), D-005 (identity model). One database file per project:
-**`.shipwright/state.db`** (gitignored); user-level config lives in `~/.shipwright/`
-(DEPLOYMENT.md §2) and holds no project state. Conventions: `snake_case`; PKs
+Traces to: BLUEPRINT.md §2.3/§3.4/§3.8/§3.10/§3.11, ARCHITECTURE.md §3/§4 law 4/§6,
+DECISIONS.md D-003 (SQLite WAL), D-005 (identity model), D-013 (Fleet). One database file
+per project: **`.shipwright/state.db`** (gitignored — state travels with the repo dir,
+FR-F2); the fleet-level global registry lives in `~/.shipwright/` (§7) and holds no
+project state. Conventions: `snake_case`; PKs
 `INTEGER PRIMARY KEY` (rowid) unless noted; timestamps ISO-8601 TEXT (UTC); JSON columns
 are TEXT validated by zod contracts in `packages/shared` at the `events` API boundary.
 
@@ -134,14 +135,42 @@ Consolidation (sleep-time job) rewrites facts/playbook via ordinary events
 ## 6. Provider/config tables (per project)
 
 **model_matrix** — `role TEXT, task_type TEXT, model TEXT, fallback TEXT(JSON: chain[]),
-PK (role, task_type)` (Settings Matrix; presets All-local / Hybrid / All-cloud).
-**model_fitness** — fitness-card results (BLUEPRINT §12.1): `model TEXT, role TEXT,
-verdict TEXT ('fit'|'unfit'|'marginal'), harness_version TEXT, receipt_id FK receipts,
-run_at`; PK `(model, role, harness_version)`.
-Provider *credentials are never here* — secrets live in the OS keychain vault (SC-06);
-`~/.shipwright/providers.json` stores non-secret config (endpoints, project/region ids).
+PK (role, task_type)` — the *project-scope override* of the global preset; effective
+matrix = run > project > global resolution (FR-S1, BLUEPRINT §3.10).
+Provider *credentials are never in any DB or settings file* — secrets live in the OS
+keychain under named refs (SC-06, FR-S2); settings files store the refs, which is what
+makes `.shipwright/settings.json` safe to commit.
 
-## 7. Migrations
+## 7. Global registry — `~/.shipwright/global.db` (Fleet scope, D-013)
+
+Fleet-level data that is project-independent by definition (ARCHITECTURE §6). Same
+engine, same discipline (WAL, single writer = the core process, additive-first
+migrations). Tables:
+
+- **projects** — the Fleet index (FR-F1/F2): `id TEXT PK, path TEXT UNIQUE, name TEXT,
+  archived INTEGER DEFAULT 0, last_opened_at, created_at`. Card *stats* (phase, board
+  counts, spend today, pending Decide) are read live from each project's `state.db` —
+  never cached here, so the registry can't lie about a project it hasn't opened.
+- **providers** — non-secret provider registry (register Copilot once, use everywhere —
+  FR-F3): `id TEXT PK, kind TEXT, base_url TEXT NULL, project TEXT NULL,
+  location TEXT NULL, credential_ref TEXT (keychain name — FR-S2), status, created_at`.
+- **global_playbook** — promoted entries (FR-F5): playbook columns from §5 **plus
+  provenance**: `promoted_from_project TEXT, source_entry_id INTEGER, promoted_by FK-name
+  (human or reviewer identity — never automatic), promoted_at`. Consulted at R0 for every
+  project; per-project entries stay in their own `state.db` (§5). Promotion appends a
+  `playbook.promoted` event to the source project's log.
+- **model_fitness** — fitness cards (BLUEPRINT §12.1) are per (model, role), not per
+  project: `model TEXT, role TEXT, verdict TEXT ('fit'|'unfit'|'marginal'),
+  harness_version TEXT, receipt_payload TEXT(JSON), run_at`;
+  PK `(model, role, harness_version)`.
+
+Settings *files* (global `~/.shipwright/config.json`, project
+`.shipwright/settings.json`) stay file-backed and inspectable per BLUEPRINT §3.10 — the
+DBs never duplicate them; settings changes are audited as `settings.changed` events
+(FR-S3) in the affected project's log (global-scope changes log to every open project's
+feed by reference).
+
+## 8. Migrations
 
 - Numbered SQL files in `packages/events/migrations/NNN_name.sql`; applied in order inside
   a transaction on DB open; `PRAGMA user_version` tracks position. Forward-only — no down

@@ -1,7 +1,8 @@
 # Shipwright — API Design (REST /api/v1 + WS)
 
 Traces to: BLUEPRINT.md §3 (all components), ARCHITECTURE.md §3/§4, DATABASE.md tables,
-DECISIONS.md D-005 (auth middleware from W0, single-user mode at v1). Consumers: the
+DECISIONS.md D-005 (auth middleware from W0, single-user mode at v1), D-012 (settings
+scopes), D-013 (multi-project Fleet). Consumers: the
 Canvas SPA and the `shipwright` CLI — both drive the same verbs (BLUEPRINT §5.3).
 Served by apps/server on localhost only (SC-08).
 
@@ -29,10 +30,12 @@ Served by apps/server on localhost only (SC-08).
 
 ## 2. Endpoint catalog
 
-### projects & runs (BLUEPRINT §3.2/§3.6)
+### projects & runs (BLUEPRINT §3.2/§3.6/§3.11)
 | Method+Path | Req → Res |
 |---|---|
-| `GET /projects` · `POST /projects` | register/open a project dir → `{id, path, mode, phase, autonomy, berths}` |
+| `GET /projects` | **Fleet home cards** (FR-F1): per project `{id, path, phase, board: {ready, blocked, done}, berths_running + heartbeat freshness, pending_decide_count, spend_today}` |
+| `POST /projects` | register/create/onboard/import a project dir → `{id, path, mode, phase, autonomy, berths}` |
+| `POST /projects/{id}/archive` | close the folder (FR-F2 — state stays with the repo dir); reopen via `POST /projects` |
 | `GET /projects/{id}` | detail + current run, phase receipts summary, spend snapshot |
 | `POST /projects/{id}/runs` | `{mode, phase?, breakpoint: ticket\|wave\|never, berths: 1..N, budget?}` → 202 `{run_id}` (autorun = never × N, D-010) |
 | `POST /runs/{id}/pause` | global pause: finish current ticket(s), checkpoint, stop → `{checkpointed_tickets[]}` |
@@ -46,7 +49,7 @@ Served by apps/server on localhost only (SC-08).
 | `GET /projects/{id}/tickets` | filters `status, lane, type, claimable=true, stale=true` → board projection rows |
 | `GET /tickets/{id}` | full contract + manifest + history + evidence + receipts |
 | `POST /tickets/{id}/claim` | `{owner?}` → 200 or 409 (WIP=1, hygiene red, deps unmet) |
-| `POST /tickets/{id}/start` · `/close` · `/accept` · `/release` | close: manifest + verify 0 + commits or 409; accept: reviewer ≠ owner or 409 |
+| `POST /tickets/{id}/start` · `/close` · `/accept` · `/release` | close: manifest + verify 0 + commits or 409; accept: reviewer ≠ owner or 409 (machine-`accept` allowed / merge human-only is a working assumption, pending slate — see docs/DECISIONS.md) |
 | `POST /tickets/{id}/comment` | `{body}` → history row (mirrors to forge when connected, D-004) |
 | `POST /projects/{id}/tickets` · `PATCH /tickets/{id}` | human DAG edits pre-build (split/merge/reprioritize); schema-validated (lane/scope invariants) or 409 |
 
@@ -71,7 +74,8 @@ Served by apps/server on localhost only (SC-08).
 | `GET /clarifications?status=open` | question cards (context, options, default-if-unanswered) |
 | `POST /clarifications/{id}/answer` | `{answer}` → dependent loop resumes at checkpoint |
 | `POST /clarifications/{id}/dismiss` | documented default taken + approvals_ledger row |
-| `GET /approvals/queue` | morning queue, sorted by leverage (merges → approvals → clarifications → digests) |
+| `GET /approvals/queue?project=` | morning queue, sorted by leverage (merges → approvals → clarifications → digests); **aggregates across all projects** by default, filterable per project (FR-F4) |
+| `GET /notifications?tier=&project=&status=` | notification center rows, aggregated across projects (FR-F4); Record tier is feed-only (FR-N4) |
 | `POST /approvals/{id}/decide` | `{decision: approved\|rejected, note?}` — NEVER-AUTO items require this human path; resumes or re-plans |
 
 ### providers, models, fitness (FR-G1/G2; D-007)
@@ -96,8 +100,20 @@ Served by apps/server on localhost only (SC-08).
 |---|---|
 | `GET /projects/{id}/memory/facts?q=` | hybrid retrieval (FTS5/BM25 + optional embeddings) |
 | `GET /projects/{id}/playbook?task_class=` · `POST …/playbook` · `DELETE …/playbook/{id}` | entries are delta-edited; manual adds marked unverified until confirmed |
+| `POST /playbook/{id}/promote` | project entry → **global playbook** with provenance (source project + entry, promoted_by); human/reviewer-gated, never automatic (FR-F5); `GET /playbook/global` lists |
 
-### autonomy & settings
+### settings — three scopes, run > project > global (FR-S1..S3; BLUEPRINT §3.10)
+| Method+Path | Req → Res |
+|---|---|
+| `GET /projects/{id}/settings/effective?run=` | every settings key → `{value, winning_scope: run\|project\|global, overridden: [{scope, value}]}` — the "why this value" payload (FR-S1) |
+| `GET/PUT /settings/global` | global scope (`~/.shipwright/config.json`): provider registrations by **credential ref** (never secrets — FR-S2), matrix presets, notification prefs + quiet hours, global berth governor |
+| `GET/PUT /projects/{id}/settings` | project scope (`.shipwright/settings.json`, safe to commit — FR-S2): matrix overrides, autonomy, budgets, berths default, forge ref, MCP registrations |
+| — | run scope has no endpoint: it is the flags on `POST /projects/{id}/runs` |
+
+Every settings PUT appends a `settings.changed` event (FR-S3) — configuration is audited
+like execution; changes are visible in the activity feed.
+
+### autonomy
 | Method+Path | Req → Res |
 |---|---|
 | `GET/PUT /projects/{id}/autonomy` | `{mode: interactive\|auto}`; response always includes the immutable `never_auto[]` list (read-only — no endpoint mutates it, SC-10) |

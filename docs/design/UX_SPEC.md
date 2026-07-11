@@ -22,13 +22,30 @@ or WS projection; the UI invents no state.
 6. **Calm by taxonomy.** Nothing in the Record tier ever pops (§7). Human attention is
    budgeted like tokens.
 
-## 2. Layout — three panes (FR-C1)
+## 2. Fleet home — the entry screen (FR-F1, D-013)
+
+The app opens on the portfolio, not a project. One card per project:
+
+- **Card contents**: name + phase chip, board mini-stats (ready / blocked / done),
+  running berths with heartbeat freshness dots, pending **Decide** count (the only
+  number rendered in the attention color), spend today. Cards sort by "needs you
+  first" (pending Decide desc, then stalest heartbeat).
+- **Actions**: open, pause/resume run, jump straight to the project's Decide items.
+  Header actions: **New Product / Onboard existing repo / Import / Archive** —
+  archive closes the folder, never deletes (state travels with the repo dir, FR-F2).
+- **The aggregated inbox** lives here too: the cross-project morning queue and
+  notification center (FR-F4) — a night of three autorunning programs is still one
+  ten-minute review (§7).
+- Single-project users skip past this: with one project, the app opens directly in
+  it and Fleet is a breadcrumb.
+
+## 2a. Project layout — three panes (FR-C1)
 
 `[ Chat ] [ Board ] [ Artifacts ]` — every pane collapsible; widths and collapsed state
-persist per project. Top bar: project switcher, run status chip (phase · breakpoint ·
-berths), spend meter for the day, global pause button, notification bell (Decide badge
-count only). Command palette (⌘K): jump to tickets/docs/receipts, fire verbs, "What are
-we doing today?" mode picker (New Product / Onboard / Feature / Improve).
+persist per project. Top bar: project switcher (back to Fleet), run status chip (phase ·
+breakpoint · berths), spend meter for the day, global pause button, notification bell
+(Decide badge count only). Command palette (⌘K): jump to tickets/docs/receipts, fire
+verbs, "What are we doing today?" mode picker (New Product / Onboard / Feature / Improve).
 
 ## 3. Chat Workspace (left pane — FR-C2)
 
@@ -109,6 +126,12 @@ bad edits with the same explain pattern.
   parallelism ≤ min(berths, lanes, gateway capacity)". Autorun = breakpoint `never` ×
   berths N — one toggle + this slider, with a confirm card summarizing what will run
   unattended and what will park to the morning queue.
+- **Scopes & "why this value" (FR-S1, D-012)**: every setting shows its effective value
+  with the winning scope chip (`run` / `project` / `global`) and, on hover, the
+  overridden values beneath it (`GET /settings/effective`). A scope switcher at the top
+  of the panel edits global defaults vs this project's overrides; run-scope values are
+  set at launch time and shown read-only here. Credentials render as keychain-ref names
+  with a "test connection" action — never the secret itself (FR-S2).
 
 ## 7. Notifications — Decide / Review / Record (FR-N4)
 

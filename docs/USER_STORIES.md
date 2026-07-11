@@ -256,6 +256,45 @@ As P3, I want the Decide/Review/Record taxonomy enforced in code — Record neve
 - AC-2: A full fixture run produces zero pops from Record-tier events
 - AC-3: Quiet hours hold push while the run continues under auto policy
 
+## Epic E8 — Fleet, settings & content [W0/W1/W4/W7]
+
+### US-801 Fleet home for many programs — 5 pts — FR-F1, FR-F2, FR-F4, D-013
+As P3, I want the app to open on a portfolio of project cards (phase, board stats, berths + heartbeats, pending Decide count, spend today) with one aggregated inbox, so that running several programs at once is the normal case, not a hack.
+- AC-1: One live card per project; injected events update the right card ≤1s
+- AC-2: Notification center + morning queue aggregate across projects, leverage-sorted, filterable per project
+- AC-3: Each project's state lives in `.shipwright/state.db` beside its repo — moving the directory moves the project; archiving is closing a folder
+- AC-4: No memory fact, calibration stat, receipt, or budget ever crosses projects (isolation walker)
+
+### US-802 First-run wizard — 3 pts — FR-S4, FR-C6, D-012
+As P1, I want first run to be: pick a preset → register one provider (or point at LM Studio) → optionally connect a forge → watch the guided sample project, so that I'm productive in fifteen minutes without reading docs.
+- AC-1: All three preset paths (All-local / Hybrid / All-cloud) complete the wizard
+- AC-2: Forge step is skippable first-class; wizard exit hands off to the FR-C6 sample program
+- AC-3: Wizard-written config lands in the correct scopes (global vs project)
+
+### US-803 Settings I can commit — 3 pts — FR-S1, FR-S2, FR-S3
+As P1, I want run > project > global settings with secrets only in the OS keychain, so that I can commit `.shipwright/settings.json` to share my matrix and autonomy policy without leaking keys.
+- AC-1: Effective-settings inspector shows the winning scope for any key ("why is this role on this model?")
+- AC-2: Secret-scan of both settings files finds refs only, never secrets; a missing keychain entry fails loudly by named ref, never a plaintext fallback
+- AC-3: Every settings change is an audited `settings.changed` event (actor, scope, old→new)
+
+### US-804 Promote a lesson to the global playbook — 3 pts — FR-F5, FR-M2
+As P4, I want project lessons kept local by default with explicit, provenance-carrying promotion to a global playbook, so that a library trap learned in one project pays R0 everywhere — without one project's conventions silently leaking into another.
+- AC-1: Unpromoted lessons are invisible to other projects
+- AC-2: Promotion is an explicit human- or reviewer-gated action; never automatic; provenance stamped
+- AC-3: A promoted entry hits at R0 in a second project with a $0 ledger row
+
+### US-805 Two autoruns, one LM Studio box — 5 pts — FR-F3, FR-G1
+As P4, I want the global gateway pool to schedule fairly across projects and a governor to cap total berths, so that two overnight autoruns share my one inference host instead of thrashing it.
+- AC-1: Two autorunning projects on a one-slot endpoint interleave without starvation (request-order assertion)
+- AC-2: Global governor at N caps summed active berths across all projects at N
+- AC-3: Providers/credentials registered once globally are usable from every project
+
+### US-806 The whole expert crew, extensible — 3 pts — FR-E1, D-011, D-006
+As P2, I want the entire expert library (coordinators, specialist clusters + synthesizers, Challenger, 66+ validators, shared protocols) in the box with provenance headers, plus the ability to add my own experts per project, so that nothing is paywalled and my domain specialist is a markdown file away.
+- AC-1: Import-manifest test proves every roster entry from the source snapshot exists under `content/`
+- AC-2: A project-level custom expert (markdown + frontmatter) loads without core changes and is dispatchable via HANDOFF
+- AC-3: Expert overrides resolve through settings scopes (FR-S1)
+
 ## Summary
 
 | Epic | Stories | Points |
@@ -267,7 +306,10 @@ As P3, I want the Decide/Review/Record taxonomy enforced in code — Record neve
 | E5 Integrations | 5 | 18 |
 | E6 Memory & learning | 4 | 13 |
 | E7 Notifications & HITL | 4 | 14 |
-| **Total** | **41** | **156** |
+| E8 Fleet, settings & content | 6 | 22 |
+| **Total** | **47** | **178** |
 
-Persona coverage: P1 ×10 (101, 103, 104, 107, 205, 305, 307, 407, 603, 701) · P2 ×13 · P3 ×9 · P4 ×9.
-Every FR family in SRS §2 is exercised by ≥1 story; FR→story mapping is greppable by ID.
+Persona coverage: P1 ×12 (101, 103, 104, 107, 205, 305, 307, 407, 603, 701, 802, 803) ·
+P2 ×14 · P3 ×10 · P4 ×11.
+Every FR family in SRS §2 — including FR-S/FR-F/FR-E — is exercised by ≥1 story; FR→story
+mapping is greppable by ID.

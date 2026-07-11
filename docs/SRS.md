@@ -1,7 +1,7 @@
 # Shipwright — Software Requirements Specification (SRS)
 
-Traces to: `docs/BLUEPRINT.md` v0.3.0 (§6 is the canonical FR/NFR skeleton — IDs preserved
-verbatim) and `docs/DECISIONS.md` (D-001…D-010). IEEE-lite format, RepoPulse house style.
+Traces to: `docs/BLUEPRINT.md` v0.4.0 (§6 is the canonical FR/NFR skeleton — IDs preserved
+verbatim) and `docs/DECISIONS.md` (D-001…D-013). IEEE-lite format, RepoPulse house style.
 Every requirement has a stable ID for plan.json traceability. Waves per Blueprint §9:
 W0 skeleton/trust core · W1 loop engine + content import · W2 model gateway · W3 harbormaster ·
 W4 canvas UI · W5 pipeline & PM · W6 integrations · W7 memory & learning · W8 hardening/dogfood.
@@ -14,7 +14,9 @@ execution with evidence-triggered escalation, and a trust model in which **the p
 the gates, not the agents** (Blueprint §2.2). Single-operator at v1; multi-user/SSO is v2 with
 identity kinds (`human|machine`) and auth middleware present from W0 (D-005). Stack: Node 22 +
 TypeScript + Fastify + SQLite (WAL) + React SPA (D-003). Expert/validator content ships open
-(D-006) and is imported once from the source systems, no live build dependency (D-008).
+(D-006) — the **entire** expert-system library, imported once from the source systems with no
+live build dependency (D-008, D-011, FR-E1). Multi-project operation is the normal case: the
+Fleet (D-013, FR-F1–F5); configuration follows the three-scope settings model (D-012, FR-S1–S4).
 
 ### 1.1 Definitions
 
@@ -50,7 +52,7 @@ MCP servers (FR-I3).
 | FR-C3 | Artifact viewer renders markdown, live per-ticket diffs (branch vs base, updating on commit events), and Mermaid diagrams client-side; every phase deliverable is versioned (each save = event) with inline version diffs. Docs live on disk in the project repo — the viewer is a window onto git-visible files. | Edit a doc → new version listed, diff renders; commit on a ticket branch → open diff updates ≤1s; Mermaid DAG renders offline (no CDN). |
 | FR-C4 | Board renders lanes/columns/typed cards (Epic/Story/Task/Bug) from live projections ≤1s after the underlying event; includes stale-blocked badges, claim-now strip, spend meter, active-agents strip with heartbeat freshness. | Injected `ticket.closed` event moves the card within 1s (timer-asserted E2E); stalled heartbeat fixture shows staleness within threshold. |
 | FR-C5 | Receipt inspector renders gate receipts, coverage reports, challenge reports, and approval-ledger rows as structured views (never raw JSON), reachable from every UI claim that cites them. | Each artifact type opens from its badge; fields (validators, exit codes, hashes, signatures) rendered and labeled. |
-| FR-C6 *(SRS-added; Blueprint §12.3)* | Guided first fifteen minutes: a built-in sample idea runs the full program in miniature on local-or-cheap models so a new user watches interview → gates → board → morning queue before risking their own idea. | Fresh install → sample program completes end-to-end with fake/local gateway; all major surfaces visited by the guided flow (E2E). |
+| FR-C6 | Guided first-fifteen-minutes sample project, wired into the first-run wizard (FR-S4): a built-in sample idea runs the full program in miniature on local-or-cheap models so a new user watches interview → gates → board → morning queue before risking their own idea. | Fresh install → wizard hands off to the sample program, which completes end-to-end with fake/local gateway; all major surfaces visited by the guided flow (E2E). |
 
 ### 2.2 FR-PIPE — Pipeline Engine (Blueprint §3.2) — wave W5 (receipt primitive W0)
 
@@ -74,7 +76,7 @@ MCP servers (FR-I3).
 | FR-T3 | Same-lane active tickets must have disjoint write-scopes; cross-lane write-scope overlap is a schema error at plan load; `claimable = ready ∧ unowned ∧ deps done` recomputed on every event; blocked⇄ready auto-resolve. | Overlapping-scope fixture plan rejected at load; closing a blocker flips its dependent to claimable within one event cycle. |
 | FR-T4 | Human board actions fire the same verbs with the same invariants (a drag = a verb); any refusal is explained inline with the specific rule and evidence (explain-this-refusal). | E2E: drag a dep-unsatisfied card → card snaps back + rule shown; legal drag closes via the verb and mints the same receipt as an agent close. |
 | FR-T5 | Optional forge mirror (D-004): every ticket mirrors to a GitHub/Gitea issue; verbs write through (claim=assign+label, evidence=comment, close=state+receipt comment, accept=reviewer comment) using **two machine identities with separate scoped tokens** (`shipwright-maker`, `shipwright-reviewer`); the reviewer token never enters an agent session. Offline verbs queue in `history[]` and flush on reconnect; a two-way reconciliation audit reports drift. | Mirror fixture: each verb produces the mapped forge action under the right identity; offline period → queued verbs flush in order; injected forge-side edit appears in the drift report. |
-| FR-T6 *(SRS-added; Blueprint §7.3)* | Human/agent edit-conflict policy: write-scopes are exclusive leases surfaced in the UI (lock badge); a file watcher on the human checkout flags edits inside an actively-leased scope (`conflict.detected`); **human wins** — the loop checkpoints, the agent worktree rebases, the micro-loop re-grounds; a material rebase conflict parks the ticket `blocked: human-edit conflict` with a Decide card (take mine / take agent's / merge). Human edits are attributed events, credited in coverage. | UC-04 E2E: human edit mid-loop → conflict event ≤ watcher interval, loop re-grounds on clean rebase; conflicting fixture parks with the three-option card. |
+| FR-T6 | Human/agent edit-conflict policy (Blueprint §7.3): write-scopes are exclusive leases surfaced in the UI (lock badge); a file watcher on the human checkout flags edits inside an actively-leased scope (`conflict.detected`); **human wins** — the loop checkpoints, the agent worktree rebases, the micro-loop re-grounds; a material rebase conflict parks the ticket `blocked: human-edit conflict` with a Decide card (take mine / take agent's / merge). Human edits are attributed events, credited in coverage. | UC-04 E2E: human edit mid-loop → conflict event ≤ watcher interval, loop re-grounds on clean rebase; conflicting fixture parks with the three-option card. |
 
 ### 2.4 FR-GW — Model Gateway (Blueprint §3.3) — wave W2
 
@@ -85,8 +87,8 @@ MCP servers (FR-I3).
 | FR-G3 | Escalation ladder R0–R4, per-ticket and **evidence-triggered only** (a failed gate with receipts); every rung change is a ledger event carrying the triggering receipt, so reports answer "which tickets needed the frontier and what did it cost". | Simulated R1 gate failure escalates to R2 with the failure receipt attached; a passing ticket can never emit an escalation event (property test). |
 | FR-G4 | Budget circuit breakers per run and per project: 70% warn (Record tier), 85% downshift (skip optional passes, prefer cheaper rungs), 100% hard stop landing at a ticket boundary + approval card. Breakers aggregate across all berths. | UC-05 fixture: crossing each threshold emits the right event class; at 100% no new ticket claims occur, in-flight ticket completes or checkpoints, approval card raised. |
 | FR-G5 | Soft-gate waivers permitted on phases 0–3 only (documented gaps waived-and-recorded, visible ⚠ in coverage); build/verify gates (phase 4–5, ticket `verify`) **never** soften regardless of model tier. | Attempted soft-waiver on a build gate rejected at the API level; doc-phase waiver renders ⚠ in coverage report. |
-| FR-G6 *(SRS-added; Blueprint §12.1)* | Model fitness check: before a model may hold a role in the matrix, a ~10-minute planted-defect bench (fixed tasks with known oracles) runs and mints a fitness card per (model, role); assigning an unfit model to a role requires an explicit, ledgered override. | UC-09: bench on a fixture-weak model yields "unfit for challenger"; matrix assignment refused with the fitness card cited; override path writes a ledger row. |
-| FR-G7 *(SRS-added; Blueprint §12.2)* | Dry-run cost estimate: before autorun, estimate tokens/dollars per wave from ticket sizes × model matrix × historical per-ticket actuals, with a what-if on matrix changes. | Estimate endpoint returns per-wave totals + assumptions; changing the review role's model changes the estimate deterministically (fixture-verified). |
+| FR-G6 | Model fitness check: before a model may hold a role in the matrix, a ~10-minute planted-defect bench (fixed tasks with known oracles) runs and mints a fitness card per (model, role); an unfit assignment **warns and requires explicit acknowledgement** (ledgered), and the matrix UI flags it permanently. | UC-09: bench on a fixture-weak model yields "unfit for challenger"; assignment warns with the fitness card cited and blocks until acknowledged; acknowledgement writes a ledger row + matrix flag. |
+| FR-G7 | Dry-run cost estimate: before autorun, estimate tokens/dollars per wave from ticket sizes × model matrix × historical per-ticket actuals, with a what-if on matrix changes. | Estimate endpoint returns per-wave totals + assumptions; changing the review role's model changes the estimate deterministically (fixture-verified). |
 
 ### 2.5 FR-LOOP — Loop Engine (Blueprint §3.5) — wave W1
 
@@ -96,7 +98,7 @@ MCP servers (FR-I3).
 | FR-L2 | Anchor framework composes external ground truth onto the loop: tool anchor (compilers/scanners), memory anchor (prior confirmed findings + calibration seed), challenger anchor (second skeptical model, fired on borderline confidence only), adaptive budget anchor. | Anchor fixtures: tool fact contradicting the model forces reconciliation; challenger not invoked on high-confidence tool-backed pass (cost assertion). |
 | FR-L3 | Calibration bias on self-confidence is rescue-only, clamped [0, MAX_BIAS], minimum-sample gated, and applies only when an external anchor is present — the system can never manufacture a DONE from an ungrounded high number. | Property test: for all bias values and confidences, DONE requires anchor-present ∧ gate-passing; negative bias never produced (the 2026-07-01 inversion regression case). |
 | FR-L4 | Coverage tracker: every expected unit ends in exactly one of DONE / WAIVED (attributed) / BLOCKED / FAILED / SKIPPED (expected-but-never-ran, loudly flagged); the end-of-phase COVERAGE_REPORT is both a UI artifact and a gate input; nothing disappears. | Invariant test: sum of states = inventory size after every run; SKIPPED row blocks the phase gate; WAIVED rows carry waiver identity. |
-| FR-L5 *(SRS-added; Blueprint §7.2)* | Context Packer: every HANDOFF carries a token-budgeted context packet — relevance-ranked file slices (never naive truncation), repo-map skeleton, ticket interfaces + acceptance, prior confirmed findings — plus a pinned ≤1k-token core block (stable-prefix ordered for KV-cache hits). Distill-never-replay; write-scope bounds read-focus; reasoning chain-of-thought stripped from history and artifacts. | Packet size ≤ budget for every fixture model window; thinking-strip test: no `<think>` content in stored artifacts or subsequent prompts; escalated re-run uses same packet discipline at larger budget. |
+| FR-L5 | Context Packer (Blueprint §7.2): every HANDOFF carries a token-budgeted context packet — relevance-ranked file slices (never naive truncation), repo-map skeleton, ticket interfaces + acceptance, prior confirmed findings — plus a pinned ≤1k-token core block (stable-prefix ordered for KV-cache hits). Distill-never-replay; write-scope bounds read-focus; reasoning chain-of-thought stripped from history and artifacts. | Packet size ≤ budget for every fixture model window; thinking-strip test: no `<think>` content in stored artifacts or subsequent prompts; escalated re-run uses same packet discipline at larger budget. |
 
 ### 2.6 FR-HM — Harbormaster (Blueprint §3.6) — wave W3
 
@@ -134,6 +136,31 @@ MCP servers (FR-I3).
 | FR-M2 | ACE playbook: delta-edits only (distill-never-replay); verified-before-stored — only tool/challenger-confirmed lessons enter; the playbook is escalation rung R0, consulted before any model call. | Unconfirmed lesson rejected at store; R0 hit on a repeated fixture task skips the model call (ledger shows $0 resolution). |
 | FR-M3 | Scheduled sleep-time consolidation (on by default): dedupe, decay, consolidate, pre-brief the next morning queue. Error-first recall: before a task class that previously failed, the failure fact + fix are injected first in the packet. | Consolidation job merges duplicate fixture facts; packet for a previously-failed task class leads with the error→fix pair (order asserted). |
 
+### 2.10 FR-SET — Settings & configuration (Blueprint §3.10, D-012) — waves W0-07 (core) / W4-06 (wizard + UI)
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-S1 | Three-scope settings with strict precedence **run > project > global**: global `~/.shipwright/config.json` (provider registrations + credential refs, default presets, notification prefs + quiet hours, global concurrency governor), project `<repo>/.shipwright/settings.json` (matrix overrides, autonomy dial, budgets, default berths, forge connection by ref, MCP registrations + allowlists, validator-pack selection, expert overrides), run = ephemeral UI/CLI flags (breakpoint, berths, run budget, research depth). Effective-settings resolution is computable and visible in the UI — "why is this role on this model?" shows the winning scope. | Resolution property test: for any (global, project, run) triple the effective value is the highest-precedence defined one; UI inspector names the winning scope for every key (fixture E2E). |
+| FR-S2 | Credentials never live in any settings file: secrets go to the OS keychain (macOS Keychain / libsecret) under named refs; settings files contain refs only, so `.shipwright/settings.json` is safe to commit — a project can share matrix + autonomy policy without leaking keys. | Secret-scan over both settings files after registering every provider type finds zero secrets; deleting the keychain entry breaks resolution with a named-ref error, never a plaintext fallback. |
+| FR-S3 | Matrix presets (All-local / Hybrid / All-cloud) shipped and user-definable; every settings change is an audited event — the audit trail covers configuration, not just execution. | User-defined preset round-trips; each settings write appends a `settings.changed` event (actor, scope, key, old→new) replayable from the log. |
+| FR-S4 | First-run wizard: pick a preset → register one provider (or point at LM Studio) → optionally connect a forge → hand off to the guided sample project (FR-C6). | Fresh-install E2E completes the wizard in all three preset paths; skipping the forge step is first-class; wizard exit lands in the FR-C6 sample program. |
+
+### 2.11 FR-FLEET — Multi-project Fleet (Blueprint §3.11, D-013) — waves W4-02/W4-07 (home + inbox) / W7-02 (global playbook)
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-F1 | Fleet home screen as the app's opening view: one card per project showing current phase, board stats (ready/blocked/done), running berths with heartbeat freshness, pending Decide count, and today's spend; create / onboard / import / archive start here. | Three-project fixture renders three live cards; injected events update the right card ≤1s; archive removes the card without touching the project directory. |
+| FR-F2 | Per-project isolation: each project owns its SQLite event log + projections (`.shipwright/state.db` beside the repo) and its own Harbormaster instance; memory facts, calibration, receipts, and budgets never cross-contaminate; state travels with the repo directory — archiving a project is closing a folder. | Move a project directory to a new machine/path → reopen with full history; cross-project probe: no query returns another project's rows (isolation walker). |
+| FR-F3 | Shared global gateway pool: per-endpoint request queues with **fair cross-project scheduling** (three autorunning projects cannot thrash one LM Studio host) and a global concurrency governor capping total berths across all projects; credential store + provider registry are global (register Copilot once, use everywhere). | Two autorunning fixture projects on a one-slot fake endpoint interleave fairly (no starvation, asserted on the request order); governor at N caps summed active berths at N across projects. |
+| FR-F4 | Aggregated notification center + morning queue across all projects, sorted by leverage with per-project filtering — a night of three autorunning programs is still one ten-minute review. | Overnight three-project fixture yields a single queue ordered merges→approvals→clarifications→digests across projects; filter isolates one project's cards. |
+| FR-F5 | Two-level playbook: entries are per-project by default; a project-agnostic lesson may be **promoted to the global playbook** only explicitly (human or reviewer-gated), carrying provenance; global entries are consulted at R0 for every project; promotion is never automatic. | Unpromoted lesson invisible to a second project; promotion requires an explicit gated action and stamps provenance; promoted entry then hits at R0 in another project ($0 ledger row). |
+
+### 2.12 FR-EXP — Expert library (Blueprint §3.2 "full expert system ships in the box", D-011) — wave W1-01
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-E1 | The full expert-system library is imported at W1 as `content/` with provenance headers (D-008): all coordinators and phase specialists, the security/code-health/performance micro-agent clusters with synthesizers, the game-dev cluster, the onboard specialists, the Challenger, all 66+ validators, and the shared protocols (HANDOFF, micro-loop, gate scoring, autonomy). Nothing withheld for a paid tier (D-006). Expert definitions are data (markdown + frontmatter), user-extensible per project (FR-S1 expert overrides/additions). | Import manifest test: every roster entry from the source snapshot exists under `content/` with a provenance header; a user-added project-level expert loads without core changes and is dispatchable via HANDOFF. |
+
 ## 3. Non-functional requirements
 
 | ID | Requirement (expanded) | Verification | Wave |
@@ -152,34 +179,37 @@ MCP servers (FR-I3).
 
 | FR family | Blueprint | Wave | | FR family | Blueprint | Wave |
 |---|---|---|---|---|---|---|
-| FR-C1–C5 | §3.1 | W4 | | FR-H1–H5 | §3.6 | W3 |
-| FR-C6 † | §12.3 | W4 | | FR-N1–N3 | §3.7 | W3 |
-| FR-P1–P8 | §3.2 (receipts §2.2) | W5 (receipt primitive W0) | | FR-N4 | §5.1 | W4 |
-| FR-T1–T4 | §3.4 | W0 (board UI W4) | | FR-I1 | §3.9 | W0 (protection W6) |
-| FR-T5 | §3.4 | W6 | | FR-I2, FR-I3 | §3.9 | W6 |
-| FR-T6 † | §7.3 | W3 | | FR-I4 | §3.9 | W1 |
-| FR-G1–G5 | §3.3 | W2 | | FR-M1–M3 | §3.8 | W7 |
-| FR-G6 †, FR-G7 † | §12.1–.2 | W2 | | FR-L1–L4 | §3.5 | W1 |
-| FR-L5 † | §7.2 | W1 | | NFR-1–7 | §6.2 | per §3 above |
+| FR-C1–C5 | §3.1 | W4 | | FR-N1–N3 | §3.7 | W3 |
+| FR-C6 | §12.3, §3.10 wizard | W4 | | FR-N4 | §5.1 | W4 |
+| FR-P1–P8 | §3.2 (receipts §2.2) | W5 (receipt primitive W0) | | FR-I1 | §3.9 | W0 (protection W6) |
+| FR-T1–T4 | §3.4 | W0 (board UI W4) | | FR-I2, FR-I3 | §3.9 | W6 |
+| FR-T5 | §3.4 | W6 | | FR-I4 | §3.9 | W1 |
+| FR-T6 | §7.3 | W3 | | FR-M1–M3 | §3.8 | W7 |
+| FR-G1–G5 | §3.3 | W2 | | FR-S1–S4 | §3.10 | W0-07 (core) / W4-06 (wizard+UI) |
+| FR-G6, FR-G7 | §12.1–.2 | W2 | | FR-F1–F5 | §3.11 | W4-02/W4-07 (home+inbox) / W7-02 (playbook) |
+| FR-L1–L4 | §3.5 | W1 | | FR-E1 | §3.2 (expert box), §11 | W1-01 |
+| FR-L5 | §7.2 | W1 | | NFR-1–7 | §6.2 | per §3 above |
+| FR-H1–H5 | §3.6 | W3 | | | | |
 
-† = SRS-added ID (not in Blueprint §6; sourced from the cited Blueprint section, flagged for
-Blueprint v0.4 uplift). D-008 additionally binds W1 to the one-time content import + conformance
-suite (see TESTING.md §4).
+D-008 additionally binds W1 to the one-time content import + conformance suite (TESTING.md §4).
+FR-C6/T6/G6/G7/L5 originated as SRS additions and were backfilled into Blueprint v0.4.0 §6.1 —
+they are now canonical Blueprint IDs like every other row.
 
 ### 4.2 Decisions → requirements
 
 D-001→naming/§1 · D-003→NFR-1, tech stack (Blueprint §8) · D-004→FR-T1–T5 · D-005→NFR-4
-(identity kinds W0, auth middleware) · D-006→NFR-5, open content packs · D-007→FR-G1 ·
-D-008→W1 content import, conformance suite (TESTING §4), no build-step umbilical ·
-D-009→NFR-7 · D-010→FR-H5, FR-G4 (cross-berth breakers).
+(identity kinds W0, auth middleware) · D-006→NFR-5, open content packs, FR-E1 ·
+D-007→FR-G1 · D-008→W1 content import (FR-E1), conformance suite (TESTING §4), no build-step
+umbilical · D-009→NFR-7 · D-010→FR-H5, FR-G4 (cross-berth breakers) · **D-011**→FR-E1 (full
+library, go-forward home of the expert-system roadmap) · **D-012**→FR-S1–S4 ·
+**D-013**→FR-F1–F5, C6 (per-project single-writer event log).
 
-### 4.3 Gaps noted against Blueprint §6 (for v0.4 uplift)
+### 4.3 Gaps noted against Blueprint §6 (post-v0.4.0)
 
-1. §7.3 human-edit conflict policy had no FR → added FR-T6.
-2. §7.2 Context Packer / thinking-strip had no FR → added FR-L5.
-3. §12 items 1–3 declared v1-roadmap but un-ID'd → added FR-G6, FR-G7, FR-C6.
-4. §5.3 CLI parity ("UI and CLI drive the same verbs", `shipwright run`) has no FR; treated
-   here as an acceptance facet of FR-T4/FR-H3 — recommend an explicit FR at Phase 3.
-5. §12 items 4–8 (trace viewer, secrets vault subsystem, lessons intake, archetypes, board
+1. ~~§7.3 conflict policy, §7.2 Context Packer, §12 items 1–3 lacked FRs~~ — resolved: FR-T6,
+   FR-L5, FR-G6/G7/C6 backfilled as canonical in Blueprint v0.4.0.
+2. §5.3 CLI parity ("UI and CLI drive the same verbs", `shipwright run`) still has no FR;
+   treated here as an acceptance facet of FR-T4/FR-H3 — recommend an explicit FR at Phase 3.
+3. §12 items 4–8 (trace viewer, secrets vault subsystem, lessons intake, archetypes, board
    export) are fast-follow: intentionally **not** in this SRS.
-6. Cosmetic: Blueprint lists FR-H5 before FR-H4; order normalized here, IDs unchanged.
+4. Cosmetic: Blueprint lists FR-H5 before FR-H4; order normalized here, IDs unchanged.
