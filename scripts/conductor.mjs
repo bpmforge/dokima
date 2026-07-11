@@ -68,12 +68,24 @@ function globToRegex(glob) {
     .replace(/\?/g, '[^/]');
   return new RegExp(`^${esc}$`);
 }
-// Shared ledger/generated files every ticket may legitimately touch regardless of
-// its write_scope: the board (plan.json), the status ledger, work-dir notes, the
-// lockfile (any `pnpm install` regenerates it), and TECH_STACK.md (CLAUDE.md Law 2
-// mandates recording version deviations there in the same commit). Serial-run safe;
-// a parallel-berths executor would need lockfile-contention handling instead.
-const ALWAYS_OK = ['plan.json', 'docs/STATUS.md', 'docs/work/**', 'pnpm-lock.yaml', 'docs/TECH_STACK.md'].map(globToRegex);
+// Files any ticket may legitimately touch regardless of its write_scope. Two kinds:
+//  (1) Shared ledgers the methodology mandates: the board (plan.json), the status
+//      ledger (STATUS.md), work-dir notes (docs/work/**), and TECH_STACK.md where
+//      CLAUDE.md Law 2 requires recording version deviations in the same commit.
+//  (2) Root-level monorepo build config that many tickets extend as they add packages,
+//      deps, and tests — the lockfile (any `pnpm install` regenerates it), workspace
+//      + TS + lint + test-runner config, and ignore/version files. These are shared
+//      INFRA, never another package's source: the globs below have no path separators,
+//      so `package.json` matches only the ROOT one — `packages/x/package.json` still
+//      requires x in the ticket's write_scope. Package/app SOURCE stays fully gated.
+//  Serial-run safe; a parallel-berths executor would need lockfile-contention handling.
+const ALWAYS_OK = [
+  'plan.json', 'docs/STATUS.md', 'docs/work/**', 'docs/TECH_STACK.md',
+  'pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml',
+  'tsconfig.json', 'tsconfig.base.json', 'vitest.workspace.ts', 'vitest.config.ts',
+  'playwright.config.ts', 'eslint.config.js', '.prettierrc.json',
+  '.gitignore', '.npmrc', '.nvmrc',
+].map(globToRegex);
 
 function claimable(plan) {
   const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
