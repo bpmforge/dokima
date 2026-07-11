@@ -27,7 +27,7 @@
         "Dependency versions match docs/TECH_STACK.md; deviations recorded there in the same commit"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
