@@ -20,6 +20,20 @@ restating. Do not re-litigate without a new entry superseding the old one.
 | D-012 | 2026-07-10 | **Settings scopes**: run > project > global precedence; credentials only in OS keychain via named refs; project settings committable; settings changes are audited events; presets All-local/Hybrid/All-cloud | Single global config; per-project only | Shareable project policy without leaking keys; explainable "why this model?" resolution. |
 | D-013 | 2026-07-10 | **Multi-project Fleet**: per-project DB + Harbormaster (state travels with the repo dir); global gateway pool with fair cross-project scheduling + total-berth governor; aggregated morning queue; two-level playbook with explicit promotion only | One global DB; fully isolated apps per project | Several concurrent programs is the normal case; one LM Studio box must survive three autoruns; one ten-minute review for everything. |
 
+## Pending slates (founder input wanted; working assumptions in force)
+
+Raised during Phase 3 design (2026-07-10). Each ships with a documented
+working assumption so the build is not blocked; overriding one later is a
+normal DECISIONS entry superseding the assumption.
+
+| ID | Question | Working assumption (in docs) |
+|---|---|---|
+| P-001 | Chat thread persistence: full verbatim transcript replay, or render-from-events with summarized packets? | Render-from-events; packets summarized, not stored verbatim (API_DESIGN/DATABASE) |
+| P-002 | Acceptance authority split: may a machine reviewer identity `accept` tickets, with only merges human-gated? | Machine `accept` allowed (reviewer≠owner); merge to main human-only (NEVER-AUTO) |
+| P-003 | Credential storage on headless/WSL where no OS keychain exists? | Encrypted-file fallback behind `SHIPWRIGHT_NO_KEYCHAIN` (DEPLOYMENT) |
+| P-004 | Process model for many projects: one core serving N projects, or one process per project? | One core, N projects — **canonicalized as part of D-013** (no longer pending) |
+| P-005 | Early version pins (zod 4 vs 3, pnpm 10 vs 9)? | zod 4 + pnpm 10 with trap notes (TECH_STACK); revisit free at W0-01 |
+
 ## Constraints bound to decisions
 
 - C1 Local-first, offline-capable (D-003)
