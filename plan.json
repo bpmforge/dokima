@@ -104,7 +104,7 @@
         "claimable = ready AND unowned AND deps done, recomputed on every event; blocked<->ready auto-resolve only; stale-blocked detection exported for the UI"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
