@@ -12,7 +12,7 @@ recorded in this doc in the same commit that introduces it.**
 |---|---|---|
 | Node.js | **22.x (LTS)** | D-003; direct lineage from the Jarvis/Foreman runtime — loop/provider *contracts* port cleanly (D-008); native fetch, stable watch mode. |
 | TypeScript | **5.x**, `strict: true`, ESM only | D-003; strict mode is the cheapest bug gate for cheap coding agents. |
-| pnpm | **10.x** workspaces | Strict node_modules prevents phantom cross-package imports (ARCHITECTURE §4 laws); content-addressed store. |
+| pnpm | **11.x** workspaces (11.11.0 installed on build host 2026-07-11; was pinned 10.x pre-install) | Strict node_modules prevents phantom cross-package imports (ARCHITECTURE §4 laws); content-addressed store. |
 
 ### Workspace layout (fixed — ARCHITECTURE.md §4 owns the dependency law)
 
