@@ -157,3 +157,7 @@ The conductor's between-wave security audit halted the run (correct behavior on 
 - **MEDIUM follow-ups** (not blockers): reducer.ts folds event payloads via unchecked `as` casts (add zod validation at fold time); verbs.ts trusts bare `actorId: string` (accept a verified Identity); lanes.ts glob DP is recursive/unbounded (make iterative + cap length).
 
 Full report: docs/work/SECURITY_W0.md. W0-05 write_scope defect fixed + reset to todo (see its notes).
+
+## 2026-07-11 — CRITICAL waived (SW-001), build resumed
+
+Brad signed SW-001 (docs/work/SECURITY_WAIVERS.md) accepting the plan.json bootstrap-status finding as a documented known risk. Conductor now downgrades waived CRITICALs to logged security.waived events; unwaived criticals still halt. Build resumed W0-05 -> onward.
