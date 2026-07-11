@@ -80,7 +80,7 @@
         "Conformance tests adapted from source-system ticket semantics (docs/research/source-system-experts.md §6) all green"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
