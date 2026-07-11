@@ -1,42 +1,38 @@
-# Security pass — wave W0 (2026-07-11T14:44:47.663Z)
+# Security pass — wave W0 (2026-07-11T22:06:01.980Z)
 
 ```json
 {
-  "critical": [],
+  "critical": [
+    {
+      "file": "plan.json",
+      "issue": "Ticket status is flipped directly in plan.json by agent/conductor-authored notes (\"AGENT 2026-07-11: done...\", \"CONDUCTOR ...: blocked...\") rather than through the new packages/tickets verb/receipt system this same wave built. This is a live instance of the exact anti-pattern the project's trust boundary law forbids: a code path (hand-edited plan.json) flips ticket state to 'done'/'blocked' with no receipt, and the maker (agent) is self-asserting completion of its own work with no distinct verifier.",
+      "fix": "Stop hand/agent-editing plan.json's status field. Either (a) generate plan.json status from the @shipwright/events log / ticket projection (source of truth = events, plan.json = read-only render), or (b) require every plan.json status change to reference a real closeTicket/acceptTicket receipt id, and add a CI check that fails if plan.json status disagrees with the projected ticket state."
+    }
+  ],
   "high": [
     {
-      "file": "packages/shared/src/config/settings-files.ts",
-      "issue": "looksLikeSecret()/findSecretLikeKeys() is a narrow denylist of 5 regexes (OpenAI/Anthropic sk-, GitHub gh*_, AWS AKIA, Slack xox*, PEM header). Any other secret shape — DB connection strings with embedded passwords, JWTs, GCP/Azure keys, bearer tokens, plain passwords — matches none of them and will be silently accepted by saveGlobalConfig/saveProjectSettings and written to disk in plaintext. The commit/status notes describe this as 'defensive enforcement... not just a scan,' but it is in fact only a scan, and an incomplete one, so it does not actually guarantee the FR-S2 invariant ('settings files never contain secrets').",
-      "fix": "Treat this as a best-effort guard only, not the FR-S2 control. Widen detection (entropy/length heuristics for any string value, not just known prefixes) and/or require that any settings key ending in apiKey/token/secret/password be rejected outright unless it matches the credentialRef naming convention (e.g. shipwright:<provider>:<name>), which flips it from a denylist to an allowlist for sensitive-looking keys."
-    },
-    {
-      "file": "packages/git/src/worktree.ts",
-      "issue": "createWorktree() builds worktreePath via path.join(worktreesDir, opts.ticketId) with no validation of ticketId. path.join normalizes '..' segments, so a ticketId containing path traversal sequences (e.g. '../../../../tmp/evil') resolves the worktree outside .shipwright/worktrees, and the same raw ticketId is embedded directly in the branch name (branchNameFor only slugifies the `slug` argument, not `ticketId`). If ticket IDs ever originate from anything less trusted than a hand-reviewed plan.json (e.g. an agent-proposed ticket, per the project's own trust-boundary rule that agent sessions are untrusted), this is a path-traversal primitive that plants a git worktree/branch outside the intended sandbox.",
-      "fix": "Validate ticketId against a strict allowlist pattern (e.g. /^[A-Za-z0-9._-]+$/) and reject anything containing '/', '..', or leading '-' before using it in either the branch name or the worktree path; resolve the final worktreePath and assert (via path.relative) that it stays inside worktreesDir before calling `git worktree add`."
+      "file": "packages/tickets/src/verbs.ts",
+      "issue": "closeTicket() mints a 'close receipt' and transitions to in_review based entirely on maker-supplied files/commits/verify.exitCode, with no independent verification that verify actually ran or that the files/commits exist (comment explicitly defers this to an out-of-session 'Harbormaster gate FR-H1' / receipts table). Per plan.json, W0-05 (the receipts table that would durably anchor this) is currently BLOCKED and unbuilt. acceptTicket() only checks that a closeReceipt object is present, not that its claims are true, so a single compromised/careless maker session can drive a ticket to 'done' on fabricated evidence as long as a second actorId calls accept.",
+      "fix": "Do not allow tickets to reach 'done' until the Harbormaster verification gate (independently re-running verify, checking commits/files against the actual repo) is implemented and wired into acceptTicket, or at minimum gate this behind a feature flag until W0-05 lands. Track the self-attestation window explicitly in docs/STATUS.md as a known risk."
     }
   ],
   "medium": [
     {
-      "file": "packages/git/src/worktree.ts",
-      "issue": "createWorktree() passes opts.baseRef (defaulting to 'HEAD') as a bare positional argument to `git worktree add -b <branch> <path> <baseRef>` with no check that it doesn't start with '-'. A caller-supplied baseRef beginning with a dash (e.g. '--upload-pack=...') would be parsed by git as a flag rather than a ref, a classic CLI argument-injection pattern. Not exploitable with the current single call site (baseRef is always omitted), but the exported function is a public API of the package.",
-      "fix": "Reject/escape refs starting with '-' (e.g. prefix with './' or use `--` before positional args: `git worktree add -b <branch> <path> -- <baseRef>` is not valid syntax for this subcommand, so instead validate the ref doesn't start with '-' and throw otherwise)."
+      "file": "packages/tickets/src/reducer.ts",
+      "issue": "Event payloads are trusted via unchecked type assertions (`event.payload as TicketCreatedPayload`, `as TicketClosedPayload`, `as TicketCommentedPayload`) with no runtime schema validation. A malformed or corrupted event row (e.g., DB tampering, migration bug, or a future untrusted writer) folds silently into partially-undefined ticket state instead of failing loudly.",
+      "fix": "Validate payload shape with a runtime schema (e.g. zod) at fold time and treat validation failure as a hard error / skip-with-log, consistent with 'never grep for completion strings' spirit — don't trust JSON shape implicitly."
     },
     {
-      "file": "packages/git/src/merge.ts",
-      "issue": "mergeLocal() only checks that repoRoot is currently on targetBranch before running `git merge --no-ff <sourceBranch>`. It performs no verification that sourceBranch is actually the ticket's own branch, that the ticket was accepted, or that a receipt exists — i.e. it's a durable state-mutating operation (landing code into main) with no tie-in to the receipts/verification system the project's Law 4 requires for state changes. As written it's a low-level primitive, but nothing here stops a caller from merging an arbitrary/unreviewed branch into main.",
-      "fix": "When this is wired into the ticket-closing flow (per plan.json W0-06 follow-ups), require the caller to pass a verified receipt/manifest reference and confirm sourceBranch matches the ticket's recorded branch name before merging; don't let mergeLocal be callable with an arbitrary branch string from an untrusted context."
+      "file": "packages/tickets/src/verbs.ts",
+      "issue": "All verb functions accept `actorId: string` as a bare, unauthenticated parameter and trust it as-is (e.g. assertOwner, self-accept check). Nothing in this package verifies the caller is actually authenticated as that actorId, so correctness of 'maker != verifier' depends entirely on an unspecified upstream layer enforcing identity binding.",
+      "fix": "Document (and ideally type-enforce) that callers of this package must pass an already-authenticated identity, not a raw string sourced from request input; consider accepting a verified `Identity`/session object instead of `actorId: string` to make the trust boundary explicit at the type level."
     },
     {
-      "file": "packages/shared/src/config/settings-files.ts",
-      "issue": "writeSettingsFile() and the vault writer (packages/shared/src/config/credential-store.ts writeVault) call fs.writeFile without an explicit mode, so global config.json, project settings.json, and vault.json inherit default permissions (0666 & umask, typically 0644/0664) — world/group readable on shared or multi-user systems. vault.json holds AES-256-GCM ciphertext (so confidentiality relies solely on SHIPWRIGHT_VAULT_KEY secrecy) but settings.json/config.json can hold credentialRef names and other config that shouldn't be casually world-readable.",
-      "fix": "Create these files with restrictive permissions, e.g. `fs.writeFile(filePath, data, { mode: 0o600 })`, and `fs.mkdir(dir, { recursive: true, mode: 0o700 })` for the containing .shipwright/ directories."
-    },
-    {
-      "file": "packages/shared/src/config/settings-service.ts",
-      "issue": "writeGlobalSetting/writeProjectSetting default to `noopSettingsEventSink` when no sink is supplied, so a settings mutation (FR-S3's audit trail) can silently produce zero audit events if a caller simply omits the `sink` option. Since W0-02 (event log) is blocked, every current caller is presumably omitting it, meaning settings changes today are effectively unaudited despite the commit log describing FR-S3 as implemented.",
-      "fix": "Once packages/events is unblocked, make the sink mandatory at the service layer (no default no-op) so a missing audit wiring is a compile-time/runtime error rather than a silent gap; keep the no-op only in test helpers, not exported as the production default."
+      "file": "packages/tickets/src/lanes.ts",
+      "issue": "globOverlaps/segmentTextOverlaps use unbounded recursive DP with a comment asserting write_scope globs are 'not user input' — but plan.json (the source of write_scope values) is shown elsewhere in this diff to be directly agent-editable, weakening that trust assumption. Very long/adversarial glob strings could cause deep recursion (stack exhaustion) or quadratic blowup.",
+      "fix": "Convert the recursive DP to an iterative form and/or cap input glob length defensively, especially since the 'trusted input' assumption is only as strong as plan.json's own integrity (see the plan.json finding above)."
     }
   ],
-  "notes": "Scope: this is the W0 scaffold + W0-06 (git worktree/commit/merge) + W0-07 (config/credential layer) wave. Trust-boundary/receipt enforcement (Law 4) isn't wired yet in this wave by design (W0-02/W0-03/W0-04 are still todo/blocked), so mergeLocal/commitWithScopeCheck are correctly scoped as low-level primitives rather than the final gated path — flagged above so it isn't forgotten when they're wired into the real ticket-closing flow. No hardcoded secrets, no shell-interpolated command execution (all git/security calls use execa/execFile with array args, not a shell), and no unsafe deserialization (JSON.parse output is always passed through isJsonValue/isSettingsMap validators) were found. Dependency versions (fastify 5.10, execa 9.6.1, react 19.2.7, vite 6.4.3) all resolve to real, non-typosquatted package names in pnpm-lock.yaml."
+  "notes": "No hardcoded secrets, no child_process/git shell-outs, and no direct SQL construction were introduced in this diff. The fast-check ^4.9.0 devDependency resolves in pnpm-lock.yaml and matches a legitimate, well-known package name (no slopsquatting signal). The most consequential issue is architectural: this wave built a receipt-gated ticket engine specifically to prevent self-asserted completion, but plan.json — the artifact actually driving conductor/agent workflow — is updated by direct, unreceipted status edits in the same commits, and the ticket engine's own close/accept flow currently trusts maker-supplied verify results with no independent re-verification (the planned receipts table, W0-05, is blocked)."
 }
 ```
