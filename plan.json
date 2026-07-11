@@ -27,8 +27,10 @@
         "Dependency versions match docs/TECH_STACK.md; deviations recorded there in the same commit"
       ],
       "points": 5,
-      "status": "in_progress",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "Dependency-matrix lint enforcement (ARCHITECTURE.md \u00a74, eslint-plugin-boundaries + red fixtures) deferred to a future ticket \u2014 no cross-package imports exist yet to enforce against, and it is not in this ticket's acceptance criteria."
+      ]
     },
     {
       "id": "W0-02",
