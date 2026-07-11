@@ -1,0 +1,185 @@
+# Shipwright — Software Requirements Specification (SRS)
+
+Traces to: `docs/BLUEPRINT.md` v0.3.0 (§6 is the canonical FR/NFR skeleton — IDs preserved
+verbatim) and `docs/DECISIONS.md` (D-001…D-010). IEEE-lite format, RepoPulse house style.
+Every requirement has a stable ID for plan.json traceability. Waves per Blueprint §9:
+W0 skeleton/trust core · W1 loop engine + content import · W2 model gateway · W3 harbormaster ·
+W4 canvas UI · W5 pipeline & PM · W6 integrations · W7 memory & learning · W8 hardening/dogfood.
+
+## 1. Scope
+
+Shipwright (D-001) is a **local-first, human-in-the-loop agentic SDLC platform**: guided
+program (idea → shipped product), native ticket board, per-item micro-loops, cheapest-model-first
+execution with evidence-triggered escalation, and a trust model in which **the platform holds
+the gates, not the agents** (Blueprint §2.2). Single-operator at v1; multi-user/SSO is v2 with
+identity kinds (`human|machine`) and auth middleware present from W0 (D-005). Stack: Node 22 +
+TypeScript + Fastify + SQLite (WAL) + React SPA (D-003). Expert/validator content ships open
+(D-006) and is imported once from the source systems, no live build dependency (D-008).
+
+### 1.1 Definitions
+
+| Term | Meaning |
+|------|---------|
+| Receipt | Machine-minted proof a gate ran: validator names, exit codes, gap counts, input-tree hash, timestamp. Only a real run writes one (honesty invariant 1). |
+| Completion Manifest | Agent-produced evidence bundle per ticket: files produced, verify result, commits. Verified from outside the session; never self-certifying. |
+| Harbormaster | The out-of-session conductor: claims tickets, spawns agent sessions, re-runs gates, holds reviewer/forge credentials. |
+| Berth | One independent worker identity running the ticket loop; concurrency dial = berths 1–N (D-010). |
+| Lane | Parallel-safe work stream; same-lane active tickets must have disjoint `write_scope[]`. |
+| HANDOFF | The universal agent contract block: ROLE / TICKET / CONTEXT / WRITE-SCOPE / PRODUCE / VERIFY / RETURN (Blueprint §4). |
+| Escalation ladder | R0 memory → R1 cheapest model → R2 one rung up → R3 frontier → R4 blocked-with-evidence (Blueprint §3.3). |
+| NEVER-AUTO | Immutable list of actions requiring a human: deploys, main merges, destructive ops, auth/crypto changes, new stack additions, scope breaks, interviews. |
+| Waiver | Explicit human-signed bypass receipt; agent identities rejected; permanently visible in coverage. |
+| Projection | UI-facing read model rebuilt from the append-only event log; the board has no independent existence. |
+
+### 1.2 Actors
+
+Personas (Blueprint §1.2): **P1 Solo builder** · **P2 Professional dev** · **P3 Small team
+lead** · **P4 Local-LLM enthusiast**. Machine identities: `shipwright-maker`,
+`shipwright-reviewer` (separate credentials, FR-T5), per-berth worker identities (FR-H5).
+External systems: model providers per FR-G1 (D-007), forges GitHub/Gitea/generic (FR-I2),
+MCP servers (FR-I3).
+
+## 2. Functional requirements
+
+### 2.1 FR-CANVAS — Unified Canvas (Blueprint §3.1) — wave W4
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-C1 | Split-pane workspace: chat, board, artifact viewer; every pane collapsible; layout (pane sizes, collapsed state, active view) persists per project across restarts. | Resize + collapse, restart server, reload: layout identical per project; two projects hold different layouts. |
+| FR-C2 | Chat renders structured agent cards (question, finding, manifest, slate) as interactive components with provenance on every message: agent name, model used, ticket ID, turn cost — each click-through to the underlying receipt/artifact. Threads are per-concern (program thread + ephemeral agent threads that archive on resolution). | Fixture event stream renders all four card types; provenance fields present on every card; clicking cost opens the ledger row. |
+| FR-C3 | Artifact viewer renders markdown, live per-ticket diffs (branch vs base, updating on commit events), and Mermaid diagrams client-side; every phase deliverable is versioned (each save = event) with inline version diffs. Docs live on disk in the project repo — the viewer is a window onto git-visible files. | Edit a doc → new version listed, diff renders; commit on a ticket branch → open diff updates ≤1s; Mermaid DAG renders offline (no CDN). |
+| FR-C4 | Board renders lanes/columns/typed cards (Epic/Story/Task/Bug) from live projections ≤1s after the underlying event; includes stale-blocked badges, claim-now strip, spend meter, active-agents strip with heartbeat freshness. | Injected `ticket.closed` event moves the card within 1s (timer-asserted E2E); stalled heartbeat fixture shows staleness within threshold. |
+| FR-C5 | Receipt inspector renders gate receipts, coverage reports, challenge reports, and approval-ledger rows as structured views (never raw JSON), reachable from every UI claim that cites them. | Each artifact type opens from its badge; fields (validators, exit codes, hashes, signatures) rendered and labeled. |
+| FR-C6 *(SRS-added; Blueprint §12.3)* | Guided first fifteen minutes: a built-in sample idea runs the full program in miniature on local-or-cheap models so a new user watches interview → gates → board → morning queue before risking their own idea. | Fresh install → sample program completes end-to-end with fake/local gateway; all major surfaces visited by the guided flow (E2E). |
+
+### 2.2 FR-PIPE — Pipeline Engine (Blueprint §3.2) — wave W5 (receipt primitive W0)
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-P1 | Six-phase program (Idea/Plan/Define/Design/Build/Launch) as a state machine with per-phase declared validator sets; a clean run mints a gate receipt (validator list, exit codes, gap counts, input-file content hash, timestamp). No receipt without a real run. | Phase gate on fixture project writes `gates/<phase>-receipt.json` with all fields; deleting a validator's run from the log leaves no receipt. |
+| FR-P2 | Advancing to phase N re-verifies phase N−1's receipt two ways: recompute input hash (catches silently edited docs) and confirm every currently-required validator appears with exit 0 (catches gate-definition drift). Only bypass = human-signed waiver receipt; agent-name signatures rejected against a blocklist. | Edit a phase-2 doc post-gate → phase-3 advance refused with hash mismatch; waiver signed "coding-agent" rejected; waiver signed by human name accepted + visible. |
+| FR-P3 | Discovery interview drives phases 0–2 (adaptive question depth); user can edit any deliverable at any time; edits invalidate downstream receipts (hash change) and the UI states which receipts became stale and why. | Edit SRS after Gate A → Gate A receipt flagged stale in UI with the changed file named. |
+| FR-P4 | Challenger service: every HIGH/CRITICAL finding and every claim marked *needs verification* gets an independent challenge pass (different model/identity than the maker) producing per-claim verdicts CONFIRMED / CONTRADICTED / UNVERIFIABLE; a challenge without a citation is discarded; CONTRADICTED forces a revision HANDOFF to the originating agent. | Fixture claims produce a CHALLENGE_REPORT; citation-less contradiction discarded (not counted); CONTRADICTED row emits a revision HANDOFF event. |
+| FR-P5 | Four modes selectable at project start: New Product (full program), Onboard (map existing codebase), Feature (scoped mini-program over an onboarded repo), Improve (audit + fix backlog). | Mode selector creates the correct phase plan per mode; Feature mode refuses on a repo never onboarded. |
+| FR-P6 | Decision slates: founder-owned forks (name, deployment shape, licensing, irreversible architecture) are presented as 2–4 option cards with trade-offs and one *Recommended*; the choice + rationale appends to `docs/DECISIONS.md` with stable IDs (D-001…); downstream docs cite decision IDs; an agent that cannot decide a founder-owned fork must slate it, never assume. | Slate card answered → DECISIONS.md gains a new immutable ID row; validator flags any doc restating a decided fork without citing its D-ID. |
+| FR-P7 | Blueprint stage (Phase 2.5): synthesized SRS + architecture blueprint with an Open Questions section; revision loop via decision slates until decision-complete; Phases 3–4 are hard-locked while any unresolved founder-decision marker remains. | Blueprint with one open marker → decomposition request refused with the marker cited; resolving it unlocks. |
+| FR-P8 | Research path: per-phase cited deliverables in `docs/research/` (market, feasibility, design-options, build-vs-adopt, pre-code API verification); depth quick/standard/deep; tiered sources with per-claim citations; HIGH-impact claims pass the Challenger before a decision may cite them; confirmed findings enter the R0 research fact bank. | Research report without citations fails its validator; slate citing an unchallenged HIGH claim is refused; confirmed finding retrievable at R0. |
+
+### 2.3 FR-TICK — Ticket Engine (Blueprint §3.4) — wave W0 (mirror W6)
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-T1 | Ticket schema: `id, type(epic/story/task/bug), title, lane, owner, status, interface, write_scope[], depends_on[], acceptance[], verify` + machine-managed `manifest, history[], evidence, claimed_at`. Six lifecycle verbs (`claim/start/close/accept/release/comment`) with an enforced transition graph — no hand-edited status ever; WIP=1 per actor on `claim`. | Property test: every invalid transition rejected; direct status write API does not exist; second concurrent claim by same actor refused. |
+| FR-T2 | `close` refused unless Completion Manifest exists, `verify` exits 0, and a branch + ≥1 commit is attached (emits close receipt). `accept` refused unless reviewer identity ≠ owner identity and the manifest embeds the close receipt verbatim. | Planted-defect suite (TESTING §6): fabricated manifest, failing verify, self-accept, promise-token all refused with reasoned errors. |
+| FR-T3 | Same-lane active tickets must have disjoint write-scopes; cross-lane write-scope overlap is a schema error at plan load; `claimable = ready ∧ unowned ∧ deps done` recomputed on every event; blocked⇄ready auto-resolve. | Overlapping-scope fixture plan rejected at load; closing a blocker flips its dependent to claimable within one event cycle. |
+| FR-T4 | Human board actions fire the same verbs with the same invariants (a drag = a verb); any refusal is explained inline with the specific rule and evidence (explain-this-refusal). | E2E: drag a dep-unsatisfied card → card snaps back + rule shown; legal drag closes via the verb and mints the same receipt as an agent close. |
+| FR-T5 | Optional forge mirror (D-004): every ticket mirrors to a GitHub/Gitea issue; verbs write through (claim=assign+label, evidence=comment, close=state+receipt comment, accept=reviewer comment) using **two machine identities with separate scoped tokens** (`shipwright-maker`, `shipwright-reviewer`); the reviewer token never enters an agent session. Offline verbs queue in `history[]` and flush on reconnect; a two-way reconciliation audit reports drift. | Mirror fixture: each verb produces the mapped forge action under the right identity; offline period → queued verbs flush in order; injected forge-side edit appears in the drift report. |
+| FR-T6 *(SRS-added; Blueprint §7.3)* | Human/agent edit-conflict policy: write-scopes are exclusive leases surfaced in the UI (lock badge); a file watcher on the human checkout flags edits inside an actively-leased scope (`conflict.detected`); **human wins** — the loop checkpoints, the agent worktree rebases, the micro-loop re-grounds; a material rebase conflict parks the ticket `blocked: human-edit conflict` with a Decide card (take mine / take agent's / merge). Human edits are attributed events, credited in coverage. | UC-04 E2E: human edit mid-loop → conflict event ≤ watcher interval, loop re-grounds on clean rebase; conflicting fixture parks with the three-option card. |
+
+### 2.4 FR-GW — Model Gateway (Blueprint §3.3) — wave W2
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-G1 | Provider adapters at MVP: Anthropic, OpenAI, **GitHub Copilot**, **Google Vertex AI** (D-007), LM Studio, Ollama, any OpenAI-compatible endpoint. Each supports model discovery, warm-up pings, per-endpoint request queueing, context-length introspection, normalized usage metering (local = $0 but tokens metered). Copilot device-auth and Vertex ADC/service-account are first-run onboarding paths. | Contract test per adapter against recorded fixtures; Copilot device-flow and Vertex SA-JSON flows complete in onboarding E2E (mocked endpoints); local call writes a $0 ledger row with token counts. |
+| FR-G2 | Role→model matrix with fallback chains, editable in Settings, shipping three presets (All-local / Hybrid / All-cloud); task-type routing within a role (`reasoning/code/verification/embed/escalation`); **maker model ≠ reviewer model by default** — an override is an explicit, ledgered setting. | Matrix resolves every (role, task-type) to a model or fallback; default config test: reviewer model differs from maker for every role pair; override writes a ledger row. |
+| FR-G3 | Escalation ladder R0–R4, per-ticket and **evidence-triggered only** (a failed gate with receipts); every rung change is a ledger event carrying the triggering receipt, so reports answer "which tickets needed the frontier and what did it cost". | Simulated R1 gate failure escalates to R2 with the failure receipt attached; a passing ticket can never emit an escalation event (property test). |
+| FR-G4 | Budget circuit breakers per run and per project: 70% warn (Record tier), 85% downshift (skip optional passes, prefer cheaper rungs), 100% hard stop landing at a ticket boundary + approval card. Breakers aggregate across all berths. | UC-05 fixture: crossing each threshold emits the right event class; at 100% no new ticket claims occur, in-flight ticket completes or checkpoints, approval card raised. |
+| FR-G5 | Soft-gate waivers permitted on phases 0–3 only (documented gaps waived-and-recorded, visible ⚠ in coverage); build/verify gates (phase 4–5, ticket `verify`) **never** soften regardless of model tier. | Attempted soft-waiver on a build gate rejected at the API level; doc-phase waiver renders ⚠ in coverage report. |
+| FR-G6 *(SRS-added; Blueprint §12.1)* | Model fitness check: before a model may hold a role in the matrix, a ~10-minute planted-defect bench (fixed tasks with known oracles) runs and mints a fitness card per (model, role); assigning an unfit model to a role requires an explicit, ledgered override. | UC-09: bench on a fixture-weak model yields "unfit for challenger"; matrix assignment refused with the fitness card cited; override path writes a ledger row. |
+| FR-G7 *(SRS-added; Blueprint §12.2)* | Dry-run cost estimate: before autorun, estimate tokens/dollars per wave from ticket sizes × model matrix × historical per-ticket actuals, with a what-if on matrix changes. | Estimate endpoint returns per-wave totals + assumptions; changing the review role's model changes the estimate deterministically (fixture-verified). |
+
+### 2.5 FR-LOOP — Loop Engine (Blueprint §3.5) — wave W1
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-L1 | Per-item micro-loop (cap 2–3 passes): CRITERION (one checkable success criterion — refuse-to-loop and ask the human when none is objectively decidable) → PRODUCE (this item only, never a lumped one-shot) → EVIDENCE (≤4 bounded look-actions) → SELF-VERIFY (deterministic first) → REVISE (specific gaps fed back; gap-checksum no-progress kill) → EXIT (manifest or honest PARTIAL + lesson). | Conformance fixtures (D-008): undecidable-criterion item refuses to run; identical gap set two passes running kills the loop; PARTIAL exit records the lesson. |
+| FR-L2 | Anchor framework composes external ground truth onto the loop: tool anchor (compilers/scanners), memory anchor (prior confirmed findings + calibration seed), challenger anchor (second skeptical model, fired on borderline confidence only), adaptive budget anchor. | Anchor fixtures: tool fact contradicting the model forces reconciliation; challenger not invoked on high-confidence tool-backed pass (cost assertion). |
+| FR-L3 | Calibration bias on self-confidence is rescue-only, clamped [0, MAX_BIAS], minimum-sample gated, and applies only when an external anchor is present — the system can never manufacture a DONE from an ungrounded high number. | Property test: for all bias values and confidences, DONE requires anchor-present ∧ gate-passing; negative bias never produced (the 2026-07-01 inversion regression case). |
+| FR-L4 | Coverage tracker: every expected unit ends in exactly one of DONE / WAIVED (attributed) / BLOCKED / FAILED / SKIPPED (expected-but-never-ran, loudly flagged); the end-of-phase COVERAGE_REPORT is both a UI artifact and a gate input; nothing disappears. | Invariant test: sum of states = inventory size after every run; SKIPPED row blocks the phase gate; WAIVED rows carry waiver identity. |
+| FR-L5 *(SRS-added; Blueprint §7.2)* | Context Packer: every HANDOFF carries a token-budgeted context packet — relevance-ranked file slices (never naive truncation), repo-map skeleton, ticket interfaces + acceptance, prior confirmed findings — plus a pinned ≤1k-token core block (stable-prefix ordered for KV-cache hits). Distill-never-replay; write-scope bounds read-focus; reasoning chain-of-thought stripped from history and artifacts. | Packet size ≤ budget for every fixture model window; thinking-strip test: no `<think>` content in stored artifacts or subsequent prompts; escalated re-run uses same packet discipline at larger budget. |
+
+### 2.6 FR-HM — Harbormaster (Blueprint §3.6) — wave W3
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-H1 | Out-of-session gate execution: agent sessions cannot mutate ticket state or mint receipts; the Harbormaster re-runs gates outside the session (stat claimed files, re-run `verify`, scope-check the diff) before any `close`. No close receipt → failure comment, never forward progress. | Planted-defect suite: an agent session's direct DB/API write to ticket state is impossible (no credential in session); doctored manifest fails the stat/re-run check. |
+| FR-H2 | Fresh agent session per ticket; per-ticket session cap (~2 → auto-blocked with evidence); per-session watchdog (max wall-clock + heartbeat stall) terminates and dead-letters with escalation. | Third session attempt on one ticket auto-blocks; stalled-heartbeat fixture terminated within threshold and card turns blocked-with-evidence. |
+| FR-H3 | Breakpoints `ticket` / `wave` / `never`; one global pause (finishes current ticket, checkpoints, stops); resume is idempotent from receipts — a claimed-but-unclosed ticket is re-verified, not redone — and **refuses on state drift** (event log vs receipts vs disk disagreement) showing the human the discrepancy. | UC-11: kill −9 mid-loop → boot orphan sweep resumes or returns tickets to ready, zero duplicate work; hand-edited receipt file → resume refuses with a drift report. |
+| FR-H4 | Morning-review queue: NEVER-AUTO actions never execute in-loop — the Harbormaster opens the PR / stages the release / drafts the migration, parks the ticket `in_review`, and keeps working other unblocked tickets. Queue sorted by leverage (merges → approvals → clarifications → digests). | UC-02: overnight run ends with N parked NEVER-AUTO cards and zero executed merges; unblocked lanes progressed while items sat parked. |
+| FR-H5 | Berths 1–N per project (D-010): each berth = independent worker identity + own git worktree + ticket branch; at most one berth per lane; landing serialized through the review queue regardless of N; effective parallelism capped by gateway capacity and aggregate budget; **autorun = breakpoint `never` × berths N** as a single toggle + slider. | 3-berth fixture run: no two active tickets share a lane; all worktrees isolated (no cross-writes, asserted by diff scopes); breakers halt all berths at ticket boundaries. |
+
+### 2.7 FR-HITL — HITL services (Blueprint §3.7, §5) — wave W3 (taxonomy UI W4)
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-N1 | Clarification cards (context, specific question, options, default-if-unanswered) suspend only work dependent on the answer; everything else continues; answer resumes exactly at the checkpoint; dismissal takes the documented default + ledger row. | UC-03: mid-loop question checkpoints one lane, others progress; answer hours later resumes at the recorded pass; dismiss path ledgered. |
+| FR-N2 | Approval cards risk-classed (`deploy/main-merge/destructive/escalation/budget`); classification is rule-first (branch==main, destructive command patterns, prod markers); a model may raise a risk class, never lower it. | Rule fixtures classify deterministically; model-suggested downgrade ignored (property test), upgrade honored. |
+| FR-N3 | Autonomy modes `interactive`/`auto` per project; in auto every gated pause taking its documented default appends a machine-parseable ledger row (timestamp, pause-site, default, what would have been asked); the NEVER-AUTO list is immutable in-product; NEVER-AUTO ledger rows require a human signature (agent-name blocklist). | Ledger schema validated at runtime; attempt to edit NEVER-AUTO via API/UI refused; UC-12 signature rules enforced. |
+| FR-N4 | Three-tier notification taxonomy (Decide/Review/Record) enforced at the API level — emitters must declare a tier; Record never pops; Review batches into the morning queue / wave digests; Decide cards are decision-shaped and promoted to push only when the Harbormaster is idle-blocked; quiet hours respected. | Emitting without a tier is a type/API error; Record event produces zero notifications (assertion over a full fixture run); idle-blocked promotion timer test. |
+
+### 2.8 FR-INT — Integration layer (Blueprint §3.9) — waves W0 (worktrees) / W1 (sandbox) / W6
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-I1 | Git worktree per ticket on branch `sw/<ticket-id>-<slug>`; commits staged by explicit path (never `add -A`); PR per ticket (or local merge when no forge); branch protection configured on forge connect (reviewer≠author, no force-push, required checks) so the Harbormaster physically cannot self-merge main. | Worktree isolation test; grep gate: no `add -A`/`add .` in git service; connect fixture asserts protection rules created; maker-identity merge attempt on main rejected by the forge fixture. |
+| FR-I2 | Forge adapters: GitHub (REST/GraphQL + webhooks), Gitea (REST + webhooks), generic self-hosted git (SSH + adapter plug-in API); expose repo CRUD, branch protection, PR lifecycle, issue mirror, commit status, identity/token management. Dual-remote sync native, with a remote-parity validator. | One contract-test suite passes against GitHub and Gitea fixtures; parity validator flags a diverged fixture remote. |
+| FR-I3 | MCP client host: users register MCP servers per project; tools surface through a per-role allowlist matrix; side-effectful tools carry `requiresApproval` (dynamic for shell); every tool call is an audited, costed event; servers run outside the agent trust boundary — the core executes calls under project policy. | Role without allowlist entry cannot see the tool; `requiresApproval` tool call parks an approval card; tool-call events replayable from the log. |
+| FR-I4 | Execution sandbox: verify commands, test suites, and tool anchors run in the project worktree under a restricted process (no network by default for test runs; opt-in per project) or an optional Podman/Docker container profile; receipts attest only to sandbox results. | Network egress from a default-profile test run fails (asserted); receipt records sandbox profile used; container profile smoke-tested when configured. |
+
+### 2.9 FR-MEM — Memory & Learning (Blueprint §3.8) — wave W7
+
+| ID | Requirement (expanded) | Acceptance sketch |
+|----|------------------------|-------------------|
+| FR-M1 | Working + long-term memory in-process (SQLite + FTS5 + optional local embeddings): facts, error→solution pairs, decision records; token-budgeted assembly; hybrid retrieval with BM25 fallback when embeddings are unavailable — memory works fully offline (NFR-1). | Retrieval suite passes with embeddings disabled (BM25 only); assembled context ≤ budget for every fixture query. |
+| FR-M2 | ACE playbook: delta-edits only (distill-never-replay); verified-before-stored — only tool/challenger-confirmed lessons enter; the playbook is escalation rung R0, consulted before any model call. | Unconfirmed lesson rejected at store; R0 hit on a repeated fixture task skips the model call (ledger shows $0 resolution). |
+| FR-M3 | Scheduled sleep-time consolidation (on by default): dedupe, decay, consolidate, pre-brief the next morning queue. Error-first recall: before a task class that previously failed, the failure fact + fix are injected first in the packet. | Consolidation job merges duplicate fixture facts; packet for a previously-failed task class leads with the error→fix pair (order asserted). |
+
+## 3. Non-functional requirements
+
+| ID | Requirement (expanded) | Verification | Wave |
+|----|------------------------|--------------|------|
+| NFR-1 | **Local-first** (D-003): full functionality offline with local models and no forge; single-command install (`npx shipwright` or packaged binary); state = one SQLite file per project (`.shipwright/`) + user config (`~/.shipwright/`). | Offline E2E: network-blocked environment completes a full mini-program against LM Studio fixture; install smoke test from clean machine. | W0–, gated W8 |
+| NFR-2 | **Performance**: board interactions <100ms; projection lag <1s event→UI; the UI never blocks on model calls (all model work async behind the event stream). | Timer-asserted Playwright metrics on a seeded 500-event project; long fake-model call leaves UI interactive. | W4 |
+| NFR-3 | **Reliability**: crash-safe by construction — persist-before-execute, orphan sweep on boot, no phase/ticket ever stuck `running`; watchdog on every agent session; global failure handlers fail active work loudly. | Crash-matrix suite (kill/SIGKILL at each lifecycle point) leaves recoverable state; post-boot invariant: zero `running` rows without a live session. | W0/W3 |
+| NFR-4 | **Security**: agent sessions untrusted (write-scope enforced via diff; reviewer/forge tokens only in the Harbormaster; no credential in any session env/prompt); secrets scrubbed from context packets; audit log hash-chained; Shipwright's own threat model ships via its own pipeline at v1. Identity table carries `kind: human\|machine` + `auth_provider` from W0; API behind auth middleware running single-user in v1 (D-005). | Planted-defect suite (TESTING §6); secret-scan on packets/logs; hash-chain tamper test; schema test for identity columns. | W0, gated W8 |
+| NFR-5 | **Extensibility** (D-006): experts, validators, forge adapters, and model providers are plug-in surfaces with documented contracts; expert content is data (markdown + frontmatter) compiled at build; validator = any executable returning 0/1 + JSON gaps; community packs installable with a signed-pack mechanism. | A fixture third-party validator pack and expert pack load without core changes; unsigned pack warns; contract docs exist per surface. | W1/W6 |
+| NFR-6 | **Honesty**: every completion claim in the UI is backed by an openable receipt; SKIPPED/WAIVED permanently visible in coverage history; no UI state exists that the event log cannot reproduce. | UI-claim walker: every "done/passed" element resolves to a receipt link; projection rebuild from log = live state (byte-equal fixture test). | all, gated W8 |
+| NFR-7 | **Portability** (D-009): macOS/Linux first-class; Windows via WSL at 1.0; Apple-Silicon-friendly local inference (LM Studio) is a first-class tested path. Windows-native is post-v1. | CI matrix macOS/Linux + WSL smoke job; LM Studio integration path in release checklist. | W8 |
+
+## 4. Traceability
+
+### 4.1 FR → Blueprint section → wave
+
+| FR family | Blueprint | Wave | | FR family | Blueprint | Wave |
+|---|---|---|---|---|---|---|
+| FR-C1–C5 | §3.1 | W4 | | FR-H1–H5 | §3.6 | W3 |
+| FR-C6 † | §12.3 | W4 | | FR-N1–N3 | §3.7 | W3 |
+| FR-P1–P8 | §3.2 (receipts §2.2) | W5 (receipt primitive W0) | | FR-N4 | §5.1 | W4 |
+| FR-T1–T4 | §3.4 | W0 (board UI W4) | | FR-I1 | §3.9 | W0 (protection W6) |
+| FR-T5 | §3.4 | W6 | | FR-I2, FR-I3 | §3.9 | W6 |
+| FR-T6 † | §7.3 | W3 | | FR-I4 | §3.9 | W1 |
+| FR-G1–G5 | §3.3 | W2 | | FR-M1–M3 | §3.8 | W7 |
+| FR-G6 †, FR-G7 † | §12.1–.2 | W2 | | FR-L1–L4 | §3.5 | W1 |
+| FR-L5 † | §7.2 | W1 | | NFR-1–7 | §6.2 | per §3 above |
+
+† = SRS-added ID (not in Blueprint §6; sourced from the cited Blueprint section, flagged for
+Blueprint v0.4 uplift). D-008 additionally binds W1 to the one-time content import + conformance
+suite (see TESTING.md §4).
+
+### 4.2 Decisions → requirements
+
+D-001→naming/§1 · D-003→NFR-1, tech stack (Blueprint §8) · D-004→FR-T1–T5 · D-005→NFR-4
+(identity kinds W0, auth middleware) · D-006→NFR-5, open content packs · D-007→FR-G1 ·
+D-008→W1 content import, conformance suite (TESTING §4), no build-step umbilical ·
+D-009→NFR-7 · D-010→FR-H5, FR-G4 (cross-berth breakers).
+
+### 4.3 Gaps noted against Blueprint §6 (for v0.4 uplift)
+
+1. §7.3 human-edit conflict policy had no FR → added FR-T6.
+2. §7.2 Context Packer / thinking-strip had no FR → added FR-L5.
+3. §12 items 1–3 declared v1-roadmap but un-ID'd → added FR-G6, FR-G7, FR-C6.
+4. §5.3 CLI parity ("UI and CLI drive the same verbs", `shipwright run`) has no FR; treated
+   here as an acceptance facet of FR-T4/FR-H3 — recommend an explicit FR at Phase 3.
+5. §12 items 4–8 (trace viewer, secrets vault subsystem, lessons intake, archetypes, board
+   export) are fast-follow: intentionally **not** in this SRS.
+6. Cosmetic: Blueprint lists FR-H5 before FR-H4; order normalized here, IDs unchanged.
