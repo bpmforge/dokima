@@ -44,6 +44,39 @@ describe('computeEventHash', () => {
       expect(computeEventHash(variant)).not.toBe(baseHash);
     }
   });
+
+  // Regression: the preimage must be injective across field boundaries, or a
+  // tampered event could forge a matching hash. Each pair below concatenates to
+  // the same bytes under a naive (delimiter-free) hash and MUST NOT collide.
+  it('has no field-boundary collisions (length-prefixed preimage)', () => {
+    const base = {
+      prevHash: GENESIS_HASH,
+      seq: 1,
+      eventType: 'ticket.claimed',
+      actorId: 'maker',
+      payloadJson: '{}',
+    };
+    const pairs: Array<[typeof base, typeof base]> = [
+      // seq / eventType boundary:  "12" + "x"  vs  "1" + "2x"
+      [
+        { ...base, seq: 12, eventType: 'x' },
+        { ...base, seq: 1, eventType: '2x' },
+      ],
+      // eventType / actorId boundary
+      [
+        { ...base, eventType: 'ticket.claimed', actorId: 'maker' },
+        { ...base, eventType: 'ticket.claimedmak', actorId: 'er' },
+      ],
+      // actorId / payload boundary:  "u1" + "23"  vs  "u12" + "3"
+      [
+        { ...base, actorId: 'u1', payloadJson: '23' },
+        { ...base, actorId: 'u12', payloadJson: '3' },
+      ],
+    ];
+    for (const [a, b] of pairs) {
+      expect(computeEventHash(a)).not.toBe(computeEventHash(b));
+    }
+  });
 });
 
 describe('verifyChain', () => {
