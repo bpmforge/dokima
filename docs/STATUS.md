@@ -134,3 +134,11 @@ Append one line per merged ticket; a short gate section per wave
 - 26/26 tests in packages/events, 4/4 new in packages/shared (113/114
   workspace-wide, 1 pre-existing opt-in skip); `pnpm lint && pnpm
   typecheck && pnpm test` green.
+- Review fix: `identities` now gets the same `BEFORE UPDATE`/`DELETE`
+  append-only triggers as `events` (001_init.sql) — an in-place edit of
+  `kind`/`role` after events were recorded against an `actor_id` would
+  otherwise silently rewrite the audit trail's meaning without breaking
+  `verifyChain()` (C-4/C-6). Regression test in db.test.ts asserts direct
+  SQL UPDATE/DELETE on `identities` throws. 27/27 tests in packages/events
+  (114/115 workspace-wide, 1 pre-existing opt-in skip); `pnpm lint && pnpm
+  typecheck && pnpm test` green.

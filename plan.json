@@ -52,12 +52,13 @@
         "Single-writer discipline (C6): concurrent write attempt from a second connection fails loudly, test-covered"
       ],
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "CONDUCTOR 2026-07-11T14:14:42.004Z: blocked after 3 attempts. Branch feat/w0-02-auto kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "CONDUCTOR 2026-07-11: reset to todo after conductor fixes (ENOBUFS maxBuffer + stale-blocked retry reset). Attempt 1 had passed all gates with 1 review finding; retries failed on mechanics, now fixed.",
         "AGENT 2026-07-11: claimed. packages/shared/src/events/** gets the canonical EventEnvelope/Identity contract types only (co-located test); NOT imported by packages/events this ticket, since wiring a subpath export needs packages/shared/package.json and/or src/index.ts, both outside this ticket's write_scope glob. Deferred: a follow-up ticket should add the shared export-map entry and re-point packages/events at the shared contract types.",
-        "AGENT 2026-07-11: done. All 4 acceptance criteria met with test coverage (26 tests in packages/events, 4 in packages/shared/src/events). pnpm lint && pnpm typecheck && pnpm test green workspace-wide (113/114, 1 pre-existing opt-in skip). See docs/STATUS.md 2026-07-11 W0-02 entry for details."
+        "AGENT 2026-07-11: done. All 4 acceptance criteria met with test coverage (26 tests in packages/events, 4 in packages/shared/src/events). pnpm lint && pnpm typecheck && pnpm test green workspace-wide (113/114, 1 pre-existing opt-in skip). See docs/STATUS.md 2026-07-11 W0-02 entry for details.",
+        "AGENT 2026-07-11: fixed review HIGH finding — identities table lacked append-only triggers. Added BEFORE UPDATE/DELETE triggers on identities (001_init.sql) mirroring events, plus a regression test in db.test.ts. 27/27 tests in packages/events, 114/115 workspace-wide (1 pre-existing opt-in skip); pnpm lint && pnpm typecheck && pnpm test green. Done."
       ]
     },
     {
