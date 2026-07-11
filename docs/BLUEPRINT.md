@@ -1,6 +1,6 @@
 # Shipwright — SRS & System Architecture Blueprint
 
-**Version:** 0.1.0-draft · **Date:** 2026-07-10 · **Status:** For review (Phase 0/3 hybrid founding document)
+**Version:** 0.2.0-draft · **Date:** 2026-07-10 · **Status:** Revised after founder review (decisions in §11)
 **Author:** Principal Architect session (Claude Fable 5) with Brad Matthews
 
 > **Shipwright** is a local-first, human-in-the-loop developer platform where a person takes an idea to a secure, well-built, shipped product. It acts as their product manager and their agentic development team: a guided SDLC program with expert AI agents, gated pipelines, per-item micro-loops, cheapest-model-first execution with escalation, a native Kanban/ticket engine, and an evidence-based trust model in which **the platform holds the gates, not the agents**.
@@ -190,7 +190,7 @@ The productized six-phase SDLC, run as a state machine per project:
 
 ### 3.3 Model Gateway (LLM-agnostic)
 
-**Providers.** First-class adapters: Anthropic, OpenAI, GitHub Copilot (cloud); LM Studio, Ollama, and any OpenAI-compatible endpoint (local). Provider layer handles: model discovery, warm-up pings (local models cold-start), request queueing per endpoint, context-length introspection, and normalized usage accounting (tokens in/out → cost via a per-model price table; local models cost $0 but tokens are still metered for budget/velocity stats).
+**Providers.** First-class adapters at MVP: Anthropic, OpenAI, **GitHub Copilot**, and **Google Vertex AI** (cloud); LM Studio, Ollama, and any OpenAI-compatible endpoint (local). Copilot and Vertex are MVP-mandatory for adoption parity: the earliest corporate users already run opencode against employer-provisioned Copilot subscriptions and Vertex projects, and Shipwright must slot into those credentials on day one (Copilot via the device-auth token flow; Vertex via Application Default Credentials / service-account JSON with region + project ID in provider settings). Provider layer handles: model discovery, warm-up pings (local models cold-start), request queueing per endpoint, context-length introspection, and normalized usage accounting (tokens in/out → cost via a per-model price table; local models cost $0 but tokens are still metered for budget/velocity stats).
 
 **Task/role routing.** Two orthogonal axes, kept separate deliberately:
 1. **Role matrix** (`models.json` equivalent, editable in Settings): each agent role maps to a model + fallback chain, e.g. `coding-agent → local-qwen-coder`, `code-reviewer → claude-opus`, `challenger → claude-opus`, `test-engineer → local-qwen`, `pm-interviewer → claude-sonnet`, `default → cheapest-capable`. Cross-model review is an **integrity feature**: the maker's model never reviews its own work.
@@ -255,7 +255,8 @@ The execution heart, productized from `runItemMicroLoop` + the MICRO_LOOP contra
 
 The out-of-session orchestrator — the component that makes unattended operation safe:
 
-- **Loop:** claim one ready ticket (WIP=1) → spawn a fresh agent session with the ticket HANDOFF and the role's model → on return, run gates *outside* the session (scope check, manifest truth-check — stat the claimed files, re-run the verify command — then `close`) → checkpoint (receipt + commit) → repeat. No close receipt → failure comment on the ticket, never forward progress.
+- **Loop:** claim one ready ticket (WIP=1 per worker) → spawn a fresh agent session with the ticket HANDOFF and the role's model → on return, run gates *outside* the session (scope check, manifest truth-check — stat the claimed files, re-run the verify command — then `close`) → checkpoint (receipt + commit) → repeat. No close receipt → failure comment on the ticket, never forward progress.
+- **Berths (parallel or sequential build, user-selected):** the project has a **concurrency dial (1–N berths)**. Each berth is an independent worker identity running the loop above; the Harbormaster assigns at most one berth per **lane**, and the lane invariant (same-lane active tickets have disjoint write-scopes, cross-lane overlap is a schema error — §3.4) is what makes N berths provably collision-free. Berths = 1 is strict sequential; berths = N works up to N lanes at once. Each berth gets its own git worktree and ticket branch; landing (PR/merge) remains serialized through the review queue regardless of N. Effective parallelism is additionally capped by gateway capacity — local endpoints that serve one request at a time queue transparently rather than thrash — and by the aggregate budget (breakers apply across all berths, halting at the next ticket boundary on any berth). **Autorun** = breakpoint `never` × berths N: "run the board with 3 workers and show me the morning queue" is a single toggle + slider.
 - **Fresh session per ticket** — small-context friendly, cache-friendly, and eliminates context bleed between tickets.
 - **Hard guards:** per-ticket session counter (~2 sessions → auto-blocked with evidence), aggregate spend ceiling (halts cleanly at a ticket boundary), kill-file/pause-button checked between tickets, per-session watchdog (max seconds + heartbeat stall detection → terminate + dead-letter escalation).
 - **Breakpoints:** `ticket` (pause after every close — trust-building default for new users), `wave` (pause at dependency-wave boundaries — the daily-driver default), `never` (run to completion, notify at end — night-shift mode).
@@ -425,7 +426,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-T5: Optional forge mirror with per-identity machine tokens (maker/reviewer); verbs write through; offline queue + flush; reconciliation audit (two-way drift report).
 
 **FR-GW (Model gateway)**
-- FR-G1: Provider adapters: Anthropic, OpenAI, GitHub Copilot, LM Studio, Ollama, OpenAI-compatible endpoints; discovery, warm-up, queueing, usage metering.
+- FR-G1: Provider adapters at MVP: Anthropic, OpenAI, GitHub Copilot, Google Vertex AI, LM Studio, Ollama, OpenAI-compatible endpoints; discovery, warm-up, queueing, usage metering. Copilot device-auth and Vertex ADC/service-account flows are first-run onboarding paths, not advanced settings.
 - FR-G2: Role→model matrix with fallback chains; task-type routing within roles; maker model ≠ reviewer model by default.
 - FR-G3: Escalation ladder R0–R4 per §3.3, evidence-triggered, fully ledgered.
 - FR-G4: Budget circuit breakers (70/85/100%) per run and per project; hard stop lands at a ticket boundary.
@@ -441,6 +442,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
 - FR-H2: Fresh session per ticket; per-ticket session cap; watchdog (time + heartbeat) with dead-letter escalation.
 - FR-H3: Breakpoints ticket/wave/never; global pause; idempotent receipt-based resume that refuses on state drift.
+- FR-H5: User-selectable build concurrency (berths 1–N) per project; one berth per lane; per-berth worktrees and identities; serialized landing; budget breakers aggregate across berths; autorun = breakpoint never × berths N.
 - FR-H4: Morning-review queue for NEVER-AUTO actions; parked tickets don't stall unblocked lanes.
 
 **FR-HITL**
@@ -526,8 +528,8 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 - **W0 Skeleton & trust core:** event log + projections, ticket engine with verbs/invariants, receipt primitive, git worktree service. *Exit: a board that cannot lie, moved by CLI.*
 - **W1 Loop engine:** micro-loop + coverage tracker + validator runner port; single-agent build of a toy project end-to-end.
-- **W2 Model gateway:** providers, role matrix, escalation ladder, budget breakers, spend ledger.
-- **W3 Harbormaster:** unattended ticket loop, breakpoints, watchdog, morning queue, resume.
+- **W2 Model gateway:** providers (incl. Copilot + Vertex onboarding flows), role matrix, escalation ladder, budget breakers, spend ledger.
+- **W3 Harbormaster:** unattended ticket loop, breakpoints, watchdog, morning queue, resume, **berths 1–N parallelism**.
 - **W4 Canvas:** the three-pane UI over the projections; settings matrix; notification taxonomy.
 - **W5 Pipeline & PM:** interview-driven phases 0–3, Challenger, gate receipts UI, the four modes.
 - **W6 Integrations:** forge adapters + mirror + branch protection; MCP host; dual-remote.
@@ -542,14 +544,30 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 ---
 
-## 11. Open questions for review
+## 11. Decisions from founder review (2026-07-10)
 
-1. **Multi-user:** v1 is single-operator by design (matches the trust model: one human, per-identity machine tokens). When teams arrive (v2), does the forge become the identity provider, or does Shipwright grow its own auth?
-2. **Expert content licensing:** the expert/validator library is the moat — ship it open (adoption) or as licensed content packs over an open core?
-3. **Copilot API surface:** GitHub Copilot's API access is the least standard of the three cloud routes; confirm scope (chat-completions proxy vs. native SDK) before W2.
-4. **How much of Jarvis ports vs. rewrites:** provider layer and micro-loop port cleanly; the two overlapping SDLC drivers (AutonomousSdlcRunner vs WorkflowEngine) must **not** both come — Shipwright's Pipeline Engine is the consolidation, taking the runner's loop mechanics and the engine's phase machine.
-5. **Windows-native** (not WSL) demand — defer to post-1.0?
+1. **Multi-user → v2, with SSO/auth.** v1 stays single-operator. v2 adds first-class auth: SSO (OIDC/SAML), per-human identities alongside the machine identities, and role-based rights over the NEVER-AUTO surface (who may merge, who may deploy). Architectural pre-commitment now so v2 isn't a rewrite: every event already carries an actor identity; the identity table gets a `kind: human|machine` and an `auth_provider` column from W0, and the API gateway is built behind an auth middleware that v1 simply runs in single-user mode.
+2. **Expert content ships open** — adoption is the goal. The expert/validator library is open source with the platform; the moat is the integrated trust runtime + the compounding playbook, not withheld markdown. Community-contributed expert/validator packs become an adoption flywheel (with a signed-pack mechanism so users know what they're installing).
+3. **Copilot + Vertex are MVP** (§3.3, FR-G1) — parity with what corporate first-users already run under opencode. Onboarding treats "sign in with my employer's Copilot / point at my Vertex project" as a first-run path, not an advanced setting.
+4. **Shipwright stands on its own — recommendation: one-time import, then Shipwright is canonical for itself.** Do **not** build a live build-step dependency on bpm-opencode-experts (the canonical→generated pattern is right for internal twins, wrong for a product that must be clonable by strangers). Instead: (a) snapshot-import the expert definitions, validator packs, and shared protocols into `content/` at W1, with provenance headers; (b) re-implement the runtime clean in this repo — port the *contracts and algorithms* (micro-loop, coverage tracker, ticket lifecycle semantics, receipt format), not the code, with the source systems' test fixtures re-used as the conformance suite; (c) consolidate the two Jarvis SDLC drivers into the single Pipeline Engine (runner's loop mechanics + engine's phase machine) — neither ports wholesale; (d) bpm-opencode-experts remains Brad's internal lab and may upstream lessons as ordinary PRs, and anything proven in Shipwright can flow back the same way. Two-way PRs between peers, no umbilical.
+5. **Windows-native → post-v1.** WSL is the supported Windows path at 1.0 (NFR-7 stands).
+6. **Parallel + sequential build with autorun → in scope for v1** (§3.6 Berths, FR-H5): per-project concurrency dial (1–N workers), lane-safe by construction, autorun = breakpoint `never` × berths N.
 
-*— End of blueprint v0.1.0-draft —*
+## 12. Architect's improvement backlog (recommended additions)
+
+Reviewing the design as a whole, these are the gaps I'd close next, ranked by leverage:
+
+1. **Model fitness check (pre-run bench).** Before a model is trusted in the role matrix, run it through a 10-minute planted-defect harness (small fixed tasks with known oracles — the PROOF_LEDGER pattern). Output: a fitness card per (model, role) — "qwen-coder: fit for coding-agent, unfit for challenger." Prevents the #1 new-user failure mode: assigning a local model a role it can't hold, then blaming the platform. Cheap to build (fixtures already exist in the source systems), huge trust payoff.
+2. **Dry-run cost estimate.** Before autorun, estimate tokens/dollars per wave from ticket sizes + model matrix + historical per-ticket actuals. "This board ≈ $4.10 on your current matrix; $0.60 if the review role drops to Sonnet." Makes the cheap-first economics *visible before spend*, not just after.
+3. **Guided first fifteen minutes.** Ship a built-in sample idea ("a link-shortener with auth") that runs the full program in miniature on local-or-cheap models. The user watches the whole lifecycle — interview → gates → board → morning queue — before risking their own idea. Onboarding is the product for the "anyone can use" goal.
+4. **Session trace viewer.** Every agent session is already an event stream; add a replay UI (prompt, tool calls, gate results per pass). This is the debugging surface for "why did this ticket block?" and doubles as the field-report generator for #6.
+5. **Secrets hygiene as a subsystem, not a scrubber.** A project-level secrets vault (keychain-backed), automatic redaction in context packets *and* in the event log, plus a secrets-scanner validator wired into every close gate. The trust story is incomplete if a receipt can contain a leaked key.
+6. **Lessons intake → playbook pipeline (the M29/M30 pattern).** A structured "field report" a user (or the trace viewer) can file when a run goes sideways; triaged reports become playbook entries or validator fixes. This is the learning loop that made the source systems compound — productize it rather than leaving learning implicit.
+7. **Starter archetypes.** Project templates (web app / API service / CLI / static site / game) that pre-tune the validator packs, threat-model prompts, and ticket decomposition heuristics. Cuts phase 0–3 time dramatically for the common cases and shows off the game-dev expert cluster.
+8. **Board export/import.** The board, receipts, and ledgers serialize to a portable bundle (JSON + the repo). Guarantees no lock-in — which is itself an adoption argument — and gives support/debugging a reproducible artifact.
+
+Items 1–3 belong in the v1 roadmap (fold into W2/W5/W4 respectively); 4–8 are fast-follow candidates for the plan.json when the SDLC package is cut.
+
+*— End of blueprint v0.2.0-draft —*
 
 
