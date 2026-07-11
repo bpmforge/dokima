@@ -39,6 +39,42 @@ Append one line per merged ticket; a short gate section per wave
   acceptance criteria don't require it. Needs its own ticket before real
   package code lands.
 
+## 2026-07-11 W0-07 done — config layer (three-scope settings + keychain refs)
+
+- packages/shared/src/config: `resolveEffectiveValue`/`resolveEffectiveSettings`
+  — run > project > global precedence (FR-S1), atomic per-key winning-scope
+  (no deep merge across scopes; documented + tested for nested objects).
+- File-backed scopes: global `~/.shipwright/config.json` (relocatable via
+  `SHIPWRIGHT_HOME`), project `<repo>/.shipwright/settings.json`; both
+  flat dotted-key JSON maps, validated on read, and refuse to persist any
+  secret-shaped value on write (`SettingsFileSecretError`) — defensive
+  enforcement of FR-S2, not just a scan.
+- Credential refs: `CredentialStore` port + `resolveCredentialRef` (throws
+  `CredentialRefNotFoundError`, never a plaintext fallback, FR-S2). Real
+  backends: macOS Keychain via `security` CLI (thin shell-out, no native
+  dep) and a `node:crypto` AES-256-GCM encrypted-file vault behind
+  `SHIPWRIGHT_NO_KEYCHAIN`/`SHIPWRIGHT_VAULT_KEY` (P-003 headless/WSL
+  fallback) — the vault is what the automated suite exercises; the real
+  macOS keychain integration test is opt-in
+  (`SHIPWRIGHT_TEST_REAL_KEYCHAIN=1`) and skipped by default so `pnpm
+  test` never touches a developer's real keychain.
+- Settings changes emit a `settings.changed` event (actor, scope, key,
+  old→new) via an injectable `SettingsEventSink` (FR-S3) — `packages/shared`
+  cannot depend on `packages/events` (ARCHITECTURE §4 law 4) and W0-02
+  (event log core) is still blocked, so wiring a real sink into the event
+  log is left to a follow-up ticket; `createInMemorySettingsEventSink` is
+  the fake used by tests today.
+- No new dependencies: `packages/shared/package.json` is outside this
+  ticket's write_scope and shared has zero deps today, so validation is
+  hand-rolled (`isJsonValue`/`isSettingsMap`) instead of zod, and the
+  keychain adapters shell out to OS tools instead of adding `keytar`. See
+  the HANDOFF note on W0-07 in plan.json for the follow-ups this implies
+  (zod migration, Linux secret-service adapter, `./config` subpath export
+  from `packages/shared`).
+- 52/52 new tests passing (1 real-keychain test skipped by design); 84/84
+  tests passing workspace-wide (85 incl. the 1 skip); `pnpm lint && pnpm
+  typecheck && pnpm test` green.
+
 ## 2026-07-11 W0-06 done — git worktree service
 
 - packages/git: `createWorktree`/`destroyWorktree`/`listWorktrees` — one

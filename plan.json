@@ -160,8 +160,10 @@
         "Credential refs resolve via OS keychain (keytar or equivalent per docs/TECH_STACK.md); settings files never contain secrets (FR-S2); settings changes emit events (FR-S3)"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "HANDOFF: no new deps added — packages/shared/package.json is outside write_scope and shared currently has zero deps, so config validation is hand-rolled (isJsonValue/isSettingsMap) rather than zod, and credential storage shells out to macOS `security` (Darwin) + a node:crypto AES-256-GCM encrypted-file vault (SHIPWRIGHT_NO_KEYCHAIN/SHIPWRIGHT_VAULT_KEY, P-003) rather than keytar. Linux libsecret/secret-tool adapter deferred — resolveCredentialStore throws NoKeychainAdapterError (never a silent plaintext fallback) on non-darwin without SHIPWRIGHT_NO_KEYCHAIN. settings.changed events are emitted via an injectable SettingsEventSink (packages/shared cannot import packages/events per ARCHITECTURE §4 law 4, and W0-02 events core is still blocked) — a future ticket must wire a real sink into packages/events. packages/shared/src/index.ts + package.json (both outside write_scope) still need a `./config` re-export/subpath for other packages to consume this module."
+      ]
     },
     {
       "id": "W0-08",
