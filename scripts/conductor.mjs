@@ -68,7 +68,12 @@ function globToRegex(glob) {
     .replace(/\?/g, '[^/]');
   return new RegExp(`^${esc}$`);
 }
-const ALWAYS_OK = ['plan.json', 'docs/STATUS.md', 'docs/work/**'].map(globToRegex);
+// Shared ledger/generated files every ticket may legitimately touch regardless of
+// its write_scope: the board (plan.json), the status ledger, work-dir notes, the
+// lockfile (any `pnpm install` regenerates it), and TECH_STACK.md (CLAUDE.md Law 2
+// mandates recording version deviations there in the same commit). Serial-run safe;
+// a parallel-berths executor would need lockfile-contention handling instead.
+const ALWAYS_OK = ['plan.json', 'docs/STATUS.md', 'docs/work/**', 'pnpm-lock.yaml', 'docs/TECH_STACK.md'].map(globToRegex);
 
 function claimable(plan) {
   const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
