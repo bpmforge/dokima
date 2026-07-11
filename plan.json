@@ -52,10 +52,11 @@
         "Single-writer discipline (C6): concurrent write attempt from a second connection fails loudly, test-covered"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "CONDUCTOR 2026-07-11T14:14:42.004Z: blocked after 3 attempts. Branch feat/w0-02-auto kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "CONDUCTOR 2026-07-11: reset to todo after conductor fixes (ENOBUFS maxBuffer + stale-blocked retry reset). Attempt 1 had passed all gates with 1 review finding; retries failed on mechanics, now fixed."
+        "CONDUCTOR 2026-07-11: reset to todo after conductor fixes (ENOBUFS maxBuffer + stale-blocked retry reset). Attempt 1 had passed all gates with 1 review finding; retries failed on mechanics, now fixed.",
+        "AGENT 2026-07-11: claimed. packages/shared/src/events/** gets the canonical EventEnvelope/Identity contract types only (co-located test); NOT imported by packages/events this ticket, since wiring a subpath export needs packages/shared/package.json and/or src/index.ts, both outside this ticket's write_scope glob. Deferred: a follow-up ticket should add the shared export-map entry and re-point packages/events at the shared contract types."
       ]
     },
     {
