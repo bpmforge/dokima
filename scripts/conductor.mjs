@@ -182,13 +182,16 @@ Rules of engagement:
 - If genuinely blocked after one honest attempt: set status blocked with a notes entry explaining exactly what is missing, then stop.
 - An external conductor independently verifies your work; nothing you print is trusted, only repo state.`;
 
-const reviewPrompt = (t, diff) => `You are an independent code reviewer (you did NOT write this code). Review the diff for ticket ${t.id} — ${t.title}.
+const reviewPrompt = (t, diff, prior = []) => `You are an independent code reviewer (you did NOT write this code). Review the diff for ticket ${t.id} — ${t.title}.
 Acceptance criteria:\n${t.acceptance.map((a) => `- ${a}`).join('\n')}
 
-Review dimensions: correctness vs acceptance; error handling (no swallowed errors); security (secrets, injection, trust-boundary violations — this project's law: agent sessions untrusted, receipts required, maker!=verifier); tests real and failing-capable (no assertion-free tests, no gamed fixtures); write-scope respected; no dead code or stub theater; matches docs/ARCHITECTURE.md module rules.
-
-Respond with ONLY a JSON object: {"verdict":"APPROVE"|"FIX","findings":[{"severity":"CRITICAL"|"HIGH"|"MEDIUM"|"LOW","file":"...","issue":"...","fix":"..."}]}
-Verdict FIX only for CRITICAL/HIGH findings. Be specific; cite files.
+Review dimensions: correctness vs acceptance; error handling (no swallowed errors); security (secrets, injection, trust-boundary violations — this project's law: agent sessions untrusted, receipts required, maker!=verifier; for crypto/hash/integrity code verify the primitive is actually sound — e.g. a tamper-evident hash preimage must be injective/domain-separated); tests real and failing-capable (no assertion-free tests, no gamed fixtures); write-scope respected; no dead code or stub theater; matches docs/ARCHITECTURE.md module rules.
+${prior.length ? `\nPRIOR HIGH/CRITICAL FINDINGS raised on EARLIER attempts of THIS ticket. You MUST inspect the current diff and judge each one — a finding is NOT resolved merely because you would not raise it yourself; verify in the code that it was actually fixed:\n${prior.map((s, i) => `  ${i + 1}. [${s.severity}] ${s.file}: ${s.issue}`).join('\n')}\n` : ''}
+Respond with ONLY a JSON object:
+{"verdict":"APPROVE"|"FIX",
+ "findings":[{"severity":"CRITICAL"|"HIGH"|"MEDIUM"|"LOW","file":"...","issue":"...","fix":"..."}],
+ "prior_status":[{"finding":"<the issue text from the numbered list above>","status":"RESOLVED"|"PRESENT","evidence":"why — cite the code that fixes or still exhibits it"}]}
+Include a prior_status entry for EVERY prior finding listed. Verdict FIX if any CRITICAL/HIGH is present in the new code OR any prior finding is not RESOLVED. Be specific; cite files.
 
 DIFF:
 ${diff}`;
@@ -207,35 +210,49 @@ async function executeTicket(t) {
 
   const attempts = [pickModel(t), pickModel(t), ...(ESCALATE ? [MODELS.escalate] : [])];
   let gaps = null;
+  // Every HIGH/CRITICAL finding EVER raised on this ticket. A finding raised by
+  // one review pass must be explicitly verified-resolved before merge — it can
+  // never vanish just because a later (non-deterministic) reviewer instance
+  // fails to re-mention it. This is the harness analogue of the Challenger gate:
+  // findings are sticky and tracked to CONFIRMED-fixed, not re-derived each pass.
+  const sticky = [];
   for (let i = 0; i < attempts.length; i++) {
     const model = attempts[i];
     if (i > 0) {
       log('ticket.retry', { ticket: t.id, msg: `attempt ${i + 1} on ${model}` });
-      // Clear any stale status a prior attempt left on the branch (e.g. a session
-      // that gave up and wrote status:blocked). Otherwise the fresh attempt's gate
-      // auto-fails on "status is 'blocked'" before its work is even read.
       resetStatusOnBranch(t.id);
     }
-    const s = await runSession(codingPrompt(t, gaps), model, `code:${t.id}`);
+    await runSession(codingPrompt(t, gaps), model, `code:${t.id}`);
     if (DRY) return { ok: true, dry: true };
     gaps = runGates(t, branch);
-    if (!gaps.length) {
-      // independent review, maker != verifier
-      const diff = git('diff', `main...${branch}`).slice(0, 180_000);
-      const r = await runSession(reviewPrompt(t, diff), MODELS.reviewer, `review:${t.id}`);
-      const verdict = parseJson(r.out);
-      if (verdict?.verdict === 'FIX') {
-        const high = verdict.findings.filter((f) => ['CRITICAL', 'HIGH'].includes(f.severity));
-        log('review.fix', { ticket: t.id, msg: `${high.length} high/critical findings` });
-        gaps = high.map((f) => `[review ${f.severity}] ${f.file}: ${f.issue} — fix: ${f.fix}`);
-        continue; // next attempt fixes review findings
-      }
-      log('review.approve', { ticket: t.id });
+    if (gaps.length) { log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) }); continue; }
+
+    // independent review, maker != verifier — prior findings carried in for re-verification
+    const diff = git('diff', `main...${branch}`).slice(0, 180_000);
+    const r = await runSession(reviewPrompt(t, diff, sticky), MODELS.reviewer, `review:${t.id}`);
+    const verdict = parseJson(r.out) ?? { verdict: 'FIX', findings: [{ severity: 'HIGH', file: '-', issue: 'review output unparseable', fix: 're-run review' }], prior_status: [] };
+
+    for (const f of (verdict.findings ?? []).filter((x) => ['CRITICAL', 'HIGH'].includes(x.severity))) {
+      const key = `${f.file}:${f.issue}`;
+      if (!sticky.some((s) => s.key === key)) sticky.push({ key, severity: f.severity, file: f.file, issue: f.issue, fix: f.fix, resolved: false });
+    }
+    for (const ps of verdict.prior_status ?? []) {
+      const hit = sticky.find((s) => ps.finding && (s.key === ps.finding || (s.issue && ps.finding.includes(s.issue)) || (s.issue && s.issue.includes(ps.finding))));
+      if (hit) hit.resolved = ps.status === 'RESOLVED';
+    }
+    const unresolved = sticky.filter((s) => !s.resolved);
+    log('review.result', { ticket: t.id, msg: `verdict=${verdict.verdict} sticky=${sticky.length} unresolved=${unresolved.length}` });
+
+    if (verdict.verdict === 'APPROVE' && unresolved.length === 0) {
+      log('review.approve', { ticket: t.id, msg: `${sticky.length} finding(s) verified resolved` });
       return { ok: true, branch };
     }
-    log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) });
+    log('review.fix', { ticket: t.id, msg: `${unresolved.length} unresolved high/critical (sticky ${sticky.length})` });
+    gaps = unresolved.map((s) => `[${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
   }
-  return { ok: false, branch, gaps };
+  // exhausted — block with the full unresolved-finding ledger so it's debuggable
+  const ledger = sticky.filter((s) => !s.resolved).map((s) => `[UNRESOLVED ${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
+  return { ok: false, branch, gaps: ledger.length ? ledger : gaps };
 }
 
 function parseJson(text) {
