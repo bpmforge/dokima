@@ -40,16 +40,24 @@ Notes for the weekend: the conductor should be the ONLY heavy Claude
 consumer on this account while it runs (limits are account-wide). Keep the
 lid open or plugged in; `caffeinate` below prevents sleep.
 
-## Launch (weekend mode)
+## Launch (weekend mode) — under the supervisor
+
+Two recovery layers: the conductor sleeps through provider **limit** windows;
+the supervisor (`scripts/supervise.sh`) resets the tree and relaunches the
+conductor if the **process itself** dies (fatal crash). Always launch via the
+supervisor for unattended runs.
 
 ```bash
 cd ~/Code/shipwright
-caffeinate -dimsu node scripts/conductor.mjs \
+nohup caffeinate -dimsu bash scripts/supervise.sh \
   --waves W0,W1,W2 --breakpoint never --escalate \
   >> docs/work/conductor.out 2>&1 &
-echo $! > docs/work/conductor.pid
-tail -f docs/work/conductor.out    # watch for a few tickets, then walk away
+echo $! > docs/work/supervise.pid
+tail -f docs/work/conductor.out    # watch a few tickets, then walk away
 ```
+
+The supervisor gives up after `SUPERVISE_MAX` (default 30) crash-restarts and
+logs "needs a human". Provider-limit pauses do NOT count as crashes.
 
 Recommended first weekend scope: `--waves W0,W1,W2` (trust core, loop
 engine, gateway — 93 pts). W3+ builds on reviewed foundations; better to
@@ -68,7 +76,7 @@ with `--breakpoint wave`.
 | Resume after stop | `rm STOP` and relaunch — idempotent: board state + branches carry over; a claimed-but-unfinished ticket is retried from its branch |
 | Watch | `tail -f docs/work/conductor.out` or `jq . docs/work/conductor-log.jsonl` |
 | Board state | `git pull && jq '[.tickets[] | .status] | group_by(.) | map({(.[0]): length}) | add' plan.json` |
-| Kill hard | `kill $(cat docs/work/conductor.pid)` (safe: unmerged work sits on its branch; relaunch re-verifies) |
+| Kill hard | `touch STOP` then `kill $(cat docs/work/supervise.pid)` (kills supervisor; STOP stops the conductor between tickets) |
 
 ## Monday-morning review checklist
 
