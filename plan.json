@@ -160,7 +160,7 @@
         "Credential refs resolve via OS keychain (keytar or equivalent per docs/TECH_STACK.md); settings files never contain secrets (FR-S2); settings changes emit events (FR-S3)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
