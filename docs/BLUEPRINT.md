@@ -473,6 +473,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-G5: Soft-gate waivers permitted on phases 0–3 only; build/verify gates never soften.
 - FR-G6: Model fitness check: planted-defect bench per (model, role) producing fitness cards; unfit assignments warn and require explicit acknowledgement.
 - FR-G7: Dry-run cost estimate before autorun from ticket sizes × matrix × historical actuals.
+- FR-G8: Provider-limit resilience: the gateway detects session/usage/rate-limit responses (429/529, quota messages), parses the stated reset time where present, parks affected berths with a `limit.pause` event, and auto-resumes at reset (exponential backoff fallback). An overnight run survives limit windows without human help; limit pauses are Record-tier, never Decide. Distinct from budget breakers (FR-G4): limits are the provider's ceiling, budgets are the user's.
 
 **FR-LOOP (Loop engine)**
 - FR-L1: Per-item micro-loop with criterion restatement, bounded passes, gap feedback, no-progress kill, refuse-to-loop on undecidable criteria.
