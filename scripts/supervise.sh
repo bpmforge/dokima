@@ -23,11 +23,15 @@ while :; do
   # A crashed conductor leaves the tree on a feature branch with uncommitted work,
   # which fails the conductor's clean-tree preflight. Reset to committed main so it
   # can re-claim from board state. Only abandons the crashed attempt (redone idempotently).
+  # (With worktree isolation, ROOT stays on main even across a crash — this is mostly
+  #  belt-and-suspenders — but a crashed run can leave dangling worktrees + sw/ branches.)
   git checkout -f main >/dev/null 2>&1
   git clean -fd >/dev/null 2>&1
+  git worktree prune >/dev/null 2>&1
   git for-each-ref --format='%(refname:short)' refs/heads/ \
-    | grep -E '^feat/w[0-9].*-auto$' \
-    | while read -r b; do git branch -D "$b" >/dev/null 2>&1; done
+    | grep -E '^(sw/|feat/w[0-9].*-auto$)' \
+    | while read -r b; do git worktree remove --force "$(git worktree list --porcelain | grep -A2 "branch refs/heads/$b" | grep '^worktree ' | cut -d' ' -f2)" >/dev/null 2>&1; git branch -D "$b" >/dev/null 2>&1; done
+  rm -rf ../.shipwright-worktrees >/dev/null 2>&1
 
   log "starting conductor (launch $((n+1)))"
   node scripts/conductor.mjs "$@"

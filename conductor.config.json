@@ -1,0 +1,22 @@
+{
+  "$note": "Project config for scripts/conductor.mjs. Everything project-specific lives here so the conductor script is reusable across repos unchanged. Absent keys fall back to built-in defaults.",
+  "branchPrefix": "sw/",
+  "worktreeDir": "../.shipwright-worktrees",
+  "isolation": "worktree",
+  "toolchainMarker": "package.json",
+  "install": ["pnpm", ["install", "--prefer-offline"]],
+  "gates": [
+    ["pnpm", ["lint"]],
+    ["pnpm", ["typecheck"]],
+    ["pnpm", ["test"]]
+  ],
+  "gateTimeoutMin": 15,
+  "remotes": ["github", "origin"],
+  "alwaysOk": [
+    "plan.json", "docs/STATUS.md", "docs/work/**", "docs/TECH_STACK.md",
+    "pnpm-lock.yaml", "package.json", "pnpm-workspace.yaml",
+    "tsconfig.json", "tsconfig.base.json", "vitest.workspace.ts", "vitest.config.ts",
+    "playwright.config.ts", "eslint.config.js", ".prettierrc.json",
+    ".gitignore", ".npmrc", ".nvmrc"
+  ]
+}
