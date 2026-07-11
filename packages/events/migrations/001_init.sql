@@ -10,6 +10,22 @@ CREATE TABLE identities (
   created_at TEXT NOT NULL
 );
 
+-- Immutable, same as events: an identity's kind/role must not be able to
+-- flip retroactively after events were recorded against its actor_id, since
+-- the hash chain covers only the actor_id reference, not its attributes at
+-- time-of-action (C-4/C-6).
+CREATE TRIGGER identities_no_update
+BEFORE UPDATE ON identities
+BEGIN
+  SELECT RAISE(ABORT, 'identities are append-only: UPDATE forbidden');
+END;
+
+CREATE TRIGGER identities_no_delete
+BEFORE DELETE ON identities
+BEGIN
+  SELECT RAISE(ABORT, 'identities are append-only: DELETE forbidden');
+END;
+
 -- Append-only, hash-chained event log (ARCHITECTURE §3, SC-11).
 CREATE TABLE events (
   seq INTEGER PRIMARY KEY,

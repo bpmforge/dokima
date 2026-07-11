@@ -75,4 +75,17 @@ describe('openEventLog', () => {
     ).toThrow(/CHECK/i);
     log.close();
   });
+
+  it('rejects UPDATE and DELETE on identities (append-only trigger)', async () => {
+    temp = await createTempDbPath();
+    const log = openEventLog(temp.dbPath);
+    createIdentity(log, { id: 'human-1', name: 'Operator', kind: 'human' });
+    expect(() =>
+      log.db.exec("UPDATE identities SET kind = 'machine' WHERE id = 'human-1'"),
+    ).toThrow(/append-only/i);
+    expect(() => log.db.exec("DELETE FROM identities WHERE id = 'human-1'")).toThrow(
+      /append-only/i,
+    );
+    log.close();
+  });
 });

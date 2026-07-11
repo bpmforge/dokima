@@ -35,7 +35,9 @@ auth_provider TEXT NULL (v1: 'local'; v2: 'oidc'|'saml'|…), role TEXT
 ('operator'|'maker'|'reviewer'|'berth'), model_hint TEXT NULL, created_at`.
 Seeded rows: the human operator, `shipwright-maker`, `shipwright-reviewer`, plus one
 machine identity per berth as berths are created (D-010). Reviewer ≠ maker identity is
-what `accept` checks (BLUEPRINT §3.4).
+what `accept` checks (BLUEPRINT §3.4). Append-only like `events` (same trigger guard):
+the hash chain covers `actor_id` as a reference only, so an in-place edit of `kind` or
+`role` after events were recorded would silently rewrite the audit trail's meaning.
 
 **receipts** — the durable anchors (never derivable, so not a projection).
 `id TEXT PK, kind TEXT ('gate'|'close'|'waiver'|'challenge'|'coverage'|'fitness'),
