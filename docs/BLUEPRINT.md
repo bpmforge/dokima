@@ -1,6 +1,6 @@
 # Shipwright — SRS & System Architecture Blueprint
 
-**Version:** 0.2.0-draft · **Date:** 2026-07-10 · **Status:** Revised after founder review (decisions in §11)
+**Version:** 0.3.0 · **Date:** 2026-07-10 · **Status:** Approved — decision-complete (decisions in §11); SDLC package cut from this document
 **Author:** Principal Architect session (Claude Fable 5) with Brad Matthews
 
 > **Shipwright** is a local-first, human-in-the-loop developer platform where a person takes an idea to a secure, well-built, shipped product. It acts as their product manager and their agentic development team: a guided SDLC program with expert AI agents, gated pipelines, per-item micro-loops, cheapest-model-first execution with escalation, a native Kanban/ticket engine, and an evidence-based trust model in which **the platform holds the gates, not the agents**.
@@ -186,6 +186,14 @@ The productized six-phase SDLC, run as a state machine per project:
 - **Gate mechanism**: each phase has a declared validator set. A clean run mints a **gate receipt** (`gates/<phase>-receipt.json`: validator names, exit codes, gap counts, input-file content hash). Advancing to phase N re-verifies phase N−1's receipt two ways — recompute the input hash (catches silently edited docs) and confirm every currently-required validator appears with exit 0 (catches gate-definition drift). The only bypass is an explicit **waiver receipt** signed by the human (name required; agent identities rejected).
 - **Challenger gate** (veracity): after coverage passes, every HIGH/CRITICAL finding and every design claim marked *needs verification* gets an independent challenge pass producing a CHALLENGE_REPORT with per-claim verdicts (CONFIRMED / CONTRADICTED / UNVERIFIABLE — a challenge without a citation is discarded, never treated as a contradiction). CONTRADICTED → mandatory revision HANDOFF to the originating agent.
 - **Two-track verification**: the default is the **coverage loop** (deterministic — is every inventory row covered?); subjective 1–10 confidence scoring exists but is *advisory only* — it can request polish or escalate to the human, never override a passing deterministic gate.
+- **Decision slates (founder decisions as a first-class primitive).** Whenever the program hits a fork that belongs to the founder — product name, deployment shape, tracker model, licensing, pricing, any irreversible architectural choice — the PM presents a **slate card**: 2–4 concrete options, each with trade-offs spelled out and one marked *Recommended* with the reasoning. The choice (and any free-text rationale) is appended to `docs/DECISIONS.md`, an ADR-lite ledger with stable IDs (D-001…), and downstream documents cite decision IDs instead of restating them. Slates are the productization of refuse-to-guess: an agent that cannot decide a founder-owned fork must slate it, never assume it.
+- **The Blueprint stage (Phase 2.5 — this document's own genesis, productized).** Before any ticket decomposition, Shipwright synthesizes a founding **BLUEPRINT** — condensed SRS + system architecture + an explicit *Open Questions* section — and hands it to the founder with slate cards for every open question. Founder answers; the blueprint is revised with a decisions section (exactly the v0.1 → v0.2 cycle this document went through); the revision loop repeats until decision-complete. **Gate:** Phase 3 detailed design and Phase 4 decomposition are locked while any unresolved founder-decision marker remains in the blueprint. This stage exists because it is where products get their shape cheaply — one review of a 20-page blueprint prevents a hundred mis-aimed tickets.
+- **The research path (woven through every phase, not bolted on).** Each phase has a research lane producing *cited* deliverables in `docs/research/`:
+  - Phase 0 — market landscape + competitive analysis (who exists, what they charge, where the gap is);
+  - Phase 1 — feasibility studies (can this be built under these constraints; license/API viability of critical dependencies);
+  - Phase 2.5/3 — **design-options research** (2–3 alternative approaches per contested decision, scored trade-offs — these feed the decision slates) and **build-vs-adopt comparisons** for every major component;
+  - Phase 4 — pre-code API verification (library APIs checked against current documentation, never from model training data).
+  Research discipline: depth is selectable (`quick` / `standard` / `deep` — deep fans out multi-source with adversarial verification); every report uses a tiered source catalog (primary docs > maintainer statements > community posts) with per-claim citations; HIGH-impact claims pass the **Challenger** (CONFIRMED / CONTRADICTED / UNVERIFIABLE) before a decision may cite them; confirmed findings enter the research fact bank, which is consulted at escalation rung R0 before any new research spend.
 - **Modes**: `New Product` (full program), `Onboard` (map an existing codebase: landscape, entry points, components, health assessment), `Feature` (scoped mini-program over an onboarded repo), `Improve` (audit + fix backlog). All four ship at v1 in the UI as "What are we doing today?"
 
 ### 3.3 Model Gateway (LLM-agnostic)
@@ -417,6 +425,9 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-P3: Discovery interview drives phases 0–2; user can edit any deliverable; edits invalidate downstream receipts (hash change) and the UI says so.
 - FR-P4: Challenger service produces per-claim verdict reports; CONTRADICTED forces a revision HANDOFF.
 - FR-P5: Four modes: New Product, Onboard, Feature, Improve.
+- FR-P6: Decision slates: founder-owned forks presented as 2–4 option cards with trade-offs and a recommended default; choices append to a `DECISIONS.md` ledger with stable IDs; agents must slate, never assume, founder-owned forks.
+- FR-P7: Blueprint stage (Phase 2.5): synthesized SRS+architecture blueprint with open-questions section; revision loop via decision slates; Phases 3–4 locked while unresolved founder-decision markers remain.
+- FR-P8: Research path: per-phase cited research deliverables in `docs/research/` (market, feasibility, design-options, build-vs-adopt, pre-code API verification); quick/standard/deep depth; tiered sources with per-claim citations; Challenger verification of HIGH-impact claims before decisions may cite them; confirmed findings enter the R0 research fact bank.
 
 **FR-TICK (Ticket engine)**
 - FR-T1: Ticket schema with lane, write_scope, depends_on, acceptance, verify; six lifecycle verbs with enforced transition graph; WIP=1 per actor.
@@ -531,7 +542,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - **W2 Model gateway:** providers (incl. Copilot + Vertex onboarding flows), role matrix, escalation ladder, budget breakers, spend ledger.
 - **W3 Harbormaster:** unattended ticket loop, breakpoints, watchdog, morning queue, resume, **berths 1–N parallelism**.
 - **W4 Canvas:** the three-pane UI over the projections; settings matrix; notification taxonomy.
-- **W5 Pipeline & PM:** interview-driven phases 0–3, Challenger, gate receipts UI, the four modes.
+- **W5 Pipeline & PM:** interview-driven phases 0–3, decision slates + Blueprint stage + DECISIONS ledger, the research path (cited reports, depth levels, fact bank), Challenger, gate receipts UI, the four modes.
 - **W6 Integrations:** forge adapters + mirror + branch protection; MCP host; dual-remote.
 - **W7 Memory & learning:** playbook, consolidation, error-first recall, R0 advisor.
 - **W8 Hardening:** Shipwright runs its own pipeline on itself (threat model, security suite, a11y) — the dogfood gate for 1.0.
@@ -568,6 +579,6 @@ Reviewing the design as a whole, these are the gaps I'd close next, ranked by le
 
 Items 1–3 belong in the v1 roadmap (fold into W2/W5/W4 respectively); 4–8 are fast-follow candidates for the plan.json when the SDLC package is cut.
 
-*— End of blueprint v0.2.0-draft —*
+*— End of blueprint v0.3.0 —*
 
 
