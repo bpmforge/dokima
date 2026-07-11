@@ -12,15 +12,32 @@ export interface HashInput {
   payloadJson: string;
 }
 
-/** `hash = sha256(prev_hash‖seq‖type‖actor‖payload)` (ARCHITECTURE.md §3). */
+/**
+ * `hash = sha256( LP(prev_hash) ‖ LP(seq) ‖ LP(type) ‖ LP(actor) ‖ LP(payload) )`
+ * where `LP(x) = utf8ByteLength(x) ‖ "\n" ‖ x` (ARCHITECTURE.md §3).
+ *
+ * Each field is length-prefixed so the preimage is INJECTIVE. A plain
+ * concatenation (the naive form) has no field boundaries, so distinct events
+ * hash identically whenever a boundary can shift — e.g. `(seq=1,type="2x")` and
+ * `(seq=12,type="x")` both yield `…12x…`, and `(actor="u1",payload="23")`
+ * collides with `(actor="u12",payload="3")`. That would let a tampered event
+ * forge a matching hash, defeating the chain's tamper-evidence (NFR-4/6), which
+ * is this module's entire purpose. Length-prefixing removes the ambiguity.
+ */
 export function computeEventHash(input: HashInput): string {
-  return createHash('sha256')
-    .update(input.prevHash)
-    .update(String(input.seq))
-    .update(input.eventType)
-    .update(input.actorId)
-    .update(input.payloadJson)
-    .digest('hex');
+  const h = createHash('sha256');
+  const field = (value: string): void => {
+    const buf = Buffer.from(value, 'utf8');
+    h.update(String(buf.length));
+    h.update('\n');
+    h.update(buf);
+  };
+  field(input.prevHash);
+  field(String(input.seq));
+  field(input.eventType);
+  field(input.actorId);
+  field(input.payloadJson);
+  return h.digest('hex');
 }
 
 export interface ChainRow {

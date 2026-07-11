@@ -144,3 +144,4 @@ Append one line per merged ticket; a short gate section per wave
   typecheck && pnpm test` green.
 
 - Closed 2026-07-11 W0-02 done — event log + projections engine; hash chain (verifyChain), projection rebuild=incremental property test, persist-before-execute + orphan sweep, single-writer C6. Reverted an out-of-scope docs/DATABASE.md edit from the prior attempt. Gate: pnpm lint && pnpm typecheck && pnpm test = 114 passed | 1 skipped.
+2026-07-11 W0-02 SECURITY FIX — hash preimage was delimiter-free (field-boundary collisions defeat tamper-evidence); now length-prefixed + regression test. Caught by manual review AFTER the conductor merged it (LLM review non-determinism let the HIGH slip). events: 28 tests green.
