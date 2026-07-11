@@ -38,3 +38,23 @@ Append one line per merged ticket; a short gate section per wave
   cross-package imports exist yet to enforce against, and W0-01's
   acceptance criteria don't require it. Needs its own ticket before real
   package code lands.
+
+## 2026-07-11 W0-06 done — git worktree service
+
+- packages/git: `createWorktree`/`destroyWorktree`/`listWorktrees` — one
+  worktree per ticket at `.shipwright/worktrees/<ticket-id>` on branch
+  `sw/<ticket-id>-<slug>`; destroy verified leak-free (directory removed,
+  `git worktree list` entry gone, admin dir pruned).
+- `commitWithScopeCheck`: explicit-path staging only (`git add -- <paths>`,
+  never `-A`); SC-01 enforcement — stages, diffs `--cached --name-only`
+  against the ticket's write_scope globs, and refuses + unstages on any
+  violation before a commit is made. Hard exclusions (`.git/**`,
+  `.github/workflows/**`, `.shipwright/**`) always refuse regardless of
+  scope; symlink escapes are caught via realpath resolution against the
+  worktree root.
+- `mergeLocal`: local (no-forge) landing path, `git merge --no-ff`, refuses
+  if repoRoot isn't checked out on the target branch.
+- Dependency added: execa 9.6.1 (per docs/TECH_STACK.md pin) — no
+  deviation to record.
+- 20/20 tests in packages/git (33/33 workspace-wide); `pnpm lint && pnpm
+  typecheck && pnpm test` green.
