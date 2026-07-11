@@ -39,9 +39,17 @@ function assertOwner(ticket: Ticket, actorId: string, verb: string): void {
   }
 }
 
-/** WIP=1 per actor (FR-T1): claimed/in_progress/in_review count as active ownership. */
+/**
+ * WIP=1 per actor (FR-T1): `claimed`/`in_progress` count as active ownership
+ * — the maker is still on the hook for producing a close. `in_review` does
+ * NOT count: `close` is what frees the worker to claim the next ticket
+ * ("close-before-next-claim", docs/research/source-system-amplifier.md §…;
+ * BLUEPRINT §3.6 "claim … → close → checkpoint → repeat"). Review happens
+ * out-of-band under a distinct reviewer identity (maker != verifier), so it
+ * must not block the maker's next claim.
+ */
 function isActiveOwnership(status: Ticket['status']): boolean {
-  return status === 'claimed' || status === 'in_progress' || status === 'in_review';
+  return status === 'claimed' || status === 'in_progress';
 }
 
 export interface ClaimTicketInput {

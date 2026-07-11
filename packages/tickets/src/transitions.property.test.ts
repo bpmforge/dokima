@@ -109,14 +109,14 @@ describe('ticket lifecycle invariants (fast-check, FR-T1/FR-T2, TESTING.md §3)'
 
         const tickets = loadTickets(log);
 
-        // (c) WIP=1 per actor: no actor owns more than one active ticket at once.
+        // (c) WIP=1 per actor: no actor owns more than one active ticket at
+        // once. `in_review` does not count — close is what frees the worker
+        // (source-system-amplifier.md "close-before-next-claim").
         for (const actorId of ACTOR_IDS) {
           const active = Array.from(tickets.values()).filter(
             (t) =>
               t.ownerId === actorId &&
-              (t.status === 'claimed' ||
-                t.status === 'in_progress' ||
-                t.status === 'in_review'),
+              (t.status === 'claimed' || t.status === 'in_progress'),
           );
           expect(active.length).toBeLessThanOrEqual(1);
         }

@@ -47,12 +47,8 @@ export interface TicketHistoryEntry {
   verb: 'claim' | 'start' | 'close' | 'accept' | 'release' | 'comment';
   actorId: string;
   at: string;
-}
-
-export interface TicketCommentEvidence {
-  actorId: string;
-  body: string;
-  at: string;
+  /** Comment text (API_DESIGN.md: `POST /tickets/{id}/comment` -> history row). */
+  body?: string;
 }
 
 export interface Ticket {
@@ -69,7 +65,8 @@ export interface Ticket {
   verify: string | null;
   manifest: TicketManifest | null;
   history: TicketHistoryEntry[];
-  evidence: TicketCommentEvidence[];
+  /** Failure receipts / escalation trail (DATABASE.md §3) — populated by later tickets (loop escalation). */
+  evidence: unknown[];
   claimedAt: string | null;
   closedAt: string | null;
 }

@@ -16,7 +16,6 @@ export type {
   CloseReceipt,
   CreateTicketInput,
   Ticket,
-  TicketCommentEvidence,
   TicketHistoryEntry,
   TicketManifest,
   TicketStatus,

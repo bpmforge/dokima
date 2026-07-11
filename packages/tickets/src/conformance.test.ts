@@ -180,6 +180,6 @@ describe('source-system ticket semantics conformance (docs/research/source-syste
       { now: NOW },
     );
     expect(ticket.status).toBe('ready');
-    expect(ticket.evidence).toHaveLength(1);
+    expect(ticket.history.at(-1)).toMatchObject({ verb: 'comment', body: 'note' });
   });
 });

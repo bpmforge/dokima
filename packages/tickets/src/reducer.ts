@@ -16,8 +16,12 @@ function pushHistory(
   verb: TicketHistoryEntry['verb'],
   actorId: string,
   at: string,
+  body?: string,
 ): TicketHistoryEntry[] {
-  return [...ticket.history, { verb, actorId, at }];
+  return [
+    ...ticket.history,
+    body === undefined ? { verb, actorId, at } : { verb, actorId, at, body },
+  ];
 }
 
 /**
@@ -106,11 +110,13 @@ export function reduceTicketEvent(
       const payload = event.payload as TicketCommentedPayload;
       return {
         ...ticket,
-        history: pushHistory(ticket, 'comment', event.actorId, event.createdAt),
-        evidence: [
-          ...ticket.evidence,
-          { actorId: event.actorId, body: payload.body, at: event.createdAt },
-        ],
+        history: pushHistory(
+          ticket,
+          'comment',
+          event.actorId,
+          event.createdAt,
+          payload.body,
+        ),
       };
     }
     default:

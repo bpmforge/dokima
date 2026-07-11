@@ -183,9 +183,51 @@ describe('ticket lifecycle verbs (FR-T1)', () => {
       { now: NOW },
     );
     expect(ticket.status).toBe('ready');
-    expect(ticket.evidence).toEqual([
-      { actorId: 'reviewer-1', body: 'looks good so far', at: NOW() },
-    ]);
+    expect(ticket.history.at(-1)).toEqual({
+      verb: 'comment',
+      actorId: 'reviewer-1',
+      at: NOW(),
+      body: 'looks good so far',
+    });
+    expect(ticket.evidence).toEqual([]);
+  });
+
+  it('FR-T1: close frees the maker to claim the next ticket — WIP=1 does not block on in_review ("close-before-next-claim")', async () => {
+    ({ temp, log } = await setup());
+    createTicket(
+      log,
+      'maker-1',
+      {
+        id: 'W9-02',
+        type: 'task',
+        title: 'Second',
+        lane: 'core',
+        writeScope: ['packages/other/**'],
+      },
+      { now: NOW },
+    );
+    claimTicket(log, { ticketId: 'W9-01', actorId: 'maker-1' }, { now: NOW });
+    startTicket(log, { ticketId: 'W9-01', actorId: 'maker-1' }, { now: NOW });
+    const closed = closeTicket(
+      log,
+      {
+        ticketId: 'W9-01',
+        actorId: 'maker-1',
+        files: ['a.ts'],
+        commits: ['abc'],
+        verify: { command: 'pnpm test', exitCode: 0 },
+      },
+      { now: NOW },
+    );
+    expect(closed.status).toBe('in_review');
+
+    const claimedNext = claimTicket(
+      log,
+      { ticketId: 'W9-02', actorId: 'maker-1' },
+      { now: NOW },
+    );
+    expect(claimedNext.status).toBe('claimed');
+    expect(claimedNext.ownerId).toBe('maker-1');
   });
 
   it('FR-T1: only the owning actor may start a claimed ticket', async () => {
