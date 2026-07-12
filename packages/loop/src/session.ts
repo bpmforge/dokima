@@ -87,8 +87,20 @@ export interface ChildProcessSpawnOptions {
   /** Extra args before the prompt, e.g. ['-p'] for a `<cli> -p <prompt>` shape. */
   readonly args?: readonly string[];
   readonly timeoutMs?: number;
+  /**
+   * Env for the spawned session. Defaults to just `PATH` (enough to resolve
+   * `command`), never the full `process.env` — an agent session is
+   * untrusted (BLUEPRINT §2/§7) and must not default-inherit whatever
+   * credentials happen to be in the parent process's environment (SC-03
+   * "env snapshot test on spawned sessions: zero token vars", SC-07
+   * "cleaned env"). Callers that need more must pass it explicitly.
+   */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
+
+const MINIMAL_SPAWN_ENV: Readonly<Record<string, string | undefined>> = {
+  PATH: process.env.PATH,
+};
 
 /**
  * A real `node:child_process` session spawner: `command [...args] prompt`,
@@ -101,7 +113,7 @@ export function createChildProcessSpawn(options: ChildProcessSpawnOptions): Spaw
     new Promise<SpawnSessionOutput>((resolve, reject) => {
       const child = nodeSpawn(options.command, [...(options.args ?? []), input.prompt], {
         cwd: input.cwd,
-        env: options.env ?? process.env,
+        env: options.env ?? MINIMAL_SPAWN_ENV,
         timeout: options.timeoutMs,
       });
       let stdout = '';
