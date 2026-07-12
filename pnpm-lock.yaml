@@ -90,7 +90,11 @@ importers:
 
   packages/harbormaster: {}
 
-  packages/loop: {}
+  packages/loop:
+    devDependencies:
+      fast-check:
+        specifier: ^4.9.0
+        version: 4.9.0
 
   packages/mcp: {}
 
