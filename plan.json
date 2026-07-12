@@ -478,8 +478,10 @@
         "Reviewer/challenger roles refuse the maker's model by default; override requires explicit setting + event"
       ],
       "points": 3,
-      "status": "in_progress",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-12: done. packages/gateway/src/routing/ — types.ts (TaskType reasoning/code/verification/embed/escalation, ModelAssignment, RoleRouting, RoleMatrix, ThreeScopeMap<T> generic run>project>global map atomic per role); matrix.ts (resolveScopedValue/resolveRoleRouting with fallthrough to the 'default' role/resolveModelChain -> [primary, ...fallbackChain] + winning scope); maker-verifier.ts (guardMakerVerifierDistinct — SameModelRefusedError unless an explicit per-role override setting is true, which mints a MakerVerifierOverrideEvent via an injectable RoutingEventSink); router.ts (route() composes both — the guard is STRUCTURAL: routing any VERIFIER_ROLES role (code-reviewer/challenger) always auto-resolves the maker role, default 'coding-agent', for the same task type and compares, so a caller cannot silently skip the refusal by omitting a parameter); presets.ts (PRESET_ALL_LOCAL/HYBRID/ALL_CLOUD, all three covering coding-agent/code-reviewer/challenger/test-engineer/pm-interviewer/default). packages/gateway has no workspace dependency on packages/shared from this ticket's write_scope (packages/gateway/src/routing/**, packages/gateway/test/routing* — package.json is out of scope, same constraint W2-01/02/04 hit), so the three-scope precedence algorithm is reimplemented locally rather than importing packages/shared's; documented as HANDOFF in routing/index.ts for a future ticket that owns package.json, including a granularity note (atomic-per-role here; docs/API_DESIGN.md's settings API doesn't pin a finer per-(role,taskType) key). Tests co-located `*.test.ts` per docs/TESTING.md §2 (packages/gateway/test/routing* is a single-segment glob that wouldn't cover a nested dir; same call W2-01 made). 38 new tests, all example-based (no fast-check dependency in this package). presets.test.ts implements the SRS FR-G2 verify clause verbatim: exhaustively checks, for every preset and every task type, that code-reviewer/challenger never resolve to the coding-agent model. Not re-exported from packages/gateway/src/index.ts (out of write_scope) — same gap left by prior gateway tickets. Gate: pnpm lint && pnpm typecheck && pnpm test = 421 passed | 1 skipped (pre-existing) workspace-wide, 139 in packages/gateway (38 in routing)."
+      ]
     },
     {
       "id": "W2-06",
