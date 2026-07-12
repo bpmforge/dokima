@@ -453,7 +453,7 @@
         "Auth via google-auth-library ADC or service-account JSON ref; region + project settings per docs/TECH_STACK.md; contract suite on recorded fixtures (D-007)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
