@@ -123,4 +123,24 @@ A second-order finding: even *deterministic* validators aren't a silver bullet. 
 3. **The trust-core primitives want human authoring or pairing**, not one-shot autonomous generation — they are where the guardrails earn their keep and where the models most often need escalation.
 4. **Fold this report into the product's lessons/field-report intake** (the M29 pattern) — it is a real field report of the exact kind Shipwright is designed to consume.
 
-*— Live document; updated as the run continues. Board at time of writing: 11 done, 52 to go, 0 blocked.*
+---
+
+## 9. Overnight addendum (2026-07-12, 02:29 → 07:58 UTC)
+
+The run continued unattended after the validator wiring and ended cleanly on scope exhaustion.
+
+| Metric (overnight) | Value |
+|---|---|
+| Tickets landed autonomously | **8** (W1-04/05/06, W2-04/05/06/07/08) |
+| Board after | **19 done / 3 blocked / 41 to go** |
+| Provider-limit pauses | **1** — hit at 05:20, slept 22m, **resumed on its own** |
+| Crashes | 0 |
+| How it ended | `conductor.idle` → clean exit: exhausted all claimable W0–W2 tickets |
+
+**Two things validated in production:**
+1. **Limit recovery works unattended.** The sleep-to-reset machinery fired for the first time (05:20) and the run resumed without intervention — the overnight-survival design is no longer just theoretical.
+2. **The gate fix holds.** The 3 remaining blocks are *not* false blocks (the failure mode that plagued the pre-fix gate). They are **real**: W0-08 and W1-02 fail `typecheck` on genuine errors (`'err' is of type 'unknown'`; a missing `mintReceipt` export — a real cross-package integration mismatch), and W2-03 is a review-output parse hiccup, not a code finding. The fixed gate now blocks real failures and passes good work — exactly the intended behavior.
+
+**Net across the whole session: 19/63 landed** (30%), the entire trust core + loop engine + full model gateway (all 8 provider/gateway tickets) on `main`, with the harness itself debugged into a working state along the way. The 3 blocks are small, real fixes (type narrowing, an export rename, one review re-run) awaiting a human — the correct place to stop.
+
+*— Board at addendum: 19 done, 3 blocked (real), 41 to go. Run idle-exited on W0–W2 scope completion.*
