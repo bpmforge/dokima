@@ -289,26 +289,35 @@ async function executeTicket(t) {
     const r = await runSession(reviewPrompt(t, diff, sticky), MODELS.reviewer, `review:${t.id}`, wt);
     const verdict = parseJson(r.out) ?? { verdict: 'FIX', findings: [{ severity: 'HIGH', file: '-', issue: 'review output unparseable', fix: 're-run review' }], prior_status: [] };
 
-    for (const f of (verdict.findings ?? []).filter((x) => ['CRITICAL', 'HIGH'].includes(x.severity))) {
+    // Findings the CURRENT pass raises fresh, and prior findings the reviewer — who is
+    // shown every prior finding — explicitly says are STILL PRESENT. Those are the real
+    // blockers. A prior finding that the reviewer neither re-raises nor marks PRESENT,
+    // on an APPROVE verdict, is treated as resolved: an informed reviewer that has seen
+    // the finding and approves is the authority, not my bookkeeping. (The earlier gate —
+    // "APPROVE && zero-unresolved-sticky" with brittle text-matched resolution — false-
+    // blocked W0-05/W1-01/W1-03: the reviewer APPROVED but the sticky rows never cleared.)
+    const currentHigh = (verdict.findings ?? []).filter((x) => ['CRITICAL', 'HIGH'].includes(x.severity));
+    for (const f of currentHigh) {
       const key = `${f.file}:${f.issue}`;
-      if (!sticky.some((s) => s.key === key)) sticky.push({ key, severity: f.severity, file: f.file, issue: f.issue, fix: f.fix, resolved: false });
+      if (!sticky.some((s) => s.key === key)) sticky.push({ key, severity: f.severity, file: f.file, issue: f.issue, fix: f.fix });
     }
-    for (const ps of verdict.prior_status ?? []) {
-      const hit = sticky.find((s) => ps.finding && (s.key === ps.finding || (s.issue && ps.finding.includes(s.issue)) || (s.issue && s.issue.includes(ps.finding))));
-      if (hit) hit.resolved = ps.status === 'RESOLVED';
-    }
-    const unresolved = sticky.filter((s) => !s.resolved);
-    log('review.result', { ticket: t.id, msg: `verdict=${verdict.verdict} sticky=${sticky.length} unresolved=${unresolved.length}` });
+    const presentPriors = (verdict.prior_status ?? []).filter((ps) => ps.status === 'PRESENT');
+    const blockers = [
+      ...currentHigh.map((f) => `[${f.severity}] ${f.file}: ${f.issue} — fix: ${f.fix}`),
+      ...presentPriors.map((ps) => `[STILL-PRESENT] ${ps.finding} — ${ps.evidence || ''}`),
+    ];
+    log('review.result', { ticket: t.id, msg: `verdict=${verdict.verdict} newHigh=${currentHigh.length} priorsStillPresent=${presentPriors.length} (sticky-seen ${sticky.length})` });
 
-    if (verdict.verdict === 'APPROVE' && unresolved.length === 0) {
-      log('review.approve', { ticket: t.id, msg: `${sticky.length} finding(s) verified resolved` });
+    if (verdict.verdict === 'APPROVE' && blockers.length === 0) {
+      log('review.approve', { ticket: t.id, msg: `informed APPROVE; ${sticky.length} prior finding(s) not re-raised` });
       return { ok: true, branch, wt };
     }
-    log('review.fix', { ticket: t.id, msg: `${unresolved.length} unresolved high/critical (sticky ${sticky.length})` });
-    gaps = unresolved.map((s) => `[${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
+    log('review.fix', { ticket: t.id, msg: `${blockers.length} blocker(s): ${currentHigh.length} new + ${presentPriors.length} still-present` });
+    gaps = blockers;
   }
-  const ledger = sticky.filter((s) => !s.resolved).map((s) => `[UNRESOLVED ${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
-  return { ok: false, branch, wt, gaps: ledger.length ? ledger : gaps };
+  // Block with the last pass's real blockers; if none captured, fall back to the sticky-seen list.
+  const ledger = (gaps && gaps.length) ? gaps : sticky.map((s) => `[${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
+  return { ok: false, branch, wt, gaps: ledger };
 }
 
 function parseJson(text) {
