@@ -478,7 +478,7 @@
         "Reviewer/challenger roles refuse the maker's model by default; override requires explicit setting + event"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
