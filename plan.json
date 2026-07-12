@@ -265,8 +265,10 @@
         "Conformance tests adapted from source micro-loop semantics (docs/research/source-system-foreman-jarvis.md §2) green with a fake model"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": []
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-12T00:51:01.594Z: blocked after 3 attempts. Branch sw/w1-03 kept. Gaps: [UNRESOLVED HIGH] packages/loop/src/micro-loop.ts: computeGapChecksum's template literal (`${gap.id}\\x00${gap.description}`) and the `.join('\\x01')` call contain literal raw NUL (0x00) and SOH (0x01) bytes typed directly into the source file rather than the escape-sequence text `\\x00`/`\\x01`. This makes the file non-text: `file` reports it as 'data', and git classifies it as binary (confirmed — this diff itself shows 'Binary files /dev/null and b/packages/loop/src/micro-loop.ts differ' instead of a line-by-line diff, and `git show --stat`/`git diff` produce no output for this file at all). The"
+      ]
     },
     {
       "id": "W1-04",
