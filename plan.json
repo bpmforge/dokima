@@ -368,8 +368,10 @@
         "Negative path: fabricated manifest (file listed but absent) and self-accept both refused, receipts show why"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": []
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-12T12:01:02.833Z: blocked after 3 attempts. Branch sw/w1-07 kept. Gaps: [HIGH] e2e/toy-project/harbormaster-lite.ts: resolveInsideCwd() only does string-based path containment (rejects absolute paths and post-resolve '..' escapes) — it never resolves symlinks. A malicious/compromised session can create a symlink inside its own writeScope (e.g. `src/leak.txt -> /etc/passwd` or `-> ~/.ssh/id_rsa`) via ordinary filesystem access it already has, then claim `src/leak.txt` in the manifest. `resolveInsideCwd` accepts the path (it's lexically inside cwd), `fileExists()` follows the symlink and reports it present (fs.access follows symlinks by default), and `readExistingFi"
+      ]
     },
     {
       "id": "W2-01",
