@@ -295,7 +295,7 @@
         "Coverage report is a gate input: phase gate fails on any SKIPPED required unit"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
