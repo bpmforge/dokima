@@ -1,0 +1,724 @@
+{
+  "version": 1,
+  "importDate": "2026-07-12",
+  "sourceRepo": "bpm-opencode-experts",
+  "summary": {
+    "experts": 85,
+    "validators": 70,
+    "protocols": 8
+  },
+  "experts": {
+    "coordinators": {
+      "role": "Program orchestrators and decision engines",
+      "count": 4,
+      "items": {
+        "PARALLEL_WAVE_PROTOCOL": {
+          "file": "PARALLEL_WAVE_PROTOCOL.md",
+          "description": "name: parallel-wave-protocol"
+        },
+        "guide": {
+          "file": "guide.md",
+          "description": "description: 'Expert-system concierge — the front door. Given a plain-English goal, figures out whic"
+        },
+        "sdlc-lead": {
+          "file": "sdlc-lead.md",
+          "description": "description: 'Program manager and lead architect — orchestrates the full software development lifecy"
+        },
+        "task-decomposer": {
+          "file": "task-decomposer.md",
+          "description": "description: 'Task decomposition specialist — turns any request into a typed DAG of bounded leaf tas"
+        }
+      }
+    },
+    "onboard": {
+      "role": "Onboard specialists — reverse-engineer an existing codebase into SDLC artifacts (source: agents/sdlc/onboard/)",
+      "count": 4,
+      "items": {
+        "component-mapper": {
+          "file": "component-mapper.md",
+          "description": "name: 'Component Mapper'"
+        },
+        "entry-point-tracer": {
+          "file": "entry-point-tracer.md",
+          "description": "name: 'Entry Point Tracer'"
+        },
+        "health-coordinator": {
+          "file": "health-coordinator.md",
+          "description": "name: 'Health Coordinator'"
+        },
+        "landscape-mapper": {
+          "file": "landscape-mapper.md",
+          "description": "name: 'Landscape Mapper'"
+        }
+      }
+    },
+    "phase-specialists": {
+      "role": "Domain specialists for SDLC phases",
+      "count": 12,
+      "items": {
+        "api-designer": {
+          "file": "api-designer.md",
+          "description": "description: 'API design expert — REST/GraphQL, contracts, versioning, documentation. Use when desig"
+        },
+        "architecture-designer": {
+          "file": "architecture-designer.md",
+          "description": "description: 'Architecture designer — defines modular structure, public interfaces, plugin points, a"
+        },
+        "content-designer": {
+          "file": "content-designer.md",
+          "description": "name: 'Content Designer'"
+        },
+        "cost-engineer": {
+          "file": "cost-engineer.md",
+          "description": "description: 'Cost engineer — cloud + LLM spend analysis, right-sizing, reserved capacity/commitment"
+        },
+        "llm-integration-engineer": {
+          "file": "llm-integration-engineer.md",
+          "description": "description: 'LLM integration engineer — design-side expert for building LLM features: prompt archit"
+        },
+        "performance-engineer": {
+          "file": "performance-engineer.md",
+          "description": "description: 'Performance audit coordinator — dispatches 5 specialist micro-agents, synthesizes comp"
+        },
+        "reliability-engineer": {
+          "file": "reliability-engineer.md",
+          "description": "description: 'Reliability engineer — load testing & resilience specialist: what breaks under stress "
+        },
+        "researcher": {
+          "file": "researcher.md",
+          "description": "description: 'Professional research analyst — four modes: QUICK LOOKUP (1-3 sources, single Q), COMP"
+        },
+        "sre-engineer": {
+          "file": "sre-engineer.md",
+          "description": "description: 'Senior SRE — runbooks, CI/CD pipelines, monitoring, incident response, deployment stra"
+        },
+        "test-engineer": {
+          "file": "test-engineer.md",
+          "description": "description: 'Senior test engineer — Playwright e2e, vitest/jest unit tests, integration tests, test"
+        },
+        "ux-engineer": {
+          "file": "ux-engineer.md",
+          "description": "description: 'Senior UX engineer — design direction, user workflows, component architecture, WCAG 2."
+        },
+        "ux-researcher": {
+          "file": "ux-researcher.md",
+          "description": "name: 'UX Researcher'"
+        }
+      }
+    },
+    "code-review": {
+      "role": "Code health and quality cluster",
+      "count": 10,
+      "items": {
+        "FINDINGS_SCHEMA": {
+          "file": "FINDINGS_SCHEMA.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "METHODOLOGY": {
+          "file": "METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "anti-slop-auditor": {
+          "file": "anti-slop-auditor.md",
+          "description": "name: 'Anti-Slop Auditor'"
+        },
+        "code-health-synthesizer": {
+          "file": "code-health-synthesizer.md",
+          "description": "name: 'Code Health Synthesizer'"
+        },
+        "complexity-analyzer": {
+          "file": "complexity-analyzer.md",
+          "description": "name: 'Complexity Analyzer'"
+        },
+        "dead-code-detector": {
+          "file": "dead-code-detector.md",
+          "description": "name: 'Dead Code Detector'"
+        },
+        "duplication-detector": {
+          "file": "duplication-detector.md",
+          "description": "name: 'Duplication Detector'"
+        },
+        "error-handling-auditor": {
+          "file": "error-handling-auditor.md",
+          "description": "name: 'Error Handling Auditor'"
+        },
+        "pattern-consistency-checker": {
+          "file": "pattern-consistency-checker.md",
+          "description": "name: 'Pattern Consistency Checker'"
+        },
+        "type-safety-checker": {
+          "file": "type-safety-checker.md",
+          "description": "name: 'Type Safety Checker'"
+        }
+      }
+    },
+    "security": {
+      "role": "Security analysis specialists",
+      "count": 15,
+      "items": {
+        "CLOUD_METHODOLOGY": {
+          "file": "CLOUD_METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "FINDING_SCHEMA": {
+          "file": "FINDING_SCHEMA.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "IaC_METHODOLOGY": {
+          "file": "IaC_METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "MCP_METHODOLOGY": {
+          "file": "MCP_METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "OWASP_LLM_METHODOLOGY": {
+          "file": "OWASP_LLM_METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "OWASP_METHODOLOGY": {
+          "file": "OWASP_METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "attack-chainer": {
+          "file": "attack-chainer.md",
+          "description": "name: 'Attack Chainer'"
+        },
+        "cloud-security-checker": {
+          "file": "cloud-security-checker.md",
+          "description": "name: 'Cloud Security Checker'"
+        },
+        "dependency-auditor": {
+          "file": "dependency-auditor.md",
+          "description": "name: 'Dependency Auditor'"
+        },
+        "iac-security-checker": {
+          "file": "iac-security-checker.md",
+          "description": "name: 'IaC Security Checker'"
+        },
+        "owasp-llm-checker": {
+          "file": "owasp-llm-checker.md",
+          "description": "name: 'OWASP LLM Checker'"
+        },
+        "owasp-web-checker": {
+          "file": "owasp-web-checker.md",
+          "description": "name: 'OWASP Web Checker'"
+        },
+        "secrets-scanner": {
+          "file": "secrets-scanner.md",
+          "description": "name: 'Secrets Scanner'"
+        },
+        "semgrep-runner": {
+          "file": "semgrep-runner.md",
+          "description": "name: 'Semgrep Runner'"
+        },
+        "threat-modeler": {
+          "file": "threat-modeler.md",
+          "description": "name: 'Threat Modeler'"
+        }
+      }
+    },
+    "performance": {
+      "role": "Performance and optimization cluster",
+      "count": 8,
+      "items": {
+        "FINDINGS_SCHEMA": {
+          "file": "FINDINGS_SCHEMA.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "METHODOLOGY": {
+          "file": "METHODOLOGY.md",
+          "description": "description: 'Reference document — read on demand, not an agent.'"
+        },
+        "bundle-analyzer": {
+          "file": "bundle-analyzer.md",
+          "description": "name: 'Bundle Analyzer'"
+        },
+        "concurrency-checker": {
+          "file": "concurrency-checker.md",
+          "description": "name: 'Concurrency Checker'"
+        },
+        "db-query-analyzer": {
+          "file": "db-query-analyzer.md",
+          "description": "name: 'DB Query Analyzer'"
+        },
+        "perf-synthesizer": {
+          "file": "perf-synthesizer.md",
+          "description": "name: 'Perf Synthesizer'"
+        },
+        "profiler-agent": {
+          "file": "profiler-agent.md",
+          "description": "name: 'Profiler Agent'"
+        },
+        "static-perf-analyzer": {
+          "file": "static-perf-analyzer.md",
+          "description": "name: 'Static Perf Analyzer'"
+        }
+      }
+    },
+    "game": {
+      "role": "Game development specialists",
+      "count": 5,
+      "items": {
+        "game-asset-pipeline": {
+          "file": "game-asset-pipeline.md",
+          "description": "name: 'Game Asset Pipeline'"
+        },
+        "game-balance-designer": {
+          "file": "game-balance-designer.md",
+          "description": "name: 'Game Balance Designer'"
+        },
+        "game-designer": {
+          "file": "game-designer.md",
+          "description": "name: 'Game Designer'"
+        },
+        "gameplay-engineer": {
+          "file": "gameplay-engineer.md",
+          "description": "name: 'Gameplay Engineer'"
+        },
+        "playtest-evaluator": {
+          "file": "playtest-evaluator.md",
+          "description": "name: 'Playtest Evaluator'"
+        }
+      }
+    },
+    "other": {
+      "role": "Cross-cutting and specialized agents",
+      "count": 27,
+      "items": {
+        "a11y-compliance": {
+          "file": "a11y-compliance.md",
+          "description": "description: 'Accessibility & compliance auditor — WCAG 2.2 AA/AAA conformance, ATAG, EN 301 549 / E"
+        },
+        "analytics-architect": {
+          "file": "analytics-architect.md",
+          "description": "description: 'Analytics architect — telemetry/instrumentation design: what to measure and why. RED/U"
+        },
+        "challenger": {
+          "file": "challenger.md",
+          "description": "description: 'Veracity challenger — challenges factual claims in high-stakes artifacts (security fin"
+        },
+        "changelog-writer": {
+          "file": "changelog-writer.md",
+          "description": "description: 'Changelog and release notes writer — reads git log range, classifies commits by type, "
+        },
+        "code-reviewer": {
+          "file": "code-reviewer.md",
+          "description": "description: 'Code health audit coordinator — dispatches 7 specialist micro-agents, synthesizes comp"
+        },
+        "coding-agent": {
+          "file": "coding-agent.md",
+          "description": "description: 'Senior implementation engineer — doc-driven coding from SDLC specs. Verifies all libra"
+        },
+        "container-ops": {
+          "file": "container-ops.md",
+          "description": "description: 'Container operations expert — Podman/Docker, Dockerfiles, compose, networking, debuggi"
+        },
+        "data-steward": {
+          "file": "data-steward.md",
+          "description": "description: 'Data steward — data governance specialist: PII classification, GDPR/CCPA/PIPEDA obliga"
+        },
+        "db-architect": {
+          "file": "db-architect.md",
+          "description": "description: 'Senior database architect — schema design, migrations, query optimization, indexing st"
+        },
+        "design-system-lead": {
+          "file": "design-system-lead.md",
+          "description": "name: 'Design System Lead'"
+        },
+        "documentation-gap-finder": {
+          "file": "documentation-gap-finder.md",
+          "description": "description: 'Documentation gap finder — scans source exports against existing docs, lists undocumen"
+        },
+        "end-user-simulator": {
+          "file": "end-user-simulator.md",
+          "description": "description: 'End-user simulation specialist — persona-driven true UAT. Walks the live app like a fi"
+        },
+        "frontend-design": {
+          "file": "frontend-design.md",
+          "description": "description: 'Senior frontend design engineer — production-grade visual implementation. Typography, "
+        },
+        "git-expert": {
+          "file": "git-expert.md",
+          "description": "description: 'Senior git & forge expert — repo bootstrap, feature branches, releases, history forens"
+        },
+        "migration-planner": {
+          "file": "migration-planner.md",
+          "description": "description: 'Database migration planner — compares two schema states (files or git refs), produces "
+        },
+        "release-manager": {
+          "file": "release-manager.md",
+          "description": "description: 'Release manager — thin coordinator for shipping a release: version bump, changelog ass"
+        },
+        "sdlc-feature-mode": {
+          "file": "sdlc-feature-mode.md",
+          "description": "description: 'Mode 3 — Add a feature to an existing system. Impact analysis, optional sub-component "
+        },
+        "sdlc-improve-mode": {
+          "file": "sdlc-improve-mode.md",
+          "description": "description: 'Mode 4 — Audit and improve an existing system. Discovery audit, multi-specialist audit"
+        },
+        "sdlc-init-mode": {
+          "file": "sdlc-init-mode.md",
+          "description": "description: 'Mode 1 — New Project. Phases 0-5: ideation, planning, requirements, design, implementa"
+        },
+        "sdlc-init-phase-3": {
+          "file": "sdlc-init-phase-3.md",
+          "description": "description: 'Mode 1 — Phase 3 & 3.5: Design and Test Design. Architecture, DB, API, security, infra"
+        },
+        "sdlc-init-phase-4": {
+          "file": "sdlc-init-phase-4.md",
+          "description": "description: 'Mode 1 — Phase 4 & 5: Implementation and Release. Parallel coding waves, module branch"
+        },
+        "sdlc-init-phase-5": {
+          "file": "sdlc-init-phase-5.md",
+          "description": "description: 'Mode 1 phase files — Phase 5: Review and Release. Loaded on demand by sdlc-init-mode.m"
+        },
+        "sdlc-init-phases-0-2": {
+          "file": "sdlc-init-phases-0-2.md",
+          "description": "description: 'Mode 1 phase files — Phases 0-2: Ideation, Planning, Requirements. Loaded on demand by"
+        },
+        "sdlc-init-phases-3-4": {
+          "file": "sdlc-init-phases-3-4.md",
+          "description": "description: 'SUPERSEDED — do not load. Split into sdlc-init-phase-3.md (Phases 3+3.5) and sdlc-init"
+        },
+        "sdlc-onboard-mode": {
+          "file": "sdlc-onboard-mode.md",
+          "description": "description: 'Mode 2 — Onboard to an existing codebase. Reverse-engineers a project into LANDSCAPE, "
+        },
+        "security-auditor": {
+          "file": "security-auditor.md",
+          "description": "description: 'Security audit coordinator — dispatches 8 specialist micro-agents in sequence, synthes"
+        },
+        "ui-verifier": {
+          "file": "ui-verifier.md",
+          "description": "description: 'Live browser verification specialist — navigates a running app with playwright-mcp, ta"
+        }
+      }
+    }
+  },
+  "validators": {
+    "overview": "Executable validators (bash scripts) implementing the 0/1 + JSON-gaps contract, plus the shared _lib*.sh they source",
+    "count": 70,
+    "items": {
+      "_lib": {
+        "file": "_lib.sh",
+        "description": "set -euo pipefail"
+      },
+      "_lib_sdlc_config": {
+        "file": "_lib_sdlc_config.sh",
+        "description": "detect_stack() {"
+      },
+      "run-coverage-loop": {
+        "file": "run-coverage-loop.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "run-handoff-gates": {
+        "file": "run-handoff-gates.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-adrs": {
+        "file": "validate-adrs.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-api-consistency": {
+        "file": "validate-api-consistency.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-api-coverage": {
+        "file": "validate-api-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-architecture": {
+        "file": "validate-architecture.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-autonomy-ledger": {
+        "file": "validate-autonomy-ledger.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-autonomy-wiring": {
+        "file": "validate-autonomy-wiring.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-book-structure": {
+        "file": "validate-book-structure.sh",
+        "description": "set -o pipefail"
+      },
+      "validate-build": {
+        "file": "validate-build.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-c3-coverage": {
+        "file": "validate-c3-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-challenger-gate": {
+        "file": "validate-challenger-gate.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-circular-deps": {
+        "file": "validate-circular-deps.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-close-receipt": {
+        "file": "validate-close-receipt.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-code-health": {
+        "file": "validate-code-health.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-completion-manifest": {
+        "file": "validate-completion-manifest.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-contract-conformance": {
+        "file": "validate-contract-conformance.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-data-governance": {
+        "file": "validate-data-governance.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-dead-code": {
+        "file": "validate-dead-code.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-deps": {
+        "file": "validate-deps.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-design-system": {
+        "file": "validate-design-system.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-doc-catalog": {
+        "file": "validate-doc-catalog.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-doc-counts": {
+        "file": "validate-doc-counts.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-doc-render-health": {
+        "file": "validate-doc-render-health.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-e2e-setup": {
+        "file": "validate-e2e-setup.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-entry-points": {
+        "file": "validate-entry-points.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-erd-coverage": {
+        "file": "validate-erd-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-feature-coverage": {
+        "file": "validate-feature-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-file-size": {
+        "file": "validate-file-size.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-fix-backlog-closed": {
+        "file": "validate-fix-backlog-closed.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-handoff-discipline": {
+        "file": "validate-handoff-discipline.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-iac": {
+        "file": "validate-iac.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-improve-coverage": {
+        "file": "validate-improve-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-infrastructure": {
+        "file": "validate-infrastructure.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-inventory": {
+        "file": "validate-inventory.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-lint": {
+        "file": "validate-lint.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-loop-readiness": {
+        "file": "validate-loop-readiness.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-mermaid": {
+        "file": "validate-mermaid.sh",
+        "description": "set -uo pipefail"
+      },
+      "validate-migrations": {
+        "file": "validate-migrations.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-module-boundaries-transitive": {
+        "file": "validate-module-boundaries-transitive.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-module-boundaries": {
+        "file": "validate-module-boundaries.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-module-design": {
+        "file": "validate-module-design.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-no-ascii-art": {
+        "file": "validate-no-ascii-art.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-no-reinvent": {
+        "file": "validate-no-reinvent.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-observability": {
+        "file": "validate-observability.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-owasp": {
+        "file": "validate-owasp.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-persistence-block": {
+        "file": "validate-persistence-block.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-phase-gate": {
+        "file": "validate-phase-gate.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-release-readiness": {
+        "file": "validate-release-readiness.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-requirements-matrix": {
+        "file": "validate-requirements-matrix.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-resilience-patterns": {
+        "file": "validate-resilience-patterns.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-scope": {
+        "file": "validate-scope.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-security-controls": {
+        "file": "validate-security-controls.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-sequence-coverage": {
+        "file": "validate-sequence-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-smoke": {
+        "file": "validate-smoke.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-spec-traceability": {
+        "file": "validate-spec-traceability.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-state-drift": {
+        "file": "validate-state-drift.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-tech-stack": {
+        "file": "validate-tech-stack.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-test-design": {
+        "file": "validate-test-design.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-tests-mapping": {
+        "file": "validate-tests-mapping.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-tests": {
+        "file": "validate-tests.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-ticket-hygiene": {
+        "file": "validate-ticket-hygiene.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-tickets": {
+        "file": "validate-tickets.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-tracker-fresh": {
+        "file": "validate-tracker-fresh.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-use-cases": {
+        "file": "validate-use-cases.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-user-stories": {
+        "file": "validate-user-stories.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-ux-spec": {
+        "file": "validate-ux-spec.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-wcag-coverage": {
+        "file": "validate-wcag-coverage.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      }
+    }
+  },
+  "protocols": {
+    "overview": "Shared protocol specifications and agent coordination patterns",
+    "count": 8,
+    "items": {
+      "AUTONOMY_PROTOCOL": {
+        "file": "AUTONOMY_PROTOCOL.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "CHALLENGER_PROTOCOL": {
+        "file": "CHALLENGER_PROTOCOL.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "FIX_VERIFY_LOOP": {
+        "file": "FIX_VERIFY_LOOP.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "GATE_SCORING_PROTOCOL": {
+        "file": "GATE_SCORING_PROTOCOL.md",
+        "description": "name: gate-scoring-protocol"
+      },
+      "HANDOFF_QUICK_REF": {
+        "file": "HANDOFF_QUICK_REF.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "HANDOFF_TEMPLATES": {
+        "file": "HANDOFF_TEMPLATES.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "MICRO_LOOP": {
+        "file": "MICRO_LOOP.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "RALPH_WIGGUM_LOOP": {
+        "file": "RALPH_WIGGUM_LOOP.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      }
+    }
+  }
+}
