@@ -500,7 +500,7 @@
         "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
