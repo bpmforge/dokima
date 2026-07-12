@@ -169,3 +169,7 @@ Brad signed SW-001 (docs/work/SECURITY_WAIVERS.md) accepting the plan.json boots
 ## 2026-07-12 — 3 false blocks landed by hand + conductor gate fixed
 
 W0-05 (receipts, keyed-HMAC anchor), W1-01 (full content import: 85 experts+70 validators+8 protocols+index.json), W1-03 (micro-loop) were all FIXED by the model ladder but false-blocked by the conductor: reviewer APPROVED yet sticky bookkeeping held stale findings unresolved. Root-caused + fixed the merge gate (trust informed APPROVE; block only on freshly-raised or explicitly-still-PRESENT findings). Full gate green on all three.
+
+## 2026-07-12 — real validators wired into the conductor gate
+
+content/validators (imported W1-01) now feed the per-ticket gate. Reliable/objective validators (validate-file-size, validate-circular-deps) run diff-scoped as HARD gates — a ticket only answers for violations IN ITS OWN diff, never pre-existing debt. Grep-heuristic validators (validate-code-health, validate-dead-code) are NOISY on TS (magic-numbers-in-comments, bogus-unreachable) so they run ADVISORY: their diff-scoped findings anchor the LLM review, which adjudicates real-vs-false-positive — the source systems' "script floor + agent verified pass" design. Config: conductor.config.json validators.gate/advisory (promote to gate once red-fixture-calibrated).

@@ -11,6 +11,12 @@
     ["pnpm", ["test"]]
   ],
   "gateTimeoutMin": 15,
+  "validators": {
+    "dir": "content/validators",
+    "gate": ["validate-file-size", "validate-circular-deps"],
+    "advisory": ["validate-code-health", "validate-dead-code"],
+    "$note": "gate[] = reliable/objective validators, run diff-scoped as HARD gates. advisory[] = grep-heuristic validators (noisy on TS: magic-numbers-in-comments, bogus-unreachable) — their findings ANCHOR the LLM review instead of blocking, matching the source system's 'script floor + agent verified pass' design. Promote a validator to gate[] once red-fixture-calibrated."
+  },
   "remotes": ["github", "origin"],
   "alwaysOk": [
     "plan.json", "docs/STATUS.md", "docs/work/**", "docs/TECH_STACK.md",

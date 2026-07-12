@@ -194,6 +194,31 @@ async function runSession(prompt, model, label, cwd) {
   throw new Error('limit retries exhausted');
 }
 
+// Run named validators from content/validators in the worktree. Each emits a JSON
+// summary line: {validator,gaps,exit,items:[{category,detail}]}. Findings are
+// DIFF-SCOPED to files this ticket changed — a ticket answers for its own diff,
+// not the repo's pre-existing debt (and it keeps unrelated validator noise out).
+function runValidators(wt, changed, names) {
+  const dir = CONFIG.validators?.dir ?? 'content/validators';
+  const out = [];
+  for (const name of names || []) {
+    const script = resolve(wt, dir, `${name}.sh`);
+    if (!existsSync(script)) continue;
+    let raw = '';
+    try { raw = sh('bash', [script, '.'], { cwd: wt, timeout: 5 * 60_000 }); }
+    catch (e) { raw = String(e.stdout || ''); } // validator exits 1 on gaps -> throws; JSON is on stdout
+    const line = raw.split('\n').find((l) => l.includes(`"validator":"${name}"`));
+    if (!line) continue;
+    let parsed; try { parsed = JSON.parse(line); } catch { continue; }
+    for (const it of parsed.items || []) {
+      if (it.detail && changed.some((f) => it.detail.includes(f))) {
+        out.push(`[${name}${it.category ? ':' + it.category : ''}] ${it.detail}`.slice(0, 280));
+      }
+    }
+  }
+  return out;
+}
+
 // ---------- gates (run OUTSIDE the session, in the ticket's worktree) ----------
 function runGates(t, branch, wt) {
   const gaps = [];
@@ -204,14 +229,21 @@ function runGates(t, branch, wt) {
   const scopeRes = t.write_scope.map(globToRegex);
   const outOfScope = changed.filter((f) => !scopeRes.some((r) => r.test(f)) && !ALWAYS_OK.some((r) => r.test(f)));
   if (outOfScope.length) gaps.push(`out-of-scope edits: ${outOfScope.join(', ')}`);
+  let advisory = [];
   if (existsSync(resolve(wt, CONFIG.toolchainMarker)) && !DRY) {
     try { sh(CONFIG.install[0], CONFIG.install[1], { cwd: wt, timeout: 10 * 60_000 }); } catch (e) { gaps.push(`install failed: ${String(e.stdout || e.message).slice(-300)}`); }
     for (const [cmd, cmdArgs] of CONFIG.gates) {
       try { sh(cmd, cmdArgs, { cwd: wt, timeout: CONFIG.gateTimeoutMin * 60_000 }); }
       catch (e) { gaps.push(`${cmd} ${cmdArgs[0]} failed: ${String(e.stdout || e.message).slice(-800)}`); }
     }
+    // deterministic validator gates (diff-scoped) — hard gaps
+    const vGaps = runValidators(wt, changed, CONFIG.validators?.gate);
+    if (vGaps.length) { log('validators.gate', { ticket: t.id, msg: `${vGaps.length} diff-scoped violation(s)` }); gaps.push(...vGaps); }
+    // heuristic validators — anchor the review (verified, not blocking)
+    advisory = runValidators(wt, changed, CONFIG.validators?.advisory);
+    if (advisory.length) log('validators.advisory', { ticket: t.id, msg: `${advisory.length} finding(s) fed to review` });
   }
-  return gaps;
+  return { gaps, advisory };
 }
 
 // ---------- prompts ----------
@@ -231,10 +263,11 @@ Rules of engagement:
 - If genuinely blocked after one honest attempt: set status blocked with a notes entry explaining exactly what is missing, then stop.
 - An external conductor independently verifies your work; nothing you print is trusted, only repo state.`;
 
-const reviewPrompt = (t, diff, prior = []) => `You are an independent code reviewer (you did NOT write this code). Review the diff for ticket ${t.id} — ${t.title}.
+const reviewPrompt = (t, diff, prior = [], advisory = []) => `You are an independent code reviewer (you did NOT write this code). Review the diff for ticket ${t.id} — ${t.title}.
 Acceptance criteria:\n${t.acceptance.map((a) => `- ${a}`).join('\n')}
 
 Review dimensions: correctness vs acceptance; error handling (no swallowed errors); security (secrets, injection, trust-boundary violations — this project's law: agent sessions untrusted, receipts required, maker!=verifier; for crypto/hash/integrity code verify the primitive is actually sound — e.g. a tamper-evident hash preimage must be injective/domain-separated); tests real and failing-capable (no assertion-free tests, no gamed fixtures); write-scope respected; no dead code or stub theater; matches docs/ARCHITECTURE.md module rules.
+${advisory.length ? `\nDETERMINISTIC VALIDATOR FINDINGS on this diff (grep-heuristic — some are false positives, e.g. numbers inside comments/strings/status-codes, or "unreachable" on valid early-return code). ADJUDICATE each: is it a REAL defect worth a finding, or a false positive? Only raise the real ones:\n${advisory.map((a, i) => `  ${i + 1}. ${a}`).join('\n')}\n` : ''}
 ${prior.length ? `\nPRIOR HIGH/CRITICAL FINDINGS raised on EARLIER attempts of THIS ticket. You MUST inspect the current diff and judge each one — a finding is NOT resolved merely because you would not raise it yourself; verify in the code that it was actually fixed:\n${prior.map((s, i) => `  ${i + 1}. [${s.severity}] ${s.file}: ${s.issue}`).join('\n')}\n` : ''}
 Respond with ONLY a JSON object:
 {"verdict":"APPROVE"|"FIX",
@@ -282,11 +315,12 @@ async function executeTicket(t) {
       resetStatus(wt, t.id);
     }
     await runSession(codingPrompt(t, gaps), model, `code:${t.id}`, wt);
-    gaps = runGates(t, branch, wt);
+    const g = runGates(t, branch, wt);
+    gaps = g.gaps;
     if (gaps.length) { log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) }); continue; }
 
     const diff = git('diff', `main...${branch}`).slice(0, 180_000);
-    const r = await runSession(reviewPrompt(t, diff, sticky), MODELS.reviewer, `review:${t.id}`, wt);
+    const r = await runSession(reviewPrompt(t, diff, sticky, g.advisory), MODELS.reviewer, `review:${t.id}`, wt);
     const verdict = parseJson(r.out) ?? { verdict: 'FIX', findings: [{ severity: 'HIGH', file: '-', issue: 'review output unparseable', fix: 're-run review' }], prior_status: [] };
 
     // Findings the CURRENT pass raises fresh, and prior findings the reviewer — who is
