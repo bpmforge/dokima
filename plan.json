@@ -317,7 +317,7 @@
         "Calibration bias per (model,phase): rescue-only, clamped, min-sample gated, applied only when an anchor is present — property tests prove a DONE can never be manufactured from ungrounded confidence (FR-L3)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": []
     },
     {
