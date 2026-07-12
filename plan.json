@@ -453,8 +453,10 @@
         "Auth via google-auth-library ADC or service-account JSON ref; region + project settings per docs/TECH_STACK.md; contract suite on recorded fixtures (D-007)"
       ],
       "points": 5,
-      "status": "in_progress",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-12: done. VertexProvider (packages/gateway/src/providers/vertex.ts) over the regional Gemini generateContent/countTokens REST endpoint (docs.cloud.google.com verified 2026-07-12); ADC auth (D-007) hand-rolled in vertex-auth.ts (explicit service-account JSON ref -> GOOGLE_APPLICATION_CREDENTIALS -> well-known gcloud ADC file -> RS256 JWT-bearer or refresh_token exchange via node:crypto, no google-auth-library dependency since packages/gateway/package.json is outside this ticket's vertex* write_scope, same constraint W2-01/02/03 hit). Absence of ADC never crashes: resolves to undefined, surfaced as a typed ProviderAuthError/health error only when actually used (TECH_STACK.md trap). listModels/getContextLength are intentionally static-config-only (no verified discovery endpoint, same scope decision as oai-compat.ts's context-length) rather than guessed; health()/warmUp() verify ADC token acquisition always, plus a free countTokens probe only when the caller supplies healthCheckModel (never a hardcoded model id). Flat vertex*.ts siblings (book-style split, all <=293 lines, matching the copilot.ts file-size-gate precedent and the single-segment write_scope glob). 36 new tests (104 total in providers/vertex*.test.ts) incl. real RSA-keypair JWT sign+verify, temp-file ADC discovery, token caching/refresh, and 401/429/500/unreachable/timeout classification, all against recorded fixtures, no live calls. Not re-exported from providers/index.ts (outside write_scope) — same gap left by W2-01/02. Gate: pnpm lint && pnpm typecheck && pnpm test = 386 passed | 1 skipped (pre-existing) workspace-wide."
+      ]
     },
     {
       "id": "W2-05",
