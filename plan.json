@@ -400,7 +400,7 @@
         "Both adapters pass the provider contract suite against recorded fixtures; streaming + non-streaming; API keys via credential refs only (FR-S2)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
