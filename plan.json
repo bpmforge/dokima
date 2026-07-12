@@ -378,7 +378,7 @@
         "Usage metering normalized (tokens in/out, cost table; local = $0 but metered); recorded fixtures, never live calls in CI (docs/TESTING.md)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
