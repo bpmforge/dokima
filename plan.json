@@ -340,7 +340,7 @@
         "Session runs inside the ticket worktree; write-scope violations detected by diff and reported; session output parsed defensively (JSON contract -> embedded JSON -> fenced fallback)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
