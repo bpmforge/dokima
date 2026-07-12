@@ -129,10 +129,11 @@
         "Red fixtures (docs/TESTING.md planted-defect harness, first slice): touched lock-file equivalent, fabricated receipt JSON, and stale-hash receipt all FAIL verification"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         "CONDUCTOR 2026-07-11T22:04:33.792Z: blocked after 3 attempts. Branch feat/w0-05-auto kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: Receipts are persisted only as `gate.receipt_minted`/`gate.waived` event payloads reconstructed by scanning listEvents(); no `receipts` table exists, contradicting docs/DATABASE.md §2, which mandates a dedicated `receipts` table as a durable, non-projection anchor alongside the event (\"the chain proves when, the row holds what\"). Worse, this isn't a simple oversight: plan.json's own write_scope for W0-05 (`packages/events/src/receipts*`, `packages/events/test/receipts*`) excludes `migrations/`, so the documented table literally cannot be built",
-        "CONDUCTOR-FIX 2026-07-11: write_scope excluded packages/events/migrations/** so the DATABASE.md-mandated receipts TABLE could not be built (models correctly blocked on it). Added migrations to scope; reset to todo. Rebuild receipts as a durable table + migration, not event-payload reconstruction."
+        "CONDUCTOR-FIX 2026-07-11: write_scope excluded packages/events/migrations/** so the DATABASE.md-mandated receipts TABLE could not be built (models correctly blocked on it). Added migrations to scope; reset to todo. Rebuild receipts as a durable table + migration, not event-payload reconstruction.",
+        "CONDUCTOR 2026-07-12T00:09:59.097Z: blocked after 3 attempts. Branch sw/w0-05 kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: verifyReceipt's anchor check (findMintEvent) only correlates a receipt by matching `payload.receiptId` on any `gate.receipt_minted`/`gate.waived` event — it does not bind the event to the receipt's actual content (kind, validators, inputTreeHash, signedBy), and `appendEvent` (packages/events/src/append.ts) is a public, unguarded function usable by any code with a `log.db` handle — the same class of access the ticket's own 'fabricated receipt JSON' test already exercises via a raw `INSERT INTO receipts`. That means a forged receipts row (any ki"
       ]
     },
     {
