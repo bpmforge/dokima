@@ -1,4 +1,3 @@
-import { generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   ProviderAuthError,
@@ -7,6 +6,7 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import type { CostTable } from './usage.js';
+import type { VertexAuthClientFactory } from './vertex-auth.js';
 import { createVertexProvider, VertexProvider } from './vertex.js';
 import {
   authFailureFixture,
@@ -23,7 +23,23 @@ interface Call {
   body: unknown;
 }
 
-/** Answers the OAuth token endpoint with a fixed token, and the Vertex API path with `handler`. No network, per docs/TESTING.md. */
+const FIXTURE_TOKEN = tokenSuccessFixture.access_token;
+
+/** Network-free auth: returns the fixture token (auth is exercised in vertex-auth.test.ts). */
+const okAuth: VertexAuthClientFactory = () => ({
+  getAccessToken: async () => FIXTURE_TOKEN,
+});
+
+/** Network-free auth whose token acquisition fails, for the "not configured" health path. */
+const failAuth =
+  (error: Error): VertexAuthClientFactory =>
+  () => ({
+    getAccessToken: async () => {
+      throw error;
+    },
+  });
+
+/** Records every Vertex REST call and answers it with `handler`. No network, per docs/TESTING.md. */
 function fakeFetch(
   handler: (call: Call) => {
     status: number;
@@ -34,17 +50,8 @@ function fakeFetch(
   calls: Call[] = [],
 ): { fetchImpl: typeof fetch; calls: Call[] } {
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input.toString();
-    if (url === 'https://oauth2.googleapis.com/token') {
-      calls.push({
-        url,
-        headers: Object.fromEntries(new Headers(init?.headers).entries()),
-        body: init?.body,
-      });
-      return new Response(JSON.stringify(tokenSuccessFixture), { status: 200 });
-    }
     const call: Call = {
-      url,
+      url: typeof input === 'string' ? input : input.toString(),
       headers: Object.fromEntries(new Headers(init?.headers).entries()),
       body: init?.body ? JSON.parse(init.body as string) : undefined,
     };
@@ -63,21 +70,16 @@ const SAMPLE_COST: CostTable = {
   'gemini-2.5-pro': { inputPerMillion: 1.25, outputPerMillion: 5 },
 };
 
-const { privateKey: FIXTURE_PRIVATE_KEY } = generateKeyPairSync('rsa', {
-  modulusLength: 2048,
-  publicKeyEncoding: { type: 'spki', format: 'pem' },
-  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-});
-
 const BASE_CONFIG = {
   project: 'fixture-project',
   location: 'us-central1',
   serviceAccountJson: JSON.stringify({
     type: 'service_account',
     client_email: 'fixture@fixture-project.iam.gserviceaccount.com',
-    private_key: FIXTURE_PRIVATE_KEY,
+    private_key: '-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----\n',
   }),
   costTable: SAMPLE_COST,
+  authClientFactory: okAuth,
 };
 
 describe('VertexProvider construction', () => {
@@ -120,9 +122,7 @@ describe('VertexProvider — chat()', () => {
     expect(chatCall?.url).toBe(
       'https://us-central1-aiplatform.googleapis.com/v1/projects/fixture-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent',
     );
-    expect(chatCall?.headers.authorization).toBe(
-      `Bearer ${tokenSuccessFixture.access_token}`,
-    );
+    expect(chatCall?.headers.authorization).toBe(`Bearer ${FIXTURE_TOKEN}`);
   });
 
   it('classifies a 401 as ProviderAuthError', async () => {
@@ -186,11 +186,7 @@ describe('VertexProvider — chat()', () => {
   it('serializes calls through the per-endpoint RequestQueue', async () => {
     let concurrent = 0;
     let maxConcurrent = 0;
-    const fetchImpl = (async (input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input.toString();
-      if (url === 'https://oauth2.googleapis.com/token') {
-        return new Response(JSON.stringify(tokenSuccessFixture), { status: 200 });
-      }
+    const fetchImpl = (async () => {
       concurrent += 1;
       maxConcurrent = Math.max(maxConcurrent, concurrent);
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -239,15 +235,15 @@ describe('VertexProvider — health()/warmUp()', () => {
     expect(calls.some((c) => c.url.includes(':countTokens'))).toBe(true);
   });
 
-  it('reports unreachable, not a thrown crash, when the endpoint cannot be reached', async () => {
-    const fetchImpl = (async (input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input.toString();
-      if (url === 'https://oauth2.googleapis.com/token') {
-        throw new Error('ECONNREFUSED');
-      }
-      return new Response('{}', { status: 200 });
+  it('reports unreachable, not a thrown crash, when the Vertex endpoint cannot be reached', async () => {
+    const fetchImpl = (async () => {
+      throw new Error('ECONNREFUSED');
     }) as typeof fetch;
-    const provider = new VertexProvider({ ...BASE_CONFIG, fetchImpl });
+    const provider = new VertexProvider({
+      ...BASE_CONFIG,
+      fetchImpl,
+      healthCheckModel: 'gemini-2.5-flash',
+    });
     const health = await provider.health();
     expect(health.status).toBe('unreachable');
   });
@@ -255,8 +251,7 @@ describe('VertexProvider — health()/warmUp()', () => {
   it('reports "not configured" ADC as an error status, never an uncaught crash', async () => {
     const provider = new VertexProvider({
       ...BASE_CONFIG,
-      serviceAccountJson: undefined,
-      credentialsFilePath: '/does/not/exist.json',
+      authClientFactory: failAuth(new Error('Could not load the default credentials')),
     });
     const health = await provider.health();
     expect(health.status).toBe('error');

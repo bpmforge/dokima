@@ -1,251 +1,133 @@
-import { createVerify, generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  ProviderAuthError,
-  ProviderResponseShapeError,
-  ProviderTimeoutError,
-} from './errors.js';
-import {
-  authorizedUserCredentialsFixture,
-  tokenInvalidGrantFixture,
-  tokenSuccessFixture,
-} from './vertex-fixtures.js';
+import { describe, expect, it } from 'vitest';
+import { ProviderAuthError } from './errors.js';
+import { authorizedUserCredentialsFixture } from './vertex-fixtures.js';
 import {
   ensureVertexAccessToken,
-  resolveAdcCredentials,
-  signServiceAccountJwt,
-  type ServiceAccountKey,
+  type VertexAuthClientFactory,
+  type VertexAuthClientOptions,
   type VertexAuthRuntime,
 } from './vertex-auth.js';
 
-const { publicKey, privateKey } = generateKeyPairSync('rsa', {
-  modulusLength: 2048,
-  publicKeyEncoding: { type: 'spki', format: 'pem' },
-  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-});
+const CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+const FIXTURE_TOKEN = 'ya29.fixture-access-token';
 
-const SERVICE_ACCOUNT_KEY: ServiceAccountKey = {
+const SERVICE_ACCOUNT_JSON = {
   type: 'service_account',
   client_email: 'fixture@fixture-project.iam.gserviceaccount.com',
-  private_key: privateKey,
+  private_key: '-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----\n',
   project_id: 'fixture-project',
-  token_uri: 'https://oauth2.googleapis.com/token',
 };
 
-interface Call {
-  url: string;
-  headers: Record<string, string>;
-  body: string;
-}
-
-function fakeFetch(
-  handler: (call: Call) => { status: number; statusText?: string; body: unknown },
-  calls: Call[] = [],
-): { fetchImpl: typeof fetch; calls: Call[] } {
-  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
-    const call: Call = {
-      url: typeof input === 'string' ? input : input.toString(),
-      headers: Object.fromEntries(new Headers(init?.headers).entries()),
-      body: (init?.body as string) ?? '',
+/**
+ * A network-free stand-in for `GoogleAuth` (docs/TESTING.md §2/§7): records the
+ * options it was constructed with and returns a fixed token (or throws), so the
+ * tests exercise vertex-auth's real credential-path selection and error mapping
+ * without ever hitting Google's token endpoint.
+ */
+function fakeAuth(opts: { token?: string | null; error?: Error } = {}): {
+  factory: VertexAuthClientFactory;
+  captured: VertexAuthClientOptions[];
+  clientCount: () => number;
+} {
+  const captured: VertexAuthClientOptions[] = [];
+  let clients = 0;
+  const factory: VertexAuthClientFactory = (options) => {
+    captured.push(options);
+    clients += 1;
+    return {
+      getAccessToken: async () => {
+        if (opts.error) throw opts.error;
+        return opts.token === undefined ? FIXTURE_TOKEN : opts.token;
+      },
     };
-    calls.push(call);
-    const result = handler(call);
-    return new Response(JSON.stringify(result.body), {
-      status: result.status,
-      statusText: result.statusText,
-      headers: { 'content-type': 'application/json' },
-    });
-  }) as typeof fetch;
-  return { fetchImpl, calls };
+  };
+  return { factory, captured, clientCount: () => clients };
 }
 
 function runtime(overrides: Partial<VertexAuthRuntime> = {}): VertexAuthRuntime {
-  return {
-    id: 'vertex',
-    fetchImpl: fetch,
-    requestTimeoutMs: 5_000,
-    now: () => 1_700_000_000_000,
-    ...overrides,
-  };
+  return { id: 'vertex', ...overrides };
 }
 
-describe('signServiceAccountJwt', () => {
-  it('produces a valid RS256 JWT with the documented claim shape', () => {
-    const now = () => 1_700_000_000_000;
-    const jwt = signServiceAccountJwt(SERVICE_ACCOUNT_KEY, now);
-    const [headerB64, claimsB64, sigB64] = jwt.split('.');
-    expect(headerB64).toBeDefined();
-    expect(claimsB64).toBeDefined();
-    expect(sigB64).toBeDefined();
+describe('ensureVertexAccessToken — credential path selection', () => {
+  it('passes an explicit serviceAccountJson ref to GoogleAuth as parsed credentials', async () => {
+    const { factory, captured } = fakeAuth();
+    const token = await ensureVertexAccessToken(
+      runtime({
+        serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_JSON),
+        authClientFactory: factory,
+      }),
+    );
+    expect(token).toBe(FIXTURE_TOKEN);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.scopes).toBe(CLOUD_PLATFORM_SCOPE);
+    expect(captured[0]?.credentials).toEqual(SERVICE_ACCOUNT_JSON);
+    expect(captured[0]?.keyFilename).toBeUndefined();
+  });
 
-    const header = JSON.parse(Buffer.from(headerB64!, 'base64url').toString('utf8'));
-    expect(header).toEqual({ alg: 'RS256', typ: 'JWT' });
+  it('passes an authorized_user credential ref through as credentials (GoogleAuth runs the refresh-token grant)', async () => {
+    const { factory, captured } = fakeAuth();
+    await ensureVertexAccessToken(
+      runtime({
+        serviceAccountJson: JSON.stringify(authorizedUserCredentialsFixture),
+        authClientFactory: factory,
+      }),
+    );
+    expect(captured[0]?.credentials).toEqual(authorizedUserCredentialsFixture);
+  });
 
-    const claims = JSON.parse(Buffer.from(claimsB64!, 'base64url').toString('utf8'));
-    expect(claims.iss).toBe(SERVICE_ACCOUNT_KEY.client_email);
-    expect(claims.scope).toBe('https://www.googleapis.com/auth/cloud-platform');
-    expect(claims.aud).toBe(SERVICE_ACCOUNT_KEY.token_uri);
-    expect(claims.iat).toBe(1_700_000_000);
-    expect(claims.exp).toBe(1_700_000_000 + 3600);
+  it('passes credentialsFilePath as keyFilename when no serviceAccountJson is given', async () => {
+    const { factory, captured } = fakeAuth();
+    await ensureVertexAccessToken(
+      runtime({ credentialsFilePath: '/tmp/adc.json', authClientFactory: factory }),
+    );
+    expect(captured[0]?.keyFilename).toBe('/tmp/adc.json');
+    expect(captured[0]?.credentials).toBeUndefined();
+  });
 
-    const signature = Buffer.from(sigB64!, 'base64url');
-    const verified = createVerify('RSA-SHA256')
-      .update(`${headerB64}.${claimsB64}`)
-      .verify(publicKey, signature);
-    expect(verified).toBe(true);
+  it('falls back to bare ADC discovery (scopes only) when nothing is configured', async () => {
+    const { factory, captured } = fakeAuth();
+    await ensureVertexAccessToken(runtime({ authClientFactory: factory }));
+    expect(captured[0]).toEqual({ scopes: CLOUD_PLATFORM_SCOPE });
   });
 });
 
-describe('resolveAdcCredentials', () => {
-  let tempDir: string;
-
-  beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), 'vertex-adc-'));
-  });
-
-  afterEach(async () => {
-    await rm(tempDir, { recursive: true, force: true });
-  });
-
-  it('prefers an explicit serviceAccountJson ref over any file', async () => {
-    const credentials = await resolveAdcCredentials(
-      runtime({ serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_KEY) }),
-    );
-    expect(credentials).toEqual(SERVICE_ACCOUNT_KEY);
-  });
-
-  it('reads GOOGLE_APPLICATION_CREDENTIALS-equivalent explicit file path', async () => {
-    const filePath = join(tempDir, 'sa.json');
-    await writeFile(filePath, JSON.stringify(authorizedUserCredentialsFixture));
-    const credentials = await resolveAdcCredentials(
-      runtime({ credentialsFilePath: filePath }),
-    );
-    expect(credentials).toEqual(authorizedUserCredentialsFixture);
-  });
-
-  it('resolves to undefined — never throws — when nothing is configured', async () => {
-    const filePath = join(tempDir, 'missing.json');
-    const credentials = await resolveAdcCredentials(
-      runtime({ credentialsFilePath: filePath }),
-    );
-    expect(credentials).toBeUndefined();
-  });
-});
-
-describe('ensureVertexAccessToken', () => {
-  it('exchanges a service-account JWT for an access token and caches it', async () => {
-    const { fetchImpl, calls } = fakeFetch(() => ({
-      status: 200,
-      body: tokenSuccessFixture,
-    }));
+describe('ensureVertexAccessToken — caching and error mapping', () => {
+  it('reuses one auth client across calls so the library keeps its internal token cache', async () => {
+    const { factory, clientCount } = fakeAuth();
     const rt = runtime({
-      serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_KEY),
-      fetchImpl,
+      serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_JSON),
+      authClientFactory: factory,
     });
-
-    const token = await ensureVertexAccessToken(rt);
-    expect(token).toBe(tokenSuccessFixture.access_token);
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe('https://oauth2.googleapis.com/token');
-    expect(calls[0]?.headers['content-type']).toBe('application/x-www-form-urlencoded');
-    const params = new URLSearchParams(calls[0]?.body);
-    expect(params.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
-    expect(params.get('assertion')).toBeTruthy();
-
-    // Cached: second call makes no new request.
-    const token2 = await ensureVertexAccessToken(rt);
-    expect(token2).toBe(tokenSuccessFixture.access_token);
-    expect(calls).toHaveLength(1);
+    await ensureVertexAccessToken(rt);
+    await ensureVertexAccessToken(rt);
+    expect(clientCount()).toBe(1);
   });
 
-  it('exchanges an authorized_user refresh token via grant_type=refresh_token', async () => {
-    const { fetchImpl, calls } = fakeFetch(() => ({
-      status: 200,
-      body: tokenSuccessFixture,
-    }));
-    const rt = runtime({
-      serviceAccountJson: JSON.stringify(authorizedUserCredentialsFixture),
-      fetchImpl,
-    });
-
-    await ensureVertexAccessToken(rt);
-    const params = new URLSearchParams(calls[0]?.body);
-    expect(params.get('grant_type')).toBe('refresh_token');
-    expect(params.get('client_id')).toBe(authorizedUserCredentialsFixture.client_id);
-    expect(params.get('client_secret')).toBe(
-      authorizedUserCredentialsFixture.client_secret,
-    );
-    expect(params.get('refresh_token')).toBe(
-      authorizedUserCredentialsFixture.refresh_token,
-    );
-  });
-
-  it('refreshes once the cached token is within the refresh buffer of expiry', async () => {
-    let now = 1_700_000_000_000;
-    const { fetchImpl, calls } = fakeFetch(() => ({
-      status: 200,
-      body: tokenSuccessFixture,
-    }));
-    const rt = runtime({
-      serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_KEY),
-      fetchImpl,
-      now: () => now,
-    });
-
-    await ensureVertexAccessToken(rt);
-    expect(calls).toHaveLength(1);
-
-    now += tokenSuccessFixture.expires_in * 1000 - 30_000; // inside the 60s refresh buffer
-    await ensureVertexAccessToken(rt);
-    expect(calls).toHaveLength(2);
-  });
-
-  it('rejects with ProviderAuthError — not a crash — when ADC is not configured', async () => {
+  it('maps a malformed serviceAccountJson ref to ProviderAuthError, not an uncaught SyntaxError', async () => {
+    const { factory } = fakeAuth();
     await expect(
-      ensureVertexAccessToken(runtime({ credentialsFilePath: '/does/not/exist.json' })),
+      ensureVertexAccessToken(
+        runtime({ serviceAccountJson: '{ not json', authClientFactory: factory }),
+      ),
     ).rejects.toThrow(ProviderAuthError);
   });
 
-  it('classifies a token-endpoint failure as ProviderAuthError', async () => {
-    const { fetchImpl } = fakeFetch(() => ({
-      status: tokenInvalidGrantFixture.status,
-      statusText: tokenInvalidGrantFixture.statusText,
-      body: JSON.parse(tokenInvalidGrantFixture.body),
-    }));
-    const rt = runtime({
-      serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_KEY),
-      fetchImpl,
-    });
-    await expect(ensureVertexAccessToken(rt)).rejects.toThrow(ProviderAuthError);
+  it('maps a token-acquisition failure to ProviderAuthError — never a crash', async () => {
+    const { factory } = fakeAuth({ error: new Error('ENOENT: no credentials file') });
+    await expect(
+      ensureVertexAccessToken(
+        runtime({
+          credentialsFilePath: '/does/not/exist.json',
+          authClientFactory: factory,
+        }),
+      ),
+    ).rejects.toThrow(ProviderAuthError);
   });
 
-  it('throws ProviderResponseShapeError when the token response is missing access_token', async () => {
-    const { fetchImpl } = fakeFetch(() => ({ status: 200, body: { expires_in: 3600 } }));
-    const rt = runtime({
-      serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_KEY),
-      fetchImpl,
-    });
-    await expect(ensureVertexAccessToken(rt)).rejects.toThrow(ProviderResponseShapeError);
-  });
-
-  it('classifies a timeout as ProviderTimeoutError', async () => {
-    const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
-      return new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => {
-          const err = new Error('aborted');
-          err.name = 'TimeoutError';
-          reject(err);
-        });
-      });
-    }) as typeof fetch;
-    const rt = runtime({
-      serviceAccountJson: JSON.stringify(SERVICE_ACCOUNT_KEY),
-      fetchImpl,
-      requestTimeoutMs: 5,
-    });
-    await expect(ensureVertexAccessToken(rt)).rejects.toThrow(ProviderTimeoutError);
+  it('rejects with ProviderAuthError when GoogleAuth yields an empty token (not configured)', async () => {
+    const { factory } = fakeAuth({ token: null });
+    await expect(
+      ensureVertexAccessToken(runtime({ authClientFactory: factory })),
+    ).rejects.toThrow(ProviderAuthError);
   });
 });

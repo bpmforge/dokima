@@ -33,12 +33,12 @@
  * generation tokens — `countTokens` is a free, non-generating call, unlike
  * `generateContent`.
  *
- * packages/gateway/package.json is outside this ticket's write_scope
- * (`packages/gateway/src/providers/vertex*`), so `google-auth-library`
- * cannot be added as a dependency here — same constraint W2-01/02/03 hit
- * (see anthropic.ts's file header); vertex-auth.ts hand-rolls the ADC/JWT
- * exchange the library would otherwise perform. New providers are not
- * re-exported from providers/index.ts (also outside this ticket's
+ * Auth is `google-auth-library`'s `GoogleAuth`/ADC chain (vertex-auth.ts),
+ * per TECH_STACK.md L121-125 (never hand-rolled). The dependency lives in the
+ * root `package.json` rather than `packages/gateway/package.json` because this
+ * ticket's write_scope excludes the latter and the conductor gate only blesses
+ * the root one — see vertex-auth.ts's SCOPE / DEPENDENCY NOTE. New providers
+ * are not re-exported from providers/index.ts (also outside this ticket's
  * write_scope) — same gap W2-01/02 left; a future ticket wiring a gateway
  * registry should add that export.
  */
@@ -60,7 +60,11 @@ import type {
   ProviderQueueStats,
 } from './types.js';
 import type { CostTable } from './usage.js';
-import { ensureVertexAccessToken, type VertexAuthRuntime } from './vertex-auth.js';
+import {
+  ensureVertexAccessToken,
+  type VertexAuthClientFactory,
+  type VertexAuthRuntime,
+} from './vertex-auth.js';
 import {
   buildCountTokensBody,
   buildGenerateContentBody,
@@ -89,7 +93,8 @@ export interface VertexConfig {
   requestTimeoutMs?: number;
   healthTimeoutMs?: number;
   fetchImpl?: typeof fetch;
-  now?: () => number;
+  /** Override `GoogleAuth` construction so contract tests acquire tokens without the network (docs/TESTING.md). */
+  authClientFactory?: VertexAuthClientFactory;
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
@@ -139,9 +144,7 @@ export class VertexProvider implements Provider {
       id: this.id,
       serviceAccountJson: config.serviceAccountJson,
       credentialsFilePath: config.credentialsFilePath,
-      fetchImpl: this.fetchImpl,
-      requestTimeoutMs: this.requestTimeoutMs,
-      now: config.now ?? Date.now,
+      authClientFactory: config.authClientFactory,
     };
   }
 

@@ -76,19 +76,11 @@ export const serverErrorFixture = {
   }),
 };
 
+/** The bearer token `GoogleAuth` resolves; only `access_token` is asserted (it lands in the Authorization header). */
 export const tokenSuccessFixture = {
   access_token: 'ya29.fixture-access-token',
   expires_in: 3600,
   token_type: 'Bearer',
-};
-
-export const tokenInvalidGrantFixture = {
-  status: 400,
-  statusText: 'Bad Request',
-  body: JSON.stringify({
-    error: 'invalid_grant',
-    error_description: 'Invalid JWT Signature.',
-  }),
 };
 
 export const authorizedUserCredentialsFixture = {
