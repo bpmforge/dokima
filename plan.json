@@ -29,7 +29,7 @@
       "points": 5,
       "status": "done",
       "notes": [
-        "Dependency-matrix lint enforcement (ARCHITECTURE.md §4, eslint-plugin-boundaries + red fixtures) deferred to a future ticket — no cross-package imports exist yet to enforce against, and it is not in this ticket's acceptance criteria."
+        "Dependency-matrix lint enforcement (ARCHITECTURE.md \u00a74, eslint-plugin-boundaries + red fixtures) deferred to a future ticket \u2014 no cross-package imports exist yet to enforce against, and it is not in this ticket's acceptance criteria."
       ]
     },
     {
@@ -58,8 +58,8 @@
         "CONDUCTOR 2026-07-11: reset to todo after conductor fixes (ENOBUFS maxBuffer + stale-blocked retry reset). Attempt 1 had passed all gates with 1 review finding; retries failed on mechanics, now fixed.",
         "AGENT 2026-07-11: claimed. packages/shared/src/events/** gets the canonical EventEnvelope/Identity contract types only (co-located test); NOT imported by packages/events this ticket, since wiring a subpath export needs packages/shared/package.json and/or src/index.ts, both outside this ticket's write_scope glob. Deferred: a follow-up ticket should add the shared export-map entry and re-point packages/events at the shared contract types.",
         "AGENT 2026-07-11: done. All 4 acceptance criteria met with test coverage (26 tests in packages/events, 4 in packages/shared/src/events). pnpm lint && pnpm typecheck && pnpm test green workspace-wide (113/114, 1 pre-existing opt-in skip). See docs/STATUS.md 2026-07-11 W0-02 entry for details.",
-        "AGENT 2026-07-11: fixed review HIGH finding — identities table lacked append-only triggers. Added BEFORE UPDATE/DELETE triggers on identities (001_init.sql) mirroring events, plus a regression test in db.test.ts. 27/27 tests in packages/events, 114/115 workspace-wide (1 pre-existing opt-in skip); pnpm lint && pnpm typecheck && pnpm test green. Done.",
-        "AGENT 2026-07-11: resume — reverted out-of-scope docs/DATABASE.md edit (restored to main; the append-only-identities rationale lives in code comments + docs/STATUS.md, both in scope). Implementation unchanged. Full gate green: pnpm lint && pnpm typecheck && pnpm test = 114 passed | 1 skipped (27 in packages/events, 4 in packages/shared/src/events). All 4 acceptance criteria covered by tests."
+        "AGENT 2026-07-11: fixed review HIGH finding \u2014 identities table lacked append-only triggers. Added BEFORE UPDATE/DELETE triggers on identities (001_init.sql) mirroring events, plus a regression test in db.test.ts. 27/27 tests in packages/events, 114/115 workspace-wide (1 pre-existing opt-in skip); pnpm lint && pnpm typecheck && pnpm test green. Done.",
+        "AGENT 2026-07-11: resume \u2014 reverted out-of-scope docs/DATABASE.md edit (restored to main; the append-only-identities rationale lives in code comments + docs/STATUS.md, both in scope). Implementation unchanged. Full gate green: pnpm lint && pnpm typecheck && pnpm test = 114 passed | 1 skipped (27 in packages/events, 4 in packages/shared/src/events). All 4 acceptance criteria covered by tests."
       ]
     },
     {
@@ -77,12 +77,12 @@
       "acceptance": [
         "Ticket contract fields per docs/DATABASE.md (lane, write_scope, depends_on, acceptance, verify, manifest, history, evidence, claimed_at); verbs claim/start/close/accept/release/comment as the ONLY mutators, each emitting events",
         "Transition graph enforced; WIP=1 per actor on claim; close refused without manifest + verify exit 0 + attached commits; accept refused when reviewer==owner or manifest lacks the close receipt (FR-T1/T2)",
-        "Conformance tests adapted from source-system ticket semantics (docs/research/source-system-experts.md §6) all green"
+        "Conformance tests adapted from source-system ticket semantics (docs/research/source-system-experts.md \u00a76) all green"
       ],
       "points": 5,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-11: done. Ticket contract + six lifecycle verbs (claim/start/close/accept/release/comment) as the ONLY mutators, folding an in-memory Map<string,Ticket> projection from @shipwright/events (rebuildProjection). Transition graph enforced in one place (transitions.ts); WIP=1 per actor on claim (in_review does NOT count — close is what frees the worker, per BLUEPRINT §3.6 and source-system-amplifier.md \"close-before-next-claim\"); close refused without >=1 file, >=1 commit, verify exit 0, minting a close receipt embedded verbatim in the manifest; accept reads only the stored manifest (no caller override), refuses self-accept (reviewer==owner) or a missing close receipt. Deps-unmet and lane/write-scope disjointness are explicitly deferred to W0-04 (reflow/lanes), matching its write_scope. 23 tests: verbs.test.ts (FR-T1/FR-T2 named), conformance.test.ts (adapted from docs/research/source-system-experts.md §6), and a fast-check property test proving WIP=1 and done-implies-verified-receipt hold after any random verb sequence. Gate: pnpm lint && pnpm typecheck && pnpm test = 138 passed | 1 skipped (pre-existing) workspace-wide."
+        "AGENT 2026-07-11: done. Ticket contract + six lifecycle verbs (claim/start/close/accept/release/comment) as the ONLY mutators, folding an in-memory Map<string,Ticket> projection from @shipwright/events (rebuildProjection). Transition graph enforced in one place (transitions.ts); WIP=1 per actor on claim (in_review does NOT count \u2014 close is what frees the worker, per BLUEPRINT \u00a73.6 and source-system-amplifier.md \"close-before-next-claim\"); close refused without >=1 file, >=1 commit, verify exit 0, minting a close receipt embedded verbatim in the manifest; accept reads only the stored manifest (no caller override), refuses self-accept (reviewer==owner) or a missing close receipt. Deps-unmet and lane/write-scope disjointness are explicitly deferred to W0-04 (reflow/lanes), matching its write_scope. 23 tests: verbs.test.ts (FR-T1/FR-T2 named), conformance.test.ts (adapted from docs/research/source-system-experts.md \u00a76), and a fast-check property test proving WIP=1 and done-implies-verified-receipt hold after any random verb sequence. Gate: pnpm lint && pnpm typecheck && pnpm test = 138 passed | 1 skipped (pre-existing) workspace-wide."
       ]
     },
     {
@@ -106,7 +106,7 @@
       "points": 3,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-11: done. lanes.ts: glob-overlap detector (segment/char-level DP over the same */**/? dialect as packages/git/src/glob.ts, duplicated not imported — tickets may not depend on git per ARCHITECTURE.md §4) + findLaneScopeViolations/validateLaneWriteScopes: same-lane overlap flagged only between active (claimed/in_progress/in_review) tickets, cross-lane overlap flagged at any status (FR-T3, schema error at plan load). reflow.ts: claimable = ready AND unowned AND deps done, recomputed fresh on every call (no cached state to go stale); blocked is a pure overlay over ready+unmet-deps — the six verbs never write it, so blocked<->ready is auto-resolving by construction; isStaleBlocked flags a stored blocked status whose blockers have since completed (board.stale_blocked). Did not touch index.ts (barrel exports) — outside this ticket's write_scope glob; deferred to whichever ticket first wires lanes/reflow into a consumer (board projection, harbormaster claim loop, or a plan-load validator). 29 new tests (13 lanes.test.ts, 5 lanes.property.test.ts fast-check glob-overlap + violation-detection properties, 10 reflow.test.ts, 2 reflow.property.test.ts). Gate: pnpm lint && pnpm typecheck && pnpm test = 167 passed | 1 skipped (168) workspace-wide, 35 test files."
+        "AGENT 2026-07-11: done. lanes.ts: glob-overlap detector (segment/char-level DP over the same */**/? dialect as packages/git/src/glob.ts, duplicated not imported \u2014 tickets may not depend on git per ARCHITECTURE.md \u00a74) + findLaneScopeViolations/validateLaneWriteScopes: same-lane overlap flagged only between active (claimed/in_progress/in_review) tickets, cross-lane overlap flagged at any status (FR-T3, schema error at plan load). reflow.ts: claimable = ready AND unowned AND deps done, recomputed fresh on every call (no cached state to go stale); blocked is a pure overlay over ready+unmet-deps \u2014 the six verbs never write it, so blocked<->ready is auto-resolving by construction; isStaleBlocked flags a stored blocked status whose blockers have since completed (board.stale_blocked). Did not touch index.ts (barrel exports) \u2014 outside this ticket's write_scope glob; deferred to whichever ticket first wires lanes/reflow into a consumer (board projection, harbormaster claim loop, or a plan-load validator). 29 new tests (13 lanes.test.ts, 5 lanes.property.test.ts fast-check glob-overlap + violation-detection properties, 10 reflow.test.ts, 2 reflow.property.test.ts). Gate: pnpm lint && pnpm typecheck && pnpm test = 167 passed | 1 skipped (168) workspace-wide, 35 test files."
       ]
     },
     {
@@ -125,15 +125,15 @@
       ],
       "acceptance": [
         "Receipt record: what ran (validator list/command), exit codes, gap counts, input-file content hash, ts, actor; minted ONLY by real runs through the receipt API (C3); waiver receipts require human signature, agent-name blocklist enforced (FR-P2)",
-        "Verification API: recompute input hash + confirm required-validator currency (the two-way re-check from BLUEPRINT §3.2)",
+        "Verification API: recompute input hash + confirm required-validator currency (the two-way re-check from BLUEPRINT \u00a73.2)",
         "Red fixtures (docs/TESTING.md planted-defect harness, first slice): touched lock-file equivalent, fabricated receipt JSON, and stale-hash receipt all FAIL verification"
       ],
       "points": 5,
       "status": "done",
       "notes": [
-        "CONDUCTOR 2026-07-11T22:04:33.792Z: blocked after 3 attempts. Branch feat/w0-05-auto kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: Receipts are persisted only as `gate.receipt_minted`/`gate.waived` event payloads reconstructed by scanning listEvents(); no `receipts` table exists, contradicting docs/DATABASE.md §2, which mandates a dedicated `receipts` table as a durable, non-projection anchor alongside the event (\"the chain proves when, the row holds what\"). Worse, this isn't a simple oversight: plan.json's own write_scope for W0-05 (`packages/events/src/receipts*`, `packages/events/test/receipts*`) excludes `migrations/`, so the documented table literally cannot be built",
+        "CONDUCTOR 2026-07-11T22:04:33.792Z: blocked after 3 attempts. Branch feat/w0-05-auto kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: Receipts are persisted only as `gate.receipt_minted`/`gate.waived` event payloads reconstructed by scanning listEvents(); no `receipts` table exists, contradicting docs/DATABASE.md \u00a72, which mandates a dedicated `receipts` table as a durable, non-projection anchor alongside the event (\"the chain proves when, the row holds what\"). Worse, this isn't a simple oversight: plan.json's own write_scope for W0-05 (`packages/events/src/receipts*`, `packages/events/test/receipts*`) excludes `migrations/`, so the documented table literally cannot be built",
         "CONDUCTOR-FIX 2026-07-11: write_scope excluded packages/events/migrations/** so the DATABASE.md-mandated receipts TABLE could not be built (models correctly blocked on it). Added migrations to scope; reset to todo. Rebuild receipts as a durable table + migration, not event-payload reconstruction.",
-        "CONDUCTOR 2026-07-12T00:09:59.097Z: blocked after 3 attempts. Branch sw/w0-05 kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: verifyReceipt's anchor check (findMintEvent) only correlates a receipt by matching `payload.receiptId` on any `gate.receipt_minted`/`gate.waived` event — it does not bind the event to the receipt's actual content (kind, validators, inputTreeHash, signedBy), and `appendEvent` (packages/events/src/append.ts) is a public, unguarded function usable by any code with a `log.db` handle — the same class of access the ticket's own 'fabricated receipt JSON' test already exercises via a raw `INSERT INTO receipts`. That means a forged receipts row (any ki",
+        "CONDUCTOR 2026-07-12T00:09:59.097Z: blocked after 3 attempts. Branch sw/w0-05 kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: verifyReceipt's anchor check (findMintEvent) only correlates a receipt by matching `payload.receiptId` on any `gate.receipt_minted`/`gate.waived` event \u2014 it does not bind the event to the receipt's actual content (kind, validators, inputTreeHash, signedBy), and `appendEvent` (packages/events/src/append.ts) is a public, unguarded function usable by any code with a `log.db` handle \u2014 the same class of access the ticket's own 'fabricated receipt JSON' test already exercises via a raw `INSERT INTO receipts`. That means a forged receipts row (any ki",
         "LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is."
       ]
     },
@@ -150,7 +150,7 @@
         "W0-01"
       ],
       "acceptance": [
-        "Create/destroy worktree per ticket on branch sw/<ticket-id>-<slug>; commits stage explicit paths only; write-scope enforcement by diff check — paths outside scope refuse to commit (SC per docs/SECURITY_CONTROLS.md)",
+        "Create/destroy worktree per ticket on branch sw/<ticket-id>-<slug>; commits stage explicit paths only; write-scope enforcement by diff check \u2014 paths outside scope refuse to commit (SC per docs/SECURITY_CONTROLS.md)",
         "Local merge path (no forge) with --no-ff; worktree cleanup verified leak-free in tests"
       ],
       "points": 3,
@@ -177,7 +177,7 @@
       "points": 3,
       "status": "done",
       "notes": [
-        "HANDOFF: no new deps added — packages/shared/package.json is outside write_scope and shared currently has zero deps, so config validation is hand-rolled (isJsonValue/isSettingsMap) rather than zod, and credential storage shells out to macOS `security` (Darwin) + a node:crypto AES-256-GCM encrypted-file vault (SHIPWRIGHT_NO_KEYCHAIN/SHIPWRIGHT_VAULT_KEY, P-003) rather than keytar. Linux libsecret/secret-tool adapter deferred — resolveCredentialStore throws NoKeychainAdapterError (never a silent plaintext fallback) on non-darwin without SHIPWRIGHT_NO_KEYCHAIN. settings.changed events are emitted via an injectable SettingsEventSink (packages/shared cannot import packages/events per ARCHITECTURE §4 law 4, and W0-02 events core is still blocked) — a future ticket must wire a real sink into packages/events. packages/shared/src/index.ts + package.json (both outside write_scope) still need a `./config` re-export/subpath for other packages to consume this module."
+        "HANDOFF: no new deps added \u2014 packages/shared/package.json is outside write_scope and shared currently has zero deps, so config validation is hand-rolled (isJsonValue/isSettingsMap) rather than zod, and credential storage shells out to macOS `security` (Darwin) + a node:crypto AES-256-GCM encrypted-file vault (SHIPWRIGHT_NO_KEYCHAIN/SHIPWRIGHT_VAULT_KEY, P-003) rather than keytar. Linux libsecret/secret-tool adapter deferred \u2014 resolveCredentialStore throws NoKeychainAdapterError (never a silent plaintext fallback) on non-darwin without SHIPWRIGHT_NO_KEYCHAIN. settings.changed events are emitted via an injectable SettingsEventSink (packages/shared cannot import packages/events per ARCHITECTURE \u00a74 law 4, and W0-02 events core is still blocked) \u2014 a future ticket must wire a real sink into packages/events. packages/shared/src/index.ts + package.json (both outside write_scope) still need a `./config` re-export/subpath for other packages to consume this module."
       ]
     },
     {
@@ -202,7 +202,7 @@
       "status": "done",
       "notes": [
         "CONDUCTOR 2026-07-12T03:08:35.148Z: blocked after 3 attempts. Branch sw/w0-08 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: cli/run.ts(43,27): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/run.ts(43,41): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/verify-chain.test.ts(2,60): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/server typecheck: src/cli/verify-chain.ts(6,8): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/web typecheck: Done\npackages/harbormaster typecheck$ tsc --noEmit\napps/s",
-        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
+        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) \u2014 the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine \u2014 only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
       ]
     },
     {
@@ -226,7 +226,7 @@
       "points": 5,
       "status": "done",
       "notes": [
-        "CONDUCTOR 2026-07-12T00:34:51.175Z: blocked after 3 attempts. Branch sw/w1-01 kept. Gaps: [UNRESOLVED HIGH] content/index.json: The diff contains zero changes to content/index.json, content/validators/, or content/protocols/ (HANDOFF, micro-loop, gate-scoring, autonomy). Only content/experts/ files are present in this diff. — fix: Include content/index.json manifest with role/cluster metadata for every item, content/validators/ full pack, and content/protocols/ docs (HANDOFF, micro-loop, gate-scoring, autonomy) with provenance headers, or clarify this is a partial diff and confirm the full ticket diff includes them. | [UNRESOLVED HIGH] content/experts/ (roster completeness): Accept",
+        "CONDUCTOR 2026-07-12T00:34:51.175Z: blocked after 3 attempts. Branch sw/w1-01 kept. Gaps: [UNRESOLVED HIGH] content/index.json: The diff contains zero changes to content/index.json, content/validators/, or content/protocols/ (HANDOFF, micro-loop, gate-scoring, autonomy). Only content/experts/ files are present in this diff. \u2014 fix: Include content/index.json manifest with role/cluster metadata for every item, content/validators/ full pack, and content/protocols/ docs (HANDOFF, micro-loop, gate-scoring, autonomy) with provenance headers, or clarify this is a partial diff and confirm the full ticket diff includes them. | [UNRESOLVED HIGH] content/experts/ (roster completeness): Accept",
         "LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is."
       ]
     },
@@ -252,7 +252,7 @@
       "status": "done",
       "notes": [
         "CONDUCTOR 2026-07-12T03:55:11.801Z: blocked after 3 attempts. Branch sw/w1-02 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: eceipt.ts(2,3): error TS2305: Module '\"@shipwright/events\"' has no exported member 'mintReceipt'.\npackages/validators typecheck: src/receipt.ts(4,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptInputFile'.\npackages/validators typecheck: src/receipt.ts(5,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptKind'.\npackages/validators typecheck: src/receipt.ts(6,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptRecord'.\npackages/validators t",
-        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
+        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) \u2014 the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine \u2014 only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
       ]
     },
     {
@@ -269,13 +269,13 @@
         "W0-02"
       ],
       "acceptance": [
-        "runItemMicroLoop equivalent per BLUEPRINT §3.5: criterion restatement (refuse-to-loop returns BLOCKED when no checkable criterion), bounded passes, specific-gap feedback, no-progress kill on identical gap checksum (FR-L1)",
-        "Conformance tests adapted from source micro-loop semantics (docs/research/source-system-foreman-jarvis.md §2) green with a fake model"
+        "runItemMicroLoop equivalent per BLUEPRINT \u00a73.5: criterion restatement (refuse-to-loop returns BLOCKED when no checkable criterion), bounded passes, specific-gap feedback, no-progress kill on identical gap checksum (FR-L1)",
+        "Conformance tests adapted from source micro-loop semantics (docs/research/source-system-foreman-jarvis.md \u00a72) green with a fake model"
       ],
       "points": 5,
       "status": "done",
       "notes": [
-        "CONDUCTOR 2026-07-12T00:51:01.594Z: blocked after 3 attempts. Branch sw/w1-03 kept. Gaps: [UNRESOLVED HIGH] packages/loop/src/micro-loop.ts: computeGapChecksum's template literal (`${gap.id}\\x00${gap.description}`) and the `.join('\\x01')` call contain literal raw NUL (0x00) and SOH (0x01) bytes typed directly into the source file rather than the escape-sequence text `\\x00`/`\\x01`. This makes the file non-text: `file` reports it as 'data', and git classifies it as binary (confirmed — this diff itself shows 'Binary files /dev/null and b/packages/loop/src/micro-loop.ts differ' instead of a line-by-line diff, and `git show --stat`/`git diff` produce no output for this file at all). The",
+        "CONDUCTOR 2026-07-12T00:51:01.594Z: blocked after 3 attempts. Branch sw/w1-03 kept. Gaps: [UNRESOLVED HIGH] packages/loop/src/micro-loop.ts: computeGapChecksum's template literal (`${gap.id}\\x00${gap.description}`) and the `.join('\\x01')` call contain literal raw NUL (0x00) and SOH (0x01) bytes typed directly into the source file rather than the escape-sequence text `\\x00`/`\\x01`. This makes the file non-text: `file` reports it as 'data', and git classifies it as binary (confirmed \u2014 this diff itself shows 'Binary files /dev/null and b/packages/loop/src/micro-loop.ts differ' instead of a line-by-line diff, and `git show --stat`/`git diff` produce no output for this file at all). The",
         "LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is."
       ]
     },
@@ -316,7 +316,7 @@
       ],
       "acceptance": [
         "Anchor interface (gather -> facts into prompt); tool anchor wired to validator/scanner output; challenger + memory anchor interfaces defined with stub implementations (full wiring W5/W7) (FR-L2)",
-        "Calibration bias per (model,phase): rescue-only, clamped, min-sample gated, applied only when an anchor is present — property tests prove a DONE can never be manufactured from ungrounded confidence (FR-L3)"
+        "Calibration bias per (model,phase): rescue-only, clamped, min-sample gated, applied only when an anchor is present \u2014 property tests prove a DONE can never be manufactured from ungrounded confidence (FR-L3)"
       ],
       "points": 3,
       "status": "done",
@@ -338,13 +338,13 @@
         "W0-06"
       ],
       "acceptance": [
-        "Typed HANDOFF (role, ticket, context packet, write-scope, produce, verify) rendered to the universal block format (BLUEPRINT §4); child-process session runner returns a Completion Manifest; thinking-strip removes reasoning blocks from history and artifacts",
+        "Typed HANDOFF (role, ticket, context packet, write-scope, produce, verify) rendered to the universal block format (BLUEPRINT \u00a74); child-process session runner returns a Completion Manifest; thinking-strip removes reasoning blocks from history and artifacts",
         "Session runs inside the ticket worktree; write-scope violations detected by diff and reported; session output parsed defensively (JSON contract -> embedded JSON -> fenced fallback)"
       ],
       "points": 5,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-12: done. handoff.ts: typed Handoff -> renderHandoff() to the exact BLUEPRINT §4 ════-delimited block; HandoffTicket is a local minimal projection (id, title), not @shipwright/tickets' Ticket, since loop may not import tickets (ARCHITECTURE.md §4 dependency matrix). session-manifest.ts: CompletionManifest shape matches API_DESIGN.md §4 exactly (verify.exit, not exitCode); stripThinking removes <think>...</think> (SRS FR-L5) before any parsing; parseCompletionManifest is three-tier defensive (whole-output JSON contract -> embedded JSON via a string-aware balanced-brace scan -> fenced code block). session-scope.ts: detectScopeViolations (basic glob classification, same */**/? dialect as packages/git/src/glob.ts, duplicated not imported per the same tickets/loop precedent from W0-04) + computeChangedPaths (real `git diff --name-only` + `git ls-files --others` via node:child_process directly — no execa dependency needed since package.json is outside this ticket's write_scope). session.ts: runSession renders the HANDOFF, spawns via an injected SpawnSession (never hardcodes an agent CLI or imports gateway), strips thinking, defensively parses the manifest, and reports scope violations from the real diff independent of the session's own claims (SC-02 two-trust-level split). createChildProcessSpawn is a real node:child_process implementation, defaulting to a PATH-only env (not process.env) so an untrusted session never default-inherits parent credentials (SC-03/SC-07) — caught and fixed before close via the advisor's independent review pass, with a planted-secret regression test. Did not touch packages/loop/src/index.ts (barrel) — outside this ticket's write_scope glob; deferred to whichever ticket first wires this into a consumer (harbormaster, W3-01). 44 new tests across handoff/session-manifest/session-scope/session; the scope-check and child-process tests use real temp git repos and a real `node -e` child process, no mocks. Gate: pnpm lint && pnpm typecheck && pnpm test = 350 passed | 1 skipped (pre-existing) workspace-wide, 53 test files."
+        "AGENT 2026-07-12: done. handoff.ts: typed Handoff -> renderHandoff() to the exact BLUEPRINT \u00a74 \u2550\u2550\u2550\u2550-delimited block; HandoffTicket is a local minimal projection (id, title), not @shipwright/tickets' Ticket, since loop may not import tickets (ARCHITECTURE.md \u00a74 dependency matrix). session-manifest.ts: CompletionManifest shape matches API_DESIGN.md \u00a74 exactly (verify.exit, not exitCode); stripThinking removes <think>...</think> (SRS FR-L5) before any parsing; parseCompletionManifest is three-tier defensive (whole-output JSON contract -> embedded JSON via a string-aware balanced-brace scan -> fenced code block). session-scope.ts: detectScopeViolations (basic glob classification, same */**/? dialect as packages/git/src/glob.ts, duplicated not imported per the same tickets/loop precedent from W0-04) + computeChangedPaths (real `git diff --name-only` + `git ls-files --others` via node:child_process directly \u2014 no execa dependency needed since package.json is outside this ticket's write_scope). session.ts: runSession renders the HANDOFF, spawns via an injected SpawnSession (never hardcodes an agent CLI or imports gateway), strips thinking, defensively parses the manifest, and reports scope violations from the real diff independent of the session's own claims (SC-02 two-trust-level split). createChildProcessSpawn is a real node:child_process implementation, defaulting to a PATH-only env (not process.env) so an untrusted session never default-inherits parent credentials (SC-03/SC-07) \u2014 caught and fixed before close via the advisor's independent review pass, with a planted-secret regression test. Did not touch packages/loop/src/index.ts (barrel) \u2014 outside this ticket's write_scope glob; deferred to whichever ticket first wires this into a consumer (harbormaster, W3-01). 44 new tests across handoff/session-manifest/session-scope/session; the scope-check and child-process tests use real temp git repos and a real `node -e` child process, no mocks. Gate: pnpm lint && pnpm typecheck && pnpm test = 350 passed | 1 skipped (pre-existing) workspace-wide, 53 test files."
       ]
     },
     {
@@ -370,8 +370,8 @@
       "points": 3,
       "status": "done",
       "notes": [
-        "CONDUCTOR 2026-07-12T12:01:02.833Z: blocked after 3 attempts. Branch sw/w1-07 kept. Gaps: [HIGH] e2e/toy-project/harbormaster-lite.ts: resolveInsideCwd() only does string-based path containment (rejects absolute paths and post-resolve '..' escapes) — it never resolves symlinks. A malicious/compromised session can create a symlink inside its own writeScope (e.g. `src/leak.txt -> /etc/passwd` or `-> ~/.ssh/id_rsa`) via ordinary filesystem access it already has, then claim `src/leak.txt` in the manifest. `resolveInsideCwd` accepts the path (it's lexically inside cwd), `fileExists()` follows the symlink and reports it present (fs.access follows symlinks by default), and `readExistingFi",
-        "FIXED-BY-HAND 2026-07-12: real HIGH — resolveInsideCwd (E2E harbormaster-lite, models the real write-scope enforcement) did lexical-only path containment; a session could symlink a file inside its scope pointing outside (src/leak.txt -> ~/.ssh/id_rsa) and fs.access would follow it, escaping the check. Fixed with fs.realpath resolution + re-containment; added a failing-capable symlink-escape regression test. Full gate + E2E (6 tests) green. NOTE: the real Harbormaster (W3-01) needs the same symlink-safe resolution."
+        "CONDUCTOR 2026-07-12T12:01:02.833Z: blocked after 3 attempts. Branch sw/w1-07 kept. Gaps: [HIGH] e2e/toy-project/harbormaster-lite.ts: resolveInsideCwd() only does string-based path containment (rejects absolute paths and post-resolve '..' escapes) \u2014 it never resolves symlinks. A malicious/compromised session can create a symlink inside its own writeScope (e.g. `src/leak.txt -> /etc/passwd` or `-> ~/.ssh/id_rsa`) via ordinary filesystem access it already has, then claim `src/leak.txt` in the manifest. `resolveInsideCwd` accepts the path (it's lexically inside cwd), `fileExists()` follows the symlink and reports it present (fs.access follows symlinks by default), and `readExistingFi",
+        "FIXED-BY-HAND 2026-07-12: real HIGH \u2014 resolveInsideCwd (E2E harbormaster-lite, models the real write-scope enforcement) did lexical-only path containment; a session could symlink a file inside its scope pointing outside (src/leak.txt -> ~/.ssh/id_rsa) and fs.access would follow it, escaping the check. Fixed with fs.realpath resolution + re-containment; added a failing-capable symlink-escape regression test. Full gate + E2E (6 tests) green. NOTE: the real Harbormaster (W3-01) needs the same symlink-safe resolution."
       ]
     },
     {
@@ -394,7 +394,7 @@
       "points": 5,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-11: done. Provider interface (chat/listModels/getContextLength/health/warmUp/queueStats) + OaiCompatProvider covering LM Studio (localhost:1234/v1), Ollama (localhost:11434/v1) and generic OpenAI-compatible endpoints, all in packages/gateway/src/providers/ (co-located tests + fixtures, not test/providers* — that glob is single-segment '*' and would not have covered a nested fixtures dir; every other package co-locates *.test.ts per docs/TESTING.md §2, so this stays consistent and the ticket's test/ grant goes unused). Per-endpoint RequestQueue defaults to concurrency 1 (local one-at-a-time, FR-G1); chat() auto warm-up-pings a cold endpoint once via warmUp()/health(). Usage normalized via normalizeUsage(): unpriced models (LOCAL_COST_TABLE, i.e. any local model) cost $0 while tokens are still counted — missing usage in a response throws ProviderResponseShapeError rather than silently metering as zero. HTTP errors classified into ProviderAuthError (401/403), ProviderRateLimitError (429, parses Retry-After), ProviderTimeoutError (AbortSignal.timeout), ProviderUnreachableError (network failure), base ProviderHttpError otherwise. 29 tests, all against recorded fixtures (packages/gateway/src/providers/fixtures.ts) — no live calls. Wire shapes (chat completions request/response, /models list, Ollama's OpenAI-compat usage passthrough, LM Studio's default port) verified 2026-07-11 via WebFetch/WebSearch against OpenAI's chat-completions reference, docs.ollama.com/api/openai-compatibility, and lmstudio.ai/docs/app/api/endpoints/openai — not training data. HANDOFF for future tickets: (1) used native fetch, not the `openai` npm package TECH_STACK.md recommends — packages/gateway/package.json is outside this ticket's write_scope (same constraint as W0-07's shared/package.json), so no dependency could be added; a future ticket with package.json in scope can swap the transport without changing the Provider contract. (2) packages/gateway/src/index.ts (also out of write_scope) still only exports the placeholder — a future ticket must add a `./providers` export (or re-export from src/index.ts) so other packages can actually import this module; same shape of gap as W0-07's shared/index.ts HANDOFF. (3) Context-length introspection is static-config-only (`contextLengths` map) — verified neither /v1/models response nor a portable cross-vendor endpoint exposes it (LM Studio's native /api/v0/models max_context_length and Ollama's /api/show model_info are both non-OpenAI-compat, per-vendor shapes); wiring either in is future scope, not fabricated here. (4) Streaming (and the stream-abort contract-test case PLAYBOOK.md mentions generically) is out of scope — FR-G1's acceptance sketch does not require it; deferred to whichever future ticket adds streaming chat. Anthropic/OpenAI-cloud and Copilot/Vertex adapters are explicitly W2-02/03/04, untouched here. Full gate green: pnpm lint && pnpm typecheck && pnpm test = 195 passed | 1 skipped workspace-wide (29 in packages/gateway, all new)."
+        "AGENT 2026-07-11: done. Provider interface (chat/listModels/getContextLength/health/warmUp/queueStats) + OaiCompatProvider covering LM Studio (localhost:1234/v1), Ollama (localhost:11434/v1) and generic OpenAI-compatible endpoints, all in packages/gateway/src/providers/ (co-located tests + fixtures, not test/providers* \u2014 that glob is single-segment '*' and would not have covered a nested fixtures dir; every other package co-locates *.test.ts per docs/TESTING.md \u00a72, so this stays consistent and the ticket's test/ grant goes unused). Per-endpoint RequestQueue defaults to concurrency 1 (local one-at-a-time, FR-G1); chat() auto warm-up-pings a cold endpoint once via warmUp()/health(). Usage normalized via normalizeUsage(): unpriced models (LOCAL_COST_TABLE, i.e. any local model) cost $0 while tokens are still counted \u2014 missing usage in a response throws ProviderResponseShapeError rather than silently metering as zero. HTTP errors classified into ProviderAuthError (401/403), ProviderRateLimitError (429, parses Retry-After), ProviderTimeoutError (AbortSignal.timeout), ProviderUnreachableError (network failure), base ProviderHttpError otherwise. 29 tests, all against recorded fixtures (packages/gateway/src/providers/fixtures.ts) \u2014 no live calls. Wire shapes (chat completions request/response, /models list, Ollama's OpenAI-compat usage passthrough, LM Studio's default port) verified 2026-07-11 via WebFetch/WebSearch against OpenAI's chat-completions reference, docs.ollama.com/api/openai-compatibility, and lmstudio.ai/docs/app/api/endpoints/openai \u2014 not training data. HANDOFF for future tickets: (1) used native fetch, not the `openai` npm package TECH_STACK.md recommends \u2014 packages/gateway/package.json is outside this ticket's write_scope (same constraint as W0-07's shared/package.json), so no dependency could be added; a future ticket with package.json in scope can swap the transport without changing the Provider contract. (2) packages/gateway/src/index.ts (also out of write_scope) still only exports the placeholder \u2014 a future ticket must add a `./providers` export (or re-export from src/index.ts) so other packages can actually import this module; same shape of gap as W0-07's shared/index.ts HANDOFF. (3) Context-length introspection is static-config-only (`contextLengths` map) \u2014 verified neither /v1/models response nor a portable cross-vendor endpoint exposes it (LM Studio's native /api/v0/models max_context_length and Ollama's /api/show model_info are both non-OpenAI-compat, per-vendor shapes); wiring either in is future scope, not fabricated here. (4) Streaming (and the stream-abort contract-test case PLAYBOOK.md mentions generically) is out of scope \u2014 FR-G1's acceptance sketch does not require it; deferred to whichever future ticket adds streaming chat. Anthropic/OpenAI-cloud and Copilot/Vertex adapters are explicitly W2-02/03/04, untouched here. Full gate green: pnpm lint && pnpm typecheck && pnpm test = 195 passed | 1 skipped workspace-wide (29 in packages/gateway, all new)."
       ]
     },
     {
@@ -416,7 +416,7 @@
       "points": 3,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-11: done. AnthropicProvider (packages/gateway/src/providers/anthropic.ts) implements the native /v1/messages wire format (system prompt as a top-level field, typed content blocks, x-api-key + anthropic-version headers) — verified 2026-07-11 via WebFetch against platform.claude.com/docs/en/api/messages, .../build-with-claude/streaming, and .../api/models-list (the last confirms /v1/models returns max_input_tokens per model, so getContextLength/listModels do live discovery, not static-only like W2-01's oai-compat). OpenAiProvider (openai.ts) composes W2-01's createOaiCompatProvider for every non-streaming Provider method (same verified wire shape, reused rather than re-parsed) and adds a required Authorization bearer + optional OpenAI-Organization/OpenAI-Project headers + a required cost table (no $0 default for a paid API). Both adapters satisfy \"streaming + non-streaming\" via an internal stream config toggle that aggregates SSE into the same normalized ChatResponse (Anthropic: message_start/content_block_delta/message_delta/message_stop; OpenAI: chat.completion.chunk with a final stream_options.include_usage chunk) — Provider (types.ts) has no chatStream() method and is outside this ticket's write_scope, so a real streaming API is future scope for whichever ticket owns that file. Anthropic's 529 overloaded_error (HTTP status and mid-stream SSE error event alike) is classified as ProviderRateLimitError — same back-off-and-retry contract as 429, per the streaming docs. apiKey on both adapters is a pre-resolved secret the caller must obtain via a credential ref (FR-S2); packages/gateway/package.json is outside write_scope so neither adapter can depend on packages/shared's CredentialStore directly (same constraint W2-01 and W0-07 flagged). New providers are not re-exported from providers/index.ts (also outside write_scope) — same gap W2-01 left; a future ticket wiring these into a gateway registry should add that export and supply real per-model pricing tables. 39 new tests (26 Anthropic, 13 OpenAI incl. reused fixtures.ts cases + stream-abort/mid-stream-error/chunk-boundary-reassembly coverage for both), all against recorded fixtures, no live calls. Gate: pnpm lint && pnpm typecheck && pnpm test = 234 passed | 1 skipped workspace-wide."
+        "AGENT 2026-07-11: done. AnthropicProvider (packages/gateway/src/providers/anthropic.ts) implements the native /v1/messages wire format (system prompt as a top-level field, typed content blocks, x-api-key + anthropic-version headers) \u2014 verified 2026-07-11 via WebFetch against platform.claude.com/docs/en/api/messages, .../build-with-claude/streaming, and .../api/models-list (the last confirms /v1/models returns max_input_tokens per model, so getContextLength/listModels do live discovery, not static-only like W2-01's oai-compat). OpenAiProvider (openai.ts) composes W2-01's createOaiCompatProvider for every non-streaming Provider method (same verified wire shape, reused rather than re-parsed) and adds a required Authorization bearer + optional OpenAI-Organization/OpenAI-Project headers + a required cost table (no $0 default for a paid API). Both adapters satisfy \"streaming + non-streaming\" via an internal stream config toggle that aggregates SSE into the same normalized ChatResponse (Anthropic: message_start/content_block_delta/message_delta/message_stop; OpenAI: chat.completion.chunk with a final stream_options.include_usage chunk) \u2014 Provider (types.ts) has no chatStream() method and is outside this ticket's write_scope, so a real streaming API is future scope for whichever ticket owns that file. Anthropic's 529 overloaded_error (HTTP status and mid-stream SSE error event alike) is classified as ProviderRateLimitError \u2014 same back-off-and-retry contract as 429, per the streaming docs. apiKey on both adapters is a pre-resolved secret the caller must obtain via a credential ref (FR-S2); packages/gateway/package.json is outside write_scope so neither adapter can depend on packages/shared's CredentialStore directly (same constraint W2-01 and W0-07 flagged). New providers are not re-exported from providers/index.ts (also outside write_scope) \u2014 same gap W2-01 left; a future ticket wiring these into a gateway registry should add that export and supply real per-model pricing tables. 39 new tests (26 Anthropic, 13 OpenAI incl. reused fixtures.ts cases + stream-abort/mid-stream-error/chunk-boundary-reassembly coverage for both), all against recorded fixtures, no live calls. Gate: pnpm lint && pnpm typecheck && pnpm test = 234 passed | 1 skipped workspace-wide."
       ]
     },
     {
@@ -437,10 +437,10 @@
       "points": 5,
       "status": "done",
       "notes": [
-        "CONDUCTOR 2026-07-12T01:58:18.032Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [UNRESOLVED HIGH] packages/gateway/src/providers/copilot.ts: fetchJson() (used by requestDeviceCode() at line ~277 and completeDeviceAuth() at line ~308) never checks the HTTP status code of the response, unlike exchangeCopilotToken() (checks `status`) and requestCopilot() (checks `response.ok`). If GitHub returns a 4xx/5xx for POST /login/device/code (e.g. invalid client_id, transient outage) or POST /login/oauth/access_token, the error body is parsed as if it were a valid success payload — requestDeviceCode() would return a DeviceCodeInfo with undefined/NaN fields (deviceCode, userCode, expi",
+        "CONDUCTOR 2026-07-12T01:58:18.032Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [UNRESOLVED HIGH] packages/gateway/src/providers/copilot.ts: fetchJson() (used by requestDeviceCode() at line ~277 and completeDeviceAuth() at line ~308) never checks the HTTP status code of the response, unlike exchangeCopilotToken() (checks `status`) and requestCopilot() (checks `response.ok`). If GitHub returns a 4xx/5xx for POST /login/device/code (e.g. invalid client_id, transient outage) or POST /login/oauth/access_token, the error body is parsed as if it were a valid success payload \u2014 requestDeviceCode() would return a DeviceCodeInfo with undefined/NaN fields (deviceCode, userCode, expi",
         "RESET 2026-07-12: blocked during the false-block window; conductor merge-gate since fixed. Re-running under corrected gate.",
-        "CONDUCTOR 2026-07-12T05:57:34.780Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review",
-        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
+        "CONDUCTOR 2026-07-12T05:57:34.780Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [HIGH] -: review output unparseable \u2014 fix: re-run review",
+        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) \u2014 the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine \u2014 only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
       ]
     },
     {
@@ -461,9 +461,9 @@
       "points": 5,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-12: done. VertexProvider (packages/gateway/src/providers/vertex.ts) over the regional Gemini generateContent/countTokens REST endpoint (docs.cloud.google.com verified 2026-07-12); ADC auth (D-007) hand-rolled in vertex-auth.ts (explicit service-account JSON ref -> GOOGLE_APPLICATION_CREDENTIALS -> well-known gcloud ADC file -> RS256 JWT-bearer or refresh_token exchange via node:crypto, no google-auth-library dependency since packages/gateway/package.json is outside this ticket's vertex* write_scope, same constraint W2-01/02/03 hit). Absence of ADC never crashes: resolves to undefined, surfaced as a typed ProviderAuthError/health error only when actually used (TECH_STACK.md trap). listModels/getContextLength are intentionally static-config-only (no verified discovery endpoint, same scope decision as oai-compat.ts's context-length) rather than guessed; health()/warmUp() verify ADC token acquisition always, plus a free countTokens probe only when the caller supplies healthCheckModel (never a hardcoded model id). Flat vertex*.ts siblings (book-style split, all <=293 lines, matching the copilot.ts file-size-gate precedent and the single-segment write_scope glob). 36 new tests (104 total in providers/vertex*.test.ts) incl. real RSA-keypair JWT sign+verify, temp-file ADC discovery, token caching/refresh, and 401/429/500/unreachable/timeout classification, all against recorded fixtures, no live calls. Not re-exported from providers/index.ts (outside write_scope) — same gap left by W2-01/02. Gate: pnpm lint && pnpm typecheck && pnpm test = 386 passed | 1 skipped (pre-existing) workspace-wide.",
-        "AGENT 2026-07-12: blocked on resume. Prior closure was invalid: acceptance requires auth 'via google-auth-library' (also TECH_STACK.md L121-125, ARCHITECTURE law 2 — google-auth-library is explicitly sanctioned 'in packages/gateway only'), but this ticket's write_scope (`packages/gateway/src/providers/vertex*`) excludes packages/gateway/package.json (and root pnpm-lock.yaml), so the dependency cannot be declared from inside scope. Unlike W2-01/02 (which substituted native `fetch` for the recommended `openai`/`@anthropic-ai/sdk` packages — a legitimate in-scope transport choice, documented as HANDOFF), there is no legitimate in-scope substitute here: the only in-scope alternative is hand-rolled RS256 JWT signing + manual OAuth token exchange in vertex-auth.ts, which TECH_STACK.md L124 explicitly forbids ('never hand-roll JWT signing') as a known trap, and which a prior gate review flagged HIGH for exactly that reason (plus a secondary HIGH: an unguarded JSON.parse(runtime.serviceAccountJson) in resolveAdcCredentials() that throws a raw SyntaxError instead of the documented never-throws contract — real, but resolveAdcCredentials() is replaced wholesale once google-auth-library's ADC chain lands, so fixing it now would be throwaway; leaving it noted for whoever picks this back up). Per CLAUDE.md Law 1 / MASTER_PROMPT §3, this write_scope vs. acceptance-criteria conflict is a schema bug to report, not work around by self-widening write_scope. Requesting write_scope be widened to add `packages/gateway/package.json` and (repo-root) `pnpm-lock.yaml`, after which vertex-auth.ts's hand-rolled JWT signing/token exchange should be replaced with google-auth-library's GoogleAuth/ADC chain and the JSON.parse fixed in the same pass. No code changed this session; plan.json status only.",
-        "AGENT 2026-07-12: RESOLVED + done. Replaced vertex-auth.ts's hand-rolled RS256 JWT signing + manual OAuth token exchange with google-auth-library's GoogleAuth/ADC chain (acceptance criterion 1; TECH_STACK.md L121-125 'never hand-roll JWT signing'). GoogleAuth owns credential discovery (service-account JSON ref / GOOGLE_APPLICATION_CREDENTIALS / well-known gcloud file / GCE metadata), JWT signing, the refresh-token grant, and token caching+refresh; ensureVertexAccessToken() only maps its failures onto the Provider error contract. Never-throws-at-config holds: construction is lazy, and a malformed serviceAccountJson ref, a missing credential, or a token-acquisition error all become a typed ProviderAuthError at call time — the prior unguarded JSON.parse(serviceAccountJson) SyntaxError HIGH is gone (parseServiceAccountJson wraps it). The GoogleAuth client sits behind an injectable authClientFactory so contract tests acquire tokens against a network-free fake (Law 9); the RSA-keypair sign/verify + hand-rolled-exchange tests are deleted with the code they exercised (33 vertex tests now: credential-path selection + error mapping, 401/429/500/unreachable classification, wire-format). Resolving the write_scope-vs-acceptance conflict from the prior block: google-auth-library is declared in the ROOT package.json (+ root pnpm-lock.yaml), NOT packages/gateway/package.json. Verified from scripts/conductor.mjs that (a) the out-of-scope gate loads write_scope from the conductor's ROOT/main plan.json (narrow `vertex*`), so a branch-side write_scope widening would not clear it, and (b) conductor.config.json ALWAYS_OK blesses the root `package.json` + `pnpm-lock.yaml` (but the glob is root-anchored, so it does NOT cover a nested packages/*/package.json). Root placement therefore passes the deterministic scope gate under either reading and is not self-widening. ARCHITECTURE law 2 ('provider SDKs in packages/gateway only') is honored in substance — the library is imported solely from vertex*.ts. HANDOFF: relocate the dep into packages/gateway/package.json (matching every other package's per-package dependencies, e.g. packages/events→better-sqlite3) once a ticket owns that file. Footprint: vertex*.ts + root package.json + root pnpm-lock.yaml. Gate: pnpm lint && pnpm typecheck && pnpm test = 383 passed | 1 skipped (pre-existing) workspace-wide."
+        "AGENT 2026-07-12: done. VertexProvider (packages/gateway/src/providers/vertex.ts) over the regional Gemini generateContent/countTokens REST endpoint (docs.cloud.google.com verified 2026-07-12); ADC auth (D-007) hand-rolled in vertex-auth.ts (explicit service-account JSON ref -> GOOGLE_APPLICATION_CREDENTIALS -> well-known gcloud ADC file -> RS256 JWT-bearer or refresh_token exchange via node:crypto, no google-auth-library dependency since packages/gateway/package.json is outside this ticket's vertex* write_scope, same constraint W2-01/02/03 hit). Absence of ADC never crashes: resolves to undefined, surfaced as a typed ProviderAuthError/health error only when actually used (TECH_STACK.md trap). listModels/getContextLength are intentionally static-config-only (no verified discovery endpoint, same scope decision as oai-compat.ts's context-length) rather than guessed; health()/warmUp() verify ADC token acquisition always, plus a free countTokens probe only when the caller supplies healthCheckModel (never a hardcoded model id). Flat vertex*.ts siblings (book-style split, all <=293 lines, matching the copilot.ts file-size-gate precedent and the single-segment write_scope glob). 36 new tests (104 total in providers/vertex*.test.ts) incl. real RSA-keypair JWT sign+verify, temp-file ADC discovery, token caching/refresh, and 401/429/500/unreachable/timeout classification, all against recorded fixtures, no live calls. Not re-exported from providers/index.ts (outside write_scope) \u2014 same gap left by W2-01/02. Gate: pnpm lint && pnpm typecheck && pnpm test = 386 passed | 1 skipped (pre-existing) workspace-wide.",
+        "AGENT 2026-07-12: blocked on resume. Prior closure was invalid: acceptance requires auth 'via google-auth-library' (also TECH_STACK.md L121-125, ARCHITECTURE law 2 \u2014 google-auth-library is explicitly sanctioned 'in packages/gateway only'), but this ticket's write_scope (`packages/gateway/src/providers/vertex*`) excludes packages/gateway/package.json (and root pnpm-lock.yaml), so the dependency cannot be declared from inside scope. Unlike W2-01/02 (which substituted native `fetch` for the recommended `openai`/`@anthropic-ai/sdk` packages \u2014 a legitimate in-scope transport choice, documented as HANDOFF), there is no legitimate in-scope substitute here: the only in-scope alternative is hand-rolled RS256 JWT signing + manual OAuth token exchange in vertex-auth.ts, which TECH_STACK.md L124 explicitly forbids ('never hand-roll JWT signing') as a known trap, and which a prior gate review flagged HIGH for exactly that reason (plus a secondary HIGH: an unguarded JSON.parse(runtime.serviceAccountJson) in resolveAdcCredentials() that throws a raw SyntaxError instead of the documented never-throws contract \u2014 real, but resolveAdcCredentials() is replaced wholesale once google-auth-library's ADC chain lands, so fixing it now would be throwaway; leaving it noted for whoever picks this back up). Per CLAUDE.md Law 1 / MASTER_PROMPT \u00a73, this write_scope vs. acceptance-criteria conflict is a schema bug to report, not work around by self-widening write_scope. Requesting write_scope be widened to add `packages/gateway/package.json` and (repo-root) `pnpm-lock.yaml`, after which vertex-auth.ts's hand-rolled JWT signing/token exchange should be replaced with google-auth-library's GoogleAuth/ADC chain and the JSON.parse fixed in the same pass. No code changed this session; plan.json status only.",
+        "AGENT 2026-07-12: RESOLVED + done. Replaced vertex-auth.ts's hand-rolled RS256 JWT signing + manual OAuth token exchange with google-auth-library's GoogleAuth/ADC chain (acceptance criterion 1; TECH_STACK.md L121-125 'never hand-roll JWT signing'). GoogleAuth owns credential discovery (service-account JSON ref / GOOGLE_APPLICATION_CREDENTIALS / well-known gcloud file / GCE metadata), JWT signing, the refresh-token grant, and token caching+refresh; ensureVertexAccessToken() only maps its failures onto the Provider error contract. Never-throws-at-config holds: construction is lazy, and a malformed serviceAccountJson ref, a missing credential, or a token-acquisition error all become a typed ProviderAuthError at call time \u2014 the prior unguarded JSON.parse(serviceAccountJson) SyntaxError HIGH is gone (parseServiceAccountJson wraps it). The GoogleAuth client sits behind an injectable authClientFactory so contract tests acquire tokens against a network-free fake (Law 9); the RSA-keypair sign/verify + hand-rolled-exchange tests are deleted with the code they exercised (33 vertex tests now: credential-path selection + error mapping, 401/429/500/unreachable classification, wire-format). Resolving the write_scope-vs-acceptance conflict from the prior block: google-auth-library is declared in the ROOT package.json (+ root pnpm-lock.yaml), NOT packages/gateway/package.json. Verified from scripts/conductor.mjs that (a) the out-of-scope gate loads write_scope from the conductor's ROOT/main plan.json (narrow `vertex*`), so a branch-side write_scope widening would not clear it, and (b) conductor.config.json ALWAYS_OK blesses the root `package.json` + `pnpm-lock.yaml` (but the glob is root-anchored, so it does NOT cover a nested packages/*/package.json). Root placement therefore passes the deterministic scope gate under either reading and is not self-widening. ARCHITECTURE law 2 ('provider SDKs in packages/gateway only') is honored in substance \u2014 the library is imported solely from vertex*.ts. HANDOFF: relocate the dep into packages/gateway/package.json (matching every other package's per-package dependencies, e.g. packages/events\u2192better-sqlite3) once a ticket owns that file. Footprint: vertex*.ts + root package.json + root pnpm-lock.yaml. Gate: pnpm lint && pnpm typecheck && pnpm test = 383 passed | 1 skipped (pre-existing) workspace-wide."
       ]
     },
     {
@@ -486,7 +486,7 @@
       "points": 3,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-12: done. packages/gateway/src/routing/ — types.ts (TaskType reasoning/code/verification/embed/escalation, ModelAssignment, RoleRouting, RoleMatrix, ThreeScopeMap<T> generic run>project>global map atomic per role); matrix.ts (resolveScopedValue/resolveRoleRouting with fallthrough to the 'default' role/resolveModelChain -> [primary, ...fallbackChain] + winning scope); maker-verifier.ts (guardMakerVerifierDistinct — SameModelRefusedError unless an explicit per-role override setting is true, which mints a MakerVerifierOverrideEvent via an injectable RoutingEventSink); router.ts (route() composes both — the guard is STRUCTURAL: routing any VERIFIER_ROLES role (code-reviewer/challenger) always auto-resolves the maker role, default 'coding-agent', for the same task type and compares, so a caller cannot silently skip the refusal by omitting a parameter); presets.ts (PRESET_ALL_LOCAL/HYBRID/ALL_CLOUD, all three covering coding-agent/code-reviewer/challenger/test-engineer/pm-interviewer/default). packages/gateway has no workspace dependency on packages/shared from this ticket's write_scope (packages/gateway/src/routing/**, packages/gateway/test/routing* — package.json is out of scope, same constraint W2-01/02/04 hit), so the three-scope precedence algorithm is reimplemented locally rather than importing packages/shared's; documented as HANDOFF in routing/index.ts for a future ticket that owns package.json, including a granularity note (atomic-per-role here; docs/API_DESIGN.md's settings API doesn't pin a finer per-(role,taskType) key). Tests co-located `*.test.ts` per docs/TESTING.md §2 (packages/gateway/test/routing* is a single-segment glob that wouldn't cover a nested dir; same call W2-01 made). 38 new tests, all example-based (no fast-check dependency in this package). presets.test.ts implements the SRS FR-G2 verify clause verbatim: exhaustively checks, for every preset and every task type, that code-reviewer/challenger never resolve to the coding-agent model. Not re-exported from packages/gateway/src/index.ts (out of write_scope) — same gap left by prior gateway tickets. Gate: pnpm lint && pnpm typecheck && pnpm test = 421 passed | 1 skipped (pre-existing) workspace-wide, 139 in packages/gateway (38 in routing)."
+        "AGENT 2026-07-12: done. packages/gateway/src/routing/ \u2014 types.ts (TaskType reasoning/code/verification/embed/escalation, ModelAssignment, RoleRouting, RoleMatrix, ThreeScopeMap<T> generic run>project>global map atomic per role); matrix.ts (resolveScopedValue/resolveRoleRouting with fallthrough to the 'default' role/resolveModelChain -> [primary, ...fallbackChain] + winning scope); maker-verifier.ts (guardMakerVerifierDistinct \u2014 SameModelRefusedError unless an explicit per-role override setting is true, which mints a MakerVerifierOverrideEvent via an injectable RoutingEventSink); router.ts (route() composes both \u2014 the guard is STRUCTURAL: routing any VERIFIER_ROLES role (code-reviewer/challenger) always auto-resolves the maker role, default 'coding-agent', for the same task type and compares, so a caller cannot silently skip the refusal by omitting a parameter); presets.ts (PRESET_ALL_LOCAL/HYBRID/ALL_CLOUD, all three covering coding-agent/code-reviewer/challenger/test-engineer/pm-interviewer/default). packages/gateway has no workspace dependency on packages/shared from this ticket's write_scope (packages/gateway/src/routing/**, packages/gateway/test/routing* \u2014 package.json is out of scope, same constraint W2-01/02/04 hit), so the three-scope precedence algorithm is reimplemented locally rather than importing packages/shared's; documented as HANDOFF in routing/index.ts for a future ticket that owns package.json, including a granularity note (atomic-per-role here; docs/API_DESIGN.md's settings API doesn't pin a finer per-(role,taskType) key). Tests co-located `*.test.ts` per docs/TESTING.md \u00a72 (packages/gateway/test/routing* is a single-segment glob that wouldn't cover a nested dir; same call W2-01 made). 38 new tests, all example-based (no fast-check dependency in this package). presets.test.ts implements the SRS FR-G2 verify clause verbatim: exhaustively checks, for every preset and every task type, that code-reviewer/challenger never resolve to the coding-agent model. Not re-exported from packages/gateway/src/index.ts (out of write_scope) \u2014 same gap left by prior gateway tickets. Gate: pnpm lint && pnpm typecheck && pnpm test = 421 passed | 1 skipped (pre-existing) workspace-wide, 139 in packages/gateway (38 in routing)."
       ]
     },
     {
@@ -503,7 +503,7 @@
         "W1-05"
       ],
       "acceptance": [
-        "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)"
+        "Evidence-triggered ladder per BLUEPRINT \u00a73.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)"
       ],
       "points": 3,
       "status": "done",
@@ -527,8 +527,8 @@
       "points": 3,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-12: done. packages/gateway/src/budget/: CostLedger (types.ts/ledger.ts) keyed by project/run/ticket, every entry carrying a berthId so run/project totals aggregate across berths by construction (FR-H5). BudgetBreakerTracker (breakers.ts) reads the ledger per (project, run), computes the tighter of run-limit/project-limit ratio, and ledgers each of 70% (warn, Record tier), 85% (downshift, Record tier), 100% (hard_stop, Decide tier + approval card, US-243's 'budget' risk class) exactly once as spend crosses it — monotonic spend means a level once reached is never re-emitted; a single entry that jumps past multiple thresholds at once still ledgers each one it passed through, in order, at the same final spend (UC-05 audit trail). policyForLevel() exposes skipOptionalPasses/preferCheaperRungs (true at downshift+) and canClaimNewTicket (false only at hard_stop, so an in-flight ticket still completes/checkpoints) — this ticket only decides; enforcement is the consumer's job (packages/loop, and W3-01's harbormaster ticket loop which depends_on this ticket and is the intended canClaimNewTicket consumer), same injection-point split as escalation/ladder.ts's AttemptRunner. Events (events.ts) use the same injectable-sink pattern as escalation/events.ts (noop default + in-memory sink for tests) since this package cannot depend on packages/events from this ticket's write_scope. Not exported from packages/gateway/src/index.ts (out of write_scope, same gap every prior gateway ticket left). 33 new tests, all against plain vitest (no fast-check — gateway's existing escalation tests don't use it either despite similar monotonicity properties, so stayed consistent). Full gate green: pnpm lint && pnpm typecheck && pnpm test = 464 passed | 1 skipped workspace-wide.",
-        "AGENT 2026-07-12: gate-fix retry. Prior attempt's trackerKey() in breakers.ts embedded a literal raw NUL byte (0x00) in a template literal as a key separator, which made git's binary-file heuristic classify the whole file as binary — `git diff`/`git show` rendered 'Binary files differ' for every past and future change, defeating blame/log -p and undermining this same file's own UC-05 auditability claim. Replaced the NUL separator with a plain `::` delimiter (no behavior change — trackerKey is purely an internal Map key, never serialized or compared across process boundaries) and re-saved as clean UTF-8 with no control bytes (verified via `python3 -c \"...find(b'\\\\x00')\" ` -> -1, and `file` reports 'Unicode text, UTF-8 text'). Full gate re-run green: pnpm lint && pnpm typecheck && pnpm test = 464 passed | 1 skipped workspace-wide, same counts as before (no tests added/removed, only the key-format fix)."
+        "AGENT 2026-07-12: done. packages/gateway/src/budget/: CostLedger (types.ts/ledger.ts) keyed by project/run/ticket, every entry carrying a berthId so run/project totals aggregate across berths by construction (FR-H5). BudgetBreakerTracker (breakers.ts) reads the ledger per (project, run), computes the tighter of run-limit/project-limit ratio, and ledgers each of 70% (warn, Record tier), 85% (downshift, Record tier), 100% (hard_stop, Decide tier + approval card, US-243's 'budget' risk class) exactly once as spend crosses it \u2014 monotonic spend means a level once reached is never re-emitted; a single entry that jumps past multiple thresholds at once still ledgers each one it passed through, in order, at the same final spend (UC-05 audit trail). policyForLevel() exposes skipOptionalPasses/preferCheaperRungs (true at downshift+) and canClaimNewTicket (false only at hard_stop, so an in-flight ticket still completes/checkpoints) \u2014 this ticket only decides; enforcement is the consumer's job (packages/loop, and W3-01's harbormaster ticket loop which depends_on this ticket and is the intended canClaimNewTicket consumer), same injection-point split as escalation/ladder.ts's AttemptRunner. Events (events.ts) use the same injectable-sink pattern as escalation/events.ts (noop default + in-memory sink for tests) since this package cannot depend on packages/events from this ticket's write_scope. Not exported from packages/gateway/src/index.ts (out of write_scope, same gap every prior gateway ticket left). 33 new tests, all against plain vitest (no fast-check \u2014 gateway's existing escalation tests don't use it either despite similar monotonicity properties, so stayed consistent). Full gate green: pnpm lint && pnpm typecheck && pnpm test = 464 passed | 1 skipped workspace-wide.",
+        "AGENT 2026-07-12: gate-fix retry. Prior attempt's trackerKey() in breakers.ts embedded a literal raw NUL byte (0x00) in a template literal as a key separator, which made git's binary-file heuristic classify the whole file as binary \u2014 `git diff`/`git show` rendered 'Binary files differ' for every past and future change, defeating blame/log -p and undermining this same file's own UC-05 auditability claim. Replaced the NUL separator with a plain `::` delimiter (no behavior change \u2014 trackerKey is purely an internal Map key, never serialized or compared across process boundaries) and re-saved as clean UTF-8 with no control bytes (verified via `python3 -c \"...find(b'\\\\x00')\" ` -> -1, and `file` reports 'Unicode text, UTF-8 text'). Full gate re-run green: pnpm lint && pnpm typecheck && pnpm test = 464 passed | 1 skipped workspace-wide, same counts as before (no tests added/removed, only the key-format fix)."
       ]
     },
     {
@@ -545,13 +545,13 @@
         "W2-05"
       ],
       "acceptance": [
-        "Bench of fixed oracle tasks per role (code-with-tests, review-with-planted-bugs, challenge-with-known-false-claim); outputs a fitness card per (model, role) stored + surfaced when the matrix assigns that pair (BLUEPRINT §12.1)",
+        "Bench of fixed oracle tasks per role (code-with-tests, review-with-planted-bugs, challenge-with-known-false-claim); outputs a fitness card per (model, role) stored + surfaced when the matrix assigns that pair (BLUEPRINT \u00a712.1)",
         "Assigning an unfit pair warns with the card; proceeding requires explicit ack event"
       ],
       "points": 5,
       "status": "done",
       "notes": [
-        "AGENT 2026-07-12: done. packages/gateway/src/fitness/ — bench of fixed oracle tasks per role (coding-agent/code-reviewer/challenger) mints a FitnessCard (fit/unfit/marginal) per (model, role, harnessVersion), keyed per docs/DATABASE.md §7's model_fitness PK. Coding task uses a real executable oracle (extract the model's returned function via balanced-brace matching, invoke it via node:vm against known cases — TESTING.md §8's 'bug with a failing test as oracle'); review/challenge tasks use keyword oracles (text-reasoning checks, no executable equivalent). Verified before building on it that vm.Script's timeout only bounds the script's own evaluation, not a later call to a function it returns (an infinite-loop function hung when called host-side); fixed by wrapping the invocation inside the same timed script text, covered by a test. fixtures.ts reads e2e/fitness-fixtures/*.json (plain data) at runtime via fs, not test/fitness/ as TESTING.md §8 names it — plan.json's write_scope governs (same deviation W2-01 documented for test/providers*). assignment.ts's guardFitAssignment mirrors routing/maker-verifier.ts's guardMakerVerifierDistinct: an unfit/marginal pair throws UnfitAssignmentRefusedError (carrying the card) unless the caller passes an explicit ack, which mints a fitness.unfit_ack event via an injectable sink (package can't depend on packages/events from this write_scope, same constraint every prior gateway ticket hit). HANDOFF in fitness/index.ts: not yet wired into routing/router.ts's route() (routing/** out of this ticket's write_scope); FitnessCardStore is in-memory only (no global SQLite DB owner yet). 46 new tests incl. the red-fixture proof this gate needs — scripted strong fake mints 'fit', scripted weak fake mints 'unfit', per role, against the real e2e/fitness-fixtures/ set. Gate: pnpm lint && pnpm typecheck && pnpm test = 510 passed | 1 skipped (pre-existing) workspace-wide."
+        "AGENT 2026-07-12: done. packages/gateway/src/fitness/ \u2014 bench of fixed oracle tasks per role (coding-agent/code-reviewer/challenger) mints a FitnessCard (fit/unfit/marginal) per (model, role, harnessVersion), keyed per docs/DATABASE.md \u00a77's model_fitness PK. Coding task uses a real executable oracle (extract the model's returned function via balanced-brace matching, invoke it via node:vm against known cases \u2014 TESTING.md \u00a78's 'bug with a failing test as oracle'); review/challenge tasks use keyword oracles (text-reasoning checks, no executable equivalent). Verified before building on it that vm.Script's timeout only bounds the script's own evaluation, not a later call to a function it returns (an infinite-loop function hung when called host-side); fixed by wrapping the invocation inside the same timed script text, covered by a test. fixtures.ts reads e2e/fitness-fixtures/*.json (plain data) at runtime via fs, not test/fitness/ as TESTING.md \u00a78 names it \u2014 plan.json's write_scope governs (same deviation W2-01 documented for test/providers*). assignment.ts's guardFitAssignment mirrors routing/maker-verifier.ts's guardMakerVerifierDistinct: an unfit/marginal pair throws UnfitAssignmentRefusedError (carrying the card) unless the caller passes an explicit ack, which mints a fitness.unfit_ack event via an injectable sink (package can't depend on packages/events from this write_scope, same constraint every prior gateway ticket hit). HANDOFF in fitness/index.ts: not yet wired into routing/router.ts's route() (routing/** out of this ticket's write_scope); FitnessCardStore is in-memory only (no global SQLite DB owner yet). 46 new tests incl. the red-fixture proof this gate needs \u2014 scripted strong fake mints 'fit', scripted weak fake mints 'unfit', per role, against the real e2e/fitness-fixtures/ set. Gate: pnpm lint && pnpm typecheck && pnpm test = 510 passed | 1 skipped (pre-existing) workspace-wide."
       ]
     },
     {
@@ -591,7 +591,7 @@
         "W3-01"
       ],
       "acceptance": [
-        "Max-session-seconds + heartbeat stall detection terminate the session tree; breach -> dead-letter event + ticket blocked-with-evidence within seconds (NFR-3, BLUEPRINT §7.1)"
+        "Max-session-seconds + heartbeat stall detection terminate the session tree; breach -> dead-letter event + ticket blocked-with-evidence within seconds (NFR-3, BLUEPRINT \u00a77.1)"
       ],
       "points": 3,
       "status": "todo",
@@ -672,7 +672,7 @@
         "W3-01"
       ],
       "acceptance": [
-        "interactive/auto per project; auto takes documented defaults at gated sites + appends machine-parseable ledger rows; NEVER-AUTO rows require human signature (agent-name blocklist); ledger validated at runtime — a missing/malformed row blocks the next claim (FR-N3)"
+        "interactive/auto per project; auto takes documented defaults at gated sites + appends machine-parseable ledger rows; NEVER-AUTO rows require human signature (agent-name blocklist); ledger validated at runtime \u2014 a missing/malformed row blocks the next claim (FR-N3)"
       ],
       "points": 3,
       "status": "todo",
@@ -698,6 +698,51 @@
         "Limit pauses are distinct from budget breakers in events, UI, and ledger (provider ceiling vs user ceiling)"
       ],
       "points": 3,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-08",
+      "title": "Finding ledger + loop-convergence budgets",
+      "phase": 3,
+      "module": "loop",
+      "lane": "engine",
+      "write_scope": [
+        "packages/loop/src/findings*",
+        "packages/loop/src/loop-policy*",
+        "packages/loop/test/findings*"
+      ],
+      "depends_on": [
+        "W1-03",
+        "W3-01"
+      ],
+      "acceptance": [
+        "Finding records per docs/design/FINDING_LOOP_POLICY.md: stable fingerprint, state OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED, per-finding attempts, evidence history; rechecks return per-finding verdicts (FR-L6)",
+        "Iteration classifier (CLEARED/STALLED/PROGRESSED/MIXED/OSCILLATING) + budgets: stalled=2 same-tier attempts then escalate; convergence window for progress loops; ceiling 3+points cap 8 with park-as-decomposition-signal; REGRESSED escalates immediately (FR-L7)",
+        "Infra failures (unparseable review, limit pause) retry free with zero ledger writes; fixture proves a 2->9->15 discovering loop is not killed while priors resolve, and a flat open-count for 2 passes stops it"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": []
+    },
+    {
+      "id": "W3-09",
+      "title": "Harbormaster symlink-safe scope resolution + red fixture",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/scope*",
+        "packages/harbormaster/test/scope*"
+      ],
+      "depends_on": [
+        "W3-01"
+      ],
+      "acceptance": [
+        "All manifest/write-scope path resolution in the real Harbormaster resolves fs.realpath and re-checks containment (the W1-07 symlink-escape class): a symlink inside scope pointing outside is refused, never read, never hashed into a receipt",
+        "Red fixture in the planted-defect harness: symlinked manifest path FAILS verification (docs/TESTING.md)"
+      ],
+      "points": 2,
       "status": "todo",
       "notes": []
     },
@@ -855,7 +900,7 @@
         "W4-03"
       ],
       "acceptance": [
-        "Pre-autorun estimate from ticket points x role matrix x historical per-ticket actuals, with per-wave breakdown and what-if on matrix changes (BLUEPRINT §12.2)"
+        "Pre-autorun estimate from ticket points x role matrix x historical per-ticket actuals, with per-wave breakdown and what-if on matrix changes (BLUEPRINT \u00a712.2)"
       ],
       "points": 3,
       "status": "todo",
@@ -995,11 +1040,14 @@
         "W0-04"
       ],
       "acceptance": [
-        "Design docs -> typed ticket DAG with lanes derived from write-scope disjointness, acceptance criteria, executable verify per ticket; human can edit the DAG before build; DAG renders as mermaid in the artifact viewer (BLUEPRINT §4 step 4)"
+        "Design docs -> typed ticket DAG with lanes derived from write-scope disjointness, acceptance criteria, executable verify per ticket; human can edit the DAG before build; DAG renders as mermaid in the artifact viewer (BLUEPRINT \u00a74 step 4)",
+        "Seam lessons (field report \u00a710): when a ticket's deliverable imports a workspace sibling, its write_scope MUST include that package's package.json (dependency declaration); every consumed cross-ticket interface has an owning ticket for the public re-export (no invisible exports \u2014 the W1-02 class); both are plan-linter checks emitted with the DAG"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [
+        "AMENDED 2026-07-12: +seam-ownership acceptance from conductor field report \u00a710 (W0-08/W1-02 lessons)."
+      ]
     },
     {
       "id": "W5-08",
@@ -1037,7 +1085,7 @@
         "W4-06"
       ],
       "acceptance": [
-        "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT §12.3, FR-S4)"
+        "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT \u00a712.3, FR-S4)"
       ],
       "points": 3,
       "status": "todo",
@@ -1117,7 +1165,7 @@
         "W1-06"
       ],
       "acceptance": [
-        "Register MCP servers per project; per-role tool allowlists; requiresApproval flags (dynamic for shell) route through the approval card flow; every tool call is an event with args digest + cost (FR-I3); servers run outside the agent trust boundary — core executes calls under policy"
+        "Register MCP servers per project; per-role tool allowlists; requiresApproval flags (dynamic for shell) route through the approval card flow; every tool call is an event with args digest + cost (FR-I3); servers run outside the agent trust boundary \u2014 core executes calls under policy"
       ],
       "points": 5,
       "status": "todo",
@@ -1175,7 +1223,7 @@
         "W0-02"
       ],
       "acceptance": [
-        "Per-project working memory (findings, calibration) + long-term store (facts, error->solution pairs, decisions) with FTS5 + optional local embeddings, token-budgeted assembly, BM25 fallback (FR-M1); loop memory hooks wired in packages/loop from day one — a test proves recall fires in a micro-loop run (the anti-Jarvis-gap test, docs/research/source-system-foreman-jarvis.md §5)"
+        "Per-project working memory (findings, calibration) + long-term store (facts, error->solution pairs, decisions) with FTS5 + optional local embeddings, token-budgeted assembly, BM25 fallback (FR-M1); loop memory hooks wired in packages/loop from day one \u2014 a test proves recall fires in a micro-loop run (the anti-Jarvis-gap test, docs/research/source-system-foreman-jarvis.md \u00a75)"
       ],
       "points": 5,
       "status": "todo",
@@ -1234,7 +1282,7 @@
         "W1-06"
       ],
       "acceptance": [
-        "Token-budgeted packets: relevance-ranked file slices (never naive truncation), repo-map skeleton, pinned core block <=1k tokens, stable-prefix ordering for KV-cache hits (BLUEPRINT §7.2); budget scales with model window; HANDOFF assembly switches to the packer"
+        "Token-budgeted packets: relevance-ranked file slices (never naive truncation), repo-map skeleton, pinned core block <=1k tokens, stable-prefix ordering for KV-cache hits (BLUEPRINT \u00a77.2); budget scales with model window; HANDOFF assembly switches to the packer"
       ],
       "points": 5,
       "status": "todo",
@@ -1254,7 +1302,7 @@
         "W7-02"
       ],
       "acceptance": [
-        "Structured field-report form (from a user or the trace viewer); triage flow turns accepted reports into playbook entries or validator-fix tickets (BLUEPRINT §12.6)"
+        "Structured field-report form (from a user or the trace viewer); triage flow turns accepted reports into playbook entries or validator-fix tickets (BLUEPRINT \u00a712.6)"
       ],
       "points": 3,
       "status": "todo",
@@ -1275,7 +1323,7 @@
         "W7-02"
       ],
       "acceptance": [
-        "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT §9 W8)"
+        "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT \u00a79 W8)"
       ],
       "points": 5,
       "status": "todo",
@@ -1294,7 +1342,7 @@
         "W4-05"
       ],
       "acceptance": [
-        "Replay any agent session from its events: prompt, tool calls, gate results per pass; linked from ticket cards; feeds the lessons form (BLUEPRINT §12.4)"
+        "Replay any agent session from its events: prompt, tool calls, gate results per pass; linked from ticket cards; feeds the lessons form (BLUEPRINT \u00a712.4)"
       ],
       "points": 3,
       "status": "todo",
@@ -1315,7 +1363,7 @@
         "W1-02"
       ],
       "acceptance": [
-        "Project secrets vault (keychain-backed); automatic redaction in context packets AND the event log; secrets-scanner validator wired into every close gate (BLUEPRINT §12.5); red fixture: a planted key in a diff blocks close"
+        "Project secrets vault (keychain-backed); automatic redaction in context packets AND the event log; secrets-scanner validator wired into every close gate (BLUEPRINT \u00a712.5); red fixture: a planted key in a diff blocks close"
       ],
       "points": 5,
       "status": "todo",
@@ -1335,7 +1383,7 @@
         "W0-05"
       ],
       "acceptance": [
-        "Board + receipts + ledgers serialize to a portable JSON bundle; import reconstructs projections and verifies the hash chain (BLUEPRINT §12.8)"
+        "Board + receipts + ledgers serialize to a portable JSON bundle; import reconstructs projections and verifies the hash chain (BLUEPRINT \u00a712.8)"
       ],
       "points": 2,
       "status": "todo",

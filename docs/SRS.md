@@ -100,6 +100,8 @@ MCP servers (FR-I3).
 | FR-L3 | Calibration bias on self-confidence is rescue-only, clamped [0, MAX_BIAS], minimum-sample gated, and applies only when an external anchor is present — the system can never manufacture a DONE from an ungrounded high number. | Property test: for all bias values and confidences, DONE requires anchor-present ∧ gate-passing; negative bias never produced (the 2026-07-01 inversion regression case). |
 | FR-L4 | Coverage tracker: every expected unit ends in exactly one of DONE / WAIVED (attributed) / BLOCKED / FAILED / SKIPPED (expected-but-never-ran, loudly flagged); the end-of-phase COVERAGE_REPORT is both a UI artifact and a gate input; nothing disappears. | Invariant test: sum of states = inventory size after every run; SKIPPED row blocks the phase gate; WAIVED rows carry waiver identity. |
 | FR-L5 | Context Packer (Blueprint §7.2): every HANDOFF carries a token-budgeted context packet — relevance-ranked file slices (never naive truncation), repo-map skeleton, ticket interfaces + acceptance, prior confirmed findings — plus a pinned ≤1k-token core block (stable-prefix ordered for KV-cache hits). Distill-never-replay; write-scope bounds read-focus; reasoning chain-of-thought stripped from history and artifacts. | Packet size ≤ budget for every fixture model window; thinking-strip test: no `<think>` content in stored artifacts or subsequent prompts; escalated re-run uses same packet discipline at larger budget. |
+| FR-L6 | Finding ledger (Blueprint §3.5, design docs/design/FINDING_LOOP_POLICY.md): every HIGH/CRITICAL review finding is a record with stable fingerprint, state OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED, per-finding attempt counts, evidence-bearing history; rechecks return per-finding verdicts. Infra failures (unparseable/truncated review, provider-limit pause mid-review) retry free — never open findings, never consume attempts. | Fixture: a STILL-PRESENT verdict increments only that finding's attempts; a truncated review triggers a free retry with zero ledger writes; a resolved-then-reappearing finding transitions to REGRESSED. |
+| FR-L7 | Loop-convergence budgets: stalled finding = 2 same-tier targeted attempts then escalate one rung (then block with ledger); progress loops budgeted by convergence — open-count must strictly decrease per 2-pass window or the pass be PROGRESSED — ceiling 3+points capped 8, ceiling-while-progressing parks the ticket flagged as a decomposition signal; any REGRESSED finding escalates immediately, second blocks. | Fixture loops: same-finding 3rd same-tier attempt is impossible (escalation forced); a 2→9→15-style discovering loop is NOT killed while priors resolve; flat open-count for 2 passes stops the loop. |
 
 ### 2.6 FR-HM — Harbormaster (Blueprint §3.6) — wave W3
 
@@ -189,7 +191,7 @@ MCP servers (FR-I3).
 | FR-G1–G5 | §3.3 | W2 | | FR-S1–S4 | §3.10 | W0-07 (core) / W4-06 (wizard+UI) |
 | FR-G6, FR-G7 | §12.1–.2 | W2 | | FR-F1–F5 | §3.11 | W4-02/W4-07 (home+inbox) / W7-02 (playbook) |
 | FR-L1–L4 | §3.5 | W1 | | FR-E1 | §3.2 (expert box), §11 | W1-01 |
-| FR-L5 | §7.2 | W1 | | NFR-1–7 | §6.2 | per §3 above |
+| FR-L5 | §7.2 | W1 | | FR-L6/L7 | §3.5 + FINDING_LOOP_POLICY | W3-08 | | NFR-1–7 | §6.2 | per §3 above |
 | FR-H1–H5 | §3.6 | W3 | | | | |
 
 D-008 additionally binds W1 to the one-time content import + conformance suite (TESTING.md §4).

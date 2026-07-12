@@ -262,6 +262,8 @@ The execution heart, productized from `runItemMicroLoop` + the MICRO_LOOP contra
 
 **Coverage Tracker:** every expected unit of work ends in exactly one state — `DONE`, `WAIVED` (intentional, recorded, attributed), `BLOCKED`, `FAILED`, or `SKIPPED` (expected-but-never-ran = a missed gate, loudly flagged). The end-of-phase COVERAGE_REPORT is a UI artifact and a gate input. Nothing disappears.
 
+**Finding lifecycle & loop budgets** (field-validated 2026-07-12; full design `docs/design/FINDING_LOOP_POLICY.md`): review findings are first-class records with identity (fingerprint; state OPEN → FIX_ATTEMPTED → RESOLVED, or REGRESSED; per-finding attempt counts), and every fix-loop iteration is classified — CLEARED / **STALLED** (same finding survived a targeted fix) / **PROGRESSED** (priors resolved, new findings opened) / OSCILLATING (a resolved finding regressed). Budgets differ by class: a stalled finding gets **2 same-tier attempts, then escalates** — the third identical attempt is always wrong; progress loops are budgeted by **convergence**, not count (open-findings must trend down; ceiling `3 + ticket points`, cap 8 — hitting it while still progressing parks the ticket as a *decomposition* signal, not a failure); any oscillation escalates immediately, twice blocks; infrastructure failures (truncated review output, provider-limit pause mid-review) retry free and never open findings or consume attempts.
+
 ### 3.6 Harbormaster (the Conductor)
 
 The out-of-session orchestrator — the component that makes unattended operation safe:
@@ -481,6 +483,8 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-L3: Calibration bias is rescue-only, clamped, min-sample gated, anchor-required.
 - FR-L4: Coverage tracker with DONE/WAIVED/BLOCKED/FAILED/SKIPPED; end-of-phase report is a gate input.
 - FR-L5: Context packets assembled by the token-budgeted Context Packer (§7.2); reasoning-model thinking stripped from history and artifacts.
+- FR-L6: Finding ledger: every HIGH/CRITICAL review finding is a record with stable identity, state (OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED), per-finding attempt counts, and evidence-bearing history; rechecks return per-finding verdicts, never just a fresh list. Infra failures (unparseable/truncated review, limit pause) retry free and never open findings.
+- FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8, ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
 
 **FR-HM (Harbormaster)**
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
