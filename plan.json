@@ -430,10 +430,11 @@
         "Device-code auth flow persists token via credential ref; chat-completions calls pass contract suite on recorded fixtures (D-007); token refresh handled; graceful error when the subscription lacks API access, with remediation text"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         "CONDUCTOR 2026-07-12T01:58:18.032Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [UNRESOLVED HIGH] packages/gateway/src/providers/copilot.ts: fetchJson() (used by requestDeviceCode() at line ~277 and completeDeviceAuth() at line ~308) never checks the HTTP status code of the response, unlike exchangeCopilotToken() (checks `status`) and requestCopilot() (checks `response.ok`). If GitHub returns a 4xx/5xx for POST /login/device/code (e.g. invalid client_id, transient outage) or POST /login/oauth/access_token, the error body is parsed as if it were a valid success payload — requestDeviceCode() would return a DeviceCodeInfo with undefined/NaN fields (deviceCode, userCode, expi",
-        "RESET 2026-07-12: blocked during the false-block window; conductor merge-gate since fixed. Re-running under corrected gate."
+        "RESET 2026-07-12: blocked during the false-block window; conductor merge-gate since fixed. Re-running under corrected gate.",
+        "CONDUCTOR 2026-07-12T05:57:34.780Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review"
       ]
     },
     {
