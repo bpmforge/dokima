@@ -1,0 +1,169 @@
+/**
+ * The 70/85/100% circuit breakers (BLUEPRINT §3.3, FR-G4): reads the cost
+ * ledger for a (project, run) pair, decides the current BreakerLevel, and
+ * ledgers each threshold exactly once as spend crosses it (spend is
+ * monotonic — a ledger entry only ever adds cost, so a level once reached
+ * is never un-reached). 100% raises a Decide-tier approval card (US-243);
+ * 70% and 85% are Record tier.
+ */
+
+import type { CostLedger } from './ledger.js';
+import {
+  BREAKER_LEVEL_ORDER,
+  BREAKER_THRESHOLDS,
+  type ApprovalCard,
+  type BreakerLevel,
+  type BreakerReading,
+  type BreakerScope,
+  type BudgetLimits,
+  type BudgetPolicy,
+  type LedgerEntry,
+} from './types.js';
+import { noopBudgetEventSink, type BudgetEvent, type BudgetEventSink } from './events.js';
+
+type BudgetEventType = BudgetEvent['type'];
+
+function levelForRatio(ratio: number): BreakerLevel {
+  if (ratio >= BREAKER_THRESHOLDS.hard_stop) return 'hard_stop';
+  if (ratio >= BREAKER_THRESHOLDS.downshift) return 'downshift';
+  if (ratio >= BREAKER_THRESHOLDS.warn) return 'warn';
+  return 'ok';
+}
+
+/** Reads the ledger for one (project, run) pair and computes the current breaker level — the tighter of the run and project ratios wins (FR-G4: breakers apply "per run and per project"). */
+export function readBreaker(
+  ledger: CostLedger,
+  projectId: string,
+  runId: string,
+  limits: BudgetLimits,
+): BreakerReading {
+  const runSpentUsd = ledger.totalForRun(projectId, runId);
+  const projectSpentUsd = ledger.totalForProject(projectId);
+  const runRatio = limits.runLimitUsd ? runSpentUsd / limits.runLimitUsd : 0;
+  const projectRatio = limits.projectLimitUsd
+    ? projectSpentUsd / limits.projectLimitUsd
+    : 0;
+  const ratio = Math.max(runRatio, projectRatio);
+  const scope: BreakerScope | undefined =
+    ratio === 0 ? undefined : runRatio >= projectRatio ? 'run' : 'project';
+  return { level: levelForRatio(ratio), scope, ratio, runSpentUsd, projectSpentUsd };
+}
+
+/** Downshift (85%) skips optional passes and prefers cheaper rungs; hard_stop (100%) does too, plus refuses new ticket claims (enforced by the caller — see BudgetPolicy). */
+export function policyForLevel(level: BreakerLevel): BudgetPolicy {
+  const constrained = level === 'downshift' || level === 'hard_stop';
+  return {
+    skipOptionalPasses: constrained,
+    preferCheaperRungs: constrained,
+    canClaimNewTicket: level !== 'hard_stop',
+  };
+}
+
+function limitForScope(scope: BreakerScope, limits: BudgetLimits): number {
+  return (scope === 'run' ? limits.runLimitUsd : limits.projectLimitUsd) ?? 0;
+}
+
+function spentForScope(scope: BreakerScope, reading: BreakerReading): number {
+  return scope === 'run' ? reading.runSpentUsd : reading.projectSpentUsd;
+}
+
+const EVENT_TYPE_FOR_LEVEL: Readonly<
+  Record<Exclude<BreakerLevel, 'ok'>, BudgetEventType>
+> = {
+  warn: 'budget.threshold_crossed',
+  downshift: 'budget.downshift',
+  hard_stop: 'budget.hard_stop',
+};
+
+const THRESHOLD_PCT_FOR_LEVEL: Readonly<
+  Record<Exclude<BreakerLevel, 'ok'>, 70 | 85 | 100>
+> = {
+  warn: 70,
+  downshift: 85,
+  hard_stop: 100,
+};
+
+/**
+ * Stateful per-(project, run) breaker tracker: records ledger entries and
+ * ledgers each newly crossed threshold exactly once. A single large entry
+ * can jump straight past multiple thresholds (e.g. 'ok' -> 'hard_stop');
+ * every threshold it passed through is still ledgered, in ascending order,
+ * so an audit sees exactly when each one tripped (UC-05).
+ */
+export class BudgetBreakerTracker {
+  private readonly highestLevel = new Map<string, BreakerLevel>();
+
+  constructor(
+    private readonly ledger: CostLedger,
+    private readonly limits: BudgetLimits,
+    private readonly sink: BudgetEventSink = noopBudgetEventSink,
+    private readonly now: () => string = () => new Date().toISOString(),
+  ) {}
+
+  /** Records one ledger entry, ledgers any newly crossed threshold(s) for its (project, run), and returns the resulting policy. */
+  async record(entry: LedgerEntry): Promise<BudgetPolicy> {
+    this.ledger.record(entry);
+    const key = trackerKey(entry.projectId, entry.runId);
+    const previousLevel = this.highestLevel.get(key) ?? 'ok';
+    const reading = readBreaker(this.ledger, entry.projectId, entry.runId, this.limits);
+
+    const previousIndex = BREAKER_LEVEL_ORDER.indexOf(previousLevel);
+    const newIndex = BREAKER_LEVEL_ORDER.indexOf(reading.level);
+    for (let i = previousIndex + 1; i <= newIndex; i++) {
+      const crossedLevel = BREAKER_LEVEL_ORDER[i] as Exclude<BreakerLevel, 'ok'>;
+      await this.emit(crossedLevel, entry.projectId, entry.runId, reading);
+    }
+    if (newIndex > previousIndex) {
+      this.highestLevel.set(key, reading.level);
+    }
+    return policyForLevel(reading.level);
+  }
+
+  /** The highest breaker level this (project, run) pair has ledgered so far. */
+  levelFor(projectId: string, runId: string): BreakerLevel {
+    return this.highestLevel.get(trackerKey(projectId, runId)) ?? 'ok';
+  }
+
+  private async emit(
+    level: Exclude<BreakerLevel, 'ok'>,
+    projectId: string,
+    runId: string,
+    reading: BreakerReading,
+  ): Promise<void> {
+    const scope = reading.scope ?? 'run';
+    const limitUsd = limitForScope(scope, this.limits);
+    const spentUsd = spentForScope(scope, reading);
+    const occurredAt = this.now();
+    const approvalCard: ApprovalCard | undefined =
+      level === 'hard_stop'
+        ? {
+            riskClass: 'budget',
+            projectId,
+            runId,
+            scope,
+            summary: `Budget hard stop: ${scope} spend $${spentUsd.toFixed(2)} reached its $${limitUsd.toFixed(2)} limit`,
+            spentUsd,
+            limitUsd,
+            raisedAt: occurredAt,
+          }
+        : undefined;
+    const event: BudgetEvent = {
+      type: EVENT_TYPE_FOR_LEVEL[level],
+      tier: level === 'hard_stop' ? 'decide' : 'record',
+      scope,
+      projectId,
+      runId,
+      thresholdPct: THRESHOLD_PCT_FOR_LEVEL[level],
+      spentUsd,
+      limitUsd,
+      ratio: reading.ratio,
+      approvalCard,
+      occurredAt,
+    };
+    await this.sink.emit(event);
+  }
+}
+
+function trackerKey(projectId: string, runId: string): string {
+  return `${projectId}::${runId}`;
+}
