@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { presetAsGlobalScope } from '../routing/presets.js';
+import { resolveModelChain } from '../routing/matrix.js';
+import type { PresetName } from '../routing/presets.js';
 import type { ScopedRoleMatrix } from '../routing/types.js';
 import { createInMemoryEscalationEventSink } from './events.js';
 import {
@@ -10,6 +13,11 @@ import {
 } from './ladder.js';
 import type { FailureReceipt, GateOutcome } from './types.js';
 
+// 'challenger' (not 'coding-agent') is deliberately the role R3 reads its
+// frontier model from — none of the shipped presets define a
+// `taskTypes.escalation` override on 'coding-agent' (verified against the
+// real presets below), so climbing coding-agent's own chain would silently
+// repeat R1's model instead of reaching a frontier one.
 const matrix: ScopedRoleMatrix = {
   global: {
     'coding-agent': {
@@ -17,9 +25,9 @@ const matrix: ScopedRoleMatrix = {
         model: 'qwen2.5-coder-7b-instruct',
         fallbackChain: ['qwen2.5-coder-32b-instruct'],
       },
-      taskTypes: {
-        escalation: { model: 'claude-opus-4-8', fallbackChain: [] },
-      },
+    },
+    challenger: {
+      default: { model: 'claude-opus-4-8', fallbackChain: [] },
     },
   },
 };
@@ -87,12 +95,16 @@ describe('runEscalationLadder', () => {
 
   it('FR-G3: a simulated R1 gate failure escalates to R2 with the failure receipt attached', async () => {
     const sink = createInMemoryEscalationEventSink();
+    const runAttempt: AttemptRunner = ({ rung }) =>
+      rung === 'R2'
+        ? { passed: true, receipts: [] }
+        : { passed: false, receipts: [receipt(rung)], receiptId: 'receipt-r1' };
     const outcome = await runEscalationLadder({
       ticketId: 't-3',
       criterion: 'the thing works',
       actorId: 'harbormaster',
       matrix,
-      runAttempt: scriptedAttemptRunner('R2'),
+      runAttempt,
       sink,
       now: () => '2026-07-12T00:00:00.000Z',
     });
@@ -109,6 +121,7 @@ describe('runEscalationLadder', () => {
       toRung: 'R2',
       actorId: 'harbormaster',
       occurredAt: '2026-07-12T00:00:00.000Z',
+      receiptId: 'receipt-r1',
     });
     expect(event!.receipts).toEqual([receipt('R1')]);
   });
@@ -132,7 +145,7 @@ describe('runEscalationLadder', () => {
     expect(outcome.model).toBe('solo-model');
   });
 
-  it('R3 resolves the frontier model via the escalation task type, distinct from R1/R2', async () => {
+  it("R3 resolves the frontier model via the challenger role's escalation task type, distinct from R1/R2", async () => {
     const calls: string[] = [];
     const runAttempt: AttemptRunner = ({ rung, modelChain }) => {
       calls.push(`${rung}:${modelChain[0]}`);
@@ -183,6 +196,26 @@ describe('runEscalationLadder', () => {
     expect(blockedEvent.receipts.length).toBeGreaterThan(0);
     expect(sink.events).toHaveLength(3);
   });
+
+  it.each<PresetName>(['all-local', 'hybrid', 'all-cloud'])(
+    "R3 is provably distinct from R1 under the shipped %s preset (regression: taskType 'escalation' " +
+      "on 'coding-agent' itself falls through to that role's own default in every shipped preset, " +
+      "silently repeating R1's model — R3 must read a role that actually carries a frontier model)",
+    async (presetName) => {
+      const presetMatrix = presetAsGlobalScope(presetName);
+      const r1Model = resolveModelChain(presetMatrix, 'coding-agent', 'code').chain[0];
+      const outcome = await runEscalationLadder({
+        ticketId: `t-preset-${presetName}`,
+        criterion: 'x',
+        actorId: 'harbormaster',
+        matrix: presetMatrix,
+        runAttempt: scriptedAttemptRunner('R3'),
+      });
+      expect(outcome.status).toBe('resolved');
+      expect(outcome.finalRung).toBe('R3');
+      expect(outcome.model).not.toBe(r1Model);
+    },
+  );
 
   it('refuses to advance on a failure reported with no receipts (evidence-triggered, never vibes-triggered)', async () => {
     const runAttempt: AttemptRunner = () => ({ passed: false, receipts: [] });

@@ -29,4 +29,14 @@ export interface GateOutcome {
   readonly passed: boolean;
   /** Evidence for the outcome. Required non-empty when `passed` is false — see MissingFailureEvidenceError. */
   readonly receipts: readonly FailureReceipt[];
+  /**
+   * The W0-05 `ReceiptRecord.id` this outcome was minted under, when the
+   * caller's AttemptRunner mints a real receipt (packages/events'
+   * `mintReceipt`/`verifyReceipt`) — not producible here, since this
+   * package cannot depend on packages/events. Carrying the id (rather than
+   * a re-copied receipt blob) lets a downstream consumer verify the
+   * escalation against the actual anchored receipt instead of trusting
+   * this event's copy of it.
+   */
+  readonly receiptId?: string;
 }

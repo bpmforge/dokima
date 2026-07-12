@@ -19,6 +19,8 @@ export interface EscalationEvent {
   readonly actorId: string;
   /** The failure receipts that triggered this escalation — never empty (see MissingFailureEvidenceError in ladder.ts). */
   readonly receipts: readonly FailureReceipt[];
+  /** The triggering GateOutcome's `receiptId`, when its AttemptRunner minted a real W0-05 receipt (see GateOutcome.receiptId). */
+  readonly receiptId?: string;
   readonly occurredAt: string;
 }
 

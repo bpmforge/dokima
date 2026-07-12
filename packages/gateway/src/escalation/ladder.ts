@@ -4,8 +4,8 @@
  *   R0  Memory/playbook answer (free)      — MemoryConsultHook, resolves for free
  *   R1  Cheapest capable model, micro-loop — matrix's primary model for (role, taskType)
  *   R2  Same ticket, one rung up           — matrix's first fallback model, automatic on R1 gate failure
- *   R3  Frontier model, single re-run      — matrix's model for taskType 'escalation' (BLUEPRINT §3.3's
- *                                             task-type axis; PRESET_ALL_CLOUD wires `default.taskTypes.escalation`)
+ *   R3  Frontier model, single re-run      — the frontier role's (default 'challenger') model for
+ *                                             taskType 'escalation' (BLUEPRINT §3.3's task-type axis)
  *   R4  Blocked-with-evidence              — ticket parked; human decides
  *
  * Escalation is per-ticket and evidence-triggered only (never vibes-triggered):
@@ -26,6 +26,7 @@
 
 import { resolveModelChain } from '../routing/matrix.js';
 import {
+  ROLE_CHALLENGER,
   ROLE_CODING_AGENT,
   type AgentRole,
   type ScopedRoleMatrix,
@@ -75,6 +76,7 @@ export interface RungAttemptRecord {
   readonly model?: string;
   readonly status: RungAttemptStatus;
   readonly receipts: readonly FailureReceipt[];
+  readonly receiptId?: string;
 }
 
 export type EscalationLadderStatus = 'resolved' | 'blocked';
@@ -101,6 +103,20 @@ export interface EscalationLadderInput {
   readonly role?: AgentRole;
   /** Default 'code'. */
   readonly taskType?: TaskType;
+  /**
+   * Default 'challenger' — the role R3 reads its frontier model from
+   * (taskType 'escalation'). Not 'coding-agent': none of the shipped
+   * presets (routing/presets.ts) define a `taskTypes.escalation` override
+   * on 'coding-agent', so climbing that role's own chain would silently
+   * repeat R1's model instead of reaching a frontier model. Every shipped
+   * preset's 'challenger' role does resolve to a distinct, more capable
+   * model (routing/presets.test.ts's FR-G2 check already guarantees
+   * challenger != coding-agent). This does not invoke the maker!=verifier
+   * guard (router.ts's `route()`) — R3 only reads challenger's configured
+   * model as the matrix's frontier-tier entry, it does not ask the
+   * challenger role to review anything.
+   */
+  readonly frontierRole?: AgentRole;
   readonly runAttempt: AttemptRunner;
   readonly memoryHook?: MemoryConsultHook;
   readonly sink?: EscalationEventSink;
@@ -125,9 +141,9 @@ function resolveClimbModels(
   return { r1, r2 };
 }
 
-/** Resolves R3's frontier model via taskType 'escalation' — the matrix's dedicated axis for the expensive rung (BLUEPRINT §3.3). */
-function resolveFrontierModel(matrix: ScopedRoleMatrix, role: AgentRole): string {
-  return resolveModelChain(matrix, role, 'escalation').chain[0]!;
+/** Resolves R3's frontier model via taskType 'escalation' on `frontierRole` — the matrix's dedicated axis for the expensive rung (BLUEPRINT §3.3). */
+function resolveFrontierModel(matrix: ScopedRoleMatrix, frontierRole: AgentRole): string {
+  return resolveModelChain(matrix, frontierRole, 'escalation').chain[0]!;
 }
 
 /** Runs the R0-R4 escalation ladder for one ticket (BLUEPRINT §3.3, FR-G3). */
@@ -136,6 +152,7 @@ export async function runEscalationLadder(
 ): Promise<EscalationLadderOutcome> {
   const role = input.role ?? ROLE_CODING_AGENT;
   const taskType = input.taskType ?? 'code';
+  const frontierRole = input.frontierRole ?? ROLE_CHALLENGER;
   const now = input.now ?? (() => new Date().toISOString());
   const sink = input.sink ?? noopEscalationEventSink;
   const memoryHook = input.memoryHook ?? noopMemoryConsultHook;
@@ -148,6 +165,7 @@ export async function runEscalationLadder(
     toRung: Rung,
     type: EscalationEvent['type'],
     receipts: readonly FailureReceipt[],
+    receiptId: string | undefined,
   ): Promise<void> {
     const event: EscalationEvent = {
       type,
@@ -156,6 +174,7 @@ export async function runEscalationLadder(
       toRung,
       actorId: input.actorId,
       receipts,
+      receiptId,
       occurredAt: now(),
     };
     events.push(event);
@@ -188,7 +207,8 @@ export async function runEscalationLadder(
   const { r1, r2 } = resolveClimbModels(input.matrix, role, taskType);
   const climbModels: Record<'R1' | 'R2', string> = { R1: r1, R2: r2 };
 
-  let lastFailure: { rung: Rung; receipts: readonly FailureReceipt[] } | undefined;
+  let lastFailure:
+    { rung: Rung; receipts: readonly FailureReceipt[]; receiptId?: string } | undefined;
 
   for (const rung of ['R1', 'R2'] as const) {
     if (lastFailure) {
@@ -197,6 +217,7 @@ export async function runEscalationLadder(
         rung,
         'escalation.rung_advanced',
         lastFailure.receipts,
+        lastFailure.receiptId,
       );
     }
     const model = climbModels[rung];
@@ -212,13 +233,25 @@ export async function runEscalationLadder(
       return resolved(rung, model);
     }
     assertEvidence(rung, outcome);
-    attempts.push({ rung, model, status: 'failed', receipts: outcome.receipts });
-    lastFailure = { rung, receipts: outcome.receipts };
+    attempts.push({
+      rung,
+      model,
+      status: 'failed',
+      receipts: outcome.receipts,
+      receiptId: outcome.receiptId,
+    });
+    lastFailure = { rung, receipts: outcome.receipts, receiptId: outcome.receiptId };
   }
 
-  // R3 — frontier, single re-run, via the 'escalation' task type.
-  await emit(lastFailure!.rung, 'R3', 'escalation.rung_advanced', lastFailure!.receipts);
-  const r3Model = resolveFrontierModel(input.matrix, role);
+  // R3 — frontier, single re-run, via the 'escalation' task type on `frontierRole`.
+  await emit(
+    lastFailure!.rung,
+    'R3',
+    'escalation.rung_advanced',
+    lastFailure!.receipts,
+    lastFailure!.receiptId,
+  );
+  const r3Model = resolveFrontierModel(input.matrix, frontierRole);
   const r3Outcome = await input.runAttempt({
     rung: 'R3',
     ticketId: input.ticketId,
@@ -236,10 +269,11 @@ export async function runEscalationLadder(
     model: r3Model,
     status: 'failed',
     receipts: r3Outcome.receipts,
+    receiptId: r3Outcome.receiptId,
   });
 
   // R4 — blocked-with-evidence; ticket parked, human decides.
-  await emit('R3', 'R4', 'escalation.blocked', r3Outcome.receipts);
+  await emit('R3', 'R4', 'escalation.blocked', r3Outcome.receipts, r3Outcome.receiptId);
 
   return {
     ticketId: input.ticketId,
