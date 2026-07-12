@@ -368,9 +368,10 @@
         "Negative path: fabricated manifest (file listed but absent) and self-accept both refused, receipts show why"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "done",
       "notes": [
-        "CONDUCTOR 2026-07-12T12:01:02.833Z: blocked after 3 attempts. Branch sw/w1-07 kept. Gaps: [HIGH] e2e/toy-project/harbormaster-lite.ts: resolveInsideCwd() only does string-based path containment (rejects absolute paths and post-resolve '..' escapes) — it never resolves symlinks. A malicious/compromised session can create a symlink inside its own writeScope (e.g. `src/leak.txt -> /etc/passwd` or `-> ~/.ssh/id_rsa`) via ordinary filesystem access it already has, then claim `src/leak.txt` in the manifest. `resolveInsideCwd` accepts the path (it's lexically inside cwd), `fileExists()` follows the symlink and reports it present (fs.access follows symlinks by default), and `readExistingFi"
+        "CONDUCTOR 2026-07-12T12:01:02.833Z: blocked after 3 attempts. Branch sw/w1-07 kept. Gaps: [HIGH] e2e/toy-project/harbormaster-lite.ts: resolveInsideCwd() only does string-based path containment (rejects absolute paths and post-resolve '..' escapes) — it never resolves symlinks. A malicious/compromised session can create a symlink inside its own writeScope (e.g. `src/leak.txt -> /etc/passwd` or `-> ~/.ssh/id_rsa`) via ordinary filesystem access it already has, then claim `src/leak.txt` in the manifest. `resolveInsideCwd` accepts the path (it's lexically inside cwd), `fileExists()` follows the symlink and reports it present (fs.access follows symlinks by default), and `readExistingFi",
+        "FIXED-BY-HAND 2026-07-12: real HIGH — resolveInsideCwd (E2E harbormaster-lite, models the real write-scope enforcement) did lexical-only path containment; a session could symlink a file inside its scope pointing outside (src/leak.txt -> ~/.ssh/id_rsa) and fs.access would follow it, escaping the check. Fixed with fs.realpath resolution + re-containment; added a failing-capable symlink-escape regression test. Full gate + E2E (6 tests) green. NOTE: the real Harbormaster (W3-01) needs the same symlink-safe resolution."
       ]
     },
     {

@@ -195,3 +195,7 @@ content/validators (imported W1-01) now feed the per-ticket gate. Reliable/objec
 ## 2026-07-12 — 3 blocks fixed by hand + released W3
 
 W0-08 (CLI): needed workspace deps (@shipwright/events/tickets/shared) in apps/server/package.json, outside its cli/** write_scope; the unresolved modules cascaded into the err:unknown TS error (TicketError narrowing failed). W1-02 (validators): events/index.ts never re-exported receipts.ts, so mintReceipt (built by W0-05) was not on the public API + a stale scaffold placeholder test. W2-03 (Copilot): code was correct; blocked only on an unparseable review during the 05:20 limit pause. All fixed, full gate green.
+
+## 2026-07-12 — W1-07 fixed (symlink-escape) + W3 released
+
+W1-07 blocked on a REAL HIGH: the E2E harbormaster-lite (models the real Harbormaster write-scope enforcement) resolved manifest paths lexically only, so a session could symlink a file inside its scope to a target outside (fs.access follows it), escaping the trust-boundary check the E2E exists to prove. Fixed with fs.realpath re-containment + a failing-capable regression test. The real Harbormaster (W3-01) must use the same symlink-safe resolution. W3 released.
