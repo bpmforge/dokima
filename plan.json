@@ -543,8 +543,10 @@
         "Assigning an unfit pair warns with the card; proceeding requires explicit ack event"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-12: done. packages/gateway/src/fitness/ — bench of fixed oracle tasks per role (coding-agent/code-reviewer/challenger) mints a FitnessCard (fit/unfit/marginal) per (model, role, harnessVersion), keyed per docs/DATABASE.md §7's model_fitness PK. Coding task uses a real executable oracle (extract the model's returned function via balanced-brace matching, invoke it via node:vm against known cases — TESTING.md §8's 'bug with a failing test as oracle'); review/challenge tasks use keyword oracles (text-reasoning checks, no executable equivalent). Verified before building on it that vm.Script's timeout only bounds the script's own evaluation, not a later call to a function it returns (an infinite-loop function hung when called host-side); fixed by wrapping the invocation inside the same timed script text, covered by a test. fixtures.ts reads e2e/fitness-fixtures/*.json (plain data) at runtime via fs, not test/fitness/ as TESTING.md §8 names it — plan.json's write_scope governs (same deviation W2-01 documented for test/providers*). assignment.ts's guardFitAssignment mirrors routing/maker-verifier.ts's guardMakerVerifierDistinct: an unfit/marginal pair throws UnfitAssignmentRefusedError (carrying the card) unless the caller passes an explicit ack, which mints a fitness.unfit_ack event via an injectable sink (package can't depend on packages/events from this write_scope, same constraint every prior gateway ticket hit). HANDOFF in fitness/index.ts: not yet wired into routing/router.ts's route() (routing/** out of this ticket's write_scope); FitnessCardStore is in-memory only (no global SQLite DB owner yet). 46 new tests incl. the red-fixture proof this gate needs — scripted strong fake mints 'fit', scripted weak fake mints 'unfit', per role, against the real e2e/fitness-fixtures/ set. Gate: pnpm lint && pnpm typecheck && pnpm test = 510 passed | 1 skipped (pre-existing) workspace-wide."
+      ]
     },
     {
       "id": "W3-01",

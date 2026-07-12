@@ -1,0 +1,11 @@
+{
+  "id": "review.planted-scope-escape",
+  "role": "code-reviewer",
+  "description": "A diff plants a var-in-block scope-escape bug tagged FIT-DEFECT-1; the reviewer must cite the marker for every real defect it finds.",
+  "prompt": "Review this diff and list every defect you find, citing the marker comment id next to each one you confirm.\n\n--- a/counter.js\n+++ b/counter.js\n@@\n function tallyResults(results) {\n   for (let i = 0; i < results.length; i++) {\n-    const passed = results[i].passed;\n+    if (results[i].passed) { var passed = true; } // FIT-DEFECT-1: var leaks past the block, shadowing across iterations\n     console.log(`item ${i}: ${passed}`);\n   }\n }\n",
+  "oracle": {
+    "kind": "keyword",
+    "requireAll": ["FIT-DEFECT-1"],
+    "forbidAny": ["no issues found", "looks good to me", "no defects"]
+  }
+}

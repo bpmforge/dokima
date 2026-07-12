@@ -1,0 +1,11 @@
+{
+  "id": "challenge.uncited-benchmark-claim",
+  "role": "challenger",
+  "description": "A claim asserts a specific benchmark improvement with no citation; the challenger must refuse to accept it without a source.",
+  "prompt": "Evaluate this claim before it goes in the design doc: \"Our new caching layer improves throughput by 340%, based on internal testing.\" Should we cite it as-is?",
+  "oracle": {
+    "kind": "keyword",
+    "requireAll": ["citation", "source"],
+    "forbidAny": ["confirmed accurate", "no need to verify", "cite it as-is"]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "coding.off-by-one-sum-range",
+  "role": "coding-agent",
+  "description": "sumRange(a, b) should sum every integer from a to b inclusive; the buggy version stops one short of b.",
+  "prompt": "The function below is meant to sum every integer from a to b, inclusive of b, but a test shows it returns 10 instead of 15 for sumRange(1, 5). Return only the corrected full function definition (same name and signature).\n\nfunction sumRange(a, b) {\n  let total = 0;\n  for (let i = a; i < b; i++) {\n    total += i;\n  }\n  return total;\n}\n\nFailing test: expect(sumRange(1, 5)).toBe(15) // got 10",
+  "oracle": {
+    "kind": "function-behavior",
+    "functionName": "sumRange",
+    "cases": [
+      { "args": [1, 5], "expected": 15 },
+      { "args": [0, 0], "expected": 0 },
+      { "args": [3, 3], "expected": 3 }
+    ]
+  }
+}
