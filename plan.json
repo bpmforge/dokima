@@ -340,8 +340,10 @@
         "Session runs inside the ticket worktree; write-scope violations detected by diff and reported; session output parsed defensively (JSON contract -> embedded JSON -> fenced fallback)"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": []
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-12: done. handoff.ts: typed Handoff -> renderHandoff() to the exact BLUEPRINT §4 ════-delimited block; HandoffTicket is a local minimal projection (id, title), not @shipwright/tickets' Ticket, since loop may not import tickets (ARCHITECTURE.md §4 dependency matrix). session-manifest.ts: CompletionManifest shape matches API_DESIGN.md §4 exactly (verify.exit, not exitCode); stripThinking removes <think>...</think> (SRS FR-L5) before any parsing; parseCompletionManifest is three-tier defensive (whole-output JSON contract -> embedded JSON via a string-aware balanced-brace scan -> fenced code block). session-scope.ts: detectScopeViolations (basic glob classification, same */**/? dialect as packages/git/src/glob.ts, duplicated not imported per the same tickets/loop precedent from W0-04) + computeChangedPaths (real `git diff --name-only` + `git ls-files --others` via node:child_process directly — no execa dependency needed since package.json is outside this ticket's write_scope). session.ts: runSession renders the HANDOFF, spawns via an injected SpawnSession (never hardcodes an agent CLI or imports gateway), strips thinking, defensively parses the manifest, and reports scope violations from the real diff independent of the session's own claims (SC-02 two-trust-level split). createChildProcessSpawn is a real node:child_process implementation, defaulting to a PATH-only env (not process.env) so an untrusted session never default-inherits parent credentials (SC-03/SC-07) — caught and fixed before close via the advisor's independent review pass, with a planted-secret regression test. Did not touch packages/loop/src/index.ts (barrel) — outside this ticket's write_scope glob; deferred to whichever ticket first wires this into a consumer (harbormaster, W3-01). 44 new tests across handoff/session-manifest/session-scope/session; the scope-check and child-process tests use real temp git repos and a real `node -e` child process, no mocks. Gate: pnpm lint && pnpm typecheck && pnpm test = 350 passed | 1 skipped (pre-existing) workspace-wide, 53 test files."
+      ]
     },
     {
       "id": "W1-07",
