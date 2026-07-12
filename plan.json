@@ -577,7 +577,8 @@
       "points": 5,
       "status": "blocked",
       "notes": [
-        "CONDUCTOR 2026-07-12T14:08:56.949Z: blocked after 3 attempts. Branch sw/w3-01 kept. Gaps: [HIGH] packages/harbormaster/src/loop-gates.ts: verifyManifestAgainstDisk / resolveInsideCwd only check that a manifest-claimed file exists somewhere inside the worktree and stats — they never cross-check manifest.files against the actual changed paths returned by computeChangedPaths (the git diff/untracked list used for the scope check). Combined with the SC-02 fix (which only requires *some* non-empty in-scope diff and *some* new commit to exist, not that the new commit/diff touches the claimed files), a session can commit one trivial in-scope decoy change (satisfying emptyDiff=false and com"
+        "CONDUCTOR 2026-07-12T14:08:56.949Z: blocked after 3 attempts. Branch sw/w3-01 kept. Gaps: [HIGH] packages/harbormaster/src/loop-gates.ts: verifyManifestAgainstDisk / resolveInsideCwd only check that a manifest-claimed file exists somewhere inside the worktree and stats — they never cross-check manifest.files against the actual changed paths returned by computeChangedPaths (the git diff/untracked list used for the scope check). Combined with the SC-02 fix (which only requires *some* non-empty in-scope diff and *some* new commit to exist, not that the new commit/diff touches the claimed files), a session can commit one trivial in-scope decoy change (satisfying emptyDiff=false and com",
+        "PAUSE 2026-07-12: build paused until bpm-opencode-experts v2.1.0 (founder decision). At resume: SPLIT per docs/RELEASE_TRACKER.md F1 into W3-01a (claim loop) / W3-01b (out-of-session gates) / W3-01c (land/park), human-paired review (F2). Branch sw/w3-01 kept as seed."
       ]
     },
     {
