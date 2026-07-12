@@ -47,9 +47,10 @@ scripts/               dev/build/release tooling
 
 Provider SDKs (**allowed in `packages/gateway` only** — ARCHITECTURE law 2):
 `@anthropic-ai/sdk`, `openai` (also serves LM Studio/Ollama/OpenAI-compatible via
-`baseURL`), `google-auth-library` (Vertex ADC — D-007). Copilot uses the device-auth token
-flow over plain fetch (no official SDK; see traps). Pin exact majors in this table when
-each adapter's wave starts.
+`baseURL`), `google-auth-library` **10.x** (Vertex ADC — D-007; W2-04, GoogleAuth/ADC
+chain — pinned in the root `package.json`, see W2-04 note re: gateway write_scope).
+Copilot uses the device-auth token flow over plain fetch (no official SDK; see traps).
+Pin exact majors in this table when each adapter's wave starts.
 
 ## Frontend
 
