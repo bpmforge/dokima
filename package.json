@@ -8,6 +8,9 @@
     "pnpm": "11.x"
   },
   "packageManager": "pnpm@11.11.0",
+  "dependencies": {
+    "google-auth-library": "^10.7.0"
+  },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "pnpm -r run typecheck",
