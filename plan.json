@@ -519,7 +519,7 @@
         "Cost ledger keyed by project/run/ticket; breakers: 70% warn event, 85% downshift (skip optional passes, prefer cheaper rungs), 100% hard stop at ticket boundary + approval card (FR-G4); breakers aggregate across berths (FR-H5)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
