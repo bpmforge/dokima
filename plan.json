@@ -543,7 +543,7 @@
         "Assigning an unfit pair warns with the card; proceeding requires explicit ack event"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": []
     },
     {
