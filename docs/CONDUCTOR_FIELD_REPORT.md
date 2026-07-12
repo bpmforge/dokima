@@ -144,3 +144,21 @@ The run continued unattended after the validator wiring and ended cleanly on sco
 **Net across the whole session: 19/63 landed** (30%), the entire trust core + loop engine + full model gateway (all 8 provider/gateway tickets) on `main`, with the harness itself debugged into a working state along the way. The 3 blocks are small, real fixes (type narrowing, an export rename, one review re-run) awaiting a human — the correct place to stop.
 
 *— Board at addendum: 19 done, 3 blocked (real), 41 to go. Run idle-exited on W0–W2 scope completion.*
+
+---
+
+## 10. Morning fixes — three more lessons (the 3 overnight blocks)
+
+All 3 were fixed by hand and landed (board → **22 done, 0 blocked**; full W0–W2 foundation complete). Each taught something the earlier incidents hadn't:
+
+1. **Cascading errors mask a single root cause (W0-08).** The visible failure was `'err' is of type 'unknown'` — which reads like a code defect. It wasn't. The CLI imported `@shipwright/tickets`, that module wouldn't resolve (missing dependency), so `TicketError` was `any`, so the `instanceof` narrowing silently failed, so `err` stayed `unknown`. **One missing dep produced a dozen errors, and the most prominent one pointed away from the cause.** A harness that just feeds the top error back to the model chases the symptom. The fix was one line — add the workspace deps.
+
+2. **The write-scope-too-narrow pattern recurred, at the package boundary (W0-08).** The CLI needed `@shipwright/events/tickets/shared` as dependencies in `apps/server/package.json`, but its write_scope was only `apps/server/src/cli/**` — it *could not add its own dependencies*. This is the exact class that blocked W0-01 (lockfile) and W0-05 (migrations dir). **Recommendation for the plan-linter: when a ticket's code imports a workspace sibling, its write_scope must include that package's `package.json`.** Static, checkable, would have caught this before the run.
+
+3. **The seam between two correct tickets is nobody's job (W1-02).** W0-05 built `mintReceipt`; W1-02 consumed it. Neither was wrong in isolation — but W0-05 never re-exported receipts from the package's public `index.ts`, so the function existed and was invisible. **Interface contracts between tickets need an explicit owner.** The ticket schema's `interface`/`module` fields exist for exactly this; the bootstrap conductor doesn't enforce them, so the seam fell through. The product's module-design layer does.
+
+4. **Transient infra failures must not be counted as findings (W2-03).** W2-03's code was correct. It blocked because a provider-limit pause hit *mid-review*, the review session's output came back truncated/unparseable, and the conductor's fallback treated "unparseable" as a HIGH finding → 3 attempts → block. **A parse failure or an interrupted session is an infrastructure event, not a defect.** Fix owed to the harness: retry an unparseable review rather than scoring it as a finding.
+
+**Meta:** none of these three were the models failing to write good code — they were **integration seams and harness robustness**. As the build moves from isolated primitives (W0) into wiring them together (W1/W2), the failure mode shifts from "is this unit correct" to "do the units compose" — which is precisely where the product's module-design + interface-contract layer earns its place, and where a single LLM per-ticket review is weakest.
+
+*— Board: 22 done, 0 blocked, 41 to go. Releasing W3 (Harbormaster).*
