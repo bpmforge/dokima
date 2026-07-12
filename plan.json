@@ -248,8 +248,10 @@
         "At least 10 imported validators run green against a fixture project; red fixtures prove 3 of them fail when they should"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": []
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-12T03:55:11.801Z: blocked after 3 attempts. Branch sw/w1-02 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: eceipt.ts(2,3): error TS2305: Module '\"@shipwright/events\"' has no exported member 'mintReceipt'.\npackages/validators typecheck: src/receipt.ts(4,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptInputFile'.\npackages/validators typecheck: src/receipt.ts(5,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptKind'.\npackages/validators typecheck: src/receipt.ts(6,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptRecord'.\npackages/validators t"
+      ]
     },
     {
       "id": "W1-03",
