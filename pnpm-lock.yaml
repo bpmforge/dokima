@@ -39,6 +39,15 @@ importers:
 
   apps/server:
     dependencies:
+      '@shipwright/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@shipwright/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@shipwright/tickets':
+        specifier: workspace:*
+        version: link:../../packages/tickets
       fastify:
         specifier: ^5.10.0
         version: 5.10.0
@@ -114,7 +123,14 @@ importers:
         specifier: ^4.9.0
         version: 4.9.0
 
-  packages/validators: {}
+  packages/validators:
+    dependencies:
+      '@shipwright/events':
+        specifier: workspace:*
+        version: link:../events
+      execa:
+        specifier: ^9.6.1
+        version: 9.6.1
 
 packages:
 

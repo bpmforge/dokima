@@ -12,5 +12,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@shipwright/events": "workspace:*",
+    "execa": "^9.6.1"
   }
 }

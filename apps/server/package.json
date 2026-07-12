@@ -9,7 +9,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "fastify": "^5.10.0"
+    "fastify": "^5.10.0",
+    "@shipwright/events": "workspace:*",
+    "@shipwright/tickets": "workspace:*",
+    "@shipwright/shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.0"

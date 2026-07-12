@@ -16,3 +16,4 @@ export type {
   IdentityKind,
   IdentityRecord,
 } from './types.js';
+export * from './receipts.js';
