@@ -199,8 +199,10 @@
         "shipwright verify-chain checks the event-log hash chain"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": []
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-12T03:08:35.148Z: blocked after 3 attempts. Branch sw/w0-08 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: cli/run.ts(43,27): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/run.ts(43,41): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/verify-chain.test.ts(2,60): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/server typecheck: src/cli/verify-chain.ts(6,8): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/web typecheck: Done\npackages/harbormaster typecheck$ tsc --noEmit\napps/s"
+      ]
     },
     {
       "id": "W1-01",
