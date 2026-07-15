@@ -242,3 +242,8 @@ Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute*
 | Forge unreachable | adapter error | verbs queue in ticket history[], flush on reconnect | mirror status chip |
 | Human edits leased file | file watcher | checkpoint → rebase → re-ground; park on material conflict | Decide card: take mine / agent's / merge |
 | Event log tamper | hash chain break | `audit verify` fails, names first bad seq | audit error, refuse silent repair |
+| Review output truncated/unparseable | manifest/verdict parse failure | infra event: free retry of the review; zero finding-ledger writes, zero attempts charged (FR-L6) | Record-tier note on the card |
+| Provider limit window | 429/529/quota classify (FR-G8) | park affected berths, `limit.pause` event, auto-resume at reset/backoff | Record tier; model chip "paused until HH:MM" |
+| Oversized session output/diff (ENOBUFS class) | bounded buffers on session/git pipes | truncate-with-marker + summarize; never a process crash; oversized tool results spill to disk (FR-L8) | card note "output summarized (N MB)" |
+| Reviewer bookkeeping vs verdict divergence | fresh APPROVE with stale sticky findings | fresh explicit verdict wins; block only on freshly-raised or explicitly STILL-PRESENT findings (field report §5) | history shows the superseded findings |
+| Resume state drift | event log vs receipts vs disk disagree | resume REFUSES with a drift report; never guesses (FR-H3) | drift report card, human decides |

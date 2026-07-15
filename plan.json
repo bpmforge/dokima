@@ -28,9 +28,9 @@
       ],
       "points": 5,
       "status": "done",
-      "notes": [
-        "Dependency-matrix lint enforcement (ARCHITECTURE.md §4, eslint-plugin-boundaries + red fixtures) deferred to a future ticket — no cross-package imports exist yet to enforce against, and it is not in this ticket's acceptance criteria."
-      ]
+      "notes": "Dependency-matrix lint enforcement (ARCHITECTURE.md §4, eslint-plugin-boundaries + red fixtures) deferred to a future ticket — no cross-package imports exist yet to enforce against, and it is not in this ticket's acceptance criteria. D-015: declared scaffold (broad bootstrap scope; cross-lane exemption recorded).",
+      "stories": [],
+      "scaffold": true
     },
     {
       "id": "W0-02",
@@ -60,6 +60,9 @@
         "AGENT 2026-07-11: done. All 4 acceptance criteria met with test coverage (26 tests in packages/events, 4 in packages/shared/src/events). pnpm lint && pnpm typecheck && pnpm test green workspace-wide (113/114, 1 pre-existing opt-in skip). See docs/STATUS.md 2026-07-11 W0-02 entry for details.",
         "AGENT 2026-07-11: fixed review HIGH finding — identities table lacked append-only triggers. Added BEFORE UPDATE/DELETE triggers on identities (001_init.sql) mirroring events, plus a regression test in db.test.ts. 27/27 tests in packages/events, 114/115 workspace-wide (1 pre-existing opt-in skip); pnpm lint && pnpm typecheck && pnpm test green. Done.",
         "AGENT 2026-07-11: resume — reverted out-of-scope docs/DATABASE.md edit (restored to main; the append-only-identities rationale lives in code comments + docs/STATUS.md, both in scope). Implementation unchanged. Full gate green: pnpm lint && pnpm typecheck && pnpm test = 114 passed | 1 skipped (27 in packages/events, 4 in packages/shared/src/events). All 4 acceptance criteria covered by tests."
+      ],
+      "stories": [
+        "US-205"
       ]
     },
     {
@@ -83,6 +86,13 @@
       "status": "done",
       "notes": [
         "AGENT 2026-07-11: done. Ticket contract + six lifecycle verbs (claim/start/close/accept/release/comment) as the ONLY mutators, folding an in-memory Map<string,Ticket> projection from @shipwright/events (rebuildProjection). Transition graph enforced in one place (transitions.ts); WIP=1 per actor on claim (in_review does NOT count — close is what frees the worker, per BLUEPRINT §3.6 and source-system-amplifier.md \"close-before-next-claim\"); close refused without >=1 file, >=1 commit, verify exit 0, minting a close receipt embedded verbatim in the manifest; accept reads only the stored manifest (no caller override), refuses self-accept (reviewer==owner) or a missing close receipt. Deps-unmet and lane/write-scope disjointness are explicitly deferred to W0-04 (reflow/lanes), matching its write_scope. 23 tests: verbs.test.ts (FR-T1/FR-T2 named), conformance.test.ts (adapted from docs/research/source-system-experts.md §6), and a fast-check property test proving WIP=1 and done-implies-verified-receipt hold after any random verb sequence. Gate: pnpm lint && pnpm typecheck && pnpm test = 138 passed | 1 skipped (pre-existing) workspace-wide."
+      ],
+      "stories": [
+        "US-201",
+        "US-202",
+        "US-203",
+        "US-402",
+        "US-403"
       ]
     },
     {
@@ -107,6 +117,9 @@
       "status": "done",
       "notes": [
         "AGENT 2026-07-11: done. lanes.ts: glob-overlap detector (segment/char-level DP over the same */**/? dialect as packages/git/src/glob.ts, duplicated not imported — tickets may not depend on git per ARCHITECTURE.md §4) + findLaneScopeViolations/validateLaneWriteScopes: same-lane overlap flagged only between active (claimed/in_progress/in_review) tickets, cross-lane overlap flagged at any status (FR-T3, schema error at plan load). reflow.ts: claimable = ready AND unowned AND deps done, recomputed fresh on every call (no cached state to go stale); blocked is a pure overlay over ready+unmet-deps — the six verbs never write it, so blocked<->ready is auto-resolving by construction; isStaleBlocked flags a stored blocked status whose blockers have since completed (board.stale_blocked). Did not touch index.ts (barrel exports) — outside this ticket's write_scope glob; deferred to whichever ticket first wires lanes/reflow into a consumer (board projection, harbormaster claim loop, or a plan-load validator). 29 new tests (13 lanes.test.ts, 5 lanes.property.test.ts fast-check glob-overlap + violation-detection properties, 10 reflow.test.ts, 2 reflow.property.test.ts). Gate: pnpm lint && pnpm typecheck && pnpm test = 167 passed | 1 skipped (168) workspace-wide, 35 test files."
+      ],
+      "stories": [
+        "US-203"
       ]
     },
     {
@@ -135,6 +148,10 @@
         "CONDUCTOR-FIX 2026-07-11: write_scope excluded packages/events/migrations/** so the DATABASE.md-mandated receipts TABLE could not be built (models correctly blocked on it). Added migrations to scope; reset to todo. Rebuild receipts as a durable table + migration, not event-payload reconstruction.",
         "CONDUCTOR 2026-07-12T00:09:59.097Z: blocked after 3 attempts. Branch sw/w0-05 kept. Gaps: [UNRESOLVED HIGH] packages/events/src/receipts.ts: verifyReceipt's anchor check (findMintEvent) only correlates a receipt by matching `payload.receiptId` on any `gate.receipt_minted`/`gate.waived` event — it does not bind the event to the receipt's actual content (kind, validators, inputTreeHash, signedBy), and `appendEvent` (packages/events/src/append.ts) is a public, unguarded function usable by any code with a `log.db` handle — the same class of access the ticket's own 'fabricated receipt JSON' test already exercises via a raw `INSERT INTO receipts`. That means a forged receipts row (any ki",
         "LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is."
+      ],
+      "stories": [
+        "US-102",
+        "US-407"
       ]
     },
     {
@@ -155,7 +172,8 @@
       ],
       "points": 3,
       "status": "done",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W0-07",
@@ -178,6 +196,9 @@
       "status": "done",
       "notes": [
         "HANDOFF: no new deps added — packages/shared/package.json is outside write_scope and shared currently has zero deps, so config validation is hand-rolled (isJsonValue/isSettingsMap) rather than zod, and credential storage shells out to macOS `security` (Darwin) + a node:crypto AES-256-GCM encrypted-file vault (SHIPWRIGHT_NO_KEYCHAIN/SHIPWRIGHT_VAULT_KEY, P-003) rather than keytar. Linux libsecret/secret-tool adapter deferred — resolveCredentialStore throws NoKeychainAdapterError (never a silent plaintext fallback) on non-darwin without SHIPWRIGHT_NO_KEYCHAIN. settings.changed events are emitted via an injectable SettingsEventSink (packages/shared cannot import packages/events per ARCHITECTURE §4 law 4, and W0-02 events core is still blocked) — a future ticket must wire a real sink into packages/events. packages/shared/src/index.ts + package.json (both outside write_scope) still need a `./config` re-export/subpath for other packages to consume this module."
+      ],
+      "stories": [
+        "US-803"
       ]
     },
     {
@@ -200,10 +221,8 @@
       ],
       "points": 3,
       "status": "done",
-      "notes": [
-        "CONDUCTOR 2026-07-12T03:08:35.148Z: blocked after 3 attempts. Branch sw/w0-08 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: cli/run.ts(43,27): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/run.ts(43,41): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/verify-chain.test.ts(2,60): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/server typecheck: src/cli/verify-chain.ts(6,8): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/web typecheck: Done\npackages/harbormaster typecheck$ tsc --noEmit\napps/s",
-        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
-      ]
+      "notes": "CONDUCTOR 2026-07-12T03:08:35.148Z: blocked after 3 attempts. Branch sw/w0-08 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: cli/run.ts(43,27): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/run.ts(43,41): error TS18046: 'err' is of type 'unknown'.\napps/server typecheck: src/cli/verify-chain.test.ts(2,60): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/server typecheck: src/cli/verify-chain.ts(6,8): error TS2307: Cannot find module '@shipwright/events' or its corresponding type declarations.\napps/web typecheck: Done\npackages/harbormaster typecheck$ tsc --noEmit\napps/s,FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green. Cites FR-C7 (CLI parity — the CLI half; W4-01 route parity tests are the UI half).",
+      "stories": []
     },
     {
       "id": "W0-09",
@@ -225,7 +244,8 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK)."
+      "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK).",
+      "stories": []
     },
     {
       "id": "W1-01",
@@ -247,10 +267,11 @@
       ],
       "points": 5,
       "status": "done",
-      "notes": [
-        "CONDUCTOR 2026-07-12T00:34:51.175Z: blocked after 3 attempts. Branch sw/w1-01 kept. Gaps: [UNRESOLVED HIGH] content/index.json: The diff contains zero changes to content/index.json, content/validators/, or content/protocols/ (HANDOFF, micro-loop, gate-scoring, autonomy). Only content/experts/ files are present in this diff. — fix: Include content/index.json manifest with role/cluster metadata for every item, content/validators/ full pack, and content/protocols/ docs (HANDOFF, micro-loop, gate-scoring, autonomy) with provenance headers, or clarify this is a partial diff and confirm the full ticket diff includes them. | [UNRESOLVED HIGH] content/experts/ (roster completeness): Accept",
-        "LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is."
-      ]
+      "notes": "CONDUCTOR 2026-07-12T00:34:51.175Z: blocked after 3 attempts. Branch sw/w1-01 kept. Gaps: [UNRESOLVED HIGH] content/index.json: The diff contains zero changes to content/index.json, content/validators/, or content/protocols/ (HANDOFF, micro-loop, gate-scoring, autonomy). Only content/experts/ files are present in this diff. — fix: Include content/index.json manifest with role/cluster metadata for every item, content/validators/ full pack, and content/protocols/ docs (HANDOFF, micro-loop, gate-scoring, autonomy) with provenance headers, or clarify this is a partial diff and confirm the full ticket diff includes them. | [UNRESOLVED HIGH] content/experts/ (roster completeness): Accept,LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is. D-015: declared scaffold (broad bootstrap scope; cross-lane exemption recorded).",
+      "stories": [
+        "US-806"
+      ],
+      "scaffold": true
     },
     {
       "id": "W1-02",
@@ -275,6 +296,9 @@
       "notes": [
         "CONDUCTOR 2026-07-12T03:55:11.801Z: blocked after 3 attempts. Branch sw/w1-02 kept. Gaps: plan.json status is 'blocked', expected 'done' | pnpm typecheck failed: eceipt.ts(2,3): error TS2305: Module '\"@shipwright/events\"' has no exported member 'mintReceipt'.\npackages/validators typecheck: src/receipt.ts(4,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptInputFile'.\npackages/validators typecheck: src/receipt.ts(5,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptKind'.\npackages/validators typecheck: src/receipt.ts(6,8): error TS2305: Module '\"@shipwright/events\"' has no exported member 'ReceiptRecord'.\npackages/validators t",
         "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
+      ],
+      "stories": [
+        "US-803"
       ]
     },
     {
@@ -299,7 +323,8 @@
       "notes": [
         "CONDUCTOR 2026-07-12T00:51:01.594Z: blocked after 3 attempts. Branch sw/w1-03 kept. Gaps: [UNRESOLVED HIGH] packages/loop/src/micro-loop.ts: computeGapChecksum's template literal (`${gap.id}\\x00${gap.description}`) and the `.join('\\x01')` call contain literal raw NUL (0x00) and SOH (0x01) bytes typed directly into the source file rather than the escape-sequence text `\\x00`/`\\x01`. This makes the file non-text: `file` reports it as 'data', and git classifies it as binary (confirmed — this diff itself shows 'Binary files /dev/null and b/packages/loop/src/micro-loop.ts differ' instead of a line-by-line diff, and `git show --stat`/`git diff` produce no output for this file at all). The",
         "LANDED-BY-HAND 2026-07-12: false block. Models fixed the finding on a later attempt (verified: full gate green) but conductor sticky-review held stale findings unresolved despite an APPROVE verdict. Conductor merge-gate fixed. Code landed as-is."
-      ]
+      ],
+      "stories": []
     },
     {
       "id": "W1-04",
@@ -320,7 +345,10 @@
       ],
       "points": 3,
       "status": "done",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-406"
+      ]
     },
     {
       "id": "W1-05",
@@ -342,7 +370,8 @@
       ],
       "points": 3,
       "status": "done",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W1-06",
@@ -367,7 +396,8 @@
       "status": "done",
       "notes": [
         "AGENT 2026-07-12: done. handoff.ts: typed Handoff -> renderHandoff() to the exact BLUEPRINT §4 ════-delimited block; HandoffTicket is a local minimal projection (id, title), not @shipwright/tickets' Ticket, since loop may not import tickets (ARCHITECTURE.md §4 dependency matrix). session-manifest.ts: CompletionManifest shape matches API_DESIGN.md §4 exactly (verify.exit, not exitCode); stripThinking removes <think>...</think> (SRS FR-L5) before any parsing; parseCompletionManifest is three-tier defensive (whole-output JSON contract -> embedded JSON via a string-aware balanced-brace scan -> fenced code block). session-scope.ts: detectScopeViolations (basic glob classification, same */**/? dialect as packages/git/src/glob.ts, duplicated not imported per the same tickets/loop precedent from W0-04) + computeChangedPaths (real `git diff --name-only` + `git ls-files --others` via node:child_process directly — no execa dependency needed since package.json is outside this ticket's write_scope). session.ts: runSession renders the HANDOFF, spawns via an injected SpawnSession (never hardcodes an agent CLI or imports gateway), strips thinking, defensively parses the manifest, and reports scope violations from the real diff independent of the session's own claims (SC-02 two-trust-level split). createChildProcessSpawn is a real node:child_process implementation, defaulting to a PATH-only env (not process.env) so an untrusted session never default-inherits parent credentials (SC-03/SC-07) — caught and fixed before close via the advisor's independent review pass, with a planted-secret regression test. Did not touch packages/loop/src/index.ts (barrel) — outside this ticket's write_scope glob; deferred to whichever ticket first wires this into a consumer (harbormaster, W3-01). 44 new tests across handoff/session-manifest/session-scope/session; the scope-check and child-process tests use real temp git repos and a real `node -e` child process, no mocks. Gate: pnpm lint && pnpm typecheck && pnpm test = 350 passed | 1 skipped (pre-existing) workspace-wide, 53 test files."
-      ]
+      ],
+      "stories": []
     },
     {
       "id": "W1-07",
@@ -394,6 +424,10 @@
       "notes": [
         "CONDUCTOR 2026-07-12T12:01:02.833Z: blocked after 3 attempts. Branch sw/w1-07 kept. Gaps: [HIGH] e2e/toy-project/harbormaster-lite.ts: resolveInsideCwd() only does string-based path containment (rejects absolute paths and post-resolve '..' escapes) — it never resolves symlinks. A malicious/compromised session can create a symlink inside its own writeScope (e.g. `src/leak.txt -> /etc/passwd` or `-> ~/.ssh/id_rsa`) via ordinary filesystem access it already has, then claim `src/leak.txt` in the manifest. `resolveInsideCwd` accepts the path (it's lexically inside cwd), `fileExists()` follows the symlink and reports it present (fs.access follows symlinks by default), and `readExistingFi",
         "FIXED-BY-HAND 2026-07-12: real HIGH — resolveInsideCwd (E2E harbormaster-lite, models the real write-scope enforcement) did lexical-only path containment; a session could symlink a file inside its scope pointing outside (src/leak.txt -> ~/.ssh/id_rsa) and fs.access would follow it, escaping the check. Fixed with fs.realpath resolution + re-containment; added a failing-capable symlink-escape regression test. Full gate + E2E (6 tests) green. NOTE: the real Harbormaster (W3-01) needs the same symlink-safe resolution."
+      ],
+      "stories": [
+        "US-402",
+        "US-403"
       ]
     },
     {
@@ -417,6 +451,11 @@
       "status": "done",
       "notes": [
         "AGENT 2026-07-11: done. Provider interface (chat/listModels/getContextLength/health/warmUp/queueStats) + OaiCompatProvider covering LM Studio (localhost:1234/v1), Ollama (localhost:11434/v1) and generic OpenAI-compatible endpoints, all in packages/gateway/src/providers/ (co-located tests + fixtures, not test/providers* — that glob is single-segment '*' and would not have covered a nested fixtures dir; every other package co-locates *.test.ts per docs/TESTING.md §2, so this stays consistent and the ticket's test/ grant goes unused). Per-endpoint RequestQueue defaults to concurrency 1 (local one-at-a-time, FR-G1); chat() auto warm-up-pings a cold endpoint once via warmUp()/health(). Usage normalized via normalizeUsage(): unpriced models (LOCAL_COST_TABLE, i.e. any local model) cost $0 while tokens are still counted — missing usage in a response throws ProviderResponseShapeError rather than silently metering as zero. HTTP errors classified into ProviderAuthError (401/403), ProviderRateLimitError (429, parses Retry-After), ProviderTimeoutError (AbortSignal.timeout), ProviderUnreachableError (network failure), base ProviderHttpError otherwise. 29 tests, all against recorded fixtures (packages/gateway/src/providers/fixtures.ts) — no live calls. Wire shapes (chat completions request/response, /models list, Ollama's OpenAI-compat usage passthrough, LM Studio's default port) verified 2026-07-11 via WebFetch/WebSearch against OpenAI's chat-completions reference, docs.ollama.com/api/openai-compatibility, and lmstudio.ai/docs/app/api/endpoints/openai — not training data. HANDOFF for future tickets: (1) used native fetch, not the `openai` npm package TECH_STACK.md recommends — packages/gateway/package.json is outside this ticket's write_scope (same constraint as W0-07's shared/package.json), so no dependency could be added; a future ticket with package.json in scope can swap the transport without changing the Provider contract. (2) packages/gateway/src/index.ts (also out of write_scope) still only exports the placeholder — a future ticket must add a `./providers` export (or re-export from src/index.ts) so other packages can actually import this module; same shape of gap as W0-07's shared/index.ts HANDOFF. (3) Context-length introspection is static-config-only (`contextLengths` map) — verified neither /v1/models response nor a portable cross-vendor endpoint exposes it (LM Studio's native /api/v0/models max_context_length and Ollama's /api/show model_info are both non-OpenAI-compat, per-vendor shapes); wiring either in is future scope, not fabricated here. (4) Streaming (and the stream-abort contract-test case PLAYBOOK.md mentions generically) is out of scope — FR-G1's acceptance sketch does not require it; deferred to whichever future ticket adds streaming chat. Anthropic/OpenAI-cloud and Copilot/Vertex adapters are explicitly W2-02/03/04, untouched here. Full gate green: pnpm lint && pnpm typecheck && pnpm test = 195 passed | 1 skipped workspace-wide (29 in packages/gateway, all new)."
+      ],
+      "stories": [
+        "US-302",
+        "US-303",
+        "US-805"
       ]
     },
     {
@@ -439,6 +478,9 @@
       "status": "done",
       "notes": [
         "AGENT 2026-07-11: done. AnthropicProvider (packages/gateway/src/providers/anthropic.ts) implements the native /v1/messages wire format (system prompt as a top-level field, typed content blocks, x-api-key + anthropic-version headers) — verified 2026-07-11 via WebFetch against platform.claude.com/docs/en/api/messages, .../build-with-claude/streaming, and .../api/models-list (the last confirms /v1/models returns max_input_tokens per model, so getContextLength/listModels do live discovery, not static-only like W2-01's oai-compat). OpenAiProvider (openai.ts) composes W2-01's createOaiCompatProvider for every non-streaming Provider method (same verified wire shape, reused rather than re-parsed) and adds a required Authorization bearer + optional OpenAI-Organization/OpenAI-Project headers + a required cost table (no $0 default for a paid API). Both adapters satisfy \"streaming + non-streaming\" via an internal stream config toggle that aggregates SSE into the same normalized ChatResponse (Anthropic: message_start/content_block_delta/message_delta/message_stop; OpenAI: chat.completion.chunk with a final stream_options.include_usage chunk) — Provider (types.ts) has no chatStream() method and is outside this ticket's write_scope, so a real streaming API is future scope for whichever ticket owns that file. Anthropic's 529 overloaded_error (HTTP status and mid-stream SSE error event alike) is classified as ProviderRateLimitError — same back-off-and-retry contract as 429, per the streaming docs. apiKey on both adapters is a pre-resolved secret the caller must obtain via a credential ref (FR-S2); packages/gateway/package.json is outside write_scope so neither adapter can depend on packages/shared's CredentialStore directly (same constraint W2-01 and W0-07 flagged). New providers are not re-exported from providers/index.ts (also outside write_scope) — same gap W2-01 left; a future ticket wiring these into a gateway registry should add that export and supply real per-model pricing tables. 39 new tests (26 Anthropic, 13 OpenAI incl. reused fixtures.ts cases + stream-abort/mid-stream-error/chunk-boundary-reassembly coverage for both), all against recorded fixtures, no live calls. Gate: pnpm lint && pnpm typecheck && pnpm test = 234 passed | 1 skipped workspace-wide."
+      ],
+      "stories": [
+        "US-803"
       ]
     },
     {
@@ -463,7 +505,8 @@
         "RESET 2026-07-12: blocked during the false-block window; conductor merge-gate since fixed. Re-running under corrected gate.",
         "CONDUCTOR 2026-07-12T05:57:34.780Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review",
         "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
-      ]
+      ],
+      "stories": []
     },
     {
       "id": "W2-04",
@@ -486,7 +529,8 @@
         "AGENT 2026-07-12: done. VertexProvider (packages/gateway/src/providers/vertex.ts) over the regional Gemini generateContent/countTokens REST endpoint (docs.cloud.google.com verified 2026-07-12); ADC auth (D-007) hand-rolled in vertex-auth.ts (explicit service-account JSON ref -> GOOGLE_APPLICATION_CREDENTIALS -> well-known gcloud ADC file -> RS256 JWT-bearer or refresh_token exchange via node:crypto, no google-auth-library dependency since packages/gateway/package.json is outside this ticket's vertex* write_scope, same constraint W2-01/02/03 hit). Absence of ADC never crashes: resolves to undefined, surfaced as a typed ProviderAuthError/health error only when actually used (TECH_STACK.md trap). listModels/getContextLength are intentionally static-config-only (no verified discovery endpoint, same scope decision as oai-compat.ts's context-length) rather than guessed; health()/warmUp() verify ADC token acquisition always, plus a free countTokens probe only when the caller supplies healthCheckModel (never a hardcoded model id). Flat vertex*.ts siblings (book-style split, all <=293 lines, matching the copilot.ts file-size-gate precedent and the single-segment write_scope glob). 36 new tests (104 total in providers/vertex*.test.ts) incl. real RSA-keypair JWT sign+verify, temp-file ADC discovery, token caching/refresh, and 401/429/500/unreachable/timeout classification, all against recorded fixtures, no live calls. Not re-exported from providers/index.ts (outside write_scope) — same gap left by W2-01/02. Gate: pnpm lint && pnpm typecheck && pnpm test = 386 passed | 1 skipped (pre-existing) workspace-wide.",
         "AGENT 2026-07-12: blocked on resume. Prior closure was invalid: acceptance requires auth 'via google-auth-library' (also TECH_STACK.md L121-125, ARCHITECTURE law 2 — google-auth-library is explicitly sanctioned 'in packages/gateway only'), but this ticket's write_scope (`packages/gateway/src/providers/vertex*`) excludes packages/gateway/package.json (and root pnpm-lock.yaml), so the dependency cannot be declared from inside scope. Unlike W2-01/02 (which substituted native `fetch` for the recommended `openai`/`@anthropic-ai/sdk` packages — a legitimate in-scope transport choice, documented as HANDOFF), there is no legitimate in-scope substitute here: the only in-scope alternative is hand-rolled RS256 JWT signing + manual OAuth token exchange in vertex-auth.ts, which TECH_STACK.md L124 explicitly forbids ('never hand-roll JWT signing') as a known trap, and which a prior gate review flagged HIGH for exactly that reason (plus a secondary HIGH: an unguarded JSON.parse(runtime.serviceAccountJson) in resolveAdcCredentials() that throws a raw SyntaxError instead of the documented never-throws contract — real, but resolveAdcCredentials() is replaced wholesale once google-auth-library's ADC chain lands, so fixing it now would be throwaway; leaving it noted for whoever picks this back up). Per CLAUDE.md Law 1 / MASTER_PROMPT §3, this write_scope vs. acceptance-criteria conflict is a schema bug to report, not work around by self-widening write_scope. Requesting write_scope be widened to add `packages/gateway/package.json` and (repo-root) `pnpm-lock.yaml`, after which vertex-auth.ts's hand-rolled JWT signing/token exchange should be replaced with google-auth-library's GoogleAuth/ADC chain and the JSON.parse fixed in the same pass. No code changed this session; plan.json status only.",
         "AGENT 2026-07-12: RESOLVED + done. Replaced vertex-auth.ts's hand-rolled RS256 JWT signing + manual OAuth token exchange with google-auth-library's GoogleAuth/ADC chain (acceptance criterion 1; TECH_STACK.md L121-125 'never hand-roll JWT signing'). GoogleAuth owns credential discovery (service-account JSON ref / GOOGLE_APPLICATION_CREDENTIALS / well-known gcloud file / GCE metadata), JWT signing, the refresh-token grant, and token caching+refresh; ensureVertexAccessToken() only maps its failures onto the Provider error contract. Never-throws-at-config holds: construction is lazy, and a malformed serviceAccountJson ref, a missing credential, or a token-acquisition error all become a typed ProviderAuthError at call time — the prior unguarded JSON.parse(serviceAccountJson) SyntaxError HIGH is gone (parseServiceAccountJson wraps it). The GoogleAuth client sits behind an injectable authClientFactory so contract tests acquire tokens against a network-free fake (Law 9); the RSA-keypair sign/verify + hand-rolled-exchange tests are deleted with the code they exercised (33 vertex tests now: credential-path selection + error mapping, 401/429/500/unreachable classification, wire-format). Resolving the write_scope-vs-acceptance conflict from the prior block: google-auth-library is declared in the ROOT package.json (+ root pnpm-lock.yaml), NOT packages/gateway/package.json. Verified from scripts/conductor.mjs that (a) the out-of-scope gate loads write_scope from the conductor's ROOT/main plan.json (narrow `vertex*`), so a branch-side write_scope widening would not clear it, and (b) conductor.config.json ALWAYS_OK blesses the root `package.json` + `pnpm-lock.yaml` (but the glob is root-anchored, so it does NOT cover a nested packages/*/package.json). Root placement therefore passes the deterministic scope gate under either reading and is not self-widening. ARCHITECTURE law 2 ('provider SDKs in packages/gateway only') is honored in substance — the library is imported solely from vertex*.ts. HANDOFF: relocate the dep into packages/gateway/package.json (matching every other package's per-package dependencies, e.g. packages/events→better-sqlite3) once a ticket owns that file. Footprint: vertex*.ts + root package.json + root pnpm-lock.yaml. Gate: pnpm lint && pnpm typecheck && pnpm test = 383 passed | 1 skipped (pre-existing) workspace-wide."
-      ]
+      ],
+      "stories": []
     },
     {
       "id": "W2-05",
@@ -509,6 +553,11 @@
       "status": "done",
       "notes": [
         "AGENT 2026-07-12: done. packages/gateway/src/routing/ — types.ts (TaskType reasoning/code/verification/embed/escalation, ModelAssignment, RoleRouting, RoleMatrix, ThreeScopeMap<T> generic run>project>global map atomic per role); matrix.ts (resolveScopedValue/resolveRoleRouting with fallthrough to the 'default' role/resolveModelChain -> [primary, ...fallbackChain] + winning scope); maker-verifier.ts (guardMakerVerifierDistinct — SameModelRefusedError unless an explicit per-role override setting is true, which mints a MakerVerifierOverrideEvent via an injectable RoutingEventSink); router.ts (route() composes both — the guard is STRUCTURAL: routing any VERIFIER_ROLES role (code-reviewer/challenger) always auto-resolves the maker role, default 'coding-agent', for the same task type and compares, so a caller cannot silently skip the refusal by omitting a parameter); presets.ts (PRESET_ALL_LOCAL/HYBRID/ALL_CLOUD, all three covering coding-agent/code-reviewer/challenger/test-engineer/pm-interviewer/default). packages/gateway has no workspace dependency on packages/shared from this ticket's write_scope (packages/gateway/src/routing/**, packages/gateway/test/routing* — package.json is out of scope, same constraint W2-01/02/04 hit), so the three-scope precedence algorithm is reimplemented locally rather than importing packages/shared's; documented as HANDOFF in routing/index.ts for a future ticket that owns package.json, including a granularity note (atomic-per-role here; docs/API_DESIGN.md's settings API doesn't pin a finer per-(role,taskType) key). Tests co-located `*.test.ts` per docs/TESTING.md §2 (packages/gateway/test/routing* is a single-segment glob that wouldn't cover a nested dir; same call W2-01 made). 38 new tests, all example-based (no fast-check dependency in this package). presets.test.ts implements the SRS FR-G2 verify clause verbatim: exhaustively checks, for every preset and every task type, that code-reviewer/challenger never resolve to the coding-agent model. Not re-exported from packages/gateway/src/index.ts (out of write_scope) — same gap left by prior gateway tickets. Gate: pnpm lint && pnpm typecheck && pnpm test = 421 passed | 1 skipped (pre-existing) workspace-wide, 139 in packages/gateway (38 in routing)."
+      ],
+      "stories": [
+        "US-301",
+        "US-403",
+        "US-803"
       ]
     },
     {
@@ -530,7 +579,13 @@
       ],
       "points": 5,
       "status": "done",
-      "notes": " AMENDED 2026-07-14 addendum (D-018/R-L1): +policy modes; points 3->5. NOTE: W2-06 is done — this amendment is NEW WORK; at resume either reopen as W2-06b or fold into the W3-01 split scope decision. Flagged for the P5 board pass."
+      "notes": " AMENDED 2026-07-14 addendum (D-018/R-L1): +policy modes; points 3->5. NOTE: W2-06 is done — this amendment is NEW WORK; at resume either reopen as W2-06b or fold into the W3-01 split scope decision. Flagged for the P5 board pass.",
+      "stories": [
+        "US-304",
+        "US-309",
+        "US-601",
+        "US-702"
+      ]
     },
     {
       "id": "W2-07",
@@ -552,6 +607,11 @@
       "notes": [
         "AGENT 2026-07-12: done. packages/gateway/src/budget/: CostLedger (types.ts/ledger.ts) keyed by project/run/ticket, every entry carrying a berthId so run/project totals aggregate across berths by construction (FR-H5). BudgetBreakerTracker (breakers.ts) reads the ledger per (project, run), computes the tighter of run-limit/project-limit ratio, and ledgers each of 70% (warn, Record tier), 85% (downshift, Record tier), 100% (hard_stop, Decide tier + approval card, US-243's 'budget' risk class) exactly once as spend crosses it — monotonic spend means a level once reached is never re-emitted; a single entry that jumps past multiple thresholds at once still ledgers each one it passed through, in order, at the same final spend (UC-05 audit trail). policyForLevel() exposes skipOptionalPasses/preferCheaperRungs (true at downshift+) and canClaimNewTicket (false only at hard_stop, so an in-flight ticket still completes/checkpoints) — this ticket only decides; enforcement is the consumer's job (packages/loop, and W3-01's harbormaster ticket loop which depends_on this ticket and is the intended canClaimNewTicket consumer), same injection-point split as escalation/ladder.ts's AttemptRunner. Events (events.ts) use the same injectable-sink pattern as escalation/events.ts (noop default + in-memory sink for tests) since this package cannot depend on packages/events from this ticket's write_scope. Not exported from packages/gateway/src/index.ts (out of write_scope, same gap every prior gateway ticket left). 33 new tests, all against plain vitest (no fast-check — gateway's existing escalation tests don't use it either despite similar monotonicity properties, so stayed consistent). Full gate green: pnpm lint && pnpm typecheck && pnpm test = 464 passed | 1 skipped workspace-wide.",
         "AGENT 2026-07-12: gate-fix retry. Prior attempt's trackerKey() in breakers.ts embedded a literal raw NUL byte (0x00) in a template literal as a key separator, which made git's binary-file heuristic classify the whole file as binary — `git diff`/`git show` rendered 'Binary files differ' for every past and future change, defeating blame/log -p and undermining this same file's own UC-05 auditability claim. Replaced the NUL separator with a plain `::` delimiter (no behavior change — trackerKey is purely an internal Map key, never serialized or compared across process boundaries) and re-saved as clean UTF-8 with no control bytes (verified via `python3 -c \"...find(b'\\\\x00')\" ` -> -1, and `file` reports 'Unicode text, UTF-8 text'). Full gate re-run green: pnpm lint && pnpm typecheck && pnpm test = 464 passed | 1 skipped workspace-wide, same counts as before (no tests added/removed, only the key-format fix)."
+      ],
+      "stories": [
+        "US-204",
+        "US-305",
+        "US-310"
       ]
     },
     {
@@ -573,9 +633,8 @@
       ],
       "points": 5,
       "status": "done",
-      "notes": [
-        "AGENT 2026-07-12: done. packages/gateway/src/fitness/ — bench of fixed oracle tasks per role (coding-agent/code-reviewer/challenger) mints a FitnessCard (fit/unfit/marginal) per (model, role, harnessVersion), keyed per docs/DATABASE.md §7's model_fitness PK. Coding task uses a real executable oracle (extract the model's returned function via balanced-brace matching, invoke it via node:vm against known cases — TESTING.md §8's 'bug with a failing test as oracle'); review/challenge tasks use keyword oracles (text-reasoning checks, no executable equivalent). Verified before building on it that vm.Script's timeout only bounds the script's own evaluation, not a later call to a function it returns (an infinite-loop function hung when called host-side); fixed by wrapping the invocation inside the same timed script text, covered by a test. fixtures.ts reads e2e/fitness-fixtures/*.json (plain data) at runtime via fs, not test/fitness/ as TESTING.md §8 names it — plan.json's write_scope governs (same deviation W2-01 documented for test/providers*). assignment.ts's guardFitAssignment mirrors routing/maker-verifier.ts's guardMakerVerifierDistinct: an unfit/marginal pair throws UnfitAssignmentRefusedError (carrying the card) unless the caller passes an explicit ack, which mints a fitness.unfit_ack event via an injectable sink (package can't depend on packages/events from this write_scope, same constraint every prior gateway ticket hit). HANDOFF in fitness/index.ts: not yet wired into routing/router.ts's route() (routing/** out of this ticket's write_scope); FitnessCardStore is in-memory only (no global SQLite DB owner yet). 46 new tests incl. the red-fixture proof this gate needs — scripted strong fake mints 'fit', scripted weak fake mints 'unfit', per role, against the real e2e/fitness-fixtures/ set. Gate: pnpm lint && pnpm typecheck && pnpm test = 510 passed | 1 skipped (pre-existing) workspace-wide."
-      ]
+      "notes": "AGENT 2026-07-12: done. packages/gateway/src/fitness/ — bench of fixed oracle tasks per role (coding-agent/code-reviewer/challenger) mints a FitnessCard (fit/unfit/marginal) per (model, role, harnessVersion), keyed per docs/DATABASE.md §7's model_fitness PK. Coding task uses a real executable oracle (extract the model's returned function via balanced-brace matching, invoke it via node:vm against known cases — TESTING.md §8's 'bug with a failing test as oracle'); review/challenge tasks use keyword oracles (text-reasoning checks, no executable equivalent). Verified before building on it that vm.Script's timeout only bounds the script's own evaluation, not a later call to a function it returns (an infinite-loop function hung when called host-side); fixed by wrapping the invocation inside the same timed script text, covered by a test. fixtures.ts reads e2e/fitness-fixtures/*.json (plain data) at runtime via fs, not test/fitness/ as TESTING.md §8 names it — plan.json's write_scope governs (same deviation W2-01 documented for test/providers*). assignment.ts's guardFitAssignment mirrors routing/maker-verifier.ts's guardMakerVerifierDistinct: an unfit/marginal pair throws UnfitAssignmentRefusedError (carrying the card) unless the caller passes an explicit ack, which mints a fitness.unfit_ack event via an injectable sink (package can't depend on packages/events from this write_scope, same constraint every prior gateway ticket hit). HANDOFF in fitness/index.ts: not yet wired into routing/router.ts's route() (routing/** out of this ticket's write_scope); FitnessCardStore is in-memory only (no global SQLite DB owner yet). 46 new tests incl. the red-fixture proof this gate needs — scripted strong fake mints 'fit', scripted weak fake mints 'unfit', per role, against the real e2e/fitness-fixtures/ set. Gate: pnpm lint && pnpm typecheck && pnpm test = 510 passed | 1 skipped (pre-existing) workspace-wide. Cites FR-G6 (model fitness).",
+      "stories": []
     },
     {
       "id": "W2-09",
@@ -584,7 +643,10 @@
       "module": "gateway",
       "lane": "gateway",
       "write_scope": [
-        "packages/gateway/src/providers/**",
+        "packages/gateway/src/providers/oai-compat*",
+        "packages/gateway/src/providers/anthropic*",
+        "packages/gateway/src/providers/openai*",
+        "packages/gateway/src/providers/streaming*",
         "packages/gateway/src/types.ts"
       ],
       "depends_on": [
@@ -596,11 +658,14 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-23: W2-01/W2-02 both deferred a streaming method (Provider type was out of write_scope); W4-04 chat rendering wants it. Deps only on W2-02 so it is claimable at resume without touching W3."
+      "notes": "ADDED 2026-07-14 design review G-23: W2-01/W2-02 both deferred a streaming method (Provider type was out of write_scope); W4-04 chat rendering wants it. Deps only on W2-02 so it is claimable at resume without touching W3. Scope narrowed 2026-07-14 (validate-plan P8): providers/index.ts barrel belongs to W3-11 public-surfaces; adapter files enumerated. Provider contract: docs/design/CONTRACTS.md §1.",
+      "stories": [
+        "US-303"
+      ]
     },
     {
-      "id": "W3-01",
-      "title": "Harbormaster ticket loop (out-of-session gates)",
+      "id": "W3-01a",
+      "title": "Harbormaster claim loop + fresh-session dispatch (F1 split 1/3)",
       "phase": 3,
       "module": "harbormaster",
       "lane": "orchestrator",
@@ -611,19 +676,70 @@
       "depends_on": [
         "W1-07",
         "W2-06",
-        "W2-07"
+        "W2-07",
+        "W3-11"
       ],
       "acceptance": [
-        "claim -> fresh session (HANDOFF + role model) -> out-of-session gates (scope diff, manifest truth-check: stat files + re-run verify) -> close receipt -> checkpoint commit -> repeat; no close receipt => failure comment, never forward progress (FR-H1)",
-        "Per-ticket session counter (2 -> auto-blocked with evidence); kill-file/pause checked between tickets",
-        "Red fixtures: promise-token in output is ignored; spoofed manifest fails; graded entity never grades itself (verify runs in Harbormaster context)"
+        "Claim lowest-id claimable ticket (WIP=1 per worker), spawn a fresh agent session with the HANDOFF + role model via the W1-06 session runner; per-ticket session counter (2 -> auto-blocked with evidence); kill-file/pause checked between tickets (FR-H1/H2)",
+        "canClaimNewTicket honors W2-07 breaker policy; session env is credential-free (SC-03/SC-07 planted-secret regression reused)"
       ],
-      "points": 5,
-      "status": "blocked",
-      "notes": [
-        "CONDUCTOR 2026-07-12T14:08:56.949Z: blocked after 3 attempts. Branch sw/w3-01 kept. Gaps: [HIGH] packages/harbormaster/src/loop-gates.ts: verifyManifestAgainstDisk / resolveInsideCwd only check that a manifest-claimed file exists somewhere inside the worktree and stats — they never cross-check manifest.files against the actual changed paths returned by computeChangedPaths (the git diff/untracked list used for the scope check). Combined with the SC-02 fix (which only requires *some* non-empty in-scope diff and *some* new commit to exist, not that the new commit/diff touches the claimed files), a session can commit one trivial in-scope decoy change (satisfying emptyDiff=false and com",
-        "PAUSE 2026-07-12: build paused until bpm-opencode-experts v2.1.0 (founder decision). At resume: SPLIT per docs/RELEASE_TRACKER.md F1 into W3-01a (claim loop) / W3-01b (out-of-session gates) / W3-01c (land/park), human-paired review (F2). Branch sw/w3-01 kept as seed."
-      ]
+      "points": 3,
+      "status": "todo",
+      "stories": [
+        "US-402"
+      ],
+      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. Depends on W3-11 (public surfaces) so loop/tickets are importable — the W0-08/W1-02 class cannot recur here."
+    },
+    {
+      "id": "W3-01b",
+      "title": "Out-of-session gate execution vs fixture manifest (F1 split 2/3)",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates*",
+        "packages/harbormaster/test/loop-gates*"
+      ],
+      "depends_on": [
+        "W3-01a"
+      ],
+      "acceptance": [
+        "On manifest return: stat claimed files, re-run verify in the worktree, confirm >=1 commit on the ticket branch, diff-scope check — then and only then close with receipt; no close receipt => failure comment, never forward progress (FR-H1, SC-02)",
+        "manifest.files MUST be a subset of observed changed paths (computeChangedPaths) and the verified commit must touch them — the unresolved W3-01 HIGH, now acceptance (R-F4)",
+        "Red fixtures: promise-token ignored; spoofed manifest fails; graded entity never grades itself; manifest memory_written[] field checked when the role is memory-eligible (R-G2, once W7-01 lands)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "stories": [
+        "US-402",
+        "US-403"
+      ],
+      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome."
+    },
+    {
+      "id": "W3-01c",
+      "title": "Land/park + failure comments + checkpoint loop (F1 split 3/3)",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land*",
+        "packages/harbormaster/test/loop-land*"
+      ],
+      "depends_on": [
+        "W3-01b"
+      ],
+      "acceptance": [
+        "Close -> checkpoint (receipt + commit) -> repeat; failed gates park blocked-with-evidence with the failure receipts attached; loop continues on other claimable tickets; idle-exits cleanly when nothing claimable (FR-H1)",
+        "Escalation policy modes honored at the loop level (D-018): locked-mode tickets loop-and-park, token-gated tickets park at tier boundary with a Decide card"
+      ],
+      "points": 2,
+      "status": "todo",
+      "stories": [
+        "US-402",
+        "US-404"
+      ],
+      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome."
     },
     {
       "id": "W3-02",
@@ -635,14 +751,17 @@
         "packages/harbormaster/src/watchdog*"
       ],
       "depends_on": [
-        "W3-01"
+        "W3-01c"
       ],
       "acceptance": [
         "Max-session-seconds + heartbeat stall detection terminate the session tree; breach -> dead-letter event + ticket blocked-with-evidence within seconds (NFR-3, BLUEPRINT §7.1)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-205"
+      ]
     },
     {
       "id": "W3-03",
@@ -655,14 +774,19 @@
         "packages/harbormaster/src/breakpoints*"
       ],
       "depends_on": [
-        "W3-01"
+        "W3-01c"
       ],
       "acceptance": [
-        "Breakpoints ticket/wave/never; global pause finishes current ticket, checkpoints, stops; resume re-verifies claimed-but-unclosed tickets from receipts (never redoes) and REFUSES with a drift report when event log, receipts, and disk disagree (FR-H3)"
+        "Breakpoints ticket/wave/never; global pause finishes current ticket, checkpoints, stops; resume re-verifies claimed-but-unclosed tickets from receipts (never redoes) and REFUSES with a drift report when event log, receipts, and disk disagree (FR-H3)",
+        "Clarification cards (FR-N1, UC-03): a question checkpoints ONLY dependent work; other lanes continue; answer resumes exactly at the checkpoint; dismissal takes the documented default + approvals-ledger row"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 (traceability W1 gap): FR-N1 clarification checkpoint/suspend/resume had no owner — it is checkpoint/resume machinery, so it lands here; W4-04 renders the cards.",
+      "stories": [
+        "US-205",
+        "US-701"
+      ]
     },
     {
       "id": "W3-04",
@@ -675,7 +799,7 @@
         "packages/harbormaster/test/berths*"
       ],
       "depends_on": [
-        "W3-01",
+        "W3-01c",
         "W3-03"
       ],
       "acceptance": [
@@ -684,7 +808,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-204",
+        "US-310"
+      ]
     },
     {
       "id": "W3-05",
@@ -696,7 +824,7 @@
         "packages/harbormaster/src/review-queue*"
       ],
       "depends_on": [
-        "W3-01"
+        "W3-01c"
       ],
       "acceptance": [
         "NEVER-AUTO actions (main merges, releases/deploys, destructive ops, auth/crypto, new stack, scope breaks) never execute in-loop; work is staged (PR opened/drafted), ticket parked in_review, other lanes continue (FR-H4)",
@@ -704,7 +832,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-404"
+      ]
     },
     {
       "id": "W3-06",
@@ -716,14 +847,18 @@
         "packages/harbormaster/src/autonomy*"
       ],
       "depends_on": [
-        "W3-01"
+        "W3-01c"
       ],
       "acceptance": [
         "interactive/auto per project; auto takes documented defaults at gated sites + appends machine-parseable ledger rows; NEVER-AUTO rows require human signature (agent-name blocklist); ledger validated at runtime — a missing/malformed row blocks the next claim (FR-N3)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-407",
+        "US-703"
+      ]
     },
     {
       "id": "W3-07",
@@ -737,7 +872,7 @@
       ],
       "depends_on": [
         "W2-01",
-        "W3-01"
+        "W3-01c"
       ],
       "acceptance": [
         "Gateway classifies provider errors: session/usage/rate-limit (429/529, quota/limit messages) vs terminal; parses stated reset time where present (e.g. 'resets 10:10pm') into a resume timestamp (FR-G8)",
@@ -746,7 +881,8 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W3-08",
@@ -760,8 +896,7 @@
         "packages/loop/test/findings*"
       ],
       "depends_on": [
-        "W1-03",
-        "W3-01"
+        "W1-03"
       ],
       "acceptance": [
         "Finding records per docs/design/FINDING_LOOP_POLICY.md: stable fingerprint, state OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED, per-finding attempts, evidence history; rechecks return per-finding verdicts (FR-L6)",
@@ -772,7 +907,12 @@
       ],
       "points": 8,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy)."
+      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy). F4 2026-07-14: dep narrowed to W1-03 — the finding ledger is pure engine work, claimable at resume before the harbormaster lands (it hardens the loop being built). Design: docs/design/GATE_ECONOMICS.md.",
+      "stories": [
+        "US-408",
+        "US-409",
+        "US-410"
+      ]
     },
     {
       "id": "W3-09",
@@ -785,7 +925,7 @@
         "packages/harbormaster/test/scope*"
       ],
       "depends_on": [
-        "W3-01"
+        "W3-01b"
       ],
       "acceptance": [
         "All manifest/write-scope path resolution in the real Harbormaster resolves fs.realpath and re-checks containment (the W1-07 symlink-escape class): a symlink inside scope pointing outside is refused, never read, never hashed into a receipt",
@@ -793,7 +933,8 @@
       ],
       "points": 2,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W3-10",
@@ -817,7 +958,8 @@
       ],
       "points": 2,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible."
+      "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible.",
+      "stories": []
     },
     {
       "id": "W3-11",
@@ -847,7 +989,8 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-3: every W0–W2 ticket deferred barrels/deps via narrow write_scope; W3-01 cannot fix them (its scope is loop* only). Prerequisite for the W3-01 split (F1). Linux libsecret adapter (W0-07 HANDOFF) deliberately NOT here — remains open, tracked in DECISIONS P-003 note."
+      "notes": "ADDED 2026-07-14 design review G-3: every W0–W2 ticket deferred barrels/deps via narrow write_scope; W3-01 cannot fix them (its scope is loop* only). Prerequisite for the W3-01 split (F1). Linux libsecret adapter (W0-07 HANDOFF) deliberately NOT here — remains open, tracked in DECISIONS P-003 note.",
+      "stories": []
     },
     {
       "id": "W3-12",
@@ -871,7 +1014,8 @@
       ],
       "points": 2,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic."
+      "notes": "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic.",
+      "stories": []
     },
     {
       "id": "W3-13",
@@ -891,7 +1035,8 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end."
+      "notes": " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end. Enforces NFR-4 (secrets never in prompts/log).",
+      "stories": []
     },
     {
       "id": "W4-01",
@@ -913,7 +1058,9 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0). AMENDED 2026-07-14 addendum (R-M2)."
+      "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0). AMENDED 2026-07-14 addendum (R-M2). D-015: declared scaffold (broad bootstrap scope; cross-lane exemption recorded). Cites FR-C1 (split-pane layout persistence) — pane layout is part of the scaffold acceptance.",
+      "stories": [],
+      "scaffold": true
     },
     {
       "id": "W4-02",
@@ -934,7 +1081,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-10f/G-18."
+      "notes": " AMENDED 2026-07-14 design review G-10f/G-18.",
+      "stories": [
+        "US-801",
+        "US-805"
+      ]
     },
     {
       "id": "W4-03",
@@ -953,7 +1104,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18."
+      "notes": " AMENDED 2026-07-14 design review G-18.",
+      "stories": [
+        "US-201",
+        "US-202"
+      ]
     },
     {
       "id": "W4-04",
@@ -973,7 +1128,8 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23)."
+      "notes": " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
+      "stories": []
     },
     {
       "id": "W4-05",
@@ -993,7 +1149,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8)."
+      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8). Enforces NFR-6 (every claim opens its receipt).",
+      "stories": [
+        "US-401"
+      ]
     },
     {
       "id": "W4-06",
@@ -1016,7 +1175,13 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1)."
+      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review).",
+      "stories": [
+        "US-503",
+        "US-802",
+        "US-803",
+        "US-806"
+      ]
     },
     {
       "id": "W4-07",
@@ -1039,7 +1204,12 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1)."
+      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1).",
+      "stories": [
+        "US-404",
+        "US-704",
+        "US-801"
+      ]
     },
     {
       "id": "W4-08",
@@ -1061,7 +1231,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-A2)."
+      "notes": " AMENDED 2026-07-14 (adopted R-A2). Cites FR-G7 (dry-run estimate).",
+      "stories": [
+        "US-307"
+      ]
     },
     {
       "id": "W4-09",
@@ -1083,7 +1256,11 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired."
+      "notes": "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired.",
+      "stories": [
+        "US-306",
+        "US-801"
+      ]
     },
     {
       "id": "W4-10",
@@ -1105,7 +1282,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-K1/FR-E2)."
+      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-K1/FR-E2).",
+      "stories": [
+        "US-806"
+      ]
     },
     {
       "id": "W5-01",
@@ -1126,7 +1306,13 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 addendum (R-H2/R-H3)."
+      "notes": " AMENDED 2026-07-14 addendum (R-H2/R-H3). Cites FR-G5: soft-gate waivers permitted phases 0-3 only, build/verify gates never soften — waiver semantics live in the phase machine.",
+      "stories": [
+        "US-101",
+        "US-102",
+        "US-308",
+        "US-407"
+      ]
     },
     {
       "id": "W5-02",
@@ -1146,7 +1332,8 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W5-03",
@@ -1168,7 +1355,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 addendum (R-H1)."
+      "notes": " AMENDED 2026-07-14 addendum (R-H1).",
+      "stories": [
+        "US-103"
+      ]
     },
     {
       "id": "W5-04",
@@ -1187,7 +1377,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-104"
+      ]
     },
     {
       "id": "W5-05",
@@ -1207,7 +1400,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-105"
+      ]
     },
     {
       "id": "W5-06",
@@ -1228,7 +1424,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-B2)."
+      "notes": " AMENDED 2026-07-14 (adopted R-B2).",
+      "stories": [
+        "US-405",
+        "US-410"
+      ]
     },
     {
       "id": "W5-07",
@@ -1251,7 +1451,8 @@
       "status": "todo",
       "notes": [
         "AMENDED 2026-07-12: +seam-ownership acceptance from conductor field report §10 (W0-08/W1-02 lessons)."
-      ]
+      ],
+      "stories": []
     },
     {
       "id": "W5-08",
@@ -1272,7 +1473,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-B5)."
+      "notes": " AMENDED 2026-07-14 (adopted R-B5).",
+      "stories": [
+        "US-106"
+      ]
     },
     {
       "id": "W5-09",
@@ -1295,7 +1499,11 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 addendum (R-M1)."
+      "notes": " AMENDED 2026-07-14 addendum (R-M1). Cites FR-C6 (the guided sample IS FR-C6).",
+      "stories": [
+        "US-107",
+        "US-802"
+      ]
     },
     {
       "id": "W5-10",
@@ -1318,7 +1526,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016)."
+      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md.",
+      "stories": [
+        "US-108",
+        "US-109"
+      ]
     },
     {
       "id": "W5-11",
@@ -1340,7 +1552,12 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note)."
+      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note).",
+      "stories": [
+        "US-108",
+        "US-109",
+        "US-409"
+      ]
     },
     {
       "id": "W6-01",
@@ -1360,7 +1577,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " Adapter contract: docs/design/CONTRACTS.md §2.",
+      "stories": [
+        "US-501"
+      ]
     },
     {
       "id": "W6-02",
@@ -1380,7 +1600,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-504"
+      ]
     },
     {
       "id": "W6-03",
@@ -1401,7 +1624,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " NOTE 2026-07-14 (G-21): machine accounts + scoped tokens are human prerequisites HP-5/HP-6 — docs/PREREQUISITES.md; the connect flow blocks with evidence naming the HP id when absent."
+      "notes": " NOTE 2026-07-14 (G-21): machine accounts + scoped tokens are human prerequisites HP-5/HP-6 — docs/PREREQUISITES.md; the connect flow blocks with evidence naming the HP id when absent.",
+      "stories": [
+        "US-502"
+      ]
     },
     {
       "id": "W6-04",
@@ -1420,7 +1646,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-503"
+      ]
     },
     {
       "id": "W6-05",
@@ -1440,7 +1669,8 @@
       ],
       "points": 2,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W6-06",
@@ -1452,14 +1682,17 @@
         "packages/harbormaster/src/sandbox/**"
       ],
       "depends_on": [
-        "W3-01"
+        "W3-01b"
       ],
       "acceptance": [
         "Verify/test runs execute in the worktree under a restricted process (no network by default, opt-in per project); optional Podman/Docker profile; sandbox results are what receipts attest to (FR-I4)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-505"
+      ]
     },
     {
       "id": "W6-07",
@@ -1482,7 +1715,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1)."
+      "notes": "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1). Enforces NFR-5 (plug-in surfaces + signed packs; contracts in docs/design/CONTRACTS.md).",
+      "stories": [
+        "US-806"
+      ]
     },
     {
       "id": "W7-01",
@@ -1501,7 +1737,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 addendum (R-G2)."
+      "notes": " AMENDED 2026-07-14 addendum (R-G2).",
+      "stories": [
+        "US-604"
+      ]
     },
     {
       "id": "W7-02",
@@ -1521,7 +1760,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-601",
+        "US-804"
+      ]
     },
     {
       "id": "W7-03",
@@ -1540,7 +1783,11 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": [
+        "US-602",
+        "US-603"
+      ]
     },
     {
       "id": "W7-04",
@@ -1562,7 +1809,8 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " NOTE 2026-07-14: context-packet assembly must call the W3-13 redaction layer on every packet (SC-06) — acceptance implied by BLUEPRINT §7.2 + FR-L5. AMENDED 2026-07-14 addendum (FR-L8, R-I1/I2, R-J1 dep)."
+      "notes": " NOTE 2026-07-14: context-packet assembly must call the W3-13 redaction layer on every packet (SC-06) — acceptance implied by BLUEPRINT §7.2 + FR-L5. AMENDED 2026-07-14 addendum (FR-L8, R-I1/I2, R-J1 dep).",
+      "stories": []
     },
     {
       "id": "W7-05",
@@ -1582,7 +1830,8 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-10c."
+      "notes": " AMENDED 2026-07-14 design review G-10c.",
+      "stories": []
     },
     {
       "id": "W7-06",
@@ -1602,7 +1851,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-J1/FR-M4). No repo-map by design (source-system lesson)."
+      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-J1/FR-M4). No repo-map by design (source-system lesson).",
+      "stories": [
+        "US-604"
+      ]
     },
     {
       "id": "W8-01",
@@ -1624,7 +1876,11 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-E3)."
+      "notes": " AMENDED 2026-07-14 (adopted R-E3).",
+      "stories": [
+        "US-401",
+        "US-406"
+      ]
     },
     {
       "id": "W8-02",
@@ -1643,7 +1899,8 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W8-04",
@@ -1663,7 +1920,8 @@
       ],
       "points": 2,
       "status": "todo",
-      "notes": []
+      "notes": [],
+      "stories": []
     },
     {
       "id": "W8-05",
@@ -1685,7 +1943,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-22."
+      "notes": " AMENDED 2026-07-14 design review G-22. Verifies NFR-7 (macOS/Linux + WSL smoke).",
+      "stories": [
+        "US-802"
+      ]
     },
     {
       "id": "W8-06",
@@ -1707,7 +1968,35 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-5: DEPLOYMENT.md promised all of these with zero owning tickets."
+      "notes": "ADDED 2026-07-14 design review G-5: DEPLOYMENT.md promised all of these with zero owning tickets.",
+      "stories": [
+        "US-205"
+      ]
+    },
+    {
+      "id": "W3-14",
+      "title": "Human-edit conflict policy: leases, watcher, human-wins re-ground (FR-T6)",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/conflict*",
+        "packages/harbormaster/test/conflict*"
+      ],
+      "depends_on": [
+        "W3-01c"
+      ],
+      "acceptance": [
+        "File watcher on the human checkout flags edits inside an actively-leased write-scope -> conflict.detected event; affected loop checkpoints at its next pass boundary; agent worktree rebases onto the human change and the micro-loop re-grounds (criterion + evidence re-evaluated) — human always wins (FR-T6, UC-04)",
+        "Material rebase conflict parks the ticket blocked: human-edit-conflict with a Decide card (take mine / take agent's / merge view); human edits are attributed events credited in coverage",
+        "Leased paths surfaced to the UI (lock badge data, UX_SPEC §4)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "stories": [
+        "US-206"
+      ],
+      "notes": "ADDED 2026-07-14 (traceability W1/W3 gap — validator-discovered): FR-T6/UC-04/US-206 had no owning ticket anywhere."
     }
   ]
 }

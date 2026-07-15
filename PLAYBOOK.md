@@ -66,6 +66,30 @@ After each merged ticket append one line to `docs/STATUS.md`:
 write a short gate section (criteria → evidence). This file is how humans
 resume the project cold.
 
+## Wave-gate coverage loop (Ralph Wiggum) + challenger
+
+Pattern: bpm-opencode-experts RALPH_WIGGUM_LOOP / CHALLENGER_PROTOCOL, adapted
+for this board. Run at every wave gate before its STATUS.md entry:
+
+1. **INVENTORY** — enumerate the wave's tickets + every FR/NFR/story they cite;
+   `node scripts/validate-traceability.mjs` prints the map.
+2. **VERIFY (objective, never vibes)** — run ALL validators
+   (`validate-plan.mjs`, `validate-traceability.mjs`, full pnpm gate) plus the
+   wave's ROADMAP exit criteria plus TESTING.md's rule that every FR acceptance
+   sketch in the wave maps to a named test (grep FR ids in test titles).
+3. **GAP** — each uncovered row gets ONE focused `HANDOFF:` note in its
+   ticket's notes. Fix only flagged rows; never re-run the whole wave.
+4. **Repeat, cap 3.** Byte-identical gap set two iterations running =
+   no progress → halt and escalate to the user. Never loop past the cap.
+
+**CHALLENGER (before the gate entry lands):** a fresh session/agent — never
+one that implemented a ticket in this wave (maker ≠ verifier) — re-derives
+each exit criterion from the docs and tries to REFUTE the evidence. Every
+accepted criterion records `re-ran independently: <command, counts, exit
+code>`. CONTRADICTED evidence reopens the ticket. UNVERIFIABLE criteria are
+listed in the gate entry, never waived silently. Only then does the gate
+section land in docs/STATUS.md.
+
 ## Refusal conditions (stop and ask the user)
 
 - A ticket seems to require weakening the trust boundary (state change
