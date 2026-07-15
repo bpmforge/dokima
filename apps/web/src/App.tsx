@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useState } from 'react';
+import { FleetHome } from './fleet/FleetHome.js';
 import { APP_NAME } from './index.js';
 import { SplitPaneWorkspace } from './layout/SplitPaneWorkspace.js';
 import { useReducedMotion } from './lib/useReducedMotion.js';
@@ -18,20 +20,55 @@ function ThemeToggle() {
   );
 }
 
-/** Fleet (W4-02) supplies the real project id; a `?project=` override keeps this ticket's layout-persistence testable ahead of it. */
-function readProjectId(): string {
-  return new URLSearchParams(window.location.search).get('project') ?? 'default';
+/** `?project=` is the URL's source of truth (no router lib yet) — absent means Fleet is the entry view (UX_SPEC §2). */
+function readProjectId(): string | null {
+  return new URLSearchParams(window.location.search).get('project');
 }
 
 function AppShell() {
   useReducedMotion();
+  const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
+
+  useEffect(() => {
+    const onPopState = () => setProjectId(readProjectId());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const openProject = useCallback((id: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', id);
+    window.history.pushState({}, '', url);
+    setProjectId(id);
+  }, []);
+
+  const backToFleet = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('project');
+    window.history.pushState({}, '', url);
+    setProjectId(null);
+  }, []);
+
   return (
     <div className="app-shell">
       <header className="app-shell__header">
         <span>{APP_NAME}</span>
         <ThemeToggle />
       </header>
-      <SplitPaneWorkspace projectId={readProjectId()} />
+      {projectId ? (
+        <>
+          <button
+            type="button"
+            className="app-shell__back-to-fleet"
+            onClick={backToFleet}
+          >
+            ← Fleet
+          </button>
+          <SplitPaneWorkspace projectId={projectId} />
+        </>
+      ) : (
+        <FleetHome onOpenProject={openProject} />
+      )}
       <ShortcutsOverlay />
     </div>
   );
