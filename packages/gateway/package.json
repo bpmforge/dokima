@@ -12,5 +12,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "google-auth-library": "^10.7.0"
   }
 }
