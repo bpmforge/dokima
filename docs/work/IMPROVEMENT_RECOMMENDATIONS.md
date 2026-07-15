@@ -69,6 +69,52 @@ Walked end-to-end against the field reports. Sound: hash chain (post-delimiter-f
 
 ---
 
+---
+
+# Addendum 2026-07-14 (same day): follow-up interrogation from Brad's adopt-all message
+
+Six new domains, mined from bpm-opencode-experts **v2.10.0** (it advanced again same-day; the v2.1→v2.10 theme is *enforced wiring* — every protocol claim now sits behind a `validate-*.sh` gate with fixtures) + the tool-license research. Direction was explicitly requested, so items below are designed-and-threaded; the two genuinely new product decisions are slated as D-018/D-019.
+
+## G. Experts-upgrade parity (v2.0.0 snapshot → v2.10.0 library)
+
+**R-G1 (M, resume prep + W6-07)** — **SW-R1 targets v2.10.0+ (HEAD at resync)**, not v2.1.0: re-import all content incl. the 2.1–2.10 protocol upgrades and `dist/compact-agents/` small-tier variants; re-run the all-of-the-set coverage audit; re-sign (W6-07). Supersedes R-B4's v2.9.0 target.
+**R-G2 (S, W3-01 split + W7-01)** — **Memory write-back as a manifest field.** The library made `## Memory written` a mandatory Completion Manifest section gated by a validator (v2.5.0 — 44/45 agents were silently skipping write-back). Productize: the Completion Manifest schema gains a `memory_written[]` field; Harbormaster's manifest truth-check treats a missing/empty field on memory-eligible roles as a gap once W7-01 lands (the anti-Jarvis-gap test, now structural).
+**R-G3 (S, doc note)** — **Session/model receipts parity confirmed**: the library's `session-receipts.jsonl` + escalation-ledger Hop records are already covered by Shipwright's `model.call_completed` events + budget_ledger (richer). The library's "telemetry-driven tier routing" is *not built there either* — noted as a shared post-v1 horizon, not a gap.
+**R-G4 (S, backlog note)** — Jira adapter (v2.6/2.7) and Figma adapter (v2.9) exist upstream; Shipwright's forge-adapter surface (FR-I2 plug-in API) is the natural home **post-v1** — recorded in ROADMAP post-1.0 horizon, not ticketed.
+
+## H. Design-feedback surfaces ("display mermaid and docs, give feedback, see the changes")
+
+**R-H1 (M, W5-03)** — **Design-options discipline as the technical-slate generator.** The library's `/design-options`: always exactly 3 options (Minimal / Clean / Pragmatic), compared on 6 fixed dimensions (time, maintainability, scalability, team-fit, risk, reversibility), recommendation tied to a named constraint, written as a doc BEFORE implementation. Productize as the generator behind FR-P6 slates for *technical* forks (founder forks keep the freer 2–4 format): slate cards for architecture/design decisions render the 3×6 comparison grid. → W5-03 acceptance.
+**R-H2 (M, W4-05 + W5-01)** — **Artifact-level feedback → revision loop** (the ask: "give feedback and the changes"). In the artifact viewer, any deliverable (markdown or rendered mermaid) accepts inline feedback comments; submitting feedback on a gated deliverable emits a `revision requested` event → a revision HANDOFF to the producing role → the new version lands as a visible diff against the commented version, with the comment resolved-by-reference. This closes the present→feedback→revise→re-present loop the library runs via Gates A/B + Challenger, as a first-class UI surface instead of chat-only. New FR-C8. → W4-05 + W5-01 acceptance.
+**R-H3 (S, W5-01)** — **Mermaid validity as a gate input**: diagrams in deliverables pass a mermaid-parse validator (library: `validate-mermaid.sh`/`validate-flows.sh`) so a broken diagram can't gate-pass silently. → W5-01 validator set.
+
+## I. Per-micro-agent token envelopes ("each micro agent manages their own tokens — no long chains")
+
+**R-I1 (M, W7-04 + W1-06)** — **Token envelopes productized (new FR-L8).** The library's CONTEXT_BUDGET numbers, adopted as the packet/session contract: per-window budgets (32k → 8k instruction / 20k working / 28k emergency-stop; 60k → 15/38/54k; 100k+ → 25/65/90k); fresh session per HANDOFF (already Shipwright law — confirmed, no long chains by construction); context packets relevance-ranked and ≤ budget with the orchestrator naming files+lines (already FR-L5); **new**: write-before-reading-more (>500-token tool results go to disk, reference not re-read), emergency stop at the threshold ends the session with honest PARTIAL, per-agent instruction-cost metadata carried in the expert registry so the packer subtracts real instruction weight per role. → FR-L8 rows + W7-04/W1-06 acceptance.
+**R-I2 (S, W7-04)** — **KV-cache hygiene** (stable byte-prefix, prune stale tool results to `[pruned: …]`) — already BLUEPRINT §7.2 items 2/5; the prune-failed-attempt-turns rule added explicitly. → W7-04 acceptance note.
+
+## J. Code search
+
+**R-J1 (M, new ticket W7-06)** — **Code-index service + `code_search` tool.** The library ships `bpm-code-search-mcp`: SQLite FTS5 + optional local-embedding chunks, `code_search(query, top_k, path_filter)` → ranked chunks with file:line; **provider-sticky embeddings** (index locked to the embedding provider; different-provider queries fall back to BM25); ripgrep wrapper for exact search; deliberately **no repo-map**. Productize inside packages/memory (same FTS5/BM25/embedding stack as facts — one engine, two corpora): the Context Packer's "relevance-ranked file slices" (FR-L5) get their ranking from this index instead of ad-hoc heuristics; agents get `code_search` as a core tool (audited like MCP calls); ⌘K palette searches the same index. New FR-M4. → ticket W7-06; W7-04 consumes it.
+
+## K. Per-agent listing & observability
+
+**R-K1 (M, new ticket W4-10)** — **Agent roster view.** One screen listing every expert/agent: cluster, mode, description (from content frontmatter — deliberately minimal per the library's design), **effective model resolution** ("why this model" per role, FR-S1 style), fitness cards per configured model (W2-08), instruction cost (R-I1 metadata), and per-agent history from events: HANDOFFs run, outcomes, scores, spend, escalations (the DELEGATION_LOG made queryable — it's already in the event log). "Pin roles, not models" stays law (matches FR-G2; the library hard-gates frontier model ids in agent definitions — Shipwright's content loader inherits that check at import). New FR-E2. → ticket W4-10.
+
+## L. Tier-locking & escalation policy ("lock at a lower level and it loops until it passes")
+
+**R-L1 (M, W2-06 + W3-08 — candidate D-018)** — **Escalation policy per role/project/run: `ladder` | `locked` | `token-gated frontier`.** Productizes the library's `models.json` tiers (`local`/`cheap`: `gate: "none"` — free to loop; `frontier`: `gate: "escalation-token"` — audited exception):
+- **`ladder`** (default): R0–R4 evidence-triggered auto-escalation as specced (FR-G3).
+- **`locked`**: the role/ticket is pinned to a tier; on gate failure it **loops until it passes** under the existing convergence discipline — tier-aware PROGRESSED ceiling (8 metered / 12+ local, FR-L7), stall = 2-then-**park** (not escalate), oscillation parks immediately; the wall-clock watchdog is the backstop. Parking emits blocked-with-evidence; it never silently escalates. This is the localFrontier mode: "as long as it is not looping on the same error, let it loop and fix."
+- **`token-gated`**: escalation past a named tier requires an approval (Decide card, `escalation` risk class — FR-N2 already has the class) minting an escalation token recorded in the ledger; overnight runs park at the tier boundary instead of spending frontier money unattended.
+Deterministic gates, maker≠verifier, and NEVER-AUTO stay hard at every tier (library law, already C-2/C-4/C-5). Threads: FR-G3 amendment + settings (three-scope, per role and per run) + W2-06/W3-08 acceptance. **Slated as D-018.**
+
+## M. End-user POV / modern product + integrations & tool licenses
+
+**R-M1 (S, W5-09 + W4-06)** — **In-product user guide**: the guided sample's coach marks generalize — every major surface gets a "?" affordance opening task-oriented help (rendered from `content/guide/`, data not code); the first-run wizard ends with a "what to do tomorrow" card (morning-queue habit formation). → W5-09/W4-06 acceptance notes.
+**R-M2 (S, W4-01)** — **Modern-product baseline made explicit**: keyboard-shortcut overlay (`?` key), dark/light theme toggle honoring `prefers-color-scheme` (UX_SPEC already dark-first), `prefers-reduced-motion` (already §9), non-blocking optimistic UI per NFR-2 — consolidated as a W4-01 acceptance line so it's owned, not assumed.
+**R-M3 (—, licensing ledger)** — Tool/integration license table: **see the "Tool ecosystem licensing" section appended to docs/TECH_STACK.md** (research agent output, per-claim sources; red-flag items called out: TruffleHog AGPL = format-compatible only; semgrep registry rules no-compete = own rules or Opengrep; Copilot API terms; axe-core MPL-2.0 = fine as dependency; LM Studio terms). Candidate **D-019** if any red-flag tool is adopted into validator packs.
+
 ## Consolidated index
 
 | ID | What | Effort | Wave | Needs brief amendment? |
@@ -91,6 +137,19 @@ Walked end-to-end against the field reports. Sound: hash chain (post-delimiter-f
 | R-F3 | Failure-modes table completion (5 field rows) | S | P4 | no |
 | R-F4 | W3-01b gains manifest⊆changed-paths check | S | P5 | no |
 | R-F5 | supervise.sh Node pin fix + boot assertion | S | resume | no |
+| R-G1 | SW-R1 resync targets v2.10.0+/HEAD incl. compact-agents; re-audit + re-sign | M | resume/W6-07 | no (supersedes R-B4) |
+| R-G2 | Manifest `memory_written[]` field, truth-checked once W7-01 lands | S | W3 split/W7-01 | no |
+| R-H1 | Design-options 3×6 grid as the technical-slate generator | M | W5-03 | no |
+| R-H2 | Artifact feedback → revision HANDOFF → visible diff (FR-C8) | M | W4-05/W5-01 | **yes — new FR-C8 (adopted by direction)** |
+| R-H3 | Mermaid-parse validator in phase gates | S | W5-01 | no |
+| R-I1 | Token envelopes: per-window budgets, emergency stop, instruction-cost metadata (FR-L8) | M | W7-04 | **yes — new FR-L8 (adopted by direction)** |
+| R-I2 | KV hygiene: prune failed-attempt turns | S | W7-04 | no |
+| R-J1 | Code-index service + `code_search` tool + ⌘K (FR-M4) | M | new W7-06 | **yes — new FR-M4 (adopted by direction)** |
+| R-K1 | Agent roster & observability view (FR-E2) | M | new W4-10 | **yes — new FR-E2 (adopted by direction)** |
+| R-L1 | Escalation policy `ladder`/`locked`/`token-gated` (tier-locking) | M | W2-06/W3-08/W4-06 | **yes — D-018 (adopted by direction, vetoable)** |
+| R-M1 | In-product user guide from content/guide/ | S | W5-09/W4-06 | no |
+| R-M2 | Modern-product baseline line (shortcuts overlay, theme, reduced-motion, optimistic UI) | S | W4-01 | no |
+| R-M3 | Tool-ecosystem license table in TECH_STACK (+D-019 if red-flag tool adopted) | S | doc | no |
 
 ## Decisions Brad owns at this STOP
 

@@ -525,11 +525,12 @@
         "W1-05"
       ],
       "acceptance": [
-        "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)"
+        "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)",
+        "Escalation policy modes per D-018 (three-scope setting, per role + per run): ladder (default) / locked (pinned tier, gate failure loops under FR-L7 budgets to the tier-aware ceiling then PARKS blocked-with-evidence — zero escalation events, fixture-proven) / token-gated (climbing past a named tier parks until an approval mints an escalation token, FR-N2 escalation class)"
       ],
-      "points": 3,
+      "points": 5,
       "status": "done",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 addendum (D-018/R-L1): +policy modes; points 3->5. NOTE: W2-06 is done — this amendment is NEW WORK; at resume either reopen as W2-06b or fold into the W3-01 split scope decision. Flagged for the P5 board pass."
     },
     {
       "id": "W2-07",
@@ -907,11 +908,12 @@
       ],
       "acceptance": [
         "React/Vite SPA served by apps/server; REST per docs/API_DESIGN.md; WebSocket projection subscriptions with heartbeats; auth middleware in single-user token mode (D-005); localhost binding + origin allowlist (docs/SECURITY_CONTROLS.md)",
-        "GET /healthz unauthenticated liveness (DB open, WS hub up — API_DESIGN §2); SC-08 verified by tests: 127.0.0.1 bind assertion, evil Host/Origin ⇒ 403, missing token ⇒ 401, WS upgrade re-checks both, token file mode 0600"
+        "GET /healthz unauthenticated liveness (DB open, WS hub up — API_DESIGN §2); SC-08 verified by tests: 127.0.0.1 bind assertion, evil Host/Origin ⇒ 403, missing token ⇒ 401, WS upgrade re-checks both, token file mode 0600",
+        "Modern-product baseline: keyboard-shortcut overlay (? key), dark/light theme toggle honoring prefers-color-scheme, prefers-reduced-motion respected, optimistic non-blocking UI per NFR-2 (R-M2)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0)."
+      "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0). AMENDED 2026-07-14 addendum (R-M2)."
     },
     {
       "id": "W4-02",
@@ -986,11 +988,12 @@
         "W4-01"
       ],
       "acceptance": [
-        "Markdown + client-side Mermaid + per-ticket live diffs (CodeMirror) with version history (FR-C3); receipt/coverage/challenge/ledger structured views (FR-C5); artifact/receipt empty states per UX_SPEC §2b"
+        "Markdown + client-side Mermaid + per-ticket live diffs (CodeMirror) with version history (FR-C3); receipt/coverage/challenge/ledger structured views (FR-C5); artifact/receipt empty states per UX_SPEC §2b",
+        "Inline feedback comments on any deliverable incl. rendered Mermaid; comment -> revision.requested event; revised version renders as diff against the commented version with the comment resolved-by-reference (FR-C8, R-H2)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18."
+      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8)."
     },
     {
       "id": "W4-06",
@@ -1008,11 +1011,12 @@
       "acceptance": [
         "Model matrix editor with fitness-card surfacing (W2-08); autonomy dial with immutable NEVER-AUTO list displayed; budget panel; berths slider; effective-settings 'why this value' resolution view (FR-S1); first-run wizard preset->provider->forge->sample (FR-S4)",
         "Settings covers the full FR-S1 project scope: MCP server registration + per-role tool allowlists UI (FR-I3 surface), validator-pack selection, and expert overrides/additions management (FR-E1) — not just the model matrix (design review G-19)",
-        "Rule-lifecycle admin surface (D-014): per-rule state, measured FP rate + window, promotion/demotion actions (human-confirmed, data shown), suppression review list with justifications"
+        "Rule-lifecycle admin surface (D-014): per-rule state, measured FP rate + window, promotion/demotion actions (human-confirmed, data shown), suppression review list with justifications",
+        "Escalation-policy setting UI (D-018): per-role ladder/locked/token-gated with tier picker and the effective-policy why-this-value view; in-product help affordances rendered from content/guide/ (R-M1)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014)."
+      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1)."
     },
     {
       "id": "W4-07",
@@ -1082,6 +1086,28 @@
       "notes": "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired."
     },
     {
+      "id": "W4-10",
+      "title": "Agent roster & observability view (FR-E2, R-K1)",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/web/src/roster/**",
+        "apps/server/src/api/roster*"
+      ],
+      "depends_on": [
+        "W4-01",
+        "W2-08"
+      ],
+      "acceptance": [
+        "Roster lists every content/ expert: cluster, mode, description, effective model resolution with winning scope (FR-S1 style), fitness cards per configured model (W2-08), instruction-cost metadata (FR-L8)",
+        "Per-agent history queried from events (HANDOFFs run, outcomes, verdict scores, spend, escalations) — matches a projection rebuild (test); content loader refuses an expert file with a hardcoded frontier model id (pin roles, not models)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-K1/FR-E2)."
+    },
+    {
       "id": "W5-01",
       "title": "Phase machine + gate receipts + waiver flow",
       "phase": 5,
@@ -1095,11 +1121,12 @@
         "W1-04"
       ],
       "acceptance": [
-        "Six phases with per-phase validator sets; receipts + two-way prereq re-verification (FR-P1/P2); human-signed waiver receipts; edits to deliverables invalidate downstream receipts visibly (FR-P3)"
+        "Six phases with per-phase validator sets; receipts + two-way prereq re-verification (FR-P1/P2); human-signed waiver receipts; edits to deliverables invalidate downstream receipts visibly (FR-P3)",
+        "Mermaid-parse validator in every phase validator set (broken diagram cannot gate-pass, R-H3); revision.requested events from artifact feedback (FR-C8) route a revision HANDOFF to the producing role and invalidate downstream receipts per FR-P3"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 addendum (R-H2/R-H3)."
     },
     {
       "id": "W5-02",
@@ -1136,11 +1163,12 @@
         "W4-04"
       ],
       "acceptance": [
-        "Slate cards: 2-4 options, trade-offs, recommended default; choice + rationale appends to docs/DECISIONS.md with stable D-IDs; agents hitting a founder-owned fork must emit a slate, never assume (FR-P6); downstream docs cite D-IDs"
+        "Slate cards: 2-4 options, trade-offs, recommended default; choice + rationale appends to docs/DECISIONS.md with stable D-IDs; agents hitting a founder-owned fork must emit a slate, never assume (FR-P6); downstream docs cite D-IDs",
+        "Technical-fork slates use the design-options discipline: exactly 3 options (Minimal/Clean/Pragmatic) compared on 6 fixed dimensions (time, maintainability, scalability, team-fit, risk, reversibility), recommendation tied to a named constraint; founder forks keep the free 2-4 format (R-H1)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 addendum (R-H1)."
     },
     {
       "id": "W5-04",
@@ -1262,11 +1290,12 @@
         "W4-06"
       ],
       "acceptance": [
-        "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT §12.3, FR-S4)"
+        "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT §12.3, FR-S4)",
+        "Every major surface carries a ? help affordance opening task-oriented guide content (content/guide/, data not code); wizard ends with a what-to-do-tomorrow card (R-M1)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 addendum (R-M1)."
     },
     {
       "id": "W5-10",
@@ -1468,11 +1497,11 @@
         "W0-02"
       ],
       "acceptance": [
-        "Per-project working memory (findings, calibration) + long-term store (facts, error->solution pairs, decisions) with FTS5 + optional local embeddings, token-budgeted assembly, BM25 fallback (FR-M1); loop memory hooks wired in packages/loop from day one — a test proves recall fires in a micro-loop run (the anti-Jarvis-gap test, docs/research/source-system-foreman-jarvis.md §5)"
+        "Per-project working memory (findings, calibration) + long-term store (facts, error->solution pairs, decisions) with FTS5 + optional local embeddings, token-budgeted assembly, BM25 fallback (FR-M1); loop memory hooks wired in packages/loop from day one — a test proves recall fires in a micro-loop run (the anti-Jarvis-gap test, docs/research/source-system-foreman-jarvis.md §5); Completion Manifest schema carries memory_written[] and the Harbormaster truth-check treats a missing/empty field on memory-eligible roles as a gap (R-G2, the v2.5.0 library lesson: 44/45 agents silently skipped write-back until it was manifest-gated)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 addendum (R-G2)."
     },
     {
       "id": "W7-02",
@@ -1524,14 +1553,16 @@
       ],
       "depends_on": [
         "W7-01",
-        "W1-06"
+        "W1-06",
+        "W7-06"
       ],
       "acceptance": [
-        "Token-budgeted packets: relevance-ranked file slices (never naive truncation), repo-map skeleton, pinned core block <=1k tokens, stable-prefix ordering for KV-cache hits (BLUEPRINT §7.2); budget scales with model window; HANDOFF assembly switches to the packer"
+        "Token-budgeted packets: relevance-ranked file slices (never naive truncation), repo-map skeleton, pinned core block <=1k tokens, stable-prefix ordering for KV-cache hits (BLUEPRINT §7.2); budget scales with model window; HANDOFF assembly switches to the packer",
+        "Token envelopes per FR-L8: per-window budget table (32k: 8/20/28k, 60k: 15/38/54k, 100k+: 25/65/90k instruction/working/emergency), write-before-reading-more (>500-token tool results to disk, referenced), emergency stop -> honest PARTIAL, per-expert instruction-cost accounting; prune failed-attempt turns from packets (R-I1/R-I2); ranking source = W7-06 code index (FR-M4)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " NOTE 2026-07-14: context-packet assembly must call the W3-13 redaction layer on every packet (SC-06) — acceptance implied by BLUEPRINT §7.2 + FR-L5."
+      "notes": " NOTE 2026-07-14: context-packet assembly must call the W3-13 redaction layer on every packet (SC-06) — acceptance implied by BLUEPRINT §7.2 + FR-L5. AMENDED 2026-07-14 addendum (FR-L8, R-I1/I2, R-J1 dep)."
     },
     {
       "id": "W7-05",
@@ -1552,6 +1583,26 @@
       "points": 3,
       "status": "todo",
       "notes": " AMENDED 2026-07-14 design review G-10c."
+    },
+    {
+      "id": "W7-06",
+      "title": "Code-index service + code_search tool (FR-M4, R-J1)",
+      "phase": 7,
+      "module": "memory",
+      "lane": "memory",
+      "write_scope": [
+        "packages/memory/src/code-index/**"
+      ],
+      "depends_on": [
+        "W7-01"
+      ],
+      "acceptance": [
+        "Chunked per-project code index (SQLite FTS5 + optional local embeddings, same engine as facts); code_search(query, top_k, path_filter) returns ranked chunks with file:line; provider-sticky embeddings with BM25 fallback on provider mismatch or offline (NFR-1); ripgrep wrapper for exact search",
+        "Context Packer consumes index ranking for relevance-ranked slices (FR-L5); agent code_search calls are audited events; W4 command palette queries the same index"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-J1/FR-M4). No repo-map by design (source-system lesson)."
     },
     {
       "id": "W8-01",

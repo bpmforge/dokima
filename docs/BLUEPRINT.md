@@ -449,6 +449,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-C5: Receipt inspector renders gate/coverage/challenge/ledger artifacts as structured views.
 - FR-C6: Guided first-fifteen-minutes sample project wired into the first-run wizard.
 - FR-C7: CLI parity: the `shipwright` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). *(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)*
+- FR-C8: Artifact feedback loop: deliverables (markdown + rendered Mermaid) accept inline feedback; feedback on a gated deliverable emits a revision HANDOFF to the producing role; the revision renders as a diff against the commented version. *(R-H2, 2026-07-14.)*
 
 **FR-PIPE (Pipeline)**
 - FR-P1: Six-phase program with per-phase validator sets and receipt-minting gates (validator list, exit codes, gap counts, input hash).
@@ -487,6 +488,8 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-L6: Finding ledger: every HIGH/CRITICAL review finding is a record with stable identity, state (OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED), per-finding attempt counts, and evidence-bearing history; rechecks return per-finding verdicts, never just a fresh list. Infra failures (unparseable/truncated review, limit pause) retry free and never open findings.
 - FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8 on metered tiers and 12+ on local tiers (localFrontier-proven: not-same-error ⇒ keep looping; watchdog is the backstop), ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
 
+- FR-L8: Token envelopes: per-window session/packet budgets (instruction/working/emergency-stop tiers), write-before-reading-more for oversized tool results, honest PARTIAL on emergency stop, per-expert instruction-cost metadata; fresh session per HANDOFF — no inherited chains. *(R-I1, 2026-07-14; numbers in SRS §2.5.)*
+
 **FR-HM (Harbormaster)**
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
 - FR-H2: Fresh session per ticket; per-ticket session cap; watchdog (time + heartbeat) with dead-letter escalation.
@@ -510,6 +513,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-M1: Working + long-term memory in-process; token-budgeted assembly; hybrid retrieval with BM25 fallback.
 - FR-M2: ACE playbook: delta-edits only, verified-before-stored; playbook is escalation rung R0.
 - FR-M3: Scheduled sleep-time consolidation on by default; error-first recall.
+- FR-M4: Code-index service: per-project chunked code index (FTS5 + optional provider-sticky local embeddings, BM25 fallback), `code_search` tool for agents (audited), ranking source for the Context Packer, ⌘K search. No repo-map by design. *(R-J1, 2026-07-14.)*
 
 **FR-SET (Settings & configuration)**
 - FR-S1: Three-scope settings (global/project/run) with run > project > global precedence; effective-settings resolution visible in UI.
@@ -526,6 +530,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 **FR-EXP (Expert content)**
 - FR-E1: Full expert-system library imported at W1 as `content/` (all experts, clusters + synthesizers, validators, shared protocols) with provenance headers; expert definitions are data (markdown + frontmatter), user-extensible per project.
+- FR-E2: Agent roster & observability view: every expert with effective model resolution, fitness cards, instruction cost, and event-derived history (HANDOFFs, outcomes, spend, escalations); "pin roles, not models" enforced at content load. *(R-K1, 2026-07-14.)*
 
 **FR-RL (Rule lifecycle & gate economics — D-014, added 2026-07-14)**
 - FR-RL1: Every validator/gate rule carries lifecycle state `proposed → shadow → advisory → gate → deprecated`; shadow rules run on real diffs with findings stamped `experimental` and excluded from gates, scores, and blocks.
