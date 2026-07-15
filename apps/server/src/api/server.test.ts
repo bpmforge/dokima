@@ -62,6 +62,20 @@ describe('buildApiServer — SC-08', () => {
     expect(port).toBeGreaterThan(0);
   });
 
+  it('never serves CORS headers, even for a same-origin request with an Origin header', async () => {
+    const { server, port } = await buildAndListen();
+    active = server;
+    const res = await server.app.inject({
+      method: 'GET',
+      url: '/healthz',
+      headers: { host: `127.0.0.1:${port}`, origin: `http://127.0.0.1:${port}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(
+      Object.keys(res.headers).some((h) => h.toLowerCase().startsWith('access-control-')),
+    ).toBe(false);
+  });
+
   it('/healthz is unauthenticated and reports db + ws state', async () => {
     const { server, port } = await buildAndListen({ isDbOpen: () => true });
     active = server;
