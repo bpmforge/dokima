@@ -1018,7 +1018,8 @@
         "packages/tickets/src/lanes.ts",
         "packages/git/package.json",
         "packages/loop/package.json",
-        "packages/tickets/package.json"
+        "packages/tickets/package.json",
+        "packages/shared/src/index.ts"
       ],
       "depends_on": [
         "W3-11"
@@ -1028,11 +1029,12 @@
         "Property test: for arbitrary pattern pairs, shared overlap(a,b) agrees with (∃ path matched by both) on generated paths; all three former call sites keep their full existing test suites green against the shared impl"
       ],
       "points": 2,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic.",
         "SCOPE FIX 2026-07-15: +git/loop/tickets package.json — the agent blocked twice because it could not declare @shipwright/shared deps (the W0-08 seam class; W5-07 seam rule violated by this ticket as written). Conductor markBlocked also crashed on string notes (row.notes.push) which destroyed the block evidence — fixed in conductor.mjs same commit.",
-        "CONDUCTOR 2026-07-15T12:26:24.318Z: blocked after 2 attempts. Branch sw/w3-12 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-15T12:26:24.318Z: blocked after 2 attempts. Branch sw/w3-12 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "SCOPE FIX 2 2026-07-15: +packages/shared/src/index.ts (the public re-export barrel — the OTHER half of the seam law; agent block-note on branch sw/w3-12 gave the exact root cause: deep imports are forbidden by W3-10 lint, so the barrel export is mandatory and was outside scope). Reset todo for re-claim; branch has the full implementation (704 tests green)."
       ],
       "stories": []
     },
