@@ -1251,14 +1251,15 @@
         "Lanes x columns x typed cards from projections <=1s lag (FR-C4); drag fires verbs, refusals explained inline with the violated invariant (FR-T4); stale-blocked badges; claim-now strip; shipped-today ticker; active-berths strip with heartbeats; shipped-today ticker (commits since midnight linked to tickets, UX_SPEC §4); board empty state per UX_SPEC §2b"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 design review G-18.",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
         "CONDUCTOR 2026-07-15T17:36:40.323Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "RESET 2026-07-15: both blocks were the stale claim-time scope (agent claimed before the L-33 wiring-scope fix landed on main; the conductor uses the ticket object captured at claim). Scope is now correct in this row; re-queue.",
         "CONDUCTOR 2026-07-15T19:01:09.457Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done' | [validate-file-size:file-size] apps/server/src/api/server.ts is 575 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
-        "RESET 2026-07-15 (L-36): blocked on validate-file-size — server.ts crossed 400 lines from cumulative route registrations, and the split target (server/ dir) was outside scope. ui-lane scopes now include apps/server/src/api/server/** ; FIRST TASK on re-claim: perform the CODE_BOOK split (index + chapter modules <=400 each), then the board UI work."
+        "RESET 2026-07-15 (L-36): blocked on validate-file-size — server.ts crossed 400 lines from cumulative route registrations, and the split target (server/ dir) was outside scope. ui-lane scopes now include apps/server/src/api/server/** ; FIRST TASK on re-claim: perform the CODE_BOOK split (index + chapter modules <=400 each), then the board UI work.",
+        "CONDUCTOR 2026-07-15T22:33:13.461Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: [HIGH] apps/server/src/api/server/board-routes.ts: fireVerb() always passes the same DEFAULT_ACTOR_ID ('local-operator') as actorId for every verb, including 'accept'. Since claim/start/close also all run as DEFAULT_ACTOR_ID, ticket.ownerId equals DEFAULT_ACTOR_ID by the time a ticket reaches in_review — so acceptTicket's SELF_ACCEPT check (packages/tickets/src/verbs.ts:214-216, `ticket.ownerId === input.actorId`) is satisfied on literally every accept attempt made through the board. The accept verb can never succeed via this API. The web UI still advertises it as a live affordance (apps/web/s"
       ],
       "stories": [
         "US-201",
