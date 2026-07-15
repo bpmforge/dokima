@@ -1055,8 +1055,11 @@
         "Project secrets vault (keychain-backed); automatic redaction in context packets AND the event log; secrets-scanner validator wired into every close gate (BLUEPRINT §12.5); red fixture: a planted key in a diff blocks close"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end. Enforces NFR-4 (secrets never in prompts/log).",
+      "status": "blocked",
+      "notes": [
+        " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end. Enforces NFR-4 (secrets never in prompts/log).",
+        "CONDUCTOR 2026-07-15T12:53:45.548Z: blocked after 2 attempts. Branch sw/w3-13 kept. Gaps: plan.json status is 'in_progress', expected 'done'"
+      ],
       "stories": []
     },
     {
