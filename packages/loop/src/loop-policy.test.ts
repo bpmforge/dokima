@@ -427,6 +427,100 @@ describe('createLoopConvergenceTracker — combined per-pass policy decision', (
     expect(pass2.reason).toBe('second_oscillation');
   });
 
+  it('folds every regressed finding into the budget tracker in one pass — not just the first in the array', () => {
+    const budgetTracker = createFindingBudgetTracker();
+    const tracker = createLoopConvergenceTracker(budgetTracker);
+    const a = stubFinding('a');
+    const b = stubFinding('b');
+
+    const pass1 = tracker.recordPass({
+      pass: 1,
+      newFindingsOpened: 0,
+      regressedFindings: [a, b],
+      recheckedFindings: [],
+      openFindingsCount: 2,
+      ticketPoints: 5,
+      tier: 'metered',
+    });
+    expect(pass1.kind).toBe('ESCALATE');
+    if (pass1.kind !== 'ESCALATE') throw new Error('unreachable');
+    expect(pass1.reason).toBe('regression');
+    expect(pass1.findings).toEqual([a, b]);
+    expect(budgetTracker.peek('a')?.oscillations).toBe(1);
+    expect(budgetTracker.peek('b')?.oscillations).toBe(1);
+
+    // b regresses a second time in isolation — it must independently block, proving its
+    // own oscillation counter genuinely advanced in pass 1 rather than being skipped because
+    // `a` (first in the array) already produced an ESCALATE decision that pass.
+    const pass2 = tracker.recordPass({
+      pass: 2,
+      newFindingsOpened: 0,
+      regressedFindings: [b],
+      recheckedFindings: [],
+      openFindingsCount: 1,
+      ticketPoints: 5,
+      tier: 'metered',
+    });
+    expect(pass2.kind).toBe('BLOCK');
+    if (pass2.kind !== 'BLOCK') throw new Error('unreachable');
+    expect(pass2.reason).toBe('second_oscillation');
+    expect(pass2.findings).toEqual([b]);
+  });
+
+  it('folds every still-present finding into the budget tracker even after an earlier finding in the array already escalates', () => {
+    const budgetTracker = createFindingBudgetTracker();
+    const tracker = createLoopConvergenceTracker(budgetTracker);
+    const a = stubFinding('a');
+    const b = stubFinding('b');
+
+    tracker.recordPass({
+      pass: 1,
+      newFindingsOpened: 0,
+      regressedFindings: [],
+      recheckedFindings: [{ finding: a, outcome: 'STILL_PRESENT' }],
+      openFindingsCount: 1,
+      ticketPoints: 5,
+      tier: 'metered',
+    });
+    expect(budgetTracker.peek('a')?.tierAttempts).toBe(1);
+
+    // a's 2nd strike escalates and is first in the array; b's 1st strike must still be
+    // recorded, not dropped by an early return before b is ever passed to the tracker.
+    const pass2 = tracker.recordPass({
+      pass: 2,
+      newFindingsOpened: 0,
+      regressedFindings: [],
+      recheckedFindings: [
+        { finding: a, outcome: 'STILL_PRESENT' },
+        { finding: b, outcome: 'STILL_PRESENT' },
+      ],
+      openFindingsCount: 2,
+      ticketPoints: 5,
+      tier: 'metered',
+    });
+    expect(pass2.kind).toBe('ESCALATE');
+    if (pass2.kind !== 'ESCALATE') throw new Error('unreachable');
+    expect(pass2.reason).toBe('stall');
+    expect(pass2.findings).toEqual([a]);
+    expect(budgetTracker.peek('b')?.tierAttempts).toBe(1);
+
+    // b's own 2nd strike, in isolation, must now escalate too — proving pass 2 genuinely
+    // recorded its first strike instead of silently skipping it.
+    const pass3 = tracker.recordPass({
+      pass: 3,
+      newFindingsOpened: 0,
+      regressedFindings: [],
+      recheckedFindings: [{ finding: b, outcome: 'STILL_PRESENT' }],
+      openFindingsCount: 1,
+      ticketPoints: 5,
+      tier: 'metered',
+    });
+    expect(pass3.kind).toBe('ESCALATE');
+    if (pass3.kind !== 'ESCALATE') throw new Error('unreachable');
+    expect(pass3.reason).toBe('stall');
+    expect(pass3.findings).toEqual([b]);
+  });
+
   it('parks (not fails) a ticket that hits the ceiling while still PROGRESSED — a decomposition signal', () => {
     const tracker = createLoopConvergenceTracker();
     // points=1 -> metered ceiling = min(4, 8) = 4.

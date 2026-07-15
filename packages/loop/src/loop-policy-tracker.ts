@@ -7,6 +7,7 @@ import {
 import {
   createFindingBudgetTracker,
   type FindingBudgetTracker,
+  type StallDecision,
 } from './loop-policy-budget.js';
 import {
   checkConvergence,
@@ -123,57 +124,83 @@ export function createLoopConvergenceTracker(
         regressedCount: input.regressedFindings.length,
       });
 
-      // Per-finding budgets: regressions first (worst signal), then still-present stalls,
-      // then clear the resolved ones out of the tracker.
+      // Per-finding budgets: every regressed and every still-present finding is folded into
+      // the budget tracker unconditionally first — no early return before all of them have
+      // been evaluated, or a later finding's oscillation/tier-attempt count would silently
+      // never advance. Only once every decision is collected do we pick the most severe one
+      // to report for this pass.
+      const regressionOutcomes: { finding: FindingRecord; decision: StallDecision }[] =
+        [];
       for (const finding of input.regressedFindings) {
-        const decision = budgetTracker.evaluate(finding.fingerprint, 'REGRESSED');
-        if (decision.action === 'BLOCK') {
-          return {
-            kind: 'BLOCK',
-            pass: input.pass,
-            iterationClass,
-            reason: 'second_oscillation',
-            findings: [finding],
-          };
-        }
-        if (decision.action === 'ESCALATE') {
-          return {
-            kind: 'ESCALATE',
-            pass: input.pass,
-            iterationClass,
-            reason: 'regression',
-            findings: [finding],
-          };
-        }
+        regressionOutcomes.push({
+          finding,
+          decision: budgetTracker.evaluate(finding.fingerprint, 'REGRESSED'),
+        });
       }
+      const stallOutcomes: { finding: FindingRecord; decision: StallDecision }[] = [];
       for (const r of input.recheckedFindings) {
         if (r.outcome !== 'STILL_PRESENT') {
           continue;
         }
-        const decision = budgetTracker.evaluate(r.finding.fingerprint, 'STILL_PRESENT');
-        if (decision.action === 'BLOCK') {
-          return {
-            kind: 'BLOCK',
-            pass: input.pass,
-            iterationClass,
-            reason: 'post_escalation_stall',
-            findings: [r.finding],
-          };
-        }
-        if (decision.action === 'ESCALATE') {
-          return {
-            kind: 'ESCALATE',
-            pass: input.pass,
-            iterationClass,
-            reason: 'stall',
-            findings: [r.finding],
-          };
-        }
+        stallOutcomes.push({
+          finding: r.finding,
+          decision: budgetTracker.evaluate(r.finding.fingerprint, 'STILL_PRESENT'),
+        });
       }
       for (const r of input.recheckedFindings) {
         if (r.outcome === 'RESOLVED') {
           budgetTracker.evaluate(r.finding.fingerprint, 'RESOLVED');
         }
+      }
+
+      // Severity order: a second oscillation (zero-tolerance, worst signal) outranks a
+      // post-escalation stall block, which outranks a fresh regression escalation, which
+      // outranks a same-tier stall escalation.
+      const secondOscillation = regressionOutcomes.filter(
+        (o) => o.decision.action === 'BLOCK',
+      );
+      if (secondOscillation.length > 0) {
+        return {
+          kind: 'BLOCK',
+          pass: input.pass,
+          iterationClass,
+          reason: 'second_oscillation',
+          findings: secondOscillation.map((o) => o.finding),
+        };
+      }
+      const postEscalationBlock = stallOutcomes.filter(
+        (o) => o.decision.action === 'BLOCK',
+      );
+      if (postEscalationBlock.length > 0) {
+        return {
+          kind: 'BLOCK',
+          pass: input.pass,
+          iterationClass,
+          reason: 'post_escalation_stall',
+          findings: postEscalationBlock.map((o) => o.finding),
+        };
+      }
+      const regressionEscalate = regressionOutcomes.filter(
+        (o) => o.decision.action === 'ESCALATE',
+      );
+      if (regressionEscalate.length > 0) {
+        return {
+          kind: 'ESCALATE',
+          pass: input.pass,
+          iterationClass,
+          reason: 'regression',
+          findings: regressionEscalate.map((o) => o.finding),
+        };
+      }
+      const stallEscalate = stallOutcomes.filter((o) => o.decision.action === 'ESCALATE');
+      if (stallEscalate.length > 0) {
+        return {
+          kind: 'ESCALATE',
+          pass: input.pass,
+          iterationClass,
+          reason: 'stall',
+          findings: stallEscalate.map((o) => o.finding),
+        };
       }
 
       passesUsed += 1;
