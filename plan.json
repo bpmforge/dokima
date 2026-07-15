@@ -1246,11 +1246,12 @@
         "Lanes x columns x typed cards from projections <=1s lag (FR-C4); drag fires verbs, refusals explained inline with the violated invariant (FR-T4); stale-blocked badges; claim-now strip; shipped-today ticker; active-berths strip with heartbeats; shipped-today ticker (commits since midnight linked to tickets, UX_SPEC §4); board empty state per UX_SPEC §2b"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-18.",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
-        "CONDUCTOR 2026-07-15T17:36:40.323Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-15T17:36:40.323Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "RESET 2026-07-15: both blocks were the stale claim-time scope (agent claimed before the L-33 wiring-scope fix landed on main; the conductor uses the ticket object captured at claim). Scope is now correct in this row; re-queue."
       ],
       "stories": [
         "US-201",
