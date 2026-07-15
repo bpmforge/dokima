@@ -32,6 +32,9 @@ export function ChatView({ token, projectId = 'default' }: ChatViewProps) {
 
   useEffect(() => {
     let cancelled = false;
+    // A stale error from a prior project/fetch must never outlive the fetch
+    // that supersedes it — clear on every rerun, not only on failure.
+    setLoadError(null);
     fetchChatEvents(projectId, { getToken: () => token })
       .then((items) => {
         if (!cancelled) setEvents(items);
