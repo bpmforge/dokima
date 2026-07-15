@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      google-auth-library:
-        specifier: ^10.7.0
-        version: 10.9.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.5
@@ -93,7 +89,11 @@ importers:
 
   packages/forge: {}
 
-  packages/gateway: {}
+  packages/gateway:
+    dependencies:
+      google-auth-library:
+        specifier: ^10.7.0
+        version: 10.9.0
 
   packages/git:
     dependencies:

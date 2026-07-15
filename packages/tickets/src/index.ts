@@ -2,6 +2,14 @@ export { createTicket } from './create.js';
 export type { TicketVerbOptions } from './create.js';
 export { TicketError } from './errors.js';
 export type { TicketErrorCode } from './errors.js';
+export {
+  LaneScopeError,
+  findLaneScopeViolations,
+  globOverlaps,
+  validateLaneWriteScopes,
+  writeScopesOverlap,
+} from './lanes.js';
+export type { LaneScopeViolation, LaneScopeViolationKind } from './lanes.js';
 export { getTicket, listTickets, loadTickets } from './query.js';
 export { reduceTicketEvent, ticketsProjection } from './reducer.js';
 export type {
@@ -9,6 +17,14 @@ export type {
   TicketCommentedPayload,
   TicketCreatedPayload,
 } from './reducer.js';
+export {
+  computeBoard,
+  depsDone,
+  effectiveStatus,
+  isClaimable,
+  isStaleBlocked,
+} from './reflow.js';
+export type { BoardEntry } from './reflow.js';
 export { isValidTransition, TRANSITIONS } from './transitions.js';
 export type { LifecycleVerb } from './transitions.js';
 export type {

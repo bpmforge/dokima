@@ -38,3 +38,24 @@ export {
   createOllamaProvider,
   type OaiCompatConfig,
 } from './oai-compat.js';
+
+export {
+  AnthropicProvider,
+  createAnthropicProvider,
+  type AnthropicConfig,
+} from './anthropic.js';
+
+export {
+  COPILOT_OAUTH_CLIENT_ID,
+  CopilotDeviceAuthError,
+  CopilotProvider,
+  CopilotSubscriptionError,
+  DEFAULT_COPILOT_CREDENTIAL_REF,
+  createCopilotProvider,
+  type CopilotConfig,
+  type CopilotCredentialStore,
+  type DeviceCodeInfo,
+  type DevicePollResult,
+} from './copilot.js';
+
+export { VertexProvider, createVertexProvider, type VertexConfig } from './vertex.js';
