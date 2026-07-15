@@ -914,7 +914,7 @@
         "Subjective review score 1-4 over a passing deterministic gate escalates to the human, never auto-fails (US-410 AC-2, FR-L6 asymmetry)"
       ],
       "points": 8,
-      "status": "todo",
+      "status": "in_progress",
       "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy). F4 2026-07-14: dep narrowed to W1-03 — the finding ledger is pure engine work, claimable at resume before the harbormaster lands (it hardens the loop being built). Design: docs/design/GATE_ECONOMICS.md. AMENDED 2026-07-14 challenger fix: acceptance named 4 of the 6 policy-matrix rows — now ALL of the set (the STATUS 2026-07-12 lesson, caught recurring).",
       "stories": [
         "US-408",
