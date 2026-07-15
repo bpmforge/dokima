@@ -113,6 +113,23 @@ Served by apps/server on localhost only (SC-08).
 Every settings PUT appends a `settings.changed` event (FR-S3) — configuration is audited
 like execution; changes are visible in the activity feed.
 
+### rules & improvement plans (FR-RL, FR-PLAN — D-014/D-016, added 2026-07-14)
+| Method+Path | Req → Res |
+|---|---|
+| `GET /projects/{id}/rules` | per rule: lifecycle state, measured FP rate + window counts, fixtures present, provenance/license |
+| `POST /rules/{id}/promote` · `/demote` | human-confirmed transitions; refused below sample minimums with counts in the 409 (FR-RL2); every transition an event |
+| `GET /projects/{id}/findings?state=&rule=` | finding ledger rows incl. funnel counts raw→deduped→effective→suppressed (FR-RL4) |
+| `POST /findings/{fingerprint}/suppress` | `{justification (enum), signature}` — human only (SC-05); auto-reopens on context change (FR-RL3) |
+| `GET /projects/{id}/plan` | ranked plan items (catalog id, state, verify criterion, linked ticket) — deterministic, LLM-free (FR-PLAN4) |
+| `POST /plan-items/{id}/accept` · `/dismiss` | accept may mint a board ticket carrying the item's verify; dismiss requires a note (ledgered) |
+
+### roster & feedback (FR-E2, FR-C8 — added 2026-07-14)
+| Method+Path | Req → Res |
+|---|---|
+| `GET /roster` | every expert: cluster, mode, effective model resolution + winning scope, fitness cards, instruction cost |
+| `GET /roster/{agent}/history` | event-derived: HANDOFFs, outcomes, verdict scores (with re-ran-independently evidence), spend, escalations |
+| `POST /artifacts/{path}/comments` | inline feedback on a deliverable; on gated deliverables emits `revision.requested` → revision HANDOFF (FR-C8) |
+
 ### autonomy
 | Method+Path | Req → Res |
 |---|---|
