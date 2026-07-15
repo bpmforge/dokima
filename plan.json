@@ -1186,7 +1186,7 @@
         "Playwright seeded stack ships the scripted fake-model gateway adapter (deterministic per-role scripts, injectable latency/failure budget — TESTING §7); no E2E job talks to a real provider"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0). AMENDED 2026-07-14 addendum (R-M2). D-015: declared scaffold (broad bootstrap scope; cross-lane exemption recorded). Cites FR-C1 (split-pane layout persistence) — pane layout is part of the scaffold acceptance. AMENDED 2026-07-14 challenger fix (fake-model gateway was consumed by W0-09/W1-07-era tests but unowned for the Playwright tier).",
       "stories": [],
       "scaffold": true
