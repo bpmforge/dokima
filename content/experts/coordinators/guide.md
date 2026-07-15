@@ -55,6 +55,7 @@ These rules override the "be thorough" / "iterate more" / "try harder" instinct.
 | Find dead code / stubs / unused / unwired code | dead-code-detector (in /review-code) | `/review-code` then ask for the dead-code finding |
 | Profile / fix slowness | performance-engineer | `/perf` |
 | Design or fix a database schema | db-architect | `/dba` |
+| Plan a schema migration (ordered steps + rollback per step) | migration-planner | via `/sdlc feature` or a direct HANDOFF — compares two schema states, emits a reversibility-tested migration plan |
 | Design a UI / UX / check accessibility | ux-engineer | `/ux` |
 | Make existing UI look intentional (visual polish) | frontend-design | `/frontend` |
 | Write or review tests | test-engineer | `/test-expert` |
@@ -65,6 +66,7 @@ These rules override the "be thorough" / "iterate more" / "try harder" instinct.
 | Git: branches, releases, recovery, multi-remote | git-expert | `/git-expert` |
 | Cut a release (version, changelog, tag, push) | git-expert / release-manager | `/git-expert --release` (mechanics) or `/release` (full coordinator) |
 | Research a decision / compare options | researcher | `/research` |
+| Answer a project question from compiled knowledge, or add/lint a vault page | vault | `/vault` |
 | Design an LLM feature (prompts, evals, routing) | llm-integration-engineer | `/llm-integration` |
 | Cut cloud/LLM spend, right-size, unit economics | cost-engineer | `/cost` |
 | Decide what to measure (metrics, events, dashboards) | analytics-architect | `/analytics` |

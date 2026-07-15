@@ -97,11 +97,11 @@ Five research tools, provided by the `playwright-search` MCP server (see `exampl
 
 | Tool | Tier | When to use | What it does |
 |------|------|------------|-------------|
-| `web_search_pullmd(query, limit=10)` | **1 — start here** | Any new topic — triage before fetching | SERP-only, no browser. DDG + Mojeek + Brave + Startpage via pullmd. Returns titles/URLs/snippets ranked by engine agreement (~5-10s). |
-| `web_research_pullmd(query, top=3, relevance_query?)` | **2 — full content** | After triage, when full page content needed | SERP + pullmd fetch + BM25. Auto-falls back to Playwright for pages returning < 500 chars. Annotates `fetch: pullmd` or `fetch: playwright fallback`. |
+| `web_search_pullmd(query, limit=10)` | **1 — start here** | Any new topic — triage before fetching | Multi-engine SERP (DDG + Mojeek + Brave + Startpage). Tries our own zero-dep pull first (fast, no browser), auto-falls back to the native Playwright SERP when an engine blocks plain fetch. Titles/URLs/snippets ranked by engine agreement. No external service. |
+| `web_research_pullmd(query, top=3, relevance_query?)` | **2 — full content** | After triage, when full page content needed | SERP + full-page fetch via our own pull + BM25. Auto-falls back to Playwright for pages returning < 500 chars. Annotates `fetch: pull` or `fetch: playwright fallback`. |
 | `web_research(query, top=5, max_chars_per_source=3000, relevance_query?)` | **3 — escalate** | Only when tier 2 returns < 2 useful sources | All-Playwright pipeline: multi-engine SERP → fetch → BM25. Slower (~30-60s). |
 | `web_fetch(url, max_chars=8000, relevance_query?)` | **4 — known URL** | Specific citation or doc link already in hand | Playwright Readability + 24h cache. With `relevance_query`, returns BEST paragraphs for that query. |
-| `web_search(query, limit=10)` | **4 — SERP fallback** | When pullmd SERP is unavailable | Playwright multi-engine SERP (DDG + Brave + Bing), titles + snippets only. |
+| `web_search(query, limit=10)` | **4 — SERP fallback** | Titles-only, when you don't need content | Playwright multi-engine SERP (DDG + Brave + Bing), titles + snippets only. |
 
 **Tool selection gate (MANDATORY — answer before every tool call):**
 1. Have I used `web_search_pullmd` first for this topic? If not — use it now (tier 1).
@@ -116,7 +116,7 @@ web_search_pullmd("specific question 2026", limit=10)       → triage URLs
 web_research_pullmd("specific question 2026", top=3)        → full content + BM25
 ```
 
-**Escalation pattern (when pullmd gives thin results):**
+**Escalation pattern (when the fast pull gives thin results):**
 ```
 web_research("specific question 2026", top=5)               → all-Playwright fallback
 web_fetch("https://chosen-url", relevance_query="X Y")      → single known URL
@@ -145,6 +145,7 @@ Rules:
 - **Source-type credibility ladder** sets initial confidence: official docs/RFC/spec 0.9 · academic 0.8 · engineering blog 0.7 · news 0.5 · forum (HN/Reddit/SO) 0.4 · unknown 0.3. Corroboration raises it; never start a forum claim above 0.5.
 - **Perishable facts get `staleAfterDays`** (versions, prices, benchmarks, model IDs: 30-90d). Evergreen concepts omit it.
 - **Query before you search:** at task start, `fact_query({ query: "<topic>", includeContradictions: true })` — prior sessions' verified facts are free; re-deriving them is the waste this exists to prevent.
+- **Query the vault too, before you search:** the project's compiled wiki at `~/Code/agent-brain-vault/wiki/` (see the `vault` skill for the full ingest/query/lint contract) may already have a synthesized, cited answer for a project-specific question — check it the same way you check the Fact Bank, and cite the page in the report instead of re-researching what's already compiled.
 - **Contradiction handling:** if a new finding contradicts a stored fact or another source, do NOT silently pick one. Store both with their quotes, list the conflict under "Conflicts / unverified claims" in the report, and surface it to the user with both citations — the user (or a higher-credibility source) breaks the tie.
 - Store facts as you complete each question's checkpoint, not in a batch at the end (a dead session loses nothing).
 
@@ -200,6 +201,8 @@ End work with a completion manifest BEFORE the completion phrase:
 ## Known issues / deferred
 - [Issue] — [why deferred]
 
+## Memory written
+- memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Ready for: [next agent or "SDLC lead resume"]
 ```
 
@@ -248,7 +251,7 @@ For each question Qi:
         # 1. PICK the most pressing gap as this pass's query
         focus = pick_most_specific_gap(gaps)
 
-        # 2. SEARCH — follow tier order (pullmd first, Playwright only on escalation)
+        # 2. SEARCH — follow tier order (fast pull first, Playwright only on escalation)
         #    Pass 1: broad — web_search_pullmd("<topic> 2026") → triage URLs
         #    Pass 1 (full): web_research_pullmd("<topic> 2026", top=3) → full content
         #    Pass 2+: narrow — incorporate names/terms from pass 1; escalate to
@@ -348,10 +351,10 @@ The opencode built-in `webfetch` and `websearch` tools are **disabled at the con
 
 **Use this fallback chain — in order, never skip a tier:**
 
-1. `playwright-search_web_search_pullmd(query)` — triage, no browser (~5-10s). Always start here.
-2. `playwright-search_web_research_pullmd(query, top=3)` — pullmd full-page + auto-Playwright for thin pages. Use when you need full content.
+1. `playwright-search_web_search_pullmd(query)` — triage via our own fast pull, browser fallback (~5-10s). Always start here.
+2. `playwright-search_web_research_pullmd(query, top=3)` — full-page via our own pull + auto-Playwright for thin pages. Use when you need full content.
 3. `playwright-search_web_research(query, top=3)` — all-Playwright. Only if tier 2 returns < 2 useful sources.
-4. `playwright-search_web_fetch(url, ...)` or `pullmd_read_url(url)` — single known URL.
+4. `playwright-search_web_fetch(url, ...)` — single known URL.
 5. If (1)–(4) all fail → surface `RESEARCH BLOCKED` block to the user. Do **not** loop.
 
 Read `~/.config/opencode/agents/shared/RESEARCH_TOOLS.md` for the full surface and call examples.

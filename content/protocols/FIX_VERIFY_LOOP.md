@@ -25,9 +25,15 @@ Single source of truth. Mode files reference this file instead of duplicating th
 ```
 1. PARALLEL FAN-OUT  -- emit every triggered review HANDOFF in ONE message
 2. SYNTHESIZE        -- merge findings into a unified FIX_BACKLOG
-3. REMEDIATE         -- single coding-agent HANDOFF applies CRITICAL+HIGH fixes
+2b. CHALLENGE        -- if any row is HIGH/CRITICAL, challenger HANDOFF adjudicates
+                        CONFIRMED/CONTRADICTED before remediation (CHALLENGER_PROTOCOL)
+3. REMEDIATE         -- single coding-agent HANDOFF applies CONFIRMED CRITICAL+HIGH fixes
 4. RE-VERIFY         -- targeted verification of backlog rows only (not full re-scan)
-5. GATE              -- repeat steps 3-4 up to 3 iterations; escalate if still FAIL
+5. GATE              -- repeat steps 3-4 by iteration CLASS, not a flat count:
+                        fix-verify.mjs reads the ceiling from docs/work/.model-context
+                        (6 metered / 12 local); STALLED escalates after 2 same-tier
+                        attempts, PROGRESSED may extend to the ceiling, OSCILLATING
+                        (regressed) escalates immediately and stops on the 2nd.
 ```
 
 ---
@@ -106,6 +112,7 @@ verdict that can't be faked:
 node scripts/fix-verify.mjs snapshot semgrep                 # SAST findings
 node scripts/fix-verify.mjs snapshot validate-dead-code.sh   # dead/stub code
 node scripts/fix-verify.mjs snapshot validate-deps.sh        # dependency CVEs
+node scripts/fix-verify.mjs snapshot validate-contract-conformance.sh  # O2.5: interface drift a fix may introduce (caught in-loop, not only at phase-5)
 
 # AFTER the fix:
 node scripts/fix-verify.mjs verify semgrep --floor ERROR
@@ -146,7 +153,20 @@ After re-verification:
 - Any CRITICAL+HIGH row FAIL -> back to Step 3 with the failed rows
 - Iteration counter increments
 
-**Hard cap: 3 iterations.** If iteration 3 still has any FAIL, sdlc-lead STOPS and emits the escalation block:
+**Classify the iteration before spending the next one** (field-validated on the
+Shipwright conductor run 2026-07-12 — a flat cap treats two different failures
+identically; see `issues/` field reports). Using the per-row verdicts
+(CLOSED / STILL-OPEN / NEW / REGRESSED):
+
+| Iteration class | Ledger signature | Budget rule |
+|---|---|---|
+| **STALLED** | a row is STILL-OPEN after an iteration that explicitly targeted it | **2 targeted iterations per row at the same specialist/tier, never 3** — the third identical attempt is the worst spend in the system. On the 2nd STILL-OPEN: escalate that row now (option D — different specialist / stronger tier), don't wait for the loop cap. |
+| **PROGRESSED** | all prior rows CLOSED, but NEW rows opened | Healthy — the fix let review see deeper (observed live: findings 2→9→15 while *converging on completeness*). Does not count against the same budget as a stall: the loop may extend past 3 iterations **only** while every iteration closes all its prior rows AND the NEW-row count strictly decreases; absolute ceiling 6 on frontier/metered tiers — but **tier-aware**: on local/owned-hardware tiers (tokens ~free) the PROGRESSED ceiling rises to 12, matching the proven localFrontier setting (12 iterations landed complete SDLCs on local models where a flat cap of 3 hard-escalated; the wall-clock watchdog is the backstop). The principle, field-proven on the original opencode/Jarvis local runs: **as long as it is not looping on the same error, let it loop and fix.** Hitting any ceiling while still PROGRESSED is a *decomposition signal* (the change is too big — split it), not a fix failure. |
+| **OSCILLATING** | any previously-CLOSED row comes back (REGRESSED) | Zero tolerance — the fixes are fighting each other, usually across a module boundary the change blurs. **First regression: escalate immediately. Second: stop.** |
+| **Infra event** | verify run truncated / interrupted / tooling crashed | Re-run the verification; it consumes **no** iteration and opens **no** row. Never charge the fixer for infrastructure. |
+
+**Default hard cap stays 3 iterations** (PROGRESSED extension above is the only
+exception). If the cap is hit with any FAIL, sdlc-lead STOPS and emits the escalation block:
 
 ```
 ---

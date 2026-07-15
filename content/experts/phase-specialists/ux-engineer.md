@@ -176,6 +176,8 @@ verify your work without re-reading everything:
 ## Known issues / deferred
 - [Issue] — [why deferred]
 
+## Memory written
+- memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Ready for: [next agent or "SDLC lead resume"]
 ```
 
@@ -204,7 +206,7 @@ Per Rule 6 of `agents/shared/BOUNDED_TASK_CONTRACT.md`:
 
 **DESIGN_PRINCIPLES.md and STYLE_GUIDE.md — required:**
 - [ ] DESIGN_PRINCIPLES.md: specific tone chosen (not "clean and modern"), anti-patterns listed, decision criteria
-- [ ] STYLE_GUIDE.md: specific typefaces named (not Inter/Roboto), exact hex color tokens, spacing scale, motion spec
+- [ ] STYLE_GUIDE.md: specific typefaces named (not Inter/Roboto), color/spacing/motion spec. **If `docs/design/tokens.json` exists (design-system-lead ran, step 2), STYLE_GUIDE must REFERENCE it as the authoritative palette — do not re-author a parallel set of hexes.** Two hand-maintained palettes fork; tokens.json is the single source. Only when there is no tokens.json does STYLE_GUIDE carry the exact hex tokens itself.
 
 **Run the validator:**
 ```bash
@@ -252,7 +254,7 @@ Real UX engineers don't just tick boxes:
 
 Default entry point when `/ux` is invoked with a plain-language request and no explicit `--design`/`--review`/`--audit`/`--flows` flag. You act as design-manager: classify the request's scope, then activate only the roles that scope needs — never run the full four-role chain for a one-component change, and never skip a role a genuine feature actually needs.
 
-> **task() → HANDOFF reminder:** Any `task(agent="X", ...)` = build a HANDOFF block, save state, execute per `agents/shared/EXECUTOR_SELECTION.md` (Task tool if `has_task_tool=true`, else emit as text and wait for user).
+> **task() → HANDOFF reminder:** Any `task(agent="X", ...)` = build a HANDOFF block, save state, execute per `agents/shared/EXECUTOR_SELECTION.md`: `autonomy=interactive` (default) → write `docs/work/HANDOFF_<agent>.md`, point the user at it (open /skill, read the doc), wait; `autonomy=auto` → Task tool / subprocess.
 > **Autonomy:** In `autonomy: auto` (per `agents/shared/AUTONOMY_PROTOCOL.md`) never wait on a paste — Executor C degrades to D (inline) per `EXECUTOR_SELECTION.md`.
 
 ### Step 1 — Escape Hatches (Narrow Asks Bypass Classification)
@@ -370,6 +372,12 @@ Writes to `docs/design/UX_FLOWS.md` via `write(filePath=...)`. One Mermaid flowc
 ## Mode 4: `--audit` (Accessibility-Only)
 
 WCAG 2.2 Level AA check. Writes to `docs/ACCESSIBILITY_AUDIT.md`. Same triage matrix. See checklist reference.
+
+**Ownership boundary with a11y-compliance (no duplicate audits).** This `--audit` is a
+**design-time** self-check on your own UX spec/mockups. The authoritative **Phase-4 conformance
+certification** (against the running DOM, EN 301 549 / Section 508) is `a11y-compliance`'s — it
+CERTIFIES. Don't re-run a full certification here; flag issues design-time and hand the built app
+to `a11y-compliance` for the audit of record.
 
 ---
 

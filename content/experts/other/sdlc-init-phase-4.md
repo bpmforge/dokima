@@ -18,7 +18,7 @@ mode: "subagent"
 
 > Load only when sdlc-init-mode.md directs you here for Phase 4 or Phase 5.
 > Mandatory rules (loop prevention, document hygiene, delegation) live in sdlc-init-mode.md.
-> **task() → HANDOFF reminder:** Any `task(agent="X", ...)` = build a HANDOFF block, save state, execute per `agents/shared/EXECUTOR_SELECTION.md` (Task tool if `has_task_tool=true`, else emit as text and wait for user).
+> **task() → HANDOFF reminder:** Any `task(agent="X", ...)` = build a HANDOFF block, save state, execute per `agents/shared/EXECUTOR_SELECTION.md`: `autonomy=interactive` (default) → write `docs/work/HANDOFF_<agent>.md`, point the user at it (open /skill, read the doc), wait; `autonomy=auto` → Task tool / subprocess.
 > **Autonomy:** In `autonomy: auto` (per `agents/shared/AUTONOMY_PROTOCOL.md`) never wait on a paste — Executor C degrades to D (inline) per `EXECUTOR_SELECTION.md`.
 
 ## Phase 4: Implementation — BUILD it
@@ -84,7 +84,7 @@ Emit one coding-agent HANDOFF for this module. Wait for completion phrase. Run:
 ```
 If gate fails → return gap to coding-agent with REVISE. Repeat up to 3 times.
 
-**Round 2 — Review (always parallel, even in sequential wave mode):**
+**Round 2 — Review (always parallel, even in sequential wave mode):** **These are HANDOFFs — you never read the source and review/scan it yourself; you write each `docs/work/HANDOFF_<agent>.md`, point the user at the specialist, and read only the produced report (`FIX_BACKLOG_*` / `SECURITY_FINAL_*` / review docs).**
 Emit ALL triggered review HANDOFFs in ONE message:
 ```
 ---
@@ -95,7 +95,11 @@ Emit ALL triggered review HANDOFFs in ONE message:
 [performance-engineer HANDOFF — if DB queries/loops/caching touched]
 [ux-engineer HANDOFF — if any UI file touched]
 ```
-Wait for all completion phrases. Synthesize `docs/reviews/FIX_BACKLOG_<module>_<date>.md`. Run Fix-Verify Loop (see `agents/shared/FIX_VERIFY_LOOP.md`) — up to 3 iterations, escalate if still failing.
+Wait for all completion phrases. Synthesize `docs/reviews/FIX_BACKLOG_<module>_<date>.md`.
+
+**Round 2b — Challenge (MANDATORY when any FIX_BACKLOG row is HIGH/CRITICAL):** before remediating, emit a **`challenger` HANDOFF** on the review artifact per `agents/shared/CHALLENGER_PROTOCOL.md` (write `docs/work/HANDOFF_challenger.md`, point the user at `/challenge`). The challenger adversarially re-checks each HIGH/CRITICAL finding and produces `docs/reviews/CHALLENGE_REPORT_<module>_<date>.md` with per-finding CONFIRMED / CONTRADICTED verdicts. **CONTRADICTED findings are dropped from the backlog; CONFIRMED ones (and any new issue the challenge surfaces) feed the remediation as REVISE rows.** This is the per-ticket adversarial check — never skip it on a HIGH/CRITICAL backlog, and never do it yourself.
+
+**Round 2c — Fix-Verify Loop:** run the loop (`agents/shared/FIX_VERIFY_LOOP.md`) on the CONFIRMED backlog. Iteration count is **tier-aware and class-driven, not a flat 3** — `scripts/fix-verify.mjs` classifies each pass (CLEARED / PROGRESSED / STALLED / OSCILLATING) and reads the ceiling from `docs/work/.model-context` (6 metered / 12 local): a STALLED row escalates after 2 same-tier attempts; a PROGRESSED loop may extend to the ceiling; an OSCILLATING (regressed) row escalates immediately, stops on the second.
 
 **Round 3 — Runtime:**
 Emit one runtime-validation HANDOFF scoped to this module. Produces `docs/reviews/RUNTIME_<module>_<date>.md`. Completion phrase: `"runtime done — <module>: [PASS or FAIL]"`.
@@ -157,7 +161,7 @@ Next after resume: db-architect migrations handoff
 ---
   HANDOFF → test-engineer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /test-expert:
+Write this block to `docs/work/HANDOFF_test-engineer.md`, then tell the user: open `/test-expert` and have it read `docs/work/HANDOFF_test-engineer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for test-engineer:
 
@@ -294,7 +298,7 @@ Next after resume: discovery audit, then expert reviews
 ---
   HANDOFF → test-engineer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /test-expert:
+Write this block to `docs/work/HANDOFF_test-engineer.md`, then tell the user: open `/test-expert` and have it read `docs/work/HANDOFF_test-engineer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for test-engineer:
 
@@ -374,7 +378,7 @@ Next after resume: DB migrations, then expert reviews
 ---
   HANDOFF → test-engineer   [or /ux if UI-bearing]
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /test-expert:
+Write this block to `docs/work/HANDOFF_test-engineer.md`, then tell the user: open `/test-expert` and have it read `docs/work/HANDOFF_test-engineer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for test-engineer:
 
@@ -423,7 +427,7 @@ Next after resume: api-designer contract verification
 ---
   HANDOFF → db-architect
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /dba:
+Write this block to `docs/work/HANDOFF_db-architect.md`, then tell the user: open `/dba` and have it read `docs/work/HANDOFF_db-architect.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for db-architect:
 
@@ -453,7 +457,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
   HANDOFF → api-designer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /api-design:
+Write this block to `docs/work/HANDOFF_api-designer.md`, then tell the user: open `/api-design` and have it read `docs/work/HANDOFF_api-designer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for api-designer:
 
@@ -483,7 +487,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
   HANDOFF → container-ops
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /containers:
+Write this block to `docs/work/HANDOFF_container-ops.md`, then tell the user: open `/containers` and have it read `docs/work/HANDOFF_container-ops.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for container-ops:
 
@@ -539,7 +543,7 @@ Next after resume: CI/CD pipeline
 ---
   HANDOFF → sre-engineer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /devops:
+Write this block to `docs/work/HANDOFF_sre-engineer.md`, then tell the user: open `/devops` and have it read `docs/work/HANDOFF_sre-engineer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for sre-engineer:
 
@@ -583,7 +587,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
   HANDOFF → sre-engineer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /devops:
+Write this block to `docs/work/HANDOFF_sre-engineer.md`, then tell the user: open `/devops` and have it read `docs/work/HANDOFF_sre-engineer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for sre-engineer:
 
@@ -614,7 +618,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
   HANDOFF → security-auditor
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /security:
+Write this block to `docs/work/HANDOFF_security-auditor.md`, then tell the user: open `/security` and have it read `docs/work/HANDOFF_security-auditor.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for security-auditor:
 
@@ -651,7 +655,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
   HANDOFF → code-reviewer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /review-code:
+Write this block to `docs/work/HANDOFF_code-reviewer.md`, then tell the user: open `/review-code` and have it read `docs/work/HANDOFF_code-reviewer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for code-reviewer:
 
@@ -699,7 +703,7 @@ task(agent="git-expert", prompt="--feature mode (merge phase): verify docs/revie
 ---
   HANDOFF → performance-engineer
 ---
-Open a new OpenCode conversation and paste this EXACT prompt to /perf:
+Write this block to `docs/work/HANDOFF_performance-engineer.md`, then tell the user: open `/perf` and have it read `docs/work/HANDOFF_performance-engineer.md` and follow it (it reads the doc — nothing is pasted):
 
 SDLC-TASK for performance-engineer:
 

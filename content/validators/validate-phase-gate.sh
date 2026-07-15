@@ -83,6 +83,8 @@ populate_phase_artifacts() {
       GATE_FILES=("docs/MODULE_DESIGN.md" "docs/ARCHITECTURE.md" "docs/API_DESIGN.md" "docs/api/openapi.yaml" "docs/TECH_STACK.md" "docs/THREAT_MODEL.md" "docs/SECURITY_CONTROLS.md" "docs/INFRASTRUCTURE.md")
       GATE_VALIDATORS=(
         "validate-module-design.sh"
+        "validate-flows.sh"
+        "validate-design-tokens.sh"
         "validate-circular-deps.sh"
         "validate-module-boundaries-transitive.sh"
         "validate-infrastructure.sh"
@@ -106,6 +108,11 @@ populate_phase_artifacts() {
         # 3 -- wired here (not just Phase 5) so the design doc is not
         # considered final while an external claim is still unverified.
         "validate-challenger-gate.sh"
+        # T29.6: spec-before-backlog -- a project generating its backlog into
+        # an external tracker must record docs/TRACKER_DATA_MODEL.md BEFORE
+        # docs/work/tracker-snapshot.json exists. No-op for projects using
+        # only this repo's own plan.json (see validate-tickets.sh, phase-4).
+        "validate-tracker-integrity.sh"
       )
       # UX gate is UNCONDITIONAL: validate-ux-spec.sh passes only when UX docs
       # exist OR ARCHITECTURE.md explicitly declares "No UI — UX branch not
@@ -141,6 +148,16 @@ populate_phase_artifacts() {
         "validate-file-size.sh"
         "validate-tickets.sh"
         "validate-ticket-hygiene.sh"
+        # T29.6: once a backlog snapshot exists, item-level integrity
+        # (unlabeled items, unlinked stories, untagged strays polluting
+        # scope math) -- the external-tracker analog of validate-tickets.sh
+        # above, which only covers the internal plan.json layer.
+        "validate-tracker-integrity.sh"
+        # Per-ticket adversarial check: a FIX_BACKLOG with HIGH/CRITICAL findings
+        # must have a matching CHALLENGE_REPORT with no unresolved CONTRADICTED
+        # verdicts before the module gate passes (G1 — was only at phase-3/phase-5,
+        # so a coding-wave backlog got remediated with no veracity check).
+        "validate-challenger-gate.sh"
       )
       # UI-bearing: validate design system was implemented
       if [[ -f "$ROOT/docs/design/UX_SPEC.md" ]]; then
@@ -158,12 +175,19 @@ populate_phase_artifacts() {
         "validate-smoke.sh"
         "validate-fix-backlog-closed.sh"
         "validate-challenger-gate.sh"
+        "validate-model-pins.sh"
         "validate-code-health.sh"
         "validate-dead-code.sh"
         "validate-module-boundaries.sh"
         "validate-api-consistency.sh"
         "validate-contract-conformance.sh"
         "validate-release-readiness.sh"
+        # T29.2 (H1/A-6.3): REQUIREMENT closure, not task closure -- a plan
+        # with every module "done" still fails here if a user story was
+        # never mapped to a module, or the mandatory reconciliation matrix
+        # is missing/incomplete/OUTSTANDING. Skips cleanly when the
+        # stories[] layer isn't adopted (additive, not retroactive).
+        "validate-requirement-closure.sh"
       )
       ;;
     onboard-deep)

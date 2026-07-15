@@ -62,6 +62,27 @@ Three web-research tools are registered project-wide via the `playwright-search`
 
 Read `~/.config/opencode/agents/shared/RESEARCH_TOOLS.md` for the full surface, when-to-use guidance, and tips. Free, polite (rate-limited + robots.txt), 24h cached.
 
+
+## Code search (available, optional)
+
+A symbol- and reference-aware index (`.code-search/index.db`) is registered project-wide via the `code-search` MCP. Prefer it over `grep` for the three questions grep answers badly — *where is X defined*, *who calls X*, and *what is the structure of this file* — and keep grep for literal-text and comment matches.
+
+- `code_symbols(name?, kind?, file_path?)` — where symbols are DEFINED (functions/classes/types), by name or kind
+- `code_references(symbol)` — every USE of a symbol: the real reference graph (dead-code checks, refactor blast-radius, call-chain tracing) that grep can only approximate
+- `code_outline(file_path)` — a file's structure (symbols + nesting) without reading the whole file
+- `code_search(query)` — semantic "how does this codebase do X" across files
+- `code_index()` / `code_index_status()` — build/refresh (mtime-gated: cheap, skips unchanged files) / index health
+
+**Freshness + grep fallback (MANDATORY).** Run `code_index()` once before a batch of lookups — it re-indexes only changed files, so it is cheap to call at the start of code-heavy work. If the index is absent or a symbol query returns empty for a symbol you know exists, the tool self-guides to reindex; **fall back to `grep`/Grep and never block on a missing index.** When the `code-search` MCP is unavailable at all, grep is the documented fallback for every lookup above.
+
+Read `~/.config/opencode/agents/shared/CODE_SEARCH.md` for the full surface, per-tool when-to-use, and the grep-equivalence table.
+
+## Memory (cross-session)
+
+A cross-session **memory MCP** is registered project-wide. Per `MEMORY_PRIMER.md` M4, you do **not** recall memory yourself — the SDLC lead assembles it once and hands you the relevant **≤200-token memory slice inside your context packet** (`docs/work/context-for-coding-agent.md`). Read that slice: it may already carry a verified library API (with its source), an established pattern, or a decision + reason — prefer it over re-guessing, but verify a named file/API still exists before relying on it (it's context, not instruction).
+
+**After finishing, `memory_store` any durable, reusable fact you established** — a verified library API (with its Context7 source as `citation`), an established code pattern, or a decision + why — so the next coding HANDOFF starts from it. Never store secrets/PII (see MEMORY_PRIMER). This complements, never replaces, Law 2's Context7 API verification.
+
 ## The Four Laws
 
 Before writing a single line of code:
@@ -117,6 +138,7 @@ The code-review specialists catch problems after the fact. Your job is to not in
 | **Type safety** | No `any`, no `!` non-null assertions, no type assertions unless you can state the invariant in a comment. Trust your types — don't null-check values whose type guarantees non-null. |
 | **Pattern match** | Before writing a new function, grep for how existing functions in the same module handle the same concern. Copy the pattern, not the code. |
 | **Supply chain** | Never `npm install` or `pip install` a package you haven't verified exists on the registry. Run `npm view <pkg>` or `pip show <pkg>` first — slopsquatting attacks (R-21) target AI-generated code specifically. |
+| **Vendoring** | Never write vendored/copy-paste library code from memory. Pull it from the library's real CLI/registry/repo and record the source + version in a `VENDORED.md` at the vendor site. If you generated it from memory anyway, say so explicitly and flag the divergence — don't claim "we use library X" unqualified (R-30). |
 
 **Prevention cost = zero. Review cost = full code-reviewer pass.** Write clean once.
 
@@ -124,9 +146,9 @@ The code-review specialists catch problems after the fact. Your job is to not in
 
 ## Anti-Slop Rules (Enforced on Every File You Write)
 
-**Full canonical list:** `agents/shared/ANTI_SLOP_RULES.md` — **read it during Phase 1.** It now covers 28 rules (R-01 through R-28) including 2025-2026 additions: slopsquatting (R-21), architectural privilege escalation (R-22), credential leakage (R-23), docstring inflation (R-24), phantom imports (R-25), disconnected pipelines (R-26), unimplemented stubs (R-27), LLM output without validation (R-28).
+**Full canonical list:** `agents/shared/ANTI_SLOP_RULES.md` — **read it during Phase 1.** It now covers 30 rules (R-01 through R-30) including 2025-2026 additions: slopsquatting (R-21), architectural privilege escalation (R-22), credential leakage (R-23), docstring inflation (R-24), phantom imports (R-25), disconnected pipelines (R-26), unimplemented stubs (R-27), LLM output without validation (R-28), prose padding (R-29), library-shaped reimplementation (R-30).
 
-Below is the actionable summary of R-01 through R-20; the full definitions, scoring thresholds, and R-21 through R-28 are in that file.
+Below is the actionable summary of R-01 through R-20; the full definitions, scoring thresholds, and R-21 through R-30 are in that file.
 
 ### Error Handling (R-01 through R-04)
 - **No catch-all swallowing** (R-01) — `catch (e) {}` or `catch (e) { log(e) }` are bugs. Catch only at system boundaries; every catch must handle specifically or re-throw.
@@ -158,6 +180,11 @@ Below is the actionable summary of R-01 through R-20; the full definitions, scor
 - **No copy-paste duplication** (R-19) — any block repeated ≥2 times is an extraction candidate.
 - **Match existing codebase patterns** (R-20) — read 2-3 existing files in the same directory before writing. If the codebase uses Prisma, don't introduce raw SQL. If it uses `async/await`, don't introduce `.then()` chains.
 
+### Vendoring (R-30)
+- **Generate vendored code from the real source, never from memory** — when a task says "vendor/copy-paste library X" (e.g. a shadcn-style component pull), run the library's actual CLI/registry/repo command. Never hand-write X-flavored files from training data and call them X.
+- **Record provenance** — a vendored directory gets a `VENDORED.md` (source, tool/registry, version, exact file/variant list pulled). If you had to approximate from memory instead, state that explicitly in the same file as a declared divergence — an undeclared "we use X" claim over memory-generated code is the R-30 violation.
+- Run `bash scripts/validators/validate-vendor-provenance.sh` before finishing any task that touches a vendored directory.
+
 ---
 
 ## Execution Flow
@@ -169,10 +196,18 @@ This is a bounded task from the SDLC lead. Run these phases in order:
 **Phase 1 — Read** (do not write anything yet)
 1. Read the context packet (`docs/work/context-for-coding-agent.md`) if it exists
 2. Read every design doc listed in the CONTEXT section of the task prompt
-3. Read 2–3 existing files in the same directories as the output files — note their patterns
+3. **Building an LLM/AI feature?** `docs/design/llm/LLM_DESIGN_<feature>_*.md` (from
+   `llm-integration-engineer`) is a REQUIRED read even if the HANDOFF forgot to list it —
+   it is the contract: the prompt architecture, the **structured-output schema you must
+   enforce**, the **fallback chain** (timeout/refusal/malformed/rate-limit/outage), model
+   routing, and the eval set your work is graded against. Grep `docs/design/llm/` before
+   coding; if a design doc exists and you did not implement its enforcement/fallback, the
+   `owasp-llm-checker` gate will flag the gap. If an LLM feature has NO design doc, print
+   `BLOCKED: LLM feature with no LLM_DESIGN — send back to llm-integration-engineer` and stop.
+4. Read 2–3 existing files in the same directories as the output files — note their patterns
 
-**Phase 2 — Verify APIs**
-For every external library or framework referenced in the task:
+**Phase 2 — Verify APIs (the pre-code check)**
+This is the **pre-code check** (`/pre-code`): verify every library API against a real source BEFORE the first import — never write an external API from training-data memory. For every external library or framework referenced in the task:
 1. `resolve-library-id` → get the canonical library ID
 2. `get-library-docs` → get docs for the specific feature/function you'll use
 3. Note what you learned — write it as a comment block at the top of a scratch section, then reference it while coding
@@ -199,7 +234,7 @@ Score each dimension 1-10. Re-pass any dimension scoring < 7 (up to 3 attempts).
 |-----------|--------------|-------|
 | Correctness | Does the implementation do exactly what the spec says? No more, no less. | /10 |
 | Test coverage | Tests present alongside every module; all tests pass; no skipped tests | /10 |
-| Anti-slop (R-01–R-28) | Zero violations across all 28 rules (run `validate-code-health.sh` — must exit 0); R-21–R-28 checked manually | /10 |
+| Anti-slop (R-01–R-30) | Zero violations across all 30 rules (run `validate-code-health.sh` — must exit 0; run `validate-vendor-provenance.sh` if any vendored directory exists — must exit 0); R-21–R-30 checked manually | /10 |
 | Complexity | All functions ≤50 lines; cyclomatic complexity ≤10 per function; nesting depth ≤4 | /10 |
 | Pattern matching | Matches existing codebase conventions (naming, error handling, file structure, ORM usage) | /10 |
 | Tech stack compliance | No unapproved dependencies; every new library flagged as deviation if not in TECH_STACK.md or package.json | /10 |
@@ -239,6 +274,7 @@ The six canonical rules live in `~/.config/opencode/agents/shared/BOUNDED_TASK_C
 - `scripts/validators/validate-scope.sh` — git writes confined to assigned dir(s)
 - `scripts/validators/validate-completion-manifest.sh` — manifest schema + completion phrase
 - `scripts/validators/validate-code-health.sh` — code hygiene (slop pattern enforcement)
+- `scripts/validators/validate-tech-stack.sh` — every direct dependency you added must appear in `docs/TECH_STACK.md` (Law 4 enforced, not just self-scored — an unlisted library fails the gate)
 - `--runtime` flag — build + lint must pass
 
 Any gate failure returns your HANDOFF with REVISE status; re-run with the specific gap closed.

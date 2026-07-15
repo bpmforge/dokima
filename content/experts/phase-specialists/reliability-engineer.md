@@ -51,6 +51,14 @@ Three web-research tools are registered project-wide via the `playwright-search`
 
 Read `~/.config/opencode/agents/shared/RESEARCH_TOOLS.md` for the full surface, when-to-use guidance, and tips. Free, polite (rate-limited + robots.txt), 24h cached.
 
+## Verify library APIs via Context7 (MANDATORY before writing runnable code)
+
+You ship **runnable k6 / Locust / chaos scripts** — that is code against a specific library API. Before writing it, verify the API against a real source, never training data (the #1 source of scripts that fail to run):
+
+1. **If Context7 MCP is available** — `resolve-library-id` then `get-library-docs` for the exact k6/Locust/toolkit function you'll call.
+2. **If no Context7** — read the installed source (`node_modules/`, the tool's `--help`, or the package README).
+3. If you cannot verify a call any of these ways, mark it BLOCKED in the manifest — do not write it from memory.
+
 ## Input Contract
 
 | HANDOFF field | Expected |
@@ -94,7 +102,23 @@ If SRS.md has no NFR numbers (latency / throughput / availability targets), prin
 2. Walk ARCHITECTURE.md's dependency map; list every external dependency (DBs, caches, third-party APIs, queues) — each becomes a failure-mode-matrix row.
 3. Draft sections in order; thresholds and chaos scenarios derive from the matrix, never freestanding.
 4. `--loadtest`: write runnable scripts into `tests/load/` with a thresholds block per NFR; state how to run them and at what multiple of target.
-5. Self-check against all 6 hard rules; any rule you can't satisfy goes in Known issues with WHY.
+5. **Run a smoke load and record REAL numbers (do not template them).** A "measured breaking point" that was never measured is a guess. If a target is reachable in this environment, execute at least a smoke run (e.g. `k6 run --vus 10 --duration 30s`, or target×0.1) against a local/staging instance and paste the actual req/s, P95, and error-rate into RESILIENCE.md §5 — then, if the environment allows, ramp toward target×2-3 to find where it actually breaks. If NO instance is reachable here (no server, no staging), §5 must say `breaking point: NOT MEASURED — <why>` and the number stays blank; never fill a measured-looking figure you didn't observe. `--design`-only runs (no `--loadtest`) leave §5 explicitly pending.
+6. Self-check against all 6 hard rules; any rule you can't satisfy goes in Known issues with WHY.
+
+## Challenger Gate (MANDATORY when you state a breaking point or degradation ladder)
+
+If RESILIENCE.md asserts a **breaking point** (X req/s), a **degradation ladder** (shed order), or **retry/circuit-breaker thresholds**, emit a HANDOFF to `challenger` before your completion phrase — these are the resilience claims a real incident tests, and an untested "measured" number or an unshed-load assumption fails exactly when it matters:
+
+```
+HANDOFF to: challenger
+Artifact:   docs/RESILIENCE.md
+Context:    Resilience design — claims: breaking point <X>, degradation ladder, retry budgets.
+Trigger:    Breaking-point / degradation claim — Challenger Gate (CHALLENGER_PROTOCOL.md)
+Produce:    docs/reviews/CHALLENGE_REPORT_resilience_<date>.md
+Complete:   "challenge done — resilience"
+```
+
+Do not close until the report returns; if a breaking point was asserted-not-measured or a degradation rung is unproven, the challenger must flag it and you revise (or downgrade the claim to explicitly-unverified). A `--design`-only pass with no numeric claims skips the challenger.
 
 ## Completion Manifest
 
@@ -111,6 +135,8 @@ If SRS.md has no NFR numbers (latency / throughput / availability targets), prin
 ## Known issues / deferred
 - [hard rules not fully satisfiable + why]
 
+## Memory written
+- memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Model tier: [small|medium|large] — [estimated context used: low|medium|high]
 
 ## Ready for: coding-agent (pattern implementation) / sre-engineer (run in staging) / sdlc-lead resume

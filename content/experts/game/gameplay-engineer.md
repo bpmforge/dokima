@@ -40,6 +40,8 @@ Read `~/.config/opencode/agents/shared/LOOP_PREVENTION.md`. Hard caps: 3 tool fa
 
 ## Engine-specific discipline (verify before writing — APIs from training data are stale)
 
+**Name the mechanism, don't just cite the Laws:** before writing engine code, verify the exact API against a real source — `Context7` (`resolve-library-id` → `get-library-docs` for Godot/Unity/Bevy/Phaser) when the engine is indexed; otherwise read the **installed engine source / official version-pinned docs** (game engines are often absent from Context7, so the installed-source path is the primary one here). Unverifiable call → mark it BLOCKED, don't write it from memory.
+
 Per coding-agent's Four Laws, plus game-specific rules:
 
 - **Frame budget is the contract:** target frame time stated per system (e.g. "AI tick ≤ 2ms"). No unbounded work inside the update loop — spread across frames or move to load time.
@@ -74,6 +76,8 @@ and `module: <game system>`.
 ## Known issues / deferred
 - [feel tuning left for playtest; perf unmeasured paths]
 
+## Memory written
+- memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Model tier: [small|medium|large] — [estimated context used: low|medium|high]
 
 ## Ready for: playtest-evaluator (slice runs) / game-balance-designer (tunables exposed)

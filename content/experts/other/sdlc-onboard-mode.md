@@ -54,10 +54,12 @@ ALL diagrams MUST use Mermaid syntax. NEVER ASCII art. Any deliverable over 300 
 
 ## Delegation Rule (MANDATORY)
 
-Every `task(agent="X", ...)` in this file = build a HANDOFF block using the `════` delimiter format from `agents/shared/HANDOFF_TEMPLATES.md`, then execute it per `agents/shared/EXECUTOR_SELECTION.md` (Task tool when `has_task_tool=true` in `docs/work/.model-context`; otherwise emit as text and wait for the user). Save state → write context packet → execute HANDOFF → wait for manifest.
+Every `task(agent="X", ...)` in this file = build a HANDOFF block using the `════` delimiter format from `agents/shared/HANDOFF_TEMPLATES.md`, then execute it per `agents/shared/EXECUTOR_SELECTION.md`: `autonomy=interactive` (default) → write `docs/work/HANDOFF_<agent>.md` and point the user at it (open /skill, read the doc), wait; `autonomy=auto` → dispatch via Task tool / subprocess. Save state → write context packet → execute HANDOFF → wait for manifest.
 **Autonomy:** In `autonomy: auto` (per `agents/shared/AUTONOMY_PROTOCOL.md`) never wait on a paste — Executor C degrades to D (inline) per `EXECUTOR_SELECTION.md`.
 
-> **No-skill specialists:** the onboard specialists (`landscape-mapper`, `entry-point-tracer`, `component-mapper`, `health-coordinator`) have no user-facing `/skill`, so manual paste (Executor C) cannot open them. When `has_task_tool=false` (opencode / no task tool), do NOT wait on a paste that can't happen — read the specialist's agent file and run its methodology inline in this conversation, writing its output files before continuing. User-facing experts reached from onboard (`/dba`, `/research`, `/review-code`, `/security`, `/perf`, `/ux`, `/test-expert`) can still be pasted normally.
+> **No-skill specialists:** the onboard specialists (`landscape-mapper`, `entry-point-tracer`, `component-mapper`, `health-coordinator`) have no user-facing `/skill`, so Executor C cannot open them. When `has_task_tool=false` (opencode / no task tool), do NOT wait on a handoff that can't happen — read the specialist's agent file and run its methodology inline in this conversation, writing its output files before continuing. User-facing experts reached from onboard (`/dba`, `/research`, `/review-code`, `/security`, `/perf`, `/ux`, `/test-expert`) get normal HANDOFF docs.
+>
+> **CRITICAL — running `health-coordinator` inline does NOT mean doing its reviews inline.** The health-coordinator is an *orchestrator*: its code-review / security / performance / test-coverage checks are HANDOFFs to the **user-facing** specialists (`/review-code`, `/security`, `/perf`, `/test-expert`), which DO have skills. Even when you run the coordinator inline, you **write a HANDOFF doc for each of those checks and point the user at the specialist** — you never read the source and review/scan it yourself. You only synthesize `HEALTH_ASSESSMENT.md` from the specialists' returned report files.
 
 ---
 
@@ -89,6 +91,14 @@ task(agent="git-expert", prompt="Create and checkout 'docs/onboard' branch from 
 ```
 task(agent="git-expert", prompt="Run --inspect mode. Answer: (1) How long active, main contributors? (2) Hot files (most changed)? (3) Recent commit themes? (4) Large refactors or incidents? (5) Reverts or hotfix patterns? Write to docs/git/HISTORY_INSPECTION_<date>.md.", timeout=120)
 ```
+
+**4. Build the code index (if the `code-search` MCP is available):** run `code_index()` ONCE
+here, then `code_index_status()` to confirm. Onboarding is the reference-heavy phase —
+`entry-point-tracer` (routes/handlers), `component-mapper` (dependency edges), and any code
+review that follows all query this index instead of grepping, so building it up front means the
+downstream specialists trace a real symbol/reference graph rather than approximating with regex.
+The build is mtime-gated (fast) and `.code-search/` is gitignored. If the MCP isn't available,
+skip silently — the specialists fall back to grep per `agents/shared/CODE_SEARCH.md`.
 
 Tracker row 0 → `✅ DONE | branch=docs/onboard`
 

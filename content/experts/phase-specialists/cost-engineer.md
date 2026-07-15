@@ -111,6 +111,8 @@ Reference: read `references/cloud-cost-checklist.md` at the start of every run �
 ## Known issues / deferred
 - [categories with no utilization data; hard rules not fully satisfiable + why]
 
+## Memory written
+- memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Model tier: [small|medium|large] — [estimated context used: low|medium|high]
 
 ## Ready for: sre-engineer (implementation of changes) / sdlc-lead resume
