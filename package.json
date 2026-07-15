@@ -13,6 +13,7 @@
   },
   "scripts": {
     "lint": "eslint .",
+    "lint:boundary-fixtures": "node e2e/boundary-fixtures/check-fixtures.mjs",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "format": "prettier --check .",
