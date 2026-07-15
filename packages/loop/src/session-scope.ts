@@ -6,9 +6,9 @@
  * outside scope. The full SC-01 enforcement — hard exclusions
  * (`.git/**`, `.github/workflows/**`, `.shipwright/**`), symlink-escape
  * resolution via realpath, and refuse-to-apply — is `packages/git`'s
- * `checkWriteScope` (lands with harbormaster, ARCHITECTURE.md §4: `loop`
- * may not import `git`). Duplicating that security-sensitive logic here
- * would be a second, weaker copy of it; this module only classifies.
+ * `checkWriteScope` (lands with harbormaster). The glob dialect itself is
+ * `@shipwright/shared`'s canonical implementation (G-20) — `loop` may not
+ * import `git` (ARCHITECTURE.md §4), but both may import `shared`.
  *
  * Uses `node:child_process` directly (not the `execa` wrapper) so this
  * ticket's write_scope doesn't need a `package.json` dependency edit for a
@@ -17,57 +17,9 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { globToRegExp } from '@shipwright/shared';
 
 const execFileAsync = promisify(execFile);
-
-const GLOB_SPECIAL = new Set([
-  '.',
-  '+',
-  '^',
-  '$',
-  '{',
-  '}',
-  '(',
-  ')',
-  '|',
-  '[',
-  ']',
-  '\\',
-]);
-
-/** Minimal glob matcher, same `*` / `**` / `?` dialect as packages/git/src/glob.ts. */
-function globToRegExp(pattern: string): RegExp {
-  let source = '^';
-  let i = 0;
-  while (i < pattern.length) {
-    const char = pattern[i];
-    if (char === '*') {
-      if (pattern[i + 1] === '*') {
-        if (pattern[i + 2] === '/') {
-          source += '(?:.*/)?';
-          i += 3;
-        } else {
-          source += '.*';
-          i += 2;
-        }
-      } else {
-        source += '[^/]*';
-        i += 1;
-      }
-    } else if (char === '?') {
-      source += '[^/]';
-      i += 1;
-    } else if (char !== undefined && GLOB_SPECIAL.has(char)) {
-      source += `\\${char}`;
-      i += 1;
-    } else {
-      source += char;
-      i += 1;
-    }
-  }
-  source += '$';
-  return new RegExp(source);
-}
 
 /** Paths touched by the session that fall outside every write_scope glob. */
 export function detectScopeViolations(

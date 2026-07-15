@@ -14,7 +14,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shipwright/events": "workspace:*"
+    "@shipwright/events": "workspace:*",
+    "@shipwright/shared": "workspace:*"
   },
   "devDependencies": {
     "fast-check": "^4.9.0"
