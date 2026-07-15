@@ -966,7 +966,7 @@
         "SC-04 promise-token lint rule: string-match patterns over session output forbidden in loop/harbormaster/pipeline — lint gate in CI with a red fixture"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible. AMENDED 2026-07-14 challenger fix (SC-04 lint rule had no owner).",
       "stories": []
     },
