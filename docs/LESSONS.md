@@ -1,0 +1,46 @@
+# Shipwright — Field Lessons Ledger
+
+One row per lesson; details below for the non-obvious ones. This file is the analyzable
+input for (a) Shipwright product features/tickets, (b) bpm-opencode-experts process/check
+upstreams (two-way PRs, D-008), (c) bootstrap-harness fixes. Append-only; stable L-ids.
+**Route-to** values: `product:<ticket/FR>` · `experts:<protocol/validator>` · `harness` ·
+`process`. **Status**: `shipped` / `ticketed` / `open`.
+
+| ID | Date | Class | Lesson (one line) | Route to | Status |
+|---|---|---|---|---|---|
+| L-01 | 07-11 | gate-economics | A single non-deterministic LLM review as gate authority fails both directions (75% false-block + 1 merged forgery in one session); deterministic validators own gates, LLM findings anchor review | product: D-014/FR-RL; experts: GATE_SCORING (already asymmetric) | shipped (D-014) |
+| L-02 | 07-12 | loop-budgets | Stall ≠ progress ≠ oscillation — flat attempt caps punish progress and indulge stalls; budgets need finding identity + movement classes | product: FR-L6/L7, W3-08 (landed); experts: FIX_VERIFY v2.4.0 | shipped |
+| L-03 | 07-12 | spec-writing | Acceptance criteria that NAME examples get the examples, not the set — recurred at W3-08 (4 of 6 policy rows) even after being written down | experts: add "ALL of the set" check to spec-review checklist + challenger prompt; product: challenger completeness pass standard at wave gates | open (check candidate) |
+| L-04 | 07-12 | seams | The seam between two correct tickets is nobody's job (W1-02 invisible export; W0-08 undeclarable deps) | product: W5-07 seam-linter acceptance; W3-11 landed the backlog | ticketed |
+| L-05 | 07-14 | traceability | ID-citation traceability green (81/81, 54/54) is NOT deliverable ownership — a fresh challenger found ~16 doc-mandated orphans invisible to the citation graph | process: challenger pass mandatory after every traceability green; product: coverage loop inventories deliverables, not just IDs | shipped (this arc) + open (product inventory rule) |
+| L-06 | 07-14 | traceability | Cross-doc landing-wave claims drift silently (SC-06/07/08/09 all claimed waves that never happened) | experts: validator idea — grep "Lands: W<n>" claims vs plan wave reality; product: FR-RL provenance fields | open (validator candidate) |
+| L-07 | 07-14 | board-schema | Done tickets holding write-scope territory forever makes every completed broad ticket a landmine (board failed its own FR-T3 validator 66×) | product: D-015 (territory releases at done + scaffold flag); experts: TICKET_SCHEMA/plan discipline upstream PR | shipped (D-015) / open (upstream) |
+| L-08 | 07-14 | process | Founder-intent edits sitting uncommitted in the tree (tier-aware ceiling) are invisible decisions — commit-or-slate immediately | process; experts: session-start dirty-tree check (conductor preflight has it) | shipped (this arc) |
+| L-09 | 07-14 | licensing | ToS/license research belongs at design review, not launch: Copilot `copilot_internal` flow risks USER account bans; semgrep registry rules are no-distribute; TruffleHog AGPL | product: D-019 consent gate; process: license research pass per integration wave | shipped (D-019) |
+| L-10 | 07-14 | review-honesty | Never amend a done ticket's acceptance — it creates done-with-unmet-acceptance (caught by the challenger on my own W2-06 edit); new work gets a new ticket | process; experts: plan-edit rule in TICKET_SCHEMA; check candidate: flag acceptance edits on done tickets in CI diff | open (check candidate) |
+| L-11 | 07-15 | harness-robustness | Schema drift inside one field (notes: string vs array) crashed markBlocked 15×, and each crash DESTROYED the block evidence — persist-evidence-before-status applies to harnesses too | harness (fixed); product: persist-before-execute already law (NFR-3); experts: BOUNDED_TASK_CONTRACT manifest typing | shipped (harness) |
+| L-12 | 07-15 | seams | The seam class recurs even for the reviewer who threaded the rule: W3-12 as authored couldn't declare @shipwright/shared deps (package.json outside scope) — the check must be mechanical, not remembered | product: W5-07 plan-linter (imports ⇒ package.json in scope); experts: validate-tickets seam heuristic; harness: none (scope widened) | ticketed (W5-07) |
+| L-13 | 07-15 | verification | An agent hallucinated a doc path in ticket notes (docs/MODULE_DESIGN.md); the traceability validator caught it — but only because a human re-ran it | harness (fixed: both board validators now in the per-ticket gate); experts: cite-what-exists check on completion manifests | shipped (harness) |
+| L-14 | 07-15 | tooling-discipline | `validator \| tail -1` swallows the exit code — a FAIL merged because of a pipe; validators must run bare or under pipefail | process; experts: BASH_TOOLS/validator-invocation rule; check: CI never pipes validator output | open (check candidate) |
+| L-15 | 07-15 | env-pinning | A hardcoded runtime path in one harness script (Node v24 in supervise.sh) ABI-broke a native module for every other consumer of the repo; runtimes resolve from pinned files (.nvmrc) with boot assertions | harness (fixed, W3-15); experts: SESSION_PRIMER env-assertion pattern | shipped |
+| L-16 | 07-15 | harness-robustness | Crash-cleanup that deletes sw/* branches also deleted blocked tickets' "Branch kept" evidence — cleanup globs must exclude evidence namespaces | harness (fixed: blocked/<id> rename) | shipped |
+| L-17 | 07-15 | observability | Per-session output buffered until session end = 20-min blind spots; liveness lives in worktree commits — the product's heartbeat events (FR-C4/§7.1) are the real fix | product: W3-02/W4-03 (ticketed); harness: watch loop documented | ticketed |
+| L-18 | 07-15 | model-economics | Sonnet floor confirmed (amplifier LESSONS 25 adopted: haiku ≤1pt only); frontier-off-by-default (no --escalate) = the escalation-token principle by configuration — hard tickets park for a human instead of silently spending | harness (shipped); product: D-018 modes | shipped |
+| L-19 | 07-15 | scripts | A zero-dep script with no arg parsing executed a full import when probed with --help; scripts must no-op on unknown flags (benign here — it WAS the needed resync — but the class is dangerous) | experts: script-authoring rule (arg-parse or refuse); harness: open | open (check candidate) |
+| L-20 | 07-14 | review-method | Running the product's own validators against its own board/process finds what reading cannot (66 lane violations; FR-T6/FR-N1 had no owner) — dogfood-as-review is a repeatable pass | process; product: W8-01 dogfood gate already; experts: RALPH loop VERIFY step "run the subject's own validators on itself" | open (process rule) |
+| L-21 | 07-15 | run-ops | One conductor per account (amplifier doctrine + our halved-throughput record); no mutex exists — coordination is discipline; a lock-file convention is a cheap harness upgrade | harness: open (lockfile); product: FR-F3 global governor covers it properly | open |
+| L-22 | 07-15 | board-hygiene | Harness crash-restarts silently reset in_progress→retry with no per-ticket crash-attempt memory — 6 sessions burned on one ticket before a human looked; retry accounting must survive restarts | harness: open (attempt ledger in plan notes survives now that markBlocked works); product: FR-H2 session caps are per-ticket and durable | open (harness), ticketed (product) |
+
+## Details worth keeping (evidence pointers)
+
+- **L-05**: challenge report in session history 2026-07-14; orphans included the a11y CI gate, ⌘K palette, `runs` table, OpenAPI/SSE/idempotency, G-25. All closed same-day (+W3-15/16, W4-11/12, 12 acceptance edits).
+- **L-11/L-16**: docs/work/conductor.out lines 590–640 (launches 10–16); `conductor.fatal — row.notes.push is not a function` every ~20 min; supervise cleanup regex `^(sw/|feat/w[0-9].*-auto$)`.
+- **L-12**: W3-12 worktree attempts blocked with no persisted reason (destroyed by L-11); root cause proven by dependency inspection: git/loop/tickets had no @shipwright/shared in package.json and the files were outside write_scope.
+- **L-14**: commit cd6b7fd landed with a red F1 because `node scripts/validate-traceability.mjs | tail -1 && git commit` reports tail's exit code, not the validator's.
+- **L-20**: `node --experimental-strip-types` invocation of `findLaneScopeViolations` against plan.json, 2026-07-14 — the single highest-leverage finding of the review (G-1 → D-015).
+
+## Analysis queue (explicit asks for the next improvement pass)
+
+1. Check candidates to build: L-03 (all-of-the-set), L-06 (Lands-claims vs board), L-10 (done-ticket acceptance edits), L-14 (pipefail in CI validator jobs), L-19 (script arg guards).
+2. Upstream PR candidates to bpm-opencode-experts: L-07 (territory-release plan discipline), L-12 (seam heuristic in validate-tickets), L-14 (validator-invocation rule), L-19 (script authoring rule), L-20 (RALPH VERIFY runs the subject's own validators).
+3. Product features already carrying a lesson: D-014 (L-01), D-015 (L-07), D-016 (reports-rot), D-018 (L-18), D-019 (L-09), W3-08 (L-02), W5-07 (L-04/L-12), W3-02+W4-03 heartbeats (L-17), FR-H2 durable session caps (L-22).

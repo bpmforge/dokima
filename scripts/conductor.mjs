@@ -403,6 +403,10 @@ function markBlocked(t, gaps, branch, wt) {
   writeFileSync(planPath(ROOT), JSON.stringify(plan, null, 2) + '\n');
   git('add', 'plan.json'); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
   removeWorktree(wt);
+  // Rename the kept evidence branch OUT of the sw/ namespace: supervise.sh's crash
+  // cleanup deletes sw/* branches on every restart, which was silently destroying
+  // blocked tickets' "Branch kept" evidence (LESSONS L-16).
+  try { git('branch', '-m', branch, `blocked/${t.id.toLowerCase()}`); } catch { /* branch may not exist */ }
   pushRemotes(t.id);
 }
 

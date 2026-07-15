@@ -29,6 +29,18 @@
       [
         "test"
       ]
+    ],
+    [
+      "node",
+      [
+        "scripts/validate-plan.mjs"
+      ]
+    ],
+    [
+      "node",
+      [
+        "scripts/validate-traceability.mjs"
+      ]
     ]
   ],
   "gateTimeoutMin": 15,
@@ -72,5 +84,6 @@
     "W3-01b",
     "W3-01c"
   ],
-  "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review \u2014 the conductor never claims these unattended; Brad works them interactively."
+  "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review \u2014 the conductor never claims these unattended; Brad works them interactively.",
+  "$gatesNote": "2026-07-15: board validators added to the per-ticket gate \u2014 an agent's plan.json/notes edits must keep the citation graph green (caught W3-10 hallucinating docs/MODULE_DESIGN.md only on manual re-run; now automatic)."
 }
