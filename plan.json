@@ -244,7 +244,7 @@
         "Per-package coverage thresholds enforced (trust core >=90% line / >=85% branch, gateway/adapters >=80% — TESTING §9); wave-gate traceability grep (FR/UC ids in test titles) runs as a CI job; validate-plan.mjs + validate-traceability.mjs run on every push"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK). AMENDED 2026-07-14 challenger fix (coverage thresholds + traceability greps were unowned).",
       "stories": []
     },
