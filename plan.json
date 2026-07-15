@@ -1317,10 +1317,11 @@
         "Inline feedback comments on any deliverable incl. rendered Mermaid; comment -> revision.requested event; revised version renders as diff against the commented version with the comment resolved-by-reference (FR-C8, R-H2)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8). Enforces NFR-6 (every claim opens its receipt).",
-        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
+        "CONDUCTOR 2026-07-15T23:15:16.198Z: blocked after 2 attempts. Branch sw/w4-05 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 410 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md"
       ],
       "stories": [
         "US-401"
