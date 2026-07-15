@@ -21,6 +21,15 @@
  * with `stream: true` + `stream_options.include_usage` — identical chunk
  * shape to openai.ts's cloud path, since both speak the OpenAI-compatible
  * wire format; the SSE framing is shared via streaming.ts.
+ *
+ * Book-style split (file-size gate, 400-line cap): once this file exceeded
+ * the cap it was split into flat sibling chapters — oai-compat-types.ts
+ * (config + wire shapes + constants) and oai-compat-helpers.ts
+ * (finish-reason normalization, retry-after parsing). Flat siblings (not an
+ * oai-compat/ subdirectory) keep every chapter inside the ticket's original
+ * `oai-compat*` write_scope, matching copilot.ts's precedent. This file is
+ * the barrel: the OaiCompatProvider class and its factories are the public
+ * surface.
  */
 import {
   ProviderAuthError,
@@ -36,92 +45,26 @@ import type {
   ChatRole,
   ChatRequest,
   ChatResponse,
-  ChatStreamEvent,
-  FinishReason,
   ModelInfo,
   Provider,
   ProviderHealth,
   ProviderQueueStats,
 } from './types.js';
+import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
+import { normalizeFinishReason, parseRetryAfterMs } from './oai-compat-helpers.js';
+import {
+  DEFAULT_HEALTH_TIMEOUT_MS,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+} from './oai-compat-types.js';
+import type {
+  OaiCompatConfig,
+  OaiCompatStreamChunk,
+  RawChatCompletionResponse,
+  RawModelsResponse,
+} from './oai-compat-types.js';
 
-export interface OaiCompatConfig {
-  id: string;
-  baseUrl: string;
-  apiKey?: string;
-  /** Requests in flight at once for this endpoint; local servers default to 1 (TECH_STACK.md). */
-  concurrency?: number;
-  costTable?: CostTable;
-  contextLengths?: Record<string, number>;
-  headers?: Record<string, string>;
-  requestTimeoutMs?: number;
-  healthTimeoutMs?: number;
-  fetchImpl?: typeof fetch;
-}
-
-interface RawChatChoice {
-  index: number;
-  message: { role: string; content: string | null };
-  finish_reason: string | null;
-}
-
-interface RawChatCompletionResponse {
-  id?: string;
-  model?: string;
-  choices: RawChatChoice[];
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
-
-interface RawModel {
-  id: string;
-  object?: string;
-  owned_by?: string;
-}
-
-interface RawModelsResponse {
-  object?: string;
-  data: RawModel[];
-}
-
-interface OaiCompatStreamChoice {
-  delta: { role?: string; content?: string | null };
-  finish_reason: string | null;
-}
-
-interface OaiCompatStreamChunk {
-  model?: string;
-  choices: OaiCompatStreamChoice[];
-  usage?: { prompt_tokens: number; completion_tokens: number };
-}
-
-const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
-const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
-
-function normalizeFinishReason(raw: string | null): FinishReason {
-  switch (raw) {
-    case 'stop':
-    case 'length':
-    case 'content_filter':
-    case 'tool_calls':
-      return raw;
-    default:
-      return 'unknown';
-  }
-}
-
-/** Retry-After per RFC 9110 §10.2.3: either delay-seconds or an HTTP-date. */
-function parseRetryAfterMs(header: string | null): number | undefined {
-  if (!header) return undefined;
-  const seconds = Number(header);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
-  const dateMs = Date.parse(header);
-  if (Number.isNaN(dateMs)) return undefined;
-  return Math.max(0, dateMs - Date.now());
-}
+export type { OaiCompatConfig } from './oai-compat-types.js';
 
 export class OaiCompatProvider implements Provider {
   readonly id: string;

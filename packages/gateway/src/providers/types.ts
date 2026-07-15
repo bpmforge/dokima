@@ -38,20 +38,6 @@ export interface ChatResponse {
   usage: NormalizedUsage;
 }
 
-/** One incremental fragment of the assistant message as it streams in. */
-export interface ChatStreamDelta {
-  type: 'delta';
-  content: string;
-}
-
-/** Terminal event: the same normalized ChatResponse chat() would have returned, usage included. */
-export interface ChatStreamFinal {
-  type: 'final';
-  response: ChatResponse;
-}
-
-export type ChatStreamEvent = ChatStreamDelta | ChatStreamFinal;
-
 export interface ModelInfo {
   id: string;
   /** Only populated when the provider's discovery response carries it (rare) or a static override is configured. */
@@ -78,15 +64,6 @@ export interface Provider {
   readonly id: string;
 
   chat(request: ChatRequest): Promise<ChatResponse>;
-
-  /**
-   * Streams token/delta events, ending with a `final` event carrying the
-   * same normalized ChatResponse chat() would return — identical metering,
-   * no unmetered streamed call (FR-G1, W2-09/G-23). Optional: adapters
-   * that haven't ported their internal SSE path yet omit it, same as any
-   * other still-unimplemented Provider capability.
-   */
-  chatStream?(request: ChatRequest): AsyncIterable<ChatStreamEvent>;
 
   /** Model discovery. */
   listModels(): Promise<ModelInfo[]>;

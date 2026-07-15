@@ -41,13 +41,13 @@ import type {
   ChatRole,
   ChatRequest,
   ChatResponse,
-  ChatStreamEvent,
   FinishReason,
   ModelInfo,
   Provider,
   ProviderHealth,
   ProviderQueueStats,
 } from './types.js';
+import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, type CostTable } from './usage.js';
 
 export interface OpenAiConfig {

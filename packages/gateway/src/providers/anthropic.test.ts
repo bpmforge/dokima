@@ -469,7 +469,7 @@ describe('AnthropicProvider — chat() streaming', () => {
 
 describe('AnthropicProvider — chatStream()', () => {
   async function collect(
-    stream: AsyncIterable<import('./types.js').ChatStreamEvent>,
+    stream: AsyncIterable<import('../types.js').ChatStreamEvent>,
   ): Promise<{ deltas: string[]; final: import('./types.js').ChatResponse | undefined }> {
     const deltas: string[] = [];
     let final: import('./types.js').ChatResponse | undefined;
