@@ -1,0 +1,188 @@
+.fleet {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.fleet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.fleet__header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.fleet__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fleet__actions button {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+.fleet__archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.fleet__error {
+  color: #c0392b;
+}
+
+.fleet__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 2rem 0;
+}
+
+.fleet__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 24rem;
+  border: 1px solid var(--sw-border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.fleet__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.fleet__form input {
+  border: 1px solid var(--sw-border);
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+}
+
+.fleet__form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fleet__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.project-card {
+  border: 1px solid var(--sw-border);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.project-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.project-card__header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.project-card__phase-chip {
+  font-size: 0.75rem;
+  border: 1px solid var(--sw-border);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+.project-card__board {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.project-card__board div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.project-card__board dt {
+  color: var(--sw-fg);
+  opacity: 0.6;
+}
+
+.project-card__board dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.project-card__berths {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.project-card__heartbeat-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #2ecc71;
+  display: inline-block;
+}
+
+.project-card__heartbeat-dot--stale {
+  background: #e67e22;
+}
+
+.project-card__decide {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c0392b;
+}
+
+.project-card__spend {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.project-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.project-card__actions button {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
