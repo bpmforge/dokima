@@ -185,7 +185,7 @@ but never bundle its content; red-flag adoption into shipped validator packs = f
 | ts-prune (archived → knip), clinic.js / radon (dormant) | — | avoid / prefer maintained alternates |
 | **LM Studio** | proprietary ToS: free for personal AND internal-business use (current terms) | OK as user-installed endpoint; **never bundle/redistribute/wrap as SaaS** — ToS check CLOSED (was outstanding from W2) |
 | Vertex AI / Anthropic API / OpenAI API (BYOK) | provider terms | OK — per-user BYOK; never pool/proxy one key across users (OpenAI BYOK blessing UNVERIFIED — their business-terms page was unreachable) |
-| **GitHub Copilot adapter (W2-03, D-007)** | ToS risk, not license: `copilot_internal` token flow is undocumented; GitHub's enforcement notices cite "proxy usage / interfering with how Copilot works" as permanent-ban grounds; bans hit the **user's GitHub account** | **OPEN FOUNDER DECISION (D-019 slate)**: ship default-off behind an explicit your-account-your-risk consent gate, or drop from MVP. Code is built; this is a policy call touching locked D-007 |
+| **GitHub Copilot adapter (W2-03, D-007)** | ToS risk, not license: `copilot_internal` token flow is undocumented; GitHub's enforcement notices cite "proxy usage / interfering with how Copilot works" as permanent-ban grounds; bans hit the **user's GitHub account** | **DECIDED D-019 (2026-07-14): default-off + explicit ledgered consent gate** — never enabled by default; onboarding warns plainly; enabling requires an acknowledgement event (FR-G6 ack pattern) |
 
 ## Version upgrade policy
 

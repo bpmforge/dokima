@@ -501,12 +501,7 @@
       ],
       "points": 5,
       "status": "done",
-      "notes": [
-        "CONDUCTOR 2026-07-12T01:58:18.032Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [UNRESOLVED HIGH] packages/gateway/src/providers/copilot.ts: fetchJson() (used by requestDeviceCode() at line ~277 and completeDeviceAuth() at line ~308) never checks the HTTP status code of the response, unlike exchangeCopilotToken() (checks `status`) and requestCopilot() (checks `response.ok`). If GitHub returns a 4xx/5xx for POST /login/device/code (e.g. invalid client_id, transient outage) or POST /login/oauth/access_token, the error body is parsed as if it were a valid success payload — requestDeviceCode() would return a DeviceCodeInfo with undefined/NaN fields (deviceCode, userCode, expi",
-        "RESET 2026-07-12: blocked during the false-block window; conductor merge-gate since fixed. Re-running under corrected gate.",
-        "CONDUCTOR 2026-07-12T05:57:34.780Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review",
-        "FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green."
-      ],
+      "notes": "CONDUCTOR 2026-07-12T01:58:18.032Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [UNRESOLVED HIGH] packages/gateway/src/providers/copilot.ts: fetchJson() (used by requestDeviceCode() at line ~277 and completeDeviceAuth() at line ~308) never checks the HTTP status code of the response, unlike exchangeCopilotToken() (checks `status`) and requestCopilot() (checks `response.ok`). If GitHub returns a 4xx/5xx for POST /login/device/code (e.g. invalid client_id, transient outage) or POST /login/oauth/access_token, the error body is parsed as if it were a valid success payload — requestDeviceCode() would return a DeviceCodeInfo with undefined/NaN fields (deviceCode, userCode, expi,RESET 2026-07-12: blocked during the false-block window; conductor merge-gate since fixed. Re-running under corrected gate.,CONDUCTOR 2026-07-12T05:57:34.780Z: blocked after 3 attempts. Branch sw/w2-03 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review,FIXED-BY-HAND 2026-07-12: W0-08 needed @shipwright/{events,tickets,shared} deps in apps/server/package.json (outside its cli/** write_scope) — the unresolved modules also caused the cascading err:unknown error. W1-02 needed events/index.ts to re-export receipts.ts (mintReceipt was built by W0-05 but never exposed). W2-03 code was fine — only blocked on an unparseable review during the 05:20 limit pause. Full gate green. D-019 2026-07-14: Copilot ships DEFAULT-OFF behind an explicit consent gate (undocumented copilot_internal flow; user-account ban risk per GitHub enforcement terms) — the gate UI lands in W4-06.",
       "stories": []
     },
     {
@@ -1243,11 +1238,12 @@
         "Settings covers the full FR-S1 project scope: MCP server registration + per-role tool allowlists UI (FR-I3 surface), validator-pack selection, and expert overrides/additions management (FR-E1) — not just the model matrix (design review G-19)",
         "Rule-lifecycle admin surface (D-014): per-rule state, measured FP rate + window, promotion/demotion actions (human-confirmed, data shown), suppression review list with justifications",
         "Escalation-policy setting UI (D-018): per-role ladder/locked/token-gated with tier picker and the effective-policy why-this-value view; in-product help affordances rendered from content/guide/ (R-M1)",
-        "model_matrix project-scope table migration (DATABASE §6) — settings UI persists the matrix it edits"
+        "model_matrix project-scope table migration (DATABASE §6) — settings UI persists the matrix it edits",
+        "Copilot provider onboarding is default-off behind the D-019 consent gate: plain-language account-risk warning; enabling requires an explicit acknowledgement minted as a ledgered event (FR-G6 ack pattern); the matrix flags Copilot-backed roles while enabled"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix.",
+      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix. AMENDED 2026-07-14 (D-019).",
       "stories": [
         "US-503",
         "US-802",
