@@ -383,7 +383,17 @@ function pushRemotes(ticket) {
 function land(t, branch, wt) {
   // ROOT stays on main throughout — just merge the branch and clean up the worktree.
   if (DO_MERGE) {
-    git('merge', '--no-ff', '-q', '-m', `Merge ${branch}: ${t.id} ${t.title}\n\nConductor-verified: gates green + independent review APPROVE (sticky findings all resolved).\nStanding approval: docs/work/APPROVALS.md A-001.\n\nCo-Authored-By: Claude (conductor run) <noreply@anthropic.com>`, branch);
+    try {
+      git('merge', '--no-ff', '-q', '-m', `Merge ${branch}: ${t.id} ${t.title}\n\nConductor-verified: gates green + independent review APPROVE (sticky findings all resolved).\nStanding approval: docs/work/APPROVALS.md A-001.\n\nCo-Authored-By: Claude (conductor run) <noreply@anthropic.com>`, branch);
+    } catch (err) {
+      // Merge conflict (main moved since the branch forked — L-30): NEVER fatal here.
+      // A fatal crashes the conductor, and the supervisor's cleanup then deletes the
+      // finished, reviewed branch (the W4-01 incident). Abort, preserve the branch
+      // outside the sw/ cleanup namespace, park the ticket for human integration.
+      try { git('merge', '--abort'); } catch {}
+      markBlocked(t, [`merge conflict vs moved main — reviewed work preserved (gates+review already green); human integrates`], branch, wt);
+      return;
+    }
     removeWorktree(wt);
     try { git('branch', '-d', branch); } catch {}
     pushRemotes(t.id);
