@@ -1078,7 +1078,7 @@
         "supervise.sh resolves Node via .nvmrc/fnm use (no hardcoded version path); conductor asserts process.version matches .nvmrc major at boot and refuses otherwise (the better-sqlite3 ABI-break class)"
       ],
       "points": 1,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "notes": "ADDED 2026-07-14 challenger fix: ROADMAP names this a W3 resume-blocker; nothing owned it. FIRST ticket claimed at resume, before any conductor relaunch (kickoff pause rules forbade fixing it during the review itself)."
     },
