@@ -484,7 +484,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-L4: Coverage tracker with DONE/WAIVED/BLOCKED/FAILED/SKIPPED; end-of-phase report is a gate input.
 - FR-L5: Context packets assembled by the token-budgeted Context Packer (§7.2); reasoning-model thinking stripped from history and artifacts.
 - FR-L6: Finding ledger: every HIGH/CRITICAL review finding is a record with stable identity, state (OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED), per-finding attempt counts, and evidence-bearing history; rechecks return per-finding verdicts, never just a fresh list. Infra failures (unparseable/truncated review, limit pause) retry free and never open findings.
-- FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8, ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
+- FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8 on metered tiers and 12+ on local tiers (localFrontier-proven: not-same-error ⇒ keep looping; watchdog is the backstop), ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
 
 **FR-HM (Harbormaster)**
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
