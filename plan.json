@@ -1282,7 +1282,7 @@
         "Program thread + per-concern agent threads; question/finding/manifest cards render structured with agent, model, ticket, cost provenance and click-through to receipts (FR-C2)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
