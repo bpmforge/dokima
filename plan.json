@@ -1015,7 +1015,10 @@
         "packages/git/src/glob.ts",
         "packages/git/src/scope.ts",
         "packages/loop/src/session-scope.ts",
-        "packages/tickets/src/lanes.ts"
+        "packages/tickets/src/lanes.ts",
+        "packages/git/package.json",
+        "packages/loop/package.json",
+        "packages/tickets/package.json"
       ],
       "depends_on": [
         "W3-11"
@@ -1026,7 +1029,10 @@
       ],
       "points": 2,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic.",
+      "notes": [
+        "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic.",
+        "SCOPE FIX 2026-07-15: +git/loop/tickets package.json — the agent blocked twice because it could not declare @shipwright/shared deps (the W0-08 seam class; W5-07 seam rule violated by this ticket as written). Conductor markBlocked also crashed on string notes (row.notes.push) which destroyed the block evidence — fixed in conductor.mjs same commit."
+      ],
       "stories": []
     },
     {

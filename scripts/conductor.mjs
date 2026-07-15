@@ -397,6 +397,8 @@ function markBlocked(t, gaps, branch, wt) {
   const plan = loadPlan();
   const row = plan.tickets.find((x) => x.id === t.id);
   row.status = 'blocked';
+  // notes is historically string-or-array (review-pass tickets use strings) — normalize.
+  if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
   row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts. Branch ${branch} kept. Gaps: ${gaps.join(' | ').slice(0, 600)}`);
   writeFileSync(planPath(ROOT), JSON.stringify(plan, null, 2) + '\n');
   git('add', 'plan.json'); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
