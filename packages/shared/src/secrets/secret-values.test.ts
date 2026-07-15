@@ -23,7 +23,7 @@ describe('collectSecretValues', () => {
   it('combines vault-registered secrets and project .env values', async () => {
     const home = await mkTmp();
     const projectDir = await mkTmp();
-    const vault = createProjectSecretsVault(createInMemoryCredentialStore(), {
+    const vault = createProjectSecretsVault(createInMemoryCredentialStore(), projectDir, {
       SHIPWRIGHT_HOME: home,
     });
     await vault.register('forge-token', 'vault-secret-value');
@@ -36,7 +36,7 @@ describe('collectSecretValues', () => {
   it('returns only vault values when the project has no .env file', async () => {
     const home = await mkTmp();
     const projectDir = await mkTmp();
-    const vault = createProjectSecretsVault(createInMemoryCredentialStore(), {
+    const vault = createProjectSecretsVault(createInMemoryCredentialStore(), projectDir, {
       SHIPWRIGHT_HOME: home,
     });
     await vault.register('a', 'only-secret');

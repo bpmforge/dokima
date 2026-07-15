@@ -699,15 +699,19 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/loop-gates*",
-        "packages/harbormaster/test/loop-gates*"
+        "packages/harbormaster/test/loop-gates*",
+        "packages/validators/src/pack.ts",
+        "packages/validators/test/pack*"
       ],
       "depends_on": [
-        "W3-01a"
+        "W3-01a",
+        "W3-13"
       ],
       "acceptance": [
         "On manifest return: stat claimed files, re-run verify in the worktree, confirm >=1 commit on the ticket branch, diff-scope check — then and only then close with receipt; no close receipt => failure comment, never forward progress (FR-H1, SC-02)",
         "manifest.files MUST be a subset of observed changed paths (computeChangedPaths) and the verified commit must touch them — the unresolved W3-01 HIGH, now acceptance (R-F4)",
-        "Red fixtures: promise-token ignored; spoofed manifest fails; graded entity never grades itself; manifest memory_written[] field checked when the role is memory-eligible (R-G2, once W7-01 lands)"
+        "Red fixtures: promise-token ignored; spoofed manifest fails; graded entity never grades itself; manifest memory_written[] field checked when the role is memory-eligible (R-G2, once W7-01 lands)",
+        "content/validators/secrets-scan.sh (W3-13) runs as part of every close gate: widen packages/validators/src/pack.ts's VALIDATOR_NAME_RE (currently ^(validate|run)-.+\\.sh$, which cannot match 'secrets-scan.sh') so loadValidatorPack() auto-discovers it, and include it in the close flow's requiredValidators — red fixture: a planted secret in the diff blocks close via this real gate path, not just the validator's own standalone test (SC-06, BLUEPRINT §12.5)"
       ],
       "points": 3,
       "status": "todo",
@@ -715,7 +719,7 @@
         "US-402",
         "US-403"
       ],
-      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome."
+      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. AMENDED 2026-07-15 (W3-13 gate-fix, conductor-flagged HIGH): dep on W3-13 added; write_scope widened to packages/validators/src/pack.ts (+ its tests) since this is the only ticket that both executes the close gate and can legally touch the validator-pack discovery regex — closing the schema bug where W3-13's write_scope (content/validators/secrets-scan*) can never produce a filename pack.ts's VALIDATOR_NAME_RE accepts. Do not mark W3-13 done for 'wired into every close gate' until this criterion lands here."
     },
     {
       "id": "W3-01c",
@@ -1054,7 +1058,7 @@
       ],
       "points": 5,
       "status": "in_progress",
-      "notes": " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end. Enforces NFR-4 (secrets never in prompts/log). AGENT 2026-07-15: done. packages/shared/src/secrets/** — ProjectSecretsVault (createProjectSecretsVault wraps the W0-07 CredentialStore; a names-only index file under SHIPWRIGHT_HOME makes listValues() possible since neither keychain backend exposes 'list'), pattern-based + exact-value redaction (redactPatterns/redactValues/redactString/redactDeep — categories aligned with settings-files.ts's SECRET_LIKE_PATTERNS: gh tokens, PEM blocks, AWS key ids, sk--style keys, Slack tokens, DB connection strings), a .env-file value loader (loadEnvFileSecretValues), and collectSecretValues() combining vault + .env values for callers to pass into redactDeep before a context packet or event payload leaves the process boundary (redactDeep is deliberately generic/JSON-shaped — this ticket doesn't own the packet/event payload types, so it doesn't import them). content/validators/secrets-scan.sh is the close-gate scanner (_lib.sh contract, exit 0/1 + JSON gaps); it never prints a raw matched secret (masked to first-4-chars + length). Red fixture proven directly: packages/shared/src/secrets/secrets-scan-validator.test.ts spawns the script via `bash <path>` (git doesn't reliably preserve the executable bit on content/, matching packages/validators/src/run.ts's own resolveCommand() convention) against temp fixtures — a planted GitHub token or PEM key blocks close (exit 1), a clean tree passes (exit 0), and the scan's own stdout/stderr never contain the raw secret. HANDOFF (schema bug, out of write_scope): this ticket's write_scope glob (content/validators/secrets-scan*) is incompatible with packages/validators/src/pack.ts's VALIDATOR_NAME_RE (^(validate|run)-.+\\.sh$, landed W1-02, done) — no filename can start with both 'secrets-scan' and 'validate-'/'run-', so this validator is NOT auto-discovered by loadValidatorPack()'s default (no-select) pack load; it must be invoked directly (as this ticket's own test does) until a future ticket resolves the naming conflict (rename to validate-secrets-scan.sh, or widen the discovery regex — either requires touching packages/validators/src/pack.ts, out of this ticket's write_scope). Separately, 'wired into every close gate' has no live code path for ANY validator yet — packages/harbormaster/src/index.ts is still the W0-01 placeholder (no close-gate execution exists); the actual gate wiring (loadValidatorPack + verifyReceipt's requiredValidators including this name) is the future Harbormaster close-flow ticket's job, consistent with SECURITY_CONTROLS.md's own SC-06 catalog entry. Also HANDOFF: packages/shared/src/index.ts / package.json (both outside write_scope) still need a `./secrets` re-export/subpath, mirroring the `./config` pattern from W3-11, for other packages to consume this module. Gate: pnpm lint && pnpm typecheck && pnpm test = 721 passed | 1 skipped workspace-wide (was 688 passed | 1 skipped; +33 new tests: 14 redact, 5 env-secrets, 2 secret-values, 6 vault, 6 secrets-scan-validator).",
+      "notes": " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end. Enforces NFR-4 (secrets never in prompts/log). AGENT 2026-07-15: done. packages/shared/src/secrets/** — ProjectSecretsVault (createProjectSecretsVault wraps the W0-07 CredentialStore; a names-only index file under SHIPWRIGHT_HOME makes listValues() possible since neither keychain backend exposes 'list'), pattern-based + exact-value redaction (redactPatterns/redactValues/redactString/redactDeep — categories aligned with settings-files.ts's SECRET_LIKE_PATTERNS: gh tokens, PEM blocks, AWS key ids, sk--style keys, Slack tokens, DB connection strings), a .env-file value loader (loadEnvFileSecretValues), and collectSecretValues() combining vault + .env values for callers to pass into redactDeep before a context packet or event payload leaves the process boundary (redactDeep is deliberately generic/JSON-shaped — this ticket doesn't own the packet/event payload types, so it doesn't import them). content/validators/secrets-scan.sh is the close-gate scanner (_lib.sh contract, exit 0/1 + JSON gaps); it never prints a raw matched secret (masked to first-4-chars + length). Red fixture proven directly: packages/shared/src/secrets/secrets-scan-validator.test.ts spawns the script via `bash <path>` (git doesn't reliably preserve the executable bit on content/, matching packages/validators/src/run.ts's own resolveCommand() convention) against temp fixtures — a planted GitHub token or PEM key blocks close (exit 1), a clean tree passes (exit 0), and the scan's own stdout/stderr never contain the raw secret. HANDOFF (schema bug, out of write_scope): this ticket's write_scope glob (content/validators/secrets-scan*) is incompatible with packages/validators/src/pack.ts's VALIDATOR_NAME_RE (^(validate|run)-.+\\.sh$, landed W1-02, done) — no filename can start with both 'secrets-scan' and 'validate-'/'run-', so this validator is NOT auto-discovered by loadValidatorPack()'s default (no-select) pack load; it must be invoked directly (as this ticket's own test does) until a future ticket resolves the naming conflict (rename to validate-secrets-scan.sh, or widen the discovery regex — either requires touching packages/validators/src/pack.ts, out of this ticket's write_scope). Separately, 'wired into every close gate' has no live code path for ANY validator yet — packages/harbormaster/src/index.ts is still the W0-01 placeholder (no close-gate execution exists); the actual gate wiring (loadValidatorPack + verifyReceipt's requiredValidators including this name) is the future Harbormaster close-flow ticket's job, consistent with SECURITY_CONTROLS.md's own SC-06 catalog entry. Also HANDOFF: packages/shared/src/index.ts / package.json (both outside write_scope) still need a `./secrets` re-export/subpath, mirroring the `./config` pattern from W3-11, for other packages to consume this module. Gate: pnpm lint && pnpm typecheck && pnpm test = 721 passed | 1 skipped workspace-wide (was 688 passed | 1 skipped; +33 new tests: 14 redact, 5 env-secrets, 2 secret-values, 6 vault, 6 secrets-scan-validator). CONDUCTOR GATE-FIX 2026-07-15 (external verification correctly rejected the prior 'done' — acceptance was not actually met): reopened to in_progress; this ticket was never actually done, that was an agent self-grading error, corrected here. Fixed within write_scope: createProjectSecretsVault(store, projectDir, env?) now takes projectDir and derives a per-project id (sha256(path.resolve(projectDir)).slice(0,16)) threaded into both the credential ref (shipwright-project-secret:<projectId>:<name>, was a bare shipwright-project-secret:<name> — collided across all projects on the machine) and the index file path (~/.shipwright/secrets/<projectId>/secrets-index.json, was a single shared ~/.shipwright/secrets-index.json) — two projects registering the same secret name (e.g. both 'github-pat') can no longer overwrite each other's keychain entry or leak into each other's listNames()/listValues(). New regression test proves cross-project isolation directly (register same name in two vaults backed by one shared CredentialStore + SHIPWRIGHT_HOME, assert no cross-contamination). secret-values.test.ts and vault.test.ts updated for the new signature. NOT fixed here, confirmed still requiring out-of-write_scope files (both remain unimplemented on the real, live code path — nothing outside packages/shared/src/secrets and content/validators/secrets-scan* has ever called any redaction primitive): (1) 'automatic redaction in context packets AND the event log' — split out to new ticket W3-17 (packages/loop/src/handoff*, packages/events/src/append*), depends_on this ticket; (2) 'secrets-scanner validator wired into every close gate' — W3-01b (harbormaster close-gate execution, still todo) amended: write_scope widened to packages/validators/src/pack.ts (+tests), depends_on this ticket added, and a new acceptance criterion added requiring VALIDATOR_NAME_RE widened + secrets-scan.sh included in requiredValidators with a real (not standalone-test-only) red fixture. This ticket (W3-13) stays in_progress, not done, until W3-17 and the W3-01b amendment both land and SC-06 is actually enforced end-to-end — per BLUEPRINT's own verify clause ('planted fixture secrets pushed through packets/logs/events ⇒ zero plaintext'). Gate re-run after the in-scope fix: pnpm lint && pnpm typecheck && pnpm test = 722 passed | 1 skipped workspace-wide (91 test files).",
       "stories": []
     },
     {
@@ -1121,6 +1125,31 @@
       "status": "todo",
       "stories": [],
       "notes": "ADDED 2026-07-14 challenger fix: D-018 engine work needs an OPEN owner — the prior amendment sat on done W2-06 (unmet-acceptance-on-done bug). W3-01c consumes this at the loop level."
+    },
+    {
+      "id": "W3-17",
+      "title": "Wire SC-06 redaction into HANDOFF render + event-log append",
+      "phase": 3,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": [
+        "packages/loop/src/handoff*",
+        "packages/loop/test/handoff*",
+        "packages/events/src/append*",
+        "packages/events/test/append*"
+      ],
+      "depends_on": [
+        "W3-13"
+      ],
+      "acceptance": [
+        "renderHandoff (packages/loop/src/handoff.ts) calls redactDeep/collectSecretValues (W3-13, packages/shared/src/secrets) on the assembled context/produce/verify fields before returning the rendered block, so it is the universal choke point for every HANDOFF regardless of which future ticket assembles the packet content (FR-L5/W7-04 Context Packer independent)",
+        "appendEvent (packages/events/src/append.ts) calls the same redaction primitives on input.payload before it is JSON-stringified/hashed/persisted, so no secret ever reaches the hash-chained event log (SC-06, NFR-4)",
+        "Red fixture: a planted secret value (vault-registered or .env-sourced, per W3-13's collectSecretValues) pushed through renderHandoff's context and through an appendEvent payload comes out redacted in both the rendered block and the stored event row — zero plaintext in either"
+      ],
+      "points": 3,
+      "status": "todo",
+      "stories": [],
+      "notes": "ADDED 2026-07-15 (W3-13 gate-fix, conductor-flagged CRITICAL): BLUEPRINT §12.5/SC-06 requires redaction to apply to every context packet AND the event log, but W3-13's write_scope (packages/shared/src/secrets/**) cannot touch packages/loop or packages/events — a schema bug, not something W3-13 should work around. This ticket is the split-out follow-up: it owns exactly the two universal choke points (HANDOFF render, event append) where a blanket redaction layer belongs independent of whichever ticket builds the actual context-packet assembly (W7-04) or event-payload producers. Do not consider SC-06 closed until this lands."
     },
     {
       "id": "W4-01",
