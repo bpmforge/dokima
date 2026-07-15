@@ -97,3 +97,44 @@ body {
   gap: 0.75rem;
   padding: 0.25rem 0;
 }
+
+.split-pane {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-pane__pane {
+  min-width: 2.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sw-border);
+}
+
+.split-pane__pane:last-child {
+  border-right: none;
+}
+
+.split-pane__pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--sw-border);
+}
+
+.split-pane__pane-header button {
+  border: none;
+  background: transparent;
+  color: var(--sw-fg);
+  cursor: pointer;
+}
+
+.split-pane__divider {
+  width: 6px;
+  cursor: col-resize;
+  background: var(--sw-border);
+}
