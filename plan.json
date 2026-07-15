@@ -1124,9 +1124,12 @@
         "Deterministic gates, maker!=verifier and NEVER-AUTO unaffected by mode (property test across all three modes)"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
-      "notes": "ADDED 2026-07-14 challenger fix: D-018 engine work needs an OPEN owner — the prior amendment sat on done W2-06 (unmet-acceptance-on-done bug). W3-01c consumes this at the loop level."
+      "notes": [
+        "ADDED 2026-07-14 challenger fix: D-018 engine work needs an OPEN owner — the prior amendment sat on done W2-06 (unmet-acceptance-on-done bug). W3-01c consumes this at the loop level.",
+        "AGENT 2026-07-15: done. packages/gateway/src/escalation/policy-types.ts + policy.ts + policy.test.ts (write_scope: policy* only). resolveEscalationPolicy: three-scope (run>project>global), per-role, default 'ladder' (D-018). runEscalationPolicy dispatches: ladder delegates outright to ladder.ts's unchanged runEscalationLadder (byte-identical); locked retries the SAME pinned tier under FR-L7's tier-aware convergence ceiling (8 metered/frontier, 12 local/owned-hardware) and never advances a rung, so zero escalation events ever, park blocked-with-evidence past the ceiling; token-gated climbs like ladder up to a namedTier then requires a minted 'escalation'-class token (FR-N2) before crossing it — absent a token it parks (parkedReason 'awaiting_escalation_token'), present it climbs exactly one rung then resumes normal evidence-triggered climbing (a `resume` input lets the caller continue a parked run without re-attempting already-failed rungs). Both new modes reuse ladder.ts's exported MissingFailureEvidenceError so a receipt-less failure is refused identically in every mode. 26 tests including a property-style section: deterministic gates + an unmodified maker!=verifier guard (routing/maker-verifier.ts, called directly after each mode runs) hold across all three modes, and a NEVER-AUTO check that token-gated can never cross a boundary without an actually-minted token across every (namedTier, pass-point) combination. HANDOFF (out of write_scope, policy* glob only): escalation/index.ts's barrel is not updated to re-export policy.ts (same gap the module's own header note already documents for packages/gateway/src/index.ts) — a future ticket owning escalation/** or its consumer (W3-01c, the harbormaster ticket loop) should wire it in when it starts consuming runEscalationPolicy. Gate: pnpm lint && pnpm typecheck && pnpm test = 87 test files, 714 passed | 1 skipped (pre-existing opt-in skip) workspace-wide."
+      ]
     },
     {
       "id": "W4-01",
