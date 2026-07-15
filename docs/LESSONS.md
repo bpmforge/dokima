@@ -51,6 +51,8 @@ upstreams (two-way PRs, D-008), (c) bootstrap-harness fixes. Append-only; stable
 
 | L-35 | 07-15 | harness-robustness | Session-spawned background processes outlive the session: a W4-01 agent started a dev server (tsx standalone.ts + esbuild) that ran 7.5h after its worktree was DELETED — port-squatting flake risk for every later e2e. Killing the agent process is not killing the session; the whole process TREE must go | harness: open (spawn sessions in their own process group, kill -PGID at session end); product: FR-H2 already specs "terminate the session tree" — implementation must honor it literally | open (harness) / ticketed (product) |
 
+| L-36 | 07-15 | seams | Growth-hotspot files: a shared registration file that every feature ticket appends to (server.ts route wiring) inevitably crosses the file-size law — and the mandated split target (a server/ directory) was outside every ticket's scope, so the hard gate became unsatisfiable by construction. Scopes for always-appended files must include their split destination, or the decomposer pre-splits registration per feature from day one | product: W5-07 decomposer (registration-per-feature pattern); board: ui scopes += server/**; experts: CODE_BOOK + TICKET_SCHEMA note | shipped (board) / ticketed (product) |
+
 ## Details worth keeping (evidence pointers)
 
 - **L-05**: challenge report in session history 2026-07-14; orphans included the a11y CI gate, ⌘K palette, `runs` table, OpenAPI/SSE/idempotency, G-25. All closed same-day (+W3-15/16, W4-11/12, 12 acceptance edits).
