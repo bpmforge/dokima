@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, openEventLog } from '@shipwright/events';
 import {
   acceptTicket,
@@ -194,6 +194,53 @@ describe('registerProject / archiveProject / listProjectCards', () => {
     const cards = await listProjectCards(registryPath, { archived: false });
     expect(cards).toHaveLength(1);
     expect(cards[0]?.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+  });
+
+  it('an unmigrated (pre-tables) state.db degrades to zeroed stats without logging', async () => {
+    const registryPath = await freshRegistry();
+    const projectDir = await tmpDir('shipwright-fleet-unmigrated-');
+    dirs.push(projectDir);
+    const record = await registerProject(registryPath, {
+      path: projectDir,
+      mode: 'import',
+    });
+    const dbPath = path.join(record.path, '.shipwright', 'state.db');
+    await fs.mkdir(path.dirname(dbPath), { recursive: true });
+    // A 0-byte file is a valid, empty SQLite database with none of @shipwright/events'
+    // migrated tables — the exact "old schema" shape computeProjectStats degrades for.
+    await fs.writeFile(dbPath, '');
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const cards = await listProjectCards(registryPath, { archived: false });
+      expect(cards[0]?.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('an unreadable/corrupt state.db degrades to zeroed stats AND logs the unexpected error', async () => {
+    const registryPath = await freshRegistry();
+    const projectDir = await tmpDir('shipwright-fleet-corrupt-');
+    dirs.push(projectDir);
+    const record = await registerProject(registryPath, {
+      path: projectDir,
+      mode: 'import',
+    });
+    const dbPath = path.join(record.path, '.shipwright', 'state.db');
+    await fs.mkdir(path.dirname(dbPath), { recursive: true });
+    await fs.writeFile(dbPath, 'not a sqlite database, just garbage bytes');
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const cards = await listProjectCards(registryPath, { archived: false });
+      expect(cards[0]?.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0]?.[0]).toContain(dbPath);
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('board stats reflect events injected after the first read (live, not cached)', async () => {

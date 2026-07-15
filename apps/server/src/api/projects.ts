@@ -184,6 +184,21 @@ const EMPTY_STATS: Omit<ProjectCard, keyof ProjectRecord> = {
   spendTodayUsd: 0,
 };
 
+/**
+ * `openEventLogReader` opens read-only (DATABASE.md §7 note above) and never runs
+ * migrations, so a `state.db` left on an older schema throws better-sqlite3's
+ * `SQLITE_ERROR: no such table/column: ...` — the one case this function is
+ * documented to degrade for. Anything else (corruption, a real bug in
+ * computeBoard/listTickets, disk I/O failure) must not be swallowed silently.
+ */
+function isUnmigratedSchemaError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err as NodeJS.ErrnoException).code === 'SQLITE_ERROR' &&
+    /no such table|no such column/.test(err.message)
+  );
+}
+
 /** Reads live stats straight from the project's own `state.db` — never cached (DATABASE.md §7). */
 async function computeProjectStats(
   projectPath: string,
@@ -202,8 +217,10 @@ async function computeProjectStats(
       else if (entry.status === 'done') stats.done += 1;
     }
     return { ...EMPTY_STATS, board: stats };
-  } catch {
-    // Unreadable or unmigrated state.db — degrade honestly, never fake a count.
+  } catch (err) {
+    if (!isUnmigratedSchemaError(err)) {
+      console.error(`[fleet] computeProjectStats failed for ${dbPath}:`, err);
+    }
     return EMPTY_STATS;
   } finally {
     db.close();
