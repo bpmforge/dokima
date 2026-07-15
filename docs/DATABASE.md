@@ -133,6 +133,37 @@ PK `(model, phase)`.
 Consolidation (sleep-time job) rewrites facts/playbook via ordinary events
 (`memory.consolidated`) so even memory mutations are audited.
 
+## 5b. Rule lifecycle, findings & plans (D-014/D-016, added 2026-07-14)
+
+**rule_state** — lifecycle per validator/gate rule (FR-RL1/2).
+`rule_id TEXT PK, state TEXT CHECK(state IN ('proposed','shadow','advisory','gate',
+'deprecated')), fp_window_findings INTEGER, fp_window_fps INTEGER, fp_rate REAL
+(derived), promoted_at TEXT NULL, demotion_flagged INTEGER DEFAULT 0, updated_at`.
+State transitions are events (`rule.state_changed`, human actor required).
+
+**findings** — the finding ledger (FR-L6, W3-08).
+`id TEXT PK ('F-<ticket>-<n>'), fingerprint TEXT (hash(file, category, normalized
+issue)), ticket_id, rule_id NULL, severity, file, issue, fix_hint, state TEXT
+CHECK(state IN ('OPEN','FIX_ATTEMPTED','RESOLVED','REGRESSED','SUPPRESSED')),
+attempts INTEGER, free_retries INTEGER (infra events — never attempts),
+experimental INTEGER DEFAULT 0 (shadow-rule findings, FR-RL1), first_seen_pass,
+history TEXT(JSON: [(pass, state, evidence, reran_independently)]), created_at`.
+Index `(ticket_id, state)`, `(fingerprint)`, `(rule_id, state)` — the FP metric input.
+
+**suppressions** — justification-gated (FR-RL3; waiver machinery at finding grain).
+`id PK, fingerprint TEXT, rule_id, justification TEXT CHECK(justification IN
+('false_positive','not_applicable_scope','accepted_risk','fixed_elsewhere',
+'wont_fix_documented')), signed_by FK identities (human only, SC-05), context_key
+TEXT (rule version + file hash + dep version), status TEXT ('active'|'reopened'),
+created_at, reopened_at NULL`. Reopen is automatic on context_key mismatch.
+
+**plan_items** — Improvement Plans (FR-PLAN1–3, W5-10/11).
+`id PK, catalog_id TEXT (versioned catalog entry), rank INTEGER (deterministic),
+state TEXT CHECK(state IN ('proposed','accepted','in_progress','done','regressed')),
+ticket_id TEXT NULL (minted on accept), verify_criterion TEXT (machine-checkable),
+last_verified_at, evidence TEXT(JSON), created_at`. Nightly auto-verify writes
+`plan.item_verified` events; regressions emit Review-tier notifications.
+
 ## 6. Provider/config tables (per project)
 
 **model_matrix** — `role TEXT, task_type TEXT, model TEXT, fallback TEXT(JSON: chain[]),

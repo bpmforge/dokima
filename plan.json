@@ -206,6 +206,28 @@
       ]
     },
     {
+      "id": "W0-09",
+      "title": "CI pipeline: full gate + planted-defect + supply-chain assertions (G-6)",
+      "phase": 0,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        ".github/workflows/**",
+        ".npmrc"
+      ],
+      "depends_on": [
+        "W0-01"
+      ],
+      "acceptance": [
+        "GitHub Actions workflow runs pnpm lint && pnpm typecheck && pnpm test on every push/PR with --frozen-lockfile; planted-defect gate-integrity suite and conformance suite report as their own named jobs (docs/TESTING.md tiers)",
+        ".npmrc carries ignore-scripts=true with the better-sqlite3 allowlist exception; CI asserts the file content and runs pnpm audit --prod failing on high/critical (SC-16)",
+        "Nightly scheduled job runs pnpm e2e against the fake-model gateway once W4 lands (job present and green-skipping before then); no CI job ever calls a live provider or forge (docs/TESTING.md non-negotiable)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK)."
+    },
+    {
       "id": "W1-01",
       "title": "One-time content import: full expert system + validator packs",
       "phase": 1,
@@ -555,6 +577,27 @@
       ]
     },
     {
+      "id": "W2-09",
+      "title": "Provider streaming: chatStream on the Provider contract (G-23)",
+      "phase": 2,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/providers/**",
+        "packages/gateway/src/types.ts"
+      ],
+      "depends_on": [
+        "W2-02"
+      ],
+      "acceptance": [
+        "Provider gains chatStream() (token/delta events + final normalized ChatResponse with usage); oai-compat, Anthropic, and OpenAI adapters implement it by exposing their existing internal SSE aggregation paths (W2-02 note) incrementally",
+        "Recorded-fixture contract tests cover stream-abort, mid-stream error, and chunk-boundary reassembly per adapter; usage metering identical to non-streaming (no unmetered streamed call)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-23: W2-01/W2-02 both deferred a streaming method (Provider type was out of write_scope); W4-04 chat rendering wants it. Deps only on W2-02 so it is claimable at resume without touching W3."
+    },
+    {
       "id": "W3-01",
       "title": "Harbormaster ticket loop (out-of-session gates)",
       "phase": 3,
@@ -722,11 +765,13 @@
       "acceptance": [
         "Finding records per docs/design/FINDING_LOOP_POLICY.md: stable fingerprint, state OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED, per-finding attempts, evidence history; rechecks return per-finding verdicts (FR-L6)",
         "Iteration classifier (CLEARED/STALLED/PROGRESSED/MIXED/OSCILLATING) + budgets: stalled=2 same-tier attempts then escalate; convergence window for progress loops; ceiling 3+points cap 8 on frontier/metered tiers and 12+ on local tiers (tier-aware, FINDING_LOOP_POLICY §3) with park-as-decomposition-signal; REGRESSED escalates immediately (FR-L7)",
-        "Infra failures (unparseable review, limit pause) retry free with zero ledger writes; fixture proves a 2->9->15 discovering loop is not killed while priors resolve, and a flat open-count for 2 passes stops it"
+        "Infra failures (unparseable review, limit pause) retry free with zero ledger writes; fixture proves a 2->9->15 discovering loop is not killed while priors resolve, and a flat open-count for 2 passes stops it",
+        "Rule-state store + per-rule FP bookkeeping + suppression records per DATABASE.md §5b (FR-RL1-3): shadow-rule findings stamped experimental and excluded from gates; suppression requires justification enum + human signature and auto-reopens on context change; funnel counts raw/deduped/effective/suppressed exposed (FR-RL4)",
+        "Every recheck verdict carries re-ran independently: <command, counts, exit code> or is rejected INCOMPLETE (R-B2); infra-failure taxonomy explicit (unparseable review, limit pause, watchdog kill, output-buffer overflow) with free_retry counters that never touch FP metrics (R-D2)"
       ],
-      "points": 5,
+      "points": 8,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3)."
+      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy)."
     },
     {
       "id": "W3-09",
@@ -748,6 +793,104 @@
       "points": 2,
       "status": "todo",
       "notes": []
+    },
+    {
+      "id": "W3-10",
+      "title": "Module-boundary enforcement: ESLint matrix + red fixtures (G-2)",
+      "phase": 3,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "eslint.config.js",
+        "package.json",
+        "pnpm-lock.yaml",
+        "e2e/boundary-fixtures/**"
+      ],
+      "depends_on": [
+        "W0-01"
+      ],
+      "acceptance": [
+        "eslint-plugin-boundaries (or import-x zones) encodes the full ARCHITECTURE.md §4 allowed-dependency matrix incl. law 1 (no package imports apps/*), law 2 (provider SDKs/gateway egress only), law 4 (only events opens a writable DB connection — lint for better-sqlite3 imports outside packages/events), and the no-deep-imports rule (TECH_STACK repository conventions)",
+        "Red fixtures: a forbidden import per law (loop→tickets, tickets→git, provider SDK in loop, better-sqlite3 in gateway, deep import across packages) each fails lint in CI — proven failing-capable, then removed or kept under fixtures with expected-fail assertions",
+        "content/validators/validate-module-boundaries.sh added to conductor.config.json validators.gate (diff-scoped) so the bootstrap conductor enforces it too"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible."
+    },
+    {
+      "id": "W3-11",
+      "title": "Package public surfaces + dependency declarations (G-3, seam backlog)",
+      "phase": 3,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "packages/shared/src/index.ts",
+        "packages/shared/package.json",
+        "packages/loop/src/index.ts",
+        "packages/gateway/src/index.ts",
+        "packages/gateway/src/providers/index.ts",
+        "packages/gateway/package.json",
+        "packages/tickets/src/index.ts",
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "depends_on": [
+        "W0-01"
+      ],
+      "acceptance": [
+        "Every landed module is importable by its intended consumers: shared exports config (./config subpath) + events contracts; loop exports handoff/session/session-scope/micro-loop/coverage/anchors/calibration; gateway exports providers (incl. providers/index barrel), routing, escalation, budget, fitness; tickets exports lanes + reflow",
+        "packages/gateway/package.json declares its real dependencies; google-auth-library relocates from the root package.json (W2-04 HANDOFF); pnpm install + full gate green after relocation",
+        "settings.changed events wire to a real events-log sink at the apps/server composition point (W0-07 HANDOFF; in-memory sink remains the packages/shared test fake)",
+        "A consumer smoke test per package imports only via the public surface (no deep imports) and compiles — the W1-02 invisible-export class cannot recur silently"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-3: every W0–W2 ticket deferred barrels/deps via narrow write_scope; W3-01 cannot fix them (its scope is loop* only). Prerequisite for the W3-01 split (F1). Linux libsecret adapter (W0-07 HANDOFF) deliberately NOT here — remains open, tracked in DECISIONS P-003 note."
+    },
+    {
+      "id": "W3-12",
+      "title": "Shared glob module: one dialect implementation (G-20)",
+      "phase": 3,
+      "module": "shared",
+      "lane": "infra",
+      "write_scope": [
+        "packages/shared/src/glob/**",
+        "packages/git/src/glob.ts",
+        "packages/git/src/scope.ts",
+        "packages/loop/src/session-scope.ts",
+        "packages/tickets/src/lanes.ts"
+      ],
+      "depends_on": [
+        "W3-11"
+      ],
+      "acceptance": [
+        "packages/shared/src/glob hosts the single write_scope dialect implementation: globToRegExp matcher + the overlap detector (segment DP from tickets/lanes.ts); git, loop, and tickets import it (ARCHITECTURE §4 permits all three → shared)",
+        "Property test: for arbitrary pattern pairs, shared overlap(a,b) agrees with (∃ path matched by both) on generated paths; all three former call sites keep their full existing test suites green against the shared impl"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic."
+    },
+    {
+      "id": "W3-13",
+      "title": "Secrets vault + redaction + close-gate scanner",
+      "phase": 3,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": [
+        "packages/shared/src/secrets/**",
+        "content/validators/secrets-scan*"
+      ],
+      "depends_on": [
+        "W1-02"
+      ],
+      "acceptance": [
+        "Project secrets vault (keychain-backed); automatic redaction in context packets AND the event log; secrets-scanner validator wired into every close gate (BLUEPRINT §12.5); red fixture: a planted key in a diff blocks close"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": " MOVED 2026-07-14 from W8-03 (adopted AM-2, D-014-adjacent): the redaction window must close before autonomous W3 runs. Dep narrowed to W1-02 (validator pack); the context-packet redaction hook extends when W7-04 lands (its acceptance stays); W8-01 dogfood re-verifies end-to-end."
     },
     {
       "id": "W4-01",
@@ -864,11 +1007,12 @@
       ],
       "acceptance": [
         "Model matrix editor with fitness-card surfacing (W2-08); autonomy dial with immutable NEVER-AUTO list displayed; budget panel; berths slider; effective-settings 'why this value' resolution view (FR-S1); first-run wizard preset->provider->forge->sample (FR-S4)",
-        "Settings covers the full FR-S1 project scope: MCP server registration + per-role tool allowlists UI (FR-I3 surface), validator-pack selection, and expert overrides/additions management (FR-E1) — not just the model matrix (design review G-19)"
+        "Settings covers the full FR-S1 project scope: MCP server registration + per-role tool allowlists UI (FR-I3 surface), validator-pack selection, and expert overrides/additions management (FR-E1) — not just the model matrix (design review G-19)",
+        "Rule-lifecycle admin surface (D-014): per-rule state, measured FP rate + window, promotion/demotion actions (human-confirmed, data shown), suppression review list with justifications"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-19."
+      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014)."
     },
     {
       "id": "W4-07",
@@ -886,11 +1030,12 @@
       ],
       "acceptance": [
         "Emitters declare a tier; Record never pops; Review batches into digests; Decide promotes to push only when idle-blocked (FR-N4); morning queue aggregates across projects, sorted by leverage, per-project filters (FR-F4); ten-minute-review target documented in docs/design/UX_SPEC.md honored in card design",
-        "Quiet hours respected for push (Decide queues, run continues under auto policy); empty states per docs/design/UX_SPEC.md §2b for queue + notification center"
+        "Quiet hours respected for push (Decide queues, run continues under auto policy); empty states per docs/design/UX_SPEC.md §2b for queue + notification center",
+        "Trust-graduation suggestion: Record-tier card when evidence thresholds cross (>=10 clean closes, 0 oscillations, 0 unwaived criticals over 7d, >=2 lanes) citing its evidence (R-A1, US-310)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18."
+      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1)."
     },
     {
       "id": "W4-08",
@@ -907,11 +1052,34 @@
         "W4-03"
       ],
       "acceptance": [
-        "Pre-autorun estimate from ticket points x role matrix x historical per-ticket actuals, with per-wave breakdown and what-if on matrix changes (BLUEPRINT §12.2)"
+        "Pre-autorun estimate from ticket points x role matrix x historical per-ticket actuals, with per-wave breakdown and what-if on matrix changes (BLUEPRINT §12.2)",
+        "Escalation-ROI view: spend grouped by rung per ticket with outcome, over GET /spend?group_by=rung; weekly Review-tier digest card (R-A2, US-309)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 (adopted R-A2)."
+    },
+    {
+      "id": "W4-09",
+      "title": "Global registry DB (~/.shipwright/global.db) + fitness persistence + fit-guard wiring (G-9)",
+      "phase": 4,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "packages/events/src/global-db/**",
+        "packages/gateway/src/fitness/store.ts",
+        "packages/gateway/src/routing/router.ts"
+      ],
+      "depends_on": [
+        "W2-08"
+      ],
+      "acceptance": [
+        "~/.shipwright/global.db created per DATABASE.md §7 (projects, providers, global_playbook, model_fitness) with the same WAL/single-writer/migration discipline as state.db; Fleet project cards read stats live from each project DB, never cached here",
+        "FitnessCardStore persists to model_fitness keyed (model, role, harness_version); guardFitAssignment is called inside routing route() so an unfit/marginal assignment warns structurally (W2-08 HANDOFF closed)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired."
     },
     {
       "id": "W5-01",
@@ -1027,11 +1195,12 @@
         "W2-05"
       ],
       "acceptance": [
-        "CHALLENGE_REPORT artifacts with per-claim CONFIRMED/CONTRADICTED/UNVERIFIABLE; citation-less challenges discarded (downgrade to UNVERIFIABLE, never CONTRADICTED); CONTRADICTED forces revision HANDOFF (FR-P4); challenger model must differ from maker model (W2-05); tool-call cap per claim"
+        "CHALLENGE_REPORT artifacts with per-claim CONFIRMED/CONTRADICTED/UNVERIFIABLE; citation-less challenges discarded (downgrade to UNVERIFIABLE, never CONTRADICTED); CONTRADICTED forces revision HANDOFF (FR-P4); challenger model must differ from maker model (W2-05); tool-call cap per claim",
+        "Challenger/reviewer verdicts follow the asymmetric threshold (score >=7 accept, 5-6 bounded polish, 1-4 escalate-to-human — never auto-fail over a passing deterministic gate) and every verdict carries the re-ran independently evidence line (R-B2, FR-L6)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 (adopted R-B2)."
     },
     {
       "id": "W5-07",
@@ -1070,11 +1239,12 @@
         "W5-07"
       ],
       "acceptance": [
-        "Onboard maps an existing repo (landscape, entry points, components, health) using imported onboard specialists; Feature runs a scoped mini-program; Improve produces an audit + fix backlog as tickets (FR-P5)"
+        "Onboard maps an existing repo (landscape, entry points, components, health) using imported onboard specialists; Feature runs a scoped mini-program; Improve produces an audit + fix backlog as tickets (FR-P5)",
+        "Macro coverage-loop caps are mode-aware: 3 for New Product/Onboard, 2 for Feature/Improve (source RALPH_WIGGUM_LOOP; R-B5); byte-identical gap-set early-halt applies in every mode"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 (adopted R-B5)."
     },
     {
       "id": "W5-09",
@@ -1097,6 +1267,51 @@
       "points": 3,
       "status": "todo",
       "notes": []
+    },
+    {
+      "id": "W5-10",
+      "title": "Improvement Plans: recommendation catalog + engine + nightly auto-verify (FR-PLAN1-3, D-016)",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/plans/**",
+        "content/plan-catalog/**"
+      ],
+      "depends_on": [
+        "W5-01",
+        "W3-08"
+      ],
+      "acceptance": [
+        "Versioned deterministic catalog (content/plan-catalog, data not code): entries {id, condition over receipts/coverage/finding-ledger snapshots, recommendation template, machine-checkable verify criterion}; evaluation over a fixture snapshot is byte-stable and produces exactly the expected plan items (FR-PLAN1)",
+        "plan_items lifecycle proposed/accepted/in_progress/done/regressed per DATABASE.md §5b; deterministic ranking (severity x leverage x staleness, property-tested); accepting an item mints a board ticket carrying the item verify (FR-PLAN2)",
+        "Nightly auto-verify re-evaluates accepted items against fresh snapshots, flips done/regressed, emits Review-tier notifications on regression; zero Decide pops (FR-PLAN3); no code path passes LLM output into item creation (FR-PLAN4, lint/type-level gate)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016)."
+    },
+    {
+      "id": "W5-11",
+      "title": "Improvement Plans UI: plan view + morning-queue integration (FR-PLAN2/4, D-016)",
+      "phase": 5,
+      "module": "web",
+      "lane": "pipeline",
+      "write_scope": [
+        "apps/web/src/plans/**",
+        "apps/server/src/api/plans*"
+      ],
+      "depends_on": [
+        "W5-10",
+        "W4-07"
+      ],
+      "acceptance": [
+        "Plan view renders ranked items with catalog provenance, verify criterion, state, and linked ticket; accept/dismiss actions; fully functional with the gateway disabled (FR-PLAN4)",
+        "Regressed items surface in the morning queue as Review cards with the violated criterion + evidence; funnel counts (raw findings -> plan items -> accepted -> done/regressed) shown per FR-RL4 style"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note)."
     },
     {
       "id": "W6-01",
@@ -1218,6 +1433,29 @@
       "notes": []
     },
     {
+      "id": "W6-07",
+      "title": "Content pack signing + first-party re-sign (G-4d / SC-09)",
+      "phase": 6,
+      "module": "content",
+      "lane": "content",
+      "write_scope": [
+        "packages/validators/src/signing/**",
+        "content/index.json",
+        "scripts/sign-content.mjs"
+      ],
+      "depends_on": [
+        "W1-02"
+      ],
+      "acceptance": [
+        "Pack manifest carries file hashes + publisher-key signature; install/load verifies signature + hash tree and records provenance; unsigned or mismatched packs load only behind --allow-unsigned with a permanent Settings warning badge (SC-09)",
+        "First-party imported content is signed (re-sign at the v2.1.0+ resync, SW-R1); tampered-pack red fixture refused in the planted-defect harness",
+        "Content intake is license-gated deny-by-default: pack manifests carry a REQUIRED license field; only MIT/Apache-2.0/BSD/first-party auto-accepted, anything else parks as a founder slate (R-E1; CODE_HEALTH_SUITE §8 provenance pattern)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1)."
+    },
+    {
       "id": "W7-01",
       "title": "Memory service: working + long-term (FTS5, budgeted assembly)",
       "phase": 7,
@@ -1293,7 +1531,7 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " NOTE 2026-07-14: context-packet assembly must call the W3-13 redaction layer on every packet (SC-06) — acceptance implied by BLUEPRINT §7.2 + FR-L5."
     },
     {
       "id": "W7-05",
@@ -1330,11 +1568,12 @@
         "W7-02"
       ],
       "acceptance": [
-        "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT §9 W8)"
+        "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT §9 W8)",
+        "The dogfood security/code-health run asserts the FULL imported rule set executes (all 30 anti-slop rules + all 66 validators enumerated in the coverage report — the name-ALL-of-the-set lesson, R-E3); shadow/advisory/gate states honored per D-014"
       ],
       "points": 5,
       "status": "todo",
-      "notes": []
+      "notes": " AMENDED 2026-07-14 (adopted R-E3)."
     },
     {
       "id": "W8-02",
@@ -1352,27 +1591,6 @@
         "Replay any agent session from its events: prompt, tool calls, gate results per pass; linked from ticket cards; feeds the lessons form (BLUEPRINT §12.4)"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": []
-    },
-    {
-      "id": "W8-03",
-      "title": "Secrets vault + redaction + close-gate scanner",
-      "phase": 8,
-      "module": "quality",
-      "lane": "quality",
-      "write_scope": [
-        "packages/shared/src/secrets/**",
-        "content/validators/secrets-scan*"
-      ],
-      "depends_on": [
-        "W7-04",
-        "W1-02"
-      ],
-      "acceptance": [
-        "Project secrets vault (keychain-backed); automatic redaction in context packets AND the event log; secrets-scanner validator wired into every close gate (BLUEPRINT §12.5); red fixture: a planted key in a diff blocks close"
-      ],
-      "points": 5,
       "status": "todo",
       "notes": []
     },
@@ -1417,171 +1635,6 @@
       "points": 3,
       "status": "todo",
       "notes": " AMENDED 2026-07-14 design review G-22."
-    },
-    {
-      "id": "W0-09",
-      "title": "CI pipeline: full gate + planted-defect + supply-chain assertions (G-6)",
-      "phase": 0,
-      "module": "infra",
-      "lane": "infra",
-      "write_scope": [
-        ".github/workflows/**",
-        ".npmrc"
-      ],
-      "depends_on": [
-        "W0-01"
-      ],
-      "acceptance": [
-        "GitHub Actions workflow runs pnpm lint && pnpm typecheck && pnpm test on every push/PR with --frozen-lockfile; planted-defect gate-integrity suite and conformance suite report as their own named jobs (docs/TESTING.md tiers)",
-        ".npmrc carries ignore-scripts=true with the better-sqlite3 allowlist exception; CI asserts the file content and runs pnpm audit --prod failing on high/critical (SC-16)",
-        "Nightly scheduled job runs pnpm e2e against the fake-model gateway once W4 lands (job present and green-skipping before then); no CI job ever calls a live provider or forge (docs/TESTING.md non-negotiable)"
-      ],
-      "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK)."
-    },
-    {
-      "id": "W2-09",
-      "title": "Provider streaming: chatStream on the Provider contract (G-23)",
-      "phase": 2,
-      "module": "gateway",
-      "lane": "gateway",
-      "write_scope": [
-        "packages/gateway/src/providers/**",
-        "packages/gateway/src/types.ts"
-      ],
-      "depends_on": [
-        "W2-02"
-      ],
-      "acceptance": [
-        "Provider gains chatStream() (token/delta events + final normalized ChatResponse with usage); oai-compat, Anthropic, and OpenAI adapters implement it by exposing their existing internal SSE aggregation paths (W2-02 note) incrementally",
-        "Recorded-fixture contract tests cover stream-abort, mid-stream error, and chunk-boundary reassembly per adapter; usage metering identical to non-streaming (no unmetered streamed call)"
-      ],
-      "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-23: W2-01/W2-02 both deferred a streaming method (Provider type was out of write_scope); W4-04 chat rendering wants it. Deps only on W2-02 so it is claimable at resume without touching W3."
-    },
-    {
-      "id": "W3-10",
-      "title": "Module-boundary enforcement: ESLint matrix + red fixtures (G-2)",
-      "phase": 3,
-      "module": "infra",
-      "lane": "infra",
-      "write_scope": [
-        "eslint.config.js",
-        "package.json",
-        "pnpm-lock.yaml",
-        "e2e/boundary-fixtures/**"
-      ],
-      "depends_on": [
-        "W0-01"
-      ],
-      "acceptance": [
-        "eslint-plugin-boundaries (or import-x zones) encodes the full ARCHITECTURE.md §4 allowed-dependency matrix incl. law 1 (no package imports apps/*), law 2 (provider SDKs/gateway egress only), law 4 (only events opens a writable DB connection — lint for better-sqlite3 imports outside packages/events), and the no-deep-imports rule (TECH_STACK repository conventions)",
-        "Red fixtures: a forbidden import per law (loop→tickets, tickets→git, provider SDK in loop, better-sqlite3 in gateway, deep import across packages) each fails lint in CI — proven failing-capable, then removed or kept under fixtures with expected-fail assertions",
-        "content/validators/validate-module-boundaries.sh added to conductor.config.json validators.gate (diff-scoped) so the bootstrap conductor enforces it too"
-      ],
-      "points": 2,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible."
-    },
-    {
-      "id": "W3-11",
-      "title": "Package public surfaces + dependency declarations (G-3, seam backlog)",
-      "phase": 3,
-      "module": "infra",
-      "lane": "infra",
-      "write_scope": [
-        "packages/shared/src/index.ts",
-        "packages/shared/package.json",
-        "packages/loop/src/index.ts",
-        "packages/gateway/src/index.ts",
-        "packages/gateway/src/providers/index.ts",
-        "packages/gateway/package.json",
-        "packages/tickets/src/index.ts",
-        "package.json",
-        "pnpm-lock.yaml"
-      ],
-      "depends_on": [
-        "W0-01"
-      ],
-      "acceptance": [
-        "Every landed module is importable by its intended consumers: shared exports config (./config subpath) + events contracts; loop exports handoff/session/session-scope/micro-loop/coverage/anchors/calibration; gateway exports providers (incl. providers/index barrel), routing, escalation, budget, fitness; tickets exports lanes + reflow",
-        "packages/gateway/package.json declares its real dependencies; google-auth-library relocates from the root package.json (W2-04 HANDOFF); pnpm install + full gate green after relocation",
-        "settings.changed events wire to a real events-log sink at the apps/server composition point (W0-07 HANDOFF; in-memory sink remains the packages/shared test fake)",
-        "A consumer smoke test per package imports only via the public surface (no deep imports) and compiles — the W1-02 invisible-export class cannot recur silently"
-      ],
-      "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-3: every W0–W2 ticket deferred barrels/deps via narrow write_scope; W3-01 cannot fix them (its scope is loop* only). Prerequisite for the W3-01 split (F1). Linux libsecret adapter (W0-07 HANDOFF) deliberately NOT here — remains open, tracked in DECISIONS P-003 note."
-    },
-    {
-      "id": "W3-12",
-      "title": "Shared glob module: one dialect implementation (G-20)",
-      "phase": 3,
-      "module": "shared",
-      "lane": "infra",
-      "write_scope": [
-        "packages/shared/src/glob/**",
-        "packages/git/src/glob.ts",
-        "packages/git/src/scope.ts",
-        "packages/loop/src/session-scope.ts",
-        "packages/tickets/src/lanes.ts"
-      ],
-      "depends_on": [
-        "W3-11"
-      ],
-      "acceptance": [
-        "packages/shared/src/glob hosts the single write_scope dialect implementation: globToRegExp matcher + the overlap detector (segment DP from tickets/lanes.ts); git, loop, and tickets import it (ARCHITECTURE §4 permits all three → shared)",
-        "Property test: for arbitrary pattern pairs, shared overlap(a,b) agrees with (∃ path matched by both) on generated paths; all three former call sites keep their full existing test suites green against the shared impl"
-      ],
-      "points": 2,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-20: the dialect exists 3x (git+loop identical matchers, tickets a separate overlap DP) — silent-divergence hazard on security-sensitive scope logic."
-    },
-    {
-      "id": "W4-09",
-      "title": "Global registry DB (~/.shipwright/global.db) + fitness persistence + fit-guard wiring (G-9)",
-      "phase": 4,
-      "module": "infra",
-      "lane": "infra",
-      "write_scope": [
-        "packages/events/src/global-db/**",
-        "packages/gateway/src/fitness/store.ts",
-        "packages/gateway/src/routing/router.ts"
-      ],
-      "depends_on": [
-        "W2-08"
-      ],
-      "acceptance": [
-        "~/.shipwright/global.db created per DATABASE.md §7 (projects, providers, global_playbook, model_fitness) with the same WAL/single-writer/migration discipline as state.db; Fleet project cards read stats live from each project DB, never cached here",
-        "FitnessCardStore persists to model_fitness keyed (model, role, harness_version); guardFitAssignment is called inside routing route() so an unfit/marginal assignment warns structurally (W2-08 HANDOFF closed)"
-      ],
-      "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired."
-    },
-    {
-      "id": "W6-07",
-      "title": "Content pack signing + first-party re-sign (G-4d / SC-09)",
-      "phase": 6,
-      "module": "content",
-      "lane": "content",
-      "write_scope": [
-        "packages/validators/src/signing/**",
-        "content/index.json",
-        "scripts/sign-content.mjs"
-      ],
-      "depends_on": [
-        "W1-02"
-      ],
-      "acceptance": [
-        "Pack manifest carries file hashes + publisher-key signature; install/load verifies signature + hash tree and records provenance; unsigned or mismatched packs load only behind --allow-unsigned with a permanent Settings warning badge (SC-09)",
-        "First-party imported content is signed (re-sign at the v2.1.0+ resync, SW-R1); tampered-pack red fixture refused in the planted-defect harness"
-      ],
-      "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only."
     },
     {
       "id": "W8-06",
