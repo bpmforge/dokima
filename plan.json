@@ -1213,8 +1213,11 @@
         "Global gateway fairness: two fixture projects autorunning against one fake endpoint share the queue fairly; total-berth governor enforced (FR-F3)"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-10f/G-18.",
+      "status": "blocked",
+      "notes": [
+        " AMENDED 2026-07-14 design review G-10f/G-18.",
+        "CONDUCTOR 2026-07-15T16:35:18.626Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+      ],
       "stories": [
         "US-801",
         "US-805"
