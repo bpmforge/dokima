@@ -1124,7 +1124,7 @@
         "Deterministic gates, maker!=verifier and NEVER-AUTO unaffected by mode (property test across all three modes)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "notes": "ADDED 2026-07-14 challenger fix: D-018 engine work needs an OPEN owner — the prior amendment sat on done W2-06 (unmet-acceptance-on-done bug). W3-01c consumes this at the loop level."
     },
