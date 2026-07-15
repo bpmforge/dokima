@@ -10,7 +10,15 @@
 # Stop:  touch STOP   (checked before every (re)launch and after every crash)
 set -u
 cd "$(dirname "$0")/.."
-export PATH="/Users/bmatthews/.local/share/fnm/node-versions/v24.14.0/installation/bin:$PATH"
+
+# W3-15: resolve Node from .nvmrc — never a hardcoded version. A mismatched Node
+# ABI-breaks better-sqlite3 (native module) for everyone else on the repo.
+NVMRC_MAJOR="$(tr -d '[:space:]' < .nvmrc)"
+NODE_BIN="$(ls -d "$HOME/.local/share/fnm/node-versions/v${NVMRC_MAJOR}"*/installation/bin 2>/dev/null | sort -V | tail -1)"
+if [ -z "$NODE_BIN" ]; then echo "[supervise] FATAL: no fnm Node v${NVMRC_MAJOR}.x installed (fnm install ${NVMRC_MAJOR})"; exit 1; fi
+export PATH="$NODE_BIN:$PATH"
+ACTUAL="$(node -v)"
+case "$ACTUAL" in v${NVMRC_MAJOR}.*) : ;; *) echo "[supervise] FATAL: node $ACTUAL != .nvmrc v${NVMRC_MAJOR}.x"; exit 1;; esac
 
 MAX=${SUPERVISE_MAX:-30}     # give up after this many crash-restarts
 BACKOFF=${SUPERVISE_BACKOFF:-30}

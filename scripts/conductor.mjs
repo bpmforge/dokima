@@ -98,8 +98,10 @@ const ALWAYS_OK = CONFIG.alwaysOk.map(globToRegex);
 function claimable(plan) {
   const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
   const busyLanes = new Set(plan.tickets.filter((t) => t.status === 'in_progress').map((t) => t.lane));
+  const hold = new Set(CONFIG.holdTickets ?? []);
   return plan.tickets
     .filter((t) => t.status === 'todo')
+    .filter((t) => !hold.has(t.id)) // F2: human-pair tickets are never claimed unattended
     .filter((t) => !WAVES || WAVES.includes(wave(t.id)))
     .filter((t) => t.depends_on.every((d) => done.has(d)))
     .filter((t) => !busyLanes.has(t.lane))
@@ -453,6 +455,13 @@ async function main() {
   for (const bin of ['claude', 'git']) {
     try { sh('which', [bin]); } catch { console.error(`missing prerequisite: ${bin}`); process.exit(1); }
   }
+  // W3-15: refuse a Node that doesn't match .nvmrc — a mismatch ABI-breaks better-sqlite3.
+  const nvmrc = readFileSync('.nvmrc', 'utf8').trim();
+  if (!process.version.startsWith(`v${nvmrc}.`)) {
+    console.error(`node ${process.version} != .nvmrc v${nvmrc}.x — fix PATH/fnm before running (W3-15)`);
+    process.exit(1);
+  }
+  if (CONFIG.holdTickets?.length) log('conductor.hold', { msg: `human-pair hold (F2): ${CONFIG.holdTickets.join(', ')} — never claimed unattended` });
   if (git('status', '--porcelain')) { console.error('working tree not clean — commit or stash first'); process.exit(1); }
   if (git('rev-parse', '--abbrev-ref', 'HEAD') !== 'main') git('checkout', '-q', 'main');
   log('conductor.start', { msg: `breakpoint=${BREAKPOINT} waves=${WAVES ?? 'all'} isolation=${CONFIG.isolation} merge=${DO_MERGE} models=${JSON.stringify(MODELS)}` });
