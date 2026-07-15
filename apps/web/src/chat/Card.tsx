@@ -27,20 +27,42 @@ function QuestionCardBody({ card }: { card: QuestionCard }) {
   );
 }
 
+/**
+ * `evidence_href` arrives over the same untrusted `chat:<project>` wire as
+ * every other card field (agent sessions are untrusted, THREAT_MODEL trust
+ * boundary). Only relative API paths are ever legitimate here, so anything
+ * else (a `javascript:`/`data:` URI, an absolute external URL) is rejected
+ * rather than handed to `href` verbatim — same "build the link ourselves,
+ * don't trust the wire" posture as `ProvenanceLine`'s receipt link.
+ */
+export function isSafeEvidenceHref(href: string): boolean {
+  return href.startsWith('/api/v1/');
+}
+
 function FindingCardBody({ card }: { card: FindingCard }) {
+  const safeHref = isSafeEvidenceHref(card.evidenceHref) ? card.evidenceHref : null;
   return (
     <>
       <span className={`chat-card__severity chat-card__severity--${card.severity}`}>
         {card.severity}
       </span>
       <p className="chat-card__issue">{card.issue}</p>
-      <a
-        className="chat-card__evidence"
-        href={card.evidenceHref}
-        data-testid="card-evidence-link"
-      >
-        evidence
-      </a>
+      {safeHref ? (
+        <a
+          className="chat-card__evidence"
+          href={safeHref}
+          data-testid="card-evidence-link"
+        >
+          evidence
+        </a>
+      ) : (
+        <span
+          className="chat-card__evidence chat-card__evidence--unavailable"
+          data-testid="card-evidence-link"
+        >
+          evidence unavailable
+        </span>
+      )}
     </>
   );
 }

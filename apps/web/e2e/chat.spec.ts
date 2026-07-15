@@ -61,3 +61,19 @@ test('the chat pane is independently collapsible like the other panes', async ({
   await chatHeader.click();
   await expect(page.getByTestId('pane-chat')).toHaveAttribute('data-collapsed', 'true');
 });
+
+test('a failed chat history fetch surfaces a distinct error state, not a fabricated empty state', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/projects/chat-e2e-fetch-error/chat', (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: '{"detail":"unauthorized"}',
+    }),
+  );
+  await page.goto('/?project=chat-e2e-fetch-error');
+  const chatPane = page.getByTestId('pane-chat');
+  await expect(chatPane.getByTestId('chat-load-error')).toBeVisible();
+  await expect(chatPane.getByTestId('chat-empty-state')).toHaveCount(0);
+});

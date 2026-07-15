@@ -28,12 +28,20 @@ export function ChatView({ token, projectId = 'default' }: ChatViewProps) {
   const [events, setEvents] = useState<ServerEnvelope[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchChatEvents(projectId, { getToken: () => token })
       .then((items) => {
         if (!cancelled) setEvents(items);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error ? error.message : 'Failed to load chat history',
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -68,7 +76,12 @@ export function ChatView({ token, projectId = 'default' }: ChatViewProps) {
 
   return (
     <div className="chat" data-testid="chat-view">
-      {!hasAnyCards ? (
+      {loadError ? (
+        <div className="chat__error" data-testid="chat-load-error">
+          <p>Couldn&apos;t load chat history.</p>
+          <span className="chat__error-hint">{loadError}</span>
+        </div>
+      ) : !hasAnyCards ? (
         <ChatEmptyState />
       ) : (
         <>
