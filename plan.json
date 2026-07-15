@@ -1215,7 +1215,7 @@
         "Project cards: phase, board stats, running berths + heartbeat freshness, pending Decide count, spend today; create/onboard/import/archive; per-project DB isolation (.shipwright/state.db travels with the repo dir) (FR-F1/F2); Fleet empty state + archived-filter/reopen flow (UX_SPEC §2/§2b, G-10f)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 design review G-10f/G-18.",
         "CONDUCTOR 2026-07-15T16:35:18.626Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: plan.json status is 'blocked', expected 'done'",
