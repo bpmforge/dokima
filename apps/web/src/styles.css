@@ -1,0 +1,140 @@
+:root {
+  --sw-bg: #ffffff;
+  --sw-fg: #10151a;
+  --sw-border: #d7dce1;
+  --sw-accent: #2e6bff;
+  --sw-transition-duration: 150ms;
+}
+
+:root[data-theme='dark'] {
+  --sw-bg: #10151a;
+  --sw-fg: #e8ecf1;
+  --sw-border: #2a333c;
+  --sw-accent: #6ea0ff;
+}
+
+/* Fallback for first paint before ThemeProvider's effect sets data-theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --sw-bg: #10151a;
+    --sw-fg: #e8ecf1;
+    --sw-border: #2a333c;
+    --sw-accent: #6ea0ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  transition:
+    background var(--sw-transition-duration) ease,
+    color var(--sw-transition-duration) ease;
+}
+
+/* NFR: prefers-reduced-motion is respected everywhere, not just here. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+:root[data-reduced-motion='true'] * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--sw-border);
+}
+
+.theme-toggle {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+.shortcuts-overlay {
+  position: fixed;
+  inset: 5rem 1rem auto;
+  margin: 0 auto;
+  max-width: 28rem;
+  background: var(--sw-bg);
+  border: 1px solid var(--sw-border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+  z-index: 1000;
+}
+
+.shortcuts-overlay__row {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.split-pane {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.split-pane__pane {
+  min-width: 2.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sw-border);
+}
+
+.split-pane__pane:last-child {
+  border-right: none;
+}
+
+.split-pane__pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--sw-border);
+}
+
+.split-pane__pane-header button {
+  border: none;
+  background: transparent;
+  color: var(--sw-fg);
+  cursor: pointer;
+}
+
+.split-pane__divider {
+  width: 6px;
+  cursor: col-resize;
+  background: var(--sw-border);
+}
