@@ -997,7 +997,7 @@
         "A consumer smoke test per package imports only via the public surface (no deep imports) and compiles — the W1-02 invisible-export class cannot recur silently"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "ADDED 2026-07-14 design review G-3: every W0–W2 ticket deferred barrels/deps via narrow write_scope; W3-01 cannot fix them (its scope is loop* only). Prerequisite for the W3-01 split (F1). Linux libsecret adapter (W0-07 HANDOFF) deliberately NOT here — remains open, tracked in DECISIONS P-003 note.",
       "stories": []
     },
