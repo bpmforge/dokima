@@ -59,7 +59,7 @@ jobs:
       - name: Run every *conformance.test.ts suite, per package
         run: |
           node <<'NODE_EOF'
-          const { execSync } = require('node:child_process');
+          const { execSync, execFileSync } = require('node:child_process');
 
           const files = execSync('git ls-files', { encoding: 'utf8' })
             .split('\n')
@@ -83,7 +83,9 @@ jobs:
           for (const [dir, rels] of groups) {
             console.log(`== ${dir}: ${rels.join(', ')}`);
             try {
-              execSync(`pnpm exec vitest run ${rels.map((r) => JSON.stringify(r)).join(' ')}`, {
+              // argv array, never a shell string — paths are untrusted (git-tracked
+              // filenames), so they must never be interpolated into a shell command.
+              execFileSync('pnpm', ['exec', 'vitest', 'run', ...rels], {
                 cwd: dir,
                 stdio: 'inherit',
               });
