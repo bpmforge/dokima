@@ -654,7 +654,7 @@
         "Recorded-fixture contract tests cover stream-abort, mid-stream error, and chunk-boundary reassembly per adapter; usage metering identical to non-streaming (no unmetered streamed call)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "ADDED 2026-07-14 design review G-23: W2-01/W2-02 both deferred a streaming method (Provider type was out of write_scope); W4-04 chat rendering wants it. Deps only on W2-02 so it is claimable at resume without touching W3. Scope narrowed 2026-07-14 (validate-plan P8): providers/index.ts barrel belongs to W3-11 public-surfaces; adapter files enumerated. Provider contract: docs/design/CONTRACTS.md §1.",
       "stories": [
         "US-303"
