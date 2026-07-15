@@ -59,11 +59,10 @@ ticket. IDs are stable — new controls append, never renumber.
   formats (gh tokens, PEM blocks, AWS/GCP key shapes, `sk-`-style keys) + values of
   vault-registered secrets + `.env`-file values from the project dir. A secrets-scanner
   validator runs in every close gate — a diff containing a live-looking secret blocks
-  close (BLUEPRINT §12.5). *Lands:* **W8-03 per plan.json** (design-review 2026-07-14
-  correction — this control originally claimed W0/W1, which never happened; keychain refs
-  landed W0-07 but the redaction layer + close-gate scanner are W8-03. **Known risk
-  window:** until W8-03 lands, receipts/events/packets have no automatic redaction —
-  pull-forward is an open founder question, DESIGN_REVIEW G-4/R-2). *Verify:* planted
+  close (BLUEPRINT §12 item 5). *Lands:* **W3-13 per plan.json** (design-review 2026-07-14:
+  this control originally claimed W0/W1, which never happened; keychain refs landed W0-07.
+  Pulled forward from W8-03 → W3-13 by adopted AM-2 so the redaction window closes before
+  the autonomous W3 runs; the W8-01 dogfood re-verifies end-to-end). *Verify:* planted
   fixture secrets pushed through packets/logs/events ⇒ zero plaintext; close-gate test
   with a committed fake key ⇒ blocked.
 - **SC-07 Sandboxed verify execution, no network by default** (T-4, T-21). Verify

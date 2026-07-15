@@ -240,11 +240,12 @@
       "acceptance": [
         "GitHub Actions workflow runs pnpm lint && pnpm typecheck && pnpm test on every push/PR with --frozen-lockfile; planted-defect gate-integrity suite and conformance suite report as their own named jobs (docs/TESTING.md tiers)",
         ".npmrc carries ignore-scripts=true with the better-sqlite3 allowlist exception; CI asserts the file content and runs pnpm audit --prod failing on high/critical (SC-16)",
-        "Nightly scheduled job runs pnpm e2e against the fake-model gateway once W4 lands (job present and green-skipping before then); no CI job ever calls a live provider or forge (docs/TESTING.md non-negotiable)"
+        "Nightly scheduled job runs pnpm e2e against the fake-model gateway once W4 lands (job present and green-skipping before then); no CI job ever calls a live provider or forge (docs/TESTING.md non-negotiable)",
+        "Per-package coverage thresholds enforced (trust core >=90% line / >=85% branch, gateway/adapters >=80% — TESTING §9); wave-gate traceability grep (FR/UC ids in test titles) runs as a CI job; validate-plan.mjs + validate-traceability.mjs run on every push"
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK).",
+      "notes": "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK). AMENDED 2026-07-14 challenger fix (coverage thresholds + traceability greps were unowned).",
       "stories": []
     },
     {
@@ -574,17 +575,13 @@
         "W1-05"
       ],
       "acceptance": [
-        "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)",
-        "Escalation policy modes per D-018 (three-scope setting, per role + per run): ladder (default) / locked (pinned tier, gate failure loops under FR-L7 budgets to the tier-aware ceiling then PARKS blocked-with-evidence — zero escalation events, fixture-proven) / token-gated (climbing past a named tier parks until an approval mints an escalation token, FR-N2 escalation class)"
+        "Evidence-triggered ladder per BLUEPRINT §3.3: R0 memory/playbook consult hook, R1 cheapest capable + micro-loop, R2 one rung up, R3 frontier once, R4 blocked-with-evidence; every escalation is an event with the failure receipts attached (FR-G3)"
       ],
-      "points": 5,
+      "points": 3,
       "status": "done",
-      "notes": " AMENDED 2026-07-14 addendum (D-018/R-L1): +policy modes; points 3->5. NOTE: W2-06 is done — this amendment is NEW WORK; at resume either reopen as W2-06b or fold into the W3-01 split scope decision. Flagged for the P5 board pass.",
+      "notes": " CHALLENGER FIX 2026-07-14: the D-018 amendment wrongly widened a DONE ticket; policy-mode engine work moved to W3-16.",
       "stories": [
-        "US-304",
-        "US-309",
-        "US-601",
-        "US-702"
+        "US-304"
       ]
     },
     {
@@ -771,18 +768,22 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/resume*",
-        "packages/harbormaster/src/breakpoints*"
+        "packages/harbormaster/src/breakpoints*",
+        "packages/events/migrations/*runs*",
+        "packages/events/migrations/*clarifications*",
+        "apps/server/src/cli/run-cmd*"
       ],
       "depends_on": [
         "W3-01c"
       ],
       "acceptance": [
         "Breakpoints ticket/wave/never; global pause finishes current ticket, checkpoints, stops; resume re-verifies claimed-but-unclosed tickets from receipts (never redoes) and REFUSES with a drift report when event log, receipts, and disk disagree (FR-H3)",
-        "Clarification cards (FR-N1, UC-03): a question checkpoints ONLY dependent work; other lanes continue; answer resumes exactly at the checkpoint; dismissal takes the documented default + approvals-ledger row"
+        "Clarification cards (FR-N1, UC-03): a question checkpoints ONLY dependent work; other lanes continue; answer resumes exactly at the checkpoint; dismissal takes the documented default + approvals-ledger row",
+        "runs + clarifications tables land as events migrations (DATABASE §3/§4: run lifecycle, clarification checkpoint_ref) with projections; `shipwright run --breakpoint --berths` CLI drives run creation through the same API (FR-C7)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (traceability W1 gap): FR-N1 clarification checkpoint/suspend/resume had no owner — it is checkpoint/resume machinery, so it lands here; W4-04 renders the cards.",
+      "notes": " AMENDED 2026-07-14 (traceability W1 gap): FR-N1 clarification checkpoint/suspend/resume had no owner — it is checkpoint/resume machinery, so it lands here; W4-04 renders the cards. AMENDED 2026-07-14 challenger fix: runs/clarifications tables + run CLI had no creating ticket. Migrations scope crosses into released core territory (D-015: W0-02 done).",
       "stories": [
         "US-205",
         "US-701"
@@ -828,13 +829,15 @@
       ],
       "acceptance": [
         "NEVER-AUTO actions (main merges, releases/deploys, destructive ops, auth/crypto, new stack, scope breaks) never execute in-loop; work is staged (PR opened/drafted), ticket parked in_review, other lanes continue (FR-H4)",
-        "Queue projection sorted by leverage (merges first); each card carries diff-stat + receipts"
+        "Queue projection sorted by leverage (merges first); each card carries diff-stat + receipts",
+        "Rule-first risk classifier (FR-N2): all five classes (deploy/main-merge/destructive/escalation/budget) classified deterministically from rules with fixtures; a model may raise a class, never lower it (property test)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": [],
+      "notes": " AMENDED 2026-07-14 challenger fix: US-702/FR-N2 was hollow — cited once as a fragment, built nowhere.",
       "stories": [
-        "US-404"
+        "US-404",
+        "US-702"
       ]
     },
     {
@@ -900,14 +903,15 @@
       ],
       "acceptance": [
         "Finding records per docs/design/FINDING_LOOP_POLICY.md: stable fingerprint, state OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED, per-finding attempts, evidence history; rechecks return per-finding verdicts (FR-L6)",
-        "Iteration classifier (CLEARED/STALLED/PROGRESSED/MIXED/OSCILLATING) + budgets: stalled=2 same-tier attempts then escalate; convergence window for progress loops; ceiling 3+points cap 8 on frontier/metered tiers and 12+ on local tiers (tier-aware, FINDING_LOOP_POLICY §3) with park-as-decomposition-signal; REGRESSED escalates immediately (FR-L7)",
+        "Iteration classifier (CLEARED/STALLED/PROGRESSED/MIXED/OSCILLATING) + budgets: stalled=2 same-tier attempts then escalate; convergence window for progress loops; ceiling 3+points cap 8 on frontier/metered tiers and 12+ on local tiers (tier-aware, FINDING_LOOP_POLICY §3) with park-as-decomposition-signal; REGRESSED escalates immediately (FR-L7); post-escalation budget: +1 attempt at the higher tier then BLOCK with the ledger (policy §4 row 2); a SECOND oscillation blocks (policy §4 row 5)",
         "Infra failures (unparseable review, limit pause) retry free with zero ledger writes; fixture proves a 2->9->15 discovering loop is not killed while priors resolve, and a flat open-count for 2 passes stops it",
         "Rule-state store + per-rule FP bookkeeping + suppression records per DATABASE.md §5b (FR-RL1-3): shadow-rule findings stamped experimental and excluded from gates; suppression requires justification enum + human signature and auto-reopens on context change; funnel counts raw/deduped/effective/suppressed exposed (FR-RL4)",
-        "Every recheck verdict carries re-ran independently: <command, counts, exit code> or is rejected INCOMPLETE (R-B2); infra-failure taxonomy explicit (unparseable review, limit pause, watchdog kill, output-buffer overflow) with free_retry counters that never touch FP metrics (R-D2)"
+        "Every recheck verdict carries re-ran independently: <command, counts, exit code> or is rejected INCOMPLETE (R-B2); infra-failure taxonomy explicit (unparseable review, limit pause, watchdog kill, output-buffer overflow) with free_retry counters that never touch FP metrics (R-D2)",
+        "Subjective review score 1-4 over a passing deterministic gate escalates to the human, never auto-fails (US-410 AC-2, FR-L6 asymmetry)"
       ],
       "points": 8,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy). F4 2026-07-14: dep narrowed to W1-03 — the finding ledger is pure engine work, claimable at resume before the harbormaster lands (it hardens the loop being built). Design: docs/design/GATE_ECONOMICS.md.",
+      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy). F4 2026-07-14: dep narrowed to W1-03 — the finding ledger is pure engine work, claimable at resume before the harbormaster lands (it hardens the loop being built). Design: docs/design/GATE_ECONOMICS.md. AMENDED 2026-07-14 challenger fix: acceptance named 4 of the 6 policy-matrix rows — now ALL of the set (the STATUS 2026-07-12 lesson, caught recurring).",
       "stories": [
         "US-408",
         "US-409",
@@ -954,11 +958,12 @@
       "acceptance": [
         "eslint-plugin-boundaries (or import-x zones) encodes the full ARCHITECTURE.md §4 allowed-dependency matrix incl. law 1 (no package imports apps/*), law 2 (provider SDKs/gateway egress only), law 4 (only events opens a writable DB connection — lint for better-sqlite3 imports outside packages/events), and the no-deep-imports rule (TECH_STACK repository conventions)",
         "Red fixtures: a forbidden import per law (loop→tickets, tickets→git, provider SDK in loop, better-sqlite3 in gateway, deep import across packages) each fails lint in CI — proven failing-capable, then removed or kept under fixtures with expected-fail assertions",
-        "content/validators/validate-module-boundaries.sh added to conductor.config.json validators.gate (diff-scoped) so the bootstrap conductor enforces it too"
+        "content/validators/validate-module-boundaries.sh added to conductor.config.json validators.gate (diff-scoped) so the bootstrap conductor enforces it too",
+        "SC-04 promise-token lint rule: string-match patterns over session output forbidden in loop/harbormaster/pipeline — lint gate in CI with a red fixture"
       ],
       "points": 2,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible.",
+      "notes": "ADDED 2026-07-14 design review G-2: ARCHITECTURE.md claimed lint enforcement that never existed (deferred by W0-01, then unowned). Must land before W3 wiring makes illegal imports possible. AMENDED 2026-07-14 challenger fix (SC-04 lint rule had no owner).",
       "stories": []
     },
     {
@@ -1039,6 +1044,71 @@
       "stories": []
     },
     {
+      "id": "W3-14",
+      "title": "Human-edit conflict policy: leases, watcher, human-wins re-ground (FR-T6)",
+      "phase": 3,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/conflict*",
+        "packages/harbormaster/test/conflict*"
+      ],
+      "depends_on": [
+        "W3-01c"
+      ],
+      "acceptance": [
+        "File watcher on the human checkout flags edits inside an actively-leased write-scope -> conflict.detected event; affected loop checkpoints at its next pass boundary; agent worktree rebases onto the human change and the micro-loop re-grounds (criterion + evidence re-evaluated) — human always wins (FR-T6, UC-04)",
+        "Material rebase conflict parks the ticket blocked: human-edit-conflict with a Decide card (take mine / take agent's / merge view); human edits are attributed events credited in coverage",
+        "Leased paths surfaced to the UI (lock badge data, UX_SPEC §4)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "stories": [
+        "US-206"
+      ],
+      "notes": "ADDED 2026-07-14 (traceability W1/W3 gap — validator-discovered): FR-T6/UC-04/US-206 had no owning ticket anywhere."
+    },
+    {
+      "id": "W3-15",
+      "title": "Resume-prep: bootstrap harness Node pin + boot assertions (G-25)",
+      "phase": 3,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "scripts/supervise.sh",
+        "scripts/conductor.mjs"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "supervise.sh resolves Node via .nvmrc/fnm use (no hardcoded version path); conductor asserts process.version matches .nvmrc major at boot and refuses otherwise (the better-sqlite3 ABI-break class)"
+      ],
+      "points": 1,
+      "status": "todo",
+      "stories": [],
+      "notes": "ADDED 2026-07-14 challenger fix: ROADMAP names this a W3 resume-blocker; nothing owned it. FIRST ticket claimed at resume, before any conductor relaunch (kickoff pause rules forbade fixing it during the review itself)."
+    },
+    {
+      "id": "W3-16",
+      "title": "Escalation policy modes engine: ladder/locked/token-gated (D-018)",
+      "phase": 3,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/escalation/policy*"
+      ],
+      "depends_on": [
+        "W2-06"
+      ],
+      "acceptance": [
+        "Policy resolution per D-018 (three-scope, per role + per run): ladder default; locked = pinned tier, gate failure loops under FR-L7 budgets to the tier-aware ceiling then PARKS blocked-with-evidence — fixture proves zero escalation events; token-gated = climbing past a named tier parks until an approval mints an escalation token (FR-N2 escalation class), then climbs one rung",
+        "Deterministic gates, maker!=verifier and NEVER-AUTO unaffected by mode (property test across all three modes)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "stories": [],
+      "notes": "ADDED 2026-07-14 challenger fix: D-018 engine work needs an OPEN owner — the prior amendment sat on done W2-06 (unmet-acceptance-on-done bug). W3-01c consumes this at the loop level."
+    },
+    {
       "id": "W4-01",
       "title": "Web app scaffold + auth middleware + WS projections",
       "phase": 4,
@@ -1054,11 +1124,12 @@
       "acceptance": [
         "React/Vite SPA served by apps/server; REST per docs/API_DESIGN.md; WebSocket projection subscriptions with heartbeats; auth middleware in single-user token mode (D-005); localhost binding + origin allowlist (docs/SECURITY_CONTROLS.md)",
         "GET /healthz unauthenticated liveness (DB open, WS hub up — API_DESIGN §2); SC-08 verified by tests: 127.0.0.1 bind assertion, evil Host/Origin ⇒ 403, missing token ⇒ 401, WS upgrade re-checks both, token file mode 0600",
-        "Modern-product baseline: keyboard-shortcut overlay (? key), dark/light theme toggle honoring prefers-color-scheme, prefers-reduced-motion respected, optimistic non-blocking UI per NFR-2 (R-M2)"
+        "Modern-product baseline: keyboard-shortcut overlay (? key), dark/light theme toggle honoring prefers-color-scheme, prefers-reduced-motion respected, optimistic non-blocking UI per NFR-2 (R-M2)",
+        "Playwright seeded stack ships the scripted fake-model gateway adapter (deterministic per-role scripts, injectable latency/failure budget — TESTING §7); no E2E job talks to a real provider"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0). AMENDED 2026-07-14 addendum (R-M2). D-015: declared scaffold (broad bootstrap scope; cross-lane exemption recorded). Cites FR-C1 (split-pane layout persistence) — pane layout is part of the scaffold acceptance.",
+      "notes": " AMENDED 2026-07-14 design review G-5/G-4c: healthz + SC-08 test matrix made explicit (SC-08 lands here, not W0). AMENDED 2026-07-14 addendum (R-M2). D-015: declared scaffold (broad bootstrap scope; cross-lane exemption recorded). Cites FR-C1 (split-pane layout persistence) — pane layout is part of the scaffold acceptance. AMENDED 2026-07-14 challenger fix (fake-model gateway was consumed by W0-09/W1-07-era tests but unowned for the Playwright tier).",
       "stories": [],
       "scaffold": true
     },
@@ -1171,11 +1242,12 @@
         "Model matrix editor with fitness-card surfacing (W2-08); autonomy dial with immutable NEVER-AUTO list displayed; budget panel; berths slider; effective-settings 'why this value' resolution view (FR-S1); first-run wizard preset->provider->forge->sample (FR-S4)",
         "Settings covers the full FR-S1 project scope: MCP server registration + per-role tool allowlists UI (FR-I3 surface), validator-pack selection, and expert overrides/additions management (FR-E1) — not just the model matrix (design review G-19)",
         "Rule-lifecycle admin surface (D-014): per-rule state, measured FP rate + window, promotion/demotion actions (human-confirmed, data shown), suppression review list with justifications",
-        "Escalation-policy setting UI (D-018): per-role ladder/locked/token-gated with tier picker and the effective-policy why-this-value view; in-product help affordances rendered from content/guide/ (R-M1)"
+        "Escalation-policy setting UI (D-018): per-role ladder/locked/token-gated with tier picker and the effective-policy why-this-value view; in-product help affordances rendered from content/guide/ (R-M1)",
+        "model_matrix project-scope table migration (DATABASE §6) — settings UI persists the matrix it edits"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review).",
+      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix.",
       "stories": [
         "US-503",
         "US-802",
@@ -1200,11 +1272,12 @@
       "acceptance": [
         "Emitters declare a tier; Record never pops; Review batches into digests; Decide promotes to push only when idle-blocked (FR-N4); morning queue aggregates across projects, sorted by leverage, per-project filters (FR-F4); ten-minute-review target documented in docs/design/UX_SPEC.md honored in card design",
         "Quiet hours respected for push (Decide queues, run continues under auto policy); empty states per docs/design/UX_SPEC.md §2b for queue + notification center",
-        "Trust-graduation suggestion: Record-tier card when evidence thresholds cross (>=10 clean closes, 0 oscillations, 0 unwaived criticals over 7d, >=2 lanes) citing its evidence (R-A1, US-310)"
+        "Trust-graduation suggestion: Record-tier card when evidence thresholds cross (>=10 clean closes, 0 oscillations, 0 unwaived criticals over 7d, >=2 lanes) citing its evidence (R-A1, US-310)",
+        "notifications table migration per DATABASE §3 (closed kind enum, leverage index) — the taxonomy is schema, not convention"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1).",
+      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1). AMENDED 2026-07-14 challenger fix.",
       "stories": [
         "US-404",
         "US-704",
@@ -1227,13 +1300,15 @@
       ],
       "acceptance": [
         "Pre-autorun estimate from ticket points x role matrix x historical per-ticket actuals, with per-wave breakdown and what-if on matrix changes (BLUEPRINT §12.2)",
-        "Escalation-ROI view: spend grouped by rung per ticket with outcome, over GET /spend?group_by=rung; weekly Review-tier digest card (R-A2, US-309)"
+        "Escalation-ROI view: spend grouped by rung per ticket with outcome, over GET /spend?group_by=rung; weekly Review-tier digest card (R-A2, US-309)",
+        "Weekly digest includes suppression volume per rule (GATE_ECONOMICS §3 demotion input)"
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-A2). Cites FR-G7 (dry-run estimate).",
+      "notes": " AMENDED 2026-07-14 (adopted R-A2). Cites FR-G7 (dry-run estimate). AMENDED 2026-07-14 challenger fix (US-309 was misattributed to W2-06; suppression digest unowned).",
       "stories": [
-        "US-307"
+        "US-307",
+        "US-309"
       ]
     },
     {
@@ -1278,7 +1353,7 @@
       ],
       "acceptance": [
         "Roster lists every content/ expert: cluster, mode, description, effective model resolution with winning scope (FR-S1 style), fitness cards per configured model (W2-08), instruction-cost metadata (FR-L8)",
-        "Per-agent history queried from events (HANDOFFs run, outcomes, verdict scores, spend, escalations) — matches a projection rebuild (test); content loader refuses an expert file with a hardcoded frontier model id (pin roles, not models)"
+        "Per-agent history queried from events (HANDOFFs run, outcomes, verdict scores, spend, escalations) — matches a projection rebuild (test); content loader refuses an expert file with a hardcoded frontier model id (pin roles, not models); refusal names the violated rule (SRS FR-E2 sketch)"
       ],
       "points": 3,
       "status": "todo",
@@ -1286,6 +1361,62 @@
       "stories": [
         "US-806"
       ]
+    },
+    {
+      "id": "W4-11",
+      "title": "API contract mechanics: OpenAPI, SSE fallback, idempotency, problem+json, route-walker",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/server/src/api/openapi*",
+        "apps/server/src/api/events-sse*",
+        "apps/server/src/api/idempotency*",
+        "apps/server/src/api/problem*",
+        "apps/server/test/route-walker*"
+      ],
+      "depends_on": [
+        "W4-01"
+      ],
+      "acceptance": [
+        "OpenAPI generated from Fastify+zod route schemas served at /api/v1/openapi.json (dev); RFC 7807 application/problem+json on every refusal with rule + evidence refs (FR-T4 wire shape, API_DESIGN §1/§4)",
+        "Idempotency-Key required on verb POSTs and accepted on every mutating POST (replay returns the original response); X-Event-Seq echoed on every mutation (API_DESIGN §1/§5)",
+        "SSE fallback GET /api/v1/events?subscriptions=&last_seq= mirrors every WS message type (TECH_STACK WS/SSE decision); route-walker test: every route x {no token->401, bad Origin->403, verb w/o Idempotency-Key->400} (TESTING §5)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "stories": [
+        "US-202"
+      ],
+      "notes": "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets."
+    },
+    {
+      "id": "W4-12",
+      "title": "Command palette + board detail drawer + a11y CI gate (WCAG 2.2 AA)",
+      "phase": 4,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/web/src/palette/**",
+        "apps/web/src/board/drawer/**",
+        "e2e/a11y/**"
+      ],
+      "depends_on": [
+        "W4-03",
+        "W4-05"
+      ],
+      "acceptance": [
+        "Command palette (⌘K): jump to tickets/docs/receipts, fire verbs (same invariants), mode picker; queries the W7-06 code index when present (UX_SPEC §2a)",
+        "Board detail drawer: full contract, history timeline, evidence, live loop telemetry, spend by rung, session-trace link, pre-build DAG edit with explain-refusals (UX_SPEC §4)",
+        "a11y CI gate: Playwright axe scan on board/morning queue/settings/receipt inspector + keyboard-only pass for board verbs and queue; WCAG 2.2 AA per UX_SPEC §9 — pre-merge on web tickets from W4 (TESTING tier map)"
+      ],
+      "points": 5,
+      "status": "todo",
+      "stories": [
+        "US-202",
+        "US-404"
+      ],
+      "notes": "ADDED 2026-07-14 challenger fix: palette, drawer, and the a11y gate were doc-mandated orphans (W7-06 consumed the palette nobody built)."
     },
     {
       "id": "W5-01",
@@ -1522,11 +1653,12 @@
       "acceptance": [
         "Versioned deterministic catalog (content/plan-catalog, data not code): entries {id, condition over receipts/coverage/finding-ledger snapshots, recommendation template, machine-checkable verify criterion}; evaluation over a fixture snapshot is byte-stable and produces exactly the expected plan items (FR-PLAN1)",
         "plan_items lifecycle proposed/accepted/in_progress/done/regressed per DATABASE.md §5b; deterministic ranking (severity x leverage x staleness, property-tested); accepting an item mints a board ticket carrying the item verify (FR-PLAN2)",
-        "Nightly auto-verify re-evaluates accepted items against fresh snapshots, flips done/regressed, emits Review-tier notifications on regression; zero Decide pops (FR-PLAN3); no code path passes LLM output into item creation (FR-PLAN4, lint/type-level gate)"
+        "Nightly auto-verify re-evaluates accepted items against fresh snapshots, flips done/regressed, emits Review-tier notifications on regression; zero Decide pops (FR-PLAN3); no code path passes LLM output into item creation (FR-PLAN4, lint/type-level gate)",
+        "Evaluation triggers wired: catalog evaluates after every completed run and on Improve-mode entry (FR-PLAN1), not only on fixture snapshots"
       ],
       "points": 5,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md.",
+      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md. AMENDED 2026-07-14 challenger fix.",
       "stories": [
         "US-108",
         "US-109"
@@ -1573,11 +1705,12 @@
         "W0-06"
       ],
       "acceptance": [
-        "Adapter contract: repo ops, branch protection setup on connect (reviewer!=author, no force-push, required checks), PR lifecycle, issue mirror, commit status, identity/token mgmt (FR-I1); recorded-fixture contract tests"
+        "Adapter contract: repo ops, branch protection setup on connect (reviewer!=author, no force-push, required checks), PR lifecycle, issue mirror, commit status, identity/token mgmt (FR-I1); recorded-fixture contract tests",
+        "Branch-protection drift validator: re-reads protection settings and flags drift from the connect-time contract (SC-14 — distinct from W6-05 SHA parity)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": " Adapter contract: docs/design/CONTRACTS.md §2.",
+      "notes": " Adapter contract: docs/design/CONTRACTS.md §2. AMENDED 2026-07-14 challenger fix.",
       "stories": [
         "US-501"
       ]
@@ -1711,7 +1844,8 @@
       "acceptance": [
         "Pack manifest carries file hashes + publisher-key signature; install/load verifies signature + hash tree and records provenance; unsigned or mismatched packs load only behind --allow-unsigned with a permanent Settings warning badge (SC-09)",
         "First-party imported content is signed (re-sign at the v2.1.0+ resync, SW-R1); tampered-pack red fixture refused in the planted-defect harness",
-        "Content intake is license-gated deny-by-default: pack manifests carry a REQUIRED license field; only MIT/Apache-2.0/BSD/first-party auto-accepted, anything else parks as a founder slate (R-E1; CODE_HEALTH_SUITE §8 provenance pattern)"
+        "Content intake is license-gated deny-by-default: pack manifests carry a REQUIRED license field; only MIT/Apache-2.0/BSD/first-party auto-accepted, anything else parks as a founder slate (R-E1; CODE_HEALTH_SUITE §8 provenance pattern)",
+        "Fixture third-party pack loads without core changes and its expert is dispatchable via HANDOFF (CONTRACTS §4 proof; NFR-5)"
       ],
       "points": 3,
       "status": "todo",
@@ -1939,11 +2073,12 @@
       ],
       "acceptance": [
         "npx shipwright boots the server + opens the canvas; ~/.shipwright/ + per-project .shipwright/ created per docs/DEPLOYMENT.md; event-log schema migrations run on upgrade with backup-first; macOS/Linux verified, WSL smoke-tested (D-009)",
-        "Boot sequence per DEPLOYMENT §8 verified: migrations → orphan sweep → audit fast tail-check; high-water event seq mirrored to ~/.shipwright/ per project (SC-11) with a test that a truncated log is detected on next boot"
+        "Boot sequence per DEPLOYMENT §8 verified: migrations → orphan sweep → audit fast tail-check; high-water event seq mirrored to ~/.shipwright/ per project (SC-11) with a test that a truncated log is detected on next boot",
+        "Event-payload upcasting proven (old-version fixture log reads clean); downgrade refused via PRAGMA user_version with the backup-restore path named; `shipwright packs update`, second-invocation core detection, and the SHIPWRIGHT_HOME/SHIPWRIGHT_LOG_LEVEL env contract per DEPLOYMENT §2/§6/§7"
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-22. Verifies NFR-7 (macOS/Linux + WSL smoke).",
+      "notes": " AMENDED 2026-07-14 design review G-22. Verifies NFR-7 (macOS/Linux + WSL smoke). AMENDED 2026-07-14 challenger fix (DEPLOYMENT §3-§7 mechanics were unowned).",
       "stories": [
         "US-802"
       ]
@@ -1972,31 +2107,6 @@
       "stories": [
         "US-205"
       ]
-    },
-    {
-      "id": "W3-14",
-      "title": "Human-edit conflict policy: leases, watcher, human-wins re-ground (FR-T6)",
-      "phase": 3,
-      "module": "harbormaster",
-      "lane": "orchestrator",
-      "write_scope": [
-        "packages/harbormaster/src/conflict*",
-        "packages/harbormaster/test/conflict*"
-      ],
-      "depends_on": [
-        "W3-01c"
-      ],
-      "acceptance": [
-        "File watcher on the human checkout flags edits inside an actively-leased write-scope -> conflict.detected event; affected loop checkpoints at its next pass boundary; agent worktree rebases onto the human change and the micro-loop re-grounds (criterion + evidence re-evaluated) — human always wins (FR-T6, UC-04)",
-        "Material rebase conflict parks the ticket blocked: human-edit-conflict with a Decide card (take mine / take agent's / merge view); human edits are attributed events credited in coverage",
-        "Leased paths surfaced to the UI (lock badge data, UX_SPEC §4)"
-      ],
-      "points": 3,
-      "status": "todo",
-      "stories": [
-        "US-206"
-      ],
-      "notes": "ADDED 2026-07-14 (traceability W1/W3 gap — validator-discovered): FR-T6/UC-04/US-206 had no owning ticket anywhere."
     }
   ]
 }

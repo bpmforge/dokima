@@ -204,6 +204,38 @@ W1-07 blocked on a REAL HIGH: the E2E harbormaster-lite (models the real Harborm
 
 docs/design/FINDING_LOOP_POLICY.md answers "how many loops is too much": findings get identity; iterations classify CLEARED/STALLED/PROGRESSED/OSCILLATING; stall=2 same-tier attempts then escalate (3rd identical attempt always wrong); progress loops budgeted by convergence (ceiling 3+points cap 8; ceiling-while-progressing = decomposition signal); oscillation zero-tolerance; infra failures never charge the coder. Blueprint FR-L6/L7 + SRS rows; tickets W3-08 (ledger+budgets) W3-09 (Harbormaster symlink-safety); W5-07 amended with seam-ownership acceptance. Board 65 tickets / 268 pts.
 
+## 2026-07-14 — DESIGN-REVIEW GATE (P6): all passes complete, validators green, challenger recorded
+
+**Arc:** P1 gap register (30 gaps) → P2 recommendations (18 R-x + AM-1..7) → founder
+adopted all + opened six follow-up domains (addendum R-G..R-M, D-018) → P3 threading
+(D-014..D-018, FR-RL/PLAN/C8/L8/M4/E2 families) → P4 (GATE_ECONOMICS, IMPROVEMENT_PLANS,
+CONTRACTS design docs; ADR-14..18 with Rejected lines; 6 field-derived failure-mode rows;
+Ralph+challenger protocol in PLAYBOOK; validate-plan.mjs + validate-traceability.mjs) →
+P5 board completion (stories[] on every ticket, F1 split W3-01a/b/c, F2 human-pair notes,
+F3 resume preconditions, F4 W3-08 early, D-015 scaffold flags, W3-14) → CHALLENGER pass
+by a fresh agent → all confirmed gaps closed (+W3-15/16, W4-11/12, 12 acceptance
+closures, W2-06 amendment reverted for board honesty, US-309/702 linkage fixed).
+
+**Gate evidence (independent re-runs, this session):**
+- re-ran independently: `node scripts/validate-plan.mjs` — 84 tickets · 329 pts ·
+  P1–P9 checks incl. D-015 lane law — OK, exit 0
+- re-ran independently: `node scripts/validate-traceability.mjs` — 81/81 FR/NFR cited ·
+  35 S-items · 23 D/P decisions · 54/54 stories ticket-covered · zero dangling refs —
+  OK, exit 0
+- re-ran independently: `pnpm lint && pnpm typecheck && pnpm test` — 610 passed |
+  1 skipped (pre-existing opt-in), 83 files — exit 0
+- Challenger verdicts: F1-split NO-LOSS; 5 spot-checks CONFIRMED, W3-08 CONTRADICTED
+  (4-of-6 policy rows named) → fixed same-day; ~16 orphans found → all ticketed or
+  closed; 2 hollow story links → re-attributed.
+- Accepted residuals (listed, not waived silently): receipt/HANDOFF round-trip fixtures
+  ride the existing W1 conformance tests; npm -g channel is a W8-05 note; OpenAI BYOK
+  terms UNVERIFIED (their business-terms page unreachable) — re-check pre-0.3.
+
+**Board:** 84 tickets / 329 pts (was 65/268). Claimable at resume: W0-09, W2-09,
+W3-10, W3-11, W3-15, W4-09. Open founder items: D-017 license + D-018 policy modes
+rode adopt-all (vetoable); D-019 Copilot-adapter ToS slate (TECH_STACK red flag);
+P-001/P-002 slates stand.
+
 ## 2026-07-14 — design review P1: gap register + fix pack (branch review/design-review-hardening)
 
 Full-system design review kicked off (REVIEW_KICKOFF_PROMPT.md, RepoPulse method).
