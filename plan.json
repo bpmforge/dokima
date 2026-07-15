@@ -1282,10 +1282,11 @@
         "Program thread + per-concern agent threads; question/finding/manifest cards render structured with agent, model, ticket, cost provenance and click-through to receipts (FR-C2)"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
-        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
+        "AGENT 2026-07-15: done. No chat/message backend exists anywhere in this repo (no thread/message table in DATABASE.md, no clarification/slate/finding event schema, no cost tracking reachable from apps/server) -- fixture-driven per SRS FR-C2's own acceptance wording (\"Fixture event stream renders all four card types\"). apps/web/src/chat/**: types.ts (ChatCard union + Provenance), reduceChatEvents.ts (pure fold: ServerEnvelope-shaped event stream -> Thread[], program thread pinned first), fixtures.ts (the fixture event stream, hand-mirrored in server.ts's own literal), api.ts, Card/ProvenanceLine/ThreadPanel/ChatView/ChatEmptyState.tsx (provenance line ends with a cost link to /api/v1/receipts/:id, the only receipt-shaped read API_DESIGN documents). server.ts: GET /api/v1/projects/:id/chat replays the fixture (334 lines, under the 400-line gate that blocked W4-03/L-36, no server/** split needed). App.tsx: ChatView mounts via createPortal into the pane-chat DOM node (SplitPaneWorkspace.tsx untouched, same technique W4-03 established for the board). WS chat:<project> wiring is live for future real data; the pane honestly empties when nothing has published (no fabrication). 19 new unit tests + 4 new Playwright e2e specs. Gate: pnpm lint && pnpm typecheck && pnpm test = 880 passed | 1 skipped (114 test files) workspace-wide (was 865 passed | 1 skipped) + pnpm --filter web e2e = 17/17 Playwright specs (was 13/13) + node scripts/validate-plan.mjs = OK. Zero out-of-scope files."
       ],
       "stories": []
     },
