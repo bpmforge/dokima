@@ -16,6 +16,20 @@
  * family-prefixed `model_info` keys) — not something a single generic
  * adapter can parse without per-vendor special-casing. Callers that know
  * their model's context window pass it via `contextLengths`.
+ *
+ * chatStream() (W2-09/G-23) streams the same `/chat/completions` endpoint
+ * with `stream: true` + `stream_options.include_usage` — identical chunk
+ * shape to openai.ts's cloud path, since both speak the OpenAI-compatible
+ * wire format; the SSE framing is shared via streaming.ts.
+ *
+ * Book-style split (file-size gate, 400-line cap): once this file exceeded
+ * the cap it was split into flat sibling chapters — oai-compat-types.ts
+ * (config + wire shapes + constants) and oai-compat-helpers.ts
+ * (finish-reason normalization, retry-after parsing). Flat siblings (not an
+ * oai-compat/ subdirectory) keep every chapter inside the ticket's original
+ * `oai-compat*` write_scope, matching copilot.ts's precedent. This file is
+ * the barrel: the OaiCompatProvider class and its factories are the public
+ * surface.
  */
 import {
   ProviderAuthError,
@@ -26,84 +40,31 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
+import { readSseDataLines, runQueuedStream } from './streaming.js';
 import type {
   ChatRole,
   ChatRequest,
   ChatResponse,
-  FinishReason,
   ModelInfo,
   Provider,
   ProviderHealth,
   ProviderQueueStats,
 } from './types.js';
+import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
+import { normalizeFinishReason, parseRetryAfterMs } from './oai-compat-helpers.js';
+import {
+  DEFAULT_HEALTH_TIMEOUT_MS,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+} from './oai-compat-types.js';
+import type {
+  OaiCompatConfig,
+  OaiCompatStreamChunk,
+  RawChatCompletionResponse,
+  RawModelsResponse,
+} from './oai-compat-types.js';
 
-export interface OaiCompatConfig {
-  id: string;
-  baseUrl: string;
-  apiKey?: string;
-  /** Requests in flight at once for this endpoint; local servers default to 1 (TECH_STACK.md). */
-  concurrency?: number;
-  costTable?: CostTable;
-  contextLengths?: Record<string, number>;
-  headers?: Record<string, string>;
-  requestTimeoutMs?: number;
-  healthTimeoutMs?: number;
-  fetchImpl?: typeof fetch;
-}
-
-interface RawChatChoice {
-  index: number;
-  message: { role: string; content: string | null };
-  finish_reason: string | null;
-}
-
-interface RawChatCompletionResponse {
-  id?: string;
-  model?: string;
-  choices: RawChatChoice[];
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
-
-interface RawModel {
-  id: string;
-  object?: string;
-  owned_by?: string;
-}
-
-interface RawModelsResponse {
-  object?: string;
-  data: RawModel[];
-}
-
-const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
-const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
-
-function normalizeFinishReason(raw: string | null): FinishReason {
-  switch (raw) {
-    case 'stop':
-    case 'length':
-    case 'content_filter':
-    case 'tool_calls':
-      return raw;
-    default:
-      return 'unknown';
-  }
-}
-
-/** Retry-After per RFC 9110 §10.2.3: either delay-seconds or an HTTP-date. */
-function parseRetryAfterMs(header: string | null): number | undefined {
-  if (!header) return undefined;
-  const seconds = Number(header);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
-  const dateMs = Date.parse(header);
-  if (Number.isNaN(dateMs)) return undefined;
-  return Math.max(0, dateMs - Date.now());
-}
+export type { OaiCompatConfig } from './oai-compat-types.js';
 
 export class OaiCompatProvider implements Provider {
   readonly id: string;
@@ -134,15 +95,14 @@ export class OaiCompatProvider implements Provider {
     };
   }
 
-  private async requestJson<T>(
+  private async fetchRaw(
     path: string,
     init: RequestInit,
     timeoutMs: number,
-  ): Promise<T> {
+  ): Promise<Response> {
     const url = `${this.baseUrl}${path}`;
-    let response: Response;
     try {
-      response = await this.fetchImpl(url, {
+      return await this.fetchImpl(url, {
         ...init,
         headers: {
           ...this.headers,
@@ -156,25 +116,33 @@ export class OaiCompatProvider implements Provider {
       }
       throw new ProviderUnreachableError(this.id, err);
     }
+  }
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      if (response.status === 401 || response.status === 403) {
-        throw new ProviderAuthError(this.id, response.status, response.statusText, body);
-      }
-      if (response.status === 429) {
-        const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'));
-        throw new ProviderRateLimitError(
-          this.id,
-          response.status,
-          response.statusText,
-          body,
-          retryAfterMs,
-        );
-      }
-      throw new ProviderHttpError(this.id, response.status, response.statusText, body);
+  private async throwForStatus(response: Response): Promise<never> {
+    const body = await response.text().catch(() => '');
+    if (response.status === 401 || response.status === 403) {
+      throw new ProviderAuthError(this.id, response.status, response.statusText, body);
     }
+    if (response.status === 429) {
+      const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'));
+      throw new ProviderRateLimitError(
+        this.id,
+        response.status,
+        response.statusText,
+        body,
+        retryAfterMs,
+      );
+    }
+    throw new ProviderHttpError(this.id, response.status, response.statusText, body);
+  }
 
+  private async requestJson<T>(
+    path: string,
+    init: RequestInit,
+    timeoutMs: number,
+  ): Promise<T> {
+    const response = await this.fetchRaw(path, init, timeoutMs);
+    if (!response.ok) await this.throwForStatus(response);
     return (await response.json()) as T;
   }
 
@@ -226,6 +194,78 @@ export class OaiCompatProvider implements Provider {
         ),
       };
     });
+  }
+
+  /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */
+  async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    await this.ensureWarm();
+    yield* runQueuedStream(this.queue, () => this.streamEvents(request));
+  }
+
+  private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    const body = {
+      model: request.model,
+      messages: request.messages,
+      stream: true,
+      stream_options: { include_usage: true },
+      ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+      ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
+      ...(request.stop !== undefined ? { stop: request.stop } : {}),
+    };
+
+    const response = await this.fetchRaw(
+      '/chat/completions',
+      { method: 'POST', body: JSON.stringify(body) },
+      this.requestTimeoutMs,
+    );
+    if (!response.ok) await this.throwForStatus(response);
+    if (!response.body) {
+      throw new ProviderResponseShapeError(this.id, 'streaming response has no body');
+    }
+
+    let content = '';
+    let role: ChatRole = 'assistant';
+    let modelId = request.model;
+    let finishReasonRaw: string | null = null;
+    let usage: { promptTokens: number; completionTokens: number } | undefined;
+
+    for await (const payload of readSseDataLines(response.body)) {
+      if (payload === '[DONE]') continue;
+      const event = JSON.parse(payload) as OaiCompatStreamChunk;
+      modelId = event.model ?? modelId;
+      const choice = event.choices[0];
+      if (choice) {
+        if (choice.delta.role) role = choice.delta.role as ChatRole;
+        if (choice.delta.content) {
+          content += choice.delta.content;
+          yield { type: 'delta', content: choice.delta.content };
+        }
+        if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
+      }
+      if (event.usage) {
+        usage = {
+          promptTokens: event.usage.prompt_tokens,
+          completionTokens: event.usage.completion_tokens,
+        };
+      }
+    }
+
+    if (!usage) {
+      throw new ProviderResponseShapeError(
+        this.id,
+        'stream ended without a usage-bearing chunk (stream_options.include_usage) — cannot meter this call',
+      );
+    }
+
+    yield {
+      type: 'final',
+      response: {
+        model: modelId,
+        message: { role, content },
+        finishReason: normalizeFinishReason(finishReasonRaw),
+        usage: normalizeUsage(usage, modelId, this.costTable),
+      },
+    };
   }
 
   async listModels(): Promise<ModelInfo[]> {

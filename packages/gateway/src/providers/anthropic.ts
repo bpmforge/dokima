@@ -23,11 +23,21 @@
  * silently under-report real spend rather than mis-report it as free — the
  * caller must supply verified per-model pricing.
  *
- * Streaming is an internal wire-path toggle (`stream` config), not a new
- * Provider method: types.ts (the Provider contract) is outside this
- * ticket's write_scope, so there is no `chatStream()` yet. Both paths
- * aggregate into the same normalized ChatResponse; a future ticket that
- * owns types.ts can add a real streaming method and point callers at it.
+ * Streaming has two entry points sharing one SSE parse (`streamEvents`,
+ * W2-09/G-23): the `stream` config toggle chat() has always had (aggregates
+ * the same events chatOnce() would; unchanged behavior), and the new public
+ * `chatStream()`, which yields delta events as they arrive and a final
+ * event carrying the identical normalized ChatResponse — same metering, no
+ * unmetered streamed call.
+ *
+ * Book-style split (file-size gate, 400-line cap): once this file exceeded
+ * the cap it was split into flat sibling chapters — anthropic-types.ts
+ * (config + wire shapes + constants) and anthropic-helpers.ts (stop-reason
+ * normalization, system-prompt splitting, retry-after parsing, SSE-error
+ * classification). Flat siblings (not an anthropic/ subdirectory) keep every
+ * chapter inside the ticket's original `anthropic*` write_scope, matching
+ * copilot.ts's precedent. This file is the barrel: the AnthropicProvider
+ * class and its factory are the public surface.
  */
 import {
   ProviderAuthError,
@@ -38,152 +48,39 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
+import { readSseDataLines, runQueuedStream } from './streaming.js';
 import type {
-  ChatMessage,
   ChatRequest,
   ChatResponse,
-  FinishReason,
   ModelInfo,
   Provider,
   ProviderHealth,
   ProviderQueueStats,
 } from './types.js';
+import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, type CostTable } from './usage.js';
+import {
+  classifyStreamError,
+  normalizeStopReason,
+  parseRetryAfterMs,
+  splitSystem,
+} from './anthropic-helpers.js';
+import {
+  DEFAULT_ANTHROPIC_VERSION,
+  DEFAULT_BASE_URL,
+  DEFAULT_CLOUD_CONCURRENCY,
+  DEFAULT_HEALTH_TIMEOUT_MS,
+  DEFAULT_MAX_TOKENS,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+} from './anthropic-types.js';
+import type {
+  AnthropicConfig,
+  AnthropicMessageResponse,
+  AnthropicModelsResponse,
+  AnthropicStreamEvent,
+} from './anthropic-types.js';
 
-export interface AnthropicConfig {
-  id?: string;
-  /** Pre-resolved secret (FR-S2) — resolve the credential ref before constructing this adapter. */
-  apiKey: string;
-  baseUrl?: string;
-  anthropicVersion?: string;
-  /** Real per-model pricing; required (see file header — no $0 default for a paid API). */
-  costTable: CostTable;
-  /** Static override; falls back to a live /v1/models lookup, which does carry max_input_tokens. */
-  contextLengths?: Record<string, number>;
-  concurrency?: number;
-  /** Anthropic requires max_tokens on every request; used when a call doesn't specify one. */
-  defaultMaxTokens?: number;
-  /** Use the streaming (SSE) wire path internally — see file header. */
-  stream?: boolean;
-  requestTimeoutMs?: number;
-  healthTimeoutMs?: number;
-  fetchImpl?: typeof fetch;
-}
-
-const DEFAULT_BASE_URL = 'https://api.anthropic.com';
-const DEFAULT_ANTHROPIC_VERSION = '2023-06-01';
-const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
-const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
-const DEFAULT_MAX_TOKENS = 4096;
-/** Cloud APIs support real parallelism, unlike a single-model local server (RequestQueue's default of 1); kept conservative and fully configurable since neither vendor publishes a universal safe number. */
-const DEFAULT_CLOUD_CONCURRENCY = 4;
-
-interface AnthropicContentBlock {
-  type: string;
-  text?: string;
-}
-
-interface AnthropicUsage {
-  input_tokens?: number;
-  output_tokens?: number;
-}
-
-interface AnthropicMessageResponse {
-  id?: string;
-  model?: string;
-  content: AnthropicContentBlock[];
-  stop_reason: string | null;
-  usage: AnthropicUsage;
-}
-
-interface AnthropicModel {
-  id: string;
-  max_input_tokens?: number;
-}
-
-interface AnthropicModelsResponse {
-  data: AnthropicModel[];
-}
-
-interface AnthropicStreamEvent {
-  type: string;
-  message?: { model?: string; usage?: AnthropicUsage };
-  delta?: {
-    type?: string;
-    text?: string;
-    stop_reason?: string | null;
-  };
-  usage?: AnthropicUsage;
-  error?: { type: string; message: string };
-}
-
-function normalizeStopReason(raw: string | null): FinishReason {
-  switch (raw) {
-    case 'end_turn':
-    case 'stop_sequence':
-      return 'stop';
-    case 'max_tokens':
-      return 'length';
-    case 'tool_use':
-      return 'tool_calls';
-    case 'refusal':
-      return 'content_filter';
-    default:
-      return 'unknown';
-  }
-}
-
-/** Retry-After per RFC 9110 §10.2.3 (same logic as oai-compat.ts; not exported there, so duplicated — see file header re: write_scope). */
-function parseRetryAfterMs(header: string | null): number | undefined {
-  if (!header) return undefined;
-  const seconds = Number(header);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
-  const dateMs = Date.parse(header);
-  if (Number.isNaN(dateMs)) return undefined;
-  return Math.max(0, dateMs - Date.now());
-}
-
-/** Anthropic carries the system prompt in a top-level field, never inside the messages array. */
-function splitSystem(messages: ChatMessage[]): {
-  system?: string;
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
-} {
-  const systemParts: string[] = [];
-  const rest: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-  for (const m of messages) {
-    if (m.role === 'system') {
-      systemParts.push(m.content);
-    } else {
-      rest.push({ role: m.role, content: m.content });
-    }
-  }
-  return {
-    ...(systemParts.length ? { system: systemParts.join('\n\n') } : {}),
-    messages: rest,
-  };
-}
-
-/** Maps Anthropic's SSE-level `error` event (no HTTP status) onto the same typed errors as an HTTP failure. */
-function classifyStreamError(
-  id: string,
-  error: { type: string; message: string },
-): Error {
-  const body = JSON.stringify(error);
-  switch (error.type) {
-    case 'authentication_error':
-      return new ProviderAuthError(id, 401, 'Unauthorized', body);
-    case 'permission_error':
-      return new ProviderAuthError(id, 403, 'Forbidden', body);
-    case 'rate_limit_error':
-      return new ProviderRateLimitError(id, 429, 'Too Many Requests', body);
-    case 'overloaded_error':
-      // "would normally correspond to an HTTP 529" per platform.claude.com/docs/en/build-with-claude/streaming —
-      // same back-off-and-retry contract as a rate limit.
-      return new ProviderRateLimitError(id, 529, 'Overloaded', body);
-    default:
-      return new ProviderHttpError(id, 500, 'Internal Server Error', body);
-  }
-}
+export type { AnthropicConfig } from './anthropic-types.js';
 
 export class AnthropicProvider implements Provider {
   readonly id: string;
@@ -319,6 +216,22 @@ export class AnthropicProvider implements Provider {
   }
 
   private async chatStreaming(request: ChatRequest): Promise<ChatResponse> {
+    let final: ChatResponse | undefined;
+    for await (const event of this.streamEvents(request)) {
+      if (event.type === 'final') final = event.response;
+    }
+    if (!final) {
+      throw new ProviderResponseShapeError(this.id, 'stream ended without a final event');
+    }
+    return final;
+  }
+
+  /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */
+  async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    yield* runQueuedStream(this.queue, () => this.streamEvents(request));
+  }
+
+  private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const response = await this.fetchRaw(
       '/v1/messages',
       { method: 'POST', body: JSON.stringify(this.buildBody(request, true)) },
@@ -329,55 +242,42 @@ export class AnthropicProvider implements Provider {
       throw new ProviderResponseShapeError(this.id, 'streaming response has no body');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let content = '';
     let modelId = request.model;
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
     let stopReasonRaw: string | null = null;
 
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split('\n\n');
-      buffer = events.pop() ?? '';
-      for (const chunk of events) {
-        const dataLine = chunk.split('\n').find((line) => line.startsWith('data:'));
-        if (!dataLine) continue;
-        const event = JSON.parse(
-          dataLine.slice('data:'.length).trim(),
-        ) as AnthropicStreamEvent;
-        switch (event.type) {
-          case 'message_start':
-            modelId = event.message?.model ?? modelId;
-            promptTokens = event.message?.usage?.input_tokens ?? promptTokens;
-            completionTokens = event.message?.usage?.output_tokens ?? completionTokens;
-            break;
-          case 'content_block_delta':
-            if (
-              event.delta?.type === 'text_delta' &&
-              typeof event.delta.text === 'string'
-            ) {
-              content += event.delta.text;
-            }
-            break;
-          case 'message_delta':
-            if (event.delta && event.delta.stop_reason !== undefined) {
-              stopReasonRaw = event.delta.stop_reason ?? null;
-            }
-            if (event.usage?.output_tokens !== undefined) {
-              completionTokens = event.usage.output_tokens;
-            }
-            break;
-          case 'error':
-            if (event.error) throw classifyStreamError(this.id, event.error);
-            break;
-          default:
-            break; // ping, content_block_start/stop, message_stop — nothing to accumulate.
-        }
+    for await (const payload of readSseDataLines(response.body)) {
+      const event = JSON.parse(payload) as AnthropicStreamEvent;
+      switch (event.type) {
+        case 'message_start':
+          modelId = event.message?.model ?? modelId;
+          promptTokens = event.message?.usage?.input_tokens ?? promptTokens;
+          completionTokens = event.message?.usage?.output_tokens ?? completionTokens;
+          break;
+        case 'content_block_delta':
+          if (
+            event.delta?.type === 'text_delta' &&
+            typeof event.delta.text === 'string'
+          ) {
+            content += event.delta.text;
+            yield { type: 'delta', content: event.delta.text };
+          }
+          break;
+        case 'message_delta':
+          if (event.delta && event.delta.stop_reason !== undefined) {
+            stopReasonRaw = event.delta.stop_reason ?? null;
+          }
+          if (event.usage?.output_tokens !== undefined) {
+            completionTokens = event.usage.output_tokens;
+          }
+          break;
+        case 'error':
+          if (event.error) throw classifyStreamError(this.id, event.error);
+          break;
+        default:
+          break; // ping, content_block_start/stop, message_stop — nothing to accumulate.
       }
     }
 
@@ -388,11 +288,18 @@ export class AnthropicProvider implements Provider {
       );
     }
 
-    return {
-      model: modelId,
-      message: { role: 'assistant', content },
-      finishReason: normalizeStopReason(stopReasonRaw),
-      usage: normalizeUsage({ promptTokens, completionTokens }, modelId, this.costTable),
+    yield {
+      type: 'final',
+      response: {
+        model: modelId,
+        message: { role: 'assistant', content },
+        finishReason: normalizeStopReason(stopReasonRaw),
+        usage: normalizeUsage(
+          { promptTokens, completionTokens },
+          modelId,
+          this.costTable,
+        ),
+      },
     };
   }
 

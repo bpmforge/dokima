@@ -21,7 +21,7 @@ import {
   ProviderTimeoutError,
   ProviderUnreachableError,
 } from './errors.js';
-import type { CostTable } from './usage.js';
+import { normalizeUsage, type CostTable } from './usage.js';
 
 interface Call {
   method: string;
@@ -464,6 +464,182 @@ describe('AnthropicProvider — chat() streaming', () => {
       messages: [{ role: 'user', content: 'hi' }],
     });
     expect(response.message.content).toBe('Hello!');
+  });
+});
+
+describe('AnthropicProvider — chatStream()', () => {
+  async function collect(
+    stream: AsyncIterable<import('../types.js').ChatStreamEvent>,
+  ): Promise<{ deltas: string[]; final: import('./types.js').ChatResponse | undefined }> {
+    const deltas: string[] = [];
+    let final: import('./types.js').ChatResponse | undefined;
+    for await (const event of stream) {
+      if (event.type === 'delta') deltas.push(event.content);
+      else final = event.response;
+    }
+    return { deltas, final };
+  }
+
+  it('yields delta events for every text_delta and a final event identical to chat()', async () => {
+    const provider = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl: fakeStreamFetch(streamSuccessSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { deltas, final } = await collect(
+      provider.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+
+    expect(deltas).toEqual(['Hello', '!']);
+    expect(final).toEqual({
+      model: 'claude-sonnet-5',
+      message: { role: 'assistant', content: 'Hello!' },
+      finishReason: 'stop',
+      usage: {
+        promptTokens: 25,
+        completionTokens: 15,
+        totalTokens: 40,
+        costUsd: (25 / 1_000_000) * 3 + (15 / 1_000_000) * 15,
+      },
+    });
+  });
+
+  it('usage metering uses the same cost-table formula as the non-streaming path (no unmetered streamed call)', async () => {
+    const streaming = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl: fakeStreamFetch(streamSuccessSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { final } = await collect(
+      streaming.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+
+    expect(final?.usage).toEqual(
+      normalizeUsage(
+        { promptTokens: 25, completionTokens: 15 },
+        'claude-sonnet-5',
+        SAMPLE_COST,
+      ),
+    );
+    expect(final?.usage.costUsd).toBeGreaterThan(0);
+  });
+
+  it('never fabricates a stop_reason for a dropped connection (stream-abort)', async () => {
+    const provider = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl: fakeStreamFetch(streamAbortSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { deltas, final } = await collect(
+      provider.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    expect(deltas.join('')).toBe('Partial resp');
+    expect(final?.finishReason).toBe('unknown');
+  });
+
+  it('throws ProviderRateLimitError on a mid-stream overloaded_error event', async () => {
+    const provider = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl: fakeStreamFetch(streamOverloadedSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const err = await collect(
+      provider.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    ).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProviderRateLimitError);
+  });
+
+  it('reassembles a data line split across multiple stream chunks', async () => {
+    const splitPoint = streamSuccessSse.indexOf(
+      '"delta":{"type":"text_delta","text":"Hello"',
+    );
+    const part1 = streamSuccessSse.slice(0, splitPoint);
+    const part2 = streamSuccessSse.slice(splitPoint);
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(part1));
+        controller.enqueue(encoder.encode(part2));
+        controller.close();
+      },
+    });
+    const fetchImpl = (async () =>
+      new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      })) as typeof fetch;
+    const provider = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { final } = await collect(
+      provider.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    expect(final?.message.content).toBe('Hello!');
+  });
+
+  it('honors the concurrency queue — a second chatStream() call queues until the first completes', async () => {
+    let releaseFirst!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let callCount = 0;
+    const fetchImpl = (async () => {
+      callCount += 1;
+      if (callCount === 1) await gate;
+      return new Response(streamSuccessSse, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }) as typeof fetch;
+    const provider = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+      concurrency: 1,
+    });
+
+    const first = collect(
+      provider.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    await Promise.resolve();
+    expect(provider.queueStats().active).toBe(1);
+    const second = collect(
+      provider.chatStream!({
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    await Promise.resolve();
+    expect(provider.queueStats().queued).toBe(1);
+
+    releaseFirst();
+    await Promise.all([first, second]);
+    expect(provider.queueStats()).toEqual({ active: 0, queued: 0, concurrency: 1 });
   });
 });
 
