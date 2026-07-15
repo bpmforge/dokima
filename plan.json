@@ -1209,18 +1209,17 @@
         "W4-01"
       ],
       "acceptance": [
-        "Project cards: phase, board stats, running berths + heartbeat freshness, pending Decide count, spend today; create/onboard/import/archive; per-project DB isolation (.shipwright/state.db travels with the repo dir) (FR-F1/F2); Fleet empty state + archived-filter/reopen flow (UX_SPEC §2/§2b, G-10f)",
-        "Global gateway fairness: two fixture projects autorunning against one fake endpoint share the queue fairly; total-berth governor enforced (FR-F3)"
+        "Project cards: phase, board stats, running berths + heartbeat freshness, pending Decide count, spend today; create/onboard/import/archive; per-project DB isolation (.shipwright/state.db travels with the repo dir) (FR-F1/F2); Fleet empty state + archived-filter/reopen flow (UX_SPEC §2/§2b, G-10f)"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-10f/G-18.",
-        "CONDUCTOR 2026-07-15T16:35:18.626Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-15T16:35:18.626Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "SPLIT 2026-07-15 (agent block-note adopted verbatim, L-32): AC2 (gateway fairness + governor) required capabilities outside this ticket dependency closure (needs W2-05 routing + W3-04 berths); moved to W4-13. W4-02 is now honestly the Fleet UI card surface. Reset todo."
       ],
       "stories": [
-        "US-801",
-        "US-805"
+        "US-801"
       ]
     },
     {
@@ -2173,6 +2172,30 @@
       "stories": [
         "US-205"
       ]
+    },
+    {
+      "id": "W4-13",
+      "title": "Global gateway pool: fair cross-project scheduling + total-berth governor (FR-F3)",
+      "phase": 4,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/pool/**"
+      ],
+      "depends_on": [
+        "W2-05",
+        "W3-04"
+      ],
+      "acceptance": [
+        "Process-wide per-endpoint request queues with fair cross-project scheduling: two fixture projects autorunning against one single-slot fake endpoint interleave without starvation (request-order asserted, FR-F3/US-805)",
+        "Global concurrency governor caps summed active berths across projects at N (three-scope setting); per-project berth dials allocate within the cap (ARCHITECTURE §6)"
+      ],
+      "points": 3,
+      "status": "todo",
+      "stories": [
+        "US-805"
+      ],
+      "notes": "ADDED 2026-07-15 from the W4-02 block-note (L-32): per-AC dependency closure — the fairness engine is gateway-lane work depending on routing (W2-05) and berths (W3-04), not a Fleet-UI concern."
     }
   ]
 }
