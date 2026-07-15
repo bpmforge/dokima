@@ -711,7 +711,8 @@
         "On manifest return: stat claimed files, re-run verify in the worktree, confirm >=1 commit on the ticket branch, diff-scope check — then and only then close with receipt; no close receipt => failure comment, never forward progress (FR-H1, SC-02)",
         "manifest.files MUST be a subset of observed changed paths (computeChangedPaths) and the verified commit must touch them — the unresolved W3-01 HIGH, now acceptance (R-F4)",
         "Red fixtures: promise-token ignored; spoofed manifest fails; graded entity never grades itself; manifest memory_written[] field checked when the role is memory-eligible (R-G2, once W7-01 lands)",
-        "content/validators/secrets-scan.sh (W3-13) runs as part of every close gate: widen packages/validators/src/pack.ts's VALIDATOR_NAME_RE (currently ^(validate|run)-.+\\.sh$, which cannot match 'secrets-scan.sh') so loadValidatorPack() auto-discovers it, and include it in the close flow's requiredValidators — red fixture: a planted secret in the diff blocks close via this real gate path, not just the validator's own standalone test (SC-06, BLUEPRINT §12.5)"
+        "content/validators/secrets-scan.sh (W3-13) runs as part of every close gate: widen packages/validators/src/pack.ts's VALIDATOR_NAME_RE (currently ^(validate|run)-.+\\.sh$, which cannot match 'secrets-scan.sh') so loadValidatorPack() auto-discovers it, and include it in the close flow's requiredValidators — red fixture: a planted secret in the diff blocks close via this real gate path, not just the validator's own standalone test (SC-06, BLUEPRINT §12.5)",
+        "secrets-scan gate wiring ships with a fixture/doc allowlist-baseline (reviewer-verified: the scanner self-hits 27 planted-fixture/doc strings in this repo — shadow-calibrate before gating, D-014/L-28) and guards the per-file re-grep against SIGPIPE/colon-filenames so the 0/1/2 contract holds (review LOW)"
       ],
       "points": 3,
       "status": "todo",
@@ -719,7 +720,7 @@
         "US-402",
         "US-403"
       ],
-      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. AMENDED 2026-07-15 (W3-13 gate-fix, conductor-flagged HIGH): dep on W3-13 added; write_scope widened to packages/validators/src/pack.ts (+ its tests) since this is the only ticket that both executes the close gate and can legally touch the validator-pack discovery regex — closing the schema bug where W3-13's write_scope (content/validators/secrets-scan*) can never produce a filename pack.ts's VALIDATOR_NAME_RE accepts. Do not mark W3-13 done for 'wired into every close gate' until this criterion lands here."
+      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. AMENDED 2026-07-15 (W3-13 gate-fix, conductor-flagged HIGH): dep on W3-13 added; write_scope widened to packages/validators/src/pack.ts (+ its tests) since this is the only ticket that both executes the close gate and can legally touch the validator-pack discovery regex — closing the schema bug where W3-13's write_scope (content/validators/secrets-scan*) can never produce a filename pack.ts's VALIDATOR_NAME_RE accepts. Do not mark W3-13 done for 'wired into every close gate' until this criterion lands here. AMENDED 2026-07-15 per W3-13 independent review routing confirmation."
     },
     {
       "id": "W3-01c",
@@ -1154,12 +1155,13 @@
       "acceptance": [
         "renderHandoff (packages/loop/src/handoff.ts) calls redactDeep/collectSecretValues (W3-13, packages/shared/src/secrets) on the assembled context/produce/verify fields before returning the rendered block, so it is the universal choke point for every HANDOFF regardless of which future ticket assembles the packet content (FR-L5/W7-04 Context Packer independent)",
         "appendEvent (packages/events/src/append.ts) calls the same redaction primitives on input.payload before it is JSON-stringified/hashed/persisted, so no secret ever reaches the hash-chained event log (SC-06, NFR-4)",
-        "Red fixture: a planted secret value (vault-registered or .env-sourced, per W3-13's collectSecretValues) pushed through renderHandoff's context and through an appendEvent payload comes out redacted in both the rendered block and the stored event row — zero plaintext in either"
+        "Red fixture: a planted secret value (vault-registered or .env-sourced, per W3-13's collectSecretValues) pushed through renderHandoff's context and through an appendEvent payload comes out redacted in both the rendered block and the stored event row — zero plaintext in either",
+        "collectSecretValues loads the standard .env variant set (.env, .env.local, .env.*.local) or the single-file limitation is documented in the redaction spec (review LOW)"
       ],
       "points": 3,
       "status": "todo",
       "stories": [],
-      "notes": "ADDED 2026-07-15 (W3-13 gate-fix, conductor-flagged CRITICAL): BLUEPRINT §12.5/SC-06 requires redaction to apply to every context packet AND the event log, but W3-13's write_scope (packages/shared/src/secrets/**) cannot touch packages/loop or packages/events — a schema bug, not something W3-13 should work around. This ticket is the split-out follow-up: it owns exactly the two universal choke points (HANDOFF render, event append) where a blanket redaction layer belongs independent of whichever ticket builds the actual context-packet assembly (W7-04) or event-payload producers. Do not consider SC-06 closed until this lands."
+      "notes": "ADDED 2026-07-15 (W3-13 gate-fix, conductor-flagged CRITICAL): BLUEPRINT §12.5/SC-06 requires redaction to apply to every context packet AND the event log, but W3-13's write_scope (packages/shared/src/secrets/**) cannot touch packages/loop or packages/events — a schema bug, not something W3-13 should work around. This ticket is the split-out follow-up: it owns exactly the two universal choke points (HANDOFF render, event append) where a blanket redaction layer belongs independent of whichever ticket builds the actual context-packet assembly (W7-04) or event-payload producers. Do not consider SC-06 closed until this lands. AMENDED 2026-07-15 per W3-13 independent review routing confirmation."
     },
     {
       "id": "W4-01",
