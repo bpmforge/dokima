@@ -18,6 +18,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { buildAllowlist } from './allowlist.js';
 import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plugin.js';
 import { registerHealthz } from './healthz.js';
+import { registerProjectRoutes } from './projects.js';
 import { WsHub } from './ws-hub.js';
 import { completeHandshake, rejectUpgrade } from './ws-socket.js';
 
@@ -29,6 +30,8 @@ export interface BuildApiServerOptions {
   webDistDir?: string;
   logger?: boolean;
   wsHub?: WsHub;
+  /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
+  fleetHome?: string;
 }
 
 export interface ApiServer {
@@ -47,7 +50,8 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
 
   registerAuthHook(app, authOpts);
   registerHealthz(app, { isDbOpen: opts.isDbOpen, wsHub });
-  registerStatic(app, opts.webDistDir);
+  registerProjectRoutes(app, { home: opts.fleetHome });
+  registerStatic(app, opts.webDistDir, opts.token);
 
   app.server.on('upgrade', (req: IncomingMessage, socket: Duplex) => {
     handleUpgrade(req, socket, authOpts, wsHub);
@@ -126,7 +130,26 @@ function resolveStaticPath(root: string, urlPath: string): string | undefined {
   return resolved;
 }
 
-function registerStatic(app: FastifyInstance, webDistDir: string | undefined): void {
+/**
+ * API_DESIGN §1: the bearer token is "auto-injected by the served SPA" —
+ * the browser has no other way to read `~/.shipwright/token` (SC-08 static
+ * assets are intentionally unauthenticated so the shell can load before it
+ * has a token at all). Injected as a global rather than fetched over an
+ * unauthenticated endpoint, which would hand the token to any localhost
+ * page, not just this one.
+ */
+function injectToken(html: string, token: string): string {
+  const script = `<script>window.__SHIPWRIGHT_TOKEN__=${JSON.stringify(token)};</script>`;
+  return html.includes('</head>')
+    ? html.replace('</head>', `${script}</head>`)
+    : script + html;
+}
+
+function registerStatic(
+  app: FastifyInstance,
+  webDistDir: string | undefined,
+  token: string,
+): void {
   if (!webDistDir) return;
 
   app.get('/*', async (request, reply) => {
@@ -137,13 +160,18 @@ function registerStatic(app: FastifyInstance, webDistDir: string | undefined): v
     if (target) {
       try {
         const body = await fs.readFile(target);
+        if (target.endsWith('.html')) {
+          return reply
+            .type('text/html; charset=utf-8')
+            .send(injectToken(body.toString('utf8'), token));
+        }
         return reply.type(contentTypeFor(target)).send(body);
       } catch {
         // Not a real file (or a directory, e.g. `/`) — fall through to the SPA shell.
       }
     }
-    const index = await fs.readFile(path.join(webDistDir, 'index.html'));
-    return reply.type('text/html; charset=utf-8').send(index);
+    const index = await fs.readFile(path.join(webDistDir, 'index.html'), 'utf8');
+    return reply.type('text/html; charset=utf-8').send(injectToken(index, token));
   });
 
   app.setNotFoundHandler(async (_request, reply) => {
