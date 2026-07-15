@@ -20,6 +20,11 @@ import {
   createOaiCompatProvider,
   createOllamaProvider,
 } from './oai-compat.js';
+import {
+  streamNoUsageSse,
+  streamSuccessSse,
+  streamTruncatedSse,
+} from './openai-fixtures.js';
 import type { CostTable } from './usage.js';
 
 interface Call {
@@ -58,7 +63,34 @@ function fakeFetch(
   return { fetchImpl, calls };
 }
 
+/** Answers a POST /chat/completions with a raw SSE body (text/event-stream), everything else with the models fixture. */
+function fakeStreamFetch(
+  sse: string,
+  calls: Call[] = [],
+): { fetchImpl: typeof fetch; calls: Call[] } {
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(typeof input === 'string' ? input : input.toString());
+    calls.push({
+      method: init?.method ?? 'GET',
+      path: url.pathname,
+      headers: Object.fromEntries(new Headers(init?.headers).entries()),
+      body: init?.body ? JSON.parse(init.body as string) : undefined,
+    });
+    if (url.pathname.endsWith('/chat/completions')) {
+      return new Response(sse, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }
+    return new Response(JSON.stringify(modelsListFixture), { status: 200 });
+  }) as typeof fetch;
+  return { fetchImpl, calls };
+}
+
 const NO_COST: CostTable = {};
+const SAMPLE_COST: CostTable = {
+  'gpt-5.1': { inputPerMillion: 5, outputPerMillion: 20 },
+};
 
 describe('OaiCompatProvider — chat()', () => {
   it('parses a successful completion into a normalized ChatResponse', async () => {
@@ -302,6 +334,270 @@ describe('OaiCompatProvider — chat()', () => {
     ]);
 
     expect(peak).toBe(2);
+  });
+});
+
+describe('OaiCompatProvider — chatStream()', () => {
+  async function collect(
+    stream: AsyncIterable<import('./types.js').ChatStreamEvent>,
+  ): Promise<{ deltas: string[]; final: import('./types.js').ChatResponse | undefined }> {
+    const deltas: string[] = [];
+    let final: import('./types.js').ChatResponse | undefined;
+    for await (const event of stream) {
+      if (event.type === 'delta') deltas.push(event.content);
+      else final = event.response;
+    }
+    return { deltas, final };
+  }
+
+  it('yields delta events for every content chunk and a final event identical to chat()', async () => {
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl: fakeStreamFetch(streamSuccessSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { deltas, final } = await collect(
+      provider.chatStream!({
+        model: 'gpt-5.1',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+
+    expect(deltas).toEqual(['Hello', '!']);
+    expect(final).toEqual({
+      model: 'gpt-5.1',
+      message: { role: 'assistant', content: 'Hello!' },
+      finishReason: 'stop',
+      usage: {
+        promptTokens: 12,
+        completionTokens: 9,
+        totalTokens: 21,
+        costUsd: (12 / 1_000_000) * 5 + (9 / 1_000_000) * 20,
+      },
+    });
+  });
+
+  it('surfaces truncation via finishReason "length" over the streaming path', async () => {
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl: fakeStreamFetch(streamTruncatedSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { final } = await collect(
+      provider.chatStream!({
+        model: 'gpt-5.1',
+        messages: [{ role: 'user', content: 'write a long essay' }],
+      }),
+    );
+    expect(final?.finishReason).toBe('length');
+    expect(final?.usage.totalTokens).toBe(500);
+  });
+
+  it('usage metering uses the same cost-table formula as the non-streaming path (no unmetered streamed call)', async () => {
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl: fakeStreamFetch(streamSuccessSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { final } = await collect(
+      provider.chatStream!({
+        model: 'gpt-5.1',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    expect(final?.usage.costUsd).toBe((12 / 1_000_000) * 5 + (9 / 1_000_000) * 20);
+    expect(final?.usage.costUsd).toBeGreaterThan(0);
+  });
+
+  it('throws ProviderResponseShapeError when the stream ends without a usage chunk (stream-abort)', async () => {
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl: fakeStreamFetch(streamNoUsageSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    await expect(
+      collect(
+        provider.chatStream!({
+          model: 'gpt-5.1',
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+      ),
+    ).rejects.toThrow(ProviderResponseShapeError);
+  });
+
+  it('throws ProviderAuthError on 401 over the streaming path', async () => {
+    const fetchImpl = (async () =>
+      new Response(authFailureFixture.body, {
+        status: authFailureFixture.status,
+        statusText: authFailureFixture.statusText,
+      })) as typeof fetch;
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    await expect(
+      collect(
+        provider.chatStream!({
+          model: 'gpt-5.1',
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+      ),
+    ).rejects.toThrow(ProviderAuthError);
+  });
+
+  it('propagates a mid-stream connection error after partial deltas already yielded', async () => {
+    const encoder = new TextEncoder();
+    const partial = `data: ${JSON.stringify({
+      id: 'chatcmpl-mid-stream-error',
+      object: 'chat.completion.chunk',
+      created: 1_752_000_003,
+      model: 'gpt-5.1',
+      choices: [
+        {
+          index: 0,
+          delta: { role: 'assistant', content: 'partial' },
+          finish_reason: null,
+        },
+      ],
+    })}\n\n`;
+    let pulls = 0;
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input.toString());
+      if (url.pathname.endsWith('/models')) {
+        return new Response(JSON.stringify(modelsListFixture), { status: 200 });
+      }
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulls += 1;
+          if (pulls === 1) {
+            controller.enqueue(encoder.encode(partial));
+          } else {
+            controller.error(new Error('ECONNRESET'));
+          }
+        },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }) as typeof fetch;
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const seenDeltas: string[] = [];
+    await expect(
+      (async () => {
+        for await (const event of provider.chatStream!({
+          model: 'gpt-5.1',
+          messages: [{ role: 'user', content: 'hi' }],
+        })) {
+          if (event.type === 'delta') seenDeltas.push(event.content);
+        }
+      })(),
+    ).rejects.toThrow('ECONNRESET');
+    expect(seenDeltas).toEqual(['partial']);
+  });
+
+  it('reassembles a data line split across multiple stream chunks', async () => {
+    const splitPoint = streamSuccessSse.indexOf('"content":"Hello"');
+    const part1 = streamSuccessSse.slice(0, splitPoint);
+    const part2 = streamSuccessSse.slice(splitPoint);
+    const encoder = new TextEncoder();
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input.toString());
+      if (url.pathname.endsWith('/models')) {
+        return new Response(JSON.stringify(modelsListFixture), { status: 200 });
+      }
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(part1));
+          controller.enqueue(encoder.encode(part2));
+          controller.close();
+        },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }) as typeof fetch;
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const { final } = await collect(
+      provider.chatStream!({
+        model: 'gpt-5.1',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    expect(final?.message.content).toBe('Hello!');
+  });
+
+  it('honors the concurrency queue — a second chatStream() call queues until the first completes', async () => {
+    let releaseFirst!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let streamCallCount = 0;
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input.toString());
+      if (url.pathname.endsWith('/models')) {
+        return new Response(JSON.stringify(modelsListFixture), { status: 200 });
+      }
+      streamCallCount += 1;
+      if (streamCallCount === 1) await gate;
+      return new Response(streamSuccessSse, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }) as typeof fetch;
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+      concurrency: 1,
+    });
+    await provider.warmUp(); // pre-warm so chatStream()'s ensureWarm() is a no-op below (deterministic queue timing)
+
+    const first = collect(
+      provider.chatStream!({
+        model: 'gpt-5.1',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    await Promise.resolve();
+    expect(provider.queueStats().active).toBe(1);
+    const second = collect(
+      provider.chatStream!({
+        model: 'gpt-5.1',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    );
+    await Promise.resolve();
+    expect(provider.queueStats().queued).toBe(1);
+
+    releaseFirst();
+    await Promise.all([first, second]);
+    expect(provider.queueStats()).toEqual({ active: 0, queued: 0, concurrency: 1 });
   });
 });
 

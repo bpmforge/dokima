@@ -284,14 +284,20 @@ export class OpenAiProvider implements Provider {
     return this.inner.warmUp();
   }
 
+  /**
+   * Two independent RequestQueues back this adapter — `inner`'s (non-streaming
+   * chat()) and `streamQueue` (chat() with the `stream` toggle, and
+   * chatStream(), W2-09) — since either can be active at once now that
+   * chatStream() no longer requires `stream: true`, report combined load
+   * rather than picking one queue by config.
+   */
   queueStats(): ProviderQueueStats {
-    return this.streamEnabled
-      ? {
-          active: this.streamQueue.activeCount,
-          queued: this.streamQueue.queuedCount,
-          concurrency: this.streamQueue.concurrency,
-        }
-      : this.inner.queueStats();
+    const inner = this.inner.queueStats();
+    return {
+      active: inner.active + this.streamQueue.activeCount,
+      queued: inner.queued + this.streamQueue.queuedCount,
+      concurrency: this.streamQueue.concurrency,
+    };
   }
 }
 
