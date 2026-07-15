@@ -244,7 +244,7 @@
         "Per-package coverage thresholds enforced (trust core >=90% line / >=85% branch, gateway/adapters >=80% — TESTING §9); wave-gate traceability grep (FR/UC ids in test titles) runs as a CI job; validate-plan.mjs + validate-traceability.mjs run on every push"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         "ADDED 2026-07-14 design review G-6: TESTING.md/SC-16 reference CI gates ~20x; nothing created CI. Claimable immediately (W0 infra exception, PLAYBOOK). AMENDED 2026-07-14 challenger fix (coverage thresholds + traceability greps were unowned).",
         "AGENT 2026-07-14: done. .github/workflows/ci.yml (push/PR): named jobs gate (frozen-lockfile install + lint + typecheck + test), conformance (auto-discovers every *conformance.test.ts, groups by package, runs each in its own package cwd), gate-integrity (re-runs the trust-core packages that carry the TESTING.md §6 red-fixture tests inline — events/tickets/git/validators/apps-server — since those fixtures live in each gate-bearing ticket's own package tests, not a separate directory), coverage (per-package threshold enforcement via vitest CLI flags), supply-chain (.npmrc content assertion + pnpm audit --prod --audit-level high), traceability (validate-plan.mjs + validate-traceability.mjs + an FR/UC-id-in-test-title grep scoped to done tickets). .github/workflows/nightly.yml: scheduled + workflow_dispatch e2e job. Every embedded shell/node step was dry-run locally against real repo state (not just YAML-parsed) before commit.",
