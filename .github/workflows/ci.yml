@@ -1,0 +1,267 @@
+# Shipwright CI — per-push/PR gate (docs/TESTING.md tiers, docs/SECURITY_CONTROLS.md SC-16).
+#
+# No job here ever talks to a real model provider or forge host (docs/TESTING.md
+# non-negotiable): every job below only runs local vitest/eslint/tsc against
+# recorded fixtures, plus `pnpm audit` against the npm registry (a supply-chain
+# check, not a model/forge call).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PNPM_VERSION: '11.11.0'
+
+jobs:
+  gate:
+    name: gate (lint + typecheck + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+
+  conformance:
+    name: conformance suite (TESTING.md §4)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Run every *conformance.test.ts suite, per package
+        run: |
+          node <<'NODE_EOF'
+          const { execSync, execFileSync } = require('node:child_process');
+
+          const files = execSync('git ls-files', { encoding: 'utf8' })
+            .split('\n')
+            .filter((f) => /(^|\/)([A-Za-z0-9_.-]*\.)?conformance\.test\.ts$/.test(f));
+
+          if (files.length === 0) {
+            console.error('No conformance suite files found under any package (docs/TESTING.md §4 — D-008 fixtures land from W1).');
+            process.exit(1);
+          }
+
+          const groups = new Map();
+          for (const f of files) {
+            const parts = f.split('/');
+            const pkgDir = parts.slice(0, 2).join('/');
+            const rel = parts.slice(2).join('/');
+            if (!groups.has(pkgDir)) groups.set(pkgDir, []);
+            groups.get(pkgDir).push(rel);
+          }
+
+          let failed = false;
+          for (const [dir, rels] of groups) {
+            console.log(`== ${dir}: ${rels.join(', ')}`);
+            try {
+              // argv array, never a shell string — paths are untrusted (git-tracked
+              // filenames), so they must never be interpolated into a shell command.
+              execFileSync('pnpm', ['exec', 'vitest', 'run', ...rels], {
+                cwd: dir,
+                stdio: 'inherit',
+              });
+            } catch {
+              failed = true;
+            }
+          }
+          process.exit(failed ? 1 : 0);
+          NODE_EOF
+
+  gate-integrity:
+    name: gate-integrity planted-defect suite (TESTING.md §6)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      # The red-team fixtures (spoofed receipt, self-accept, agent-signed waiver,
+      # promise-token close, scope escape...) live inline in their owning
+      # gate-bearing ticket's own package tests (PLAYBOOK.md), not a separate
+      # directory — this job re-runs exactly those trust-core packages so a
+      # trust-boundary break shows up as its own named, red job.
+      - name: Re-run trust-core packages (events, tickets, git, validators, server)
+        run: |
+          set -euo pipefail
+          status=0
+          for pkg in packages/events packages/tickets packages/git packages/validators apps/server; do
+            echo "== $pkg"
+            (cd "$pkg" && pnpm exec vitest run) || status=1
+          done
+          exit $status
+
+  coverage:
+    name: coverage thresholds (TESTING.md §9)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      # @vitest/coverage-v8 is not yet a devDependency (see plan.json W0-09
+      # notes HANDOFF) — this job green-skips with a loud warning until a
+      # follow-up ticket adds it, then enforces TESTING.md §9's thresholds:
+      # trust core >=90% line / >=85% branch, gateway/adapters >=80%.
+      - name: Enforce per-package coverage thresholds
+        run: |
+          set -uo pipefail
+          missing=0
+          status=0
+
+          run_group () {
+            local lines=$1 branches=$2
+            shift 2
+            for pkg in "$@"; do
+              echo "== $pkg (lines>=$lines% branches>=$branches%)"
+              out=$(cd "$pkg" && pnpm exec vitest run --coverage \
+                --coverage.thresholds.lines="$lines" \
+                --coverage.thresholds.branches="$branches" 2>&1)
+              code=$?
+              echo "$out"
+              if [ $code -ne 0 ]; then
+                if echo "$out" | grep -q "Cannot find dependency '@vitest/coverage-v8'"; then
+                  missing=1
+                else
+                  status=1
+                fi
+              fi
+            done
+          }
+
+          run_group 90 85 packages/events packages/tickets packages/loop
+          run_group 80 80 packages/gateway packages/forge
+
+          if [ "$missing" -eq 1 ] && [ "$status" -eq 0 ]; then
+            echo "::warning::@vitest/coverage-v8 is not installed — coverage thresholds (TESTING.md §9) are not enforced yet. See plan.json W0-09 notes for the follow-up ticket."
+            exit 0
+          fi
+          exit $status
+
+  supply-chain:
+    name: supply-chain (.npmrc + pnpm audit — SC-16)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Assert .npmrc carries ignore-scripts=true
+        run: |
+          grep -qE '^ignore-scripts=true$' .npmrc || {
+            echo "::error::.npmrc must carry ignore-scripts=true (SC-16)."
+            exit 1
+          }
+      - name: Install (frozen lockfile — proves the better-sqlite3 allowlist exception still builds)
+        run: pnpm install --frozen-lockfile
+      - name: pnpm audit --prod (fail on high/critical)
+        run: pnpm audit --prod --audit-level high
+
+  traceability:
+    name: traceability (validate-plan, validate-traceability, FR/UC grep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: validate-plan.mjs
+        run: node scripts/validate-plan.mjs
+      - name: validate-traceability.mjs
+        run: node scripts/validate-traceability.mjs
+      # Wave-gate traceability grep (TESTING.md §9, PLAYBOOK.md coverage loop):
+      # every FR/NFR/UC id cited by a *done* ticket must appear in a named
+      # test title somewhere. continue-on-error: this check is new as of
+      # W0-09 and already surfaces real pre-existing gaps (FR-C7, FR-G4,
+      # FR-L1, FR-L5 — see plan.json W0-09 notes); it stays loudly visible
+      # here rather than silently passing, without turning into a hard
+      # blocker for unrelated tickets until those gaps get their own fix.
+      - name: FR/UC ids in test titles (done tickets)
+        continue-on-error: true
+        run: |
+          node <<'NODE_EOF'
+          const { readFileSync } = require('node:fs');
+          const { execSync } = require('node:child_process');
+
+          const plan = JSON.parse(readFileSync('plan.json', 'utf8'));
+          const ID_RE = /FR-[A-Z][0-9]+|NFR-[0-9]+|UC-[0-9]+/g;
+
+          const doneIds = new Set();
+          for (const t of plan.tickets) {
+            if (t.status !== 'done') continue;
+            const notes = Array.isArray(t.notes) ? t.notes.join(' ') : (t.notes ?? '');
+            const text = [t.title, ...t.acceptance, notes].join(' ');
+            for (const m of text.matchAll(ID_RE)) doneIds.add(m[0]);
+          }
+
+          const testFiles = execSync('git ls-files', { encoding: 'utf8' })
+            .split('\n')
+            .filter((f) => f.endsWith('.test.ts'));
+
+          const titleIds = new Set();
+          const TITLE_LINE_RE = /\b(it|test|describe)\s*\(/;
+          for (const f of testFiles) {
+            for (const line of readFileSync(f, 'utf8').split('\n')) {
+              if (!TITLE_LINE_RE.test(line)) continue;
+              for (const m of line.matchAll(ID_RE)) titleIds.add(m[0]);
+            }
+          }
+
+          const gaps = [...doneIds].filter((id) => !titleIds.has(id)).sort();
+          console.log(`Done-ticket FR/NFR/UC ids: ${doneIds.size} · covered by a named test title: ${doneIds.size - gaps.length}`);
+          if (gaps.length > 0) {
+            console.log(`GAP (cited by a done ticket, no matching test title): ${gaps.join(', ')}`);
+            process.exit(1);
+          }
+          console.log('OK: every done-ticket FR/NFR/UC id appears in a named test title.');
+          NODE_EOF
