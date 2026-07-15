@@ -20,9 +20,11 @@
  * write_scope, so no dependency on packages/shared's credential store can
  * be added here).
  *
- * Streaming is an internal wire-path toggle (`stream` config), not a new
- * Provider method — see anthropic.ts's file header for why (types.ts is
- * outside this ticket's write_scope).
+ * Streaming has two entry points sharing one SSE parse (`streamEvents`,
+ * W2-09/G-23): the `stream` config toggle chat() has always had (unchanged
+ * behavior), and the new public `chatStream()`, which yields delta events
+ * as they arrive and a final event carrying the identical normalized
+ * ChatResponse — same metering, no unmetered streamed call.
  */
 import {
   ProviderAuthError,
@@ -34,10 +36,12 @@ import {
 } from './errors.js';
 import { createOaiCompatProvider } from './oai-compat.js';
 import { RequestQueue } from './request-queue.js';
+import { readSseDataLines, runQueuedStream } from './streaming.js';
 import type {
   ChatRole,
   ChatRequest,
   ChatResponse,
+  ChatStreamEvent,
   FinishReason,
   ModelInfo,
   Provider,
@@ -184,6 +188,22 @@ export class OpenAiProvider implements Provider {
   }
 
   private async chatStreaming(request: ChatRequest): Promise<ChatResponse> {
+    let final: ChatResponse | undefined;
+    for await (const event of this.streamEvents(request)) {
+      if (event.type === 'final') final = event.response;
+    }
+    if (!final) {
+      throw new ProviderResponseShapeError(this.id, 'stream ended without a final event');
+    }
+    return final;
+  }
+
+  /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */
+  async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    yield* runQueuedStream(this.streamQueue, () => this.streamEvents(request));
+  }
+
+  private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const body = {
       model: request.model,
       messages: request.messages,
@@ -203,40 +223,30 @@ export class OpenAiProvider implements Provider {
       throw new ProviderResponseShapeError(this.id, 'streaming response has no body');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let content = '';
     let role: ChatRole = 'assistant';
     let modelId = request.model;
     let finishReasonRaw: string | null = null;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
 
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split('\n\n');
-      buffer = events.pop() ?? '';
-      for (const chunk of events) {
-        const dataLine = chunk.split('\n').find((line) => line.startsWith('data:'));
-        if (!dataLine) continue;
-        const payload = dataLine.slice('data:'.length).trim();
-        if (payload === '[DONE]') continue;
-        const event = JSON.parse(payload) as OpenAiStreamChunk;
-        modelId = event.model ?? modelId;
-        const choice = event.choices[0];
-        if (choice) {
-          if (choice.delta.role) role = choice.delta.role as ChatRole;
-          if (choice.delta.content) content += choice.delta.content;
-          if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
+    for await (const payload of readSseDataLines(response.body)) {
+      if (payload === '[DONE]') continue;
+      const event = JSON.parse(payload) as OpenAiStreamChunk;
+      modelId = event.model ?? modelId;
+      const choice = event.choices[0];
+      if (choice) {
+        if (choice.delta.role) role = choice.delta.role as ChatRole;
+        if (choice.delta.content) {
+          content += choice.delta.content;
+          yield { type: 'delta', content: choice.delta.content };
         }
-        if (event.usage) {
-          usage = {
-            promptTokens: event.usage.prompt_tokens,
-            completionTokens: event.usage.completion_tokens,
-          };
-        }
+        if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
+      }
+      if (event.usage) {
+        usage = {
+          promptTokens: event.usage.prompt_tokens,
+          completionTokens: event.usage.completion_tokens,
+        };
       }
     }
 
@@ -247,11 +257,14 @@ export class OpenAiProvider implements Provider {
       );
     }
 
-    return {
-      model: modelId,
-      message: { role, content },
-      finishReason: normalizeFinishReason(finishReasonRaw),
-      usage: normalizeUsage(usage, modelId, this.costTable),
+    yield {
+      type: 'final',
+      response: {
+        model: modelId,
+        message: { role, content },
+        finishReason: normalizeFinishReason(finishReasonRaw),
+        usage: normalizeUsage(usage, modelId, this.costTable),
+      },
     };
   }
 

@@ -23,11 +23,12 @@
  * silently under-report real spend rather than mis-report it as free — the
  * caller must supply verified per-model pricing.
  *
- * Streaming is an internal wire-path toggle (`stream` config), not a new
- * Provider method: types.ts (the Provider contract) is outside this
- * ticket's write_scope, so there is no `chatStream()` yet. Both paths
- * aggregate into the same normalized ChatResponse; a future ticket that
- * owns types.ts can add a real streaming method and point callers at it.
+ * Streaming has two entry points sharing one SSE parse (`streamEvents`,
+ * W2-09/G-23): the `stream` config toggle chat() has always had (aggregates
+ * the same events chatOnce() would; unchanged behavior), and the new public
+ * `chatStream()`, which yields delta events as they arrive and a final
+ * event carrying the identical normalized ChatResponse — same metering, no
+ * unmetered streamed call.
  */
 import {
   ProviderAuthError,
@@ -38,10 +39,12 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
+import { readSseDataLines, runQueuedStream } from './streaming.js';
 import type {
   ChatMessage,
   ChatRequest,
   ChatResponse,
+  ChatStreamEvent,
   FinishReason,
   ModelInfo,
   Provider,
@@ -319,6 +322,22 @@ export class AnthropicProvider implements Provider {
   }
 
   private async chatStreaming(request: ChatRequest): Promise<ChatResponse> {
+    let final: ChatResponse | undefined;
+    for await (const event of this.streamEvents(request)) {
+      if (event.type === 'final') final = event.response;
+    }
+    if (!final) {
+      throw new ProviderResponseShapeError(this.id, 'stream ended without a final event');
+    }
+    return final;
+  }
+
+  /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */
+  async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+    yield* runQueuedStream(this.queue, () => this.streamEvents(request));
+  }
+
+  private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const response = await this.fetchRaw(
       '/v1/messages',
       { method: 'POST', body: JSON.stringify(this.buildBody(request, true)) },
@@ -329,55 +348,42 @@ export class AnthropicProvider implements Provider {
       throw new ProviderResponseShapeError(this.id, 'streaming response has no body');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let content = '';
     let modelId = request.model;
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
     let stopReasonRaw: string | null = null;
 
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split('\n\n');
-      buffer = events.pop() ?? '';
-      for (const chunk of events) {
-        const dataLine = chunk.split('\n').find((line) => line.startsWith('data:'));
-        if (!dataLine) continue;
-        const event = JSON.parse(
-          dataLine.slice('data:'.length).trim(),
-        ) as AnthropicStreamEvent;
-        switch (event.type) {
-          case 'message_start':
-            modelId = event.message?.model ?? modelId;
-            promptTokens = event.message?.usage?.input_tokens ?? promptTokens;
-            completionTokens = event.message?.usage?.output_tokens ?? completionTokens;
-            break;
-          case 'content_block_delta':
-            if (
-              event.delta?.type === 'text_delta' &&
-              typeof event.delta.text === 'string'
-            ) {
-              content += event.delta.text;
-            }
-            break;
-          case 'message_delta':
-            if (event.delta && event.delta.stop_reason !== undefined) {
-              stopReasonRaw = event.delta.stop_reason ?? null;
-            }
-            if (event.usage?.output_tokens !== undefined) {
-              completionTokens = event.usage.output_tokens;
-            }
-            break;
-          case 'error':
-            if (event.error) throw classifyStreamError(this.id, event.error);
-            break;
-          default:
-            break; // ping, content_block_start/stop, message_stop — nothing to accumulate.
-        }
+    for await (const payload of readSseDataLines(response.body)) {
+      const event = JSON.parse(payload) as AnthropicStreamEvent;
+      switch (event.type) {
+        case 'message_start':
+          modelId = event.message?.model ?? modelId;
+          promptTokens = event.message?.usage?.input_tokens ?? promptTokens;
+          completionTokens = event.message?.usage?.output_tokens ?? completionTokens;
+          break;
+        case 'content_block_delta':
+          if (
+            event.delta?.type === 'text_delta' &&
+            typeof event.delta.text === 'string'
+          ) {
+            content += event.delta.text;
+            yield { type: 'delta', content: event.delta.text };
+          }
+          break;
+        case 'message_delta':
+          if (event.delta && event.delta.stop_reason !== undefined) {
+            stopReasonRaw = event.delta.stop_reason ?? null;
+          }
+          if (event.usage?.output_tokens !== undefined) {
+            completionTokens = event.usage.output_tokens;
+          }
+          break;
+        case 'error':
+          if (event.error) throw classifyStreamError(this.id, event.error);
+          break;
+        default:
+          break; // ping, content_block_start/stop, message_stop — nothing to accumulate.
       }
     }
 
@@ -388,11 +394,18 @@ export class AnthropicProvider implements Provider {
       );
     }
 
-    return {
-      model: modelId,
-      message: { role: 'assistant', content },
-      finishReason: normalizeStopReason(stopReasonRaw),
-      usage: normalizeUsage({ promptTokens, completionTokens }, modelId, this.costTable),
+    yield {
+      type: 'final',
+      response: {
+        model: modelId,
+        message: { role: 'assistant', content },
+        finishReason: normalizeStopReason(stopReasonRaw),
+        usage: normalizeUsage(
+          { promptTokens, completionTokens },
+          modelId,
+          this.costTable,
+        ),
+      },
     };
   }
 
