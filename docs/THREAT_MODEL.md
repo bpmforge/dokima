@@ -155,3 +155,10 @@ Accepted after mitigation; revisit at each wave gate:
    scope; keychain + file perms are the practical bar for v1 single-operator (D-005).
 5. **Chain-prefix rollback without a forge mirror (T-25):** fully closed only when a
    mirror or external anchor is configured; surfaced in Settings as a trust status.
+6. **Operator-token retrieval via loopback (T-19/SC-08 residual, found at W4-02 review
+   2026-07-15):** the served SPA auto-injects the bearer token per API_DESIGN §1, so any
+   local process that can reach 127.0.0.1 — including an agent session whose sandbox
+   permits loopback — can fetch index.html and obtain the token without reading the 0600
+   token file. Interim bar: SC-07's no-network default must cover loopback for agent
+   sessions (verify in W6-06's sandbox tests); W4-11 evaluates same-origin-only injection
+   or WS-handshake token delivery. Revisit before v1.

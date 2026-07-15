@@ -1498,14 +1498,15 @@
       "acceptance": [
         "OpenAPI generated from Fastify+zod route schemas served at /api/v1/openapi.json (dev); RFC 7807 application/problem+json on every refusal with rule + evidence refs (FR-T4 wire shape, API_DESIGN §1/§4)",
         "Idempotency-Key required on verb POSTs and accepted on every mutating POST (replay returns the original response); X-Event-Seq echoed on every mutation (API_DESIGN §1/§5)",
-        "SSE fallback GET /api/v1/events?subscriptions=&last_seq= mirrors every WS message type (TECH_STACK WS/SSE decision); route-walker test: every route x {no token->401, bad Origin->403, verb w/o Idempotency-Key->400} (TESTING §5)"
+        "SSE fallback GET /api/v1/events?subscriptions=&last_seq= mirrors every WS message type (TECH_STACK WS/SSE decision); route-walker test: every route x {no token->401, bad Origin->403, verb w/o Idempotency-Key->400} (TESTING §5)",
+        "Token-delivery residual (THREAT_MODEL §5.6): evaluate same-origin-only injection or WS-handshake token delivery so a loopback-local process cannot harvest the operator bearer from index.html; corrupted fleet.json degrades to problem+json, never a 500 (W4-02 review residuals)"
       ],
       "points": 5,
       "status": "todo",
       "stories": [
         "US-202"
       ],
-      "notes": "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets."
+      "notes": "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets. AMENDED 2026-07-15: +W4-02 review residuals."
     },
     {
       "id": "W4-12",
@@ -1944,11 +1945,12 @@
         "W3-01b"
       ],
       "acceptance": [
-        "Verify/test runs execute in the worktree under a restricted process (no network by default, opt-in per project); optional Podman/Docker profile; sandbox results are what receipts attest to (FR-I4)"
+        "Verify/test runs execute in the worktree under a restricted process (no network by default, opt-in per project); optional Podman/Docker profile; sandbox results are what receipts attest to (FR-I4)",
+        "Sandbox no-network default provably covers loopback: an agent-session fixture attempting to fetch http://127.0.0.1:<core port>/ fails (THREAT_MODEL §5.6 interim bar)"
       ],
       "points": 5,
       "status": "todo",
-      "notes": [],
+      "notes": " AMENDED 2026-07-15: +loopback coverage (THREAT_MODEL §5.6).",
       "stories": [
         "US-505"
       ]
