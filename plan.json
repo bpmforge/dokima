@@ -914,8 +914,8 @@
         "Subjective review score 1-4 over a passing deterministic gate escalates to the human, never auto-fails (US-410 AC-2, FR-L6 asymmetry)"
       ],
       "points": 8,
-      "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy). F4 2026-07-14: dep narrowed to W1-03 — the finding ledger is pure engine work, claimable at resume before the harbormaster lands (it hardens the loop being built). Design: docs/design/GATE_ECONOMICS.md. AMENDED 2026-07-14 challenger fix: acceptance named 4 of the 6 policy-matrix rows — now ALL of the set (the STATUS 2026-07-12 lesson, caught recurring).",
+      "status": "done",
+      "notes": " AMENDED 2026-07-14 design review G-7: tier-aware ceiling threaded (BLUEPRINT FR-L7 / FINDING_LOOP_POLICY §3). AMENDED 2026-07-14 (adopted D-014/R-B2/R-D2): +rule lifecycle + FP funnel + verdict evidence; points 5->8 to match the widened scope (decomposition-policy compliant: still one module, packages/loop findings/policy). F4 2026-07-14: dep narrowed to W1-03 — the finding ledger is pure engine work, claimable at resume before the harbormaster lands (it hardens the loop being built). Design: docs/design/GATE_ECONOMICS.md. AMENDED 2026-07-14 challenger fix: acceptance named 4 of the 6 policy-matrix rows — now ALL of the set (the STATUS 2026-07-12 lesson, caught recurring). AGENT 2026-07-15: done. AGENT 2026-07-15 fix: conductor gate caught an early-return bug in loop-policy-tracker.ts recordPass() that skipped budget-tracker evaluation for every regressed/still-present finding after the first BLOCK/ESCALATE in the pass's arrays — fixed, re-verified. See docs/STATUS.md 2026-07-15 W3-08 entries.",
       "stories": [
         "US-408",
         "US-409",
