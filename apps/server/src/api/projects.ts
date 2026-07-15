@@ -206,7 +206,17 @@ async function computeProjectStats(
   const dbPath = path.join(projectPath, STATE_DB_RELATIVE);
   if (!(await pathExists(dbPath))) return EMPTY_STATS;
 
-  const db = openEventLogReader(dbPath);
+  // The open itself throws on an unreadable file (verified: chmod 000 →
+  // SQLITE_CANTOPEN at `new Database`, before any query) — it must degrade
+  // to EMPTY_STATS like every other failure here, never crash the Fleet
+  // endpoint (FR-F1).
+  let db: ReturnType<typeof openEventLogReader>;
+  try {
+    db = openEventLogReader(dbPath);
+  } catch (err) {
+    console.error(`[fleet] computeProjectStats open failed for ${dbPath}:`, err);
+    return EMPTY_STATS;
+  }
   try {
     const log: EventLog = { db, path: dbPath, close: () => db.close() };
     const board = computeBoard(listTickets(log));

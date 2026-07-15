@@ -111,6 +111,23 @@ describe('registerProject / archiveProject / listProjectCards', () => {
     ).rejects.toBeInstanceOf(ProjectDirectoryError);
   });
 
+  it('an unreadable state.db degrades the card to empty stats, never crashes the endpoint (SQLITE_CANTOPEN regression)', async () => {
+    const registryPath = await freshRegistry();
+    const projectDir = path.join(await tmpDir('shipwright-fleet-cantopen-'), 'locked');
+    dirs.push(path.dirname(projectDir));
+    await registerProject(registryPath, { path: projectDir, mode: 'new' });
+
+    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    await fs.chmod(dbPath, 0o000);
+    try {
+      const cards = await listProjectCards(registryPath, { archived: false });
+      expect(cards).toHaveLength(1);
+      expect(cards[0]?.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+    } finally {
+      await fs.chmod(dbPath, 0o644);
+    }
+  });
+
   it('registering the same path twice reactivates the same record (reopen flow, G-10f)', async () => {
     const registryPath = await freshRegistry();
     const projectDir = await tmpDir('shipwright-fleet-reopen-');
