@@ -415,8 +415,12 @@ function markBlocked(t, gaps, branch, wt) {
   removeWorktree(wt);
   // Rename the kept evidence branch OUT of the sw/ namespace: supervise.sh's crash
   // cleanup deletes sw/* branches on every restart, which was silently destroying
-  // blocked tickets' "Branch kept" evidence (LESSONS L-16).
-  try { git('branch', '-m', branch, `blocked/${t.id.toLowerCase()}`); } catch { /* branch may not exist */ }
+  // blocked tickets' "Branch kept" evidence (LESSONS L-16). Unique-suffix on
+  // collision — a re-blocked ticket must not leave attempt 2 in the kill-zone.
+  const stamp = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15);
+  let keepName = `blocked/${t.id.toLowerCase()}`;
+  try { git('rev-parse', '--verify', keepName); keepName = `${keepName}-${stamp}`; } catch { /* free */ }
+  try { git('branch', '-m', branch, keepName); } catch { /* branch may not exist */ }
   pushRemotes(t.id);
 }
 

@@ -1203,7 +1203,10 @@
       "lane": "ui",
       "write_scope": [
         "apps/web/src/fleet/**",
-        "apps/server/src/api/projects*"
+        "apps/server/src/api/projects*",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01"
@@ -1212,12 +1215,13 @@
         "Project cards: phase, board stats, running berths + heartbeat freshness, pending Decide count, spend today; create/onboard/import/archive; per-project DB isolation (.shipwright/state.db travels with the repo dir) (FR-F1/F2); Fleet empty state + archived-filter/reopen flow (UX_SPEC §2/§2b, G-10f)"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-10f/G-18.",
         "CONDUCTOR 2026-07-15T16:35:18.626Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "SPLIT 2026-07-15 (agent block-note adopted verbatim, L-32): AC2 (gateway fairness + governor) required capabilities outside this ticket dependency closure (needs W2-05 routing + W3-04 berths); moved to W4-13. W4-02 is now honestly the Fleet UI card surface. Reset todo.",
-        "CONDUCTOR 2026-07-15T17:13:02.940Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: out-of-scope edits: apps/server/src/api/server.test.ts, apps/server/src/api/server.ts, apps/web/e2e/fleet.spec.ts, apps/web/src/App.tsx"
+        "CONDUCTOR 2026-07-15T17:13:02.940Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: out-of-scope edits: apps/server/src/api/server.test.ts, apps/server/src/api/server.ts, apps/web/e2e/fleet.spec.ts, apps/web/src/App.tsx",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
       ],
       "stories": [
         "US-801"
@@ -1230,7 +1234,10 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/web/src/board/**"
+        "apps/web/src/board/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01"
@@ -1240,7 +1247,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18.",
+      "notes": [
+        " AMENDED 2026-07-14 design review G-18.",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": [
         "US-201",
         "US-202"
@@ -1253,7 +1263,10 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/web/src/chat/**"
+        "apps/web/src/chat/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01",
@@ -1264,7 +1277,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
+      "notes": [
+        " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": []
     },
     {
@@ -1274,7 +1290,10 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/web/src/artifacts/**"
+        "apps/web/src/artifacts/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01"
@@ -1285,7 +1304,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8). Enforces NFR-6 (every claim opens its receipt).",
+      "notes": [
+        " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8). Enforces NFR-6 (every claim opens its receipt).",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": [
         "US-401"
       ]
@@ -1297,7 +1319,10 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/web/src/settings/**"
+        "apps/web/src/settings/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01",
@@ -1313,7 +1338,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix. AMENDED 2026-07-14 (D-019).",
+      "notes": [
+        " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix. AMENDED 2026-07-14 (D-019).",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": [
         "US-503",
         "US-802",
@@ -1329,7 +1357,10 @@
       "lane": "ui",
       "write_scope": [
         "apps/web/src/notifications/**",
-        "apps/server/src/api/notifications*"
+        "apps/server/src/api/notifications*",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01",
@@ -1343,7 +1374,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1). AMENDED 2026-07-14 challenger fix.",
+      "notes": [
+        " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1). AMENDED 2026-07-14 challenger fix.",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": [
         "US-404",
         "US-704",
@@ -1358,7 +1392,10 @@
       "lane": "ui",
       "write_scope": [
         "apps/web/src/estimate/**",
-        "packages/gateway/src/estimate/**"
+        "packages/gateway/src/estimate/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W2-07",
@@ -1371,7 +1408,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-A2). Cites FR-G7 (dry-run estimate). AMENDED 2026-07-14 challenger fix (US-309 was misattributed to W2-06; suppression digest unowned).",
+      "notes": [
+        " AMENDED 2026-07-14 (adopted R-A2). Cites FR-G7 (dry-run estimate). AMENDED 2026-07-14 challenger fix (US-309 was misattributed to W2-06; suppression digest unowned).",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": [
         "US-307",
         "US-309"
@@ -1411,7 +1451,10 @@
       "lane": "ui",
       "write_scope": [
         "apps/web/src/roster/**",
-        "apps/server/src/api/roster*"
+        "apps/server/src/api/roster*",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-01",
@@ -1423,7 +1466,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-K1/FR-E2).",
+      "notes": [
+        "ADDED 2026-07-14 addendum (adopted by founder direction, R-K1/FR-E2).",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": [
         "US-806"
       ]
@@ -1465,7 +1511,10 @@
       "write_scope": [
         "apps/web/src/palette/**",
         "apps/web/src/board/drawer/**",
-        "e2e/a11y/**"
+        "e2e/a11y/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-03",
@@ -1482,7 +1531,10 @@
         "US-202",
         "US-404"
       ],
-      "notes": "ADDED 2026-07-14 challenger fix: palette, drawer, and the a11y gate were doc-mandated orphans (W7-06 consumed the palette nobody built)."
+      "notes": [
+        "ADDED 2026-07-14 challenger fix: palette, drawer, and the a11y gate were doc-mandated orphans (W7-06 consumed the palette nobody built).",
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ]
     },
     {
       "id": "W5-01",
@@ -1750,7 +1802,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note).",
+      "notes": [
+        "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note).",
+        "NOTE 2026-07-15 (L-33): this ticket has a UI surface but sits outside the ui lane — its App.tsx/server.ts wiring seam must be resolved at claim time (widen scope then, or land the mount via a ui-lane ticket) to avoid the W4-02 out-of-scope block class."
+      ],
       "stories": [
         "US-108",
         "US-109",
@@ -2030,7 +2085,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 design review G-10c.",
+      "notes": [
+        " AMENDED 2026-07-14 design review G-10c.",
+        "NOTE 2026-07-15 (L-33): this ticket has a UI surface but sits outside the ui lane — its App.tsx/server.ts wiring seam must be resolved at claim time (widen scope then, or land the mount via a ui-lane ticket) to avoid the W4-02 out-of-scope block class."
+      ],
       "stories": []
     },
     {
@@ -2089,7 +2147,10 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/web/src/trace/**"
+        "apps/web/src/trace/**",
+        "apps/web/src/App.tsx",
+        "apps/web/e2e/**",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [
         "W4-05"
@@ -2099,7 +2160,9 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": [],
+      "notes": [
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+      ],
       "stories": []
     },
     {
