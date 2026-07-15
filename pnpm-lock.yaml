@@ -97,13 +97,20 @@ importers:
 
   packages/git:
     dependencies:
+      '@shipwright/shared':
+        specifier: workspace:*
+        version: link:../shared
       execa:
         specifier: ^9.6.1
         version: 9.6.1
 
   packages/harbormaster: {}
 
-  packages/loop: {}
+  packages/loop:
+    dependencies:
+      '@shipwright/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/mcp: {}
 
@@ -118,6 +125,9 @@ importers:
       '@shipwright/events':
         specifier: workspace:*
         version: link:../events
+      '@shipwright/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       fast-check:
         specifier: ^4.9.0
