@@ -9,17 +9,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fastify/static": "^10.1.0",
-    "@fastify/websocket": "^11.3.0",
-    "@shipwright/events": "workspace:*",
-    "@shipwright/shared": "workspace:*",
-    "@shipwright/tickets": "workspace:*",
     "fastify": "^5.10.0",
-    "fastify-plugin": "^6.0.0",
-    "ws": "^8.21.0"
+    "@shipwright/events": "workspace:*",
+    "@shipwright/tickets": "workspace:*",
+    "@shipwright/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.1",
     "tsx": "^4.23.0"
   }
 }

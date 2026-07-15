@@ -9,7 +9,22 @@
  * optimization, not a source of truth.
  */
 
-import type { WebSocket } from 'ws';
+/**
+ * Duck-typed against the `ws` package's WebSocket surface this hub actually
+ * uses. `ws-socket.ts`'s `ServerWebSocket` implements this shape without
+ * depending on the real `ws` package (kept out of `apps/server/package.json`,
+ * which is outside this ticket's write_scope).
+ */
+export interface HubSocket {
+  readonly readyState: number;
+  readonly OPEN: number;
+  send(data: string): void;
+  ping(): void;
+  terminate(): void;
+  on(event: 'message', listener: (data: Buffer) => void): void;
+  on(event: 'pong', listener: () => void): void;
+  on(event: 'close', listener: () => void): void;
+}
 
 export interface ServerEnvelope {
   sub: string;
@@ -28,7 +43,7 @@ interface ClientMessage {
 interface Subscription {
   seq: number;
   buffer: ServerEnvelope[];
-  sockets: Set<WebSocket>;
+  sockets: Set<HubSocket>;
 }
 
 interface SocketState {
@@ -49,7 +64,7 @@ const DEFAULT_BUFFER_SIZE = 200;
 
 export class WsHub {
   private readonly subs = new Map<string, Subscription>();
-  private readonly sockets = new Map<WebSocket, SocketState>();
+  private readonly sockets = new Map<HubSocket, SocketState>();
   private readonly heartbeatIntervalMs: number;
   private readonly maxMissedHeartbeats: number;
   private readonly bufferSize: number;
@@ -85,7 +100,7 @@ export class WsHub {
     this.subs.clear();
   }
 
-  handleConnection(socket: WebSocket): void {
+  handleConnection(socket: HubSocket): void {
     const state: SocketState = { subscriptions: new Set(), missedHeartbeats: 0 };
     this.sockets.set(socket, state);
 
@@ -113,7 +128,7 @@ export class WsHub {
     return envelope;
   }
 
-  private handleMessage(socket: WebSocket, state: SocketState, raw: Buffer): void {
+  private handleMessage(socket: HubSocket, state: SocketState, raw: Buffer): void {
     let message: ClientMessage;
     try {
       message = JSON.parse(raw.toString('utf8')) as ClientMessage;
@@ -153,7 +168,7 @@ export class WsHub {
     }
   }
 
-  private send(socket: WebSocket, envelope: ServerEnvelope): void {
+  private send(socket: HubSocket, envelope: ServerEnvelope): void {
     if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(envelope));
   }
 
@@ -166,7 +181,7 @@ export class WsHub {
     return subscription;
   }
 
-  private cleanup(socket: WebSocket, state: SocketState): void {
+  private cleanup(socket: HubSocket, state: SocketState): void {
     for (const name of state.subscriptions) {
       this.subs.get(name)?.sockets.delete(socket);
     }

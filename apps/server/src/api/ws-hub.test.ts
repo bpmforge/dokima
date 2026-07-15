@@ -1,16 +1,14 @@
 import { EventEmitter } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WebSocket as WsSocket } from 'ws';
-import { WebSocket, WebSocketServer } from 'ws';
-import { WsHub } from './ws-hub.js';
+import { completeHandshake } from './ws-socket.js';
+import { WsHub, type HubSocket } from './ws-hub.js';
 
 /**
- * A minimal WebSocket-shaped mock. Real `ws` sockets auto-respond to ping
- * frames at the protocol layer (README: "Pong messages are automatically
- * sent in response to ping messages") — there is no supported way to make a
- * real client silently drop a ping, so the heartbeat-timeout test drives the
- * hub against this mock instead of a live socket.
+ * A minimal HubSocket-shaped mock. A real socket auto-responds to ping
+ * frames at the protocol layer (RFC 6455 §5.5.2/§5.5.3) — there is no way
+ * to make a real client silently drop a ping, so the heartbeat-timeout test
+ * drives the hub against this mock instead of a live socket.
  */
 function createMockSocket() {
   const emitter = new EventEmitter();
@@ -26,18 +24,19 @@ function createMockSocket() {
 }
 
 function waitForOpen(socket: WebSocket): Promise<void> {
-  return new Promise((resolve) => socket.once('open', resolve));
+  return new Promise((resolve) => {
+    socket.onopen = () => resolve();
+  });
 }
 
 function waitForMessage(socket: WebSocket): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
-    socket.once('message', (raw) => resolve(JSON.parse(raw.toString('utf8'))));
+    socket.onmessage = (event) => resolve(JSON.parse(String(event.data)));
   });
 }
 
 describe('WsHub', () => {
   let httpServer: Server;
-  let wss: WebSocketServer;
   let hub: WsHub;
   let url: string;
 
@@ -45,8 +44,10 @@ describe('WsHub', () => {
     hub = new WsHub({ heartbeatIntervalMs: 20, maxMissedHeartbeats: 2 });
     hub.start();
     httpServer = createServer();
-    wss = new WebSocketServer({ server: httpServer });
-    wss.on('connection', (socket) => hub.handleConnection(socket));
+    httpServer.on('upgrade', (req, socket) => {
+      const ws = completeHandshake(req, socket);
+      if (ws) hub.handleConnection(ws);
+    });
     await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
     const address = httpServer.address();
     if (address === null || typeof address === 'string') throw new Error('no address');
@@ -55,7 +56,6 @@ describe('WsHub', () => {
 
   afterEach(async () => {
     hub.close();
-    wss.close();
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   });
 
@@ -89,7 +89,7 @@ describe('WsHub', () => {
     const client = new WebSocket(url);
     await waitForOpen(client);
     const onMessage = vi.fn();
-    client.on('message', onMessage);
+    client.onmessage = onMessage;
 
     hub.publish('board:OTHER', 'ticket.closed', {});
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -119,7 +119,7 @@ describe('WsHub', () => {
     const isolatedHub = new WsHub({ heartbeatIntervalMs: 10, maxMissedHeartbeats: 2 });
     isolatedHub.start();
     const mock = createMockSocket();
-    isolatedHub.handleConnection(mock as unknown as WsSocket);
+    isolatedHub.handleConnection(mock as unknown as HubSocket);
 
     await new Promise((resolve) => setTimeout(resolve, 45)); // >= 3 beats, no pong ever sent
 
@@ -132,7 +132,7 @@ describe('WsHub', () => {
     const isolatedHub = new WsHub({ heartbeatIntervalMs: 10, maxMissedHeartbeats: 2 });
     isolatedHub.start();
     const mock = createMockSocket();
-    isolatedHub.handleConnection(mock as unknown as WsSocket);
+    isolatedHub.handleConnection(mock as unknown as HubSocket);
 
     await new Promise((resolve) => setTimeout(resolve, 12));
     mock.emit('pong'); // acks the first beat before the second fires

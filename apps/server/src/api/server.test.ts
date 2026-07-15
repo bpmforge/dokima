@@ -1,6 +1,6 @@
+import { request } from 'node:http';
 import { createServer } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
-import { WebSocket } from 'ws';
 import { buildApiServer, listenLocalhost, type ApiServer } from './server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -43,6 +43,45 @@ async function buildAndListen(
   const address = server.app.server.address();
   if (address === null || typeof address === 'string') throw new Error('no address');
   return { server, port: address.port };
+}
+
+/**
+ * Drives a real WS handshake attempt over `node:http` directly (rather than
+ * Fastify's `inject`/`injectWS`, which never touches a real socket and so
+ * never fires the raw `'upgrade'` event this server hooks — see
+ * `server.ts`). A rejected handshake comes back as a normal HTTP response
+ * (`'response'` event); an accepted one fires `'upgrade'` with a 101.
+ */
+function attemptUpgrade(
+  port: number,
+  path: string,
+  headers: Record<string, string>,
+): Promise<{ statusCode: number; upgraded: boolean }> {
+  return new Promise((resolve, reject) => {
+    const req = request({
+      host: '127.0.0.1',
+      port,
+      path,
+      method: 'GET',
+      headers: {
+        Connection: 'Upgrade',
+        Upgrade: 'websocket',
+        'Sec-WebSocket-Key': Buffer.from('0123456789ABCDEF').toString('base64'),
+        'Sec-WebSocket-Version': '13',
+        ...headers,
+      },
+    });
+    req.on('response', (res) => {
+      res.resume();
+      resolve({ statusCode: res.statusCode ?? 0, upgraded: false });
+    });
+    req.on('upgrade', (res, socket) => {
+      resolve({ statusCode: res.statusCode ?? 0, upgraded: true });
+      socket.destroy();
+    });
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 describe('buildApiServer — SC-08', () => {
@@ -149,21 +188,22 @@ describe('buildApiServer — SC-08', () => {
   it('WS upgrade re-checks the token: missing token is rejected before upgrade', async () => {
     const { server, port } = await buildAndListen();
     active = server;
-    // injectWS drives the real onUpgrade -> fastify.routing -> hook path in-process
-    // (no live socket left dangling for afterEach's app.close() to wait on).
-    await expect(
-      server.app.injectWS('/api/v1/ws', { headers: { host: `127.0.0.1:${port}` } }),
-    ).rejects.toThrow('Unexpected server response: 401');
+    const result = await attemptUpgrade(port, '/api/v1/ws', {
+      Host: `127.0.0.1:${port}`,
+    });
+    expect(result.upgraded).toBe(false);
+    expect(result.statusCode).toBe(401);
   });
 
   it('WS upgrade re-checks Origin: evil Origin is rejected before upgrade', async () => {
     const { server, port } = await buildAndListen();
     active = server;
-    await expect(
-      server.app.injectWS(`/api/v1/ws?token=${TOKEN}`, {
-        headers: { host: `127.0.0.1:${port}`, origin: 'https://evil.example.com' },
-      }),
-    ).rejects.toThrow('Unexpected server response: 403');
+    const result = await attemptUpgrade(port, `/api/v1/ws?token=${TOKEN}`, {
+      Host: `127.0.0.1:${port}`,
+      Origin: 'https://evil.example.com',
+    });
+    expect(result.upgraded).toBe(false);
+    expect(result.statusCode).toBe(403);
   });
 
   it('WS upgrade succeeds with a valid token + origin and streams a published envelope', async () => {
@@ -173,14 +213,14 @@ describe('buildApiServer — SC-08', () => {
       headers: { origin: `http://127.0.0.1:${port}` },
     });
     await new Promise<void>((resolve, reject) => {
-      socket.on('open', () => resolve());
-      socket.on('error', reject);
+      socket.onopen = () => resolve();
+      socket.onerror = (event) => reject(new Error(event.message ?? 'ws error'));
     });
     socket.send(JSON.stringify({ op: 'subscribe', subscriptions: ['board:PROJ1'] }));
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const messagePromise = new Promise((resolve) => {
-      socket.once('message', (raw) => resolve(JSON.parse(raw.toString('utf8'))));
+      socket.onmessage = (event) => resolve(JSON.parse(String(event.data)));
     });
     server.wsHub.publish('board:PROJ1', 'ticket.closed', { id: 'W4-01' });
     const envelope = await messagePromise;

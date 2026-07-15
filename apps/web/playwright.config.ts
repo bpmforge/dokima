@@ -26,7 +26,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'pnpm --filter @shipwright/web run build && pnpm --filter @shipwright/server exec tsx src/index.ts',
+      'pnpm --filter @shipwright/web run build && pnpm --filter @shipwright/server exec tsx src/api/main.ts',
     env: {
       SHIPWRIGHT_HOME: HOME,
       SHIPWRIGHT_PORT: String(PORT),

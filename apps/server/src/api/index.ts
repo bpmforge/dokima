@@ -1,7 +1,7 @@
 export { buildAllowlist, isAllowedHost, isAllowedOrigin } from './allowlist.js';
 export type { Allowlist } from './allowlist.js';
-export { authPlugin } from './auth-plugin.js';
-export type { AuthPluginOptions } from './auth-plugin.js';
+export { checkAuth, registerAuthHook } from './auth-plugin.js';
+export type { AuthCheckInput, AuthPluginOptions, AuthResult } from './auth-plugin.js';
 export { registerHealthz } from './healthz.js';
 export type { HealthzDeps } from './healthz.js';
 export { problem, PROBLEM_CONTENT_TYPE } from './problem.js';
