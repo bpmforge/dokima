@@ -1215,13 +1215,14 @@
         "Project cards: phase, board stats, running berths + heartbeat freshness, pending Decide count, spend today; create/onboard/import/archive; per-project DB isolation (.shipwright/state.db travels with the repo dir) (FR-F1/F2); Fleet empty state + archived-filter/reopen flow (UX_SPEC §2/§2b, G-10f)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 design review G-10f/G-18.",
         "CONDUCTOR 2026-07-15T16:35:18.626Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "SPLIT 2026-07-15 (agent block-note adopted verbatim, L-32): AC2 (gateway fairness + governor) required capabilities outside this ticket dependency closure (needs W2-05 routing + W3-04 berths); moved to W4-13. W4-02 is now honestly the Fleet UI card surface. Reset todo.",
         "CONDUCTOR 2026-07-15T17:13:02.940Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: out-of-scope edits: apps/server/src/api/server.test.ts, apps/server/src/api/server.ts, apps/web/e2e/fleet.spec.ts, apps/web/src/App.tsx",
-        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
+        "CONDUCTOR 2026-07-15T18:10:51.757Z: blocked after 2 attempts. Branch sw/w4-02 kept. Gaps: [HIGH] apps/server/src/api/projects.ts: In computeProjectStats(), `const db = openEventLogReader(dbPath);` is called *before* the try block (only the body that uses `db` is wrapped in try/catch/finally). openEventLogReader does `new Database(dbPath, {readonly:true})` then `db.pragma('foreign_keys = ON')` (packages/events/src/db.ts:47-49), and I verified empirically that a permission-denied file (chmod 000) throws `SQLITE_CANTOPEN: unable to open database file` at this open step, not during the later query. Because that call sits outside the try, the exception propagates all the way out of comp"
       ],
       "stories": [
         "US-801"
