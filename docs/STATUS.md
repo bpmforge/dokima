@@ -204,6 +204,24 @@ W1-07 blocked on a REAL HIGH: the E2E harbormaster-lite (models the real Harborm
 
 docs/design/FINDING_LOOP_POLICY.md answers "how many loops is too much": findings get identity; iterations classify CLEARED/STALLED/PROGRESSED/OSCILLATING; stall=2 same-tier attempts then escalate (3rd identical attempt always wrong); progress loops budgeted by convergence (ceiling 3+points cap 8; ceiling-while-progressing = decomposition signal); oscillation zero-tolerance; infra failures never charge the coder. Blueprint FR-L6/L7 + SRS rows; tickets W3-08 (ledger+budgets) W3-09 (Harbormaster symlink-safety); W5-07 amended with seam-ownership acceptance. Board 65 tickets / 268 pts.
 
+## 2026-07-14 (evening) — BUILD RESUMED: overnight autonomous run launched
+
+Resume preconditions closed: W3-15 done (supervise.sh resolves Node from .nvmrc +
+conductor boot assertion; F2 holdTickets keeps W3-01a/b/c un-claimable unattended);
+SW-R1 executed (content resynced at library v2.10.0: 88 experts / 78 validators / 26
+protocols, gate validators intact). Amplifier automation mined pre-launch: adopted
+tonight = sonnet floor (cheapMaxPoints 1, LESSONS 25), frontier gated by omitting
+--escalate (token-gate principle by configuration), single conductor account-wide
+(amplifier idle, confirmed); deferred to product tickets = session receipts /
+advisor ladder / spend ceiling (they ARE W3-16/D-018/events-ledger features — not
+re-hardening the throwaway harness, field report §8.1).
+
+Launch: `nohup caffeinate -dimsu bash scripts/supervise.sh --waves W0,W2,W3,W4
+--breakpoint never >> docs/work/conductor.out 2>&1` — pure-Sonnet ladder, hard
+tickets park to the morning queue. First claim: W0-09. Control: `touch STOP`;
+watch: `tail -f docs/work/conductor.out`. Morning review: merged tickets + any
+parked blocks + W3-01a/b/c pairing session.
+
 ## 2026-07-14 — DESIGN-REVIEW GATE (P6): all passes complete, validators green, challenger recorded
 
 **Arc:** P1 gap register (30 gaps) → P2 recommendations (18 R-x + AM-1..7) → founder
