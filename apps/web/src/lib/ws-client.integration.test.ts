@@ -33,21 +33,17 @@ describe('WsClient', () => {
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   });
 
-  function waitForServerMessage(): Promise<Record<string, unknown>> {
+  /** Attaches the message listener inside the same `connection` tick — no polling gap for the subscribe frame to slip through before we're listening. */
+  function waitForNextConnectionMessage(): Promise<Record<string, unknown>> {
     return new Promise((resolve) => {
-      const check = () => {
-        if (!serverSocket) {
-          setTimeout(check, 5);
-          return;
-        }
-        serverSocket.once('message', (raw) => resolve(JSON.parse(raw.toString('utf8'))));
-      };
-      check();
+      wss.once('connection', (socket) => {
+        socket.once('message', (raw) => resolve(JSON.parse(raw.toString('utf8'))));
+      });
     });
   }
 
   it('sends a subscribe frame carrying the requested subscriptions on connect', async () => {
-    const subscribed = waitForServerMessage();
+    const subscribed = waitForNextConnectionMessage();
     const client = new WsClient({
       url,
       token: 'test-token',
