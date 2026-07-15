@@ -85,7 +85,8 @@ scope_id TEXT, tokens INTEGER, cost_usd REAL, threshold_state TEXT
 
 **notifications** — the taxonomy is code, not convention (FR-N4).
 `id PK, tier TEXT CHECK(tier IN ('decide','review','record')), kind TEXT
-('clarification'|'approval'|'blocked'|'budget'|'pr_ready'|'gate_passed'|'digest'|…),
+('clarification'|'approval'|'blocked'|'budget'|'pr_ready'|'gate_passed'|'digest'|'drift_report'),
+— closed enum; adding a kind is a migration + FR-N4 tier-declaration review, never an inline string,
 ref_type TEXT, ref_id TEXT, title TEXT, body TEXT(JSON card), leverage INTEGER
 (morning-queue sort — merges rank highest), status TEXT ('open'|'done'|'dismissed'),
 created_at, resolved_at NULL`. Index `(tier, status, leverage DESC)`.

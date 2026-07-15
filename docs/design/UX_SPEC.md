@@ -38,6 +38,21 @@ The app opens on the portfolio, not a project. One card per project:
   ten-minute review (§7).
 - Single-project users skip past this: with one project, the app opens directly in
   it and Fleet is a breadcrumb.
+- **Un-archive (design-review G-10f):** archived projects stay listed under an
+  "Archived" filter; reopening is `POST /projects` on the same path — the card
+  offers "Reopen" and the event log picks up where it left off (nothing was deleted).
+
+## 2b. Empty states (design-review G-18 — every screen has one; write them, don't improvise)
+
+| Screen | Empty state copy + action |
+|---|---|
+| Fleet home, no projects | "No programs yet." → New Product / Onboard buttons + link to the guided sample (FR-C6) |
+| Board, no tickets (pre-decomposition) | "The board fills when Phase 3 design is decomposed." → link to current phase card |
+| Morning queue, empty | "Nothing needs you. Last review N h ago; next digest at wave gate." (positive-quiet, no CTA) |
+| Notifications, empty | activity-feed link only |
+| Artifact viewer, no docs yet | "Deliverables appear as phases produce them." → current phase |
+| Receipts list, none | "No gates have run yet." |
+| Settings, no providers | wizard entry point (FR-S4) |
 
 ## 2a. Project layout — three panes (FR-C1)
 
@@ -85,7 +100,10 @@ No drag ever bypasses a gate; there is no "just move it" mode.
   then flip the card to `blocked-with-evidence` within seconds (§7.1).
 - *Shipped ticker*: commits landed since midnight, linked to their tickets.
 
-**Badges:** `STALE — claimable?` on blocked cards whose named blockers are all done;
+**Badges:** `STALE — claimable?` on blocked cards whose named blockers are all done —
+informational only for *stored* blocked statuses: reflow auto-resolves blocked⇄ready by
+construction (W0-04), so the badge marks a stored status the next event cycle will clear,
+or a hand-imported plan needing `release` (G-10g);
 ⚠ on waived items (permanently visible in coverage history, NFR-6); 🔒 lease badge in any
 file tree for paths held by an active ticket (§7.3 conflict prevention).
 
@@ -146,6 +164,14 @@ ever pop. Review items coalesce (per-wave digests when breakpoint=wave; one noti
 per batch). A Decide card that blocks other lanes is promoted to push only when the
 Harbormaster runs out of unblocked work — interrupt-when-idle-blocked. Quiet hours
 respected for push; the run continues under `auto` policy and queues Decide items.
+A `blocked-with-evidence` card that has NOT yet promoted (other lanes still moving) is
+visible in three places meanwhile: the board badge, the notification center (Decide,
+un-pushed), and the Fleet card's Decide count — deferred, never invisible (G-10e).
+
+**Field reports (G-10c, W7-05):** every session-trace view and every escalation event
+card carries a "File field report" action → structured form (what happened, expected,
+evidence links pre-filled from the trace) → triage flow (W7-05) turns accepted reports
+into playbook entries or validator-fix tickets. This is P4's weekly ritual surface.
 
 ### The morning queue (signature screen)
 

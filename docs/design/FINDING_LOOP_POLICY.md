@@ -68,7 +68,7 @@ There is no single number; the honest answer is a matrix:
 |---|---|
 | Same finding, same tier | **2** targeted attempts |
 | Same finding, after escalation | **+1** (then block with ledger) |
-| New-findings-each-pass, converging | up to `3 + points` passes (cap 8) |
+| New-findings-each-pass, converging | up to `3 + points` passes (cap 8 metered / 12+ local — §3 tier-aware ceiling) |
 | Open count flat/rising for 2 passes | stop now (divergence) |
 | Any finding regresses | escalate now; twice = block |
 | Review itself failed (infra) | free retry, no charge |

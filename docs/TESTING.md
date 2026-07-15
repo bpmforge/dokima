@@ -6,7 +6,7 @@ faked at the gateway boundary, every forge call at the adapter boundary; the **p
 gate-integrity suite (§6) runs every commit from W0 and is never waived** — a platform whose
 pitch is "the gates cannot be spoofed" proves it in CI, on itself. Runner: vitest
 (unit/property/conformance/integration), Playwright (E2E over the Canvas).
-`npm test` = all vitest tiers; `npm run e2e` = Playwright against a seeded stack.
+`pnpm test` = all vitest tiers; `pnpm e2e` = Playwright against a seeded stack.
 
 ## 1. Tier map (what runs at which gate)
 
@@ -25,7 +25,7 @@ pitch is "the gates cannot be spoofed" proves it in CI, on itself. Runner: vites
 | a11y (axe) + perf timers (NFR-2) | all routed Canvas pages | pre-merge on web tickets + W4/W8 gates | merge/gate |
 | Dogfood gate | Shipwright runs its own pipeline on itself | W8 | 1.0 release |
 
-Per-ticket definition of done: `npm run lint && npm run typecheck && npm test` workspace-wide
+Per-ticket definition of done: `pnpm lint && pnpm typecheck && pnpm test` workspace-wide
 plus the ticket's own `verify` command — which is exactly what FR-T2 re-runs at close.
 
 ## 2. Unit conventions (vitest)
@@ -143,7 +143,7 @@ Each row is one fixture directory + one named test; new spoof classes discovered
 
 ## 8. Model-fitness bench fixtures (FR-G6)
 
-- `test/fitness/` ships the planted-defect task set per role: coding (bug with a failing test
+- `e2e/fitness-fixtures/` ships the planted-defect task set per role (path per plan.json W2-08 write_scope — supersedes the earlier `test/fitness/` name): coding (bug with a failing test
   as oracle), challenger (planted contradiction + citation-less claim bait), reviewer (planted
   scope escape), interviewer (must slate, not assume, a founder fork).
 - CI tests the **harness**, not real models: a scripted "strong" fake passes, a scripted

@@ -53,6 +53,7 @@ MCP servers (FR-I3).
 | FR-C4 | Board renders lanes/columns/typed cards (Epic/Story/Task/Bug) from live projections ≤1s after the underlying event; includes stale-blocked badges, claim-now strip, spend meter, active-agents strip with heartbeat freshness. | Injected `ticket.closed` event moves the card within 1s (timer-asserted E2E); stalled heartbeat fixture shows staleness within threshold. |
 | FR-C5 | Receipt inspector renders gate receipts, coverage reports, challenge reports, and approval-ledger rows as structured views (never raw JSON), reachable from every UI claim that cites them. | Each artifact type opens from its badge; fields (validators, exit codes, hashes, signatures) rendered and labeled. |
 | FR-C6 | Guided first-fifteen-minutes sample project, wired into the first-run wizard (FR-S4): a built-in sample idea runs the full program in miniature on local-or-cheap models so a new user watches interview → gates → board → morning queue before risking their own idea. | Fresh install → wizard hands off to the sample program, which completes end-to-end with fake/local gateway; all major surfaces visited by the guided flow (E2E). |
+| FR-C7 | CLI parity (Blueprint §5.3, backfilled 2026-07-14): the `shipwright` CLI drives the same lifecycle verbs, run controls (`run --breakpoint --berths`), and audit commands as the UI, through the same authenticated API — no mutation path exists in only one surface. | Route-walker cross-check: every mutating endpoint reachable from both CLI and UI fixtures; a verb refused in the UI is refused with the same rule via CLI (shared 409 payload). |
 
 ### 2.2 FR-PIPE — Pipeline Engine (Blueprint §3.2) — wave W5 (receipt primitive W0)
 
@@ -101,7 +102,7 @@ MCP servers (FR-I3).
 | FR-L4 | Coverage tracker: every expected unit ends in exactly one of DONE / WAIVED (attributed) / BLOCKED / FAILED / SKIPPED (expected-but-never-ran, loudly flagged); the end-of-phase COVERAGE_REPORT is both a UI artifact and a gate input; nothing disappears. | Invariant test: sum of states = inventory size after every run; SKIPPED row blocks the phase gate; WAIVED rows carry waiver identity. |
 | FR-L5 | Context Packer (Blueprint §7.2): every HANDOFF carries a token-budgeted context packet — relevance-ranked file slices (never naive truncation), repo-map skeleton, ticket interfaces + acceptance, prior confirmed findings — plus a pinned ≤1k-token core block (stable-prefix ordered for KV-cache hits). Distill-never-replay; write-scope bounds read-focus; reasoning chain-of-thought stripped from history and artifacts. | Packet size ≤ budget for every fixture model window; thinking-strip test: no `<think>` content in stored artifacts or subsequent prompts; escalated re-run uses same packet discipline at larger budget. |
 | FR-L6 | Finding ledger (Blueprint §3.5, design docs/design/FINDING_LOOP_POLICY.md): every HIGH/CRITICAL review finding is a record with stable fingerprint, state OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED, per-finding attempt counts, evidence-bearing history; rechecks return per-finding verdicts. Infra failures (unparseable/truncated review, provider-limit pause mid-review) retry free — never open findings, never consume attempts. | Fixture: a STILL-PRESENT verdict increments only that finding's attempts; a truncated review triggers a free retry with zero ledger writes; a resolved-then-reappearing finding transitions to REGRESSED. |
-| FR-L7 | Loop-convergence budgets: stalled finding = 2 same-tier targeted attempts then escalate one rung (then block with ledger); progress loops budgeted by convergence — open-count must strictly decrease per 2-pass window or the pass be PROGRESSED — ceiling 3+points capped 8, ceiling-while-progressing parks the ticket flagged as a decomposition signal; any REGRESSED finding escalates immediately, second blocks. | Fixture loops: same-finding 3rd same-tier attempt is impossible (escalation forced); a 2→9→15-style discovering loop is NOT killed while priors resolve; flat open-count for 2 passes stops the loop. |
+| FR-L7 | Loop-convergence budgets: stalled finding = 2 same-tier targeted attempts then escalate one rung (then block with ledger); progress loops budgeted by convergence — open-count must strictly decrease per 2-pass window or the pass be PROGRESSED — ceiling 3+points, **capped 8 on frontier/metered tiers, 12+ on local/owned-hardware tiers** (localFrontier-proven; wall-clock watchdog is the backstop on local tiers), ceiling-while-progressing parks the ticket flagged as a decomposition signal; any REGRESSED finding escalates immediately, second blocks. | Fixture loops: same-finding 3rd same-tier attempt is impossible (escalation forced); a 2→9→15-style discovering loop is NOT killed while priors resolve; flat open-count for 2 passes stops the loop; tier fixture: identical loop history hits ceiling 8 on a metered tier and keeps looping past 8 on a local tier. |
 
 ### 2.6 FR-HM — Harbormaster (Blueprint §3.6) — wave W3
 
@@ -186,13 +187,14 @@ MCP servers (FR-I3).
 | FR-C6 | §12.3, §3.10 wizard | W4 | | FR-N4 | §5.1 | W4 |
 | FR-P1–P8 | §3.2 (receipts §2.2) | W5 (receipt primitive W0) | | FR-I1 | §3.9 | W0 (protection W6) |
 | FR-T1–T4 | §3.4 | W0 (board UI W4) | | FR-I2, FR-I3 | §3.9 | W6 |
-| FR-T5 | §3.4 | W6 | | FR-I4 | §3.9 | W1 |
+| FR-T5 | §3.4 | W6 | | FR-I4 | §3.9 | W6 (W6-06) |
 | FR-T6 | §7.3 | W3 | | FR-M1–M3 | §3.8 | W7 |
 | FR-G1–G5 | §3.3 | W2 | | FR-S1–S4 | §3.10 | W0-07 (core) / W4-06 (wizard+UI) |
 | FR-G6, FR-G7 | §12.1–.2 | W2 | | FR-F1–F5 | §3.11 | W4-02/W4-07 (home+inbox) / W7-02 (playbook) |
 | FR-L1–L4 | §3.5 | W1 | | FR-E1 | §3.2 (expert box), §11 | W1-01 |
-| FR-L5 | §7.2 | W1 | | FR-L6/L7 | §3.5 + FINDING_LOOP_POLICY | W3-08 | | NFR-1–7 | §6.2 | per §3 above |
-| FR-H1–H5 | §3.6 | W3 | | | | |
+| FR-L5 | §7.2 | W1 | | FR-L6/L7 | §3.5 + FINDING_LOOP_POLICY | W3-08 |
+| FR-H1–H5 | §3.6 | W3 | | FR-C7 | §5.3 | W0-08 (CLI) / W4 (parity tests) |
+| NFR-1–7 | §6.2 | per §3 above | | | | |
 
 D-008 additionally binds W1 to the one-time content import + conformance suite (TESTING.md §4).
 FR-C6/T6/G6/G7/L5 originated as SRS additions and were backfilled into Blueprint v0.4.0 §6.1 —

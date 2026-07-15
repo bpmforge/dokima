@@ -147,6 +147,22 @@ from REST, streams are an optimization (resume via `last_seq` on both).
   stdout; the runner treats first-party and content-pack validators identically
   (sandboxed — SC-07).
 
+## Licensing ledger (design-review 2026-07-14 — DESIGN_REVIEW.md §4, G-13)
+
+License facts verified from installed `node_modules` package.json fields on 2026-07-14;
+anything not yet installed is **UNVERIFIED** and MUST be verified (and this table updated)
+in the same commit that first installs it. Rule: only MIT / Apache-2.0 / BSD / ISC land
+without a founder decision; anything else (copyleft, source-available, no-compete
+registries) is a slate.
+
+| Component(s) | License | Note |
+|---|---|---|
+| fastify, better-sqlite3, zod, execa, react, vite, vitest, eslint, fast-check, tsx, prettier | MIT (verified) | — |
+| typescript, google-auth-library | Apache-2.0 (verified) | preserve NOTICE on redistribution |
+| ws, mermaid, @codemirror/*, tailwindcss, @tanstack/react-query, @fastify/websocket, fastify-type-provider-zod, @anthropic-ai/sdk, openai, playwright | UNVERIFIED (not yet installed) | expected MIT/Apache-2.0; verify at installing wave |
+| content/ (experts, validators, protocols) | imported from bpm-opencode-experts (founder's own) with provenance headers | repo-level LICENSE file pending founder choice (Apache-2.0 vs MIT — D-006, pre-0.3 gate) |
+| LM Studio / provider terms of service | n/a (services) | verify ToS compatibility at the wave that ships each provider path; LM Studio check outstanding (W2 shipped without it) |
+
 ## Version upgrade policy
 
 1. Majors here are pinned; `package.json` uses `^` within the pinned major; lockfile committed.

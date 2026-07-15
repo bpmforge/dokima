@@ -30,9 +30,9 @@ normal DECISIONS entry superseding the assumption.
 |---|---|---|
 | P-001 | Chat thread persistence: full verbatim transcript replay, or render-from-events with summarized packets? | Render-from-events; packets summarized, not stored verbatim (API_DESIGN/DATABASE) |
 | P-002 | Acceptance authority split: may a machine reviewer identity `accept` tickets, with only merges human-gated? | Machine `accept` allowed (reviewer≠owner); merge to main human-only (NEVER-AUTO) |
-| P-003 | Credential storage on headless/WSL where no OS keychain exists? | Encrypted-file fallback behind `SHIPWRIGHT_NO_KEYCHAIN` (DEPLOYMENT) |
+| P-003 | Credential storage on headless/WSL where no OS keychain exists? | Encrypted-file fallback behind `SHIPWRIGHT_NO_KEYCHAIN` (DEPLOYMENT) — **implemented as assumed in W0-07** (AES-256-GCM vault); Linux libsecret adapter still open (ticket W3-11 HANDOFF list) |
 | P-004 | Process model for many projects: one core serving N projects, or one process per project? | One core, N projects — **canonicalized as part of D-013** (no longer pending) |
-| P-005 | Early version pins (zod 4 vs 3, pnpm 10 vs 9)? | zod 4 + pnpm 10 with trap notes (TECH_STACK); revisit free at W0-01 |
+| P-005 | Early version pins (zod 4 vs 3, pnpm 10 vs 9)? | **Landed at W0-01: zod 4.4.x + pnpm 11.11.0** (pnpm drifted 10→11 at install, recorded in TECH_STACK; no code impact). Closed 2026-07-14 (design review) |
 
 ## Constraints bound to decisions
 

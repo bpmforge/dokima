@@ -448,6 +448,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-C4: Board renders lanes/columns/typed cards from live projections ≤1s after the underlying event.
 - FR-C5: Receipt inspector renders gate/coverage/challenge/ledger artifacts as structured views.
 - FR-C6: Guided first-fifteen-minutes sample project wired into the first-run wizard.
+- FR-C7: CLI parity: the `shipwright` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). *(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)*
 
 **FR-PIPE (Pipeline)**
 - FR-P1: Six-phase program with per-phase validator sets and receipt-minting gates (validator list, exit codes, gap counts, input hash).
@@ -605,6 +606,14 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 **Shipwright** — the platform: the master builder who takes your vision from blueprint to launch, and won't let an unseaworthy product ship. Component names used in this document: **Harbormaster** (the conductor), **the Canvas** (UI), **lanes/berths** (parallel work streams), **manifest** (completion evidence — the nautical and logistics senses coincide), **launch** (release), **morning queue** (the reviewer's harbor office). Metaphor budget is deliberately capped: tickets are tickets, gates are gates, receipts are receipts.
 
 **Known namespace collision:** "Shipwright" is also a CNCF project for building container images (shipwright.io). Distinct domain (image builds vs. SDLC platform), but worth a naming pass before any public launch — `shipwright.dev`-style branding or a qualifier (e.g., "Shipwright Studio") are the obvious mitigations.
+
+**Vocabulary canon (added 2026-07-14, design review G-14 — cheap agents copy these exactly):**
+- **Ticket lifecycle** (board columns): `ready → claimed → in_progress → in_review → done` (+ `blocked` overlay) — lower-snake in code/events, Title Case only as UI column labels. `blocked-with-evidence` is a *badge* on a blocked card (dead-letter/R4 cases), not a distinct status.
+- **Coverage states** (a different axis — work-unit outcomes, not board columns): `DONE / WAIVED / BLOCKED / FAILED / SKIPPED`, always upper-case, always in this order.
+- **Constraint IDs** are written `C-1`…`C-8` (hyphenated) everywhere.
+- **Phase names**: phases are integers 0–5; the Blueprint stage is "Phase 2.5" informally but is *part of Phase 2's exit* in the state machine (no fractional phase exists in code).
+- **Scales in force** (each is its own axis; never mix): finding severity `CRITICAL/HIGH/MEDIUM/LOW`; challenger verdicts `CONFIRMED/CONTRADICTED/UNVERIFIABLE`; approval risk classes `deploy/main-merge/destructive/escalation/budget`; notification tiers `Decide/Review/Record`; threat ratings `H/M/L`.
+- **Runner**: `pnpm` (never `npm run`) in every doc and script.
 
 ---
 
