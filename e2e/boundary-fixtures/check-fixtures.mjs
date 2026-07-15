@@ -46,6 +46,12 @@ const CASES = [
     ruleId: 'no-restricted-imports',
   },
   {
+    law: 'ARCHITECTURE.md §4 law 4: better-sqlite3 subpath import in gateway (bypass check)',
+    file: 'e2e/boundary-fixtures/db-driver-subpath-in-gateway/violation.ts',
+    config: buildDependencyRuleConfig('gateway', { includeFixtures: true }),
+    ruleId: 'no-restricted-imports',
+  },
+  {
     law: 'TECH_STACK.md: no deep imports across package boundaries',
     file: 'e2e/boundary-fixtures/deep-import/violation.ts',
     config: buildDependencyRuleConfig('events', { includeFixtures: true }),

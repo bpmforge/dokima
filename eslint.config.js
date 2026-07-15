@@ -88,7 +88,10 @@ const SDK_FIXTURE_GLOBS = {
   loop: ['e2e/boundary-fixtures/provider-sdk-in-loop/**/*.ts'],
 };
 const DB_FIXTURE_GLOBS = {
-  gateway: ['e2e/boundary-fixtures/better-sqlite3-in-gateway/**/*.ts'],
+  gateway: [
+    'e2e/boundary-fixtures/better-sqlite3-in-gateway/**/*.ts',
+    'e2e/boundary-fixtures/db-driver-subpath-in-gateway/**/*.ts',
+  ],
 };
 const DEEP_IMPORT_FIXTURE_GLOBS = {
   events: ['e2e/boundary-fixtures/deep-import/**/*.ts'],
@@ -104,23 +107,12 @@ export function buildDependencyRuleConfig(name, { includeFixtures = false } = {}
   ).map((other) => `@shipwright/${other}`);
 
   const paths = [];
-  if (name !== 'gateway') {
-    for (const pkg of PROVIDER_SDK_PACKAGES) {
-      paths.push({
-        name: pkg,
-        message: `ARCHITECTURE.md §4 law 2: provider SDKs are egress-only through packages/gateway — @shipwright/${name} may not import '${pkg}'.`,
-      });
-    }
-  }
-  if (name !== 'events') {
-    for (const pkg of DB_DRIVER_PACKAGES) {
-      paths.push({
-        name: pkg,
-        message: `ARCHITECTURE.md §4 law 4: only packages/events opens the DB write path — @shipwright/${name} may not import '${pkg}'.`,
-      });
-    }
-  }
 
+  // Note: bans below use glob-capable `patterns.group` (not `paths.name`), which only
+  // matches the exact bare specifier. Both @anthropic-ai/sdk and better-sqlite3 publish
+  // real, usable subpaths (e.g. '@anthropic-ai/sdk/resources/messages',
+  // 'better-sqlite3/lib/database.js') that would bypass an exact-match-only ban — see
+  // e2e/boundary-fixtures/db-driver-subpath-in-gateway for the proof.
   const patterns = [
     {
       regex: DEEP_IMPORT_REGEX,
@@ -128,6 +120,22 @@ export function buildDependencyRuleConfig(name, { includeFixtures = false } = {}
         'TECH_STACK.md repository conventions: packages export via `exports` maps only — no deep imports across package boundaries.',
     },
   ];
+  if (name !== 'gateway') {
+    for (const pkg of PROVIDER_SDK_PACKAGES) {
+      patterns.push({
+        group: [pkg, `${pkg}/**`],
+        message: `ARCHITECTURE.md §4 law 2: provider SDKs are egress-only through packages/gateway — @shipwright/${name} may not import '${pkg}' (including subpaths).`,
+      });
+    }
+  }
+  if (name !== 'events') {
+    for (const pkg of DB_DRIVER_PACKAGES) {
+      patterns.push({
+        group: [pkg, `${pkg}/**`],
+        message: `ARCHITECTURE.md §4 law 4: only packages/events opens the DB write path — @shipwright/${name} may not import '${pkg}' (including subpaths).`,
+      });
+    }
+  }
   if (forbiddenSiblings.length > 0) {
     patterns.push({
       group: forbiddenSiblings,
