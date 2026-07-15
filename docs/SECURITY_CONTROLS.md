@@ -59,24 +59,31 @@ ticket. IDs are stable — new controls append, never renumber.
   formats (gh tokens, PEM blocks, AWS/GCP key shapes, `sk-`-style keys) + values of
   vault-registered secrets + `.env`-file values from the project dir. A secrets-scanner
   validator runs in every close gate — a diff containing a live-looking secret blocks
-  close (BLUEPRINT §12.5). *Lands:* W0 (vault + logger) / validator in W1 pack.
-  *Verify:* planted fixture secrets pushed through packets/logs/events ⇒ zero plaintext;
-  close-gate test with a committed fake key ⇒ blocked.
+  close (BLUEPRINT §12 item 5). *Lands:* **W3-13 per plan.json** (design-review 2026-07-14:
+  this control originally claimed W0/W1, which never happened; keychain refs landed W0-07.
+  Pulled forward from W8-03 → W3-13 by adopted AM-2 so the redaction window closes before
+  the autonomous W3 runs; the W8-01 dogfood re-verifies end-to-end). *Verify:* planted
+  fixture secrets pushed through packets/logs/events ⇒ zero plaintext; close-gate test
+  with a committed fake key ⇒ blocked.
 - **SC-07 Sandboxed verify execution, no network by default** (T-4, T-21). Verify
   commands, test suites, and tool anchors run in the project worktree under a restricted
   child process: cleaned env (no vault handles, no tokens), network disabled by default
   (opt-in per project; container profile via Podman/Docker when configured —
-  DEPLOYMENT §5). Validator-pack executables run under the same sandbox. *Lands:* W1 ·
-  sandbox module. *Verify:* verify-run fixture attempts outbound connect + env read ⇒
+  DEPLOYMENT §5). Validator-pack executables run under the same sandbox. *Lands:*
+  **W6-06 per plan.json** (design-review 2026-07-14 correction from "W1"; W1-02 gave
+  validators timeout + sandbox-cwd only — full process isolation is W6-06). *Verify:* verify-run fixture attempts outbound connect + env read ⇒
   both fail; container profile integration test.
 - **SC-09 Signed content packs** (T-21, D-006). Expert/validator packs carry a manifest
   (files, hashes, publisher key signature); install verifies signature + hash tree and
   records provenance; unsigned/mismatched packs install only behind an explicit
   `--allow-unsigned` with a permanent warning badge in Settings. First-party imported
   content (D-008) is signed at import. Packs are data + declared executables — the runner
-  never `eval`s pack markdown. *Lands:* W1 (import) / W6 (community install flow).
-  *Verify:* tampered-pack fixture ⇒ refused; unsigned path shows badge; provenance headers
-  present on all imported content.
+  never `eval`s pack markdown. *Lands:* **W6-07 per plan.json** (design-review 2026-07-14
+  correction — the W1-01 import carried provenance headers but was NOT signed; W6-07
+  adds the signing mechanism, re-signs first-party content, and ships the community
+  install flow). *Verify:* tampered-pack fixture ⇒ refused; unsigned path shows badge;
+  provenance headers present on all imported content; first-party content signature
+  verifies post-W6-07.
 
 ## Local surface
 
@@ -85,8 +92,10 @@ ticket. IDs are stable — new controls append, never renumber.
   middleware: bearer token (128-bit, generated first-run, `~/.shipwright/token`, mode
   0600) + `Host`/`Origin` allowlist (`localhost:<port>` exact) — defeats DNS rebinding and
   cross-site localhost CSRF; no CORS headers served at all. WS upgrades re-check token +
-  Origin. `~/.shipwright/` and `.shipwright/` are created 0700. *Lands:* W0 · apps/server.
-  *Verify:* route-walker (API_DESIGN §4); rebinding simulation (evil Host header ⇒ 403);
+  Origin. `~/.shipwright/` and `.shipwright/` are created 0700. *Lands:* **W4-01 per
+  plan.json** (design-review 2026-07-14 correction from "W0" — apps/server is a /health
+  stub until W4; the D-005 "auth middleware from W0" pre-commitment is satisfied at the
+  schema level only, identities table W0-02). *Verify:* route-walker (API_DESIGN §4); rebinding simulation (evil Host header ⇒ 403);
   bind-address assertion in boot test; perms test.
 
 ## Governance & audit

@@ -3,7 +3,8 @@
 Traces to: BLUEPRINT.md §2–3/§7, DECISIONS.md D-003 (local-first Node/Fastify/SQLite/React),
 D-004 (native board + forge mirror), D-005 (identity model), D-008 (standalone runtime),
 D-010 (berths), D-013 (multi-project Fleet). Versions: docs/TECH_STACK.md. This is the load-bearing doc: module
-boundaries in §4 are lint-enforced; the trust boundary in §2 is the product.
+boundaries in §4 are lint-enforced (**enforcement ticket W3-10 — not yet active as of
+2026-07-14**; until it lands, compliance is by review only), and the trust boundary in §2 is the product.
 
 ## 1. System context
 
@@ -121,7 +122,7 @@ the log; a rebuild command exists and is the recovery of last resort.
 | apps/web | apps/web | React/Vite Canvas: three-pane UI over projections | §3.1 |
 | content/ | content/ | imported expert definitions + validator packs (markdown/scripts, provenance headers, signed — D-006/D-008) | §11.2/.4 |
 
-### Allowed-dependency matrix (row imports column; blank = forbidden, ESLint-enforced)
+### Allowed-dependency matrix (row imports column; blank = forbidden; ESLint-enforced from W3-10)
 
 | imports → | shared | events | tickets | validators | gateway | memory | git | forge | mcp | loop | pipeline |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -139,7 +140,7 @@ the log; a rebuild command exists and is the recovery of last resort.
 | **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (+harbormaster) |
 | **apps/web** | (types only) | | | | | | | | | | |
 
-Laws (each has a lint rule or validator):
+Laws (each gets a lint rule or validator — W3-10 wires them; review-enforced until then):
 1. **No package ever imports `apps/*`.** Domain logic is UI/transport-agnostic.
 2. **All model calls go through `gateway`.** `loop`, `tickets`, `pipeline` never import a
    provider SDK or open a socket to a model endpoint — the escalation ladder, budget
@@ -241,3 +242,8 @@ Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute*
 | Forge unreachable | adapter error | verbs queue in ticket history[], flush on reconnect | mirror status chip |
 | Human edits leased file | file watcher | checkpoint → rebase → re-ground; park on material conflict | Decide card: take mine / agent's / merge |
 | Event log tamper | hash chain break | `audit verify` fails, names first bad seq | audit error, refuse silent repair |
+| Review output truncated/unparseable | manifest/verdict parse failure | infra event: free retry of the review; zero finding-ledger writes, zero attempts charged (FR-L6) | Record-tier note on the card |
+| Provider limit window | 429/529/quota classify (FR-G8) | park affected berths, `limit.pause` event, auto-resume at reset/backoff | Record tier; model chip "paused until HH:MM" |
+| Oversized session output/diff (ENOBUFS class) | bounded buffers on session/git pipes | truncate-with-marker + summarize; never a process crash; oversized tool results spill to disk (FR-L8) | card note "output summarized (N MB)" |
+| Reviewer bookkeeping vs verdict divergence | fresh APPROVE with stale sticky findings | fresh explicit verdict wins; block only on freshly-raised or explicitly STILL-PRESENT findings (field report §5) | history shows the superseded findings |
+| Resume state drift | event log vs receipts vs disk disagree | resume REFUSES with a drift report; never guesses (FR-H3) | drift report card, human decides |

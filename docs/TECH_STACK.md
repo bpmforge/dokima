@@ -147,6 +147,46 @@ from REST, streams are an optimization (resume via `last_seq` on both).
   stdout; the runner treats first-party and content-pack validators identically
   (sandboxed — SC-07).
 
+## Licensing ledger (design-review 2026-07-14 — DESIGN_REVIEW.md §4, G-13)
+
+License facts verified from installed `node_modules` package.json fields on 2026-07-14;
+anything not yet installed is **UNVERIFIED** and MUST be verified (and this table updated)
+in the same commit that first installs it. Rule: only MIT / Apache-2.0 / BSD / ISC land
+without a founder decision; anything else (copyleft, source-available, no-compete
+registries) is a slate.
+
+| Component(s) | License | Note |
+|---|---|---|
+| fastify, better-sqlite3, zod, execa, react, vite, vitest, eslint, fast-check, tsx, prettier | MIT (verified) | — |
+| typescript, google-auth-library | Apache-2.0 (verified) | preserve NOTICE on redistribution |
+| ws, mermaid, @codemirror/*, tailwindcss, @tanstack/react-query, @fastify/websocket, fastify-type-provider-zod, @anthropic-ai/sdk, openai, playwright | UNVERIFIED (not yet installed) | expected MIT/Apache-2.0; verify at installing wave |
+| content/ (experts, validators, protocols) | imported from bpm-opencode-experts (founder's own) with provenance headers | repo-level LICENSE file pending founder choice (Apache-2.0 vs MIT — D-006, pre-0.3 gate) |
+| LM Studio / provider terms of service | n/a (services) | verify ToS compatibility at the wave that ships each provider path; LM Studio check outstanding (W2 shipped without it) |
+
+## Tool-ecosystem licensing (validators, tool anchors, integrations — R-M3, researched 2026-07-14)
+
+Verdicts for tools Shipwright's validator packs / tool anchors / integrations may invoke.
+Sources: repo LICENSE files + official terms pages, per-claim URLs in
+docs/work/IMPROVEMENT_RECOMMENDATIONS.md addendum §M research (agent report, 2026-07-14).
+Rule (D-014 provenance law): **OK-as-subprocess** tools are invoked from the user's
+machine, never vendored; **format-compatible-only** means we may read/write its formats
+but never bundle its content; red-flag adoption into shipped validator packs = founder slate.
+
+| Tool | License (verified unless noted) | Verdict |
+|---|---|---|
+| ripgrep (MIT/Unlicense), ast-grep, jscpd, gitleaks, vulture, py-spy, 0x, hyperfine (MIT/Apache), dependency-cruiser, madge, mermaid, monaco, ollama, llama.cpp — all MIT; knip (ISC); ugrep (BSD-3) | permissive | OK — subprocess or vendored |
+| Lighthouse, osv-scanner, grype+syft, detect-secrets, zoekt, Playwright | Apache-2.0 | OK-as-subprocess |
+| semgrep CE engine, opengrep, pa11y | LGPL-2.1/3.0 | OK-as-subprocess, never vendor/link |
+| **semgrep registry rules** | Semgrep Rules License v1.0 — internal use only, no distribution/service | **format-compatible-only; never bundle** — own rules or Opengrep rule sets |
+| **TruffleHog** | AGPL-3.0 | never vendor; optional user-installed anchor only — gitleaks (MIT) is the shipped default |
+| axe-core | MPL-2.0 (file-level copyleft) | OK bundled **unmodified**; never fork-and-patch its files |
+| CISA KEV (CC0), EPSS (free, attribution requested), GitHub advisory DB (CC-BY-4.0) | data | OK to cache/bundle; attribute EPSS + advisory data |
+| CodeMirror 6 | MIT — note: GitHub repos archived 2026-04, upstream moved to code.haverbeke.berlin (npm unchanged) | OK; track new upstream |
+| ts-prune (archived → knip), clinic.js / radon (dormant) | — | avoid / prefer maintained alternates |
+| **LM Studio** | proprietary ToS: free for personal AND internal-business use (current terms) | OK as user-installed endpoint; **never bundle/redistribute/wrap as SaaS** — ToS check CLOSED (was outstanding from W2) |
+| Vertex AI / Anthropic API / OpenAI API (BYOK) | provider terms | OK — per-user BYOK; never pool/proxy one key across users (OpenAI BYOK blessing UNVERIFIED — their business-terms page was unreachable) |
+| **GitHub Copilot adapter (W2-03, D-007)** | ToS risk, not license: `copilot_internal` token flow is undocumented; GitHub's enforcement notices cite "proxy usage / interfering with how Copilot works" as permanent-ban grounds; bans hit the **user's GitHub account** | **DECIDED D-019 (2026-07-14): default-off + explicit ledgered consent gate** — never enabled by default; onboarding warns plainly; enabling requires an acknowledgement event (FR-G6 ack pattern) |
+
 ## Version upgrade policy
 
 1. Majors here are pinned; `package.json` uses `^` within the pinned major; lockfile committed.

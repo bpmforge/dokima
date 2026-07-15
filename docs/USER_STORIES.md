@@ -50,6 +50,17 @@ As P1, I want a built-in sample idea that runs the whole program in miniature, s
 - AC-1: Sample program completes end-to-end on local-or-cheap models from a fresh install
 - AC-2: The guided flow visits every major surface and explains each gate as it passes
 
+### US-108 Findings become a plan, not a report — 5 pts — FR-PLAN1, FR-PLAN2 (D-016)
+As P2, I want run outputs to compose into a ranked improvement plan from a deterministic catalog, with accepted items minting board tickets, so that findings drive work instead of rotting in markdown.
+- AC-1: The same snapshot always yields the same plan items and ranking (deterministic)
+- AC-2: Accepting an item creates a linked ticket carrying the item's machine-checkable verify
+- AC-3: The plan view is fully functional with zero LLM calls
+
+### US-109 Plans that admit regression — 3 pts — FR-PLAN3, FR-PLAN4 (D-016)
+As P3, I want nightly auto-verify to flip plan items done or regressed off fresh snapshots, so that "improved" claims stay true over time.
+- AC-1: A satisfied verify criterion flips the item done; a later violation flips it regressed with a Review-tier notification
+- AC-2: LLM narration cannot add, remove, or reword plan items
+
 ## Epic E2 — Ticket board & build [W0/W3/W4]
 
 ### US-201 A board that cannot lie — 5 pts — FR-C4, FR-T1, NFR-6
@@ -138,6 +149,16 @@ As P4, I want doc-phase gaps my small model can't close to be waived-and-recorde
 - AC-2: Any soft-waiver attempt on a build/verify gate is rejected at the API level
 - AC-3: Weak-model runs get larger iteration budgets and prescriptive gap prompts
 
+### US-309 What escalation bought — 2 pts — FR-G3 (R-A2)
+As P4, I want a spend view grouped by rung with a weekly digest ("R3 spent $0.41 on W0-02, landed"), so that the escalation ladder proves its economics instead of asserting them.
+- AC-1: Spend-by-rung view renders from the existing ledger; weekly digest is Review-tier
+- AC-2: Each escalated ticket shows rung spend beside its outcome
+
+### US-310 Earned trust, suggested — 2 pts — FR-H5 (R-A1)
+As P1, I want a Record-tier suggestion when my project's evidence justifies more berths or a looser breakpoint, so that graduation is offered on receipts, not guessed at.
+- AC-1: Crossing the evidence threshold emits one suggestion card (never a pop)
+- AC-2: The card cites its evidence: clean closes, zero oscillations, lanes available
+
 ## Epic E4 — Trust & review (receipts, morning queue, challenger) [W0/W3/W5]
 
 ### US-401 Every claim opens its receipt — 3 pts — FR-C5, NFR-6
@@ -178,6 +199,23 @@ As P2, I want every expected unit of work to end in exactly one visible state (D
 As P1, I want gate bypasses to require my signed waiver receipt, so that shortcuts are mine to take and always on the record.
 - AC-1: Waiver requires a human name; agent identities rejected via blocklist
 - AC-2: Waiver receipt appears in coverage history and the phase receipt chain
+
+### US-408 Rules earn their teeth — 5 pts — FR-RL1, FR-RL2 (D-014)
+As P4, I want new gate rules to run in shadow mode and be promoted only on measured false-positive data with red fixtures, so that a noisy grep can never block my board the way raw heuristics false-blocked the bootstrap build.
+- AC-1: A shadow rule's findings render in the explorer, stamped experimental, and appear in no gate receipt or block decision
+- AC-2: Promotion to gate is refused below the FP sample minimum, with the counts shown; trailing FP >50% flags demotion
+- AC-3: No LLM code path can change a rule's state
+
+### US-409 Suppression with a reason, never a kill-list — 3 pts — FR-RL3, FR-RL4 (D-014)
+As P2, I want to suppress a finding only with a fixed-enum justification under my name, and see raw vs effective counts everywhere, so that suppressions stay honest and reopen themselves when the context changes.
+- AC-1: Suppression requires justification enum + human signature; machine identities rejected
+- AC-2: Suppressed finding auto-reopens when its rule/file/dependency context changes
+- AC-3: Every gate summary shows raw → deduped → effective → suppressed counts
+
+### US-410 Verdicts carry their re-run — 2 pts — FR-L6 (R-B2)
+As P3, I want every reviewer verdict to include the exact command, counts, and exit code it independently re-ran, so that "reviewed" is evidence, not vibes.
+- AC-1: A verdict without the re-ran-independently line is rejected as INCOMPLETE and does not count
+- AC-2: A subjective score of 1–4 over a passing deterministic gate escalates to me — it never auto-fails the ticket
 
 ## Epic E5 — Integrations (forge / MCP / git) [W0/W6]
 

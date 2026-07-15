@@ -73,11 +73,18 @@ and tickets must cite an S-x. Wave mapping follows BLUEPRINT §9.
 | S-26 | Working + long-term memory in-process (SQLite + FTS5, optional local embeddings, BM25 fallback); token-budgeted assembly. | FR-M1 |
 | S-27 | ACE playbook (delta-edits, verified-before-stored) as escalation rung R0; sleep-time consolidation on by default; error-first recall. | FR-M2/M3 |
 
+### Added by design review 2026-07-14 (adopted AM-1..7 — DESIGN_REVIEW.md / IMPROVEMENT_RECOMMENDATIONS.md)
+
+| ID | Item | Trace |
+|----|------|-------|
+| S-30 | Rule lifecycle & gate economics: shadow mode, data-gated promotion/demotion on measured FP rates, red fixtures mandatory, justification-gated suppression with auto-reopen, raw-vs-effective funnel counts on every surface. | D-014, FR-RL1–4, W3-08/W4-06/W5-01 |
+| S-31 | Improvement Plans: deterministic recommendation catalog → ranked plan items → nightly auto-verify (done/regressed); LLM orders/narrates only. | D-016, FR-PLAN1–4, W5-10/11 |
+
 ### W8 — Hardening (the dogfood gate)
 
 | ID | Item | Trace |
 |----|------|-------|
-| S-28 | Shipwright runs its own pipeline on itself: threat model, security suite, a11y; receipts ship with the 1.0 release. Secrets hygiene lands here at the latest: vault, redaction in packets + event log, secrets-scanner validator on close gates. | NFR-4, BLUEPRINT §9, §12.5 |
+| S-28 | Shipwright runs its own pipeline on itself: threat model, security suite, a11y; receipts ship with the 1.0 release. Secrets hygiene: vault, redaction in packets + event log, secrets-scanner validator on close gates — **pulled forward to W3 (ticket W3-13, adopted AM-2 2026-07-14)** so the redaction window closes before the autonomous W3 runs; the W8 dogfood re-verifies it. | NFR-4, BLUEPRINT §9, §12.5 |
 | S-29 | Packaging: `npx shipwright` / npm global; config `~/.shipwright/`, project state `.shipwright/`; macOS/Linux first-class, Windows via WSL (D-009). | D-003, D-009, NFR-1/7 |
 
 ## Out of scope — v1

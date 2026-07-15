@@ -74,7 +74,11 @@ surface; agents and humans share the same board.
 - **Morning queue:** triage surface for the team's overnight agent shift; sorted-by-
   leverage ordering (merges first) matches how they already unblock people. Note:
   v1 is single-operator (D-005) — the lead drives; teammates consume the mirrored
-  forge state until v2 multi-user/SSO (SCOPE.md S-40).
+  forge state until v2 multi-user/SSO (SCOPE.md S-40). A teammate's channel in v1 is
+  the forge itself: they comment on the mirrored issue/PR and the lead acts on it in
+  their normal forge review flow — Shipwright does not ingest forge comments in v1
+  (design-review G-10b names this dead-end; the real fix is v2/S-40, and comment
+  ingestion is a candidate v2 scope item).
 - **Willingness to pay (hypothesis):** the strongest revenue candidate — values
   receipts + audit trail at team-tool prices (Jira/Linear per-seat as the anchor);
   v2 SSO/role-rights (D-005) is the unlock for real team licensing.

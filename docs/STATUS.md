@@ -204,6 +204,64 @@ W1-07 blocked on a REAL HIGH: the E2E harbormaster-lite (models the real Harborm
 
 docs/design/FINDING_LOOP_POLICY.md answers "how many loops is too much": findings get identity; iterations classify CLEARED/STALLED/PROGRESSED/OSCILLATING; stall=2 same-tier attempts then escalate (3rd identical attempt always wrong); progress loops budgeted by convergence (ceiling 3+points cap 8; ceiling-while-progressing = decomposition signal); oscillation zero-tolerance; infra failures never charge the coder. Blueprint FR-L6/L7 + SRS rows; tickets W3-08 (ledger+budgets) W3-09 (Harbormaster symlink-safety); W5-07 amended with seam-ownership acceptance. Board 65 tickets / 268 pts.
 
+## 2026-07-14 — DESIGN-REVIEW GATE (P6): all passes complete, validators green, challenger recorded
+
+**Arc:** P1 gap register (30 gaps) → P2 recommendations (18 R-x + AM-1..7) → founder
+adopted all + opened six follow-up domains (addendum R-G..R-M, D-018) → P3 threading
+(D-014..D-018, FR-RL/PLAN/C8/L8/M4/E2 families) → P4 (GATE_ECONOMICS, IMPROVEMENT_PLANS,
+CONTRACTS design docs; ADR-14..18 with Rejected lines; 6 field-derived failure-mode rows;
+Ralph+challenger protocol in PLAYBOOK; validate-plan.mjs + validate-traceability.mjs) →
+P5 board completion (stories[] on every ticket, F1 split W3-01a/b/c, F2 human-pair notes,
+F3 resume preconditions, F4 W3-08 early, D-015 scaffold flags, W3-14) → CHALLENGER pass
+by a fresh agent → all confirmed gaps closed (+W3-15/16, W4-11/12, 12 acceptance
+closures, W2-06 amendment reverted for board honesty, US-309/702 linkage fixed).
+
+**Gate evidence (independent re-runs, this session):**
+- re-ran independently: `node scripts/validate-plan.mjs` — 84 tickets · 329 pts ·
+  P1–P9 checks incl. D-015 lane law — OK, exit 0
+- re-ran independently: `node scripts/validate-traceability.mjs` — 81/81 FR/NFR cited ·
+  35 S-items · 23 D/P decisions · 54/54 stories ticket-covered · zero dangling refs —
+  OK, exit 0
+- re-ran independently: `pnpm lint && pnpm typecheck && pnpm test` — 610 passed |
+  1 skipped (pre-existing opt-in), 83 files — exit 0
+- Challenger verdicts: F1-split NO-LOSS; 5 spot-checks CONFIRMED, W3-08 CONTRADICTED
+  (4-of-6 policy rows named) → fixed same-day; ~16 orphans found → all ticketed or
+  closed; 2 hollow story links → re-attributed.
+- Accepted residuals (listed, not waived silently): receipt/HANDOFF round-trip fixtures
+  ride the existing W1 conformance tests; npm -g channel is a W8-05 note; OpenAI BYOK
+  terms UNVERIFIED (their business-terms page unreachable) — re-check pre-0.3.
+
+**Board:** 84 tickets / 329 pts (was 65/268). Claimable at resume: W0-09, W2-09,
+W3-10, W3-11, W3-15, W4-09. Open founder items: D-017 license + D-018 policy modes
+rode adopt-all (vetoable); D-019 Copilot-adapter ToS slate (TECH_STACK red flag);
+P-001/P-002 slates stand.
+
+## 2026-07-14 — design review P1: gap register + fix pack (branch review/design-review-hardening)
+
+Full-system design review kicked off (REVIEW_KICKOFF_PROMPT.md, RepoPulse method).
+P1 artifact: **docs/work/DESIGN_REVIEW.md** — 30-gap register (G-1…G-30), modularity
+assessment, persona journeys, customization surfaces, licensing ledger, spec-vs-built
+drift appendix. Headlines: plan.json fails the product's own FR-T3 cross-lane check
+(66 violations, verified by executing packages/tickets findLaneScopeViolations —
+G-1/R-1); ARCHITECTURE's "ESLint-enforced boundaries" claim was false + unowned (G-2);
+un-ticketed public-surface backlog would re-trigger the W0-08/W1-02 seam class at W3
+resume (G-3); CI itself had no ticket (G-6). Fix pack applied: 8 new tickets (W0-09 CI,
+W2-09 streaming, W3-10 boundaries, W3-11 public surfaces, W3-12 shared glob, W4-09
+global DB + fitness wiring, W6-07 pack signing, W8-06 ops lifecycle — board now
+73 tickets / 290 pts), 10 ticket amendments, doc corrections across TESTING (pnpm,
+fixtures path), SECURITY_CONTROLS (SC-06/07/08/09 landing waves → actual), SRS
+(FR-C7 CLI parity, FR-I4 wave, tier-aware FR-L7, table repair), BLUEPRINT (FR-C7 +
+vocabulary canon §10), DATABASE (closed notification enum), TECH_STACK (licensing
+ledger — installed deps verified MIT/Apache-2.0), DECISIONS (P-003/P-005 closed with
+landed actuals), UX_SPEC (empty states §2b, badge semantics, field-report surface,
+un-archive), PREREQUISITES.md (human-step checklist HP-1…7). Environmental fix:
+better-sqlite3 was ABI-compiled under Node 24 (supervise.sh hardcodes v24 — G-25,
+flagged for resume prep, not touched per pause rules); rebuilt for pinned Node 22 —
+gate green 610 passed | 1 skipped. Upstream note: opencode v2.1.0 SHIPPED 2026-07-13
+(library at v2.9.0) — F3 precondition satisfied; resume gated on this review's STOP
+decisions + SW-R1 resync. Open for founder at the P2 STOP: R-1 territory-release
+amendment, W8-03 secrets pull-forward, tier-aware ceiling confirmation, LICENSE choice.
+
 ## 2026-07-12 — content gap-fill: 18 protocols + 3 reference templates
 
 Release audit found W1-01 imported only the 4 protocols its acceptance NAMED (+4 loop docs) — 18 shared methodology docs missing (ANTI_SLOP_RULES, CODE_BOOK_PROTOCOL, MODEL_ADAPTER, CONTEXT_BUDGET, SCOPE_BOUNDARY, LOOP_PREVENTION, PERSISTENCE, CHECKPOINT_STATE/REVERT, BOUNDED_TASK_CONTRACT, MEMORY/LOCAL_LLM/SESSION primers, PHASE_ROUTING, EXECUTOR_SELECTION, RESEARCH_TOOLS, BROWSER_TESTING, BOOK_PROTOCOL) + 3 reference templates. All gap-filled with provenance headers; runtime-specific ones (EXECUTOR_SELECTION, SESSION_PRIMER, PHASE_ROUTING) marked reference-only. Coverage now: experts 85/85 applicable, validators 66/66, protocols 26/26, references 3/3. Lesson (spec-vs-intent): acceptance criteria that NAME examples get the examples, not the set — say "ALL of agents/shared/" not four names.

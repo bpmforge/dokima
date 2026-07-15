@@ -52,7 +52,7 @@ still STILL-PRESENT → BLOCK with the finding ledger. Total: ~3 attempts across
 New findings after a real fix are **healthy** — the reviewer can now see past the old defect (W1-01's 2→9→15 was the reviewer enumerating the missing pieces of an incomplete import, i.e., doing its job). Don't cap these at the stall number. Instead:
 
 - **Convergence check:** over any sliding window of 2 passes, `open_findings` must strictly decrease OR the pass must be classified PROGRESSED (priors resolved). Two consecutive passes with non-decreasing open count and no prior-resolutions = **divergence → stop**.
-- **Hard ceiling** so a slowly-converging ticket can't eat the night: `max_passes = base(3) + ticket_points`, capped at 8. Hitting the ceiling while still PROGRESSED is a **park, not a failure** — the ticket is decomposing badly (too big), which is a planning signal: split it.
+- **Hard ceiling** so a slowly-converging ticket can't eat the night: `max_passes = base(3) + ticket_points`, capped at 8 **on frontier/metered tiers**. **Tier-aware:** on local/owned-hardware tiers (tokens ~free) the PROGRESSED ceiling rises to 12+ — the proven localFrontier setting, where 12 iterations landed complete SDLCs on local models that a flat cap of 3 hard-escalated; the session watchdog (wall-clock) is the backstop, not the pass count. Field principle from the original opencode/Jarvis local runs: *as long as it is not looping on the same error, let it loop and fix.* Hitting the ceiling while still PROGRESSED is a **park, not a failure** — the ticket is decomposing badly (too big), which is a planning signal: split it.
 
 ### Oscillation: zero tolerance
 A REGRESSED finding (fixed, then broken again by a later fix) means the coder's changes conflict with each other — more same-tier loops make it worse. **One oscillation → immediate escalation; second → block.** Also record it as a decomposition signal: two findings whose fixes collide usually straddle a module boundary that the ticket blurs.
@@ -68,7 +68,7 @@ There is no single number; the honest answer is a matrix:
 |---|---|
 | Same finding, same tier | **2** targeted attempts |
 | Same finding, after escalation | **+1** (then block with ledger) |
-| New-findings-each-pass, converging | up to `3 + points` passes (cap 8) |
+| New-findings-each-pass, converging | up to `3 + points` passes (cap 8 metered / 12+ local — §3 tier-aware ceiling) |
 | Open count flat/rising for 2 passes | stop now (divergence) |
 | Any finding regresses | escalate now; twice = block |
 | Review itself failed (infra) | free retry, no charge |

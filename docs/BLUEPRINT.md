@@ -186,7 +186,7 @@ The productized six-phase SDLC, run as a state machine per project:
 - Phases 0–2 are **interview-driven**: Shipwright-as-PM runs a discovery interview (adaptive question depth), drafts deliverables, and iterates with the user. These phases are deliberately human-paced — this is where "helps be a product manager" lives.
 - **Gate mechanism**: each phase has a declared validator set. A clean run mints a **gate receipt** (`gates/<phase>-receipt.json`: validator names, exit codes, gap counts, input-file content hash). Advancing to phase N re-verifies phase N−1's receipt two ways — recompute the input hash (catches silently edited docs) and confirm every currently-required validator appears with exit 0 (catches gate-definition drift). The only bypass is an explicit **waiver receipt** signed by the human (name required; agent identities rejected).
 - **Challenger gate** (veracity): after coverage passes, every HIGH/CRITICAL finding and every design claim marked *needs verification* gets an independent challenge pass producing a CHALLENGE_REPORT with per-claim verdicts (CONFIRMED / CONTRADICTED / UNVERIFIABLE — a challenge without a citation is discarded, never treated as a contradiction). CONTRADICTED → mandatory revision HANDOFF to the originating agent.
-- **Two-track verification**: the default is the **coverage loop** (deterministic — is every inventory row covered?); subjective 1–10 confidence scoring exists but is *advisory only* — it can request polish or escalate to the human, never override a passing deterministic gate.
+- **Two-track verification**: the default is the **coverage loop** (deterministic — is every inventory row covered?); subjective 1–10 confidence scoring exists but is *advisory only* with an **asymmetric threshold** (R-B2, 2026-07-14): ≥7 accept, 5–6 request polish (bounded), **1–4 escalate to the human — a low subjective score never auto-fails a passing deterministic gate**. Every reviewer/challenger verdict must carry a `re-ran independently: <command, counts, exit code>` evidence line; a verdict without one is INCOMPLETE and is bounced, not counted.
 - **Decision slates (founder decisions as a first-class primitive).** Whenever the program hits a fork that belongs to the founder — product name, deployment shape, tracker model, licensing, pricing, any irreversible architectural choice — the PM presents a **slate card**: 2–4 concrete options, each with trade-offs spelled out and one marked *Recommended* with the reasoning. The choice (and any free-text rationale) is appended to `docs/DECISIONS.md`, an ADR-lite ledger with stable IDs (D-001…), and downstream documents cite decision IDs instead of restating them. Slates are the productization of refuse-to-guess: an agent that cannot decide a founder-owned fork must slate it, never assume it.
 - **The Blueprint stage (Phase 2.5 — this document's own genesis, productized).** Before any ticket decomposition, Shipwright synthesizes a founding **BLUEPRINT** — condensed SRS + system architecture + an explicit *Open Questions* section — and hands it to the founder with slate cards for every open question. Founder answers; the blueprint is revised with a decisions section (exactly the v0.1 → v0.2 cycle this document went through); the revision loop repeats until decision-complete. **Gate:** Phase 3 detailed design and Phase 4 decomposition are locked while any unresolved founder-decision marker remains in the blueprint. This stage exists because it is where products get their shape cheaply — one review of a 20-page blueprint prevents a hundred mis-aimed tickets.
 - **The research path (woven through every phase, not bolted on).** Each phase has a research lane producing *cited* deliverables in `docs/research/`:
@@ -232,7 +232,7 @@ R4  Blocked-with-evidence                  — ticket parked with failure receip
 - `accept`: reviewer identity must differ from owner; refused unless the manifest embeds the close receipt verbatim. This is the code-enforced end of self-asserted "done".
 - Human actions use the same verbs: dragging a card fires the verb; the UI explains any refusal.
 
-**Lanes & parallelism.** Same-lane active tickets must have disjoint write-scopes; cross-lane overlap is a schema error. Result: "different lane = safe to run in parallel" is a *provable* property, which is what lets multiple agents (or agents + humans) work simultaneously without stepping on each other (§7.3).
+**Lanes & parallelism.** Same-lane active tickets must have disjoint write-scopes; cross-lane overlap is a schema error **among tickets that can still write — territory releases at `done`, and scaffold tickets may declare an explicit `scaffold` exemption (D-015, 2026-07-14: the any-status rule made every completed broad ticket a permanent landmine — this board failed its own validator 66× under it)**. Result: "different lane = safe to run in parallel" is a *provable* property, which is what lets multiple agents (or agents + humans) work simultaneously without stepping on each other (§7.3).
 
 **Reflow.** `claimable = ready ∧ unowned ∧ deps done`, recomputed on every event; blocked⇄ready auto-resolve; the dependency DAG renders as a live Mermaid diagram in the Artifact Viewer.
 
@@ -244,7 +244,7 @@ The execution heart, productized from `runItemMicroLoop` + the MICRO_LOOP contra
 
 **Macro-loops (Harbormaster-owned):** the coverage loop per phase (cap 3 iterations, gap-checksum no-progress kill) and the fix-verify loop post-build (cap 3, owns "all CRITICAL/HIGH closed").
 
-**Micro-loop (per work item, cap 2–3 passes):**
+**Micro-loop (per work item, cap 2 revise passes — evidence actions uncounted; a micro-loop that needs a third pass returns PARTIAL for the orchestrator to re-scope; 3 is a macro-loop budget. Aligned to the source MICRO_LOOP contract 2026-07-14, R-B1):**
 1. **CRITERION** — restate ONE checkable success criterion; a loop with no objectively decidable criterion refuses to run and asks the human (refuse-to-loop).
 2. **PRODUCE** — the focused model call for THIS item only (never a lumped one-shot over a whole phase).
 3. **EVIDENCE** — bounded look-actions (grep/read/run, ≤4) to ground the self-check.
@@ -448,6 +448,8 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-C4: Board renders lanes/columns/typed cards from live projections ≤1s after the underlying event.
 - FR-C5: Receipt inspector renders gate/coverage/challenge/ledger artifacts as structured views.
 - FR-C6: Guided first-fifteen-minutes sample project wired into the first-run wizard.
+- FR-C7: CLI parity: the `shipwright` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). *(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)*
+- FR-C8: Artifact feedback loop: deliverables (markdown + rendered Mermaid) accept inline feedback; feedback on a gated deliverable emits a revision HANDOFF to the producing role; the revision renders as a diff against the commented version. *(R-H2, 2026-07-14.)*
 
 **FR-PIPE (Pipeline)**
 - FR-P1: Six-phase program with per-phase validator sets and receipt-minting gates (validator list, exit codes, gap counts, input hash).
@@ -484,7 +486,9 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-L4: Coverage tracker with DONE/WAIVED/BLOCKED/FAILED/SKIPPED; end-of-phase report is a gate input.
 - FR-L5: Context packets assembled by the token-budgeted Context Packer (§7.2); reasoning-model thinking stripped from history and artifacts.
 - FR-L6: Finding ledger: every HIGH/CRITICAL review finding is a record with stable identity, state (OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED), per-finding attempt counts, and evidence-bearing history; rechecks return per-finding verdicts, never just a fresh list. Infra failures (unparseable/truncated review, limit pause) retry free and never open findings.
-- FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8, ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
+- FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8 on metered tiers and 12+ on local tiers (localFrontier-proven: not-same-error ⇒ keep looping; watchdog is the backstop), ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
+
+- FR-L8: Token envelopes: per-window session/packet budgets (instruction/working/emergency-stop tiers), write-before-reading-more for oversized tool results, honest PARTIAL on emergency stop, per-expert instruction-cost metadata; fresh session per HANDOFF — no inherited chains. *(R-I1, 2026-07-14; numbers in SRS §2.5.)*
 
 **FR-HM (Harbormaster)**
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
@@ -509,6 +513,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-M1: Working + long-term memory in-process; token-budgeted assembly; hybrid retrieval with BM25 fallback.
 - FR-M2: ACE playbook: delta-edits only, verified-before-stored; playbook is escalation rung R0.
 - FR-M3: Scheduled sleep-time consolidation on by default; error-first recall.
+- FR-M4: Code-index service: per-project chunked code index (FTS5 + optional provider-sticky local embeddings, BM25 fallback), `code_search` tool for agents (audited), ranking source for the Context Packer, ⌘K search. No repo-map by design. *(R-J1, 2026-07-14.)*
 
 **FR-SET (Settings & configuration)**
 - FR-S1: Three-scope settings (global/project/run) with run > project > global precedence; effective-settings resolution visible in UI.
@@ -525,6 +530,19 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 **FR-EXP (Expert content)**
 - FR-E1: Full expert-system library imported at W1 as `content/` (all experts, clusters + synthesizers, validators, shared protocols) with provenance headers; expert definitions are data (markdown + frontmatter), user-extensible per project.
+- FR-E2: Agent roster & observability view: every expert with effective model resolution, fitness cards, instruction cost, and event-derived history (HANDOFFs, outcomes, spend, escalations); "pin roles, not models" enforced at content load. *(R-K1, 2026-07-14.)*
+
+**FR-RL (Rule lifecycle & gate economics — D-014, added 2026-07-14)**
+- FR-RL1: Every validator/gate rule carries lifecycle state `proposed → shadow → advisory → gate → deprecated`; shadow rules run on real diffs with findings stamped `experimental` and excluded from gates, scores, and blocks.
+- FR-RL2: Promotion is data-gated: red fixtures (trigger + clean) are required for a rule to exist at all; promotion to `gate` requires measured FP rate under a per-class threshold across a minimum finding count and window; trailing FP >50% auto-flags demotion. Humans confirm transitions on data; LLMs never promote/demote/dismiss.
+- FR-RL3: Finding suppression requires a fixed-enum justification + human signature (waiver machinery at finding granularity), is keyed to fingerprint + context, and auto-reopens when the context changes.
+- FR-RL4: Every gate/coverage surface reports the funnel: raw → deduped → in-scope → effective → suppressed(justified); raw counts are never hidden. Per-rule FP metrics never count infra failures (FR-L6 taxonomy).
+
+**FR-PLAN (Improvement Plans — D-016, added 2026-07-14)**
+- FR-PLAN1: A versioned deterministic recommendation catalog (condition → recommendation template → machine-checkable verify criterion) evaluates over receipts, coverage reports, and the finding ledger.
+- FR-PLAN2: Matches materialize as ranked plan items with lifecycle `proposed → accepted → in_progress → done → regressed`; ranking is deterministic (severity × leverage × staleness).
+- FR-PLAN3: Nightly auto-verify re-evaluates each accepted item's verify criterion against fresh snapshots and flips done/regressed; regressions surface as Review-tier notifications.
+- FR-PLAN4: LLMs may order, narrate, and summarize plan items — never add, remove, or reword them; every surface is fully functional with zero LLM calls.
 
 ### 6.2 Non-functional requirements
 
@@ -605,6 +623,14 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 **Shipwright** — the platform: the master builder who takes your vision from blueprint to launch, and won't let an unseaworthy product ship. Component names used in this document: **Harbormaster** (the conductor), **the Canvas** (UI), **lanes/berths** (parallel work streams), **manifest** (completion evidence — the nautical and logistics senses coincide), **launch** (release), **morning queue** (the reviewer's harbor office). Metaphor budget is deliberately capped: tickets are tickets, gates are gates, receipts are receipts.
 
 **Known namespace collision:** "Shipwright" is also a CNCF project for building container images (shipwright.io). Distinct domain (image builds vs. SDLC platform), but worth a naming pass before any public launch — `shipwright.dev`-style branding or a qualifier (e.g., "Shipwright Studio") are the obvious mitigations.
+
+**Vocabulary canon (added 2026-07-14, design review G-14 — cheap agents copy these exactly):**
+- **Ticket lifecycle** (board columns): `ready → claimed → in_progress → in_review → done` (+ `blocked` overlay) — lower-snake in code/events, Title Case only as UI column labels. `blocked-with-evidence` is a *badge* on a blocked card (dead-letter/R4 cases), not a distinct status.
+- **Coverage states** (a different axis — work-unit outcomes, not board columns): `DONE / WAIVED / BLOCKED / FAILED / SKIPPED`, always upper-case, always in this order.
+- **Constraint IDs** are written `C-1`…`C-8` (hyphenated) everywhere.
+- **Phase names**: phases are integers 0–5; the Blueprint stage is "Phase 2.5" informally but is *part of Phase 2's exit* in the state machine (no fractional phase exists in code).
+- **Scales in force** (each is its own axis; never mix): finding severity `CRITICAL/HIGH/MEDIUM/LOW`; challenger verdicts `CONFIRMED/CONTRADICTED/UNVERIFIABLE`; approval risk classes `deploy/main-merge/destructive/escalation/budget`; notification tiers `Decide/Review/Record`; threat ratings `H/M/L`.
+- **Runner**: `pnpm` (never `npm run`) in every doc and script.
 
 ---
 

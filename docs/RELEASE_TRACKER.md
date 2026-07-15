@@ -65,3 +65,8 @@ runbook `docs/work/CONDUCTOR_RUNBOOK.md`.
 ## Status log
 - 2026-07-12 — paused pending opencode v2.1.0; process issue + fix plan recorded; W3-01 marked
   for split (F1) at resume.
+- 2026-07-14 — **F3 precondition satisfied upstream:** bpm-opencode-experts v2.1.0 shipped
+  2026-07-13; library is now at v2.9.0 (loop-classifier mechanics changed in v2.4.0 — the
+  SW-R1 resync at resume must target the current release, not v2.1.0). Design-review pass
+  running on branch `review/design-review-hardening` (docs/work/DESIGN_REVIEW.md); resume
+  remains gated on the review completing + founder adoption decisions + SW-R1.
