@@ -1899,7 +1899,7 @@
         "Branch-protection drift validator: re-reads protection settings and flags drift from the connect-time contract (SC-14 — distinct from W6-05 SHA parity)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "notes": " Adapter contract: docs/design/CONTRACTS.md §2. AMENDED 2026-07-14 challenger fix.",
       "stories": [
         "US-501"
