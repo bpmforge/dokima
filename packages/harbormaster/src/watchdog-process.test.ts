@@ -114,6 +114,29 @@ describe('createWatchdogChildProcessSpawn', () => {
     expect(isAlive(grandchildPid as number)).toBe(false);
   });
 
+  it('still kills the tree and resolves when onBreach throws synchronously', async () => {
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
+    const spawn = createWatchdogChildProcessSpawn({
+      command: 'bash',
+      args: ['-c', 'sleep 30'],
+      maxSessionSeconds: 0.05,
+      heartbeatStallSeconds: 60,
+      pollIntervalMs: 10,
+      forceKillGraceMs: 100,
+      onBreach: () => {
+        throw new Error('dead-letter bookkeeping failed (e.g. SQLITE_BUSY)');
+      },
+    });
+
+    const start = Date.now();
+    const result = await spawn({ prompt: 'go', cwd });
+    const elapsed = Date.now() - start;
+
+    expect(elapsed).toBeLessThan(1_000);
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain('onBreach handler threw');
+  });
+
   it('escalates to SIGKILL when the tree ignores SIGTERM', async () => {
     cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
     const breaches: WatchdogBreach[] = [];

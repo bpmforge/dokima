@@ -108,12 +108,18 @@ export function createWatchdogChildProcessSpawn(
           if (!breach) return;
           breached = true;
           clearInterval(poll);
-          options.onBreach(breach);
           if (typeof child.pid === 'number') killGroup(child.pid, 'SIGTERM');
           const forceKill = setTimeout(() => {
             if (typeof child.pid === 'number') killGroup(child.pid, 'SIGKILL');
           }, options.forceKillGraceMs ?? DEFAULT_FORCE_KILL_GRACE_MS);
           child.once('close', () => clearTimeout(forceKill));
+          try {
+            options.onBreach(breach);
+          } catch (err) {
+            // Bookkeeping (dead-letter/ticket-release) must never block tree
+            // teardown, which has already been signaled above.
+            stderr += `\nonBreach handler threw: ${err instanceof Error ? err.message : String(err)}`;
+          }
         },
         options.pollIntervalMs ?? defaultPollIntervalMs(options),
       );

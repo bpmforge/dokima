@@ -785,8 +785,10 @@
         "Max-session-seconds + heartbeat stall detection terminate the session tree; breach -> dead-letter event + ticket blocked-with-evidence within seconds (NFR-3, BLUEPRINT §7.1)"
       ],
       "points": 3,
-      "status": "in_progress",
-      "notes": [],
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-16 (gate-failure retry): prior attempt's CRITICAL finding fixed — watchdog-process.ts's poll setInterval called options.onBreach(breach) synchronously before killGroup(SIGTERM)/the SIGKILL grace timer, with no try/catch; a throw from onBreach (production wiring is watchdog-session.ts -> deadLetterAndBlock, three sequential single-writer SQLite ops that can throw on SQLITE_BUSY or a ticket-ownership guard failure) would propagate out of the timer callback (crashing the host process by default) and skip tree teardown entirely, defeating acceptance 1's 'terminate the session tree'. Fix: reordered so killGroup(SIGTERM) and the SIGKILL setTimeout are issued unconditionally BEFORE onBreach runs, and onBreach is now wrapped in try/catch (bookkeeping failure is appended to stderr, never re-thrown) so a dead-letter/ticket-release failure can no longer block or crash termination. Added one regression test (watchdog-process.test.ts, 'still kills the tree and resolves when onBreach throws synchronously') asserting the tree still dies and spawn() still resolves within budget when onBreach throws. Full gate: pnpm lint clean; pnpm typecheck clean workspace-wide (14 projects); pnpm test = 1288 passed | 1 skipped (176 test files, was 1287/1/176 pre-fix +1 new test) — includes watchdog-process.test.ts (6 tests), watchdog-session.test.ts (2 tests), watchdog.test.ts (6 tests) all green."
+      ],
       "stories": [
         "US-205"
       ]
