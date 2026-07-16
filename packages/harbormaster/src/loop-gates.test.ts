@@ -246,6 +246,42 @@ describe('runCloseGate', () => {
     expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
   });
 
+  it('a claimed file absent from the worktree entirely is refused (stat check, acceptance 1)', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+    const manifest = buildManifest({
+      files: ['packages/example/file.ts', 'packages/example/never-existed.ts'],
+    });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected refusal');
+    expect(
+      result.reasons.some(
+        (r) => r.includes('not found on disk') && r.includes('never-existed.ts'),
+      ),
+    ).toBe(true);
+  });
+
   it('spoofed manifest fails: a claimed file that exists on disk but was never committed is refused (R-F4)', async () => {
     fixture = await setupFixture();
     const { log, worktree } = fixture;
