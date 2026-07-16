@@ -982,8 +982,10 @@
         "Red fixture in the planted-defect harness: symlinked manifest path FAILS verification (docs/TESTING.md)"
       ],
       "points": 2,
-      "status": "todo",
-      "notes": [],
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-16T20:23:11.203Z: blocked after 2 attempts. Branch sw/w3-09 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+      ],
       "stories": []
     },
     {
