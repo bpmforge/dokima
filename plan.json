@@ -1206,7 +1206,8 @@
         "apps/server/src/api/projects*",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01"
@@ -1240,7 +1241,8 @@
         "apps/web/src/board/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01"
@@ -1255,7 +1257,10 @@
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
         "CONDUCTOR 2026-07-15T17:36:40.323Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "RESET 2026-07-15: both blocks were the stale claim-time scope (agent claimed before the L-33 wiring-scope fix landed on main; the conductor uses the ticket object captured at claim). Scope is now correct in this row; re-queue.",
-        "CONDUCTOR 2026-07-15T19:01:09.457Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done' | [validate-file-size:file-size] apps/server/src/api/server.ts is 575 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md"
+        "CONDUCTOR 2026-07-15T19:01:09.457Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done' | [validate-file-size:file-size] apps/server/src/api/server.ts is 575 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
+        "RESET 2026-07-15 (L-36): blocked on validate-file-size — server.ts crossed 400 lines from cumulative route registrations, and the split target (server/ dir) was outside scope. ui-lane scopes now include apps/server/src/api/server/** ; FIRST TASK on re-claim: perform the CODE_BOOK split (index + chapter modules <=400 each), then the board UI work.",
+        "CONDUCTOR 2026-07-15T22:33:13.461Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: [HIGH] apps/server/src/api/server/board-routes.ts: fireVerb() always passes the same DEFAULT_ACTOR_ID ('local-operator') as actorId for every verb, including 'accept'. Since claim/start/close also all run as DEFAULT_ACTOR_ID, ticket.ownerId equals DEFAULT_ACTOR_ID by the time a ticket reaches in_review — so acceptTicket's SELF_ACCEPT check (packages/tickets/src/verbs.ts:214-216, `ticket.ownerId === input.actorId`) is satisfied on literally every accept attempt made through the board. The accept verb can never succeed via this API. The web UI still advertises it as a live affordance (apps/web/s",
+        "PARKED FOR FOUNDER DECISION 2026-07-15 (L-37): the maker found a real trust bug — board fires all verbs as one local-operator identity, so accept trips SELF_ACCEPT (C-4) on every ticket. The fix touches pending slate P-002 (may a machine reviewer identity accept?) + locked C-4. NOT auto-resolvable (attempted reviewer-identity mint was correctly blocked as maker!=verifier theater). The board split + BoardView + refusal popover are DONE and green on branch blocked/w4-03; only the accept-actor design blocks it. Awaiting Brad on P-002."
       ],
       "stories": [
         "US-201",
@@ -1272,7 +1277,8 @@
         "apps/web/src/chat/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01",
@@ -1282,12 +1288,11 @@
         "Program thread + per-concern agent threads; question/finding/manifest cards render structured with agent, model, ticket, cost provenance and click-through to receipts (FR-C2)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
-        "AGENT 2026-07-15: done. No chat/message backend exists anywhere in this repo (no thread/message table in DATABASE.md, no clarification/slate/finding event schema, no cost tracking reachable from apps/server) -- fixture-driven per SRS FR-C2's own acceptance wording (\"Fixture event stream renders all four card types\"). apps/web/src/chat/**: types.ts (ChatCard union + Provenance), reduceChatEvents.ts (pure fold: ServerEnvelope-shaped event stream -> Thread[], program thread pinned first), fixtures.ts (the fixture event stream, hand-mirrored in server.ts's own literal), api.ts, Card/ProvenanceLine/ThreadPanel/ChatView/ChatEmptyState.tsx (provenance line ends with a cost link to /api/v1/receipts/:id, the only receipt-shaped read API_DESIGN documents). server.ts: GET /api/v1/projects/:id/chat replays the fixture (334 lines, under the 400-line gate that blocked W4-03/L-36, no server/** split needed). App.tsx: ChatView mounts via createPortal into the pane-chat DOM node (SplitPaneWorkspace.tsx untouched, same technique W4-03 established for the board). WS chat:<project> wiring is live for future real data; the pane honestly empties when nothing has published (no fabrication). 19 new unit tests + 4 new Playwright e2e specs. Gate: pnpm lint && pnpm typecheck && pnpm test = 880 passed | 1 skipped (114 test files) workspace-wide (was 865 passed | 1 skipped) + pnpm --filter web e2e = 17/17 Playwright specs (was 13/13) + node scripts/validate-plan.mjs = OK. Zero out-of-scope files.",
-        "AGENT 2026-07-15 (gate-fix retry): prior attempt failed review on two HIGH findings. (1) ChatView.tsx's chat-history fetch effect had no `.catch()` — a rejected fetchChatEvents (401/404/network) still flipped `loaded` true via `.finally()`, silently rendering the same empty state as 'no agent activity yet' with zero signal a request actually failed. Added a `.catch()` that records the error and a distinct `chat-load-error` UI state (ChatView.tsx, chat.css) so an auth/network failure is never indistinguishable from a legitimately empty thread list. (2) Card.tsx's FindingCardBody rendered `card.evidenceHref` straight into `href` — wire data arriving over the untrusted `chat:<project>` channel (agent sessions are untrusted, THREAT_MODEL trust boundary), so a compromised agent session could publish a `javascript:`/`data:` URI that executes on click; ProvenanceLine already avoided this by building its receipt link itself instead of trusting a raw href, FindingCardBody didn't follow that precedent. Added `isSafeEvidenceHref` (exported, allowlists `/api/v1/` prefix only) — an unsafe href now renders a plain 'evidence unavailable' span instead of a clickable link. New tests: apps/web/src/chat/Card.test.ts (6 cases: safe path, javascript:, data:, absolute external URL, protocol-relative URL, other relative path) + one new Playwright spec in chat.spec.ts (route-intercepts the chat GET to 401, asserts `chat-load-error` renders and `chat-empty-state` does not). Gate: pnpm lint && pnpm typecheck && pnpm test = 886 passed | 1 skipped (115 test files) workspace-wide (was 880 passed | 1 skipped) + pnpm --filter web e2e = 18/18 Playwright specs (was 17/17) + node scripts/validate-plan.mjs = OK. Zero out-of-scope files."
+        "CONDUCTOR 2026-07-15T21:42:12.221Z: blocked after 2 attempts. Branch sw/w4-04 kept. Gaps: [HIGH] apps/web/src/chat/ChatView.tsx: The fetch effect's `.catch()` sets `loadError` on failure but nothing ever clears it on a later successful fetch. Since `ChatView` persists across project switches (App.tsx mounts it once, `projectId` is just a changing prop, no `key`), a transient failure on one project permanently pins the 'Couldn't load chat history' banner even after the effect reruns and a later fetch (same or different project) succeeds — render logic checks `loadError` before `hasAnyCards`, so real loaded threads/cards never display again for the session. — fix: Clear the error at "
       ],
       "stories": []
     },
@@ -1301,7 +1306,8 @@
         "apps/web/src/artifacts/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01"
@@ -1314,7 +1320,9 @@
       "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8). Enforces NFR-6 (every claim opens its receipt).",
-        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
+        "CONDUCTOR 2026-07-15T23:15:16.198Z: blocked after 2 attempts. Branch sw/w4-05 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 410 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
+        "RESET 2026-07-16: split target (api/server/**) already in scope for W4-05. Redo."
       ],
       "stories": [
         "US-401"
@@ -1330,7 +1338,8 @@
         "apps/web/src/settings/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01",
@@ -1348,7 +1357,9 @@
       "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix. AMENDED 2026-07-14 (D-019).",
-        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
+        "CONDUCTOR 2026-07-16T00:08:39.100Z: blocked after 2 attempts. Branch sw/w4-06 kept. Gaps: [CRITICAL] apps/server/src/api/server/settings-db.ts: model_matrix/rule_state/suppressions tables are created via ad-hoc `CREATE TABLE IF NOT EXISTS` DDL run directly against the raw better-sqlite3 handle, not via a numbered migration in packages/events/migrations/ (only 001_init.sql and 002_receipts.sql exist — confirmed by listing that directory). DATABASE.md §8 requires migrations to be numbered SQL files applied in order with `PRAGMA user_version` tracking and a pre-migration backup (DEPLOYMENT.md §4); none of that happens here. The AC 'model_matrix project-scope table migration (DATABASE ",
+        "RESET 2026-07-16: split target (api/server/**) already in scope for W4-06; numbered migrations now conductor-allowlisted (append-only shared infra) so 003_settings.sql lands cleanly. Redo."
       ],
       "stories": [
         "US-503",
@@ -1368,7 +1379,8 @@
         "apps/server/src/api/notifications*",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01",
@@ -1403,7 +1415,8 @@
         "packages/gateway/src/estimate/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W2-07",
@@ -1462,7 +1475,8 @@
         "apps/server/src/api/roster*",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01",
@@ -1493,7 +1507,8 @@
         "apps/server/src/api/events-sse*",
         "apps/server/src/api/idempotency*",
         "apps/server/src/api/problem*",
-        "apps/server/test/route-walker*"
+        "apps/server/test/route-walker*",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-01"
@@ -1523,7 +1538,8 @@
         "e2e/a11y/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-03",
@@ -2160,7 +2176,8 @@
         "apps/web/src/trace/**",
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
       ],
       "depends_on": [
         "W4-05"
