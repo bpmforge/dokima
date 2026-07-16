@@ -1434,7 +1434,7 @@
         "Weekly digest includes suppression volume per rule (GATE_ECONOMICS §3 demotion input)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 (adopted R-A2). Cites FR-G7 (dry-run estimate). AMENDED 2026-07-14 challenger fix (US-309 was misattributed to W2-06; suppression digest unowned).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
