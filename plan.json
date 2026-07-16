@@ -1320,12 +1320,13 @@
         "Inline feedback comments on any deliverable incl. rendered Mermaid; comment -> revision.requested event; revised version renders as diff against the commented version with the comment resolved-by-reference (FR-C8, R-H2)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 addendum (FR-C8). Enforces NFR-6 (every claim opens its receipt).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
         "CONDUCTOR 2026-07-15T23:15:16.198Z: blocked after 2 attempts. Branch sw/w4-05 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 410 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
-        "RESET 2026-07-16: split target (api/server/**) already in scope for W4-05. Redo."
+        "RESET 2026-07-16: split target (api/server/**) already in scope for W4-05. Redo.",
+        "CONDUCTOR 2026-07-16T01:02:13.286Z: blocked after 2 attempts. Branch sw/w4-05 kept. Gaps: [HIGH] apps/server/src/api/server/artifacts-routes/helpers.ts: isSafeRelativePath() only rejects absolute paths and '..' segments — it does not confine reads to the docs/ subtree. The doc/diff/doc-diff routes (docs.ts) pass this check straight into readWorkingTree/showAtRev, so an authenticated caller can request e.g. `path=.shipwright/state.db` (or any other in-repo file/config, not just docs/**) and have its raw content returned. The list endpoint correctly scopes to DOCS_SUBDIR via listMarkdownFiles, but the read endpoints don't enforce the same confinement, so the viewer's stated purpose ("
       ],
       "stories": [
         "US-401"
