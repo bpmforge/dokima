@@ -785,7 +785,7 @@
         "Max-session-seconds + heartbeat stall detection terminate the session tree; breach -> dead-letter event + ticket blocked-with-evidence within seconds (NFR-3, BLUEPRINT §7.1)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [],
       "stories": [
         "US-205"
