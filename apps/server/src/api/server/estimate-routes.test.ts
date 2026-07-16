@@ -3,7 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, openEventLog } from '@shipwright/events';
-import { createTicket } from '@shipwright/tickets';
+import {
+  acceptTicket,
+  claimTicket,
+  closeTicket,
+  createTicket,
+  startTicket,
+} from '@shipwright/tickets';
 import { buildApiServer, type ApiServer } from '../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -130,6 +136,52 @@ describe('estimate/spend/digest routes (BLUEPRINT §12.2, FR-G7, US-307/309)', (
       expect(body.waves[0]).toMatchObject({ wave: 0, ticket_count: 2 });
       expect(body.total_usd).toBeGreaterThan(0);
       expect(body.assumptions.length).toBeGreaterThan(0);
+    });
+
+    it('excludes done tickets: the estimate is money about to be spent, not money already spent (BLUEPRINT §12.2)', async () => {
+      const { app, fleetHome } = await boot();
+      const { id, dbPath } = await registerProject(app, fleetHome, 'proj-done-excluded');
+      const log = openEventLog(dbPath);
+      createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
+      createIdentity(log, { id: 'reviewer-1', name: 'Reviewer', kind: 'machine' });
+      createTicket(log, 'agent-1', {
+        id: 'T-DONE',
+        type: 'task',
+        title: 'Already closed',
+        lane: 'ui',
+        writeScope: ['a/**'],
+      });
+      createTicket(log, 'agent-1', {
+        id: 'T-PENDING',
+        type: 'task',
+        title: 'Still pending',
+        lane: 'ui',
+        writeScope: ['b/**'],
+      });
+      claimTicket(log, { ticketId: 'T-DONE', actorId: 'agent-1' });
+      startTicket(log, { ticketId: 'T-DONE', actorId: 'agent-1' });
+      closeTicket(log, {
+        ticketId: 'T-DONE',
+        actorId: 'agent-1',
+        files: ['a/x.ts'],
+        commits: ['abc123'],
+        verify: { command: 'pnpm test', exitCode: 0 },
+      });
+      acceptTicket(log, { ticketId: 'T-DONE', actorId: 'reviewer-1' });
+      log.close();
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/projects/${id}/estimate`,
+        headers: headers(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as {
+        waves: Array<{ wave: number; ticket_count: number }>;
+        total_usd: number;
+      };
+      expect(body.waves).toHaveLength(1);
+      expect(body.waves[0]).toMatchObject({ wave: 0, ticket_count: 1 });
     });
   });
 

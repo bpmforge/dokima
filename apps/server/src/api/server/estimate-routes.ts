@@ -1,32 +1,44 @@
 /**
  * Dry-run cost estimate + escalation-ROI + weekly digest routes
- * (BLUEPRINT §12.2, FR-G7, US-307/309, GATE_ECONOMICS §3). Mirrors
- * `packages/gateway/src/estimate/**`'s algorithms rather than importing
- * them: `apps/server/package.json` (the dependency list) sits outside
- * this ticket's write_scope, and `@shipwright/gateway` isn't a declared
- * dependency of `apps/server` — the same constraint `server.ts`'s
- * `registerChatRoute` documents for cost provenance ("no cost tracking
- * reachable from apps/server"). The estimate math itself is small enough
- * to duplicate (same discipline as `apps/web/src/chat/fixtures.ts` hand-
- * mirroring `server.ts`'s chat fixture) — real board data drives it,
- * documented assumptions fill the gaps that have no producer yet.
+ * (BLUEPRINT §12.2, FR-G7, US-309, GATE_ECONOMICS §3).
  *
- * Two gaps, both honestly labeled rather than faked (C-1):
- *  - `@shipwright/tickets`' `Ticket` has no `points` field and
- *    `board-wire.ts`'s `wave` is always 0 (no producer, grep-verified) —
- *    every ticket estimates at 1 point in a single wave-0 bucket until a
- *    sizing/wave producer exists.
- *  - No persisted spend ledger (`budget_ledger`/`spend` tables have no
- *    migration — only `001_init.sql`/`002_receipts.sql` exist) and no
+ * This route computes its own estimate rather than importing
+ * `computeWaveEstimate` from `@shipwright/gateway`: `@shipwright/gateway`
+ * is not a declared dependency of `apps/server`, and neither
+ * `apps/server/package.json` nor `packages/gateway/package.json` (its
+ * `exports` map) are in this ticket's `write_scope`, so the import is not
+ * achievable without an out-of-scope edit (verified empirically — `import
+ * '@shipwright/gateway'` from `apps/server` throws `Cannot find package`).
+ * A prior attempt at this ticket kept a duplicate, more general engine
+ * under `packages/gateway/src/estimate/**` "for a future Harbormaster
+ * consumer" and claimed `packages/loop` already depended on it; neither
+ * was true (grep-verified: no package outside its own tests referenced
+ * it), so it has been deleted rather than left as unreachable dead code.
+ *
+ * What is honestly delivered here, and why the rest isn't (C-1):
+ *  - Per-wave breakdown: `@shipwright/tickets`' `Ticket` has no `points`
+ *    field and `board-wire.ts`'s `wave` is always 0 (no producer,
+ *    grep-verified) — every ticket estimates at 1 point in a single
+ *    wave-0 bucket until a sizing/wave producer exists on the ticket
+ *    model. This is a real limit of the *data*, not something a smarter
+ *    estimate function could work around: even the deleted gateway engine
+ *    would collapse to the same single bucket fed today's inputs.
+ *  - Historical per-ticket actuals: no persisted spend ledger
+ *    (`budget_ledger`/`spend` tables have no migration — only
+ *    `001_init.sql`/`002_receipts.sql` exist) is reachable from
+ *    `apps/server`, and `Ticket`/`TicketManifest`/`TicketHistoryEntry`
+ *    carry no cost data — so there is no historical-actuals source to
+ *    override the rate table with. Estimates are rate-table list-price
+ *    only.
+ *  - Spend-by-rung / suppression volume: same missing ledger, plus no
  *    persisted rule/suppression store (W4-06, blocked twice on exactly
- *    this migration) is reachable from `apps/server` — `/spend` and
- *    `/spend/digest` return honest-empty rollups (0 rows, not fabricated
- *    numbers), same precedent as `apps/server/src/api/projects.ts`'s
- *    `spend_today: 0`.
+ *    this migration) — `/spend` and `/spend/digest` return honest-empty
+ *    rollups (0 rows, not fabricated numbers), same precedent as
+ *    `apps/server/src/api/projects.ts`'s `spend_today: 0`.
  */
 
 import { openEventLogReader } from '@shipwright/events';
-import { loadTickets } from '@shipwright/tickets';
+import { loadTickets, type TicketStatus } from '@shipwright/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
@@ -90,7 +102,7 @@ function applyOverrides(
   );
 }
 
-/** `points x sum(matrix rates)` over one wave-0 bucket of real tickets — mirrors `packages/gateway/src/estimate/estimate.ts`'s `computeWaveEstimate` for the single-wave case this route can honestly populate today. */
+/** `points x sum(matrix rates)` over one wave-0 bucket of real tickets still pending autorun (module header: no wave/points producer on the ticket model yet, so every ticket is 1 point in a single bucket). */
 function estimateForTicketCount(
   ticketCount: number,
   matrix: readonly RoleRate[],
@@ -135,6 +147,9 @@ function notFound(request: FastifyRequest, detail: string) {
   });
 }
 
+/** Terminal statuses that are no longer pending autorun spend (BLUEPRINT §12.2 "money about to be spent", not money already spent). */
+const CLOSED_STATUSES: ReadonlySet<TicketStatus> = new Set(['done', 'waived']);
+
 async function ticketCountForProject(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -151,8 +166,16 @@ async function ticketCountForProject(
   }
   const db = openEventLogReader(stateDbPath(record.path));
   try {
-    return loadTickets({ db, path: stateDbPath(record.path), close: () => db.close() })
-      .size;
+    const tickets = loadTickets({
+      db,
+      path: stateDbPath(record.path),
+      close: () => db.close(),
+    });
+    let pending = 0;
+    for (const ticket of tickets.values()) {
+      if (!CLOSED_STATUSES.has(ticket.status)) pending++;
+    }
+    return pending;
   } finally {
     db.close();
   }
