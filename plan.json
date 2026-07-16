@@ -1761,7 +1761,7 @@
         "Seam lessons (field report §10): when a ticket's deliverable imports a workspace sibling, its write_scope MUST include that package's package.json (dependency declaration); every consumed cross-ticket interface has an owning ticket for the public re-export (no invisible exports — the W1-02 class); both are plan-linter checks emitted with the DAG"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "AMENDED 2026-07-12: +seam-ownership acceptance from conductor field report §10 (W0-08/W1-02 lessons)."
       ],
