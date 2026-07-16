@@ -869,7 +869,7 @@
         "Rule-first risk classifier (FR-N2): all five classes (deploy/main-merge/destructive/escalation/budget) classified deterministically from rules with fixtures; a model may raise a class, never lower it (property test)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": " AMENDED 2026-07-14 challenger fix: US-702/FR-N2 was hollow — cited once as a fragment, built nowhere.",
       "stories": [
         "US-404",
