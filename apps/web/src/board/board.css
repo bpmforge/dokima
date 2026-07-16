@@ -1,0 +1,160 @@
+.board-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.5rem 0.75rem;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.board-view__strips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.board-strip {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--sw-border);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+}
+
+.board-strip__item {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.board-refusal {
+  border: 1px solid var(--sw-accent, #c0392b);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.board-refusal__rule {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.board-refusal__detail {
+  margin: 0 0 0.5rem;
+  opacity: 0.85;
+}
+
+.board-refusal__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.board-view__lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.board-lane__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.board-lane__columns {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+}
+
+.board-column {
+  flex: 1 1 12rem;
+  min-width: 12rem;
+  border: 1px solid var(--sw-border);
+  border-radius: 6px;
+  padding: 0.4rem;
+}
+
+.board-column__header {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.board-column__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.board-card {
+  border: 1px solid var(--sw-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  cursor: grab;
+}
+
+.board-card__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.board-card__title {
+  margin: 0.2rem 0;
+}
+
+.board-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.board-card__receipt-dot[data-state='green'] {
+  color: var(--sw-success, #2ecc71);
+}
+
+.board-card__heartbeat {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.board-card__badge {
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.board-card__badge--stale {
+  color: var(--sw-warning, #e0a800);
+}
+
+.board-card__badge--waived {
+  color: var(--sw-warning, #e0a800);
+}
+
+.board-card__verb-menu {
+  display: block;
+  margin-top: 0.3rem;
+}
+
+.board-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  opacity: 0.75;
+  text-align: center;
+}
