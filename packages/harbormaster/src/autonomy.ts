@@ -2,9 +2,9 @@
  * Autonomy dial + claim-gate (BLUEPRINT §3.7, SRS FR-N3, US-703). This is the
  * "book" entry for the autonomy dial (CODE_BOOK_PROTOCOL.md): shared types +
  * the frozen NEVER-AUTO pause-site set live in `autonomy-types.ts`, ledger
- * minting/reading/validation in `autonomy-ledger.ts`; this file owns the
- * mode-dial policy itself and the runtime gate that blocks progress on an
- * invalid ledger.
+ * minting/reading in `autonomy-ledger.ts`, ledger runtime validation in
+ * `autonomy-ledger-validate.ts`; this file owns the mode-dial policy itself
+ * and the runtime gate that blocks progress on an invalid ledger.
  */
 
 import type { EventLog } from '@shipwright/events';
@@ -12,7 +12,7 @@ import {
   validateAutonomyLedger,
   type LedgerValidationResult,
   type ValidateLedgerOptions,
-} from './autonomy-ledger.js';
+} from './autonomy-ledger-validate.js';
 import {
   isNeverAutoPauseSite,
   type AutonomyMode,
@@ -68,3 +68,4 @@ export function assertLedgerValidForNextClaim(
 
 export * from './autonomy-types.js';
 export * from './autonomy-ledger.js';
+export * from './autonomy-ledger-validate.js';

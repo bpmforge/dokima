@@ -7,7 +7,7 @@
  */
 
 import { NEVER_AUTO_RISK_CLASSES } from './review-queue-classifier.js';
-import type { RiskClass } from './review-queue-types.js';
+import { RISK_CLASSES, type RiskClass } from './review-queue-types.js';
 
 export type AutonomyMode = 'interactive' | 'auto';
 
@@ -42,8 +42,40 @@ export const NEVER_AUTO_PAUSE_SITES: readonly PauseSiteKind[] = Object.freeze([
   'interview',
 ]);
 
-/** True when `pauseSite` falls in the unconditional NEVER-AUTO set. */
+/**
+ * Every recognized `PauseSiteKind` value (the five `RiskClass`es plus
+ * `'interview'`/`'clarification'`) — the enum this module actually has, for
+ * validating an untrusted `pauseSite` string against rather than trusting
+ * its static type. A ledger row's `pauseSite` is read back from event
+ * payload JSON (or, at a call site, may be a value an untrusted agent
+ * session supplied), so nothing prevents it from being a typo, stray
+ * whitespace, wrong case, or a value nobody defined — TypeScript's
+ * compile-time `PauseSiteKind` type offers no runtime protection there.
+ */
+export const ALL_PAUSE_SITE_KINDS: readonly PauseSiteKind[] = Object.freeze([
+  ...RISK_CLASSES,
+  'interview',
+  'clarification',
+]);
+
+/** True when `value` is one of the known `PauseSiteKind` enum members. */
+export function isPauseSiteKind(value: unknown): value is PauseSiteKind {
+  return (
+    typeof value === 'string' &&
+    (ALL_PAUSE_SITE_KINDS as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * True when `pauseSite` falls in the unconditional NEVER-AUTO set. Fails
+ * closed: a `pauseSite` that isn't a recognized `PauseSiteKind` member at
+ * all (typo, stale/renamed constant, forged value) is treated as NEVER-AUTO
+ * rather than silently falling through to auto-eligible — an unrecognized
+ * site is exactly the case where we cannot prove it's safe to auto-resolve
+ * (FR-N3, CONSTRAINTS.md C-5).
+ */
 export function isNeverAutoPauseSite(pauseSite: PauseSiteKind): boolean {
+  if (!isPauseSiteKind(pauseSite)) return true;
   return (NEVER_AUTO_PAUSE_SITES as readonly string[]).includes(pauseSite);
 }
 

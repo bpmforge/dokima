@@ -8,6 +8,7 @@ import {
   openEventLog,
   type EventLog,
 } from '@shipwright/events';
+import type { PauseSiteKind } from './autonomy-types.js';
 import {
   appendAutoDefaultRow,
   appendNeverAutoDecisionRow,
@@ -16,8 +17,9 @@ import {
   LEDGER_EVENT_TYPE,
   NeverAutoAutoDefaultRefusedError,
   readAutonomyLedger,
-  validateAutonomyLedger,
+  UnrecognizedPauseSiteError,
 } from './autonomy-ledger.js';
+import { validateAutonomyLedger } from './autonomy-ledger-validate.js';
 
 interface Fixture {
   dbDir: string;
@@ -94,6 +96,19 @@ describe('appendAutoDefaultRow', () => {
         actorId: 'worker-1',
       }),
     ).toThrow(NeverAutoAutoDefaultRefusedError);
+  });
+
+  it('refuses to mint a row for an unrecognized pauseSite — a typo is never silently auto-eligible', async () => {
+    fixture = await setupFixture();
+    expect(() =>
+      appendAutoDefaultRow(fixture!.log, {
+        id: 'ledger-bad-3',
+        pauseSite: 'Deploy' as unknown as PauseSiteKind,
+        defaultTaken: 'proceed anyway',
+        wouldHaveAsked: 'may I deploy?',
+        actorId: 'worker-1',
+      }),
+    ).toThrow(UnrecognizedPauseSiteError);
   });
 });
 
@@ -181,6 +196,21 @@ describe('appendNeverAutoDecisionRow (US-703 AC-2, SC-05)', () => {
         actorId: 'human-1',
       }),
     ).toThrow(HumanSignatureRequiredError);
+  });
+
+  it('refuses to mint a row for an unrecognized pauseSite, even with a valid human signature', async () => {
+    fixture = await setupFixture();
+    expect(() =>
+      appendNeverAutoDecisionRow(fixture!.log, {
+        id: 'ledger-7',
+        pauseSite: 'main_merge' as unknown as PauseSiteKind,
+        mode: 'interactive',
+        decision: 'approved',
+        wouldHaveAsked: 'may I merge this to main?',
+        humanSignature: 'human-1',
+        actorId: 'human-1',
+      }),
+    ).toThrow(UnrecognizedPauseSiteError);
   });
 });
 
@@ -331,6 +361,31 @@ describe('validateAutonomyLedger — runtime validation (SRS FR-N3, US-703 AC-3)
     const result = validateAutonomyLedger(fixture.log);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes('pauseSite'))).toBe(true);
+  });
+
+  // The gate finding this fixes: isNeverAutoPauseSite/validateLedgerRowPayload
+  // previously did membership-only lookup against NEVER_AUTO_PAUSE_SITES, so a
+  // pauseSite that's neither a real NEVER-AUTO value nor a real auto-eligible
+  // one (typo, stale/renamed constant, forged string) fell through as if it
+  // were auto-eligible and structurally valid. It must now be flagged.
+  it('detects a row with an unrecognized pauseSite (not a typo of a NEVER-AUTO value, not a real auto-eligible one either)', async () => {
+    fixture = await setupFixture();
+    appendEvent(fixture.log, {
+      eventType: LEDGER_EVENT_TYPE,
+      actorId: 'worker-1',
+      payload: {
+        id: 'forged-7',
+        pauseSite: 'clarifcation', // typo of 'clarification'
+        mode: 'auto',
+        defaultTaken: 'proceed anyway',
+        wouldHaveAsked: 'y',
+        humanSignature: null,
+        decision: 'auto-default',
+      },
+    });
+    const result = validateAutonomyLedger(fixture.log);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('unrecognized pauseSite'))).toBe(true);
   });
 
   it('detects a row whose decision is outside the enum', async () => {
