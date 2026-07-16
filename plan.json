@@ -925,7 +925,7 @@
         "Limit pauses are distinct from budget breakers in events, UI, and ledger (provider ceiling vs user ceiling)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [],
       "stories": []
     },
