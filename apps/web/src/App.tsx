@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { BoardView } from './board/BoardView.js';
 import { ChatView } from './chat/ChatView.js';
 import { readInjectedToken } from './chat/api.js';
+import { EstimateWorkspace } from './estimate/EstimateWorkspace.js';
 import { FleetHome } from './fleet/FleetHome.js';
 import { APP_NAME } from './index.js';
 import { SplitPaneWorkspace } from './layout/SplitPaneWorkspace.js';
@@ -66,11 +67,27 @@ function useBoardPaneNode(projectId: string | null): HTMLElement | null {
   return node;
 }
 
+/**
+ * Same portal pattern as `useChatPaneNode`, targeting the artifacts pane
+ * (BLUEPRINT §12.2's dry-run estimate belongs under the Settings Matrix's
+ * budget panel, UX_SPEC §6 — that screen doesn't exist yet, so the
+ * estimate/escalation-ROI/weekly-digest workspace renders in the one pane
+ * with no content producer yet, same discipline as the chat/board portals).
+ */
+function useArtifactsPaneNode(projectId: string | null): HTMLElement | null {
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setNode(document.querySelector<HTMLElement>('[data-testid="pane-artifacts"]'));
+  }, [projectId]);
+  return node;
+}
+
 function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
   const chatPaneNode = useChatPaneNode(projectId);
   const boardPaneNode = useBoardPaneNode(projectId);
+  const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
 
   useEffect(() => {
@@ -122,6 +139,12 @@ function AppShell() {
                 wsUrl={wsUrl()}
               />,
               boardPaneNode,
+            )}
+          {artifactsPaneNode &&
+            token &&
+            createPortal(
+              <EstimateWorkspace token={token} projectId={projectId} />,
+              artifactsPaneNode,
             )}
         </>
       ) : (
