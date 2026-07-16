@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   MERMAID_VALIDATOR,
@@ -8,6 +11,8 @@ import {
   nextPhase,
   priorPhase,
 } from './topology.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 describe('PHASES topology', () => {
   it('AC1: declares exactly six phases, 0..5 in order, named per BLUEPRINT §3.2', () => {
@@ -47,6 +52,89 @@ describe('PHASES topology', () => {
     expect(getPhase(3).waiverEligible).toBe(true);
     expect(getPhase(4).waiverEligible).toBe(false);
     expect(getPhase(5).waiverEligible).toBe(false);
+  });
+
+  it('phase 3 (Design) validators are in full parity with validate-phase-gate.sh phase-3, incl. the module-boundary and challenger-gate laws', () => {
+    expect(getPhase(3).validators).toEqual([
+      'validate-module-design',
+      'validate-flows',
+      'validate-design-tokens',
+      'validate-circular-deps',
+      'validate-module-boundaries-transitive',
+      'validate-infrastructure',
+      'validate-observability',
+      'validate-data-governance',
+      'validate-resilience-patterns',
+      'validate-architecture',
+      'validate-api-coverage',
+      'validate-sequence-coverage',
+      'validate-erd-coverage',
+      'validate-no-ascii-art',
+      MERMAID_VALIDATOR,
+      'validate-doc-render-health',
+      'validate-c3-coverage',
+      'validate-entry-points',
+      'validate-tech-stack',
+      'validate-adrs',
+      'validate-security-controls',
+      'validate-challenger-gate',
+      'validate-tracker-integrity',
+      'validate-ux-spec',
+      'validate-spec-traceability',
+    ]);
+  });
+
+  it('phase 4 (Build) validators are in full parity with validate-phase-gate.sh phase-4 (minus the two filesystem-conditional UX validators)', () => {
+    expect(getPhase(4).validators).toEqual([
+      'validate-build',
+      'validate-lint',
+      'validate-tests',
+      'validate-tests-mapping',
+      'validate-e2e-setup',
+      'validate-migrations',
+      'validate-iac',
+      'validate-module-boundaries',
+      'validate-api-consistency',
+      'validate-code-health',
+      'validate-dead-code',
+      'validate-file-size',
+      'validate-tickets',
+      'validate-ticket-hygiene',
+      'validate-tracker-integrity',
+      'validate-challenger-gate',
+      MERMAID_VALIDATOR,
+    ]);
+  });
+
+  it('phase 5 (Launch) validators are in full parity with validate-phase-gate.sh phase-5, incl. requirement-closure and challenger-gate', () => {
+    expect(getPhase(5).validators).toEqual([
+      'validate-build',
+      'validate-lint',
+      'validate-tests',
+      'validate-deps',
+      'validate-smoke',
+      'validate-fix-backlog-closed',
+      'validate-challenger-gate',
+      'validate-model-pins',
+      'validate-code-health',
+      'validate-dead-code',
+      'validate-module-boundaries',
+      'validate-api-consistency',
+      'validate-contract-conformance',
+      'validate-release-readiness',
+      'validate-requirement-closure',
+      MERMAID_VALIDATOR,
+    ]);
+  });
+
+  it('every validator named in PHASES exists as a real script under content/validators/', () => {
+    const validatorsDir = path.resolve(HERE, '../../../../content/validators');
+    for (const phase of PHASES) {
+      for (const validator of phase.validators) {
+        const scriptPath = path.join(validatorsDir, `${validator}.sh`);
+        expect(existsSync(scriptPath), `${scriptPath} should exist`).toBe(true);
+      }
+    }
   });
 
   it('every deliverable names a producing role', () => {
