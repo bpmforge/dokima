@@ -1736,7 +1736,7 @@
         "Challenger/reviewer verdicts follow the asymmetric threshold (score >=7 accept, 5-6 bounded polish, 1-4 escalate-to-human — never auto-fail over a passing deterministic gate) and every verdict carries the re-ran independently evidence line (R-B2, FR-L6)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": " AMENDED 2026-07-14 (adopted R-B2).",
       "stories": [
         "US-405",
