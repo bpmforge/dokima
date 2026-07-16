@@ -1288,11 +1288,12 @@
         "Program thread + per-concern agent threads; question/finding/manifest cards render structured with agent, model, ticket, cost provenance and click-through to receipts (FR-C2)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "done",
       "notes": [
         " AMENDED 2026-07-14: dep W2-09 (provider streaming) added — chat renders streamed agent turns (G-23).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
-        "CONDUCTOR 2026-07-15T21:42:12.221Z: blocked after 2 attempts. Branch sw/w4-04 kept. Gaps: [HIGH] apps/web/src/chat/ChatView.tsx: The fetch effect's `.catch()` sets `loadError` on failure but nothing ever clears it on a later successful fetch. Since `ChatView` persists across project switches (App.tsx mounts it once, `projectId` is just a changing prop, no `key`), a transient failure on one project permanently pins the 'Couldn't load chat history' banner even after the effect reruns and a later fetch (same or different project) succeeds — render logic checks `loadError` before `hasAnyCards`, so real loaded threads/cards never display again for the session. — fix: Clear the error at "
+        "CONDUCTOR 2026-07-15T21:42:12.221Z: blocked after 2 attempts. Branch sw/w4-04 kept. Gaps: [HIGH] apps/web/src/chat/ChatView.tsx: The fetch effect's `.catch()` sets `loadError` on failure but nothing ever clears it on a later successful fetch. Since `ChatView` persists across project switches (App.tsx mounts it once, `projectId` is just a changing prop, no `key`), a transient failure on one project permanently pins the 'Couldn't load chat history' banner even after the effect reruns and a later fetch (same or different project) succeeds — render logic checks `loadError` before `hasAnyCards`, so real loaded threads/cards never display again for the session. — fix: Clear the error at ",
+        "LANDED 2026-07-16 under A-001: independent review APPROVE, zero findings (gate 886|1 re-run; XSS href gating + cancelled-flag interplay verified). Maker stalled 2x on the loadError-never-cleared HIGH -> fix at human-gated tier (setLoadError(null) at effect start). Reviewer note: apps/web has no RTL harness so the cross-project banner regression has no automated pin -> follow-up ticket for a component-test stack (W4-12 e2e adjacent). D-018 token-gated pattern enacted manually."
       ],
       "stories": []
     },
