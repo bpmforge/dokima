@@ -746,7 +746,8 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/loop-land*",
-        "packages/harbormaster/test/loop-land*"
+        "packages/harbormaster/test/loop-land*",
+        "packages/harbormaster/package.json"
       ],
       "depends_on": [
         "W3-01b"
@@ -761,7 +762,10 @@
         "US-402",
         "US-404"
       ],
-      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome."
+      "notes": [
+        "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome.",
+        "SUPERVISED BUILD 2026-07-16 (Brad-authorized at the W3-01b gate; last F2 trust-core ticket). package.json added to write_scope as seam insurance (all needed deps already declared: events/gateway/git/loop/shared/tickets/validators). IMPORT MAP: close+checkpoint -> runCloseGate (this package, loop-gates) + mintReceipt (@shipwright/events); land/merge -> @shipwright/git (mergeLocal); park blocked-with-evidence -> commentTicket/releaseTicket (@shipwright/tickets, mirror loop-claim.ts auto-block); D-018 escalation modes -> resolveEscalationPolicy (@shipwright/gateway, modes ladder/locked/token-gated) — locked=>loop-and-park, token-gated=>park at tier boundary with a Decide card. Reuse the runClaimLoop shape from loop-claim.ts."
+      ]
     },
     {
       "id": "W3-02",

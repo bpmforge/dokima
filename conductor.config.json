@@ -54,7 +54,7 @@
       "validate-code-health",
       "validate-dead-code"
     ],
-    "$note": "gate[] = reliable/objective validators, run diff-scoped as HARD gates. advisory[] = grep-heuristic validators (noisy on TS: magic-numbers-in-comments, bogus-unreachable) \u2014 their findings ANCHOR the LLM review instead of blocking, matching the source system's 'script floor + agent verified pass' design. Promote a validator to gate[] once red-fixture-calibrated."
+    "$note": "gate[] = reliable/objective validators, run diff-scoped as HARD gates. advisory[] = grep-heuristic validators (noisy on TS: magic-numbers-in-comments, bogus-unreachable) — their findings ANCHOR the LLM review instead of blocking, matching the source system's 'script floor + agent verified pass' design. Promote a validator to gate[] once red-fixture-calibrated."
   },
   "remotes": [
     "github",
@@ -80,10 +80,8 @@
     ".nvmrc",
     "packages/events/migrations/**"
   ],
-  "holdTickets": [
-    "W3-01c"
-  ],
-  "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review \u2014 the conductor never claims these unattended; Brad works them interactively. 2026-07-16: W3-01a un-held for a SUPERVISED build under Brad's explicit authorization (chose 'conductor builds, you gate merge') \u2014 conductor runs --no-merge --breakpoint ticket, PARKS the branch (never auto-merges), and Brad reviews the diff + red fixtures and authorizes the merge himself. W3-01b/c stay held until their deps merge, then get the same one-at-a-time supervised treatment.",
-  "$gatesNote": "2026-07-15: board validators added to the per-ticket gate \u2014 an agent's plan.json/notes edits must keep the citation graph green (caught W3-10 hallucinating docs/MODULE_DESIGN.md only on manual re-run; now automatic).",
-  "$alwaysOkNote": "2026-07-16: +events/migrations/** \u2014 numbered migrations are append-only shared infra (like pnpm-lock); every ticket adding a table needs a new NNN_*.sql without a per-ticket scope collision (L-04/W4-06). The migration RUNNER (packages/events/src/db.ts) stays out \u2014 only the numbered files."
+  "holdTickets": [],
+  "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review — the conductor never claims these unattended; Brad works them interactively. 2026-07-16: W3-01a un-held for a SUPERVISED build under Brad's explicit authorization (chose 'conductor builds, you gate merge') — conductor runs --no-merge --breakpoint ticket, PARKS the branch (never auto-merges), and Brad reviews the diff + red fixtures and authorizes the merge himself. W3-01b/c stay held until their deps merge, then get the same one-at-a-time supervised treatment.",
+  "$gatesNote": "2026-07-15: board validators added to the per-ticket gate — an agent's plan.json/notes edits must keep the citation graph green (caught W3-10 hallucinating docs/MODULE_DESIGN.md only on manual re-run; now automatic).",
+  "$alwaysOkNote": "2026-07-16: +events/migrations/** — numbered migrations are append-only shared infra (like pnpm-lock); every ticket adding a table needs a new NNN_*.sql without a per-ticket scope collision (L-04/W4-06). The migration RUNNER (packages/events/src/db.ts) stays out — only the numbered files."
 }
