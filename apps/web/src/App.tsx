@@ -42,29 +42,35 @@ function readProjectId(): string | null {
  * stop touching that file, not widen scope. A portal into its
  * already-rendered `pane-chat` DOM node mounts the chat workspace entirely
  * from files this ticket *can* write.
+ *
+ * Re-queries whenever `projectId` changes rather than once on mount:
+ * `SplitPaneWorkspace` (and its pane nodes) only exists in the DOM once a
+ * project is open, so a mount-only query run while still on Fleet (the
+ * common path — Fleet → click Open, no full page reload) would cache a
+ * permanent `null` and never portal anything in.
  */
-function useChatPaneNode(): HTMLElement | null {
+function useChatPaneNode(projectId: string | null): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setNode(document.querySelector<HTMLElement>('[data-testid="pane-chat"]'));
-  }, []);
+  }, [projectId]);
   return node;
 }
 
 /** Same portal pattern as `useChatPaneNode`, targeting the board pane (UX_SPEC §2a). */
-function useBoardPaneNode(): HTMLElement | null {
+function useBoardPaneNode(projectId: string | null): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setNode(document.querySelector<HTMLElement>('[data-testid="pane-board"]'));
-  }, []);
+  }, [projectId]);
   return node;
 }
 
 function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
-  const chatPaneNode = useChatPaneNode();
-  const boardPaneNode = useBoardPaneNode();
+  const chatPaneNode = useChatPaneNode(projectId);
+  const boardPaneNode = useBoardPaneNode(projectId);
   const token = readInjectedToken();
 
   useEffect(() => {

@@ -1,0 +1,144 @@
+import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * Kanban board (UX_SPEC §4, FR-C4/FR-T4) against the real apps/server +
+ * per-project `state.db` — same discipline as fleet.spec.ts/chat.spec.ts
+ * (real REST fetch + WS wiring, not a mocked browser API). Ticket fixtures
+ * are seeded directly into the project's event log via
+ * `fixtures/seed-board-tickets.mjs` (no ticket-creation REST endpoint
+ * exists — out of this ticket's acceptance — and the CLI has no `create`
+ * subcommand either).
+ *
+ * A wide viewport: the board pane is one of three side-by-side panes
+ * (~1/3 of the window), and six fixed-min-width columns don't fit in that
+ * without horizontal scroll — a real drag's drop target must actually be
+ * on-screen for Playwright's pointer-based `dragTo` to land on it.
+ */
+test.use({ viewport: { width: 2400, height: 1000 } });
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..', '..');
+const TSX_BIN = path.join(repoRoot, 'apps', 'server', 'node_modules', '.bin', 'tsx');
+const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
+
+function freshProjectPath(): { dir: string; name: string } {
+  const id = randomUUID();
+  return {
+    dir: path.join(os.tmpdir(), `shipwright-board-e2e-${id}`),
+    name: `Board E2E ${id}`,
+  };
+}
+
+function seed(dbPath: string, scenario: string): void {
+  execFileSync(TSX_BIN, [SEED_SCRIPT, dbPath, scenario], { stdio: 'inherit' });
+}
+
+/** Registers ("Onboard existing repo") a project via the real Fleet UI and opens it. */
+async function openFreshProject(page: Page, name: string, dir: string): Promise<void> {
+  await fs.mkdir(dir, { recursive: true });
+  await page.goto('/');
+  const header = page.locator('.fleet__header');
+  await header
+    .getByRole('button', { name: 'Onboard existing repo', exact: true })
+    .click();
+  await page.getByLabel('Directory path').fill(dir);
+  await page.getByLabel('Name (optional)').fill(name);
+  await page
+    .locator('.fleet__form')
+    .getByRole('button', { name: 'Onboard existing repo' })
+    .click();
+  const card = page.locator('.project-card', { hasText: name });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'Open' }).click();
+  await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
+}
+
+test('board renders lanes x columns x typed cards from live projections (FR-C4)', async ({
+  page,
+}) => {
+  const { dir, name } = freshProjectPath();
+  await openFreshProject(page, name, dir);
+  seed(path.join(dir, '.shipwright', 'state.db'), 'basic');
+  await page.reload();
+
+  const board = page.getByTestId('pane-board').getByTestId('board-view');
+  await expect(board).toBeVisible();
+
+  const uiLane = page.getByTestId('lane-ui');
+  await expect(
+    uiLane.getByTestId('column-ready').getByTestId('card-E2E-1'),
+  ).toBeVisible();
+  await expect(
+    uiLane.getByTestId('column-blocked').getByTestId('card-E2E-2'),
+  ).toBeVisible();
+
+  const gatewayLane = page.getByTestId('lane-gateway');
+  const doneCard = gatewayLane.getByTestId('column-done').getByTestId('card-E2E-3');
+  await expect(doneCard).toBeVisible();
+  await expect(doneCard.locator('.board-card__receipt-dot')).toHaveAttribute(
+    'data-state',
+    'green',
+  );
+});
+
+test('board empty state renders when no tickets exist yet (UX_SPEC §2b)', async ({
+  page,
+}) => {
+  const { dir, name } = freshProjectPath();
+  await openFreshProject(page, name, dir);
+
+  const board = page.getByTestId('pane-board');
+  await expect(board.getByTestId('board-empty')).toBeVisible();
+  await expect(
+    board.getByText('The board fills when Phase 3 design is decomposed.'),
+  ).toBeVisible();
+});
+
+test('dragging a ready card to Claimed fires claim and the card moves column (FR-T4)', async ({
+  page,
+}) => {
+  const { dir, name } = freshProjectPath();
+  await openFreshProject(page, name, dir);
+  seed(path.join(dir, '.shipwright', 'state.db'), 'drag-claim');
+  await page.reload();
+
+  const lane = page.getByTestId('lane-ui');
+  const card = lane.getByTestId('column-ready').getByTestId('card-E2E-DRAG-1');
+  await expect(card).toBeVisible();
+
+  await card.dragTo(lane.getByTestId('column-claimed'));
+
+  const claimedCard = lane.getByTestId('column-claimed').getByTestId('card-E2E-DRAG-1');
+  await expect(claimedCard).toBeVisible();
+  await expect(claimedCard).toContainText('operator');
+});
+
+test('dragging an in-progress card to In Review with no manifest is refused inline (FR-T4)', async ({
+  page,
+}) => {
+  const { dir, name } = freshProjectPath();
+  await openFreshProject(page, name, dir);
+  seed(path.join(dir, '.shipwright', 'state.db'), 'drag-refuse-close');
+  await page.reload();
+
+  const lane = page.getByTestId('lane-ui');
+  const card = lane.getByTestId('column-in_progress').getByTestId('card-E2E-REFUSE-1');
+  await expect(card).toBeVisible();
+
+  // A drag can never supply a Completion Manifest, so this drop always fires
+  // `close` with an empty body — refused, never "just moved" (UX_SPEC §4).
+  await card.dragTo(lane.getByTestId('column-in_review'));
+
+  const refusal = page.getByTestId('refusal-E2E-REFUSE-1');
+  await expect(refusal).toBeVisible();
+  await expect(refusal).toContainText('MANIFEST_INVALID');
+  await expect(
+    lane.getByTestId('column-in_progress').getByTestId('card-E2E-REFUSE-1'),
+  ).toBeVisible();
+});
