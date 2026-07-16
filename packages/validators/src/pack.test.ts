@@ -23,6 +23,16 @@ describe('loadValidatorPack', () => {
     expect(specs.map((s) => s.name).sort()).toEqual(['run-bar', 'validate-foo']);
   });
 
+  it('discovers secrets-scan.sh (W3-13) even though it matches neither the validate- nor run- prefix', async () => {
+    temp = await createTempDir('pack-secrets-scan');
+    await writeScript(temp.dir, 'secrets-scan.sh', '#!/bin/bash\nexit 0\n');
+    await writeScript(temp.dir, 'validate-foo.sh', '#!/bin/bash\nexit 0\n');
+    await writeScript(temp.dir, '_lib.sh', '#!/bin/bash\n');
+
+    const specs = await loadValidatorPack({ contentDir: temp.dir });
+    expect(specs.map((s) => s.name).sort()).toEqual(['secrets-scan', 'validate-foo']);
+  });
+
   it('applies FR-S1 per-project selection, in the requested order', async () => {
     temp = await createTempDir('pack-select');
     await writeScript(temp.dir, 'validate-a.sh', '#!/bin/bash\nexit 0\n');

@@ -2,7 +2,14 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ValidatorSpec } from './run.js';
 
-const VALIDATOR_NAME_RE = /^(validate|run)-.+\.sh$/;
+/**
+ * Matches `validate-*.sh` / `run-*.sh` (the general pack convention) plus the
+ * literal `secrets-scan.sh` (W3-13, BLUEPRINT §12.5 item 5): that scanner's
+ * own header comment documents why it can't use either prefix (this file's
+ * write_scope and W3-13's write_scope were mutually incompatible at the
+ * time), so it's named as a one-off exception here instead (W3-01b).
+ */
+const VALIDATOR_NAME_RE = /^(?:(?:validate|run)-.+|secrets-scan)\.sh$/;
 
 export class UnknownValidatorSelectionError extends Error {
   constructor(missing: readonly string[]) {
