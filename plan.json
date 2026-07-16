@@ -686,7 +686,7 @@
         "canClaimNewTicket honors W2-07 breaker policy; session env is credential-free (SC-03/SC-07 planted-secret regression reused)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-402"
       ],
