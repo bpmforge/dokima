@@ -119,7 +119,26 @@ importers:
         specifier: ^9.6.1
         version: 9.6.1
 
-  packages/harbormaster: {}
+  packages/harbormaster:
+    dependencies:
+      '@shipwright/events':
+        specifier: workspace:*
+        version: link:../events
+      '@shipwright/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@shipwright/git':
+        specifier: workspace:*
+        version: link:../git
+      '@shipwright/loop':
+        specifier: workspace:*
+        version: link:../loop
+      '@shipwright/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@shipwright/tickets':
+        specifier: workspace:*
+        version: link:../tickets
 
   packages/loop:
     dependencies:

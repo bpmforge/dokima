@@ -3,6 +3,14 @@
   "private": true,
   "type": "module",
   "version": "0.0.0",
+  "dependencies": {
+    "@shipwright/events": "workspace:*",
+    "@shipwright/gateway": "workspace:*",
+    "@shipwright/git": "workspace:*",
+    "@shipwright/loop": "workspace:*",
+    "@shipwright/shared": "workspace:*",
+    "@shipwright/tickets": "workspace:*"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",

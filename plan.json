@@ -672,7 +672,8 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/loop*",
-        "packages/harbormaster/test/loop*"
+        "packages/harbormaster/test/loop*",
+        "packages/harbormaster/package.json"
       ],
       "depends_on": [
         "W1-07",
@@ -685,13 +686,14 @@
         "canClaimNewTicket honors W2-07 breaker policy; session env is credential-free (SC-03/SC-07 planted-secret regression reused)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "stories": [
         "US-402"
       ],
       "notes": [
         "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. Depends on W3-11 (public surfaces) so loop/tickets are importable — the W0-08/W1-02 class cannot recur here.",
-        "CONDUCTOR 2026-07-16T14:31:05.126Z: blocked after 2 attempts. Branch sw/w3-01a kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-16T14:31:05.126Z: blocked after 2 attempts. Branch sw/w3-01a kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "SEAM FIX 2026-07-16 (schema bug, not a maker failure): attempt 1/2 correctly BLOCKED on \"harbormaster package.json dependency seam\" — write_scope had only src/loop* + test/loop* but harbormaster/package.json declared ZERO deps, so the loop could not import any sibling package without a scope violation. Resolved: (a) package.json added to write_scope; (b) deps pre-declared (events, gateway, git, loop, shared, tickets @ workspace:*). | IMPORT MAP for the loop (verified barrels): CLAIM lowest-id claimable + WIP=1 -> @shipwright/tickets (loadTickets, getTicket, listTickets, isValidTransition/TRANSITIONS, lane helpers). FRESH-SESSION dispatch with HANDOFF + role model (W1-06) -> @shipwright/loop (session.js, handoff.js). BREAKER canClaimNewTicket (W2-07) + escalation -> @shipwright/gateway (budget/, escalation/). Receipts + credential-free identity (SC-03/SC-07) -> @shipwright/events (receipts.js, createIdentity/getIdentity). config/glob -> @shipwright/shared. Add any dep you actually import to package.json (now in scope); do not import a package you have not declared."
       ]
     },
     {
