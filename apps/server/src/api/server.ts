@@ -23,7 +23,7 @@ import { buildAllowlist } from './allowlist.js';
 import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plugin.js';
 import { registerHealthz } from './healthz.js';
 import { registerProjectRoutes } from './projects.js';
-import { registerBoardRoutes } from './server/index.js';
+import { registerBoardRoutes, registerEstimateRoutes } from './server/index.js';
 import { WsHub } from './ws-hub.js';
 import { completeHandshake, rejectUpgrade } from './ws-socket.js';
 
@@ -57,6 +57,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerHealthz(app, { isDbOpen: opts.isDbOpen, wsHub });
   registerProjectRoutes(app, { home: opts.fleetHome });
   registerBoardRoutes(app, { home: opts.fleetHome, wsHub });
+  registerEstimateRoutes(app, { home: opts.fleetHome });
   registerChatRoute(app);
   registerStatic(app, opts.webDistDir, opts.token);
 
