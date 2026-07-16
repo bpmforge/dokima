@@ -177,6 +177,40 @@ describe('runClaimLoop', () => {
     expect(result.processed[0]!.finalStatus).toBe('in_review' satisfies TicketStatus);
   });
 
+  it('reclaims an auto-blocked, released ticket on a later run without crashing (worktree/branch already exist)', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+    seedTicket(log, 'W9-01');
+
+    const firstRun = await runClaimLoop({
+      log,
+      actorId: 'worker-1',
+      repoRoot,
+      spawn: neverResolvingSpawn,
+      buildHandoff: defaultHandoffBuilder(),
+      maxSessionsPerTicket: 2,
+    });
+    expect(firstRun.processed[0]!.autoBlocked).toBe(true);
+    expect(getTicket(log, 'W9-01')?.status).toBe('ready');
+
+    // A fresh `runClaimLoop` call (a later process run in production) reclaims the
+    // same ticket; its worktree/branch from the first run are still on disk.
+    const secondRun = await runClaimLoop({
+      log,
+      actorId: 'worker-1',
+      repoRoot,
+      spawn: neverResolvingSpawn,
+      buildHandoff: defaultHandoffBuilder(),
+      maxSessionsPerTicket: 2,
+    });
+
+    expect(secondRun.stopReason).toBe('idle');
+    expect(secondRun.processed).toHaveLength(1);
+    expect(secondRun.processed[0]!.ticketId).toBe('W9-01');
+    expect(secondRun.processed[0]!.autoBlocked).toBe(true);
+    expect(getTicket(log, 'W9-01')?.status).toBe('ready');
+  });
+
   it('stops before claiming when the stop switch is tripped (kill-file/pause, checked between tickets)', async () => {
     fixture = await setupFixture();
     const { log, repoRoot } = fixture;

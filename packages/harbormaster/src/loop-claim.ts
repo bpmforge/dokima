@@ -25,7 +25,15 @@
  * is checked at the same boundary (FR-H2: "checked between tickets").
  */
 
-import { createWorktree, type CreateWorktreeOptions } from '@shipwright/git';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import {
+  branchNameFor,
+  createWorktree,
+  listWorktrees,
+  type CreateWorktreeOptions,
+  type WorktreeHandle,
+} from '@shipwright/git';
 import { policyForLevel, type BreakerLevel } from '@shipwright/gateway';
 import { runSession, type SessionResult, type SpawnSession } from '@shipwright/loop';
 import {
@@ -115,6 +123,44 @@ function evidenceComment(
   ].join('\n');
 }
 
+/**
+ * A ticket that hit the session cap is auto-blocked and released back to `ready`
+ * (see below) — its worktree/branch is deliberately left on disk as seed material
+ * for the next attempt, mirroring this project's own kept-branch convention for
+ * exhausted tickets. That means a reclaim (same run, once a future ticket adds
+ * unlimited retries, or a fresh `runClaimLoop` process run after this one exits)
+ * must reuse that worktree rather than call `createWorktree` again: `git worktree
+ * add -b <branch>` fails outright when the branch/directory already exist.
+ */
+async function resolveWorktree(
+  options: ClaimLoopOptions,
+  ticket: Ticket,
+): Promise<WorktreeHandle> {
+  const worktreePath = path.join(options.repoRoot, '.shipwright', 'worktrees', ticket.id);
+  // `git worktree list --porcelain` reports symlink-resolved paths (matters on macOS,
+  // where the default tmpdir sits behind /var -> /private/var); resolve ours the same
+  // way before comparing. A missing directory can't be an existing worktree.
+  const resolvedWorktreePath = await fs.realpath(worktreePath).catch(() => undefined);
+  const existing = await listWorktrees(options.repoRoot);
+  const found = resolvedWorktreePath
+    ? existing.find((entry) => entry.path === resolvedWorktreePath)
+    : undefined;
+  if (found) {
+    return {
+      repoRoot: options.repoRoot,
+      path: worktreePath,
+      branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
+      ticketId: ticket.id,
+    };
+  }
+  return createWorktree({
+    repoRoot: options.repoRoot,
+    ticketId: ticket.id,
+    slug: ticket.title,
+    baseRef: options.baseRef,
+  });
+}
+
 async function processTicket(
   options: ClaimLoopOptions,
   ticket: Ticket,
@@ -123,12 +169,7 @@ async function processTicket(
   claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
   startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
 
-  const worktree = await createWorktree({
-    repoRoot: options.repoRoot,
-    ticketId: ticket.id,
-    slug: ticket.title,
-    baseRef: options.baseRef,
-  });
+  const worktree = await resolveWorktree(options, ticket);
 
   const attempts: TicketAttempt[] = [];
   let current = requireTicket(options.log, ticket.id);
