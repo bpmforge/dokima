@@ -1476,7 +1476,7 @@
         "FitnessCardStore persists to model_fitness keyed (model, role, harness_version); guardFitAssignment is called inside routing route() so an unfit/marginal assignment warns structurally (W2-08 HANDOFF closed)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired.",
         "SCOPE 2026-07-16 (seam L-12, auto-fix): +events/gateway package.json + barrels + fitness/routing dirs it wires (W3-11 owned public surfaces but is done→territory released, D-015). Redo autonomously.",
