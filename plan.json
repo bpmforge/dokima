@@ -1359,12 +1359,13 @@
         "Copilot provider onboarding is default-off behind the D-019 consent gate: plain-language account-risk warning; enabling requires an explicit acknowledgement minted as a ledgered event (FR-G6 ack pattern); the matrix flags Copilot-backed roles while enabled"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix. AMENDED 2026-07-14 (D-019).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
         "CONDUCTOR 2026-07-16T00:08:39.100Z: blocked after 2 attempts. Branch sw/w4-06 kept. Gaps: [CRITICAL] apps/server/src/api/server/settings-db.ts: model_matrix/rule_state/suppressions tables are created via ad-hoc `CREATE TABLE IF NOT EXISTS` DDL run directly against the raw better-sqlite3 handle, not via a numbered migration in packages/events/migrations/ (only 001_init.sql and 002_receipts.sql exist — confirmed by listing that directory). DATABASE.md §8 requires migrations to be numbered SQL files applied in order with `PRAGMA user_version` tracking and a pre-migration backup (DEPLOYMENT.md §4); none of that happens here. The AC 'model_matrix project-scope table migration (DATABASE ",
-        "RESET 2026-07-16: split target (api/server/**) already in scope for W4-06; numbered migrations now conductor-allowlisted (append-only shared infra) so 003_settings.sql lands cleanly. Redo."
+        "RESET 2026-07-16: split target (api/server/**) already in scope for W4-06; numbered migrations now conductor-allowlisted (append-only shared infra) so 003_settings.sql lands cleanly. Redo.",
+        "CONDUCTOR 2026-07-16T02:08:57.254Z: blocked after 2 attempts. Branch sw/w4-06 kept. Gaps: out-of-scope edits: packages/events/migrations/003_settings.sql"
       ],
       "stories": [
         "US-503",
