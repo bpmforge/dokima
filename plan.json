@@ -708,7 +708,8 @@
         "packages/harbormaster/src/loop-gates*",
         "packages/harbormaster/test/loop-gates*",
         "packages/validators/src/pack.ts",
-        "packages/validators/test/pack*"
+        "packages/validators/test/pack*",
+        "packages/harbormaster/package.json"
       ],
       "depends_on": [
         "W3-01a",
@@ -727,7 +728,10 @@
         "US-402",
         "US-403"
       ],
-      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. AMENDED 2026-07-15 (W3-13 gate-fix, conductor-flagged HIGH): dep on W3-13 added; write_scope widened to packages/validators/src/pack.ts (+ its tests) since this is the only ticket that both executes the close gate and can legally touch the validator-pack discovery regex — closing the schema bug where W3-13's write_scope (content/validators/secrets-scan*) can never produce a filename pack.ts's VALIDATOR_NAME_RE accepts. Do not mark W3-13 done for 'wired into every close gate' until this criterion lands here. AMENDED 2026-07-15 per W3-13 independent review routing confirmation."
+      "notes": [
+        "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. AMENDED 2026-07-15 (W3-13 gate-fix, conductor-flagged HIGH): dep on W3-13 added; write_scope widened to packages/validators/src/pack.ts (+ its tests) since this is the only ticket that both executes the close gate and can legally touch the validator-pack discovery regex — closing the schema bug where W3-13's write_scope (content/validators/secrets-scan*) can never produce a filename pack.ts's VALIDATOR_NAME_RE accepts. Do not mark W3-13 done for 'wired into every close gate' until this criterion lands here. AMENDED 2026-07-15 per W3-13 independent review routing confirmation.",
+        "SEAM PRE-FIX 2026-07-16 (applying the W3-01a lesson proactively): package.json added to write_scope and @shipwright/validators pre-declared in harbormaster deps so the close gate can run the validator pack without a scope violation. IMPORT MAP for loop-gates (verified barrels): run the validator pack + widen VALIDATOR_NAME_RE -> @shipwright/validators (loadValidatorPack + run) AND packages/validators/src/pack.ts is in your write_scope (VALIDATOR_NAME_RE is a private const on line 5 there — widen it in place to also match secrets-scan.sh, e.g. include ^secrets-scan\\.sh$ or generalise, and add it to the close flow requiredValidators). diff-scope / changed paths -> computeChangedPaths from @shipwright/loop (session-scope). close receipt + verify -> verifyReceipt/mintReceipt from @shipwright/events (receipts.ts). ticket close verb -> @shipwright/tickets. The secrets-scan.sh scanner already exists at content/validators/secrets-scan.sh (W3-13). Add any dep you import to package.json (now in scope); do not import a package you have not declared. Acceptance 5 shadow-calibration (D-014/L-28): the scanner self-hits 27 planted-fixture/doc strings in THIS repo — ship the gate with a fixture/doc allowlist-baseline so it does not block real closes on test fixtures; guard the per-file re-grep against SIGPIPE / colon-in-filename so the 0/1/2 exit contract holds."
+      ]
     },
     {
       "id": "W3-01c",

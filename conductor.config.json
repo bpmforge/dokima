@@ -81,7 +81,6 @@
     "packages/events/migrations/**"
   ],
   "holdTickets": [
-    "W3-01b",
     "W3-01c"
   ],
   "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review \u2014 the conductor never claims these unattended; Brad works them interactively. 2026-07-16: W3-01a un-held for a SUPERVISED build under Brad's explicit authorization (chose 'conductor builds, you gate merge') \u2014 conductor runs --no-merge --breakpoint ticket, PARKS the branch (never auto-merges), and Brad reviews the diff + red fixtures and authorizes the merge himself. W3-01b/c stay held until their deps merge, then get the same one-at-a-time supervised treatment.",

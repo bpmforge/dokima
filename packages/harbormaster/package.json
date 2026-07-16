@@ -9,7 +9,8 @@
     "@shipwright/git": "workspace:*",
     "@shipwright/loop": "workspace:*",
     "@shipwright/shared": "workspace:*",
-    "@shipwright/tickets": "workspace:*"
+    "@shipwright/tickets": "workspace:*",
+    "@shipwright/validators": "workspace:*"
   },
   "exports": {
     ".": {

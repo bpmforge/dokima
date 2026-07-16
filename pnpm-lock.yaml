@@ -139,6 +139,9 @@ importers:
       '@shipwright/tickets':
         specifier: workspace:*
         version: link:../tickets
+      '@shipwright/validators':
+        specifier: workspace:*
+        version: link:../validators
 
   packages/loop:
     dependencies:
