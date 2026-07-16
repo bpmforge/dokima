@@ -85,6 +85,9 @@ importers:
 
   packages/events:
     dependencies:
+      '@shipwright/shared':
+        specifier: workspace:*
+        version: link:../shared
       better-sqlite3:
         specifier: ^12.11.1
         version: 12.11.1
@@ -100,6 +103,9 @@ importers:
 
   packages/gateway:
     dependencies:
+      '@shipwright/events':
+        specifier: workspace:*
+        version: link:../events
       google-auth-library:
         specifier: ^10.7.0
         version: 10.9.0

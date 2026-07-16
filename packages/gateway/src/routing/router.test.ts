@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { UnfitAssignmentRefusedError } from '../fitness/assignment.js';
+import { createInMemoryFitnessEventSink } from '../fitness/events.js';
+import { FitnessCardStore } from '../fitness/store.js';
+import type { FitnessCard } from '../fitness/types.js';
 import {
   createInMemoryRoutingEventSink,
   SameModelRefusedError,
@@ -10,6 +14,22 @@ import type { ScopedRoleMatrix } from './types.js';
 
 const matrix: ScopedRoleMatrix = { global: PRESET_HYBRID };
 
+function noBenchStore(): FitnessCardStore {
+  return new FitnessCardStore();
+}
+
+function card(overrides: Partial<FitnessCard> = {}): FitnessCard {
+  return {
+    model: 'qwen2.5-coder-7b-instruct',
+    role: 'coding-agent',
+    verdict: 'unfit',
+    harnessVersion: '1.0.0',
+    taskResults: [],
+    runAt: '2026-07-16T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 describe('route', () => {
   it('resolves task routing alone for a non-verifier role, no maker context needed', async () => {
     const result = await route({
@@ -17,6 +37,7 @@ describe('route', () => {
       role: 'coding-agent',
       taskType: 'code',
       actorId: 'harbormaster',
+      fitnessStore: noBenchStore(),
     });
     expect(result.chain[0]).toBe('qwen2.5-coder-7b-instruct');
     expect(result.overrideEvent).toBeUndefined();
@@ -28,6 +49,7 @@ describe('route', () => {
       role: 'code-reviewer',
       taskType: 'code',
       actorId: 'harbormaster',
+      fitnessStore: noBenchStore(),
     });
     expect(reviewer.chain[0]).toBe('claude-opus-4-8');
     expect(reviewer.overrideEvent).toBeUndefined();
@@ -49,6 +71,7 @@ describe('route', () => {
           role: 'code-reviewer',
           taskType: 'code',
           actorId: 'harbormaster',
+          fitnessStore: noBenchStore(),
         }),
       ).rejects.toThrow(SameModelRefusedError);
     },
@@ -69,6 +92,7 @@ describe('route', () => {
       actorId: 'user:founder',
       overrideSettings: { run: { challenger: true } },
       sink,
+      fitnessStore: noBenchStore(),
     });
     expect(result.chain[0]).toBe('shared-model');
     expect(result.overrideEvent?.scope).toBe('run');
@@ -93,6 +117,7 @@ describe('route', () => {
         taskType: 'code',
         actorId: 'harbormaster',
         makerRole: 'pm-interviewer',
+        fitnessStore: noBenchStore(),
       }),
     ).rejects.toThrow(SameModelRefusedError);
   });
@@ -109,6 +134,7 @@ describe('route', () => {
       role: 'test-engineer',
       taskType: 'code',
       actorId: 'harbormaster',
+      fitnessStore: noBenchStore(),
     });
     expect(result.chain[0]).toBe('shared-model');
     expect(result.overrideEvent).toBeUndefined();
@@ -116,7 +142,13 @@ describe('route', () => {
 
   it('propagates RoutingUnresolvedError for an unknown role with no default fallback', async () => {
     await expect(
-      route({ matrix: {}, role: 'ghost', taskType: 'code', actorId: 'harbormaster' }),
+      route({
+        matrix: {},
+        role: 'ghost',
+        taskType: 'code',
+        actorId: 'harbormaster',
+        fitnessStore: noBenchStore(),
+      }),
     ).rejects.toThrow(RoutingUnresolvedError);
   });
 
@@ -130,7 +162,126 @@ describe('route', () => {
         role: 'challenger',
         taskType: 'code',
         actorId: 'harbormaster',
+        fitnessStore: noBenchStore(),
       }),
     ).rejects.toThrow(RoutingUnresolvedError);
+  });
+
+  describe('fitness guard (FR-G6)', () => {
+    it('the fitness guard is structural: unfit is refused even though the caller only supplied a store, no ack', async () => {
+      const store = noBenchStore();
+      store.put(
+        card({
+          model: 'qwen2.5-coder-7b-instruct',
+          role: 'coding-agent',
+          verdict: 'unfit',
+        }),
+      );
+      await expect(
+        route({
+          matrix,
+          role: 'coding-agent',
+          taskType: 'code',
+          actorId: 'harbormaster',
+          fitnessStore: store,
+        }),
+      ).rejects.toThrow(UnfitAssignmentRefusedError);
+    });
+
+    it('a marginal verdict is refused the same as unfit', async () => {
+      const store = noBenchStore();
+      store.put(
+        card({
+          model: 'qwen2.5-coder-7b-instruct',
+          role: 'coding-agent',
+          verdict: 'marginal',
+        }),
+      );
+      await expect(
+        route({
+          matrix,
+          role: 'coding-agent',
+          taskType: 'code',
+          actorId: 'harbormaster',
+          fitnessStore: store,
+        }),
+      ).rejects.toThrow(UnfitAssignmentRefusedError);
+    });
+
+    it('an explicit ack proceeds past an unfit verdict and emits fitness.unfit_ack via the sink', async () => {
+      const store = noBenchStore();
+      store.put(
+        card({
+          model: 'qwen2.5-coder-7b-instruct',
+          role: 'coding-agent',
+          verdict: 'unfit',
+        }),
+      );
+      const sink = createInMemoryFitnessEventSink();
+      const result = await route({
+        matrix,
+        role: 'coding-agent',
+        taskType: 'code',
+        actorId: 'user:founder',
+        fitnessStore: store,
+        fitnessAck: true,
+        fitnessSink: sink,
+      });
+      expect(result.chain[0]).toBe('qwen2.5-coder-7b-instruct');
+      expect(result.fitnessAckEvent?.verdict).toBe('unfit');
+      expect(sink.events).toHaveLength(1);
+    });
+
+    it('a fit verdict passes through with the card surfaced, no ack needed', async () => {
+      const store = noBenchStore();
+      store.put(
+        card({
+          model: 'qwen2.5-coder-7b-instruct',
+          role: 'coding-agent',
+          verdict: 'fit',
+        }),
+      );
+      const result = await route({
+        matrix,
+        role: 'coding-agent',
+        taskType: 'code',
+        actorId: 'harbormaster',
+        fitnessStore: store,
+      });
+      expect(result.fitnessCard?.verdict).toBe('fit');
+      expect(result.fitnessAckEvent).toBeUndefined();
+    });
+
+    it('an unbenched (model, role) passes through silently — never benching is not itself unfit', async () => {
+      const result = await route({
+        matrix,
+        role: 'coding-agent',
+        taskType: 'code',
+        actorId: 'harbormaster',
+        fitnessStore: noBenchStore(),
+      });
+      expect(result.fitnessCard).toBeUndefined();
+    });
+
+    it('a custom harnessVersion is respected — a card for a different version does not match', async () => {
+      const store = noBenchStore();
+      store.put(
+        card({
+          model: 'qwen2.5-coder-7b-instruct',
+          role: 'coding-agent',
+          verdict: 'unfit',
+          harnessVersion: '0.9.0',
+        }),
+      );
+      const result = await route({
+        matrix,
+        role: 'coding-agent',
+        taskType: 'code',
+        actorId: 'harbormaster',
+        fitnessStore: store,
+        harnessVersion: '1.0.0',
+      });
+      expect(result.fitnessCard).toBeUndefined();
+    });
   });
 });

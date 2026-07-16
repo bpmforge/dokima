@@ -6,16 +6,13 @@
  * (W2-01/02/04/05/06/07) left for its own module. Tests are co-located
  * `*.test.ts` per docs/TESTING.md §2.
  *
- * Two HANDOFFs for future tickets:
- * (1) guardFitAssignment (assignment.ts) is the mechanism "assigning an
- *     unfit pair warns + requires ack" — it is not yet called from
- *     routing/router.ts's route(), because packages/gateway/src/routing/**
- *     is outside this ticket's write_scope. A future routing ticket
- *     should call it (looking up the card via FitnessCardStore) the same
- *     way route() already calls guardMakerVerifierDistinct.
- * (2) FitnessCardStore (store.ts) is in-memory only; a future ticket
- *     owning the global (non-project) SQLite DB should back it with
- *     docs/DATABASE.md §7's model_fitness table (PK model/role/harness_version).
+ * W4-09 closed both HANDOFFs W2-08 left open here: (1) guardFitAssignment
+ * is now called unconditionally inside routing/router.ts's route() (a
+ * required `fitnessStore` field on RouteRequest, same structural-guard
+ * shape as guardMakerVerifierDistinct); (2) FitnessCardStore (store.ts) is
+ * backed by docs/DATABASE.md §7's model_fitness table
+ * (`@shipwright/events`'s global-db module) when constructed with a
+ * `GlobalDb` handle — falls back to in-memory when constructed with none.
  */
 
 export { FITNESS_HARNESS_VERSION } from './types.js';

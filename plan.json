@@ -1476,12 +1476,13 @@
         "FitnessCardStore persists to model_fitness keyed (model, role, harness_version); guardFitAssignment is called inside routing route() so an unfit/marginal assignment warns structurally (W2-08 HANDOFF closed)"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired.",
         "SCOPE 2026-07-16 (seam L-12, auto-fix): +events/gateway package.json + barrels + fitness/routing dirs it wires (W3-11 owned public surfaces but is done→territory released, D-015). Redo autonomously.",
         "CONDUCTOR 2026-07-16T00:40:28.381Z: blocked after 2 attempts. Branch sw/w4-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "RESET 2026-07-16 (conductor restart): scope/allowlist now correct on the board (W4-06 migrations allowlisted, W4-09 seam **-globs) — the running conductor had cached the pre-fix config, so a fresh launch re-attempts these cleanly."
+        "RESET 2026-07-16 (conductor restart): scope/allowlist now correct on the board (W4-06 migrations allowlisted, W4-09 seam **-globs) — the running conductor had cached the pre-fix config, so a fresh launch re-attempts these cleanly.",
+        "AGENT 2026-07-16: done (second attempt — first blocked on write_scope, see docs/STATUS.md). packages/events/src/global-db/**: own migration runner + DATABASE.md §7 schema (projects/providers/global_playbook/model_fitness), openGlobalDb/openGlobalDbReader mirroring openEventLog's WAL/single-writer/timeout:0 discipline, CRUD per table, barrel re-exported via ../index.ts. FitnessCardStore (gateway/src/fitness/store.ts) takes an optional GlobalDb handle: DB-backed put/get/all read through model_fitness directly (sync, no cache staleness); falls back to the original in-memory Map with no handle, so every existing no-arg call site is unchanged. routing/router.ts route() now calls guardFitAssignment unconditionally — fitnessStore is a required RouteRequest field, not optional-with-a-skip-check (grep-verified route() has no caller outside router.test.ts/the barrel re-export, so no out-of-scope compile breaks), making the guard structural per acceptance criterion 2, W2-08 HANDOFF closed. 45 new tests incl. a global-db single-writer BUSY-fails-fast proof and a two-instances-share-persistence proof for FitnessCardStore. pnpm-lock.yaml touched (not itemized in write_scope) as the mechanical 1:1 consequence of the two in-scope workspace:* deps (events->shared, gateway->events) — same precedent W3-12 documented. HANDOFF (out of write_scope): apps/server/src/api/projects.ts's Fleet registry still reads/writes fleet.json, not this new global.db — a future apps/server-scoped ticket's job to migrate; this schema stores no card stats so that migration stays acceptance-criterion-1-compliant. Gate: pnpm lint && pnpm typecheck && pnpm test = 1000 passed | 1 skipped (133 test files) workspace-wide + validate-plan.mjs/validate-traceability.mjs = OK."
       ],
       "stories": [
         "US-306",
