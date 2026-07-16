@@ -17,3 +17,4 @@ export type {
   IdentityRecord,
 } from './types.js';
 export * from './receipts.js';
+export * from './global-db/index.js';

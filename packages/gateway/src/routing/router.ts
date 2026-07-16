@@ -1,16 +1,27 @@
 /**
  * The combined entry point future gateway tickets call (escalation ladder,
- * budget service): resolves a (role, taskType) call to a model chain and,
- * when the role is a verifier role, enforces maker != verifier (FR-G2).
+ * budget service): resolves a (role, taskType) call to a model chain,
+ * enforces maker != verifier for verifier roles (FR-G2), and enforces the
+ * fitness guard for every role (FR-G6).
  *
- * The guard is structural, not caller-triggered: routing any VERIFIER_ROLES
- * role always resolves the maker role (default 'coding-agent') for the
- * same task type from the same matrix and compares. A caller cannot
- * silently skip the refusal by omitting a parameter — the only way past a
- * collision is the explicit override setting guardMakerVerifierDistinct
- * checks (FR-G2: "override requires explicit setting + event").
+ * Both guards are structural, not caller-triggered: the maker!=verifier
+ * check always runs for a VERIFIER_ROLES role, and guardFitAssignment
+ * always runs for every route() call — `fitnessStore` is a *required*
+ * RouteRequest field precisely so a caller cannot silently skip the
+ * fitness check by omitting a parameter, mirroring how the maker!=verifier
+ * guard cannot be skipped by omitting `makerRole`. The only way past
+ * either refusal is the explicit override each guard itself defines
+ * (guardMakerVerifierDistinct's overrideSettings; guardFitAssignment's
+ * ack) — never a missing argument.
  */
 
+import {
+  guardFitAssignment,
+  type GuardFitAssignmentResult,
+} from '../fitness/assignment.js';
+import type { FitnessAckEvent, FitnessEventSink } from '../fitness/events.js';
+import type { FitnessCardStore } from '../fitness/store.js';
+import { FITNESS_HARNESS_VERSION, type FitnessCard } from '../fitness/types.js';
 import {
   guardMakerVerifierDistinct,
   isVerifierRole,
@@ -35,29 +46,54 @@ export interface RouteRequest {
   readonly makerRole?: AgentRole;
   readonly overrideSettings?: ScopedOverrideSettings;
   readonly sink?: RoutingEventSink;
+  /** Fitness cards for the (model, role) guard (FR-G6) — required so the guard is structural (see file header). Pass an empty `new FitnessCardStore()` where no bench data exists yet; an unbenched pair passes through without warning (guardFitAssignment's own contract). */
+  readonly fitnessStore: FitnessCardStore;
+  readonly harnessVersion?: string;
+  /** Explicit override to proceed past a non-'fit' verdict (FR-G6). */
+  readonly fitnessAck?: boolean;
+  readonly fitnessSink?: FitnessEventSink;
 }
 
 export interface RouteResult extends ResolvedRoute {
   readonly overrideEvent?: MakerVerifierOverrideEvent;
+  readonly fitnessCard?: FitnessCard;
+  readonly fitnessAckEvent?: FitnessAckEvent;
 }
 
-/** Resolves a (role, taskType) call to a model chain, enforcing the maker != verifier default (FR-G2). */
+/** Resolves a (role, taskType) call to a model chain, enforcing the maker != verifier default (FR-G2) and the fitness guard (FR-G6). */
 export async function route(request: RouteRequest): Promise<RouteResult> {
   const resolved = resolveModelChain(request.matrix, request.role, request.taskType);
-  if (!isVerifierRole(request.role)) return resolved;
 
-  const makerRole = request.makerRole ?? ROLE_CODING_AGENT;
-  const makerResolved = resolveModelChain(request.matrix, makerRole, request.taskType);
+  let overrideEvent: MakerVerifierOverrideEvent | undefined;
+  if (isVerifierRole(request.role)) {
+    const makerRole = request.makerRole ?? ROLE_CODING_AGENT;
+    const makerResolved = resolveModelChain(request.matrix, makerRole, request.taskType);
+    overrideEvent = await guardMakerVerifierDistinct({
+      verifierRole: request.role,
+      makerRole,
+      taskType: request.taskType,
+      verifierModel: resolved.chain[0]!,
+      makerModel: makerResolved.chain[0]!,
+      overrideSettings: request.overrideSettings,
+      actorId: request.actorId,
+      sink: request.sink,
+    });
+  }
 
-  const overrideEvent = await guardMakerVerifierDistinct({
-    verifierRole: request.role,
-    makerRole,
-    taskType: request.taskType,
-    verifierModel: resolved.chain[0]!,
-    makerModel: makerResolved.chain[0]!,
-    overrideSettings: request.overrideSettings,
+  const fitnessResult: GuardFitAssignmentResult = await guardFitAssignment({
+    model: resolved.chain[0]!,
+    role: request.role,
+    store: request.fitnessStore,
+    harnessVersion: request.harnessVersion ?? FITNESS_HARNESS_VERSION,
+    ack: request.fitnessAck,
     actorId: request.actorId,
-    sink: request.sink,
+    sink: request.fitnessSink,
   });
-  return { ...resolved, overrideEvent };
+
+  return {
+    ...resolved,
+    overrideEvent,
+    fitnessCard: fitnessResult.card,
+    fitnessAckEvent: fitnessResult.ackEvent,
+  };
 }
