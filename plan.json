@@ -1448,7 +1448,12 @@
       "write_scope": [
         "packages/events/src/global-db/**",
         "packages/gateway/src/fitness/store.ts",
-        "packages/gateway/src/routing/router.ts"
+        "packages/gateway/src/routing/router.ts",
+        "packages/events/package.json",
+        "packages/events/src/index.ts",
+        "packages/gateway/package.json",
+        "packages/gateway/src/fitness/**",
+        "packages/gateway/src/routing/**"
       ],
       "depends_on": [
         "W2-08"
@@ -1459,7 +1464,10 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired.",
+      "notes": [
+        "ADDED 2026-07-14 design review G-9: DATABASE §7 had no owning ticket; fitness store was in-memory and the guard unwired.",
+        "SCOPE 2026-07-16 (seam L-12, auto-fix): +events/gateway package.json + barrels + fitness/routing dirs it wires (W3-11 owned public surfaces but is done→territory released, D-015). Redo autonomously."
+      ],
       "stories": [
         "US-306",
         "US-801"
