@@ -37,9 +37,18 @@ export interface AdvanceInput {
 
 export interface AdvanceDeps {
   /** Re-verifies a receipt (gate or waiver) against current input files + the
-   * currently-required validator set — the real implementation is
-   * `@shipwright/events`' `verifyReceipt`. */
-  readonly verifyReceipt: (receiptId: string) => ReceiptVerificationResult;
+   * given required validator set — the real implementation is
+   * `@shipwright/events`' `verifyReceipt`. Called with `fromPhase.validators`
+   * for the gate receipt (FR-P2's "currently required" set, read live off
+   * `PHASES` — never frozen at mint time) and `[]` for the waiver receipt
+   * (a waiver's job is bypassing failed validators, so re-checking validator
+   * currency against it would make every waiver unusable; what a waiver
+   * lookup actually re-verifies is anchor-MAC integrity + the FR-P2 human/
+   * agent-blocklist signer check, both inside `verifyReceipt` already). */
+  readonly verifyReceipt: (
+    receiptId: string,
+    requiredValidators: readonly string[],
+  ) => ReceiptVerificationResult;
 }
 
 export interface AdvanceResult {
@@ -79,7 +88,7 @@ export function decideAdvance(input: AdvanceInput, deps: AdvanceDeps): AdvanceRe
     ]);
   }
 
-  const gate = deps.verifyReceipt(input.gateReceiptId);
+  const gate = deps.verifyReceipt(input.gateReceiptId, fromPhase.validators);
   if (gate.valid) {
     return {
       allowed: true,
@@ -103,7 +112,7 @@ export function decideAdvance(input: AdvanceInput, deps: AdvanceDeps): AdvanceRe
     throw err;
   }
 
-  const waiver = deps.verifyReceipt(input.waiverReceiptId);
+  const waiver = deps.verifyReceipt(input.waiverReceiptId, []);
   if (!waiver.valid) {
     return refused(fromPhase.id, toPhase.id, waiver.reasons);
   }
