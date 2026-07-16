@@ -724,7 +724,7 @@
         "SECURITY (CRITICAL, review-caught fail-open — MUST fix): the close gate must FAIL CLOSED on a secrets-scan validator that did not produce a trustworthy verdict. runValidator uses the 0/1/2 contract where exit=2 = timeout/spawn-error/malformed-output/contract-violation and injects a synthetic gap whose detail is NOT file:line form. The diff-scope calibration (classifySecretsGaps, which keeps only gaps whose parsed file is in changedPaths) must ONLY be applied to a clean exit=1 run; an exit=2 result must be preserved as a hard failure and refuse the close (never reclassified to exitCode 0). Concretely: in loop-gates.ts effectiveValidatorResults, short-circuit `if (result.exitCode === 2) return result;` BEFORE calling classifySecretsGaps, so a scanner that times out or crashes can never be treated as clean. Red fixture: a secrets-scan that exits 2 (e.g. forced timeout) blocks close with no receipt, exactly like a real planted-secret hit."
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "stories": [
         "US-402",
         "US-403"
