@@ -685,11 +685,14 @@
         "canClaimNewTicket honors W2-07 breaker policy; session env is credential-free (SC-03/SC-07 planted-secret regression reused)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "stories": [
         "US-402"
       ],
-      "notes": "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. Depends on W3-11 (public surfaces) so loop/tickets are importable — the W0-08/W1-02 class cannot recur here."
+      "notes": [
+        "F1 split 2026-07-14 (RELEASE_TRACKER; adopted at review): W3-01 was a 5pt chokepoint blocked after exhausting the ladder — branch sw/w3-01 kept as seed material. TRUST-CORE LANE (F2): human-pair review required before merge regardless of ladder outcome. Depends on W3-11 (public surfaces) so loop/tickets are importable — the W0-08/W1-02 class cannot recur here.",
+        "CONDUCTOR 2026-07-16T14:31:05.126Z: blocked after 2 attempts. Branch sw/w3-01a kept. Gaps: plan.json status is 'blocked', expected 'done'"
+      ]
     },
     {
       "id": "W3-01b",
