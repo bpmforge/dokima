@@ -1248,10 +1248,11 @@
         "W4-01"
       ],
       "acceptance": [
-        "Lanes x columns x typed cards from projections <=1s lag (FR-C4); drag fires verbs, refusals explained inline with the violated invariant (FR-T4); stale-blocked badges; claim-now strip; shipped-today ticker; active-berths strip with heartbeats; shipped-today ticker (commits since midnight linked to tickets, UX_SPEC §4); board empty state per UX_SPEC §2b"
+        "Lanes x columns x typed cards from projections <=1s lag (FR-C4); drag fires verbs, refusals explained inline with the violated invariant (FR-T4); stale-blocked badges; claim-now strip; shipped-today ticker; active-berths strip with heartbeats; shipped-today ticker (commits since midnight linked to tickets, UX_SPEC §4); board empty state per UX_SPEC §2b",
+        "Accept-actor per D-020: the board accept verb fires as the operator identity (the human reviewer), never a synthetic reviewer — the maker (agent, via Harbormaster) owns the ticket through close, so operator != maker holds by construction; the SELF_ACCEPT refusal STAYS and is explained inline via the refusal popover when the operator owns the ticket. A fixture test proves accept SUCCEEDS on an agent/maker-owned ticket and is refused-with-explanation on an operator-owned one."
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-18.",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
@@ -1260,7 +1261,8 @@
         "CONDUCTOR 2026-07-15T19:01:09.457Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: plan.json status is 'blocked', expected 'done' | [validate-file-size:file-size] apps/server/src/api/server.ts is 575 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
         "RESET 2026-07-15 (L-36): blocked on validate-file-size — server.ts crossed 400 lines from cumulative route registrations, and the split target (server/ dir) was outside scope. ui-lane scopes now include apps/server/src/api/server/** ; FIRST TASK on re-claim: perform the CODE_BOOK split (index + chapter modules <=400 each), then the board UI work.",
         "CONDUCTOR 2026-07-15T22:33:13.461Z: blocked after 2 attempts. Branch sw/w4-03 kept. Gaps: [HIGH] apps/server/src/api/server/board-routes.ts: fireVerb() always passes the same DEFAULT_ACTOR_ID ('local-operator') as actorId for every verb, including 'accept'. Since claim/start/close also all run as DEFAULT_ACTOR_ID, ticket.ownerId equals DEFAULT_ACTOR_ID by the time a ticket reaches in_review — so acceptTicket's SELF_ACCEPT check (packages/tickets/src/verbs.ts:214-216, `ticket.ownerId === input.actorId`) is satisfied on literally every accept attempt made through the board. The accept verb can never succeed via this API. The web UI still advertises it as a live affordance (apps/web/s",
-        "PARKED FOR FOUNDER DECISION 2026-07-15 (L-37): the maker found a real trust bug — board fires all verbs as one local-operator identity, so accept trips SELF_ACCEPT (C-4) on every ticket. The fix touches pending slate P-002 (may a machine reviewer identity accept?) + locked C-4. NOT auto-resolvable (attempted reviewer-identity mint was correctly blocked as maker!=verifier theater). The board split + BoardView + refusal popover are DONE and green on branch blocked/w4-03; only the accept-actor design blocks it. Awaiting Brad on P-002."
+        "PARKED FOR FOUNDER DECISION 2026-07-15 (L-37): the maker found a real trust bug — board fires all verbs as one local-operator identity, so accept trips SELF_ACCEPT (C-4) on every ticket. The fix touches pending slate P-002 (may a machine reviewer identity accept?) + locked C-4. NOT auto-resolvable (attempted reviewer-identity mint was correctly blocked as maker!=verifier theater). The board split + BoardView + refusal popover are DONE and green on branch blocked/w4-03; only the accept-actor design blocks it. Awaiting Brad on P-002.",
+        "UNBLOCKED 2026-07-16: founder resolved P-002 -> D-020 (human board-accept fires as operator, distinct from agent maker; no synthetic reviewer). Acceptance now encodes the rule. The prior branch frontend (apps/web/src/board) was good but its server split tangled with main evolved api/ layout on merge — conductor rebuilds fresh against current main + D-020. blocked/w4-03 kept for reference."
       ],
       "stories": [
         "US-201",
