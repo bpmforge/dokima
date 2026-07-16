@@ -23,6 +23,7 @@ import { buildAllowlist } from './allowlist.js';
 import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plugin.js';
 import { registerHealthz } from './healthz.js';
 import { registerProjectRoutes } from './projects.js';
+import { registerRosterRoutes } from './roster.js';
 import { registerBoardRoutes, registerEstimateRoutes } from './server/index.js';
 import { WsHub } from './ws-hub.js';
 import { completeHandshake, rejectUpgrade } from './ws-socket.js';
@@ -37,6 +38,8 @@ export interface BuildApiServerOptions {
   wsHub?: WsHub;
   /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
   fleetHome?: string;
+  /** `content/experts` directory override (defaults to the repo's own content/) — tests only. */
+  rosterContentDir?: string;
 }
 
 export interface ApiServer {
@@ -58,6 +61,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerProjectRoutes(app, { home: opts.fleetHome });
   registerBoardRoutes(app, { home: opts.fleetHome, wsHub });
   registerEstimateRoutes(app, { home: opts.fleetHome });
+  registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerChatRoute(app);
   registerStatic(app, opts.webDistDir, opts.token);
 
