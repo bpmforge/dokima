@@ -972,7 +972,8 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/scope*",
-        "packages/harbormaster/test/scope*"
+        "packages/harbormaster/test/scope*",
+        "packages/harbormaster/src/loop-gates*"
       ],
       "depends_on": [
         "W3-01b"
@@ -982,9 +983,10 @@
         "Red fixture in the planted-defect harness: symlinked manifest path FAILS verification (docs/TESTING.md)"
       ],
       "points": 2,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
-        "CONDUCTOR 2026-07-16T20:23:11.203Z: blocked after 2 attempts. Branch sw/w3-09 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-16T20:23:11.203Z: blocked after 2 attempts. Branch sw/w3-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "SCOPE FIX 2026-07-16: the maker correctly built the symlink-safe primitive (scope.ts + red fixtures) IN scope and refused to self-widen; acceptance 1 requires wiring realpath-containment into the REAL close gate (loop-gates.ts / loop-gates-verify.ts), which were outside scope*. Widened to packages/harbormaster/src/loop-gates* (W3-01b is done — no collision, same lane). IMPORT MAP: reuse the scope.ts primitive you already built (fs.realpath + resolvesWithinRoot containment, mirror packages/git/src/scope.ts). Apply it at every manifest/write-scope path resolution in loop-gates.ts and loop-gates-verify.ts — a claimed/manifest path that realpath-resolves outside the project root (or to a symlink pointing out) must be refused before it is stat-ed, read, or hashed into a receipt. Do NOT rewrite the close-gate logic W3-01b landed; only harden its path resolution. Red fixture: a symlinked manifest path FAILS verification (planted-defect harness, docs/TESTING.md)."
       ],
       "stories": []
     },
