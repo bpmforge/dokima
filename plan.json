@@ -895,7 +895,7 @@
         "interactive/auto per project; auto takes documented defaults at gated sites + appends machine-parseable ledger rows; NEVER-AUTO rows require human signature (agent-name blocklist); ledger validated at runtime — a missing/malformed row blocks the next claim (FR-N3)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [],
       "stories": [
         "US-407",
