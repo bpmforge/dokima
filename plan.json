@@ -1252,7 +1252,7 @@
         "Accept-actor per D-020: the board accept verb fires as the operator identity (the human reviewer), never a synthetic reviewer — the maker (agent, via Harbormaster) owns the ticket through close, so operator != maker holds by construction; the SELF_ACCEPT refusal STAYS and is explained inline via the refusal popover when the operator owns the ticket. A fixture test proves accept SUCCEEDS on an agent/maker-owned ticket and is refused-with-explanation on an operator-owned one."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 design review G-18.",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
