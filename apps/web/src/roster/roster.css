@@ -1,0 +1,141 @@
+.roster {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.roster__header {
+  margin-bottom: 1.5rem;
+}
+
+.roster__header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.roster__cluster {
+  margin-bottom: 1.5rem;
+}
+
+.roster__cluster h2 {
+  font-size: 1rem;
+  text-transform: capitalize;
+  color: var(--sw-fg-muted, #888);
+}
+
+.roster__expert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.roster__expert {
+  border: 1px solid var(--sw-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.roster__expert-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.roster__expert-name {
+  font-weight: 600;
+}
+
+.roster__expert-mode {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.roster__expert-scope {
+  margin-left: auto;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--sw-border);
+}
+
+.roster__expert-description {
+  margin: 0.35rem 0;
+  font-size: 0.875rem;
+}
+
+.roster__expert-model,
+.roster__expert-fitness,
+.roster__expert-instruction-cost {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.roster__unconfigured {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.roster__fitness-badge {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--sw-border);
+}
+
+.roster__fitness-badge--fit {
+  border-color: #3a3;
+}
+
+.roster__fitness-badge--unfit {
+  border-color: #a33;
+}
+
+.roster__fitness-badge--marginal {
+  border-color: #aa3;
+}
+
+.roster__history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.roster__history-stats > div {
+  min-width: 6rem;
+}
+
+.roster__history-stats dt {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.roster__history-stats dd {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.roster__history-loading {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.roster__error {
+  color: #c33;
+}
+
+.roster__empty {
+  opacity: 0.7;
+}

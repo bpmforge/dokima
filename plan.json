@@ -1512,7 +1512,7 @@
         "Per-agent history queried from events (HANDOFFs run, outcomes, verdict scores, spend, escalations) — matches a projection rebuild (test); content loader refuses an expert file with a hardcoded frontier model id (pin roles, not models); refusal names the violated rule (SRS FR-E2 sketch)"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "ADDED 2026-07-14 addendum (adopted by founder direction, R-K1/FR-E2).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."

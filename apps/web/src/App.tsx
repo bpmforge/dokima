@@ -8,6 +8,7 @@ import { FleetHome } from './fleet/FleetHome.js';
 import { APP_NAME } from './index.js';
 import { SplitPaneWorkspace } from './layout/SplitPaneWorkspace.js';
 import { useReducedMotion } from './lib/useReducedMotion.js';
+import { RosterView } from './roster/RosterView.js';
 import { ShortcutsOverlay } from './shortcuts/ShortcutsOverlay.js';
 import { ThemeProvider, useTheme } from './theme/ThemeProvider.js';
 
@@ -33,6 +34,11 @@ function ThemeToggle() {
 /** `?project=` is the URL's source of truth (no router lib yet) — absent means Fleet is the entry view (UX_SPEC §2). */
 function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
+}
+
+/** `?view=roster` toggles the Agent Roster screen (SRS FR-E2, R-K1) — same URL-is-source-of-truth discipline as `?project=`, independent of it (Roster is reachable from Fleet or from within an open project). */
+function readIsRosterView(): boolean {
+  return new URLSearchParams(window.location.search).get('view') === 'roster';
 }
 
 /**
@@ -85,15 +91,33 @@ function useArtifactsPaneNode(projectId: string | null): HTMLElement | null {
 function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
+  const [isRosterView, setIsRosterView] = useState<boolean>(() => readIsRosterView());
   const chatPaneNode = useChatPaneNode(projectId);
   const boardPaneNode = useBoardPaneNode(projectId);
   const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
 
   useEffect(() => {
-    const onPopState = () => setProjectId(readProjectId());
+    const onPopState = () => {
+      setProjectId(readProjectId());
+      setIsRosterView(readIsRosterView());
+    };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const openRoster = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'roster');
+    window.history.pushState({}, '', url);
+    setIsRosterView(true);
+  }, []);
+
+  const closeRoster = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('view');
+    window.history.pushState({}, '', url);
+    setIsRosterView(false);
   }, []);
 
   const openProject = useCallback((id: string) => {
@@ -114,9 +138,22 @@ function AppShell() {
     <div className="app-shell">
       <header className="app-shell__header">
         <span>{APP_NAME}</span>
+        <nav className="app-shell__nav">
+          {isRosterView ? (
+            <button type="button" onClick={closeRoster}>
+              ← Back
+            </button>
+          ) : (
+            <button type="button" onClick={openRoster}>
+              Roster
+            </button>
+          )}
+        </nav>
         <ThemeToggle />
       </header>
-      {projectId ? (
+      {isRosterView ? (
+        <RosterView projectId={projectId} />
+      ) : projectId ? (
         <>
           <button
             type="button"
