@@ -757,7 +757,7 @@
         "Escalation policy modes honored at the loop level (D-018): locked-mode tickets loop-and-park, token-gated tickets park at tier boundary with a Decide card"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-402",
         "US-404"
