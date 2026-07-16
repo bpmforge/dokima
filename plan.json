@@ -1610,7 +1610,7 @@
         "Mermaid-parse validator in every phase validator set (broken diagram cannot gate-pass, R-H3); revision.requested events from artifact feedback (FR-C8) route a revision HANDOFF to the producing role and invalidate downstream receipts per FR-P3"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": " AMENDED 2026-07-14 addendum (R-H2/R-H3). Cites FR-G5: soft-gate waivers permitted phases 0-3 only, build/verify gates never soften — waiver semantics live in the phase machine.",
       "stories": [
         "US-101",
