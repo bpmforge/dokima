@@ -99,7 +99,9 @@ export function evaluateClaimChallenge(
   let verdict = attempt.rawVerdict;
   const downgradeReasons: string[] = [];
 
-  const hasCitation = attempt.citations.length > 0;
+  const hasCitation = attempt.citations.some(
+    (citation) => citation.source.trim().length > 0,
+  );
   if (!hasCitation && verdict !== 'UNVERIFIABLE') {
     downgradeReasons.push(
       'citation-less challenge discarded — downgraded to UNVERIFIABLE, never CONTRADICTED (US-405 AC-2)',

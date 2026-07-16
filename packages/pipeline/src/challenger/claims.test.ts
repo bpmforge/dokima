@@ -52,6 +52,20 @@ describe('evaluateClaimChallenge (FR-P4/US-405)', () => {
     expect(outcome.result.downgradeReasons.join(' ')).toContain('citation-less');
   });
 
+  it('AC-2: a CONTRADICTED with only empty/whitespace citation sources is downgraded to UNVERIFIABLE (garbage citation is not a real citation)', () => {
+    const outcome = evaluateClaimChallenge(
+      baseAttempt({
+        rawVerdict: 'CONTRADICTED',
+        citations: [{ source: '' }, { source: '   ' }],
+      }),
+    );
+    expect(outcome.status).toBe('RECORDED');
+    if (outcome.status !== 'RECORDED') throw new Error('unreachable');
+    expect(outcome.result.verdict).toBe('UNVERIFIABLE');
+    expect(outcome.result.downgraded).toBe(true);
+    expect(outcome.result.downgradeReasons.join(' ')).toContain('citation-less');
+  });
+
   it('a citation-less CONFIRMED is also downgraded to UNVERIFIABLE (discarded, not just capped on the contradiction side)', () => {
     const outcome = evaluateClaimChallenge(
       baseAttempt({ rawVerdict: 'CONFIRMED', citations: [] }),
