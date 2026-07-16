@@ -1554,7 +1554,8 @@
       ],
       "notes": [
         "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets. AMENDED 2026-07-15: +W4-02 review residuals.",
-        "CONDUCTOR 2026-07-16T08:49:01.818Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-16T08:49:01.818Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "MORNING BATCH 2026-07-16: real stall (generic block after 2 attempts) — API-mechanics ticket (OpenAPI/SSE/idempotency/route-walker), batch with the security pass. blocked/w4-11 kept."
       ]
     },
     {
