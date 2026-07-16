@@ -85,10 +85,11 @@ describe('fireTicketVerb', () => {
       },
       'W4-01',
       'claim',
+      'PROJ1',
     );
     expect(result).toEqual({ ok: true, data: updated });
     const { url, init } = fetchCall(fetchImpl, 0);
-    expect(url).toBe('http://x/api/v1/tickets/W4-01/claim');
+    expect(url).toBe('http://x/api/v1/tickets/W4-01/claim?project=PROJ1');
     expect(init.method).toBe('POST');
     expect(init.headers['Idempotency-Key']).toBe('fixed-key');
     expect(init.headers.Authorization).toBe('Bearer tok');
@@ -109,6 +110,7 @@ describe('fireTicketVerb', () => {
       { baseUrl: 'http://x/api/v1', token: 'tok', fetchImpl },
       'W2-04',
       'close',
+      'PROJ1',
     );
     expect(result).toEqual({ ok: false, problem });
   });

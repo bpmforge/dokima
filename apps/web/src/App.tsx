@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { BoardView } from './board/BoardView.js';
 import { ChatView } from './chat/ChatView.js';
 import { readInjectedToken } from './chat/api.js';
 import { FleetHome } from './fleet/FleetHome.js';
@@ -8,6 +9,11 @@ import { SplitPaneWorkspace } from './layout/SplitPaneWorkspace.js';
 import { useReducedMotion } from './lib/useReducedMotion.js';
 import { ShortcutsOverlay } from './shortcuts/ShortcutsOverlay.js';
 import { ThemeProvider, useTheme } from './theme/ThemeProvider.js';
+
+function wsUrl(): string {
+  const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${scheme}//${window.location.host}/api/v1/ws`;
+}
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -45,10 +51,20 @@ function useChatPaneNode(): HTMLElement | null {
   return node;
 }
 
+/** Same portal pattern as `useChatPaneNode`, targeting the board pane (UX_SPEC §2a). */
+function useBoardPaneNode(): HTMLElement | null {
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setNode(document.querySelector<HTMLElement>('[data-testid="pane-board"]'));
+  }, []);
+  return node;
+}
+
 function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
   const chatPaneNode = useChatPaneNode();
+  const boardPaneNode = useBoardPaneNode();
   const token = readInjectedToken();
 
   useEffect(() => {
@@ -90,6 +106,17 @@ function AppShell() {
           {chatPaneNode &&
             token &&
             createPortal(<ChatView token={token} projectId={projectId} />, chatPaneNode)}
+          {boardPaneNode &&
+            token &&
+            createPortal(
+              <BoardView
+                baseUrl="/api/v1"
+                token={token}
+                projectId={projectId}
+                wsUrl={wsUrl()}
+              />,
+              boardPaneNode,
+            )}
         </>
       ) : (
         <FleetHome onOpenProject={openProject} />

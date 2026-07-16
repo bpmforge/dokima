@@ -112,7 +112,12 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       const toStatus = verb === 'comment' ? undefined : verbTargetColumn(verb);
       const move = toStatus ? beginOptimisticMove(tickets, ticketId, toStatus) : null;
       if (move) setTickets(move.tickets);
-      const result = await fireTicketVerb(apiOpts.current, ticketId, verb);
+      const result = await fireTicketVerb(
+        apiOpts.current,
+        ticketId,
+        verb,
+        opts.projectId,
+      );
       if (result.ok) {
         setTickets((current) => confirmOptimisticMove(current, ticketId, result.data));
         setRefusal(null);
@@ -124,7 +129,7 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
         setRefusal({ ticketId, problem: result.problem });
       }
     },
-    [tickets],
+    [tickets, opts.projectId],
   );
 
   const handleDrop = useCallback(

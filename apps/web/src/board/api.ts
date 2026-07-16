@@ -86,13 +86,21 @@ export interface FireVerbInput {
   commits?: string[];
 }
 
+/**
+ * `projectId` disambiguates which registered project's `state.db` owns this
+ * ticket id — API_DESIGN's `POST /tickets/{id}/{verb}` catalog shape has no
+ * project segment (the CLI never needed one: it always resolves one dbPath
+ * from `cwd`), so a `?project=` query param is the server's minimal fix for
+ * "one core serving N projects" (D-013) without changing the documented path.
+ */
 export async function fireTicketVerb(
   opts: BoardApiOptions,
   ticketId: string,
   verb: LifecycleVerb,
+  projectId: string,
   input?: FireVerbInput,
 ): Promise<BoardResult<Ticket>> {
-  const instance = `/tickets/${ticketId}/${verb}`;
+  const instance = `/tickets/${ticketId}/${verb}?project=${encodeURIComponent(projectId)}`;
   const doFetch = opts.fetchImpl ?? fetch;
   const key = (opts.idempotencyKey ?? (() => crypto.randomUUID()))();
   const res = await doFetch(`${opts.baseUrl}${instance}`, {
