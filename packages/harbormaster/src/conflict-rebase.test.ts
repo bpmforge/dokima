@@ -273,7 +273,7 @@ describe('resolveHumanEditConflict', () => {
     expect(agentFileContent).toBe('agent-version\n');
   });
 
-  it('rethrows a non-conflict rebase failure without parking the ticket', async () => {
+  it('rethrows a non-conflict commitHumanEdit failure without ever reaching the rebase', async () => {
     fixture = await setupFixture('T-badref');
     const { log, worktree, repoRoot } = fixture;
 
@@ -294,10 +294,70 @@ describe('resolveHumanEditConflict', () => {
         conflictedPaths: ['src/auth/session.ts'],
         now: () => '2026-01-01T00:00:00.000Z',
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/expected 'no-such-branch'/);
 
     const ticket = getTicket(log, 'T-badref');
     expect(ticket?.status).toBe('in_progress');
     expect(listEvents(log).some((e) => e.eventType === 'conflict.parked')).toBe(false);
+  });
+
+  it('rethrows a non-conflict rebase failure (dirty worktree) without parking the ticket', async () => {
+    fixture = await setupFixture('T-dirty');
+    const { log, worktree, repoRoot } = fixture;
+
+    // The worktree has an uncommitted, unrelated local modification — git
+    // refuses to even start the rebase ("You have unstaged changes"),
+    // which is not a merge conflict: hasUnmergedPaths must see this and
+    // rethrow rather than park.
+    await fs.writeFile(
+      path.join(worktree.path, 'src', 'auth', 'session.ts'),
+      'shared\ndirty-uncommitted\n',
+    );
+
+    // Human edits the same file in their own checkout — commitHumanEdit
+    // itself succeeds (repoRoot is correctly on baseRef).
+    await fs.writeFile(
+      path.join(repoRoot, 'src', 'auth', 'session.ts'),
+      'human-version\n',
+    );
+
+    await expect(
+      resolveHumanEditConflict({
+        actorId: 'worker-1',
+        humanActorId: 'human-1',
+        log,
+        ticket: getTicket(log, 'T-dirty')!,
+        worktree,
+        baseRef: 'main',
+        repoRoot,
+        conflictedPaths: ['src/auth/session.ts'],
+        now: () => '2026-01-01T00:00:00.000Z',
+      }),
+    ).rejects.toThrow(/unstaged changes/);
+
+    // The human's commit still landed on main — commitHumanEdit ran to
+    // completion before the rebase ever failed.
+    const { stdout: mainContent } = await git(repoRoot, [
+      'show',
+      'main:src/auth/session.ts',
+    ]);
+    expect(mainContent.trim()).toBe('human-version');
+
+    // No conflict was ever detected (hasUnmergedPaths was false), so the
+    // ticket is untouched and no conflict.parked event was minted.
+    const ticket = getTicket(log, 'T-dirty');
+    expect(ticket?.status).toBe('in_progress');
+    expect(listEvents(log).some((e) => e.eventType === 'conflict.parked')).toBe(false);
+
+    // rebase --abort was invoked but had nothing to abort (the rebase
+    // never started) and its failure was swallowed — the worktree's dirty
+    // state is left exactly as it was, untouched.
+    const { stdout: status } = await git(worktree.path, ['status', '--porcelain']);
+    expect(status.trim()).toBe('M src/auth/session.ts');
+    const dirtyContent = await fs.readFile(
+      path.join(worktree.path, 'src', 'auth', 'session.ts'),
+      'utf8',
+    );
+    expect(dirtyContent).toBe('shared\ndirty-uncommitted\n');
   });
 });
