@@ -925,8 +925,10 @@
         "Limit pauses are distinct from budget breakers in events, UI, and ledger (provider ceiling vs user ceiling)"
       ],
       "points": 3,
-      "status": "in_progress",
-      "notes": [],
+      "status": "done",
+      "notes": [
+        "AGENT 2026-07-16: done. packages/gateway/src/limits/**: classifyProviderError (limit vs terminal on typed Provider*Error instances, plain Error, or raw text) + parseResetTimestamp (D-008 parity with scripts/conductor.mjs's proven regex/rollover behavior) + LimitEvent/LimitEventSink (tier is a literal 'record' type — compile-time 'never Decide'). NOT re-exported from gateway/src/index.ts (out of write_scope, same gap budget/index.ts documents for itself — a later ticket closes it). packages/harbormaster/src/limit-pause*: LimitPauseLedger (per-berth attempt/backoff tracker, exponential 5m base doubling capped at 60m) + limit-pause-events.ts (real appendEvent minting of limit.pause/limit.resume, tier 'record') + runWithLimitPause (retry wrapper: classify -> park+mint -> wait -> resume+mint -> retry, up to 12 attempts, terminal errors rethrow immediately). Harbormaster can't import gateway's limits module yet (same export gap), so it takes `classify` as an injected callback against a locally-mirrored LimitClassification type, same injection pattern loop-claim.ts already uses for breakerLevel. Not wired into loop-claim.ts/loop-land.ts (out of write_scope) — a drop-in unit for a future ticket, same posture as watchdog-session.ts. Ledger/events are structurally distinct from budget's CostLedger/BudgetEvent (no cost field, no approvalCard, different eventType strings) — UI distinction is out of write_scope (apps/web untouched) but every event payload carries what a 'paused until HH:MM' chip needs. Tests: 23 in packages/gateway/src/limits (classify.test.ts, reset-time.test.ts, events.test.ts) + 5 in packages/harbormaster/src/limit-pause.test.ts, including the FR-G8 sketch verbatim ('resets 10:10pm' parks, event carries computed resume time, retry completes with zero human input, no Decide notification) and a simulated 8-hour overnight-window fixture using a fake clock/sleep. Full gate: pnpm lint && pnpm typecheck && pnpm test = 1386 passed | 1 skipped (185 test files; +6 vs prior). validate-plan.mjs = OK."
+      ],
       "stories": []
     },
     {
