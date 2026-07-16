@@ -396,6 +396,17 @@ function land(t, branch, wt) {
     }
     removeWorktree(wt);
     try { git('branch', '-d', branch); } catch {}
+    // If the merge touched any package.json, ROOT's node_modules is now stale —
+    // re-link workspace deps so a subsequent test on ROOT (e.g. the stop-hook's
+    // `npm test`) doesn't hit "Cannot find package @shipwright/*" (L-40).
+    try {
+      const merged = git('diff', '--name-only', 'HEAD~1', 'HEAD');
+      if (/(^|\/)package\.json$/m.test(merged)) {
+        const [bin, args] = CONFIG.install;
+        sh(bin, args, { cwd: ROOT });
+        log('land.install', { ticket: t.id, msg: 'package.json changed — re-linked ROOT workspace deps' });
+      }
+    } catch (err) { log('land.install.warn', { ticket: t.id, msg: String(err).slice(0, 200) }); }
     pushRemotes(t.id);
   } else {
     log('parked', { ticket: t.id, msg: `left on ${branch} (worktree ${wt}) for review (--no-merge)` });
