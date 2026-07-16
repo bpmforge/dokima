@@ -97,11 +97,29 @@ describe('commitHumanEdit', () => {
       repoRoot: fixture.repoRoot,
       paths: ['src/auth/session.ts'],
       message: 'human edit',
+      expectedBranch: 'main',
     });
     const { stdout: head } = await git(fixture.repoRoot, ['rev-parse', 'HEAD']);
     expect(head.trim()).toBe(sha);
     const { stdout: status } = await git(fixture.repoRoot, ['status', '--porcelain']);
     expect(status.trim()).toBe('');
+  });
+
+  it('refuses when repoRoot is not checked out on expectedBranch, rather than silently committing to the wrong branch', async () => {
+    fixture = await setupFixture('T-commit-wrong-branch');
+    await git(fixture.repoRoot, ['checkout', '-b', 'not-main']);
+    await fs.writeFile(
+      path.join(fixture.repoRoot, 'src', 'auth', 'session.ts'),
+      'human-version\n',
+    );
+    await expect(
+      commitHumanEdit({
+        repoRoot: fixture.repoRoot,
+        paths: ['src/auth/session.ts'],
+        message: 'human edit',
+        expectedBranch: 'main',
+      }),
+    ).rejects.toThrow(/expected 'main'/);
   });
 });
 
@@ -243,6 +261,16 @@ describe('resolveHumanEditConflict', () => {
     // The worktree is left clean — no rebase left mid-flight.
     const { stdout: status } = await git(worktree.path, ['status', '--porcelain']);
     expect(status.trim()).toBe('');
+
+    // "agent work never lost": the abort restores the ticket branch to its
+    // pre-rebase tip — the agent's commit is still there, untouched.
+    const { stdout: worktreeLog } = await git(worktree.path, ['log', '--oneline']);
+    expect(worktreeLog).toContain('agent: change session.ts');
+    const agentFileContent = await fs.readFile(
+      path.join(worktree.path, 'src', 'auth', 'session.ts'),
+      'utf8',
+    );
+    expect(agentFileContent).toBe('agent-version\n');
   });
 
   it('rethrows a non-conflict rebase failure without parking the ticket', async () => {

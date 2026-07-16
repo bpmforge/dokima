@@ -63,14 +63,25 @@ export interface CommitHumanEditOptions {
   readonly repoRoot: string;
   readonly paths: readonly string[];
   readonly message: string;
+  /** The branch a worktree rebase will later pull this commit in from. Refuses if `repoRoot` isn't currently on it — same guard `@shipwright/git`'s `mergeLocal` uses, because a mismatch here would silently commit the human's edit somewhere a rebase never sees, reporting a false "human wins". */
+  readonly expectedBranch: string;
 }
 
 /** Commits the human's working-tree edit onto the checkout's current branch — the commit a worktree rebase later pulls in. */
 export async function commitHumanEdit(options: CommitHumanEditOptions): Promise<string> {
+  const { stdout } = await git(options.repoRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
+  const currentBranch = stdout.trim();
+  if (currentBranch !== options.expectedBranch) {
+    throw new Error(
+      `commitHumanEdit: repoRoot is checked out on '${currentBranch}', expected ` +
+        `'${options.expectedBranch}' (the ticket's baseRef) — committing here would strand ` +
+        `the human's edit somewhere the worktree rebase never sees it`,
+    );
+  }
   await git(options.repoRoot, ['add', '--', ...options.paths]);
   await git(options.repoRoot, ['commit', '-m', options.message]);
-  const { stdout } = await git(options.repoRoot, ['rev-parse', 'HEAD']);
-  return stdout.trim();
+  const { stdout: headSha } = await git(options.repoRoot, ['rev-parse', 'HEAD']);
+  return headSha.trim();
 }
 
 /** Distinguishes a real merge conflict from any other rebase failure (dirty tree, bad ref) — only the former is this policy's call to make. */
@@ -121,6 +132,7 @@ export async function resolveHumanEditConflict(
     message:
       options.commitMessage ??
       `human edit: ${paths.join(', ')} (leased by ${options.ticket.id}, FR-T6)`,
+    expectedBranch: options.baseRef,
   });
 
   try {
