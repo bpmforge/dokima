@@ -118,5 +118,19 @@ describe('renderMermaid (BLUEPRINT §4 step 4 / US-203)', () => {
       const closes = (nodeLine ?? '').split(']').length - 1;
       expect(opens).toEqual(closes);
     });
+
+    it('M012: an UNMATCHED bracket in the title does not unbalance the node line', () => {
+      const out = renderMermaid([
+        ticket({ id: 'A', lane: 'l', title: 'Fix bug in [Feature X' }),
+      ]);
+      const nodeLine = out.split('\n').find((l) => l.includes('t_A['));
+      expect(nodeLine).toBeDefined();
+      const opens = (nodeLine ?? '').split('[').length - 1;
+      const closes = (nodeLine ?? '').split(']').length - 1;
+      expect(opens).toEqual(closes);
+      const label = /^\s+t_A\["(.*)"\]$/.exec(nodeLine ?? '')?.[1];
+      expect(label).toBeDefined();
+      expect(label).not.toMatch(/[[\]]/);
+    });
   });
 });

@@ -52,6 +52,12 @@ describe('renderMermaid output against the real validate-mermaid.sh (R-H3)', () 
         writeScope: ['packages/b/**'],
         dependsOn: ['A'],
       }),
+      draft({
+        id: 'C',
+        title: 'Fix bug in [Feature X',
+        writeScope: ['packages/c/**'],
+        dependsOn: ['A'],
+      }),
     ]);
 
     const dir = mkdtempSync(path.join(tmpdir(), 'decompose-mermaid-'));

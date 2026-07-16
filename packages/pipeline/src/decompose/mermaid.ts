@@ -2,12 +2,15 @@ import type { DecomposedTicket } from './types.js';
 
 /**
  * Sanitize a free-text label so it stays clean under
- * `content/validators/validate-mermaid.sh`'s static checks (M003 unicode
- * arrows, M009 smart quotes/em-dash/nbsp, M010 markdown emphasis, M011 `//`
- * comments): strip markdown emphasis/backticks, normalize typographic
- * punctuation to ASCII, collapse newlines, and swap `"` for `'` since the
- * label is always wrapped in double quotes below (closes off M001/M004/M007
- * by construction rather than by escaping).
+ * `content/validators/validate-mermaid.sh`'s static checks (M001/M004
+ * unquoted-slash and pipe-in-bracket forms, M003 unicode arrows, M009 smart
+ * quotes/em-dash/nbsp, M010 markdown emphasis, M011 `//` comments, M012
+ * unbalanced square brackets): strip markdown emphasis/backticks, normalize
+ * typographic punctuation to ASCII, drop literal `[`/`]` (an unmatched
+ * bracket in a title would otherwise unbalance the node-line bracket count),
+ * collapse newlines, and swap `"` for `'` since the label is always wrapped
+ * in double quotes below (closes off M001/M004/M007 by construction rather
+ * than by escaping).
  */
 function sanitizeLabel(text: string): string {
   const cleaned = text
@@ -20,6 +23,7 @@ function sanitizeLabel(text: string): string {
     .replace(/`/g, "'")
     .replace(/\*\*/g, '')
     .replace(/"/g, "'")
+    .replace(/[[\]]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
   return cleaned.length > 0 ? cleaned : '(untitled)';
