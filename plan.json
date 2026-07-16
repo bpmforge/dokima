@@ -1841,8 +1841,11 @@
         "Evaluation triggers wired: catalog evaluates after every completed run and on Improve-mode entry (FR-PLAN1), not only on fixture snapshots"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md. AMENDED 2026-07-14 challenger fix.",
+      "status": "blocked",
+      "notes": [
+        "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md. AMENDED 2026-07-14 challenger fix.",
+        "CONDUCTOR 2026-07-16T13:34:05.773Z: blocked after 2 attempts. Branch sw/w5-10 kept. Gaps: plan.json status is 'in_progress', expected 'done'"
+      ],
       "stories": [
         "US-108",
         "US-109"
