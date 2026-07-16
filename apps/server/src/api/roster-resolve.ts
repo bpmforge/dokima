@@ -17,9 +17,14 @@
  * already depends on `@shipwright/shared` — storing each role's assignment
  * under its own flat settings key (`roleMatrix.<role>`) so the existing
  * atomic per-key resolution (no deep merge across scopes, FR-S1) applies
- * without any local reimplementation. `.shipwright/settings.json`'s
- * "matrix overrides" (FR-S1) are expected to eventually populate this same
- * key shape once W4-06 (settings wizard+UI, currently blocked) lands.
+ * without any local reimplementation. The stored value's shape is a
+ * `{default: {model, fallbackChain}}` envelope matching
+ * `packages/gateway/src/routing/types.ts`'s `RoleRouting` exactly (minus
+ * `taskTypes`, which a static per-role browse view has no call site to
+ * select by) — so a real `RoleRouting` object, gateway-produced or
+ * hand-written, can be dropped into this settings key unchanged once
+ * W4-06 (settings wizard+UI, currently blocked) or the gateway itself
+ * writes here; this file only ever reads `.default`.
  *
  * No project has a matrix configured anywhere yet (W4-06 blocked, and
  * `packages/gateway`'s shipped presets aren't reachable to seed a default)
@@ -57,15 +62,18 @@ export function roleMatrixSettingsKey(role: string): string {
   return `roleMatrix.${role}`;
 }
 
-function isPlainObject(value: JsonValue): value is Record<string, JsonValue> {
+function isPlainObject(value: JsonValue | undefined): value is Record<string, JsonValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Reads the `{default: {model, fallbackChain}}` envelope — the `RoleRouting` shape, `.default` only. */
 function toAssignment(value: JsonValue): ModelAssignment | undefined {
   if (!isPlainObject(value)) return undefined;
-  const model = value.model;
+  const def = value.default;
+  if (!isPlainObject(def)) return undefined;
+  const model = def.model;
   if (typeof model !== 'string' || model.trim() === '') return undefined;
-  const fallbackChainRaw = value.fallbackChain;
+  const fallbackChainRaw = def.fallbackChain;
   const fallbackChain = Array.isArray(fallbackChainRaw)
     ? fallbackChainRaw.filter((entry): entry is string => typeof entry === 'string')
     : [];

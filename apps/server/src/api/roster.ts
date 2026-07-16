@@ -11,6 +11,12 @@
  * live, same requirement `board-routes.ts`'s verb route enforces for
  * `?project=`).
  *
+ * Fitness cards are filtered to the models actually in the resolved
+ * effective chain ("fitness cards per configured model", SRS FR-E2) — a
+ * role can accumulate bench history for models it's no longer routed to;
+ * this endpoint surfaces only what's live, not the full bench archive
+ * (that stays queryable straight from `global.db` for anyone who wants it).
+ *
  * Instruction-cost metadata (FR-L8) has no producer anywhere in this repo
  * yet (FR-L8 lands with W7-04/W1-06, not this ticket) — reported `null`
  * rather than a fabricated estimate, same discipline `projects.ts`'s
@@ -97,12 +103,16 @@ async function resolveScopedSettings(
   return { global, project };
 }
 
+/** Every card recorded for this role, restricted to models actually in the effective chain — "fitness cards per configured model" (SRS FR-E2), not every model this role has ever been benched on. */
 function wireExpert(
   expert: RosterExpert,
   settings: ScopedSettings,
-  fitnessCards: Awaited<ReturnType<typeof loadFitnessCards>>,
+  roleFitnessCards: Awaited<ReturnType<typeof loadFitnessCards>>,
 ) {
   const effective = resolveEffectiveModel(settings, expert.id);
+  const configuredCards = roleFitnessCards.filter((card) =>
+    effective.chain.includes(card.model),
+  );
   return {
     id: expert.id,
     display_name: expert.displayName,
@@ -114,7 +124,7 @@ function wireExpert(
       scope: effective.scope,
       used_default_role: effective.usedDefaultRole,
     },
-    fitness_cards: fitnessCards.map((card) => ({
+    fitness_cards: configuredCards.map((card) => ({
       model: card.model,
       verdict: card.verdict,
       harness_version: card.harnessVersion,

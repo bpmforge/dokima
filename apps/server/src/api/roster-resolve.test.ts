@@ -13,12 +13,11 @@ describe('resolveEffectiveModel', () => {
     });
   });
 
-  it('resolves a role directly defined at global scope', () => {
+  it('resolves a role directly defined at global scope (RoleRouting-shaped: {default: {model, fallbackChain}})', () => {
     const settings: ScopedSettings = {
       global: {
         'roleMatrix.sdlc-lead': {
-          model: 'qwen2.5-coder-32b-instruct',
-          fallbackChain: [],
+          default: { model: 'qwen2.5-coder-32b-instruct', fallbackChain: [] },
         },
       },
     };
@@ -32,9 +31,13 @@ describe('resolveEffectiveModel', () => {
 
   it('project scope wins over global for the same role (FR-S1: run > project > global)', () => {
     const settings: ScopedSettings = {
-      global: { 'roleMatrix.sdlc-lead': { model: 'global-model', fallbackChain: [] } },
+      global: {
+        'roleMatrix.sdlc-lead': { default: { model: 'global-model', fallbackChain: [] } },
+      },
       project: {
-        'roleMatrix.sdlc-lead': { model: 'project-model', fallbackChain: ['fallback-a'] },
+        'roleMatrix.sdlc-lead': {
+          default: { model: 'project-model', fallbackChain: ['fallback-a'] },
+        },
       },
     };
     expect(resolveEffectiveModel(settings, 'sdlc-lead')).toEqual({
@@ -48,16 +51,26 @@ describe('resolveEffectiveModel', () => {
   it('does not deep-merge across scopes — the whole assignment comes from one scope', () => {
     const settings: ScopedSettings = {
       global: {
-        'roleMatrix.sdlc-lead': { model: 'global-model', fallbackChain: ['g-fallback'] },
+        'roleMatrix.sdlc-lead': {
+          default: { model: 'global-model', fallbackChain: ['g-fallback'] },
+        },
       },
-      project: { 'roleMatrix.sdlc-lead': { model: 'project-model', fallbackChain: [] } },
+      project: {
+        'roleMatrix.sdlc-lead': {
+          default: { model: 'project-model', fallbackChain: [] },
+        },
+      },
     };
     expect(resolveEffectiveModel(settings, 'sdlc-lead').chain).toEqual(['project-model']);
   });
 
   it("falls back to the 'default' role when the expert has no entry of its own", () => {
     const settings: ScopedSettings = {
-      global: { 'roleMatrix.default': { model: 'cheapest-capable', fallbackChain: [] } },
+      global: {
+        'roleMatrix.default': {
+          default: { model: 'cheapest-capable', fallbackChain: [] },
+        },
+      },
     };
     expect(resolveEffectiveModel(settings, 'unlisted-expert')).toEqual({
       role: 'unlisted-expert',
@@ -67,9 +80,16 @@ describe('resolveEffectiveModel', () => {
     });
   });
 
-  it('a malformed matrix entry (no model field) resolves as unconfigured rather than throwing', () => {
+  it('a malformed matrix entry (no .default.model) resolves as unconfigured rather than throwing', () => {
     const settings: ScopedSettings = {
-      global: { 'roleMatrix.sdlc-lead': { fallbackChain: ['x'] } },
+      global: { 'roleMatrix.sdlc-lead': { default: { fallbackChain: ['x'] } } },
+    };
+    expect(resolveEffectiveModel(settings, 'sdlc-lead').scope).toBeNull();
+  });
+
+  it('a legacy flat {model, fallbackChain} value (no .default envelope) resolves as unconfigured, not a crash', () => {
+    const settings: ScopedSettings = {
+      global: { 'roleMatrix.sdlc-lead': { model: 'flat-model', fallbackChain: [] } },
     };
     expect(resolveEffectiveModel(settings, 'sdlc-lead').scope).toBeNull();
   });

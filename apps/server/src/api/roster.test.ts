@@ -2,7 +2,13 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
+import {
+  appendEvent,
+  createIdentity,
+  openEventLog,
+  openGlobalDb,
+  putModelFitness,
+} from '@shipwright/events';
 import { buildApiServer, type ApiServer } from './server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -115,8 +121,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
       path.join(fleetHome, 'config.json'),
       JSON.stringify({
         'roleMatrix.sdlc-lead': {
-          model: 'qwen2.5-coder-32b-instruct',
-          fallbackChain: [],
+          default: { model: 'qwen2.5-coder-32b-instruct', fallbackChain: [] },
         },
       }),
       'utf8',
@@ -150,7 +155,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
     await fs.writeFile(
       path.join(fleetHome, 'config.json'),
       JSON.stringify({
-        'roleMatrix.sdlc-lead': { model: 'global-model', fallbackChain: [] },
+        'roleMatrix.sdlc-lead': { default: { model: 'global-model', fallbackChain: [] } },
       }),
       'utf8',
     );
@@ -158,7 +163,9 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
     await fs.writeFile(
       path.join(projectDir, '.shipwright', 'settings.json'),
       JSON.stringify({
-        'roleMatrix.sdlc-lead': { model: 'project-model', fallbackChain: ['fb'] },
+        'roleMatrix.sdlc-lead': {
+          default: { model: 'project-model', fallbackChain: ['fb'] },
+        },
       }),
       'utf8',
     );
@@ -174,6 +181,66 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
       scope: 'project',
       used_default_role: false,
     });
+  });
+
+  it('surfaces a fitness card only for the configured model, not every model this role has ever been benched on', async () => {
+    const contentDir = await writeFixtureContentDir(dirs);
+    const fleetHome = await tmpDir('shipwright-roster-fitness-wired-');
+    dirs.push(fleetHome);
+    await fs.writeFile(
+      path.join(fleetHome, 'config.json'),
+      JSON.stringify({
+        'roleMatrix.sdlc-lead': {
+          default: { model: 'configured-model', fallbackChain: [] },
+        },
+      }),
+      'utf8',
+    );
+    const global = openGlobalDb(path.join(fleetHome, 'global.db'));
+    putModelFitness(global, {
+      model: 'configured-model',
+      role: 'sdlc-lead',
+      verdict: 'fit',
+      harnessVersion: '1.0.0',
+      receiptPayload: [],
+      runAt: '2026-07-16T00:00:00.000Z',
+    });
+    putModelFitness(global, {
+      model: 'some-other-model-once-benched',
+      role: 'sdlc-lead',
+      verdict: 'unfit',
+      harnessVersion: '1.0.0',
+      receiptPayload: [],
+      runAt: '2026-07-01T00:00:00.000Z',
+    });
+    global.close();
+
+    const server = await buildApiServer({
+      token: TOKEN,
+      port: PORT,
+      isDbOpen: () => true,
+      logger: false,
+      fleetHome,
+      rosterContentDir: contentDir,
+    });
+    active = server;
+
+    const res = await server.app.inject({
+      method: 'GET',
+      url: '/api/v1/roster',
+      headers: headers(),
+    });
+    const body = res.json() as {
+      experts: { fitness_cards: { model: string; verdict: string }[] }[];
+    };
+    expect(body.experts[0]?.fitness_cards).toEqual([
+      {
+        model: 'configured-model',
+        verdict: 'fit',
+        harness_version: '1.0.0',
+        run_at: '2026-07-16T00:00:00.000Z',
+      },
+    ]);
   });
 
   it('refuses roster content with a hardcoded model id, naming the violated rule (FR-E2)', async () => {
