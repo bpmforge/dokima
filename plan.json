@@ -1136,7 +1136,7 @@
         "Leased paths surfaced to the UI (lock badge data, UX_SPEC §4)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "stories": [
         "US-206"
       ],
