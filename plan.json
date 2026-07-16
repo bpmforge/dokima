@@ -1710,8 +1710,10 @@
         "Phase 0 market, Phase 1 feasibility, Phase 3 design-options + build-vs-adopt, Phase 4 pre-code API verification templates shipped as content"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": [],
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-16T11:33:47.860Z: blocked after 2 attempts. Branch sw/w5-05 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+      ],
       "stories": [
         "US-105"
       ]
