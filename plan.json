@@ -1548,11 +1548,14 @@
         "Token-delivery residual (THREAT_MODEL §5.6): evaluate same-origin-only injection or WS-handshake token delivery so a loopback-local process cannot harvest the operator bearer from index.html; corrupted fleet.json degrades to problem+json, never a 500 (W4-02 review residuals)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "stories": [
         "US-202"
       ],
-      "notes": "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets. AMENDED 2026-07-15: +W4-02 review residuals."
+      "notes": [
+        "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets. AMENDED 2026-07-15: +W4-02 review residuals.",
+        "CONDUCTOR 2026-07-16T08:49:01.818Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+      ]
     },
     {
       "id": "W4-12",
