@@ -1787,7 +1787,7 @@
         "Macro coverage-loop caps are mode-aware: 3 for New Product/Onboard, 2 for Feature/Improve (source RALPH_WIGGUM_LOOP; R-B5); byte-identical gap-set early-halt applies in every mode"
       ],
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "notes": " AMENDED 2026-07-14 (adopted R-B5).",
       "stories": [
         "US-106"
