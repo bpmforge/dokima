@@ -1461,10 +1461,11 @@
         "notifications table migration per DATABASE §3 (closed kind enum, leverage index) — the taxonomy is schema, not convention"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1). AMENDED 2026-07-14 challenger fix.",
-        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015)."
+        "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
+        "CONDUCTOR 2026-07-17T01:46:17.508Z: blocked after 2 attempts. Branch sw/w4-07 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: t's real verify is re-run, ignoring the manifest's claimed command/exit  4475ms\n   ✓ runCloseGate > R-G2 (inert until W7-01): a memory-eligible role with no memory_written[] is refused only when opted in  4312ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  744ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  5074ms\n\n Test Files  2 fai"
       ],
       "stories": [
         "US-404",
