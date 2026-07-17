@@ -2027,8 +2027,10 @@
         "Register MCP servers per project; per-role tool allowlists; requiresApproval flags (dynamic for shell) route through the approval card flow; every tool call is an event with args digest + cost (FR-I3); servers run outside the agent trust boundary — core executes calls under policy"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": [],
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-17T07:32:05.042Z: blocked after 2 attempts. Branch sw/w6-04 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm typecheck failed: heck: Done\npackages/shared typecheck: Done\napps/web typecheck: Done\npackages/events typecheck$ tsc --noEmit\npackages/git typecheck$ tsc --noEmit\npackages/loop typecheck$ tsc --noEmit\npackages/git typecheck: Done\npackages/events typecheck: Done\npackages/loop typecheck: Done\npackages/validators typecheck$ tsc --noEmit\npackages/mcp typecheck$ tsc --noEmit\npackages/gateway typecheck$ tsc --noEmit\npackages/tickets typecheck$ tsc --noEmit\npackages/mcp typecheck: src/index.test.ts(2,10): error TS2305: Module '\"./index.js\"' ha"
+      ],
       "stories": [
         "US-503"
       ]
