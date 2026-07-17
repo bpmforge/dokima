@@ -2103,8 +2103,11 @@
         "Fixture third-party pack loads without core changes and its expert is dispatchable via HANDOFF (CONTRACTS §4 proof; NFR-5)"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1). Enforces NFR-5 (plug-in surfaces + signed packs; contracts in docs/design/CONTRACTS.md).",
+      "status": "blocked",
+      "notes": [
+        "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1). Enforces NFR-5 (plug-in surfaces + signed packs; contracts in docs/design/CONTRACTS.md).",
+        "CONDUCTOR 2026-07-17T09:57:49.082Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: an that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit 261ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  5 fa"
+      ],
       "stories": [
         "US-806"
       ]
