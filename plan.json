@@ -2323,8 +2323,10 @@
         "Board + receipts + ledgers serialize to a portable JSON bundle; import reconstructs projections and verifies the hash chain (BLUEPRINT §12.8)"
       ],
       "points": 2,
-      "status": "todo",
-      "notes": [],
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-17T15:04:12.738Z: blocked after 2 attempts. Branch sw/w8-04 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: an that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  635ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  1 f"
+      ],
       "stories": []
     },
     {
