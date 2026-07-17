@@ -2128,8 +2128,11 @@
         "Per-project working memory (findings, calibration) + long-term store (facts, error->solution pairs, decisions) with FTS5 + optional local embeddings, token-budgeted assembly, BM25 fallback (FR-M1); loop memory hooks wired in packages/loop from day one — a test proves recall fires in a micro-loop run (the anti-Jarvis-gap test, docs/research/source-system-foreman-jarvis.md §5); Completion Manifest schema carries memory_written[] and the Harbormaster truth-check treats a missing/empty field on memory-eligible roles as a gap (R-G2, the v2.5.0 library lesson: 44/45 agents silently skipped write-back until it was manifest-gated)"
       ],
       "points": 5,
-      "status": "todo",
-      "notes": " AMENDED 2026-07-14 addendum (R-G2).",
+      "status": "blocked",
+      "notes": [
+        " AMENDED 2026-07-14 addendum (R-G2).",
+        "CONDUCTOR 2026-07-17T13:55:04.473Z: blocked after 2 attempts. Branch sw/w7-01 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed:  that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit 294ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  3 fail"
+      ],
       "stories": [
         "US-604"
       ]
