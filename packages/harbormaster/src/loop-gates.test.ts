@@ -282,6 +282,114 @@ describe('runCloseGate', () => {
     ).toBe(true);
   });
 
+  it('RED FIXTURE: a claimed file that resolves outside the worktree via a symlink is refused, never read, never hashed into a receipt (acceptance 1, W1-07 symlink-escape class)', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+
+    const outsideDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'shipwright-gates-outside-'),
+    );
+    extraTempDirs.push(outsideDir);
+    const outsideSecret = path.join(outsideDir, 'secret.txt');
+    await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
+
+    const linkPath = path.join(worktree.path, 'packages/example/leak.ts');
+    await fs.symlink(outsideSecret, linkPath);
+    await git(worktree.path, ['add', '--', 'packages/example/leak.ts']);
+    await git(worktree.path, ['commit', '-m', 'feat: add leak symlink']);
+
+    const manifest = buildManifest({
+      files: ['packages/example/file.ts', 'packages/example/leak.ts'],
+    });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok)
+      throw new Error('expected refusal (this fixture must FAIL verification)');
+    expect(
+      result.reasons.some((r) => r.includes('symlink-escape') && r.includes('leak.ts')),
+    ).toBe(true);
+    // The escaping file's content was never read into a reason string, a
+    // manifest echo, or (by construction — the reasons check short-circuits
+    // before the inputFiles/mintReceipt step) a receipt.
+    const joinedReasons = result.reasons.join('\n');
+    expect(joinedReasons.includes('TOP-SECRET-NEVER-READ')).toBe(false);
+    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+  });
+
+  it("RED FIXTURE (TOCTOU): a claimed file swapped for an escaping symlink by the ticket's own verify command, after the initial check, is still refused at receipt-read time and never hashed into a receipt (acceptance 1/3, W1-07 symlink-escape class)", async () => {
+    const outsideDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'shipwright-gates-outside-'),
+    );
+    extraTempDirs.push(outsideDir);
+    const outsideSecret = path.join(outsideDir, 'secret.txt');
+    await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
+
+    // The TICKET's OWN verify command — real code committed by the (untrusted,
+    // already-exited) agent session — swaps the claimed file for a symlink
+    // pointing outside the worktree AFTER classifyManifestFiles's initial
+    // check has already run and passed on the original, honest file.
+    fixture = await setupFixture({
+      ticket: {
+        verify: `rm -f packages/example/file.ts && ln -s ${outsideSecret} packages/example/file.ts`,
+      },
+    });
+    const { log, worktree } = fixture;
+
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+
+    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok)
+      throw new Error('expected refusal (TOCTOU symlink-escape must FAIL verification)');
+    expect(
+      result.reasons.some((r) => r.includes('symlink-escape') && r.includes('file.ts')),
+    ).toBe(true);
+    // Content behind the post-check symlink swap was never read into a
+    // reason string, a manifest echo, or a receipt.
+    const joinedReasons = result.reasons.join('\n');
+    expect(joinedReasons.includes('TOP-SECRET-NEVER-READ')).toBe(false);
+    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+  });
+
   it('spoofed manifest fails: a claimed file that exists on disk but was never committed is refused (R-F4)', async () => {
     fixture = await setupFixture();
     const { log, worktree } = fixture;

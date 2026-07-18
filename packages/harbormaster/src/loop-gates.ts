@@ -28,7 +28,6 @@
 
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { computeChangedPaths } from '@shipwright/loop';
 import { loadValidatorPack, runValidatorPack } from '@shipwright/validators';
 import { mintReceipt, type ReceiptInputFile } from '@shipwright/events';
@@ -46,13 +45,13 @@ import {
   filesChangedInRange,
   reRunVerify,
   resolveForkPoint,
-  statMissingFiles,
 } from './loop-gates-verify.js';
 import {
   checkMemoryWritten,
   classifySecretsGaps,
   formatFailureComment,
 } from './loop-gates-secrets.js';
+import { classifyManifestFile, classifyManifestFiles } from './scope.js';
 
 export type {
   CloseGateFailure,
@@ -98,10 +97,23 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
     reasons.push('manifest declares zero files');
   }
 
-  const missingFiles = await statMissingFiles(worktree.path, manifest.files);
+  // SECURITY (W1-07 symlink-escape class): resolved via fs.realpath and
+  // re-checked against the worktree's real root BEFORE anything below stats,
+  // reads, or hashes a claimed path — a symlink inside the worktree pointing
+  // outside it is refused here, never followed.
+  const { missing: missingFiles, symlinkEscapes } = await classifyManifestFiles(
+    worktree.path,
+    manifest.files,
+  );
   if (missingFiles.length > 0) {
     reasons.push(
       `claimed file(s) not found on disk in the worktree: ${missingFiles.join(', ')}`,
+    );
+  }
+  if (symlinkEscapes.length > 0) {
+    reasons.push(
+      'claimed file(s) resolve outside the worktree via a symlink and are refused ' +
+        `(symlink-escape, W1-07 class): ${symlinkEscapes.join(', ')}`,
     );
   }
 
@@ -223,12 +235,56 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
     return { ok: false, ticket: commented, reasons };
   }
 
-  const inputFiles: ReceiptInputFile[] = await Promise.all(
-    manifest.files.map(async (file) => ({
-      path: file,
-      content: await fs.readFile(path.join(worktree.path, file), 'utf8'),
-    })),
+  // SECURITY (TOCTOU close, W1-07 class): reRunVerify above executes the
+  // TICKET's OWN verify command with cwd=worktree.path — arbitrary code from
+  // the untrusted, already-exited session's own commits — which can mutate
+  // the worktree (e.g. replace a clean file with a symlink) after the
+  // classifyManifestFiles check ran, above. Re-resolve and re-verify every
+  // manifest file immediately before it is read for the receipt via
+  // classifyManifestFile, which holds a single fd across its own
+  // containment check and the read (see scope.ts) — so the escape refusal
+  // holds atomically at read time, never separated from the read itself by
+  // a re-resolved path string.
+  const realRootAtReadTime = await fs.realpath(worktree.path);
+  const readTimeMissing: string[] = [];
+  const readTimeEscapes: string[] = [];
+  const inputFileEntries = await Promise.all(
+    manifest.files.map(async (file): Promise<ReceiptInputFile | null> => {
+      const result = await classifyManifestFile(worktree.path, realRootAtReadTime, file);
+      if (result.status === 'missing') {
+        readTimeMissing.push(file);
+        return null;
+      }
+      if (result.status === 'symlink-escape') {
+        readTimeEscapes.push(file);
+        return null;
+      }
+      return { path: file, content: result.content as string };
+    }),
   );
+  if (readTimeMissing.length > 0 || readTimeEscapes.length > 0) {
+    const readTimeReasons: string[] = [];
+    if (readTimeMissing.length > 0) {
+      readTimeReasons.push(
+        'claimed file(s) vanished from the worktree between the initial check and the ' +
+          `receipt read (TOCTOU): ${readTimeMissing.join(', ')}`,
+      );
+    }
+    if (readTimeEscapes.length > 0) {
+      readTimeReasons.push(
+        'claimed file(s) resolve outside the worktree via a symlink introduced after the ' +
+          'initial check and are refused at receipt-read time (symlink-escape, W1-07 ' +
+          `class, TOCTOU): ${readTimeEscapes.join(', ')}`,
+      );
+    }
+    const commented = commentTicket(log, {
+      ticketId: ticket.id,
+      actorId,
+      body: formatFailureComment(readTimeReasons),
+    });
+    return { ok: false, ticket: commented, reasons: readTimeReasons };
+  }
+  const inputFiles = inputFileEntries as ReceiptInputFile[];
 
   const receiptValidators = effectiveValidatorResults.map((result) => ({
     name: result.name,
