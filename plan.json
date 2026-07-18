@@ -1443,7 +1443,7 @@
         "Copilot onboarding is default-off behind the D-019 consent gate (plain-language account-risk warning; enabling mints a ledgered acknowledgement event, FR-G6); AND the generic PUT /projects/{id}/settings REFUSES consent-gated keys (copilotEnabled etc.) so the flag flips ONLY through that consent endpoint — red-fixture proves a direct PUT cannot enable Copilot (security bypass fix) SECURITY (HIGH, review-caught consent BYPASS — MUST fix): the generic PUT /api/v1/projects/{id}/settings (applyEachKey/putProjectSetting) MUST REFUSE consent-gated keys (copilotEnabled and any NEVER-AUTO-adjacent flag) — those flip ONLY through the D-019 consent-gate endpoint that mints the acknowledgement event, never via the generic settings PUT. Red fixture: a direct PUT {copilotEnabled:true} is rejected (403/422) and does NOT enable Copilot."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 design review G-19. AMENDED 2026-07-14 (adopted D-014). AMENDED 2026-07-14 addendum (D-018, R-M1). Also FR-RL2 + FR-RL3 surfaces (promotion/demotion data view, suppression review). AMENDED 2026-07-14 challenger fix. AMENDED 2026-07-14 (D-019).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",

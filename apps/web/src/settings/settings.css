@@ -1,0 +1,203 @@
+/* App.tsx's header gained a Settings button (W4-06) — styled here since
+   styles.css sits outside this ticket's write_scope; this file is always
+   loaded (SettingsPage.tsx is imported unconditionally by App.tsx). */
+.app-shell__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.settings__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.settings__header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.settings__header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.settings__no-project {
+  color: var(--sw-fg);
+  opacity: 0.8;
+}
+
+.settings__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--sw-border);
+  padding-bottom: 0.5rem;
+}
+
+.settings__tab {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.settings__tab--active {
+  background: var(--sw-accent);
+  border-color: var(--sw-accent);
+  color: #fff;
+}
+
+.settings__panel section {
+  margin-bottom: 1.5rem;
+}
+
+.settings__hint {
+  opacity: 0.75;
+  font-size: 0.85rem;
+}
+
+.settings__notice {
+  border: 1px solid var(--sw-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.settings__notice--warn {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.settings__error {
+  color: #c0392b;
+}
+
+.settings__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.settings__table th,
+.settings__table td {
+  border: 1px solid var(--sw-border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.settings__list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.settings__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--sw-border);
+}
+
+.settings__row-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.settings__row-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  gap: 0.2rem;
+}
+
+.settings__row-form input,
+.settings__row-form select {
+  border: 1px solid var(--sw-border);
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+}
+
+.settings__radio,
+.settings__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+}
+
+.settings__never-auto {
+  font-size: 0.85rem;
+  padding-left: 1.2rem;
+}
+
+.settings__badge {
+  display: inline-block;
+  border: 1px solid var(--sw-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.settings__badge--warn {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.settings__badge--muted {
+  opacity: 0.6;
+}
+
+.settings__help {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.35rem;
+}
+
+.settings__help-button {
+  border: 1px solid var(--sw-border);
+  border-radius: 999px;
+  width: 1.2rem;
+  height: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  background: transparent;
+  color: var(--sw-fg);
+  font-size: 0.7rem;
+}
+
+.settings__help-popover {
+  position: absolute;
+  z-index: 10;
+  top: 1.5rem;
+  left: 0;
+  min-width: 16rem;
+  max-width: 24rem;
+  background: var(--sw-bg);
+  border: 1px solid var(--sw-border);
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+}
