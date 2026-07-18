@@ -19,13 +19,19 @@
  * (does the event log agree this receipt is real, not a forged/injected
  * row?), the input-tree hash (does disk still match what the receipt
  * attested to?), and validator currency (has the required validator set
- * moved on since?). `checkClaimedTicket` never calls `closeTicket` and
- * never appends an event — that move is deliberate: an earlier version of
- * this function called `closeTicket` from inside the per-ticket check, so a
- * batch whose LAST ticket drifted still left every earlier ticket's
- * `ticket.closed` event permanently on the append-only log by the time the
- * drift was discovered. There is no such window now because nothing here
- * writes at all.
+ * moved on since?). It also independently re-checks every invariant
+ * `closeTicket` (tickets/verbs.ts) itself enforces — ticket.status is still
+ * `'in_progress'`, and the receipt's opaque `payload.{files,commits}` and
+ * `verifyExit` satisfy the same non-empty/exit-0 manifest rule — because
+ * `verifyReceipt` never inspects payload contents, so a receipt can carry a
+ * perfectly valid anchor MAC and input-tree hash while still describing a
+ * manifest `closeTicket` would refuse mid-phase-2. `checkClaimedTicket`
+ * never calls `closeTicket` and never appends an event — that move is
+ * deliberate: an earlier version of this function called `closeTicket` from
+ * inside the per-ticket check, so a batch whose LAST ticket drifted still
+ * left every earlier ticket's `ticket.closed` event permanently on the
+ * append-only log by the time the drift was discovered. There is no such
+ * window now because nothing here writes at all.
  *
  * PHASE 2 (inline in `resumeProject`, reached ONLY if every check from phase
  * 1 came back `'valid'` or `'no-receipt'` — zero `'drift'` entries anywhere
@@ -120,6 +126,48 @@ export async function checkClaimedTicket(
   const receipt = findLatestCloseReceipt(log, ticket.id);
   if (!receipt) {
     return { outcome: 'no-receipt', ticketId: ticket.id };
+  }
+
+  // SECURITY (partial-commit class, FR-H3): closeTicket (verbs.ts) throws
+  // MANIFEST_INVALID for an empty files/commits list or a non-zero verify
+  // exit, and assertTransition only allows 'close' from 'in_progress' — but
+  // none of that is re-checked by verifyReceipt, because payload.{files,
+  // commits} are opaque JSON it never inspects. A receipt can carry a
+  // perfectly valid anchor MAC and input-tree hash while still describing a
+  // manifest phase 2's closeTicket would refuse. Every invariant closeTicket
+  // enforces MUST be re-checked here, in phase 1, so a batch can never reach
+  // phase 2 with a ticket that would throw mid-loop after earlier tickets in
+  // the same batch already had their close events appended.
+  if (ticket.status !== 'in_progress') {
+    return {
+      outcome: 'drift',
+      ticketId: ticket.id,
+      reasons: [
+        `ticket ${ticket.id} is '${ticket.status}', not 'in_progress' — a close ` +
+          `receipt exists but the ticket is no longer in a state 'close' can transition from`,
+      ],
+    };
+  }
+  const manifestReasons: string[] = [];
+  const declaredFiles = receiptFiles(receipt);
+  const declaredCommits = receiptCommits(receipt);
+  if (declaredFiles.length === 0) {
+    manifestReasons.push(
+      `receipt ${receipt.id} declares zero files (manifest requires >=1)`,
+    );
+  }
+  if (declaredCommits.length === 0) {
+    manifestReasons.push(
+      `receipt ${receipt.id} declares zero commits (manifest requires >=1)`,
+    );
+  }
+  if (receipt.verifyExit !== 0) {
+    manifestReasons.push(
+      `receipt ${receipt.id} declares a non-passing verify exit code (${String(receipt.verifyExit)}, requires 0)`,
+    );
+  }
+  if (manifestReasons.length > 0) {
+    return { outcome: 'drift', ticketId: ticket.id, reasons: manifestReasons };
   }
 
   const worktreePath = path.join(options.repoRoot, '.shipwright', 'worktrees', ticket.id);
@@ -232,33 +280,41 @@ export async function resumeProject(
 
   // PHASE 2 — commit. Reached only when every ticket in this batch passed
   // phase 1 (valid or no-receipt); the earlier drift check would have
-  // already returned before a single event was appended.
-  const closed: Ticket[] = [];
-  for (const check of checks) {
-    if (check.outcome !== 'valid') continue;
-    const owner = check.ticket.ownerId;
-    if (!owner) {
-      throw new Error(
-        `ticket ${check.ticketId} is claimed with no ownerId — cannot close on its behalf`,
+  // already returned before a single event was appended. Wrapped in one
+  // outer transaction (better-sqlite3 nests via savepoints) as a second,
+  // independent line of defense: even if a phase-1 invariant check is ever
+  // incomplete, closeTicket throwing here rolls back every close from this
+  // call, not just the one that failed — a partial commit still can't
+  // happen (Law 7).
+  const closed: Ticket[] = log.db.transaction((): Ticket[] => {
+    const result: Ticket[] = [];
+    for (const check of checks) {
+      if (check.outcome !== 'valid') continue;
+      const owner = check.ticket.ownerId;
+      if (!owner) {
+        throw new Error(
+          `ticket ${check.ticketId} is claimed with no ownerId — cannot close on its behalf`,
+        );
+      }
+      result.push(
+        closeTicket(
+          log,
+          {
+            ticketId: check.ticketId,
+            actorId: owner,
+            files: receiptFiles(check.receipt),
+            commits: receiptCommits(check.receipt),
+            verify: {
+              command: check.receipt.verifyCommand ?? '',
+              exitCode: check.receipt.verifyExit ?? 0,
+            },
+          },
+          { now: options.now },
+        ),
       );
     }
-    closed.push(
-      closeTicket(
-        log,
-        {
-          ticketId: check.ticketId,
-          actorId: owner,
-          files: receiptFiles(check.receipt),
-          commits: receiptCommits(check.receipt),
-          verify: {
-            command: check.receipt.verifyCommand ?? '',
-            exitCode: check.receipt.verifyExit ?? 0,
-          },
-        },
-        { now: options.now },
-      ),
-    );
-  }
+    return result;
+  })();
 
   return {
     ok: true,

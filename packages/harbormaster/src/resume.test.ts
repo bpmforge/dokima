@@ -6,6 +6,7 @@ import {
   claimTicket,
   createTicket,
   getTicket,
+  releaseTicket,
   startTicket,
   type CreateTicketInput,
 } from '@shipwright/tickets';
@@ -299,5 +300,102 @@ describe('resumeProject (FR-H3) — two-phase, all-or-nothing', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected drift refusal');
     expect(result.driftReport[0]?.reasons.join(' ')).toMatch(/anchoring/);
+  });
+
+  it('SECURITY red fixture: a receipt with a valid MAC/hash but zero commits in payload must NOT reach phase 2 (would throw MANIFEST_INVALID mid-batch)', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+
+    createTicket(log, 'worker-1', {
+      id: 'W9-06',
+      type: 'task',
+      title: 'Ticket W9-06',
+      lane: 'core',
+      writeScope: ['packages/example/**'],
+      verify: 'true',
+    });
+    claimTicket(log, { ticketId: 'W9-06', actorId: 'worker-1' });
+    startTicket(log, { ticketId: 'W9-06', actorId: 'worker-1' });
+
+    const worktree = await createWorktree({
+      repoRoot,
+      ticketId: 'W9-06',
+      slug: 'ticket-W9-06',
+      baseRef: 'main',
+    });
+    const relPath = 'packages/example/file.ts';
+    const filePath = path.join(worktree.path, relPath);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, 'export const f = 1;\n');
+    await git(worktree.path, ['add', '--', relPath]);
+    await git(worktree.path, ['commit', '-m', 'feat: add file']);
+
+    // No tampering at all — MAC and input-tree hash both check out. Only
+    // the opaque payload.commits (never validated by mintReceipt/
+    // verifyReceipt) is empty, which is exactly what closeTicket's own
+    // MANIFEST_INVALID guard (verbs.ts) refuses.
+    mintReceipt(
+      log,
+      {
+        id: 'receipt-W9-06',
+        kind: 'close',
+        projectId: PROJECT_ID,
+        ticketId: 'W9-06',
+        validators: [{ name: 'secrets-scan', exitCode: 0, gapCount: 0 }],
+        inputFiles: [{ path: relPath, content: 'export const f = 1;\n' }],
+        verifyCommand: 'true',
+        verifyExit: 0,
+        actorId: 'worker-1',
+        payload: { commits: [], files: [relPath], evidence: [] },
+      },
+      { signingKey: TEST_SIGNING_KEY, now: NOW },
+    );
+
+    const ticket = getTicket(log, 'W9-06');
+    if (!ticket) throw new Error('fixture ticket missing');
+    const check = await checkClaimedTicket(log, ticket, {
+      repoRoot,
+      signingKey: TEST_SIGNING_KEY,
+    });
+    expect(check.outcome).toBe('drift');
+    if (check.outcome !== 'drift') throw new Error('expected drift');
+    expect(check.reasons.join(' ')).toMatch(/zero commits/);
+
+    const result = await resumeProject({
+      log,
+      repoRoot,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected drift refusal');
+    const closedEvents = listEvents(log).filter((e) => e.eventType === 'ticket.closed');
+    expect(closedEvents).toHaveLength(0);
+    expect(getTicket(log, 'W9-06')?.status).toBe('in_progress');
+  });
+
+  it('drift: a ticket released back to claimed still carries a stale close receipt — must not close from a non-in_progress status', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+
+    await claimedTicketWithReceipt(fixture, 'W9-07', 'export const g = 1;\n');
+    // Simulate the ticket having been released back to 'claimed' after the
+    // receipt was minted (e.g. an owner crash before accept) — the receipt
+    // stays in the log (append-only) but the ticket is no longer in a state
+    // 'close' can transition from.
+    releaseTicket(log, { ticketId: 'W9-07', actorId: 'worker-1' });
+    claimTicket(log, { ticketId: 'W9-07', actorId: 'worker-1' });
+
+    const ticket = getTicket(log, 'W9-07');
+    if (!ticket) throw new Error('fixture ticket missing');
+    expect(ticket.status).toBe('claimed');
+
+    const check = await checkClaimedTicket(log, ticket, {
+      repoRoot,
+      signingKey: TEST_SIGNING_KEY,
+    });
+    expect(check.outcome).toBe('drift');
+    if (check.outcome !== 'drift') throw new Error('expected drift');
+    expect(check.reasons.join(' ')).toMatch(/not 'in_progress'/);
   });
 });
