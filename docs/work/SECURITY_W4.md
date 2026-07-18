@@ -1,38 +1,37 @@
-# Security pass — wave W4 (2026-07-18T14:44:27.111Z)
+# Security pass — wave W4 (2026-07-18T21:06:22.472Z)
 
 ```json
 {
-  "critical": [
-    {
-      "file": "packages/harbormaster/src/resume.ts",
-      "issue": "This diff only resets W3-03 to status:todo and encodes a two-phase fix as acceptance text in plan.json — the actual code is unchanged. resumeProject still calls closeTicket (appending ticket.closed-class events) from inside checkClaimedTicket as it iterates claimed tickets, before every ticket in the batch has been checked for drift. If a later ticket has drift, the function returns {ok:false, driftReport} but earlier tickets already got permanent, unrollbackable event-log writes (append-only log, Law 7), producing a partially-committed resume that contradicts FR-H3 and the trust-boundary requirement that state changes only go through verified receipts.",
-      "fix": "Ship the two-phase implementation now specified in acceptance: Phase 1 must be check-only (validate every claimed ticket's receipt + drift, zero event-log writes); Phase 2 (the actual closeTicket/event-append calls) must only run if every ticket passed Phase 1. Move closeTicket out of checkClaimedTicket entirely. Add the red fixture (last ticket in a batch has drift → zero ticket.closed events for earlier tickets) before closing this ticket."
-    }
-  ],
+  "critical": [],
   "high": [
     {
-      "file": "apps/server/src/api/server/artifacts-routes/helpers.ts, git-read.ts (docs routes, W4-05)",
-      "issue": "Still status:todo in this diff — no source fix is included. isSafeRelativePath only rejects absolute paths and '..' segments; it does not confine reads to docs/ and does not lstat the resolved target. readWorkingTree/showAtRev follow OS symlinks, so an authenticated caller (or an untrusted agent session per Law 4) can read arbitrary in-repo files such as .shipwright/state.db or .env via GET /artifacts/doc.",
-      "fix": "Confine every doc-route read to a realpath-verified DOCS_SUBDIR, reject dot-prefixed path segments, and lstat the fully resolved target (not just the lexical string) before serving content, per the acceptance criteria already encoded in plan.json."
-    },
-    {
-      "file": "apps/server/src/api/server/scope-routes.ts (W4-06)",
-      "issue": "Still status:todo — no source fix included. The generic PUT /api/v1/projects/{id}/settings (applyEachKey/putProjectSetting) has no blocklist, so a caller can PUT {copilotEnabled:true} directly and bypass the D-019 consent gate entirely: no risk warning shown, no copilot.consent_ack ledgered event minted.",
-      "fix": "Reject consent-gated keys (copilotEnabled and any NEVER-AUTO-adjacent flag) in the generic settings PUT handler; those may only be set via the dedicated consent endpoint that mints the acknowledgement event. Add the red fixture: direct PUT is rejected and does not enable Copilot."
-    },
-    {
-      "file": "packages/harbormaster/src/loop-gates.ts (classifyManifestFile, W3-09)",
-      "issue": "Still status:todo — no source fix included. Containment check (fs.realpath) and the subsequent fs.readFile are separate syscalls against the same path string with no fd held between them, so a background process spawned by an untrusted verify command can symlink-swap the manifest file between check and read (classic TOCTOU), smuggling an out-of-root file into a receipt hash.",
-      "fix": "Open the file once (fs.open, O_NOFOLLOW on the final component), verify containment via the held fd, and read from that same fd — never re-resolve the path string in a second syscall. Add the red fixture for a symlink swapped mid-check."
+      "file": "apps/server/src/api/server/notifications-routes/emit-route.ts",
+      "issue": "POST /api/v1/projects/:id/notifications lets any bearer-token holder create Decide/Review-tier notifications (e.g. kind: 'approval', 'pr_ready', 'gate_passed') with completely free-form title/body/ref_type/ref_id. Nothing checks that ref_id/ref_type point to a real ticket, or that a gate/close receipt actually backs the claim (contrast with artifacts-routes.ts's isGatedDeliverable, which does check receipts before setting revisionRequested). This breaks the 'receipts required for durable state claims' trust model: a caller can fabricate an 'approval' card claiming a PR is ready or a gate passed, and it will surface unmodified in the human's morning queue (GET /api/v1/approvals/queue) with no indication it is unverified.",
+      "fix": "For tier=decide/review kinds that assert a fact about project state (pr_ready, gate_passed, approval), require and verify a receipt id (or ticket+gate lookup) server-side before accepting the emission, and surface provenance (receipt id / verified: true|false) in the wire payload so the UI can visually distinguish system-verified cards from freeform ones."
     }
   ],
   "medium": [
     {
-      "file": "packages/shared/src/index.ts",
-      "issue": "secrets/index.ts (redactDeep, collectSecretValues) is now re-exported from the main @shipwright/shared barrel instead of a scoped subpath. collectSecretValues materializes live secret values (reads .env/.env.local/.env.*.local into memory) — putting it on the package's default export surface makes it reachable from every consumer of @shipwright/shared, not just the two intended redaction choke points (loop/handoff, events/append), widening exposure for accidental leakage (logging, debugging, error dumps) of real secret material.",
-      "fix": "Add a dedicated \"./secrets\" subpath to packages/shared/package.json exports (mirroring the existing \"./config\" pattern) instead of broadening the main barrel, so only intentional callers import secret-materializing functions."
+      "file": "apps/server/src/api/server/notifications-routes/decide-routes.ts",
+      "issue": "decideNotification/dismissNotification always record actorId as the hardcoded OPERATOR_ACTOR_ID regardless of which caller (any holder of the shared bearer token) actually issued the request. The resulting notification.decided event is the durable record of a human approval decision, but it provides no real non-repudiation — any process with API access produces an indistinguishable 'operator approved' event.",
+      "fix": "If this endpoint can ever be reached by more than the single interactive browser session (e.g. multiple operator devices, or future automation), thread a real caller identity (from auth context) into actorId instead of a constant, so the event log's hash chain reflects who actually decided."
+    },
+    {
+      "file": "apps/server/src/api/server/artifacts-routes.ts",
+      "issue": "POST /artifacts/comments and GET /artifacts/comments accept/query an arbitrary body.path / query.path without ever running it through isSafeRelativePath (unlike the /doc, /diff, /doc-diff routes). Currently the value is only used as a string-compare filter, not a filesystem path, so it isn't exploitable today, but the value is persisted to the event log and re-read by other consumers — any future code path that uses the stored comment path for a file operation would reintroduce the path-traversal / dot-prefix leak class this file's own header describes fixing elsewhere.",
+      "fix": "Validate body.path with isSafeRelativePath at write time (reject 400 on failure), consistent with the other artifact routes, so no unsafe path can ever enter the event log via this route."
+    },
+    {
+      "file": "apps/server/src/api/server/notifications-routes/shared.ts",
+      "issue": "refreshAndListProjectNotifications performs writes (promoteEligibleNotifications, maybeEmitTrustGraduationSuggestion — both open the DB in write mode and INSERT/UPDATE) as a side effect of every GET /api/v1/notifications and GET /api/v1/approvals/queue call. GET requests are expected to be safe/idempotent; any prefetching, browser extension, proxy, or link-scanner that issues a GET could trigger unintended state promotion (pushing a Decide item live, minting a trust-graduation suggestion) outside of explicit user action.",
+      "fix": "Move promotion/suggestion evaluation to an explicit POST/refresh action or a background tick, and make GET routes read-only."
+    },
+    {
+      "file": "apps/server/src/api/server/artifacts-routes.test.ts",
+      "issue": "Hardcoded receipt-signing secret ('test-minting-secret') is committed in source (duplicated in receipts-routes.test.ts). Test-only, but if this value or pattern is ever reused as a placeholder default in non-test config it would be a real key-leak.",
+      "fix": "Keep as-is for tests but confirm no production code path defaults SIGNING_KEY/signingKey to a literal fallback string; require it to be sourced from keychain/env with no hardcoded default (per FR-S2)."
     }
   ],
-  "notes": "The bulk of this diff is plan.json ticket-tracking metadata: previously 'blocked' tickets (W3-03, W3-09, W3-17, W4-05, W4-06, W4-07, W4-11, W5-10) are reset to 'todo'/rescoped and their previously-identified CRITICAL/HIGH security gaps are encoded into acceptance-criteria text for a future supervised build pass. No source code implementing those fixes is present in this diff, so the underlying vulnerabilities (partial event-log commit on resume, docs-route path traversal, consent-gate bypass, manifest TOCTOU) remain live in the current codebase — they are reported here as still-open findings, not newly introduced ones. The only actual source change is the packages/shared/src/index.ts barrel export. No hardcoded secrets, no new command/path-injection sinks, and no unsafe deserialization were introduced by this diff itself."
+  "notes": "Git-invocation surface (git-read.ts) is well-defended: execFile with argv arrays (no shell), isSafeGitRevision blocks option-injection (leading '-', tested against --output=... arbitrary-file-write), isSafeRelativePath blocks traversal/absolute/dot-prefixed segments, and readWorkingTree adds a realpath-based symlink check with dedicated regression tests — no command/path injection found there. All SQL is parameterized (? or named params via better-sqlite3); no SQL injection found. No unsafe deserialization (JSON.parse only, no eval/vm/yaml.load). No new third-party dependencies introduced in this diff. Diff was truncated mid-file at apps/server/src/api/server/rules-routes.ts (POST .../rules/:ruleId/register) — that route and anything after it could not be reviewed."
 }
 ```
