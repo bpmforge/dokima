@@ -1684,7 +1684,7 @@
         "a11y CI gate: Playwright axe scan on board/morning queue/settings/receipt inspector + keyboard-only pass for board verbs and queue; WCAG 2.2 AA per UX_SPEC §9 — pre-merge on web tickets from W4 (TESTING tier map)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-202",
         "US-404"
@@ -1693,7 +1693,8 @@
         "ADDED 2026-07-14 challenger fix: palette, drawer, and the a11y gate were doc-mandated orphans (W7-06 consumed the palette nobody built).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
         "CONDUCTOR 2026-07-18T20:47:32.756Z: blocked after 2 attempts. Branch sw/w4-12 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "SEAM FIX 2026-07-18: maker correctly refused to self-widen (MASTER_PROMPT rule 3) and filed a HANDOFF. Widened to the 3 named files it needs: apps/web/package.json (axe-core dev dep), apps/web/src/board/Lane.tsx + apps/web/src/notifications/notifications.css (the specific a11y violations to fix). If the axe gate surfaces violations in OTHER components, stop and HANDOFF rather than self-widen."
+        "SEAM FIX 2026-07-18: maker correctly refused to self-widen (MASTER_PROMPT rule 3) and filed a HANDOFF. Widened to the 3 named files it needs: apps/web/package.json (axe-core dev dep), apps/web/src/board/Lane.tsx + apps/web/src/notifications/notifications.css (the specific a11y violations to fix). If the axe gate surfaces violations in OTHER components, stop and HANDOFF rather than self-widen.",
+        "RETRY 2026-07-18: claimed with widened write_scope in place. apps/web/ has been untouched by any wave since the prior attempt branched (verified via diff), so that attempt's palette/drawer/a11y-spec work is being restored from blocked/w4-12 (pre-revert commit cef7cc0) rather than reimplemented from scratch; server.ts/server/index.ts route registration re-applied by hand alongside W4-11's since-merged OpenAPI/SSE additions."
       ]
     },
     {
