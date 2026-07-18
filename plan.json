@@ -1639,7 +1639,7 @@
         "Token-delivery residual (THREAT_MODEL §5.6): evaluate same-origin-only injection or WS-handshake token delivery so a loopback-local process cannot harvest the operator bearer from index.html; corrupted fleet.json degrades to problem+json, never a 500 (W4-02 review residuals)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "stories": [
         "US-202"
       ],
@@ -1647,7 +1647,8 @@
         "ADDED 2026-07-14 challenger fix: API_DESIGN mandated all of these; no ticket owned them. Scope enumerated (validate-plan P8): mechanics files only — feature endpoint dirs belong to their feature tickets. AMENDED 2026-07-15: +W4-02 review residuals.",
         "CONDUCTOR 2026-07-16T08:49:01.818Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "MORNING BATCH 2026-07-16: real stall (generic block after 2 attempts) — API-mechanics ticket (OpenAPI/SSE/idempotency/route-walker), batch with the security pass. blocked/w4-11 kept.",
-        "SEAM FIX 2026-07-18 (app-shell registration, flavor c): widened to apps/server/src/api/server.ts — the openapi/SSE endpoints were built but 404 live because buildApiServer never registers them, and route registration lives in server.ts (outside the server/** subdir scope). Register your routes there; keep endpoint impls in api/{openapi,events-sse,idempotency,problem}*. Prior impl verified correct+unregressed — this is the last-mile wiring."
+        "SEAM FIX 2026-07-18 (app-shell registration, flavor c): widened to apps/server/src/api/server.ts — the openapi/SSE endpoints were built but 404 live because buildApiServer never registers them, and route registration lives in server.ts (outside the server/** subdir scope). Register your routes there; keep endpoint impls in api/{openapi,events-sse,idempotency,problem}*. Prior impl verified correct+unregressed — this is the last-mile wiring.",
+        "CONDUCTOR 2026-07-18T19:50:47.093Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 403 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md"
       ]
     },
     {
