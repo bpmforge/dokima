@@ -9,7 +9,7 @@
  * in `./types.js` (a TS compile error to omit or misspell), and
  * `assertValidTaxonomy` re-checks at runtime for anything crossing the HTTP
  * boundary (a POST body is `unknown`, not a TS type) — the DB's own CHECK
- * constraint (`003_notifications.sql`) is the third, unbypassable layer
+ * constraint (`006_notifications.sql`) is the third, unbypassable layer
  * ("the taxonomy is schema, not convention").
  *
  * Book-split per CODE_BOOK_PROTOCOL.md: `types.ts` (taxonomy + row<->record

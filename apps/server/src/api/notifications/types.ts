@@ -3,7 +3,7 @@
  * US-704 AC-1 "emitting an unclassified notification is an API-level
  * error"). `assertValidTaxonomy` is the runtime half of that guarantee —
  * `EmitNotificationInput.tier`/`.kind` in `./emit.ts` are the compile-time
- * half, and `003_notifications.sql`'s CHECK constraint is the third,
+ * half, and `006_notifications.sql`'s CHECK constraint is the third,
  * unbypassable layer ("the taxonomy is schema, not convention").
  */
 
@@ -15,7 +15,7 @@ export const NOTIFICATION_TIERS: readonly NotificationTier[] = [
   'record',
 ];
 
-/** Closed per DATABASE.md §3 + `003_notifications.sql`'s CHECK constraint. `suggestion` is this ticket's addition (R-A1) — DATABASE.md §3 requires new kinds to land as "a migration + FR-N4 tier-declaration review, never an inline string", which `003_notifications.sql` is. */
+/** Closed per DATABASE.md §3 + `006_notifications.sql`'s CHECK constraint. `suggestion` is this ticket's addition (R-A1) — DATABASE.md §3 requires new kinds to land as "a migration + FR-N4 tier-declaration review, never an inline string", which `006_notifications.sql` is. */
 export type NotificationKind =
   | 'clarification'
   | 'approval'
