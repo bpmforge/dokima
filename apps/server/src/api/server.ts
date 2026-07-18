@@ -30,6 +30,7 @@ import {
   registerEstimateRoutes,
   registerReceiptRoutes,
 } from './server/index.js';
+import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
 import { completeHandshake, rejectUpgrade } from './ws-socket.js';
 
@@ -69,6 +70,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerArtifactRoutes(app, { home: opts.fleetHome });
   registerReceiptRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
+  registerSettingsRoutes(app, { home: opts.fleetHome });
   registerChatRoute(app);
   registerStatic(app, opts.webDistDir, opts.token);
 

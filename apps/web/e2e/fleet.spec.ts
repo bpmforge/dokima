@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
 
 /** FR-F1/F2, UX_SPEC §2/§2b: create/open/archive/reopen through the real apps/server. */
 
@@ -38,10 +39,18 @@ test('create (New Product), open, archive, and reopen a project', async ({ page 
   await header.getByRole('button', { name: 'New Product', exact: true }).click();
   await page.getByLabel('Directory path').fill(dir);
   await page.getByLabel('Name (optional)').fill(name);
-  await page.locator('.fleet__form').getByRole('button', { name: 'New Product' }).click();
+  // See project-registry-lock.ts's header: fleet.json's read-modify-write
+  // has no locking server-side, so concurrent creates from other e2e worker
+  // processes can clobber this one — serialized here across every worker.
+  await withProjectRegistryLock(async () => {
+    await page
+      .locator('.fleet__form')
+      .getByRole('button', { name: 'New Product' })
+      .click();
+    await expect(page.locator('.project-card', { hasText: name })).toBeVisible();
+  });
 
   const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
   await expect(card.getByText('Ready')).toBeVisible();
 
   // Archive: card leaves the active (default) list.
@@ -73,13 +82,15 @@ test('opening a project switches to its workspace; "Fleet" breadcrumb returns', 
     .click();
   await page.getByLabel('Directory path').fill(dir);
   await page.getByLabel('Name (optional)').fill(name);
-  await page
-    .locator('.fleet__form')
-    .getByRole('button', { name: 'Onboard existing repo' })
-    .click();
+  await withProjectRegistryLock(async () => {
+    await page
+      .locator('.fleet__form')
+      .getByRole('button', { name: 'Onboard existing repo' })
+      .click();
+    await expect(page.locator('.project-card', { hasText: name })).toBeVisible();
+  });
 
   const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Open' }).click();
 
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
