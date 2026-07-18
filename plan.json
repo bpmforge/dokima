@@ -1739,12 +1739,13 @@
         "W5-01"
       ],
       "acceptance": [
-        "Adaptive-depth interview drives VISION/SCOPE/personas/SRS/stories drafts through chat cards; deliverables editable in the artifact viewer; interview is NEVER-AUTO (NA-1 heritage)"
+        "Adaptive-depth interview drives VISION/SCOPE/personas/SRS/stories drafts through chat cards; interview is NEVER-AUTO (NA-1 heritage)"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
-        "CONDUCTOR 2026-07-16T10:28:49.725Z: blocked after 2 attempts. Branch sw/w5-02 kept. Gaps: [HIGH] plan.json: W5-02's acceptance was unilaterally rewritten (clause 2, 'deliverables editable in the artifact viewer', deleted — plan.json:1637-1638) and status flipped straight to 'done' (plan.json:1644) in the very same pass that performed the split, by the same session whose prior close was rejected. The notes justify this as mirroring the W3-13→W3-17 precedent, but that precedent's actual discipline was the opposite: W3-13 stayed status:'in_progress' (plan.json:1068) after splitting out W3-17, with an explicit note 'This ticket (W3-13) stays in_progress, not done, until W3-17 and the W"
+        "CONDUCTOR 2026-07-16T10:28:49.725Z: blocked after 2 attempts. Branch sw/w5-02 kept. Gaps: [HIGH] plan.json: W5-02's acceptance was unilaterally rewritten (clause 2, 'deliverables editable in the artifact viewer', deleted — plan.json:1637-1638) and status flipped straight to 'done' (plan.json:1644) in the very same pass that performed the split, by the same session whose prior close was rejected. The notes justify this as mirroring the W3-13→W3-17 precedent, but that precedent's actual discipline was the opposite: W3-13 stayed status:'in_progress' (plan.json:1068) after splitting out W3-17, with an explicit note 'This ticket (W3-13) stays in_progress, not done, until W3-17 and the W",
+        "DECOMPOSE 2026-07-18 (Brad-approved split-per-lane): the \"deliverables editable in the artifact viewer\" half needs apps/web (outside this pipeline ticket) — moved to new W5-12 (ui, depends_on W4-05+W5-02). This ticket keeps the interview engine + chat cards + NEVER-AUTO (engine already built+gated on blocked/w5-02). Rebuild fresh on current main (branches are stale vs trust-core+W4)."
       ],
       "stories": []
     },
@@ -1755,8 +1756,7 @@
       "module": "pipeline",
       "lane": "pipeline",
       "write_scope": [
-        "packages/pipeline/src/decisions/**",
-        "apps/web/src/decisions/**"
+        "packages/pipeline/src/decisions/**"
       ],
       "depends_on": [
         "W5-01",
@@ -1767,10 +1767,11 @@
         "Technical-fork slates use the design-options discipline: exactly 3 options (Minimal/Clean/Pragmatic) compared on 6 fixed dimensions (time, maintainability, scalability, team-fit, risk, reversibility), recommendation tied to a named constraint; founder forks keep the free 2-4 format (R-H1)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-H1).",
-        "CONDUCTOR 2026-07-16T11:00:50.373Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-16T11:00:50.373Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "DECOMPOSE 2026-07-18 (Brad-approved split-per-lane): keep the pipeline decisions ENGINE (slate logic + DECISIONS.md append). Server route + events/DB persistence -> W5-13 (depends_on W5-03); web decisions UI -> W5-14 (depends_on W5-03+W5-13). apps/web/src/decisions/** removed from this scope. Rebuild engine fresh on current main."
       ],
       "stories": [
         "US-103"
@@ -1805,7 +1806,8 @@
       "module": "pipeline",
       "lane": "pipeline",
       "write_scope": [
-        "packages/pipeline/src/research/**"
+        "packages/pipeline/src/research/**",
+        "content/research-templates/**"
       ],
       "depends_on": [
         "W5-01"
@@ -1815,9 +1817,10 @@
         "Phase 0 market, Phase 1 feasibility, Phase 3 design-options + build-vs-adopt, Phase 4 pre-code API verification templates shipped as content"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
-        "CONDUCTOR 2026-07-16T11:33:47.860Z: blocked after 2 attempts. Branch sw/w5-05 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-16T11:33:47.860Z: blocked after 2 attempts. Branch sw/w5-05 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "DECOMPOSE 2026-07-18: AC2 (\"phase templates shipped as content\") is content/ data, not another lane — widened scope to content/research-templates/** (mirrors W5-10 owning content/plan-catalog). No new ticket. Research engine (AC1) already built+gated on blocked/w5-05; rebuild fresh on current main."
       ],
       "stories": [
         "US-105"
@@ -1942,17 +1945,16 @@
       ],
       "acceptance": [
         "Versioned deterministic catalog (content/plan-catalog, data not code): entries {id, condition over receipts/coverage/finding-ledger snapshots, recommendation template, machine-checkable verify criterion}; evaluation over a fixture snapshot is byte-stable and produces exactly the expected plan items (FR-PLAN1)",
-        "plan_items lifecycle proposed/accepted/in_progress/done/regressed per DATABASE.md §5b; deterministic ranking (severity x leverage x staleness, property-tested); accepting an item mints a board ticket carrying the item verify (FR-PLAN2)",
-        "Nightly auto-verify re-evaluates accepted items against fresh snapshots, flips done/regressed, emits Review-tier notifications on regression; zero Decide pops (FR-PLAN3); no code path passes LLM output into item creation (FR-PLAN4, lint/type-level gate)",
-        "Evaluation triggers wired: catalog evaluates after every completed run and on Improve-mode entry (FR-PLAN1), not only on fixture snapshots"
+        "plan_items lifecycle proposed/accepted/in_progress/done/regressed per DATABASE.md §5b; deterministic ranking (severity x leverage x staleness, property-tested); accepting an item mints a board ticket carrying the item verify (FR-PLAN2)"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md. AMENDED 2026-07-14 challenger fix.",
         "CONDUCTOR 2026-07-16T13:34:05.773Z: blocked after 2 attempts. Branch sw/w5-10 kept. Gaps: plan.json status is 'in_progress', expected 'done'",
         "SCOPE FIX 2026-07-18: widened to packages/pipeline/src/index.ts — the pipeline barrel is still the W0-01 placeholder with zero re-exports, so the plans module cannot be exposed within a plans-only scope (same seam class as harbormaster/shared). Add the plans re-export to the barrel; keep the rest of your work in pipeline/src/plans/** + content/plan-catalog/**.",
-        "CONDUCTOR 2026-07-18T21:39:23.507Z: blocked after 2 attempts. Branch sw/w5-10 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-18T21:39:23.507Z: blocked after 2 attempts. Branch sw/w5-10 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "DECOMPOSE 2026-07-18 (Brad-approved): keep the catalog+engine (AC1/AC2 — genuinely complete, 53 tests). AC3 (nightly auto-verify caller) + AC4 (evaluation triggers after run / Improve-entry) need a live caller in apps/server, outside pipeline scope -> new W5-15 (depends_on W5-10). Rebuild engine fresh on current main."
       ],
       "stories": [
         "US-108",
@@ -2472,6 +2474,101 @@
       "notes": [
         "ADDED 2026-07-15 from the W4-02 block-note (L-32): per-AC dependency closure — the fairness engine is gateway-lane work depending on routing (W2-05) and berths (W3-04), not a Fleet-UI concern.",
         "AGENT 2026-07-18: done. packages/gateway/src/pool/ — fair-scheduler.ts (FairScheduler: capacity-limited round-robin keyed by an arbitrary partition key — a partition enters the rotation on empty->nonempty transition and is re-appended to the back each time it's dispatched while still backlogged, so a deep-backlog key never blocks a shallow one for more than one lap; capacity accepts a positive integer or Infinity); gateway-pool.ts (GatewayPool: process-wide per-endpoint registry, one FairScheduler per endpoint id keyed by projectId, default concurrency 1 per FR-G1, per-endpoint override map); governor.ts (GlobalBerthGovernor + resolveGovernorCap: a three-scope run>project>global cap on summed active berths across all projects, reusing the same FairScheduler so berths admit fairly when contended; unset scopes -> Infinity/ungoverned, deferring to each project's own W3-04 per-project berths dial). packages/gateway has no workspace dependency on @shipwright/shared within this ticket's write_scope (packages/gateway/src/pool/** only — package.json is out of scope), same constraint W2-05/W3-04 hit, so the three-scope precedence is reimplemented locally (flat global/project/run number, not routing's per-role ThreeScopeMap) rather than imported; documented as a comment in governor.ts. Not re-exported from packages/gateway/src/index.ts (out of write_scope), same gap left by prior gateway tickets — HANDOFF note in pool/index.ts. Wiring one process-wide GatewayPool/GlobalBerthGovernor instance into apps/server is a composition-root concern outside this ticket's write_scope, same drop-in-unit posture as W3-04's BerthTicketRunner. Acceptance 1: gateway-pool.test.ts's fair-cross-project-scheduling test simulates two autorunning fixture projects (one with a 4-deep backlog) against one single-slot fake endpoint and asserts B's first request lands before A's backlog fully drains (request-order assertion, FR-F3/US-805); fair-scheduler.test.ts's does-not-starve test proves the discriminating property directly: a shallow-backlog partition's start position stays constant (3rd) regardless of how deep the other partition's backlog is (D=2 vs D=8) — under plain FIFO that position would grow unbounded with D. Acceptance 2: governor.test.ts caps 5 requested berths (project X wants 3, Y wants 2) at a configured global cap of 4, asserting active count never exceeds 4, neither project is fully starved (X gets its full 3, Y gets 1 running + 1 queued), and the queued berth is admitted the moment a slot frees, still never exceeding the cap; a separate test proves run>project>global precedence and the clamp-to->=1 rule on the cap setting itself. 15 new tests (6 fair-scheduler, 5 governor, 4 gateway-pool) in packages/gateway/src/pool/*.test.ts. Full gate: pnpm lint && pnpm typecheck && pnpm test = 1693 passed | 1 skipped (224 test files) workspace-wide (354 in packages/gateway, 15 new in src/pool). node scripts/validate-plan.mjs = OK. node scripts/validate-traceability.mjs = OK (same 7 pre-existing gaps, none touching this ticket)."
+      ]
+    },
+    {
+      "id": "W5-12",
+      "title": "Interview deliverables editable in the artifact viewer",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/artifacts/**"
+      ],
+      "depends_on": [
+        "W4-05",
+        "W5-02"
+      ],
+      "stories": [],
+      "acceptance": [
+        "Interview/pipeline deliverables (VISION/SCOPE/personas/SRS/stories drafts) rendered in the W4-05 artifact viewer are editable in place; edits persist through the deliverable revision flow (revision.requested -> revision events). Split from W5-02 clause 1 — the artifact-viewer-editing half, which needs apps/web."
+      ],
+      "notes": "ADDED 2026-07-18 (W5-02 split-per-lane, Brad-approved). Owns the apps/web editing surface for pipeline deliverables that W5-02 (pipeline) cannot reach within its scope."
+    },
+    {
+      "id": "W5-13",
+      "title": "Decisions API route + events/DB persistence",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/api/decisions/**",
+        "packages/events/migrations/*decisions*"
+      ],
+      "depends_on": [
+        "W5-03"
+      ],
+      "stories": [
+        "US-103"
+      ],
+      "acceptance": [
+        "REST route(s) for decision slates (create/list/choose) backed by an events-log-projected decisions table (migration in packages/events/migrations; append-only + projection, Law 7). Choice + rationale flow appends through the W5-03 engine to docs/DECISIONS.md with stable D-IDs. Split from W5-03 — the backend half (apps/server + events), outside the pipeline engine scope."
+      ],
+      "notes": "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Backend persistence + route for the pipeline decisions engine."
+    },
+    {
+      "id": "W5-14",
+      "title": "Decisions web UI (slate cards)",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/decisions/**"
+      ],
+      "depends_on": [
+        "W5-03",
+        "W5-13"
+      ],
+      "stories": [
+        "US-103"
+      ],
+      "acceptance": [
+        "Slate cards in the web UI: 2-4 options with trade-offs and recommended default; technical-fork slates render the 3-option (Minimal/Clean/Pragmatic) x 6-dimension comparison; choosing an option calls the W5-13 route and reflects the recorded decision. Split from W5-03 — the apps/web UI half."
+      ],
+      "notes": "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Web surface for the decisions engine; consumes the W5-13 route."
+    },
+    {
+      "id": "W5-15",
+      "title": "Wire plans-catalog evaluation: run-completion trigger + nightly auto-verify",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/scheduler/**",
+        "apps/server/src/api/server.ts"
+      ],
+      "depends_on": [
+        "W5-10"
+      ],
+      "stories": [
+        "US-108",
+        "US-109"
+      ],
+      "acceptance": [
+        "The W5-10 plans catalog is evaluated by a LIVE caller: after every completed run and on Improve-mode entry (FR-PLAN1), not only on fixture snapshots. Wire the run-completion hook + the Improve-mode entry point to invoke the catalog engine.",
+        "Nightly auto-verify re-evaluates accepted plan items against fresh receipt/coverage/finding snapshots, flips done/regressed, and emits Review-tier notifications on regression (zero Decide-tier auto-actions). Split from W5-10 AC3/AC4 — the live-caller wiring, outside pipeline scope."
+      ],
+      "notes": [
+        "ADDED 2026-07-18 (W5-10 split-per-lane, Brad-approved). Owns the apps/server live callers (run hook, nightly scheduler) the W5-10 engine needs.",
+        "SCOPE 2026-07-18: nightly scheduler lives in a new apps/server/src/scheduler/** (avoids overlap with W5-11 pipeline which owns api/plans*); registered via server.ts. If the run-completion TRIGGER needs the harbormaster loop (orchestrator lane), HANDOFF rather than self-widen."
       ]
     }
   ]
