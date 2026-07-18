@@ -307,6 +307,22 @@ describe('board routes — GET tickets / POST verbs', () => {
     expect(problem.rule).toBe('MANIFEST_INVALID');
     expect(problem.detail).toContain('manifest requires');
   });
+
+  it('a corrupt fleet.json degrades a verb call to 503 problem+json, never an uncaught 500 (THREAT_MODEL §5.6)', async () => {
+    const { app, fleetHome } = await boot();
+    await registerProject(app, fleetHome, 'proj-corrupt');
+    await fs.writeFile(path.join(fleetHome, 'fleet.json'), '{not valid json', 'utf8');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=whatever`,
+      headers: { ...headers(), 'idempotency-key': 'k-corrupt-1' },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.json()).toMatchObject({ rule: 'FLEET_REGISTRY_CORRUPT' });
+  });
 });
 
 describe('D-020 accept-actor: operator != agent-maker by construction', () => {

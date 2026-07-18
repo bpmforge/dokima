@@ -16,7 +16,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { getReceipt, openEventLogReader, type ReceiptRecord } from '@shipwright/events';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
-import { resolveProjectRecord, stateDbPath } from './board-project.js';
+import { resolveProjectOrProblem, stateDbPath } from './board-project.js';
 import { notFound, badRequest } from './artifacts-helpers.js';
 
 function wireReceipt(record: ReceiptRecord) {
@@ -51,19 +51,13 @@ export function registerReceiptRoutes(
 ): void {
   const registryPath = computeFleetRegistryPath(opts.home);
 
-  async function projectPathOr404(
+  async function projectPathOrProblem(
     request: FastifyRequest,
     reply: FastifyReply,
     projectId: string,
   ): Promise<string | undefined> {
-    const record = await resolveProjectRecord(registryPath, projectId);
-    if (!record) {
-      await reply
-        .code(404)
-        .type(PROBLEM_CONTENT_TYPE)
-        .send(notFound(request, `no project registered with id ${projectId}`));
-      return undefined;
-    }
+    const record = await resolveProjectOrProblem(request, reply, registryPath, projectId);
+    if (!record) return undefined;
     return record.path;
   }
 
@@ -79,7 +73,7 @@ export function registerReceiptRoutes(
           .type(PROBLEM_CONTENT_TYPE)
           .send(badRequest(request, '"project" query param is required'));
       }
-      const projectPath = await projectPathOr404(request, reply, query.project);
+      const projectPath = await projectPathOrProblem(request, reply, query.project);
       if (!projectPath) return;
 
       const db = openEventLogReader(stateDbPath(projectPath));
@@ -104,7 +98,7 @@ export function registerReceiptRoutes(
     '/api/v1/projects/:id/receipts',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const projectPath = await projectPathOr404(request, reply, id);
+      const projectPath = await projectPathOrProblem(request, reply, id);
       if (!projectPath) return;
       const query = request.query as { kind?: string; ticket?: string };
 
@@ -143,7 +137,7 @@ export function registerReceiptRoutes(
     '/api/v1/projects/:id/approvals-ledger',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const projectPath = await projectPathOr404(request, reply, id);
+      const projectPath = await projectPathOrProblem(request, reply, id);
       if (!projectPath) return;
       return reply.send({ items: [] });
     },

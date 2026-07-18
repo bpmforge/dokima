@@ -27,7 +27,7 @@ import {
 import { computeFleetRegistryPath } from '../projects.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from './board-actor.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
-import { resolveProjectRecord, stateDbPath } from './board-project.js';
+import { resolveProjectOrProblem, stateDbPath } from './board-project.js';
 import {
   defaultBaseBranch,
   findTicketBranch,
@@ -93,26 +93,20 @@ export function registerArtifactRoutes(
 ): void {
   const registryPath = computeFleetRegistryPath(opts.home);
 
-  async function projectPathOr404(
+  async function projectPathOrProblem(
     request: FastifyRequest,
     reply: FastifyReply,
   ): Promise<string | undefined> {
     const { id } = request.params as { id: string };
-    const record = await resolveProjectRecord(registryPath, id);
-    if (!record) {
-      await reply
-        .code(404)
-        .type(PROBLEM_CONTENT_TYPE)
-        .send(notFound(request, `no project registered with id ${id}`));
-      return undefined;
-    }
+    const record = await resolveProjectOrProblem(request, reply, registryPath, id);
+    if (!record) return undefined;
     return record.path;
   }
 
   app.get(
     '/api/v1/projects/:id/artifacts',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const projectPath = await projectPathOr404(request, reply);
+      const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const files = await listMarkdownFiles(projectPath, DOCS_SUBDIR);
       const items = await Promise.all(
@@ -134,7 +128,7 @@ export function registerArtifactRoutes(
   app.get(
     '/api/v1/projects/:id/artifacts/doc',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const projectPath = await projectPathOr404(request, reply);
+      const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const query = request.query as { path?: string; rev?: string };
       if (!query.path || !isSafeRelativePath(query.path)) {
@@ -176,7 +170,7 @@ export function registerArtifactRoutes(
   app.get(
     '/api/v1/projects/:id/artifacts/diff',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const projectPath = await projectPathOr404(request, reply);
+      const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const query = request.query as { path?: string; ticket?: string };
       if (!query.path || !isSafeRelativePath(query.path) || !query.ticket) {
@@ -212,7 +206,7 @@ export function registerArtifactRoutes(
   app.get(
     '/api/v1/projects/:id/artifacts/doc-diff',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const projectPath = await projectPathOr404(request, reply);
+      const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const query = request.query as { path?: string; from?: string; to?: string };
       if (!query.path || !isSafeRelativePath(query.path) || !query.from) {
@@ -253,7 +247,7 @@ export function registerArtifactRoutes(
   app.get(
     '/api/v1/projects/:id/artifacts/comments',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const projectPath = await projectPathOr404(request, reply);
+      const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const query = request.query as { path?: string };
       if (!query.path) {
@@ -299,7 +293,7 @@ export function registerArtifactRoutes(
   app.post(
     '/api/v1/projects/:id/artifacts/comments',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const projectPath = await projectPathOr404(request, reply);
+      const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const body = request.body as Partial<ArtifactCommentPayload> | undefined;
       if (
