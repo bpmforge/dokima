@@ -1,37 +1,32 @@
-# Security pass — wave W4 (2026-07-18T21:06:22.472Z)
+# Security pass — wave W4 (2026-07-18T23:17:20.711Z)
 
 ```json
 {
   "critical": [],
   "high": [
     {
-      "file": "apps/server/src/api/server/notifications-routes/emit-route.ts",
-      "issue": "POST /api/v1/projects/:id/notifications lets any bearer-token holder create Decide/Review-tier notifications (e.g. kind: 'approval', 'pr_ready', 'gate_passed') with completely free-form title/body/ref_type/ref_id. Nothing checks that ref_id/ref_type point to a real ticket, or that a gate/close receipt actually backs the claim (contrast with artifacts-routes.ts's isGatedDeliverable, which does check receipts before setting revisionRequested). This breaks the 'receipts required for durable state claims' trust model: a caller can fabricate an 'approval' card claiming a PR is ready or a gate passed, and it will surface unmodified in the human's morning queue (GET /api/v1/approvals/queue) with no indication it is unverified.",
-      "fix": "For tier=decide/review kinds that assert a fact about project state (pr_ready, gate_passed, approval), require and verify a receipt id (or ticket+gate lookup) server-side before accepting the emission, and surface provenance (receipt id / verified: true|false) in the wire payload so the UI can visually distinguish system-verified cards from freeform ones."
+      "file": "apps/server/src/api/events-sse.ts",
+      "issue": "SseSocket.send()/ping() call reply.raw.write() with no 'error' listener registered on the hijacked response stream, and the socket's `state` is only ever transitioned to CLOSED via an explicit terminate() call — it is never updated on a real network-level failure (e.g. TCP RST from a dropped client connection). ping() also unconditionally self-emits 'pong' every heartbeat regardless of whether the underlying socket is actually alive, so a truly-dead connection is never detected and removed. The next scheduled publish/heartbeat then calls .write() on a destroyed stream; Node emits an unhandled 'error' event on writes to a destroyed/errored stream, which is fatal (crashes the process) when no listener is attached. Any authenticated client's ordinary network drop (mobile handoff, laptop sleep, NAT timeout) can therefore crash the whole server for all projects/users.",
+      "fix": "Register reply.raw.on('error', () => socket.terminate()) (and request.raw.on('error', ...)) in registerEventsSseRoute so socket/stream errors are handled instead of left unhandled, and have terminate() flip `state` first so any in-flight write is skipped rather than racing another write."
     }
   ],
   "medium": [
     {
-      "file": "apps/server/src/api/server/notifications-routes/decide-routes.ts",
-      "issue": "decideNotification/dismissNotification always record actorId as the hardcoded OPERATOR_ACTOR_ID regardless of which caller (any holder of the shared bearer token) actually issued the request. The resulting notification.decided event is the durable record of a human approval decision, but it provides no real non-repudiation — any process with API access produces an indistinguishable 'operator approved' event.",
-      "fix": "If this endpoint can ever be reached by more than the single interactive browser session (e.g. multiple operator devices, or future automation), thread a real caller identity (from auth context) into actorId instead of a constant, so the event log's hash chain reflects who actually decided."
+      "file": "apps/server/src/api/events-sse.ts",
+      "issue": "ping() synthesizes its own 'pong' event unconditionally (`this.emit('pong')` immediately after writing the heartbeat comment), which defeats WsHub's missed-heartbeat dead-connection reaping for every SSE subscriber — a connection whose TCP path is already black-holed (no FIN/RST reaches the server) is kept 'alive' in WsHub's subscription/replay-buffer bookkeeping forever. Combined with no cap on concurrent SSE connections and no backpressure check on reply.raw.write()'s return value, a client (or several) that opens many subscriptions and stops reading responses can accumulate unbounded buffered writes and zombie hub state.",
+      "fix": "Track real liveness independently (e.g. time since last successful flush, or rely on request.raw timeout/keep-alive settings) instead of self-acking every ping; check the boolean returned by reply.raw.write() and pause/drop publishes (or terminate the socket) when the underlying socket reports backpressure; consider capping concurrent SSE connections per token."
     },
     {
-      "file": "apps/server/src/api/server/artifacts-routes.ts",
-      "issue": "POST /artifacts/comments and GET /artifacts/comments accept/query an arbitrary body.path / query.path without ever running it through isSafeRelativePath (unlike the /doc, /diff, /doc-diff routes). Currently the value is only used as a string-compare filter, not a filesystem path, so it isn't exploitable today, but the value is persisted to the event log and re-read by other consumers — any future code path that uses the stored comment path for a file operation would reintroduce the path-traversal / dot-prefix leak class this file's own header describes fixing elsewhere.",
-      "fix": "Validate body.path with isSafeRelativePath at write time (reject 400 on failure), consistent with the other artifact routes, so no unsafe path can ever enter the event log via this route."
+      "file": "apps/server/src/api/server/runs-routes.ts",
+      "issue": "registerRunsRoutes (and ticket-edit-routes.ts) still call the old resolveProjectRecord() directly instead of the hardened resolveProjectOrProblem() introduced in this same wave (board-project.ts). A corrupt fleet.json therefore causes an uncaught FleetRegistryCorruptError to propagate out of the route handler on these two new endpoints, falling back to Fastify's generic (non problem+json) 500 instead of the intended 503, inconsistent with every other route hardened in this diff (THREAT_MODEL §5.6) and a possible stack-trace/path disclosure if the default Fastify error handler isn't hardened.",
+      "fix": "Switch both files to resolveProjectOrProblem(request, reply, registryPath, projectId) like board-routes.ts/estimate-routes.ts/receipts-routes.ts do, so corrupt-registry cases return a clean 503 problem+json."
     },
     {
-      "file": "apps/server/src/api/server/notifications-routes/shared.ts",
-      "issue": "refreshAndListProjectNotifications performs writes (promoteEligibleNotifications, maybeEmitTrustGraduationSuggestion — both open the DB in write mode and INSERT/UPDATE) as a side effect of every GET /api/v1/notifications and GET /api/v1/approvals/queue call. GET requests are expected to be safe/idempotent; any prefetching, browser extension, proxy, or link-scanner that issues a GET could trigger unintended state promotion (pushing a Decide item live, minting a trust-graduation suggestion) outside of explicit user action.",
-      "fix": "Move promotion/suggestion evaluation to an explicit POST/refresh action or a background tick, and make GET routes read-only."
-    },
-    {
-      "file": "apps/server/src/api/server/artifacts-routes.test.ts",
-      "issue": "Hardcoded receipt-signing secret ('test-minting-secret') is committed in source (duplicated in receipts-routes.test.ts). Test-only, but if this value or pattern is ever reused as a placeholder default in non-test config it would be a real key-leak.",
-      "fix": "Keep as-is for tests but confirm no production code path defaults SIGNING_KEY/signingKey to a literal fallback string; require it to be sourced from keychain/env with no hardcoded default (per FR-S2)."
+      "file": "apps/server/src/api/idempotency.ts",
+      "issue": "IdempotencyStore is a single process-wide keyed cache with no structural tenant scoping — correctness of the cross-project isolation proven in board-routes.test.ts depends entirely on every call site manually remembering to prefix keys with projectId (as the module comment itself flags as a MUST). Nothing in the type or API prevents a future route from reusing a bare ticket/verb key and silently replaying another project's cached mutation response to a caller who only supplied a different `project` query param.",
+      "fix": "Make project scoping structural rather than convention-based, e.g. require IdempotencyStore.get/put to take (projectId, key) as separate parameters and compose the composite key internally, so it's impossible to construct an unscoped replay key by omission."
     }
   ],
-  "notes": "Git-invocation surface (git-read.ts) is well-defended: execFile with argv arrays (no shell), isSafeGitRevision blocks option-injection (leading '-', tested against --output=... arbitrary-file-write), isSafeRelativePath blocks traversal/absolute/dot-prefixed segments, and readWorkingTree adds a realpath-based symlink check with dedicated regression tests — no command/path injection found there. All SQL is parameterized (? or named params via better-sqlite3); no SQL injection found. No unsafe deserialization (JSON.parse only, no eval/vm/yaml.load). No new third-party dependencies introduced in this diff. Diff was truncated mid-file at apps/server/src/api/server/rules-routes.ts (POST .../rules/:ruleId/register) — that route and anything after it could not be reviewed."
+  "notes": "Reviewed for OWASP classes, secrets, command/path injection, trust-boundary violations, unsafe deserialization, and dependency risk. Artifact doc/diff routes retain existing isSafeRelativePath/isSafeGitRevision validation before any git-read call — no new git argument-injection surface found. PATCH /tickets/:id (ticket-edit-routes.ts) correctly refuses to fabricate a state mutation (returns 501 NOT_PERSISTED) rather than bypassing the receipts/event-log trust boundary — good adherence to Law 4. Idempotency keys for verb and comment routes are properly prefixed with projectId at both current call sites (verified by the added cross-project collision test), so the medium finding above is about future-proofing, not a currently exploitable gap. Test-only hardcoded tokens (e.g. 'test-token-0123456789abcdef') are fixture values, not real secrets. The only new dependency, @axe-core/playwright, is a devDependency used solely by Playwright a11y specs and ships in no production bundle."
 }
 ```
