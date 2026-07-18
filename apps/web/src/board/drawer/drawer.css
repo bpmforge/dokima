@@ -1,0 +1,79 @@
+.ticket-drawer__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 35%);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1500;
+}
+
+.ticket-drawer {
+  width: min(32rem, 95vw);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  border-left: 1px solid var(--sw-border);
+  padding: 1rem 1.25rem;
+}
+
+.ticket-drawer__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticket-drawer *:focus-visible {
+  outline: 2px solid var(--sw-accent);
+  outline-offset: 2px;
+}
+
+.ticket-drawer__contract-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+}
+
+.ticket-drawer__empty {
+  opacity: 0.75;
+  font-style: italic;
+}
+
+.ticket-drawer__acceptance li,
+.ticket-drawer__history li {
+  margin-bottom: 0.35rem;
+}
+
+.ticket-drawer__spend-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.ticket-drawer__spend-table th,
+.ticket-drawer__spend-table td {
+  border: 1px solid var(--sw-border);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+}
+
+.ticket-drawer__dag-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0;
+}
+
+.ticket-drawer__dag-chip {
+  border: 1px solid var(--sw-border);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+.ticket-drawer__dag-result--refused {
+  color: #b3261e;
+}
+
+.ticket-drawer__dag-result--not-persisted {
+  opacity: 0.85;
+}

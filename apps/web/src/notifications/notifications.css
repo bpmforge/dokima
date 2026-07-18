@@ -148,15 +148,21 @@
   gap: 0.5rem;
   font-size: 0.75rem;
   text-transform: uppercase;
-  opacity: 0.75;
 }
 
 .notification-card__tier {
   font-weight: 600;
 }
 
+/*
+ * WCAG 1.4.3 (AA 4.5:1): these three used to lean on `opacity` for a
+ * "muted" look, but opacity dims against the page background regardless
+ * of theme and compounded across nested elements (the axe a11y CI gate,
+ * W4-12, caught the real failure this produced on the morning queue) —
+ * solid, already-AA colors instead of alpha.
+ */
 .notification-card__tier--decide {
-  color: var(--sw-attention, #d64545);
+  color: var(--sw-attention, #b3261e);
 }
 
 .notification-card__tier--review {
@@ -164,12 +170,12 @@
 }
 
 .notification-card__tier--record {
-  opacity: 0.7;
+  color: var(--sw-fg);
 }
 
 .notification-card__project {
   margin-left: auto;
-  opacity: 0.7;
+  color: var(--sw-fg);
 }
 
 .notification-card__title {

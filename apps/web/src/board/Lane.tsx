@@ -18,7 +18,12 @@ export function Lane({ lane, heartbeats, onDrop, onFireVerb }: LaneProps) {
       data-testid={`lane-${lane.lane}`}
     >
       <h3 className="board-lane__title">{lane.lane}</h3>
-      <div className="board-lane__columns">
+      <div
+        className="board-lane__columns"
+        tabIndex={0}
+        role="group"
+        aria-label={`${lane.lane} columns, scrollable`}
+      >
         {lane.columns.map((column) => (
           <Column
             key={column.status}

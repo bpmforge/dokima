@@ -32,6 +32,8 @@ import {
   registerEstimateRoutes,
   registerNotificationRoutes,
   registerReceiptRoutes,
+  registerRunsRoutes,
+  registerTicketEditRoutes,
 } from './server/index.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
@@ -72,6 +74,8 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerEstimateRoutes(app, { home: opts.fleetHome });
   registerArtifactRoutes(app, { home: opts.fleetHome });
   registerReceiptRoutes(app, { home: opts.fleetHome });
+  registerRunsRoutes(app, { home: opts.fleetHome });
+  registerTicketEditRoutes(app, { home: opts.fleetHome });
   registerNotificationRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });

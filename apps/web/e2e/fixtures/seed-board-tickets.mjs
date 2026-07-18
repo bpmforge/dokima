@@ -74,6 +74,44 @@ try {
       lane: 'ui',
       writeScope: ['a/**'],
     });
+  } else if (scenario === 'dag-switch') {
+    // Two independent 'ready' tickets with different dependsOn (one
+    // resolved dep, one none) so the drawer's DagEditPanel shows visibly
+    // different chip lists per ticket — proves ticket-switch-while-open
+    // resets DagEditPanel's local draft state instead of carrying over the
+    // previously-viewed ticket's dependencies.
+    createTicket(log, 'agent-1', {
+      id: 'E2E-DAG-BASE',
+      type: 'task',
+      title: 'Base dependency',
+      lane: 'ui',
+      writeScope: ['a/**'],
+    });
+    claimTicket(log, { ticketId: 'E2E-DAG-BASE', actorId: 'agent-1' });
+    startTicket(log, { ticketId: 'E2E-DAG-BASE', actorId: 'agent-1' });
+    closeTicket(log, {
+      ticketId: 'E2E-DAG-BASE',
+      actorId: 'agent-1',
+      files: ['a/x.ts'],
+      commits: ['abc1234'],
+      verify: { command: 'pnpm test', exitCode: 0 },
+    });
+    acceptTicket(log, { ticketId: 'E2E-DAG-BASE', actorId: 'reviewer-1' });
+    createTicket(log, 'agent-1', {
+      id: 'E2E-DAG-1',
+      type: 'task',
+      title: 'Depends on base',
+      lane: 'ui',
+      writeScope: ['b/**'],
+      dependsOn: ['E2E-DAG-BASE'],
+    });
+    createTicket(log, 'agent-1', {
+      id: 'E2E-DAG-2',
+      type: 'task',
+      title: 'No dependencies',
+      lane: 'ui',
+      writeScope: ['c/**'],
+    });
   } else if (scenario === 'drag-refuse-close') {
     // Seeded straight to in_progress/owned-by-operator (via direct verb calls,
     // modeling the board's own claim+start) rather than driving it there
