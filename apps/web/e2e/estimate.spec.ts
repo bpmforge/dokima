@@ -10,8 +10,18 @@ import { expect, test, type Page } from '@playwright/test';
  * Dry-run estimate / escalation-ROI / weekly digest (BLUEPRINT §12.2,
  * FR-G7, US-307/309) against the real apps/server — same discipline as
  * board.spec.ts (real REST fetch, real seeded ticket events, not a mocked
- * browser API). The estimate pane portals into `pane-artifacts`
- * (App.tsx), same pattern chat/board use for their panes.
+ * browser API).
+ *
+ * The three tests below assert on `EstimateWorkspace` mounted into
+ * `pane-artifacts`, a stopgap this ticket's own header comment named as
+ * temporary: the estimate UI's real home is the Settings Matrix
+ * (UX_SPEC §6), which doesn't exist yet. W4-05 gives `pane-artifacts` its
+ * actual, spec'd producer (the Artifact Viewer, UX_SPEC §5) and evicts this
+ * portal — App.tsx no longer mounts `EstimateWorkspace` anywhere. Skipped
+ * (loud, not deleted — FR-L4 discipline) rather than silently dropped;
+ * HANDOFF in plan.json's W4-06 notes to re-mount under the Settings Matrix
+ * and un-skip these. The server routes/engine and `EstimateWorkspace`
+ * component are untouched — only UI reachability changed.
  */
 test.use({ viewport: { width: 2400, height: 1000 } });
 
@@ -52,7 +62,7 @@ async function openFreshProject(page: Page, name: string, dir: string): Promise<
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 }
 
-test('empty board yields an honest empty estimate, not a fabricated total', async ({
+test.skip('empty board yields an honest empty estimate, not a fabricated total', async ({
   page,
 }) => {
   const { dir, name } = freshProjectPath();
@@ -62,7 +72,7 @@ test('empty board yields an honest empty estimate, not a fabricated total', asyn
   await expect(artifacts.getByTestId('estimate-empty')).toBeVisible();
 });
 
-test('real board tickets drive a per-wave breakdown, and what-if recomputes deterministically (FR-G7)', async ({
+test.skip('real board tickets drive a per-wave breakdown, and what-if recomputes deterministically (FR-G7)', async ({
   page,
 }) => {
   const { dir, name } = freshProjectPath();
@@ -93,7 +103,7 @@ test('real board tickets drive a per-wave breakdown, and what-if recomputes dete
     .toBeLessThan(baseTotal);
 });
 
-test('escalation-ROI view and weekly digest render honest-empty until a spend ledger exists (US-309)', async ({
+test.skip('escalation-ROI view and weekly digest render honest-empty until a spend ledger exists (US-309)', async ({
   page,
 }) => {
   const { dir, name } = freshProjectPath();
