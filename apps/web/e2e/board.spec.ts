@@ -142,3 +142,37 @@ test('dragging an in-progress card to In Review with no manifest is refused inli
     lane.getByTestId('column-in_progress').getByTestId('card-E2E-REFUSE-1'),
   ).toBeVisible();
 });
+
+test('jumping to another ticket while the drawer stays open resets the DAG edit panel (regression)', async ({
+  page,
+}) => {
+  const { dir, name } = freshProjectPath();
+  await openFreshProject(page, name, dir);
+  seed(path.join(dir, '.shipwright', 'state.db'), 'dag-switch');
+  await page.reload();
+
+  const lane = page.getByTestId('lane-ui');
+  await lane.getByTestId('column-ready').getByTestId('card-E2E-DAG-1').click();
+
+  const drawer = page.getByTestId('ticket-drawer');
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toHaveAttribute('aria-label', 'Ticket E2E-DAG-1 detail');
+  const dagPanel = drawer.getByTestId('dag-edit-panel');
+  await expect(dagPanel).toContainText('E2E-DAG-BASE');
+
+  // ⌘K jump to a different ticket without closing the drawer — App.tsx's
+  // onJumpToTicket just changes `openTicketId`, it never unmounts
+  // TicketDrawer, so DagEditPanel must reset its own draft state per-ticket
+  // rather than carrying over E2E-DAG-1's dependency chip.
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('command-palette')).toBeVisible();
+  await page.getByTestId('command-palette-input').fill('E2E-DAG-2');
+  await page
+    .getByTestId('palette-result-ticket:E2E-DAG-2')
+    .getByRole('button', { name: 'No dependencies' })
+    .click();
+
+  await expect(drawer).toHaveAttribute('aria-label', 'Ticket E2E-DAG-2 detail');
+  await expect(dagPanel).not.toContainText('E2E-DAG-BASE');
+  await expect(dagPanel).toContainText('No dependencies');
+});

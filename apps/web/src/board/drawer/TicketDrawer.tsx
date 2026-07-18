@@ -126,6 +126,7 @@ export function TicketDrawer({
               <section aria-label="Pre-build DAG edit">
                 <h3>Edit dependencies</h3>
                 <DagEditPanel
+                  key={ticket.id}
                   ticketId={ticket.id}
                   dependsOn={ticket.dependsOn}
                   allTickets={tickets}
