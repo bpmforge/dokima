@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  collectSecretValues,
+  createInMemoryCredentialStore,
+  createProjectSecretsVault,
+} from '@shipwright/shared';
+import { afterEach, describe, expect, it } from 'vitest';
 import { renderHandoff, type Handoff } from './handoff.js';
 
 const SAMPLE: Handoff = {
@@ -43,5 +51,49 @@ describe('renderHandoff', () => {
   it('renders an empty write-scope as an empty (never omitted) field', () => {
     const rendered = renderHandoff({ ...SAMPLE, writeScope: [] });
     expect(rendered).toContain('WRITE-SCOPE: \n');
+  });
+});
+
+describe('renderHandoff redaction (SC-06)', () => {
+  let tmpDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(tmpDirs.map((dir) => fs.rm(dir, { recursive: true, force: true })));
+    tmpDirs = [];
+  });
+
+  async function mkTmp(): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-handoff-test-'));
+    tmpDirs.push(dir);
+    return dir;
+  }
+
+  it('redacts a planted vault-registered and .env-sourced secret from context/produce/verify', async () => {
+    const home = await mkTmp();
+    const projectDir = await mkTmp();
+    const vault = createProjectSecretsVault(createInMemoryCredentialStore(), projectDir, {
+      SHIPWRIGHT_HOME: home,
+    });
+    await vault.register('forge-token', 'vault-planted-value');
+    await fs.writeFile(path.join(projectDir, '.env'), 'DB_PASSWORD=env-planted-value\n');
+    const secretValues = await collectSecretValues(vault, projectDir);
+
+    const handoff: Handoff = {
+      ...SAMPLE,
+      context: 'connect using vault-planted-value then env-planted-value',
+      produce: ['use vault-planted-value in the config'],
+      verify: 'curl -H "Authorization: env-planted-value" https://example.test',
+    };
+
+    const rendered = renderHandoff(handoff, { secretValues });
+
+    expect(rendered).not.toContain('vault-planted-value');
+    expect(rendered).not.toContain('env-planted-value');
+    expect(rendered).toContain('[REDACTED:secret]');
+  });
+
+  it('leaves context/produce/verify unredacted when no secretValues are supplied and no known pattern matches', () => {
+    const rendered = renderHandoff(SAMPLE);
+    expect(rendered).toContain(SAMPLE.context);
   });
 });

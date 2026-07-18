@@ -8,6 +8,8 @@
  * ticket fields a HANDOFF needs, not the full ticket contract.
  */
 
+import { redactDeep } from '@shipwright/shared';
+
 export interface HandoffTicket {
   readonly id: string;
   readonly title: string;
@@ -33,16 +35,50 @@ const BLOCK_RULE = '═'.repeat(40);
 const RETURN_LINE =
   'RETURN: Completion Manifest (files produced, verify result, evidence)';
 
-/** Renders a `Handoff` to the universal `════`-delimited block format (BLUEPRINT §4). */
-export function renderHandoff(handoff: Handoff): string {
+export interface RenderHandoffOptions {
+  /**
+   * Extra secret values to redact beyond known live-credential shapes
+   * (SC-06) — typically the result of `collectSecretValues(vault,
+   * projectDir)` (`@shipwright/shared`), gathered by the caller before
+   * rendering since collecting them is async (vault + `.env` file reads)
+   * while `renderHandoff` itself stays sync (BLUEPRINT §4: it must run
+   * inline wherever a HANDOFF is assembled, including synchronous
+   * call sites). Omit to still get pattern-based redaction only.
+   *
+   * KNOWN LIMITATION (review LOW, tracked here per W3-17 acceptance
+   * criterion 4): `collectSecretValues`'s `.env` loading
+   * (`packages/shared/src/secrets/env-secrets.ts`) currently reads only a
+   * single `.env` file in the project root — `.env.local` and
+   * `.env.*.local` variants are not loaded. A secret that lives only in one
+   * of those variant files will not appear in `secretValues` and will not
+   * be redacted here. Widening `loadEnvFileSecretValues`/
+   * `collectSecretValues` to the full variant set is out of this ticket's
+   * write_scope (owned by W3-13, `packages/shared/src/secrets/**`).
+   */
+  readonly secretValues?: readonly string[];
+}
+
+/**
+ * Renders a `Handoff` to the universal `════`-delimited block format
+ * (BLUEPRINT §4). This is the universal choke point for every HANDOFF
+ * regardless of which future ticket assembles the packet content (FR-L5):
+ * `context`/`produce`/`verify` are redacted (SC-06, `redactDeep`) before the
+ * block is returned, so a secret that slips past upstream assembly still
+ * never reaches a spawned session, an API call, or a human's screen.
+ */
+export function renderHandoff(handoff: Handoff, opts: RenderHandoffOptions = {}): string {
+  const secretValues = opts.secretValues ?? [];
+  const context = redactDeep(handoff.context, secretValues);
+  const produce = redactDeep(handoff.produce, secretValues);
+  const verify = redactDeep(handoff.verify, secretValues);
   const lines = [
     BLOCK_RULE,
     `ROLE: ${handoff.role} — ${handoff.mission}`,
     `TICKET: ${handoff.ticket.id} ${handoff.ticket.title}`,
-    `CONTEXT: ${handoff.context}`,
+    `CONTEXT: ${context}`,
     `WRITE-SCOPE: ${handoff.writeScope.join(', ')}`,
-    `PRODUCE: ${handoff.produce.join('; ')}`,
-    `VERIFY: ${handoff.verify}`,
+    `PRODUCE: ${produce.join('; ')}`,
+    `VERIFY: ${verify}`,
     RETURN_LINE,
     BLOCK_RULE,
   ];
