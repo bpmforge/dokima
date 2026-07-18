@@ -38,6 +38,9 @@ importers:
       '@shipwright/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@shipwright/harbormaster':
+        specifier: workspace:*
+        version: link:../../packages/harbormaster
       '@shipwright/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -48,6 +51,9 @@ importers:
         specifier: ^5.10.0
         version: 5.10.0
     devDependencies:
+      '@shipwright/git':
+        specifier: workspace:*
+        version: link:../../packages/git
       tsx:
         specifier: ^4.23.0
         version: 4.23.0

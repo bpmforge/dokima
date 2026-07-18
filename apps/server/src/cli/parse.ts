@@ -19,7 +19,9 @@ export type CliCommand =
       verify: VerifyResult;
       dbPath?: string;
     }
-  | { kind: 'comment'; ticketId: string; actorId: string; body: string; dbPath?: string };
+  | { kind: 'comment'; ticketId: string; actorId: string; body: string; dbPath?: string }
+  /** `shipwright run <start|pause|resume|stop> ...` (FR-C7) — `args` is the untouched rest, owned and parsed by `run-cmd.ts`. */
+  | { kind: 'run'; args: string[] };
 
 function isSimpleVerb(command: string): command is SimpleVerb {
   return (SIMPLE_VERBS as readonly string[]).includes(command);
@@ -42,8 +44,12 @@ export function parseCliArgs(argv: string[]): CliCommand {
   const [command, ...rest] = argv;
   if (!command) {
     throw new CliUsageError(
-      'usage: shipwright <board|verify-chain|claim|start|close|accept|release|comment> ...',
+      'usage: shipwright <board|verify-chain|claim|start|close|accept|release|comment|run> ...',
     );
+  }
+
+  if (command === 'run') {
+    return { kind: 'run', args: rest };
   }
 
   if (command === 'board' || command === 'verify-chain') {

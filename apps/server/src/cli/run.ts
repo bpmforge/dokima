@@ -13,6 +13,7 @@ import { renderBoard } from './board.js';
 import { openReadOnlyLog, openWritableLog, resolveDbPath } from './db.js';
 import { ensureActorIdentity } from './identity.js';
 import { CliUsageError, parseCliArgs, type SimpleVerb } from './parse.js';
+import { executeRunCommand } from './run-cmd.js';
 import { checkChain, renderChainResult } from './verify-chain.js';
 
 export interface CliIO {
@@ -57,6 +58,10 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       return 2;
     }
     throw err;
+  }
+
+  if (command.kind === 'run') {
+    return executeRunCommand(command.args, io);
   }
 
   const dbPath = resolveDbPath(io.cwd, command.dbPath);
