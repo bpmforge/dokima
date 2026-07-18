@@ -854,7 +854,7 @@
         "Property test: N berths over a fixture board never produce overlapping write-scope edits; budget breaker on one berth halts all berths at their next ticket boundary"
       ],
       "points": 5,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         "AGENT 2026-07-18: done. Added packages/harbormaster/src/berths-dial.ts (three-scope berths setting resolution + autorun=breakpoint-never x berths-N composition), berths-scheduler.ts (pickNextBerthTicket, the lane-exclusive picker), berths-identity.ts (ensureBerthIdentities, one machine identity per berth per DATABASE.md sec.2), and berths.ts (runBerths orchestrator: N concurrent berths, each own worktree/identity, shared breakerLevel/stopSwitch, shouldPauseAtBreakpoint wired in). Ticket work itself (sessions, close gate) is injected via BerthTicketRunner -- not wired into src/index.ts (out of this ticket write_scope, same drop-in-unit posture as watchdog-session.ts/limit-pause.ts); a future ticket composes runTicket with runSession/runCloseGate and exports the module from the package barrel.",
         "AGENT 2026-07-18: fast-check is a devDependency of @shipwright/events and @shipwright/tickets only, not @shipwright/harbormaster, and package.json is outside this ticket write_scope (packages/harbormaster/src|test/berths*) -- randomized/property-style coverage in test/berths*.property.test.ts and the randomized budget-breaker test in test/berths.test.ts uses a small seeded mulberry32 PRNG (test/berths-test-helpers.ts) instead of fast-check.",
