@@ -48,6 +48,41 @@ test('Settings with no project open shows the no-project state and a wizard entr
   await expect(page.getByRole('button', { name: 'Run Setup Wizard' })).toBeVisible();
 });
 
+test('first-run wizard: preset -> provider -> forge (skip) -> sample creates a real project (FR-S4)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Run Setup Wizard' }).click();
+  await expect(page.getByTestId('first-run-wizard')).toBeVisible();
+
+  await expect(page.getByTestId('wizard-step-preset')).toBeVisible();
+  await page.getByLabel(/Hybrid/).check();
+  await page
+    .getByTestId('wizard-step-preset')
+    .getByRole('button', { name: 'Next' })
+    .click();
+
+  await expect(page.getByTestId('wizard-step-provider')).toBeVisible();
+  await page
+    .getByTestId('wizard-step-provider')
+    .getByRole('button', { name: 'Next' })
+    .click();
+
+  await expect(page.getByTestId('wizard-step-forge')).toBeVisible();
+  await page
+    .getByTestId('wizard-step-forge')
+    .getByRole('button', { name: 'Skip' })
+    .click();
+
+  await expect(page.getByTestId('wizard-step-sample')).toBeVisible();
+  await page.getByRole('button', { name: 'Create sample project' }).click();
+
+  await expect(page.getByTestId('wizard-step-done')).toBeVisible();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
+});
+
 test('model matrix: add a row, and a copilot/-prefixed model is flagged', async ({
   page,
 }) => {

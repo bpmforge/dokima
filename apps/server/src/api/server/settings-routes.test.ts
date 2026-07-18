@@ -331,6 +331,17 @@ describe('settings routes', () => {
     });
     expect(settingsAfter.json().autonomy).toBeUndefined();
 
+    // Same blocklist on the global-scope generic PUT — defense in depth, even though
+    // matrix-routes.ts/consent-routes.ts only ever read the project-scope key today.
+    const globalBypassAttempt = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/settings/global',
+      headers: authHeaders(),
+      payload: { copilotEnabled: true },
+    });
+    expect(globalBypassAttempt.statusCode).toBe(403);
+    expect(globalBypassAttempt.json().rule).toBe('consent-gated-key');
+
     // The real consent-gate endpoint still works — the fix blocks only the generic PUT.
     const properEnable = await app.inject({
       method: 'POST',

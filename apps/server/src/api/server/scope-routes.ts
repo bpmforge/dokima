@@ -46,6 +46,28 @@ function findConsentGatedKey(body: Record<string, JsonValue>): string | undefine
   return Object.keys(body).find((key) => CONSENT_GATED_KEYS.has(key));
 }
 
+/** Sends the 403 refusal and returns true if `body` names a consent-gated key — call before any write, on both the global and project generic PUTs. */
+function refuseConsentGatedKey(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  body: unknown,
+): boolean {
+  if (!isPlainSettingsBody(body)) return false;
+  const gatedKey = findConsentGatedKey(body);
+  if (!gatedKey) return false;
+  reply
+    .code(403)
+    .type('application/problem+json')
+    .send(
+      forbidden(
+        request,
+        `"${gatedKey}" is consent-gated (D-019) and cannot be set via the generic settings PUT — use its dedicated consent endpoint instead`,
+        'consent-gated-key',
+      ),
+    );
+  return true;
+}
+
 async function applyEachKey(
   body: unknown,
   write: (key: string, value: JsonValue | undefined) => Promise<SettingsMap>,
@@ -76,6 +98,7 @@ export function registerScopeRoutes(
   app.put(
     '/api/v1/settings/global',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (refuseConsentGatedKey(request, reply, request.body)) return;
       const query = request.query as Record<string, unknown>;
       const loggingProjectPath =
         typeof query.project === 'string'
@@ -116,21 +139,7 @@ export function registerScopeRoutes(
       const { id } = request.params as { id: string };
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
-      if (isPlainSettingsBody(request.body)) {
-        const gatedKey = findConsentGatedKey(request.body);
-        if (gatedKey) {
-          return reply
-            .code(403)
-            .type('application/problem+json')
-            .send(
-              forbidden(
-                request,
-                `"${gatedKey}" is consent-gated (D-019) and cannot be set via the generic settings PUT — use its dedicated consent endpoint instead`,
-                'consent-gated-key',
-              ),
-            );
-        }
-      }
+      if (refuseConsentGatedKey(request, reply, request.body)) return;
       const next = await applyEachKey(request.body, (key, value) =>
         putProjectSetting(projectPath, key, value),
       );
