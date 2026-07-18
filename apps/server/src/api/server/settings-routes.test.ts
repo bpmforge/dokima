@@ -62,7 +62,7 @@ describe('settings routes', () => {
   });
 
   it('PUT then GET model-matrix round-trips and flags Copilot-backed rows once enabled', async () => {
-    const { app, projectId } = await boot();
+    const { app, projectId, projectDir } = await boot();
 
     const put = await app.inject({
       method: 'PUT',
@@ -88,6 +88,10 @@ describe('settings routes', () => {
       headers: authHeaders(),
     });
     expect(get.json().rows).toHaveLength(2);
+
+    // DATABASE.md §6/§8, FR-S3: model_matrix is a settings change, so the PUT
+    // must mint a real settings.changed event, not just upsert the table row.
+    expect(eventTypes(projectDir)).toContain('settings.changed');
   });
 
   it('PUT model-matrix rejects a malformed row with 400', async () => {

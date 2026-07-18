@@ -21,8 +21,13 @@ import {
   openEventLog,
   type EventLog,
 } from '@shipwright/events';
-import type { SettingsChangedEvent, SettingsEventSink } from '@shipwright/shared';
+import type {
+  JsonValue,
+  SettingsChangedEvent,
+  SettingsEventSink,
+} from '@shipwright/shared';
 import { stateDbPath } from './settings-db.js';
+import type { ModelMatrixRow } from './settings-types.js';
 
 export const DEFAULT_ACTOR_ID = 'local-operator';
 
@@ -70,6 +75,65 @@ export function appendCopilotConsentAck(
     type: 'copilot.consent_ack',
     actorId: DEFAULT_ACTOR_ID,
     acknowledgedRisk,
+    occurredAt: now(),
+  };
+  appendToProject(projectPath, event.type, event);
+  return event;
+}
+
+/** DATABASE.md §6/§8: model_matrix is "the project-scope override of the global preset" -- a settings change like any other, so FR-S3's "every settings write appends a settings.changed event" applies even though the matrix lives in its own typed table (AC5) rather than the settings.json key/value store. matrix-routes.ts calls this right after a PUT commits, mirroring appendRuleStateChanged's separate-short-lived-connection discipline below. */
+function serializeMatrixRows(rows: readonly ModelMatrixRow[]): JsonValue {
+  return rows.map((r) => ({
+    role: r.role,
+    task_type: r.taskType,
+    model: r.model,
+    fallback: [...r.fallback],
+    updated_at: r.updatedAt,
+  }));
+}
+
+export function appendModelMatrixChanged(
+  projectPath: string,
+  previousRows: readonly ModelMatrixRow[],
+  nextRows: readonly ModelMatrixRow[],
+  now: () => string = () => new Date().toISOString(),
+): SettingsChangedEvent {
+  const event: SettingsChangedEvent = {
+    type: 'settings.changed',
+    scope: 'project',
+    key: 'model_matrix',
+    previousValue: serializeMatrixRows(previousRows),
+    nextValue: serializeMatrixRows(nextRows),
+    actorId: DEFAULT_ACTOR_ID,
+    occurredAt: now(),
+  };
+  appendToProject(projectPath, event.type, event);
+  return event;
+}
+
+/** D-014/DATABASE.md §5b: "State transitions are events (`rule.state_changed`, human actor required)." rules-routes.ts calls this right after a promote/demote mutation commits — appended as a separate short-lived connection (same non-atomic-with-the-write discipline as settings-scope.ts's sink, since withSettingsWriter's connection has already closed by the time the caller knows the outcome). */
+export interface RuleStateChangedEvent {
+  readonly type: 'rule.state_changed';
+  readonly actorId: string;
+  readonly ruleId: string;
+  readonly fromState: string;
+  readonly toState: string;
+  readonly occurredAt: string;
+}
+
+export function appendRuleStateChanged(
+  projectPath: string,
+  ruleId: string,
+  fromState: string,
+  toState: string,
+  now: () => string = () => new Date().toISOString(),
+): RuleStateChangedEvent {
+  const event: RuleStateChangedEvent = {
+    type: 'rule.state_changed',
+    actorId: DEFAULT_ACTOR_ID,
+    ruleId,
+    fromState,
+    toState,
     occurredAt: now(),
   };
   appendToProject(projectPath, event.type, event);

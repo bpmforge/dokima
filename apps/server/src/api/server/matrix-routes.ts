@@ -7,6 +7,7 @@ import {
   type ModelMatrixInput,
 } from './model-matrix-store.js';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
+import { appendModelMatrixChanged } from './settings-events.js';
 import { getProjectSettings } from './settings-scope.js';
 import { TASK_TYPES, type ModelMatrixRow, type TaskType } from './settings-types.js';
 
@@ -113,7 +114,9 @@ export function registerMatrixRoutes(
             ),
           );
       }
+      const before = await listModelMatrix(projectPath);
       const updated = await putModelMatrix(projectPath, rows);
+      appendModelMatrixChanged(projectPath, before, updated);
       const projectSettings = await getProjectSettings(projectPath);
       return reply.send({
         rows: updated.map(toWire),
