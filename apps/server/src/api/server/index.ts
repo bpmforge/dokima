@@ -7,3 +7,5 @@ export { registerArtifactRoutes } from './artifacts-routes.js';
 export type { ArtifactRoutesOptions } from './artifacts-routes.js';
 export { registerReceiptRoutes } from './receipts-routes.js';
 export type { ReceiptRoutesOptions } from './receipts-routes.js';
+export { registerNotificationRoutes } from './notifications-routes/index.js';
+export type { NotificationRoutesOptions } from './notifications-routes/index.js';
