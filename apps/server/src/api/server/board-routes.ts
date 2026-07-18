@@ -1,4 +1,9 @@
-import { openEventLog, openEventLogReader, type EventLog } from '@shipwright/events';
+import {
+  listEvents,
+  openEventLog,
+  openEventLogReader,
+  type EventLog,
+} from '@shipwright/events';
 import {
   acceptTicket,
   claimTicket,
@@ -12,11 +17,16 @@ import {
   type Ticket,
 } from '@shipwright/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  EVENT_SEQ_HEADER,
+  extractIdempotencyKey,
+  IdempotencyStore,
+} from '../idempotency.js';
 import { computeFleetRegistryPath } from '../projects.js';
 import type { WsHub } from '../ws-hub.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from './board-actor.js';
 import { PROBLEM_CONTENT_TYPE, ticketErrorToProblem } from './board-errors.js';
-import { resolveProjectRecord, stateDbPath } from './board-project.js';
+import { resolveProjectOrProblem, stateDbPath } from './board-project.js';
 import { toWireBoardTicket } from './board-wire.js';
 import { problem } from '../problem.js';
 
@@ -60,18 +70,8 @@ function badRequest(request: FastifyRequest, detail: string) {
   });
 }
 
-function notFound(request: FastifyRequest, detail: string) {
-  return problem({
-    type: 'https://shipwright.dev/errors/not-found',
-    title: 'Not found',
-    status: 404,
-    detail,
-    instance: request.url,
-    requestId: request.id.toString(),
-  });
-}
-
-/** Opens `{project}/.shipwright/state.db`, or replies 404 and returns `undefined` if the project id isn't registered. */
+/** Opens `{project}/.shipwright/state.db`, or replies 404 (unregistered id)
+ * / 503 (corrupt `fleet.json`, THREAT_MODEL §5.6) and returns `undefined`. */
 async function openProjectLog(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -79,14 +79,8 @@ async function openProjectLog(
   projectId: string,
   mode: 'read' | 'write',
 ): Promise<EventLog | undefined> {
-  const record = await resolveProjectRecord(registryPath, projectId);
-  if (!record) {
-    await reply
-      .code(404)
-      .type(PROBLEM_CONTENT_TYPE)
-      .send(notFound(request, `no project registered with id ${projectId}`));
-    return undefined;
-  }
+  const record = await resolveProjectOrProblem(request, reply, registryPath, projectId);
+  if (!record) return undefined;
   const dbPath = stateDbPath(record.path);
   if (mode === 'write') return openEventLog(dbPath);
   const db = openEventLogReader(dbPath);
@@ -177,11 +171,13 @@ function fireVerb(
   }
 }
 
-/** `POST /api/v1/tickets/:id/:verb` (API_DESIGN "tickets — verbs", FR-T1..T4). */
+/** `POST /api/v1/tickets/:id/:verb` (API_DESIGN "tickets — verbs", FR-T1..T4;
+ * idempotency + `X-Event-Seq` per API_DESIGN §1/§5). */
 function registerVerbRoute(
   app: FastifyInstance,
   registryPath: string,
   wsHub: WsHub,
+  idempotency: IdempotencyStore,
 ): void {
   app.post(
     '/api/v1/tickets/:id/:verb',
@@ -193,7 +189,8 @@ function registerVerbRoute(
           .type(PROBLEM_CONTENT_TYPE)
           .send(badRequest(request, `unknown verb "${verb}"`));
       }
-      if (!request.headers['idempotency-key']) {
+      const idempotencyKey = extractIdempotencyKey(request.headers);
+      if (!idempotencyKey) {
         return reply
           .code(400)
           .type(PROBLEM_CONTENT_TYPE)
@@ -205,6 +202,11 @@ function registerVerbRoute(
           .code(400)
           .type(PROBLEM_CONTENT_TYPE)
           .send(badRequest(request, 'missing required "project" query parameter'));
+      }
+      const replayKey = `${projectId}:${verb}:${ticketId}:${idempotencyKey}`;
+      const replay = idempotency.get(replayKey);
+      if (replay) {
+        return reply.code(replay.status).headers(replay.headers).send(replay.body);
       }
       const log = await openProjectLog(request, reply, registryPath, projectId, 'write');
       if (!log) return reply;
@@ -228,7 +230,11 @@ function registerVerbRoute(
         const tickets = loadTickets(log);
         const wireTicket = toWireBoardTicket(updated, tickets);
         wsHub.publish(`board:${projectId}`, VERB_EVENT_TYPE[verb], wireTicket);
-        return reply.send(updated);
+        const events = listEvents(log);
+        const lastSeq = events.length > 0 ? events[events.length - 1]!.seq : 0;
+        const headers = { [EVENT_SEQ_HEADER]: String(lastSeq) };
+        idempotency.put(replayKey, { status: 200, body: updated, headers });
+        return reply.headers(headers).send(updated);
       } finally {
         log.close();
       }
@@ -242,6 +248,7 @@ export function registerBoardRoutes(
   opts: BoardRoutesOptions,
 ): void {
   const registryPath = computeFleetRegistryPath(opts.home);
+  const idempotency = new IdempotencyStore();
   registerListRoute(app, registryPath);
-  registerVerbRoute(app, registryPath, opts.wsHub);
+  registerVerbRoute(app, registryPath, opts.wsHub, idempotency);
 }

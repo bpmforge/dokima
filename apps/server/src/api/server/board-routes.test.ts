@@ -2,7 +2,12 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog } from '@shipwright/events';
+import {
+  createIdentity,
+  listEvents,
+  openEventLog,
+  openEventLogReader,
+} from '@shipwright/events';
 import { claimTicket, closeTicket, createTicket, startTicket } from '@shipwright/tickets';
 import { buildApiServer, type ApiServer } from '../server.js';
 
@@ -193,6 +198,119 @@ describe('board routes — GET tickets / POST verbs', () => {
     expect(ticket.ownerId).toBe('operator');
   });
 
+  it('echoes X-Event-Seq on a successful mutation (API_DESIGN §1/§5)', async () => {
+    const { app, fleetHome } = await boot();
+    const { id, dbPath } = await registerProject(app, fleetHome, 'proj-seq');
+    const log = openEventLog(dbPath);
+    createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
+    createTicket(log, 'agent-1', {
+      id: 'T-1',
+      type: 'task',
+      title: 'Ready',
+      lane: 'ui',
+      writeScope: ['a/**'],
+    });
+    log.close();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-seq-1' },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['x-event-seq']).toBe('2'); // ticket.created=1, ticket.claimed=2
+  });
+
+  it('replays the original response for a repeated Idempotency-Key without re-applying the verb', async () => {
+    const { app, fleetHome } = await boot();
+    const { id, dbPath } = await registerProject(app, fleetHome, 'proj-replay');
+    const log = openEventLog(dbPath);
+    createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
+    createTicket(log, 'agent-1', {
+      id: 'T-1',
+      type: 'task',
+      title: 'Ready',
+      lane: 'ui',
+      writeScope: ['a/**'],
+    });
+    log.close();
+
+    const first = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-replay-1' },
+      payload: {},
+    });
+    expect(first.statusCode).toBe(200);
+
+    const replay = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-replay-1' },
+      payload: {},
+    });
+    expect(replay.statusCode).toBe(first.statusCode);
+    expect(replay.json()).toEqual(first.json());
+    expect(replay.headers['x-event-seq']).toBe(first.headers['x-event-seq']);
+
+    // The replay never re-ran claim (WIP_LIMIT / already-claimed would 409
+    // on a genuine second claim) — confirm the log has exactly one claim event.
+    const verifyLog = openEventLogReader(dbPath);
+    const events = listEvents({
+      db: verifyLog,
+      path: dbPath,
+      close: () => verifyLog.close(),
+    });
+    expect(events.filter((e) => e.eventType === 'ticket.claimed')).toHaveLength(1);
+    verifyLog.close();
+  });
+
+  it('does not replay across projects that reuse the same ticket id + Idempotency-Key', async () => {
+    const { app, fleetHome } = await boot();
+    const projectA = await registerProject(app, fleetHome, 'proj-collide-a');
+    const projectB = await registerProject(app, fleetHome, 'proj-collide-b');
+    for (const { dbPath } of [projectA, projectB]) {
+      const log = openEventLog(dbPath);
+      createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
+      createTicket(log, 'agent-1', {
+        id: 'T-1',
+        type: 'task',
+        title: 'Ready',
+        lane: 'ui',
+        writeScope: ['a/**'],
+      });
+      log.close();
+    }
+
+    const resA = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${projectA.id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-1' },
+      payload: {},
+    });
+    expect(resA.statusCode).toBe(200);
+
+    // Same ticket id + same Idempotency-Key, different project: must actually
+    // apply the verb (not replay project A's stored response).
+    const resB = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${projectB.id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-1' },
+      payload: {},
+    });
+    expect(resB.statusCode).toBe(200);
+
+    const logB = openEventLogReader(projectB.dbPath);
+    const eventsB = listEvents({
+      db: logB,
+      path: projectB.dbPath,
+      close: () => logB.close(),
+    });
+    expect(eventsB.filter((e) => e.eventType === 'ticket.claimed')).toHaveLength(1);
+    logB.close();
+  });
+
   it('drag-fired close with no manifest is refused with 409 MANIFEST_INVALID (FR-T4)', async () => {
     const { app, fleetHome } = await boot();
     const { id, dbPath } = await registerProject(app, fleetHome, 'proj-close-refuse');
@@ -233,6 +351,22 @@ describe('board routes — GET tickets / POST verbs', () => {
     const problem = res.json() as { rule: string; detail: string };
     expect(problem.rule).toBe('MANIFEST_INVALID');
     expect(problem.detail).toContain('manifest requires');
+  });
+
+  it('a corrupt fleet.json degrades a verb call to 503 problem+json, never an uncaught 500 (THREAT_MODEL §5.6)', async () => {
+    const { app, fleetHome } = await boot();
+    await registerProject(app, fleetHome, 'proj-corrupt');
+    await fs.writeFile(path.join(fleetHome, 'fleet.json'), '{not valid json', 'utf8');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=whatever`,
+      headers: { ...headers(), 'idempotency-key': 'k-corrupt-1' },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.json()).toMatchObject({ rule: 'FLEET_REGISTRY_CORRUPT' });
   });
 });
 

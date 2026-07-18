@@ -186,4 +186,19 @@ describe('receipt routes — buildApiServer integration', () => {
     });
     expect(res.statusCode).toBe(404);
   });
+
+  it('a corrupt fleet.json degrades to 503 problem+json, never an uncaught 500 (THREAT_MODEL §5.6)', async () => {
+    const { app, fleetHome } = await boot();
+    await registerBareProject(fleetHome, 'proj-corrupt');
+    await fs.writeFile(path.join(fleetHome, 'fleet.json'), '{not valid json', 'utf8');
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/whatever/approvals-ledger',
+      headers: authHeaders(),
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.json()).toMatchObject({ rule: 'FLEET_REGISTRY_CORRUPT' });
+  });
 });
