@@ -42,7 +42,7 @@ import { loadTickets, type TicketStatus } from '@shipwright/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
-import { resolveProjectRecord, stateDbPath } from './board-project.js';
+import { resolveProjectOrProblem, stateDbPath } from './board-project.js';
 import { problem } from '../problem.js';
 
 export interface EstimateRoutesOptions {
@@ -136,17 +136,6 @@ function badRequest(request: FastifyRequest, detail: string) {
   });
 }
 
-function notFound(request: FastifyRequest, detail: string) {
-  return problem({
-    type: 'https://shipwright.dev/errors/not-found',
-    title: 'Not found',
-    status: 404,
-    detail,
-    instance: request.url,
-    requestId: request.id.toString(),
-  });
-}
-
 /** Terminal statuses that are no longer pending autorun spend (BLUEPRINT §12.2 "money about to be spent", not money already spent). */
 const CLOSED_STATUSES: ReadonlySet<TicketStatus> = new Set(['done', 'waived']);
 
@@ -156,14 +145,8 @@ async function ticketCountForProject(
   registryPath: string,
   projectId: string,
 ): Promise<number | undefined> {
-  const record = await resolveProjectRecord(registryPath, projectId);
-  if (!record) {
-    await reply
-      .code(404)
-      .type(PROBLEM_CONTENT_TYPE)
-      .send(notFound(request, `no project registered with id ${projectId}`));
-    return undefined;
-  }
+  const record = await resolveProjectOrProblem(request, reply, registryPath, projectId);
+  if (!record) return undefined;
   const db = openEventLogReader(stateDbPath(record.path));
   try {
     const tickets = loadTickets({
@@ -261,13 +244,13 @@ function registerSpendRoute(app: FastifyInstance, registryPath: string): void {
     '/api/v1/projects/:id/spend',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id: projectId } = request.params as { id: string };
-      const record = await resolveProjectRecord(registryPath, projectId);
-      if (!record) {
-        return reply
-          .code(404)
-          .type(PROBLEM_CONTENT_TYPE)
-          .send(notFound(request, `no project registered with id ${projectId}`));
-      }
+      const record = await resolveProjectOrProblem(
+        request,
+        reply,
+        registryPath,
+        projectId,
+      );
+      if (!record) return reply;
       const groupBy = (request.query as Record<string, unknown>).group_by;
       if (typeof groupBy !== 'string' || !SUPPORTED_GROUP_BY.has(groupBy)) {
         return reply
@@ -290,13 +273,13 @@ function registerDigestRoute(app: FastifyInstance, registryPath: string): void {
     '/api/v1/projects/:id/spend/digest',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id: projectId } = request.params as { id: string };
-      const record = await resolveProjectRecord(registryPath, projectId);
-      if (!record) {
-        return reply
-          .code(404)
-          .type(PROBLEM_CONTENT_TYPE)
-          .send(notFound(request, `no project registered with id ${projectId}`));
-      }
+      const record = await resolveProjectOrProblem(
+        request,
+        reply,
+        registryPath,
+        projectId,
+      );
+      if (!record) return reply;
       const weekOf = new Date().toISOString().slice(0, 10);
       return reply.send({
         tier: 'review',

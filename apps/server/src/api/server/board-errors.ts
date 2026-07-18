@@ -25,6 +25,7 @@ export function ticketErrorToProblem(
       instance,
       requestId,
       rule: err.code,
+      evidence: { ticket_id: err.ticketId },
     }),
   };
 }

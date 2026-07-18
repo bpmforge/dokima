@@ -21,7 +21,9 @@ import Fastify, {
 } from 'fastify';
 import { buildAllowlist } from './allowlist.js';
 import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plugin.js';
+import { registerEventsSseRoute } from './events-sse.js';
 import { registerHealthz } from './healthz.js';
+import { registerOpenApiRoute } from './openapi.js';
 import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
 import {
@@ -74,6 +76,8 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });
   registerChatRoute(app);
+  registerOpenApiRoute(app);
+  registerEventsSseRoute(app, { wsHub });
   registerStatic(app, opts.webDistDir, opts.token);
 
   app.server.on('upgrade', (req: IncomingMessage, socket: Duplex) => {
