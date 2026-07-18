@@ -1,0 +1,212 @@
+/* App.tsx header bell (UX_SPEC §2a: "notification bell (Decide badge count only)"). Lives here rather than styles.css, which is outside this ticket's write_scope — App.tsx imports this file globally. */
+.app-shell__notifications-bell {
+  position: relative;
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.app-shell__decide-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  background: var(--sw-attention, #d64545);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.2rem;
+}
+
+.notifications-view {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.notifications-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.notifications-view__tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.notifications-view__tabs button {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+.notifications-view__tabs button[aria-selected='true'] {
+  background: var(--sw-accent);
+  color: var(--sw-bg);
+  border-color: var(--sw-accent);
+}
+
+.notifications-view__project-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.morning-queue__header,
+.notification-center__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.morning-queue__header h2,
+.notification-center__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.morning-queue__timer {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.morning-queue__timer[data-over-target='true'] {
+  color: var(--sw-warning, #e0a800);
+  opacity: 1;
+}
+
+.notification-center__filters {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.notification-center__filter {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.notification-center__filter[aria-pressed='true'] {
+  background: var(--sw-accent);
+  color: var(--sw-bg);
+  border-color: var(--sw-accent);
+}
+
+.morning-queue__error,
+.notification-center__error {
+  color: #c0392b;
+}
+
+.morning-queue__empty,
+.notification-center__empty {
+  opacity: 0.75;
+  padding: 1rem 0;
+}
+
+.morning-queue__list,
+.notification-center__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notification-card {
+  border: 1px solid var(--sw-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.notification-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.notification-card__tier {
+  font-weight: 600;
+}
+
+.notification-card__tier--decide {
+  color: var(--sw-attention, #d64545);
+}
+
+.notification-card__tier--review {
+  color: var(--sw-accent);
+}
+
+.notification-card__tier--record {
+  opacity: 0.7;
+}
+
+.notification-card__project {
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.notification-card__title {
+  margin: 0.35rem 0 0;
+  font-weight: 500;
+}
+
+.notification-card__summary {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.notification-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.notification-card__time {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.notification-card__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.notification-card__actions button,
+.notification-card__footer > button {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}

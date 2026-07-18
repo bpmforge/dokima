@@ -8,6 +8,9 @@ import { FleetHome } from './fleet/FleetHome.js';
 import { APP_NAME } from './index.js';
 import { SplitPaneWorkspace } from './layout/SplitPaneWorkspace.js';
 import { useReducedMotion } from './lib/useReducedMotion.js';
+import { fetchNotifications } from './notifications/api.js';
+import { NotificationsView } from './notifications/NotificationsView.js';
+import './notifications/notifications.css';
 import { RosterView } from './roster/RosterView.js';
 import { FirstRunWizard } from './settings/FirstRunWizard.js';
 import { SettingsPage } from './settings/SettingsPage.js';
@@ -33,16 +36,47 @@ function ThemeToggle() {
   );
 }
 
-type View = 'settings' | 'wizard' | 'roster' | null;
+type View = 'settings' | 'wizard' | 'roster' | 'notifications' | null;
 
-/** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster` layer over either Fleet or a project. */
+/** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications` layer over either Fleet or a project. */
 function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
 }
 
 function readView(): View {
   const view = new URLSearchParams(window.location.search).get('view');
-  return view === 'settings' || view === 'wizard' || view === 'roster' ? view : null;
+  return view === 'settings' ||
+    view === 'wizard' ||
+    view === 'roster' ||
+    view === 'notifications'
+    ? view
+    : null;
+}
+
+/** Live-update substitute for the header bell's Decide badge (WS push deferred, same precedent as `fleet/FleetHome.tsx`). */
+const DECIDE_BADGE_POLL_MS = 5_000;
+
+function useDecideBadgeCount(): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      fetchNotifications({ tier: 'decide', status: 'open' })
+        .then((items) => {
+          if (!cancelled) setCount(items.length);
+        })
+        .catch(() => {
+          if (!cancelled) setCount(0);
+        });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, DECIDE_BADGE_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+  return count;
 }
 
 /**
@@ -104,6 +138,7 @@ function AppShell() {
   const boardPaneNode = useBoardPaneNode(projectId);
   const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
+  const decideBadgeCount = useDecideBadgeCount();
 
   useEffect(() => {
     const onPopState = () => {
@@ -152,14 +187,29 @@ function AppShell() {
         <span>{APP_NAME}</span>
         <div className="app-shell__header-actions">
           <nav className="app-shell__nav">
-            {view === 'roster' ? (
+            {view === 'roster' || view === 'notifications' ? (
               <button type="button" onClick={closeView}>
                 ← Back
               </button>
             ) : (
-              <button type="button" onClick={() => openView('roster')}>
-                Roster
-              </button>
+              <>
+                <button type="button" onClick={() => openView('roster')}>
+                  Roster
+                </button>
+                <button
+                  type="button"
+                  className="app-shell__notifications-bell"
+                  onClick={() => openView('notifications')}
+                  aria-label={`Notifications, ${decideBadgeCount} awaiting a decision`}
+                >
+                  🔔
+                  {decideBadgeCount > 0 && (
+                    <span className="app-shell__decide-badge" data-testid="decide-badge">
+                      {decideBadgeCount}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
           </nav>
           <button type="button" onClick={() => openView('settings')}>
@@ -170,6 +220,8 @@ function AppShell() {
       </header>
       {view === 'roster' ? (
         <RosterView projectId={projectId} />
+      ) : view === 'notifications' ? (
+        <NotificationsView />
       ) : view === 'wizard' ? (
         <FirstRunWizard
           onFinish={(createdProjectId) => {
