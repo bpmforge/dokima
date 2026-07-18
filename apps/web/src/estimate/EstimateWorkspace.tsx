@@ -8,7 +8,13 @@ export interface EstimateWorkspaceProps {
   projectId: string;
 }
 
-/** Mounted under the Settings Matrix's "Cost Estimate" tab (UX_SPEC §6, SettingsPage.tsx) — the dry-run estimate, escalation-ROI view, and weekly digest card. */
+/**
+ * Portals into the artifacts pane (`App.tsx`, same pattern
+ * `ChatView`/`BoardView` use for the chat/board panes) — the Settings
+ * Matrix's budget panel this belongs under (UX_SPEC §6) has no screen of
+ * its own yet, so the dry-run estimate, escalation-ROI view, and weekly
+ * digest card render here until that lands.
+ */
 export function EstimateWorkspace({ token, projectId }: EstimateWorkspaceProps) {
   return (
     <div className="estimate" data-testid="estimate-workspace">
