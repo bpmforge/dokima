@@ -28,6 +28,7 @@ import {
   registerArtifactRoutes,
   registerBoardRoutes,
   registerEstimateRoutes,
+  registerNotificationRoutes,
   registerReceiptRoutes,
 } from './server/index.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
@@ -69,6 +70,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerEstimateRoutes(app, { home: opts.fleetHome });
   registerArtifactRoutes(app, { home: opts.fleetHome });
   registerReceiptRoutes(app, { home: opts.fleetHome });
+  registerNotificationRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });
   registerChatRoute(app);
