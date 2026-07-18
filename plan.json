@@ -1684,7 +1684,7 @@
         "a11y CI gate: Playwright axe scan on board/morning queue/settings/receipt inspector + keyboard-only pass for board verbs and queue; WCAG 2.2 AA per UX_SPEC §9 — pre-merge on web tickets from W4 (TESTING tier map)"
       ],
       "points": 5,
-      "status": "done",
+      "status": "in_progress",
       "stories": [
         "US-202",
         "US-404"
