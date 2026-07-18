@@ -47,7 +47,7 @@ import {
 } from '@shipwright/events';
 import { closeTicket, listTickets, type Ticket } from '@shipwright/tickets';
 import { DEFAULT_REQUIRED_VALIDATORS } from './loop-gates-types.js';
-import { statMissingFiles } from './loop-gates-verify.js';
+import { classifyManifestFile, classifyManifestFiles } from './scope.js';
 import type {
   CheckClaimedTicketOptions,
   ClaimedTicketCheck,
@@ -125,35 +125,67 @@ export async function checkClaimedTicket(
   const worktreePath = path.join(options.repoRoot, '.shipwright', 'worktrees', ticket.id);
   const files = receiptFiles(receipt);
 
-  const missing = await statMissingFiles(worktreePath, files);
-  if (missing.length > 0) {
-    return {
-      outcome: 'drift',
-      ticketId: ticket.id,
-      reasons: [
+  // SECURITY (W1-07 symlink-escape class): resolved via fs.realpath and
+  // checked against the worktree's real root before anything below stats,
+  // reads, or hashes a receipt-claimed path — mirrors loop-gates.ts's close
+  // gate (scope.ts's module doc).
+  const { missing, symlinkEscapes } = await classifyManifestFiles(worktreePath, files);
+  if (missing.length > 0 || symlinkEscapes.length > 0) {
+    const reasons: string[] = [];
+    if (missing.length > 0) {
+      reasons.push(
         `receipt ${receipt.id} declares file(s) no longer present on disk: ${missing.join(', ')}`,
-      ],
-    };
+      );
+    }
+    if (symlinkEscapes.length > 0) {
+      reasons.push(
+        `receipt ${receipt.id} declares file(s) that resolve outside the worktree via a ` +
+          `symlink and are refused (symlink-escape, W1-07 class): ${symlinkEscapes.join(', ')}`,
+      );
+    }
+    return { outcome: 'drift', ticketId: ticket.id, reasons };
   }
 
-  let inputFiles: ReceiptInputFile[];
-  try {
-    inputFiles = await Promise.all(
-      files.map(async (file) => ({
-        path: file,
-        content: await fs.readFile(path.join(worktreePath, file), 'utf8'),
-      })),
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      outcome: 'drift',
-      ticketId: ticket.id,
-      reasons: [
-        `could not read receipt ${receipt.id}'s declared files from disk: ${message}`,
-      ],
-    };
+  // SECURITY (TOCTOU, W1-07 class): re-resolve and re-verify containment for
+  // each file immediately before it is read for hashing — classifyManifestFile
+  // holds a single fd across its own containment check and the read, so the
+  // escape refusal holds atomically at read time, mirroring loop-gates.ts's
+  // close-gate read.
+  const realRootAtReadTime = await fs.realpath(worktreePath);
+  const readTimeMissing: string[] = [];
+  const readTimeEscapes: string[] = [];
+  const entries = await Promise.all(
+    files.map(async (file): Promise<ReceiptInputFile | null> => {
+      const result = await classifyManifestFile(worktreePath, realRootAtReadTime, file);
+      if (result.status === 'missing') {
+        readTimeMissing.push(file);
+        return null;
+      }
+      if (result.status === 'symlink-escape') {
+        readTimeEscapes.push(file);
+        return null;
+      }
+      return { path: file, content: result.content as string };
+    }),
+  );
+  if (readTimeMissing.length > 0 || readTimeEscapes.length > 0) {
+    const reasons: string[] = [];
+    if (readTimeMissing.length > 0) {
+      reasons.push(
+        `receipt ${receipt.id} declares file(s) that vanished from disk between the initial ` +
+          `check and the read (TOCTOU): ${readTimeMissing.join(', ')}`,
+      );
+    }
+    if (readTimeEscapes.length > 0) {
+      reasons.push(
+        `receipt ${receipt.id} declares file(s) that resolve outside the worktree via a ` +
+          'symlink introduced after the initial check and are refused at read time ' +
+          `(symlink-escape, W1-07 class, TOCTOU): ${readTimeEscapes.join(', ')}`,
+      );
+    }
+    return { outcome: 'drift', ticketId: ticket.id, reasons };
   }
+  const inputFiles = entries as ReceiptInputFile[];
 
   const verification = verifyReceipt(log, receipt.id, {
     signingKey: options.signingKey,
