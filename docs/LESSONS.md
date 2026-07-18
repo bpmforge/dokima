@@ -73,3 +73,13 @@ upstreams (two-way PRs, D-008), (c) bootstrap-harness fixes. Append-only; stable
 1. Check candidates to build: L-03 (all-of-the-set), L-06 (Lands-claims vs board), L-10 (done-ticket acceptance edits), L-14 (pipefail in CI validator jobs), L-19 (script arg guards).
 2. Upstream PR candidates to bpm-opencode-experts: L-07 (territory-release plan discipline), L-12 (seam heuristic in validate-tickets), L-14 (validator-invocation rule), L-19 (script authoring rule), L-20 (RALPH VERIFY runs the subject's own validators).
 3. Product features already carrying a lesson: D-014 (L-01), D-015 (L-07), D-016 (reports-rot), D-018 (L-18), D-019 (L-09), W3-08 (L-02), W5-07 (L-04/L-12), W3-02+W4-03 heartbeats (L-17), FR-H2 durable session caps (L-22).
+
+## L-41 — Encoding a CRITICAL security fix as future-acceptance leaves the vuln LIVE; the security gate correctly halts
+
+**Route to:** product + process. **Status:** confirmed 2026-07-18.
+
+When triaging blocked security tickets, I encoded precise fix directions into each ticket's *acceptance criteria* (for a later supervised build) and reset the tickets to `todo`. For HIGH findings this is fine — they're queued and non-halting. But for the **CRITICAL** partial-event-log-commit in `packages/harbormaster/src/resume.ts` (W3-03), the actual vulnerable code stayed unchanged on `main`. The conductor's wave-security-pass scans real code (not plan.json intent), correctly detected the live CRITICAL, and **halted the whole pipeline for human review** — exactly as designed (`security.critical — stopping for human review`).
+
+**Why:** "queue a fix" ≠ "remove the vulnerability." A CRITICAL that is live on `main` blocks the pipeline regardless of any queued intent to fix it, because the trust boundary is enforced against the code that exists, not the code we plan to write.
+
+**How to apply:** For CRITICAL findings, *build the fix promptly* (conductor, scoped to that ticket's wave so it lands before the next wave-transition security pass) rather than only encoding it as acceptance. Encode-as-acceptance is acceptable for HIGH/MEDIUM (non-halting) but a live CRITICAL must be driven to a landed fix before the pipeline can proceed. Evidence: docs/work/SECURITY_W4.md CRITICAL entry; conductor.out `security.critical` halt 2026-07-18T14:44. Related: [[maker-verifier-recursive]], the trust-boundary law (CLAUDE.md C-2/C-3).
