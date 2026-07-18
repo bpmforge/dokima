@@ -11,10 +11,12 @@
   "dependencies": {
     "fastify": "^5.10.0",
     "@shipwright/events": "workspace:*",
+    "@shipwright/harbormaster": "workspace:*",
     "@shipwright/tickets": "workspace:*",
     "@shipwright/shared": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.23.0"
+    "tsx": "^4.23.0",
+    "@shipwright/git": "workspace:*"
   }
 }
