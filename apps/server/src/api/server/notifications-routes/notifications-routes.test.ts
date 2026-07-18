@@ -160,6 +160,26 @@ describe('notification center + morning queue routes (FR-N4, FR-F4, US-704/US-40
       expect((wrongTier.json() as { items: unknown[] }).items).toHaveLength(0);
     });
 
+    it('propagates a non-schema state.db failure as a 500, instead of silently degrading to an empty list (SQLITE_CANTOPEN regression)', async () => {
+      const { app, fleetHome } = await boot();
+      const { id: projectId, dbPath } = await registerProject(
+        app,
+        fleetHome,
+        'proj-cantopen',
+      );
+      await fs.chmod(dbPath, 0o000);
+      try {
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/v1/notifications?project=${projectId}`,
+          headers: headers(),
+        });
+        expect(res.statusCode).toBe(500);
+      } finally {
+        await fs.chmod(dbPath, 0o644);
+      }
+    });
+
     it('aggregates across every registered project (FR-F4), and a project filter isolates one', async () => {
       const { app, fleetHome } = await boot();
       const { id: projectA } = await registerProject(app, fleetHome, 'proj-a');

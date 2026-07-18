@@ -104,6 +104,12 @@ function isUnmigratedSchemaError(err: unknown): boolean {
  * already applied (`promoteEligibleNotifications` skips already-pushed
  * rows; `maybeEmitTrustGraduationSuggestion` skips while a suggestion is
  * still open).
+ *
+ * The empty-array fallback is reserved for the one honest-empty case — a
+ * state.db that predates this ticket's migration. Any other failure
+ * (corrupt db, a bug in promotion/suggestion logic) rethrows so the caller
+ * surfaces a 500 instead of a Decide notification silently vanishing from
+ * the aggregated feed/queue.
  */
 export async function refreshAndListProjectNotifications(
   project: Pick<ProjectRecord, 'id' | 'name' | 'path'>,
@@ -116,8 +122,9 @@ export async function refreshAndListProjectNotifications(
   try {
     log = openEventLog(dbPath);
   } catch (err) {
+    if (isUnmigratedSchemaError(err)) return [];
     console.error(`[notifications] open failed for ${dbPath}:`, err);
-    return [];
+    throw err;
   }
   try {
     ensureOperatorIdentity(log);
@@ -129,10 +136,9 @@ export async function refreshAndListProjectNotifications(
     promoteEligibleNotifications(log, tickets, { actorId: OPERATOR_ACTOR_ID });
     return listNotifications(log, filter).map((record) => toWire(record, project));
   } catch (err) {
-    if (!isUnmigratedSchemaError(err)) {
-      console.error(`[notifications] refresh failed for ${dbPath}:`, err);
-    }
-    return [];
+    if (isUnmigratedSchemaError(err)) return [];
+    console.error(`[notifications] refresh failed for ${dbPath}:`, err);
+    throw err;
   } finally {
     log.close();
   }
