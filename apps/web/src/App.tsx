@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtifactViewer } from './artifacts/ArtifactViewer.js';
 import { BoardView } from './board/BoardView.js';
+import { TicketDrawer } from './board/drawer/index.js';
 import { ChatView } from './chat/ChatView.js';
 import { readInjectedToken } from './chat/api.js';
 import { FleetHome } from './fleet/FleetHome.js';
@@ -11,6 +12,8 @@ import { useReducedMotion } from './lib/useReducedMotion.js';
 import { fetchNotifications } from './notifications/api.js';
 import { NotificationsView } from './notifications/NotificationsView.js';
 import './notifications/notifications.css';
+import { CommandPalette } from './palette/index.js';
+import type { PaletteMode } from './palette/index.js';
 import { RosterView } from './roster/RosterView.js';
 import { FirstRunWizard } from './settings/FirstRunWizard.js';
 import { SettingsPage } from './settings/SettingsPage.js';
@@ -130,6 +133,24 @@ function useArtifactsPaneNode(projectId: string | null): HTMLElement | null {
   return node;
 }
 
+/**
+ * Extracts a ticket id from a click that bubbled up from a `board-card`
+ * (data-testid `card-{id}`, set by `board/Card.tsx` — outside this
+ * ticket's write_scope). Event delegation on the portaled subtree is the
+ * only way to hook a card click without editing `Card.tsx`/`BoardView.tsx`
+ * directly, same "stop touching that file" discipline as this module's
+ * other pane portals. Clicks on the card's own verb-menu `<select>` are
+ * ignored so opening the drawer never fights the existing move-to menu.
+ */
+function ticketIdFromCardClick(event: React.MouseEvent<HTMLElement>): string | null {
+  const target = event.target as HTMLElement;
+  if (target.closest('select')) return null;
+  const card = target.closest<HTMLElement>('[data-testid^="card-"]');
+  if (!card) return null;
+  const testId = card.getAttribute('data-testid');
+  return testId ? testId.slice('card-'.length) : null;
+}
+
 function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
@@ -139,6 +160,8 @@ function AppShell() {
   const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
   const decideBadgeCount = useDecideBadgeCount();
+  const [openTicketId, setOpenTicketId] = useState<string | null>(null);
+  const [modeNotice, setModeNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const onPopState = () => {
@@ -179,6 +202,34 @@ function AppShell() {
     url.searchParams.delete('view');
     window.history.pushState({}, '', url);
     setView(null);
+  }, []);
+
+  /**
+   * Palette mode picker (UX_SPEC §2a "What are we doing today?"). New
+   * Product / Onboard existing repo are real, already-wired flows — this
+   * is just the fastest path to the same `FirstRunWizard` the header's
+   * Settings entry already opens, so it drops any open project in one
+   * history entry rather than two. Feature/Improve have no dispatcher
+   * anywhere in this app yet (no chat-send endpoint exists —
+   * `chat/fixtures.ts`'s module header — so there is nothing to send a
+   * `/sdlc feature`/`/sdlc improve` command to); refusing to fabricate one,
+   * this surfaces an honest notice instead (HANDOFF: a future chat-dispatch
+   * ticket wires these two for real).
+   */
+  const onSelectPaletteMode = useCallback((mode: PaletteMode) => {
+    if (mode === 'new' || mode === 'onboard') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('project');
+      url.searchParams.set('view', 'wizard');
+      window.history.pushState({}, '', url);
+      setProjectId(null);
+      setView('wizard');
+      setModeNotice(null);
+    } else {
+      setModeNotice(
+        `"${mode === 'feature' ? 'Feature' : 'Improve'}" isn't wired to a workflow dispatcher yet — no chat-send endpoint exists in this app to carry it.`,
+      );
+    }
   }, []);
 
   return (
@@ -255,12 +306,19 @@ function AppShell() {
           {boardPaneNode &&
             token &&
             createPortal(
-              <BoardView
-                baseUrl="/api/v1"
-                token={token}
-                projectId={projectId}
-                wsUrl={wsUrl()}
-              />,
+              <div
+                onClick={(event) => {
+                  const ticketId = ticketIdFromCardClick(event);
+                  if (ticketId) setOpenTicketId(ticketId);
+                }}
+              >
+                <BoardView
+                  baseUrl="/api/v1"
+                  token={token}
+                  projectId={projectId}
+                  wsUrl={wsUrl()}
+                />
+              </div>,
               boardPaneNode,
             )}
           {artifactsPaneNode &&
@@ -269,9 +327,36 @@ function AppShell() {
               <ArtifactViewer token={token} projectId={projectId} />,
               artifactsPaneNode,
             )}
+          {token && (
+            <CommandPalette
+              baseUrl="/api/v1"
+              token={token}
+              projectId={projectId}
+              onJumpToTicket={setOpenTicketId}
+              onSelectMode={onSelectPaletteMode}
+            />
+          )}
+          {token && openTicketId && (
+            <TicketDrawer
+              baseUrl="/api/v1"
+              token={token}
+              projectId={projectId}
+              wsUrl={wsUrl()}
+              ticketId={openTicketId}
+              onClose={() => setOpenTicketId(null)}
+            />
+          )}
         </>
       ) : (
         <FleetHome onOpenProject={openProject} />
+      )}
+      {modeNotice && (
+        <p className="app-shell__mode-notice" role="status" data-testid="mode-notice">
+          {modeNotice}{' '}
+          <button type="button" onClick={() => setModeNotice(null)}>
+            Dismiss
+          </button>
+        </p>
       )}
       <ShortcutsOverlay />
     </div>

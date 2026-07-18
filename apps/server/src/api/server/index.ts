@@ -9,3 +9,7 @@ export { registerReceiptRoutes } from './receipts-routes.js';
 export type { ReceiptRoutesOptions } from './receipts-routes.js';
 export { registerNotificationRoutes } from './notifications-routes/index.js';
 export type { NotificationRoutesOptions } from './notifications-routes/index.js';
+export { registerRunsRoutes } from './runs-routes.js';
+export type { RunsRoutesOptions } from './runs-routes.js';
+export { registerTicketEditRoutes } from './ticket-edit-routes.js';
+export type { TicketEditRoutesOptions } from './ticket-edit-routes.js';

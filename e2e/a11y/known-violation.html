@@ -1,0 +1,23 @@
+<!doctype html>
+<!--
+  Planted-defect a11y fixture (TESTING.md §6 red-team-suite philosophy
+  applied to the a11y gate, per docs/STATUS.md W4-12 design review note:
+  "a green axe run proves nothing on its own unless something it SHOULD
+  catch actually gets caught"). Two deliberate, real WCAG 2.2 AA
+  violations that `apps/web/e2e/a11y/known-violation.spec.ts` asserts
+  axe-core reports — proving the gate has teeth, not just that it ran.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>a11y known-violation fixture</title>
+  </head>
+  <body>
+    <!-- violates "image-alt" (WCAG 1.1.1) -->
+    <img src="does-not-exist.png" />
+    <!-- violates "color-contrast" (WCAG 1.4.3) — light gray on white -->
+    <p style="color: #cccccc; background-color: #ffffff">
+      Low-contrast text a sighted low-vision user cannot read.
+    </p>
+  </body>
+</html>
