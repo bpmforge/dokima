@@ -854,7 +854,7 @@
         "Property test: N berths over a fixture board never produce overlapping write-scope edits; budget breaker on one berth halts all berths at their next ticket boundary"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [],
       "stories": [
         "US-204",
