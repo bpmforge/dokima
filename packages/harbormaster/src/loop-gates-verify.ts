@@ -6,30 +6,11 @@
  */
 
 import { exec as execCallback } from 'node:child_process';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { promisify } from 'node:util';
 import { git } from '@shipwright/git';
 import type { VerifyRunResult } from './loop-gates-types.js';
 
 const execAsync = promisify(execCallback);
-
-export async function statMissingFiles(
-  worktreePath: string,
-  files: readonly string[],
-): Promise<string[]> {
-  const missing: string[] = [];
-  await Promise.all(
-    files.map(async (file) => {
-      try {
-        await fs.stat(path.join(worktreePath, file));
-      } catch {
-        missing.push(file);
-      }
-    }),
-  );
-  return missing;
-}
 
 /**
  * Re-runs the TICKET's own verify command — never the manifest's claimed
