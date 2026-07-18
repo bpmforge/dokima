@@ -1742,7 +1742,7 @@
         "Adaptive-depth interview drives VISION/SCOPE/personas/SRS/stories drafts through chat cards; interview is NEVER-AUTO (NA-1 heritage)"
       ],
       "points": 5,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         "CONDUCTOR 2026-07-16T10:28:49.725Z: blocked after 2 attempts. Branch sw/w5-02 kept. Gaps: [HIGH] plan.json: W5-02's acceptance was unilaterally rewritten (clause 2, 'deliverables editable in the artifact viewer', deleted — plan.json:1637-1638) and status flipped straight to 'done' (plan.json:1644) in the very same pass that performed the split, by the same session whose prior close was rejected. The notes justify this as mirroring the W3-13→W3-17 precedent, but that precedent's actual discipline was the opposite: W3-13 stayed status:'in_progress' (plan.json:1068) after splitting out W3-17, with an explicit note 'This ticket (W3-13) stays in_progress, not done, until W3-17 and the W",
         "DECOMPOSE 2026-07-18 (Brad-approved split-per-lane): the \"deliverables editable in the artifact viewer\" half needs apps/web (outside this pipeline ticket) — moved to new W5-12 (ui, depends_on W4-05+W5-02). This ticket keeps the interview engine + chat cards + NEVER-AUTO (engine already built+gated on blocked/w5-02). Rebuild fresh on current main (branches are stale vs trust-core+W4).",
