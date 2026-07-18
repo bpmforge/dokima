@@ -1491,7 +1491,7 @@
         "notifications table migration per DATABASE §3 (closed kind enum, leverage index) — the taxonomy is schema, not convention"
       ],
       "points": 5,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 design review G-18. AMENDED 2026-07-14 (adopted R-A1). AMENDED 2026-07-14 challenger fix.",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
