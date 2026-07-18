@@ -10,24 +10,36 @@
  * read, or hashed into a receipt.
  *
  * SECURITY (HIGH, review-caught TOCTOU): `classifyManifestFile` holds ONE
- * file descriptor across the containment check and the read. The prior
- * shape of this code resolved containment via `fs.realpath(path)` and then
- * separately re-opened the same path string with `fs.readFile(path)` — two
- * independent syscalls against a path, with a window between them in which
- * an untrusted verify command (real code from the already-exited session,
- * racing `ln -sf /etc/passwd file; ln -sf orig file` in a loop) could swap
- * the leaf for an escaping symlink and have it silently followed by the
- * second call. Here, once containment is established, the file is opened
- * with `O_NOFOLLOW` on the final path component — an atomic, kernel-level
- * refusal to follow a symlink at that instant — and every subsequent check
- * (fstat) and the read itself go through that SAME held `FileHandle`. The
- * manifest-claimed path string is never re-resolved after the initial
- * `fs.realpath` call: if the leaf has become a symlink by the time the
- * open executes, the open fails closed (ELOOP/EMLINK) rather than
- * following it, regardless of how the timing lands.
+ * file descriptor across the containment check and the read, and never
+ * trusts a bare path string again once that fd is open.
+ *
+ * The leaf is protected by `O_NOFOLLOW` on the final path component: if an
+ * untrusted verify command (racing `ln -sf /etc/passwd file; ln -sf orig
+ * file` in a loop) swaps the leaf for an escaping symlink between the
+ * initial `fs.realpath` check and the open, the open fails closed
+ * (ELOOP/EMLINK) rather than following it.
+ *
+ * `O_NOFOLLOW` only guards the trailing component, though — it does nothing
+ * for an ANCESTOR directory swapped to a symlink in that same window, since
+ * a normal path lookup always follows symlinks in intermediate components.
+ * Closing that gap would ideally mean verifying containment from the fd
+ * itself (Linux's `/proc/self/fd/<n>` readlink, or per-component `openat`).
+ * Neither is available portably from pure Node: verified empirically that
+ * macOS's `/dev/fd/<n>` does not dereference to a real path (`realpath` on
+ * it returns itself) and does not support the `/proc/self/fd/<n>/subpath`
+ * relative-open trick Linux's magic-link supports, and `node:fs` exposes no
+ * `openat`. So `fdStillWithinRoot` (below) approximates it with two fd- and
+ * lstat-based checks run AFTER the open, immediately before the read: an
+ * ancestor lstat walk (catches an ancestor that is a symlink at
+ * verification time) plus an fstat-vs-lstat identity comparison (catches an
+ * ancestor that was swapped to an escaping symlink and swapped back before
+ * the walk ran — the fd, pinned at open time, still shows the escaped
+ * identity even after the path is restored). Together with the leaf's
+ * `O_NOFOLLOW`, every instant from open to read is covered; the manifest
+ * path string itself is never re-resolved and trusted blindly again.
  */
 
-import { promises as fs, constants as fsConstants } from 'node:fs';
+import { promises as fs, constants as fsConstants, type Stats } from 'node:fs';
 import path from 'node:path';
 
 export type ManifestFileStatus = 'ok' | 'missing' | 'symlink-escape';
@@ -48,6 +60,15 @@ export interface ClassifyManifestFileOptions {
    * Production callers never pass this.
    */
   afterRealpathBeforeOpen?: () => Promise<void> | void;
+  /**
+   * Test-only seam: invoked once, after the fd is open (and its `O_NOFOLLOW`
+   * leaf check has already passed) but immediately before `fdStillWithinRoot`
+   * re-verifies containment. Lets tests deterministically inject a
+   * swap-then-restore of an ancestor directory into the narrower window
+   * `fdStillWithinRoot`'s fstat/lstat identity check (rather than its
+   * ancestor walk) is meant to catch. Production callers never pass this.
+   */
+  afterOpenBeforeContainmentRecheck?: () => Promise<void> | void;
 }
 
 /**
@@ -75,6 +96,43 @@ async function realpathOfNearestAncestor(absPath: string): Promise<string> {
 function isWithinRoot(realRoot: string, real: string): boolean {
   const relative = path.relative(realRoot, real);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+/**
+ * Re-verifies, using the already-open `handle` plus fresh `lstat` calls, that
+ * the fd still refers to something inside `realRoot`. See the module-level
+ * comment for why this is two checks rather than one atomic fd-to-path
+ * syscall: no portable primitive for that exists in pure Node.
+ */
+async function fdStillWithinRoot(
+  handle: fs.FileHandle,
+  real: string,
+  realRoot: string,
+): Promise<boolean> {
+  let dir = path.dirname(real);
+  for (;;) {
+    const relative = path.relative(realRoot, dir);
+    if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) break;
+    let ancestorStat: Stats;
+    try {
+      ancestorStat = await fs.lstat(dir);
+    } catch {
+      // An ancestor vanishing mid-check is itself a sign the ground shifted
+      // under us — fail closed rather than assume containment holds.
+      return false;
+    }
+    if (ancestorStat.isSymbolicLink()) return false;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  const [fdStat, pathStat] = await Promise.all([
+    handle.stat(),
+    fs.lstat(real).catch(() => null),
+  ]);
+  if (!pathStat) return false;
+  return fdStat.dev === pathStat.dev && fdStat.ino === pathStat.ino;
 }
 
 /**
@@ -132,6 +190,15 @@ export async function classifyManifestFile(
   try {
     const stat = await handle.stat();
     if (!stat.isFile()) {
+      return { status: 'symlink-escape', content: null };
+    }
+    if (options?.afterOpenBeforeContainmentRecheck) {
+      await options.afterOpenBeforeContainmentRecheck();
+    }
+    // `O_NOFOLLOW` above only guards `real`'s trailing component — it says
+    // nothing about an ancestor directory swapped to a symlink in the same
+    // window. Re-verify via the held fd before trusting the read.
+    if (!(await fdStillWithinRoot(handle, real, realRoot))) {
       return { status: 'symlink-escape', content: null };
     }
     const content = await handle.readFile('utf8');

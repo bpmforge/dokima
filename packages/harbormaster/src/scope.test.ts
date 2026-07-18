@@ -207,6 +207,95 @@ describe('classifyManifestFile — read', () => {
   );
 
   it(
+    'RED FIXTURE (TOCTOU, acceptance 3): an ANCESTOR directory swapped for ' +
+      'a symlink in the window between the containment check and the fd ' +
+      'open is refused, never read — O_NOFOLLOW on the leaf alone cannot ' +
+      'catch this, only fdStillWithinRoot can',
+    async () => {
+      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      // The outside directory has a REAL (non-symlink) file at the same
+      // leaf name, so once the ancestor is swapped, the open call — which
+      // re-resolves the whole `real` string, ancestor included — succeeds
+      // and follows straight through to it; O_NOFOLLOW never trips because
+      // the leaf itself was never a symlink.
+      const outsideSecret = path.join(outsideDir, 'file.ts');
+      await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
+
+      await fs.mkdir(path.join(worktreeRoot, 'packages', 'example'), { recursive: true });
+      const filePath = path.join(worktreeRoot, 'packages/example/file.ts');
+      await fs.writeFile(filePath, 'export const x = 1;\n');
+      const ancestorDir = path.join(worktreeRoot, 'packages/example');
+      const realRoot = await fs.realpath(worktreeRoot);
+
+      const result = await classifyManifestFile(
+        worktreeRoot,
+        realRoot,
+        'packages/example/file.ts',
+        {
+          afterRealpathBeforeOpen: async () => {
+            await fs.rm(ancestorDir, { recursive: true, force: true });
+            await fs.symlink(outsideDir, ancestorDir);
+          },
+        },
+      );
+
+      expect(result).toEqual({ status: 'symlink-escape', content: null });
+    },
+  );
+
+  it(
+    'RED FIXTURE (TOCTOU, acceptance 3): an ancestor swapped to an ' +
+      'escaping symlink for the open, then swapped BACK before the ' +
+      'post-open containment walk runs, is still refused via the fd ' +
+      'fstat/lstat identity mismatch — the ancestor walk alone would see ' +
+      'a restored, unescaped directory and miss it',
+    async () => {
+      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      const outsideSecret = path.join(outsideDir, 'file.ts');
+      await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
+
+      await fs.mkdir(path.join(worktreeRoot, 'packages', 'example'), { recursive: true });
+      const filePath = path.join(worktreeRoot, 'packages/example/file.ts');
+      await fs.writeFile(filePath, 'export const x = 1;\n');
+      const ancestorDir = path.join(worktreeRoot, 'packages/example');
+      const realRoot = await fs.realpath(worktreeRoot);
+
+      const result = await classifyManifestFile(
+        worktreeRoot,
+        realRoot,
+        'packages/example/file.ts',
+        {
+          // Swap the ancestor out BEFORE the open, so the open lands
+          // mid-escape and the fd is pinned to the OUTSIDE secret.
+          afterRealpathBeforeOpen: async () => {
+            await fs.rm(ancestorDir, { recursive: true, force: true });
+            await fs.symlink(outsideDir, ancestorDir);
+          },
+          // Then restore the ancestor to a normal, unescaped directory
+          // BEFORE fdStillWithinRoot's ancestor walk runs — a walk alone
+          // would see nothing wrong here. Only the fd, pinned at open time
+          // to the outside file, still disagrees with the now-restored path.
+          afterOpenBeforeContainmentRecheck: async () => {
+            await fs.rm(ancestorDir, { force: true });
+            await fs.mkdir(ancestorDir, { recursive: true });
+            await fs.writeFile(filePath, 'export const x = 1;\n');
+          },
+        },
+      );
+
+      expect(result).toEqual({ status: 'symlink-escape', content: null });
+    },
+  );
+
+  it(
     'adversarial race: content is never leaked across many concurrent ' +
       'symlink swaps racing the containment check (acceptance 3)',
     async () => {
