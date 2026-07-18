@@ -11,7 +11,11 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { JsonValue, SettingsMap } from '@shipwright/shared';
-import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
+import {
+  badRequest,
+  forbidden,
+  resolveProjectOrProblem,
+} from './settings-route-helpers.js';
 import {
   getEffectiveProjectSettings,
   getGlobalSettings,
@@ -22,6 +26,24 @@ import {
 
 function isPlainSettingsBody(value: unknown): value is Record<string, JsonValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * D-019 consent gate + any NEVER-AUTO-adjacent flag: these keys only ever
+ * flip through their dedicated consent/confirmation endpoint (Copilot's
+ * `POST/DELETE /projects/{id}/copilot-consent`, which mints the ledgered
+ * `copilot.consent_ack` event per FR-G6). The generic key/value settings
+ * PUT below is a flat pass-through with no per-key validation otherwise, so
+ * without this blocklist a caller could `PUT {"copilotEnabled": true}`
+ * straight through it and silently bypass the consent gate — no risk
+ * warning shown, no ack event minted. Reject the whole request (never
+ * silently drop just the gated key) so the caller sees the bypass attempt
+ * fail loudly.
+ */
+const CONSENT_GATED_KEYS = new Set(['copilotEnabled']);
+
+function findConsentGatedKey(body: Record<string, JsonValue>): string | undefined {
+  return Object.keys(body).find((key) => CONSENT_GATED_KEYS.has(key));
 }
 
 async function applyEachKey(
@@ -94,6 +116,21 @@ export function registerScopeRoutes(
       const { id } = request.params as { id: string };
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
+      if (isPlainSettingsBody(request.body)) {
+        const gatedKey = findConsentGatedKey(request.body);
+        if (gatedKey) {
+          return reply
+            .code(403)
+            .type('application/problem+json')
+            .send(
+              forbidden(
+                request,
+                `"${gatedKey}" is consent-gated (D-019) and cannot be set via the generic settings PUT — use its dedicated consent endpoint instead`,
+                'consent-gated-key',
+              ),
+            );
+        }
+      }
       const next = await applyEachKey(request.body, (key, value) =>
         putProjectSetting(projectPath, key, value),
       );

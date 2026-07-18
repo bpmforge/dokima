@@ -2,7 +2,7 @@
  * Project resolution + raw SQLite plumbing shared by the settings stores
  * that DATABASE.md places in the project DB rather than a settings file
  * (model_matrix §6; rule_state/suppressions §5b). Schema lives in
- * `packages/events/migrations/003_settings.sql`; `openEventLog` applies it
+ * `packages/events/migrations/005_settings.sql`; `openEventLog` applies it
  * (like every other migration) the moment this module opens a writable
  * connection, so these tables exist by the time any settings write runs.
  *

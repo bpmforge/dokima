@@ -43,6 +43,19 @@ export function badRequest(request: FastifyRequest, detail: string) {
   });
 }
 
+/** D-019: consent-gated keys refused on the generic settings PUT (see scope-routes.ts's CONSENT_GATED_KEYS). */
+export function forbidden(request: FastifyRequest, detail: string, rule?: string) {
+  return problem({
+    type: 'https://shipwright.dev/errors/forbidden',
+    title: 'Forbidden',
+    status: 403,
+    detail,
+    instance: request.url,
+    requestId: request.id.toString(),
+    rule,
+  });
+}
+
 /** API_DESIGN §1: invariant refusals return 409 with the specific rule named. */
 export function conflict(request: FastifyRequest, detail: string, rule?: string) {
   return problem({

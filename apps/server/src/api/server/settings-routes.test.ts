@@ -2,8 +2,10 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { listEvents, openEventLog } from '@shipwright/events';
 import { buildApiServer, type ApiServer } from '../server.js';
 import { registerProject } from '../projects.js';
+import { stateDbPath } from './settings-db.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const PORT = 4401;
@@ -28,6 +30,7 @@ describe('settings routes', () => {
     app: ApiServer['app'];
     fleetHome: string;
     projectId: string;
+    projectDir: string;
   }> {
     const fleetHome = await tmpDir('shipwright-settings-routes-');
     dirs.push(fleetHome);
@@ -44,7 +47,16 @@ describe('settings routes', () => {
       fleetHome,
     });
     active = server;
-    return { app: server.app, fleetHome, projectId: record.id };
+    return { app: server.app, fleetHome, projectId: record.id, projectDir };
+  }
+
+  function eventTypes(projectDir: string): string[] {
+    const log = openEventLog(stateDbPath(projectDir));
+    try {
+      return listEvents(log).map((e) => e.eventType);
+    } finally {
+      log.close();
+    }
   }
 
   function authHeaders() {
@@ -275,6 +287,58 @@ describe('settings routes', () => {
       headers: authHeaders(),
     });
     expect(matrixAfter.json().copilot_enabled).toBe(true);
+  });
+
+  it('SECURITY (red fixture): a direct PUT {copilotEnabled:true} through the generic settings endpoint is refused and does not enable Copilot', async () => {
+    const { app, projectId } = await boot();
+
+    const bypassAttempt = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { copilotEnabled: true },
+    });
+    expect(bypassAttempt.statusCode).toBe(403);
+    expect(bypassAttempt.json().rule).toBe('consent-gated-key');
+
+    const consent = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/copilot-consent`,
+      headers: authHeaders(),
+    });
+    expect(consent.json().enabled).toBe(false);
+
+    const matrix = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/model-matrix`,
+      headers: authHeaders(),
+    });
+    expect(matrix.json().copilot_enabled).toBe(false);
+
+    // A mixed body (gated key alongside a legitimate one) is refused wholesale — never
+    // silently applies the safe key while dropping the gated one.
+    const mixedAttempt = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { autonomy: 'auto', copilotEnabled: true },
+    });
+    expect(mixedAttempt.statusCode).toBe(403);
+    const settingsAfter = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+    });
+    expect(settingsAfter.json().autonomy).toBeUndefined();
+
+    // The real consent-gate endpoint still works — the fix blocks only the generic PUT.
+    const properEnable = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/copilot-consent`,
+      headers: authHeaders(),
+      payload: { acknowledge: true },
+    });
+    expect(properEnable.json().enabled).toBe(true);
   });
 
   it('guide route degrades to markdown:null for a topic with no content yet', async () => {
