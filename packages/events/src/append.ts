@@ -1,3 +1,4 @@
+import { redactDeep } from '@shipwright/shared';
 import { computeEventHash, GENESIS_HASH, type ChainRow } from './hash.js';
 import type { EventInput, EventLog, EventRecord } from './types.js';
 
@@ -30,6 +31,15 @@ function rowToRecord(row: EventRow): EventRecord {
 export interface AppendEventOptions {
   /** Injectable clock for deterministic fixtures (TESTING.md §2). */
   now?: () => string;
+  /**
+   * Extra secret values to redact beyond known live-credential shapes
+   * (SC-06) — typically the result of `collectSecretValues(vault,
+   * projectDir)` (`@shipwright/shared`), gathered by the caller since
+   * collecting them is async while `appendEvent` must stay sync (it runs
+   * inside a single better-sqlite3 transaction). Omit to still get
+   * pattern-based redaction only.
+   */
+  secretValues?: readonly string[];
 }
 
 /**
@@ -38,6 +48,14 @@ export interface AppendEventOptions {
  * transaction, so there is no window between the check and the insert
  * (single-writer, DATABASE.md §1) — no AUTOINCREMENT-then-update, which the
  * append-only trigger would reject anyway.
+ *
+ * `input.payload` is redacted (SC-06, `redactDeep`) before it is
+ * JSON-stringified, hashed, or persisted — this is the universal choke
+ * point for the event log, so no secret from any producer ever reaches the
+ * hash-chained `events` table (NFR-4). The redacted payload is what gets
+ * hashed and stored, so the returned record's hash always matches its own
+ * payload; the returned record's `payload` field is the redacted value too,
+ * never the raw input.
  */
 export function appendEvent(
   log: EventLog,
@@ -45,6 +63,7 @@ export function appendEvent(
   opts: AppendEventOptions = {},
 ): EventRecord {
   const now = opts.now ?? (() => new Date().toISOString());
+  const secretValues = opts.secretValues ?? [];
   const run = log.db.transaction((): EventRecord => {
     const tail = log.db
       .prepare<[], { seq: number; hash: string }>(
@@ -53,7 +72,8 @@ export function appendEvent(
       .get();
     const seq = (tail?.seq ?? 0) + 1;
     const prevHash = tail?.hash ?? GENESIS_HASH;
-    const payloadJson = JSON.stringify(input.payload ?? null);
+    const payload = redactDeep(input.payload ?? null, secretValues);
+    const payloadJson = JSON.stringify(payload);
     const hash = computeEventHash({
       prevHash,
       seq,
@@ -86,7 +106,7 @@ export function appendEvent(
       actorId: input.actorId,
       ticketId,
       runId,
-      payload: input.payload ?? null,
+      payload,
       createdAt,
       prevHash,
       hash,
