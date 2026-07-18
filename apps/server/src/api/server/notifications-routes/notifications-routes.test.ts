@@ -10,7 +10,7 @@ import {
   startTicket,
 } from '@shipwright/tickets';
 import { createIdentity, openEventLog } from '@shipwright/events';
-import { buildApiServer, type ApiServer } from '../server.js';
+import { buildApiServer, type ApiServer } from '../../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const PORT = 4403;
