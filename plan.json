@@ -1639,7 +1639,7 @@
         "Token-delivery residual (THREAT_MODEL §5.6): evaluate same-origin-only injection or WS-handshake token delivery so a loopback-local process cannot harvest the operator bearer from index.html; corrupted fleet.json degrades to problem+json, never a 500 (W4-02 review residuals)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-202"
       ],
@@ -1649,7 +1649,8 @@
         "MORNING BATCH 2026-07-16: real stall (generic block after 2 attempts) — API-mechanics ticket (OpenAPI/SSE/idempotency/route-walker), batch with the security pass. blocked/w4-11 kept.",
         "SEAM FIX 2026-07-18 (app-shell registration, flavor c): widened to apps/server/src/api/server.ts — the openapi/SSE endpoints were built but 404 live because buildApiServer never registers them, and route registration lives in server.ts (outside the server/** subdir scope). Register your routes there; keep endpoint impls in api/{openapi,events-sse,idempotency,problem}*. Prior impl verified correct+unregressed — this is the last-mile wiring.",
         "CONDUCTOR 2026-07-18T19:50:47.093Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 403 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
-        "FIX 2026-07-18: your edits pushed apps/server/src/api/server/artifacts-routes.ts to 403>400 (file-size gate). It IS in your server/** scope — split it into a directory (index/barrel + chapter modules, one concern each, <=400 lines) per CODE_BOOK_PROTOCOL.md, as W4-05 did for its helpers. Do not self-widen scope; if a genuinely out-of-scope file is needed, stop and HANDOFF."
+        "FIX 2026-07-18: your edits pushed apps/server/src/api/server/artifacts-routes.ts to 403>400 (file-size gate). It IS in your server/** scope — split it into a directory (index/barrel + chapter modules, one concern each, <=400 lines) per CODE_BOOK_PROTOCOL.md, as W4-05 did for its helpers. Do not self-widen scope; if a genuinely out-of-scope file is needed, stop and HANDOFF.",
+        "RESUME 2026-07-18: reclaiming after the file-size block. Recovering the prior implementation from blocked/w4-11-2026-07-18T1950 (verified correct+unregressed per SEAM FIX note) via cherry-pick, then splitting artifacts-routes.ts into a directory (index/barrel + chapters) per CODE_BOOK_PROTOCOL.md to clear the file-size gate."
       ]
     },
     {
