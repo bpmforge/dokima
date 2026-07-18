@@ -33,13 +33,14 @@ export function forEachSeed(
   count: number,
   body: (rng: () => number, seed: number) => void,
 ): void {
-  for (let seed = 1; seed <= count; seed += 1) {
-    try {
+  let seed = 0;
+  try {
+    for (seed = 1; seed <= count; seed += 1) {
       body(mulberry32(seed), seed);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`failed with seed=${seed}: ${message}`, { cause: err });
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`failed with seed=${seed}: ${message}`, { cause: err });
   }
 }
 
@@ -48,12 +49,13 @@ export async function forEachSeedAsync(
   count: number,
   body: (rng: () => number, seed: number) => Promise<void>,
 ): Promise<void> {
-  for (let seed = 1; seed <= count; seed += 1) {
-    try {
+  let seed = 0;
+  try {
+    for (seed = 1; seed <= count; seed += 1) {
       await body(mulberry32(seed), seed);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      throw new Error(`failed with seed=${seed}: ${message}`, { cause: err });
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`failed with seed=${seed}: ${message}`, { cause: err });
   }
 }

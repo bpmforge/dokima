@@ -370,6 +370,57 @@ describe('runBerths (D-010, FR-H5)', () => {
     expect(listTickets(log).every((t) => t.status === 'ready')).toBe(true);
   });
 
+  it("when one berth's runTicket throws, every other berth finishes its current ticket but never claims a second one", async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+    for (let i = 1; i <= 8; i += 1) {
+      seedTicket(log, `W9-${String(i).padStart(2, '0')}`, `lane-${i}`);
+    }
+
+    const boom = new Error('boom: simulated session crash');
+    const runTicket: BerthTicketRunner = async ({ ticket, actorId }) => {
+      if (ticket.id === 'W9-01') {
+        throw boom;
+      }
+      await sleep(50);
+      closeTicket(log, {
+        ticketId: ticket.id,
+        actorId,
+        files: [`lanes/${ticket.lane}/file.txt`],
+        verify: { command: 'true', exitCode: 0 },
+        commits: ['deadbeef'],
+      });
+    };
+
+    const result = await runBerths({
+      log,
+      runId: 'run-1',
+      projectId: 'proj-1',
+      repoRoot,
+      berths: 4,
+      breakerLevel: NEVER_ok,
+      runTicket,
+    });
+
+    expect(result.berths).toHaveLength(4);
+    expect(result.berths.every((b) => b.stopReason === 'error')).toBe(true);
+    expect(result.berths.every((b) => b.error === boom)).toBe(true);
+
+    // The berth that hit the throwing ticket never records it as processed
+    // (it never reached closeTicket); the other three finish the ticket
+    // they already held when the error landed, but none of them go on to
+    // claim a second ticket -- exactly one processed entry per surviving
+    // berth, none unaccounted for.
+    const totalProcessed = result.berths.flatMap((b) => b.processed);
+    expect(totalProcessed).toHaveLength(3);
+    expect(totalProcessed.every((p) => p.landed)).toBe(true);
+
+    const tickets = listTickets(log);
+    expect(tickets.filter((t) => t.status === 'in_review')).toHaveLength(3);
+    expect(tickets.filter((t) => t.status === 'in_progress')).toHaveLength(1);
+    expect(tickets.filter((t) => t.status === 'ready')).toHaveLength(4);
+  });
+
   it('auto-blocks (comment + release) a ticket a runner leaves in_progress, freeing its lane', async () => {
     fixture = await setupFixture();
     const { log, repoRoot } = fixture;

@@ -115,7 +115,7 @@ export interface RunBerthsOptions {
   readonly now?: () => string;
 }
 
-export type BerthStopReason = 'idle' | 'stopped' | 'budget' | 'breakpoint';
+export type BerthStopReason = 'idle' | 'stopped' | 'budget' | 'breakpoint' | 'error';
 
 export interface BerthTicketOutcome {
   readonly ticketId: string;
@@ -131,6 +131,13 @@ export interface BerthOutcome {
   readonly actorId: string;
   readonly processed: readonly BerthTicketOutcome[];
   readonly stopReason: BerthStopReason;
+  /**
+   * Present when `stopReason` is `'error'`: the error that halted the run —
+   * either this berth's own thrown error, or (if a sibling threw first) that
+   * same error, observed via the shared abort flag so every berth halts at
+   * its own next boundary without needing to be cancelled (FR-H5).
+   */
+  readonly error?: unknown;
 }
 
 export interface RunBerthsResult {
@@ -179,6 +186,15 @@ async function resolveBerthWorktree(
 
 interface SharedBerthState {
   paused: boolean;
+  /**
+   * Set by whichever berth first throws (from `runTicket` or any other
+   * awaited call in its loop). Every other berth checks this at its next
+   * loop-top boundary and halts with `stopReason: 'error'` instead of
+   * continuing — the async equivalent of `Promise.all` fan-out `await`ing
+   * an abort signal instead of leaving siblings to run unobserved in the
+   * background once one throws (see module doc).
+   */
+  error?: unknown;
 }
 
 /** True once any landed ticket in this run has crossed `breakpoint`'s pause condition (breakpoints.ts's `shouldPauseAtBreakpoint`, evaluated over the tickets still claimable right now). */
@@ -211,56 +227,68 @@ async function runOneBerth(
   const skip = new Set<string>();
   const processed: BerthTicketOutcome[] = [];
 
-  for (;;) {
-    if (options.stopSwitch && (await options.stopSwitch())) {
-      return { berthId, actorId, processed, stopReason: 'stopped' };
-    }
-    if (shared.paused) {
-      return { berthId, actorId, processed, stopReason: 'breakpoint' };
-    }
-    const level = options.breakerLevel ? await options.breakerLevel() : 'ok';
-    if (!policyForLevel(level).canClaimNewTicket) {
-      return { berthId, actorId, processed, stopReason: 'budget' };
-    }
+  try {
+    for (;;) {
+      if (shared.error !== undefined) {
+        return { berthId, actorId, processed, stopReason: 'error', error: shared.error };
+      }
+      if (options.stopSwitch && (await options.stopSwitch())) {
+        return { berthId, actorId, processed, stopReason: 'stopped' };
+      }
+      if (shared.paused) {
+        return { berthId, actorId, processed, stopReason: 'breakpoint' };
+      }
+      const level = options.breakerLevel ? await options.breakerLevel() : 'ok';
+      if (!policyForLevel(level).canClaimNewTicket) {
+        return { berthId, actorId, processed, stopReason: 'budget' };
+      }
 
-    // Pick + claim, synchronously and back-to-back (berths-scheduler.ts's
-    // module doc explains why this is race-free across concurrent berths).
-    const next = pickNextBerthTicket(listTickets(options.log), skip);
-    if (!next) {
-      return { berthId, actorId, processed, stopReason: 'idle' };
-    }
-    claimTicket(options.log, { ticketId: next.id, actorId });
-    startTicket(options.log, { ticketId: next.id, actorId });
+      // Pick + claim, synchronously and back-to-back (berths-scheduler.ts's
+      // module doc explains why this is race-free across concurrent berths).
+      const next = pickNextBerthTicket(listTickets(options.log), skip);
+      if (!next) {
+        return { berthId, actorId, processed, stopReason: 'idle' };
+      }
+      claimTicket(options.log, { ticketId: next.id, actorId });
+      startTicket(options.log, { ticketId: next.id, actorId });
 
-    const worktree = await resolveBerthWorktree(options.repoRoot, next, baseRef);
-    await options.runTicket({
-      ticket: requireTicket(options.log, next.id),
-      worktree,
-      berthId,
-      actorId,
-    });
-
-    let current = requireTicket(options.log, next.id);
-    if (current.status === 'in_progress') {
-      commentTicket(options.log, {
-        ticketId: next.id,
+      const worktree = await resolveBerthWorktree(options.repoRoot, next, baseRef);
+      await options.runTicket({
+        ticket: requireTicket(options.log, next.id),
+        worktree,
+        berthId,
         actorId,
-        body:
-          'auto-blocked with evidence: berth runner returned without closing or ' +
-          'releasing the ticket (FR-H5).',
       });
-      releaseTicket(options.log, { ticketId: next.id, actorId });
-      current = requireTicket(options.log, next.id);
-    }
 
-    const landed = current.status === 'in_review';
-    const parked = current.status === 'ready';
-    processed.push({ ticketId: next.id, landed, parked, finalStatus: current.status });
-    skip.add(next.id);
+      let current = requireTicket(options.log, next.id);
+      if (current.status === 'in_progress') {
+        commentTicket(options.log, {
+          ticketId: next.id,
+          actorId,
+          body:
+            'auto-blocked with evidence: berth runner returned without closing or ' +
+            'releasing the ticket (FR-H5).',
+        });
+        releaseTicket(options.log, { ticketId: next.id, actorId });
+        current = requireTicket(options.log, next.id);
+      }
 
-    if (landed && checkBreakpointAfterLanding(options.log, breakpoint, next.id, skip)) {
-      shared.paused = true;
+      const landed = current.status === 'in_review';
+      const parked = current.status === 'ready';
+      processed.push({ ticketId: next.id, landed, parked, finalStatus: current.status });
+      skip.add(next.id);
+
+      if (landed && checkBreakpointAfterLanding(options.log, breakpoint, next.id, skip)) {
+        shared.paused = true;
+      }
     }
+  } catch (err) {
+    // Record the abort for every other berth to observe at its own next
+    // loop-top boundary (see `SharedBerthState.error`), then surface it on
+    // this berth's own outcome instead of letting it escape `Promise.all`
+    // and leave siblings running unobserved in the background.
+    shared.error = err;
+    return { berthId, actorId, processed, stopReason: 'error', error: err };
   }
 }
 
