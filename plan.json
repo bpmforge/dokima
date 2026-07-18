@@ -2451,7 +2451,7 @@
         "Global concurrency governor caps summed active berths across projects at N (three-scope setting); per-project berth dials allocate within the cap (ARCHITECTURE §6)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-805"
       ],
