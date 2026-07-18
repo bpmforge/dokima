@@ -417,6 +417,58 @@ describe('artifact routes — buildApiServer integration', () => {
     expect(listRes.json().items[0]).toMatchObject({ revisionRequested: true });
   });
 
+  it('echoes X-Event-Seq on POST /artifacts/comments (API_DESIGN §1/§5)', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(fleetHome, 'comment-seq');
+    await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/artifacts/comments`,
+      headers: authHeaders(),
+      payload: { path: 'docs/SRS.md', body: 'Clarify FR-C3.', versionRef: 'HEAD' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.headers['x-event-seq']).toBeDefined();
+    expect(Number(res.headers['x-event-seq'])).toBeGreaterThan(0);
+  });
+
+  it('replays the original response for a repeated Idempotency-Key on POST /artifacts/comments', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(
+      fleetHome,
+      'comment-replay',
+    );
+    await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
+
+    const payload = { path: 'docs/SRS.md', body: 'Clarify FR-C3.', versionRef: 'HEAD' };
+    const first = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/artifacts/comments`,
+      headers: { ...authHeaders(), 'idempotency-key': 'k-comment-1' },
+      payload,
+    });
+    expect(first.statusCode).toBe(201);
+
+    const replay = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/artifacts/comments`,
+      headers: { ...authHeaders(), 'idempotency-key': 'k-comment-1' },
+      payload,
+    });
+    expect(replay.statusCode).toBe(first.statusCode);
+    expect(replay.json()).toEqual(first.json());
+    expect(replay.headers['x-event-seq']).toBe(first.headers['x-event-seq']);
+
+    const listRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/artifacts/comments?path=docs/SRS.md`,
+      headers: authHeaders(),
+    });
+    // The replay never appended a second comment event.
+    expect(listRes.json().items).toHaveLength(1);
+  });
+
   it('404s for an unknown project id on every artifact route', async () => {
     const { app } = await boot();
     const res = await app.inject({

@@ -266,6 +266,51 @@ describe('board routes — GET tickets / POST verbs', () => {
     verifyLog.close();
   });
 
+  it('does not replay across projects that reuse the same ticket id + Idempotency-Key', async () => {
+    const { app, fleetHome } = await boot();
+    const projectA = await registerProject(app, fleetHome, 'proj-collide-a');
+    const projectB = await registerProject(app, fleetHome, 'proj-collide-b');
+    for (const { dbPath } of [projectA, projectB]) {
+      const log = openEventLog(dbPath);
+      createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
+      createTicket(log, 'agent-1', {
+        id: 'T-1',
+        type: 'task',
+        title: 'Ready',
+        lane: 'ui',
+        writeScope: ['a/**'],
+      });
+      log.close();
+    }
+
+    const resA = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${projectA.id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-1' },
+      payload: {},
+    });
+    expect(resA.statusCode).toBe(200);
+
+    // Same ticket id + same Idempotency-Key, different project: must actually
+    // apply the verb (not replay project A's stored response).
+    const resB = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-1/claim?project=${projectB.id}`,
+      headers: { ...headers(), 'idempotency-key': 'k-1' },
+      payload: {},
+    });
+    expect(resB.statusCode).toBe(200);
+
+    const logB = openEventLogReader(projectB.dbPath);
+    const eventsB = listEvents({
+      db: logB,
+      path: projectB.dbPath,
+      close: () => logB.close(),
+    });
+    expect(eventsB.filter((e) => e.eventType === 'ticket.claimed')).toHaveLength(1);
+    logB.close();
+  });
+
   it('drag-fired close with no manifest is refused with 409 MANIFEST_INVALID (FR-T4)', async () => {
     const { app, fleetHome } = await boot();
     const { id, dbPath } = await registerProject(app, fleetHome, 'proj-close-refuse');

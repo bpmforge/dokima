@@ -24,6 +24,11 @@ import {
   openEventLogReader,
   type EventLog,
 } from '@shipwright/events';
+import {
+  EVENT_SEQ_HEADER,
+  extractIdempotencyKey,
+  IdempotencyStore,
+} from '../idempotency.js';
 import { computeFleetRegistryPath } from '../projects.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from './board-actor.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
@@ -92,6 +97,7 @@ export function registerArtifactRoutes(
   opts: ArtifactRoutesOptions = {},
 ): void {
   const registryPath = computeFleetRegistryPath(opts.home);
+  const idempotency = new IdempotencyStore();
 
   async function projectPathOrProblem(
     request: FastifyRequest,
@@ -293,6 +299,7 @@ export function registerArtifactRoutes(
   app.post(
     '/api/v1/projects/:id/artifacts/comments',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id: projectId } = request.params as { id: string };
       const projectPath = await projectPathOrProblem(request, reply);
       if (!projectPath) return;
       const body = request.body as Partial<ArtifactCommentPayload> | undefined;
@@ -309,6 +316,17 @@ export function registerArtifactRoutes(
       }
       const ticketId = body.ticketId ?? null;
       const phase = body.phase ?? null;
+
+      const idempotencyKey = extractIdempotencyKey(request.headers);
+      const replayKey = idempotencyKey
+        ? `${projectId}:comment:${idempotencyKey}`
+        : undefined;
+      if (replayKey) {
+        const replay = idempotency.get(replayKey);
+        if (replay) {
+          return reply.code(replay.status).headers(replay.headers).send(replay.body);
+        }
+      }
 
       let log: EventLog;
       try {
@@ -344,8 +362,9 @@ export function registerArtifactRoutes(
         });
 
         const gated = isGatedDeliverable(log.db, ticketId, phase);
+        let lastSeq = commentEvent.seq;
         if (gated) {
-          appendEvent(log, {
+          const revisionEvent = appendEvent(log, {
             eventType: 'revision.requested',
             actorId: OPERATOR_ACTOR_ID,
             ticketId,
@@ -357,9 +376,11 @@ export function registerArtifactRoutes(
               requestedBy: OPERATOR_ACTOR_ID,
             } satisfies RevisionRequestedPayload,
           });
+          lastSeq = revisionEvent.seq;
         }
 
-        return reply.code(201).send({
+        const headers = { [EVENT_SEQ_HEADER]: String(lastSeq) };
+        const responseBody = {
           comment: {
             seq: commentEvent.seq,
             at: commentEvent.createdAt,
@@ -369,7 +390,11 @@ export function registerArtifactRoutes(
             revisionRequested: gated,
           },
           revisionRequested: gated,
-        });
+        };
+        if (replayKey) {
+          idempotency.put(replayKey, { status: 201, body: responseBody, headers });
+        }
+        return reply.code(201).headers(headers).send(responseBody);
       } finally {
         log.close();
       }

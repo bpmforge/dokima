@@ -17,7 +17,11 @@ import {
   type Ticket,
 } from '@shipwright/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { extractIdempotencyKey, IdempotencyStore } from '../idempotency.js';
+import {
+  EVENT_SEQ_HEADER,
+  extractIdempotencyKey,
+  IdempotencyStore,
+} from '../idempotency.js';
 import { computeFleetRegistryPath } from '../projects.js';
 import type { WsHub } from '../ws-hub.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from './board-actor.js';
@@ -167,8 +171,6 @@ function fireVerb(
   }
 }
 
-const EVENT_SEQ_HEADER = 'x-event-seq';
-
 /** `POST /api/v1/tickets/:id/:verb` (API_DESIGN "tickets — verbs", FR-T1..T4;
  * idempotency + `X-Event-Seq` per API_DESIGN §1/§5). */
 function registerVerbRoute(
@@ -201,7 +203,7 @@ function registerVerbRoute(
           .type(PROBLEM_CONTENT_TYPE)
           .send(badRequest(request, 'missing required "project" query parameter'));
       }
-      const replayKey = `${verb}:${ticketId}:${idempotencyKey}`;
+      const replayKey = `${projectId}:${verb}:${ticketId}:${idempotencyKey}`;
       const replay = idempotency.get(replayKey);
       if (replay) {
         return reply.code(replay.status).headers(replay.headers).send(replay.body);

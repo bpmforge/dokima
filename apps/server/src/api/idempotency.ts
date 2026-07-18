@@ -2,9 +2,12 @@
  * Idempotency-Key replay store (API_DESIGN §1/§5): "Keys are stored with
  * the resulting event seq; replay returns the original response
  * (crash-safe clients + at-least-once CLI scripting)." Callers key entries
- * by whatever composite string disambiguates their route (e.g.
- * `${verb}:${ticketId}:${idempotencyKey}` in `server/board-routes.ts`) —
- * this store is a plain keyed cache, not opinionated about request shape.
+ * by whatever composite string disambiguates their route — MUST include the
+ * project id when a route is project-scoped (a single `IdempotencyStore` is
+ * shared across every project served by this process), e.g.
+ * `${projectId}:${verb}:${ticketId}:${idempotencyKey}` in
+ * `server/board-routes.ts` — this store is a plain keyed cache, not
+ * opinionated about request shape.
  *
  * In-memory, per-process, bounded (oldest-first eviction) — matches every
  * other piece of server state in this codebase that isn't the event log
@@ -16,6 +19,9 @@
  * defense — this store only saves a duplicate mutation call the trip to
  * re-derive that refusal.
  */
+
+/** `X-Event-Seq` response header name (API_DESIGN §1/§5): echoed on every mutation. */
+export const EVENT_SEQ_HEADER = 'x-event-seq';
 
 export interface StoredIdempotentResponse {
   status: number;
