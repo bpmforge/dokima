@@ -35,7 +35,7 @@
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { isSafeRelativePath } from './artifacts-helpers.js';
+import { isSafeGitRevision, isSafeRelativePath } from './artifacts-helpers.js';
 
 interface GitResult {
   stdout: string;
@@ -156,6 +156,7 @@ export async function showAtRev(
   rev: string,
   filePath: string,
 ): Promise<string | null> {
+  if (!isSafeGitRevision(rev)) return null;
   if (!(await isGitRepo(projectPath))) return null;
   if (await isSymlinkAtRev(projectPath, rev, filePath)) return null;
   const res = await runGit(projectPath, ['show', `${rev}:${filePath}`]);

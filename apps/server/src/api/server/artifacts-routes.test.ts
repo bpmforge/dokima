@@ -202,6 +202,53 @@ describe('artifact routes — buildApiServer integration', () => {
     expect(res.body).not.toContain('SQLite format 3');
   });
 
+  it('GET /artifacts/doc rejects a git-option-injection "rev" with 400 (arbitrary-file-write via --output)', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(
+      fleetHome,
+      'rev-injection',
+    );
+    await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
+    const pwnedDir = await tmpDir('shipwright-pwned-');
+    dirs.push(pwnedDir);
+    const pwnedFile = path.join(pwnedDir, 'pwned.txt');
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/artifacts/doc?path=docs/SRS.md&rev=${encodeURIComponent(`--output=${pwnedFile}`)}`,
+      headers: authHeaders(),
+    });
+    expect(res.statusCode).toBe(400);
+    await expect(fs.access(pwnedFile)).rejects.toThrow();
+  });
+
+  it('GET /artifacts/doc-diff rejects a git-option-injection "from"/"to" with 400', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(
+      fleetHome,
+      'doc-diff-injection',
+    );
+    await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
+    const pwnedDir = await tmpDir('shipwright-pwned-');
+    dirs.push(pwnedDir);
+    const pwnedFile = path.join(pwnedDir, 'pwned.txt');
+
+    const fromRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/artifacts/doc-diff?path=docs/SRS.md&from=${encodeURIComponent(`--output=${pwnedFile}`)}`,
+      headers: authHeaders(),
+    });
+    expect(fromRes.statusCode).toBe(400);
+
+    const toRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/artifacts/doc-diff?path=docs/SRS.md&from=HEAD&to=${encodeURIComponent(`--output=${pwnedFile}`)}`,
+      headers: authHeaders(),
+    });
+    expect(toRes.statusCode).toBe(400);
+    await expect(fs.access(pwnedFile)).rejects.toThrow();
+  });
+
   it('GET /artifacts/diff 404s when the ticket has no branch', async () => {
     const { app, fleetHome } = await boot();
     const { projectDir, projectId } = await registerGitProject(fleetHome, 'no-branch');

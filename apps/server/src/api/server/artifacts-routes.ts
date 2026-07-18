@@ -40,6 +40,7 @@ import {
 import { problem } from '../problem.js';
 import {
   titleFromMarkdown,
+  isSafeGitRevision,
   isSafeRelativePath,
   notFound,
   badRequest,
@@ -142,6 +143,12 @@ export function registerArtifactRoutes(
           .type(PROBLEM_CONTENT_TYPE)
           .send(badRequest(request, '"path" (safe relative path) is required'));
       }
+      if (query.rev !== undefined && !isSafeGitRevision(query.rev)) {
+        return reply
+          .code(400)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(badRequest(request, '"rev" must be a valid git revision'));
+      }
       const versions = await logForPath(projectPath, query.path);
       const content = query.rev
         ? await showAtRev(projectPath, query.rev, query.path)
@@ -213,6 +220,15 @@ export function registerArtifactRoutes(
           .code(400)
           .type(PROBLEM_CONTENT_TYPE)
           .send(badRequest(request, '"path" and "from" are required'));
+      }
+      if (
+        !isSafeGitRevision(query.from) ||
+        (query.to !== undefined && !isSafeGitRevision(query.to))
+      ) {
+        return reply
+          .code(400)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(badRequest(request, '"from"/"to" must be valid git revisions'));
       }
       const oldContent = await showAtRev(projectPath, query.from, query.path);
       if (oldContent === null) {

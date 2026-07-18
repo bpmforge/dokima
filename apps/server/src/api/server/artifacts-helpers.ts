@@ -33,6 +33,22 @@ export function isSafeRelativePath(candidate: string): boolean {
   return segments.every((s) => !s.startsWith('.'));
 }
 
+/**
+ * A safe `git` revision argument: non-empty and not option-like. `rev`/
+ * `from`/`to` reach `showAtRev`'s `execFile('git', ['show', \`${rev}:...\`])`
+ * with no shell involved, so classic shell injection doesn't apply — but a
+ * value starting with `-` is parsed by git as an *option* on the `show`/
+ * `ls-tree` argv, not a revision (e.g. `--output=/tmp/pwned` makes `git show`
+ * write its blob content to an attacker-chosen path — an arbitrary-file-write
+ * primitive gated only by the node process's filesystem permissions). Any
+ * bearer-token holder can reach these query params, including a compromised
+ * agent session (CLAUDE.md law #4), so this is rejected before it ever
+ * reaches `git-read.ts`.
+ */
+export function isSafeGitRevision(candidate: string): boolean {
+  return candidate.length > 0 && !candidate.startsWith('-');
+}
+
 export function notFound(request: FastifyRequest, detail: string) {
   return problem({
     type: 'https://shipwright.dev/errors/not-found',
