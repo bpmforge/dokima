@@ -140,6 +140,35 @@ describe('runBerths (D-010, FR-H5)', () => {
     );
   });
 
+  it('landing is serialized through review: N berths land tickets to in_review, never past it, regardless of N', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+    seedTicket(log, 'W9-01', 'core');
+    seedTicket(log, 'W9-02', 'infra');
+    seedTicket(log, 'W9-03', 'ui');
+    seedTicket(log, 'W9-04', 'docs');
+
+    await runBerths({
+      log,
+      runId: 'run-1',
+      projectId: 'proj-1',
+      repoRoot,
+      berths: 4,
+      breakerLevel: NEVER_ok,
+      runTicket: landingRunner(log, () => 0),
+    });
+
+    // `closeTicket` (this test's landing runner) is the only lifecycle verb
+    // `runBerths`/its injected runner ever calls -- `acceptTicket` (the
+    // distinct-reviewer verb that would advance a ticket past `in_review`
+    // to `done`) is never invoked by this module at any berth count, so no
+    // amount of parallelism can merge/accept on its own (D-018/BLUEPRINT
+    // §297 NEVER-AUTO).
+    const tickets = listTickets(log);
+    expect(tickets.every((t) => t.status === 'in_review')).toBe(true);
+    expect(tickets.some((t) => t.status === 'done')).toBe(false);
+  });
+
   it('gives every concurrently-active ticket its own git worktree (FR-H5 "own worktree")', async () => {
     fixture = await setupFixture();
     const { log, repoRoot } = fixture;
