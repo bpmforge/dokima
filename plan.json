@@ -1639,7 +1639,7 @@
         "Token-delivery residual (THREAT_MODEL §5.6): evaluate same-origin-only injection or WS-handshake token delivery so a loopback-local process cannot harvest the operator bearer from index.html; corrupted fleet.json degrades to problem+json, never a 500 (W4-02 review residuals)"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "stories": [
         "US-202"
       ],
@@ -1648,7 +1648,8 @@
         "CONDUCTOR 2026-07-16T08:49:01.818Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "MORNING BATCH 2026-07-16: real stall (generic block after 2 attempts) — API-mechanics ticket (OpenAPI/SSE/idempotency/route-walker), batch with the security pass. blocked/w4-11 kept.",
         "SEAM FIX 2026-07-18 (app-shell registration, flavor c): widened to apps/server/src/api/server.ts — the openapi/SSE endpoints were built but 404 live because buildApiServer never registers them, and route registration lives in server.ts (outside the server/** subdir scope). Register your routes there; keep endpoint impls in api/{openapi,events-sse,idempotency,problem}*. Prior impl verified correct+unregressed — this is the last-mile wiring.",
-        "CONDUCTOR 2026-07-18T19:50:47.093Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 403 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md"
+        "CONDUCTOR 2026-07-18T19:50:47.093Z: blocked after 2 attempts. Branch sw/w4-11 kept. Gaps: [validate-file-size:file-size] apps/server/src/api/server/artifacts-routes.ts is 403 lines (> 400) -- split into a directory: an index/barrel + chapter modules (one concern each, <= 400 lines). See CODE_BOOK_PROTOCOL.md",
+        "FIX 2026-07-18: your edits pushed apps/server/src/api/server/artifacts-routes.ts to 403>400 (file-size gate). It IS in your server/** scope — split it into a directory (index/barrel + chapter modules, one concern each, <=400 lines) per CODE_BOOK_PROTOCOL.md, as W4-05 did for its helpers. Do not self-widen scope; if a genuinely out-of-scope file is needed, stop and HANDOFF."
       ]
     },
     {
@@ -1664,7 +1665,10 @@
         "apps/web/src/App.tsx",
         "apps/web/e2e/**",
         "apps/server/src/api/server.ts",
-        "apps/server/src/api/server/**"
+        "apps/server/src/api/server/**",
+        "apps/web/package.json",
+        "apps/web/src/board/Lane.tsx",
+        "apps/web/src/notifications/notifications.css"
       ],
       "depends_on": [
         "W4-03",
@@ -1676,7 +1680,7 @@
         "a11y CI gate: Playwright axe scan on board/morning queue/settings/receipt inspector + keyboard-only pass for board verbs and queue; WCAG 2.2 AA per UX_SPEC §9 — pre-merge on web tickets from W4 (TESTING tier map)"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "stories": [
         "US-202",
         "US-404"
@@ -1684,7 +1688,8 @@
       "notes": [
         "ADDED 2026-07-14 challenger fix: palette, drawer, and the a11y gate were doc-mandated orphans (W7-06 consumed the palette nobody built).",
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
-        "CONDUCTOR 2026-07-18T20:47:32.756Z: blocked after 2 attempts. Branch sw/w4-12 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-18T20:47:32.756Z: blocked after 2 attempts. Branch sw/w4-12 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "SEAM FIX 2026-07-18: maker correctly refused to self-widen (MASTER_PROMPT rule 3) and filed a HANDOFF. Widened to the 3 named files it needs: apps/web/package.json (axe-core dev dep), apps/web/src/board/Lane.tsx + apps/web/src/notifications/notifications.css (the specific a11y violations to fix). If the axe gate surfaces violations in OTHER components, stop and HANDOFF rather than self-widen."
       ]
     },
     {
