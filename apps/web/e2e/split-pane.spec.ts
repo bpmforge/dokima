@@ -34,7 +34,12 @@ test('resizing a pane via the divider persists across reload', async ({ page }) 
 
 test('two different projects hold independent layouts', async ({ page }) => {
   await page.goto('/?project=proj-a');
-  await page.getByTestId('pane-artifacts').getByRole('button').click(); // collapse in proj-a only
+  // Named explicitly (not just "the only button in the pane"): W4-05's ArtifactViewer
+  // portal adds its own Docs/Receipts tab buttons alongside the collapse toggle.
+  await page
+    .getByTestId('pane-artifacts')
+    .getByRole('button', { name: 'Collapse Artifacts' })
+    .click(); // collapse in proj-a only
   await expect(page.getByTestId('pane-artifacts')).toHaveAttribute(
     'data-collapsed',
     'true',

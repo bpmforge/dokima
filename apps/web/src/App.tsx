@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ArtifactViewer } from './artifacts/ArtifactViewer.js';
 import { BoardView } from './board/BoardView.js';
 import { ChatView } from './chat/ChatView.js';
 import { readInjectedToken } from './chat/api.js';
-import { EstimateWorkspace } from './estimate/EstimateWorkspace.js';
 import { FleetHome } from './fleet/FleetHome.js';
 import { APP_NAME } from './index.js';
 import { SplitPaneWorkspace } from './layout/SplitPaneWorkspace.js';
@@ -74,11 +74,15 @@ function useBoardPaneNode(projectId: string | null): HTMLElement | null {
 }
 
 /**
- * Same portal pattern as `useChatPaneNode`, targeting the artifacts pane
- * (BLUEPRINT §12.2's dry-run estimate belongs under the Settings Matrix's
- * budget panel, UX_SPEC §6 — that screen doesn't exist yet, so the
- * estimate/escalation-ROI/weekly-digest workspace renders in the one pane
- * with no content producer yet, same discipline as the chat/board portals).
+ * Same portal pattern as `useChatPaneNode`, targeting the artifacts pane —
+ * its actual, spec'd home (UX_SPEC §5: "Artifact Viewer + Receipt
+ * Inspector (right pane)"). `EstimateWorkspace` (W4-08) portaled into this
+ * same node as a stopgap because its real home, the Settings Matrix
+ * (UX_SPEC §6), doesn't exist yet (W4-06, still `todo`); now that this pane
+ * has its rightful content producer, the estimate portal is removed here —
+ * see the W4-06 HANDOFF note in plan.json for where it needs to land next.
+ * Server routes/engine and `EstimateWorkspace` itself are untouched, only
+ * the mount moves.
  */
 function useArtifactsPaneNode(projectId: string | null): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
@@ -180,7 +184,7 @@ function AppShell() {
           {artifactsPaneNode &&
             token &&
             createPortal(
-              <EstimateWorkspace token={token} projectId={projectId} />,
+              <ArtifactViewer token={token} projectId={projectId} />,
               artifactsPaneNode,
             )}
         </>

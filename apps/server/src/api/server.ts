@@ -24,7 +24,12 @@ import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plug
 import { registerHealthz } from './healthz.js';
 import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
-import { registerBoardRoutes, registerEstimateRoutes } from './server/index.js';
+import {
+  registerArtifactRoutes,
+  registerBoardRoutes,
+  registerEstimateRoutes,
+  registerReceiptRoutes,
+} from './server/index.js';
 import { WsHub } from './ws-hub.js';
 import { completeHandshake, rejectUpgrade } from './ws-socket.js';
 
@@ -61,6 +66,8 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerProjectRoutes(app, { home: opts.fleetHome });
   registerBoardRoutes(app, { home: opts.fleetHome, wsHub });
   registerEstimateRoutes(app, { home: opts.fleetHome });
+  registerArtifactRoutes(app, { home: opts.fleetHome });
+  registerReceiptRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerChatRoute(app);
   registerStatic(app, opts.webDistDir, opts.token);
