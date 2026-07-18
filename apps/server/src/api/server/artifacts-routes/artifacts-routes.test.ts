@@ -5,8 +5,8 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, mintReceipt, openEventLog } from '@shipwright/events';
-import { registerProject } from '../projects.js';
-import { buildApiServer, type ApiServer } from '../server.js';
+import { registerProject } from '../../projects.js';
+import { buildApiServer, type ApiServer } from '../../server.js';
 
 const execFileAsync = promisify(execFile);
 const TOKEN = 'test-token-0123456789abcdef';
