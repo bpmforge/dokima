@@ -19,8 +19,14 @@ const KIND_LABEL: Record<NotificationItem['kind'], string> = {
   suggestion: 'Suggestion',
 };
 
+interface DigestItem {
+  kind?: string;
+  title: string;
+  summary?: string;
+}
+
 interface DigestBody {
-  items?: { title: string }[];
+  items?: DigestItem[];
 }
 
 interface SuggestionBody {
@@ -57,6 +63,8 @@ export interface NotificationCardProps {
 
 export function NotificationCard({ item, actions }: NotificationCardProps) {
   const summary = summaryLine(item);
+  const digestItems =
+    item.kind === 'digest' ? (item.body as DigestBody | null)?.items : undefined;
   return (
     <li className="notification-card" data-testid={`notification-${item.id}`}>
       <header className="notification-card__header">
@@ -68,6 +76,19 @@ export function NotificationCard({ item, actions }: NotificationCardProps) {
       </header>
       <p className="notification-card__title">{item.title}</p>
       {summary && <p className="notification-card__summary">{summary}</p>}
+      {digestItems && digestItems.length > 0 && (
+        <ul
+          className="notification-card__digest-items"
+          data-testid={`notification-${item.id}-digest-items`}
+        >
+          {digestItems.map((digestItem, index) => (
+            <li key={index}>
+              <strong>{digestItem.title}</strong>
+              {digestItem.summary && <span> — {digestItem.summary}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       <footer className="notification-card__footer">
         <time className="notification-card__time" dateTime={item.createdAt}>
           {new Date(item.createdAt).toLocaleString()}

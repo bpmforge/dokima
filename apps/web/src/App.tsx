@@ -14,6 +14,8 @@ import { NotificationsView } from './notifications/NotificationsView.js';
 import './notifications/notifications.css';
 import { CommandPalette } from './palette/index.js';
 import type { PaletteMode } from './palette/index.js';
+import { PlanView } from './plans/PlanView.js';
+import './plans/plans.css';
 import { RosterView } from './roster/RosterView.js';
 import { FirstRunWizard } from './settings/FirstRunWizard.js';
 import { SettingsPage } from './settings/SettingsPage.js';
@@ -39,9 +41,9 @@ function ThemeToggle() {
   );
 }
 
-type View = 'settings' | 'wizard' | 'roster' | 'notifications' | null;
+type View = 'settings' | 'wizard' | 'roster' | 'notifications' | 'plans' | null;
 
-/** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications` layer over either Fleet or a project. */
+/** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications`/`view=plans` layer over either Fleet or a project. */
 function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
 }
@@ -51,7 +53,8 @@ function readView(): View {
   return view === 'settings' ||
     view === 'wizard' ||
     view === 'roster' ||
-    view === 'notifications'
+    view === 'notifications' ||
+    view === 'plans'
     ? view
     : null;
 }
@@ -238,7 +241,7 @@ function AppShell() {
         <span>{APP_NAME}</span>
         <div className="app-shell__header-actions">
           <nav className="app-shell__nav">
-            {view === 'roster' || view === 'notifications' ? (
+            {view === 'roster' || view === 'notifications' || view === 'plans' ? (
               <button type="button" onClick={closeView}>
                 ← Back
               </button>
@@ -247,6 +250,11 @@ function AppShell() {
                 <button type="button" onClick={() => openView('roster')}>
                   Roster
                 </button>
+                {projectId && (
+                  <button type="button" onClick={() => openView('plans')}>
+                    Plan
+                  </button>
+                )}
                 <button
                   type="button"
                   className="app-shell__notifications-bell"
@@ -273,6 +281,8 @@ function AppShell() {
         <RosterView projectId={projectId} />
       ) : view === 'notifications' ? (
         <NotificationsView />
+      ) : view === 'plans' && projectId ? (
+        <PlanView projectId={projectId} />
       ) : view === 'wizard' ? (
         <FirstRunWizard
           onFinish={(createdProjectId) => {
