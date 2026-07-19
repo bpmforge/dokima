@@ -1821,7 +1821,7 @@
         "Phase 0 market, Phase 1 feasibility, Phase 3 design-options + build-vs-adopt, Phase 4 pre-code API verification templates shipped as content"
       ],
       "points": 5,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         "CONDUCTOR 2026-07-16T11:33:47.860Z: blocked after 2 attempts. Branch sw/w5-05 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "DECOMPOSE 2026-07-18: AC2 (\"phase templates shipped as content\") is content/ data, not another lane — widened scope to content/research-templates/** (mirrors W5-10 owning content/plan-catalog). No new ticket. Research engine (AC1) already built+gated on blocked/w5-05; rebuild fresh on current main.",
