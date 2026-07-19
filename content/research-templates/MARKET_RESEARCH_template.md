@@ -1,7 +1,9 @@
 <!--
-  Provenance: original Shipwright content (no bpm-opencode-experts equivalent to import —
-  checked agents/templates/ in that repo, which has neither a market-research nor a
-  feasibility/design-options/build-vs-adopt/pre-code-verification template).
+  Provenance: original Shipwright content. Checked bpm-opencode-experts skills/ and
+  agents/templates/ for an equivalent market-research template — none exists (that repo's
+  researcher agent treats "market research" as an ad hoc research task, not a fixed-structure
+  deliverable). Note: this directory's design-options template IS adapted from that repo —
+  see content/research-templates/VENDORED.md.
   Author: Shipwright W5-05 (research path)
   Created: 2026-07-18
 -->

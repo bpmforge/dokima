@@ -3,9 +3,11 @@
  * build-vs-adopt/pre-code-API-verification, one per research task type BLUEPRINT §3.2 names.
  * Only policy-layer metadata lives here — `id`/`phaseId`/`title`/`contentPath` (a plain
  * `content/research-templates/` path string), same pattern `../phases/topology.ts` already
- * uses for `content/experts`/`content/validators` names. The template bodies are original
- * Shipwright content under `content/research-templates/**` (CLAUDE.md law #6: content is
- * data, loaders parse it, code never imports the markdown text itself).
+ * uses for `content/experts`/`content/validators` names. The template bodies live under
+ * `content/research-templates/**` (CLAUDE.md law #6: content is data, loaders parse it, code
+ * never imports the markdown text itself); four of the five are original Shipwright content,
+ * and `design-options` is adapted from bpm-opencode-experts — see that directory's
+ * VENDORED.md for full provenance.
  */
 
 import type { PhaseId } from './types.js';

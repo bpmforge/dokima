@@ -1,5 +1,13 @@
 <!--
-  Provenance: original Shipwright content (no bpm-opencode-experts equivalent to import).
+  Provenance: adapted from bpm-opencode-experts skills/design-options/SKILL.md, adopted via
+  docs/work/IMPROVEMENT_RECOMMENDATIONS.md R-H1 ("Design-options discipline as the
+  technical-slate generator"). See VENDORED.md in this directory for the full divergence note.
+  Divergence (summary): the source is a chat-driven agent skill that writes
+  docs/DESIGN_OPTIONS_[topic].md directly; this is a fill-in-the-blank docs/research/ report
+  template carrying the same fixed structure (exactly 3 options — Minimal/Clean/Pragmatic —
+  compared on the same 6 dimensions in the same order: time, maintainability, scalability,
+  team fit, risk, reversibility), plus FR-P8 per-claim citation tagging and a Challenger-review
+  table the source has no equivalent for.
   Author: Shipwright W5-05 (research path)
   Created: 2026-07-18
 -->
