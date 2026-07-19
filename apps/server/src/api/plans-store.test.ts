@@ -12,7 +12,27 @@ import {
   verifyPlan,
 } from './plans-store.js';
 import { PlanStoreError } from './plans-types.js';
+import {
+  promoteRule,
+  recordRuleOutcome,
+  registerRule,
+} from './server/rule-state-store.js';
 import { stateDbPath } from './server/settings-db.js';
+import { buildPlanEvaluationSnapshot } from '../scheduler/snapshot.js';
+
+/** Flags 'R-DEMO' as a demotion-flagged `gate` rule via the real rule_state lifecycle (PC-005's live source, mirrors plan-scheduler.test.ts). */
+async function seedDemotionFlaggedRule(projectDir: string): Promise<void> {
+  await registerRule(projectDir, 'R-DEMO');
+  await promoteRule(projectDir, 'R-DEMO'); // proposed -> shadow
+  await promoteRule(projectDir, 'R-DEMO'); // shadow -> advisory
+  for (let i = 0; i < 20; i += 1) {
+    await recordRuleOutcome(projectDir, 'R-DEMO', false);
+  }
+  await promoteRule(projectDir, 'R-DEMO'); // advisory -> gate
+  for (let i = 0; i < 21; i += 1) {
+    await recordRuleOutcome(projectDir, 'R-DEMO', true); // trailing FP rate now > DEMOTION_FP_THRESHOLD
+  }
+}
 
 async function tmpProjectDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-plans-store-'));
@@ -159,6 +179,43 @@ describe('plans store', () => {
     expect(body.items[0]?.summary).toContain('receipts.staleCount == 0');
     expect(body.items[0]?.summary).toContain('staleCount=2');
   });
+
+  it(
+    'SECURITY (CRITICAL, SC-03/law 4): verifyPlan driven by the real ' +
+      "buildPlanEvaluationSnapshot derivation (the route's actual path) leaves an item " +
+      'unsatisfied by real state alone, even though a fabricated snapshot claiming it ' +
+      'satisfied would flip the identical item to done — closes the plans-store copy',
+    async () => {
+      async function seedAcceptedFpHeavyItem(): Promise<string> {
+        const dir = await tmpProjectDir();
+        dirs.push(dir);
+        await seedDemotionFlaggedRule(dir);
+        await evaluatePlan(dir, { ...baselineSnapshot(), rules: { fpHeavyCount: 1 } });
+        await acceptPlanItem(dir, 'PC-005', { lane: 'pipeline' });
+        return dir;
+      }
+
+      // Control: a caller-fabricated `rules.fpHeavyCount: 0` — exactly what
+      // the pre-fix /plan/verify route trusted verbatim — flips PC-005 to
+      // `done` with zero correlation to the real gate-demoted rule sitting
+      // in `rule_state`. This demonstrates the primitive is real, not just
+      // theoretical.
+      const fabricatedDir = await seedAcceptedFpHeavyItem();
+      const fabricatedSatisfied = { ...baselineSnapshot(), rules: { fpHeavyCount: 0 } };
+      const fromFabricated = await verifyPlan(fabricatedDir, fabricatedSatisfied);
+      expect(fromFabricated.verified.find((i) => i.id === 'PC-005')?.state).toBe('done');
+
+      // The route's actual, fixed path: derive the snapshot from real state
+      // and verify against THAT. Real state still has the demotion-flagged
+      // rule, so the identically-seeded item stays open — no caller input
+      // involved at all.
+      const realDir = await seedAcceptedFpHeavyItem();
+      const realSnapshot = await buildPlanEvaluationSnapshot(realDir);
+      expect(realSnapshot.rules.fpHeavyCount).toBe(1);
+      const fromReal = await verifyPlan(realDir, realSnapshot);
+      expect(fromReal.verified.find((i) => i.id === 'PC-005')?.state).toBe('accepted');
+    },
+  );
 
   it('re-accepting a regressed item reuses its ticket (no duplicate mint) and bumps attempt', async () => {
     const dir = await tmpProjectDir();

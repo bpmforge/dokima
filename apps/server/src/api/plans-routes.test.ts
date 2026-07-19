@@ -228,48 +228,83 @@ describe('plans routes', () => {
     expect(list.json().funnel.raw_findings).toBe(1);
   });
 
-  it('verify flips done -> regressed and the morning queue surfaces one Review card (AC2)', async () => {
-    const { app, projectId } = await boot();
-    await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/plan/evaluate`,
-      headers: authHeaders(),
-      payload: { snapshot: baselineSnapshot({ receipts: { staleCount: 1 } }) },
-    });
-    await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/plan-items/PC-001/accept`,
-      headers: authHeaders(),
-      payload: { lane: 'pipeline' },
-    });
-    await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/plan/verify`,
-      headers: authHeaders(),
-      payload: { snapshot: baselineSnapshot() }, // staleCount 0 -> satisfied -> done
-    });
-    const regress = await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/plan/verify`,
-      headers: authHeaders(),
-      payload: { snapshot: baselineSnapshot({ receipts: { staleCount: 1 } }) }, // done -> regressed
-    });
-    expect(regress.json().regressed).toHaveLength(1);
-    expect(regress.json().regressed[0]).toMatchObject({
-      catalog_id: 'PC-001',
-      state: 'regressed',
-    });
+  it(
+    'SECURITY (CRITICAL, SC-03/law 4): verify ignores a caller-supplied body.snapshot ' +
+      'entirely — a fabricated satisfying snapshot does NOT flip an accepted item to done',
+    async () => {
+      const { app, projectId } = await boot();
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/plan/evaluate`,
+        headers: authHeaders(),
+        payload: { snapshot: baselineSnapshot({ receipts: { staleCount: 1 } }) },
+      });
+      const accept = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/plan-items/PC-001/accept`,
+        headers: authHeaders(),
+        payload: { lane: 'pipeline' },
+      });
+      expect(accept.json().item.state).toBe('accepted');
 
-    const queue = await app.inject({
-      method: 'GET',
-      url: `/api/v1/approvals/queue?project=${projectId}`,
+      // The ticket's own red-fixture example — a fabricated, structurally
+      // incomplete snapshot claiming `receipts.staleCount == 0` (PC-001's
+      // verify criterion) is satisfied. Under the pre-fix route this shape
+      // would have been rejected as malformed (400); under the fix it
+      // doesn't matter at all — body.snapshot is never read.
+      const fabricated = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/plan/verify`,
+        headers: authHeaders(),
+        payload: { snapshot: { receipts: { staleCount: 0 } } },
+      });
+      expect(fabricated.statusCode).toBe(200);
+      // `receipts.staleCount` has no live producer yet (scheduler/snapshot.ts)
+      // -> the whole pass is skipped, same as the real scheduler would.
+      expect(fabricated.json()).toEqual({ verified: [], regressed: [], skipped: true });
+
+      // A fully well-formed, fully-satisfying fabricated snapshot changes nothing either.
+      const fullyFabricated = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/plan/verify`,
+        headers: authHeaders(),
+        payload: { snapshot: baselineSnapshot() },
+      });
+      expect(fullyFabricated.json()).toEqual({
+        verified: [],
+        regressed: [],
+        skipped: true,
+      });
+
+      // Omitting body.snapshot entirely produces the identical outcome — proof
+      // the response never depended on what the caller sent.
+      const noBody = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/plan/verify`,
+        headers: authHeaders(),
+      });
+      expect(noBody.json()).toEqual(fabricated.json());
+
+      const list = await app.inject({
+        method: 'GET',
+        url: `/api/v1/projects/${projectId}/plan`,
+        headers: authHeaders(),
+      });
+      const item = list
+        .json()
+        .items.find((i: { catalog_id: string }) => i.catalog_id === 'PC-001');
+      expect(item.state).toBe('accepted');
+    },
+  );
+
+  it('verify on a fresh project with no verifiable items runs (not skipped) and reports nothing', async () => {
+    const { app, projectId } = await boot();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/plan/verify`,
       headers: authHeaders(),
     });
-    const items = queue.json().items as {
-      kind: string;
-      body: { items: { kind: string }[] };
-    }[];
-    const digest = items.find((i) => i.kind === 'digest');
-    expect(digest?.body.items.some((entry) => entry.kind === 'drift_report')).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ verified: [], regressed: [], skipped: false });
   });
 });

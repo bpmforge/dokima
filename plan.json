@@ -2643,7 +2643,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/server/src/api/plans-routes*",
         "apps/server/src/api/plans-store*"
@@ -2665,7 +2665,8 @@
         "CONDUCTOR 2026-07-19T07:45:30.997Z: blocked after 2 attempts. Branch sw/w5-16 kept. Gaps: plan.json status is 'blocked', expected 'done' | out-of-scope edits: apps/server/src/api/plans-routes.test.ts, apps/server/src/api/plans-store.test.ts | pnpm test failed: n opted in  1083ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1631ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2382ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real",
         "SCOPE FIX 2026-07-19: the security fix (server-side snapshot derivation via buildPlanEvaluationSnapshot from scheduler/snapshot.ts) was completed but blocked because write_scope listed bare source files (plans-routes.ts, plans-store.ts) not their co-located .test.ts. Widened to plans-routes* + plans-store* (covers source + tests). Rebuild lands the CRITICAL fix.",
         "CONDUCTOR 2026-07-19T13:57:05.981Z: blocked after 2 attempts. Branch sw/w5-16 kept. Gaps: pnpm test failed: s\n ✓ |@shipwright/forge| src/index.test.ts (1 test) 1ms\n ✓ |@shipwright/mcp| src/index.test.ts (2 tests) 2ms\n ✓ |@shipwright/shared| src/events/contracts.test.ts (4 tests) 4ms\n ✓ |@shipwright/web| src/index.test.ts (1 test) 1ms\n ✓ |@shipwright/loop| src/index.test.ts (1 test) 1ms\n ✓ |@shipwright/pipeline| src/index.test.ts (1 test) 1ms\n ✓ |@shipwright/shared| src/index.test.ts (1 test) 1ms\n ✓ |@shipwright/harbormaster| src/index.test.ts (1 test) 2ms\n ✓ |@shipwright/gateway| src/index.test.ts (1 test) 1ms\n\n Test Files  1 failed | 276 passed (277)\n      Tests  1 failed | 2120 p",
-        "RESET 2026-07-19: the security fix was correct + in-scope; it blocked only on 2 flaky timer tests (plan-scheduler, watchdog) now de-flaked on main. Gate reliable — rebuild lands the CRITICAL fix."
+        "RESET 2026-07-19: the security fix was correct + in-scope; it blocked only on 2 flaky timer tests (plan-scheduler, watchdog) now de-flaked on main. Gate reliable — rebuild lands the CRITICAL fix.",
+        "RECONFIRMED 2026-07-19: no code changes this pass. Re-verified plans-routes.ts/plans-store.ts against both acceptance criteria line-by-line (route never reads body.snapshot; derives via buildPlanEvaluationSnapshot; plans-store.test.ts proves the second copy). pnpm lint + typecheck clean. pnpm test run 2x full-workspace, plus 3x isolated harbormaster/src/loop-gates.test.ts (the test the last reported gate-failure snippet pointed at) — all green every time; the only recurring failure is packages/harbormaster/src/sandbox/container.test.ts (exit 126), confirmed via `git stash` + direct `podman run` reproduction to be a pre-existing, environment-local container-runtime (overlay mount I/O error) issue, unrelated to this change and outside this ticket's write_scope. apps/server test suite alone (44 files/350 tests) green. node scripts/validate-plan.mjs = OK."
       ]
     },
     {
