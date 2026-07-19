@@ -1770,7 +1770,7 @@
         "Technical-fork slates use the design-options discipline: exactly 3 options (Minimal/Clean/Pragmatic) compared on 6 fixed dimensions (time, maintainability, scalability, team-fit, risk, reversibility), recommendation tied to a named constraint; founder forks keep the free 2-4 format (R-H1)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-H1).",
         "CONDUCTOR 2026-07-16T11:00:50.373Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
