@@ -1,0 +1,102 @@
+{
+  "version": "v1",
+  "provenance": "original Shipwright content — Improvement Plans recommendation catalog (D-016, docs/design/IMPROVEMENT_PLANS.md §1, FR-PLAN1). Seed set of 12 entries per the design doc's named list. Authored W5-10, 2026-07-18. Loader: packages/pipeline/src/plans/catalog.ts.",
+  "entries": [
+    {
+      "id": "PC-001",
+      "condition": "receipts.staleCount > 0",
+      "recommendation": "Re-verify the {n} stale receipt(s) so downstream phases aren't gating on invalidated evidence",
+      "verify": "receipts.staleCount == 0",
+      "severity": 4,
+      "leverage": 3
+    },
+    {
+      "id": "PC-002",
+      "condition": "findings.openCriticalUnwaived > 0",
+      "recommendation": "Resolve or waive the {n} open CRITICAL finding(s) blocking the gate",
+      "verify": "findings.openCriticalUnwaived == 0",
+      "severity": 5,
+      "leverage": 4
+    },
+    {
+      "id": "PC-003",
+      "condition": "tickets.oscillatingCount > 0",
+      "recommendation": "Decompose the {n} OSCILLATING ticket(s) per FINDING_LOOP_POLICY §4 row 5 before they re-block",
+      "verify": "tickets.oscillatingCount == 0",
+      "severity": 3,
+      "leverage": 3
+    },
+    {
+      "id": "PC-004",
+      "condition": "coverage.requiredSkipped > 0",
+      "recommendation": "Close or waive the {n} SKIPPED required units in phase {phase}",
+      "verify": "coverage.requiredSkipped == 0",
+      "severity": 3,
+      "leverage": 2
+    },
+    {
+      "id": "PC-005",
+      "condition": "rules.fpHeavyCount > 0",
+      "recommendation": "Review the {n} rule(s) with trailing FP rate over 60% for demotion (FR-RL2)",
+      "verify": "rules.fpHeavyCount == 0",
+      "severity": 3,
+      "leverage": 4
+    },
+    {
+      "id": "PC-006",
+      "condition": "spend.thresholdBreachRepeatCount > 0",
+      "recommendation": "Investigate the {n} repeat spend-threshold breach(es) — raise the budget or fix the runaway loop",
+      "verify": "spend.thresholdBreachRepeatCount == 0",
+      "severity": 3,
+      "leverage": 2
+    },
+    {
+      "id": "PC-007",
+      "condition": "tickets.blockedWithEvidenceMaxAgeDays > 3",
+      "recommendation": "Triage the ticket blocked-with-evidence for {n} days — decide unblock, decompose, or escalate",
+      "verify": "tickets.blockedWithEvidenceMaxAgeDays <= 3",
+      "severity": 4,
+      "leverage": 3
+    },
+    {
+      "id": "PC-008",
+      "condition": "gates.missingRedFixtureCount > 0",
+      "recommendation": "Add the {n} missing planted-defect red fixture(s) — a gate that can't fail can't be trusted (PLAYBOOK.md)",
+      "verify": "gates.missingRedFixtureCount == 0",
+      "severity": 5,
+      "leverage": 5
+    },
+    {
+      "id": "PC-009",
+      "condition": "providers.unverifiedTosCount > 0",
+      "recommendation": "Verify Terms of Service for the {n} provider(s) registered before this wave's gate",
+      "verify": "providers.unverifiedTosCount == 0",
+      "severity": 4,
+      "leverage": 2
+    },
+    {
+      "id": "PC-010",
+      "condition": "deliverables.orphanedCount > 0",
+      "recommendation": "Reconcile the {n} orphaned deliverable(s) with no producing role or downstream reference",
+      "verify": "deliverables.orphanedCount == 0",
+      "severity": 2,
+      "leverage": 2
+    },
+    {
+      "id": "PC-011",
+      "condition": "planItems.regressedCount > 0",
+      "recommendation": "Re-accept and re-attempt the {n} REGRESSED plan item(s) surfaced in the morning queue",
+      "verify": "planItems.regressedCount == 0",
+      "severity": 4,
+      "leverage": 3
+    },
+    {
+      "id": "PC-012",
+      "condition": "playbook.staleEntryCount > 0",
+      "recommendation": "Refresh or retire the {n} stale global_playbook entr(y/ies) (DATABASE.md §7)",
+      "verify": "playbook.staleEntryCount == 0",
+      "severity": 2,
+      "leverage": 2
+    }
+  ]
+}

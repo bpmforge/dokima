@@ -1955,13 +1955,15 @@
         "plan_items lifecycle proposed/accepted/in_progress/done/regressed per DATABASE.md §5b; deterministic ranking (severity x leverage x staleness, property-tested); accepting an item mints a board ticket carrying the item verify (FR-PLAN2)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "notes": [
         "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). Design: docs/design/IMPROVEMENT_PLANS.md. AMENDED 2026-07-14 challenger fix.",
         "CONDUCTOR 2026-07-16T13:34:05.773Z: blocked after 2 attempts. Branch sw/w5-10 kept. Gaps: plan.json status is 'in_progress', expected 'done'",
         "SCOPE FIX 2026-07-18: widened to packages/pipeline/src/index.ts — the pipeline barrel is still the W0-01 placeholder with zero re-exports, so the plans module cannot be exposed within a plans-only scope (same seam class as harbormaster/shared). Add the plans re-export to the barrel; keep the rest of your work in pipeline/src/plans/** + content/plan-catalog/**.",
         "CONDUCTOR 2026-07-18T21:39:23.507Z: blocked after 2 attempts. Branch sw/w5-10 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "DECOMPOSE 2026-07-18 (Brad-approved): keep the catalog+engine (AC1/AC2 — genuinely complete, 53 tests). AC3 (nightly auto-verify caller) + AC4 (evaluation triggers after run / Improve-entry) need a live caller in apps/server, outside pipeline scope -> new W5-15 (depends_on W5-10). Rebuild engine fresh on current main."
+        "DECOMPOSE 2026-07-18 (Brad-approved): keep the catalog+engine (AC1/AC2 — genuinely complete, 53 tests). AC3 (nightly auto-verify caller) + AC4 (evaluation triggers after run / Improve-entry) need a live caller in apps/server, outside pipeline scope -> new W5-15 (depends_on W5-10). Rebuild engine fresh on current main.",
+        "AGENT 2026-07-18: done — rebuilt fresh on current main per the DECOMPOSE note. See docs/STATUS.md 2026-07-18 W5-10 entry for full design/scope notes and gate evidence (1979 passed | 1 skipped, 257 files; 58 new tests, package total 295).",
+        "GATE-FIX 2026-07-19: matchCatalog() lacked per-entry error isolation — a single entry whose condition/template couldn't resolve against the snapshot (e.g. PC-004's {phase} placeholder when snapshot.phase is null, as in a global/nightly non-phase-scoped run) threw and aborted the whole batch, losing every already-matched item including higher-severity ones. Fixed: each entry's predicate-eval + template-render is now wrapped in its own try/catch inside matchCatalog(); ExprEvalError/TemplateRenderError skip only that entry and evaluation continues (any other error still propagates — not masked). catalog.test.ts: replaced the test asserting the old throw-the-whole-batch behavior with two isolation tests (phase-null template skip; condition-eval failure skip via a synthetic bad entry), net 12 tests in the file. Gate: pnpm lint && pnpm typecheck && pnpm test = 1979 passed | 1 skipped (257 files)."
       ],
       "stories": [
         "US-108",
