@@ -2136,10 +2136,11 @@
         "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         "CONDUCTOR 2026-07-19T04:47:18.938Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: pnpm test failed: n.test.ts (3 tests | 1 failed) 10261ms\n   ✓ WsClient > sends a subscribe frame carrying the requested subscriptions on connect 119ms\n   ✓ WsClient > appends the token as a query param (browsers cannot set WS upgrade headers) 50ms\n   × WsClient > delivers a parsed envelope and tracks last_seq for resume 10070ms\n     → expected [] to deeply equal [ Array(1) ]\n     → Hook timed out in 10000ms.\nIf this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".\n\n Test Files  1 failed | 267 passed (268)\n      Tests  1 failed | 206",
-        "RESET 2026-07-18: blocked on 1 failing test (3 tests|1 failed, ~10s — possibly a slow/timeout flake). Fresh attempt; if it re-blocks on the same assertion, needs a focused look."
+        "RESET 2026-07-18: blocked on 1 failing test (3 tests|1 failed, ~10s — possibly a slow/timeout flake). Fresh attempt; if it re-blocks on the same assertion, needs a focused look.",
+        "CONDUCTOR 2026-07-19T15:29:50.426Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: [HIGH] plan.json: Ticket W6-05 acceptance criterion is 'parity validator flags SHA divergence as a red hygiene state that blocks next claim' — the diff only delivers the flag, not the block. remote-parity.sh is not matched by packages/validators/src/pack.ts's VALIDATOR_NAME_RE (/^(?:(?:validate|run)-.+|secrets-scan)\\.sh$/, confirmed unchanged in this diff) so loadValidatorPack() never discovers it, and packages/harbormaster/src/loop-gates-types.ts's DEFAULT_REQUIRED_VALIDATORS is still just ['secrets-scan'] (confirmed unchanged). A SHA divergence today produces zero effect on any real claim ga"
       ],
       "stories": []
     },
