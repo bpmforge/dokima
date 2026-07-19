@@ -10,6 +10,7 @@
  * "only harbormaster imports forge write paths") adapts its real
  * `Ticket`/`CloseReceipt` shapes onto these before calling in.
  */
+import { createHash } from 'node:crypto';
 import type { IssueComment, IssueInfo } from '../types.js';
 
 /**
@@ -81,10 +82,44 @@ export interface MirrorCloseRequest {
   receipt: MirrorCloseReceiptSummary;
 }
 
-/** accept = reviewer comment (FR-T5) — posted under the reviewer identity, never the maker's. */
+/**
+ * Non-spoofable marker for a close receipt (SC-15/W6-08 fix, docs/LESSONS.md
+ * L-42): a SHA-256 over the receipt's exact fields. The close verb and the
+ * accept verb both embed this value verbatim in their forge comments
+ * (write-through.ts), so reconciliation.ts can require a reviewer-authored
+ * comment carrying this exact anchor instead of pattern-matching free text
+ * — which a maker's own `evidence` verb could type without ever having run
+ * a real close. A maker cannot produce this value without a genuine close
+ * having already happened: it's derived from `mintedAt` and the other
+ * fields Harbormaster fixes out-of-session when it mints the receipt
+ * (ARCHITECTURE.md FR-H1), not from anything the maker controls unilaterally.
+ */
+export function computeReceiptAnchor(receipt: MirrorCloseReceiptSummary): string {
+  const canonical = JSON.stringify([
+    receipt.ticketId,
+    receipt.ownerId,
+    receipt.verifyCommand,
+    receipt.verifyExitCode,
+    receipt.commits,
+    receipt.files,
+    receipt.mintedAt,
+  ]);
+  return createHash('sha256').update(canonical).digest('hex');
+}
+
+/**
+ * accept = reviewer comment (FR-T5) — posted under the reviewer identity,
+ * never the maker's. Embeds `closeReceipt`'s anchor verbatim (FR-T2:
+ * "accept ... manifest embeds the close receipt verbatim"), which is what
+ * makes this the one comment reconciliation.ts (W6-08) trusts as proof of
+ * completion: reviewer-authored (SC-03 — the reviewer token never enters an
+ * agent session) and carrying a marker the maker cannot forge.
+ */
 export interface MirrorAcceptRequest {
   verb: 'accept';
   body: string;
+  /** The close receipt this accept confirms. */
+  closeReceipt: MirrorCloseReceiptSummary;
 }
 
 export type MirrorWriteRequest =

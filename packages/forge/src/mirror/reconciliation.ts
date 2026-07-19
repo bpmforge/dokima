@@ -12,13 +12,14 @@
  *     mirrored, or the issue vanished) — nothing to verify against.
  *   - UNVERIFIED: matched to a forge issue, but for a `done` ticket the
  *     forge side doesn't back up the completion claim (issue still open,
- *     no receipt comment, or none of the close receipt's commits show up
- *     in git history).
+ *     no reviewer-authored comment carrying the real close-receipt anchor,
+ *     or none of the close receipt's commits show up in git history).
  *   - VERIFIED: matched to a forge issue, and — for `done` tickets — the
- *     issue is closed with a receipt comment and at least one receipt
- *     commit is present in git history. Non-`done` tickets with a mirror
- *     mapping are VERIFIED trivially (there's no completion claim yet to
- *     back up).
+ *     issue is closed, a comment authored by the reviewer identity carries
+ *     the exact close-receipt anchor (W6-08/SC-15 — see
+ *     `hasReceiptComment`), and at least one receipt commit is present in
+ *     git history. Non-`done` tickets with a mirror mapping are VERIFIED
+ *     trivially (there's no completion claim yet to back up).
  * Tickets with no mirror mapping and non-`done` status aren't graded —
  * they simply haven't reached the point where mirroring is expected.
  *
@@ -27,6 +28,7 @@
  * grades, it doesn't fetch either.
  */
 import type { IssueComment, IssueInfo } from '../types.js';
+import { computeReceiptAnchor, type MirrorCloseReceiptSummary } from './types.js';
 
 export type ReconciliationGrade = 'VERIFIED' | 'UNVERIFIED' | 'ORPHAN';
 
@@ -34,7 +36,13 @@ export interface LocalTicketSnapshot {
   ticketId: string;
   status: string;
   issueNumber: number | null;
-  closeReceiptCommits: string[];
+  /**
+   * The ticket's real close receipt (SC-15/W6-08) — null if the ticket has
+   * never actually gone through a real close locally. A single trusted
+   * record instead of separately caller-supplied commit/anchor fields that
+   * could drift out of sync with each other.
+   */
+  closeReceipt: MirrorCloseReceiptSummary | null;
 }
 
 export interface GitCommitRef {
@@ -46,6 +54,15 @@ export interface ReconciliationInput {
   forgeIssues: IssueInfo[];
   forgeComments: Record<number, IssueComment[]>;
   gitCommits: GitCommitRef[];
+  /**
+   * Forge login of the reviewer machine identity (MirrorIdentityConfig.
+   * reviewerLogin) — the only identity whose comment can satisfy
+   * `hasReceiptComment`. Never the maker login: the maker's own `evidence`
+   * verb can post arbitrary comments under the maker identity, so trusting
+   * a maker-authored comment would let the maker self-attest completion
+   * (the W6-08 bypass — docs/LESSONS.md L-42).
+   */
+  reviewerLogin: string;
 }
 
 export interface TicketReconciliationResult {
@@ -66,10 +83,25 @@ function findIssue(issues: IssueInfo[], issueNumber: number): IssueInfo | undefi
   return issues.find((i) => i.number === issueNumber);
 }
 
-function hasReceiptComment(comments: IssueComment[], ticketId: string): boolean {
-  return comments.some(
-    (c) => c.body.includes(ticketId) && /receipt|verify|exit/i.test(c.body),
-  );
+/**
+ * W6-08/SC-15 fix: grading VERIFIED must never come from matching free
+ * text (the L-42 bypass — a maker's own `evidence` comment could contain
+ * "receipt for W6-03, verify exit 0" and satisfy a text-only check). This
+ * requires BOTH (a) the comment is authored by the reviewer identity —
+ * the maker never holds the reviewer token (SC-03), so it cannot post as
+ * the reviewer — and (b) the comment carries the exact anchor computed
+ * from the ticket's real close receipt, which the accept verb embeds
+ * verbatim (write-through.ts) and a maker cannot forge without already
+ * knowing every field of a real, already-minted receipt.
+ */
+function hasReceiptComment(
+  comments: IssueComment[],
+  reviewerLogin: string,
+  closeReceipt: MirrorCloseReceiptSummary | null,
+): boolean {
+  if (!closeReceipt) return false;
+  const anchor = computeReceiptAnchor(closeReceipt);
+  return comments.some((c) => c.authorLogin === reviewerLogin && c.body.includes(anchor));
 }
 
 function commitsOverlap(receiptCommits: string[], gitCommits: GitCommitRef[]): boolean {
@@ -111,10 +143,12 @@ function gradeTicket(
     reasons.push('forge issue is still open despite local done status');
   }
   const comments = input.forgeComments[ticket.issueNumber!] ?? [];
-  if (!hasReceiptComment(comments, ticket.ticketId)) {
-    reasons.push('no close-receipt comment found on the forge issue');
+  if (!hasReceiptComment(comments, input.reviewerLogin, ticket.closeReceipt)) {
+    reasons.push(
+      'no reviewer-authored comment carrying the real close-receipt anchor found on the forge issue',
+    );
   }
-  if (!commitsOverlap(ticket.closeReceiptCommits, input.gitCommits)) {
+  if (!commitsOverlap(ticket.closeReceipt?.commits ?? [], input.gitCommits)) {
     reasons.push('none of the close receipt commits were found in git history');
   }
 
