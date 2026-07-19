@@ -1770,12 +1770,13 @@
         "Technical-fork slates use the design-options discipline: exactly 3 options (Minimal/Clean/Pragmatic) compared on 6 fixed dimensions (time, maintainability, scalability, team-fit, risk, reversibility), recommendation tied to a named constraint; founder forks keep the free 2-4 format (R-H1)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-H1).",
         "CONDUCTOR 2026-07-16T11:00:50.373Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "DECOMPOSE 2026-07-18 (Brad-approved split-per-lane): keep the pipeline decisions ENGINE (slate logic + DECISIONS.md append). Server route + events/DB persistence -> W5-13 (depends_on W5-03); web decisions UI -> W5-14 (depends_on W5-03+W5-13). apps/web/src/decisions/** removed from this scope. Rebuild engine fresh on current main.",
-        "CONDUCTOR 2026-07-19T00:05:16.436Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: pnpm test failed: eligible role with no memory_written[] is refused only when opted in  1164ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1096ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  1241ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  568ms\n\n Test Files  1 failed | 248 passed (249)\n      Tests  1 failed | 19"
+        "CONDUCTOR 2026-07-19T00:05:16.436Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: pnpm test failed: eligible role with no memory_written[] is refused only when opted in  1164ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1096ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  1241ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  568ms\n\n Test Files  1 failed | 248 passed (249)\n      Tests  1 failed | 19",
+        "RESET 2026-07-19: retry gate (--retry=2) now live — if the 1-test failure was a flake it clears; if real it re-blocks with certainty for a focused fix."
       ],
       "stories": [
         "US-103"
@@ -2127,20 +2128,24 @@
       "lane": "integrations",
       "write_scope": [
         "packages/forge/src/dual-remote*",
-        "content/validators/remote-parity*"
+        "content/validators/remote-parity*",
+        "content/validators/*remote-parity*",
+        "packages/harbormaster/src/loop-gates-types.ts"
       ],
       "depends_on": [
         "W6-02"
       ],
       "acceptance": [
-        "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)"
+        "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)",
+        "SECURITY WIRING (HIGH, review-caught): the parity validator delivers the flag but does not BLOCK next claim — it is never run by the close gate. Two-part fix: (1) DISCOVERY — rename content/validators/remote-parity.sh to validate-remote-parity.sh so it matches pack.ts VALIDATOR_NAME_RE (/^(?:(?:validate|run)-.+|secrets-scan)\\.sh$/) and loadValidatorPack() finds it (no pack.ts edit needed); (2) REQUIRED — add its name to DEFAULT_REQUIRED_VALIDATORS in packages/harbormaster/src/loop-gates-types.ts so a SHA-divergence red state is a real close-gate failure that blocks the claim. Red fixture: a diverged remote makes the close gate refuse (exit non-zero), not merely warn."
       ],
       "points": 2,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "CONDUCTOR 2026-07-19T04:47:18.938Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: pnpm test failed: n.test.ts (3 tests | 1 failed) 10261ms\n   ✓ WsClient > sends a subscribe frame carrying the requested subscriptions on connect 119ms\n   ✓ WsClient > appends the token as a query param (browsers cannot set WS upgrade headers) 50ms\n   × WsClient > delivers a parsed envelope and tracks last_seq for resume 10070ms\n     → expected [] to deeply equal [ Array(1) ]\n     → Hook timed out in 10000ms.\nIf this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".\n\n Test Files  1 failed | 267 passed (268)\n      Tests  1 failed | 206",
         "RESET 2026-07-18: blocked on 1 failing test (3 tests|1 failed, ~10s — possibly a slow/timeout flake). Fresh attempt; if it re-blocks on the same assertion, needs a focused look.",
-        "CONDUCTOR 2026-07-19T15:29:50.426Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: [HIGH] plan.json: Ticket W6-05 acceptance criterion is 'parity validator flags SHA divergence as a red hygiene state that blocks next claim' — the diff only delivers the flag, not the block. remote-parity.sh is not matched by packages/validators/src/pack.ts's VALIDATOR_NAME_RE (/^(?:(?:validate|run)-.+|secrets-scan)\\.sh$/, confirmed unchanged in this diff) so loadValidatorPack() never discovers it, and packages/harbormaster/src/loop-gates-types.ts's DEFAULT_REQUIRED_VALIDATORS is still just ['secrets-scan'] (confirmed unchanged). A SHA divergence today produces zero effect on any real claim ga"
+        "CONDUCTOR 2026-07-19T15:29:50.426Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: [HIGH] plan.json: Ticket W6-05 acceptance criterion is 'parity validator flags SHA divergence as a red hygiene state that blocks next claim' — the diff only delivers the flag, not the block. remote-parity.sh is not matched by packages/validators/src/pack.ts's VALIDATOR_NAME_RE (/^(?:(?:validate|run)-.+|secrets-scan)\\.sh$/, confirmed unchanged in this diff) so loadValidatorPack() never discovers it, and packages/harbormaster/src/loop-gates-types.ts's DEFAULT_REQUIRED_VALIDATORS is still just ['secrets-scan'] (confirmed unchanged). A SHA divergence today produces zero effect on any real claim ga",
+        "WIRING FIX 2026-07-19: parity validator flagged but never blocked (not discoverable + not required). Encoded rename-for-discovery + add-to-DEFAULT_REQUIRED_VALIDATORS; widened scope to content/validators/** + loop-gates-types.ts (owned only by done W3-01b — same wiring seam secrets-scan used)."
       ],
       "stories": []
     },
@@ -2522,7 +2527,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2538,7 +2543,8 @@
         "ADDED 2026-07-18 (W5-02 split-per-lane, Brad-approved). Owns the apps/web editing surface for pipeline deliverables that W5-02 (pipeline) cannot reach within its scope.",
         "CONDUCTOR 2026-07-19T02:50:33.051Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review",
         "RESET 2026-07-18: blocked on \"[HIGH] review output unparseable\" — a transient review-infra glitch (reviewer response did not parse), not a code issue. Fresh attempt.",
-        "CONDUCTOR 2026-07-19T06:24:51.189Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: pnpm test failed: igible role with no memory_written[] is refused only when opted in  1759ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1114ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2223ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  1214ms\n\n Test Files  2 failed | 275 passed (277)\n      Tests  2 failed | 210"
+        "CONDUCTOR 2026-07-19T06:24:51.189Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: pnpm test failed: igible role with no memory_written[] is refused only when opted in  1759ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1114ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2223ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  1214ms\n\n Test Files  2 failed | 275 passed (277)\n      Tests  2 failed | 210",
+        "RESET 2026-07-19: retry gate (--retry=2) now live — if the 2-test failure was a flake it clears; if real it re-blocks with certainty for a focused fix."
       ]
     },
     {
