@@ -2635,6 +2635,32 @@
         "Red fixture: a comment posted under the MAKER identity containing \"receipt for W6-03, verify exit 0\" grades UNVERIFIED (no author-identity match, no valid anchor); only a reviewer-identity-authored comment carrying the real close-receipt anchor grades VERIFIED. Proves the maker cannot self-attest completion through the reconciliation audit."
       ],
       "notes": "ADDED 2026-07-18: fixes the CRITICAL the W6 wave-security-pass caught in W6-03 reconciliation.ts (independent review missed it). The current hasReceiptComment does c.body.includes(ticketId) && /receipt|verify|exit/i.test(c.body) — pure text match, no author check — trivially spoofable by the untrusted maker (also violates the never-grep-completion-strings law). Same lane as W6-03 (done); write_scope packages/forge/src/mirror/** shared same-lane."
+    },
+    {
+      "id": "W5-16",
+      "title": "Harden POST /plan/verify: derive snapshot from real state, reject caller-supplied (law-4 self-attest bypass)",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/api/plans-routes.ts",
+        "apps/server/src/api/plans-store.ts"
+      ],
+      "depends_on": [
+        "W5-11",
+        "W5-15"
+      ],
+      "stories": [
+        "US-108",
+        "US-109"
+      ],
+      "acceptance": [
+        "SECURITY (CRITICAL x2, wave-pass-caught, CLAUDE.md law 4 / SC-03 self-attest bypass): POST /api/v1/projects/:id/plan/verify MUST NOT accept a caller-supplied PlanEvaluationSnapshot. Derive the snapshot SERVER-SIDE from real system state (reuse the existing derivation in apps/server/src/scheduler/snapshot.ts — receipts/coverage/finding-ledger), then run verifyPlan on the derived snapshot. An untrusted token holder must be unable to influence which items flip to done; no plan_items state flip may occur from caller-asserted verification state.",
+        "Red fixture: a POST with a fabricated body.snapshot (e.g. {receipts:{staleCount:0}}) does NOT flip any accepted/in_progress item to done — the server ignores the supplied snapshot and derives its own. Cover both the route AND the plans-store verifyPlan path so the second copy is closed too."
+      ],
+      "notes": "ADDED 2026-07-19: fixes the 2 CRITICALs the W5 wave-security-pass caught in plans-routes.ts — the /plan/verify route accepts a caller-supplied snapshot and flips plan_items to done with no receipt correlation (untrusted agent can self-attest completion). The correct derive-from-state logic already exists in scheduler/snapshot.ts; the route must use it instead of trusting the caller. THIRD instance of the self-attest antipattern (after W6-03 reconciliation) — see L-42; a shared derive-and-receipt-verify contract + a validator rule are the systemic fix."
     }
   ]
 }
