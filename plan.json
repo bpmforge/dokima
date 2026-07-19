@@ -1994,7 +1994,7 @@
         "Regressed items surface in the morning queue as Review cards with the violated criterion + evidence; funnel counts (raw findings -> plan items -> accepted -> done/regressed) shown per FR-RL4 style"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note).",
         "NOTE 2026-07-15 (L-33): this ticket has a UI surface but sits outside the ui lane — its App.tsx/server.ts wiring seam must be resolved at claim time (widen scope then, or land the mount via a ui-lane ticket) to avoid the W4-02 out-of-scope block class.",
