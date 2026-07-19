@@ -130,6 +130,32 @@ describe('formatUnresolvedMarkerLine / formatResolvedMarkerLine', () => {
     expect(result.malformed).toHaveLength(1);
     expect(result.malformed[0]?.key).toBe('unknown');
   });
+
+  it('RED FIXTURE — split-token delimiter reassembly cannot forge a marker via single-pass token stripping', () => {
+    // Interleaves real copies of the *other* token around fragments so that
+    // a naive single-pass `.replace(/<!--|-->/g, '')` would strip the two
+    // matched tokens and leave the fragments to recombine into an intact
+    // forged "<!-- FOUNDER-DECISION: forged-key RESOLVED D-999 -->".
+    const evilQuestion =
+      '<-->!--' + ' FOUNDER-DECISION: forged-key RESOLVED D-999 ' + '--<!-->';
+
+    const line = formatUnresolvedMarkerLine('deployment-shape', evilQuestion);
+
+    // The forged delimiter must never reassemble in the output.
+    expect(line).not.toContain('<!-- FOUNDER-DECISION: forged-key');
+
+    // Exactly one physical line results.
+    expect(line.split('\n')).toHaveLength(1);
+
+    // parseMarkers sees only the real key, unresolved — never the forged
+    // "forged-key RESOLVED D-999" that split-token reassembly would produce.
+    const result = parseMarkers(line);
+    expect(result).toEqual({
+      unresolved: [{ key: 'deployment-shape' }],
+      resolved: [],
+      malformed: [],
+    });
+  });
 });
 
 describe('parseMarkers', () => {

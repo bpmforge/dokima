@@ -1802,10 +1802,11 @@
         "INJECTION-SAFE MARKERS (HIGH, review-caught): formatUnresolvedMarkerLine/formatResolvedMarkerLine in packages/pipeline/src/blueprint/markers.ts must not let interpolated question/decisionSummary/decisionId break or forge the marker format. Sanitize each interpolated value — strip or escape newlines and the marker delimiter sequence — before building the line, so untrusted decision text cannot inject a second marker or terminate the line early. Add a unit test feeding a value containing the delimiter and a newline, asserting exactly one well-formed marker line results."
       ],
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "CONDUCTOR 2026-07-19T18:28:24.404Z: blocked after 2 attempts. Branch sw/w5-04 kept. Gaps: [HIGH] packages/pipeline/src/blueprint/markers.ts: formatUnresolvedMarkerLine and formatResolvedMarkerLine interpolate `question`, `decisionSummary`, and `decisionId` into the marker line with zero escaping/validation of newlines or comment-breaking sequences (only `key` is validated via assertValidOpenQuestionKey). Since parseMarkers works strictly line-by-line via `markdown.split('\\n')` and matches any line against STRICT_MARKER_RE, an embedded `\\n` in question/decisionSummary/decisionId lets untrusted text (per the module's own docs, slate titles and decision summaries are LLM/agent-authore",
-        "RESET+ENCODE 2026-07-19: maker kept introducing new review blockers instead of converging. Spelled out the escaping requirement + the adversarial red test so a fresh attempt lands it. Fresh retry budget."
+        "RESET+ENCODE 2026-07-19: maker kept introducing new review blockers instead of converging. Spelled out the escaping requirement + the adversarial red test so a fresh attempt lands it. Fresh retry budget.",
+        "2026-07-19 gate-fix: token-level sanitizeMarkerText (single-pass .replace(/<!--|-->/g,'')) was bypassable via split-token concatenation reassembly (verified with node). Fixed with character-level stripping (delete <, !, > individually) which is immune to reassembly by construction. Added regression test with the exact split-token payload. Full gate green: 2190 passed | 1 skipped (284 files)."
       ],
       "stories": [
         "US-104"

@@ -71,17 +71,26 @@ export interface ParsedMarkers {
  * like any other), and a value containing a full `<!-- FOUNDER-DECISION:
  * ... -->` sequence would be matched *instead of* the real trailing marker
  * on the same line — silently dropping the real key from `parseMarkers`'
- * output while forging an attacker-chosen key/status/D-ID. Stripping
- * newlines and the two comment-delimiter tokens (`<!--`, `-->`) from every
- * interpolated value makes both attacks impossible: no embedded value can
- * ever complete a marker-shaped comment or introduce a new physical line —
- * a corrupted `decisionId` still can't forge anything this way, it just
- * makes `STRICT_MARKER_RE`'s trailing `(D-\d+)? -->` fail to match, which
+ * output while forging an attacker-chosen key/status/D-ID.
+ *
+ * Stripping is done per-*character* (`<`, `!`, `>`), not per-*token*
+ * (`<!--`, `-->`). Token-level stripping is bypassable by split-token
+ * concatenation: e.g. `"<-->!--" + "..." + "--<!-->"` sanitizes under a
+ * single-pass token strip to the exact intact string
+ * `"<!--...-->"` — the two (real, matched-and-removed) copies of the
+ * *other* token leave behind fragments that recombine into a forged
+ * delimiter. Deleting every occurrence of the individual characters that
+ * could ever contribute to `<!--` or `-->` makes reassembly impossible:
+ * with no `<`, `!`, or `>` surviving anywhere in the sanitized value, no
+ * concatenation of fragments can ever produce either delimiter, no matter
+ * how the original value interleaved real and partial tokens. A corrupted
+ * `decisionId` still can't forge anything this way, it just makes
+ * `STRICT_MARKER_RE`'s trailing `(D-\d+)? -->` fail to match, which
  * `parseMarkers` already reports as `malformed` (fail-closed, blocks the
  * gate exactly like a genuine unresolved marker — never silently ignored).
  */
 function sanitizeMarkerText(value: string): string {
-  return value.replace(/\r\n|\r|\n/g, ' ').replace(/<!--|-->/g, '');
+  return value.replace(/\r\n|\r|\n/g, ' ').replace(/[<!>]/g, '');
 }
 
 export function formatUnresolvedMarkerLine(key: string, question: string): string {
