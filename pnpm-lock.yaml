@@ -158,7 +158,15 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
-  packages/mcp: {}
+  packages/mcp:
+    dependencies:
+      '@shipwright/events':
+        specifier: workspace:*
+        version: link:../events
+    devDependencies:
+      fast-check:
+        specifier: ^4.9.0
+        version: 4.9.0
 
   packages/memory: {}
 
