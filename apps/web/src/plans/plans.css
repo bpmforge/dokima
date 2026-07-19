@@ -1,0 +1,88 @@
+/* Improvement Plan view (FR-PLAN2/4). Lives here rather than styles.css, which is outside this ticket's write_scope — App.tsx imports this file globally, same precedent as notifications.css. */
+.plan-view {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.plan-view__header {
+  margin-bottom: 1rem;
+}
+
+.plan-view__funnel {
+  color: var(--sw-muted, #666);
+  font-size: 0.9rem;
+}
+
+.plan-view__error {
+  color: var(--sw-attention, #d64545);
+}
+
+.plan-view__empty {
+  color: var(--sw-muted, #666);
+}
+
+.plan-view__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.plan-item {
+  border: 1px solid var(--sw-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.plan-item__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.plan-item__catalog-id {
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.plan-item__state {
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--sw-border);
+}
+
+.plan-item__state--done {
+  color: #1a7f37;
+}
+
+.plan-item__state--regressed {
+  color: var(--sw-attention, #d64545);
+}
+
+.plan-item__ticket {
+  font-size: 0.8rem;
+  color: var(--sw-muted, #666);
+}
+
+.plan-item__verify code {
+  font-size: 0.85rem;
+}
+
+.plan-item__meta {
+  font-size: 0.8rem;
+  color: var(--sw-muted, #666);
+}
+
+.plan-item__actions,
+.plan-item__accept-form,
+.plan-item__dismiss-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

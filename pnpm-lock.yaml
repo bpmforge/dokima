@@ -41,6 +41,9 @@ importers:
       '@shipwright/harbormaster':
         specifier: workspace:*
         version: link:../../packages/harbormaster
+      '@shipwright/pipeline':
+        specifier: workspace:*
+        version: link:../../packages/pipeline
       '@shipwright/shared':
         specifier: workspace:*
         version: link:../../packages/shared
