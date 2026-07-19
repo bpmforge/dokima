@@ -2134,8 +2134,10 @@
         "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)"
       ],
       "points": 2,
-      "status": "todo",
-      "notes": [],
+      "status": "blocked",
+      "notes": [
+        "CONDUCTOR 2026-07-19T04:47:18.938Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: pnpm test failed: n.test.ts (3 tests | 1 failed) 10261ms\n   ✓ WsClient > sends a subscribe frame carrying the requested subscriptions on connect 119ms\n   ✓ WsClient > appends the token as a query param (browsers cannot set WS upgrade headers) 50ms\n   × WsClient > delivers a parsed envelope and tracks last_seq for resume 10070ms\n     → expected [] to deeply equal [ Array(1) ]\n     → Hook timed out in 10000ms.\nIf this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".\n\n Test Files  1 failed | 267 passed (268)\n      Tests  1 failed | 206"
+      ],
       "stories": []
     },
     {
