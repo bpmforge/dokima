@@ -3,8 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { createIdentity, openEventLog, openEventLogReader } from '@shipwright/events';
 import { completeRun, createRun } from '@shipwright/harbormaster';
-import { afterEach, describe, expect, it } from 'vitest';
-import { acceptPlanItem, listPlanItems } from '../api/plans-store.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  acceptPlanItem,
+  evaluatePlan,
+  listPlanItems,
+  verifyPlan,
+} from '../api/plans-store.js';
 import { computeFleetRegistryPath, registerProject } from '../api/projects.js';
 import {
   promoteRule,
@@ -17,6 +22,15 @@ import {
   runNightlyVerify,
   startPlanScheduler,
 } from './plan-scheduler.js';
+
+vi.mock('../api/plans-store.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/plans-store.js')>();
+  return {
+    ...actual,
+    evaluatePlan: vi.fn(actual.evaluatePlan),
+    verifyPlan: vi.fn(actual.verifyPlan),
+  };
+});
 
 async function tmpFleetHome(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-plan-scheduler-'));
@@ -160,6 +174,49 @@ describe('pollRunCompletions', () => {
     const { items } = await listPlanItems(projectDir);
     expect(items).toHaveLength(0);
   });
+
+  it('one project failing evaluatePlan does not sink the others, and its cursor is not advanced past the trigger', async () => {
+    const fleetHome = await tmpFleetHome();
+    dirs.push(fleetHome);
+    const projectFail = path.join(fleetHome, 'project-fail');
+    const projectOk = path.join(fleetHome, 'project-ok');
+    await registerProject(computeFleetRegistryPath(fleetHome), {
+      path: projectFail,
+      mode: 'new',
+    });
+    await registerProject(computeFleetRegistryPath(fleetHome), {
+      path: projectOk,
+      mode: 'new',
+    });
+    await seedDemotionFlaggedRule(projectFail);
+    await seedDemotionFlaggedRule(projectOk);
+    await appendRunEvent(projectFail, 'feature', true);
+    await appendRunEvent(projectOk, 'feature', true);
+
+    vi.mocked(evaluatePlan).mockRejectedValueOnce(new Error('boom'));
+
+    const cursors = new Map<string, number>();
+    const errors: { projectPath: string; err: unknown }[] = [];
+    await pollRunCompletions(fleetHome, cursors, {
+      onError: (projectPath, err) => errors.push({ projectPath, err }),
+    });
+
+    expect(errors).toEqual([{ projectPath: projectFail, err: new Error('boom') }]);
+
+    // project-ok still processed despite project-fail throwing first.
+    const { items: okItems } = await listPlanItems(projectOk);
+    expect(okItems.some((i) => i.catalogId === 'PC-005')).toBe(true);
+
+    // project-fail's rejected pass created nothing (transaction never opened).
+    const { items: failItemsAfterError } = await listPlanItems(projectFail);
+    expect(failItemsAfterError).toHaveLength(0);
+
+    // A second poll retries project-fail — its cursor never advanced past
+    // the trigger event the failed pass saw.
+    await pollRunCompletions(fleetHome, cursors);
+    const { items: failItemsAfterRetry } = await listPlanItems(projectFail);
+    expect(failItemsAfterRetry.some((i) => i.catalogId === 'PC-005')).toBe(true);
+  });
 });
 
 describe('runNightlyVerify', () => {
@@ -241,6 +298,94 @@ describe('runNightlyVerify', () => {
     const pc005 = items.find((i) => i.catalogId === 'PC-005');
     expect(pc005?.state).toBe('proposed');
     expect(pc005?.ticketId).toBeNull();
+  });
+
+  it('does not fake-satisfy an accepted item whose verify criterion has no live snapshot producer — skips instead of flipping to done', async () => {
+    const fleetHome = await tmpFleetHome();
+    dirs.push(fleetHome);
+    const projectDir = path.join(fleetHome, 'project-g');
+    await registerProject(computeFleetRegistryPath(fleetHome), {
+      path: projectDir,
+      mode: 'new',
+    });
+
+    // PC-001 (receipts.staleCount) has no live producer in apps/server yet —
+    // the only way it enters plan_items today is a caller-supplied snapshot
+    // via the /plan/evaluate route (simulated here directly against the store).
+    await evaluatePlan(projectDir, {
+      phase: null,
+      receipts: { staleCount: 3 },
+      coverage: { requiredSkipped: 0 },
+      findings: { openCriticalUnwaived: 0 },
+      rules: { fpHeavyCount: 0 },
+      tickets: { oscillatingCount: 0, blockedWithEvidenceMaxAgeDays: 0 },
+      spend: { thresholdBreachRepeatCount: 0 },
+      gates: { missingRedFixtureCount: 0 },
+      providers: { unverifiedTosCount: 0 },
+      deliverables: { orphanedCount: 0 },
+      planItems: { regressedCount: 0 },
+      playbook: { staleEntryCount: 0 },
+    });
+    const { items: proposed } = await listPlanItems(projectDir);
+    const pc001 = proposed.find((i) => i.catalogId === 'PC-001')!;
+    expect(pc001).toBeDefined();
+    await acceptPlanItem(projectDir, pc001.id, { lane: 'trust' });
+
+    const skips: { projectPath: string; skipped: { catalogId: string }[] }[] = [];
+    await runNightlyVerify(fleetHome, {
+      onVerifySkipped: (projectPath, skipped) =>
+        skips.push({ projectPath, skipped: [...skipped] }),
+    });
+
+    const { items: afterVerify } = await listPlanItems(projectDir);
+    expect(afterVerify.find((i) => i.catalogId === 'PC-001')?.state).toBe('accepted');
+    expect(readNotifications(projectDir)).toHaveLength(0);
+    expect(skips).toHaveLength(1);
+    expect(skips[0]?.projectPath).toBe(projectDir);
+    expect(skips[0]?.skipped).toEqual([
+      { catalogId: 'PC-001', unresolvedPaths: ['receipts.staleCount'] },
+    ]);
+  });
+
+  it('one project failing verifyPlan does not sink the others', async () => {
+    const fleetHome = await tmpFleetHome();
+    dirs.push(fleetHome);
+    const projectFail = path.join(fleetHome, 'project-h');
+    const projectOk = path.join(fleetHome, 'project-i');
+    await registerProject(computeFleetRegistryPath(fleetHome), {
+      path: projectFail,
+      mode: 'new',
+    });
+    await registerProject(computeFleetRegistryPath(fleetHome), {
+      path: projectOk,
+      mode: 'new',
+    });
+    await seedDemotionFlaggedRule(projectFail);
+    await seedDemotionFlaggedRule(projectOk);
+    await appendRunEvent(projectFail, 'feature', true);
+    await appendRunEvent(projectOk, 'feature', true);
+    const cursors = new Map<string, number>();
+    await pollRunCompletions(fleetHome, cursors);
+    for (const dir of [projectFail, projectOk]) {
+      const { items } = await listPlanItems(dir);
+      const pc005 = items.find((i) => i.catalogId === 'PC-005')!;
+      await acceptPlanItem(dir, pc005.id, { lane: 'trust' });
+    }
+    // Clears the demotion flag (rules.fpHeavyCount -> 0) so projectOk's item
+    // is genuinely verify-satisfied, isolating the assertion to "did the
+    // other project's pass still run" rather than the FP-rate fixture.
+    await recordRuleOutcome(projectOk, 'R-DEMO', false);
+
+    vi.mocked(verifyPlan).mockRejectedValueOnce(new Error('boom'));
+
+    const errors: { projectPath: string; err: unknown }[] = [];
+    await runNightlyVerify(fleetHome, {
+      onError: (projectPath, err) => errors.push({ projectPath, err }),
+    });
+
+    expect(errors).toEqual([{ projectPath: projectFail, err: new Error('boom') }]);
+    const { items: okItems } = await listPlanItems(projectOk);
+    expect(okItems.find((i) => i.catalogId === 'PC-005')?.state).toBe('done');
   });
 });
 

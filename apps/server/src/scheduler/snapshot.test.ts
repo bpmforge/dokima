@@ -7,7 +7,12 @@ import {
   recordRuleOutcome,
   registerRule,
 } from '../api/server/rule-state-store.js';
-import { buildPlanEvaluationSnapshot } from './snapshot.js';
+import {
+  buildPlanEvaluationSnapshot,
+  LIVE_SNAPSHOT_PATHS,
+  referencedSnapshotPaths,
+  unresolvedSnapshotPaths,
+} from './snapshot.js';
 
 async function tmpProjectDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-snapshot-'));
@@ -73,5 +78,67 @@ describe('buildPlanEvaluationSnapshot', () => {
 
     const snapshot = await buildPlanEvaluationSnapshot(dir);
     expect(snapshot.rules.fpHeavyCount).toBe(0);
+  });
+});
+
+describe('referencedSnapshotPaths / unresolvedSnapshotPaths', () => {
+  it('extracts the single dot-path each real catalog verify criterion references', () => {
+    expect(referencedSnapshotPaths('receipts.staleCount == 0')).toEqual([
+      'receipts.staleCount',
+    ]);
+    expect(referencedSnapshotPaths('rules.fpHeavyCount == 0')).toEqual([
+      'rules.fpHeavyCount',
+    ]);
+    expect(referencedSnapshotPaths('tickets.blockedWithEvidenceMaxAgeDays <= 3')).toEqual(
+      ['tickets.blockedWithEvidenceMaxAgeDays'],
+    );
+  });
+
+  it('ignores dotted-looking text inside quoted string literals', () => {
+    expect(referencedSnapshotPaths("phase == 'a.b.c'")).toEqual([]);
+  });
+
+  it('finds every path in a compound expression, not just the leftmost', () => {
+    expect(
+      referencedSnapshotPaths('rules.fpHeavyCount > 0 && coverage.requiredSkipped > 0'),
+    ).toEqual(['rules.fpHeavyCount', 'coverage.requiredSkipped']);
+  });
+
+  it('rules.fpHeavyCount and planItems.regressedCount resolve live; every other catalog field does not', () => {
+    expect(unresolvedSnapshotPaths('rules.fpHeavyCount == 0')).toEqual([]);
+    expect(unresolvedSnapshotPaths('planItems.regressedCount == 0')).toEqual([]);
+    expect(unresolvedSnapshotPaths('receipts.staleCount == 0')).toEqual([
+      'receipts.staleCount',
+    ]);
+    expect(unresolvedSnapshotPaths('findings.openCriticalUnwaived == 0')).toEqual([
+      'findings.openCriticalUnwaived',
+    ]);
+    expect(unresolvedSnapshotPaths('coverage.requiredSkipped == 0')).toEqual([
+      'coverage.requiredSkipped',
+    ]);
+    expect(unresolvedSnapshotPaths('tickets.oscillatingCount == 0')).toEqual([
+      'tickets.oscillatingCount',
+    ]);
+    expect(unresolvedSnapshotPaths('spend.thresholdBreachRepeatCount == 0')).toEqual([
+      'spend.thresholdBreachRepeatCount',
+    ]);
+    expect(unresolvedSnapshotPaths('gates.missingRedFixtureCount == 0')).toEqual([
+      'gates.missingRedFixtureCount',
+    ]);
+    expect(unresolvedSnapshotPaths('providers.unverifiedTosCount == 0')).toEqual([
+      'providers.unverifiedTosCount',
+    ]);
+    expect(unresolvedSnapshotPaths('deliverables.orphanedCount == 0')).toEqual([
+      'deliverables.orphanedCount',
+    ]);
+    expect(unresolvedSnapshotPaths('playbook.staleEntryCount == 0')).toEqual([
+      'playbook.staleEntryCount',
+    ]);
+  });
+
+  it('LIVE_SNAPSHOT_PATHS documents exactly the two fields buildPlanEvaluationSnapshot derives live', () => {
+    expect(LIVE_SNAPSHOT_PATHS).toEqual(
+      new Set(['rules.fpHeavyCount', 'planItems.regressedCount']),
+    );
   });
 });

@@ -12,22 +12,61 @@
  *     Neither function calls `acceptPlanItem` or mints a ticket — zero
  *     Decide-tier auto-actions, per AC2's explicit requirement.
  *
+ * Both loops process one registered project at a time and must not let one
+ * project's failure (a transient DB error, a locked state.db, a malformed
+ * catalog file) sink every other project in the same tick — each
+ * project's body is wrapped in its own try/catch, reported via `onError`.
+ * `pollRunCompletions` only advances a project's event-log cursor past a
+ * trigger once it has been processed without error (at-least-once —
+ * `evaluatePlan`/`proposeFromMatches` is idempotent per catalogId, so a
+ * retried trigger can never double-propose).
+ *
  * `startPlanScheduler` wires both onto real timers for the running
  * `apps/server` process; the two functions above are exported directly so
  * tests drive them without waiting on wall-clock time.
  */
 
 import { computeFleetRegistryPath, listProjectCards } from '../api/projects.js';
-import { evaluatePlan, verifyPlan } from '../api/plans-store.js';
+import { evaluatePlan, listPlanItems, verifyPlan } from '../api/plans-store.js';
 import {
   isImproveModeEntry,
   isRunCompletion,
   listRunTriggerEvents,
 } from './run-events.js';
-import { buildPlanEvaluationSnapshot } from './snapshot.js';
+import { buildPlanEvaluationSnapshot, unresolvedSnapshotPaths } from './snapshot.js';
+
+/** A verifiable-state item this pass could not honestly re-verify (see `snapshot.ts`). */
+export interface SkippedVerifyItem {
+  readonly catalogId: string;
+  readonly unresolvedPaths: readonly string[];
+}
+
+const VERIFY_TRACKED_STATES = new Set(['accepted', 'in_progress', 'done']);
+
+function defaultOnError(projectPath: string, err: unknown): void {
+  console.error(`[plan-scheduler] project "${projectPath}" pass failed:`, err);
+}
+
+function defaultOnVerifySkipped(
+  projectPath: string,
+  skipped: readonly SkippedVerifyItem[],
+): void {
+  console.warn(
+    `[plan-scheduler] skipped nightly verify for "${projectPath}" — ` +
+      `${skipped.length} item(s) depend on a field with no live producer yet: ` +
+      skipped.map((s) => `${s.catalogId}(${s.unresolvedPaths.join(',')})`).join(', '),
+  );
+}
 
 export interface PlanScheduleOptions {
   readonly now?: () => string;
+  /** Reports a single project's pass failing — the other projects in this tick still run. */
+  readonly onError?: (projectPath: string, err: unknown) => void;
+  /** Reports a project's nightly verify pass being skipped this round — AC2's "logging/metric-counting the skip". */
+  readonly onVerifySkipped?: (
+    projectPath: string,
+    skipped: readonly SkippedVerifyItem[],
+  ) => void;
 }
 
 /**
@@ -48,15 +87,21 @@ export async function pollRunCompletions(
   cursors: Map<string, number>,
   opts: PlanScheduleOptions = {},
 ): Promise<void> {
+  const onError = opts.onError ?? defaultOnError;
   const projects = await listProjectCards(computeFleetRegistryPath(fleetHome));
   for (const project of projects) {
-    const sinceSeq = cursors.get(project.path) ?? 0;
-    const { events, maxSeq } = await listRunTriggerEvents(project.path, sinceSeq);
-    cursors.set(project.path, maxSeq);
-    const triggered = events.some((e) => isRunCompletion(e) || isImproveModeEntry(e));
-    if (!triggered) continue;
-    const snapshot = await buildPlanEvaluationSnapshot(project.path);
-    await evaluatePlan(project.path, snapshot, { now: opts.now });
+    try {
+      const sinceSeq = cursors.get(project.path) ?? 0;
+      const { events, maxSeq } = await listRunTriggerEvents(project.path, sinceSeq);
+      const triggered = events.some((e) => isRunCompletion(e) || isImproveModeEntry(e));
+      if (triggered) {
+        const snapshot = await buildPlanEvaluationSnapshot(project.path);
+        await evaluatePlan(project.path, snapshot, { now: opts.now });
+      }
+      cursors.set(project.path, maxSeq);
+    } catch (err) {
+      onError(project.path, err);
+    }
   }
 }
 
@@ -70,10 +115,29 @@ export async function runNightlyVerify(
   fleetHome: string | undefined,
   opts: PlanScheduleOptions = {},
 ): Promise<void> {
+  const onError = opts.onError ?? defaultOnError;
+  const onVerifySkipped = opts.onVerifySkipped ?? defaultOnVerifySkipped;
   const projects = await listProjectCards(computeFleetRegistryPath(fleetHome));
   for (const project of projects) {
-    const snapshot = await buildPlanEvaluationSnapshot(project.path);
-    await verifyPlan(project.path, snapshot, { now: opts.now });
+    try {
+      const { items } = await listPlanItems(project.path);
+      const skipped: SkippedVerifyItem[] = [];
+      for (const item of items) {
+        if (!VERIFY_TRACKED_STATES.has(item.state)) continue;
+        const unresolvedPaths = unresolvedSnapshotPaths(item.verifyCriterion);
+        if (unresolvedPaths.length > 0) {
+          skipped.push({ catalogId: item.catalogId, unresolvedPaths });
+        }
+      }
+      if (skipped.length > 0) {
+        onVerifySkipped(project.path, skipped);
+        continue;
+      }
+      const snapshot = await buildPlanEvaluationSnapshot(project.path);
+      await verifyPlan(project.path, snapshot, { now: opts.now });
+    } catch (err) {
+      onError(project.path, err);
+    }
   }
 }
 
@@ -86,6 +150,10 @@ export interface PlanSchedulerOptions {
   readonly nightlyIntervalMs?: number;
   readonly now?: () => string;
   readonly onError?: (phase: 'poll' | 'nightly', err: unknown) => void;
+  readonly onVerifySkipped?: (
+    projectPath: string,
+    skipped: readonly SkippedVerifyItem[],
+  ) => void;
 }
 
 export interface PlanSchedulerHandle {
@@ -107,16 +175,19 @@ export function startPlanScheduler(opts: PlanSchedulerOptions = {}): PlanSchedul
     });
 
   const pollTimer = setInterval(() => {
-    pollRunCompletions(opts.fleetHome, cursors, { now: opts.now }).catch((err: unknown) =>
-      onError('poll', err),
-    );
+    pollRunCompletions(opts.fleetHome, cursors, {
+      now: opts.now,
+      onError: (_projectPath, err) => onError('poll', err),
+    }).catch((err: unknown) => onError('poll', err));
   }, opts.runCompletionPollMs ?? DEFAULT_POLL_MS);
   pollTimer.unref();
 
   const nightlyTimer = setInterval(() => {
-    runNightlyVerify(opts.fleetHome, { now: opts.now }).catch((err: unknown) =>
-      onError('nightly', err),
-    );
+    runNightlyVerify(opts.fleetHome, {
+      now: opts.now,
+      onError: (_projectPath, err) => onError('nightly', err),
+      onVerifySkipped: opts.onVerifySkipped,
+    }).catch((err: unknown) => onError('nightly', err));
   }, opts.nightlyIntervalMs ?? DEFAULT_NIGHTLY_MS);
   nightlyTimer.unref();
 
