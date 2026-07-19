@@ -1930,7 +1930,8 @@
       "depends_on": [
         "W5-02",
         "W5-04",
-        "W4-06"
+        "W4-06",
+        "W5-18"
       ],
       "acceptance": [
         "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT §12.3, FR-S4)",
@@ -1943,7 +1944,8 @@
         "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "RESET 2026-07-19: 2 prior attempts self-blocked with only a circular gap (status blocked, no captured test/review failure) during the high-load/flaky era. Fresh retry budget on the quiet machine + retry gate. If it re-blocks with the same circular gap, its maker session log needs inspection.",
         "CONDUCTOR 2026-07-19T20:37:54.344Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "STRUCTURAL FINDING (verified 2026-07-19, supersedes my prior fresh-budget reset which was WRONG): the maker correctly self-blocked per Law 1. VERIFIED: (1) pipeline/src/index.ts exports only ./plans (board-lifecycle layer); the phase-0-2.5 modules interview/blueprint/decisions/decompose are built but have ZERO external callers anywhere in apps/ or packages/ and are not in the public surface. (2) W8-01 (dogfood) scope is docs/dogfood/** only and dogfoods the ANALYSIS pipeline (onboard/security/code-health), not the creation pipeline — it assumes execution exists. (3) harbormaster anticipates phases (interview pause-site, numbered breakpoints) but never invokes the phase modules. So W5-09 AC1 (guided sample real run) has no execution path. INDEPENDENT airtight sub-finding: both ACs also need out-of-scope files (apps/web/src/settings/FirstRunWizard.tsx, content/guide/**). AWAITING FOUNDER DECISION: new phase-execution-wiring ticket vs deferred-by-design. Do NOT reset until resolved."
+        "STRUCTURAL FINDING (verified 2026-07-19, supersedes my prior fresh-budget reset which was WRONG): the maker correctly self-blocked per Law 1. VERIFIED: (1) pipeline/src/index.ts exports only ./plans (board-lifecycle layer); the phase-0-2.5 modules interview/blueprint/decisions/decompose are built but have ZERO external callers anywhere in apps/ or packages/ and are not in the public surface. (2) W8-01 (dogfood) scope is docs/dogfood/** only and dogfoods the ANALYSIS pipeline (onboard/security/code-health), not the creation pipeline — it assumes execution exists. (3) harbormaster anticipates phases (interview pause-site, numbered breakpoints) but never invokes the phase modules. So W5-09 AC1 (guided sample real run) has no execution path. INDEPENDENT airtight sub-finding: both ACs also need out-of-scope files (apps/web/src/settings/FirstRunWizard.tsx, content/guide/**). AWAITING FOUNDER DECISION: new phase-execution-wiring ticket vs deferred-by-design. Do NOT reset until resolved.",
+        "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket."
       ],
       "stories": [
         "US-107",
@@ -2388,7 +2390,8 @@
       "depends_on": [
         "W5-08",
         "W6-06",
-        "W7-02"
+        "W7-02",
+        "W5-18"
       ],
       "acceptance": [
         "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT §9 W8)",
@@ -2396,7 +2399,10 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": " AMENDED 2026-07-14 (adopted R-E3).",
+      "notes": [
+        " AMENDED 2026-07-14 (adopted R-E3).",
+        "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket."
+      ],
       "stories": [
         "US-401",
         "US-406"
@@ -2704,6 +2710,56 @@
         "RESET 2026-07-19: the security fix was correct + in-scope; it blocked only on 2 flaky timer tests (plan-scheduler, watchdog) now de-flaked on main. Gate reliable — rebuild lands the CRITICAL fix.",
         "RECONFIRMED 2026-07-19: no code changes this pass. Re-verified plans-routes.ts/plans-store.ts against both acceptance criteria line-by-line (route never reads body.snapshot; derives via buildPlanEvaluationSnapshot; plans-store.test.ts proves the second copy). pnpm lint + typecheck clean. pnpm test run 2x full-workspace, plus 3x isolated harbormaster/src/loop-gates.test.ts (the test the last reported gate-failure snippet pointed at) — all green every time; the only recurring failure is packages/harbormaster/src/sandbox/container.test.ts (exit 126), confirmed via `git stash` + direct `podman run` reproduction to be a pre-existing, environment-local container-runtime (overlay mount I/O error) issue, unrelated to this change and outside this ticket's write_scope. apps/server test suite alone (44 files/350 tests) green. node scripts/validate-plan.mjs = OK."
       ]
+    },
+    {
+      "id": "W5-17",
+      "title": "Pipeline orchestrator: run interview -> blueprint -> decisions -> decompose",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/run/**",
+        "packages/pipeline/src/index.ts"
+      ],
+      "depends_on": [
+        "W5-02",
+        "W5-03",
+        "W5-04",
+        "W5-07"
+      ],
+      "acceptance": [
+        "A pure runPipeline orchestrator in packages/pipeline/src/run/ chains the four built phase modules end-to-end: interview session -> synthesizeBlueprint -> buildTechnicalSlate (decisions) -> decompose, threading each phase output as the next phase input, and returns the DecomposedPlan (board-ticket drafts + mermaid). All external effects are injected via a LOCAL port interface (a model/gateway port + an emit(event) callback) defined in this package — NO new workspace imports in packages/pipeline/package.json (mirror the decompose/phases engine-layer pattern: local port types, deterministic core, never a direct model or provider call). Re-export runPipeline and the phase modules from packages/pipeline/src/index.ts (the barrel gap W5-07/W5-10 notes flagged).",
+        "End-to-end unit test drives the full chain with the FAKE/local model port and no network (Law 9), asserting a well-formed board comes out; a malformed or gate-failing phase output (e.g. blueprint decision-gate not satisfied) halts with a typed error and yields NO partial board rather than a half-built plan."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FOUNDED 2026-07-19 (Brad-approved, supersedes the W5-09/W5-13 execution-gap finding): the interview/blueprint/decisions/decompose modules (W5-02/03/04/07) were built as pure libraries with zero external callers. This ticket adds the orchestrator that actually runs them; W5-18 adds the server route + event persistence on top. Keep pipeline dependency-free — inject deps via local ports."
+      ],
+      "stories": []
+    },
+    {
+      "id": "W5-18",
+      "title": "Pipeline run route + event persistence (drives the orchestrator)",
+      "phase": 5,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/api/pipeline/**"
+      ],
+      "depends_on": [
+        "W5-17"
+      ],
+      "acceptance": [
+        "An HTTP route under apps/server/src/api/pipeline/ starts and advances a pipeline run by calling runPipeline (W5-17) with the REAL gateway client injected as the model port (Law 6 — model access only via gateway, never a direct provider) and emit wired to append-only events via @shipwright/events (Law 7, hash-chained, single writer). Decompose output becomes board items through the existing plans lifecycle (proposeFromMatches/acceptItem), not a bespoke path.",
+        "Gate-touching, so red fixtures are acceptance (docs/TESTING.md planted-defect harness, Law 4): (a) no phase output becomes durable without a receipt through the verbs/receipts API; (b) a planted self-attest attempt — a phase marking its own output verified — is rejected at gate time; (c) a fake-model E2E produces interview->blueprint->decisions->board with a verifiable hash-chained event trail and no UPDATE/DELETE on the events table."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FOUNDED 2026-07-19 (Brad-approved). Consumes W5-17. Unblocks W5-09 (guided sample real run) and W8-01 (dogfood). The route persists every phase transition via events/receipts; the orchestrator itself stays pure."
+      ],
+      "stories": []
     },
     {
       "id": "W8-07",
