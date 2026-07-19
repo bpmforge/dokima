@@ -43,7 +43,23 @@ describe('runInProcessSandbox', () => {
           expect(result.exitCode).not.toBe(0);
           expect(result.stdout).not.toContain('reached');
           expect(result.networkAllowed).toBe(false);
+          // Denial must come from curl being blocked by the network policy,
+          // not from sandbox-exec failing to start (e.g. its profile file
+          // having been deleted before the child ever ran).
+          expect(result.stderr).not.toMatch(/sandbox-exec|No such file or directory/);
         });
+      });
+    },
+  );
+
+  it.runIf(isProcessSandboxAvailable())(
+    'runs a benign command successfully under the default (network-denied) profile',
+    async () => {
+      await withTempDir(async (cwd) => {
+        const result = await runInProcessSandbox({ cwd, command: 'echo hi' });
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toBe('hi\n');
+        expect(result.networkAllowed).toBe(false);
       });
     },
   );

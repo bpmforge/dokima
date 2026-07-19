@@ -104,6 +104,13 @@ function resolveInvocation(
   );
 }
 
+/**
+ * Keeps the Seatbelt profile file alive for the full duration of `run` —
+ * including the spawned child's lifetime, not just argv construction — and
+ * only cleans up once `run`'s returned promise settles. Cleaning up earlier
+ * (e.g. in a `finally` around only the argv-building step) deletes the
+ * profile out from under `sandbox-exec` before it has a chance to read it.
+ */
 async function withSeatbeltProfile<T>(
   needed: boolean,
   run: (profilePath: string | undefined) => Promise<T>,
@@ -117,6 +124,67 @@ async function withSeatbeltProfile<T>(
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+function spawnAndWait(
+  invocation: { command: string; args: string[] },
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  originalCommand: string,
+  allowNetwork: boolean,
+  timeoutMs: number,
+  forceKillGraceMs: number,
+): Promise<SandboxRunResult> {
+  const start = Date.now();
+  return new Promise<SandboxRunResult>((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+
+    const child = spawn(invocation.command, invocation.args, {
+      cwd,
+      env,
+      detached: true,
+    });
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString('utf8');
+    });
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8');
+    });
+
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      if (typeof child.pid === 'number') killGroup(child.pid, 'SIGTERM');
+    }, timeoutMs);
+    const forceKillTimer = setTimeout(() => {
+      if (typeof child.pid === 'number') killGroup(child.pid, 'SIGKILL');
+    }, timeoutMs + forceKillGraceMs);
+
+    const settle = (exitCode: number | null): void => {
+      clearTimeout(timeoutTimer);
+      clearTimeout(forceKillTimer);
+      resolve({
+        profile: 'process',
+        command: originalCommand,
+        exitCode,
+        stdout,
+        stderr,
+        durationMs: Date.now() - start,
+        timedOut,
+        networkAllowed: allowNetwork,
+      });
+    };
+
+    child.on('error', (err) => {
+      stderr += `\n${err.message}`;
+      settle(null);
+    });
+    child.on('close', (exitCode) => {
+      settle(exitCode);
+    });
+  });
 }
 
 /** True when this host's network-denial mechanism is actually usable — see module doc. */
@@ -142,58 +210,16 @@ export async function runInProcessSandbox(
   const forceKillGraceMs = options.forceKillGraceMs ?? DEFAULT_FORCE_KILL_GRACE_MS;
   const env = buildSandboxEnv(options.env);
 
-  const invocation = await withSeatbeltProfile(!allowNetwork, (profilePath) =>
-    Promise.resolve(resolveInvocation(options.command, allowNetwork, profilePath)),
-  );
-
-  const start = Date.now();
-  return new Promise<SandboxRunResult>((resolve) => {
-    let stdout = '';
-    let stderr = '';
-    let timedOut = false;
-
-    const child = spawn(invocation.command, invocation.args, {
-      cwd: options.cwd,
+  return withSeatbeltProfile(!allowNetwork, (profilePath) => {
+    const invocation = resolveInvocation(options.command, allowNetwork, profilePath);
+    return spawnAndWait(
+      invocation,
+      options.cwd,
       env,
-      detached: true,
-    });
-
-    child.stdout?.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
-    });
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
-    });
-
-    const timeoutTimer = setTimeout(() => {
-      timedOut = true;
-      if (typeof child.pid === 'number') killGroup(child.pid, 'SIGTERM');
-    }, timeoutMs);
-    const forceKillTimer = setTimeout(() => {
-      if (typeof child.pid === 'number') killGroup(child.pid, 'SIGKILL');
-    }, timeoutMs + forceKillGraceMs);
-
-    const settle = (exitCode: number | null): void => {
-      clearTimeout(timeoutTimer);
-      clearTimeout(forceKillTimer);
-      resolve({
-        profile: 'process',
-        command: options.command,
-        exitCode,
-        stdout,
-        stderr,
-        durationMs: Date.now() - start,
-        timedOut,
-        networkAllowed: allowNetwork,
-      });
-    };
-
-    child.on('error', (err) => {
-      stderr += `\n${err.message}`;
-      settle(null);
-    });
-    child.on('close', (exitCode) => {
-      settle(exitCode);
-    });
+      options.command,
+      allowNetwork,
+      timeoutMs,
+      forceKillGraceMs,
+    );
   });
 }

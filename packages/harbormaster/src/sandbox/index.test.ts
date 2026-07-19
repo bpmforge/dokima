@@ -54,6 +54,9 @@ describe('runSandboxed', () => {
           expect(result.networkAllowed).toBe(false);
           expect(result.exitCode).not.toBe(0);
           expect(result.stdout).not.toContain('bearer token');
+          // The denial must come from the network policy, not from the
+          // sandbox mechanism itself failing to start.
+          expect(result.stderr).not.toMatch(/sandbox-exec|No such file or directory/);
         });
       });
     },
