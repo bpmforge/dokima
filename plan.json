@@ -2071,11 +2071,12 @@
         "Offline queue in ticket history flushes when reachable; reconciliation audit grades tickets VERIFIED/UNVERIFIED/ORPHAN against issues + git history, two-way drift report"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " NOTE 2026-07-14 (G-21): machine accounts + scoped tokens are human prerequisites HP-5/HP-6 — docs/PREREQUISITES.md; the connect flow blocks with evidence naming the HP id when absent.",
         "CONDUCTOR 2026-07-17T05:38:48.764Z: blocked after 2 attempts. Branch sw/w6-03 kept. Gaps: pnpm test failed:  that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  676ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 1ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  3 failed | 190 passed (193)\n      Tests  3 failed | 1430 p",
-        "RESET 2026-07-18: blocked on a mechanical gate failure (test/typecheck/lint) during the multi-day unattended run. Main re-verified fully green + stable (1410 tests, 3x + under CPU load) and the cited loop-gates timing tests are NOT reproducibly flaky. These blocks were most likely transient (long-run resource/tmp pressure) or a small per-ticket gate miss; giving a fresh 2-attempt cycle on a clean machine. If it re-blocks, the fresh note will show the real, complete failure."
+        "RESET 2026-07-18: blocked on a mechanical gate failure (test/typecheck/lint) during the multi-day unattended run. Main re-verified fully green + stable (1410 tests, 3x + under CPU load) and the cited loop-gates timing tests are NOT reproducibly flaky. These blocks were most likely transient (long-run resource/tmp pressure) or a small per-ticket gate miss; giving a fresh 2-attempt cycle on a clean machine. If it re-blocks, the fresh note will show the real, complete failure.",
+        "AGENT 2026-07-18: claimed for a fresh attempt per the RESET note. Building packages/forge/src/mirror/** (write-through verb mapping, offline queue, reconciliation audit) self-contained per forge's zero-dependency package.json (existing pattern in gitea.ts/github.ts)."
       ],
       "stories": [
         "US-502"
