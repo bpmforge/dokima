@@ -2643,7 +2643,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/api/plans-routes*",
         "apps/server/src/api/plans-store*"
