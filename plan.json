@@ -2493,7 +2493,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2505,7 +2505,10 @@
       "acceptance": [
         "Interview/pipeline deliverables (VISION/SCOPE/personas/SRS/stories drafts) rendered in the W4-05 artifact viewer are editable in place; edits persist through the deliverable revision flow (revision.requested -> revision events). Split from W5-02 clause 1 — the artifact-viewer-editing half, which needs apps/web."
       ],
-      "notes": "ADDED 2026-07-18 (W5-02 split-per-lane, Brad-approved). Owns the apps/web editing surface for pipeline deliverables that W5-02 (pipeline) cannot reach within its scope."
+      "notes": [
+        "ADDED 2026-07-18 (W5-02 split-per-lane, Brad-approved). Owns the apps/web editing surface for pipeline deliverables that W5-02 (pipeline) cannot reach within its scope.",
+        "CONDUCTOR 2026-07-19T02:50:33.051Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review"
+      ]
     },
     {
       "id": "W5-13",
