@@ -12,19 +12,25 @@ import type { DecisionRecord } from './types.js';
 const ID_LINE = /^\| (D-(\d+)) \|/;
 
 /**
- * Scans every `D-<n>` occurrence in the ledger (table rows, not just the
- * line-start ones `ID_LINE` matches, since superseding rows like D-020 can
- * be appended out of numeric sequence — docs/DECISIONS.md's own history) and
- * returns the next stable ID, zero-padded to at least 3 digits.
+ * Derives the next decision ID by examining only the ID column (via ID_LINE
+ * anchor per row), never scanning free-text cells. Rationale/options/decision
+ * strings are untrusted network input and may contain D-shaped substrings
+ * (e.g., "see D-999 for context") that must not advance the sequence.
+ * Returns the next stable ID, zero-padded to at least 3 digits.
  */
 export function nextDecisionId(ledgerMarkdown: string): string {
-  const matches = ledgerMarkdown.matchAll(/\bD-(\d+)\b/g);
+  const lines = ledgerMarkdown.split('\n');
   let max = 0;
-  for (const m of matches) {
-    const digits = m[1];
-    if (digits === undefined) continue;
-    const n = Number.parseInt(digits, 10);
-    if (n > max) max = n;
+  for (const line of lines) {
+    if (line === undefined) continue;
+    const m = ID_LINE.exec(line);
+    if (m !== null) {
+      const digits = m[2];
+      if (digits !== undefined) {
+        const n = Number.parseInt(digits, 10);
+        if (n > max) max = n;
+      }
+    }
   }
   const next = max + 1;
   return `D-${String(next).padStart(3, '0')}`;

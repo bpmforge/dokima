@@ -49,6 +49,14 @@ describe('nextDecisionId', () => {
     const ledger = '| D-005 | x | y | z | w |\n| D-002 | x | y | z | w |\n';
     expect(nextDecisionId(ledger)).toBe('D-006');
   });
+
+  it('red regression: ignores D-shaped strings in free-text cells (rationale/options/decision)', () => {
+    // A ledger row whose rationale mentions "see D-999 for context" must NOT
+    // jump the next ID to D-1000. Only the ID column (ID_LINE matches) counts.
+    const ledgerWithMention = `| D-018 | 2026-07-14 | Some decision | See D-999 for details | reference to D-999 in rationale |
+| D-020 | 2026-07-16 | Accept authority | Options include D-999 | D-999 was considered |`;
+    expect(nextDecisionId(ledgerWithMention)).toBe('D-021');
+  });
 });
 
 describe('formatLedgerRow', () => {
