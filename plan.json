@@ -2129,8 +2129,8 @@
       "write_scope": [
         "packages/forge/src/dual-remote*",
         "content/validators/remote-parity*",
-        "content/validators/*remote-parity*",
-        "packages/harbormaster/src/loop-gates-types.ts"
+        "packages/harbormaster/src/loop-gates-types.ts",
+        "content/validators/validate-remote-parity*"
       ],
       "depends_on": [
         "W6-02"
