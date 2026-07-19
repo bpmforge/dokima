@@ -2643,7 +2643,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/server/src/api/plans-routes.ts",
         "apps/server/src/api/plans-store.ts"
@@ -2660,7 +2660,10 @@
         "SECURITY (CRITICAL x2, wave-pass-caught, CLAUDE.md law 4 / SC-03 self-attest bypass): POST /api/v1/projects/:id/plan/verify MUST NOT accept a caller-supplied PlanEvaluationSnapshot. Derive the snapshot SERVER-SIDE from real system state (reuse the existing derivation in apps/server/src/scheduler/snapshot.ts — receipts/coverage/finding-ledger), then run verifyPlan on the derived snapshot. An untrusted token holder must be unable to influence which items flip to done; no plan_items state flip may occur from caller-asserted verification state.",
         "Red fixture: a POST with a fabricated body.snapshot (e.g. {receipts:{staleCount:0}}) does NOT flip any accepted/in_progress item to done — the server ignores the supplied snapshot and derives its own. Cover both the route AND the plans-store verifyPlan path so the second copy is closed too."
       ],
-      "notes": "ADDED 2026-07-19: fixes the 2 CRITICALs the W5 wave-security-pass caught in plans-routes.ts — the /plan/verify route accepts a caller-supplied snapshot and flips plan_items to done with no receipt correlation (untrusted agent can self-attest completion). The correct derive-from-state logic already exists in scheduler/snapshot.ts; the route must use it instead of trusting the caller. THIRD instance of the self-attest antipattern (after W6-03 reconciliation) — see L-42; a shared derive-and-receipt-verify contract + a validator rule are the systemic fix."
+      "notes": [
+        "ADDED 2026-07-19: fixes the 2 CRITICALs the W5 wave-security-pass caught in plans-routes.ts — the /plan/verify route accepts a caller-supplied snapshot and flips plan_items to done with no receipt correlation (untrusted agent can self-attest completion). The correct derive-from-state logic already exists in scheduler/snapshot.ts; the route must use it instead of trusting the caller. THIRD instance of the self-attest antipattern (after W6-03 reconciliation) — see L-42; a shared derive-and-receipt-verify contract + a validator rule are the systemic fix.",
+        "CONDUCTOR 2026-07-19T07:45:30.997Z: blocked after 2 attempts. Branch sw/w5-16 kept. Gaps: plan.json status is 'blocked', expected 'done' | out-of-scope edits: apps/server/src/api/plans-routes.test.ts, apps/server/src/api/plans-store.test.ts | pnpm test failed: n opted in  1083ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1631ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2382ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real"
+      ]
     }
   ]
 }
