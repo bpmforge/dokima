@@ -2564,7 +2564,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/server/src/api/decisions/**",
         "packages/events/migrations/*decisions*"
@@ -2578,7 +2578,10 @@
       "acceptance": [
         "REST route(s) for decision slates (create/list/choose) backed by an events-log-projected decisions table (migration in packages/events/migrations; append-only + projection, Law 7). Choice + rationale flow appends through the W5-03 engine to docs/DECISIONS.md with stable D-IDs. Split from W5-03 — the backend half (apps/server + events), outside the pipeline engine scope."
       ],
-      "notes": "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Backend persistence + route for the pipeline decisions engine."
+      "notes": [
+        "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Backend persistence + route for the pipeline decisions engine.",
+        "CONDUCTOR 2026-07-19T19:26:38.619Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: out-of-scope edits: packages/pipeline/src/decisions/ledger.test.ts, packages/pipeline/src/decisions/ledger.ts"
+      ]
     },
     {
       "id": "W5-14",
