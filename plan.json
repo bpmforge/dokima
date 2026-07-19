@@ -2547,7 +2547,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2568,7 +2568,8 @@
         "RESET 2026-07-19: retry gate (--retry=2) now live — if the 2-test failure was a flake it clears; if real it re-blocks with certainty for a focused fix.",
         "CONDUCTOR 2026-07-19T18:52:46.011Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] apps/web/src/artifacts/ArtifactViewer.tsx: The new Edit/Save/Cancel flow (startEdit/saveEdit/cancelEdit, textarea, disabled/error states) has zero automated test coverage. Only the pure helper buildEditRequestBody is unit-tested; no test renders ArtifactViewer and drives Edit->Save, and apps/web/e2e/artifacts.spec.ts has no test mentioning 'edit' or the new textarea at all — confirmed via grep, zero matches. — fix: Add a component test (rendering ArtifactViewer with a mocked api.ts) asserting Save calls postArtifactComment with the right body/ticketId/versionRef and that revisionRequest",
         "RESET+ENCODE 2026-07-19: feature built but shipped with zero tests (HIGH). Spelled out the required test cases so a fresh attempt covers them. Fresh retry budget.",
-        "CONDUCTOR 2026-07-19T20:23:05.254Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-19T20:23:05.254Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "RESET+GUIDE 2026-07-19: your revisionSubmission.ts extraction (buildCommentSubmission/buildEditSubmission) is the right approach — complete it and add PERSISTED regression coverage that edits survive revision.requested (assert the built payload shape + that phaseForDeliverable/prefix wiring is exercised). Keep the specs IN the repo — do not delete integration/Playwright specs before commit. All within apps/web/src/artifacts/** scope."
       ]
     },
     {
@@ -2578,13 +2579,14 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
         "apps/server/src/api/decisions/**",
         "packages/events/migrations/*decisions*"
       ],
       "depends_on": [
-        "W5-03"
+        "W5-03",
+        "W5-19"
       ],
       "stories": [
         "US-103"
@@ -2596,7 +2598,8 @@
         "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Backend persistence + route for the pipeline decisions engine.",
         "CONDUCTOR 2026-07-19T19:26:38.619Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: out-of-scope edits: packages/pipeline/src/decisions/ledger.test.ts, packages/pipeline/src/decisions/ledger.ts",
         "RESET+GUIDE 2026-07-19: maker over-reached editing packages/pipeline/src/decisions/ledger.ts (owned by done W5-03, cross-lane). The Decisions API must persist through its OWN layer — apps/server/src/api/decisions/** + the events/DB migration in scope — and CONSUME @shipwright/pipeline via its public export without modifying pipeline internals. If a needed capability is truly missing from the ledger export, flag it as a pipeline follow-up; do not edit pipeline files.",
-        "CONDUCTOR 2026-07-19T20:54:53.342Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-19T20:54:53.342Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "RESET+GUIDE 2026-07-19: the nextDecisionId security fix you correctly found is now W5-19 (pipeline lane, a dependency). Do NOT edit packages/pipeline/src/decisions/ledger.ts here — land ONLY your in-scope work (apps/server/src/api/decisions/** route + events/DB migration), consuming @shipwright/pipeline read-only. W5-19 lands first so the reviewer sees the hardened ledger."
       ]
     },
     {
@@ -2758,6 +2761,30 @@
       "status": "todo",
       "notes": [
         "FOUNDED 2026-07-19 (Brad-approved). Consumes W5-17. Unblocks W5-09 (guided sample real run) and W8-01 (dogfood). The route persists every phase transition via events/receipts; the orchestrator itself stays pure."
+      ],
+      "stories": []
+    },
+    {
+      "id": "W5-19",
+      "title": "Harden nextDecisionId against D-shaped free-text (security)",
+      "phase": 5,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/decisions/ledger.ts",
+        "packages/pipeline/src/decisions/ledger.test.ts"
+      ],
+      "depends_on": [
+        "W5-03"
+      ],
+      "acceptance": [
+        "nextDecisionId (packages/pipeline/src/decisions/ledger.ts) must derive the next ID ONLY from the ledger ID column, never from D-shaped substrings elsewhere in a row. A slate title/option/rationale is untrusted network input (only pipe/newline-escaped); a value like \"see D-999 for context\" in a free-text cell must NOT advance the next assigned ID. Walk lines and read the ID via the existing ID_LINE per-row anchor.",
+        "Red regression (Law 4 spirit): a ledger row whose free-text carries \"D-999\" yields the correct sequential next ID (not D-1000). Reference fix already drafted on branch blocked/w5-13."
+      ],
+      "points": 1,
+      "status": "todo",
+      "notes": [
+        "FOUNDED 2026-07-19: real security finding surfaced by W5-13's reviewer — nextDecisionId scanned whole-row markdown for D-(\\d+), letting untrusted slate text jump the ID sequence. Belongs in pipeline lane (W5-03's ledger). W5-13 depends on this so its reviewer sees the hardened ledger."
       ],
       "stories": []
     },
