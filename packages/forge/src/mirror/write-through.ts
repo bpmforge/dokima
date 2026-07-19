@@ -9,6 +9,12 @@
  * `commentOnIssue` with the identity MIRROR_VERB_IDENTITY assigns it —
  * never a caller-supplied identity, so a mirror caller cannot accidentally
  * post an accept comment under the maker token.
+ *
+ * close and accept both embed a non-spoofable receipt anchor
+ * (computeReceiptAnchor, W6-08/SC-15) in their comment bodies —
+ * reconciliation.ts trusts only the reviewer-authored accept comment
+ * carrying it, since a maker-authored comment (evidence or otherwise) can
+ * never satisfy that check.
  */
 import {
   ForgeTimeoutError,
@@ -18,6 +24,8 @@ import {
 } from '../types.js';
 import {
   MIRROR_VERB_IDENTITY,
+  computeReceiptAnchor,
+  type MirrorCloseReceiptSummary,
   type MirrorWriteRequest,
   type MirrorWriteResult,
 } from './types.js';
@@ -34,15 +42,7 @@ function mergeUnique(existing: string[] | undefined, additions: string[]): strin
   return merged;
 }
 
-function receiptCommentBody(receipt: {
-  ticketId: string;
-  ownerId: string;
-  verifyCommand: string;
-  verifyExitCode: number;
-  commits: string[];
-  files: string[];
-  mintedAt: string;
-}): string {
+function receiptCommentBody(receipt: MirrorCloseReceiptSummary): string {
   return [
     `Close receipt for ${receipt.ticketId}`,
     `- owner: ${receipt.ownerId}`,
@@ -50,6 +50,25 @@ function receiptCommentBody(receipt: {
     `- commits: ${receipt.commits.join(', ') || '(none)'}`,
     `- files: ${receipt.files.join(', ') || '(none)'}`,
     `- minted at: ${receipt.mintedAt}`,
+    `- anchor: ${computeReceiptAnchor(receipt)}`,
+  ].join('\n');
+}
+
+/**
+ * The accept comment's only load-bearing content, as far as
+ * reconciliation.ts (W6-08) is concerned, is this anchor line — the human
+ * `body` is caller-supplied review commentary, kept for the forge timeline
+ * but never what the audit matches on.
+ */
+function acceptCommentBody(
+  body: string,
+  closeReceipt: MirrorCloseReceiptSummary,
+): string {
+  return [
+    body,
+    '',
+    `Confirms close receipt for ${closeReceipt.ticketId}`,
+    `- anchor: ${computeReceiptAnchor(closeReceipt)}`,
   ].join('\n');
 }
 
@@ -108,7 +127,7 @@ export async function writeThroughVerb(
       const comment = await adapter.commentOnIssue(
         ref,
         issueNumber,
-        request.body,
+        acceptCommentBody(request.body, request.closeReceipt),
         identity,
       );
       return { verb: 'accept', identity, comment };

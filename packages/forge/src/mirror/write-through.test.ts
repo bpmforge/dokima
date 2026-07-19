@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { writeThroughVerb } from './write-through.js';
 import { fakeMirrorAdapter, TEST_REF } from './mirror-test-helpers.js';
-import type { MirrorWriteRequest } from './types.js';
+import { computeReceiptAnchor, type MirrorWriteRequest } from './types.js';
 
 describe('writeThroughVerb', () => {
   it('claim assigns + labels under the maker identity', async () => {
@@ -84,41 +84,52 @@ describe('writeThroughVerb', () => {
 
   it('close sets state=closed and posts a receipt comment, both under the maker identity', async () => {
     const adapter = fakeMirrorAdapter();
-    const request: MirrorWriteRequest = {
-      verb: 'close',
-      receipt: {
-        ticketId: 'W6-03',
-        ownerId: 'agent-1',
-        verifyCommand: 'pnpm test',
-        verifyExitCode: 0,
-        commits: ['abc1234'],
-        files: ['packages/forge/src/mirror/index.ts'],
-        mintedAt: '2026-07-18T00:00:00.000Z',
-      },
+    const receipt = {
+      ticketId: 'W6-03',
+      ownerId: 'agent-1',
+      verifyCommand: 'pnpm test',
+      verifyExitCode: 0,
+      commits: ['abc1234'],
+      files: ['packages/forge/src/mirror/index.ts'],
+      mintedAt: '2026-07-18T00:00:00.000Z',
     };
+    const request: MirrorWriteRequest = { verb: 'close', receipt };
     const result = await writeThroughVerb(adapter, TEST_REF, 42, request);
 
     expect(result.identity).toBe('maker');
     expect(result.issue?.state).toBe('closed');
     expect(result.comment?.body).toContain('W6-03');
     expect(result.comment?.body).toContain('pnpm test');
+    expect(result.comment?.body).toContain(computeReceiptAnchor(receipt));
     expect(adapter.calls.map((c) => c.op)).toEqual(['updateIssue', 'commentOnIssue']);
     expect(adapter.calls.every((c) => c.identity === 'maker')).toBe(true);
   });
 
-  it('accept posts a comment under the reviewer identity, distinct from maker calls', async () => {
+  it('accept posts a comment under the reviewer identity, distinct from maker calls, embedding the close receipt anchor', async () => {
     const adapter = fakeMirrorAdapter();
     await writeThroughVerb(adapter, TEST_REF, 42, {
       verb: 'evidence',
       body: 'maker comment',
     });
+    const receipt = {
+      ticketId: 'W6-03',
+      ownerId: 'agent-1',
+      verifyCommand: 'pnpm test',
+      verifyExitCode: 0,
+      commits: ['abc1234'],
+      files: ['packages/forge/src/mirror/index.ts'],
+      mintedAt: '2026-07-18T00:00:00.000Z',
+    };
     const acceptResult = await writeThroughVerb(adapter, TEST_REF, 42, {
       verb: 'accept',
       body: 'looks good',
+      closeReceipt: receipt,
     });
 
     expect(acceptResult.identity).toBe('reviewer');
     expect(acceptResult.comment?.authorLogin).toBe('shipwright-reviewer');
+    expect(acceptResult.comment?.body).toContain('looks good');
+    expect(acceptResult.comment?.body).toContain(computeReceiptAnchor(receipt));
     // SC-03: the mirror timeline carries two distinct actor identities, never one identity for both.
     const identities = adapter.calls.map((c) => c.identity);
     expect(new Set(identities)).toEqual(new Set(['maker', 'reviewer']));
