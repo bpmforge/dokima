@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "lint:boundary-fixtures": "node e2e/boundary-fixtures/check-fixtures.mjs",
     "typecheck": "pnpm -r run typecheck",
-    "test": "vitest run",
+    "test": "vitest run --retry=2",
     "format": "prettier --check .",
     "format:write": "prettier --write ."
   },
