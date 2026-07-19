@@ -2587,7 +2587,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/scheduler/**",
         "apps/server/src/api/server.ts",
