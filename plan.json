@@ -2539,7 +2539,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2559,7 +2559,8 @@
         "CONDUCTOR 2026-07-19T06:24:51.189Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: pnpm test failed: igible role with no memory_written[] is refused only when opted in  1759ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1114ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2223ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  1214ms\n\n Test Files  2 failed | 275 passed (277)\n      Tests  2 failed | 210",
         "RESET 2026-07-19: retry gate (--retry=2) now live — if the 2-test failure was a flake it clears; if real it re-blocks with certainty for a focused fix.",
         "CONDUCTOR 2026-07-19T18:52:46.011Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] apps/web/src/artifacts/ArtifactViewer.tsx: The new Edit/Save/Cancel flow (startEdit/saveEdit/cancelEdit, textarea, disabled/error states) has zero automated test coverage. Only the pure helper buildEditRequestBody is unit-tested; no test renders ArtifactViewer and drives Edit->Save, and apps/web/e2e/artifacts.spec.ts has no test mentioning 'edit' or the new textarea at all — confirmed via grep, zero matches. — fix: Add a component test (rendering ArtifactViewer with a mocked api.ts) asserting Save calls postArtifactComment with the right body/ticketId/versionRef and that revisionRequest",
-        "RESET+ENCODE 2026-07-19: feature built but shipped with zero tests (HIGH). Spelled out the required test cases so a fresh attempt covers them. Fresh retry budget."
+        "RESET+ENCODE 2026-07-19: feature built but shipped with zero tests (HIGH). Spelled out the required test cases so a fresh attempt covers them. Fresh retry budget.",
+        "CONDUCTOR 2026-07-19T20:23:05.254Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: plan.json status is 'blocked', expected 'done'"
       ]
     },
     {
