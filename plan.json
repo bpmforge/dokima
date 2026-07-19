@@ -2563,7 +2563,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/server/src/scheduler/**",
         "apps/server/src/api/server.ts"
@@ -2581,7 +2581,8 @@
       ],
       "notes": [
         "ADDED 2026-07-18 (W5-10 split-per-lane, Brad-approved). Owns the apps/server live callers (run hook, nightly scheduler) the W5-10 engine needs.",
-        "SCOPE 2026-07-18: nightly scheduler lives in a new apps/server/src/scheduler/** (avoids overlap with W5-11 pipeline which owns api/plans*); registered via server.ts. If the run-completion TRIGGER needs the harbormaster loop (orchestrator lane), HANDOFF rather than self-widen."
+        "SCOPE 2026-07-18: nightly scheduler lives in a new apps/server/src/scheduler/** (avoids overlap with W5-11 pipeline which owns api/plans*); registered via server.ts. If the run-completion TRIGGER needs the harbormaster loop (orchestrator lane), HANDOFF rather than self-widen.",
+        "CONDUCTOR 2026-07-19T03:05:18.155Z: blocked after 2 attempts. Branch sw/w5-15 kept. Gaps: plan.json status is 'blocked', expected 'done'"
       ]
     }
   ]
