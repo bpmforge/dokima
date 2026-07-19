@@ -2732,7 +2732,7 @@
         "End-to-end unit test drives the full chain with the FAKE/local model port and no network (Law 9), asserting a well-formed board comes out; a malformed or gate-failing phase output (e.g. blueprint decision-gate not satisfied) halts with a typed error and yields NO partial board rather than a half-built plan."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FOUNDED 2026-07-19 (Brad-approved, supersedes the W5-09/W5-13 execution-gap finding): the interview/blueprint/decisions/decompose modules (W5-02/03/04/07) were built as pure libraries with zero external callers. This ticket adds the orchestrator that actually runs them; W5-18 adds the server route + event persistence on top. Keep pipeline dependency-free — inject deps via local ports."
       ],
