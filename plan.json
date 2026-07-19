@@ -1770,11 +1770,12 @@
         "Technical-fork slates use the design-options discipline: exactly 3 options (Minimal/Clean/Pragmatic) compared on 6 fixed dimensions (time, maintainability, scalability, team-fit, risk, reversibility), recommendation tied to a named constraint; founder forks keep the free 2-4 format (R-H1)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-H1).",
         "CONDUCTOR 2026-07-16T11:00:50.373Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "DECOMPOSE 2026-07-18 (Brad-approved split-per-lane): keep the pipeline decisions ENGINE (slate logic + DECISIONS.md append). Server route + events/DB persistence -> W5-13 (depends_on W5-03); web decisions UI -> W5-14 (depends_on W5-03+W5-13). apps/web/src/decisions/** removed from this scope. Rebuild engine fresh on current main."
+        "DECOMPOSE 2026-07-18 (Brad-approved split-per-lane): keep the pipeline decisions ENGINE (slate logic + DECISIONS.md append). Server route + events/DB persistence -> W5-13 (depends_on W5-03); web decisions UI -> W5-14 (depends_on W5-03+W5-13). apps/web/src/decisions/** removed from this scope. Rebuild engine fresh on current main.",
+        "CONDUCTOR 2026-07-19T00:05:16.436Z: blocked after 2 attempts. Branch sw/w5-03 kept. Gaps: pnpm test failed: eligible role with no memory_written[] is refused only when opted in  1164ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1096ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  1241ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  568ms\n\n Test Files  1 failed | 248 passed (249)\n      Tests  1 failed | 19"
       ],
       "stories": [
         "US-103"
