@@ -83,3 +83,13 @@ When triaging blocked security tickets, I encoded precise fix directions into ea
 **Why:** "queue a fix" ≠ "remove the vulnerability." A CRITICAL that is live on `main` blocks the pipeline regardless of any queued intent to fix it, because the trust boundary is enforced against the code that exists, not the code we plan to write.
 
 **How to apply:** For CRITICAL findings, *build the fix promptly* (conductor, scoped to that ticket's wave so it lands before the next wave-transition security pass) rather than only encoding it as acceptance. Encode-as-acceptance is acceptable for HIGH/MEDIUM (non-halting) but a live CRITICAL must be driven to a landed fix before the pipeline can proceed. Evidence: docs/work/SECURITY_W4.md CRITICAL entry; conductor.out `security.critical` halt 2026-07-18T14:44. Related: [[maker-verifier-recursive]], the trust-boundary law (CLAUDE.md C-2/C-3).
+
+## L-42 — Per-ticket independent review MISSED a maker-self-attest bypass; the wave-security-pass caught it (defense-in-depth validated)
+
+**Route to:** product + experts + harness. **Status:** confirmed 2026-07-18.
+
+W6-03 (Forge mirror reconciliation) passed its per-ticket independent review and auto-merged, but its `hasReceiptComment()` graded a ticket VERIFIED from comment TEXT alone (`body.includes(ticketId) && /receipt|verify|exit/i.test(body)`) with no author-identity check. Because the maker's own `evidence` verb posts comments under the maker identity, the maker could forge "receipt for W6-03, verify exit 0" and defeat the entire reconciliation audit — a textbook C-4/SC-03 maker-self-attests bypass, and a direct violation of the "never grep for completion strings" law. The per-ticket reviewer approved it; the **wave-security-pass** (deeper, cross-cutting) flagged it CRITICAL and halted the pipeline.
+
+**Why:** per-ticket review is scoped to the diff and can rubber-stamp a plausible-looking verification helper; it does not always reason about the *trust model* (who can author the thing being checked). The wave-security-pass, reasoning about the whole surface, is the backstop — and it worked.
+
+**How to apply:** (1) Add a validator/lint rule that flags completion/verification decisions made by string/regex matching on free-text (`/receipt|verify|exit|done|pass/i` over comment/body fields) — this antipattern is a recurring maker≠verifier hole. (2) Any "is this verified?" predicate must key on identity + a non-spoofable anchor (hash-chained receipt), never text. (3) Keep the two-layer defense (per-ticket review + wave-security-pass) — this incident is the case for it. Evidence: docs/work/SECURITY_W6.md CRITICAL; fix ticket W6-08. Related: [[L-41]], trust-boundary law C-4/SC-03.
