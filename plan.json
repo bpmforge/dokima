@@ -2134,9 +2134,10 @@
         "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)"
       ],
       "points": 2,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
-        "CONDUCTOR 2026-07-19T04:47:18.938Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: pnpm test failed: n.test.ts (3 tests | 1 failed) 10261ms\n   ✓ WsClient > sends a subscribe frame carrying the requested subscriptions on connect 119ms\n   ✓ WsClient > appends the token as a query param (browsers cannot set WS upgrade headers) 50ms\n   × WsClient > delivers a parsed envelope and tracks last_seq for resume 10070ms\n     → expected [] to deeply equal [ Array(1) ]\n     → Hook timed out in 10000ms.\nIf this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".\n\n Test Files  1 failed | 267 passed (268)\n      Tests  1 failed | 206"
+        "CONDUCTOR 2026-07-19T04:47:18.938Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: pnpm test failed: n.test.ts (3 tests | 1 failed) 10261ms\n   ✓ WsClient > sends a subscribe frame carrying the requested subscriptions on connect 119ms\n   ✓ WsClient > appends the token as a query param (browsers cannot set WS upgrade headers) 50ms\n   × WsClient > delivers a parsed envelope and tracks last_seq for resume 10070ms\n     → expected [] to deeply equal [ Array(1) ]\n     → Hook timed out in 10000ms.\nIf this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".\n\n Test Files  1 failed | 267 passed (268)\n      Tests  1 failed | 206",
+        "RESET 2026-07-18: blocked on 1 failing test (3 tests|1 failed, ~10s — possibly a slow/timeout flake). Fresh attempt; if it re-blocks on the same assertion, needs a focused look."
       ],
       "stories": []
     },
@@ -2188,15 +2189,17 @@
         "Pack manifest carries file hashes + publisher-key signature; install/load verifies signature + hash tree and records provenance; unsigned or mismatched packs load only behind --allow-unsigned with a permanent Settings warning badge (SC-09)",
         "First-party imported content is signed (re-sign at the v2.1.0+ resync, SW-R1); tampered-pack red fixture refused in the planted-defect harness",
         "Content intake is license-gated deny-by-default: pack manifests carry a REQUIRED license field; only MIT/Apache-2.0/BSD/first-party auto-accepted, anything else parks as a founder slate (R-E1; CODE_HEALTH_SUITE §8 provenance pattern)",
-        "Fixture third-party pack loads without core changes and its expert is dispatchable via HANDOFF (CONTRACTS §4 proof; NFR-5)"
+        "Fixture third-party pack loads without core changes and its expert is dispatchable via HANDOFF (CONTRACTS §4 proof; NFR-5)",
+        "SECURITY (HIGH, review-caught): license gating in packages/validators/src/signing/loader.ts must be DENY-BY-DEFAULT, not advisory. loadSignedPack must EXCLUDE any validator whose signature/license does not verify from result.specs (never populate specs for unlicensed/unsigned entries and merely warn). Red fixture: an unsigned or wrong-license validator is absent from the loaded pack (not just flagged), so it cannot run in any gate."
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1). Enforces NFR-5 (plug-in surfaces + signed packs; contracts in docs/design/CONTRACTS.md).",
         "CONDUCTOR 2026-07-17T09:57:49.082Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: an that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit 261ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  5 fa",
         "RESET 2026-07-18: blocked on a mechanical gate failure (test/typecheck/lint) during the multi-day unattended run. Main re-verified fully green + stable (1410 tests, 3x + under CPU load) and the cited loop-gates timing tests are NOT reproducibly flaky. These blocks were most likely transient (long-run resource/tmp pressure) or a small per-ticket gate miss; giving a fresh 2-attempt cycle on a clean machine. If it re-blocks, the fresh note will show the real, complete failure.",
-        "CONDUCTOR 2026-07-19T05:37:37.292Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: [HIGH] packages/validators/src/signing/loader.ts: License gating is advisory only, not deny-by-default. `loadSignedPack` calls `loadValidatorPack` and populates `result.specs` unconditionally, before the license check runs. When `isAllowlistedLicense(manifest.license)` is false, the function only sets `licenseRequiresSlate = true` — it still returns the fully-loaded `specs` array. No caller in this diff checks `licenseRequiresSlate` to refuse using the content, so a GPL/AGPL/arbitrary-license pack is loaded and usable exactly like an allowlisted one. This directly contradicts acceptance criter"
+        "CONDUCTOR 2026-07-19T05:37:37.292Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: [HIGH] packages/validators/src/signing/loader.ts: License gating is advisory only, not deny-by-default. `loadSignedPack` calls `loadValidatorPack` and populates `result.specs` unconditionally, before the license check runs. When `isAllowlistedLicense(manifest.license)` is false, the function only sets `licenseRequiresSlate = true` — it still returns the fully-loaded `specs` array. No caller in this diff checks `licenseRequiresSlate` to refuse using the content, so a GPL/AGPL/arbitrary-license pack is loaded and usable exactly like an allowlisted one. This directly contradicts acceptance criter",
+        "REDO 2026-07-18: HIGH finding — license gating was advisory (loadSignedPack populated specs even for unlicensed). Deny-by-default fix encoded as acceptance. Reset for supervised build."
       ],
       "stories": [
         "US-806"
