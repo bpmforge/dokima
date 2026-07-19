@@ -2572,7 +2572,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/server/src/api/decisions/**",
         "packages/events/migrations/*decisions*"
@@ -2589,7 +2589,8 @@
       "notes": [
         "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Backend persistence + route for the pipeline decisions engine.",
         "CONDUCTOR 2026-07-19T19:26:38.619Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: out-of-scope edits: packages/pipeline/src/decisions/ledger.test.ts, packages/pipeline/src/decisions/ledger.ts",
-        "RESET+GUIDE 2026-07-19: maker over-reached editing packages/pipeline/src/decisions/ledger.ts (owned by done W5-03, cross-lane). The Decisions API must persist through its OWN layer — apps/server/src/api/decisions/** + the events/DB migration in scope — and CONSUME @shipwright/pipeline via its public export without modifying pipeline internals. If a needed capability is truly missing from the ledger export, flag it as a pipeline follow-up; do not edit pipeline files."
+        "RESET+GUIDE 2026-07-19: maker over-reached editing packages/pipeline/src/decisions/ledger.ts (owned by done W5-03, cross-lane). The Decisions API must persist through its OWN layer — apps/server/src/api/decisions/** + the events/DB migration in scope — and CONSUME @shipwright/pipeline via its public export without modifying pipeline internals. If a needed capability is truly missing from the ledger export, flag it as a pipeline follow-up; do not edit pipeline files.",
+        "CONDUCTOR 2026-07-19T20:54:53.342Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: plan.json status is 'blocked', expected 'done'"
       ]
     },
     {
