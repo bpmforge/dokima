@@ -1937,10 +1937,11 @@
         "Every major surface carries a ? help affordance opening task-oriented guide content (content/guide/, data not code); wizard ends with a what-to-do-tomorrow card (R-M1)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-M1). Cites FR-C6 (the guided sample IS FR-C6).",
-        "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "RESET 2026-07-19: 2 prior attempts self-blocked with only a circular gap (status blocked, no captured test/review failure) during the high-load/flaky era. Fresh retry budget on the quiet machine + retry gate. If it re-blocks with the same circular gap, its maker session log needs inspection."
       ],
       "stories": [
         "US-107",
@@ -2568,7 +2569,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
         "apps/server/src/api/decisions/**",
         "packages/events/migrations/*decisions*"
@@ -2584,7 +2585,8 @@
       ],
       "notes": [
         "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Backend persistence + route for the pipeline decisions engine.",
-        "CONDUCTOR 2026-07-19T19:26:38.619Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: out-of-scope edits: packages/pipeline/src/decisions/ledger.test.ts, packages/pipeline/src/decisions/ledger.ts"
+        "CONDUCTOR 2026-07-19T19:26:38.619Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: out-of-scope edits: packages/pipeline/src/decisions/ledger.test.ts, packages/pipeline/src/decisions/ledger.ts",
+        "RESET+GUIDE 2026-07-19: maker over-reached editing packages/pipeline/src/decisions/ledger.ts (owned by done W5-03, cross-lane). The Decisions API must persist through its OWN layer — apps/server/src/api/decisions/** + the events/DB migration in scope — and CONSUME @shipwright/pipeline via its public export without modifying pipeline internals. If a needed capability is truly missing from the ledger export, flag it as a pipeline follow-up; do not edit pipeline files."
       ]
     },
     {
