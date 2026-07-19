@@ -9,7 +9,7 @@
  * `parseCatalog`/`matchCatalog`.
  */
 
-import { evaluatePredicate, getPath, primaryPath } from './expr.js';
+import { ExprEvalError, evaluatePredicate, getPath, primaryPath } from './expr.js';
 import type {
   CatalogEntry,
   CatalogFile,
@@ -187,6 +187,14 @@ function renderRecommendation(
  * snapshot ⇒ same output, byte-stable"). Recommendation templates are fully
  * rendered here (rules-first: the LLM narrates/orders afterward, never
  * rewords — D-016/FR-PLAN4).
+ *
+ * Each entry is evaluated in isolation: a condition that can't resolve a
+ * path against this snapshot (`ExprEvalError`, e.g. a phase-scoped entry
+ * evaluated against a global `phase: null` snapshot) or a template that
+ * references a placeholder the snapshot can't fill (`TemplateRenderError`)
+ * skips only that entry rather than aborting the whole batch — a nightly
+ * auto-verify run isn't pinned to one phase, so a single ill-fitting entry
+ * must never cost every other (possibly higher-severity) match.
  */
 export function matchCatalog(
   catalog: readonly CatalogEntry[],
@@ -194,15 +202,20 @@ export function matchCatalog(
 ): readonly CatalogMatch[] {
   const matches: CatalogMatch[] = [];
   for (const entry of catalog) {
-    if (!evaluatePredicate(entry.condition, snapshot)) continue;
-    const metricPath = primaryPath(entry.condition);
-    matches.push({
-      catalogId: entry.id,
-      recommendation: renderRecommendation(entry.recommendation, snapshot, metricPath),
-      verifyCriterion: entry.verify,
-      severity: entry.severity,
-      leverage: entry.leverage,
-    });
+    try {
+      if (!evaluatePredicate(entry.condition, snapshot)) continue;
+      const metricPath = primaryPath(entry.condition);
+      matches.push({
+        catalogId: entry.id,
+        recommendation: renderRecommendation(entry.recommendation, snapshot, metricPath),
+        verifyCriterion: entry.verify,
+        severity: entry.severity,
+        leverage: entry.leverage,
+      });
+    } catch (err) {
+      if (err instanceof ExprEvalError || err instanceof TemplateRenderError) continue;
+      throw err;
+    }
   }
   return matches;
 }

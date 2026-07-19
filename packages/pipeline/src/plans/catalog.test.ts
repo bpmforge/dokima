@@ -2,12 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import {
-  CATALOG_CONTENT_PATH,
-  TemplateRenderError,
-  matchCatalog,
-  parseCatalog,
-} from './catalog.js';
+import { CATALOG_CONTENT_PATH, matchCatalog, parseCatalog } from './catalog.js';
 import { CatalogValidationError } from './types.js';
 import type { CatalogEntry } from './types.js';
 import { baselineSnapshot } from './test-helpers.js';
@@ -170,8 +165,33 @@ describe('matchCatalog — byte-stable evaluation (FR-PLAN1)', () => {
     expect(matchCatalog(catalog, baselineSnapshot())).toEqual([]);
   });
 
-  it('throws TemplateRenderError when a phase-dependent template is rendered without a phase', () => {
-    const snapshot = baselineSnapshot({ coverage: { requiredSkipped: 1 }, phase: null });
-    expect(() => matchCatalog(catalog, snapshot)).toThrow(TemplateRenderError);
+  it('skips only the phase-dependent entry when a template cannot render without a phase', () => {
+    const snapshot = baselineSnapshot({
+      coverage: { requiredSkipped: 1 },
+      receipts: { staleCount: 2 },
+      phase: null,
+    });
+    const matches = matchCatalog(catalog, snapshot);
+    expect(matches.map((m) => m.catalogId)).toEqual(['PC-001']);
+  });
+
+  it('isolates a condition that cannot evaluate against this snapshot, continuing the batch', () => {
+    const badEntry: CatalogEntry = {
+      id: 'PC-999',
+      condition: 'phase == "Design"',
+      recommendation: 'unreachable',
+      verify: 'phase == "Design"',
+      severity: 1,
+      leverage: 1,
+    };
+    const withBadEntry = [...catalog, badEntry];
+    const snapshot = baselineSnapshot({
+      gates: { missingRedFixtureCount: 1 },
+      phase: null,
+    });
+
+    const matches = matchCatalog(withBadEntry, snapshot);
+
+    expect(matches.map((m) => m.catalogId)).toEqual(['PC-008']);
   });
 });
