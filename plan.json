@@ -2761,9 +2761,10 @@
         "Gate-touching, so red fixtures are acceptance (docs/TESTING.md planted-defect harness, Law 4): (a) no phase output becomes durable without a receipt through the verbs/receipts API; (b) a planted self-attest attempt — a phase marking its own output verified — is rejected at gate time; (c) a fake-model E2E produces interview->blueprint->decisions->board with a verifiable hash-chained event trail and no UPDATE/DELETE on the events table."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
-        "FOUNDED 2026-07-19 (Brad-approved). Consumes W5-17. Unblocks W5-09 (guided sample real run) and W8-01 (dogfood). The route persists every phase transition via events/receipts; the orchestrator itself stays pure."
+        "FOUNDED 2026-07-19 (Brad-approved). Consumes W5-17. Unblocks W5-09 (guided sample real run) and W8-01 (dogfood). The route persists every phase transition via events/receipts; the orchestrator itself stays pure.",
+        "CONDUCTOR 2026-07-19T23:39:09.340Z: blocked after 2 attempts. Branch sw/w5-18 kept. Gaps: [CRITICAL] apps/server/src/api/pipeline/pipeline-routes/request-body.ts: `ledgerMarkdown` (the founder-decision ledger `assertDecisionComplete` cross-checks a blueprint's self-attested `FOUNDER-DECISION ... RESOLVED` marker against) is accepted verbatim from the untrusted POST body (`parseRequestBody` just requires it be a string) and threaded straight through (`pipeline-routes/index.ts` -> `preflight.ts`'s `runPreflight` -> `assertDecisionComplete(blueprint.document.markdown, body.ledgerMarkdown, BUILD_PHASE_ID)`). Per Law 4/C-3, agent sessions calling this route are untrusted, so an attacker"
       ],
       "stories": []
     },
