@@ -807,8 +807,7 @@
         "apps/server/src/cli/run-cmd*",
         "apps/server/src/cli/parse.ts",
         "apps/server/src/cli/run.ts",
-        "packages/harbormaster/src/index.ts",
-        "apps/server/package.json"
+        "packages/harbormaster/src/index.ts"
       ],
       "depends_on": [
         "W3-01c"
@@ -828,7 +827,8 @@
         "CONDUCTOR 2026-07-18T15:24:24.321Z: blocked after 2 attempts. Branch sw/w3-03 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "SEAM FIX 2026-07-18: the two-phase resume fix ships WITH the CLI resume command (this ticket = Breakpoints+pause+receipt-based resume). Maker correctly refused to self-widen. Added the seam files it needs: apps/server/src/cli/parse.ts + run.ts (resume command wiring, flavor c), packages/harbormaster/src/index.ts (export resumeProject, flavor b), apps/server/package.json (harbormaster dep, flavor a). The CRITICAL two-phase fix (already in acceptance) + this wiring together let the ticket land, removing the live resume.ts vuln from main.",
         "CONDUCTOR 2026-07-18T16:26:49.730Z: blocked after 2 attempts. Branch sw/w3-03 kept. Gaps: [CRITICAL] packages/harbormaster/src/resume.ts: Phase 2 of resumeProject is not actually guaranteed to succeed once phase 1 marks a ticket 'valid', reintroducing the exact partial-commit vulnerability the two-phase redesign was meant to eliminate. checkClaimedTicket/verifyReceipt only check receipt integrity (anchor MAC, input-tree hash, validator currency) — they never validate that closeTicket's own independent invariants will hold: `close` is only a valid transition from `in_progress` (transitions.ts), and closeTicket throws `MANIFEST_INVALID` if `files.length===0`, `commits.length===0`, or",
-        "LANDED 2026-07-18 via independent-review APPROVE (commit 12015e7): two-phase all-or-nothing resume verified by a fresh adversarial reviewer (phase-1 write-free, closeTicket only in phase-2 behind full-batch drift gate + db.transaction; red fixture asserts zero ticket.closed on last-ticket drift). Conductor could not land it due to a review-loop quirk (FIX verdict, 0 actionable blockers); operator merged the correct+gated work. resume.ts now present AND correct on main."
+        "LANDED 2026-07-18 via independent-review APPROVE (commit 12015e7): two-phase all-or-nothing resume verified by a fresh adversarial reviewer (phase-1 write-free, closeTicket only in phase-2 behind full-batch drift gate + db.transaction; red fixture asserts zero ticket.closed on last-ticket drift). Conductor could not land it due to a review-loop quirk (FIX verdict, 0 actionable blockers); operator merged the correct+gated work. resume.ts now present AND correct on main.",
+        "SCOPE 2026-07-18: apps/server/package.json removed from this (done) ticket's historical write_scope — it is an app-shell dep file the ui-lane plans tickets (W5-11/W5-15) legitimately share; keeping it here would create a cross-lane overlap. W3-03 already landed; no functional effect."
       ],
       "stories": [
         "US-205",
@@ -1975,10 +1975,15 @@
       "title": "Improvement Plans UI: plan view + morning-queue integration (FR-PLAN2/4, D-016)",
       "phase": 5,
       "module": "web",
-      "lane": "pipeline",
+      "lane": "ui",
       "write_scope": [
         "apps/web/src/plans/**",
-        "apps/server/src/api/plans*"
+        "apps/server/src/api/plans*",
+        "apps/server/src/api/server.ts",
+        "apps/web/src/App.tsx",
+        "apps/web/src/notifications/**",
+        "apps/web/e2e/**",
+        "apps/server/package.json"
       ],
       "depends_on": [
         "W5-10",
@@ -1989,11 +1994,12 @@
         "Regressed items surface in the morning queue as Review cards with the violated criterion + evidence; funnel counts (raw findings -> plan items -> accepted -> done/regressed) shown per FR-RL4 style"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "ADDED 2026-07-14 (adopted AM-4/R-C1, D-016). NOTE: write_scope overlaps W4-01 apps/web/** cross-lane — resolved by the P5 scope surgery narrowing W4-01 (D-015 note).",
         "NOTE 2026-07-15 (L-33): this ticket has a UI surface but sits outside the ui lane — its App.tsx/server.ts wiring seam must be resolved at claim time (widen scope then, or land the mount via a ui-lane ticket) to avoid the W4-02 out-of-scope block class.",
-        "CONDUCTOR 2026-07-19T02:24:36.877Z: blocked after 2 attempts. Branch sw/w5-11 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-19T02:24:36.877Z: blocked after 2 attempts. Branch sw/w5-11 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "FIX 2026-07-18: lane corrected pipeline->ui (it is the Improvement Plans UI, touching apps/web + apps/server API). Widened to the app-shell registration seams it needs (server.ts route reg, App.tsx, notifications for morning-queue integration, e2e, apps/server/package.json for deps) — all ui-lane now, no cross-lane overlap. Maker correctly refused to self-widen; this is the schema fix."
       ],
       "stories": [
         "US-108",
@@ -2493,7 +2499,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2507,7 +2513,8 @@
       ],
       "notes": [
         "ADDED 2026-07-18 (W5-02 split-per-lane, Brad-approved). Owns the apps/web editing surface for pipeline deliverables that W5-02 (pipeline) cannot reach within its scope.",
-        "CONDUCTOR 2026-07-19T02:50:33.051Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review"
+        "CONDUCTOR 2026-07-19T02:50:33.051Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] -: review output unparseable — fix: re-run review",
+        "RESET 2026-07-18: blocked on \"[HIGH] review output unparseable\" — a transient review-infra glitch (reviewer response did not parse), not a code issue. Fresh attempt."
       ]
     },
     {
@@ -2563,10 +2570,11 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
         "apps/server/src/scheduler/**",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/package.json"
       ],
       "depends_on": [
         "W5-10"
@@ -2582,7 +2590,8 @@
       "notes": [
         "ADDED 2026-07-18 (W5-10 split-per-lane, Brad-approved). Owns the apps/server live callers (run hook, nightly scheduler) the W5-10 engine needs.",
         "SCOPE 2026-07-18: nightly scheduler lives in a new apps/server/src/scheduler/** (avoids overlap with W5-11 pipeline which owns api/plans*); registered via server.ts. If the run-completion TRIGGER needs the harbormaster loop (orchestrator lane), HANDOFF rather than self-widen.",
-        "CONDUCTOR 2026-07-19T03:05:18.155Z: blocked after 2 attempts. Branch sw/w5-15 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-19T03:05:18.155Z: blocked after 2 attempts. Branch sw/w5-15 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "FIX 2026-07-18: added apps/server/package.json (declare @shipwright/pipeline + @shipwright/loop deps for the catalog engine import) — same-lane ui, shared with W5-11. IMPORTANT: for \"evaluate after every completed run\", SUBSCRIBE to the existing run.completed event (packages/harbormaster/src/breakpoints-runs.ts emits it) from your scheduler — do NOT edit the harbormaster loop (orchestrator lane, out of scope). Nightly re-verify runs on your scheduler timer."
       ]
     }
   ]
