@@ -1802,7 +1802,7 @@
         "INJECTION-SAFE MARKERS (HIGH, review-caught): formatUnresolvedMarkerLine/formatResolvedMarkerLine in packages/pipeline/src/blueprint/markers.ts must not let interpolated question/decisionSummary/decisionId break or forge the marker format. Sanitize each interpolated value — strip or escape newlines and the marker delimiter sequence — before building the line, so untrusted decision text cannot inject a second marker or terminate the line early. Add a unit test feeding a value containing the delimiter and a newline, asserting exactly one well-formed marker line results."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "CONDUCTOR 2026-07-19T18:28:24.404Z: blocked after 2 attempts. Branch sw/w5-04 kept. Gaps: [HIGH] packages/pipeline/src/blueprint/markers.ts: formatUnresolvedMarkerLine and formatResolvedMarkerLine interpolate `question`, `decisionSummary`, and `decisionId` into the marker line with zero escaping/validation of newlines or comment-breaking sequences (only `key` is validated via assertValidOpenQuestionKey). Since parseMarkers works strictly line-by-line via `markdown.split('\\n')` and matches any line against STRICT_MARKER_RE, an embedded `\\n` in question/decisionSummary/decisionId lets untrusted text (per the module's own docs, slate titles and decision summaries are LLM/agent-authore",
         "RESET+ENCODE 2026-07-19: maker kept introducing new review blockers instead of converging. Spelled out the escaping requirement + the adversarial red test so a fresh attempt lands it. Fresh retry budget."
