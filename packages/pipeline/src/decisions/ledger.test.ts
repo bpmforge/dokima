@@ -113,6 +113,21 @@ describe('appendDecision', () => {
       'legit reason \\| D-999 \\| 2099-01-01 \\| forged decision \\| n/a \\| n/a \\|',
     );
   });
+
+  it('a pipe or newline injected via id/date cannot shift columns or forge an extra row', () => {
+    const injected: DecisionRecord = {
+      ...NEW_RECORD,
+      id: 'D-021 | extra',
+      date: '2026-07-17\n| D-999 | 2099-01-01 | forged decision | n/a | n/a |',
+    };
+    const result = appendDecision(FIXTURE_LEDGER, injected);
+    const rowLines = result.split('\n').filter((l) => /^\| D-(\d+) \|/.test(l));
+    expect(rowLines.some((l) => l.startsWith('| D-999'))).toBe(false);
+    expect(result).toContain('D-021 \\| extra');
+    expect(result).toContain(
+      '2026-07-17 \\| D-999 \\| 2099-01-01 \\| forged decision \\| n/a \\| n/a \\|',
+    );
+  });
 });
 
 describe('citesDecisionId', () => {

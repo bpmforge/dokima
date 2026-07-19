@@ -43,7 +43,7 @@ function escapeCell(value: string): string {
 
 export function formatLedgerRow(record: DecisionRecord): string {
   return (
-    `| ${record.id} | ${record.date} | ${escapeCell(record.decision)} | ` +
+    `| ${escapeCell(record.id)} | ${escapeCell(record.date)} | ${escapeCell(record.decision)} | ` +
     `${escapeCell(record.optionsConsidered)} | ${escapeCell(record.rationale)} |`
   );
 }
