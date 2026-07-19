@@ -2596,6 +2596,29 @@
         "CONDUCTOR 2026-07-19T03:05:18.155Z: blocked after 2 attempts. Branch sw/w5-15 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "FIX 2026-07-18: added apps/server/package.json (declare @shipwright/pipeline + @shipwright/loop deps for the catalog engine import) — same-lane ui, shared with W5-11. IMPORTANT: for \"evaluate after every completed run\", SUBSCRIBE to the existing run.completed event (packages/harbormaster/src/breakpoints-runs.ts emits it) from your scheduler — do NOT edit the harbormaster loop (orchestrator lane, out of scope). Nightly re-verify runs on your scheduler timer."
       ]
+    },
+    {
+      "id": "W6-08",
+      "title": "Harden mirror reconciliation: verify receipt-comment author identity + anchor (SC-15 self-attest bypass)",
+      "phase": 6,
+      "module": "forge",
+      "lane": "integrations",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "packages/forge/src/mirror/**"
+      ],
+      "depends_on": [
+        "W6-03"
+      ],
+      "stories": [
+        "US-502"
+      ],
+      "acceptance": [
+        "SECURITY (CRITICAL, wave-pass-caught maker-self-attest bypass, C-4/SC-03): hasReceiptComment MUST NOT grade a ticket VERIFIED from comment TEXT alone. Require (a) the receipt comment authorLogin === the machine identity that performs the CLOSE verb (MIRROR_VERB_IDENTITY close -> reviewer identity from MirrorIdentityConfig), NOT the maker identity; AND (b) a non-spoofable marker — match the close RECEIPT anchor (hash/anchor from MirrorCloseReceiptSummary) embedded by the close verb, not a /receipt|verify|exit/ regex. A comment the maker can author must never satisfy the audit.",
+        "Red fixture: a comment posted under the MAKER identity containing \"receipt for W6-03, verify exit 0\" grades UNVERIFIED (no author-identity match, no valid anchor); only a reviewer-identity-authored comment carrying the real close-receipt anchor grades VERIFIED. Proves the maker cannot self-attest completion through the reconciliation audit."
+      ],
+      "notes": "ADDED 2026-07-18: fixes the CRITICAL the W6 wave-security-pass caught in W6-03 reconciliation.ts (independent review missed it). The current hasReceiptComment does c.body.includes(ticketId) && /receipt|verify|exit/i.test(c.body) — pure text match, no author check — trivially spoofable by the untrusted maker (also violates the never-grep-completion-strings law). Same lane as W6-03 (done); write_scope packages/forge/src/mirror/** shared same-lane."
     }
   ]
 }
