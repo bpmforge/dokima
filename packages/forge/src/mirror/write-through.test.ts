@@ -27,6 +27,47 @@ describe('writeThroughVerb', () => {
     ]);
   });
 
+  it('claim preserves pre-existing labels and assignees instead of wiping them (full-replace forge semantics)', async () => {
+    const adapter = fakeMirrorAdapter();
+    const request: MirrorWriteRequest = {
+      verb: 'claim',
+      assigneeLogin: 'alice',
+      label: 'claimed',
+      existingLabels: ['type:feature', 'priority:high', 'wave:6'],
+      existingAssignees: ['bob'],
+    };
+    const result = await writeThroughVerb(adapter, TEST_REF, 42, request);
+
+    expect(result.issue?.labels).toEqual([
+      'type:feature',
+      'priority:high',
+      'wave:6',
+      'claimed',
+    ]);
+    expect(result.issue?.assignees).toEqual(['bob', 'alice']);
+    expect(adapter.calls[0]).toMatchObject({
+      update: {
+        assignees: ['bob', 'alice'],
+        labels: ['type:feature', 'priority:high', 'wave:6', 'claimed'],
+      },
+    });
+  });
+
+  it('claim does not duplicate a label/assignee already present in the existing set', async () => {
+    const adapter = fakeMirrorAdapter();
+    const request: MirrorWriteRequest = {
+      verb: 'claim',
+      assigneeLogin: 'alice',
+      label: 'claimed',
+      existingLabels: ['claimed'],
+      existingAssignees: ['alice'],
+    };
+    const result = await writeThroughVerb(adapter, TEST_REF, 42, request);
+
+    expect(result.issue?.labels).toEqual(['claimed']);
+    expect(result.issue?.assignees).toEqual(['alice']);
+  });
+
   it('evidence posts a plain comment under the maker identity', async () => {
     const adapter = fakeMirrorAdapter();
     const request: MirrorWriteRequest = {

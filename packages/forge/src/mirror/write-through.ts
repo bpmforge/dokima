@@ -25,6 +25,15 @@ import {
 /** The slice of ForgeAdapter the mirror actually calls — same narrowing style as gitea-parity.ts's ParityCheckedAdapter. */
 export type MirrorForgeAdapter = Pick<ForgeAdapter, 'updateIssue' | 'commentOnIssue'>;
 
+/** Union that preserves input order, first occurrence wins, no duplicates. */
+function mergeUnique(existing: string[] | undefined, additions: string[]): string[] {
+  const merged = [...(existing ?? [])];
+  for (const item of additions) {
+    if (!merged.includes(item)) merged.push(item);
+  }
+  return merged;
+}
+
 function receiptCommentBody(receipt: {
   ticketId: string;
   ownerId: string;
@@ -63,7 +72,10 @@ export async function writeThroughVerb(
       const issue = await adapter.updateIssue(
         ref,
         issueNumber,
-        { assignees: [request.assigneeLogin], labels: [request.label] },
+        {
+          assignees: mergeUnique(request.existingAssignees, [request.assigneeLogin]),
+          labels: mergeUnique(request.existingLabels, [request.label]),
+        },
         identity,
       );
       return { verb: 'claim', identity, issue };

@@ -72,6 +72,28 @@ export interface MirrorFlushOutcome {
   remaining: QueuedMirrorWrite[];
 }
 
+type FlushEntryOutcome =
+  { ok: true; result: MirrorWriteResult } | { ok: false; error: unknown };
+
+/**
+ * Attempts a single queued write and reports success/failure rather than
+ * throwing, so the caller (the drain loop below) decides whether a failure
+ * means "stop draining" or "propagate" without nesting error handling
+ * inside the loop body itself.
+ */
+async function flushEntry(
+  adapter: MirrorForgeAdapter,
+  ref: RepoRef,
+  entry: QueuedMirrorWrite,
+): Promise<FlushEntryOutcome> {
+  try {
+    const result = await writeThroughVerb(adapter, ref, entry.issueNumber, entry.request);
+    return { ok: true, result };
+  } catch (err) {
+    return { ok: false, error: err };
+  }
+}
+
 /**
  * Drains the queue strictly in order: the forge timeline must see writes
  * in the sequence they happened locally, so flushing stops at the first
@@ -87,19 +109,14 @@ export async function flushMirrorQueue(
   const flushed: FlushResult[] = [];
   for (let i = 0; i < queue.length; i++) {
     const entry = queue[i]!;
-    try {
-      const result = await writeThroughVerb(
-        adapter,
-        ref,
-        entry.issueNumber,
-        entry.request,
-      );
-      flushed.push({ entry, result });
-    } catch (err) {
-      if (!isOfflineForgeError(err)) throw err;
-      const retried = { ...entry, attempts: entry.attempts + 1 };
-      return { flushed, remaining: [retried, ...queue.slice(i + 1)] };
+    const outcome = await flushEntry(adapter, ref, entry);
+    if (outcome.ok) {
+      flushed.push({ entry, result: outcome.result });
+      continue;
     }
+    if (!isOfflineForgeError(outcome.error)) throw outcome.error;
+    const retried = { ...entry, attempts: entry.attempts + 1 };
+    return { flushed, remaining: [retried, ...queue.slice(i + 1)] };
   }
   return { flushed, remaining: [] };
 }

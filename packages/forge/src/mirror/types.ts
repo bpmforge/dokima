@@ -31,11 +31,27 @@ export interface MirrorTicketRef {
   issueNumber: number;
 }
 
-/** claim = assign + label (FR-T5). */
+/**
+ * claim = assign + label (FR-T5). `updateIssue` is full-replace on both
+ * forges (GitHub REST PATCH and Gitea PUT /issues/{n}/labels both replace
+ * the whole array — see gitea-issues.ts/github-issues.ts), and
+ * `ForgeAdapter` has no read method to fetch-then-merge from inside this
+ * module (adding one is out of this ticket's write_scope). So claim writes
+ * the FULL label/assignee set every time: `existingLabels`/
+ * `existingAssignees` are merged with `label`/`assigneeLogin` before the
+ * write, but if the caller omits them, any pre-existing labels/assignees
+ * on the mirrored issue are silently overwritten. The caller (harbormaster,
+ * which has the issue's labels from its own `createIssue` call) must pass
+ * the current set to preserve it.
+ */
 export interface MirrorClaimRequest {
   verb: 'claim';
   assigneeLogin: string;
   label: string;
+  /** Labels already on the issue that must survive the write (e.g. type/priority/wave labels set at creation). */
+  existingLabels?: string[];
+  /** Assignees already on the issue that must survive the write. */
+  existingAssignees?: string[];
 }
 
 /** evidence = comment (FR-T5) — a ticket's `comment` verb mirrors as a plain issue comment. */
