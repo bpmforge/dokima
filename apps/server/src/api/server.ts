@@ -39,6 +39,7 @@ import {
 import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
 import { completeHandshake, rejectUpgrade } from './ws-socket.js';
+import { startPlanScheduler, type PlanSchedulerOptions } from '../scheduler/index.js';
 
 export interface BuildApiServerOptions {
   token: string;
@@ -52,6 +53,14 @@ export interface BuildApiServerOptions {
   fleetHome?: string;
   /** `content/experts` directory override (defaults to the repo's own content/) — tests only. */
   rosterContentDir?: string;
+  /**
+   * Improvement Plans scheduler (FR-PLAN1/3, W5-15) — run-completion/
+   * Improve-mode trigger + nightly auto-verify. Always on in production;
+   * tests override the intervals (or `onError`) rather than disabling it,
+   * since the defaults are long enough to never fire during a test's
+   * lifetime and `onClose` always stops the timers.
+   */
+  planScheduler?: PlanSchedulerOptions;
 }
 
 export interface ApiServer {
@@ -90,7 +99,13 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
     handleUpgrade(req, socket, authOpts, wsHub);
   });
 
+  const planScheduler = startPlanScheduler({
+    fleetHome: opts.fleetHome,
+    ...opts.planScheduler,
+  });
+
   app.addHook('onClose', async () => {
+    planScheduler.stop();
     wsHub.close();
   });
 
