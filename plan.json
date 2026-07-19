@@ -2157,7 +2157,7 @@
         "Sandbox no-network default provably covers loopback: an agent-session fixture attempting to fetch http://127.0.0.1:<core port>/ fails (THREAT_MODEL §5.6 interim bar)"
       ],
       "points": 5,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-15: +loopback coverage (THREAT_MODEL §5.6).",
         "CONDUCTOR 2026-07-17T07:46:07.248Z: blocked after 2 attempts. Branch sw/w6-06 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: an that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit  656ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  1 f",
