@@ -21,6 +21,13 @@ import {
   verifyPlan,
 } from './plans-store.js';
 import { PlanStoreError, type PlanFunnel, type PlanItemRow } from './plans-types.js';
+import {
+  buildPlanEvaluationSnapshot,
+  unresolvedSnapshotPaths,
+} from '../scheduler/snapshot.js';
+
+/** States `verifyPlan` (`plans-store.ts`) re-checks — mirrors `plans-store-rows.ts`'s `VERIFIABLE_STATES`. */
+const VERIFIABLE_ITEM_STATES = new Set(['accepted', 'in_progress', 'done']);
 
 export interface PlansRoutesOptions {
   home?: string;
@@ -147,26 +154,43 @@ export function registerPlansRoutes(
     },
   );
 
-  /** `POST /api/v1/projects/:id/plan/verify` body `{snapshot}` — re-checks accepted/in_progress/done items (FR-PLAN3). */
+  /**
+   * `POST /api/v1/projects/:id/plan/verify` — re-checks accepted/in_progress/done
+   * items (FR-PLAN3) against a snapshot the SERVER derives from real state
+   * (`buildPlanEvaluationSnapshot`, `scheduler/snapshot.ts`). A caller-supplied
+   * `body.snapshot` is never read: CLAUDE.md law 4 / SC-03 — an untrusted
+   * bearer-token holder must not be able to self-attest verification and flip
+   * `plan_items` to `done` with no receipt correlation (the CRITICAL
+   * `docs/work/SECURITY_W5.md` wave-pass caught here).
+   *
+   * Mirrors `plan-scheduler.ts`'s `runNightlyVerify` skip-guard: if any
+   * verifiable item's `verifyCriterion` references a snapshot path with no
+   * live producer yet (`unresolvedSnapshotPaths`), the whole pass is skipped
+   * rather than let a zero-filled field fabricate a `done`/`regressed`
+   * verdict (C-1 local-first honesty) — same coarse, whole-project skip the
+   * scheduler already uses, not a new primitive.
+   */
   app.post(
     '/api/v1/projects/:id/plan/verify',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
-      const body = request.body as Record<string, unknown> | undefined;
-      if (!isPlanEvaluationSnapshot(body?.snapshot)) {
-        return reply
-          .code(400)
-          .type('application/problem+json')
-          .send(
-            badRequest(request, 'body.snapshot must be a full PlanEvaluationSnapshot'),
-          );
+      const { items } = await listPlanItems(projectPath);
+      const skipped = items.some(
+        (item) =>
+          VERIFIABLE_ITEM_STATES.has(item.state) &&
+          unresolvedSnapshotPaths(item.verifyCriterion).length > 0,
+      );
+      if (skipped) {
+        return reply.send({ verified: [], regressed: [], skipped: true });
       }
-      const { verified, regressed } = await verifyPlan(projectPath, body.snapshot);
+      const snapshot = await buildPlanEvaluationSnapshot(projectPath);
+      const { verified, regressed } = await verifyPlan(projectPath, snapshot);
       return reply.send({
         verified: verified.map(itemToWire),
         regressed: regressed.map(itemToWire),
+        skipped: false,
       });
     },
   );
