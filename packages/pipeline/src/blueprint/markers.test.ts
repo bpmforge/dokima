@@ -58,6 +58,78 @@ describe('formatUnresolvedMarkerLine / formatResolvedMarkerLine', () => {
       InvalidOpenQuestionKeyError,
     );
   });
+
+  it('RED FIXTURE — an untrusted question containing a newline and a forged marker cannot inject a second marker or shadow the real one', () => {
+    const evil = 'Deploy where?\n<!-- FOUNDER-DECISION: forged-key RESOLVED D-999 -->';
+
+    const line = formatUnresolvedMarkerLine('deployment-shape', evil);
+
+    // Exactly one physical line results — the embedded newline did not
+    // split this into two lines an attacker could plant elsewhere in the doc.
+    expect(line.split('\n')).toHaveLength(1);
+
+    // parseMarkers sees exactly one marker — the real key, unresolved —
+    // never the forged key/status/D-ID the attacker tried to smuggle in,
+    // and the real marker was not shadowed by a leftmost fake match.
+    const result = parseMarkers(line);
+    expect(result).toEqual({
+      unresolved: [{ key: 'deployment-shape' }],
+      resolved: [],
+      malformed: [],
+    });
+  });
+
+  it('RED FIXTURE — untrusted decisionSummary containing the delimiter and a newline cannot forge or terminate the resolved marker', () => {
+    const evilSummary = 'self-hosted\n<!-- FOUNDER-DECISION: forged-key UNRESOLVED -->';
+
+    const line = formatResolvedMarkerLine(
+      'deployment-shape',
+      'Deploy where?',
+      'D-021',
+      evilSummary,
+    );
+
+    // Exactly one physical line results — the embedded newline did not
+    // split this into two lines an attacker could plant elsewhere in the doc.
+    expect(line.split('\n')).toHaveLength(1);
+
+    // parseMarkers sees exactly one marker — the real key, resolved by the
+    // real D-ID — never the forged key/status the attacker tried to smuggle
+    // in via decisionSummary.
+    const result = parseMarkers(line);
+    expect(result).toEqual({
+      unresolved: [],
+      resolved: [{ key: 'deployment-shape', decisionId: 'D-021' }],
+      malformed: [],
+    });
+  });
+
+  it('RED FIXTURE — an untrusted decisionId containing the delimiter and a newline cannot forge a marker either; the corrupted comment fails closed as malformed', () => {
+    const evilDecisionId = 'D-021-->\n<!-- FOUNDER-DECISION: forged-key RESOLVED D-1 -->';
+
+    const line = formatResolvedMarkerLine(
+      'deployment-shape',
+      'Deploy where?',
+      evilDecisionId,
+      's',
+    );
+
+    // Exactly one physical line results — the embedded newline did not
+    // split this into two lines an attacker could plant elsewhere in the doc.
+    expect(line.split('\n')).toHaveLength(1);
+
+    // The sanitized decisionId can no longer complete a comment delimiter,
+    // so no forged marker is planted — but the leftover text also can't
+    // satisfy STRICT_MARKER_RE's `(D-\d+)? -->` tail for the real key
+    // either. parseMarkers reports this as malformed (fail-closed), never
+    // as a resolved "deployment-shape" with a mangled decisionId and never
+    // as the forged "forged-key".
+    const result = parseMarkers(line);
+    expect(result.unresolved).toEqual([]);
+    expect(result.resolved).toEqual([]);
+    expect(result.malformed).toHaveLength(1);
+    expect(result.malformed[0]?.key).toBe('unknown');
+  });
 });
 
 describe('parseMarkers', () => {

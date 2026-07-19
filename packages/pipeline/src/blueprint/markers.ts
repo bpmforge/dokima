@@ -62,9 +62,32 @@ export interface ParsedMarkers {
   readonly malformed: readonly MalformedMarkerRef[];
 }
 
+/**
+ * `question`/`decisionSummary`/`decisionId` are agent/LLM-authored text —
+ * untrusted per this project's trust-boundary law — interpolated into a
+ * single marker line that `parseMarkers` matches with a non-anchored,
+ * non-global regex (leftmost match wins). Left raw, a value containing a
+ * newline would split into a genuine second physical line (parsed exactly
+ * like any other), and a value containing a full `<!-- FOUNDER-DECISION:
+ * ... -->` sequence would be matched *instead of* the real trailing marker
+ * on the same line — silently dropping the real key from `parseMarkers`'
+ * output while forging an attacker-chosen key/status/D-ID. Stripping
+ * newlines and the two comment-delimiter tokens (`<!--`, `-->`) from every
+ * interpolated value makes both attacks impossible: no embedded value can
+ * ever complete a marker-shaped comment or introduce a new physical line —
+ * a corrupted `decisionId` still can't forge anything this way, it just
+ * makes `STRICT_MARKER_RE`'s trailing `(D-\d+)? -->` fail to match, which
+ * `parseMarkers` already reports as `malformed` (fail-closed, blocks the
+ * gate exactly like a genuine unresolved marker — never silently ignored).
+ */
+function sanitizeMarkerText(value: string): string {
+  return value.replace(/\r\n|\r|\n/g, ' ').replace(/<!--|-->/g, '');
+}
+
 export function formatUnresolvedMarkerLine(key: string, question: string): string {
   assertValidOpenQuestionKey(key);
-  return `- **Open:** ${question} <!-- FOUNDER-DECISION: ${key} UNRESOLVED -->`;
+  const safeQuestion = sanitizeMarkerText(question);
+  return `- **Open:** ${safeQuestion} <!-- FOUNDER-DECISION: ${key} UNRESOLVED -->`;
 }
 
 export function formatResolvedMarkerLine(
@@ -74,9 +97,12 @@ export function formatResolvedMarkerLine(
   decisionSummary: string,
 ): string {
   assertValidOpenQuestionKey(key);
+  const safeQuestion = sanitizeMarkerText(question);
+  const safeDecisionId = sanitizeMarkerText(decisionId);
+  const safeDecisionSummary = sanitizeMarkerText(decisionSummary);
   return (
-    `- **Decided (${decisionId}):** ${question} — ${decisionSummary} ` +
-    `<!-- FOUNDER-DECISION: ${key} RESOLVED ${decisionId} -->`
+    `- **Decided (${safeDecisionId}):** ${safeQuestion} — ${safeDecisionSummary} ` +
+    `<!-- FOUNDER-DECISION: ${key} RESOLVED ${safeDecisionId} -->`
   );
 }
 
