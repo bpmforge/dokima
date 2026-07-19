@@ -1937,11 +1937,12 @@
         "Every major surface carries a ? help affordance opening task-oriented guide content (content/guide/, data not code); wizard ends with a what-to-do-tomorrow card (R-M1)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-M1). Cites FR-C6 (the guided sample IS FR-C6).",
         "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "RESET 2026-07-19: 2 prior attempts self-blocked with only a circular gap (status blocked, no captured test/review failure) during the high-load/flaky era. Fresh retry budget on the quiet machine + retry gate. If it re-blocks with the same circular gap, its maker session log needs inspection."
+        "RESET 2026-07-19: 2 prior attempts self-blocked with only a circular gap (status blocked, no captured test/review failure) during the high-load/flaky era. Fresh retry budget on the quiet machine + retry gate. If it re-blocks with the same circular gap, its maker session log needs inspection.",
+        "CONDUCTOR 2026-07-19T20:37:54.344Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'"
       ],
       "stories": [
         "US-107",
