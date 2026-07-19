@@ -73,9 +73,14 @@ describe('createWatchdogChildProcessSpawn', () => {
       command: 'bash',
       args: ['-c', 'echo alive; sleep 30'],
       maxSessionSeconds: 60,
-      heartbeatStallSeconds: 0.05,
-      pollIntervalMs: 10,
-      forceKillGraceMs: 100,
+      // Margins widened from 0.05s/10ms/100ms: those were tight enough to flake
+      // under machine load (the poll couldn't reliably observe the stall inside
+      // the window). The child stays silent for 30s — far past any threshold —
+      // so a generous stall/poll window still proves the heartbeat-stall kill
+      // deterministically without racing the scheduler under load.
+      heartbeatStallSeconds: 0.3,
+      pollIntervalMs: 25,
+      forceKillGraceMs: 300,
       onBreach: (breach) => breaches.push(breach),
     });
 

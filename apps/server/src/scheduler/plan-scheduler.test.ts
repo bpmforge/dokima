@@ -444,12 +444,23 @@ describe('startPlanScheduler', () => {
         errorCount += 1;
       },
     });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Poll until the timers have fired at least once instead of gambling on a
+    // fixed wall-clock wait — robust to machine load (the fixed 50ms sleep here
+    // flaked under conductor load; L: timer tests must not assert on fixed sleeps).
+    const deadline = Date.now() + 3000;
+    while (errorCount === 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
     expect(errorCount).toBeGreaterThan(0);
 
     handle.stop();
+    // Let any poll already in flight at stop() settle before snapshotting, so a
+    // late increment from an in-flight async pass can't be misattributed to a
+    // post-stop fire.
+    await new Promise((resolve) => setTimeout(resolve, 150));
     const countAtStop = errorCount;
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    // Generous window: with both intervals cleared, zero further fires must occur.
+    await new Promise((resolve) => setTimeout(resolve, 200));
     expect(errorCount).toBe(countAtStop);
   });
 });
