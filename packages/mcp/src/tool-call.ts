@@ -61,6 +61,30 @@ function requireAllowed(state: McpState, role: McpRole, toolId: string): void {
   }
 }
 
+/**
+ * Refuses a reused call/approval id (mirrors register.ts's
+ * `SERVER_ALREADY_REGISTERED`/`TOOL_ID_COLLISION` discipline). Without this,
+ * `reduceMcpEvent`'s `approval.requested` case unconditionally overwrites
+ * whatever is already in `pendingApprovals` for that id — including
+ * silently resetting an already-decided card back to `pending` — and a
+ * completed call could be re-appended under the same id, corrupting the
+ * audit log's one-record-per-call invariant (US-503 AC-3).
+ */
+function requireCallIdAvailable(state: McpState, id: string): void {
+  if (state.pendingApprovals.has(id)) {
+    throw new McpError(
+      'CALL_ID_COLLISION',
+      `call id ${id} already has a pending approval`,
+    );
+  }
+  if (state.callLog.some((record) => record.id === id)) {
+    throw new McpError(
+      'CALL_ID_COLLISION',
+      `call id ${id} was already used by a completed call`,
+    );
+  }
+}
+
 function requirePendingApproval(state: McpState, id: string): PendingApproval {
   const approval = state.pendingApprovals.get(id);
   if (!approval) throw new McpError('APPROVAL_NOT_FOUND', `no approval ${id}`);
@@ -111,6 +135,7 @@ export async function requestToolCall(
   const state = loadMcpState(log);
   const { tool, server } = requireTool(state, input.toolId);
   requireAllowed(state, input.role, input.toolId);
+  requireCallIdAvailable(state, input.id);
   const argsDigest = digestOf(input.args);
   const needsApproval = resolveRequiresApproval(
     tool,

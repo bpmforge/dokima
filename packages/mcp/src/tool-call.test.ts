@@ -138,6 +138,93 @@ describe('requestToolCall (US-503 AC-1/AC-2/AC-3, SC-12)', () => {
     expect(pending[0]).toMatchObject({ id: 'call-3', status: 'pending' });
   });
 
+  it('refuses a call id that collides with an already-completed call, without calling the executor again', async () => {
+    ({ temp, log } = await setup());
+    const executor: ToolExecutor = vi.fn(async () => ({
+      result: { ok: true },
+      cost: 0.02,
+    }));
+    await requestToolCall(
+      log,
+      {
+        id: 'call-dup',
+        toolId: 'fs-server:read',
+        role: 'coding-agent',
+        actorId: 'coding-agent',
+        args: { path: '/tmp/x' },
+      },
+      executor,
+      { now: NOW },
+    );
+
+    let error: unknown;
+    try {
+      await requestToolCall(
+        log,
+        {
+          id: 'call-dup',
+          toolId: 'fs-server:read',
+          role: 'coding-agent',
+          actorId: 'coding-agent',
+          args: { path: '/tmp/y' },
+        },
+        executor,
+        { now: LATER },
+      );
+    } catch (err) {
+      error = err;
+    }
+    expect(error).toBeInstanceOf(McpError);
+    expect((error as McpError).code).toBe('CALL_ID_COLLISION');
+    expect(executor).toHaveBeenCalledTimes(1);
+    expect(listToolCalls(log)).toHaveLength(1);
+  });
+
+  it('refuses a call id that collides with an existing pending approval, without parking a second card', async () => {
+    ({ temp, log } = await setup());
+    const executor = vi.fn<ToolExecutor>();
+    await requestToolCall(
+      log,
+      {
+        id: 'call-dup-2',
+        toolId: 'fs-server:write',
+        role: 'coding-agent',
+        actorId: 'coding-agent',
+        args: { path: '/tmp/x', contents: 'hi' },
+      },
+      executor,
+      { now: NOW },
+    );
+
+    let error: unknown;
+    try {
+      await requestToolCall(
+        log,
+        {
+          id: 'call-dup-2',
+          toolId: 'fs-server:write',
+          role: 'coding-agent',
+          actorId: 'coding-agent',
+          args: { path: '/tmp/z', contents: 'bye' },
+        },
+        executor,
+        { now: LATER },
+      );
+    } catch (err) {
+      error = err;
+    }
+    expect(error).toBeInstanceOf(McpError);
+    expect((error as McpError).code).toBe('CALL_ID_COLLISION');
+    expect(executor).not.toHaveBeenCalled();
+    const pending = listPendingApprovals(log);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({
+      id: 'call-dup-2',
+      status: 'pending',
+      argsDigest: digestOf({ path: '/tmp/x', contents: 'hi' }),
+    });
+  });
+
   it('resolves a dynamic (shell) tool to requiresApproval=true for a destructive command and parks it', async () => {
     ({ temp, log } = await setup());
     const executor = vi.fn<ToolExecutor>();
