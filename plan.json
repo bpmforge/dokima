@@ -2790,7 +2790,7 @@
         "Red regression (Law 4 spirit): a ledger row whose free-text carries \"D-999\" yields the correct sequential next ID (not D-1000). Reference fix already drafted on branch blocked/w5-13."
       ],
       "points": 1,
-      "status": "todo",
+      "status": "done",
       "notes": [
         "FOUNDED 2026-07-19: real security finding surfaced by W5-13's reviewer — nextDecisionId scanned whole-row markdown for D-(\\d+), letting untrusted slate text jump the ID sequence. Belongs in pipeline lane (W5-03's ledger). W5-13 depends on this so its reviewer sees the hardened ledger."
       ],
