@@ -2643,10 +2643,10 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
-        "apps/server/src/api/plans-routes.ts",
-        "apps/server/src/api/plans-store.ts"
+        "apps/server/src/api/plans-routes*",
+        "apps/server/src/api/plans-store*"
       ],
       "depends_on": [
         "W5-11",
@@ -2662,8 +2662,30 @@
       ],
       "notes": [
         "ADDED 2026-07-19: fixes the 2 CRITICALs the W5 wave-security-pass caught in plans-routes.ts — the /plan/verify route accepts a caller-supplied snapshot and flips plan_items to done with no receipt correlation (untrusted agent can self-attest completion). The correct derive-from-state logic already exists in scheduler/snapshot.ts; the route must use it instead of trusting the caller. THIRD instance of the self-attest antipattern (after W6-03 reconciliation) — see L-42; a shared derive-and-receipt-verify contract + a validator rule are the systemic fix.",
-        "CONDUCTOR 2026-07-19T07:45:30.997Z: blocked after 2 attempts. Branch sw/w5-16 kept. Gaps: plan.json status is 'blocked', expected 'done' | out-of-scope edits: apps/server/src/api/plans-routes.test.ts, apps/server/src/api/plans-store.test.ts | pnpm test failed: n opted in  1083ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1631ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2382ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real"
+        "CONDUCTOR 2026-07-19T07:45:30.997Z: blocked after 2 attempts. Branch sw/w5-16 kept. Gaps: plan.json status is 'blocked', expected 'done' | out-of-scope edits: apps/server/src/api/plans-routes.test.ts, apps/server/src/api/plans-store.test.ts | pnpm test failed: n opted in  1083ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  1631ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  2382ms\n   ✓ runCloseGate > SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real",
+        "SCOPE FIX 2026-07-19: the security fix (server-side snapshot derivation via buildPlanEvaluationSnapshot from scheduler/snapshot.ts) was completed but blocked because write_scope listed bare source files (plans-routes.ts, plans-store.ts) not their co-located .test.ts. Widened to plans-routes* + plans-store* (covers source + tests). Rebuild lands the CRITICAL fix."
       ]
+    },
+    {
+      "id": "W8-07",
+      "title": "Validator: verification-integrity — flag self-attest antipattern at gate time",
+      "phase": 8,
+      "module": "validators",
+      "lane": "quality",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "content/validators/validate-verification-integrity*"
+      ],
+      "depends_on": [
+        "W1-02"
+      ],
+      "stories": [],
+      "acceptance": [
+        "content/validators/validate-verification-integrity.sh (named validate-* so loadValidatorPack auto-discovers it, _lib.sh contract, exit 0/1 + JSON gaps): flags the self-attest antipattern in the diff — (a) completion/verification decisions from free-text matching (regex like /receipt|verify|exit|done|pass/i over comment/body/message fields), (b) verification state accepted from caller-supplied request input (body.snapshot-style) and fed to a state-flip, (c) any ticket/plan/item state flip to done/verified without a receipt/anchor correlation. Advisory-first (anchors LLM review, D-014), promotable to gate after red-fixture calibration.",
+        "Red fixtures (docs/TESTING.md planted-defect harness): the W6-03 hasReceiptComment text-match pattern and the W5-11 caller-supplied body.snapshot pattern each trip the validator (exit 1 with a located gap); a correct derive-from-state + identity/anchor check passes (exit 0). Ship with a baseline for the now-fixed sites so it does not re-flag them."
+      ],
+      "notes": "ADDED 2026-07-19 (Brad-approved): systemic pre-merge detection for the recurring self-attest CRITICAL (3 instances: W6-03 reconciliation, W5-11/W5-15 plans-verify — see L-41/L-42). Catches the pattern at the per-ticket gate so the wave-security-pass is not the only net. Route the rule upstream to bpm-opencode-experts as an anti-slop/security check."
     }
   ]
 }
