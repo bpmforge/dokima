@@ -206,6 +206,31 @@ describe('buildApiServer — SC-08', () => {
     expect(result.statusCode).toBe(403);
   });
 
+  it('pipeline run route is registered (non-404) and rejects an unauthenticated request', async () => {
+    const { server, port } = await buildAndListen();
+    active = server;
+    const res = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/projects/PROJ1/pipeline/run',
+      headers: { host: `127.0.0.1:${port}` },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ rule: 'D-005' });
+  });
+
+  it('decisions slates route is registered (non-404) and rejects an unauthenticated request', async () => {
+    const { server, port } = await buildAndListen();
+    active = server;
+    const res = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/projects/PROJ1/slates',
+      headers: { host: `127.0.0.1:${port}` },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
   it('WS upgrade succeeds with a valid token + origin and streams a published envelope', async () => {
     const { server, port } = await buildAndListen();
     active = server;
