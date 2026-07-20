@@ -2583,7 +2583,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/server/src/api/decisions/**",
         "packages/events/migrations/*decisions*"
@@ -2603,7 +2603,8 @@
         "CONDUCTOR 2026-07-19T19:26:38.619Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: out-of-scope edits: packages/pipeline/src/decisions/ledger.test.ts, packages/pipeline/src/decisions/ledger.ts",
         "RESET+GUIDE 2026-07-19: maker over-reached editing packages/pipeline/src/decisions/ledger.ts (owned by done W5-03, cross-lane). The Decisions API must persist through its OWN layer — apps/server/src/api/decisions/** + the events/DB migration in scope — and CONSUME @shipwright/pipeline via its public export without modifying pipeline internals. If a needed capability is truly missing from the ledger export, flag it as a pipeline follow-up; do not edit pipeline files.",
         "CONDUCTOR 2026-07-19T20:54:53.342Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "RESET+GUIDE 2026-07-19: the nextDecisionId security fix you correctly found is now W5-19 (pipeline lane, a dependency). Do NOT edit packages/pipeline/src/decisions/ledger.ts here — land ONLY your in-scope work (apps/server/src/api/decisions/** route + events/DB migration), consuming @shipwright/pipeline read-only. W5-19 lands first so the reviewer sees the hardened ledger."
+        "RESET+GUIDE 2026-07-19: the nextDecisionId security fix you correctly found is now W5-19 (pipeline lane, a dependency). Do NOT edit packages/pipeline/src/decisions/ledger.ts here — land ONLY your in-scope work (apps/server/src/api/decisions/** route + events/DB migration), consuming @shipwright/pipeline read-only. W5-19 lands first so the reviewer sees the hardened ledger.",
+        "CONDUCTOR 2026-07-20T00:39:07.468Z: blocked after 2 attempts. Branch sw/w5-13 kept. Gaps: [HIGH] apps/server/src/api/decisions/store.ts: decideSlate (lines ~230-283) computes the next D-ID by reading docs/DECISIONS.md (readLedgerOrTemplate + nextDecisionId, lines 245-246) and writes the updated file (fs.writeFile, line 265) entirely outside any lock, before the DB's unique index on decisions.d_id is ever checked (the guarded UPDATE only runs afterward, inside log.db.transaction at line 267). Two concurrent decide calls for two different open slates in the same project can both read the same current ledger snapshot before either write lands, both compute the same nextDecisionId, and"
       ]
     },
     {
