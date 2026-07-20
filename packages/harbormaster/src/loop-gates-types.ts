@@ -21,8 +21,16 @@ import type { Ticket } from '@shipwright/tickets';
  */
 export type CompletionManifest = NonNullable<SessionResult['manifest']>;
 
-/** Wired per acceptance 4 (SC-06, BLUEPRINT §12.5 item 5): every close gate runs the secrets scanner. */
-export const DEFAULT_REQUIRED_VALIDATORS: readonly string[] = ['secrets-scan'];
+/**
+ * Wired per acceptance 4 (SC-06, BLUEPRINT §12.5 item 5): every close gate
+ * runs the secrets scanner. `validate-remote-parity` is wired per W6-05
+ * acceptance 2 (amplifier hole 11) so a diverged remote-tracking ref is a
+ * real close-gate failure, not just a flag nothing ever reads.
+ */
+export const DEFAULT_REQUIRED_VALIDATORS: readonly string[] = [
+  'secrets-scan',
+  'validate-remote-parity',
+];
 
 export const DEFAULT_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 export const DEFAULT_VALIDATOR_TIMEOUT_MS = 30_000;

@@ -607,6 +607,13 @@ describe('runCloseGate', () => {
       path.join(fixtureContentDir, 'secrets-scan.sh'),
       '#!/bin/bash\nsleep 5\necho \'{"validator":"secrets-scan","gaps":0,"exit":0}\'\n',
     );
+    // This fixture's whole point is isolating the secrets-scan timeout path —
+    // a stub keeps the OTHER required validator (validate-remote-parity) out
+    // of the way instead of failing pack selection against this custom dir.
+    await fs.writeFile(
+      path.join(fixtureContentDir, 'validate-remote-parity.sh'),
+      '#!/bin/bash\necho \'{"validator":"validate-remote-parity","gaps":0,"exit":0}\'\n',
+    );
 
     await commitFile(
       worktree,
@@ -639,6 +646,89 @@ describe('runCloseGate', () => {
     // "no close receipt => failure comment, never forward progress" contract
     // as every other refusal path.
     expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+  });
+
+  it('validate-remote-parity (wired, amplifier hole 11): a diverged remote-tracking ref blocks close via the real gate path, not merely a warning', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    const bareRemote = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'shipwright-gates-remote-'),
+    );
+    extraTempDirs.push(bareRemote);
+    await git(bareRemote, ['init', '--bare', '-b', 'main']);
+    await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
+    // Establishes a cached tracking ref at the branch's CURRENT tip (the
+    // fork point, before this ticket's own commit lands).
+    await git(worktree.path, ['push', 'origin', worktree.branch]);
+
+    // Advances local HEAD past what's pushed — the tracking ref is now
+    // stale, real divergence (never just an absent ref).
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected refusal (diverged remote must block close)');
+    expect(result.reasons.some((r) => r.includes('validate-remote-parity'))).toBe(true);
+    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+  });
+
+  it('validate-remote-parity (LOCAL-FIRST, Law 9/C-1): a remote configured but never pushed (no cached tracking ref) does NOT block close', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    const bareRemote = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'shipwright-gates-remote-'),
+    );
+    extraTempDirs.push(bareRemote);
+    await git(bareRemote, ['init', '--bare', '-b', 'main']);
+    // Configured but deliberately never pushed — the normal offline / fresh
+    // branch case (this project's own dual-remote setup, verified empirically
+    // in earlier conductor notes: 2 remotes, 0 tracking refs).
+    await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
+
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok)
+      throw new Error('expected success (no cached tracking ref must never gap)');
   });
 });
 
