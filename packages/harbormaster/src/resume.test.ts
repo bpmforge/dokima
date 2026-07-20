@@ -104,7 +104,10 @@ async function claimedTicketWithReceipt(
       kind: 'close',
       projectId: PROJECT_ID,
       ticketId,
-      validators: [{ name: 'secrets-scan', exitCode: 0, gapCount: 0 }],
+      validators: [
+        { name: 'secrets-scan', exitCode: 0, gapCount: 0 },
+        { name: 'validate-remote-parity', exitCode: 0, gapCount: 0 },
+      ],
       inputFiles: [{ path: relPath, content: fileContent }],
       verifyCommand: 'true',
       verifyExit: 0,
@@ -341,7 +344,10 @@ describe('resumeProject (FR-H3) — two-phase, all-or-nothing', () => {
         kind: 'close',
         projectId: PROJECT_ID,
         ticketId: 'W9-06',
-        validators: [{ name: 'secrets-scan', exitCode: 0, gapCount: 0 }],
+        validators: [
+          { name: 'secrets-scan', exitCode: 0, gapCount: 0 },
+          { name: 'validate-remote-parity', exitCode: 0, gapCount: 0 },
+        ],
         inputFiles: [{ path: relPath, content: 'export const f = 1;\n' }],
         verifyCommand: 'true',
         verifyExit: 0,

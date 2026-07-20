@@ -62,6 +62,11 @@ import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
 import {
+  pushLandedBranch,
+  recordFailedPushes,
+  type PushToRemotesFn,
+} from './land-push.js';
+import {
   attemptNumberForRung,
   noopLandEscalationTokenHook,
   renderDecideCard,
@@ -74,6 +79,8 @@ import {
   type ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
 
+export type { LandPushRemoteResult, PushToRemotesFn } from './land-push.js';
+type LandPushResults = Awaited<ReturnType<typeof pushLandedBranch>>;
 export type {
   DecideCard,
   DecideCardOption,
@@ -106,6 +113,8 @@ export interface LandLoopOptions {
   readonly contentDir: string;
   readonly signingKey: string;
   readonly spawn: SpawnSession;
+  /** Dual-remote push primitive (FR-I2). Inject `@shipwright/forge`'s `pushToRemotes` in production. */
+  readonly pushToRemotes: PushToRemotesFn;
   readonly buildHandoff: HandoffBuilder;
   /** Commit-ish each ticket's worktree branches from AND the close gate's fork point. Defaults to 'main'. */
   readonly baseRef?: string;
@@ -124,32 +133,32 @@ export interface LandLoopOptions {
   readonly verifyTimeoutMs?: number;
   readonly validatorTimeoutMs?: number;
   readonly memoryEligibleRoles?: readonly string[];
+  /** `git remote` names to push a landed ticket branch to (FR-I2, dual-remote sync). Defaults to whatever remotes are actually configured on the repo (`git remote`, read fresh per ticket) — local-first: zero configured remotes is a normal, valid setup and pushes nothing. */
+  readonly pushRemotes?: readonly string[];
   readonly now?: () => string;
 }
 
 export type LandLoopStopReason = 'idle' | 'stopped' | 'budget';
-
 export interface LandAttempt {
   readonly attempt: number;
   readonly session: SessionResult;
   /** `null` when the session returned no completion manifest — the close gate was never even attempted. */
   readonly closeGate: CloseGateResult | null;
 }
-
 export type LandParkedReason =
   'ladder_exhausted' | 'locked_ceiling_reached' | 'awaiting_escalation_token';
-
 export interface LandLoopTicketOutcome {
   readonly ticketId: string;
   readonly mode: LandEscalationMode;
   readonly attempts: readonly LandAttempt[];
   /** True once a `runCloseGate` attempt succeeded (checkpoint reached — `in_review`). */
   readonly landed: boolean;
+  /** Per-remote dual-remote push results after a successful land (FR-I2); `undefined` when never landed. A failed remote is isolated, not fatal — also recorded via `commentTicket` (`recordFailedPushes`). */
+  readonly pushResults?: LandPushResults;
   readonly parked: boolean;
   readonly parkedReason?: LandParkedReason;
   readonly finalStatus: Ticket['status'];
 }
-
 export interface LandLoopResult {
   readonly processed: readonly LandLoopTicketOutcome[];
   readonly stopReason: LandLoopStopReason;
@@ -296,6 +305,7 @@ async function processTicket(
   const attempts: LandAttempt[] = [];
   let current = requireTicket(options.log, ticket.id);
   let landed = false;
+  let pushResults: LandPushResults | undefined;
   let parkedReason: LandParkedReason | undefined;
   let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
 
@@ -310,6 +320,14 @@ async function processTicket(
 
     if (closeGate?.ok) {
       landed = true;
+      // Isolated per-remote; a failed remote is recorded, not fatal.
+      pushResults = await pushLandedBranch(
+        options.pushToRemotes,
+        worktree.path,
+        worktree.branch,
+        options.pushRemotes,
+      );
+      recordFailedPushes(options.log, options.actorId, ticket.id, pushResults);
       break;
     }
 
@@ -347,6 +365,7 @@ async function processTicket(
     mode: policy.mode,
     attempts,
     landed,
+    pushResults,
     parked,
     parkedReason,
     finalStatus: current.status,

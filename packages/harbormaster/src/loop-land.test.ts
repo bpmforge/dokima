@@ -3,11 +3,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@shipwright/events';
+import {
+  createIdentity,
+  listEvents,
+  openEventLog,
+  type EventLog,
+} from '@shipwright/events';
 import { BudgetBreakerTracker, CostLedger } from '@shipwright/gateway';
-import { git } from '@shipwright/git';
+import { branchNameFor, git } from '@shipwright/git';
 import type { SpawnSession } from '@shipwright/loop';
 import { createTicket, getTicket, type Ticket } from '@shipwright/tickets';
+import type { PushToRemotesFn } from './land-push.js';
 import type { CompletionManifest } from './loop-gates.js';
 import { defaultHandoffBuilder } from './loop-handoff.js';
 import { runLandLoop, type LandLoopOptions } from './loop-land.js';
@@ -73,6 +79,11 @@ function seedTicket(
   });
 }
 
+/** No remotes are ever configured on the throwaway fixture repos by default, so this should never actually be invoked. */
+const unusedPushToRemotes: PushToRemotesFn = async () => {
+  throw new Error('pushToRemotes invoked with no remotes configured on the fixture repo');
+};
+
 function baseOptions(fixture: Fixture, spawn: SpawnSession): LandLoopOptions {
   return {
     log: fixture.log,
@@ -82,6 +93,7 @@ function baseOptions(fixture: Fixture, spawn: SpawnSession): LandLoopOptions {
     contentDir: CONTENT_VALIDATORS_DIR,
     signingKey: TEST_SIGNING_KEY,
     spawn,
+    pushToRemotes: unusedPushToRemotes,
     buildHandoff: defaultHandoffBuilder(),
     now: () => '2026-07-16T00:00:00.000Z',
   };
@@ -124,10 +136,15 @@ const spoofedSpawn: SpawnSession = async () => {
 
 describe('runLandLoop', () => {
   let fixture: Fixture | undefined;
+  let extraTempDirs: string[] = [];
 
   afterEach(async () => {
     await fixture?.cleanup();
     fixture = undefined;
+    await Promise.all(
+      extraTempDirs.map((dir) => fs.rm(dir, { recursive: true, force: true })),
+    );
+    extraTempDirs = [];
   });
 
   it('closes, checkpoints (receipt + verified commit), and repeats to the next claimable ticket (acceptance 1)', async () => {
@@ -361,5 +378,88 @@ describe('runLandLoop', () => {
     expect(secondRun.processed).toHaveLength(1);
     expect(secondRun.processed[0]!.parked).toBe(true);
     expect(getTicket(log, 'W9-01')?.status).toBe('ready');
+  });
+
+  it('AC1 (dual-remote wiring): a successful land triggers a push to every remote configured on the repo by default, and one remote failing does not abort the other or the land loop (isolation)', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+    seedTicket(log, 'W9-01');
+    seedTicket(log, 'W9-02');
+
+    // Remotes are shared repo-wide (`git worktree add`), so configuring them
+    // on repoRoot is visible from the ticket's own worktree too.
+    const goodRemote = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'shipwright-land-remote-good-'),
+    );
+    extraTempDirs.push(goodRemote);
+    await git(goodRemote, ['init', '--bare', '-b', 'main']);
+    await git(repoRoot, ['remote', 'add', 'origin', goodRemote]);
+    // Stands in for an unreachable/offline forge remote (e.g. Gitea off-LAN)
+    // — no real network, still fully local-first.
+    const badRemotePath = path.join(
+      os.tmpdir(),
+      'shipwright-land-remote-missing-so-invalid',
+    );
+    await git(repoRoot, ['remote', 'add', 'github', badRemotePath]);
+
+    const calls: { cwd: string; remotes: readonly string[]; ref: string }[] = [];
+    // Mirrors `@shipwright/forge`'s `pushToRemotes` per-remote isolation
+    // (Promise.allSettled): one remote failing never throws or short-
+    // circuits the others, and it always resolves with one result per
+    // remote — never a single all-or-nothing rejection.
+    const isolatingPushToRemotes: PushToRemotesFn = async (options) => {
+      calls.push(options);
+      const settled = await Promise.allSettled(
+        options.remotes.map((remote) => git(options.cwd, ['push', remote, options.ref])),
+      );
+      return options.remotes.map((remote, index) => ({
+        remote,
+        ok: settled[index]!.status === 'fulfilled',
+        detail: '',
+      }));
+    };
+
+    // No `pushRemotes` passed — proves the wiring is live by default,
+    // reading whatever remotes the repo actually has configured.
+    const result = await runLandLoop({
+      ...baseOptions(fixture, landingSpawn),
+      pushToRemotes: isolatingPushToRemotes,
+    });
+
+    expect(result.stopReason).toBe('idle');
+    expect(result.processed).toHaveLength(2);
+    // The `github` remote is unreachable, yet both tickets still land —
+    // proving the failing remote never aborted the loop.
+    expect(result.processed[0]!.landed).toBe(true);
+    expect(result.processed[1]!.landed).toBe(true);
+
+    const branch1 = branchNameFor('W9-01', 'Ticket W9-01');
+    const worktreePath1 = path.join(repoRoot, '.shipwright', 'worktrees', 'W9-01');
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual({
+      cwd: worktreePath1,
+      // `git remote` lists names alphabetically.
+      remotes: ['github', 'origin'],
+      ref: branch1,
+    });
+
+    const { stdout: localSha } = await git(repoRoot, ['rev-parse', branch1]);
+    const { stdout: remoteSha } = await git(goodRemote, ['rev-parse', branch1]);
+    expect(remoteSha.trim()).toBe(localSha.trim());
+
+    // Per-remote status is on the outcome, not swallowed (review-caught HIGH).
+    const pushResults = result.processed[0]!.pushResults;
+    expect(pushResults).toEqual([
+      { remote: 'github', ok: false, detail: '' },
+      { remote: 'origin', ok: true, detail: '' },
+    ]);
+
+    // A failed remote leaves durable evidence on the ticket (Law 4: no
+    // state change without a receipt/event) instead of vanishing silently.
+    const comments = listEvents(log).filter(
+      (event) => event.eventType === 'ticket.commented' && event.ticketId === 'W9-01',
+    );
+    expect(comments).toHaveLength(1);
+    expect((comments[0]!.payload as { body: string }).body).toContain('github');
   });
 });
