@@ -11,6 +11,7 @@
   "dependencies": {
     "fastify": "^5.10.0",
     "@shipwright/events": "workspace:*",
+    "@shipwright/gateway": "workspace:*",
     "@shipwright/harbormaster": "workspace:*",
     "@shipwright/pipeline": "workspace:*",
     "@shipwright/tickets": "workspace:*",

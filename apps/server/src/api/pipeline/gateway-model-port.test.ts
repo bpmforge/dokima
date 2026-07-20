@@ -85,7 +85,7 @@ const VALID_TICKET_DRAFTS = {
   ],
 };
 
-describe('gateway-model-port — real gateway wiring (dynamic import, no package.json dependency)', () => {
+describe('gateway-model-port — real gateway wiring (workspace dependency)', () => {
   let server: FakeGatewayServer | undefined;
 
   afterEach(async () => {

@@ -23,7 +23,7 @@
  * package-boundary constraint fixed by W5-17, out of this ticket's reach)
  * while a gateway call is inherently async. Every value in that cache was
  * produced by a REAL call through `../gateway-model-port.js`'s
- * `createRealGatewayPort` (dynamic-imported `@shipwright/gateway`'s
+ * `createRealGatewayPort` (a proper `@shipwright/gateway` workspace import's
  * `createOaiCompatProvider`, never a direct provider — Law 6 holds) in the
  * pre-flight immediately above.
  *
@@ -44,14 +44,15 @@
  * technical-slate gateway call) AND again inside `runPipeline` itself
  * (defense in depth).
  *
- * Durability = receipted (acceptance criterion 2a): every `PipelineRunEvent`
- * `runPipeline` emits is appended AND anchored by a minted `gate` receipt in
- * ONE transaction (`./events.js`'s `emitPhaseEvent`) — if `mintReceipt`
- * throws (no signing key configured), the whole transaction rolls back, so
- * the event was never durable either. Board items (the `decomposed` phase's
+ * SECURITY_W5 CRITICAL FIX: every `PipelineRunEvent` `runPipeline` emits is
+ * appended as a plain, hash-chained AUDIT event (`./events.js`'s
+ * `emitPhaseEvent`) — it is NOT anchored by a `gate` receipt. No independent
+ * validator runs on this model-authored phase output, so minting a "passing"
+ * gate receipt for it would be self-attestation (Law 4/5). Genuine gates
+ * (decision-complete, close) mint real receipts elsewhere, from real checks,
+ * by a distinct verifier identity. Board items (the `decomposed` phase's
  * real durable output) are only ever persisted (`../board-lifecycle.js`)
- * after the full `runPipeline` call — including every phase's receipt — has
- * succeeded.
+ * after the full `runPipeline` call has succeeded.
  */
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -142,7 +143,6 @@ export function registerPipelineRoutes(
         const preflight = await runPreflight(modelPort, body, ledgerMarkdown);
 
         const runId = randomUUID();
-        const signingKey = process.env.SHIPWRIGHT_SIGNING_KEY ?? '';
         const dbPath = stateDbPath(record.path);
         const log = openEventLog(dbPath);
         try {
@@ -153,8 +153,7 @@ export function registerPipelineRoutes(
               technicalSlateInputFrom: () => preflight.technicalSlateInput,
               ticketDraftsFrom: () => preflight.ticketDrafts,
             },
-            emit: (event) =>
-              emitPhaseEvent(log, { runId, projectId, signingKey, now }, event),
+            emit: (event) => emitPhaseEvent(log, { runId, now }, event),
           };
           plan = runPipeline(
             {

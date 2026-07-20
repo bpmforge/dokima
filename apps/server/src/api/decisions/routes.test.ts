@@ -3,11 +3,19 @@ import os from 'node:os';
 import path from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
+import { buildAllowlist } from '../allowlist.js';
 import { registerProject } from '../projects.js';
 import { registerDecisionRoutes } from './routes.js';
 
+const TOKEN = 'test-token-0123456789abcdef';
+const PORT = 4501;
+
 async function tmpDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+}
+
+function authHeaders() {
+  return { host: `127.0.0.1:${PORT}`, authorization: `Bearer ${TOKEN}` };
 }
 
 const FOUNDER_BODY = {
@@ -43,7 +51,10 @@ describe('decision routes', () => {
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
 
     const app = Fastify({ logger: false });
-    registerDecisionRoutes(app, { home: fleetHome });
+    registerDecisionRoutes(app, {
+      home: fleetHome,
+      auth: { token: TOKEN, allowlist: buildAllowlist(PORT) },
+    });
     await app.ready();
     apps.push(app);
 
@@ -55,6 +66,7 @@ describe('decision routes', () => {
     const create = await app.inject({
       method: 'POST',
       url: '/api/v1/projects/nope/slates',
+      headers: authHeaders(),
       payload: FOUNDER_BODY,
     });
     expect(create.statusCode).toBe(404);
@@ -62,6 +74,7 @@ describe('decision routes', () => {
     const decide = await app.inject({
       method: 'POST',
       url: '/api/v1/slates/x/decide?project=nope',
+      headers: authHeaders(),
       payload: { chosen: 'self-hosted' },
     });
     expect(decide.statusCode).toBe(404);
@@ -73,6 +86,7 @@ describe('decision routes', () => {
     const create = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/slates`,
+      headers: authHeaders(),
       payload: FOUNDER_BODY,
     });
     expect(create.statusCode).toBe(201);
@@ -82,12 +96,14 @@ describe('decision routes', () => {
     const openList = await app.inject({
       method: 'GET',
       url: `/api/v1/projects/${projectId}/slates?status=open`,
+      headers: authHeaders(),
     });
     expect(openList.json().items).toHaveLength(1);
 
     const decide = await app.inject({
       method: 'POST',
       url: `/api/v1/slates/${created.id}/decide?project=${projectId}`,
+      headers: authHeaders(),
       payload: { chosen: 'self-hosted', rationale: 'fastest to ship' },
     });
     expect(decide.statusCode).toBe(200);
@@ -97,12 +113,14 @@ describe('decision routes', () => {
     const decidedList = await app.inject({
       method: 'GET',
       url: `/api/v1/projects/${projectId}/slates?status=decided`,
+      headers: authHeaders(),
     });
     expect(decidedList.json().items).toHaveLength(1);
 
     const ledger = await app.inject({
       method: 'GET',
       url: `/api/v1/projects/${projectId}/decisions`,
+      headers: authHeaders(),
     });
     expect(ledger.statusCode).toBe(200);
     expect(ledger.json().items).toHaveLength(1);
@@ -114,6 +132,7 @@ describe('decision routes', () => {
     const create = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/slates`,
+      headers: authHeaders(),
       payload: FOUNDER_BODY,
     });
     const created = create.json() as { id: string };
@@ -121,11 +140,13 @@ describe('decision routes', () => {
     await app.inject({
       method: 'POST',
       url: `/api/v1/slates/${created.id}/decide?project=${projectId}`,
+      headers: authHeaders(),
       payload: { chosen: 'self-hosted' },
     });
     const second = await app.inject({
       method: 'POST',
       url: `/api/v1/slates/${created.id}/decide?project=${projectId}`,
+      headers: authHeaders(),
       payload: { chosen: 'managed' },
     });
     expect(second.statusCode).toBe(409);
@@ -136,6 +157,7 @@ describe('decision routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/slates`,
+      headers: authHeaders(),
       payload: {
         kind: 'founder',
         founder: { ...FOUNDER_BODY.founder, options: [FOUNDER_BODY.founder.options[0]] },
@@ -149,14 +171,71 @@ describe('decision routes', () => {
     const create = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/slates`,
+      headers: authHeaders(),
       payload: FOUNDER_BODY,
     });
     const created = create.json() as { id: string };
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/slates/${created.id}/decide?project=${projectId}`,
+      headers: authHeaders(),
       payload: { chosen: 'nope' },
     });
     expect(res.statusCode).toBe(409);
+  });
+
+  describe('SECURITY_W5 MEDIUM regression: auth is required on every route', () => {
+    it('rejects an unauthenticated POST /slates with 401', async () => {
+      const { app, projectId } = await boot();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/slates`,
+        headers: { host: `127.0.0.1:${PORT}` },
+        payload: FOUNDER_BODY,
+      });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('rejects a wrong-token POST /slates/:id/decide with 401', async () => {
+      const { app, projectId } = await boot();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/slates/whatever/decide?project=${projectId}`,
+        headers: { host: `127.0.0.1:${PORT}`, authorization: 'Bearer wrong-token' },
+        payload: { chosen: 'self-hosted' },
+      });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('rejects an unauthenticated GET /slates with 401', async () => {
+      const { app, projectId } = await boot();
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/projects/${projectId}/slates`,
+        headers: { host: `127.0.0.1:${PORT}` },
+      });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('rejects an unauthenticated GET /decisions with 401', async () => {
+      const { app, projectId } = await boot();
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/projects/${projectId}/decisions`,
+        headers: { host: `127.0.0.1:${PORT}` },
+      });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('rejects a disallowed Host header with 403 (SC-08)', async () => {
+      const { app, projectId } = await boot();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/slates`,
+        headers: { host: 'evil.example.com', authorization: `Bearer ${TOKEN}` },
+        payload: FOUNDER_BODY,
+      });
+      expect(res.statusCode).toBe(403);
+    });
   });
 });

@@ -44,6 +44,9 @@ importers:
       '@shipwright/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@shipwright/gateway':
+        specifier: workspace:*
+        version: link:../../packages/gateway
       '@shipwright/harbormaster':
         specifier: workspace:*
         version: link:../../packages/harbormaster

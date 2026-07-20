@@ -11,22 +11,12 @@
  * hands the *cached results* to `runPipeline` through a trivial synchronous
  * port.
  *
- * `apps/server/package.json` does not (yet) declare `@shipwright/gateway` as
- * a dependency, and this ticket's `write_scope` is `apps/server/src/api/
- * pipeline/**` only — editing `package.json` is out of glob and, per this
- * repo's own established precedent (W5-11/W5-15's identical wall, and the
- * `shipwright-narrow-write-scope-pattern` this ticket follows), self-
- * widening `write_scope` is never the fix. Instead this loads the real
- * `@shipwright/gateway` package by an absolute `file://` URL, sidestepping
- * pnpm's strict per-package `node_modules` linking entirely (same pattern
- * `apps/web/e2e/fixtures/seed-board-tickets.mjs` uses for `@shipwright/
- * tickets`/`@shipwright/events`). `apps/server`'s only run mode today is
- * `tsx watch src/index.ts` (no build step) and `vitest` also transforms TS
- * on the fly, so the dynamically-imported `.ts` source resolves at runtime
- * in both dev and tests, not just in a throwaway script.
+ * SECURITY_W5 MEDIUM FIX: `@shipwright/gateway` is now a proper workspace
+ * dependency (`apps/server/package.json`), so it is a normal, statically
+ * resolvable import — no more sidestepping pnpm's per-package `node_modules`
+ * linking with a hand-constructed `file://` URL off `import.meta.url`.
  */
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import path from 'node:path';
+import { createOaiCompatProvider, type Provider } from '@shipwright/gateway';
 import type {
   DeliverableDraft,
   SynthesizeBlueprintInput,
@@ -64,32 +54,8 @@ export function resolveGatewayConfigFromEnv(
   };
 }
 
-interface MinimalChatProvider {
-  chat(request: {
-    model: string;
-    messages: { role: 'system' | 'user'; content: string }[];
-    temperature?: number;
-  }): Promise<{ message: { content: string } }>;
-}
-
-interface GatewayModule {
-  createOaiCompatProvider(config: {
-    id: string;
-    baseUrl: string;
-    apiKey?: string;
-    fetchImpl?: typeof fetch;
-  }): MinimalChatProvider;
-}
-
-async function loadGatewayModule(): Promise<GatewayModule> {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const repoRoot = path.resolve(here, '../../../../..');
-  const entry = path.join(repoRoot, 'packages', 'gateway', 'src', 'index.ts');
-  return (await import(pathToFileURL(entry).href)) as GatewayModule;
-}
-
 async function chatJson(
-  provider: MinimalChatProvider,
+  provider: Provider,
   model: string,
   phase: string,
   systemPrompt: string,
@@ -346,8 +312,7 @@ export interface RealGatewayPort {
 export async function createRealGatewayPort(
   config: GatewayConfig = resolveGatewayConfigFromEnv(),
 ): Promise<RealGatewayPort> {
-  const gatewayModule = await loadGatewayModule();
-  const provider = gatewayModule.createOaiCompatProvider({
+  const provider = createOaiCompatProvider({
     id: 'pipeline-run',
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,
