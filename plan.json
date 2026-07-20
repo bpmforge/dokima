@@ -2858,7 +2858,7 @@
         "HIGH (SECURITY_W5): the server must NOT trust a client-supplied `phase` for gating. isGatedDeliverable (apps/server/src/api/server/artifacts-routes/shared.ts) derives phase itself from the deliverable path (pure lookup), ignoring/rejecting any `phase` in the request body. Red test: a POST /artifacts/comments with a forged `phase` cannot change the server gating decision for a deliverable."
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FOUNDED 2026-07-20 (Brad-approved): split from W5-20 so it stays in the ui lane with W8-02 (avoids P8 cross-lane on artifacts-routes). Fixes the client-supplied-phase gating bypass W5-12 introduced."
       ],
