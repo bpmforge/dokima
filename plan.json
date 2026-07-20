@@ -2547,7 +2547,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2575,7 +2575,8 @@
         "CONDUCTOR 2026-07-19T22:48:47.117Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] apps/web/src/artifacts/deliverablePhase.ts: This diff is the first thing to ever populate the `phase` field sent to POST .../artifacts/comments (previously always null, so apps/server/.../artifacts-routes/shared.ts's isGatedDeliverable(db, ticketId, phase) always short-circuited false — confirmed: `if (!ticketId && phase == null) return false;`). isGatedDeliverable now runs `SELECT id FROM receipts WHERE kind IN ('gate','close') AND (... OR (phase IS NOT NULL AND phase = ?))` keyed purely on the client-supplied `phase` integer, with no server-side check that the submitted phase actually",
         "RESET+ENCODE 2026-07-19: this diff is the first to populate `phase`, waking a dormant server-side gating query — encode correctness + coverage for the now-active path (plus the earlier file-size split of ArtifactViewer.tsx into a barrel + modules, and the persisted revision.requested coverage).",
         "CONDUCTOR 2026-07-20T00:16:27.233Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: out-of-scope edits: apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts, apps/server/src/api/server/artifacts-routes/comments-routes.ts, apps/server/src/api/server/artifacts-routes/shared.ts",
-        "RESET+ENCODE 2026-07-20: maker reached into apps/server artifacts-routes tests (out-of-scope) to cover the server gating that its `phase` field activated. Keep W5-12 to the web side; server-gating coverage is a separate lane if needed."
+        "RESET+ENCODE 2026-07-20: maker reached into apps/server artifacts-routes tests (out-of-scope) to cover the server gating that its `phase` field activated. Keep W5-12 to the web side; server-gating coverage is a separate lane if needed.",
+        "HANDOFF (server follow-up, out of W5-12's lane) 2026-07-20: this ticket's revisionSubmission.ts now populates `phase` on every POST .../artifacts/comments submission (comment and edit alike), which activates isGatedDeliverable's phase branch in apps/server/src/api/server/artifacts-routes/shared.ts (`(phase IS NOT NULL AND phase = ?)` — previously dead since phase was always null). Web-layer regression coverage (deliverablePhase.test.ts, revisionSubmission.test.ts) proves the client sends the right phase int for a gated-phase deliverable vs. null for a non-deliverable path. What's still uncovered: a server-side test asserting isGatedDeliverable's *phase* branch (not just its already-covered ticket_id branch, see artifacts-routes.test.ts:371-418) correctly gates/ungates given a real phase-keyed gate/close receipt vs. none, and that the client-supplied phase integer isn't trusted for anything beyond this existence check (no server-side validation that the submitted phase matches the deliverable's actual declared phase — a client could send an arbitrary phase number). A future server-lane ticket should add that coverage plus consider whether phase should be server-derived from the deliverable path instead of client-supplied."
       ]
     },
     {
