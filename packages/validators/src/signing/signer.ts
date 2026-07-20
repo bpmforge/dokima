@@ -135,6 +135,17 @@ export async function createAndSignManifest(
 }
 
 /**
+ * Load the public key from a PEM file.
+ */
+export async function loadPublicKey(publicKeyPath: string): Promise<crypto.KeyObject> {
+  const keyContent = await fs.readFile(publicKeyPath, 'utf-8');
+  return crypto.createPublicKey({
+    key: keyContent,
+    format: 'pem',
+  });
+}
+
+/**
  * Load and parse a manifest file, validating its structure.
  */
 export async function loadManifest(manifestPath: string): Promise<PackManifest> {

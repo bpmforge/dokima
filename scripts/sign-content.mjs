@@ -3,15 +3,16 @@
 /**
  * Sign the first-party content pack.
  *
- * Usage: node scripts/sign-content.mjs [--generate-key]
+ * Usage: SHIPWRIGHT_SIGNING_KEY="..." node scripts/sign-content.mjs
  *
  * This script creates or updates content/manifest.json with:
  * - File list with SHA256 hashes
  * - Publisher signature using Ed25519
  * - License field (first-party for first-party content)
  *
- * The public key is committed to the repo; the private key should be
- * kept secure and loaded from an environment variable or keychain.
+ * The public key is committed to content/keys/shipwright-public.pem.
+ * The private key must be provided via SHIPWRIGHT_SIGNING_KEY environment variable
+ * (PEM format or base64-encoded). Never commit the private key to the repo.
  */
 
 import { createHash } from 'node:crypto';
@@ -25,47 +26,47 @@ const repoRoot = path.resolve(__dirname, '..');
 
 const CONTENT_DIR = path.join(repoRoot, 'content', 'validators');
 const MANIFEST_PATH = path.join(repoRoot, 'content', 'manifest.json');
-const KEY_DIR = path.join(repoRoot, '.keys');
-const PUBLIC_KEY_PATH = path.join(KEY_DIR, 'shipwright-public.pem');
-const PRIVATE_KEY_PATH = path.join(KEY_DIR, 'shipwright-private.pem');
+const PUBLIC_KEY_PATH = path.join(repoRoot, 'content', 'keys', 'shipwright-public.pem');
 
 /**
- * Generate Ed25519 key pair and save to files.
+ * Load the private key from SHIPWRIGHT_SIGNING_KEY environment variable.
+ * The key can be in PEM format or base64-encoded.
  */
-async function generateAndSaveKeyPair() {
-  console.log('Generating Ed25519 key pair...');
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+function loadPrivateKeyFromEnv() {
+  const keyData = process.env.SHIPWRIGHT_SIGNING_KEY;
+  if (!keyData) {
+    throw new Error(
+      'SHIPWRIGHT_SIGNING_KEY environment variable is not set. ' +
+      'Provide the Ed25519 private key in PEM format or base64-encoded.',
+    );
+  }
 
-  const publicKeyPem = publicKey.export({ format: 'pem', type: 'spki' });
-  const privateKeyPem = privateKey.export({ format: 'pem', type: 'pkcs8' });
+  let keyContent = keyData;
+  // If it looks like base64 (no newlines, no dashes), decode it
+  if (!keyData.includes('\n') && !keyData.includes('-----')) {
+    try {
+      keyContent = Buffer.from(keyData, 'base64').toString('utf-8');
+    } catch {
+      // If decoding fails, treat it as PEM
+      keyContent = keyData;
+    }
+  }
 
-  await fs.mkdir(KEY_DIR, { recursive: true });
-  await fs.writeFile(PUBLIC_KEY_PATH, publicKeyPem, { mode: 0o644 });
-  await fs.writeFile(PRIVATE_KEY_PATH, privateKeyPem, { mode: 0o600 });
-
-  console.log(`✓ Generated and saved key pair to ${KEY_DIR}`);
-  console.log(`  Public key (can be committed): ${PUBLIC_KEY_PATH}`);
-  console.log(`  Private key (keep secret): ${PRIVATE_KEY_PATH}`);
+  return crypto.createPrivateKey({
+    key: keyContent,
+    format: 'pem',
+  });
 }
 
 /**
- * Load keys from PEM files.
+ * Load the public key from the committed file.
  */
-async function loadKeyPair() {
+async function loadPublicKey() {
   const publicKeyPem = await fs.readFile(PUBLIC_KEY_PATH, 'utf-8');
-  const privateKeyPem = await fs.readFile(PRIVATE_KEY_PATH, 'utf-8');
-
-  const publicKey = crypto.createPublicKey({
+  return crypto.createPublicKey({
     key: publicKeyPem,
     format: 'pem',
   });
-
-  const privateKey = crypto.createPrivateKey({
-    key: privateKeyPem,
-    format: 'pem',
-  });
-
-  return { publicKey, privateKey };
 }
 
 /**
@@ -81,16 +82,22 @@ async function hashFile(filePath) {
  * Create and sign the manifest.
  */
 async function signContent() {
-  // Check if keys exist, generate if not
+  // Load keys
+  let privateKey;
   try {
-    await fs.stat(PUBLIC_KEY_PATH);
-    await fs.stat(PRIVATE_KEY_PATH);
-  } catch {
-    console.log('Keys not found, generating...');
-    await generateAndSaveKeyPair();
+    privateKey = loadPrivateKeyFromEnv();
+  } catch (error) {
+    console.error('Error:', error instanceof Error ? error.message : error);
+    process.exit(1);
   }
 
-  const { publicKey, privateKey } = await loadKeyPair();
+  let publicKey;
+  try {
+    publicKey = await loadPublicKey();
+  } catch (error) {
+    console.error(`Error reading public key from ${PUBLIC_KEY_PATH}:`, error);
+    process.exit(1);
+  }
 
   console.log('Scanning validators directory...');
   const entries = await fs.readdir(CONTENT_DIR, { withFileTypes: true });
@@ -154,20 +161,9 @@ async function signContent() {
   console.log(`✓ Signed and saved manifest to ${MANIFEST_PATH}`);
 }
 
-// Parse command-line arguments
-const args = process.argv.slice(2);
-if (args.includes('--generate-key')) {
-  generateAndSaveKeyPair()
-    .then(() => process.exit(0))
-    .catch((err) => {
-      console.error('Error generating keys:', err);
-      process.exit(1);
-    });
-} else {
-  signContent()
-    .then(() => process.exit(0))
-    .catch((err) => {
-      console.error('Error signing content:', err);
-      process.exit(1);
-    });
-}
+signContent()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('Error signing content:', err);
+    process.exit(1);
+  });

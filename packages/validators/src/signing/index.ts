@@ -5,6 +5,7 @@ export {
   verifyManifestSignature,
   createAndSignManifest,
   loadManifest,
+  loadPublicKey,
   saveManifest,
   verifyFileHash,
   verifyManifestFiles,

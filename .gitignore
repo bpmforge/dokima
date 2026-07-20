@@ -10,3 +10,4 @@ docs/work/conductor-log.jsonl
 docs/work/conductor.out
 docs/work/conductor.pid
 STOP
+.keys/
