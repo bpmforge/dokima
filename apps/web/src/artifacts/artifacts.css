@@ -212,6 +212,28 @@
   text-align: right;
 }
 
+.artifact-viewer__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.artifact-viewer__edit-textarea {
+  min-height: 12rem;
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  border: 1px solid var(--sw-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-family: ui-monospace, monospace;
+}
+
+.artifact-viewer__edit-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
 .comment-thread {
   margin-top: 0.75rem;
   border-top: 1px solid var(--sw-border);
