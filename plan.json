@@ -1933,14 +1933,15 @@
         "W5-02",
         "W5-04",
         "W4-06",
-        "W5-18"
+        "W5-18",
+        "W5-22"
       ],
       "acceptance": [
         "Built-in sample idea runs the full program in miniature (interview -> blueprint -> slates -> board -> morning queue) on the user's cheapest configured model; completes < 15 min on a local model; wired as the last step of the first-run wizard (BLUEPRINT §12.3, FR-S4)",
         "Every major surface carries a ? help affordance opening task-oriented guide content (content/guide/, data not code); wizard ends with a what-to-do-tomorrow card (R-M1)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-M1). Cites FR-C6 (the guided sample IS FR-C6).",
         "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
@@ -1949,7 +1950,8 @@
         "STRUCTURAL FINDING (verified 2026-07-19, supersedes my prior fresh-budget reset which was WRONG): the maker correctly self-blocked per Law 1. VERIFIED: (1) pipeline/src/index.ts exports only ./plans (board-lifecycle layer); the phase-0-2.5 modules interview/blueprint/decisions/decompose are built but have ZERO external callers anywhere in apps/ or packages/ and are not in the public surface. (2) W8-01 (dogfood) scope is docs/dogfood/** only and dogfoods the ANALYSIS pipeline (onboard/security/code-health), not the creation pipeline — it assumes execution exists. (3) harbormaster anticipates phases (interview pause-site, numbered breakpoints) but never invokes the phase modules. So W5-09 AC1 (guided sample real run) has no execution path. INDEPENDENT airtight sub-finding: both ACs also need out-of-scope files (apps/web/src/settings/FirstRunWizard.tsx, content/guide/**). AWAITING FOUNDER DECISION: new phase-execution-wiring ticket vs deferred-by-design. Do NOT reset until resolved.",
         "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket.",
         "UNBLOCKED 2026-07-20: both blockers resolved — (1) execution path now exists (W5-18 done: runPipeline via server route + events); (2) scope widened to apps/web/src/settings/FirstRunWizard.tsx + content/guide/** (the files both ACs need; all overlapping owners W4-06/W1-01 are done, P8 OK). Build the guided first-15-min sample against the real pipeline run.",
-        "CONDUCTOR 2026-07-20T02:47:00.990Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-20T02:47:00.990Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "UNBLOCK PATH 2026-07-20: the LAST blocker (AC1 real-run needs registerPipelineRoutes in server.ts, which the maker correctly flagged as out-of-scope) is now W5-22 (a dependency). Your content/guide + sample + onboarding work from the 0247 attempt was good — rebuild on top once W5-22 wires the route."
       ],
       "stories": [
         "US-107",
@@ -2859,6 +2861,32 @@
       "status": "todo",
       "notes": [
         "FOUNDED 2026-07-20 (Brad-approved): split from W5-20 so it stays in the ui lane with W8-02 (avoids P8 cross-lane on artifacts-routes). Fixes the client-supplied-phase gating bypass W5-12 introduced."
+      ],
+      "stories": []
+    },
+    {
+      "id": "W5-22",
+      "title": "Wire pipeline + decision routes into server.ts (register the built-but-dead routes)",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server.test.ts"
+      ],
+      "depends_on": [
+        "W5-18",
+        "W5-13",
+        "W5-20"
+      ],
+      "acceptance": [
+        "registerPipelineRoutes (W5-18) and registerDecisionRoutes (W5-13) are both registered in apps/server/src/api/server.ts alongside the existing register*Routes calls, with the same opts/{home} wiring pattern. Confirmed reachable: a smoke test hits one pipeline endpoint and one decisions endpoint and gets a non-404. Currently BOTH are dead code (grep of server.ts confirms neither is registered) — the guided sample (W5-09) real run and the decisions UI depend on this.",
+        "Security (SECURITY_W5 MEDIUM): decisions routes are only wired AFTER W5-20 adds their auth assertion (this ticket depends on W5-20); an unauthenticated request to a mutating decisions/pipeline endpoint is rejected — regression test proves it."
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": [
+        "FOUNDED 2026-07-20: the maker of W5-09 correctly identified (3rd honest self-block) that AC1 real-run needs registerPipelineRoutes wired into server.ts, outside its scope. Same gap the security pass noted for decisions routes. server.ts owned by W8-02(ui,todo)+done tickets — ui lane, same-lane todo OK. W5-09 depends on this."
       ],
       "stories": []
     },
