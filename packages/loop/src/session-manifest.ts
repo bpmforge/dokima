@@ -16,6 +16,15 @@ export interface CompletionManifest {
   readonly verify: CompletionManifestVerify;
   readonly commits: readonly string[];
   readonly evidence: readonly string[];
+  /**
+   * What this session persisted to `@shipwright/memory` (e.g. `fact:42`),
+   * an untrusted claim like every other manifest field. R-G2 (the v2.5.0
+   * library lesson: 44/45 agents silently skipped write-back until it was
+   * manifest-gated): omitted for roles that aren't memory-eligible; the
+   * Harbormaster close gate (`checkMemoryWritten`) treats a missing/empty
+   * array as a gap for a role listed in `memoryEligibleRoles`.
+   */
+  readonly memory_written?: readonly string[];
 }
 
 const THINK_BLOCK_RE = /<think>[\s\S]*?<\/think>/gi;
@@ -63,9 +72,17 @@ function isCompletionManifestShape(value: unknown): value is CompletionManifest 
   const verify = record.verify;
   if (typeof verify !== 'object' || verify === null) return false;
   const verifyRecord = verify as Record<string, unknown>;
-  return (
-    typeof verifyRecord.command === 'string' && typeof verifyRecord.exit === 'number'
-  );
+  if (typeof verifyRecord.command !== 'string' || typeof verifyRecord.exit !== 'number') {
+    return false;
+  }
+  if (
+    record.memory_written !== undefined &&
+    (!Array.isArray(record.memory_written) ||
+      !record.memory_written.every((m) => typeof m === 'string'))
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function tryParse(candidate: string): CompletionManifest | null {
