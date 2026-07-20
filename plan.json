@@ -2221,7 +2221,10 @@
         "content/index.json",
         "scripts/sign-content.mjs",
         "content/manifest.json",
-        "packages/validators/src/index.ts"
+        "packages/validators/src/index.ts",
+        "packages/validators/package.json",
+        ".gitignore",
+        "content/keys/shipwright-public.pem"
       ],
       "depends_on": [
         "W1-02"
@@ -2231,10 +2234,11 @@
         "First-party imported content is signed (re-sign at the v2.1.0+ resync, SW-R1); tampered-pack red fixture refused in the planted-defect harness",
         "Content intake is license-gated deny-by-default: pack manifests carry a REQUIRED license field; only MIT/Apache-2.0/BSD/first-party auto-accepted, anything else parks as a founder slate (R-E1; CODE_HEALTH_SUITE §8 provenance pattern)",
         "Fixture third-party pack loads without core changes and its expert is dispatchable via HANDOFF (CONTRACTS §4 proof; NFR-5)",
-        "SECURITY (HIGH, review-caught): license gating in packages/validators/src/signing/loader.ts must be DENY-BY-DEFAULT, not advisory. loadSignedPack must EXCLUDE any validator whose signature/license does not verify from result.specs (never populate specs for unlicensed/unsigned entries and merely warn). Red fixture: an unsigned or wrong-license validator is absent from the loaded pack (not just flagged), so it cannot run in any gate."
+        "SECURITY (HIGH, review-caught): license gating in packages/validators/src/signing/loader.ts must be DENY-BY-DEFAULT, not advisory. loadSignedPack must EXCLUDE any validator whose signature/license does not verify from result.specs (never populate specs for unlicensed/unsigned entries and merely warn). Red fixture: an unsigned or wrong-license validator is absent from the loaded pack (not just flagged), so it cannot run in any gate.",
+        "KEY PROVISIONING (Brad-approved, Law 8/9): NEVER commit a private key. Commit ONLY the public key at content/keys/shipwright-public.pem (loader.ts verifies pack signatures against it). scripts/sign-content.mjs reads the private key from an env var (SHIPWRIGHT_SIGNING_KEY, PEM or base64), erroring clearly if unset — real first-party signing keys live in CI secrets / dev env, never the repo. Tests use the existing ephemeral generateKeyPair() (no fixture private key on disk). Add .keys/ to .gitignore so a stray private key can never be committed. Declare any needed signing dependency in packages/validators/package.json (the file:// / narrow-scope workaround is not acceptable)."
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "ADDED 2026-07-14 design review G-4d: SC-09 claimed W1 signing that never happened and no ticket owned it. Community install flow UI remains post-1.0 (S-42) — this is the mechanism + first-party signing only. AMENDED 2026-07-14 (adopted R-E1). Enforces NFR-5 (plug-in surfaces + signed packs; contracts in docs/design/CONTRACTS.md).",
         "CONDUCTOR 2026-07-17T09:57:49.082Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: an that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit 261ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  5 fa",
@@ -2243,7 +2247,8 @@
         "REDO 2026-07-18: HIGH finding — license gating was advisory (loadSignedPack populated specs even for unlicensed). Deny-by-default fix encoded as acceptance. Reset for supervised build.",
         "CONDUCTOR 2026-07-19T15:49:54.135Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: out-of-scope edits: content/manifest.json, packages/validators/src/index.ts",
         "SCOPE FIX 2026-07-19: deny-by-default license gating needed content/manifest.json + the validators barrel (packages/validators/src/index.ts, to export the hardened loader) — both unowned, added to scope.",
-        "CONDUCTOR 2026-07-20T20:14:23.000Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: out-of-scope edits: .keys/shipwright-private.pem, .keys/shipwright-public.pem, packages/validators/package.json"
+        "CONDUCTOR 2026-07-20T20:14:23.000Z: blocked after 2 attempts. Branch sw/w6-07 kept. Gaps: out-of-scope edits: .keys/shipwright-private.pem, .keys/shipwright-public.pem, packages/validators/package.json",
+        "SCOPE+KEY FIX 2026-07-20 (Brad-approved): signer/loader/manifest all built well; blocker was key provisioning. Widened scope to packages/validators/package.json (dep), .gitignore (+.keys/), content/keys/shipwright-public.pem (committed public key). Private key via SHIPWRIGHT_SIGNING_KEY env only. Do NOT commit .keys/*private*.pem."
       ],
       "stories": [
         "US-806"
