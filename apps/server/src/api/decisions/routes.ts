@@ -18,6 +18,12 @@
  * inject-tested but likewise never called from `server.ts`. Wiring
  * `registerDecisionRoutes` into the live app is a one-line follow-up
  * outside this ticket's reach.
+ *
+ * SECURITY_W5 MEDIUM FIX: every route below runs the same SC-08/D-005 auth
+ * check `auth-plugin.ts`'s `registerAuthHook` enforces app-wide (host/origin
+ * allowlist + bearer token), via a per-route `preHandler` rather than an
+ * app-level hook — so these routes require authentication on their own,
+ * independent of whether/where this module is later wired into `server.ts`.
  */
 import { openEventLog } from '@shipwright/events';
 import {
@@ -27,11 +33,18 @@ import {
   type TechnicalSlateInput,
 } from '@shipwright/pipeline';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { checkAuth, type AuthPluginOptions } from '../auth-plugin.js';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from '../problem.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../server/board-actor.js';
 import { resolveProjectRecord, stateDbPath } from '../server/board-project.js';
-import { badRequest, conflictProblem, notFoundProblem } from './shared.js';
+import {
+  badRequest,
+  conflictProblem,
+  forbiddenProblem,
+  notFoundProblem,
+  unauthorizedProblem,
+} from './shared.js';
 import {
   createSlate,
   decideSlate,
@@ -49,6 +62,42 @@ import {
 export interface DecisionRoutesOptions {
   /** Fleet registry home dir override — tests only. */
   home?: string;
+  /** SC-08/D-005 auth, same shape `server.ts` builds for `registerAuthHook` — required, never optional (this ticket's fix). */
+  auth: AuthPluginOptions;
+}
+
+/** Same SC-08/D-005 decision `registerAuthHook` runs app-wide, applied per-route here instead. */
+function requireAuth(auth: AuthPluginOptions) {
+  return async (request: FastifyRequest, reply: FastifyReply): Promise<undefined> => {
+    const result = checkAuth(
+      {
+        host: request.headers.host,
+        origin: request.headers.origin,
+        url: request.url,
+        authorization: request.headers.authorization,
+      },
+      auth,
+    );
+    if (result.ok) return;
+    if (result.status === 403) {
+      await reply
+        .code(403)
+        .type(PROBLEM_CONTENT_TYPE)
+        .send(
+          forbiddenProblem(
+            request,
+            `${result.reason === 'host' ? 'Host' : 'Origin'} header is not an allowed localhost origin (SC-08)`,
+          ),
+        );
+      return;
+    }
+    await reply
+      .code(401)
+      .type(PROBLEM_CONTENT_TYPE)
+      .send(
+        unauthorizedProblem(request, 'Authorization: Bearer <token> is required (D-005)'),
+      );
+  };
 }
 
 interface CreateSlateBody {
@@ -91,9 +140,10 @@ function parseCreateInput(body: CreateSlateBody): CreateSlateInput {
 
 export function registerDecisionRoutes(
   app: FastifyInstance,
-  opts: DecisionRoutesOptions = {},
+  opts: DecisionRoutesOptions,
 ): void {
   const registryPath = computeFleetRegistryPath(opts.home);
+  const auth = requireAuth(opts.auth);
 
   async function projectOr404(
     request: FastifyRequest,
@@ -113,6 +163,7 @@ export function registerDecisionRoutes(
 
   app.post(
     '/api/v1/projects/:id/slates',
+    { preHandler: auth },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id: projectId } = request.params as { id: string };
       const record = await projectOr404(request, reply, projectId);
@@ -152,6 +203,7 @@ export function registerDecisionRoutes(
 
   app.get(
     '/api/v1/projects/:id/slates',
+    { preHandler: auth },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id: projectId } = request.params as { id: string };
       const record = await projectOr404(request, reply, projectId);
@@ -173,6 +225,7 @@ export function registerDecisionRoutes(
 
   app.post(
     '/api/v1/slates/:id/decide',
+    { preHandler: auth },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id: slateId } = request.params as { id: string };
       const projectId = (request.query as Record<string, unknown>).project;
@@ -238,6 +291,7 @@ export function registerDecisionRoutes(
 
   app.get(
     '/api/v1/projects/:id/decisions',
+    { preHandler: auth },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id: projectId } = request.params as { id: string };
       const record = await projectOr404(request, reply, projectId);

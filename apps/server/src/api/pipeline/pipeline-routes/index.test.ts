@@ -16,8 +16,6 @@ import { stateDbPath } from '../../server/board-project.js';
 import { registerPipelineRoutes } from './index.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from '../test-fake-gateway.js';
 
-const SIGNING_KEY = 'test-signing-key-0123456789abcdef';
-
 async function tmpDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
@@ -135,7 +133,6 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
   const dirs: string[] = [];
   const apps: FastifyInstance[] = [];
   const servers: FakeGatewayServer[] = [];
-  const originalSigningKey = process.env.SHIPWRIGHT_SIGNING_KEY;
 
   afterEach(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -143,8 +140,6 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     await Promise.all(
       dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
     );
-    if (originalSigningKey === undefined) delete process.env.SHIPWRIGHT_SIGNING_KEY;
-    else process.env.SHIPWRIGHT_SIGNING_KEY = originalSigningKey;
   });
 
   async function boot(
@@ -192,8 +187,7 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     };
   }
 
-  it('happy path: fake-model E2E produces a verifiable hash-chained event trail, receipts, and a board ticket (AC2c)', async () => {
-    process.env.SHIPWRIGHT_SIGNING_KEY = SIGNING_KEY;
+  it('happy path: fake-model E2E produces a verifiable hash-chained event trail and a board ticket (AC2c)', async () => {
     const { app, projectId, projectDir } = await boot([
       JSON.stringify(VALID_BLUEPRINT_INPUT),
       JSON.stringify(VALID_TECHNICAL_SLATE_INPUT),
@@ -231,10 +225,10 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       expect(runEventTypes).toContain('pipeline.blueprint-synthesized');
       expect(runEventTypes).toContain('pipeline.decisions-decided');
       expect(runEventTypes).toContain('pipeline.decomposed');
-      // mintReceipt's anchoring event carries no runId (packages/events/src/receipts.ts
-      // never threads one through) — checked project-wide instead, safe since this
-      // project's db is dedicated to this one test.
-      expect(events.filter((e) => e.eventType === 'gate.receipt_minted')).toHaveLength(4);
+      // SECURITY_W5 CRITICAL red fixture: no consumer can read a passing gate
+      // receipt for a phase that was never independently validated — phase
+      // completion is a plain audit event now, never a `gate` receipt.
+      expect(events.filter((e) => e.eventType === 'gate.receipt_minted')).toHaveLength(0);
 
       const ticket = getTicket(log, 'PLAN-T-DEMO-1');
       expect(ticket?.title).toBe('Build the demo feature');
@@ -251,41 +245,7 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     }
   });
 
-  it('red fixture (AC2a): no signing key configured — nothing becomes durable', async () => {
-    delete process.env.SHIPWRIGHT_SIGNING_KEY;
-    const { app, projectId, projectDir } = await boot([
-      JSON.stringify(VALID_BLUEPRINT_INPUT),
-      JSON.stringify(VALID_TECHNICAL_SLATE_INPUT),
-      JSON.stringify(VALID_TICKET_DRAFTS),
-    ]);
-
-    const res = await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/pipeline/run`,
-      payload: requestBody(),
-    });
-
-    expect(res.statusCode).toBe(503);
-
-    const dbPath = stateDbPath(projectDir);
-    await fs.access(path.dirname(dbPath)).catch(() => undefined);
-    let events: ReturnType<typeof listEvents> = [];
-    try {
-      const log = openEventLog(dbPath);
-      try {
-        events = listEvents(log);
-      } finally {
-        log.close();
-      }
-    } catch {
-      // db was never created at all — also a valid "nothing durable" outcome.
-    }
-    expect(events.filter((e) => e.eventType.startsWith('pipeline.'))).toHaveLength(0);
-    expect(events.filter((e) => e.eventType === 'gate.receipt_minted')).toHaveLength(0);
-  });
-
   it('red fixture (AC2b): a planted self-attest marker in the blueprint output is rejected at gate time', async () => {
-    process.env.SHIPWRIGHT_SIGNING_KEY = SIGNING_KEY;
     // No real docs/DECISIONS.md exists for this project — the real ledger is empty.
     const { app, projectId, projectDir } = await boot([
       JSON.stringify(selfAttestBlueprintInput('D-999')),
@@ -324,7 +284,6 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       'supplying a forged ledgerMarkdown field (fake D-999 RESOLVED row) has ZERO effect — ' +
       'the run is judged solely on the real, on-disk per-project ledger and still rejects',
     async () => {
-      process.env.SHIPWRIGHT_SIGNING_KEY = SIGNING_KEY;
       // Real on-disk ledger genuinely resolves D-001 only — never D-999.
       const { app, projectId, projectDir } = await boot([
         JSON.stringify(selfAttestBlueprintInput('D-999')),
@@ -368,7 +327,6 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     'positive proof (AC3): a founder-decision marker citing a D-ID that genuinely exists ' +
       "in the project's real, on-disk docs/DECISIONS.md is allowed to advance",
     async () => {
-      process.env.SHIPWRIGHT_SIGNING_KEY = SIGNING_KEY;
       const { app, projectId, projectDir } = await boot([
         JSON.stringify(selfAttestBlueprintInput('D-001')),
         JSON.stringify(VALID_TECHNICAL_SLATE_INPUT),
@@ -387,7 +345,6 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
   );
 
   it('returns 404 for an unregistered project', async () => {
-    process.env.SHIPWRIGHT_SIGNING_KEY = SIGNING_KEY;
     const { app } = await boot([JSON.stringify(VALID_BLUEPRINT_INPUT)]);
 
     const res = await app.inject({
@@ -400,7 +357,6 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
   });
 
   it('returns 400 for a malformed request body', async () => {
-    process.env.SHIPWRIGHT_SIGNING_KEY = SIGNING_KEY;
     const { app, projectId } = await boot([JSON.stringify(VALID_BLUEPRINT_INPUT)]);
 
     const res = await app.inject({
