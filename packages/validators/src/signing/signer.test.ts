@@ -9,6 +9,7 @@ import {
   generateKeyPair,
   hashFile,
   loadManifest,
+  loadPublicKey,
   saveManifest,
   signManifest,
   verifyFileHash,
@@ -287,6 +288,20 @@ describe('signer', () => {
 
       const loaded = await loadManifest(manifestPath);
       expect(loaded).toEqual(originalManifest);
+    });
+  });
+
+  describe('loadPublicKey', () => {
+    it('loads a public key from a PEM file', async () => {
+      const { publicKey: originalPub } = generateKeyPair();
+      const pubPem = originalPub.export({ format: 'pem', type: 'spki' });
+
+      const keyPath = path.join(tempDir, 'public.pem');
+      await fs.writeFile(keyPath, pubPem);
+
+      const loadedPub = await loadPublicKey(keyPath);
+      expect(loadedPub.asymmetricKeyType).toBe('ed25519');
+      expect(loadedPub.type).toBe('public');
     });
   });
 });
