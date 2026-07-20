@@ -2766,7 +2766,7 @@
         "SELF-ATTEST FIX (CRITICAL, review-caught — the whole point of Law 4): ledgerMarkdown must NEVER come from the request body. The decisions ledger that assertDecisionComplete cross-checks the blueprint FOUNDER-DECISION...RESOLVED markers against is trusted state — derive it server-side from the persisted decision events/DB for that run/project. parseRequestBody must not accept a ledgerMarkdown field; runPreflight/assertDecisionComplete read the ledger from real state only. Red fixture: a POST supplying a forged ledgerMarkdown (fake RESOLVED marker) is ignored/rejected — decision-completeness is judged solely on server-derived state, and a run whose decisions are not actually persisted-and-resolved cannot advance."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FOUNDED 2026-07-19 (Brad-approved). Consumes W5-17. Unblocks W5-09 (guided sample real run) and W8-01 (dogfood). The route persists every phase transition via events/receipts; the orchestrator itself stays pure.",
         "CONDUCTOR 2026-07-19T23:39:09.340Z: blocked after 2 attempts. Branch sw/w5-18 kept. Gaps: [CRITICAL] apps/server/src/api/pipeline/pipeline-routes/request-body.ts: `ledgerMarkdown` (the founder-decision ledger `assertDecisionComplete` cross-checks a blueprint's self-attested `FOUNDER-DECISION ... RESOLVED` marker against) is accepted verbatim from the untrusted POST body (`parseRequestBody` just requires it be a string) and threaded straight through (`pipeline-routes/index.ts` -> `preflight.ts`'s `runPreflight` -> `assertDecisionComplete(blueprint.document.markdown, body.ledgerMarkdown, BUILD_PHASE_ID)`). Per Law 4/C-3, agent sessions calling this route are untrusted, so an attacker",
