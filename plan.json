@@ -2815,6 +2815,54 @@
       "stories": []
     },
     {
+      "id": "W5-20",
+      "title": "W5 security remediation: self-attest receipts (CRITICAL) + gateway dep + decisions auth",
+      "phase": 5,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/api/pipeline/**",
+        "apps/server/package.json",
+        "apps/server/src/api/decisions/**"
+      ],
+      "depends_on": [
+        "W5-18",
+        "W5-13"
+      ],
+      "acceptance": [
+        "CRITICAL (SECURITY_W5, Law 4/5): emitPhaseEvent in apps/server/src/api/pipeline/pipeline-routes/events.ts must STOP minting gate receipts with a hardcoded pass ([{name:pipeline-phase-output, exitCode:0, gapCount:0}]) signed by the same OPERATOR_ACTOR_ID that produced the content. Reclassify these as plain append-only AUDIT events (e.g. pipeline.phase.completed) — NOT gate receipts — because no independent validator runs on phase output. Genuine gates (decision-complete, close) keep minting real receipts from real checks by a distinct verifier identity. Red fixture: no consumer can read a passing gate receipt for a phase that was never independently validated.",
+        "MEDIUM (SECURITY_W5): (a) declare @shipwright/gateway as a proper workspace dependency in apps/server/package.json and remove the dynamic file:// import workaround in apps/server/src/api/pipeline/gateway-model-port.ts. (b) apps/server/src/api/decisions/routes.ts: add a route-level auth assertion (same auth as other mutating routes) with a regression test proving unauthenticated requests are rejected, before it is wired into server.ts. MarkdownView XSS (MEDIUM 3) is already mitigated — AST-to-React render, no dangerouslySetInnerHTML — so no change, only a confirming test comment if useful."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FOUNDED 2026-07-20 (Brad-approved, fix-all-dont-waive): remediates the wave-W5 security pass (docs/work/SECURITY_W5.md) that halted the conductor on 1 CRITICAL. Kept as a separate ticket (not a W5-18/W5-13 reopen) so W5-09/W8-01 stay unblocked. depends_on W5-18+W5-13 (edits their merged code). Re-running the W5 security pass after this lands should clear the halt."
+      ],
+      "stories": []
+    },
+    {
+      "id": "W5-21",
+      "title": "Server-derive gating phase (HIGH, SECURITY_W5) — reject client-supplied phase",
+      "phase": 5,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/server/src/api/server/artifacts-routes/**"
+      ],
+      "depends_on": [
+        "W5-12"
+      ],
+      "acceptance": [
+        "HIGH (SECURITY_W5): the server must NOT trust a client-supplied `phase` for gating. isGatedDeliverable (apps/server/src/api/server/artifacts-routes/shared.ts) derives phase itself from the deliverable path (pure lookup), ignoring/rejecting any `phase` in the request body. Red test: a POST /artifacts/comments with a forged `phase` cannot change the server gating decision for a deliverable."
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": [
+        "FOUNDED 2026-07-20 (Brad-approved): split from W5-20 so it stays in the ui lane with W8-02 (avoids P8 cross-lane on artifacts-routes). Fixes the client-supplied-phase gating bypass W5-12 introduced."
+      ],
+      "stories": []
+    },
+    {
       "id": "W8-07",
       "title": "Validator: verification-integrity — flag self-attest antipattern at gate time",
       "phase": 8,
