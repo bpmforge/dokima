@@ -1941,7 +1941,7 @@
         "Every major surface carries a ? help affordance opening task-oriented guide content (content/guide/, data not code); wizard ends with a what-to-do-tomorrow card (R-M1)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-M1). Cites FR-C6 (the guided sample IS FR-C6).",
         "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
