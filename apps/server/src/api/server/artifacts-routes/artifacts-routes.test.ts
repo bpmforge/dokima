@@ -417,6 +417,101 @@ describe('artifact routes — buildApiServer integration', () => {
     expect(listRes.json().items[0]).toMatchObject({ revisionRequested: true });
   });
 
+  it('SECURITY (W5-21): a forged `phase` cannot fake gating on a deliverable whose real phase has no receipt', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(
+      fleetHome,
+      'comment-forged-phase-ungated',
+    );
+    // docs/SRS.md's real phase (per shared.ts's DELIVERABLE_PHASES) is 2.
+    await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
+
+    // Seed a phase-receipt for phase 3 — a *different*, gated phase — and no
+    // receipt for phase 2 at all.
+    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const log = openEventLog(dbPath);
+    createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
+    mintReceipt(
+      log,
+      {
+        id: 'rcpt-phase-3',
+        kind: 'gate',
+        projectId,
+        phase: 3,
+        validators: [{ name: 'validate-plan', exitCode: 0, gapCount: 0 }],
+        inputFiles: [{ path: 'docs/ARCHITECTURE.md', content: 'v1' }],
+        actorId: 'maker-1',
+      },
+      { signingKey: SIGNING_KEY },
+    );
+    log.close();
+
+    // Forge `phase: 3` in the request body to try to piggyback on the
+    // phase-3 receipt even though docs/SRS.md is a phase-2 deliverable.
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/artifacts/comments`,
+      headers: authHeaders(),
+      payload: {
+        path: 'docs/SRS.md',
+        body: 'Trying to force a revision via a forged phase.',
+        versionRef: 'HEAD',
+        phase: 3,
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    // The server derives phase 2 from the path itself; phase 2 has no
+    // receipt, so the deliverable is correctly NOT gated despite the forgery.
+    expect(res.json().revisionRequested).toBe(false);
+  });
+
+  it('SECURITY (W5-21): a forged `phase` cannot hide gating on a deliverable whose real phase has a receipt', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(
+      fleetHome,
+      'comment-forged-phase-gated',
+    );
+    // docs/SRS.md's real phase (per shared.ts's DELIVERABLE_PHASES) is 2.
+    await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
+
+    // Seed a phase-receipt for phase 2 — docs/SRS.md's real, gated phase.
+    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const log = openEventLog(dbPath);
+    createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
+    mintReceipt(
+      log,
+      {
+        id: 'rcpt-phase-2',
+        kind: 'gate',
+        projectId,
+        phase: 2,
+        validators: [{ name: 'validate-plan', exitCode: 0, gapCount: 0 }],
+        inputFiles: [{ path: 'docs/SRS.md', content: 'v1' }],
+        actorId: 'maker-1',
+      },
+      { signingKey: SIGNING_KEY },
+    );
+    log.close();
+
+    // Forge `phase: 99` (an ungated, nonexistent phase) to try to dodge the
+    // real phase-2 gate.
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/artifacts/comments`,
+      headers: authHeaders(),
+      payload: {
+        path: 'docs/SRS.md',
+        body: 'Trying to dodge gating via a forged phase.',
+        versionRef: 'HEAD',
+        phase: 99,
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    // The server derives phase 2 from the path itself; phase 2 has a
+    // receipt, so the deliverable is correctly gated despite the forgery.
+    expect(res.json().revisionRequested).toBe(true);
+  });
+
   it('echoes X-Event-Seq on POST /artifacts/comments (API_DESIGN §1/§5)', async () => {
     const { app, fleetHome } = await boot();
     const { projectDir, projectId } = await registerGitProject(fleetHome, 'comment-seq');

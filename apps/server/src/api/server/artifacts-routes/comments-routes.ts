@@ -26,6 +26,7 @@ import { badRequest } from '../artifacts-helpers.js';
 import { problem } from '../../problem.js';
 import {
   isGatedDeliverable,
+  phaseForDeliverablePath,
   projectPathOrProblem,
   type ArtifactCommentPayload,
   type RevisionRequestedPayload,
@@ -101,7 +102,9 @@ export function registerArtifactCommentRoutes(
           .send(badRequest(request, '"path", "body", and "versionRef" are required'));
       }
       const ticketId = body.ticketId ?? null;
-      const phase = body.phase ?? null;
+      // SECURITY (W5-21): never trust a client-supplied `phase` for gating —
+      // derive it server-side from the deliverable path (shared.ts).
+      const phase = phaseForDeliverablePath(body.path);
 
       const idempotencyKey = extractIdempotencyKey(request.headers);
       const replayKey = idempotencyKey
@@ -147,7 +150,7 @@ export function registerArtifactCommentRoutes(
           } satisfies ArtifactCommentPayload,
         });
 
-        const gated = isGatedDeliverable(log.db, ticketId, phase);
+        const gated = isGatedDeliverable(log.db, ticketId, body.path);
         let lastSeq = commentEvent.seq;
         if (gated) {
           const revisionEvent = appendEvent(log, {
