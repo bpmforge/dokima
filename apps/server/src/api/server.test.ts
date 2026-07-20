@@ -1,6 +1,10 @@
+import { promises as fs } from 'node:fs';
 import { request } from 'node:http';
 import { createServer } from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { registerProject } from './projects.js';
 import { buildApiServer, listenLocalhost, type ApiServer } from './server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -26,6 +30,30 @@ async function getFreePort(): Promise<number> {
     });
     probe.on('error', reject);
   });
+}
+
+async function tmpDir(prefix: string): Promise<string> {
+  return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+}
+
+/**
+ * Registers a real project under a fresh fleet home so an authenticated
+ * request can reach a route's own body-validation logic instead of the
+ * project-lookup 404 both pipeline/run and slates return first — the only
+ * way to prove a route is actually wired (vs. Fastify's default not-found
+ * handler) per the AC1 regression test.
+ */
+async function registerTestProject(
+  dirs: string[],
+): Promise<{ fleetHome: string; projectId: string }> {
+  const fleetHome = await tmpDir('shipwright-server-fleet-');
+  const projectDir = await tmpDir('shipwright-server-project-');
+  dirs.push(fleetHome, projectDir);
+  const record = await registerProject(path.join(fleetHome, 'fleet.json'), {
+    path: projectDir,
+    mode: 'new',
+  });
+  return { fleetHome, projectId: record.id };
 }
 
 async function buildAndListen(
@@ -86,10 +114,14 @@ function attemptUpgrade(
 
 describe('buildApiServer — SC-08', () => {
   let active: ApiServer | undefined;
+  const dirs: string[] = [];
 
   afterEach(async () => {
     await active?.app.close();
     active = undefined;
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
   });
 
   it('binds 127.0.0.1 only, never 0.0.0.0', async () => {
@@ -206,7 +238,7 @@ describe('buildApiServer — SC-08', () => {
     expect(result.statusCode).toBe(403);
   });
 
-  it('pipeline run route is registered (non-404) and rejects an unauthenticated request', async () => {
+  it('pipeline run route rejects an unauthenticated request with 401', async () => {
     const { server, port } = await buildAndListen();
     active = server;
     const res = await server.app.inject({
@@ -219,7 +251,21 @@ describe('buildApiServer — SC-08', () => {
     expect(res.json()).toMatchObject({ rule: 'D-005' });
   });
 
-  it('decisions slates route is registered (non-404) and rejects an unauthenticated request', async () => {
+  it('pipeline run route is registered: an authenticated request reaches its own body validation (non-404)', async () => {
+    const { fleetHome, projectId } = await registerTestProject(dirs);
+    const { server, port } = await buildAndListen({ fleetHome });
+    active = server;
+    const res = await server.app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/pipeline/run`,
+      headers: { host: `127.0.0.1:${port}`, authorization: `Bearer ${TOKEN}` },
+      payload: {},
+    });
+    expect(res.statusCode).not.toBe(404);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('decisions slates route rejects an unauthenticated request with 401', async () => {
     const { server, port } = await buildAndListen();
     active = server;
     const res = await server.app.inject({
@@ -229,6 +275,20 @@ describe('buildApiServer — SC-08', () => {
       payload: {},
     });
     expect(res.statusCode).toBe(401);
+  });
+
+  it('decisions slates route is registered: an authenticated request reaches its own body validation (non-404)', async () => {
+    const { fleetHome, projectId } = await registerTestProject(dirs);
+    const { server, port } = await buildAndListen({ fleetHome });
+    active = server;
+    const res = await server.app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/slates`,
+      headers: { host: `127.0.0.1:${port}`, authorization: `Bearer ${TOKEN}` },
+      payload: {},
+    });
+    expect(res.statusCode).not.toBe(404);
+    expect(res.statusCode).toBe(400);
   });
 
   it('WS upgrade succeeds with a valid token + origin and streams a published envelope', async () => {
