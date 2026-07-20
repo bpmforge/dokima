@@ -21,9 +21,11 @@ import Fastify, {
 } from 'fastify';
 import { buildAllowlist } from './allowlist.js';
 import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plugin.js';
+import { registerDecisionRoutes } from './decisions/index.js';
 import { registerEventsSseRoute } from './events-sse.js';
 import { registerHealthz } from './healthz.js';
 import { registerOpenApiRoute } from './openapi.js';
+import { registerPipelineRoutes } from './pipeline/index.js';
 import { registerPlansRoutes } from './plans-routes.js';
 import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
@@ -88,6 +90,8 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerTicketEditRoutes(app, { home: opts.fleetHome });
   registerNotificationRoutes(app, { home: opts.fleetHome });
   registerPlansRoutes(app, { home: opts.fleetHome });
+  registerPipelineRoutes(app, { home: opts.fleetHome });
+  registerDecisionRoutes(app, { home: opts.fleetHome, auth: authOpts });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });
   registerChatRoute(app);
