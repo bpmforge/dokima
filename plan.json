@@ -2834,7 +2834,7 @@
         "MEDIUM (SECURITY_W5): (a) declare @shipwright/gateway as a proper workspace dependency in apps/server/package.json and remove the dynamic file:// import workaround in apps/server/src/api/pipeline/gateway-model-port.ts. (b) apps/server/src/api/decisions/routes.ts: add a route-level auth assertion (same auth as other mutating routes) with a regression test proving unauthenticated requests are rejected, before it is wired into server.ts. MarkdownView XSS (MEDIUM 3) is already mitigated — AST-to-React render, no dangerouslySetInnerHTML — so no change, only a confirming test comment if useful."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FOUNDED 2026-07-20 (Brad-approved, fix-all-dont-waive): remediates the wave-W5 security pass (docs/work/SECURITY_W5.md) that halted the conductor on 1 CRITICAL. Kept as a separate ticket (not a W5-18/W5-13 reopen) so W5-09/W8-01 stay unblocked. depends_on W5-18+W5-13 (edits their merged code). Re-running the W5 security pass after this lands should clear the halt."
       ],
