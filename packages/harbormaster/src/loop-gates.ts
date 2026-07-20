@@ -65,6 +65,16 @@ export { DEFAULT_REQUIRED_VALIDATORS } from './loop-gates-types.js';
 export { parseGapLocation, classifySecretsGaps } from './loop-gates-secrets.js';
 
 /**
+ * R-G2 production default (W7-01 landed): the maker role every ticket
+ * session runs under (`loop-handoff.ts`'s own default, `loop-land.ts`'s
+ * D-018 default) is memory-eligible by default, so a real close no longer
+ * silently accepts an empty `memory_written[]` the way the pre-W7-01
+ * inert default (`[]`) did. Still overridable per caller via
+ * `CloseGateOptions.memoryEligibleRoles`.
+ */
+export const DEFAULT_MEMORY_ELIGIBLE_ROLES: readonly string[] = ['coding-agent'];
+
+/**
  * Runs the full out-of-session close gate for one session's manifest
  * (acceptance 1): stat claimed files, re-run the ticket's own verify, a
  * real commit on the ticket branch, diff-scope subset checks (acceptance
@@ -89,7 +99,8 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
   const verifyTimeoutMs = options.verifyTimeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS;
   const validatorTimeoutMs = options.validatorTimeoutMs ?? DEFAULT_VALIDATOR_TIMEOUT_MS;
   const now = options.now ?? (() => new Date().toISOString());
-  const memoryEligibleRoles = options.memoryEligibleRoles ?? [];
+  const memoryEligibleRoles =
+    options.memoryEligibleRoles ?? DEFAULT_MEMORY_ELIGIBLE_ROLES;
 
   const reasons: string[] = [];
 
