@@ -2547,7 +2547,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
