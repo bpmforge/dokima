@@ -1,32 +1,33 @@
-# Security pass — wave W6 (2026-07-20T23:22:10.525Z)
+# Security pass — wave W6 (2026-07-20T23:59:09.623Z)
 
 ```json
 {
-  "critical": [],
+  "critical": [
+    {
+      "file": "packages/harbormaster/src/land-push.ts",
+      "issue": "pushLandedBranch()/configuredRemotes() defaults to whatever `git remote` returns from the ticket's own worktree, with no allowlist, and land-push.ts / dual-remote.ts then execFile('git', ['push', remote, ref]) against every one of them automatically after a successful close gate. Git remotes support the `ext::<command>` transport helper and per-remote `remote.<name>.receivepack`/`uploadpack` config, both of which execute an arbitrary local command when git pushes to that 'remote'. Per Law 4, agent sessions are explicitly untrusted; if a coding-agent session (within its write_scope, or via any bug that lets it touch .git/config in its own worktree) adds a remote like `git remote add x ext::sh -c 'evil'` or sets `remote.origin.receivepack=/tmp/evil.sh`, the very next successful land automatically executes it — a durable, high-impact state change (arbitrary command execution) with no receipt, review, or human gate in between, directly contradicting 'agent sessions are untrusted; every durable state change goes through the verbs/receipts APIs.'",
+      "fix": "Never trust `git remote` output directly as the push target list. Require an explicit, harness-configured allowlist of remote names/URLs (e.g. only 'origin' and 'github', validated against known-good URLs read from a trusted config file outside any agent's write_scope) and pass that as LandLoopOptions.pushRemotes instead of defaulting to configuredRemotes(). Additionally reject/validate remote URLs that use the `ext::`, `fd::`, or other command-executing transport schemes before ever pushing."
+    }
+  ],
   "high": [
     {
-      "file": "packages/validators/src/signing/loader.ts",
-      "issue": "loadValidatorPackWithFallback() has an escape hatch: when the manifest file is missing or fails to parse/schema-validate (result.manifest stays undefined) AND allowUnsigned=true, the function falls through to an unsigned directory scan that returns every *.sh file matching the naming pattern with zero signature/hash/license verification. This is the ONLY place in the new signing system where deny-by-default can be fully disabled. The default param (allowUnsigned=false) is safe, but the function is exported from the package barrel (index.ts) and no caller in this diff is shown wiring allowUnsigned=false explicitly in production — the entire trust model hinges on call-site discipline outside this diff's write_scope.",
-      "fix": "Require an explicit, loudly-named opt-in (e.g. a config flag documented as 'DANGEROUS: disables content-pack signature verification') rather than a plain boolean default; log a high-visibility warning (not just a string in `warnings[]`) whenever the unsigned path is taken; and add a grep-able validator/CI check that no production call site ever passes allowUnsigned=true so this can only be reached in test/dev fixtures."
+      "file": "packages/forge/src/dual-remote.ts",
+      "issue": "execFileAsync('git', ['push', remote, ref], { cwd }) passes `remote` and `ref` as bare positional args with no `--` separator before them and no check that they don't start with `-`. If either value (ref comes from worktree.branch, which is derived from ticket id/title — data that can originate from an untrusted agent session per Law 4) begins with a dash, it can be interpreted as a git option (e.g. a crafted `--upload-pack=...`/`--receive-pack=...`-style flag or other push option) rather than a literal remote/ref, enabling argument injection even without full shell injection.",
+      "fix": "Insert a literal `--` separator before positional arguments: `['push', '--', remote, ref]`, and additionally validate/reject remote names and ref/branch strings that start with `-` before calling execFile."
     }
   ],
   "medium": [
     {
-      "file": "packages/validators/src/signing/loader.ts",
-      "issue": "The defense-in-depth path-boundary check inside loadSignedPack's specs filter reuses the reason code 'file-hash-mismatch' for an unrelated failure ('Path escapes content directory boundary'), even though a dedicated 'path-traversal'-style value would be more accurate. Since the schema-level `.refine()` in manifest.ts already rejects any path containing '..' or a leading '/', this branch should be unreachable in practice, but if it is ever hit (e.g., schema and loader drift apart in a future change) the rejection reason will misleadingly read as a hash problem, hiding a real attack attempt from telemetry/audit logs.",
-      "fix": "Add a distinct RejectedValidator reason (e.g. 'path-traversal') for the boundary-escape branch, and add a unit test asserting that reason specifically (current red fixture only exercises the schema-level rejection, not this defense-in-depth branch, so it is untested)."
+      "file": "packages/harbormaster/src/land-push.ts",
+      "issue": "recordFailedPushes only records failed pushes as a ticket comment; there is no receipt or verification that a *successful* push actually reached the intended, expected remote URL (e.g. spoofed/rewritten remote pointing somewhere unexpected would report ok:true with no discrepancy check against known-good remote URLs).",
+      "fix": "When recording push outcomes, also assert/log the remote URL (git remote get-url) alongside the name, and compare against an expected allowlist so a redirected remote is visible as ticket evidence, not just a silent 'ok'."
     },
     {
-      "file": "packages/validators/src/signing/manifest.ts",
-      "issue": "Path traversal is blocked purely via string matching (`!p.startsWith('/') && !p.includes('..')`) rather than canonicalizing the path (e.g. `path.normalize` + resolved-prefix check, as loader.ts already does downstream). This is currently sufficient because Node's path.join treats literal '..' as the only parent-directory token, but it means the traversal-safety property is asserted in two different ways in two different files (string check in manifest.ts, resolved-path check in loader.ts) — a future edit to one without the other could silently reopen the hole.",
-      "fix": "Make loader.ts's resolved-path/contentDir-prefix check the single source of truth for traversal safety, and treat the manifest.ts schema refine as a fast-reject convenience only (already partially the case) — document this explicitly in a comment so future changes don't remove one check assuming the other still covers it."
-    },
-    {
-      "file": "packages/validators/package.json",
-      "issue": "New runtime dependency `zod@^4.4.1` (resolved 4.4.3) added for manifest schema validation. Not itself a known-vulnerable version, but it's a new supply-chain surface for a security-critical package (signature/license gating) and isn't currently constrained to an exact/pinned version in lockstep with docs/TECH_STACK.md per project Law 2.",
-      "fix": "Confirm docs/TECH_STACK.md is updated to record the zod version per Law 2, and consider pinning an exact version (not `^`) for a package that gates trust decisions, so a future transitive/minor bump can't change validation semantics unnoticed."
+      "file": "content/validators/validate-remote-parity.sh",
+      "issue": "`git -C \"$ROOT\"` and downstream `tracking_ref=\"refs/remotes/${remote}/${BRANCH}\"` build ref paths from `$ROOT`/`$BRANCH`/`$remote` without validating they don't begin with `-`; a project root or branch name starting with a dash could be misinterpreted as a git option by rev-parse/remote calls (defense-in-depth gap, lower likelihood since BRANCH/REMOTES come from local git metadata rather than direct external input).",
+      "fix": "Quote is already present, but add explicit leading-dash rejection (or use `--` separators) for $ROOT/$BRANCH/$remote before passing them to git subcommands, matching the argument-injection guard recommended for dual-remote.ts."
     }
   ],
-  "notes": "No hardcoded secrets found — only the Ed25519 public key (content/keys/shipwright-public.pem) is committed, which is correct by design; the private key is sourced from SHIPWRIGHT_SIGNING_KEY env var only, and .keys/ is gitignored, matching the Law 8 requirement. No new command/path-injection surface introduced (no new child_process/execa/git shell-outs in this diff; scripts/sign-content.mjs only reads files and uses node:crypto). No unsafe deserialization beyond standard JSON.parse gated by a zod schema (unknown keys stripped by default, no prototype-pollution vector observed). The deny-by-default license/signature/hash gating in loadSignedPack itself is correctly fail-closed (specs=[] on any failure) and is well covered by red-fixture tests for tampered signature, wrong license, hash mismatch, and missing files. The one meaningful trust-boundary concern is the allowUnsigned fallback path (flagged HIGH above) — its safety currently depends entirely on production callers never setting it true, which isn't verifiable from this diff alone since no call site is included yet."
+  "notes": "No hardcoded secrets found in this diff. All new git invocations use execFile with argv arrays (no shell:true), which correctly avoids shell/command-string injection — the residual risk is git's own argument- and transport-level injection (ext:: helper, receivepack config, leading-dash flags), not shell metacharacters. packages/forge remains dependency-free (uses node:child_process directly), so no new supply-chain exposure. Failed-push visibility via commentTicket correctly uses the ticket verb/event-log API rather than a swallowed return value, consistent with Law 4's receipt requirement — the gap is that the push mechanism itself trusts repo-local, potentially agent-writable git config as its target list rather than treating it as untrusted input."
 }
 ```
