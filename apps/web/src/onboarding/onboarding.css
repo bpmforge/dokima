@@ -1,0 +1,42 @@
+.guided-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 40rem;
+}
+
+.guided-sample__coach-mark {
+  font-style: italic;
+  color: var(--color-text-muted, #666);
+}
+
+.guided-sample__chat-card {
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.guided-sample__question {
+  font-weight: 600;
+}
+
+.guided-sample__draft-label {
+  color: var(--color-text-muted, #666);
+  font-size: 0.875rem;
+}
+
+.guided-sample__degrade {
+  border: 1px solid var(--color-warning, #b45309);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.guided-sample__tickets,
+.guided-sample__receipts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

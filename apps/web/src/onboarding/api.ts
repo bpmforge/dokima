@@ -1,0 +1,86 @@
+/**
+ * Guided-sample REST client (BLUEPRINT §12.3, FR-S4). Targets
+ * `POST /api/v1/projects/:id/pipeline/run` (W5-18, wired into
+ * `apps/server/src/api/server.ts` by W5-22) and
+ * `GET /api/v1/projects/:id/receipts?kind=gate` (`server.ts`
+ * `registerReceiptRoutes`) — same `request()`/token-injection/error-class
+ * shape as `apps/web/src/fleet/api.ts`.
+ *
+ * `runGuidedPipeline` still surfaces any non-OK status as
+ * `OnboardingApiError` rather than throwing a generic error — `GuidedSample.tsx`
+ * degrades honestly (never fabricates a result) on the cases a real
+ * pipeline run can still fail for: an unresolved founder decision (422), or
+ * a misconfigured/older server that hasn't mounted the route (404).
+ */
+import { readInjectedToken } from '../fleet/api.js';
+import type { GateReceipt, PipelineRunRequest, PipelineRunResult } from './types.js';
+
+export class OnboardingApiError extends Error {
+  constructor(
+    public readonly status: number,
+    detail?: string,
+  ) {
+    super(detail ?? `Onboarding API request failed with status ${status}`);
+    this.name = 'OnboardingApiError';
+  }
+}
+
+export interface OnboardingApiOptions {
+  fetchImpl?: typeof fetch;
+  getToken?: () => string | undefined;
+  baseUrl?: string;
+}
+
+async function request(
+  urlPath: string,
+  init: RequestInit,
+  opts: OnboardingApiOptions,
+): Promise<unknown> {
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const getToken = opts.getToken ?? readInjectedToken;
+  const token = getToken();
+  const res = await fetchImpl(`${opts.baseUrl ?? ''}${urlPath}`, {
+    ...init,
+    headers: {
+      ...init.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body: unknown = await res.json().catch(() => undefined);
+    const detail =
+      typeof body === 'object' && body !== null && 'detail' in body
+        ? String((body as { detail: unknown }).detail)
+        : undefined;
+    throw new OnboardingApiError(res.status, detail);
+  }
+  return res.json();
+}
+
+export async function runGuidedPipeline(
+  projectId: string,
+  body: PipelineRunRequest,
+  opts: OnboardingApiOptions = {},
+): Promise<PipelineRunResult> {
+  return (await request(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/run`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    opts,
+  )) as PipelineRunResult;
+}
+
+export async function fetchGateReceipts(
+  projectId: string,
+  opts: OnboardingApiOptions = {},
+): Promise<GateReceipt[]> {
+  const result = (await request(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/receipts?kind=gate`,
+    { method: 'GET' },
+    opts,
+  )) as { items: GateReceipt[] };
+  return result.items;
+}
