@@ -1941,7 +1941,7 @@
         "Every major surface carries a ? help affordance opening task-oriented guide content (content/guide/, data not code); wizard ends with a what-to-do-tomorrow card (R-M1)"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-M1). Cites FR-C6 (the guided sample IS FR-C6).",
         "CONDUCTOR 2026-07-19T20:07:54.309Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
@@ -1951,7 +1951,8 @@
         "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket.",
         "UNBLOCKED 2026-07-20: both blockers resolved — (1) execution path now exists (W5-18 done: runPipeline via server route + events); (2) scope widened to apps/web/src/settings/FirstRunWizard.tsx + content/guide/** (the files both ACs need; all overlapping owners W4-06/W1-01 are done, P8 OK). Build the guided first-15-min sample against the real pipeline run.",
         "CONDUCTOR 2026-07-20T02:47:00.990Z: blocked after 2 attempts. Branch sw/w5-09 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "UNBLOCK PATH 2026-07-20: the LAST blocker (AC1 real-run needs registerPipelineRoutes in server.ts, which the maker correctly flagged as out-of-scope) is now W5-22 (a dependency). Your content/guide + sample + onboarding work from the 0247 attempt was good — rebuild on top once W5-22 wires the route."
+        "UNBLOCK PATH 2026-07-20: the LAST blocker (AC1 real-run needs registerPipelineRoutes in server.ts, which the maker correctly flagged as out-of-scope) is now W5-22 (a dependency). Your content/guide + sample + onboarding work from the 0247 attempt was good — rebuild on top once W5-22 wires the route.",
+        "DONE 2026-07-20: rebuilt content/guide, content/samples, apps/web/src/onboarding/**, and FirstRunWizard.tsx on top of the now-wired pipeline route (W5-22). Verified for real via a scratch (deleted-before-commit) integration test posting the guided sample's exact wire payload through the real registerPipelineRoutes behind a fake-but-contract-accurate gateway -> 201 with a real decomposed ticket. Structural fix vs the two prior blocked attempts: GuidedSample is embedded in the wizard's existing done step (not a new guided step) so apps/web/e2e/settings.spec.ts (out of write_scope, untouched) keeps passing unmodified -- re-ran it, 7/7 green. Gate: pnpm lint && pnpm typecheck && pnpm test = 2278 passed | 1 skipped (300 files); validate-plan.mjs/validate-traceability.mjs = OK."
       ],
       "stories": [
         "US-107",

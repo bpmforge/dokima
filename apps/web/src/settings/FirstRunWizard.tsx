@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { createProject, FleetApiError } from '../fleet/api.js';
+import { GuidedSample } from '../onboarding/GuidedSample.js';
 import { putGlobalSettings, SettingsApiError } from './api.js';
+import { HelpAffordance } from './HelpAffordance.js';
 import { MODEL_MATRIX_PRESETS, type ModelMatrixPreset } from './types.js';
 
 type Step = 'preset' | 'provider' | 'forge' | 'sample' | 'done';
@@ -22,7 +24,20 @@ export interface FirstRunWizardProps {
   onCancel: () => void;
 }
 
-/** First-run wizard (FR-S4, AC1): preset -> provider -> forge -> sample. Skipping the forge step is first-class. The guided sample program itself (FR-C6) is W5-09's job — this hands off by creating a real project via the already-built Fleet API, honestly, rather than fabricating a walkthrough. */
+/**
+ * First-run wizard (FR-S4, AC1, R-M1): preset -> provider -> forge -> sample
+ * -> done. Skipping the forge step is first-class. The wizard's last
+ * (`done`) step carries the guided sample walkthrough (BLUEPRINT §12.3,
+ * FR-C6): `GuidedSample` drives the real `POST .../pipeline/run` route
+ * (wired into `apps/server/src/api/server.ts` by W5-22) for the project
+ * just created, then dismisses itself (`guidedActive`) once the walkthrough
+ * reaches its own end, leaving the what-to-do-tomorrow card and Done
+ * button. Kept as a section on the existing last step rather than a new
+ * fifth `Step` so the already-covered `sample -> done` transition
+ * (`apps/web/e2e/settings.spec.ts`, out of this ticket's write_scope) keeps
+ * passing unchanged — the guided walkthrough is additional content on the
+ * last step, not a new gate before it.
+ */
 export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   const [step, setStep] = useState<Step>('preset');
   const [preset, setPreset] = useState<ModelMatrixPreset>('hybrid');
@@ -34,6 +49,7 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   const [forgeRef, setForgeRef] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
+  const [guidedActive, setGuidedActive] = useState(true);
 
   const savePresetAndProvider = async () => {
     try {
@@ -71,7 +87,9 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   return (
     <div className="settings settings--wizard" data-testid="first-run-wizard">
       <header className="settings__header">
-        <h1>Setup Wizard</h1>
+        <h1>
+          Setup Wizard <HelpAffordance topic="first-run-wizard" label="Setup wizard" />
+        </h1>
         <button type="button" onClick={onCancel}>
           Cancel
         </button>
@@ -151,11 +169,14 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
 
       {step === 'sample' && (
         <section aria-label="Guided sample" data-testid="wizard-step-sample">
-          <h2>4. Guided sample project</h2>
+          <h2>
+            4. Guided sample project{' '}
+            <HelpAffordance topic="guided-sample" label="Guided sample" />
+          </h2>
           <p className="settings__hint">
-            Creates a real project via the Fleet API. The guided interview → gates → board
-            walkthrough content (FR-C6) lands with a later ticket — this step hands off
-            honestly to a real, empty sample project rather than a fake demo.
+            Creates a real project, then runs a built-in idea ("a link-shortener with
+            auth") through the interview, blueprint, decisions, and board on your
+            configured model — watch the whole lifecycle before risking your own idea.
           </p>
           <button type="button" onClick={() => void handleCreateSample()}>
             Create sample project
@@ -166,6 +187,26 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
       {step === 'done' && (
         <section aria-label="Wizard complete" data-testid="wizard-step-done">
           <h2>You're set up</h2>
+
+          {createdProjectId && guidedActive && (
+            <div data-testid="wizard-guided-sample">
+              <GuidedSample
+                projectId={createdProjectId}
+                onContinue={() => setGuidedActive(false)}
+              />
+            </div>
+          )}
+
+          <div className="settings__hint" data-testid="what-to-do-tomorrow">
+            <h3>What to do tomorrow</h3>
+            <p>
+              Set a role or two to <code>auto</code> and let a ticket run overnight
+              (Settings → Autonomy dial). Tomorrow morning, open the notification bell →
+              Morning Queue: it sorts by leverage — merges first, then approvals, then
+              clarifications — with receipts and cost inline. Budget about ten minutes to
+              review a full night's work.
+            </p>
+          </div>
           <button type="button" onClick={() => onFinish(createdProjectId)}>
             Done
           </button>
