@@ -2283,7 +2283,7 @@
         "WIRING (CRITICAL, review-caught, Law 1 seam): the memory store must actually be CALLED in the session lifecycle, not dead. Wire it: (a) CompletionManifest records memory_written[] (packages/loop/src/session-manifest.ts) for what a completed session persisted; (b) memoryEligibleRoles is non-empty in the real/production config (not just tests); (c) the session-completion path (loop-gates.ts close path) invokes the store for eligible roles. Widened scope to session-manifest.ts + loop-gates.ts (owners all done, P8 OK). If a specific autorun call-site file beyond these two is truly required, flag it as a follow-up HANDOFF rather than reaching further cross-lane. The HIGH fact-verified self-attest fix already applied — keep it."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 addendum (R-G2).",
         "CONDUCTOR 2026-07-17T13:55:04.473Z: blocked after 2 attempts. Branch sw/w7-01 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed:  that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit 294ms\n   ✓ parseGapLocation > parses the standard \"<relfile>:<lineno> — <masked>\" shape 0ms\n   ✓ parseGapLocation > guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon) 0ms\n   ✓ parseGapLocation > returns null for a detail with no recognizable em-dash separator 0ms\n   ✓ classifySecretsGaps > effective gaps are only those whose file is in the changed-paths set 0ms\n\n Test Files  3 fail",
