@@ -2620,7 +2620,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/decisions/**"
       ],
@@ -2636,7 +2636,9 @@
       ],
       "notes": [
         "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Web surface for the decisions engine; consumes the W5-13 route.",
-        "CLAIM 2026-07-19: building a self-contained apps/web/src/decisions/** module (SlateCard + TechnicalSlateGrid + DecisionsBoard + api.ts) mirroring the W5-13 wire shapes and W4-05/W5-12's artifacts/ pattern. Not wiring into App.tsx (out of write_scope, same precedent as W5-13's routes being registered-but-unwired) — a future ticket with App.tsx in scope mounts it."
+        "CLAIM 2026-07-19: building a self-contained apps/web/src/decisions/** module (SlateCard + TechnicalSlateGrid + DecisionsBoard + api.ts) mirroring the W5-13 wire shapes and W4-05/W5-12's artifacts/ pattern. Not wiring into App.tsx (out of write_scope, same precedent as W5-13's routes being registered-but-unwired) — a future ticket with App.tsx in scope mounts it.",
+        "DONE 2026-07-19: types.ts (Slate/FounderSlate/TechnicalSlate wire types mirrored from @shipwright/pipeline — apps/web has no dependency on it or apps/server, same as artifacts/deliverablePhase.ts's precedent), api.ts (fetchSlates/decideSlate against W5-13's routes, DecisionsApiOptions/Error mirroring artifacts/api.ts's shape), FounderSlateOptions.tsx (2-4 options, trade-offs, Recommended badge on recommendedId), TechnicalSlateGrid.tsx (R-H1's fixed Minimal/Clean/Pragmatic x time/maintainability/scalability/team-fit/risk/reversibility grid, radio-per-column choice), SlateCard.tsx (dispatches founder vs technical, decided state reflects d_id/chosen/rationale in place — no reload), DecisionsBoard.tsx (root: fetches open slates, calls decideSlate on choose, mutates local state to the decided shape so the card updates immediately). 11 new tests (api.test.ts x5, DecisionsBoard.test.tsx x6 incl. founder + technical choose flows, error-stays-open, empty state). Gate: pnpm lint && pnpm typecheck && pnpm test = 2256 passed | 1 skipped (297 test files) workspace-wide. validate-plan.mjs = OK.",
+        "HANDOFF (wiring gap, out of this ticket's write_scope) 2026-07-19: confirmed via plan.json scan — no ticket (done or pending) has apps/server/src/api/server.ts in write_scope to call W5-13's registerDecisionRoutes, and none has apps/web/src/App.tsx in scope to mount this ticket's DecisionsBoard the way W4-05 mounts ArtifactViewer. So the decisions feature is currently orphaned at both ends: routes exported-but-unregistered (W5-13's own note), UI exported-but-unmounted (this ticket). A future ticket needs App.tsx + server.ts in its write_scope to wire both. Consequently no pnpm e2e run and no live-browser verification were possible here (component isn't reachable from a running app) — same limitation W5-12 disclosed for its unmounted precedent; verified via unit/component tests only (mocked ./api.js)."
       ]
     },
     {
