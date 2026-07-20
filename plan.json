@@ -2547,7 +2547,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/web/src/artifacts/**"
       ],
@@ -2572,7 +2572,8 @@
         "CONDUCTOR 2026-07-19T20:23:05.254Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: plan.json status is 'blocked', expected 'done'",
         "RESET+GUIDE 2026-07-19: your revisionSubmission.ts extraction (buildCommentSubmission/buildEditSubmission) is the right approach — complete it and add PERSISTED regression coverage that edits survive revision.requested (assert the built payload shape + that phaseForDeliverable/prefix wiring is exercised). Keep the specs IN the repo — do not delete integration/Playwright specs before commit. All within apps/web/src/artifacts/** scope.",
         "CONDUCTOR 2026-07-19T22:48:47.117Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: [HIGH] apps/web/src/artifacts/deliverablePhase.ts: This diff is the first thing to ever populate the `phase` field sent to POST .../artifacts/comments (previously always null, so apps/server/.../artifacts-routes/shared.ts's isGatedDeliverable(db, ticketId, phase) always short-circuited false — confirmed: `if (!ticketId && phase == null) return false;`). isGatedDeliverable now runs `SELECT id FROM receipts WHERE kind IN ('gate','close') AND (... OR (phase IS NOT NULL AND phase = ?))` keyed purely on the client-supplied `phase` integer, with no server-side check that the submitted phase actually",
-        "RESET+ENCODE 2026-07-19: this diff is the first to populate `phase`, waking a dormant server-side gating query — encode correctness + coverage for the now-active path (plus the earlier file-size split of ArtifactViewer.tsx into a barrel + modules, and the persisted revision.requested coverage)."
+        "RESET+ENCODE 2026-07-19: this diff is the first to populate `phase`, waking a dormant server-side gating query — encode correctness + coverage for the now-active path (plus the earlier file-size split of ArtifactViewer.tsx into a barrel + modules, and the persisted revision.requested coverage).",
+        "CONDUCTOR 2026-07-20T00:16:27.233Z: blocked after 2 attempts. Branch sw/w5-12 kept. Gaps: out-of-scope edits: apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts, apps/server/src/api/server/artifacts-routes/comments-routes.ts, apps/server/src/api/server/artifacts-routes/shared.ts"
       ]
     },
     {
