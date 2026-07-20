@@ -57,7 +57,6 @@ export async function loadSignedPack(
   const rejected: RejectedValidator[] = [];
   let manifest: PackManifest | undefined;
 
-  // Step 1: Load and validate manifest structure
   try {
     manifest = await loadManifest(manifestPath);
   } catch {
@@ -68,9 +67,7 @@ export async function loadSignedPack(
     };
   }
 
-  // Step 2: Verify the manifest signature
   if (!verifyManifestSignature(manifest, publisherPublicKey)) {
-    // Manifest signature verification failed - reject all validators
     for (const fileEntry of manifest.files) {
       rejected.push({
         name: fileEntry.path.replace(/\.sh$/, ''),
@@ -85,9 +82,7 @@ export async function loadSignedPack(
     };
   }
 
-  // Step 3: Verify the license is allowlisted
   if (!isAllowlistedLicense(manifest.license)) {
-    // License is not allowlisted - reject all validators
     for (const fileEntry of manifest.files) {
       rejected.push({
         name: fileEntry.path.replace(/\.sh$/, ''),
@@ -102,10 +97,8 @@ export async function loadSignedPack(
     };
   }
 
-  // Step 4: Verify all file hashes
   const fileMismatches = await verifyManifestFiles(manifest, contentDir);
   if (fileMismatches.length > 0) {
-    // Some files don't match their hashes - reject all validators
     for (const fileEntry of manifest.files) {
       if (fileMismatches.includes(fileEntry.path)) {
         rejected.push({
@@ -122,11 +115,27 @@ export async function loadSignedPack(
     };
   }
 
-  // Step 5: All checks passed - populate specs only with verified entries
-  const specs: ValidatorSpec[] = manifest.files.map((fileEntry) => ({
-    name: fileEntry.path.replace(/\.sh$/, ''),
-    path: path.join(contentDir, fileEntry.path),
-  }));
+  const resolvedContentDir = path.resolve(contentDir);
+  const specs: ValidatorSpec[] = manifest.files
+    .filter((fileEntry) => {
+      const resolvedPath = path.resolve(contentDir, fileEntry.path);
+      if (
+        !resolvedPath.startsWith(resolvedContentDir + path.sep) &&
+        resolvedPath !== resolvedContentDir
+      ) {
+        rejected.push({
+          name: fileEntry.path.replace(/\.sh$/, ''),
+          reason: 'file-hash-mismatch',
+          details: `Path escapes content directory boundary`,
+        });
+        return false;
+      }
+      return true;
+    })
+    .map((fileEntry) => ({
+      name: fileEntry.path.replace(/\.sh$/, ''),
+      path: path.join(contentDir, fileEntry.path),
+    }));
 
   return {
     specs,

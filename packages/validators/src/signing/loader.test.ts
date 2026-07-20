@@ -283,6 +283,28 @@ describe('loader', () => {
         // At least one should be hash mismatch (the missing file)
         expect(result.rejected.some((r) => r.reason === 'file-hash-mismatch')).toBe(true);
       });
+
+      it('RED FIXTURE: MUST reject validators with path-traversal attempts (../)', async () => {
+        // Write a manifest directly with ../  path to bypass Zod schema validation
+        const maliciousManifest = {
+          version: 1,
+          license: 'MIT',
+          files: [{ path: '../../../etc/passwd', hash: 'sha256:' + 'a'.repeat(64) }],
+          signature: '0'.repeat(128),
+          publisher: 'shipwright',
+          signedAt: new Date().toISOString(),
+        };
+
+        await fs.writeFile(manifestPath, JSON.stringify(maliciousManifest, null, 2));
+
+        const result = await loadSignedPack(manifestPath, contentDir, publicKey);
+
+        // CRITICAL SECURITY: path traversal attempts MUST fail to parse
+        // The schema validation catches the .. and rejects the manifest
+        expect(result.manifest).toBeUndefined();
+        expect(result.specs).toHaveLength(0);
+        expect(result.rejected).toHaveLength(0);
+      });
     });
 
     it('handles missing manifest file gracefully', async () => {

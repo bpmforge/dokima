@@ -12,9 +12,19 @@ export type License = string;
 
 /**
  * A single file entry in the manifest with its hash.
+ * Path validation rejects:
+ * - Absolute paths (starting with /)
+ * - Paths containing .. segments (prevents directory traversal)
+ * - Empty paths
  */
 export const MANIFEST_FILE_ENTRY_SCHEMA = z.object({
-  path: z.string().min(1),
+  path: z
+    .string()
+    .min(1)
+    .refine(
+      (p) => !p.startsWith('/') && !p.includes('..'),
+      'Path must be relative and cannot contain .. segments',
+    ),
   hash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
 });
 
