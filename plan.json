@@ -2620,7 +2620,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/web/src/decisions/**"
       ],
@@ -2634,7 +2634,10 @@
       "acceptance": [
         "Slate cards in the web UI: 2-4 options with trade-offs and recommended default; technical-fork slates render the 3-option (Minimal/Clean/Pragmatic) x 6-dimension comparison; choosing an option calls the W5-13 route and reflects the recorded decision. Split from W5-03 — the apps/web UI half."
       ],
-      "notes": "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Web surface for the decisions engine; consumes the W5-13 route."
+      "notes": [
+        "ADDED 2026-07-18 (W5-03 split-per-lane, Brad-approved). Web surface for the decisions engine; consumes the W5-13 route.",
+        "CLAIM 2026-07-19: building a self-contained apps/web/src/decisions/** module (SlateCard + TechnicalSlateGrid + DecisionsBoard + api.ts) mirroring the W5-13 wire shapes and W4-05/W5-12's artifacts/ pattern. Not wiring into App.tsx (out of write_scope, same precedent as W5-13's routes being registered-but-unwired) — a future ticket with App.tsx in scope mounts it."
+      ]
     },
     {
       "id": "W5-15",
