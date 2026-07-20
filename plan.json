@@ -2586,7 +2586,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/api/decisions/**",
         "packages/events/migrations/*decisions*"
