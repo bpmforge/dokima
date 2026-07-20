@@ -2884,7 +2884,7 @@
         "Security (SECURITY_W5 MEDIUM): decisions routes are only wired AFTER W5-20 adds their auth assertion (this ticket depends on W5-20); an unauthenticated request to a mutating decisions/pipeline endpoint is rejected — regression test proves it."
       ],
       "points": 2,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         "FOUNDED 2026-07-20: the maker of W5-09 correctly identified (3rd honest self-block) that AC1 real-run needs registerPipelineRoutes wired into server.ts, outside its scope. Same gap the security pass noted for decisions routes. server.ts owned by W8-02(ui,todo)+done tickets — ui lane, same-lane todo OK. W5-09 depends on this.",
         "DONE 2026-07-20: registerPipelineRoutes (W5-18) and registerDecisionRoutes (W5-13) now registered in apps/server/src/api/server.ts alongside the existing register*Routes calls (registerDecisionRoutes receives the app real AuthPluginOptions per W5-20; registerPipelineRoutes inherits the app-wide auth hook already enforced on every /api/** path). 2 new regression tests in server.test.ts: unauthenticated POST to /api/v1/projects/:id/pipeline/run and /api/v1/projects/:id/slates both return 401 (D-005) rather than falling through to the default not-found handler, proving both routes are reachable (non-404, AC1) and rejected when unauthenticated (AC2). Gate: pnpm lint && pnpm typecheck && pnpm test = 2263 passed | 1 skipped (297 test files) workspace-wide."
