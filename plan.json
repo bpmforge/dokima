@@ -2155,7 +2155,10 @@
         "packages/harbormaster/src/loop-gates-types.ts",
         "content/validators/validate-remote-parity*",
         "packages/harbormaster/src/loop-gates.test.ts",
-        "packages/harbormaster/src/resume.test.ts"
+        "packages/harbormaster/src/resume.test.ts",
+        "packages/forge/src/index.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "depends_on": [
         "W6-02"
@@ -2163,10 +2166,11 @@
       "acceptance": [
         "Push to N remotes with per-remote status; parity validator flags SHA divergence as a red hygiene state that blocks next claim (amplifier hole 11, docs/research/source-system-amplifier.md)",
         "SECURITY WIRING (HIGH, review-caught): the parity validator delivers the flag but does not BLOCK next claim — it is never run by the close gate. Two-part fix: (1) DISCOVERY — rename content/validators/remote-parity.sh to validate-remote-parity.sh so it matches pack.ts VALIDATOR_NAME_RE (/^(?:(?:validate|run)-.+|secrets-scan)\\.sh$/) and loadValidatorPack() finds it (no pack.ts edit needed); (2) REQUIRED — add its name to DEFAULT_REQUIRED_VALIDATORS in packages/harbormaster/src/loop-gates-types.ts so a SHA-divergence red state is a real close-gate failure that blocks the claim. Red fixture: a diverged remote makes the close gate refuse (exit non-zero), not merely warn.",
-        "LOCAL-FIRST FIX (CRITICAL, review-caught, Law 9/C-1): validate-remote-parity.sh must NOT fail-closed when there is no cached remote-tracking ref (the normal offline / fresh-branch case — verified: this repo has 2 remotes but zero tracking refs, so the current logic returns gaps:2 and blocks EVERY close). Correct semantics: an absent/uncached remote-tracking ref is a PASS (or at most an advisory note), never a blocking gap; emit a blocking gap ONLY when a tracking ref actually EXISTS and its SHA diverges from local. Everything must work with no network. Red fixtures: (a) no tracking refs -> exit 0, zero gaps; (b) a tracking ref present and diverged -> blocking gap."
+        "LOCAL-FIRST FIX (CRITICAL, review-caught, Law 9/C-1): validate-remote-parity.sh must NOT fail-closed when there is no cached remote-tracking ref (the normal offline / fresh-branch case — verified: this repo has 2 remotes but zero tracking refs, so the current logic returns gaps:2 and blocks EVERY close). Correct semantics: an absent/uncached remote-tracking ref is a PASS (or at most an advisory note), never a blocking gap; emit a blocking gap ONLY when a tracking ref actually EXISTS and its SHA diverges from local. Everything must work with no network. Red fixtures: (a) no tracking refs -> exit 0, zero gaps; (b) a tracking ref present and diverged -> blocking gap.",
+        "AC1 WIRING (scope, review-caught): the pushToRemotes primitive (packages/forge/src/dual-remote.ts, built + unit-tested with per-remote Promise.allSettled isolation) must be wired into the real land path. Export it from packages/forge/src/index.ts (the barrel), and call it from packages/harbormaster/src/loop-land.ts after a successful land (the product-level equivalent of the conductor pushRemotes() loop at conductor.mjs:375; only harbormaster holds forge write paths per ARCHITECTURE §4/§5). Add a loop-land.test.ts case proving a successful land triggers a push to both remotes and that one remote failing does not abort the other (isolation). AC2 (validator wiring) + AC3 (local-first fix) are already done and gate-verified — do not regress them."
       ],
       "points": 2,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "CONDUCTOR 2026-07-19T04:47:18.938Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: pnpm test failed: n.test.ts (3 tests | 1 failed) 10261ms\n   ✓ WsClient > sends a subscribe frame carrying the requested subscriptions on connect 119ms\n   ✓ WsClient > appends the token as a query param (browsers cannot set WS upgrade headers) 50ms\n   × WsClient > delivers a parsed envelope and tracks last_seq for resume 10070ms\n     → expected [] to deeply equal [ Array(1) ]\n     → Hook timed out in 10000ms.\nIf this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".\n\n Test Files  1 failed | 267 passed (268)\n      Tests  1 failed | 206",
         "RESET 2026-07-18: blocked on 1 failing test (3 tests|1 failed, ~10s — possibly a slow/timeout flake). Fresh attempt; if it re-blocks on the same assertion, needs a focused look.",
@@ -2176,7 +2180,8 @@
         "SCOPE FIX 2026-07-20: maker completed all in-scope work + correctly self-blocked — adding validate-remote-parity to DEFAULT_REQUIRED_VALIDATORS (in scope, loop-gates-types.ts) ripples the events validator-currency check into harbormaster fixtures (loop-gates.test.ts, resume.test.ts) that build close-gate receipts against the real required set. Widened scope to those 2 sibling test files (same package; owners all done, P8 OK) for the mechanical fixture-literal update: add a validate-remote-parity receipt entry to the fixtures. Its own forge/validator work already passed lint+typecheck on the branch.",
         "CONDUCTOR 2026-07-20T20:38:09.685Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: [CRITICAL] content/validators/validate-remote-parity.sh: The gate-fix that turns an uncached remote-tracking ref into a `gap` now makes runCloseGate fail unconditionally for every real ticket close in this project. Verified empirically in this very worktree (the project's actual dual-remote setup, origin=Gitea + github=GitHub per CLAUDE.md law 10): `git remote -v` shows 2 remotes, `git for-each-ref refs/remotes` shows zero tracking refs for branch sw/w6-05, and running the validator directly produces `gaps:2, exit:1`. `pushToRemotes` (packages/forge/src/dual-remote.ts), the only mechanism that",
         "RESET+ENCODE 2026-07-20: the fixture ripple was fixed but the reviewer then caught a CRITICAL local-first violation — the validator fails-closed with no cached tracking ref, blocking every close offline. Encoded the conditional-on-real-divergence fix + both red fixtures. In scope (validate-remote-parity.sh).",
-        "CONDUCTOR 2026-07-20T21:23:07.961Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-20T21:23:07.961Z: blocked after 2 attempts. Branch sw/w6-05 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "SCOPE FIX 2026-07-20: AC2+AC3 gate-verified (17/17 red fixtures). AC1 only needs the push primitive wired into the land path — widened scope to forge barrel + loop-land.ts (+test); owners all done, P8 OK. This is the last piece."
       ],
       "stories": []
     },
