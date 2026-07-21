@@ -20,7 +20,7 @@ import { resolveLogLevel } from './config.js';
 import { detectRunningCore, openBrowser } from './launch.js';
 import { packsUpdate, type PacksUpdateResult } from './packs-update.js';
 
-const DEFAULT_PORT = 4317;
+export const DEFAULT_PORT = 4317;
 
 export interface CliIO {
   stdout: (line: string) => void;
@@ -40,7 +40,7 @@ export interface CliDeps {
   ensureAuthToken?: typeof ensureAuthToken;
 }
 
-function resolvePort(env: NodeJS.ProcessEnv): number {
+export function resolvePort(env: NodeJS.ProcessEnv): number {
   const raw = env.SHIPWRIGHT_PORT;
   const parsed = raw ? Number(raw) : NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PORT;
