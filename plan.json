@@ -2544,7 +2544,7 @@
         "Event-payload upcasting proven (old-version fixture log reads clean); downgrade refused via PRAGMA user_version with the backup-restore path named; `shipwright packs update`, second-invocation core detection, and the SHIPWRIGHT_HOME/SHIPWRIGHT_LOG_LEVEL env contract per DEPLOYMENT §2/§6/§7"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 design review G-22. Verifies NFR-7 (macOS/Linux + WSL smoke). AMENDED 2026-07-14 challenger fix (DEPLOYMENT §3-§7 mechanics were unowned).",
         "CONDUCTOR 2026-07-17T15:17:38.655Z: blocked after 2 attempts. Branch sw/w8-05 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: ed entity never grades itself: the ticket's real verify is re-run, ignoring the manifest's claimed command/exit  665ms\n   ✓ runCloseGate > R-G2 (inert until W7-01): a memory-eligible role with no memory_written[] is refused only when opted in  2608ms\n   ✓ runCloseGate > secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path  910ms\n   ✓ runCloseGate > D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close  307ms\n\n Test Files  1 fa",
