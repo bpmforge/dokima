@@ -4,10 +4,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getTicket, listTickets } from '@shipwright/tickets';
 import { openEventLogReader } from '@shipwright/events';
+import { matchesAnyGlob } from '@shipwright/shared';
 import { stateDbPath } from '../server/settings-db.js';
 import {
   catalogIdFor,
   flattenOnboardFindings,
+  ONBOARD_TICKET_WRITE_SCOPE,
   persistOnboardFindings,
   proposePlanItemsFromOnboardFindings,
   type OnboardFindingOrigin,
@@ -120,6 +122,45 @@ describe('onboard-board-lifecycle (W8-09 AC2 — findings become board items via
       expect(healthTicket?.lane).toBe('quality');
       expect(securityTicket?.lane).toBe('security');
       expect(tickets).toHaveLength(2);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('grants a real, non-empty write_scope — a maker fixing the finding is not structurally scope-blocked', async () => {
+    expect(ONBOARD_TICKET_WRITE_SCOPE.length).toBeGreaterThan(0);
+
+    const dir = await tmpProjectDir();
+    dirs.push(dir);
+    const origin: OnboardFindingOrigin = {
+      stepId: 'security-sast',
+      role: 'semgrep-runner',
+      finding: {
+        title: 'Unsanitized input',
+        severity: 'CRITICAL',
+        recommendation: 'Sanitize before use.',
+        verify: 'true',
+      },
+    };
+
+    const accepted = await persistOnboardFindings(dir, [origin], {
+      runId: 'run-1',
+      now: NOW,
+    });
+
+    const db = openEventLogReader(stateDbPath(dir));
+    const eventLog = { db, path: stateDbPath(dir), close: () => db.close() };
+    try {
+      const ticket = getTicket(eventLog, accepted[0]!.item.ticketId!);
+      expect(ticket?.writeScope).toEqual(ONBOARD_TICKET_WRITE_SCOPE);
+      expect(ticket?.writeScope.length).toBeGreaterThan(0);
+
+      // Representative fix touching an arbitrary source file — the same
+      // glob primitive `detectScopeViolations` (loop) / `checkWriteScope`
+      // (git) both build on (`@shipwright/shared`'s `matchesAnyGlob`) must
+      // NOT flag it as outside scope.
+      const representativeChange = 'packages/gateway/src/provider.ts';
+      expect(matchesAnyGlob(representativeChange, ticket!.writeScope)).toBe(true);
     } finally {
       db.close();
     }

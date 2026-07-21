@@ -110,6 +110,20 @@ function laneForStepId(stepId: string): string {
     : 'quality';
 }
 
+/** Write scope granted to every board ticket minted from an onboard finding.
+ * `OnboardFinding` (`onboard-types.ts`) deliberately carries no file/path
+ * field — it is untrusted, model-authored JSON, and letting a specialist's
+ * own completion dictate the write_scope of the ticket that "fixes" its
+ * finding would let a compromised completion self-grant scope (the same
+ * class of hazard AC3a/b already guard against for lifecycle state). A
+ * health/security finding also has no reliable single-file attribution to
+ * derive from even if it were trusted: "no test plan" or "SQL injection
+ * risk" can legitimately require touching any file in the repo. So this is
+ * a deliberate, statically-authored whole-repo grant — `HARD_EXCLUSIONS`
+ * (`packages/git/src/scope.ts`) still applies underneath it regardless,
+ * so `.git/**`/`.github/workflows/**`/`.shipwright/**` stay unreachable. */
+export const ONBOARD_TICKET_WRITE_SCOPE: readonly string[] = ['**'];
+
 function toCatalogMatch(origin: OnboardFindingOrigin): CatalogMatch {
   return {
     catalogId: catalogIdFor(origin),
@@ -184,7 +198,11 @@ export async function acceptOnboardPlanItems(
     const { item, ticketCreated } = await acceptPlanItem(
       projectPath,
       created_.id,
-      { lane: laneForStepId(origin.stepId), writeScope: [], dependsOn: [] },
+      {
+        lane: laneForStepId(origin.stepId),
+        writeScope: ONBOARD_TICKET_WRITE_SCOPE,
+        dependsOn: [],
+      },
       opts,
     );
     results.push({ item, ticketCreated });
