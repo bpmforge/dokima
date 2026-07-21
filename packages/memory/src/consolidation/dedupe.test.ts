@@ -91,6 +91,24 @@ describe('dedupeFacts', () => {
     expect(dedupeFacts(handle)).toEqual([]);
   });
 
+  it('does not collide facts whose ticketId/content pairs share a field boundary', () => {
+    const handle = createTestHandle();
+    verifiedFact(handle, {
+      kind: 'fact',
+      content: 'b c',
+      confidence: 0.5,
+      ticketId: 'a',
+    });
+    verifiedFact(handle, {
+      kind: 'fact',
+      content: 'c',
+      confidence: 0.5,
+      ticketId: 'a b',
+    });
+
+    expect(dedupeFacts(handle)).toEqual([]);
+  });
+
   it('never touches an unverified or already-decayed fact', () => {
     const handle = createTestHandle();
     insertFact(handle, { kind: 'fact', content: 'unverified dup', confidence: 0.5 }, NOW);
