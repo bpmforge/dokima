@@ -10,6 +10,17 @@
  * `command === 'run'` here with the untouched rest-args, keeping this
  * ticket's footprint in the shared dispatcher/parser to the couple of lines
  * that last-mile wiring requires (plan.json SEAM FIX note).
+ *
+ * `run start --mode onboard` (W8-09): once the bookkeeping `createRun` call
+ * succeeds, an onboard/analysis run is actually started and advanced via
+ * `runOnboardAnalysis` (`../api/pipeline/index.js`) — the SAME function the
+ * `POST /projects/:id/pipeline/onboard-run` HTTP route calls, never a
+ * CLI-only reimplementation. `io.cwd` doubles as both `runSession`'s repo
+ * root and the Improvement Plans project path (matches how the HTTP route
+ * always derives the plans-store db path from a project's registered path,
+ * never a caller-supplied override) — a `--db` override only redirects the
+ * bookkeeping run-record log above, not the onboard analysis' own plans
+ * writer, a pre-existing narrowing this ticket does not widen.
  */
 
 import { parseArgs } from 'node:util';
@@ -26,6 +37,7 @@ import {
   type BreakpointMode,
   type RunMode,
 } from '@shipwright/harbormaster';
+import { runOnboardAnalysis } from '../api/pipeline/index.js';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { ensureActorIdentity } from './identity.js';
 import { CliUsageError } from './parse.js';
@@ -220,6 +232,21 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
       io.stdout(
         `${run.id} started -> ${run.status} (breakpoint=${run.breakpoint} berths=${run.berths})`,
       );
+
+      if (command.mode === 'onboard') {
+        const outcome = await runOnboardAnalysis({
+          log,
+          runId: run.id,
+          projectPath: io.cwd,
+          now: io.now,
+        });
+        io.stdout(
+          `${run.id} onboard analysis complete: ` +
+            `${Object.keys(outcome.result.stepArtifacts).length} steps, ` +
+            `${outcome.proposed.length} findings proposed, ` +
+            `${outcome.accepted.length} accepted onto the board`,
+        );
+      }
       return 0;
     }
 
