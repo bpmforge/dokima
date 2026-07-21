@@ -2375,7 +2375,7 @@
         "Token envelopes per FR-L8: per-window budget table (32k: 8/20/28k, 60k: 15/38/54k, 100k+: 25/65/90k instruction/working/emergency), write-before-reading-more (>500-token tool results to disk, referenced), emergency stop -> honest PARTIAL, per-expert instruction-cost accounting; prune failed-attempt turns from packets (R-I1/R-I2); ranking source = W7-06 code index (FR-M4)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": " NOTE 2026-07-14: context-packet assembly must call the W3-13 redaction layer on every packet (SC-06) — acceptance implied by BLUEPRINT §7.2 + FR-L5. AMENDED 2026-07-14 addendum (FR-L8, R-I1/I2, R-J1 dep).",
       "stories": []
     },
