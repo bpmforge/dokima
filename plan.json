@@ -2451,23 +2451,77 @@
         "W5-08",
         "W6-06",
         "W7-02",
-        "W5-18"
+        "W5-18",
+        "W8-09"
       ],
       "acceptance": [
         "Onboard mode over this repo produces a health assessment; security cluster + threat-model refresh run via the platform itself; findings become tickets on this board; the run's receipts/coverage published under docs/dogfood/ (the 1.0 gate, BLUEPRINT §9 W8)",
         "The dogfood security/code-health run asserts the FULL imported rule set executes (all 30 anti-slop rules + all 66 validators enumerated in the coverage report — the name-ALL-of-the-set lesson, R-E3); shadow/advisory/gate states honored per D-014"
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 (adopted R-E3).",
         "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket.",
-        "CONDUCTOR 2026-07-21T03:46:49.959Z: blocked after 2 attempts. Branch sw/w8-01 kept. Gaps: plan.json status is 'blocked', expected 'done'"
+        "CONDUCTOR 2026-07-21T03:46:49.959Z: blocked after 2 attempts. Branch sw/w8-01 kept. Gaps: plan.json status is 'blocked', expected 'done'",
+        "RE-POINTED 2026-07-21 (Brad-approved): the missing onboard/analysis executor is now real work — depends_on W8-09 (which depends on W8-08). Reset blocked->todo so the conductor claims it once the wiring lands. Its own build (running onboard over THIS repo, publishing coverage/receipts under docs/dogfood/) is unchanged; it stops being a structural dead-end."
       ],
       "stories": [
         "US-401",
         "US-406"
       ]
+    },
+    {
+      "id": "W8-08",
+      "title": "Onboard/analysis executor: bind ONBOARD_STEPS to real specialist dispatch (pure port)",
+      "phase": 8,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/run/**",
+        "packages/pipeline/src/modes/**",
+        "packages/pipeline/src/index.ts"
+      ],
+      "depends_on": [
+        "W5-08",
+        "W5-17"
+      ],
+      "acceptance": [
+        "A pure runOnboard orchestrator in packages/pipeline/src/run/ iterates ONBOARD_STEPS (modes/onboard.ts) plus a security-cluster + threat-model-refresh step topology added alongside it in packages/pipeline/src/modes/, dispatching each step`s specialist role through a LOCAL injected port (a dispatch(role, context) -> artifact seam + an emit(event) callback defined in this package), threading each step`s artifact into the run`s accumulating context, and returns a structured OnboardRunResult (health assessment + per-step artifacts + coverage manifest). NO new workspace imports in packages/pipeline/package.json — mirror runPipeline`s PipelinePort pattern (W5-17): local port types, deterministic core, all effects injected.",
+        "The coverage manifest enumerates ALL of the imported rule set BY NAME — all 30 anti-slop rules and all 66 validators (R-E3, the name-ALL-of-the-set lesson) — each tagged shadow/advisory/gate per D-014. runOnboard stays pure/deterministic, never authors prose and never imports a model/provider directly (Law 6), so a fake dispatch port yields a fully assertable run with no network (Law 9).",
+        "All-or-nothing like runPipeline: on any step`s dispatch error the run throws and returns no partial OnboardRunResult — no health assessment is built from a step that did not complete, and no step-complete event is emitted for it."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": [
+        "ADDED 2026-07-21 (Brad-approved): W8-01 dogfood gate blocked because the analysis/onboard pipeline has no executor — modes/onboard.ts is static topology only (its own header: `a future wiring ticket binds ONBOARD_STEPS to real specialist invocations`), independently re-verified twice by the W8-01 maker. Exact analog of the creation-pipeline gap fixed by W5-17/W5-18. This ticket is the W5-17 half (pure executor + local port). W8-09 is the W5-18 half (real gateway/HANDOFF wiring). W8-01 depends on W8-09."
+      ],
+      "stories": []
+    },
+    {
+      "id": "W8-09",
+      "title": "Wire onboard/analysis run to real gateway + HANDOFF sessions; findings become tickets",
+      "phase": 8,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/api/pipeline/**",
+        "apps/server/src/cli/run-cmd.ts"
+      ],
+      "depends_on": [
+        "W8-08"
+      ],
+      "acceptance": [
+        "A route under apps/server/src/api/pipeline/ (and the `run start --mode onboard` call-site in apps/server/src/cli/run-cmd.ts, currently bookkeeping-only) starts and advances an onboard/analysis run by calling runOnboard (W8-08) with the dispatch port bound to REAL specialist sessions via @shipwright/gateway (Law 6 — model access only through the gateway, never a direct provider) and @shipwright/loop runSession, and emit wired to append-only events via @shipwright/events (Law 7, hash-chained, single writer).",
+        "Onboard/health/security findings become board items through the EXISTING plans lifecycle (proposeFromMatches/acceptItem), not a bespoke state-flip path (Law 4 — durable state only via verbs/receipts); the run`s receipts + coverage manifest are persisted.",
+        "Gate-touching, so red fixtures are acceptance (docs/TESTING.md planted-defect harness, Law 4): (a) a finding cannot become a ticket without going through the receipts/verbs path; (b) a specialist cannot verify its own output (maker != verifier, Law 5); (c) the whole path runs against the fake-model gateway with NO network (Law 9)."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "ADDED 2026-07-21 (Brad-approved): the W5-18 half of the onboard-execution wiring — binds W8-08`s runOnboard to the real gateway + loop/session dispatch and materializes findings as board tickets via the sanctioned plans lifecycle. Unblocks W8-01."
+      ],
+      "stories": []
     },
     {
       "id": "W8-02",
@@ -2578,8 +2632,11 @@
         "shipwright service install|status|stop generates launchd/systemd user units (DEPLOYMENT §6); shipwright providers refresh re-runs discovery/warm-up"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "ADDED 2026-07-14 design review G-5: DEPLOYMENT.md promised all of these with zero owning tickets.",
+      "status": "blocked",
+      "notes": [
+        "ADDED 2026-07-14 design review G-5: DEPLOYMENT.md promised all of these with zero owning tickets.",
+        "CONDUCTOR 2026-07-21T19:32:07.950Z: blocked after 2 attempts. Branch sw/w8-06 kept. Gaps: out-of-scope edits: apps/server/src/bootstrap/cli.test.ts, apps/server/src/bootstrap/cli.ts, packages/events/src/index.ts"
+      ],
       "stories": [
         "US-205"
       ]
