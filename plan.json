@@ -3031,7 +3031,7 @@
       "module": "validators",
       "lane": "quality",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "content/validators/validate-verification-integrity*",
         "conductor.config.json"
@@ -3047,7 +3047,8 @@
       "notes": [
         "ADDED 2026-07-19 (Brad-approved): systemic pre-merge detection for the recurring self-attest CRITICAL (3 instances: W6-03 reconciliation, W5-11/W5-15 plans-verify — see L-41/L-42). Catches the pattern at the per-ticket gate so the wave-security-pass is not the only net. Route the rule upstream to bpm-opencode-experts as an anti-slop/security check.",
         "CONDUCTOR 2026-07-21T20:03:07.818Z: blocked after 2 attempts. Branch sw/w8-07 kept. Gaps: [HIGH] conductor.config.json: validate-verification-integrity is still absent from both validators.gate and validators.advisory arrays (confirmed via grep — zero matches). scripts/conductor.mjs's runGates/runValidators only invoke scripts named in those arrays, so this validator's findings never reach reviewPrompt's 'DETERMINISTIC VALIDATOR FINDINGS' block (D-014's anchor mechanism) for any ticket, including its own. The ticket's founding note explicitly required catching this pattern 'at the per-ticket gate,' which this diff still does not achieve — the validator exists but is inert. — fix: E",
-        "RESET+WIDEN 2026-07-21: build-then-wire seam. Validator built + 6/6 self-tests green, but conductor.config.json (unowned, not in alwaysOk) does not name it, so runGates/runValidators never invoke it — zero live gate effect (the maker correctly flagged its own prior close as overclaimed). Widened scope to conductor.config.json so the maker can register it. NOTE: register as ADVISORY (validators.advisory) not gate during THIS live conductor run — a brand-new hard gate validator with any false positive would block W8-09/W8-01 mid-run; acceptance `at gate time` is satisfied by advisory findings surfacing in the review. A follow-up can promote to gate once proven clean across a full run."
+        "RESET+WIDEN 2026-07-21: build-then-wire seam. Validator built + 6/6 self-tests green, but conductor.config.json (unowned, not in alwaysOk) does not name it, so runGates/runValidators never invoke it — zero live gate effect (the maker correctly flagged its own prior close as overclaimed). Widened scope to conductor.config.json so the maker can register it. NOTE: register as ADVISORY (validators.advisory) not gate during THIS live conductor run — a brand-new hard gate validator with any false positive would block W8-09/W8-01 mid-run; acceptance `at gate time` is satisfied by advisory findings surfacing in the review. A follow-up can promote to gate once proven clean across a full run.",
+        "CLOSED 2026-07-21 (2nd): recovered the built validator from blocked/w8-07 (cd0c597, unchanged — re-ran its .selftest against current HEAD including all W8-06 additions, all 6 assertions still pass, baseline still holds) and added the previously-missing wire: conductor.config.json's validators.advisory now names validate-verification-integrity, so runGates/runValidators picks it up on every future ticket gate and its findings reach reviewPrompt's DETERMINISTIC VALIDATOR FINDINGS block (D-014). Confirmed live against repo root: exit 0, 0 gaps. Full gate: pnpm lint && pnpm typecheck && pnpm test = 380 test files, 2704 passed | 3 skipped; validate-plan.mjs/validate-traceability.mjs = OK, same pre-existing gaps only."
       ]
     }
   ]
