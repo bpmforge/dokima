@@ -2492,9 +2492,10 @@
         "All-or-nothing like runPipeline: on any step`s dispatch error the run throws and returns no partial OnboardRunResult — no health assessment is built from a step that did not complete, and no step-complete event is emitted for it."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "notes": [
-        "ADDED 2026-07-21 (Brad-approved): W8-01 dogfood gate blocked because the analysis/onboard pipeline has no executor — modes/onboard.ts is static topology only (its own header: `a future wiring ticket binds ONBOARD_STEPS to real specialist invocations`), independently re-verified twice by the W8-01 maker. Exact analog of the creation-pipeline gap fixed by W5-17/W5-18. This ticket is the W5-17 half (pure executor + local port). W8-09 is the W5-18 half (real gateway/HANDOFF wiring). W8-01 depends on W8-09."
+        "ADDED 2026-07-21 (Brad-approved): W8-01 dogfood gate blocked because the analysis/onboard pipeline has no executor — modes/onboard.ts is static topology only (its own header: `a future wiring ticket binds ONBOARD_STEPS to real specialist invocations`), independently re-verified twice by the W8-01 maker. Exact analog of the creation-pipeline gap fixed by W5-17/W5-18. This ticket is the W5-17 half (pure executor + local port). W8-09 is the W5-18 half (real gateway/HANDOFF wiring). W8-01 depends on W8-09.",
+        "AGENT 2026-07-21: done. See docs/STATUS.md 2026-07-21 W8-08 entry for the full design/evidence writeup. Gate: pnpm lint && pnpm typecheck && pnpm test = 373 test files, 2665 passed | 3 skipped workspace-wide; validate-plan.mjs/validate-traceability.mjs = OK, same pre-existing gaps only. No new workspace imports in packages/pipeline/package.json (confirmed)."
       ],
       "stories": []
     },

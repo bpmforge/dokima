@@ -28,6 +28,8 @@ import type {
 import type { TechnicalSlate } from '../decisions/types.js';
 import type { TechnicalSlateInput } from '../decisions/technical-slate.js';
 import type { TicketDraftInput } from '../decompose/types.js';
+import type { Deliverable } from '../phases/types.js';
+import type { OnboardCoverageManifest } from '../modes/coverage-manifest.js';
 
 /** Input to one `runPipeline` call. */
 export interface RunPipelineInput {
@@ -83,4 +85,54 @@ export type PipelineRunEvent =
 export interface PipelinePort {
   readonly model: PipelineModelPort;
   readonly emit: (event: PipelineRunEvent) => void;
+}
+
+// --- runOnboard (W8-08) -----------------------------------------------------
+
+/** Input to one `runOnboard` call — the seed context every step's `dispatch`
+ * call and artifact-threading starts from (e.g. the target repo's identity);
+ * this package takes no fs/gateway access, so the caller supplies whatever
+ * the real dispatch implementation needs to locate the repo. */
+export interface RunOnboardInput {
+  readonly seedContext: Readonly<Record<string, unknown>>;
+}
+
+/** What `dispatch` receives for one step: which step/role is running, its
+ * declared deliverables (`modes/onboard.ts` / `modes/security-cluster.ts`),
+ * and every prior step's artifact keyed by step id — the "threading" AC1
+ * requires, done via the accumulating map rather than a positional chain
+ * since a later step (e.g. `attack-chainer`) may need more than just its
+ * immediate predecessor's output. */
+export interface OnboardDispatchContext {
+  readonly seedContext: Readonly<Record<string, unknown>>;
+  readonly stepId: string;
+  readonly role: string;
+  readonly deliverables: readonly Deliverable[];
+  readonly priorArtifacts: Readonly<Record<string, unknown>>;
+}
+
+/** The injected effect seam (AC1): `dispatch` is the only place real
+ * specialist/model work happens; `runOnboard` itself never authors prose
+ * (Law 6). W8-09 binds this to a real gateway/HANDOFF call — unit tests
+ * inject a deterministic fake. */
+export type OnboardDispatch = (role: string, context: OnboardDispatchContext) => unknown;
+
+export type OnboardRunEvent = {
+  readonly kind: 'step-complete';
+  readonly stepId: string;
+  readonly role: string;
+};
+
+export interface OnboardPort {
+  readonly dispatch: OnboardDispatch;
+  readonly emit: (event: OnboardRunEvent) => void;
+}
+
+export interface OnboardRunResult {
+  /** The `health` step's artifact, surfaced directly per AC1 (also present,
+   * keyed by `'health'`, in `stepArtifacts`). */
+  readonly healthAssessment: unknown;
+  /** Every step's artifact, keyed by step id, in run order. */
+  readonly stepArtifacts: Readonly<Record<string, unknown>>;
+  readonly coverageManifest: OnboardCoverageManifest;
 }
