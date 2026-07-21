@@ -52,7 +52,8 @@
     ],
     "advisory": [
       "validate-code-health",
-      "validate-dead-code"
+      "validate-dead-code",
+      "validate-verification-integrity"
     ],
     "$note": "gate[] = reliable/objective validators, run diff-scoped as HARD gates. advisory[] = grep-heuristic validators (noisy on TS: magic-numbers-in-comments, bogus-unreachable) — their findings ANCHOR the LLM review instead of blocking, matching the source system's 'script floor + agent verified pass' design. Promote a validator to gate[] once red-fixture-calibrated."
   },

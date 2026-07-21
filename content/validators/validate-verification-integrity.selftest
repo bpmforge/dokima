@@ -1,0 +1,147 @@
+#!/bin/bash
+#
+# validate-verification-integrity.selftest -- the red-fixture harness for
+# validate-verification-integrity.sh (docs/TESTING.md §6 planted-defect
+# harness; W8-07 acceptance criterion 2). Deliberately named WITHOUT a .sh
+# suffix: packages/validators/src/pack.ts's loadValidatorPack auto-discovers
+# any `validate-*.sh` file as an independently-runnable pack member, and this
+# script's stdout (human-readable "ok"/"FAIL" lines) does not conform to the
+# exit 0/1 + JSON gaps contract every real validator must -- a `.sh` name
+# here would get it misloaded as a (contract-violating) validator itself.
+# Not a vitest file either: it lives inside this ticket's write_scope
+# (content/validators/validate-verification-integrity*), so it is a
+# standalone, dependency-free bash script rather than an addition to
+# packages/validators/src/fixture-run.test.ts (owned by a different,
+# already-done ticket -- see this repo's own precedent of not self-widening
+# write_scope even to done-owned files, MASTER_PROMPT.md step 3).
+# Run manually: bash content/validators/validate-verification-integrity.selftest
+#
+# Fixtures, each built from the real pre-fix/post-fix code in this repo's
+# own git history:
+#   RED 1 -- the W6-03/W6-08 `hasReceiptComment` text-match bypass
+#            (packages/forge/src/mirror/reconciliation.ts before commit
+#            890c5b1): must exit 1, category free-text-match.
+#   RED 2 -- the W5-11/W5-16 caller-supplied `body.snapshot` bypass
+#            (apps/server/src/api/plans-routes.ts before commit e90ca3a):
+#            must exit 1, category caller-input-state-flip.
+#   GREEN -- the fixed versions of both (current repo state, identity+anchor
+#            check / server-derived snapshot): must exit 0.
+#
+# Exit 0 if every assertion holds, 1 if any assertion fails.
+
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VALIDATOR="$HERE/validate-verification-integrity.sh"
+
+FAIL=0
+TMP_ROOT="$(mktemp -d -t vvi-selftest.XXXXXX)"
+trap 'rm -rf "$TMP_ROOT"' EXIT
+
+assert_exit() {
+  local label="$1" dir="$2" want="$3" got_out got_exit
+  got_out="$(bash "$VALIDATOR" "$dir" 2>/dev/null)"
+  got_exit=$?
+  if [[ "$got_exit" -ne "$want" ]]; then
+    printf 'FAIL %s: expected exit %d, got %d\n%s\n' "$label" "$want" "$got_exit" "$got_out" >&2
+    FAIL=1
+    return
+  fi
+  printf 'ok   %s (exit %d)\n' "$label" "$got_exit"
+}
+
+assert_category() {
+  local label="$1" dir="$2" category="$3" got_out
+  got_out="$(bash "$VALIDATOR" "$dir" 2>/dev/null)"
+  if ! printf '%s' "$got_out" | grep -q "\"category\":\"$category\""; then
+    printf 'FAIL %s: expected a gap in category "%s"\n%s\n' "$label" "$category" "$got_out" >&2
+    FAIL=1
+    return
+  fi
+  printf 'ok   %s (category %s present)\n' "$label" "$category"
+}
+
+# -- RED 1: W6-03/W6-08 hasReceiptComment text-match bypass ------------------
+RED1_DIR="$TMP_ROOT/red1/src"
+mkdir -p "$RED1_DIR"
+cat > "$RED1_DIR/reconciliation.ts" <<'EOF'
+function hasReceiptComment(comments: IssueComment[], ticketId: string): boolean {
+  return comments.some(
+    (c) => c.body.includes(ticketId) && /receipt|verify|exit/i.test(c.body),
+  );
+}
+EOF
+assert_exit "RED1 hasReceiptComment text-match" "$TMP_ROOT/red1" 1
+assert_category "RED1 hasReceiptComment text-match" "$TMP_ROOT/red1" "free-text-match"
+
+# -- RED 2: W5-11/W5-16 caller-supplied body.snapshot bypass -----------------
+RED2_DIR="$TMP_ROOT/red2/src"
+mkdir -p "$RED2_DIR"
+cat > "$RED2_DIR/plans-routes.ts" <<'EOF'
+app.post(
+  '/api/v1/projects/:id/plan/verify',
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
+    if (!projectPath) return;
+    const body = request.body as Record<string, unknown> | undefined;
+    if (!isPlanEvaluationSnapshot(body?.snapshot)) {
+      return reply
+        .code(400)
+        .type('application/problem+json')
+        .send(
+          badRequest(request, 'body.snapshot must be a full PlanEvaluationSnapshot'),
+        );
+    }
+    const { verified, regressed } = await verifyPlan(projectPath, body.snapshot);
+    return reply.send({
+      verified: verified.map(itemToWire),
+      regressed: regressed.map(itemToWire),
+    });
+  },
+);
+EOF
+assert_exit "RED2 caller-supplied body.snapshot" "$TMP_ROOT/red2" 1
+assert_category "RED2 caller-supplied body.snapshot" "$TMP_ROOT/red2" "caller-input-state-flip"
+
+# -- GREEN: fixed versions of both ------------------------------------------
+GREEN_DIR="$TMP_ROOT/green/src"
+mkdir -p "$GREEN_DIR"
+cat > "$GREEN_DIR/reconciliation.ts" <<'EOF'
+function hasReceiptComment(
+  comments: IssueComment[],
+  reviewerLogin: string,
+  closeReceipt: MirrorCloseReceiptSummary | null,
+): boolean {
+  if (!closeReceipt) return false;
+  const anchor = computeReceiptAnchor(closeReceipt);
+  return comments.some((c) => c.authorLogin === reviewerLogin && c.body.includes(anchor));
+}
+EOF
+cat > "$GREEN_DIR/plans-routes.ts" <<'EOF'
+app.post(
+  '/api/v1/projects/:id/plan/verify',
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
+    if (!projectPath) return;
+    const { verified, regressed } = await verifyPlan(projectPath);
+    return reply.send({
+      verified: verified.map(itemToWire),
+      regressed: regressed.map(itemToWire),
+    });
+  },
+);
+EOF
+assert_exit "GREEN derive-from-state + identity/anchor" "$TMP_ROOT/green" 0
+
+# -- Baseline regression: the real repo root must still be clean -----------
+REPO_ROOT="$(cd "$HERE/../.." && pwd)"
+assert_exit "real repo root (baseline suppresses fixed sites)" "$REPO_ROOT" 0
+
+if [[ "$FAIL" -eq 0 ]]; then
+  printf 'validate-verification-integrity.selftest: all assertions passed\n'
+else
+  printf 'validate-verification-integrity.selftest: FAILURES ABOVE\n' >&2
+fi
+exit "$FAIL"

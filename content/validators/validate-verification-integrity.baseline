@@ -1,0 +1,37 @@
+# Baseline for validate-verification-integrity.sh (W8-07).
+#
+# Format: <category>\t<repo-relative-file>\t<trimmed-line-text>
+# (TAB-separated; blank lines and lines starting with # are ignored.)
+#
+# Each row is a specific line the validator would otherwise flag, reviewed
+# and confirmed safe, with the reason recorded below. Keyed on line
+# *content*, not line number: an unrelated edit elsewhere in the file does
+# not invalidate a baseline row, but an edit to the flagged line itself
+# does (it falls out of the baseline and must be re-reviewed) -- the
+# validator does not silently keep suppressing text that has changed.
+
+# apps/server/src/api/plans-routes.ts -- the POST /plan/evaluate route
+# legitimately reads body.snapshot (W5-15/W5-16): it only matches the
+# snapshot against the deterministic recommendation catalog (D-016) to
+# create NEW `proposed` plan items. It never flips an item to done/verified
+# from it -- that decision is made exclusively by verifyPlan's own
+# server-derived snapshot (see the /plan/verify route right below it in the
+# same file, which explicitly never reads body.snapshot). Two of these four
+# rows are string-literal text inside an error message / doc comment, not
+# executable reads, but are baselined too since the line-based scan can't
+# tell the difference.
+caller-input-state-flip	apps/server/src/api/plans-routes.ts	if (!isPlanEvaluationSnapshot(body?.snapshot)) {
+caller-input-state-flip	apps/server/src/api/plans-routes.ts	badRequest(request, 'body.snapshot must be a full PlanEvaluationSnapshot'),
+caller-input-state-flip	apps/server/src/api/plans-routes.ts	const { created } = await evaluatePlan(projectPath, body.snapshot);
+caller-input-state-flip	apps/server/src/api/plans-routes.ts	* `body.snapshot` is never read: CLAUDE.md law 4 / SC-03 — an untrusted
+
+# packages/tickets/src/reducer.ts -- the ticket.accepted case folds status
+# to 'done' from an event that was already receipt-checked before it was
+# ever appended: acceptTicket (packages/tickets/src/verbs.ts) refuses to
+# emit ticket.accepted unless ticket.manifest.closeReceipt is present and
+# the actor isn't the ticket owner (maker != verifier, FR-T2). The reducer
+# is a pure fold over an already-validated event, not a fresh decision
+# point, so there is no "receipt"/"anchor" text near this line to find --
+# the check lives in a different file (verbs.ts), by design (events are the
+# durable, receipt-checked source of truth; projections are disposable).
+state-flip-no-anchor	packages/tickets/src/reducer.ts	status: 'done',
