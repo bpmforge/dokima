@@ -18,7 +18,7 @@ async function loadPkg(pkg) {
   return import(pathToFileURL(path.join(repoRoot, 'packages', pkg, 'src', 'index.ts')).href);
 }
 
-const { openEventLog, createIdentity } = await loadPkg('events');
+const { openEventLog, createIdentity, appendEvent } = await loadPkg('events');
 const { createTicket, claimTicket, startTicket, closeTicket, acceptTicket } =
   await loadPkg('tickets');
 
@@ -129,6 +129,53 @@ try {
     });
     claimTicket(log, { ticketId: 'E2E-REFUSE-1', actorId: 'operator' });
     startTicket(log, { ticketId: 'E2E-REFUSE-1', actorId: 'operator' });
+  } else if (scenario === 'trace') {
+    // A ticket worked by a run, plus a second ticket no run has ever
+    // touched, so trace.spec.ts exercises both the honest-empty and
+    // populated states of the real /tickets/:id/runs + /runs/:id/trace
+    // routes end to end (not mocked, unlike TraceView.test.tsx/
+    // TelemetryPanel.test.tsx). `claimTicket`/`startTicket` don't accept a
+    // runId (a run is a loop-engine concept the tickets package doesn't
+    // know about), so every run-tagged event here is appended directly —
+    // same as runs-routes.test.ts does server-side — covering three real
+    // classify.ts buckets (pass/gate/escalation; loop.pass/
+    // gateway.call_completed don't have a real producer yet, see
+    // trace/classify.ts's header).
+    createTicket(log, 'agent-1', {
+      id: 'E2E-TRACE-1',
+      type: 'task',
+      title: 'Ticket with a session trace',
+      lane: 'ui',
+      writeScope: ['a/**'],
+    });
+    createTicket(log, 'agent-1', {
+      id: 'E2E-TRACE-EMPTY',
+      type: 'task',
+      title: 'Ticket never worked by a run',
+      lane: 'ui',
+      writeScope: ['b/**'],
+    });
+    appendEvent(log, {
+      eventType: 'loop.pass',
+      actorId: 'agent-1',
+      ticketId: 'E2E-TRACE-1',
+      runId: 'run-e2e-1',
+      payload: { pass: 1 },
+    });
+    appendEvent(log, {
+      eventType: 'gate.receipt_minted',
+      actorId: 'agent-1',
+      ticketId: 'E2E-TRACE-1',
+      runId: 'run-e2e-1',
+      payload: { validators: [{ name: 'lint', exitCode: 0, gapCount: 0 }] },
+    });
+    appendEvent(log, {
+      eventType: 'escalation.rung_advanced',
+      actorId: 'agent-1',
+      ticketId: 'E2E-TRACE-1',
+      runId: 'run-e2e-1',
+      payload: { fromRung: 'R1', toRung: 'R2' },
+    });
   } else {
     throw new Error(`unknown scenario "${scenario}"`);
   }
