@@ -21,7 +21,9 @@ import { FirstRunWizard } from './settings/FirstRunWizard.js';
 import { SettingsPage } from './settings/SettingsPage.js';
 import { ShortcutsOverlay } from './shortcuts/ShortcutsOverlay.js';
 import { ThemeProvider, useTheme } from './theme/ThemeProvider.js';
+import { DrawerTraceLink } from './trace/DrawerTraceLink.js';
 import { TraceView } from './trace/TraceView.js';
+import { pushTraceViewUrl, readTraceTicketId } from './trace/urlParams.js';
 
 function wsUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -49,21 +51,11 @@ function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
 }
 
+const VALID_VIEWS = ['settings', 'wizard', 'roster', 'notifications', 'plans', 'trace'];
+
 function readView(): View {
   const view = new URLSearchParams(window.location.search).get('view');
-  return view === 'settings' ||
-    view === 'wizard' ||
-    view === 'roster' ||
-    view === 'notifications' ||
-    view === 'plans' ||
-    view === 'trace'
-    ? view
-    : null;
-}
-
-/** `?ticket=` — which ticket's session trace `view=trace` is replaying (BLUEPRINT §12.4). */
-function readTraceTicketId(): string | null {
-  return new URLSearchParams(window.location.search).get('ticket');
+  return view !== null && VALID_VIEWS.includes(view) ? (view as View) : null;
 }
 
 /** Live-update substitute for the header bell's Decide badge (WS push deferred, same precedent as `fleet/FleetHome.tsx`). */
@@ -144,30 +136,6 @@ function useArtifactsPaneNode(projectId: string | null): HTMLElement | null {
 }
 
 /**
- * Same portal pattern as `useChatPaneNode`, targeting the ticket drawer
- * (`data-testid="ticket-drawer"`, `board/drawer/TicketDrawer.tsx` — outside
- * this ticket's write_scope). Re-queries whenever `openTicketId` changes:
- * the drawer only exists in the DOM while a ticket is open, and unlike the
- * always-present pane nodes, it mounts/unmounts on every open/close, so a
- * mount-only query would go stale the first time the drawer closes and
- * reopens on a different ticket. This is how the session-trace view stays
- * "linked from ticket cards" (this ticket's acceptance criterion) without
- * editing `Card.tsx`/`TicketDrawer.tsx`: a card click already opens the
- * drawer (existing behavior below), and this portals a launcher into it.
- */
-function useTicketDrawerNode(openTicketId: string | null): HTMLElement | null {
-  const [node, setNode] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!openTicketId) {
-      setNode(null);
-      return;
-    }
-    setNode(document.querySelector<HTMLElement>('[data-testid="ticket-drawer"]'));
-  }, [openTicketId]);
-  return node;
-}
-
-/**
  * Extracts a ticket id from a click that bubbled up from a `board-card`
  * (data-testid `card-{id}`, set by `board/Card.tsx` — outside this
  * ticket's write_scope). Event delegation on the portaled subtree is the
@@ -189,23 +157,20 @@ function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
   const [view, setView] = useState<View>(() => readView());
-  const [traceTicketId, setTraceTicketId] = useState<string | null>(() =>
-    readTraceTicketId(),
-  );
+  // Derived at render time, not mirrored into state (same "URL is the source of truth" discipline as readProjectId/readView).
+  const traceTicketId = view === 'trace' ? readTraceTicketId() : null;
   const chatPaneNode = useChatPaneNode(projectId);
   const boardPaneNode = useBoardPaneNode(projectId);
   const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
   const decideBadgeCount = useDecideBadgeCount();
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
-  const ticketDrawerNode = useTicketDrawerNode(openTicketId);
   const [modeNotice, setModeNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const onPopState = () => {
       setProjectId(readProjectId());
       setView(readView());
-      setTraceTicketId(readTraceTicketId());
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -242,17 +207,12 @@ function AppShell() {
     url.searchParams.delete('ticket');
     window.history.pushState({}, '', url);
     setView(null);
-    setTraceTicketId(null);
   }, []);
 
   /** Opens the session-trace view for a ticket (BLUEPRINT §12.4) and closes any open drawer. */
   const openTraceView = useCallback((ticketId: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('view', 'trace');
-    url.searchParams.set('ticket', ticketId);
-    window.history.pushState({}, '', url);
+    pushTraceViewUrl(ticketId);
     setOpenTicketId(null);
-    setTraceTicketId(ticketId);
     setView('trace');
   }, []);
 
@@ -290,10 +250,7 @@ function AppShell() {
         <span>{APP_NAME}</span>
         <div className="app-shell__header-actions">
           <nav className="app-shell__nav">
-            {view === 'roster' ||
-            view === 'notifications' ||
-            view === 'plans' ||
-            view === 'trace' ? (
+            {view && view !== 'settings' && view !== 'wizard' ? (
               <button type="button" onClick={closeView}>
                 ← Back
               </button>
@@ -415,19 +372,7 @@ function AppShell() {
               onClose={() => setOpenTicketId(null)}
             />
           )}
-          {ticketDrawerNode &&
-            openTicketId &&
-            createPortal(
-              <button
-                type="button"
-                className="app-shell__open-trace"
-                data-testid="open-session-trace"
-                onClick={() => openTraceView(openTicketId)}
-              >
-                Open full session trace →
-              </button>,
-              ticketDrawerNode,
-            )}
+          <DrawerTraceLink ticketId={openTicketId} onOpenTrace={openTraceView} />
         </>
       ) : (
         <FleetHome onOpenProject={openProject} />
