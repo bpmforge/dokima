@@ -47,6 +47,35 @@ describe('gatherOnboardRepoContext (W8-09 fix — real repo material for the sin
     expect(ctx.recentCommits[0]?.subject).toBe('chore: initial commit');
     expect(ctx.keyFiles['README.md']).toBe('# fixture repo\n');
     expect(ctx.keyFiles['package.json']).toBeUndefined();
+    expect(ctx.sourceSamples['src/index.ts']).toBe('export const x = 1;\n');
+    expect(ctx.sourceSamplesTruncated).toBe(false);
+  });
+
+  it('samples real source-file contents (bounded, deterministic, never test files)', async () => {
+    const repoRoot = await mkTempDir('shipwright-onboard-repo-context-samples-');
+    await git(repoRoot, ['init', '-b', 'main']);
+    await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
+    await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+    await fs.mkdir(path.join(repoRoot, 'src'));
+    for (let i = 0; i < 14; i += 1) {
+      await fs.writeFile(
+        path.join(repoRoot, 'src', `mod-${String(i).padStart(2, '0')}.ts`),
+        `export const mod${i} = ${i};\n`,
+      );
+    }
+    await fs.writeFile(
+      path.join(repoRoot, 'src', 'mod-00.test.ts'),
+      'import { expect } from "vitest";\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'chore: add sources']);
+
+    const ctx = await gatherOnboardRepoContext(repoRoot);
+
+    expect(Object.keys(ctx.sourceSamples)).toHaveLength(12);
+    expect(ctx.sourceSamplesTruncated).toBe(true);
+    expect(ctx.sourceSamples['src/mod-00.ts']).toBe('export const mod0 = 0;\n');
+    expect(Object.keys(ctx.sourceSamples)).not.toContain('src/mod-00.test.ts');
   });
 
   it('falls back to a filesystem walk and yields empty commits/keyFiles for a non-git directory', async () => {
@@ -61,6 +90,7 @@ describe('gatherOnboardRepoContext (W8-09 fix — real repo material for the sin
     expect(ctx.directoryListing).toEqual(['notes.txt']);
     expect(ctx.recentCommits).toEqual([]);
     expect(ctx.keyFiles).toEqual({});
+    expect(ctx.sourceSamples).toEqual({});
   });
 
   it('truncates an oversized key file and flags a large directory listing as truncated', async () => {

@@ -30,7 +30,12 @@ async function createTempRepo(): Promise<TempRepo> {
   await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
   await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
-  await git(repoRoot, ['add', '--', 'README.md']);
+  await fs.mkdir(path.join(repoRoot, 'src'));
+  await fs.writeFile(
+    path.join(repoRoot, 'src', 'widget.ts'),
+    'export function widget() { return 42; }\n',
+  );
+  await git(repoRoot, ['add', '--', 'README.md', 'src/widget.ts']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
   return { repoRoot, cleanup: () => fs.rm(repoRoot, { recursive: true, force: true }) };
 }
@@ -89,6 +94,9 @@ describe('runOnboardAnalysis (W8-09 — full onboard/analysis run, real gateway 
       const promptContent = firstBody.messages[1]?.content ?? '';
       expect(promptContent).toContain('# fixture');
       expect(promptContent).toContain('README.md');
+      // ...and a real source-file sample, not just doc/config files — the
+      // security/code-analysis steps need actual code to analyze.
+      expect(promptContent).toContain('export function widget()');
 
       expect(Object.keys(outcome.result.stepArtifacts)).toHaveLength(16);
       expect(outcome.result.coverageManifest.antiSlopRules).toHaveLength(30);

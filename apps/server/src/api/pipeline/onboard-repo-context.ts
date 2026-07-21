@@ -7,10 +7,14 @@
  * gateway `Provider` interface is `chat()`-only). Without this module,
  * `seedContext` was just `{ repoRoot }`, a path string the specialist had no
  * way to open — it was being asked to analyze a repo it could not see. This
- * gathers a directory listing, recent commit log, and a handful of key file
- * contents so the single-turn completion has real material, and injects the
- * same bundle into every step's `seedContext` (the port only supports one
- * shared `seedContext` per run — see `packages/pipeline/src/run/types.ts`).
+ * gathers a directory listing, recent commit log, a handful of key doc
+ * files, and a bounded sample of real source-file contents so the
+ * single-turn completion has real material — including for the
+ * security/code-analysis steps (semgrep-runner, attack-chainer, complexity
+ * analyzer, ...), which need actual code, not just a filename table of
+ * contents — and injects the same bundle into every step's `seedContext`
+ * (the port only supports one shared `seedContext` per run — see
+ * `packages/pipeline/src/run/types.ts`).
  *
  * Read-only, bounded, and defensive throughout: every candidate file read
  * and every git call tolerates absence/failure (a fresh, uncommitted, or
@@ -26,6 +30,8 @@ const DIRECTORY_LISTING_LIMIT = 400;
 const COMMIT_LOG_LIMIT = 20;
 const KEY_FILE_BYTE_LIMIT = 4000;
 const WALK_VISIT_LIMIT = 5000;
+const SOURCE_SAMPLE_LIMIT = 12;
+const SOURCE_SAMPLE_BYTE_LIMIT = 2000;
 const KEY_FILE_CANDIDATES = [
   'README.md',
   'Readme.md',
@@ -42,6 +48,24 @@ const WALK_SKIP_DIRS = new Set([
   'target',
   'vendor',
 ]);
+const SOURCE_EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.go',
+  '.rs',
+  '.java',
+  '.rb',
+  '.php',
+  '.c',
+  '.cpp',
+  '.cs',
+]);
+const TEST_PATH_PATTERN = /(\.(test|spec)\.\w+$)|(\/(__tests__|tests?)\/)/;
 
 const UNIT_SEP = '\x1f';
 
@@ -135,6 +159,37 @@ async function readKeyFiles(repoRoot: string): Promise<Record<string, string>> {
   return out;
 }
 
+function isSampleableSourceFile(relPath: string): boolean {
+  if (!SOURCE_EXTENSIONS.has(path.extname(relPath))) return false;
+  return !TEST_PATH_PATTERN.test(`/${relPath}`);
+}
+
+/** A deterministic, bounded sample of real source-file contents (not just
+ * their names) — the sample specialists (semgrep-runner, complexity
+ * analyzer, attack-chainer, ...) need to actually see code. Tolerates an
+ * unreadable/binary file despite the extension match by skipping it, same
+ * defensiveness as `readKeyFiles`. */
+async function sampleSourceFiles(
+  repoRoot: string,
+  files: readonly string[],
+): Promise<{ samples: Record<string, string>; truncated: boolean }> {
+  const candidates = files.filter(isSampleableSourceFile);
+  const chosen = candidates.slice(0, SOURCE_SAMPLE_LIMIT);
+  const samples: Record<string, string> = {};
+  for (const rel of chosen) {
+    try {
+      const raw = await fs.readFile(path.join(repoRoot, rel), 'utf8');
+      samples[rel] =
+        raw.length > SOURCE_SAMPLE_BYTE_LIMIT
+          ? `${raw.slice(0, SOURCE_SAMPLE_BYTE_LIMIT)}\n...[truncated]`
+          : raw;
+    } catch {
+      // unreadable/binary despite the extension match — skip, don't fail the gather.
+    }
+  }
+  return { samples, truncated: candidates.length > chosen.length };
+}
+
 export interface OnboardRepoContext {
   readonly repoRoot: string;
   readonly isGitRepo: boolean;
@@ -142,6 +197,11 @@ export interface OnboardRepoContext {
   readonly directoryListingTruncated: boolean;
   readonly recentCommits: readonly OnboardRepoCommit[];
   readonly keyFiles: Readonly<Record<string, string>>;
+  /** A bounded, deterministic sample of real source-file contents (never
+   * test files) so code/security specialists have actual code to analyze,
+   * not just filenames — see module header. */
+  readonly sourceSamples: Readonly<Record<string, string>>;
+  readonly sourceSamplesTruncated: boolean;
 }
 
 /** Builds the real repo-context bundle injected into every onboard step's
@@ -156,6 +216,8 @@ export async function gatherOnboardRepoContext(
     ? await listFilesGit(repoRoot)
     : await walkFiles(repoRoot, repoRoot, { count: 0 });
   const sorted = [...allFiles].sort();
+  const { samples: sourceSamples, truncated: sourceSamplesTruncated } =
+    await sampleSourceFiles(repoRoot, sorted);
   return {
     repoRoot,
     isGitRepo: gitRepo,
@@ -163,5 +225,7 @@ export async function gatherOnboardRepoContext(
     directoryListingTruncated: sorted.length > DIRECTORY_LISTING_LIMIT,
     recentCommits: gitRepo ? await recentCommits(repoRoot) : [],
     keyFiles: await readKeyFiles(repoRoot),
+    sourceSamples,
+    sourceSamplesTruncated,
   };
 }
