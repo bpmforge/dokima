@@ -2637,11 +2637,12 @@
         "shipwright service install|status|stop generates launchd/systemd user units (DEPLOYMENT §6); shipwright providers refresh re-runs discovery/warm-up"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "ADDED 2026-07-14 design review G-5: DEPLOYMENT.md promised all of these with zero owning tickets.",
         "CONDUCTOR 2026-07-21T19:32:07.950Z: blocked after 2 attempts. Branch sw/w8-06 kept. Gaps: out-of-scope edits: apps/server/src/bootstrap/cli.test.ts, apps/server/src/bootstrap/cli.ts, packages/events/src/index.ts",
-        "RESET+WIDEN 2026-07-21: build-then-wire seam. Maker built ops commands (cli/ops/**) + backup module (events/src/backup/**) correctly but self-blocked on out-of-scope wiring: the events barrel packages/events/src/index.ts (to export the backup module) and the CLI call-site apps/server/src/bootstrap/cli.ts+cli.test.ts (to register doctor/backup/restore/service commands). All three are done-owned (W8-05/W0-02/W4-09) so P8 tolerates. Widened scope to those; fresh 2-attempt cycle."
+        "RESET+WIDEN 2026-07-21: build-then-wire seam. Maker built ops commands (cli/ops/**) + backup module (events/src/backup/**) correctly but self-blocked on out-of-scope wiring: the events barrel packages/events/src/index.ts (to export the backup module) and the CLI call-site apps/server/src/bootstrap/cli.ts+cli.test.ts (to register doctor/backup/restore/service commands). All three are done-owned (W8-05/W0-02/W4-09) so P8 tolerates. Widened scope to those; fresh 2-attempt cycle.",
+        "AGENT 2026-07-21: claim ticket — recovering prior blocked/w8-06 implementation (ops/backup files only, matches now-widened write_scope); cherry-picking content commits, will re-verify gate before close."
       ],
       "stories": [
         "US-205"
