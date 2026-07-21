@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "version": "0.0.0",
+  "bin": {
+    "shipwright": "apps/server/src/bootstrap/cli-entry.mjs"
+  },
   "engines": {
     "node": "22.x",
     "pnpm": "11.x"
