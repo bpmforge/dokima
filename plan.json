@@ -2346,7 +2346,7 @@
         "Scheduled idle-hours job: dedupe, decay, consolidate, pre-brief the morning queue; ON by default (FR-M3); before a task class that previously failed, the failure fact + fix inject first (error-first recall), test-proven"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [],
       "stories": [
         "US-602",
