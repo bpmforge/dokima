@@ -9,6 +9,22 @@ export {
   REQUIRED_ONBOARD_ARTIFACTS,
 } from './onboard.js';
 
+export {
+  SECURITY_CLUSTER_SPECIALIST_ROLES,
+  SECURITY_CLUSTER_STEPS,
+  SECURITY_SPECIALIST_ROLES,
+  SECURITY_STEPS,
+  THREAT_MODEL_REFRESH_STEP,
+} from './security-cluster.js';
+
+export { buildOnboardCoverageManifest } from './coverage-manifest.js';
+export type {
+  AntiSlopRuleCoverageEntry,
+  OnboardCoverageManifest,
+  RuleLifecycleState,
+  ValidatorCoverageEntry,
+} from './coverage-manifest.js';
+
 export { FEATURE_MODE, FEATURE_STEPS, decideFeatureEligibility } from './feature.js';
 export type { FeatureEligibility, OnboardEvidence } from './feature.js';
 
