@@ -13,6 +13,7 @@
     "@shipwright/events": "workspace:*",
     "@shipwright/gateway": "workspace:*",
     "@shipwright/harbormaster": "workspace:*",
+    "@shipwright/memory": "workspace:*",
     "@shipwright/pipeline": "workspace:*",
     "@shipwright/tickets": "workspace:*",
     "@shipwright/shared": "workspace:*"

@@ -24,6 +24,7 @@ import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plug
 import { registerDecisionRoutes } from './decisions/index.js';
 import { registerEventsSseRoute } from './events-sse.js';
 import { registerHealthz } from './healthz.js';
+import { registerLessonsRoutes } from './lessons/index.js';
 import { registerOpenApiRoute } from './openapi.js';
 import { registerPipelineRoutes } from './pipeline/index.js';
 import { registerPlansRoutes } from './plans-routes.js';
@@ -92,6 +93,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerPlansRoutes(app, { home: opts.fleetHome });
   registerPipelineRoutes(app, { home: opts.fleetHome });
   registerDecisionRoutes(app, { home: opts.fleetHome, auth: authOpts });
+  registerLessonsRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });
   registerChatRoute(app);
