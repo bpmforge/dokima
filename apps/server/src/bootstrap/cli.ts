@@ -15,6 +15,13 @@ import {
 } from '../api/index.js';
 import { openEventLog } from '@shipwright/events';
 import { computeShipwrightHome } from '@shipwright/shared';
+import { runBackupCommand, type BackupCommandDeps } from '../cli/ops/backup-cmd.js';
+import { runDoctorCommand, type DoctorDeps } from '../cli/ops/doctor.js';
+import {
+  runProvidersRefreshCommand,
+  type ProvidersRefreshDeps,
+} from '../cli/ops/providers-refresh.js';
+import { runServiceCommand, type ServiceDeps } from '../cli/ops/service.js';
 import { runBootSequence, type BootReport } from './boot-sequence.js';
 import { resolveLogLevel } from './config.js';
 import { detectRunningCore, openBrowser } from './launch.js';
@@ -38,6 +45,10 @@ export interface CliDeps {
   buildApiServer?: typeof buildApiServer;
   listenLocalhost?: typeof listenLocalhost;
   ensureAuthToken?: typeof ensureAuthToken;
+  backup?: BackupCommandDeps;
+  doctor?: DoctorDeps;
+  service?: ServiceDeps;
+  providersRefresh?: ProvidersRefreshDeps;
 }
 
 export function resolvePort(env: NodeJS.ProcessEnv): number {
@@ -133,6 +144,8 @@ async function runServerBoot(io: CliIO, deps: CliDeps): Promise<number> {
   return 0;
 }
 
+const SERVICE_SUBCOMMANDS = ['install', 'status', 'stop'] as const;
+
 export async function runPackagedCli(
   argv: string[],
   io: CliIO,
@@ -140,6 +153,27 @@ export async function runPackagedCli(
 ): Promise<number> {
   if (argv[0] === 'packs' && argv[1] === 'update') {
     return runPacksUpdate(io, deps);
+  }
+  if (argv[0] === 'backup') {
+    return runBackupCommand(io, deps.backup);
+  }
+  if (argv[0] === 'doctor') {
+    return runDoctorCommand(io, deps.doctor);
+  }
+  if (argv[0] === 'service') {
+    const subcommand = argv[1];
+    if ((SERVICE_SUBCOMMANDS as readonly string[]).includes(subcommand ?? '')) {
+      return runServiceCommand(
+        subcommand as (typeof SERVICE_SUBCOMMANDS)[number],
+        io,
+        deps.service,
+      );
+    }
+    io.stderr(`usage: shipwright service <${SERVICE_SUBCOMMANDS.join('|')}>`);
+    return 2;
+  }
+  if (argv[0] === 'providers' && argv[1] === 'refresh') {
+    return runProvidersRefreshCommand(io, deps.providersRefresh);
   }
   return runServerBoot(io, deps);
 }

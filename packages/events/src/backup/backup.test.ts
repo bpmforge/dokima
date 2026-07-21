@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, listEvents } from '../append.js';
+import { appendEvent } from '../append.js';
 import { openEventLog, openEventLogReader } from '../db.js';
 import { createIdentity } from '../identities.js';
 import { createTempDbPath, type TempDb } from '../test-helpers.js';

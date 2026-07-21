@@ -1,12 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  appendEvent,
-  createIdentity,
-  openEventLog,
-  type EventLog,
-} from '@shipwright/events';
+import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
 import { createInMemoryCredentialStore, type CredentialStore } from '@shipwright/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CliIO } from '../../bootstrap/cli.js';

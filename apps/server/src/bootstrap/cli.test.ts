@@ -182,4 +182,70 @@ describe('runPackagedCli', () => {
     expect(runBootSequence).not.toHaveBeenCalled();
     expect(openBrowser).toHaveBeenCalledWith('http://127.0.0.1:4317');
   });
+
+  it('dispatches `backup` to the backup command with its own deps', async () => {
+    const { io } = await scratchProject();
+    const createOnlineBackup = vi.fn().mockResolvedValue('/fake/backups/online-1.db');
+    const pruneBackups = vi.fn().mockResolvedValue({ kept: [], pruned: [] });
+
+    const code = await runPackagedCli(['backup'], io, {
+      backup: { createOnlineBackup, pruneBackups },
+    });
+
+    expect(code).toBe(0);
+    expect(createOnlineBackup).toHaveBeenCalled();
+  });
+
+  it('dispatches `doctor` to the doctor command with its own deps', async () => {
+    const { io } = await scratchProject();
+    const detectRunningCoreForDoctor = vi.fn().mockResolvedValue(false);
+
+    const code = await runPackagedCli(['doctor'], io, {
+      doctor: {
+        detectRunningCore: detectRunningCoreForDoctor,
+        resolveCredentialStore: () => ({
+          get: vi.fn().mockResolvedValue('ok'),
+          set: vi.fn().mockResolvedValue(undefined),
+          delete: vi.fn().mockResolvedValue(undefined),
+        }),
+        loadConfiguredProviders: vi.fn().mockResolvedValue([]),
+      },
+    });
+
+    expect(code).toBe(0);
+    expect(detectRunningCoreForDoctor).toHaveBeenCalled();
+    expect(io.stdout).toHaveBeenCalledWith(expect.stringContaining('doctor: OK'));
+  });
+
+  it('dispatches `service <subcommand>` to the service command, refusing an unknown subcommand', async () => {
+    const { io } = await scratchProject();
+    const exec = vi
+      .fn()
+      .mockResolvedValue({ stdout: 'active\n', stderr: '', exitCode: 0 });
+
+    const code = await runPackagedCli(['service', 'status'], io, {
+      service: { platform: 'linux', exec },
+    });
+    expect(code).toBe(0);
+    expect(exec).toHaveBeenCalled();
+
+    const badCode = await runPackagedCli(['service', 'bogus'], io);
+    expect(badCode).toBe(2);
+    expect(io.stderr).toHaveBeenCalledWith(
+      expect.stringContaining('usage: shipwright service'),
+    );
+  });
+
+  it('dispatches `providers refresh` to the providers-refresh command with its own deps', async () => {
+    const { io } = await scratchProject();
+    const loadConfiguredProviders = vi.fn().mockResolvedValue([]);
+
+    const code = await runPackagedCli(['providers', 'refresh'], io, {
+      providersRefresh: { loadConfiguredProviders },
+    });
+
+    expect(code).toBe(0);
+    expect(loadConfiguredProviders).toHaveBeenCalled();
+    expect(io.stdout).toHaveBeenCalledWith(expect.stringContaining('nothing to refresh'));
+  });
 });
