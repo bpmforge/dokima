@@ -3,6 +3,7 @@ import { createTestHandle } from './test-helpers.js';
 import { indexProject } from './indexer.js';
 import { insertCodeChunk, listCodeChunksForPath } from './store.js';
 import { searchCodeBm25 } from './search.js';
+import { createInMemoryCodeIndexEventSink } from './events.js';
 import type { ExecFileFn } from './ripgrep.js';
 import type { CodeEmbeddingProvider } from './embeddings.js';
 
@@ -102,5 +103,36 @@ describe('indexProject', () => {
       now: NOW,
     });
     expect(result.filesIndexed).toBe(1);
+  });
+
+  it('emits exactly one code_index.indexed event summarizing the run', async () => {
+    const handle = createTestHandle();
+    const sink = createInMemoryCodeIndexEventSink();
+    const result = await indexProject(handle, '/project', {
+      execFileImpl: fakeFiles(['src/a.ts']),
+      readFile: async () => 'export function ok() {}',
+      now: NOW,
+      sink,
+    });
+    expect(sink.events).toHaveLength(1);
+    expect(sink.events[0]).toEqual({
+      type: 'code_index.indexed',
+      occurredAt: NOW(),
+      detail: { rootDir: '/project', ...result },
+    });
+  });
+
+  it('emits code_index.indexed even when rg is unavailable', async () => {
+    const handle = createTestHandle();
+    const sink = createInMemoryCodeIndexEventSink();
+    const missing: ExecFileFn = () => {
+      const error = new Error('spawn rg ENOENT') as Error & { code: string };
+      error.code = 'ENOENT';
+      return Promise.reject(error);
+    };
+    await indexProject(handle, '/project', { execFileImpl: missing, now: NOW, sink });
+    expect(sink.events).toHaveLength(1);
+    expect(sink.events[0]?.type).toBe('code_index.indexed');
+    expect(sink.events[0]?.detail).toMatchObject({ ripgrepUnavailable: true });
   });
 });

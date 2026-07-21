@@ -19,3 +19,7 @@
 {"ts":"2026-07-21T00:22:56Z","source":"validator","validator":"validate-circular-deps","gaps":0,"exit":0}
 {"ts":"2026-07-21T01:58:29Z","source":"validator","validator":"validate-file-size","gaps":2,"exit":1}
 {"ts":"2026-07-21T01:58:29Z","source":"validator","validator":"validate-circular-deps","gaps":0,"exit":0}
+{"ts":"2026-07-21T02:01:22Z","source":"validator","validator":"validate-file-size","gaps":2,"exit":1}
+{"ts":"2026-07-21T02:01:22Z","source":"validator","validator":"validate-circular-deps","gaps":0,"exit":0}
+{"ts":"2026-07-21T02:01:39Z","source":"validator","validator":"validate-code-health","gaps":21,"exit":1}
+{"ts":"2026-07-21T02:01:43Z","source":"validator","validator":"validate-dead-code","gaps":0,"exit":0}
