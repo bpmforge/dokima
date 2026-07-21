@@ -1,0 +1,87 @@
+/**
+ * Sleep-time dedupe (FR-M3, DATABASE.md §5's "merges duplicate fixture
+ * facts"): folds exact-duplicate verified facts — same `kind` + `ticket_id`
+ * + normalized `content` — into one canonical row, so R0/anchor recall
+ * (`store/retrieval.ts`'s `searchFactsBm25`) never surfaces the same
+ * fixture lesson twice. The oldest row survives (first-recorded provenance
+ * kept); duplicates are decayed, never deleted — `facts.decayed` is the
+ * established "stop recalling, keep the row" convention
+ * (`store/facts.ts`), so a merge is auditable and reversible, not
+ * destructive. The survivor's `use_count`/`last_used_at`/`confidence` fold
+ * in the duplicates' values so recall-frequency signal isn't lost to the
+ * merge.
+ */
+import type { SqliteHandle } from '../store/handle.js';
+
+interface DedupeCandidateRow {
+  id: number;
+  kind: string;
+  ticket_id: string | null;
+  content: string;
+  confidence: number;
+  use_count: number;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface DedupeMerge {
+  readonly survivorId: number;
+  readonly mergedIds: readonly number[];
+}
+
+/** Groups verified, non-decayed facts by (kind, ticketId, normalized content); merges every group of 2+. */
+export function dedupeFacts(handle: SqliteHandle): DedupeMerge[] {
+  const rows = handle
+    .prepare<DedupeCandidateRow>(
+      `SELECT id, kind, ticket_id, content, confidence, use_count, last_used_at, created_at
+       FROM facts
+       WHERE verified = 1 AND decayed = 0
+       ORDER BY created_at ASC, id ASC`,
+    )
+    .all();
+
+  const groups = new Map<string, DedupeCandidateRow[]>();
+  for (const row of rows) {
+    const key = JSON.stringify([row.kind, row.ticket_id ?? null, row.content.trim().toLowerCase()]);
+    const group = groups.get(key);
+    if (group) {
+      group.push(row);
+    } else {
+      groups.set(key, [row]);
+    }
+  }
+
+  const merges: DedupeMerge[] = [];
+  for (const group of groups.values()) {
+    if (group.length < 2) {
+      continue;
+    }
+    const survivor = group[0];
+    if (!survivor) {
+      continue;
+    }
+    const duplicates = group.slice(1);
+    const mergedUseCount = group.reduce((sum, row) => sum + row.use_count, 0);
+    const mergedLastUsedAt =
+      group
+        .map((row) => row.last_used_at)
+        .filter((value): value is string => value !== null)
+        .sort()
+        .at(-1) ?? null;
+    const mergedConfidence = Math.max(...group.map((row) => row.confidence));
+
+    handle
+      .prepare(
+        'UPDATE facts SET use_count = ?, last_used_at = ?, confidence = ? WHERE id = ?',
+      )
+      .run(mergedUseCount, mergedLastUsedAt, mergedConfidence, survivor.id);
+
+    for (const duplicate of duplicates) {
+      handle.prepare('UPDATE facts SET decayed = 1 WHERE id = ?').run(duplicate.id);
+    }
+
+    merges.push({ survivorId: survivor.id, mergedIds: duplicates.map((row) => row.id) });
+  }
+
+  return merges;
+}
