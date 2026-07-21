@@ -127,7 +127,8 @@ export function insertPlaybookEntry(
 ): PlaybookEntryRecord {
   assertVerified(input.verifiedBy);
   const createdAt = now();
-  const head = getPlaybookHead(handle, input.taskClass);
+  const taskClass = normalizePlaybookTaskClass(input.taskClass);
+  const head = getPlaybookHead(handle, taskClass);
   if (head) {
     handle
       .prepare('UPDATE playbook SET retired_at = ? WHERE id = ?')
@@ -140,7 +141,7 @@ export function insertPlaybookEntry(
       `INSERT INTO playbook (task_class, entry, version, verified_by, delta_of, created_at, retired_at)
        VALUES (?, ?, ?, ?, ?, ?, NULL)`,
     )
-    .run(input.taskClass, input.entry, version, input.verifiedBy, deltaOf, createdAt);
+    .run(taskClass, input.entry, version, input.verifiedBy, deltaOf, createdAt);
   return getPlaybookEntryById(
     handle,
     Number(result.lastInsertRowid),

@@ -78,6 +78,37 @@ describe('insertPlaybookEntry', () => {
 
     expect(getPlaybookHead(handle, 'cold-start-enoent')?.id).toBe(v2.id);
   });
+
+  it('normalizes taskClass at store time, so casing/whitespace variants find the same head and delta-edit it, not fork a new one', () => {
+    const handle = createTestHandle();
+    const v1 = insertPlaybookEntry(
+      handle,
+      { taskClass: 'Flaky Timeout Fix', entry: 'retry with backoff', verifiedBy: 'tool' },
+      NOW,
+    );
+    expect(v1.taskClass).toBe('flaky timeout fix');
+
+    const v2 = insertPlaybookEntry(
+      handle,
+      {
+        taskClass: '  flaky   timeout FIX  ',
+        entry: 'retry with backoff, capped at 3 attempts',
+        verifiedBy: 'challenger',
+      },
+      LATER,
+    );
+    expect(v2.taskClass).toBe('flaky timeout fix');
+    expect(v2.version).toBe(2);
+    expect(v2.deltaOf).toBe(v1.id);
+
+    const history = listPlaybookHistory(handle, 'flaky timeout fix');
+    expect(history).toHaveLength(2);
+    expect(getPlaybookEntryById(handle, v1.id)?.retiredAt).toBe(LATER());
+
+    expect(
+      getPlaybookHead(handle, normalizePlaybookTaskClass('FLAKY TIMEOUT FIX'))?.id,
+    ).toBe(v2.id);
+  });
 });
 
 describe('normalizePlaybookTaskClass', () => {
