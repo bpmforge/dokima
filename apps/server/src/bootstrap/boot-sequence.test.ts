@@ -223,4 +223,27 @@ describe('runBootSequence', () => {
     const homeFile = path.join(home, 'audit-highwater.json');
     await expect(fs.stat(homeFile)).rejects.toThrow();
   });
+
+  it('refuses to boot when the high-water mirror file is corrupted rather than treating it as first-boot', async () => {
+    const { projectDir, home } = await scratchProject();
+
+    // Establish a real mirror file first so there's a genuine baseline...
+    const first = await runBootSequence({
+      projectDir,
+      env: { SHIPWRIGHT_HOME: home },
+      now: clock,
+    });
+    first.log.close();
+
+    // ...then corrupt it, simulating a crash mid-write (non-atomic write
+    // would produce exactly this). A corrupted file must never be silently
+    // read back as "nothing recorded yet" (seq 0) — that would disable
+    // truncation detection for good (reviewer HIGH finding).
+    const homeFile = path.join(home, 'audit-highwater.json');
+    await fs.writeFile(homeFile, '{ not valid json');
+
+    await expect(
+      runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
+    ).rejects.toThrow();
+  });
 });

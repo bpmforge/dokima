@@ -120,20 +120,40 @@ function highWaterFilePath(homeDir: string): string {
   return path.join(homeDir, 'audit-highwater.json');
 }
 
+/**
+ * Reads the high-water mirror file. Only a fresh install (ENOENT) is treated
+ * as "nothing recorded yet" — any other failure (corrupted/partial JSON from
+ * a non-atomic write, EACCES, etc.) is rethrown so boot fails loudly instead
+ * of silently resetting the recorded seq to 0, which would disable
+ * truncation detection (reviewer HIGH finding).
+ */
 async function readHighWaterFile(homeDir: string): Promise<HighWaterFile> {
+  let raw: string;
   try {
-    const raw = await fs.readFile(highWaterFilePath(homeDir), 'utf8');
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? (parsed as HighWaterFile) : {};
+    raw = await fs.readFile(highWaterFilePath(homeDir), 'utf8');
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
-    return {};
+    throw err;
   }
+  const parsed: unknown = JSON.parse(raw);
+  return parsed && typeof parsed === 'object' ? (parsed as HighWaterFile) : {};
 }
 
+/**
+ * Writes the high-water mirror atomically (temp file + rename) so a
+ * crash/power-loss mid-write can't leave a partially-written, corrupted
+ * mirror file behind — the exact failure mode `readHighWaterFile` must
+ * refuse to silently paper over.
+ */
 async function writeHighWaterFile(homeDir: string, data: HighWaterFile): Promise<void> {
   await fs.mkdir(homeDir, { recursive: true });
-  await fs.writeFile(highWaterFilePath(homeDir), `${JSON.stringify(data, null, 2)}\n`);
+  const target = highWaterFilePath(homeDir);
+  const tmp = path.join(
+    homeDir,
+    `.audit-highwater.json.${process.pid}.${Date.now()}.tmp`,
+  );
+  await fs.writeFile(tmp, `${JSON.stringify(data, null, 2)}\n`);
+  await fs.rename(tmp, target);
 }
 
 export interface TruncationCheckResult {

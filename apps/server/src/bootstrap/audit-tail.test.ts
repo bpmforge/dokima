@@ -165,6 +165,20 @@ describe('audit-tail', () => {
       stale.close();
     });
 
+    it('throws instead of treating a corrupted mirror file as first-boot', async () => {
+      // A corrupted/partial audit-highwater.json (e.g. from a crash mid-write)
+      // must fail boot loudly, not be swallowed into {} — that would reset
+      // the recorded seq to 0 and silently disable truncation detection
+      // forever (reviewer HIGH finding).
+      const home = await scratchDir();
+      await fs.writeFile(path.join(home, 'audit-highwater.json'), '{ not valid json');
+      const log = openSeededLog(':memory:', 5);
+      await expect(
+        checkAndUpdateHighWater(log, home, '/proj/a', clock),
+      ).rejects.toThrow();
+      log.close();
+    });
+
     it('keeps separate high-water marks per project key', async () => {
       const home = await scratchDir();
       const logA = openSeededLog(':memory:', 3);
