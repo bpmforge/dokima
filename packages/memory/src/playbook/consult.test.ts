@@ -121,4 +121,56 @@ describe('consultPlaybook', () => {
     });
     expect(result.answered).toBe(false);
   });
+
+  it('FR-F5: a promoted global entry answers when the local playbook has no entry for it', () => {
+    const handle = createTestHandle(); // empty local playbook — this project never authored the lesson
+    const sink = createInMemoryPlaybookConsultSink();
+
+    const result = consultPlaybook(
+      handle,
+      { ticketId: 't-5', criterion: 'flaky timeout fix' },
+      {
+        sink,
+        now: NOW,
+        globalEntries: [
+          { id: 42, taskClass: 'flaky timeout fix', entry: 'retry with backoff' },
+        ],
+      },
+    );
+
+    expect(result).toEqual({
+      answered: true,
+      findingId: 'global-playbook:42',
+      summary: 'retry with backoff',
+    });
+    expect(sink.events[0]).toMatchObject({ type: 'playbook.r0_hit', source: 'global' });
+  });
+
+  it('FR-F5: an unpromoted lesson stays invisible — no globalEntries means a miss, not a fabricated hit', () => {
+    const handle = createTestHandle();
+    const result = consultPlaybook(handle, {
+      ticketId: 't-6',
+      criterion: 'a lesson from another project, never promoted here',
+    });
+    expect(result.answered).toBe(false);
+  });
+
+  it('FR-F5: a retired global entry never answers (superseded, not the live head)', () => {
+    const handle = createTestHandle();
+    const result = consultPlaybook(
+      handle,
+      { ticketId: 't-7', criterion: 'flaky timeout fix' },
+      {
+        globalEntries: [
+          {
+            id: 1,
+            taskClass: 'flaky timeout fix',
+            entry: 'stale v1',
+            retiredAt: '2026-07-01T00:00:00.000Z',
+          },
+        ],
+      },
+    );
+    expect(result.answered).toBe(false);
+  });
 });

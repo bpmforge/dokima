@@ -17,7 +17,7 @@ export interface PlaybookConsultEvent {
   readonly ticketId: string;
   readonly criterion: string;
   /** Which source answered — absent on a miss. */
-  readonly source?: 'playbook' | 'fact';
+  readonly source?: 'playbook' | 'global' | 'fact';
   readonly findingId?: string;
   readonly occurredAt: string;
 }
