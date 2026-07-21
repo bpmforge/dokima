@@ -2458,10 +2458,11 @@
         "The dogfood security/code-health run asserts the FULL imported rule set executes (all 30 anti-slop rules + all 66 validators enumerated in the coverage report — the name-ALL-of-the-set lesson, R-E3); shadow/advisory/gate states honored per D-014"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "notes": [
         " AMENDED 2026-07-14 (adopted R-E3).",
-        "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket."
+        "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket.",
+        "CONDUCTOR 2026-07-21T03:46:49.959Z: blocked after 2 attempts. Branch sw/w8-01 kept. Gaps: plan.json status is 'blocked', expected 'done'"
       ],
       "stories": [
         "US-401",
