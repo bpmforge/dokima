@@ -3031,7 +3031,7 @@
       "module": "validators",
       "lane": "quality",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "content/validators/validate-verification-integrity*",
         "conductor.config.json"
