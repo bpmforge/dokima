@@ -6,8 +6,13 @@ import {
   mintReceipt,
   type EventLog,
 } from '@shipwright/events';
-import { claimTicket, createTicket, startTicket } from '@shipwright/tickets';
+import { claimTicket, createTicket, listTickets, startTicket } from '@shipwright/tickets';
 import { createWorktree, git } from '@shipwright/git';
+import { resetLoopModuleCacheForTests } from '../api/pipeline/onboard-dispatch-port.js';
+import {
+  startFakeGatewayServer,
+  type FakeGatewayServer,
+} from '../api/pipeline/test-fake-gateway.js';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { runCli } from './run.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
@@ -16,9 +21,24 @@ const NOW = () => '2026-07-18T00:00:00.000Z';
 
 describe('shipwright run (FR-C7 — CLI drives the same @shipwright/harbormaster verbs a route would)', () => {
   let project: TempProject;
+  let server: FakeGatewayServer | undefined;
+  const envKeysToRestore = [
+    'SHIPWRIGHT_MODEL_BASE_URL',
+    'SHIPWRIGHT_MODEL_API_KEY',
+    'SHIPWRIGHT_MODEL_ID',
+  ] as const;
+  const savedEnv: Record<string, string | undefined> = {};
 
   afterEach(async () => {
     await project?.cleanup();
+    await server?.close();
+    server = undefined;
+    resetLoopModuleCacheForTests();
+    for (const key of envKeysToRestore) {
+      if (savedEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = savedEnv[key];
+      delete savedEnv[key];
+    }
   });
 
   it('start -> pause -> resume -> stop, each printed as "<runId> <verb> -> <status>"', async () => {
@@ -78,6 +98,64 @@ describe('shipwright run (FR-C7 — CLI drives the same @shipwright/harbormaster
       }),
     ).toBe(0);
     expect(stop.stdout[0]).toBe(`${runId} stop -> stopped`);
+  });
+
+  it('start --mode onboard actually runs a real onboard/analysis run (W8-09) — real gateway + real runSession, findings become board tickets', async () => {
+    project = await createTempProject();
+    const cwd = project.cwd;
+    await git(cwd, ['init', '-b', 'main']);
+    await git(cwd, ['config', 'user.name', 'Shipwright Test']);
+    await git(cwd, ['config', 'user.email', 'test@shipwright.invalid']);
+    await fs.writeFile(`${cwd}/README.md`, '# fixture\n');
+    await git(cwd, ['add', '--', 'README.md']);
+    await git(cwd, ['commit', '-m', 'chore: initial commit']);
+
+    server = await startFakeGatewayServer([
+      JSON.stringify({
+        summary: 'Reviewed.',
+        findings: [
+          {
+            title: 'Missing docs',
+            severity: 'MEDIUM',
+            recommendation: 'Add docs.',
+            verify: 'true',
+          },
+        ],
+      }),
+    ]);
+    savedEnv.SHIPWRIGHT_MODEL_BASE_URL = process.env.SHIPWRIGHT_MODEL_BASE_URL;
+    process.env.SHIPWRIGHT_MODEL_BASE_URL = server.url;
+
+    const start = collectIO();
+    const startCode = await runCli(
+      [
+        'run',
+        'start',
+        '--project',
+        'proj-onboard',
+        '--mode',
+        'onboard',
+        '--breakpoint',
+        'never',
+        '--actor',
+        'operator-1',
+      ],
+      { cwd, now: NOW, ...start.io },
+    );
+
+    expect(startCode).toBe(0);
+    expect(start.stdout[0]).toMatch(/^run-.* started -> running/);
+    expect(start.stdout[1]).toMatch(
+      /onboard analysis complete: 16 steps, 16 findings proposed, 16 accepted onto the board/,
+    );
+    expect(server.requests).toHaveLength(16);
+
+    const log = openWritableLog(resolveDbPath(cwd));
+    try {
+      expect(listTickets(log)).toHaveLength(16);
+    } finally {
+      log.close();
+    }
   });
 
   it('rejects a bad --breakpoint with a usage error (exit 2), never touching the DB', async () => {

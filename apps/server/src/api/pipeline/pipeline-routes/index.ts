@@ -82,6 +82,7 @@ import {
 } from '../gateway-model-port.js';
 import { emitPhaseEvent } from './events.js';
 import { readLedgerMarkdown } from './ledger.js';
+import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
 import { runPreflight } from './preflight.js';
 import { parseRequestBody, type RunPipelineRequestBody } from './request-body.js';
@@ -94,6 +95,8 @@ export interface PipelineRoutesOptions {
   modelPortFactory?: () => Promise<RealGatewayPort>;
   /** Injectable clock (TESTING.md §2). */
   now?: () => string;
+  /** Overrides the onboard route's real gateway config — tests point this at a fake HTTP server. */
+  onboardGatewayConfig?: OnboardRoutesOptions['gatewayConfig'];
 }
 
 export function registerPipelineRoutes(
@@ -105,6 +108,12 @@ export function registerPipelineRoutes(
   const resolvePort =
     opts.modelPortFactory ??
     (() => createRealGatewayPort(opts.gatewayConfig ?? resolveGatewayConfigFromEnv()));
+
+  registerOnboardRoute(app, {
+    home: opts.home,
+    gatewayConfig: opts.onboardGatewayConfig,
+    now: opts.now,
+  });
 
   app.post(
     '/api/v1/projects/:id/pipeline/run',
