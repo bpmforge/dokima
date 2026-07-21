@@ -18,3 +18,4 @@ export type {
 } from './types.js';
 export * from './receipts.js';
 export * from './global-db/index.js';
+export * from './backup/index.js';
