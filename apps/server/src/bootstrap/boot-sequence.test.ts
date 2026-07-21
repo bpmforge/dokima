@@ -1,11 +1,21 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
+import {
+  GENESIS_HASH,
+  appendEvent,
+  computeEventHash,
+  createIdentity,
+  openEventLog,
+} from '@shipwright/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveProjectPaths } from './config.js';
 import { DowngradeRefusedError, latestKnownSchemaVersion } from './migrate-guard.js';
-import { TruncatedLogError, runBootSequence } from './boot-sequence.js';
+import {
+  TamperedAuditTailError,
+  TruncatedLogError,
+  runBootSequence,
+} from './boot-sequence.js';
 
 describe('runBootSequence', () => {
   const scratchDirs: string[] = [];
@@ -162,5 +172,55 @@ describe('runBootSequence', () => {
     await expect(
       runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
     ).rejects.toThrow(TruncatedLogError);
+  });
+
+  it('refuses to boot when the audit tail check finds a hash-chain break (reviewer HIGH: tamper-evidence must be enforced, not just reported)', async () => {
+    const { projectDir, home } = await scratchProject();
+    const paths = resolveProjectPaths(projectDir);
+    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+
+    // events are INSERT-only (no UPDATE/DELETE, DATABASE.md §2) — a tamper
+    // attempt through this app is already rejected by the DB trigger. To
+    // simulate a file-level edit that bypassed the app entirely (the real
+    // threat SC-11 defends against), this seeds the chain via raw INSERTs
+    // with one event's stored hash deliberately wrong.
+    const seedLog = openEventLog(paths.dbPath);
+    createIdentity(
+      seedLog,
+      { id: 'actor-1', name: 'actor-1', kind: 'human' },
+      { now: clock },
+    );
+    let prevHash = GENESIS_HASH;
+    for (let seqNum = 1; seqNum <= 5; seqNum++) {
+      const payloadJson = JSON.stringify({ i: seqNum });
+      const hash =
+        seqNum === 3
+          ? 'f'.repeat(64)
+          : computeEventHash({
+              prevHash,
+              seq: seqNum,
+              eventType: 'ticket.claimed',
+              actorId: 'actor-1',
+              payloadJson,
+            });
+      seedLog.db
+        .prepare(
+          `INSERT INTO events (seq, event_type, actor_id, ticket_id, run_id, payload, created_at, prev_hash, hash)
+           VALUES (?, 'ticket.claimed', 'actor-1', NULL, NULL, ?, ?, ?, ?)`,
+        )
+        .run(seqNum, payloadJson, clock(), prevHash, hash);
+      prevHash = hash;
+    }
+    seedLog.close();
+
+    await expect(
+      runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
+    ).rejects.toThrow(TamperedAuditTailError);
+
+    // The high-water mirror must NOT advance past a refused boot — a
+    // second, still-tampered boot must refuse again, not silently pass
+    // because the mirror already "saw" this seq count once.
+    const homeFile = path.join(home, 'audit-highwater.json');
+    await expect(fs.stat(homeFile)).rejects.toThrow();
   });
 });

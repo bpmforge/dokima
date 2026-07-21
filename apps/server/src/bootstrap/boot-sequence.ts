@@ -54,6 +54,28 @@ export class TruncatedLogError extends Error {
   }
 }
 
+/**
+ * Refuses to boot when `auditTailCheck` finds a hash-chain break inside the
+ * fast tail window — a provably-tampered log must never boot silently
+ * (DEPLOYMENT.md §8: "never a silent degrade", reviewer HIGH finding: this
+ * was previously computed and swallowed instead of enforced).
+ */
+export class TamperedAuditTailError extends Error {
+  constructor(
+    public readonly dbPath: string,
+    public readonly brokenAtSeq: number | null,
+    public readonly reason: string | null,
+  ) {
+    super(
+      `refusing to boot ${dbPath}: audit tail check found a hash-chain break at seq ` +
+        `${brokenAtSeq ?? 'unknown'} (${reason ?? 'unknown reason'}) — the event log looks ` +
+        `tampered. Restore a known-good backup from .shipwright/backups/ and investigate ` +
+        `before continuing (DEPLOYMENT.md §8, SC-11).`,
+    );
+    this.name = 'TamperedAuditTailError';
+  }
+}
+
 function ensureSystemIdentity(log: EventLog, now?: () => string): void {
   if (getIdentity(log, SYSTEM_ACTOR_ID)) return;
   createIdentity(
@@ -73,8 +95,9 @@ export interface RunBootSequenceOptions {
 /**
  * Runs the full boot sequence and returns the opened log alongside a report
  * of what each step found. Throws `DowngradeRefusedError` (before opening
- * anything) or `TruncatedLogError` (after the tail check) rather than
- * booting past either signal — DEPLOYMENT.md §8: "never a silent degrade."
+ * anything), `TamperedAuditTailError` (hash-chain break in the tail), or
+ * `TruncatedLogError` (high-water mirror mismatch) rather than booting past
+ * any of those signals — DEPLOYMENT.md §8: "never a silent degrade."
  */
 export async function runBootSequence(
   opts: RunBootSequenceOptions,
@@ -105,6 +128,14 @@ export async function runBootSequence(
   const orphaned = sweepOrphans(log, SYSTEM_ACTOR_ID, { now });
 
   const tailCheck = auditTailCheck(log, opts.tailSize);
+  if (!tailCheck.valid) {
+    log.close();
+    throw new TamperedAuditTailError(
+      project.dbPath,
+      tailCheck.brokenAtSeq,
+      tailCheck.reason,
+    );
+  }
 
   const highWater = await checkAndUpdateHighWater(log, home.home, project.dbPath, now);
   if (highWater.truncated) {
