@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openEventLog } from '@shipwright/events';
+import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
 import { fileFieldReport, type FieldReportRecord } from '@shipwright/memory';
 import { getTicket } from '@shipwright/tickets';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -15,14 +15,14 @@ async function tmpDir(prefix: string): Promise<string> {
 }
 
 /**
- * Seeds a report filed by a non-operator actor — the realistic production
- * shape (an agent/CLI actor per `board-actor.ts`'s documented "own
- * `--actor`" path), bypassing the REST filing route the same way a real
- * non-web filer would. Every report filed *through this REST API* is
- * necessarily `filedBy: 'operator'` (server-resolved, never client-
- * supplied) — this is the only way to exercise the accept-to-playbook /
- * accept-to-ticket happy paths without the operator hitting its own
- * intentional self-triage refusal (D-020 SELF_ACCEPT precedent).
+ * Seeds a report filed by a non-operator actor directly (bypassing the REST
+ * filing route), for tests that only care about the triage happy paths and
+ * would otherwise need to first append a real trace event just to give
+ * `resolveFiledBy` (`routes.ts`) something to attribute to. The REST route
+ * itself resolves a real non-operator `filedBy` for `trace`/`escalation`
+ * reports whose `sourceRef` points at a real logged event — see
+ * "resolves filedBy from the real trace/escalation event" below — this
+ * helper just skips straight to the same end state.
  */
 function seedReportFiledBy(projectPath: string, filedBy: string): FieldReportRecord {
   const log = openEventLog(stateDbPath(projectPath));
@@ -116,6 +116,92 @@ describe('lessons routes', () => {
     const created = res.json() as { filedBy: string; status: string };
     expect(created.filedBy).toBe('operator');
     expect(created.status).toBe('pending');
+  });
+
+  it('resolves filedBy from the real trace event a report was filed from, unlocking triage', async () => {
+    const { app, projectId, projectPath } = await boot();
+    const log = openEventLog(stateDbPath(projectPath));
+    let seq: number;
+    try {
+      createIdentity(log, { id: 'agent-w1-01', name: 'agent-w1-01', kind: 'machine' });
+      const traceEvent = appendEvent(log, {
+        eventType: 'ticket.claimed',
+        actorId: 'agent-w1-01',
+        ticketId: 'W1-01',
+        runId: 'run-9',
+        payload: null,
+      });
+      seq = traceEvent.seq;
+    } finally {
+      log.close();
+    }
+
+    const file = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/field-reports`,
+      payload: { ...REPORT_BODY, sourceRef: `trace:run-9:${seq}` },
+    });
+    expect(file.statusCode).toBe(201);
+    const created = file.json() as { id: number; filedBy: string };
+    expect(created.filedBy).toBe('agent-w1-01');
+
+    const triage = await app.inject({
+      method: 'POST',
+      url: `/api/v1/field-reports/${created.id}/triage?project=${projectId}`,
+      payload: { decision: 'reject' },
+    });
+    expect(triage.statusCode).toBe(200);
+    expect(triage.json().status).toBe('rejected');
+  });
+
+  it('resolves filedBy from the real escalation event a report was filed from, unlocking triage', async () => {
+    const { app, projectId, projectPath } = await boot();
+    const log = openEventLog(stateDbPath(projectPath));
+    let occurredAt: string;
+    try {
+      createIdentity(log, { id: 'agent-w1-01', name: 'agent-w1-01', kind: 'machine' });
+      const escalationEvent = appendEvent(log, {
+        eventType: 'escalation.rung_advanced',
+        actorId: 'agent-w1-01',
+        ticketId: 'W1-01',
+        payload: null,
+      });
+      occurredAt = escalationEvent.createdAt;
+    } finally {
+      log.close();
+    }
+
+    const file = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/field-reports`,
+      payload: {
+        ...REPORT_BODY,
+        source: 'escalation',
+        sourceRef: `escalation:W1-01:${occurredAt}`,
+      },
+    });
+    expect(file.statusCode).toBe(201);
+    const created = file.json() as { id: number; filedBy: string };
+    expect(created.filedBy).toBe('agent-w1-01');
+
+    const triage = await app.inject({
+      method: 'POST',
+      url: `/api/v1/field-reports/${created.id}/triage?project=${projectId}`,
+      payload: { decision: 'reject' },
+    });
+    expect(triage.statusCode).toBe(200);
+    expect(triage.json().status).toBe('rejected');
+  });
+
+  it('falls back to the operator identity when sourceRef does not resolve to a real event', async () => {
+    const { app, projectId } = await boot();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/field-reports`,
+      payload: { ...REPORT_BODY, sourceRef: 'trace:no-such-run:999' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect((res.json() as { filedBy: string }).filedBy).toBe('operator');
   });
 
   it('400s a file with a blank narrative field', async () => {

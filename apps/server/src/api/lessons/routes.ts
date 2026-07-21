@@ -1,28 +1,22 @@
 /**
  * Field-report intake + triage routes (BLUEPRINT §12.6, UX_SPEC §7 G-10c,
- * W7-05 conductor gate-fix). Registers `@shipwright/memory`'s
- * `packages/memory/src/lessons/**` functions as the real REST surface the
- * web `apps/web/src/lessons/**` client (`api.ts`) already targets — that
- * client was written ahead of these routes and proven only against a
- * mocked `fetchImpl`; this file is what makes it real.
+ * W7-05 conductor gate-fix): the real REST surface for `@shipwright/memory`'s
+ * `packages/memory/src/lessons/**`, already targeted by `apps/web/src/lessons/**`.
  *
- * v1 is single-user (API_DESIGN §1, `board-actor.ts`): `filedBy`/`triagedBy`
- * are always resolved server-side to `OPERATOR_ACTOR_ID`, never taken from
- * the request body — the web client's draft/decision payloads carry no
- * actor field at all, by design (Law 4: identity is a trust-boundary
- * concern, never client-supplied). This means a report filed through this
- * API (by the operator) can only ever be triaged by a *different* filer —
- * same SELF_ACCEPT precedent as D-020/`packages/tickets`'s ticket accept:
- * the refusal is intentional for a human confirming their own
- * manually-filed report, not a bug; the common case is a report filed
- * under some other actor id (an agent/CLI actor, `board-actor.ts`'s
- * documented "own `--actor`" path) and triaged here by the operator.
+ * `triagedBy` is always the server-resolved `OPERATOR_ACTOR_ID` (Law 4,
+ * single-user v1, API_DESIGN §1) — never client-supplied. `filedBy` is NOT
+ * always the operator: both entry points (a session-trace row, an
+ * escalation event card) pre-fill from a real logged event (`prefill.ts`'s
+ * `sourceRef`); `resolveFiledBy` re-reads that event and attributes the
+ * report to *its* actor — typically a berth/agent identity, never the
+ * client's own claim. Without this every report would resolve `filedBy` to
+ * `operator` same as `triagedBy`, and `SelfTriageError` would make triage
+ * permanently unreachable (W7-05 conductor gate-fix). A `manual` report (or
+ * an unresolvable `sourceRef`) legitimately stays operator-filed.
  *
- * A `decision: 'ticket'` triage actually creates the real ticket via
- * `@shipwright/tickets`'s `createTicket` — `packages/memory` only prepares
- * the payload (Law 6: it cannot depend on `@shipwright/tickets`), this
- * route performs the real creation, same prepare-there/create-here split
- * `plans-store.ts` already uses.
+ * A `decision: 'ticket'` triage creates the real ticket via
+ * `@shipwright/tickets`'s `createTicket` (Law 6: memory only prepares the
+ * payload) — same prepare-there/create-here split `plans-store.ts` uses.
  */
 import { appendEvent, openEventLog, type EventLog } from '@shipwright/events';
 import {
@@ -51,6 +45,7 @@ import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from '../problem.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../server/board-actor.js';
 import { resolveProjectRecord, stateDbPath } from '../server/board-project.js';
+import { resolveFiledBy } from './resolve-filed-by.js';
 import { badRequest, conflictProblem, notFoundProblem } from './shared.js';
 
 export interface LessonsRoutesOptions {
@@ -122,7 +117,7 @@ export function registerLessonsRoutes(
     return record;
   }
 
-  /** `POST /api/v1/projects/:id/field-reports` — files a report; `filedBy` is always the resolved operator identity, never client-supplied. */
+  /** `POST /api/v1/projects/:id/field-reports` — files a report; `filedBy` is server-resolved (never a client-supplied actor claim) — the originating event's real actor for `trace`/`escalation` sources (`resolveFiledBy`), the operator identity otherwise. */
   app.post(
     '/api/v1/projects/:id/field-reports',
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -146,18 +141,20 @@ export function registerLessonsRoutes(
       const log = openEventLog(stateDbPath(record.path));
       try {
         ensureOperatorIdentity(log);
+        const sourceRef = typeof body.sourceRef === 'string' ? body.sourceRef : null;
+        const filedBy = resolveFiledBy(log, source, sourceRef) ?? OPERATOR_ACTOR_ID;
         const created = fileFieldReport(
           log.db,
           {
             ticketId: typeof body.ticketId === 'string' ? body.ticketId : null,
             source,
-            sourceRef: typeof body.sourceRef === 'string' ? body.sourceRef : null,
+            sourceRef,
             whatHappened: typeof body.whatHappened === 'string' ? body.whatHappened : '',
             expected: typeof body.expected === 'string' ? body.expected : '',
             evidenceLinks: Array.isArray(body.evidenceLinks)
               ? body.evidenceLinks.filter((l): l is string => typeof l === 'string')
               : [],
-            filedBy: OPERATOR_ACTOR_ID,
+            filedBy,
           },
           now,
           { sink: eventSinkFor(log) },
@@ -273,20 +270,10 @@ export function registerLessonsRoutes(
                 ),
               );
           }
-          /**
-           * Checked before `prepareValidatorFixTicket` runs, not after:
-           * that call already UPDATEs the report to `accepted_ticket` and
-           * emits `lessons.triaged` with no enclosing transaction (Law 6 —
-           * `packages/memory` can't depend on `@shipwright/events`, so it
-           * has no transaction to share with `createTicket`'s). Checking
-           * `createTicket`'s own "already exists" error afterward would
-           * leave the report permanently triaged with a `resultingTicketId`
-           * pointing at a ticket that was never created — un-retriable
-           * (no longer `pending`) and a triaged event for a ticket that
-           * doesn't exist. Single-writer-per-DB (Law 7) makes this
-           * check-then-act safe: nothing else can create `body.ticketId`
-           * between this check and `createTicket` below.
-           */
+          // Checked before prepareValidatorFixTicket (no shared transaction, Law 6):
+          // checking createTicket's own conflict afterward would leave the report
+          // permanently triaged with a resultingTicketId for a ticket that was
+          // never created. Single-writer-per-DB (Law 7) makes this check-then-act safe.
           if (getTicket(log, body.ticketId)) {
             return reply
               .code(409)
