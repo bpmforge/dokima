@@ -2459,12 +2459,13 @@
         "The dogfood security/code-health run asserts the FULL imported rule set executes (all 30 anti-slop rules + all 66 validators enumerated in the coverage report — the name-ALL-of-the-set lesson, R-E3); shadow/advisory/gate states honored per D-014"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 (adopted R-E3).",
         "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket.",
         "CONDUCTOR 2026-07-21T03:46:49.959Z: blocked after 2 attempts. Branch sw/w8-01 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "RE-POINTED 2026-07-21 (Brad-approved): the missing onboard/analysis executor is now real work — depends_on W8-09 (which depends on W8-08). Reset blocked->todo so the conductor claims it once the wiring lands. Its own build (running onboard over THIS repo, publishing coverage/receipts under docs/dogfood/) is unchanged; it stops being a structural dead-end."
+        "RE-POINTED 2026-07-21 (Brad-approved): the missing onboard/analysis executor is now real work — depends_on W8-09 (which depends on W8-08). Reset blocked->todo so the conductor claims it once the wiring lands. Its own build (running onboard over THIS repo, publishing coverage/receipts under docs/dogfood/) is unchanged; it stops being a structural dead-end.",
+        "AGENT 2026-07-21: claimed. All deps (W5-08, W6-06, W7-02, W5-18, W8-09) done. Executing the dogfood run against this repo using the real run-onboard pipeline; write_scope stays docs/dogfood/** only."
       ],
       "stories": [
         "US-401",
