@@ -5,6 +5,47 @@ import type { HeartbeatData } from '../types.js';
 import { fetchRunTrace, fetchSpendByRung, fetchTicketRuns } from './api.js';
 import { SpendByRung } from './SpendByRung.js';
 import type { SpendByRung as SpendByRungData, TraceEvent } from './types.js';
+import { FileFieldReportAction } from '../../lessons/FileFieldReportAction.js';
+import {
+  draftFromEscalationEvent,
+  draftFromTraceEvent,
+  type EscalationEventLike,
+} from '../../lessons/prefill.js';
+
+/**
+ * No producer in this codebase wires `packages/gateway/src/escalation`'s
+ * `EscalationEventSink` to a real project's event log yet
+ * (`apps/server/src/api/roster-history.ts`'s own header documents this
+ * gap) — when one lands, an escalation event arrives here as an ordinary
+ * `TraceEvent` whose `event_type` is `escalation.rung_advanced` /
+ * `escalation.blocked` (`roster-history.ts`'s `classify` already keys off
+ * that exact prefix). Rendering those rows as escalation event cards
+ * inline in the same session-trace list — rather than standing up a
+ * separate, currently-dataless escalation feed — is what makes the "File
+ * field report" action on escalation event cards (UX_SPEC §7 G-10c) a real
+ * entry point today instead of a card with nothing to show.
+ */
+const ESCALATION_EVENT_PREFIX = 'escalation.';
+
+function isEscalationEvent(event: TraceEvent): boolean {
+  return event.event_type.startsWith(ESCALATION_EVENT_PREFIX);
+}
+
+function escalationLikeFromTraceEvent(event: TraceEvent): EscalationEventLike {
+  const payload =
+    typeof event.payload === 'object' && event.payload !== null
+      ? (event.payload as Record<string, unknown>)
+      : {};
+  return {
+    type: event.event_type,
+    ticketId: event.ticket_id ?? '',
+    fromRung: typeof payload.fromRung === 'string' ? payload.fromRung : undefined,
+    toRung: typeof payload.toRung === 'string' ? payload.toRung : undefined,
+    actorId: event.actor_id,
+    receiptId: typeof payload.receiptId === 'string' ? payload.receiptId : undefined,
+    occurredAt: event.created_at,
+  };
+}
 
 export interface TelemetryPanelProps {
   apiOpts: BoardApiOptions;
@@ -68,11 +109,27 @@ export function TelemetryPanel({
             ← Back to runs
           </button>
           <ol data-testid="session-trace-events">
-            {trace.events.map((event) => (
-              <li key={event.seq}>
-                {event.event_type} · {event.actor_id} · {event.created_at}
-              </li>
-            ))}
+            {trace.events.map((event) =>
+              isEscalationEvent(event) ? (
+                <li key={event.seq} data-testid="escalation-event-card">
+                  {event.event_type} · {event.actor_id} · {event.created_at}
+                  <FileFieldReportAction
+                    apiOpts={apiOpts}
+                    projectId={projectId}
+                    draft={draftFromEscalationEvent(escalationLikeFromTraceEvent(event))}
+                  />
+                </li>
+              ) : (
+                <li key={event.seq} data-testid="trace-event-row">
+                  {event.event_type} · {event.actor_id} · {event.created_at}
+                  <FileFieldReportAction
+                    apiOpts={apiOpts}
+                    projectId={projectId}
+                    draft={draftFromTraceEvent(event)}
+                  />
+                </li>
+              ),
+            )}
           </ol>
         </>
       ) : (

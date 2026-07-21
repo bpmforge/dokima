@@ -50,6 +50,9 @@ importers:
       '@shipwright/harbormaster':
         specifier: workspace:*
         version: link:../../packages/harbormaster
+      '@shipwright/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
       '@shipwright/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
