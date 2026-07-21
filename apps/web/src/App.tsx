@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtifactViewer } from './artifacts/ArtifactViewer.js';
 import { BoardView } from './board/BoardView.js';
@@ -21,6 +21,9 @@ import { FirstRunWizard } from './settings/FirstRunWizard.js';
 import { SettingsPage } from './settings/SettingsPage.js';
 import { ShortcutsOverlay } from './shortcuts/ShortcutsOverlay.js';
 import { ThemeProvider, useTheme } from './theme/ThemeProvider.js';
+import { DrawerTraceLink } from './trace/DrawerTraceLink.js';
+import { TraceView } from './trace/TraceView.js';
+import { pushTraceViewUrl, readTraceTicketId } from './trace/urlParams.js';
 
 function wsUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -41,22 +44,18 @@ function ThemeToggle() {
   );
 }
 
-type View = 'settings' | 'wizard' | 'roster' | 'notifications' | 'plans' | null;
+type View = 'settings' | 'wizard' | 'roster' | 'notifications' | 'plans' | 'trace' | null;
 
-/** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications`/`view=plans` layer over either Fleet or a project. */
+/** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications`/`view=plans`/`view=trace` layer over either Fleet or a project. */
 function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
 }
 
+const VALID_VIEWS = ['settings', 'wizard', 'roster', 'notifications', 'plans', 'trace'];
+
 function readView(): View {
   const view = new URLSearchParams(window.location.search).get('view');
-  return view === 'settings' ||
-    view === 'wizard' ||
-    view === 'roster' ||
-    view === 'notifications' ||
-    view === 'plans'
-    ? view
-    : null;
+  return view !== null && VALID_VIEWS.includes(view) ? (view as View) : null;
 }
 
 /** Live-update substitute for the header bell's Decide badge (WS push deferred, same precedent as `fleet/FleetHome.tsx`). */
@@ -91,8 +90,7 @@ function useDecideBadgeCount(): number {
  * repo's own history (W4-01's gate-fix, docs/STATUS.md) establishes that
  * self-authorizing an out-of-scope edit is the wrong move; the fix is to
  * stop touching that file, not widen scope. A portal into its
- * already-rendered `pane-chat` DOM node mounts the chat workspace entirely
- * from files this ticket *can* write.
+ * already-rendered `pane-chat` DOM node mounts the chat workspace entirely from files this ticket *can* write.
  *
  * Re-queries whenever `projectId` changes rather than once on mount:
  * `SplitPaneWorkspace` (and its pane nodes) only exists in the DOM once a
@@ -158,10 +156,14 @@ function AppShell() {
   useReducedMotion();
   const [projectId, setProjectId] = useState<string | null>(() => readProjectId());
   const [view, setView] = useState<View>(() => readView());
+  // Derived at render time, not mirrored into state (same "URL is the source of truth" discipline as readProjectId/readView).
+  const traceTicketId = view === 'trace' ? readTraceTicketId() : null;
   const chatPaneNode = useChatPaneNode(projectId);
   const boardPaneNode = useBoardPaneNode(projectId);
   const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
+  // Stable ref: TraceView's effects key off this by identity — an inline literal would refetch on every unrelated re-render.
+  const apiOpts = useMemo(() => (token ? { baseUrl: '/api/v1', token } : null), [token]);
   const decideBadgeCount = useDecideBadgeCount();
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [modeNotice, setModeNotice] = useState<string | null>(null);
@@ -203,8 +205,16 @@ function AppShell() {
   const closeView = useCallback(() => {
     const url = new URL(window.location.href);
     url.searchParams.delete('view');
+    url.searchParams.delete('ticket');
     window.history.pushState({}, '', url);
     setView(null);
+  }, []);
+
+  /** Opens the session-trace view for a ticket (BLUEPRINT §12.4) and closes any open drawer. */
+  const openTraceView = useCallback((ticketId: string) => {
+    pushTraceViewUrl(ticketId);
+    setOpenTicketId(null);
+    setView('trace');
   }, []);
 
   /**
@@ -241,7 +251,7 @@ function AppShell() {
         <span>{APP_NAME}</span>
         <div className="app-shell__header-actions">
           <nav className="app-shell__nav">
-            {view === 'roster' || view === 'notifications' || view === 'plans' ? (
+            {view && view !== 'settings' && view !== 'wizard' ? (
               <button type="button" onClick={closeView}>
                 ← Back
               </button>
@@ -283,6 +293,13 @@ function AppShell() {
         <NotificationsView />
       ) : view === 'plans' && projectId ? (
         <PlanView projectId={projectId} />
+      ) : view === 'trace' && projectId && apiOpts && traceTicketId ? (
+        <TraceView
+          apiOpts={apiOpts}
+          projectId={projectId}
+          ticketId={traceTicketId}
+          onClose={closeView}
+        />
       ) : view === 'wizard' ? (
         <FirstRunWizard
           onFinish={(createdProjectId) => {
@@ -356,6 +373,7 @@ function AppShell() {
               onClose={() => setOpenTicketId(null)}
             />
           )}
+          <DrawerTraceLink ticketId={openTicketId} onOpenTrace={openTraceView} />
         </>
       ) : (
         <FleetHome onOpenProject={openProject} />
