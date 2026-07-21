@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtifactViewer } from './artifacts/ArtifactViewer.js';
 import { BoardView } from './board/BoardView.js';
@@ -90,8 +90,7 @@ function useDecideBadgeCount(): number {
  * repo's own history (W4-01's gate-fix, docs/STATUS.md) establishes that
  * self-authorizing an out-of-scope edit is the wrong move; the fix is to
  * stop touching that file, not widen scope. A portal into its
- * already-rendered `pane-chat` DOM node mounts the chat workspace entirely
- * from files this ticket *can* write.
+ * already-rendered `pane-chat` DOM node mounts the chat workspace entirely from files this ticket *can* write.
  *
  * Re-queries whenever `projectId` changes rather than once on mount:
  * `SplitPaneWorkspace` (and its pane nodes) only exists in the DOM once a
@@ -163,6 +162,8 @@ function AppShell() {
   const boardPaneNode = useBoardPaneNode(projectId);
   const artifactsPaneNode = useArtifactsPaneNode(projectId);
   const token = readInjectedToken();
+  // Stable ref: TraceView's effects key off this by identity — an inline literal would refetch on every unrelated re-render.
+  const apiOpts = useMemo(() => (token ? { baseUrl: '/api/v1', token } : null), [token]);
   const decideBadgeCount = useDecideBadgeCount();
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [modeNotice, setModeNotice] = useState<string | null>(null);
@@ -292,9 +293,9 @@ function AppShell() {
         <NotificationsView />
       ) : view === 'plans' && projectId ? (
         <PlanView projectId={projectId} />
-      ) : view === 'trace' && projectId && token && traceTicketId ? (
+      ) : view === 'trace' && projectId && apiOpts && traceTicketId ? (
         <TraceView
-          apiOpts={{ baseUrl: '/api/v1', token }}
+          apiOpts={apiOpts}
           projectId={projectId}
           ticketId={traceTicketId}
           onClose={closeView}
