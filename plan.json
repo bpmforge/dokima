@@ -3022,7 +3022,7 @@
       "module": "validators",
       "lane": "quality",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "content/validators/validate-verification-integrity*"
       ],
@@ -3034,7 +3034,10 @@
         "content/validators/validate-verification-integrity.sh (named validate-* so loadValidatorPack auto-discovers it, _lib.sh contract, exit 0/1 + JSON gaps): flags the self-attest antipattern in the diff — (a) completion/verification decisions from free-text matching (regex like /receipt|verify|exit|done|pass/i over comment/body/message fields), (b) verification state accepted from caller-supplied request input (body.snapshot-style) and fed to a state-flip, (c) any ticket/plan/item state flip to done/verified without a receipt/anchor correlation. Advisory-first (anchors LLM review, D-014), promotable to gate after red-fixture calibration.",
         "Red fixtures (docs/TESTING.md planted-defect harness): the W6-03 hasReceiptComment text-match pattern and the W5-11 caller-supplied body.snapshot pattern each trip the validator (exit 1 with a located gap); a correct derive-from-state + identity/anchor check passes (exit 0). Ship with a baseline for the now-fixed sites so it does not re-flag them."
       ],
-      "notes": "ADDED 2026-07-19 (Brad-approved): systemic pre-merge detection for the recurring self-attest CRITICAL (3 instances: W6-03 reconciliation, W5-11/W5-15 plans-verify — see L-41/L-42). Catches the pattern at the per-ticket gate so the wave-security-pass is not the only net. Route the rule upstream to bpm-opencode-experts as an anti-slop/security check."
+      "notes": [
+        "ADDED 2026-07-19 (Brad-approved): systemic pre-merge detection for the recurring self-attest CRITICAL (3 instances: W6-03 reconciliation, W5-11/W5-15 plans-verify — see L-41/L-42). Catches the pattern at the per-ticket gate so the wave-security-pass is not the only net. Route the rule upstream to bpm-opencode-experts as an anti-slop/security check.",
+        "CONDUCTOR 2026-07-21T20:03:07.818Z: blocked after 2 attempts. Branch sw/w8-07 kept. Gaps: [HIGH] conductor.config.json: validate-verification-integrity is still absent from both validators.gate and validators.advisory arrays (confirmed via grep — zero matches). scripts/conductor.mjs's runGates/runValidators only invoke scripts named in those arrays, so this validator's findings never reach reviewPrompt's 'DETERMINISTIC VALIDATOR FINDINGS' block (D-014's anchor mechanism) for any ticket, including its own. The ticket's founding note explicitly required catching this pattern 'at the per-ticket gate,' which this diff still does not achieve — the validator exists but is inert. — fix: E"
+      ]
     }
   ]
 }
