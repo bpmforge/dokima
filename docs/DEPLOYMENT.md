@@ -23,6 +23,14 @@ Platforms (NFR-7): macOS + Linux first-class; **Windows = WSL2 at v1** (D-009) �
 docs' Windows path installs Node 22 inside WSL; native Windows is post-v1. Apple-Silicon
 local inference (LM Studio) is a first-class tested path.
 
+The `bin` entry the package manager resolves for `npx shipwright`/`shipwright` is a plain
+JS shim (`apps/server/src/bootstrap/cli-entry.mjs`) — this repo has no compile step yet,
+so a TypeScript entry can't run under plain `node`; the shim spawns `tsx` (already an
+`apps/server` dev dependency) against the real entry point. Verified locally end-to-end
+with no network (C-1): `npx --package=<repo> shipwright` boots the server and answers
+`/healthz`; a real npm-registry publish channel needs a build step emitting this as plain
+JS, which is unverifiable here (no live registry calls) and tracked as a follow-up.
+
 ## 2. Where things live
 
 | Location | Contents | In git? |
@@ -98,7 +106,7 @@ Environment variables (all optional — config file is primary):
 | `SHIPWRIGHT_HOME` | relocate `~/.shipwright/` (CI, tests) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Vertex ADC service-account path (D-007) |
 | `SHIPWRIGHT_NO_KEYCHAIN` | headless/WSL fallback: encrypted file vault instead of OS keychain, key prompted or from `SHIPWRIGHT_VAULT_KEY` |
-| `LOG_LEVEL` | `info` default; `debug` adds per-pass loop telemetry to logs |
+| `SHIPWRIGHT_LOG_LEVEL` | `info` default; `debug` adds per-pass loop telemetry to logs |
 
 ## 7. Troubleshooting local model endpoints
 
