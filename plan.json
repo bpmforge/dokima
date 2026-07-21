@@ -2403,7 +2403,7 @@
         "Structured field-report form (from a user or the trace viewer); triage flow turns accepted reports into playbook entries or validator-fix tickets (BLUEPRINT §12.6); entry points: \"File field report\" action on session-trace views and escalation event cards, form pre-filled from the trace (UX_SPEC §7, G-10c)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         " AMENDED 2026-07-14 design review G-10c.",
         "NOTE 2026-07-15 (L-33): this ticket has a UI surface but sits outside the ui lane — its App.tsx/server.ts wiring seam must be resolved at claim time (widen scope then, or land the mount via a ui-lane ticket) to avoid the W4-02 out-of-scope block class.",
