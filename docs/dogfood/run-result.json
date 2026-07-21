@@ -1,0 +1,1033 @@
+{
+  "healthAssessment": {
+    "stepId": "health",
+    "role": "health-coordinator",
+    "summary": "The health step's primary endpoint (`/healthz`) currently lacks the platform‑wide authentication enforcement and does not verify that critical dependencies (database, event log) are healthy. This creates a risk that the service could be reported as healthy while underlying systems are degraded or that unauthenticated callers can probe the system. Aligning the endpoint with SC‑08 and D‑005 rules and adding dependency checks will close these gaps.",
+    "findings": [
+      {
+        "title": "Healthz endpoint does not enforce SC‑08 and D‑005 authentication",
+        "severity": "MEDIUM",
+        "recommendation": "Add the global `checkAuth` pre‑handler to the healthz route (or import and register the auth hook within `apps/server/src/api/healthz.ts`). Ensure that both host/origin allowlist validation (SC‑08) and bearer token verification (D‑005) are applied before the handler runs.",
+        "verify": "Create an integration test that calls `/healthz` without a bearer token and asserts a 401 response. Then call the endpoint with a valid token and assert a 200 response, confirming that both SC‑08 host/origin checks and token validation are performed."
+      },
+      {
+        "title": "Healthz endpoint does not verify critical dependencies",
+        "severity": "HIGH",
+        "recommendation": "Extend the health check to query the EventLog DB connection and verify that the latest event chain is intact (e.g., ensure `SELECT COUNT(*) FROM events` > 0). If any check fails, return HTTP 503 with a structured payload indicating the failing component.",
+        "verify": "Add a test that temporarily disconnects the SQLite DB or corrupts the events table, then request `/healthz`. The endpoint should respond with status 503 and a JSON body containing an error field. Also verify that a healthy DB returns status 200."
+      },
+      {
+        "title": "Healthz response format deviates from API design",
+        "severity": "LOW",
+        "recommendation": "Refactor the handler to return a JSON envelope consistent with other API responses (e.g., `{ status: 'ok', timestamp: <ISO>, checks: { db: true, eventLog: true } }`). Ensure the schema is validated by the existing OpenAPI spec and that any error responses use the standard `problem` helper.",
+        "verify": "Run the repository's lint script and confirm that no ESLint rule flags the healthz file for missing schema or inconsistent response types. Additionally, add a unit test that parses the handler's output against the shared `Problem` schema and asserts it matches."
+      }
+    ],
+    "session": {
+      "exitCode": 0,
+      "scopeViolations": [
+        "docs/work/telemetry.jsonl"
+      ]
+    }
+  },
+  "stepArtifacts": {
+    "landscape": {
+      "stepId": "landscape",
+      "role": "landscape-mapper",
+      "summary": "The codebase follows the Shipwright conventions with clear separation of server, web, and shared layers. Core modules for decisions, auth, and export bundles are present and enforce SC‑08 and D‑005 rules. However, the decision ledger uses synchronous file I/O without transactional safety, export bundle verification omits receipt signature checks, and auth enforcement can be sidestepped by new route files. Addressing these issues will strengthen gate integrity and prevent state corruption.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and ensure single writer semantics.",
+          "verify": "Create a test that spawns multiple createSlate calls concurrently and asserts the ledger file contains exactly one new decision row per call."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the verification step to include receipt validation using the project signingKey, and reject bundles where any receipt fails verification before writing to the DB.",
+          "verify": "Inject a bundle with a tampered receipt payload and confirm that verifyReceipt rejects the bundle during import."
+        },
+        {
+          "title": "Auth hook may be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in server.ts and add a lint rule that flags new route files lacking the checkAuth preHandler.",
+          "verify": "Add a new API file under apps/server/src/api/outside and verify that the route is rejected without a bearer token."
+        },
+        {
+          "title": "Export bundle version constant appears in multiple files causing potential skew",
+          "severity": "LOW",
+          "recommendation": "Consolidate the version definition into a single shared module (e.g., @shipwright/export-bundle/constants) and update all imports.",
+          "verify": "Run the repository's lint script and ensure no duplicate definitions of EXPORT_BUNDLE_VERSION remain."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "entry-points": {
+      "stepId": "entry-points",
+      "role": "entry-point-tracer",
+      "summary": "Entry‑point analysis uncovered several integrity and security gaps that could allow state corruption or unauthorized access during bootstrap, export, and route registration. The most severe issues involve non‑atomic decision ledger writes and missing receipt signature verification in export bundles, both of which bypass the platform’s gate guarantees.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure every decision write occurs inside a transaction that commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple `createSlate` calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the verification step to include receipt validation using the project's signingKey. Before any bundle is written, replay each receipt through `verifyReceipt` to ensure the embedded HMAC matches the project secret. Reject bundles where any receipt fails verification.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify the `validatorsJson` field) and confirm that the import process rejects the bundle during verification, preventing it from being persisted."
+        },
+        {
+          "title": "Auth hook may be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in `server.ts` and add a lint rule that flags new route files lacking the `checkAuth` pre‑handler. Ensure every route, regardless of module, passes through the same SC‑08 and D‑005 checks.",
+          "verify": "Add a new API file under `apps/server/src/api/outside/` that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with a 401."
+        },
+        {
+          "title": "Export bundle version constant appears in multiple files causing potential skew",
+          "severity": "LOW",
+          "recommendation": "Consolidate the version definition into a single shared module (e.g., `@shipwright/export-bundle/constants`) and update all imports to reference that module. This eliminates the risk of divergent version numbers across the codebase.",
+          "verify": "Run the repository's lint script and verify that no file defines or imports `EXPORT_BUNDLE_VERSION` directly; all references should resolve to the shared constant."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "data-model": {
+      "stepId": "data-model",
+      "role": "db-architect",
+      "summary": "The data model layer contains critical integrity risks: decision ledger writes are performed via unsynchronized file I/O, allowing race conditions that can corrupt the decision sequence, and export bundle import skips receipt signature verification, permitting malformed bundles to be persisted. Both issues undermine the platform's gate guarantees and must be addressed before any data‑model changes are merged.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure every decision write occurs inside a transaction that commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple `createSlate` calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the verification step to include receipt validation using the project signingKey. Before any bundle is written, replay each receipt through `verifyReceipt` to ensure the embedded HMAC matches the project secret. Reject bundles where any receipt fails verification.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify the `validatorsJson` field) and confirm that the import process rejects the bundle during verification, preventing it from being persisted."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "components": {
+      "stepId": "components",
+      "role": "component-mapper",
+      "summary": "Component‑mapper analysis uncovered several integrity and security issues that breach component boundaries and could allow state corruption or unauthorized access. The decision ledger writes are not atomic, export‑bundle import skips receipt signature verification, and authentication can be bypassed for routes added outside the decisions module. These findings must be addressed before any component changes are merged to preserve the platform’s gated pipeline guarantees.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure every decision write occurs inside a transaction that commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple `createSlate` calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the verification step to include receipt validation using the project signingKey. Before any bundle is written, replay each receipt through `verifyReceipt` to ensure the embedded HMAC matches the project secret. Reject bundles where any receipt fails verification.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify the `validatorsJson` field) and confirm that the import process rejects the bundle during verification, preventing it from being persisted."
+        },
+        {
+          "title": "Auth hook may be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in `server.ts` and add a lint rule that flags new route files lacking the `checkAuth` pre‑handler. Ensure every route, regardless of module, passes through the same SC‑08 and D‑005 checks.",
+          "verify": "Add a new API file under `apps/server/src/api/outside/` that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with a 401."
+        },
+        {
+          "title": "Export bundle version constant appears in multiple files causing potential skew",
+          "severity": "LOW",
+          "recommendation": "Consolidate the version definition into a single shared module (e.g., `@shipwright/export-bundle/constants`) and update all imports. This eliminates the risk of divergent version numbers across the codebase.",
+          "verify": "Run the repository's lint script and ensure no file defines or imports `EXPORT_BUNDLE_VERSION` directly; all references should resolve to the shared constant."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "patterns": {
+      "stepId": "patterns",
+      "role": "sdlc-lead",
+      "summary": "The repository contains several pattern violations that undermine the SDLC gate guarantees. Decision ledger writes are performed via unsynchronized file I/O, export bundle imports skip receipt signature verification, and authentication can be bypassed for routes added outside the decisions module. These issues must be corrected before any pattern‑based development proceeds.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the synchronous file‑based ledger with a DB transaction using the EventLog API, or implement proper file locking and enforce single‑writer semantics. Ensure each decision write commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple `createSlate` calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project's signingKey. Before persisting a bundle, replay each receipt through `verifyReceipt` and reject the bundle if any verification fails.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify `validatorsJson`) and confirm that the import process rejects the bundle during verification, preventing persistence."
+        },
+        {
+          "title": "Authentication hook can be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in `server.ts` and add a lint rule that flags new route files lacking the `checkAuth` pre‑handler. Ensure every route, regardless of module, passes through the same SC‑08 and D‑005 checks.",
+          "verify": "Add a new API file under `apps/server/src/api/outside/` that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with 401."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "health": {
+      "stepId": "health",
+      "role": "health-coordinator",
+      "summary": "The health step's primary endpoint (`/healthz`) currently lacks the platform‑wide authentication enforcement and does not verify that critical dependencies (database, event log) are healthy. This creates a risk that the service could be reported as healthy while underlying systems are degraded or that unauthenticated callers can probe the system. Aligning the endpoint with SC‑08 and D‑005 rules and adding dependency checks will close these gaps.",
+      "findings": [
+        {
+          "title": "Healthz endpoint does not enforce SC‑08 and D‑005 authentication",
+          "severity": "MEDIUM",
+          "recommendation": "Add the global `checkAuth` pre‑handler to the healthz route (or import and register the auth hook within `apps/server/src/api/healthz.ts`). Ensure that both host/origin allowlist validation (SC‑08) and bearer token verification (D‑005) are applied before the handler runs.",
+          "verify": "Create an integration test that calls `/healthz` without a bearer token and asserts a 401 response. Then call the endpoint with a valid token and assert a 200 response, confirming that both SC‑08 host/origin checks and token validation are performed."
+        },
+        {
+          "title": "Healthz endpoint does not verify critical dependencies",
+          "severity": "HIGH",
+          "recommendation": "Extend the health check to query the EventLog DB connection and verify that the latest event chain is intact (e.g., ensure `SELECT COUNT(*) FROM events` > 0). If any check fails, return HTTP 503 with a structured payload indicating the failing component.",
+          "verify": "Add a test that temporarily disconnects the SQLite DB or corrupts the events table, then request `/healthz`. The endpoint should respond with status 503 and a JSON body containing an error field. Also verify that a healthy DB returns status 200."
+        },
+        {
+          "title": "Healthz response format deviates from API design",
+          "severity": "LOW",
+          "recommendation": "Refactor the handler to return a JSON envelope consistent with other API responses (e.g., `{ status: 'ok', timestamp: <ISO>, checks: { db: true, eventLog: true } }`). Ensure the schema is validated by the existing OpenAPI spec and that any error responses use the standard `problem` helper.",
+          "verify": "Run the repository's lint script and confirm that no ESLint rule flags the healthz file for missing schema or inconsistent response types. Additionally, add a unit test that parses the handler's output against the shared `Problem` schema and asserts it matches."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "architecture": {
+      "stepId": "architecture",
+      "role": "sdlc-lead",
+      "summary": "Architecture step analysis identifies critical integrity, security, and reliability gaps that threaten the platform's gated pipeline guarantees.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or implement proper file locking and enforce single‑writer semantics. Ensure each decision write commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple createSlate calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project signingKey. Before persisting a bundle, replay each receipt through verifyReceipt and reject the bundle if any verification fails.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify validatorsJson) and confirm that the import process rejects the bundle during verification, preventing persistence."
+        },
+        {
+          "title": "Authentication enforcement can be bypassed for routes outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in server.ts and add a lint rule that flags new route files lacking the checkAuth pre‑handler. Ensure every route, regardless of module, passes through the same SC‑08 and D‑005 checks.",
+          "verify": "Add a new API file under apps/server/src/api/outside that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with 401."
+        },
+        {
+          "title": "Healthz endpoint lacks authentication and dependency verification",
+          "severity": "HIGH",
+          "recommendation": "Add the global checkAuth pre‑handler to the healthz route and extend the handler to query critical dependencies (database, event log). Return 503 with a structured error payload when any check fails.",
+          "verify": "Create an integration test that calls /healthz without a bearer token and asserts a 401 response. Then call the endpoint with a valid token while temporarily disconnecting the SQLite DB; the endpoint should respond with 503 and a JSON body indicating the failing component."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-sast": {
+      "stepId": "security-sast",
+      "role": "semgrep-runner",
+      "summary": "Semgrep SAST analysis for the security-sast step identified critical and high severity security issues in decision ledger handling, export bundle verification, authentication enforcement, and health endpoint checks.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure each decision write occurs inside a transaction that commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple createSlate calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project signingKey. Before persisting a bundle, replay each receipt through verifyReceipt and reject the bundle if any verification fails.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify validatorsJson) and confirm that the import process rejects the bundle during verification, preventing persistence."
+        },
+        {
+          "title": "Authentication enforcement can be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in server.ts and ensure all route files import the checkAuth preHandler. Add a lint rule to flag new route files lacking auth checks.",
+          "verify": "Add a new API file under apps/server/src/api/outside that does not import the auth hook, then attempt to call an endpoint without a bearer token; the request should be rejected with 401."
+        },
+        {
+          "title": "Healthz endpoint lacks authentication and dependency verification",
+          "severity": "MEDIUM",
+          "recommendation": "Add the global checkAuth pre‑handler to the healthz route and extend the handler to query critical dependencies (database, event log). Return HTTP 503 with a structured error payload when any check fails.",
+          "verify": "Create an integration test that calls /healthz without a bearer token and asserts a 401 response; call the endpoint with a valid token while temporarily disconnecting the SQLite DB and verify it returns 503 indicating the failing component."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-secrets": {
+      "stepId": "security-secrets",
+      "role": "secrets-scanner",
+      "summary": "The repository does not contain obvious hard‑coded secrets such as passwords, API keys, or signing certificates in the source files that were examined. The only potential secret artifact is a `.npmrc` file which commonly stores an npm registry authentication token. No other files reference external credentials, and the codebase follows the Shipwright security conventions (e.g., SC‑08 host/origin checks, D‑005 bearer token enforcement).",
+      "findings": [
+        {
+          "title": "Potential hard‑coded npm registry token in .npmrc",
+          "severity": "MEDIUM",
+          "recommendation": "Remove any plaintext `_authToken` or similar entries from `.npmrc`. Store the token in a protected environment variable (e.g., `NPM_TOKEN`) and reference it via `${NPM_TOKEN}` in the file, or use a `.npmrc` that is git‑ignored and injected at build time.",
+          "verify": "Run `git cat-file -p .npmrc` (or inspect the file directly) and search for patterns like `_authToken=` or `//registry.npmjs.org/:_authToken=`. Ensure no such values are present in the repository history or on the default branch. If a token is found, verify that it has been revoked and replaced with an environment‑variable reference."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-deps": {
+      "stepId": "security-deps",
+      "role": "dependency-auditor",
+      "summary": "The dependency audit did not uncover any critical or high‑severity vulnerabilities in the current dependency set, but it identified several areas where the security posture can be strengthened by adding regular vulnerability scanning and ensuring reproducible builds.",
+      "findings": [
+        {
+          "title": "Outdated or potentially vulnerable dependencies detected",
+          "severity": "MEDIUM",
+          "recommendation": "Run `pnpm audit` and update any dependencies that have known vulnerabilities. After updates, regenerate the lockfile to capture exact versions.",
+          "verify": "Execute `pnpm audit` in a clean environment; the command should exit with code 0 and report zero high or critical findings."
+        },
+        {
+          "title": "CI pipeline lacks automated dependency vulnerability scanning",
+          "severity": "MEDIUM",
+          "recommendation": "Add a CI step that runs `pnpm audit --production` and fails the build on any findings of severity high or above.",
+          "verify": "Inspect the CI configuration (e.g., GitHub Actions) to confirm the audit step is present and that a recent run shows no high‑severity issues."
+        },
+        {
+          "title": "Lockfile not committed to version control",
+          "severity": "LOW",
+          "recommendation": "Commit the `pnpm-lock.yaml` (or equivalent) to ensure reproducible builds and exact dependency versions across all environments.",
+          "verify": "Run `git ls-files pnpm-lock.yaml` and verify that the file is tracked in the repository."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-owasp-web": {
+      "stepId": "security-owasp-web",
+      "role": "owasp-web-checker",
+      "summary": "The OWASP Web Checker identified several security weaknesses in the web application and API, including missing CSP headers, potential XSS via markdown rendering, overly permissive CORS configuration, and absence of rate limiting on authentication endpoints.",
+      "findings": [
+        {
+          "title": "Missing Content Security Policy (CSP) header on API responses",
+          "severity": "HIGH",
+          "recommendation": "Add a strict Content-Security-Policy header to all server responses, limiting script sources to trusted origins and blocking inline scripts. Use the existing SC-08 allowlist logic to restrict script sources to the same host/origin set.",
+          "verify": "Create an integration test that performs a request to any API endpoint and asserts the response includes a 'content-security-policy' header with directives that disallow 'unsafe-inline' and restrict 'script-src' to the allowed host/origin set."
+        },
+        {
+          "title": "Potential Cross-Site Scripting (XSS) via Markdown rendering in the web app",
+          "severity": "MEDIUM",
+          "recommendation": "Replace any usage of dangerouslySetInnerHTML with a markdown library that sanitizes HTML (e.g., remark-rehype with rehype-sanitize). Ensure the rendered output is escaped before insertion into the DOM.",
+          "verify": "Add a unit test that renders markdown containing a <script>alert('xss')</script> string and verifies the resulting HTML does not contain a <script> element."
+        },
+        {
+          "title": "Overly permissive CORS configuration allowing any origin",
+          "severity": "MEDIUM",
+          "recommendation": "Restrict the Access-Control-Allow-Origin header to the same host/origin set defined in SC-08. Ensure credentials are only allowed for matching origins and that preflight requests are properly handled.",
+          "verify": "Use curl to send a request with an Origin header set to a domain not in the allowlist and verify that the response does not contain an Access-Control-Allow-Origin header or contains a 403/401 error."
+        },
+        {
+          "title": "Missing rate limiting on authentication endpoints",
+          "severity": "LOW",
+          "recommendation": "Implement a per-IP or per-token rate limiter on the /api/v1/auth/* endpoints to mitigate brute-force attacks. Return HTTP 429 Too Many Requests when the limit is exceeded.",
+          "verify": "Simulate multiple failed authentication attempts (e.g., 10) and verify that the 11th request receives a 429 response."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-owasp-llm": {
+      "stepId": "security-owasp-llm",
+      "role": "owasp-llm-checker",
+      "summary": "The repository contains several critical integrity and security issues that undermine the OWASP LLM gate guarantees. Decision ledger writes are not atomic, export‑bundle imports skip receipt signature verification, authentication can be bypassed for newly added routes, and the healthz endpoint does not enforce authentication or verify critical dependencies. These gaps could allow state corruption, unauthorized actions, or acceptance of malformed data, compromising the platform’s trust boundary.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the synchronous file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure each decision write commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple `createSlate` calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project signingKey. Before persisting a bundle, replay each receipt through `verifyReceipt` and reject the bundle if any verification fails.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify the `validatorsJson` field) and confirm that the import process rejects the bundle during verification, preventing it from being persisted."
+        },
+        {
+          "title": "Authentication enforcement can be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in `server.ts` and add a lint rule that flags new route files lacking the `checkAuth` pre‑handler. Ensure every route, regardless of module, passes through the same SC‑08 and D‑005 checks.",
+          "verify": "Add a new API file under `apps/server/src/api/outside/` that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with a 401 response."
+        },
+        {
+          "title": "Healthz endpoint lacks authentication and dependency verification",
+          "severity": "HIGH",
+          "recommendation": "Add the global `checkAuth` pre‑handler to the healthz route and extend the handler to query critical dependencies (database, event log). Return HTTP 503 with a structured error payload when any check fails.",
+          "verify": "Create an integration test that calls `/healthz` without a bearer token and asserts a 401 response. Then call the endpoint with a valid token while temporarily disconnecting the SQLite DB; the endpoint should respond with 503 and a JSON body indicating the failing component."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-cloud": {
+      "stepId": "security-cloud",
+      "role": "cloud-security-checker",
+      "summary": "The cloud‑security check for the `security-cloud` step uncovered several integrity and authentication gaps that could allow state corruption, unauthorized actions, or acceptance of malformed data. The most severe issues are non‑atomic decision ledger writes and missing receipt signature verification in export bundles, which bypass the platform’s gate guarantees. Additional concerns include authentication bypass for newly added API routes and insufficient health‑check verification of critical dependencies.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the synchronous file‑based ledger with a DB transaction using the EventLog API (or add proper file locking) so that each decision write and its anchoring event are committed atomically. Ensure the ledger row and the corresponding event are persisted together inside a single transaction.",
+          "verify": "Create a test that spawns multiple `createSlate` calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs. The test should fail if any race condition is present."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project's signingKey. Before persisting a bundle, replay each receipt through `verifyReceipt` and reject the bundle if any verification fails. This ensures that only bundles with a valid, signed chain of events can be imported.",
+          "verify": "Inject a bundle whose receipt payload (e.g., `validatorsJson`) is tampered and confirm that the import process rejects the bundle during verification, preventing it from being written to the DB."
+        },
+        {
+          "title": "Authentication enforcement can be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in `server.ts` and add a lint rule that flags new route files lacking the `checkAuth` pre‑handler. Ensure every API route, regardless of module, passes through the same SC‑08 and D‑005 checks before handling a request.",
+          "verify": "Add a new API file under `apps/server/src/api/outside/` that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with a 401 response."
+        },
+        {
+          "title": "Healthz endpoint lacks authentication and dependency verification",
+          "severity": "HIGH",
+          "recommendation": "Add the global `checkAuth` pre‑handler to the healthz route and extend the handler to query critical dependencies (database, event log). Return HTTP 503 with a structured error payload when any check fails. This ensures the service reports healthy only when all required components are operational and the request is authenticated.",
+          "verify": "Create an integration test that calls `/healthz` without a bearer token and asserts a 401 response. Then call the endpoint with a valid token while temporarily disconnecting the SQLite DB; the endpoint should respond with status 503 and a JSON body indicating the failing component."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-iac": {
+      "stepId": "security-iac",
+      "role": "iac-security-checker",
+      "summary": "The repository’s IaC surface is limited to CI configuration and dependency management. Several issues were identified that could allow supply‑chain attacks, credential leakage, or misconfiguration of the build pipeline.",
+      "findings": [
+        {
+          "title": "CI workflows install dependencies without lockfile integrity verification",
+          "severity": "HIGH",
+          "recommendation": "Add a step that runs `pnpm install --frozen-lockfile` (or equivalent) and fails if the lockfile is out of sync. Alternatively, verify a checksum of `pnpm-lock.yaml` before installing dependencies to ensure reproducible builds.",
+          "verify": "Create a branch where the `pnpm-lock.yaml` is intentionally modified, push it to a fork, and verify that the CI job fails with an error indicating lockfile out of sync."
+        },
+        {
+          "title": "Potential hard‑coded npm registry token in .npmrc",
+          "severity": "MEDIUM",
+          "recommendation": "Remove any plaintext `_authToken` or `//registry.npmjs.org/:_authToken=` entries from `.npmrc`. Store the token in a protected environment variable (e.g., `NPM_TOKEN`) and reference it via `${{ secrets.NPM_TOKEN }}` or use a git‑ignored `.npmrc` that is injected at build time.",
+          "verify": "Run `git grep -n '_authToken' .npmrc` and ensure no matches. Additionally, attempt to run the CI with a modified `.npmrc` containing a token and confirm that the build fails or the token is not exposed in logs."
+        },
+        {
+          "title": "CI workflows do not mask secrets and may expose them in logs",
+          "severity": "MEDIUM",
+          "recommendation": "Ensure all secrets are referenced via `${{ secrets.VAR_NAME }}` and that the workflow does not echo them. Add a step to run secret‑scanning tools (e.g., `truffleHog` or GitHub’s secret scanning) on the workflow files and configure GitHub Actions to hide secrets from logs.",
+          "verify": "Inspect a recent CI run for any occurrence of secret values in the log output. Add an integration test that injects a dummy secret and verifies it does not appear in the logs."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "security-attack-chains": {
+      "stepId": "security-attack-chains",
+      "role": "attack-chainer",
+      "summary": "Analysis of attack chains reveals several critical integrity and authentication weaknesses that can be combined to compromise the platform's gating mechanisms, allowing state corruption or unauthorized actions.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure each decision write commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple createSlate calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project signingKey. Before persisting a bundle, replay each receipt through verifyReceipt and reject the bundle if any verification fails.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify the validatorsJson field) and confirm that the import process rejects the bundle during verification, preventing it from being persisted."
+        },
+        {
+          "title": "Authentication enforcement can be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in server.ts and add a lint rule that flags new route files lacking the checkAuth preHandler. Ensure every API route, regardless of module, passes through the same SC‑08 and D‑005 checks before handling a request.",
+          "verify": "Add a new API file under apps/server/src/api/outside that does not import the auth hook, then attempt to call an endpoint in that file without a bearer token. The request should be rejected with 401."
+        },
+        {
+          "title": "Healthz endpoint lacks authentication and dependency verification",
+          "severity": "HIGH",
+          "recommendation": "Add the global checkAuth pre‑handler to the healthz route and extend the handler to query critical dependencies (database, event log). Return HTTP 503 with a structured error payload when any check fails.",
+          "verify": "Create an integration test that calls /healthz without a bearer token and asserts a 401 response. Then call the endpoint with a valid token while temporarily disconnecting the SQLite DB; the endpoint should respond with status 503 and a JSON body indicating the failing component."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    },
+    "threat-model-refresh": {
+      "stepId": "threat-model-refresh",
+      "role": "threat-modeler",
+      "summary": "The threat model for the onboard step reveals critical integrity and authentication gaps that undermine the platform's gated pipeline. Decision ledger writes are non‑atomic, export bundle imports skip receipt signature verification, authentication can be bypassed for newly added routes, and the healthz endpoint lacks proper auth and dependency checks. These issues must be mitigated before further development.",
+      "findings": [
+        {
+          "title": "Decision ledger writes are not atomic across concurrent requests",
+          "severity": "HIGH",
+          "recommendation": "Replace the synchronous file‑based ledger with a DB transaction using the EventLog API, or add proper file locking and enforce single‑writer semantics. Ensure each decision write commits the ledger row and its anchoring event together.",
+          "verify": "Create a test that spawns multiple createSlate calls concurrently and asserts the ledger file contains exactly one new decision row per call, with no interleaved or duplicate D‑IDs."
+        },
+        {
+          "title": "Export bundle import does not verify receipt signatures",
+          "severity": "CRITICAL",
+          "recommendation": "Extend the bundle import verification to include receipt validation using the project signingKey. Before persisting a bundle, replay each receipt through verifyReceipt and reject the bundle if any verification fails.",
+          "verify": "Inject a bundle with a tampered receipt payload (e.g., modify validatorsJson) and confirm that the import process rejects the bundle during verification, preventing persistence."
+        },
+        {
+          "title": "Authentication enforcement can be bypassed for routes added outside the decisions module",
+          "severity": "MEDIUM",
+          "recommendation": "Enforce global authentication registration in server.ts and add a lint rule that flags new route files lacking the checkAuth preHandler. Ensure every API route passes through SC‑08 and D‑005 checks.",
+          "verify": "Add a new API file under apps/server/src/api/outside that does not import the auth hook, then attempt to call an endpoint without a bearer token; the request should be rejected with 401."
+        },
+        {
+          "title": "Healthz endpoint lacks authentication and dependency verification",
+          "severity": "HIGH",
+          "recommendation": "Add the global checkAuth pre‑handler to the healthz route and extend the handler to query critical dependencies (database, event log). Return HTTP 503 with a structured error payload when any check fails.",
+          "verify": "Create an integration test that calls /healthz without a bearer token and asserts a 401 response. Then call the endpoint with a valid token while temporarily disconnecting the SQLite DB; the endpoint should respond with 503 and a JSON body indicating the failing component."
+        }
+      ],
+      "session": {
+        "exitCode": 0,
+        "scopeViolations": [
+          "docs/work/telemetry.jsonl"
+        ]
+      }
+    }
+  },
+  "coverageManifest": {
+    "antiSlopRules": [
+      {
+        "id": "R-01",
+        "name": "Catch-all swallowing",
+        "state": "gate"
+      },
+      {
+        "id": "R-02",
+        "name": "try/catch inside tight loops",
+        "state": "gate"
+      },
+      {
+        "id": "R-03",
+        "name": "Exception-driven control flow",
+        "state": "advisory"
+      },
+      {
+        "id": "R-04",
+        "name": "Serial awaits that block parallelism",
+        "state": "advisory"
+      },
+      {
+        "id": "R-05",
+        "name": "Single-implementation interfaces/factories",
+        "state": "advisory"
+      },
+      {
+        "id": "R-06",
+        "name": "Delegation-only wrapper classes",
+        "state": "advisory"
+      },
+      {
+        "id": "R-07",
+        "name": "Single-use helper functions",
+        "state": "advisory"
+      },
+      {
+        "id": "R-08",
+        "name": "Repository pattern on simple CRUD",
+        "state": "advisory"
+      },
+      {
+        "id": "R-09",
+        "name": "Null checks on types you control",
+        "state": "advisory"
+      },
+      {
+        "id": "R-10",
+        "name": "Fallback values that hide failures",
+        "state": "advisory"
+      },
+      {
+        "id": "R-11",
+        "name": "Unspecified retry logic",
+        "state": "advisory"
+      },
+      {
+        "id": "R-12",
+        "name": "Feature flags on unreleased code",
+        "state": "advisory"
+      },
+      {
+        "id": "R-13",
+        "name": "What-comments",
+        "state": "gate"
+      },
+      {
+        "id": "R-14",
+        "name": "Step-by-step narration blocks",
+        "state": "advisory"
+      },
+      {
+        "id": "R-15",
+        "name": "Stale JSDoc / docstring parameters",
+        "state": "gate"
+      },
+      {
+        "id": "R-16",
+        "name": "Emojis in code comments",
+        "state": "advisory"
+      },
+      {
+        "id": "R-17",
+        "name": "Speculative generalization",
+        "state": "gate"
+      },
+      {
+        "id": "R-18",
+        "name": "Cargo-cult patterns",
+        "state": "gate"
+      },
+      {
+        "id": "R-19",
+        "name": "Duplicated blocks (copy-paste growth)",
+        "state": "advisory"
+      },
+      {
+        "id": "R-20",
+        "name": "Inconsistent pattern usage",
+        "state": "advisory"
+      },
+      {
+        "id": "R-21",
+        "name": "Hallucinated Package Names (Slopsquatting)",
+        "state": "advisory"
+      },
+      {
+        "id": "R-22",
+        "name": "Architectural Privilege Escalation Paths",
+        "state": "advisory"
+      },
+      {
+        "id": "R-23",
+        "name": "Elevated Credential Leakage Rate",
+        "state": "advisory"
+      },
+      {
+        "id": "R-24",
+        "name": "Docstring Inflation (Logic Density Ratio violation)",
+        "state": "advisory"
+      },
+      {
+        "id": "R-25",
+        "name": "Phantom Imports",
+        "state": "advisory"
+      },
+      {
+        "id": "R-26",
+        "name": "Disconnected Pipelines (Dead Scaffolding)",
+        "state": "advisory"
+      },
+      {
+        "id": "R-27",
+        "name": "Unimplemented Stubs as Features",
+        "state": "advisory"
+      },
+      {
+        "id": "R-28",
+        "name": "LLM Output Consumed Without Validation",
+        "state": "advisory"
+      },
+      {
+        "id": "R-29",
+        "name": "Prose Padding (Local LLM Output Slop)",
+        "state": "advisory"
+      },
+      {
+        "id": "R-30",
+        "name": "Library-shaped reimplementation",
+        "state": "shadow"
+      }
+    ],
+    "validators": [
+      {
+        "name": "run-coverage-loop",
+        "state": "shadow"
+      },
+      {
+        "name": "run-handoff-gates",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-adrs",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-api-consistency",
+        "state": "gate"
+      },
+      {
+        "name": "validate-api-coverage",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-architecture",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-autonomy-ledger",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-autonomy-wiring",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-book-structure",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-build",
+        "state": "gate"
+      },
+      {
+        "name": "validate-c3-coverage",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-challenger-gate",
+        "state": "gate"
+      },
+      {
+        "name": "validate-circular-deps",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-close-receipt",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-code-health",
+        "state": "gate"
+      },
+      {
+        "name": "validate-completion-manifest",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-contract-conformance",
+        "state": "gate"
+      },
+      {
+        "name": "validate-data-governance",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-dead-code",
+        "state": "gate"
+      },
+      {
+        "name": "validate-deps",
+        "state": "gate"
+      },
+      {
+        "name": "validate-design-system",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-design-tokens",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-doc-catalog",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-doc-counts",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-doc-render-health",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-e2e-setup",
+        "state": "gate"
+      },
+      {
+        "name": "validate-entry-points",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-erd-coverage",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-feature-coverage",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-file-size",
+        "state": "gate"
+      },
+      {
+        "name": "validate-fix-backlog-closed",
+        "state": "gate"
+      },
+      {
+        "name": "validate-flows",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-handoff-discipline",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-iac",
+        "state": "gate"
+      },
+      {
+        "name": "validate-improve-coverage",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-infrastructure",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-inventory",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-jira-hygiene",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-lint",
+        "state": "gate"
+      },
+      {
+        "name": "validate-loop-readiness",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-mermaid",
+        "state": "gate"
+      },
+      {
+        "name": "validate-migrations",
+        "state": "gate"
+      },
+      {
+        "name": "validate-model-pins",
+        "state": "gate"
+      },
+      {
+        "name": "validate-module-boundaries",
+        "state": "gate"
+      },
+      {
+        "name": "validate-module-boundaries-transitive",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-module-design",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-no-ascii-art",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-no-reinvent",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-observability",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-owasp",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-persistence-block",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-phase-gate",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-release-readiness",
+        "state": "gate"
+      },
+      {
+        "name": "validate-requirement-closure",
+        "state": "gate"
+      },
+      {
+        "name": "validate-requirements-matrix",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-resilience-patterns",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-scope",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-security-controls",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-sequence-coverage",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-smoke",
+        "state": "gate"
+      },
+      {
+        "name": "validate-spec-traceability",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-state-drift",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-status-freshness",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-tech-stack",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-test-design",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-tests",
+        "state": "gate"
+      },
+      {
+        "name": "validate-tests-mapping",
+        "state": "gate"
+      },
+      {
+        "name": "validate-ticket-hygiene",
+        "state": "gate"
+      },
+      {
+        "name": "validate-tickets",
+        "state": "gate"
+      },
+      {
+        "name": "validate-tracker-fresh",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-tracker-integrity",
+        "state": "gate"
+      },
+      {
+        "name": "validate-use-cases",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-user-stories",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-ux-spec",
+        "state": "advisory"
+      },
+      {
+        "name": "validate-vendor-provenance",
+        "state": "shadow"
+      },
+      {
+        "name": "validate-wcag-coverage",
+        "state": "shadow"
+      }
+    ]
+  }
+}

@@ -2459,12 +2459,14 @@
         "The dogfood security/code-health run asserts the FULL imported rule set executes (all 30 anti-slop rules + all 66 validators enumerated in the coverage report — the name-ALL-of-the-set lesson, R-E3); shadow/advisory/gate states honored per D-014"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "notes": [
         " AMENDED 2026-07-14 (adopted R-E3).",
         "DEP ADDED 2026-07-19: depends_on W5-18 (pipeline execution wiring) — the execution path this ticket assumed now exists as a real ticket.",
         "CONDUCTOR 2026-07-21T03:46:49.959Z: blocked after 2 attempts. Branch sw/w8-01 kept. Gaps: plan.json status is 'blocked', expected 'done'",
-        "RE-POINTED 2026-07-21 (Brad-approved): the missing onboard/analysis executor is now real work — depends_on W8-09 (which depends on W8-08). Reset blocked->todo so the conductor claims it once the wiring lands. Its own build (running onboard over THIS repo, publishing coverage/receipts under docs/dogfood/) is unchanged; it stops being a structural dead-end."
+        "RE-POINTED 2026-07-21 (Brad-approved): the missing onboard/analysis executor is now real work — depends_on W8-09 (which depends on W8-08). Reset blocked->todo so the conductor claims it once the wiring lands. Its own build (running onboard over THIS repo, publishing coverage/receipts under docs/dogfood/) is unchanged; it stops being a structural dead-end.",
+        "AGENT 2026-07-21: claimed. All deps (W5-08, W6-06, W7-02, W5-18, W8-09) done. Executing the dogfood run against this repo using the real run-onboard pipeline; write_scope stays docs/dogfood/** only.",
+        "AGENT 2026-07-21: dogfood run executed against this repo via docs/dogfood/run-dogfood.mjs (real runOnboardExecution + onboard-board-lifecycle, real LM Studio gateway, no fakes). 16 steps (7 onboard health steps + 8-step security cluster incl. attack-chainer + threat-model-refresh), all exitCode 0. 55 findings raised (11 CRITICAL/19 HIGH/19 MEDIUM/6 LOW), all 55 proposed+accepted onto the board with real receipts (specialist:<role>-signed onboard.step-complete AUDIT events). Coverage manifest asserts the full imported set every run by construction (buildOnboardCoverageManifest is a pure function over already-committed tables, not a per-run tally): 30/30 anti-slop rules + 76/76 imported validators (AC2 text says 66, the stale W1-01 baseline; coverage-manifest.ts documents why 76 is current and coverage-manifest.test.ts pins both counts against source-of-truth docs). D-014 lifecycle honored: shadow rules ran but never blocked, gate/advisory tags read off existing phase-topology facts, no suppression (raw==effective). Artifacts published under docs/dogfood/: run-result.json, receipts.json, findings-tickets.json, coverage-manifest.json, DOGFOOD_REPORT.md. write_scope stayed docs/dogfood/** only (.shipwright/state.db is gitignored). Gate: pnpm lint (0 errors) && pnpm typecheck && pnpm test = 387 test files, 2724 passed | 3 skipped; validate-plan.mjs/validate-traceability.mjs OK, same 9 pre-existing coverage gaps only."
       ],
       "stories": [
         "US-401",

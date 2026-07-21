@@ -1,0 +1,477 @@
+{
+  "note": "D-014 rule lifecycle: shadow runs for real but never blocks; advisory is waiver-eligible; gate is non-waivable. Raw counts below are never hidden (D-014 raw -> deduped -> effective -> suppressed surface requirement) -- there is no suppression here, so raw == effective for this manifest.",
+  "antiSlopRuleCount": 30,
+  "antiSlopRuleCountsByState": {
+    "proposed": 0,
+    "shadow": 1,
+    "advisory": 23,
+    "gate": 6,
+    "deprecated": 0
+  },
+  "validatorCount": 76,
+  "validatorCountsByState": {
+    "proposed": 0,
+    "shadow": 27,
+    "advisory": 25,
+    "gate": 24,
+    "deprecated": 0
+  },
+  "antiSlopRules": [
+    {
+      "id": "R-01",
+      "name": "Catch-all swallowing",
+      "state": "gate"
+    },
+    {
+      "id": "R-02",
+      "name": "try/catch inside tight loops",
+      "state": "gate"
+    },
+    {
+      "id": "R-03",
+      "name": "Exception-driven control flow",
+      "state": "advisory"
+    },
+    {
+      "id": "R-04",
+      "name": "Serial awaits that block parallelism",
+      "state": "advisory"
+    },
+    {
+      "id": "R-05",
+      "name": "Single-implementation interfaces/factories",
+      "state": "advisory"
+    },
+    {
+      "id": "R-06",
+      "name": "Delegation-only wrapper classes",
+      "state": "advisory"
+    },
+    {
+      "id": "R-07",
+      "name": "Single-use helper functions",
+      "state": "advisory"
+    },
+    {
+      "id": "R-08",
+      "name": "Repository pattern on simple CRUD",
+      "state": "advisory"
+    },
+    {
+      "id": "R-09",
+      "name": "Null checks on types you control",
+      "state": "advisory"
+    },
+    {
+      "id": "R-10",
+      "name": "Fallback values that hide failures",
+      "state": "advisory"
+    },
+    {
+      "id": "R-11",
+      "name": "Unspecified retry logic",
+      "state": "advisory"
+    },
+    {
+      "id": "R-12",
+      "name": "Feature flags on unreleased code",
+      "state": "advisory"
+    },
+    {
+      "id": "R-13",
+      "name": "What-comments",
+      "state": "gate"
+    },
+    {
+      "id": "R-14",
+      "name": "Step-by-step narration blocks",
+      "state": "advisory"
+    },
+    {
+      "id": "R-15",
+      "name": "Stale JSDoc / docstring parameters",
+      "state": "gate"
+    },
+    {
+      "id": "R-16",
+      "name": "Emojis in code comments",
+      "state": "advisory"
+    },
+    {
+      "id": "R-17",
+      "name": "Speculative generalization",
+      "state": "gate"
+    },
+    {
+      "id": "R-18",
+      "name": "Cargo-cult patterns",
+      "state": "gate"
+    },
+    {
+      "id": "R-19",
+      "name": "Duplicated blocks (copy-paste growth)",
+      "state": "advisory"
+    },
+    {
+      "id": "R-20",
+      "name": "Inconsistent pattern usage",
+      "state": "advisory"
+    },
+    {
+      "id": "R-21",
+      "name": "Hallucinated Package Names (Slopsquatting)",
+      "state": "advisory"
+    },
+    {
+      "id": "R-22",
+      "name": "Architectural Privilege Escalation Paths",
+      "state": "advisory"
+    },
+    {
+      "id": "R-23",
+      "name": "Elevated Credential Leakage Rate",
+      "state": "advisory"
+    },
+    {
+      "id": "R-24",
+      "name": "Docstring Inflation (Logic Density Ratio violation)",
+      "state": "advisory"
+    },
+    {
+      "id": "R-25",
+      "name": "Phantom Imports",
+      "state": "advisory"
+    },
+    {
+      "id": "R-26",
+      "name": "Disconnected Pipelines (Dead Scaffolding)",
+      "state": "advisory"
+    },
+    {
+      "id": "R-27",
+      "name": "Unimplemented Stubs as Features",
+      "state": "advisory"
+    },
+    {
+      "id": "R-28",
+      "name": "LLM Output Consumed Without Validation",
+      "state": "advisory"
+    },
+    {
+      "id": "R-29",
+      "name": "Prose Padding (Local LLM Output Slop)",
+      "state": "advisory"
+    },
+    {
+      "id": "R-30",
+      "name": "Library-shaped reimplementation",
+      "state": "shadow"
+    }
+  ],
+  "validators": [
+    {
+      "name": "run-coverage-loop",
+      "state": "shadow"
+    },
+    {
+      "name": "run-handoff-gates",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-adrs",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-api-consistency",
+      "state": "gate"
+    },
+    {
+      "name": "validate-api-coverage",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-architecture",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-autonomy-ledger",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-autonomy-wiring",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-book-structure",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-build",
+      "state": "gate"
+    },
+    {
+      "name": "validate-c3-coverage",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-challenger-gate",
+      "state": "gate"
+    },
+    {
+      "name": "validate-circular-deps",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-close-receipt",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-code-health",
+      "state": "gate"
+    },
+    {
+      "name": "validate-completion-manifest",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-contract-conformance",
+      "state": "gate"
+    },
+    {
+      "name": "validate-data-governance",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-dead-code",
+      "state": "gate"
+    },
+    {
+      "name": "validate-deps",
+      "state": "gate"
+    },
+    {
+      "name": "validate-design-system",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-design-tokens",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-doc-catalog",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-doc-counts",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-doc-render-health",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-e2e-setup",
+      "state": "gate"
+    },
+    {
+      "name": "validate-entry-points",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-erd-coverage",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-feature-coverage",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-file-size",
+      "state": "gate"
+    },
+    {
+      "name": "validate-fix-backlog-closed",
+      "state": "gate"
+    },
+    {
+      "name": "validate-flows",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-handoff-discipline",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-iac",
+      "state": "gate"
+    },
+    {
+      "name": "validate-improve-coverage",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-infrastructure",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-inventory",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-jira-hygiene",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-lint",
+      "state": "gate"
+    },
+    {
+      "name": "validate-loop-readiness",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-mermaid",
+      "state": "gate"
+    },
+    {
+      "name": "validate-migrations",
+      "state": "gate"
+    },
+    {
+      "name": "validate-model-pins",
+      "state": "gate"
+    },
+    {
+      "name": "validate-module-boundaries",
+      "state": "gate"
+    },
+    {
+      "name": "validate-module-boundaries-transitive",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-module-design",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-no-ascii-art",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-no-reinvent",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-observability",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-owasp",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-persistence-block",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-phase-gate",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-release-readiness",
+      "state": "gate"
+    },
+    {
+      "name": "validate-requirement-closure",
+      "state": "gate"
+    },
+    {
+      "name": "validate-requirements-matrix",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-resilience-patterns",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-scope",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-security-controls",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-sequence-coverage",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-smoke",
+      "state": "gate"
+    },
+    {
+      "name": "validate-spec-traceability",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-state-drift",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-status-freshness",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-tech-stack",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-test-design",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-tests",
+      "state": "gate"
+    },
+    {
+      "name": "validate-tests-mapping",
+      "state": "gate"
+    },
+    {
+      "name": "validate-ticket-hygiene",
+      "state": "gate"
+    },
+    {
+      "name": "validate-tickets",
+      "state": "gate"
+    },
+    {
+      "name": "validate-tracker-fresh",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-tracker-integrity",
+      "state": "gate"
+    },
+    {
+      "name": "validate-use-cases",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-user-stories",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-ux-spec",
+      "state": "advisory"
+    },
+    {
+      "name": "validate-vendor-provenance",
+      "state": "shadow"
+    },
+    {
+      "name": "validate-wcag-coverage",
+      "state": "shadow"
+    }
+  ]
+}
