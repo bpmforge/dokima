@@ -2384,10 +2384,17 @@
       "title": "Lessons intake -> playbook pipeline",
       "phase": 7,
       "module": "memory",
-      "lane": "memory",
+      "lane": "ui",
       "write_scope": [
         "packages/memory/src/lessons/**",
-        "apps/web/src/lessons/**"
+        "apps/web/src/lessons/**",
+        "apps/server/src/api/lessons/**",
+        "apps/server/package.json",
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server.test.ts",
+        "packages/memory/src/index.ts",
+        "apps/web/src/board/drawer/TelemetryPanel.tsx",
+        "apps/web/src/board/drawer/TelemetryPanel.test.tsx"
       ],
       "depends_on": [
         "W7-02"
@@ -2396,11 +2403,12 @@
         "Structured field-report form (from a user or the trace viewer); triage flow turns accepted reports into playbook entries or validator-fix tickets (BLUEPRINT §12.6); entry points: \"File field report\" action on session-trace views and escalation event cards, form pre-filled from the trace (UX_SPEC §7, G-10c)"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         " AMENDED 2026-07-14 design review G-10c.",
         "NOTE 2026-07-15 (L-33): this ticket has a UI surface but sits outside the ui lane — its App.tsx/server.ts wiring seam must be resolved at claim time (widen scope then, or land the mount via a ui-lane ticket) to avoid the W4-02 out-of-scope block class.",
-        "CONDUCTOR 2026-07-21T01:39:01.453Z: blocked after 2 attempts. Branch sw/w7-05 kept. Gaps: out-of-scope edits: apps/server/package.json, apps/server/src/api/lessons/index.ts, apps/server/src/api/lessons/routes.test.ts, apps/server/src/api/lessons/routes.ts, apps/server/src/api/lessons/shared.ts, apps/server/src/api/server.ts, apps/web/src/board/drawer/TelemetryPanel.test.tsx, apps/web/src/board/drawer/TelemetryPanel.tsx, packages/memory/src/index.ts"
+        "CONDUCTOR 2026-07-21T01:39:01.453Z: blocked after 2 attempts. Branch sw/w7-05 kept. Gaps: out-of-scope edits: apps/server/package.json, apps/server/src/api/lessons/index.ts, apps/server/src/api/lessons/routes.test.ts, apps/server/src/api/lessons/routes.ts, apps/server/src/api/lessons/shared.ts, apps/server/src/api/server.ts, apps/web/src/board/drawer/TelemetryPanel.test.tsx, apps/web/src/board/drawer/TelemetryPanel.tsx, packages/memory/src/index.ts",
+        "SCOPE FIX 2026-07-21: scope (memory/lessons + web/lessons) was too narrow — the lessons intake feature needs a server API (apps/server/src/api/lessons/**), server.ts registration, the memory barrel export, and the board TelemetryPanel entry point. Widened + moved to lane=ui (server.ts is co-owned by W8-02(ui,todo); same-lane todo overlap is allowed, cross-lane would not be). Maker also fixed a real half-commit hazard in the accept-to-ticket flow — keep it."
       ],
       "stories": []
     },
