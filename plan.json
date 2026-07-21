@@ -2421,7 +2421,7 @@
         "Context Packer consumes index ranking for relevance-ranked slices (FR-L5); agent code_search calls are audited events; W4 command palette queries the same index"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "ADDED 2026-07-14 addendum (adopted by founder direction, R-J1/FR-M4). No repo-map by design (source-system lesson).",
       "stories": [
         "US-604"
