@@ -22,6 +22,7 @@ import {
   type RealOnboardDispatch,
 } from './onboard-dispatch-port.js';
 import { runOnboardExecution } from './onboard-executor.js';
+import { gatherOnboardRepoContext } from './onboard-repo-context.js';
 import type { PlanItemRow } from '../plans-types.js';
 
 export interface RunOnboardAnalysisOptions {
@@ -65,7 +66,13 @@ export async function runOnboardAnalysis(
 
   ensureOperatorIdentity(opts.log, now);
 
-  const input: RunOnboardInput = { seedContext: { repoRoot: opts.projectPath } };
+  // W8-09 fix (conductor RESET note): `createRealOnboardDispatch`'s `spawn`
+  // is a single-turn `provider.chat()` with no filesystem access, so the
+  // repo-context gathering has to happen HERE (dispatch code, in
+  // write_scope) rather than relying on the specialist to read the repo
+  // itself — a bare `{ repoRoot }` path string gave it nothing to analyze.
+  const repoContext = await gatherOnboardRepoContext(opts.projectPath);
+  const input: RunOnboardInput = { seedContext: { ...repoContext } };
   const { result, stepArtifacts } = await runOnboardExecution(input, {
     log: opts.log,
     runId: opts.runId,

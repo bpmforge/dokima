@@ -79,6 +79,17 @@ describe('runOnboardAnalysis (W8-09 — full onboard/analysis run, real gateway 
       // AC3(c): every model call went through the fake HTTP server, never a real network call.
       expect(server.requests).toHaveLength(16);
 
+      // W8-09 fix: every specialist prompt carries REAL repo material (not
+      // just a bare repoRoot path string) — the fixture's committed
+      // README.md content and its path in the directory listing must both
+      // reach the gateway request.
+      const firstBody = server.requests[0] as {
+        messages: { role: string; content: string }[];
+      };
+      const promptContent = firstBody.messages[1]?.content ?? '';
+      expect(promptContent).toContain('# fixture');
+      expect(promptContent).toContain('README.md');
+
       expect(Object.keys(outcome.result.stepArtifacts)).toHaveLength(16);
       expect(outcome.result.coverageManifest.antiSlopRules).toHaveLength(30);
 
