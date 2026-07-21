@@ -2489,7 +2489,7 @@
         "Replay any agent session from its events: prompt, tool calls, gate results per pass; linked from ticket cards; feeds the lessons form (BLUEPRINT §12.4)"
       ],
       "points": 3,
-      "status": "done",
+      "status": "in_progress",
       "notes": [
         "SCOPE 2026-07-15 (L-33, third seam flavor): +app-shell wiring files (App.tsx route mount, server.ts route registration, e2e specs) — a UI feature ticket cannot wire itself into the shell without them; W4-02 blocked on exactly this. Same ui lane throughout, so no cross-lane overlap (D-015).",
         "CLAIM 2026-07-21: backend routes (GET /tickets/:id/runs, GET /runs/:id/trace) already exist and are already registered in server.ts (landed as W7-05 scope-creep, plan.json W7-05 notes) and are fully tested (runs-routes.test.ts) — no server changes expected. TelemetryPanel.tsx (W7-05, out of this ticket's write_scope) already renders an inline session-trace list as a host for its field-report action; this ticket's job is the dedicated apps/web/src/trace/** replay surface + App.tsx wiring + e2e, reusing the existing backend and lessons/prefill primitives rather than rebuilding them.",
