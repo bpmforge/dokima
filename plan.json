@@ -2319,7 +2319,7 @@
         "Delta-edit-only playbook; only tool/challenger-confirmed outcomes stored (FR-M2); R0 escalation rung consults playbook + fact bank before any model call, with hit/miss events; per-project by default, explicit provenance-carrying promotion to the global playbook, never automatic (FR-F5)"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [],
       "stories": [
         "US-601",
