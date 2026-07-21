@@ -2622,7 +2622,10 @@
       "lane": "infra",
       "write_scope": [
         "apps/server/src/cli/ops/**",
-        "packages/events/src/backup/**"
+        "packages/events/src/backup/**",
+        "packages/events/src/index.ts",
+        "apps/server/src/bootstrap/cli.ts",
+        "apps/server/src/bootstrap/cli.test.ts"
       ],
       "depends_on": [
         "W8-05"
@@ -2633,10 +2636,11 @@
         "shipwright service install|status|stop generates launchd/systemd user units (DEPLOYMENT §6); shipwright providers refresh re-runs discovery/warm-up"
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "ADDED 2026-07-14 design review G-5: DEPLOYMENT.md promised all of these with zero owning tickets.",
-        "CONDUCTOR 2026-07-21T19:32:07.950Z: blocked after 2 attempts. Branch sw/w8-06 kept. Gaps: out-of-scope edits: apps/server/src/bootstrap/cli.test.ts, apps/server/src/bootstrap/cli.ts, packages/events/src/index.ts"
+        "CONDUCTOR 2026-07-21T19:32:07.950Z: blocked after 2 attempts. Branch sw/w8-06 kept. Gaps: out-of-scope edits: apps/server/src/bootstrap/cli.test.ts, apps/server/src/bootstrap/cli.ts, packages/events/src/index.ts",
+        "RESET+WIDEN 2026-07-21: build-then-wire seam. Maker built ops commands (cli/ops/**) + backup module (events/src/backup/**) correctly but self-blocked on out-of-scope wiring: the events barrel packages/events/src/index.ts (to export the backup module) and the CLI call-site apps/server/src/bootstrap/cli.ts+cli.test.ts (to register doctor/backup/restore/service commands). All three are done-owned (W8-05/W0-02/W4-09) so P8 tolerates. Widened scope to those; fresh 2-attempt cycle."
       ],
       "stories": [
         "US-205"
@@ -3023,9 +3027,10 @@
       "module": "validators",
       "lane": "quality",
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "write_scope": [
-        "content/validators/validate-verification-integrity*"
+        "content/validators/validate-verification-integrity*",
+        "conductor.config.json"
       ],
       "depends_on": [
         "W1-02"
@@ -3037,7 +3042,8 @@
       ],
       "notes": [
         "ADDED 2026-07-19 (Brad-approved): systemic pre-merge detection for the recurring self-attest CRITICAL (3 instances: W6-03 reconciliation, W5-11/W5-15 plans-verify — see L-41/L-42). Catches the pattern at the per-ticket gate so the wave-security-pass is not the only net. Route the rule upstream to bpm-opencode-experts as an anti-slop/security check.",
-        "CONDUCTOR 2026-07-21T20:03:07.818Z: blocked after 2 attempts. Branch sw/w8-07 kept. Gaps: [HIGH] conductor.config.json: validate-verification-integrity is still absent from both validators.gate and validators.advisory arrays (confirmed via grep — zero matches). scripts/conductor.mjs's runGates/runValidators only invoke scripts named in those arrays, so this validator's findings never reach reviewPrompt's 'DETERMINISTIC VALIDATOR FINDINGS' block (D-014's anchor mechanism) for any ticket, including its own. The ticket's founding note explicitly required catching this pattern 'at the per-ticket gate,' which this diff still does not achieve — the validator exists but is inert. — fix: E"
+        "CONDUCTOR 2026-07-21T20:03:07.818Z: blocked after 2 attempts. Branch sw/w8-07 kept. Gaps: [HIGH] conductor.config.json: validate-verification-integrity is still absent from both validators.gate and validators.advisory arrays (confirmed via grep — zero matches). scripts/conductor.mjs's runGates/runValidators only invoke scripts named in those arrays, so this validator's findings never reach reviewPrompt's 'DETERMINISTIC VALIDATOR FINDINGS' block (D-014's anchor mechanism) for any ticket, including its own. The ticket's founding note explicitly required catching this pattern 'at the per-ticket gate,' which this diff still does not achieve — the validator exists but is inert. — fix: E",
+        "RESET+WIDEN 2026-07-21: build-then-wire seam. Validator built + 6/6 self-tests green, but conductor.config.json (unowned, not in alwaysOk) does not name it, so runGates/runValidators never invoke it — zero live gate effect (the maker correctly flagged its own prior close as overclaimed). Widened scope to conductor.config.json so the maker can register it. NOTE: register as ADVISORY (validators.advisory) not gate during THIS live conductor run — a brand-new hard gate validator with any false positive would block W8-09/W8-01 mid-run; acceptance `at gate time` is satisfied by advisory findings surfacing in the review. A follow-up can promote to gate once proven clean across a full run."
       ]
     }
   ]
