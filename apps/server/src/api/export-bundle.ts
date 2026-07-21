@@ -28,12 +28,17 @@
  * case.
  */
 export { buildExportBundle } from './export-bundle-build.js';
-export { importExportBundle, type ImportResult } from './export-bundle-import.js';
+export {
+  importExportBundle,
+  type ImportExportBundleOptions,
+  type ImportResult,
+} from './export-bundle-import.js';
 export {
   BundleValidationError,
   ChainVerificationFailedError,
   EXPORT_BUNDLE_VERSION,
   NonEmptyImportTargetError,
+  ReceiptAnchorVerificationFailedError,
   type BundleEvent,
   type BundleIdentity,
   type BundleReceipt,

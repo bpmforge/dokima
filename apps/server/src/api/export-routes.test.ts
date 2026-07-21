@@ -1,7 +1,12 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createIdentity, mintReceipt, openEventLog } from '@shipwright/events';
+import {
+  computeEventHash,
+  createIdentity,
+  mintReceipt,
+  openEventLog,
+} from '@shipwright/events';
 import { claimTicket, closeTicket, createTicket, startTicket } from '@shipwright/tickets';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -39,6 +44,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
     registerExportRoutes(app, {
       home: fleetHome,
       auth: { token: TOKEN, allowlist: buildAllowlist(PORT) },
+      signingKey: SIGNING_KEY,
     });
     await app.ready();
     apps.push(app);
@@ -254,5 +260,124 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().detail).toMatch(/hash chain is invalid/);
+  });
+
+  it('import rejects a bundle with an orphan receipt — no anchoring event at all (400, red fixture)', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectId: sourceId } = await registerSeededProject(
+      fleetHome,
+      'export-orphan-src',
+    );
+    const exportRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${sourceId}/export`,
+      headers: authHeaders(),
+    });
+    const bundle = exportRes.json();
+    bundle.receipts.push({
+      id: 'rcpt-forged',
+      kind: 'close',
+      projectId: bundle.projectId,
+      phase: null,
+      ticketId: 'T-1',
+      validatorsJson: JSON.stringify([
+        { name: 'validate-plan', exitCode: 0, gapCount: 0 },
+      ]),
+      inputTreeHash: 'forged-hash',
+      verifyCommand: null,
+      verifyExit: 0,
+      signedBy: null,
+      payloadJson: JSON.stringify({ note: 'forged' }),
+      createdAt: new Date().toISOString(),
+    });
+
+    const targetDir = await tmpDir('shipwright-export-orphan-dst-');
+    dirs.push(targetDir);
+    const registryPath = path.join(fleetHome, 'fleet.json');
+    const record = await registerProject(registryPath, { path: targetDir, mode: 'new' });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${record.id}/import`,
+      headers: authHeaders(),
+      payload: bundle,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().detail).toMatch(/no valid anchoring event/);
+    expect(res.json().evidence.unanchored_receipt_ids).toEqual(['rcpt-forged']);
+  });
+
+  it('import rejects a bundle with a receipt anchored by a wrong contentMac — a self-consistent forgery lacking the real signingKey (400, red fixture)', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectId: sourceId } = await registerSeededProject(
+      fleetHome,
+      'export-forged-mac-src',
+    );
+    const exportRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${sourceId}/export`,
+      headers: authHeaders(),
+    });
+    const bundle = exportRes.json();
+
+    // A syntactically valid, correctly hash-chained event — but its
+    // contentMac was guessed, not computed with the real signingKey.
+    const tail = bundle.events[bundle.events.length - 1];
+    const forgedReceipt = {
+      id: 'rcpt-forged',
+      kind: 'close',
+      projectId: bundle.projectId,
+      phase: null,
+      ticketId: 'T-1',
+      validatorsJson: JSON.stringify([
+        { name: 'validate-plan', exitCode: 0, gapCount: 0 },
+      ]),
+      inputTreeHash: 'forged-hash',
+      verifyCommand: null,
+      verifyExit: 0,
+      signedBy: null,
+      payloadJson: JSON.stringify({ note: 'forged' }),
+      createdAt: new Date().toISOString(),
+    };
+    const payloadJson = JSON.stringify({
+      receiptId: forgedReceipt.id,
+      kind: forgedReceipt.kind,
+      contentMac: 'a'.repeat(64),
+    });
+    const seq = tail.seq + 1;
+    const hash = computeEventHash({
+      prevHash: tail.hash,
+      seq,
+      eventType: 'gate.receipt_minted',
+      actorId: 'maker-1',
+      payloadJson,
+    });
+    bundle.events.push({
+      seq,
+      eventType: 'gate.receipt_minted',
+      actorId: 'maker-1',
+      ticketId: 'T-1',
+      runId: null,
+      payloadJson,
+      createdAt: forgedReceipt.createdAt,
+      prevHash: tail.hash,
+      hash,
+    });
+    bundle.receipts.push(forgedReceipt);
+
+    const targetDir = await tmpDir('shipwright-export-forged-mac-dst-');
+    dirs.push(targetDir);
+    const registryPath = path.join(fleetHome, 'fleet.json');
+    const record = await registerProject(registryPath, { path: targetDir, mode: 'new' });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${record.id}/import`,
+      headers: authHeaders(),
+      payload: bundle,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().detail).toMatch(/no valid anchoring event/);
+    expect(res.json().evidence.unanchored_receipt_ids).toEqual(['rcpt-forged']);
   });
 });

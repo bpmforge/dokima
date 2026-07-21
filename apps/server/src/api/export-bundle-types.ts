@@ -118,3 +118,12 @@ export class ChainVerificationFailedError extends Error {
     this.name = 'ChainVerificationFailedError';
   }
 }
+
+export class ReceiptAnchorVerificationFailedError extends Error {
+  constructor(readonly receiptIds: readonly string[]) {
+    super(
+      `bundle contains receipt(s) with no valid anchoring event (no gate.receipt_minted/gate.waived event carrying a matching contentMac) — not minted by a real run: ${receiptIds.join(', ')}`,
+    );
+    this.name = 'ReceiptAnchorVerificationFailedError';
+  }
+}

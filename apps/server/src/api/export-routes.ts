@@ -26,6 +26,7 @@ import {
   BundleValidationError,
   ChainVerificationFailedError,
   NonEmptyImportTargetError,
+  ReceiptAnchorVerificationFailedError,
   buildExportBundle,
   importExportBundle,
   validateExportBundle,
@@ -39,6 +40,12 @@ export interface ExportRoutesOptions {
   home?: string;
   /** SC-08/D-005 auth, same shape `server.ts` builds for `registerAuthHook` — required, never optional. */
   auth: AuthPluginOptions;
+  /**
+   * Same keychain-resolved minting secret `mintReceipt`/`verifyReceipt` use
+   * (FR-S2, law #8) — required so `/import` can replay the receipt anchor
+   * check (a Bearer token alone must never be enough to plant a receipt).
+   */
+  signingKey: string;
 }
 
 function requireAuth(auth: AuthPluginOptions) {
@@ -195,7 +202,7 @@ export function registerExportRoutes(
 
       const log = openEventLog(stateDbPath(record.path));
       try {
-        const result = importExportBundle(log, bundle);
+        const result = importExportBundle(log, bundle, { signingKey: opts.signingKey });
         const board = computeBoard(Array.from(loadTickets(log).values()));
         return reply.code(201).send({
           identities_imported: result.identitiesImported,
@@ -223,6 +230,16 @@ export function registerExportRoutes(
               badRequestProblem(request, err.message, {
                 broken_at_seq: err.result.brokenAtSeq,
                 reason: err.result.reason,
+              }),
+            );
+        }
+        if (err instanceof ReceiptAnchorVerificationFailedError) {
+          return reply
+            .code(400)
+            .type(PROBLEM_CONTENT_TYPE)
+            .send(
+              badRequestProblem(request, err.message, {
+                unanchored_receipt_ids: err.receiptIds,
               }),
             );
         }
