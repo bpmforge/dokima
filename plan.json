@@ -3098,9 +3098,10 @@
         "Validated end-to-end once: a real cheap-model agent reviews a real run and produces a findings report."
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
-        "FILED+CLAIMED 2026-07-23: founder-directed follow-up to the screenshot-tour review; the four findings that seeded the checklist are W9-02..W9-05."
+        "FILED+CLAIMED 2026-07-23: founder-directed follow-up to the screenshot-tour review; the four findings that seeded the checklist are W9-02..W9-05.",
+        "CLOSED 2026-07-23: all four ACs met. Validated end-to-end by a real claude-haiku-4-5 agent executing ACCEPTANCE_AGENT.md unassisted: it ran capture-acceptance.mjs itself (run 2026-07-23T21-14-40-352Z, 21 frames), judged every frame, correctly marked A-07 KNOWN(W9-02) without re-filing, 20 pass / 1 known / 0 fail. One operational finding folded back into the runbook: headless runs need --permission-mode acceptEdits to write FINDINGS.md (the validation run returned its table as text instead). Gate: lint 0 errors / typecheck clean / 2726 passed | 1 skipped; capture-tour.mjs re-verified after the lib refactor."
       ],
       "stories": []
     },

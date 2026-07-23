@@ -11,3 +11,6 @@ docs/work/conductor.out
 docs/work/conductor.pid
 STOP
 .keys/
+
+# acceptance runs are per-run artifacts, never committed (W9-01)
+docs/acceptance/runs/

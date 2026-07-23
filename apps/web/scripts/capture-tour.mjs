@@ -1,33 +1,17 @@
 /**
  * Captures the scribe-style screenshot tour under `docs/tour/` by driving
- * the real product: a real `vite build` served by the real apps/server
- * against a throwaway `.shipwright` home (same shape as
- * playwright.config.ts's webServer), populated only through sanctioned
- * seams — the UI itself, real API routes, and the e2e seed fixture
- * (`e2e/fixtures/seed-board-tickets.mjs`). Nothing is mocked; every
- * screenshot is the product as shipped (Law 9: fake/local everything, no
- * network beyond 127.0.0.1).
+ * the real product — see `lib/app-harness.mjs` for the boot/seed seams
+ * (real build, real server, throwaway home, sanctioned seeding only,
+ * Law 9: zero mocks, zero network).
  *
  * Run from the repo root or apps/web:  node apps/web/scripts/capture-tour.mjs
- * Requires `apps/web/dist` (run `pnpm --filter @shipwright/web build` first;
- * the script builds it if missing).
  */
-import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const webRoot = path.resolve(here, '..');
-const repoRoot = path.resolve(webRoot, '../..');
-const serverRoot = path.join(repoRoot, 'apps', 'server');
-const TSX_BIN = path.join(serverRoot, 'node_modules', '.bin', 'tsx');
-const SEED_SCRIPT = path.join(webRoot, 'e2e', 'fixtures', 'seed-board-tickets.mjs');
+import { PLAN_SNAPSHOT, repoRoot, seedDemoBoard, startApp } from './lib/app-harness.mjs';
 
 const PORT = 4407;
-const BASE = `http://127.0.0.1:${PORT}`;
 const OUT_DIR = path.join(repoRoot, 'docs', 'tour');
 const IMG_DIR = path.join(OUT_DIR, 'img');
 
@@ -44,53 +28,19 @@ async function shoot(page, slug, title, caption) {
   console.log(`  [${stepNo}] ${title}`);
 }
 
-async function waitForHealthz() {
-  for (let i = 0; i < 60; i += 1) {
-    try {
-      const res = await fetch(`${BASE}/healthz`);
-      if (res.ok) return;
-    } catch {
-      // server not up yet
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`server never became healthy at ${BASE}/healthz`);
-}
-
-if (!existsSync(path.join(webRoot, 'dist', 'index.html'))) {
-  console.log('dist missing — building the SPA first…');
-  execFileSync('pnpm', ['--filter', '@shipwright/web', 'run', 'build'], {
-    cwd: repoRoot,
-    stdio: 'inherit',
-  });
-}
-
-const home = mkdtempSync(path.join(os.tmpdir(), 'shipwright-tour-home-'));
-const stateDb = path.join(home, 'tour-state.db');
-const projectDir = mkdtempSync(path.join(os.tmpdir(), 'shipwright-tour-project-'));
 rmSync(IMG_DIR, { recursive: true, force: true });
 mkdirSync(IMG_DIR, { recursive: true });
 
 console.log('booting apps/server…');
-const server = spawn(TSX_BIN, ['src/api/main.ts'], {
-  cwd: serverRoot,
-  env: {
-    ...process.env,
-    SHIPWRIGHT_HOME: home,
-    SHIPWRIGHT_PORT: String(PORT),
-    SHIPWRIGHT_STATE_DB: stateDb,
-  },
-  stdio: 'ignore',
-});
+const app = await startApp(PORT);
 
 try {
-  await waitForHealthz();
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.emulateMedia({ reducedMotion: 'reduce' });
 
   // ── Fleet ────────────────────────────────────────────────────────────
-  await page.goto(BASE);
+  await page.goto(app.base);
   await page.getByRole('heading', { name: 'Fleet' }).waitFor();
   await shoot(
     page,
@@ -103,7 +53,7 @@ try {
     .locator('.fleet__header')
     .getByRole('button', { name: 'New Product', exact: true })
     .click();
-  await page.getByLabel('Directory path').fill(projectDir);
+  await page.getByLabel('Directory path').fill(app.projectDir);
   await page.getByLabel('Name (optional)').fill('Demo Voyage');
   await shoot(
     page,
@@ -136,11 +86,7 @@ try {
   );
 
   // ── Board, seeded through the real event log ─────────────────────────
-  const projectDb = path.join(projectDir, '.shipwright', 'state.db');
-  execFileSync(TSX_BIN, [SEED_SCRIPT, projectDb, 'basic'], { stdio: 'inherit' });
-  execFileSync(TSX_BIN, [path.join(here, 'seed-tour-trace.mjs'), projectDb], {
-    stdio: 'inherit',
-  });
+  seedDemoBoard(app.projectDir);
   await page.reload();
   await page.getByTestId('card-E2E-1').waitFor();
   await shoot(
@@ -175,25 +121,11 @@ try {
   // String form: the expression runs in the browser, where `window` exists —
   // an arrow function here would trip node-side no-undef.
   const token = await page.evaluate('window.__SHIPWRIGHT_TOKEN__');
-  const snapshot = {
-    phase: null,
-    receipts: { staleCount: 2 },
-    coverage: { requiredSkipped: 0 },
-    findings: { openCriticalUnwaived: 0 },
-    rules: { fpHeavyCount: 0 },
-    tickets: { oscillatingCount: 0, blockedWithEvidenceMaxAgeDays: 0 },
-    spend: { thresholdBreachRepeatCount: 0 },
-    gates: { missingRedFixtureCount: 0 },
-    providers: { unverifiedTosCount: 0 },
-    deliverables: { orphanedCount: 0 },
-    planItems: { regressedCount: 0 },
-    playbook: { staleEntryCount: 0 },
-  };
-  await page.request.post(`${BASE}/api/v1/projects/${projectId}/plan/evaluate`, {
+  await page.request.post(`${app.base}/api/v1/projects/${projectId}/plan/evaluate`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: { snapshot },
+    data: { snapshot: PLAN_SNAPSHOT },
   });
-  await page.goto(`${BASE}/?project=${projectId}&view=plans`);
+  await page.goto(`${app.base}/?project=${projectId}&view=plans`);
   await page.getByTestId('plan-item-PC-001').waitFor();
   await shoot(
     page,
@@ -203,7 +135,7 @@ try {
   );
 
   // ── Notifications / morning queue ────────────────────────────────────
-  await page.request.post(`${BASE}/api/v1/projects/${projectId}/notifications`, {
+  await page.request.post(`${app.base}/api/v1/projects/${projectId}/notifications`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       tier: 'decide',
@@ -212,7 +144,7 @@ try {
       body: { diffStat: '+120 -4' },
     },
   });
-  await page.request.post(`${BASE}/api/v1/projects/${projectId}/notifications`, {
+  await page.request.post(`${app.base}/api/v1/projects/${projectId}/notifications`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       tier: 'review',
@@ -221,7 +153,7 @@ try {
       summary: 'all validators green',
     },
   });
-  await page.goto(`${BASE}/?view=notifications`);
+  await page.goto(`${app.base}/?view=notifications`);
   await page.getByTestId('morning-queue-list').waitFor();
   await shoot(
     page,
@@ -231,7 +163,7 @@ try {
   );
 
   // ── Roster & settings ────────────────────────────────────────────────
-  await page.goto(`${BASE}/?view=roster`);
+  await page.goto(`${app.base}/?view=roster`);
   await page.getByTestId('roster-view').waitFor({ timeout: 5000 }).catch(() => {});
   await shoot(
     page,
@@ -240,7 +172,7 @@ try {
     'The imported expert library (`content/experts/`) — the specialist roles the pipeline dispatches, with their provenance.',
   );
 
-  await page.goto(`${BASE}/?view=settings`);
+  await page.goto(`${app.base}/?view=settings`);
   await shoot(
     page,
     'settings',
@@ -249,7 +181,7 @@ try {
   );
 
   // ── Shortcuts & theming ──────────────────────────────────────────────
-  await page.goto(BASE);
+  await page.goto(app.base);
   await page.getByRole('heading', { name: 'Fleet' }).waitFor();
   await page.keyboard.press('?');
   await page.getByTestId('shortcuts-overlay').waitFor();
@@ -296,7 +228,5 @@ try {
   writeFileSync(path.join(OUT_DIR, 'TOUR.md'), md);
   console.log(`\nwrote ${steps.length} steps to docs/tour/TOUR.md`);
 } finally {
-  server.kill();
-  rmSync(home, { recursive: true, force: true });
-  rmSync(projectDir, { recursive: true, force: true });
+  app.stop();
 }
