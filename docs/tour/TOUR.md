@@ -23,7 +23,7 @@ Clicking **New Product** opens the creation form: a directory path and an option
 
 ## Step 3 — Project registered on the Fleet
 
-The project appears as a card in **Ready** state with Open and Archive actions.
+The project appears as a card with a **Not started** phase chip, Ready/Blocked/Done ticket counters, berth status, and today’s spend — plus Open and Archive actions.
 
 ![Project registered on the Fleet](img/03-project-created.png)
 
@@ -71,7 +71,7 @@ The imported expert library (`content/experts/`) — the specialist roles the pi
 
 ## Step 11 — Settings
 
-Providers, credentials (keychain refs only — never raw secrets), and per-project configuration.
+The global Settings view is deliberately thin: model matrix, autonomy dial, budgets, and scopes are configured per-project (open a project first), with the Setup Wizard as the entry point.
 
 ![Settings](img/11-settings.png)
 
