@@ -118,7 +118,7 @@ try {
     page,
     'project-created',
     'Project registered on the Fleet',
-    'The project appears as a card in **Ready** state with Open and Archive actions.',
+    'The project appears as a card with a **Not started** phase chip, Ready/Blocked/Done ticket counters, berth status, and today’s spend — plus Open and Archive actions.',
   );
 
   // ── Workspace ────────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ try {
     page,
     'settings',
     'Settings',
-    'Providers, credentials (keychain refs only — never raw secrets), and per-project configuration.',
+    'The global Settings view is deliberately thin: model matrix, autonomy dial, budgets, and scopes are configured per-project (open a project first), with the Setup Wizard as the entry point.',
   );
 
   // ── Shortcuts & theming ──────────────────────────────────────────────
