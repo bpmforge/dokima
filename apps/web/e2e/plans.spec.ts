@@ -1,8 +1,15 @@
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '../../..');
+const TSX_BIN = path.join(repoRoot, 'apps', 'server', 'node_modules', '.bin', 'tsx');
+const RECORD_OUTCOMES_SCRIPT = path.join(here, 'fixtures', 'record-rule-outcomes.mjs');
 
 /**
  * Improvement Plan view + morning-queue integration (FR-PLAN2/4, D-016,
@@ -79,15 +86,15 @@ async function evaluate(
   expect(res.ok()).toBe(true);
 }
 
-async function verify(
-  page: Page,
-  token: string,
-  projectId: string,
-  snapshot: Record<string, unknown>,
-): Promise<void> {
+/**
+ * W5-16 hardened `/plan/verify` to derive its snapshot server-side and
+ * ignore the request body entirely (a caller-supplied snapshot would let a
+ * bearer-token holder self-attest verification, plans-routes.ts) — so
+ * unlike `evaluate` there is no snapshot argument to pass.
+ */
+async function verify(page: Page, token: string, projectId: string): Promise<void> {
   const res = await page.request.post(`/api/v1/projects/${projectId}/plan/verify`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: { snapshot },
   });
   expect(res.ok()).toBe(true);
 }
@@ -157,25 +164,66 @@ test('dismiss removes a proposed item from the list and the funnel keeps raw fin
   await fs.rm(dir, { recursive: true, force: true });
 });
 
+/**
+ * Since `/plan/verify` derives its snapshot from real project state, the
+ * regression must be driven through the one snapshot field with a live
+ * producer, `rules.fpHeavyCount` (scheduler/snapshot.ts
+ * LIVE_SNAPSHOT_PATHS): a real `rule_state` row walked to `gate`, FP
+ * outcomes recorded through the real store (fixtures/
+ * record-rule-outcomes.mjs — no HTTP route for outcome recording exists
+ * yet, same real-code-via-fixture discipline as seed-board-tickets.mjs).
+ * PC-005 is the catalog entry keyed to that field. Any other catalog item
+ * would make the verify pass skip itself (unresolvedSnapshotPaths, C-1
+ * local-first honesty) — which is why the pre-W5-16 PC-001 version of this
+ * test could never regress anything.
+ */
 test('a regressed plan item surfaces as a Review card in the morning queue with the violated criterion + evidence (AC2)', async ({
   page,
 }) => {
   const { dir, name } = freshProjectPath();
   const projectId = await openFreshProject(page, name, dir);
   const token = await readToken(page);
+  const ruleId = 'e2e-fp-heavy-rule';
 
-  const violated = baselineSnapshot({ receipts: { staleCount: 3 } });
-  const satisfied = baselineSnapshot();
+  const post = async (url: string, data?: Record<string, unknown>): Promise<void> => {
+    const res = await page.request.post(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: data ?? {},
+    });
+    expect(res.ok()).toBe(true);
+  };
+  // Bypasses D-014's promotion data gate: this rule's window is manufactured
+  // FP history, so it can never present 20 clean samples.
+  const lift = { min_sample_count: 0, max_fp_rate: 1 };
+  const recordFps = (count: number): void => {
+    execFileSync(TSX_BIN, [RECORD_OUTCOMES_SCRIPT, dir, ruleId, String(count)], {
+      stdio: 'inherit',
+    });
+  };
+  const rulePath = `/api/v1/projects/${projectId}/rules/${ruleId}`;
 
-  await evaluate(page, token, projectId, violated);
-  const acceptRes = await page.request.post(
-    `/api/v1/projects/${projectId}/plan-items/PC-001/accept`,
-    { headers: { Authorization: `Bearer ${token}` }, data: { lane: 'pipeline' } },
+  await post(`${rulePath}/register`);
+  await post(`${rulePath}/promote`, lift); // proposed -> shadow
+  await post(`${rulePath}/promote`, lift); // shadow -> advisory
+  await post(`${rulePath}/promote`, lift); // advisory -> gate
+  recordFps(2); // 2/2 FP on a gate rule > DEMOTION_FP_THRESHOLD -> flagged, fpHeavyCount = 1
+
+  await evaluate(
+    page,
+    token,
+    projectId,
+    baselineSnapshot({ rules: { fpHeavyCount: 1 } }),
   );
-  expect(acceptRes.ok()).toBe(true);
+  await post(`/api/v1/projects/${projectId}/plan-items/PC-005/accept`, {
+    lane: 'pipeline',
+  });
 
-  await verify(page, token, projectId, satisfied); // accepted -> done
-  await verify(page, token, projectId, violated); // done -> regressed
+  await post(`${rulePath}/demote`); // gate -> advisory, clears the flag -> fpHeavyCount = 0
+  await verify(page, token, projectId); // accepted -> done
+
+  await post(`${rulePath}/promote`, lift); // back to gate (promote clears the flag)
+  recordFps(1); // window now 3/3 FP -> re-flagged -> fpHeavyCount = 1
+  await verify(page, token, projectId); // done -> regressed, Review digest emitted
 
   await page.goto(`/?view=notifications`);
   await page.getByTestId('notifications-project-filter').selectOption({ label: name });
@@ -183,9 +231,9 @@ test('a regressed plan item surfaces as a Review card in the morning queue with 
   const queueList = page.getByTestId('morning-queue-list');
   await expect(queueList).toBeVisible();
   await expect(queueList).toContainText('1 item batched');
-  await expect(queueList).toContainText('PC-001 regressed');
-  await expect(queueList).toContainText('receipts.staleCount == 0');
-  await expect(queueList).toContainText('staleCount=3');
+  await expect(queueList).toContainText('PC-005 regressed');
+  await expect(queueList).toContainText('rules.fpHeavyCount == 0');
+  await expect(queueList).toContainText('fpHeavyCount=1');
 
   await fs.rm(dir, { recursive: true, force: true });
 });
