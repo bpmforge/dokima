@@ -3212,7 +3212,7 @@
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts reported in the commit body."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "notes": "FILED 2026-07-27 from the dogfood triage arc. decideAdvance (packages/pipeline/src/phases/advance.ts) is a CONSUMER whose producer does not exist: it requires input.gateReceiptId from 'a clean validator run', but mintValidatorRunReceipt has zero production callers and the only production minter (packages/harbormaster/src/loop-gates.ts:306) emits kind='close' for a TICKET, not a phase gate. That absence is deliberate, not an oversight \u2014 see docs/STATUS.md 2026-07-27 (5th). This ticket builds the missing producer; W9-07 then wires the consumer. Splitting them matters: minting receipts to satisfy a gate, from the same identity that produced the output, is the exact Law 4/5 self-attestation the W5 fix removed. | SCOPE CORRECTED 2026-07-27 after a first attempt returned BLOCKED \u2014 correctly. The original write_scope (`phase-gate/**` only) made the acceptance criteria structurally unreachable: `packages/pipeline/src/index.ts` never exported `./phases/index.js` (PHASES is used only via relative imports inside that package) and `apps/server/package.json` has no @shipwright/validators dependency, with no transitive path via harbormaster's barrel. Verified by a probe inside the granted scope: TS2305 'no exported member PHASES' + TS2307 'cannot find module @shipwright/validators'. The agent rejected two tempting dodges and was right on both: a ports/adapters seam would typecheck while satisfying neither criterion (mintValidatorRunReceipt would still have zero production callers, and the validator set would come from an injected fake, not live off the topology), and adding the dep to ROOT package.json would resolve but make validators ambiently importable from every workspace package, defeating the per-package dependency discipline. Adding `export * from './phases/index.js'` was checked mechanically, not just by reading names: `pnpm --filter @shipwright/pipeline typecheck` passes with it applied, so LockedPhaseId/PhaseId do not collide. LESSON: this ticket's scope was filed without verifying its required imports resolve from it \u2014 check reachability when writing write_scope, not when an agent hits the wall.",
       "stories": [
         "US-101"
@@ -3228,7 +3228,8 @@
         "apps/server/src/api/pipeline/pipeline-routes/**"
       ],
       "depends_on": [
-        "W9-06"
+        "W9-06",
+        "W9-08"
       ],
       "acceptance": [
         "A phase-advance route calls `decideAdvance` (packages/pipeline/src/phases/advance.ts) with the real `deps.verifyReceipt` bound to `@shipwright/events`' `verifyReceipt`, passing the from-phase's CURRENT `PHASES[n].validators` for the gate receipt and `[]` for a waiver receipt, exactly as AdvanceDeps documents.",
@@ -3245,6 +3246,31 @@
         "US-102",
         "US-407"
       ]
+    },
+    {
+      "id": "W9-08",
+      "title": "Validator output contract: stop reporting valid runs as untrustworthy (blocks every phase gate)",
+      "phase": 9,
+      "module": "validators",
+      "lane": "quality",
+      "write_scope": [
+        "content/validators/validate-mermaid.sh",
+        "packages/validators/src/contract.ts",
+        "packages/validators/src/contract.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "A clean `validate-mermaid` run reports `exitCode: 0` through `runValidator`. Today it exits 0 with ZERO-byte stdout (verified empirically), `parseValidatorOutput('')` returns null (contract.ts:34), and `run.ts:160` normalizes that to `exitCode: 2` \u2014 so the validator every phase requires can never pass. PREFER fixing the script to emit a proper envelope (it is the only validator that does not; its sole `validator_exit` mention is a comment at line 334) over loosening the contract, because treating empty stdout as 'clean' would weaken the fail-closed guarantee for EVERY validator.",
+        "Because `PHASES[0..5]` all require `validate-mermaid` (R-H3), the observable outcome is that at least one phase can gate cleanly end to end: `runPhaseGate` returns ok with a minted receipt against real content. This is the acceptance that unblocks W9-07.",
+        "Single-finding NDJSON output is parsed correctly. `parseValidatorOutput` currently runs `JSON.parse` on the whole trimmed stdout first; one finding line IS valid JSON, so it succeeds, falls through the array/`gaps`-number branches and returns null at contract.ts:55 \u2014 reporting one real gap as malformed (`exitCode: 2`). Two or more lines work only because concatenated lines throw into the NDJSON fallback. A red fixture reproduces the one-line case before the fix.",
+        "`exitCode: 2` keeps meaning 'verdict untrustworthy' and is never widened into a general catch-all: a genuinely malformed payload, a timeout and a spawn error all still yield 2. Red fixtures pin each.",
+        "No validator's real behaviour is changed beyond emitting its result in the declared envelope \u2014 this ticket fixes reporting, never a validator's pass/fail judgement.",
+        "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts in the commit body."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-07-27 by W9-06's implementation, which surfaced both defects and could fix neither (both outside its write_scope). Finding 1 blocks W9-07's demonstrability: with every phase requiring validate-mermaid and that validator normalizing to exitCode 2 on a clean run, no phase can currently gate cleanly, so an ALLOWED decideAdvance cannot be shown against real content. Finding 2 is independent of mermaid and hits any validator emitting exactly one finding. Both re-verified by the orchestrator before filing: the mermaid script was run against a clean fixture (exit 0, 0-byte stdout) and contract.ts:34/55 read directly.",
+      "stories": []
     }
   ]
 }
