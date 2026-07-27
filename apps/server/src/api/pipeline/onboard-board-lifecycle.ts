@@ -124,6 +124,41 @@ function laneForStepId(stepId: string): string {
  * so `.git/**`/`.github/workflows/**`/`.shipwright/**` stay unreachable. */
 export const ONBOARD_TICKET_WRITE_SCOPE: readonly string[] = ['**'];
 
+/** Collapses NEW findings that share a catalogId WITHIN the same batch (e.g.
+ * two steps independently reporting the identical `[role] title`) — the
+ * persisted-row skip in `proposeFromMatches` only guards a catalogId already
+ * in `plan_items`, so two duplicates in one batch both pass that check and
+ * then crash `insertRow` on `plan_items.id`'s unique constraint
+ * (dogfood-confirmed, docs/dogfood/DOGFOOD_REPORT.md "Findings -> board").
+ * Higher severity wins; recommendation text from both merges so neither
+ * finding's evidence is dropped. */
+function dedupeOriginsInBatch(
+  origins: readonly OnboardFindingOrigin[],
+): readonly OnboardFindingOrigin[] {
+  const byCatalogId = new Map<string, OnboardFindingOrigin>();
+  for (const origin of origins) {
+    const catalogId = catalogIdFor(origin);
+    const prior = byCatalogId.get(catalogId);
+    byCatalogId.set(catalogId, prior ? mergeOrigins(prior, origin) : origin);
+  }
+  return [...byCatalogId.values()];
+}
+
+function mergeOrigins(
+  a: OnboardFindingOrigin,
+  b: OnboardFindingOrigin,
+): OnboardFindingOrigin {
+  const winner =
+    SEVERITY_RANK[b.finding.severity] > SEVERITY_RANK[a.finding.severity] ? b : a;
+  const recommendations = [a.finding.recommendation, b.finding.recommendation].filter(
+    (r, i, all) => all.indexOf(r) === i,
+  );
+  return {
+    ...winner,
+    finding: { ...winner.finding, recommendation: recommendations.join(' ') },
+  };
+}
+
 function toCatalogMatch(origin: OnboardFindingOrigin): CatalogMatch {
   return {
     catalogId: catalogIdFor(origin),
@@ -149,7 +184,7 @@ export async function proposePlanItemsFromOnboardFindings(
   opts: OnboardFindingsPersistOptions,
 ): Promise<{ readonly created: readonly PlanItemRow[] }> {
   const now = opts.now ?? (() => new Date().toISOString());
-  const matches = origins.map(toCatalogMatch);
+  const matches = dedupeOriginsInBatch(origins).map(toCatalogMatch);
   return withPlanWriter(projectPath, (log) => {
     ensureOperatorIdentity(log, now);
     const existingSqlRows = log.db.prepare(SELECT_ALL).all() as PlanItemSqlRow[];

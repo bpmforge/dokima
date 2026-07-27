@@ -193,6 +193,51 @@ describe('onboard-board-lifecycle (W8-09 AC2 — findings become board items via
     expect(second.created).toHaveLength(0);
   });
 
+  describe('red fixture (W8-10 — in-batch dedup)', () => {
+    it("collapses two NEW findings in the same batch that share a catalogId instead of crashing the insert transaction on plan_items.id's unique constraint — higher severity wins, evidence merges", async () => {
+      const dir = await tmpProjectDir();
+      dirs.push(dir);
+      const origins: OnboardFindingOrigin[] = [
+        {
+          stepId: 'health',
+          role: 'health-coordinator',
+          finding: {
+            title: 'No test plan',
+            severity: 'MEDIUM',
+            recommendation: 'Write TEST_PLAN.md.',
+            verify: 'true',
+          },
+        },
+        {
+          stepId: 'health',
+          role: 'health-coordinator',
+          finding: {
+            title: 'No test plan',
+            severity: 'HIGH',
+            recommendation: 'Also add a coverage matrix.',
+            verify: 'true',
+          },
+        },
+      ];
+      // Both findings hash to the identical catalogId (same stepId/role/title) —
+      // the exact "two steps report the identical [role] title" shape the
+      // W8-01 dogfood run surfaced (docs/dogfood/DOGFOOD_REPORT.md, "Findings
+      // -> board"). Pre-fix this crashes `insertRow` on `plan_items.id`'s
+      // unique constraint before either row commits.
+      expect(catalogIdFor(origins[0]!)).toBe(catalogIdFor(origins[1]!));
+
+      const { created } = await proposePlanItemsFromOnboardFindings(dir, origins, {
+        runId: 'run-1',
+        now: NOW,
+      });
+
+      expect(created).toHaveLength(1);
+      expect(created[0]?.severity).toBe(4); // HIGH (SEVERITY_RANK) wins over MEDIUM
+      expect(created[0]?.recommendation).toContain('Write TEST_PLAN.md.');
+      expect(created[0]?.recommendation).toContain('Also add a coverage matrix.');
+    });
+  });
+
   describe('red fixtures (AC3)', () => {
     it('AC3(a): a finding with forged lifecycle-looking fields cannot skip proposed — OnboardFinding has no state/ticketId key to read', async () => {
       const dir = await tmpProjectDir();
