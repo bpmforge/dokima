@@ -71,6 +71,43 @@
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
+  /* Six fixed-width columns routinely overflow a narrower Board pane
+     (W9-05): OS-overlay scrollbars auto-hide outside an active scroll
+     gesture (and are suppressed outright in headless/automated capture),
+     so a static view gave zero hint there was more to see — the observed
+     defect was a header clipped mid-word ("In Pro…") with no affordance.
+     `scrollbar-width`/`-color` give a persistent (non-overlay) scrollbar
+     on browsers that honor them; the edge-fade background below is the
+     affordance that's actually visible everywhere, including screenshots:
+     a `background-attachment: local` cover gradient scrolls with the
+     content and un-masks a fixed `scroll`-attached shadow gradient at
+     whichever edge still has hidden columns, so the fade only shows on
+     the side you can still scroll toward (classic CSS scroll-shadow
+     technique — no JS, no overflow measurement needed). */
+  scrollbar-width: thin;
+  scrollbar-color: var(--sw-border) transparent;
+  background-color: var(--sw-bg);
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(to right, var(--sw-bg) 40%, transparent),
+    linear-gradient(to left, var(--sw-bg) 40%, transparent) 100% 0,
+    linear-gradient(to right, var(--sw-border), transparent),
+    linear-gradient(to left, var(--sw-border), transparent) 100% 0;
+  background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.board-lane__columns::-webkit-scrollbar {
+  height: 8px;
+}
+
+.board-lane__columns::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-lane__columns::-webkit-scrollbar-thumb {
+  background: var(--sw-border);
+  border-radius: 4px;
 }
 
 .board-column {
