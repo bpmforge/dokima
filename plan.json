@@ -3163,7 +3163,7 @@
         "No behavioral/DOM-contract changes: all existing unit + e2e selectors keep passing."
       ],
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-07-23 from tour-frame review (multiple frames)."
       ],
