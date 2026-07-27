@@ -16,7 +16,8 @@
     "@shipwright/memory": "workspace:*",
     "@shipwright/pipeline": "workspace:*",
     "@shipwright/tickets": "workspace:*",
-    "@shipwright/shared": "workspace:*"
+    "@shipwright/shared": "workspace:*",
+    "@shipwright/validators": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.0",

@@ -6,3 +6,4 @@ export * from './blueprint/index.js';
 export * from './decisions/index.js';
 export * from './decompose/index.js';
 export * from './run/index.js';
+export * from './phases/index.js';
