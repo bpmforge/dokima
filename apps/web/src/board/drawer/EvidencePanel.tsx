@@ -20,16 +20,18 @@ export interface EvidencePanelProps {
  */
 export function EvidencePanel({ baseUrl, token, projectId, ticket }: EvidencePanelProps) {
   const [receipts, setReceipts] = useState<ReceiptRecord[] | null>(null);
+  const [receiptsError, setReceiptsError] = useState<string | null>(null);
   const [openReceipt, setOpenReceipt] = useState<ReceiptRecord | null>(null);
 
   useEffect(() => {
     setReceipts(null);
+    setReceiptsError(null);
     setOpenReceipt(null);
-    void fetchReceipts(
-      projectId,
-      { ticket: ticket.id },
-      { baseUrl, getToken: () => token },
-    ).then(setReceipts);
+    fetchReceipts(projectId, { ticket: ticket.id }, { baseUrl, getToken: () => token })
+      .then(setReceipts)
+      .catch((err: unknown) => {
+        setReceiptsError(err instanceof Error ? err.message : String(err));
+      });
   }, [baseUrl, token, projectId, ticket.id]);
 
   return (
@@ -60,6 +62,8 @@ export function EvidencePanel({ baseUrl, token, projectId, ticket }: EvidencePan
           </button>
           <ReceiptInspector receipt={openReceipt} />
         </>
+      ) : receiptsError ? (
+        <p role="alert">{receiptsError}</p>
       ) : receipts === null ? (
         <p>Loading receipts…</p>
       ) : receipts.length === 0 ? (
