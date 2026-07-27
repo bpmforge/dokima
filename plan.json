@@ -3197,20 +3197,23 @@
       "module": "pipeline",
       "lane": "pipeline",
       "write_scope": [
-        "apps/server/src/api/pipeline/phase-gate/**"
+        "apps/server/src/api/pipeline/phase-gate/**",
+        "apps/server/package.json",
+        "packages/pipeline/src/index.ts",
+        "pnpm-lock.yaml"
       ],
       "depends_on": [],
       "acceptance": [
         "A phase-gate runner executes the phase's declared validator set (`PHASES[n].validators`, read live off the topology, never frozen) against the project's real on-disk deliverables, and records each validator's name, exitCode and gapCount from the actual run. FR-P1's 'No receipt without a real run' is the bar: a hardcoded or assumed pass fails acceptance.",
-        "A clean run mints a gate receipt via `@shipwright/validators`' `mintValidatorRunReceipt` (which today has ZERO production callers \u2014 this ticket is its first). The receipt carries the input-file content hashes FR-P2 later recomputes, so a silently edited doc invalidates it.",
+        "A clean run mints a gate receipt via `@shipwright/validators`' `mintValidatorRunReceipt` (whose FIRST production caller this will be). Reaching it requires two lines of dependency wiring, in scope for this ticket: add `\"@shipwright/validators\": \"workspace:*\"` to `apps/server/package.json`, and `export * from './phases/index.js';` to `packages/pipeline/src/index.ts` so `PHASES` is importable at all. The receipt carries the input-file content hashes FR-P2 later recomputes, so a silently edited doc invalidates it.",
         "The receipt is minted under a verifier identity DISTINCT from the identity that authored the phase output (Law 5, maker != verifier, mechanical not conventional). A red fixture proves a same-identity mint is refused.",
         "Red fixture first, per docs/TESTING.md's planted-defect harness: a phase whose validator genuinely fails mints NO receipt (not a receipt with a failing exit code recorded as passing), and a phase with no validator run at all has no receipt.",
         "Does NOT mint receipts for model-authored `PipelineRunEvent` output. That path stays a plain hash-chained audit event: the SECURITY_W5 CRITICAL fix removed gate receipts there precisely because no independent validator runs on it, and re-adding them would restore the self-attestation this ticket exists to avoid. A test pins that pipeline-run events remain unanchored.",
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts reported in the commit body."
       ],
       "points": 5,
-      "status": "in_progress",
-      "notes": "FILED 2026-07-27 from the dogfood triage arc. decideAdvance (packages/pipeline/src/phases/advance.ts) is a CONSUMER whose producer does not exist: it requires input.gateReceiptId from 'a clean validator run', but mintValidatorRunReceipt has zero production callers and the only production minter (packages/harbormaster/src/loop-gates.ts:306) emits kind='close' for a TICKET, not a phase gate. That absence is deliberate, not an oversight \u2014 see docs/STATUS.md 2026-07-27 (5th). This ticket builds the missing producer; W9-07 then wires the consumer. Splitting them matters: minting receipts to satisfy a gate, from the same identity that produced the output, is the exact Law 4/5 self-attestation the W5 fix removed.",
+      "status": "todo",
+      "notes": "FILED 2026-07-27 from the dogfood triage arc. decideAdvance (packages/pipeline/src/phases/advance.ts) is a CONSUMER whose producer does not exist: it requires input.gateReceiptId from 'a clean validator run', but mintValidatorRunReceipt has zero production callers and the only production minter (packages/harbormaster/src/loop-gates.ts:306) emits kind='close' for a TICKET, not a phase gate. That absence is deliberate, not an oversight \u2014 see docs/STATUS.md 2026-07-27 (5th). This ticket builds the missing producer; W9-07 then wires the consumer. Splitting them matters: minting receipts to satisfy a gate, from the same identity that produced the output, is the exact Law 4/5 self-attestation the W5 fix removed. | SCOPE CORRECTED 2026-07-27 after a first attempt returned BLOCKED \u2014 correctly. The original write_scope (`phase-gate/**` only) made the acceptance criteria structurally unreachable: `packages/pipeline/src/index.ts` never exported `./phases/index.js` (PHASES is used only via relative imports inside that package) and `apps/server/package.json` has no @shipwright/validators dependency, with no transitive path via harbormaster's barrel. Verified by a probe inside the granted scope: TS2305 'no exported member PHASES' + TS2307 'cannot find module @shipwright/validators'. The agent rejected two tempting dodges and was right on both: a ports/adapters seam would typecheck while satisfying neither criterion (mintValidatorRunReceipt would still have zero production callers, and the validator set would come from an injected fake, not live off the topology), and adding the dep to ROOT package.json would resolve but make validators ambiently importable from every workspace package, defeating the per-package dependency discipline. Adding `export * from './phases/index.js'` was checked mechanically, not just by reading names: `pnpm --filter @shipwright/pipeline typecheck` passes with it applied, so LockedPhaseId/PhaseId do not collide. LESSON: this ticket's scope was filed without verifying its required imports resolve from it \u2014 check reachability when writing write_scope, not when an agent hits the wall.",
       "stories": [
         "US-101"
       ]

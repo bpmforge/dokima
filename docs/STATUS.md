@@ -540,3 +540,18 @@ The real path is a feature, not a wiring task: an independent phase-validator ru
 - **W9-07 (3 pts, depends on W9-06) — wire the consumer.** A phase-advance route calling `decideAdvance` with the real `verifyReceipt` bound, the from-phase's *current* validator set for the gate receipt and `[]` for a waiver. Refusals must carry `AdvanceResult.reasons` through to the caller rather than collapsing to a bare 403 — FR-P3's "the UI states which receipts became stale and why" is the acceptance bar. FR-P2's two-way check is demonstrated end to end (edit a deliverable → refused on input-hash mismatch; grow the validator set → refused on drift), and the waiver bypass is bounded by FR-G5 (still refused on phases 4–5) and US-407's human-signer check.
 
 Both are `lane: pipeline` and their write scopes are disjoint (`phase-gate/**` vs `pipeline-routes/**`), so the dependency — not the lane law — is what serializes them. `advance.test.ts` already pins `decideAdvance`'s logic and needs no change: W9-07 is a caller, not a rewrite of the decision.
+
+2026-07-27 (7th) **W9-06 returned BLOCKED on first attempt — correctly — and the fault was the ticket, not the agent.** The write_scope I filed (`apps/server/src/api/pipeline/phase-gate/**` only) made the acceptance criteria structurally unreachable. Two imports the criteria *require* do not resolve from there, proven with a probe written inside the granted scope and then deleted (worktree left clean):
+
+```
+TS2305: Module '"@shipwright/pipeline"' has no exported member 'PHASES'.
+TS2307: Cannot find module '@shipwright/validators' or its corresponding type declarations.
+```
+
+`packages/pipeline/src/index.ts` exports only plans/interview/blueprint/decisions/decompose/run — `PHASES` is reached solely via relative imports *inside* that package. `apps/server/package.json` declares no `@shipwright/validators`, and `@shipwright/harbormaster`'s barrel offers no transitive path. Both independently re-verified before amending the board. This is the same wall `packages/pipeline/src/phases/types.ts` documents and that `artifacts-routes/shared.ts:21-29` worked around by freezing a local `PHASES` mirror — a workaround criterion 1 explicitly forbids here ("read live off the topology, never frozen").
+
+**The agent rejected two dodges, and was right on both.** A ports/adapters seam would have typechecked while satisfying neither criterion: `mintValidatorRunReceipt` would still have zero production callers, and the validator set would come from an injected fake rather than the live topology. Adding the dependency to the *root* `package.json` would have resolved — root is in the conductor's `alwaysOk` allowlist — but would make `@shipwright/validators` ambiently importable from every workspace package, defeating the per-package dependency discipline every other package follows. Reporting BLOCKED with a two-line handback beat both.
+
+**Scope corrected** to include `apps/server/package.json`, `packages/pipeline/src/index.ts` and `pnpm-lock.yaml`, with the wiring folded into acceptance criterion 2 so it is visible work rather than an incidental edit. The barrel export was validated mechanically, not by reading names: `pnpm --filter @shipwright/pipeline typecheck` passes with `export * from './phases/index.js'` applied, so `LockedPhaseId`/`PhaseId` do not collide.
+
+**Process lesson, filed against myself:** the ticket was scoped without checking that its required imports resolve from its write_scope. Reachability is cheap to verify when writing a scope and expensive to discover when an agent hits the wall — a 5-point ticket bounced on a two-line dependency gap. Worth a validator: for each ticket, confirm the modules its acceptance names are importable from at least one path in its scope.
