@@ -62,6 +62,9 @@ importers:
       '@shipwright/tickets':
         specifier: workspace:*
         version: link:../../packages/tickets
+      '@shipwright/validators':
+        specifier: workspace:*
+        version: link:../../packages/validators
       fastify:
         specifier: ^5.10.0
         version: 5.10.0
