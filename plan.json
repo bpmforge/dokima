@@ -3189,6 +3189,59 @@
         "FILED 2026-07-23 from tour-frame review (frames 05-06)."
       ],
       "stories": []
+    },
+    {
+      "id": "W9-06",
+      "title": "Phase-validator runner: real validator runs mint a genuine gate receipt under a distinct verifier identity",
+      "phase": 9,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "apps/server/src/api/pipeline/phase-gate/**"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "A phase-gate runner executes the phase's declared validator set (`PHASES[n].validators`, read live off the topology, never frozen) against the project's real on-disk deliverables, and records each validator's name, exitCode and gapCount from the actual run. FR-P1's 'No receipt without a real run' is the bar: a hardcoded or assumed pass fails acceptance.",
+        "A clean run mints a gate receipt via `@shipwright/validators`' `mintValidatorRunReceipt` (which today has ZERO production callers \u2014 this ticket is its first). The receipt carries the input-file content hashes FR-P2 later recomputes, so a silently edited doc invalidates it.",
+        "The receipt is minted under a verifier identity DISTINCT from the identity that authored the phase output (Law 5, maker != verifier, mechanical not conventional). A red fixture proves a same-identity mint is refused.",
+        "Red fixture first, per docs/TESTING.md's planted-defect harness: a phase whose validator genuinely fails mints NO receipt (not a receipt with a failing exit code recorded as passing), and a phase with no validator run at all has no receipt.",
+        "Does NOT mint receipts for model-authored `PipelineRunEvent` output. That path stays a plain hash-chained audit event: the SECURITY_W5 CRITICAL fix removed gate receipts there precisely because no independent validator runs on it, and re-adding them would restore the self-attestation this ticket exists to avoid. A test pins that pipeline-run events remain unanchored.",
+        "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts reported in the commit body."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "FILED 2026-07-27 from the dogfood triage arc. decideAdvance (packages/pipeline/src/phases/advance.ts) is a CONSUMER whose producer does not exist: it requires input.gateReceiptId from 'a clean validator run', but mintValidatorRunReceipt has zero production callers and the only production minter (packages/harbormaster/src/loop-gates.ts:306) emits kind='close' for a TICKET, not a phase gate. That absence is deliberate, not an oversight \u2014 see docs/STATUS.md 2026-07-27 (5th). This ticket builds the missing producer; W9-07 then wires the consumer. Splitting them matters: minting receipts to satisfy a gate, from the same identity that produced the output, is the exact Law 4/5 self-attestation the W5 fix removed.",
+      "stories": [
+        "US-101"
+      ]
+    },
+    {
+      "id": "W9-07",
+      "title": "Phase-advance route: wire decideAdvance so a phase transition is gated by a re-verified receipt",
+      "phase": 9,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "apps/server/src/api/pipeline/pipeline-routes/**"
+      ],
+      "depends_on": [
+        "W9-06"
+      ],
+      "acceptance": [
+        "A phase-advance route calls `decideAdvance` (packages/pipeline/src/phases/advance.ts) with the real `deps.verifyReceipt` bound to `@shipwright/events`' `verifyReceipt`, passing the from-phase's CURRENT `PHASES[n].validators` for the gate receipt and `[]` for a waiver receipt, exactly as AdvanceDeps documents.",
+        "An advance with no gate receipt is REFUSED, and the refusal names why. FR-P3's 'the UI states which receipts became stale and why' applies: `AdvanceResult.reasons` reaches the caller intact rather than collapsing to a bare 403 or a boolean.",
+        "FR-P2's two-way re-verification demonstrably works end to end: editing a phase deliverable after its gate receipt was minted causes the next advance to be refused with the input-hash mismatch surfaced; adding a validator to the phase's declared set likewise refuses on validator-set drift.",
+        "The waiver bypass is honored and bounded: a human-signed waiver receipt permits the advance and is marked `waived`, an agent-signed one is rejected (FR-P2 blocklist), and a clean waiver is still refused on phases 4-5 (FR-G5, `assertWaiverEligible`). US-407 is the acceptance shape for the signer check.",
+        "Never advances without a decision: no code path flips phase state outside `decideAdvance`'s verdict, and no completion string is grepped to infer success (Law 4).",
+        "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts reported in the commit body."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-07-27. Depends on W9-06 because decideAdvance is unusable without a real gate-receipt producer: called today it would either refuse every advance (gateReceiptId always null) or force minting a rubber-stamp receipt. decideAdvance's own logic is already pinned by packages/pipeline/src/phases/advance.test.ts and needs no change \u2014 this ticket is the caller plus the route, not a rewrite of the decision. No phase-advance flow exists anywhere in apps/server today (verified by grep), so this creates one rather than modifying one.",
+      "stories": [
+        "US-102",
+        "US-407"
+      ]
     }
   ]
 }
