@@ -88,6 +88,8 @@
   text-align: left;
   cursor: pointer;
   flex: 1;
+  padding: 0;
+  border-radius: 0;
 }
 
 .command-palette__result-kind {
@@ -108,4 +110,6 @@
   color: inherit;
   cursor: pointer;
   margin-bottom: 0.5rem;
+  padding: 0;
+  border-radius: 0;
 }

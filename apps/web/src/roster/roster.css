@@ -45,6 +45,7 @@
   width: 100%;
   background: transparent;
   border: none;
+  border-radius: 0;
   cursor: pointer;
   padding: 0;
   text-align: left;
