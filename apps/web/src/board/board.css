@@ -86,15 +86,26 @@
      technique — no JS, no overflow measurement needed). */
   scrollbar-width: thin;
   scrollbar-color: var(--sw-border) transparent;
+  /* `background-image`'s value list is images only — a position
+     (`100% 0`) inside it invalidates the whole declaration (silently:
+     it computes to `none`, verified via getComputedStyle). Positions
+     belong in the separate `background-position` property, one entry
+     per image, same order. */
+  --board-scroll-shadow: rgba(0, 0, 0, 0.22);
   background-color: var(--sw-bg);
   background-repeat: no-repeat;
   background-image:
     linear-gradient(to right, var(--sw-bg) 40%, transparent),
-    linear-gradient(to left, var(--sw-bg) 40%, transparent) 100% 0,
-    linear-gradient(to right, var(--sw-border), transparent),
-    linear-gradient(to left, var(--sw-border), transparent) 100% 0;
+    linear-gradient(to left, var(--sw-bg) 40%, transparent),
+    linear-gradient(to right, var(--board-scroll-shadow), transparent),
+    linear-gradient(to left, var(--board-scroll-shadow), transparent);
+  background-position: 0 0, 100% 0, 0 0, 100% 0;
   background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
   background-attachment: local, local, scroll, scroll;
+}
+
+:root[data-theme='dark'] .board-lane__columns {
+  --board-scroll-shadow: rgba(255, 255, 255, 0.22);
 }
 
 .board-lane__columns::-webkit-scrollbar {
