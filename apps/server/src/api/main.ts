@@ -44,6 +44,11 @@ export async function buildServer(opts: BuildServerOptions): Promise<ApiServer> 
     isDbOpen: () => log.db.open,
     webDistDir: opts.webDistDir ?? defaultWebDistDir(),
     logger: opts.logger,
+    // Same env var and precedence the CLI already uses for `run resume`
+    // (`run-cmd.ts`: `--signing-key` ?? SHIPWRIGHT_SIGNING_KEY). Unset means
+    // the export/import routes stay unregistered — see
+    // BuildApiServerOptions.signingKey.
+    signingKey: process.env.SHIPWRIGHT_SIGNING_KEY,
   });
   server.app.addHook('onClose', async () => {
     log.close();

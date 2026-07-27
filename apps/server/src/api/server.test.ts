@@ -238,6 +238,51 @@ describe('buildApiServer — SC-08', () => {
     expect(result.statusCode).toBe(403);
   });
 
+  /**
+   * W8 export/import wiring (2026-07-27). These two routes are registered
+   * ONLY when a signingKey is configured, because `POST /import` replays each
+   * receipt's anchor MAC with it — an empty key would let any Bearer-token
+   * holder compute matching MACs and plant receipts. Both branches are pinned
+   * here so the conditional can't silently collapse in either direction.
+   */
+  it('export route is registered when a signingKey is configured, and still requires auth', async () => {
+    const { server, port } = await buildAndListen({ signingKey: 'test-signing-key' });
+    active = server;
+    const unauth = await server.app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/PROJ1/export',
+      headers: { host: `127.0.0.1:${port}` },
+    });
+    expect(unauth.statusCode).toBe(401);
+    expect(unauth.json()).toMatchObject({ rule: 'D-005' });
+
+    // Authenticated: reaches the route's own project lookup (404 for an
+    // unknown project) rather than Fastify's 404-for-no-such-route.
+    const authed = await server.app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/PROJ1/export',
+      headers: { host: `127.0.0.1:${port}`, authorization: `Bearer ${TOKEN}` },
+    });
+    expect(authed.statusCode).toBe(404);
+    expect(authed.json()).toMatchObject({
+      detail: expect.stringContaining('no project registered'),
+    });
+  });
+
+  it('export/import routes are NOT registered without a signingKey — fail-closed, not an unverifiable endpoint', async () => {
+    const { server, port } = await buildAndListen();
+    active = server;
+    const res = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/projects/PROJ1/import',
+      headers: { host: `127.0.0.1:${port}`, authorization: `Bearer ${TOKEN}` },
+      payload: {},
+    });
+    // Authenticated, so a 404 here means "no such route", not "no such project".
+    expect(res.statusCode).toBe(404);
+    expect(JSON.stringify(res.json())).not.toContain('no project registered');
+  });
+
   it('pipeline run route rejects an unauthenticated request with 401', async () => {
     const { server, port } = await buildAndListen();
     active = server;

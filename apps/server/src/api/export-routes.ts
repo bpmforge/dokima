@@ -7,12 +7,21 @@
  *     project, verifying the hash chain before and after write, and
  *     returning the reconstructed board projection as proof.
  *
- * NOT wired into `apps/server/src/api/server.ts`'s bootstrap: that file is
- * outside this ticket's write_scope (`apps/server/src/api/export*` only),
- * same as `decisions/routes.ts` (W5-13) and
- * `pipeline/pipeline-routes/index.ts` (W5-18) before W5-22 wired them —
- * routes are exported and inject-tested standalone; wiring into the live
- * app is a one-line follow-up outside this ticket's reach.
+ * WIRED into `apps/server/src/api/server.ts` as of 2026-07-27, closing
+ * ROADMAP's W8 exit criterion in the product rather than only at module
+ * level. **Conditionally**: registration is skipped entirely unless a
+ * `signingKey` is configured (`SHIPWRIGHT_SIGNING_KEY`, same env var the
+ * CLI's `run resume` uses). `POST /import` replays each receipt's anchor
+ * MAC with that key, so a route registered with an empty key would let
+ * anyone holding the Bearer token forge matching MACs and plant receipts —
+ * a missing endpoint is safe, an unverifiable one is not.
+ *
+ * Historical note, kept because it was wrong in a way worth remembering:
+ * this comment previously called wiring "a one-line follow-up." It was not.
+ * `ExportRoutesOptions.signingKey` is required, and `server.ts` had no
+ * signing-key resolution at all — the secret had to be threaded through
+ * `BuildApiServerOptions` and `main.ts` first. Estimates written from the
+ * route's own side missed the caller's missing dependency.
  *
  * Every route runs its own auth `preHandler` (SC-08/D-005), same precedent
  * as `decisions/routes.ts`, so these routes are self-protecting regardless

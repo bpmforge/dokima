@@ -22,6 +22,7 @@ import Fastify, {
 import { buildAllowlist } from './allowlist.js';
 import { checkAuth, registerAuthHook, type AuthPluginOptions } from './auth-plugin.js';
 import { registerDecisionRoutes } from './decisions/index.js';
+import { registerExportRoutes } from './export-routes.js';
 import { registerEventsSseRoute } from './events-sse.js';
 import { registerHealthz } from './healthz.js';
 import { registerLessonsRoutes } from './lessons/index.js';
@@ -56,6 +57,19 @@ export interface BuildApiServerOptions {
   fleetHome?: string;
   /** `content/experts` directory override (defaults to the repo's own content/) — tests only. */
   rosterContentDir?: string;
+  /**
+   * Receipt-minting secret (FR-S2, law #8), same value `mintReceipt`/
+   * `verifyReceipt` and the CLI's `--signing-key` use. Gates the export/import
+   * bundle routes and nothing else.
+   *
+   * **Absent means those two routes are not registered at all** — deliberately
+   * fail-closed. `POST /import` replays each receipt's anchor MAC via
+   * `computeReceiptMac(content, signingKey)`, so registering it with an empty
+   * key would make that check forgeable by anyone holding the Bearer token:
+   * an attacker who knows the key is `''` can compute matching MACs and plant
+   * receipts. A missing endpoint is safe; an unverifiable one is not.
+   */
+  signingKey?: string;
   /**
    * Improvement Plans scheduler (FR-PLAN1/3, W5-15) — run-completion/
    * Improve-mode trigger + nightly auto-verify. Always on in production;
@@ -93,6 +107,17 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerPlansRoutes(app, { home: opts.fleetHome });
   registerPipelineRoutes(app, { home: opts.fleetHome });
   registerDecisionRoutes(app, { home: opts.fleetHome, auth: authOpts });
+  // ROADMAP W8 exit criterion ("export/import round-trips with chain
+  // verification") — registered only when a signing key is configured, see
+  // BuildApiServerOptions.signingKey for why absence must mean "no route"
+  // rather than "route with an empty key".
+  if (opts.signingKey) {
+    registerExportRoutes(app, {
+      home: opts.fleetHome,
+      auth: authOpts,
+      signingKey: opts.signingKey,
+    });
+  }
   registerLessonsRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });
