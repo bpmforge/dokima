@@ -3142,7 +3142,7 @@
         "Marker asserted in a component test; e2e selectors unaffected."
       ],
       "points": 1,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FILED 2026-07-23 from tour-frame review (frames 04-05)."
       ],
@@ -3184,7 +3184,7 @@
         "Verified at the tour's 1440x900 viewport with the three-pane layout open."
       ],
       "points": 1,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-07-23 from tour-frame review (frames 05-06)."
       ],
