@@ -33,6 +33,15 @@
   text-transform: uppercase;
 }
 
+.chat__thread-badge--sample {
+  border: 1px solid #b8860b;
+  color: #b8860b;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-weight: 700;
+  opacity: 1;
+}
+
 .chat__thread-cards {
   display: flex;
   flex-direction: column;
