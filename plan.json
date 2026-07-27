@@ -3209,7 +3209,7 @@
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts reported in the commit body."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-07-27 from the dogfood triage arc. decideAdvance (packages/pipeline/src/phases/advance.ts) is a CONSUMER whose producer does not exist: it requires input.gateReceiptId from 'a clean validator run', but mintValidatorRunReceipt has zero production callers and the only production minter (packages/harbormaster/src/loop-gates.ts:306) emits kind='close' for a TICKET, not a phase gate. That absence is deliberate, not an oversight \u2014 see docs/STATUS.md 2026-07-27 (5th). This ticket builds the missing producer; W9-07 then wires the consumer. Splitting them matters: minting receipts to satisfy a gate, from the same identity that produced the output, is the exact Law 4/5 self-attestation the W5 fix removed.",
       "stories": [
         "US-101"
