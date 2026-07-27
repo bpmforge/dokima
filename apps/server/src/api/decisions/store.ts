@@ -199,7 +199,6 @@ export function decideSlate(
     if (result.changes !== 1) {
       throw new SlateAlreadyDecidedError(input.slateId);
     }
-    writeLedgerSync(filePath, updatedLedger);
     appendEvent(
       log,
       {
@@ -211,6 +210,24 @@ export function decideSlate(
     );
   });
   run();
+
+  // Written AFTER the transaction commits, never inside it. `writeLedgerSync`
+  // is a plain `fs` write: SQLite cannot roll it back, so while it sat inside
+  // the transaction callback any later throw (e.g. from `appendEvent`) left
+  // docs/DECISIONS.md holding a row with no DB record and no event behind it,
+  // and the next decision skipped a D-ID — the ledger and the log disagreeing
+  // permanently, with the file AHEAD of the source of truth.
+  //
+  // Law 7 sets the ordering: the hash-chained log is truth and projections are
+  // disposable. Committing durable state first means a failure here leaves the
+  // file BEHIND the log — a missing row, reconstructible from the `decisions`
+  // table plus the `decision.chosen` payload — rather than ahead of it with an
+  // unaccountable one. Residual, accepted and asserted by test: if this write
+  // throws, the decision IS already committed and the caller still sees an
+  // error. That is the strictly better of the two failure modes, but it is not
+  // nothing; a `rebuildLedgerFromEvents` would close it (no such regenerator
+  // exists today — `decision.chosen` is currently written and never read).
+  writeLedgerSync(filePath, updatedLedger);
 
   return record;
 }

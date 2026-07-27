@@ -440,7 +440,7 @@ describe('decision slate store', () => {
    * the slate exists and its actor is valid; only the `decision.chosen`
    * append inside `decideSlate`, which runs after `writeLedgerSync`, fails.
    */
-  it('if the event-log append fails after the ledger file write, the file keeps the row but the DB rolls back — a torn/unaccountable ledger row, no interleaving required', async () => {
+  it('REGRESSION: an event-log append failure rolls back the DB AND leaves the ledger file untouched — the file is never ahead of the log', async () => {
     const { log, projectPath } = await boot();
     const created = createSlate(
       log,
@@ -463,24 +463,33 @@ describe('decision slate store', () => {
     expect(listSlates(log, { status: 'decided' })).toHaveLength(0);
     expect(listEvents(log).map((e) => e.eventType)).not.toContain('decision.chosen');
 
-    // File side did NOT roll back: docs/DECISIONS.md already has the row,
-    // orphaned from any DB record or event. THIS is the real, narrower bug.
-    const ledger = await founderLedger(projectPath);
-    expect(ledger).toContain('| D-001 |');
+    // File side is now clean too: writeLedgerSync runs AFTER the transaction
+    // commits, so a throw inside it never reaches the file at all — on a first
+    // decision docs/DECISIONS.md is not even created. Previously this asserted
+    // the opposite: the file existed holding an orphaned `| D-001 |` with no DB
+    // row and no event behind it. Asserting non-existence (rather than absence
+    // of the row) is the sharper check — it fails loudly if the write ever
+    // creeps back inside the transaction.
+    await expect(founderLedger(projectPath)).rejects.toThrow(/ENOENT/);
 
-    // Compounding harm: a retry with the same (valid) actor reads the
-    // orphaned D-001 row and skips to D-002 — the ledger and the log now
-    // permanently disagree about how many decisions exist, and D-001 has
-    // no event and no DB row behind it at all.
+    // The compounding harm is gone: a retry is the FIRST decision to reach the
+    // ledger, so it takes D-001 rather than skipping to D-002. The ledger and
+    // the log agree on how many decisions exist — no ghost rows, no gap in the
+    // D-ID sequence.
     const retried = decideSlate(
       log,
       { slateId: created.id, chosen: 'self-hosted', rationale: 'retry' },
       { projectPath, actorId: ACTOR, now: NOW },
     );
-    expect(retried.id).toBe('D-002');
+    expect(retried.id).toBe('D-001');
     const decidedEvents = listEvents(log).filter(
       (e) => e.eventType === 'decision.chosen',
     );
-    expect(decidedEvents).toHaveLength(1); // exactly one real decision, D-002 — D-001 is a ghost row
+    expect(decidedEvents).toHaveLength(1);
+    // Ledger and log now agree: one decision, same id, on both sides.
+    const finalLedger = await founderLedger(projectPath);
+    expect(finalLedger).toContain('| D-001 |');
+    expect(finalLedger).not.toContain('| D-002 |');
+    expect(decidedEvents[0]?.payload).toMatchObject({ dId: 'D-001' });
   });
 });
