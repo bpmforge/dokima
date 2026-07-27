@@ -1,13 +1,37 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createIdentity,
   listEvents,
   openEventLog,
   type EventLog,
 } from '@shipwright/events';
+
+/**
+ * SEC TRIAGE (sec/ledger-atomicity): lets one test force `appendEvent` to
+ * throw *after* `decideSlate` has already run `writeLedgerSync` — isolating
+ * "does an event-log append failure leave an orphaned ledger row behind"
+ * from "does an FK-invalid actor get rejected earlier at the UPDATE step"
+ * (it does; see store.ts's decided_by FK, which fires before the ledger
+ * write and so can't reach this window). Defaults to passing through to
+ * the real implementation; only the one test below flips the flag.
+ */
+let forceAppendEventFailure = false;
+vi.mock('@shipwright/events', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shipwright/events')>();
+  return {
+    ...actual,
+    appendEvent: (...args: Parameters<typeof actual.appendEvent>) => {
+      if (forceAppendEventFailure) {
+        throw new Error('simulated event-log append failure (post-ledger-write)');
+      }
+      return actual.appendEvent(...args);
+    },
+  };
+});
+
 import { createSlate, decideSlate, listDecisions, listSlates } from './store.js';
 import {
   InvalidChoiceError,
@@ -52,6 +76,7 @@ describe('decision slate store', () => {
   const logs: EventLog[] = [];
 
   afterEach(async () => {
+    forceAppendEventFailure = false;
     await Promise.all(logs.splice(0).map((log) => log.close()));
     await Promise.all(dirs.splice(0).map((cleanup) => cleanup()));
   });
@@ -289,5 +314,173 @@ describe('decision slate store', () => {
     expect(decisions[0]!.id).toBe(toDecide.id);
     expect(decisions[0]!.dId).toBe('D-001');
     void open;
+  });
+
+  /**
+   * SEC TRIAGE (sec/ledger-atomicity, 2026-07-27): 11 dogfood specialists
+   * independently claimed "decision ledger writes are not atomic across
+   * concurrent requests" and asked for a test that fires concurrent
+   * `decideSlate`-class calls and asserts the ledger ends up with exactly
+   * one clean row per call, no interleaved/duplicate D-IDs. This is that
+   * test, run against the real route-handler shape: each "request" is an
+   * async wrapper around the synchronous `decideSlate` critical section
+   * (matches routes.ts, which calls it un-awaited-through from an async
+   * Fastify handler) so Promise.all fires them the same way concurrent
+   * HTTP requests would land on Node's single event-loop thread.
+   *
+   * `decideSlate` is deliberately NOT declared `async` (see its doc
+   * comment) specifically so no `await` can be inserted between its
+   * ledger read and ledger write — the whole read-compute-write section
+   * runs as one synchronous call-stack frame, which Node's single-threaded
+   * event loop cannot preempt mid-frame. This test pins that guarantee
+   * rather than just asserting it in prose.
+   */
+  it('N concurrent decideSlate calls on N different open slates each get exactly one clean ledger row, sequential D-IDs, no interleaving', async () => {
+    const { log, projectPath } = await boot();
+    const N = 8;
+    const slates = Array.from({ length: N }, () =>
+      createSlate(
+        log,
+        { kind: 'founder', founder: FOUNDER_INPUT },
+        { actorId: ACTOR, now: NOW },
+      ),
+    );
+
+    // Each "request" is async (like the Fastify handler in routes.ts) but
+    // decideSlate itself is the synchronous critical section under test.
+    async function decideAsRequest(slateId: string) {
+      return decideSlate(
+        log,
+        { slateId, chosen: 'self-hosted', rationale: `rationale for ${slateId}` },
+        { projectPath, actorId: ACTOR, now: NOW },
+      );
+    }
+
+    const results = await Promise.all(slates.map((s) => decideAsRequest(s.id)));
+
+    const ids = results.map((r) => r.id);
+    expect(new Set(ids).size).toBe(N); // no duplicate D-IDs
+    expect([...ids].sort()).toEqual(
+      Array.from({ length: N }, (_, i) => `D-${String(i + 1).padStart(3, '0')}`),
+    );
+
+    const ledger = await founderLedger(projectPath);
+    const rows = ledger.split('\n').filter((line) => /^\|\s*D-\d+\s*\|/.test(line));
+    expect(rows).toHaveLength(N); // one clean row per call, nothing torn or merged
+    for (const id of ids) {
+      expect(ledger).toContain(`| ${id} |`);
+    }
+
+    // Every decided slate's DB row agrees with its ledger row (log and
+    // projection never disagree).
+    const decided = listSlates(log, { status: 'decided' });
+    expect(decided).toHaveLength(N);
+    for (const d of decided) {
+      expect(ids).toContain(d.dId);
+    }
+  });
+
+  it('the same slate decided twice "concurrently" resolves exactly once — the loser sees SlateAlreadyDecidedError, not a torn or duplicated ledger row', async () => {
+    const { log, projectPath } = await boot();
+    const created = createSlate(
+      log,
+      { kind: 'founder', founder: FOUNDER_INPUT },
+      { actorId: ACTOR, now: NOW },
+    );
+
+    async function decideAsRequest(chosen: string) {
+      return decideSlate(
+        log,
+        { slateId: created.id, chosen },
+        { projectPath, actorId: ACTOR, now: NOW },
+      );
+    }
+
+    const outcomes = await Promise.allSettled([
+      decideAsRequest('self-hosted'),
+      decideAsRequest('managed'),
+    ]);
+
+    const fulfilled = outcomes.filter((o) => o.status === 'fulfilled');
+    const rejected = outcomes.filter((o) => o.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(
+      SlateAlreadyDecidedError,
+    );
+
+    const ledger = await founderLedger(projectPath);
+    const rows = ledger.split('\n').filter((line) => /^\|\s*D-\d+\s*\|/.test(line));
+    expect(rows).toHaveLength(1); // exactly one row — no interleaved/duplicate D-ID
+  });
+
+  /**
+   * SEC TRIAGE follow-up (sec/ledger-atomicity): the concurrent-request
+   * framing above is refuted, but 6 of the 11 findings ask for something
+   * narrower — "ensure each decision write commits the ledger row and its
+   * anchoring event together." store.ts's decideSlate (line ~202) calls
+   * `writeLedgerSync` (plain synchronous `node:fs` I/O) *inside* the
+   * `log.db.transaction()` callback, ahead of `appendEvent`. SQLite's
+   * transaction rollback has no power over an fs write that already
+   * happened — only the DB side rolls back.
+   *
+   * First attempt at forcing this used an actor id with no `identities`
+   * row, expecting the FK on `appendEvent`'s `events.actor_id` to fail
+   * post-write. It didn't reach that window: `decisions.decided_by` is
+   * ALSO FK'd to `identities` and is written earlier in the same UPDATE
+   * (before `writeLedgerSync`), so an invalid actor is rejected there
+   * first — no file write happens at all in that path (verified: that
+   * variant threw ENOENT reading the ledger, proving the file was never
+   * created). That is in fact a second, independent finding: the specific
+   * "invalid actor" failure mode this triage first reached for is safe.
+   *
+   * To reach the real window, `appendEvent` is mocked to throw
+   * deterministically on the second call — the first call (inside
+   * `createSlate`, `decision.slate_created`) passes through untouched, so
+   * the slate exists and its actor is valid; only the `decision.chosen`
+   * append inside `decideSlate`, which runs after `writeLedgerSync`, fails.
+   */
+  it('if the event-log append fails after the ledger file write, the file keeps the row but the DB rolls back — a torn/unaccountable ledger row, no interleaving required', async () => {
+    const { log, projectPath } = await boot();
+    const created = createSlate(
+      log,
+      { kind: 'founder', founder: FOUNDER_INPUT },
+      { actorId: ACTOR, now: NOW },
+    );
+
+    forceAppendEventFailure = true;
+    expect(() =>
+      decideSlate(
+        log,
+        { slateId: created.id, chosen: 'self-hosted', rationale: 'r' },
+        { projectPath, actorId: ACTOR, now: NOW },
+      ),
+    ).toThrow(/simulated event-log append failure/);
+    forceAppendEventFailure = false;
+
+    // DB side rolled back cleanly: slate is still open, no decision.chosen event.
+    expect(listSlates(log, { status: 'open' })).toHaveLength(1);
+    expect(listSlates(log, { status: 'decided' })).toHaveLength(0);
+    expect(listEvents(log).map((e) => e.eventType)).not.toContain('decision.chosen');
+
+    // File side did NOT roll back: docs/DECISIONS.md already has the row,
+    // orphaned from any DB record or event. THIS is the real, narrower bug.
+    const ledger = await founderLedger(projectPath);
+    expect(ledger).toContain('| D-001 |');
+
+    // Compounding harm: a retry with the same (valid) actor reads the
+    // orphaned D-001 row and skips to D-002 — the ledger and the log now
+    // permanently disagree about how many decisions exist, and D-001 has
+    // no event and no DB row behind it at all.
+    const retried = decideSlate(
+      log,
+      { slateId: created.id, chosen: 'self-hosted', rationale: 'retry' },
+      { projectPath, actorId: ACTOR, now: NOW },
+    );
+    expect(retried.id).toBe('D-002');
+    const decidedEvents = listEvents(log).filter(
+      (e) => e.eventType === 'decision.chosen',
+    );
+    expect(decidedEvents).toHaveLength(1); // exactly one real decision, D-002 — D-001 is a ghost row
   });
 });
