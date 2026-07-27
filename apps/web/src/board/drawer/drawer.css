@@ -70,6 +70,16 @@
   padding: 0.15rem 0.6rem;
 }
 
+/* The remove-dependency (x) control lives inside an already-pill-shaped
+   chip — reset it to an inline glyph instead of nesting a second pill. */
+.ticket-drawer__dag-chip button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0 0 0 0.35rem;
+  cursor: pointer;
+}
+
 .ticket-drawer__dag-result--refused {
   color: #b3261e;
 }

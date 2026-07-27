@@ -70,6 +70,27 @@ body {
   border-bottom: 1px solid var(--sw-border);
 }
 
+/* W9-04: one styled control everywhere — every plain <button> gets the
+   header's pill treatment (border/radius/padding/cursor, `--sw-*` tokens
+   so both themes follow) instead of the browser's raw button chrome.
+   Lower specificity than any class selector, so contexts that already
+   style their buttons differently (tabs, chips, icon toggles) are
+   unaffected. */
+button {
+  border: 1px solid var(--sw-border);
+  background: transparent;
+  color: var(--sw-fg);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .theme-toggle {
   border: 1px solid var(--sw-border);
   background: transparent;
@@ -131,6 +152,8 @@ body {
   background: transparent;
   color: var(--sw-fg);
   cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
 }
 
 .split-pane__divider {
