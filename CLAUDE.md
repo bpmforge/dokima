@@ -12,8 +12,18 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    (Context7 or `node -e "import ..."` export checks). Versions live in
    `docs/TECH_STACK.md`; upgrade only in lockstep and record it there.
 3. **Full gate before closing any ticket**:
-   `pnpm lint && pnpm typecheck && pnpm test` (workspace-wide) plus the
-   ticket's own acceptance criteria. Report test counts in commit bodies.
+   `pnpm lint && pnpm typecheck && pnpm test` (workspace-wide) **and
+   `pnpm --filter @shipwright/web e2e`**, plus the ticket's own acceptance
+   criteria. Report test counts in commit bodies.
+   **Run everything on Node 22** (`.nvmrc`, `engines.node`): the
+   `better-sqlite3` native binary is built for it, and Node 24 fails ~50
+   `apps/server` tests with a `NODE_MODULE_VERSION 127 vs 137` mismatch
+   that looks exactly like real breakage. `fnm`'s default is 24, so put
+   v22 on PATH first.
+   *e2e joined the gate 2026-07-27: it was previously excluded, and a
+   plans.spec.ts assertion consequently sat silently red from W5-16 until
+   the first full e2e audit days later. It runs last (~30s) so the fast
+   gates still fail cheap.*
 4. **The trust boundary is the product** (CONSTRAINTS C-2/C-3): agent
    sessions are untrusted; every durable state change goes through the
    verbs/receipts APIs. Never add a code path that flips ticket/phase state

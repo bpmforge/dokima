@@ -14,3 +14,9 @@ STOP
 
 # acceptance runs are per-run artifacts, never committed (W9-01)
 docs/acceptance/runs/
+
+# Agent scratch + per-agent git worktrees. Not gitignoring this let a
+# subagent's worktree (a second full checkout under .claude/worktrees/)
+# land inside the lint root, so a sibling agent's `pnpm lint` reported 11
+# phantom errors from the OTHER agent's copy of scripts/conductor.mjs.
+.claude/
