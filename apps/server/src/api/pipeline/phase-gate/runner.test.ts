@@ -10,9 +10,17 @@ import {
   verifyReceipt,
   type EventLog,
 } from '@shipwright/events';
-import { loadValidatorPack, runValidatorPack } from '@shipwright/validators';
+import {
+  loadValidatorPack,
+  mintValidatorRunReceipt,
+  runValidatorPack,
+} from '@shipwright/validators';
 import { PHASES } from '@shipwright/pipeline';
-import { PhaseGateSameIdentityError } from './identity.js';
+import {
+  ensurePhaseGateVerifierIdentity,
+  PHASE_GATE_VERIFIER_ACTOR_ID,
+  PhaseGateSameIdentityError,
+} from './identity.js';
 import { runPhaseGate } from './runner.js';
 
 const SIGNING_KEY = 'test-signing-key-w9-06';
@@ -209,7 +217,7 @@ describe('runPhaseGate (W9-06)', () => {
     }
   });
 
-  it('GREEN: a clean real validator run mints a receipt via mintValidatorRunReceipt under the distinct verifier identity, and it round-trips through verifyReceipt', async () => {
+  it('GREEN (orchestration logic only — NOT a real-content demonstration, see the module header and the real-content test below for that): runPhaseGate mints via mintValidatorRunReceipt under the distinct verifier identity when every declared validator reports exitCode 0, and the receipt round-trips through verifyReceipt', async () => {
     await fs.writeFile(path.join(projectDir, 'docs/VISION.md'), CLEAN_VISION);
     await fs.writeFile(
       path.join(projectDir, 'docs/COMPETITIVE_ANALYSIS.md'),
@@ -274,7 +282,18 @@ describe('runPhaseGate (W9-06)', () => {
     }
   });
 
-  it('supplementary: REAL, unmodified content/validators/secrets-scan.sh runs clean end to end through the same runValidator/loadValidatorPack primitives (proves the mermaid fixture above isolates a validate-mermaid.sh-specific gap, not a broken runner or a broken content pack in general)', async () => {
+  it('GREEN (real content, criterion 2 proof): REAL, unmodified content/validators/secrets-scan.sh runs clean, and its result mints a receipt via the real mintValidatorRunReceipt/verifyReceipt pair — zero synthetic validator content anywhere in this test', async () => {
+    // `runPhaseGate` itself cannot be used for this proof: `getPhase(0)` always
+    // includes `validate-mermaid` (R-H3, unconditional across all six phases), and that
+    // real script cannot produce contract-conforming stdout on a clean scan (see this
+    // file's header and runner.ts's module doc) — so no phase can reach a clean mint
+    // through `runPhaseGate` against 100% real, unmodified content today. This test
+    // instead drives the exact same primitives `runPhaseGate` composes —
+    // `loadValidatorPack` -> `runValidatorPack` -> `mintValidatorRunReceipt` ->
+    // `verifyReceipt` — directly, with `secrets-scan.sh` (a real script that DOES
+    // source `_lib.sh` and conform to the contract), to prove the mint/verify machinery
+    // itself is correct end to end against real content, independent of the
+    // validate-mermaid.sh gap.
     const specs = await loadValidatorPack({
       contentDir: realContentDir(),
       select: ['secrets-scan'],
@@ -286,5 +305,34 @@ describe('runPhaseGate (W9-06)', () => {
     expect(results).toHaveLength(1);
     expect(results[0]?.name).toBe('secrets-scan');
     expect(results[0]?.exitCode).toBe(0);
+
+    ensurePhaseGateVerifierIdentity(log);
+
+    const receipt = mintValidatorRunReceipt(
+      log,
+      {
+        id: randomUUID(),
+        kind: 'gate',
+        projectId: 'proj-1',
+        phase: null,
+        ticketId: null,
+        inputFiles: [],
+        results,
+        actorId: PHASE_GATE_VERIFIER_ACTOR_ID,
+      },
+      { signingKey: SIGNING_KEY },
+    );
+
+    expect(receipt.kind).toBe('gate');
+    expect(receipt.validators).toEqual([
+      { name: 'secrets-scan', exitCode: 0, gapCount: 0 },
+    ]);
+
+    const verified = verifyReceipt(log, receipt.id, {
+      signingKey: SIGNING_KEY,
+      inputFiles: [],
+      requiredValidators: ['secrets-scan'],
+    });
+    expect(verified).toEqual({ valid: true, reasons: [] });
   });
 });

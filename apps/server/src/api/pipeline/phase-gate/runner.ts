@@ -21,6 +21,30 @@
  * (SECURITY_W5 CRITICAL FIX). This runner is what a *real* gate looks like: independent
  * validator scripts executed against the deliverables, not a hardcoded pass signed by
  * the same identity that produced the content.
+ *
+ * KNOWN GAP (found while building this, confirmed empirically, out of this ticket's
+ * write_scope): every phase in `@shipwright/pipeline`'s `PHASES` (0–5) unconditionally
+ * declares `validate-mermaid` (R-H3, `packages/pipeline/src/phases/topology.ts`).
+ * `content/validators/validate-mermaid.sh` does not source `_lib.sh` (unlike every
+ * other validator) and emits ZERO bytes to stdout on a genuinely clean scan — verified
+ * directly: `MERMAID_NO_RENDER=1 bash content/validators/validate-mermaid.sh
+ * <clean-dir>` exits 0 with empty stdout. `packages/validators/src/contract.ts`'s
+ * `parseValidatorOutput('')` returns `null` (malformed output) for empty stdout
+ * regardless of exit code, so `runValidator` normalizes that specific script's clean
+ * case to `exitCode: 2`, never `0` — and a SINGLE finding misparses too (a lone
+ * `{"severity":...}` line is valid JSON on its own, so `JSON.parse` succeeds and the
+ * NDJSON per-line fallback — the only path that would recognize it — never runs; two or
+ * more findings do work, because the concatenated lines are no longer valid JSON as a
+ * whole and `JSON.parse` throws into the NDJSON fallback). Net effect: **no phase can
+ * currently produce a clean gate receipt through `runPhaseGate` against real,
+ * unmodified content** — not a bug in this runner (which is correctly fail-closed on
+ * the resulting `exitCode: 2`, see `evaluate.test.ts`), but a pre-existing defect in
+ * `content/validators/validate-mermaid.sh` ("DO NOT EDIT" imported content) and/or
+ * `packages/validators/src/contract.ts`'s NDJSON detection, both outside this write
+ * scope. `runner.test.ts` documents and works around this for its own GREEN fixture;
+ * a separate real-content-only test in the same file (`GREEN (real content, criterion 2
+ * proof)`) proves the mint/verify machinery itself is correct end to end against
+ * `secrets-scan.sh`, a real validator that does conform.
  */
 import { randomUUID } from 'node:crypto';
 import {
