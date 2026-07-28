@@ -80,6 +80,7 @@ import {
   type GatewayConfig,
   type RealGatewayPort,
 } from '../gateway-model-port.js';
+import { registerAdvanceRoute } from './advance.js';
 import { emitPhaseEvent } from './events.js';
 import { readLedgerMarkdown } from './ledger.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
@@ -97,6 +98,10 @@ export interface PipelineRoutesOptions {
   now?: () => string;
   /** Overrides the onboard route's real gateway config — tests point this at a fake HTTP server. */
   onboardGatewayConfig?: OnboardRoutesOptions['gatewayConfig'];
+  /** Keychain-resolved minting secret threaded to the advance route's `verifyReceipt`
+   * calls (FR-S2) — see `./advance.js`'s `AdvanceRouteOptions.signingKey` doc for why
+   * this defaults to `SHIPWRIGHT_SIGNING_KEY` when omitted. */
+  signingKey?: string;
 }
 
 export function registerPipelineRoutes(
@@ -114,6 +119,7 @@ export function registerPipelineRoutes(
     gatewayConfig: opts.onboardGatewayConfig,
     now: opts.now,
   });
+  registerAdvanceRoute(app, { home: opts.home, signingKey: opts.signingKey });
 
   app.post(
     '/api/v1/projects/:id/pipeline/run',
