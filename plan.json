@@ -3348,6 +3348,30 @@
       "status": "done",
       "notes": "FILED 2026-07-28. Same defect the orchestrator introduced by hand earlier this session and reverted (see docs/STATUS.md 2026-07-27) \u2014 but systematic rather than one-off: every conductor status write churns the whole board. Caught while preparing Phase B1. A first simulation of this used Python's json.dumps, which defaults to ensure_ascii=True and therefore MATCHED the file, hiding the bug; re-running with real Node showed the true divergence. Simulate with the same engine as the thing under test.",
       "stories": []
+    },
+    {
+      "id": "W9-12",
+      "title": "models.json is an undeclared conductor dependency \u2014 crashes at import before --lint runs",
+      "phase": 9,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "scripts/**",
+        "conductor.config.json"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "`scripts/models.json` (the per-role model routing table) is read at module scope in `conductor.mjs` and is NOT covered by `conductor.config.json`. Importing the conductor into a repo without it throws `ENOENT ... scripts/models.json` from the import itself \u2014 BEFORE `--lint` or any argument parsing runs, so the failure gives no hint that a config file is missing. Reproduced live on 2026-07-28 while importing the harness into Kryptkeeper.",
+        "Either fold model routing into `conductor.config.json` (preferred \u2014 it makes the file's own `$note` claim true) or resolve `models.json` with a documented default + a clear error naming the file and how to supply it. Whichever is chosen, a fresh repo must be able to import the harness with the config alone.",
+        "The failure mode is fixed, not just the file: a missing/malformed routing table produces an actionable message at startup rather than a raw ENOENT stack from an import. A red fixture covers the missing-file case.",
+        "Default behaviour unchanged for Shipwright's own run \u2014 proven by the existing gate plus byte-identical `node scripts/conductor.mjs --lint` output.",
+        "Document the full import surface in one place: importing the conductor into another repo currently requires THREE vendored files (`conductor.mjs`, `conductor-lib.mjs`, `models.json`) plus a `conductor.config.json` \u2014 that list is not written down anywhere today.",
+        "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts in the commit body."
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": "FILED 2026-07-28 by the Kryptkeeper dry-run (EXECUTION_ORDER.md Phase B1). FOURTH undeclared dependency found this session by attempting the thing rather than reasoning about it \u2014 after export-routes' signingKey, W9-06's unreachable imports, and W9-08's content-pack signature. The dry-run itself succeeded once models.json was copied: 0 errors / 0 warnings against Kryptkeeper's 125-ticket board, with boardPath proven honoured (bogus path -> ENOENT on that exact name; real path -> 125 tickets, project=kryptkeeper). See [[feedback-ticket-scope-reachability]].",
+      "stories": []
     }
   ]
 }
