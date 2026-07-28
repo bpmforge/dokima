@@ -13,7 +13,7 @@
 // the extraction and diffing byte-for-byte identical output — see the W9-09
 // report for the literal before/after transcripts.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ---------- config ----------
@@ -44,11 +44,77 @@ export const DEFAULT_CONFIG = {
     'pnpm-lock.yaml',
     'package.json',
   ],
+  // W9-12: per-role model routing used to live in a separate scripts/models.json,
+  // read unconditionally at module scope — a repo importing only conductor.mjs +
+  // conductor-lib.mjs + conductor.config.json crashed with a bare ENOENT before
+  // --lint or any argument parsing ran. Folding it in here makes the config
+  // self-sufficient: a project's conductor.config.json can override any subset of
+  // these via a top-level `models` key (mergeConfig replaces the whole object, same
+  // shallow-merge convention as `gates`/`alwaysOk`), or omit `models` entirely and
+  // get a working generic ladder out of the box.
+  models: {
+    maker: 'sonnet',
+    cheap: 'haiku',
+    reviewer: 'sonnet',
+    security: 'sonnet',
+    escalate: 'opus',
+    cheapLanes: [],
+    cheapMaxPoints: 0,
+  },
 };
+
+/**
+ * Validates a resolved `models` config (DEFAULT_CONFIG.models merged with a
+ * project's conductor.config.json override) has every role the conductor
+ * dispatches sessions to. Returns an array of human-readable problem
+ * descriptions — empty when valid. Pure/side-effect-free so the caller
+ * decides how to fail (conductor.mjs turns a non-empty result into a startup
+ * error naming the missing keys, instead of an undefined-model crash deep
+ * inside a session run).
+ */
+export function validateModels(models) {
+  const errors = [];
+  if (models === null || typeof models !== 'object') {
+    return ["conductor.config.json's \"models\" key must be an object (or omitted to use the built-in default ladder)"];
+  }
+  for (const role of ['maker', 'cheap', 'reviewer', 'security', 'escalate']) {
+    const v = models[role];
+    if (typeof v !== 'string' || v.trim() === '') {
+      errors.push(`models.${role} is required and must be a non-empty string (got ${JSON.stringify(v)})`);
+    }
+  }
+  return errors;
+}
 
 /** Shallow-merges a project's conductor.config.json over the defaults (same as the original `{ ...DEFAULT_CONFIG, ...override }`). */
 export function mergeConfig(defaults, override) {
   return { ...defaults, ...override };
+}
+
+/**
+ * Loads conductor.config.json from `root` (project-specific settings) and
+ * merges it over `defaults`, or returns `defaults` unchanged when the file
+ * doesn't exist. W9-12 follow-up: this used to be an inline IIFE in
+ * conductor.mjs with a bare `JSON.parse` — moving the per-role model
+ * routing table INTO this same file (W9-12's main fix) meant a hand-edited
+ * conductor.config.json with broken JSON (e.g. a trailing comma) threw a raw
+ * SyntaxError from the module job at import time, before --lint or any
+ * argument parsing ran — the exact failure SHAPE the models.json ENOENT had,
+ * just moved one line earlier. Wrapping the parse here and re-throwing a
+ * message that names the file and the parser's own reason lets the caller
+ * (conductor.mjs) turn it into the same clean startup error + exit(1) it
+ * already uses for an invalid `models` value, instead of a stack trace.
+ */
+export function loadConfigFile(root, defaults, fileName = 'conductor.config.json') {
+  const f = resolve(root, fileName);
+  if (!existsSync(f)) return defaults;
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(f, 'utf8'));
+  } catch (e) {
+    throw new Error(`${fileName} is not valid JSON: ${e.message}`);
+  }
+  return mergeConfig(defaults, parsed);
 }
 
 /**

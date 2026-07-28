@@ -12,7 +12,17 @@
  * survives provider limits (sleep-to-reset) and its own crashes (supervise.sh).
  *
  * Project-specific settings live in conductor.config.json — the script itself
- * is repo-agnostic. Models live in scripts/models.json.
+ * is repo-agnostic. Model routing lives in conductor.config.json's `models`
+ * key (see DEFAULT_CONFIG.models in conductor-lib.mjs for the built-in
+ * default ladder used when a project omits it).
+ *
+ * IMPORT SURFACE (W9-12): dropping this conductor into another repo needs
+ * exactly TWO vendored files — conductor.mjs (this file) and
+ * conductor-lib.mjs — plus that repo's own conductor.config.json at its
+ * root. Nothing else is read unconditionally at import time: boardPath
+ * (W9-10) and models (W9-12) both live in conductor.config.json and fall
+ * back to built-in defaults (DEFAULT_CONFIG in conductor-lib.mjs) when the
+ * config omits them or the config file itself is absent.
  *
  *   node scripts/conductor.mjs [--waves W0,W1] [--breakpoint ticket|wave|never]
  *     [--max-tickets N] [--session-minutes 45] [--no-merge] [--no-push]
@@ -28,7 +38,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CONFIG,
-  mergeConfig,
+  loadConfigFile,
   loadPlanFrom,
   writePlan,
   wave,
@@ -38,6 +48,7 @@ import {
   alwaysOkPatterns,
   doneCheckGap,
   codingPrompt,
+  validateModels,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,12 +56,43 @@ const LOG = resolve(ROOT, 'docs/work/conductor-log.jsonl');
 const STOPFILE = resolve(ROOT, 'STOP');
 
 // ---------- config (project-specific; script stays repo-agnostic) ----------
+// A malformed conductor.config.json (e.g. hand-edited, trailing comma) is
+// caught here and turned into a startup error naming the file and the
+// parser's own reason, not a raw SyntaxError stack from the module job.
 const CONFIG = (() => {
-  const f = resolve(ROOT, 'conductor.config.json');
-  if (!existsSync(f)) return DEFAULT_CONFIG;
-  return mergeConfig(DEFAULT_CONFIG, JSON.parse(readFileSync(f, 'utf8')));
+  try {
+    return loadConfigFile(ROOT, DEFAULT_CONFIG);
+  } catch (e) {
+    console.error(`conductor: ${e.message}\nFix conductor.config.json's JSON syntax, or delete the file to use built-in defaults.`);
+    process.exit(1);
+  }
 })();
 const WT_BASE = resolve(ROOT, CONFIG.worktreeDir);
+
+// ---------- model routing (W9-12: config-only, no separate file) ----------
+// Was a bare `readFileSync(scripts/models.json)` at module scope — a repo
+// importing the conductor without that file crashed with a raw ENOENT stack
+// at IMPORT time, before --lint or any argument parsing ran. Now it's part
+// of CONFIG (already merged above), so a missing config falls back to
+// DEFAULT_CONFIG.models cleanly. A malformed `models` value still needs a
+// startup check — an actionable message here beats a wrong-model surprise
+// deep inside a session run later.
+const MODELS = CONFIG.models;
+{
+  const modelErrors = validateModels(MODELS);
+  if (modelErrors.length) {
+    console.error(
+      [
+        'conductor: invalid model routing in conductor.config.json.',
+        ...modelErrors.map((e) => `  - ${e}`),
+        'Fix or add a "models" object in conductor.config.json (maker/cheap/reviewer/security/escalate',
+        'model aliases) — or omit the key entirely to use the built-in default ladder',
+        '(see DEFAULT_CONFIG.models in scripts/conductor-lib.mjs).',
+      ].join('\n'),
+    );
+    process.exit(1);
+  }
+}
 
 // ---------- args ----------
 const args = process.argv.slice(2);
@@ -60,7 +102,6 @@ const opt = (name, dflt) => {
 };
 const WAVES = opt('waves', '') ? String(opt('waves', '')).split(',').map((s) => s.trim()) : null;
 const BREAKPOINT = String(opt('breakpoint', 'never'));
-const MODELS = JSON.parse(readFileSync(resolve(ROOT, String(opt('models', 'scripts/models.json'))), 'utf8'));
 const MAX_TICKETS = Number(opt('max-tickets', 999));
 const SESSION_MIN = Number(opt('session-minutes', 45));
 const DO_MERGE = !args.includes('--no-merge');
