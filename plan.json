@@ -3256,12 +3256,13 @@
       "write_scope": [
         "content/validators/validate-mermaid.sh",
         "packages/validators/src/contract.ts",
-        "packages/validators/src/contract.test.ts"
+        "packages/validators/src/contract.test.ts",
+        "packages/validators/src/run.test.ts"
       ],
       "depends_on": [],
       "acceptance": [
         "A clean `validate-mermaid` run reports `exitCode: 0` through `runValidator`. Today it exits 0 with ZERO-byte stdout (verified empirically), `parseValidatorOutput('')` returns null (contract.ts:34), and `run.ts:160` normalizes that to `exitCode: 2` \u2014 so the validator every phase requires can never pass. PREFER fixing the script to emit a proper envelope (it is the only validator that does not; its sole `validator_exit` mention is a comment at line 334) over loosening the contract, because treating empty stdout as 'clean' would weaken the fail-closed guarantee for EVERY validator.",
-        "Because `PHASES[0..5]` all require `validate-mermaid` (R-H3), the observable outcome is that at least one phase can gate cleanly end to end: `runPhaseGate` returns ok with a minted receipt against real content. This is the acceptance that unblocks W9-07.",
+        "The unblock is demonstrated WITHIN this scope: `runValidator` returns `exitCode: 0` for a clean `validate-mermaid` run against a real fixture directory (proved in `run.test.ts`). That is sufficient to unblock W9-07, because `PHASES[0]` (Idea) and `PHASES[1]` (Plan) declare `validators: [MERMAID_VALIDATOR]` and nothing else \u2014 so those phases become gateable the moment this passes. The end-to-end `runPhaseGate` demonstration belongs to W9-07; do NOT reach into `apps/server/**` to prove it here.",
         "Single-finding NDJSON output is parsed correctly. `parseValidatorOutput` currently runs `JSON.parse` on the whole trimmed stdout first; one finding line IS valid JSON, so it succeeds, falls through the array/`gaps`-number branches and returns null at contract.ts:55 \u2014 reporting one real gap as malformed (`exitCode: 2`). Two or more lines work only because concatenated lines throw into the NDJSON fallback. A red fixture reproduces the one-line case before the fix.",
         "`exitCode: 2` keeps meaning 'verdict untrustworthy' and is never widened into a general catch-all: a genuinely malformed payload, a timeout and a spawn error all still yield 2. Red fixtures pin each.",
         "No validator's real behaviour is changed beyond emitting its result in the declared envelope \u2014 this ticket fixes reporting, never a validator's pass/fail judgement.",
@@ -3269,7 +3270,7 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "FILED 2026-07-27 by W9-06's implementation, which surfaced both defects and could fix neither (both outside its write_scope). Finding 1 blocks W9-07's demonstrability: with every phase requiring validate-mermaid and that validator normalizing to exitCode 2 on a clean run, no phase can currently gate cleanly, so an ALLOWED decideAdvance cannot be shown against real content. Finding 2 is independent of mermaid and hits any validator emitting exactly one finding. Both re-verified by the orchestrator before filing: the mermaid script was run against a clean fixture (exit 0, 0-byte stdout) and contract.ts:34/55 read directly.",
+      "notes": "FILED 2026-07-27 by W9-06's implementation, which surfaced both defects and could fix neither (both outside its write_scope). Finding 1 blocks W9-07's demonstrability: with every phase requiring validate-mermaid and that validator normalizing to exitCode 2 on a clean run, no phase can currently gate cleanly, so an ALLOWED decideAdvance cannot be shown against real content. Finding 2 is independent of mermaid and hits any validator emitting exactly one finding. Both re-verified by the orchestrator before filing: the mermaid script was run against a clean fixture (exit 0, 0-byte stdout) and contract.ts:34/55 read directly. | SCOPE SET DELIBERATELY 2026-07-27: criterion 2 originally named runPhaseGate, which lives in apps/server/src/api/pipeline/phase-gate/** and is OUTSIDE this ticket's scope \u2014 the same unreachable-import filing error that bounced W9-06's first attempt. Reworded to an in-scope proof via runValidator, after confirming (a) packages/validators/src/run.test.ts exists and (b) PHASES[0]/[1] are mermaid-only, so that proof genuinely establishes the unblock rather than approximating it.",
       "stories": []
     }
   ]
