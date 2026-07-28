@@ -3272,6 +3272,82 @@
       "status": "blocked",
       "notes": "FILED 2026-07-27 by W9-06's implementation, which surfaced both defects and could fix neither (both outside its write_scope). Finding 1 blocks W9-07's demonstrability: with every phase requiring validate-mermaid and that validator normalizing to exitCode 2 on a clean run, no phase can currently gate cleanly, so an ALLOWED decideAdvance cannot be shown against real content. Finding 2 is independent of mermaid and hits any validator emitting exactly one finding. Both re-verified by the orchestrator before filing: the mermaid script was run against a clean fixture (exit 0, 0-byte stdout) and contract.ts:34/55 read directly. | SCOPE SET DELIBERATELY 2026-07-27: criterion 2 originally named runPhaseGate, which lives in apps/server/src/api/pipeline/phase-gate/** and is OUTSIDE this ticket's scope \u2014 the same unreachable-import filing error that bounced W9-06's first attempt. Reworded to an in-scope proof via runValidator, after confirming (a) packages/validators/src/run.test.ts exists and (b) PHASES[0]/[1] are mermaid-only, so that proof genuinely establishes the unblock rather than approximating it. | BLOCKED 2026-07-28 on re-signing. Work is COMPLETE and green on branch sw/w9-08 (both defects fixed, red fixtures confirmed failing first, differential-tested against the unmodified script, lint/typecheck/e2e green). It cannot merge because content/validators/** is a SIGNED content pack: content/manifest.json records validate-mermaid.sh as sha256:8dc78a15..., the fixed script hashes to bcbe842a..., and verifyPack() rejects the file-hash mismatch, failing 5 apps/server pack-integrity tests (doctor.test.ts x3, bootstrap/cli.test.ts, bootstrap/packs-update.test.ts). The Ed25519 manifest signature itself stays VALID - only the per-file hash comparison fails. Re-signing needs SHIPWRIGHT_SIGNING_KEY (never committed, not in this environment): SHIPWRIGHT_SIGNING_KEY=... node scripts/sign-content.mjs, then commit content/manifest.json. manifest.json added to write_scope for the re-signed commit. THIRD instance this session of a ticket scoped without checking a required target was reachable - and the one no validator would have caught, since the dependency is a signature, not an import.",
       "stories": []
+    },
+    {
+      "id": "W9-09",
+      "title": "Bring scripts/ under lint and test coverage \u2014 the conductor is currently unguarded",
+      "phase": 9,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "eslint.config.js",
+        "vitest.workspace.ts",
+        "scripts/**"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "`scripts/**` is linted. It is currently excluded by `eslint.config.js`'s ignore list, which hides **11 real errors** in `scripts/conductor.mjs` (verified via `npx eslint scripts/ --no-ignore`): unused vars, empty block statements, and a control-character regex. Fix all 11 WITHOUT changing behaviour \u2014 these are the build harness's own defects, and an empty `catch {}` that swallows an error is exactly the class this repo refuses elsewhere.",
+        "`scripts/**` is covered by vitest. `vitest.workspace.ts` is `defineWorkspace(['apps/*','packages/*'])`, so a test placed in `scripts/` today does not run at all \u2014 silently. Extend coverage so it does.",
+        "At least one real test exercises `conductor.mjs`'s pure helpers (board load/serialize, config merge) rather than a placeholder. A test that cannot fail is worse than no test: prove it fails by breaking the helper it covers, and say so in the report.",
+        "No behavioural change to the conductor. This ticket adds guardrails only \u2014 the harness must drive a ticket exactly as before. Any behaviour change belongs to W9-10/W9-11.",
+        "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts in the commit body."
+      ],
+      "points": 3,
+      "status": "in_progress",
+      "notes": "FILED 2026-07-28. Prerequisite for W9-10 and W9-11, both of which modify scripts/conductor.mjs \u2014 a file with ZERO guardrails today (not linted, not tested, and vitest would not even collect a test placed beside it). Changing the build harness Shipwright itself depends on, with no lint and no tests, is the risk this ticket removes first. Surfaced while preparing the Kryptkeeper conductor (EXECUTION_ORDER.md Phase B1).",
+      "stories": []
+    },
+    {
+      "id": "W9-10",
+      "title": "Configurable board path \u2014 conductor.mjs cannot drive a repo whose plan.json is not at the root",
+      "phase": 9,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "scripts/conductor.mjs",
+        "conductor.config.json",
+        "scripts/**"
+      ],
+      "depends_on": [
+        "W9-09"
+      ],
+      "acceptance": [
+        "A `boardPath` config key (default `plan.json`) makes the board location project-specific. `conductor.mjs:31`'s `planPath = (dir) => resolve(dir, 'plan.json')` is the blocker: Kryptkeeper's board lives at `docs/board/plan.json`, so the conductor cannot read it at all.",
+        "EVERY hardcoded `plan.json` reference honours the configured path \u2014 not just the loader. At minimum: the `alwaysOk` default entry, the done-check message, the `git add` on retry-reset, and the three mentions inside the AGENT PROMPT itself ('You are working EXACTLY ONE ticket from plan.json\u2026'). A prompt that names the wrong file sends the agent to a board that does not exist, and that failure is silent.",
+        "`conductor.config.json`'s `$note` becomes true: it claims 'Everything project-specific lives here so the conductor script is reusable across repos unchanged', which board path currently contradicts.",
+        "A test drives the conductor against a fixture repo whose board is NOT at the root, proving the path is honoured end to end rather than only in the loader.",
+        "Default behaviour is unchanged for Shipwright's own root board \u2014 verified by the existing gate still passing with no `boardPath` set.",
+        "Full gate green including e2e; test counts in the commit body."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-07-28 while preparing EXECUTION_ORDER.md Phase B1 (conductor on Kryptkeeper). Blocks that work: the conductor literally cannot find Kryptkeeper's board. Note the gates array is ALREADY fully replaceable (`CONFIG.gates`, line 237), so no work is needed to let a project skip a lint gate \u2014 an earlier framing of this as a third 'gate profile' ticket was wrong and is not filed.",
+      "stories": []
+    },
+    {
+      "id": "W9-11",
+      "title": "Byte-preserving board writes \u2014 the conductor rewrites all of plan.json on every status change",
+      "phase": 9,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "scripts/conductor.mjs",
+        "scripts/**"
+      ],
+      "depends_on": [
+        "W9-09"
+      ],
+      "acceptance": [
+        "A conductor board write is byte-identical to the file it replaces, apart from the statuses it intentionally changed. Today `conductor.mjs:371,424` write `JSON.stringify(plan, null, 2) + '\\n'`, which against the current 493,140-byte board produces a **2,800-byte divergence**: every ASCII-escaped `\\u00a7`/`\\u2014` becomes literal UTF-8, plus a trailing newline the file does not have.",
+        "A test asserts the round-trip mechanically: read the real `plan.json`, write it back through the conductor's serializer unchanged, and assert the bytes are identical. Proving it by eye or by line count is not sufficient \u2014 the defect is invisible in a line-count diff and shows up as ~400 changed lines in review.",
+        "Changing one ticket's status produces a diff of only the lines for that status \u2014 verified in the test, since an unreviewable board diff is the actual harm.",
+        "The fix preserves whatever convention the file already uses rather than imposing one, so a repo whose board is written in literal UTF-8 stays that way.",
+        "Full gate green including e2e; test counts in the commit body."
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": "FILED 2026-07-28. Same defect the orchestrator introduced by hand earlier this session and reverted (see docs/STATUS.md 2026-07-27) \u2014 but systematic rather than one-off: every conductor status write churns the whole board. Caught while preparing Phase B1. A first simulation of this used Python's json.dumps, which defaults to ensure_ascii=True and therefore MATCHED the file, hiding the bug; re-running with real Node showed the true divergence. Simulate with the same engine as the thing under test.",
+      "stories": []
     }
   ]
 }
