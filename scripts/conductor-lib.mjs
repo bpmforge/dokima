@@ -94,6 +94,33 @@ export function validateModels(models) {
 }
 
 /**
+ * Pure claim filter — which tickets may be claimed next, in id order.
+ *
+ * `excluded` holds ids the CURRENT RUN must not claim again. This is what
+ * makes `--no-merge` terminate: a parked ticket's `done` status is committed
+ * only on its own branch and never merged, so the board at ROOT still reads
+ * `todo`. Without the exclusion the loop re-claims the same ticket forever —
+ * and because starting a ticket force-removes and recreates its worktree, each
+ * re-claim RESETS the branch to main and destroys the parked work. Observed on
+ * Kryptkeeper 2026-07-28: S-01 completed, reviewed APPROVE, parked, was
+ * immediately re-claimed, and its three commits became unreachable.
+ */
+export function claimableTickets(plan, { waves = null, hold = [], excluded = [] } = {}) {
+  const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
+  const busyLanes = new Set(plan.tickets.filter((t) => t.status === 'in_progress').map((t) => t.lane));
+  const holdSet = new Set(hold);
+  const excludedSet = new Set(excluded);
+  return plan.tickets
+    .filter((t) => t.status === 'todo')
+    .filter((t) => !holdSet.has(t.id)) // F2: human-pair tickets are never claimed unattended
+    .filter((t) => !excludedSet.has(t.id))
+    .filter((t) => !waves || waves.includes(wave(t.id)))
+    .filter((t) => (t.depends_on ?? []).every((d) => done.has(d)))
+    .filter((t) => !busyLanes.has(t.lane))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
  * W3-15 portability: compare the running Node against a project's version pin.
  *
  * Returns null when the pin is satisfied (or is empty/unreadable), else a

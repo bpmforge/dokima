@@ -21,6 +21,7 @@ import {
   parseJson,
   planPath,
   serializePlan,
+  claimableTickets,
   nodePinMismatch,
   validateModels,
   wave,
@@ -550,5 +551,52 @@ describe('conductor-lib: Node version pin is project-configurable (W3-15 portabi
   it('lets a project relocate the pin, or opt out entirely', () => {
     expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: 'ui/.nvmrc' }).nvmrcPath).toBe('ui/.nvmrc');
     expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: null }).nvmrcPath).toBeNull();
+  });
+});
+
+describe('conductor-lib: claimableTickets — --no-merge must terminate', () => {
+  const plan = (...tickets) => ({ tickets });
+  const T = (id, over = {}) => ({
+    id, title: id, lane: id.split('-')[0], status: 'todo', depends_on: [], write_scope: [], acceptance: [], ...over,
+  });
+
+  it('returns claimable tickets in id order', () => {
+    expect(claimableTickets(plan(T('S-02'), T('S-01'))).map((t) => t.id)).toEqual(['S-01', 'S-02']);
+  });
+
+  it('excludes a parked ticket so the run does not re-claim it forever', () => {
+    const p = plan(T('S-01'), T('W8-03'));
+    // The board still says todo — that is exactly the --no-merge situation.
+    expect(claimableTickets(p).map((t) => t.id)).toEqual(['S-01', 'W8-03']);
+    expect(claimableTickets(p, { excluded: ['S-01'] }).map((t) => t.id)).toEqual(['W8-03']);
+  });
+
+  it('drains to empty once every claimable ticket has been parked — the loop terminates', () => {
+    const p = plan(T('S-01'), T('S-02', { lane: 'docs' }));
+    expect(claimableTickets(p, { excluded: ['S-01', 'S-02'] })).toEqual([]);
+  });
+
+  it('still honours holdTickets, waves, deps and lane busy-ness', () => {
+    const p = plan(
+      T('S-01'),
+      T('S-05'),
+      T('W8-03', { lane: 'api' }),
+      T('W8-04', { lane: 'ui', depends_on: ['W8-03'] }),
+      T('W7-01', { lane: 'core' }),
+      T('W6-01', { lane: 'busy' }),
+      T('X-99', { lane: 'busy', status: 'in_progress' }),
+    );
+    const got = claimableTickets(p, { waves: ['S', 'W8', 'W6'], hold: ['S-05'] }).map((t) => t.id);
+    expect(got).toEqual(['S-01', 'W8-03']); // S-05 held, W7 out of wave, W8-04 dep unmet, W6-01 lane busy
+  });
+
+  it('a satisfied dependency unblocks its dependent', () => {
+    const p = plan(T('W8-03', { status: 'done' }), T('W8-04', { lane: 'ui', depends_on: ['W8-03'] }));
+    expect(claimableTickets(p).map((t) => t.id)).toEqual(['W8-04']);
+  });
+
+  it('tolerates a ticket with no depends_on field', () => {
+    const t = T('S-01'); delete t.depends_on;
+    expect(claimableTickets(plan(t)).map((x) => x.id)).toEqual(['S-01']);
   });
 });

@@ -50,6 +50,7 @@ import {
   codingPrompt,
   validateModels,
   nodePinMismatch,
+  claimableTickets,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,17 +134,8 @@ const loadPlan = (dir = ROOT) => loadPlanFrom(dir, CONFIG.boardPath);
 // always includes CONFIG.boardPath even if a project's alwaysOk override omits it.
 const ALWAYS_OK = alwaysOkPatterns(CONFIG).map(globToRegex);
 
-function claimable(plan) {
-  const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
-  const busyLanes = new Set(plan.tickets.filter((t) => t.status === 'in_progress').map((t) => t.lane));
-  const hold = new Set(CONFIG.holdTickets ?? []);
-  return plan.tickets
-    .filter((t) => t.status === 'todo')
-    .filter((t) => !hold.has(t.id)) // F2: human-pair tickets are never claimed unattended
-    .filter((t) => !WAVES || WAVES.includes(wave(t.id)))
-    .filter((t) => t.depends_on.every((d) => done.has(d)))
-    .filter((t) => !busyLanes.has(t.lane))
-    .sort((a, b) => a.id.localeCompare(b.id));
+function claimable(plan, excluded = []) {
+  return claimableTickets(plan, { waves: WAVES, hold: CONFIG.holdTickets ?? [], excluded });
 }
 
 function pickModel(t) {
@@ -437,7 +429,9 @@ function land(t, branch, wt) {
     pushRemotes(t.id);
   } else {
     log('parked', { ticket: t.id, msg: `left on ${branch} (worktree ${wt}) for review (--no-merge)` });
+    return 'parked';
   }
+  return 'merged';
 }
 
 function markBlocked(t, gaps, branch, wt) {
@@ -537,12 +531,16 @@ async function main() {
   log('conductor.start', { msg: `breakpoint=${BREAKPOINT} waves=${WAVES ?? 'all'} isolation=${CONFIG.isolation} merge=${DO_MERGE} models=${JSON.stringify(MODELS)}` });
 
   let doneCount = 0;
+  // Tickets parked by --no-merge: done on their branch, still `todo` on the
+  // board at ROOT. Must not be re-claimed, or the loop never terminates and
+  // each re-claim resets the parked branch. See claimableTickets().
+  const parkedThisRun = new Set();
   let currentWave = null;
   let waveBase = git('rev-parse', 'HEAD');
 
   while (doneCount < MAX_TICKETS) {
     if (existsSync(STOPFILE)) { log('conductor.stop', { msg: 'STOP file' }); break; }
-    const next = claimable(loadPlan())[0];
+    const next = claimable(loadPlan(), parkedThisRun)[0];
     if (!next) { log('conductor.idle', { msg: 'nothing claimable (done or all blocked)' }); break; }
 
     if (currentWave && wave(next.id) !== currentWave) {
@@ -557,7 +555,7 @@ async function main() {
     log('ticket.start', { ticket: next.id, msg: `${next.title} [${pickModel(next)}]` });
     const res = await executeTicket(next);
     if (res.ok) {
-      land(next, res.branch, res.wt);
+      if (land(next, res.branch, res.wt) === 'parked') parkedThisRun.add(next.id);
       doneCount++;
       log('ticket.done', { ticket: next.id, msg: `${doneCount} landed this run` });
       if (BREAKPOINT === 'ticket') { log('conductor.breakpoint', { msg: 'per-ticket breakpoint' }); break; }
