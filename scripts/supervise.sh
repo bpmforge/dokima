@@ -66,9 +66,28 @@ while :; do
   git checkout -f main >/dev/null 2>&1
   git clean -fd >/dev/null 2>&1
   git worktree prune >/dev/null 2>&1
+  # NEVER delete a branch that carries commits main does not have.
+  #
+  # This cleanup exists to clear a crashed attempt's debris, but under
+  # --no-merge the conductor's FINISHED work is parked on exactly these
+  # prefixed branches and is deliberately never merged. Deleting by prefix
+  # alone therefore destroys every completed ticket on the first crash-restart.
+  # Observed 2026-07-28: launching supervise.sh silently deleted a parked,
+  # review-APPROVED branch. `git branch -d` (not -D) refuses unmerged branches,
+  # so the safe behaviour is also the simpler one — an unmerged branch is
+  # reported and kept for the human instead.
   git for-each-ref --format='%(refname:short)' refs/heads/ \
     | grep -E "^(${BRANCH_PREFIX}|feat/w[0-9].*-auto$)" \
-    | while read -r b; do git worktree remove --force "$(git worktree list --porcelain | grep -A2 "branch refs/heads/$b" | grep '^worktree ' | cut -d' ' -f2)" >/dev/null 2>&1; git branch -D "$b" >/dev/null 2>&1; done
+    | while read -r b; do
+        wt_path="$(git worktree list --porcelain | grep -A2 "branch refs/heads/$b" | grep '^worktree ' | cut -d' ' -f2)"
+        [ -n "$wt_path" ] && git worktree remove --force "$wt_path" >/dev/null 2>&1
+        if [ "$(git rev-list --count "main..$b" 2>/dev/null || echo 0)" -gt 0 ]; then
+          log "keeping $b — has commits not on main (parked work, or a crash mid-ticket)"
+        else
+          git branch -d "$b" >/dev/null 2>&1
+        fi
+      done
+  # Only remove worktree checkouts, never the branches they pointed at.
   rm -rf "$WORKTREE_DIR" >/dev/null 2>&1
 
   log "starting conductor (launch $((n+1)))"
