@@ -13,7 +13,7 @@
 // the extraction and diffing byte-for-byte identical output — see the W9-09
 // report for the literal before/after transcripts.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ---------- config ----------
@@ -128,6 +128,23 @@ export function serializePlan(plan, original) {
   const body = original !== undefined && isAsciiOnly(original) ? asciiEscapeNonAscii(json) : json;
   const trailingNewline = original === undefined || original.endsWith('\n');
   return trailingNewline ? `${body}\n` : body;
+}
+
+/**
+ * Writes `plan` to the board at `boardPath` under `dir` -- the ONE place a
+ * conductor board write happens, so byte-preservation (W9-11) is guaranteed
+ * for every call site rather than relying on each one to remember to pass
+ * `original` to serializePlan itself. Reads the file's current on-disk
+ * bytes immediately before overwriting it (not e.g. bytes captured at
+ * `loadPlan` time earlier in the same function) so the convention detected
+ * is always the one actually being replaced. The file must already exist
+ * -- both conductor.mjs call sites write only after a prior successful
+ * `loadPlan` of this same path, so a missing file here would itself be a
+ * bug worth throwing on, not one to paper over.
+ */
+export function writePlan(dir, plan, boardPath = 'plan.json') {
+  const file = planPath(dir, boardPath);
+  writeFileSync(file, serializePlan(plan, readFileSync(file, 'utf8')));
 }
 
 /** The gate-check message when a ticket's board row isn't 'done' after a session — names the configured boardPath, not a hardcoded 'plan.json'. */

@@ -21,6 +21,7 @@ import {
   planPath,
   serializePlan,
   wave,
+  writePlan,
 } from './conductor-lib.mjs';
 
 describe('conductor-lib: board load / serialize', () => {
@@ -281,6 +282,81 @@ describe('conductor-lib: byte-preserving board writes (W9-11)', () => {
     const out = serializePlan(plan);
 
     expect(out).toBe('{\n  "version": 1,\n  "tickets": []\n}\n');
+  });
+});
+
+// W9-11: serializePlan being byte-preserving is not enough — the conductor's
+// actual board write must go through it WITH the file's own bytes as
+// `original`, or the fix never reaches production. writePlan is the one
+// place both conductor.mjs call sites (resetStatus, markBlocked) perform a
+// board write, so these tests cover the real write path end to end
+// (scratch-dir file on disk, real fs.readFileSync, real fs.writeFileSync),
+// not just the pure serializer.
+describe('conductor-lib: writePlan — the conductor board write is byte-preserving end to end (W9-11)', () => {
+  const scratchDirs = [];
+
+  afterEach(async () => {
+    for (const dir of scratchDirs.splice(0)) {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  async function scratchDir() {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-conductor-lib-writeplan-'));
+    scratchDirs.push(dir);
+    return dir;
+  }
+
+  it('a board write through writePlan changes only the touched ticket\'s status line, on a fixture using the real plan.json\'s own convention (ASCII-escaped, no trailing newline)', async () => {
+    const dir = await scratchDir();
+    const original =
+      '{\n' +
+      '  "version": 1,\n' +
+      '  "tickets": [\n' +
+      '    {\n' +
+      '      "id": "W0-01",\n' +
+      '      "status": "todo",\n' +
+      '      "notes": "uses \\u00a7 and \\u2014 like the real board"\n' +
+      '    },\n' +
+      '    {\n' +
+      '      "id": "W0-02",\n' +
+      '      "status": "todo"\n' +
+      '    }\n' +
+      '  ]\n' +
+      '}'; // no trailing newline — matches the real plan.json
+    const boardFile = path.join(dir, 'plan.json');
+    await fs.writeFile(boardFile, original);
+
+    const plan = loadPlanFrom(dir);
+    plan.tickets.find((t) => t.id === 'W0-01').status = 'in_progress';
+    writePlan(dir, plan);
+
+    const out = await fs.readFile(boardFile, 'utf8');
+    const origLines = original.split('\n');
+    const outLines = out.split('\n');
+    expect(outLines.length).toBe(origLines.length);
+    const changedLineIdxs = origLines.map((line, i) => (line === outLines[i] ? -1 : i)).filter((i) => i !== -1);
+    expect(changedLineIdxs).toHaveLength(1);
+    expect(outLines[changedLineIdxs[0]]).toBe('      "status": "in_progress",');
+    // convention preserved: still ASCII-escaped, still no trailing newline
+    expect(out).toContain('\\u00a7');
+    expect(out).not.toContain('§');
+    expect(out.endsWith('\n')).toBe(false);
+  });
+
+  it('writePlan honours a configured boardPath (W9-10), not just the root plan.json default', async () => {
+    const dir = await scratchDir();
+    await fs.mkdir(path.join(dir, 'docs', 'board'), { recursive: true });
+    const original = '{\n  "tickets": [\n    {\n      "id": "KK-01",\n      "status": "todo"\n    }\n  ]\n}';
+    const boardFile = path.join(dir, 'docs', 'board', 'plan.json');
+    await fs.writeFile(boardFile, original);
+
+    const plan = loadPlanFrom(dir, 'docs/board/plan.json');
+    plan.tickets[0].status = 'done';
+    writePlan(dir, plan, 'docs/board/plan.json');
+
+    const out = await fs.readFile(boardFile, 'utf8');
+    expect(out).toBe('{\n  "tickets": [\n    {\n      "id": "KK-01",\n      "status": "done"\n    }\n  ]\n}');
   });
 });
 
