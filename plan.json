@@ -3369,7 +3369,7 @@
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts in the commit body."
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-07-28 by the Kryptkeeper dry-run (EXECUTION_ORDER.md Phase B1). FOURTH undeclared dependency found this session by attempting the thing rather than reasoning about it \u2014 after export-routes' signingKey, W9-06's unreachable imports, and W9-08's content-pack signature. The dry-run itself succeeded once models.json was copied: 0 errors / 0 warnings against Kryptkeeper's 125-ticket board, with boardPath proven honoured (bogus path -> ENOENT on that exact name; real path -> 125 tickets, project=kryptkeeper). See [[feedback-ticket-scope-reachability]].",
       "stories": []
     }
