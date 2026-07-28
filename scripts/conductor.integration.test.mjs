@@ -1,6 +1,9 @@
 // conductor.integration.test.mjs — W9-10 acceptance bullet 4: "A test drives
 // the conductor against a fixture repo whose board is NOT at the root,
 // proving the path is honoured end to end rather than only in the loader."
+// Also covers W9-12: importing the conductor into a fresh repo with ONLY
+// its two vendored files (conductor.mjs, conductor-lib.mjs) plus that
+// repo's own conductor.config.json — no separate models.json required.
 //
 // conductor.mjs can't be imported directly (it runs main() as a top-level
 // side effect — see conductor-lib.mjs's header). So this drives the real
@@ -12,8 +15,11 @@
 // ROOT inside conductor.mjs is derived from the script's OWN file location
 // (dirname(fileURLToPath(import.meta.url))), not from cwd — so the fixture
 // needs its own copy of scripts/conductor.mjs + conductor-lib.mjs alongside
-// a fixture conductor.config.json, scripts/models.json (read unconditionally
-// at module load, before --lint's early exit), and .nvmrc.
+// a fixture conductor.config.json and .nvmrc. W9-12: deliberately does NOT
+// vendor a scripts/models.json — that used to be a THIRD required file,
+// read unconditionally at module load before --lint's early exit; the fix
+// folds model routing into conductor.config.json (with a built-in default
+// ladder in DEFAULT_CONFIG.models for repos that omit it entirely).
 import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -32,19 +38,18 @@ describe('conductor.mjs integration: configurable boardPath (W9-10)', () => {
     }
   });
 
-  async function buildFixture(boardPath, board) {
+  async function buildFixture(boardPath, board, configOverrides = {}) {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-conductor-fixture-'));
     scratchDirs.push(dir);
 
     await fs.mkdir(path.join(dir, 'scripts'), { recursive: true });
     await fs.copyFile(path.join(THIS_DIR, 'conductor.mjs'), path.join(dir, 'scripts', 'conductor.mjs'));
     await fs.copyFile(path.join(THIS_DIR, 'conductor-lib.mjs'), path.join(dir, 'scripts', 'conductor-lib.mjs'));
-    await fs.writeFile(
-      path.join(dir, 'scripts', 'models.json'),
-      JSON.stringify({ maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: 'opus' }),
-    );
     await fs.writeFile(path.join(dir, '.nvmrc'), '22\n');
-    await fs.writeFile(path.join(dir, 'conductor.config.json'), JSON.stringify({ boardPath }, null, 2));
+    await fs.writeFile(
+      path.join(dir, 'conductor.config.json'),
+      JSON.stringify({ boardPath, ...configOverrides }, null, 2),
+    );
 
     const boardFile = path.join(dir, boardPath);
     await fs.mkdir(path.dirname(boardFile), { recursive: true });
@@ -117,5 +122,35 @@ describe('conductor.mjs integration: configurable boardPath (W9-10)', () => {
 
     expect(out).toContain('0 error(s)');
     expect(code).toBe(0);
+  });
+
+  it('W9-12: imports and lints with ONLY the two vendored files + conductor.config.json — no scripts/models.json, no "models" key at all — proving a fresh repo can import the harness with the config alone', async () => {
+    const board = { version: 1, tickets: [] };
+    const dir = await buildFixture('plan.json', board);
+
+    await expect(fs.access(path.join(dir, 'scripts', 'models.json'))).rejects.toThrow();
+
+    const { out, code } = runLint(dir);
+
+    expect(out).toContain('0 error(s)');
+    expect(code).toBe(0);
+  });
+
+  it('W9-12: a malformed "models" object in conductor.config.json produces an actionable startup error naming the missing roles, not a raw ENOENT/stack trace', async () => {
+    const board = { version: 1, tickets: [] };
+    // Only 'maker' set — cheap/reviewer/security/escalate are missing, same
+    // shape of defect as a hand-edited or partially-migrated config.
+    const dir = await buildFixture('plan.json', board, { models: { maker: 'sonnet' } });
+
+    const { out, code } = runLint(dir);
+
+    expect(out).toContain('invalid model routing');
+    expect(out).toContain('models.cheap is required');
+    expect(out).toContain('models.reviewer is required');
+    expect(out).toContain('models.security is required');
+    expect(out).toContain('models.escalate is required');
+    expect(out).not.toContain('ENOENT');
+    expect(out).not.toContain('at ModuleJob.run');
+    expect(code).toBe(1);
   });
 });

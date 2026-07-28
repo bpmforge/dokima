@@ -20,6 +20,7 @@ import {
   parseJson,
   planPath,
   serializePlan,
+  validateModels,
   wave,
   writePlan,
 } from './conductor-lib.mjs';
@@ -380,6 +381,56 @@ describe('conductor-lib: config merge', () => {
 
     expect(merged.install).toEqual(['npm', ['ci']]);
     expect(merged.gates).toEqual(DEFAULT_CONFIG.gates);
+  });
+});
+
+describe('conductor-lib: model routing config (W9-12)', () => {
+  it('DEFAULT_CONFIG.models has every role the conductor dispatches sessions to, and passes its own validator', () => {
+    expect(validateModels(DEFAULT_CONFIG.models)).toEqual([]);
+    for (const role of ['maker', 'cheap', 'reviewer', 'security', 'escalate']) {
+      expect(typeof DEFAULT_CONFIG.models[role]).toBe('string');
+    }
+  });
+
+  it('validateModels accepts a fully-specified models object', () => {
+    const models = { maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: 'opus' };
+    expect(validateModels(models)).toEqual([]);
+  });
+
+  it('validateModels reports every missing required role by name, not just the first', () => {
+    const errors = validateModels({ maker: 'sonnet' });
+    expect(errors).toHaveLength(4);
+    expect(errors.some((e) => e.includes('models.cheap'))).toBe(true);
+    expect(errors.some((e) => e.includes('models.reviewer'))).toBe(true);
+    expect(errors.some((e) => e.includes('models.security'))).toBe(true);
+    expect(errors.some((e) => e.includes('models.escalate'))).toBe(true);
+  });
+
+  it('validateModels rejects an empty-string role (present key, useless value)', () => {
+    const models = { maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: '   ' };
+    const errors = validateModels(models);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('models.escalate');
+  });
+
+  it('validateModels rejects a non-object (the shape a missing "models" key would have if a caller forgot the DEFAULT_CONFIG fallback)', () => {
+    expect(validateModels(undefined)).toHaveLength(1);
+    expect(validateModels(null)).toHaveLength(1);
+    expect(validateModels('sonnet')).toHaveLength(1);
+  });
+
+  it('mergeConfig folds a project\'s "models" override in like any other config key (full replace, not deep-merge) — conductor.config.json is the one place model routing lives', () => {
+    const merged = mergeConfig(DEFAULT_CONFIG, {
+      models: { maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: 'opus', cheapLanes: ['content'] },
+    });
+    expect(merged.models.cheapLanes).toEqual(['content']);
+    expect(validateModels(merged.models)).toEqual([]);
+  });
+
+  it('mergeConfig with no "models" override falls back to DEFAULT_CONFIG.models — a project with no models key still gets a valid ladder', () => {
+    const merged = mergeConfig(DEFAULT_CONFIG, { branchPrefix: 'kk/' });
+    expect(merged.models).toEqual(DEFAULT_CONFIG.models);
+    expect(validateModels(merged.models)).toEqual([]);
   });
 });
 

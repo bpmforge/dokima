@@ -44,7 +44,47 @@ export const DEFAULT_CONFIG = {
     'pnpm-lock.yaml',
     'package.json',
   ],
+  // W9-12: per-role model routing used to live in a separate scripts/models.json,
+  // read unconditionally at module scope — a repo importing only conductor.mjs +
+  // conductor-lib.mjs + conductor.config.json crashed with a bare ENOENT before
+  // --lint or any argument parsing ran. Folding it in here makes the config
+  // self-sufficient: a project's conductor.config.json can override any subset of
+  // these via a top-level `models` key (mergeConfig replaces the whole object, same
+  // shallow-merge convention as `gates`/`alwaysOk`), or omit `models` entirely and
+  // get a working generic ladder out of the box.
+  models: {
+    maker: 'sonnet',
+    cheap: 'haiku',
+    reviewer: 'sonnet',
+    security: 'sonnet',
+    escalate: 'opus',
+    cheapLanes: [],
+    cheapMaxPoints: 0,
+  },
 };
+
+/**
+ * Validates a resolved `models` config (DEFAULT_CONFIG.models merged with a
+ * project's conductor.config.json override) has every role the conductor
+ * dispatches sessions to. Returns an array of human-readable problem
+ * descriptions — empty when valid. Pure/side-effect-free so the caller
+ * decides how to fail (conductor.mjs turns a non-empty result into a startup
+ * error naming the missing keys, instead of an undefined-model crash deep
+ * inside a session run).
+ */
+export function validateModels(models) {
+  const errors = [];
+  if (models === null || typeof models !== 'object') {
+    return ["conductor.config.json's \"models\" key must be an object (or omitted to use the built-in default ladder)"];
+  }
+  for (const role of ['maker', 'cheap', 'reviewer', 'security', 'escalate']) {
+    const v = models[role];
+    if (typeof v !== 'string' || v.trim() === '') {
+      errors.push(`models.${role} is required and must be a non-empty string (got ${JSON.stringify(v)})`);
+    }
+  }
+  return errors;
+}
 
 /** Shallow-merges a project's conductor.config.json over the defaults (same as the original `{ ...DEFAULT_CONFIG, ...override }`). */
 export function mergeConfig(defaults, override) {
