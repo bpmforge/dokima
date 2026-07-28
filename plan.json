@@ -3228,8 +3228,7 @@
         "apps/server/src/api/pipeline/pipeline-routes/**"
       ],
       "depends_on": [
-        "W9-06",
-        "W9-08"
+        "W9-06"
       ],
       "acceptance": [
         "A phase-advance route calls `decideAdvance` (packages/pipeline/src/phases/advance.ts) with the real `deps.verifyReceipt` bound to `@shipwright/events`' `verifyReceipt`, passing the from-phase's CURRENT `PHASES[n].validators` for the gate receipt and `[]` for a waiver receipt, exactly as AdvanceDeps documents.",
@@ -3240,8 +3239,8 @@
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts reported in the commit body."
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "FILED 2026-07-27. Depends on W9-06 because decideAdvance is unusable without a real gate-receipt producer: called today it would either refuse every advance (gateReceiptId always null) or force minting a rubber-stamp receipt. decideAdvance's own logic is already pinned by packages/pipeline/src/phases/advance.test.ts and needs no change \u2014 this ticket is the caller plus the route, not a rewrite of the decision. No phase-advance flow exists anywhere in apps/server today (verified by grep), so this creates one rather than modifying one.",
+      "status": "in_progress",
+      "notes": "FILED 2026-07-27. Depends on W9-06 because decideAdvance is unusable without a real gate-receipt producer: called today it would either refuse every advance (gateReceiptId always null) or force minting a rubber-stamp receipt. decideAdvance's own logic is already pinned by packages/pipeline/src/phases/advance.test.ts and needs no change \u2014 this ticket is the caller plus the route, not a rewrite of the decision. No phase-advance flow exists anywhere in apps/server today (verified by grep), so this creates one rather than modifying one. | DEPENDENCY CORRECTED 2026-07-28: W9-08 was briefly added as a blocker on the reading that an ALLOWED advance cannot be shown until the real validate-mermaid emits a clean envelope. That overstated it. W9-06 runner.test.ts:63 already mints a clean gate receipt from a FIXTURE validator, and this ticket acceptance never required real content - criterion 3 asks for an end-to-end demonstration, which a fixture satisfies. What W9-08 actually blocks is PRODUCTION usability: until it merges, a real phase gate over the real validator set always normalizes to exitCode 2, so the route will refuse every advance in prod. That is a shipping caveat to state honestly, not a reason to withhold the code - and explicitly NOT a licence to special-case exitCode 2 in the route to make it pass.",
       "stories": [
         "US-102",
         "US-407"
