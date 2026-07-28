@@ -134,8 +134,39 @@ const loadPlan = (dir = ROOT) => loadPlanFrom(dir, CONFIG.boardPath);
 // always includes CONFIG.boardPath even if a project's alwaysOk override omits it.
 const ALWAYS_OK = alwaysOkPatterns(CONFIG).map(globToRegex);
 
+/**
+ * Ticket ids that already have a parked branch carrying commits.
+ *
+ * Under --no-merge a finished ticket's `done` status is committed only to its
+ * own branch, so the board at ROOT still reads `todo`. The in-process
+ * parkedThisRun set stops a re-claim within one run, but a RESTART begins with
+ * an empty set and re-claims the ticket — and makeWorktree's pre-clean deletes
+ * and recreates the branch, destroying the parked work. That happened to
+ * kk/s-02 on Kryptkeeper 2026-07-28 (3 commits, recovered from the object
+ * store only by luck), and the manual workaround — hand-adding every finished
+ * ticket to holdTickets and renaming its branch out of the prefix — had to be
+ * repeated for five tickets before this existed.
+ *
+ * Reading it off the branches makes restarts safe without bookkeeping.
+ */
+function parkedBranchIds() {
+  if (DO_MERGE) return []; // merged runs delete the branch; nothing to protect
+  const ids = [];
+  for (const b of git('for-each-ref', '--format=%(refname:short)', 'refs/heads/').split('\n')) {
+    if (!b || !b.startsWith(CONFIG.branchPrefix)) continue;
+    try {
+      if (Number(git('rev-list', '--count', `main..${b}`)) > 0) {
+        ids.push(b.slice(CONFIG.branchPrefix.length).toUpperCase());
+      }
+    } catch { /* branch vanished between listing and counting */ }
+  }
+  return ids;
+}
+
 function claimable(plan, excluded = []) {
-  return claimableTickets(plan, { waves: WAVES, hold: CONFIG.holdTickets ?? [], excluded });
+  const parked = parkedBranchIds();
+  if (parked.length) log('claim.skip-parked', { msg: `already parked with commits: ${parked.join(', ')}` });
+  return claimableTickets(plan, { waves: WAVES, hold: CONFIG.holdTickets ?? [], excluded: [...excluded, ...parked] });
 }
 
 function pickModel(t) {
