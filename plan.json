@@ -3320,7 +3320,7 @@
         "Full gate green including e2e; test counts in the commit body."
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": "FILED 2026-07-28 while preparing EXECUTION_ORDER.md Phase B1 (conductor on Kryptkeeper). Blocks that work: the conductor literally cannot find Kryptkeeper's board. Note the gates array is ALREADY fully replaceable (`CONFIG.gates`, line 237), so no work is needed to let a project skip a lint gate \u2014 an earlier framing of this as a third 'gate profile' ticket was wrong and is not filed.",
       "stories": []
     },
@@ -3345,7 +3345,7 @@
         "Full gate green including e2e; test counts in the commit body."
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-07-28. Same defect the orchestrator introduced by hand earlier this session and reverted (see docs/STATUS.md 2026-07-27) \u2014 but systematic rather than one-off: every conductor status write churns the whole board. Caught while preparing Phase B1. A first simulation of this used Python's json.dumps, which defaults to ensure_ascii=True and therefore MATCHED the file, hiding the bug; re-running with real Node showed the true divergence. Simulate with the same engine as the thing under test.",
       "stories": []
     }
