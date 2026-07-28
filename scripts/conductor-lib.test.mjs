@@ -23,6 +23,7 @@ import {
   serializePlan,
   claimableTickets,
   nodePinMismatch,
+  testSiblingWarning,
   validateModels,
   wave,
   writePlan,
@@ -598,5 +599,39 @@ describe('conductor-lib: claimableTickets — --no-merge must terminate', () => 
   it('tolerates a ticket with no depends_on field', () => {
     const t = T('S-01'); delete t.depends_on;
     expect(claimableTickets(plan(t)).map((x) => x.id)).toEqual(['S-01']);
+  });
+});
+
+describe('conductor-lib: testSiblingWarning — a ticket must be able to write its own tests', () => {
+  const GO = { source: '\\.go$', test: '_test\\.go$' };
+  const T = (scope) => ({ id: 'W6-01', write_scope: scope });
+
+  it('warns when implementation is in scope but no test sibling is', () => {
+    const w = testSiblingWarning(T(['internal/bootstrap/ha_coordinator.go']), GO);
+    expect(w).toMatch(/no test sibling/);
+    expect(w).toContain('ha_coordinator.go');
+  });
+
+  it('is quiet once the test sibling is in scope', () => {
+    expect(testSiblingWarning(
+      T(['internal/bootstrap/ha_coordinator.go', 'internal/bootstrap/ha_coordinator_test.go']), GO,
+    )).toBeNull();
+  });
+
+  it('is quiet for a docs- or config-only ticket', () => {
+    expect(testSiblingWarning(T(['docs/DATABASE.md', 'nginx.conf']), GO)).toBeNull();
+  });
+
+  it('is quiet for a test-only ticket', () => {
+    expect(testSiblingWarning(T(['internal/bootstrap/ha_coordinator_test.go']), GO)).toBeNull();
+  });
+
+  it('is off entirely when the project sets no testSibling config', () => {
+    expect(testSiblingWarning(T(['x.go']), null)).toBeNull();
+    expect(testSiblingWarning(T(['x.go']), {})).toBeNull();
+  });
+
+  it('handles a ticket with no write_scope', () => {
+    expect(testSiblingWarning({ id: 'X-1' }, GO)).toBeNull();
   });
 });

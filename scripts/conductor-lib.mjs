@@ -35,6 +35,10 @@ export const DEFAULT_CONFIG = {
   // skipped rather than fataling. Same defect class as W9-12's models.json:
   // an unconditional read of a Shipwright-shaped path at startup.
   nvmrcPath: '.nvmrc',
+  // Warn when a ticket may write implementation but not its test siblings.
+  // Off by default (null) so the script stays language-agnostic; a project
+  // opts in, e.g. { source: '\\.go$', test: '_test\\.go$' }.
+  testSibling: null,
   install: ['pnpm', ['install', '--prefer-offline']],
   gates: [
     ['pnpm', ['lint']],
@@ -118,6 +122,32 @@ export function claimableTickets(plan, { waves = null, hold = [], excluded = [] 
     .filter((t) => (t.depends_on ?? []).every((d) => done.has(d)))
     .filter((t) => !busyLanes.has(t.lane))
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+
+/**
+ * Lint rule: a ticket whose write_scope can touch implementation files but not
+ * their test siblings cannot add tests without tripping the out-of-scope gate.
+ *
+ * Kryptkeeper W6-01, 2026-07-28: the agent implemented HA leader election,
+ * wrote five table-driven tests plus a prove-the-negative red-check, verified
+ * them, then DELETED them and self-blocked — because write_scope listed three
+ * .go files and no _test.go, and ALWAYS_OK carries no test pattern. It obeyed
+ * MASTER_PROMPT's "never self-amend write_scope" rule and the harness punished
+ * it for it. Catching this at filing time costs nothing; catching it mid-ticket
+ * costs a full session and loses the tests.
+ *
+ * Returns a warning string, or null when the ticket is fine or the check is off.
+ */
+export function testSiblingWarning(ticket, cfg) {
+  if (!cfg || !cfg.source || !cfg.test) return null;
+  const sourceRe = new RegExp(cfg.source);
+  const testRe = new RegExp(cfg.test);
+  const scope = ticket.write_scope || [];
+  const impl = scope.filter((f) => sourceRe.test(f) && !testRe.test(f));
+  if (!impl.length) return null;
+  if (scope.some((f) => testRe.test(f))) return null;
+  return `${ticket.id}: write_scope has implementation (${impl.join(', ')}) but no test sibling matching ${cfg.test} — the agent cannot add tests without an out-of-scope gate failure`;
 }
 
 /**

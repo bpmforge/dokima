@@ -51,6 +51,7 @@ import {
   validateModels,
   nodePinMismatch,
   claimableTickets,
+  testSiblingWarning,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -183,6 +184,7 @@ function lintPlan(plan) {
       if (t[k] === undefined) errors.push(`${t.id || '?'}: missing '${k}'`);
     }
     if (t.write_scope && !t.write_scope.length) errors.push(`${t.id}: empty write_scope`);
+    { const w = testSiblingWarning(t, CONFIG.testSibling); if (w) warnings.push(w); }
     if (t.acceptance && !t.acceptance.length) errors.push(`${t.id}: empty acceptance`);
     for (const d of t.depends_on || []) if (!ids.has(d)) errors.push(`${t.id}: depends_on unknown ticket '${d}'`);
 
