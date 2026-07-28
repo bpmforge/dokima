@@ -3293,7 +3293,7 @@
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts in the commit body."
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": "FILED 2026-07-28. Prerequisite for W9-10 and W9-11, both of which modify scripts/conductor.mjs \u2014 a file with ZERO guardrails today (not linted, not tested, and vitest would not even collect a test placed beside it). Changing the build harness Shipwright itself depends on, with no lint and no tests, is the risk this ticket removes first. Surfaced while preparing the Kryptkeeper conductor (EXECUTION_ORDER.md Phase B1).",
       "stories": []
     },
@@ -3320,7 +3320,7 @@
         "Full gate green including e2e; test counts in the commit body."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-07-28 while preparing EXECUTION_ORDER.md Phase B1 (conductor on Kryptkeeper). Blocks that work: the conductor literally cannot find Kryptkeeper's board. Note the gates array is ALREADY fully replaceable (`CONFIG.gates`, line 237), so no work is needed to let a project skip a lint gate \u2014 an earlier framing of this as a third 'gate profile' ticket was wrong and is not filed.",
       "stories": []
     },
