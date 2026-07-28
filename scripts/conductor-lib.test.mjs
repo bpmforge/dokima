@@ -3,9 +3,10 @@
 // extraction was necessary: conductor.mjs runs main() as a top-level side
 // effect on import, so its helpers cannot be tested by importing the file
 // directly).
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_CONFIG,
@@ -180,6 +181,106 @@ describe('conductor-lib: configurable boardPath (W9-10)', () => {
     expect(prompt).toContain('working EXACTLY ONE ticket from plan.json');
     expect(prompt).toContain('Set the ticket in_progress in plan.json first');
     expect(prompt).toContain('set the ticket done in plan.json');
+  });
+});
+
+// W9-11: the conductor's board writes must be byte-identical to the file
+// they replace apart from the statuses actually changed. A JSON.parse
+// round-trip comparison CANNOT catch this (W9-09 hit exactly that trap:
+// breaking serializePlan's indent still passed a round-trip test) — these
+// tests assert raw bytes, against the real repo-root plan.json (493KB+),
+// not a toy fixture, per the ticket's own instruction.
+const REAL_PLAN_PATH = fileURLToPath(new URL('../plan.json', import.meta.url));
+
+describe('conductor-lib: byte-preserving board writes (W9-11)', () => {
+  it('DEMONSTRATES THE DEFECT: naive JSON.stringify(plan, null, 2) + "\\n" diverges from the real plan.json by thousands of bytes', () => {
+    const original = readFileSync(REAL_PLAN_PATH, 'utf8');
+    const plan = JSON.parse(original);
+
+    const naive = `${JSON.stringify(plan, null, 2)}\n`;
+
+    const delta = Math.abs(Buffer.byteLength(naive, 'utf8') - Buffer.byteLength(original, 'utf8'));
+    expect(delta).toBeGreaterThan(2000);
+  });
+
+  it('serializePlan(plan, original) reproduces the real plan.json byte-for-byte when nothing changed', () => {
+    const original = readFileSync(REAL_PLAN_PATH, 'utf8');
+    const plan = JSON.parse(original);
+
+    const out = serializePlan(plan, original);
+
+    expect(out).toBe(original);
+  });
+
+  it('changing exactly one ticket status produces a diff touching only that ticket\'s status line', () => {
+    const original = readFileSync(REAL_PLAN_PATH, 'utf8');
+    const plan = JSON.parse(original);
+    const row = plan.tickets.find((t) => t.id === 'W9-09');
+    expect(row.status).toBe('done'); // sanity: real starting value this test flips
+    row.status = 'blocked';
+
+    const out = serializePlan(plan, original);
+
+    const origLines = original.split('\n');
+    const outLines = out.split('\n');
+    expect(outLines.length).toBe(origLines.length); // a status swap never adds/removes lines
+    const changedLineIdxs = origLines
+      .map((line, i) => (line === outLines[i] ? -1 : i))
+      .filter((i) => i !== -1);
+    expect(changedLineIdxs).toHaveLength(1);
+    expect(origLines[changedLineIdxs[0]]).toBe('      "status": "done",');
+    expect(outLines[changedLineIdxs[0]]).toBe('      "status": "blocked",');
+  });
+
+  it('preserves the file\'s existing convention: ASCII-only source (real plan.json\'s \\u00a7-style escaping) stays ASCII-escaped, even for brand-new non-ASCII content not previously in the file', () => {
+    const original = '{\n  "version": 1,\n  "note": "no unicode here"\n}';
+    const plan = JSON.parse(original);
+    plan.note = 'now has § and —';
+
+    const out = serializePlan(plan, original);
+
+    expect(out).toContain('\\u00a7');
+    expect(out).toContain('\\u2014');
+    expect(out).not.toContain('§');
+    expect(out).not.toContain('—');
+  });
+
+  it('preserves the file\'s existing convention: a source that already writes literal UTF-8 is NOT forced into ASCII-escaping', () => {
+    const original = '{\n  "version": 1,\n  "note": "§ literal — utf8"\n}';
+    const plan = JSON.parse(original);
+
+    const out = serializePlan(plan, original);
+
+    expect(out).toContain('§');
+    expect(out).toContain('—');
+    expect(out).not.toContain('\\u00a7');
+    expect(out).not.toContain('\\u2014');
+  });
+
+  it('preserves the absence of a trailing newline when the source file has none (the real plan.json has none)', () => {
+    const original = '{\n  "version": 1\n}';
+    const plan = JSON.parse(original);
+
+    const out = serializePlan(plan, original);
+
+    expect(out.endsWith('\n')).toBe(false);
+  });
+
+  it('preserves a trailing newline when the source file has one', () => {
+    const original = '{\n  "version": 1\n}\n';
+    const plan = JSON.parse(original);
+
+    const out = serializePlan(plan, original);
+
+    expect(out.endsWith('\n')).toBe(true);
+  });
+
+  it('without an original (e.g. writing a brand-new board), falls back to literal UTF-8 with a trailing newline — unchanged pre-W9-11 default', () => {
+    const plan = { version: 1, tickets: [] };
+
+    const out = serializePlan(plan);
+
+    expect(out).toBe('{\n  "version": 1,\n  "tickets": []\n}\n');
   });
 });
 

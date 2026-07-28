@@ -351,7 +351,8 @@ function resetStatus(wt, id) {
   const row = plan.tickets.find((x) => x.id === id);
   if (!row || row.status === 'in_progress') return;
   row.status = 'in_progress';
-  writeFileSync(planPath(wt, CONFIG.boardPath), serializePlan(plan));
+  const boardFile = planPath(wt, CONFIG.boardPath);
+  writeFileSync(boardFile, serializePlan(plan, readFileSync(boardFile, 'utf8')));
   // Best-effort: if nothing changed to commit (e.g. status was already reset
   // on a prior pass), git exits non-zero — not an error worth surfacing here.
   try { gitIn(wt, 'add', CONFIG.boardPath); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
@@ -407,7 +408,8 @@ function markBlocked(t, gaps, branch, wt) {
   // notes is historically string-or-array (review-pass tickets use strings) — normalize.
   if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
   row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts. Branch ${branch} kept. Gaps: ${gaps.join(' | ').slice(0, 600)}`);
-  writeFileSync(planPath(ROOT, CONFIG.boardPath), serializePlan(plan));
+  const boardFile = planPath(ROOT, CONFIG.boardPath);
+  writeFileSync(boardFile, serializePlan(plan, readFileSync(boardFile, 'utf8')));
   git('add', CONFIG.boardPath); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
   removeWorktree(wt);
   // Rename the kept evidence branch OUT of the sw/ namespace: supervise.sh's crash
