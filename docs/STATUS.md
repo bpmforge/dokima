@@ -611,3 +611,20 @@ TS2307: Cannot find module '@shipwright/validators' or its corresponding type de
 **Kryptkeeper is now conductor-ready and pushed** (`41dca92`, both remotes): harness vendored, `conductor.config.json` with `boardPath`, gates `go build ./...` + `go test ./...`. **Lint deliberately omitted** — golangci-lint is not installed there and has no config (Kryptkeeper's own W1-07), and since `CONFIG.gates` is fully replaceable a project omits what it cannot run rather than red-failing every ticket on a missing tool. Conductor runtime artifacts gitignored, mirroring this repo. **Importing the harness launches nothing** — starting an unattended run on a commercial codebase stays an explicit founder decision.
 
 **Also pushed: `sw/w9-08`.** The branch was flagged as having a commit on no remote — a *complete, green, founder-blocked* ticket existing only on one disk. Now on both remotes at `75f90c4`. Blocked work still deserves a backup.
+
+2026-07-28 (5th) **Dogfood findings board FULLY TRIAGED — 55 findings → 16 distinct claims → 4 real issues.** The last 20 findings (13 claims) are done; nothing on that board is now unassessed.
+
+| Cluster | Findings | Distinct | Real |
+|---|---|---|---|
+| CRITICAL — export-bundle receipt signatures | 11 | 1 | 0 (false positive) |
+| HIGH — decision-ledger atomicity | 11 | 1 | **1 real bug**, fixed |
+| MEDIUM — auth bypass outside decisions | 10 | 1 | 0 (false positive, and backwards) |
+| Stragglers (this pass) | 20 | 13 | **3 real**, all LOW |
+
+**The one that is live, not theoretical: CI's supply-chain gate is currently RED.** `pnpm audit --prod --audit-level high` — the exact command in `.github/workflows/ci.yml:181-202` — exits **1** with 3 high production advisories: `fast-uri` host-confusion ×2 and `find-my-way` HTTP/2 DDoS, both transitive through fastify. Severity for this system is genuinely low (localhost-bound, single-operator, nothing directly chosen), but the gate is failing *now*, which is a fact about CI rather than a judgement. Fix: `pnpm update` or a `pnpm.overrides` entry, then re-run the gate command. *(Method note: a first check piped the command into `tail`, so `$?` captured tail's exit and reported 0 — the pipe swallowed the failure. Re-run unpiped to see exit 1. Third instance today of a shell reporting success for something that failed.)*
+
+**The other two real ones, both LOW.** No `Content-Security-Policy` header anywhere — notable because `docs/TECH_STACK.md:107-111` already commits to `script-src 'self'`, making this an unmet internal commitment rather than a generic best practice; compensating controls are strong (zero `dangerouslySetInnerHTML`, `isSafeHref()` scheme allowlist, hand-rolled Mermaid SVG via real React elements). And `EXPORT_BUNDLE_VERSION = 1` is defined independently in `apps/server/src/api/export-bundle-types.ts:11` and `packages/shared/src/export/types.ts:10`, kept in sync by hand with no test cross-checking them — a mismatch would fail loudly at import validation rather than corrupt silently, but it is unenforced.
+
+**Ten of thirteen were false positives, and four of the recommended fixes were worse than the findings.** All three healthz claims recommend adding `checkAuth` to `/healthz`, which would **break liveness monitoring**; their dependency-verification half is a no-op, since `healthz.ts:12-16` already calls `isDbOpen()` and `wsHub.isUp` and returns 503 `{status:'degraded'}` (proven live at `server.test.ts:162-172`). The CORS fix would *add* `Access-Control-Allow-Origin` headers where the app deliberately sends none and rejects cross-origin at the allowlist. The XSS fix would replace a renderer that never produces an HTML string with one that does, plus a sanitizer to keep correctly configured forever. "Missing rate limiting on `/api/v1/auth/*`" names a route that does not exist — there is no login endpoint; auth is a static per-request bearer check, not a credential-guessing surface.
+
+**Third cluster running where the remedy was more dangerous than the finding.** Worth carrying into any future triage: assess the recommended fix as its own claim, not as a given.
