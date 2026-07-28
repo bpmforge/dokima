@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * conductor.mjs — unattended, reusable ticket executor for a plan.json board.
+ * conductor.mjs — unattended, reusable ticket executor for a board file
+ * (default plan.json at the repo root; W9-10: override via conductor.config.json's
+ * `boardPath` for a repo whose board lives elsewhere, e.g. docs/board/plan.json).
  *
  * The M28 Conductor pattern: THE CONDUCTOR HOLDS THE GATES, NOT THE AGENTS.
  * Each ticket runs in a fresh `claude -p` session inside its OWN git worktree
@@ -16,7 +18,7 @@
  *     [--max-tickets N] [--session-minutes 45] [--no-merge] [--no-push]
  *     [--dry-run] [--escalate] [--lint]
  *
- * --lint          validate plan.json and exit (also runs automatically at start)
+ * --lint          validate the board (CONFIG.boardPath) and exit (also runs automatically at start)
  * Stop any time:  `touch STOP` in the repo root (checked between sessions).
  */
 
@@ -34,6 +36,9 @@ import {
   nonWildPrefix,
   globToRegex,
   parseJson,
+  alwaysOkPatterns,
+  doneCheckGap,
+  codingPrompt,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -81,10 +86,11 @@ const git = (...a) => sh('git', a).trim();               // runs in ROOT (stays 
 const gitIn = (dir, ...a) => sh('git', a, { cwd: dir }).trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const loadPlan = (dir = ROOT) => loadPlanFrom(dir);
+const loadPlan = (dir = ROOT) => loadPlanFrom(dir, CONFIG.boardPath);
 
-// Shared infra any ticket may touch regardless of write_scope (config-driven).
-const ALWAYS_OK = CONFIG.alwaysOk.map(globToRegex);
+// Shared infra any ticket may touch regardless of write_scope (config-driven);
+// always includes CONFIG.boardPath even if a project's alwaysOk override omits it.
+const ALWAYS_OK = alwaysOkPatterns(CONFIG).map(globToRegex);
 
 function claimable(plan) {
   const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
@@ -215,7 +221,7 @@ function runValidators(wt, changed, names) {
 function runGates(t, branch, wt) {
   const gaps = [];
   const row = loadPlan(wt).tickets.find((x) => x.id === t.id);
-  if (!row || row.status !== 'done') gaps.push(`plan.json status is '${row?.status}', expected 'done'`);
+  if (!row || row.status !== 'done') gaps.push(doneCheckGap(row?.status, CONFIG.boardPath));
   if (Number(git('rev-list', '--count', `main..${branch}`)) < 1) gaps.push('no commits on ticket branch');
   const changed = git('diff', '--name-only', `main...${branch}`).split('\n').filter(Boolean);
   const scopeRes = t.write_scope.map(globToRegex);
@@ -239,21 +245,9 @@ function runGates(t, branch, wt) {
 }
 
 // ---------- prompts ----------
-const codingPrompt = (t, feedback) => `Read CLAUDE.md, MASTER_PROMPT.md and PLAYBOOK.md in this repo and obey them.
-You are working EXACTLY ONE ticket from plan.json and nothing else.
-
-TICKET ${t.id} — ${t.title}
-lane: ${t.lane} · write_scope: ${JSON.stringify(t.write_scope)}
-acceptance:
-${t.acceptance.map((a, i) => `  ${i + 1}. ${a}`).join('\n')}
-${feedback ? `\nA PREVIOUS ATTEMPT FAILED ITS GATES. You may be resuming partial work — inspect the current tree first. Gate failures to fix:\n${feedback.map((g) => `- ${g}`).join('\n')}\n` : ''}
-Rules of engagement:
-- You are already on the correct git branch in an isolated worktree. Never switch branches, never touch main, never push.
-- Set the ticket in_progress in plan.json first (commit), implement with tests per PLAYBOOK, stage explicit paths only, commit in small steps.
-- Run the full gate yourself before closing (the project's lint/typecheck/test).
-- When everything passes: set the ticket done in plan.json + append the docs/STATUS.md line (same commit), then stop.
-- If genuinely blocked after one honest attempt: set status blocked with a notes entry explaining exactly what is missing, then stop.
-- An external conductor independently verifies your work; nothing you print is trusted, only repo state.`;
+// codingPrompt lives in conductor-lib.mjs (pure string templating, unit-tested
+// there); called below with CONFIG.boardPath so the agent is told the real
+// board location.
 
 const reviewPrompt = (t, diff, prior = [], advisory = []) => `You are an independent code reviewer (you did NOT write this code). Review the diff for ticket ${t.id} — ${t.title}.
 Acceptance criteria:\n${t.acceptance.map((a) => `- ${a}`).join('\n')}
@@ -310,7 +304,7 @@ async function executeTicket(t) {
       log('ticket.retry', { ticket: t.id, msg: `attempt ${i + 1} on ${model}` });
       resetStatus(wt, t.id);
     }
-    await runSession(codingPrompt(t, gaps), model, `code:${t.id}`, wt);
+    await runSession(codingPrompt(t, gaps, CONFIG.boardPath), model, `code:${t.id}`, wt);
     const g = runGates(t, branch, wt);
     gaps = g.gaps;
     if (gaps.length) { log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) }); continue; }
@@ -357,10 +351,10 @@ function resetStatus(wt, id) {
   const row = plan.tickets.find((x) => x.id === id);
   if (!row || row.status === 'in_progress') return;
   row.status = 'in_progress';
-  writeFileSync(planPath(wt), serializePlan(plan));
+  writeFileSync(planPath(wt, CONFIG.boardPath), serializePlan(plan));
   // Best-effort: if nothing changed to commit (e.g. status was already reset
   // on a prior pass), git exits non-zero — not an error worth surfacing here.
-  try { gitIn(wt, 'add', 'plan.json'); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
+  try { gitIn(wt, 'add', CONFIG.boardPath); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
 }
 
 function pushRemotes(ticket) {
@@ -413,8 +407,8 @@ function markBlocked(t, gaps, branch, wt) {
   // notes is historically string-or-array (review-pass tickets use strings) — normalize.
   if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
   row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts. Branch ${branch} kept. Gaps: ${gaps.join(' | ').slice(0, 600)}`);
-  writeFileSync(planPath(ROOT), serializePlan(plan));
-  git('add', 'plan.json'); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
+  writeFileSync(planPath(ROOT, CONFIG.boardPath), serializePlan(plan));
+  git('add', CONFIG.boardPath); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
   removeWorktree(wt);
   // Rename the kept evidence branch OUT of the sw/ namespace: supervise.sh's crash
   // cleanup deletes sw/* branches on every restart, which was silently destroying
@@ -472,7 +466,7 @@ async function main() {
   // plan lint — always, and exit early on --lint
   const { errors, warnings } = lintPlan(loadPlan());
   for (const w of warnings) log('lint.warn', { msg: w });
-  if (errors.length) { for (const e of errors) log('lint.error', { msg: e }); if (!DRY) { console.error(`plan.json has ${errors.length} lint error(s) — fix before running`); process.exit(2); } }
+  if (errors.length) { for (const e of errors) log('lint.error', { msg: e }); if (!DRY) { console.error(`${CONFIG.boardPath} has ${errors.length} lint error(s) — fix before running`); process.exit(2); } }
   if (LINT_ONLY) { log('lint.done', { msg: `${errors.length} error(s), ${warnings.length} warning(s)` }); process.exit(errors.length ? 2 : 0); }
 
   for (const bin of ['claude', 'git']) {
