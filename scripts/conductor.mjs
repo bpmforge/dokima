@@ -313,6 +313,28 @@ function makeWorktree(t) {
   try { git('branch', '-D', branch); } catch { /* intentional: no prior branch to delete */ }
   mkdirSync(WT_BASE, { recursive: true });
   git('worktree', 'add', '-q', '-b', branch, wt, 'main');
+  // Provision the tree the AGENT works in.
+  //
+  // CONFIG.install also runs in runGates(), but that is the conductor's own
+  // post-session verification pass — by then the agent has already finished.
+  // A fresh worktree has no node_modules/vendored deps, so without this the
+  // agent cannot run the project's own lint/test command, and an honest agent
+  // does exactly what the prompt tells it to: sets the ticket `blocked`.
+  // Observed on Kryptkeeper 2026-07-28 — every ui-lane ticket blocked this
+  // way (W3-02, W5-08), each burning a retry session first, with seven more
+  // queued behind the same wall.
+  //
+  // Non-fatal: a failed install is logged, not thrown. The agent may still do
+  // useful work, and runGates() re-runs install and will surface a real
+  // breakage as a gap.
+  if (!DRY && existsSync(resolve(wt, CONFIG.toolchainMarker))) {
+    try {
+      sh(CONFIG.install[0], CONFIG.install[1], { cwd: wt, timeout: 10 * 60_000 });
+      log('worktree.install', { ticket: t.id, msg: 'dependencies installed for the agent session' });
+    } catch (e) {
+      log('worktree.install.warn', { ticket: t.id, msg: String(e.stdout || e.message).slice(-300) });
+    }
+  }
   return { branch, wt };
 }
 function removeWorktree(wt) {
