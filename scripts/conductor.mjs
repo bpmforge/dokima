@@ -49,6 +49,7 @@ import {
   doneCheckGap,
   codingPrompt,
   validateModels,
+  nodePinMismatch,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -512,11 +513,23 @@ async function main() {
   for (const bin of ['claude', 'git']) {
     try { sh('which', [bin]); } catch { console.error(`missing prerequisite: ${bin}`); process.exit(1); }
   }
-  // W3-15: refuse a Node that doesn't match .nvmrc — a mismatch ABI-breaks better-sqlite3.
-  const nvmrc = readFileSync('.nvmrc', 'utf8').trim();
-  if (!process.version.startsWith(`v${nvmrc}.`)) {
-    console.error(`node ${process.version} != .nvmrc v${nvmrc}.x — fix PATH/fnm before running (W3-15)`);
-    process.exit(1);
+  // W3-15: refuse a Node that doesn't match the project's pin — a mismatch
+  // ABI-breaks native modules (better-sqlite3 here). The pin's LOCATION is
+  // project-specific (CONFIG.nvmrcPath), and a project that pins nowhere is
+  // skipped rather than refused: this used to be a bare readFileSync('.nvmrc')
+  // that fataled any repo without a root .nvmrc — the same portability defect
+  // W9-12 fixed for models.json, found the same way, by an external import.
+  // Resolved against ROOT, not cwd, so the check does not depend on where the
+  // conductor was invoked from.
+  if (CONFIG.nvmrcPath) {
+    const pinFile = resolve(ROOT, CONFIG.nvmrcPath);
+    if (existsSync(pinFile)) {
+      const mismatch = nodePinMismatch(process.version, readFileSync(pinFile, 'utf8'));
+      if (mismatch) {
+        console.error(`${mismatch} (pinned by ${CONFIG.nvmrcPath}) — fix PATH/fnm before running (W3-15)`);
+        process.exit(1);
+      }
+    }
   }
   if (CONFIG.holdTickets?.length) log('conductor.hold', { msg: `human-pair hold (F2): ${CONFIG.holdTickets.join(', ')} — never claimed unattended` });
   if (git('status', '--porcelain')) { console.error('working tree not clean — commit or stash first'); process.exit(1); }

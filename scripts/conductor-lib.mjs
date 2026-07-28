@@ -28,6 +28,13 @@ export const DEFAULT_CONFIG = {
   isolation: 'worktree',
   toolchainMarker: 'package.json',
   boardPath: 'plan.json',
+  // W3-15 portability: where THIS project pins its Node version. Shipwright
+  // pins at the repo root; Kryptkeeper pins at ui/.nvmrc (its CI reads the same
+  // file via node-version-file) and has no root .nvmrc. A project that pins
+  // nowhere sets this to null, or simply has no such file — the check is then
+  // skipped rather than fataling. Same defect class as W9-12's models.json:
+  // an unconditional read of a Shipwright-shaped path at startup.
+  nvmrcPath: '.nvmrc',
   install: ['pnpm', ['install', '--prefer-offline']],
   gates: [
     ['pnpm', ['lint']],
@@ -84,6 +91,21 @@ export function validateModels(models) {
     }
   }
   return errors;
+}
+
+/**
+ * W3-15 portability: compare the running Node against a project's version pin.
+ *
+ * Returns null when the pin is satisfied (or is empty/unreadable), else a
+ * message. The FILE is read by the caller — this stays pure so it is testable
+ * without a fixture tree, and so a project with no pin at all is simply not
+ * checked rather than refused. See CONFIG.nvmrcPath.
+ */
+export function nodePinMismatch(nodeVersion, pinContents) {
+  const want = String(pinContents ?? '').trim();
+  if (!want) return null;
+  if (nodeVersion.startsWith(`v${want}.`)) return null;
+  return `node ${nodeVersion} != v${want}.x`;
 }
 
 /** Shallow-merges a project's conductor.config.json over the defaults (same as the original `{ ...DEFAULT_CONFIG, ...override }`). */

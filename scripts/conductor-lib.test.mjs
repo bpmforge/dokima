@@ -21,6 +21,7 @@ import {
   parseJson,
   planPath,
   serializePlan,
+  nodePinMismatch,
   validateModels,
   wave,
   writePlan,
@@ -516,5 +517,38 @@ describe('conductor-lib: misc pure helpers', () => {
       verdict: 'APPROVE',
     });
     expect(parseJson('not json at all')).toBeNull();
+  });
+});
+
+describe('conductor-lib: Node version pin is project-configurable (W3-15 portability)', () => {
+  it('accepts a matching major', () => {
+    expect(nodePinMismatch('v22.23.1', '22')).toBeNull();
+  });
+
+  it('rejects a mismatched major and names both versions', () => {
+    expect(nodePinMismatch('v24.14.0', '22')).toBe('node v24.14.0 != v22.x');
+  });
+
+  it('tolerates trailing whitespace/newline in the pin file', () => {
+    expect(nodePinMismatch('v22.23.1', '22\n')).toBeNull();
+  });
+
+  it('skips the check for an empty or whitespace-only pin', () => {
+    expect(nodePinMismatch('v24.14.0', '')).toBeNull();
+    expect(nodePinMismatch('v24.14.0', '  \n')).toBeNull();
+    expect(nodePinMismatch('v24.14.0', null)).toBeNull();
+  });
+
+  it('does not treat v2 as satisfying a pin of 22 (prefix trap)', () => {
+    expect(nodePinMismatch('v2.1.0', '22')).toBe('node v2.1.0 != v22.x');
+  });
+
+  it('defaults nvmrcPath to .nvmrc so Shipwright behaviour is unchanged', () => {
+    expect(DEFAULT_CONFIG.nvmrcPath).toBe('.nvmrc');
+  });
+
+  it('lets a project relocate the pin, or opt out entirely', () => {
+    expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: 'ui/.nvmrc' }).nvmrcPath).toBe('ui/.nvmrc');
+    expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: null }).nvmrcPath).toBeNull();
   });
 });
