@@ -3257,7 +3257,8 @@
         "content/validators/validate-mermaid.sh",
         "packages/validators/src/contract.ts",
         "packages/validators/src/contract.test.ts",
-        "packages/validators/src/run.test.ts"
+        "packages/validators/src/run.test.ts",
+        "content/manifest.json"
       ],
       "depends_on": [],
       "acceptance": [
@@ -3269,8 +3270,8 @@
         "Full gate green including `pnpm --filter @shipwright/web e2e`; test counts in the commit body."
       ],
       "points": 3,
-      "status": "in_progress",
-      "notes": "FILED 2026-07-27 by W9-06's implementation, which surfaced both defects and could fix neither (both outside its write_scope). Finding 1 blocks W9-07's demonstrability: with every phase requiring validate-mermaid and that validator normalizing to exitCode 2 on a clean run, no phase can currently gate cleanly, so an ALLOWED decideAdvance cannot be shown against real content. Finding 2 is independent of mermaid and hits any validator emitting exactly one finding. Both re-verified by the orchestrator before filing: the mermaid script was run against a clean fixture (exit 0, 0-byte stdout) and contract.ts:34/55 read directly. | SCOPE SET DELIBERATELY 2026-07-27: criterion 2 originally named runPhaseGate, which lives in apps/server/src/api/pipeline/phase-gate/** and is OUTSIDE this ticket's scope \u2014 the same unreachable-import filing error that bounced W9-06's first attempt. Reworded to an in-scope proof via runValidator, after confirming (a) packages/validators/src/run.test.ts exists and (b) PHASES[0]/[1] are mermaid-only, so that proof genuinely establishes the unblock rather than approximating it.",
+      "status": "blocked",
+      "notes": "FILED 2026-07-27 by W9-06's implementation, which surfaced both defects and could fix neither (both outside its write_scope). Finding 1 blocks W9-07's demonstrability: with every phase requiring validate-mermaid and that validator normalizing to exitCode 2 on a clean run, no phase can currently gate cleanly, so an ALLOWED decideAdvance cannot be shown against real content. Finding 2 is independent of mermaid and hits any validator emitting exactly one finding. Both re-verified by the orchestrator before filing: the mermaid script was run against a clean fixture (exit 0, 0-byte stdout) and contract.ts:34/55 read directly. | SCOPE SET DELIBERATELY 2026-07-27: criterion 2 originally named runPhaseGate, which lives in apps/server/src/api/pipeline/phase-gate/** and is OUTSIDE this ticket's scope \u2014 the same unreachable-import filing error that bounced W9-06's first attempt. Reworded to an in-scope proof via runValidator, after confirming (a) packages/validators/src/run.test.ts exists and (b) PHASES[0]/[1] are mermaid-only, so that proof genuinely establishes the unblock rather than approximating it. | BLOCKED 2026-07-28 on re-signing. Work is COMPLETE and green on branch sw/w9-08 (both defects fixed, red fixtures confirmed failing first, differential-tested against the unmodified script, lint/typecheck/e2e green). It cannot merge because content/validators/** is a SIGNED content pack: content/manifest.json records validate-mermaid.sh as sha256:8dc78a15..., the fixed script hashes to bcbe842a..., and verifyPack() rejects the file-hash mismatch, failing 5 apps/server pack-integrity tests (doctor.test.ts x3, bootstrap/cli.test.ts, bootstrap/packs-update.test.ts). The Ed25519 manifest signature itself stays VALID - only the per-file hash comparison fails. Re-signing needs SHIPWRIGHT_SIGNING_KEY (never committed, not in this environment): SHIPWRIGHT_SIGNING_KEY=... node scripts/sign-content.mjs, then commit content/manifest.json. manifest.json added to write_scope for the re-signed commit. THIRD instance this session of a ticket scoped without checking a required target was reachable - and the one no validator would have caught, since the dependency is a signature, not an import.",
       "stories": []
     }
   ]
