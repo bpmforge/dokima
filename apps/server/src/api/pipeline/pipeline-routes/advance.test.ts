@@ -460,8 +460,111 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
     const body = res.json() as { allowed: boolean; waived: boolean; reasons: string[] };
     expect(body.allowed).toBe(false);
     expect(body.waived).toBe(false);
+    // Asserts verifyReceipt's specific kind-guard wording (receipts.ts:526),
+    // not just "(FR-P2)" — every one of verifyReceipt's four waiver-branch
+    // reasons ends in that tag (no signedBy, identity not found, wrong kind,
+    // blocklisted name), so a looser match would still pass if this specific
+    // guard silently broke.
     expect(
-      body.reasons.some((r) => r.includes('human signature') || r.includes('FR-P2')),
+      body.reasons.some((r) =>
+        r.includes(
+          'waiver requires a human signature; identity "coding-agent" is kind "machine"',
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('REFUSED (criterion 4b, FR-P2/FR-N3 blocklist, US-407 AC-1 "agent identities rejected via blocklist"): a human-KIND identity whose name matches the agent-name blocklist is rejected', async () => {
+    const { app, projectId, projectDir, dbPath } = await boot();
+    const phase1 = getPhase(1);
+    await writeDocs(projectDir, {
+      'docs/SCOPE.md': CLEAN_SCOPE,
+      'docs/RISKS.md': CLEAN_RISKS,
+      'docs/CONSTRAINTS.md': CLEAN_CONSTRAINTS,
+      'docs/USER_PERSONAS.md': CLEAN_PERSONAS,
+    });
+    const gateReceiptId = await mintCleanGateReceipt(dbPath, projectDir, projectId, 1);
+    await fs.writeFile(
+      path.join(projectDir, 'docs/SCOPE.md'),
+      CLEAN_SCOPE + '\nscope grew\n',
+      'utf8',
+    );
+
+    // A DIFFERENT signer guard than the kind check above: `kind: 'human'` (so
+    // that guard passes), but a name matching DEFAULT_AGENT_NAME_BLOCKLIST
+    // (receipts.ts) — `mintReceipt` also refuses this at mint time, so the
+    // same direct row+event construction is required to reach verifyReceipt's
+    // independent re-check.
+    const log = openEventLog(dbPath);
+    let waiverReceiptId: string;
+    try {
+      ensureHumanIdentity(log, 'blocklisted-signer', 'Copilot Reviewer');
+      const currentInputFiles = await readPhaseInputFiles(phase1, projectDir);
+      waiverReceiptId = randomUUID();
+      const content = {
+        id: waiverReceiptId,
+        kind: 'waiver' as const,
+        projectId,
+        phase: 1,
+        ticketId: null,
+        validators: [] as ValidatorResult[],
+        inputTreeHash: computeInputTreeHash(currentInputFiles),
+        verifyCommand: null,
+        verifyExit: null,
+        signedBy: 'blocklisted-signer',
+      };
+      const contentMac = computeReceiptMac(content, SIGNING_KEY);
+      log.db
+        .prepare(
+          `INSERT INTO receipts
+             (id, kind, project_id, phase, ticket_id, validators, input_tree_hash,
+              verify_command, verify_exit, signed_by, payload, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          content.id,
+          content.kind,
+          content.projectId,
+          content.phase,
+          content.ticketId,
+          JSON.stringify(content.validators),
+          content.inputTreeHash,
+          content.verifyCommand,
+          content.verifyExit,
+          content.signedBy,
+          'null',
+          new Date().toISOString(),
+        );
+      appendEvent(
+        log,
+        {
+          eventType: 'gate.waived',
+          actorId: 'blocklisted-signer',
+          ticketId: null,
+          payload: { receiptId: content.id, kind: 'waiver', contentMac },
+        },
+        {},
+      );
+    } finally {
+      log.close();
+    }
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/phases/1/advance`,
+      payload: { gateReceiptId, waiverReceiptId },
+    });
+
+    expect(res.statusCode).toBe(422);
+    const body = res.json() as { allowed: boolean; waived: boolean; reasons: string[] };
+    expect(body.allowed).toBe(false);
+    expect(body.waived).toBe(false);
+    expect(
+      body.reasons.some((r) =>
+        r.includes(
+          'waiver signer name "Copilot Reviewer" matches the agent-name blocklist',
+        ),
+      ),
     ).toBe(true);
   });
 
