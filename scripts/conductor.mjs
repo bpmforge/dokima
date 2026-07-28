@@ -254,6 +254,13 @@ function runValidators(wt, changed, names) {
 function runGates(t, branch, wt) {
   const gaps = [];
   const row = loadPlan(wt).tickets.find((x) => x.id === t.id);
+  // An agent that sets `blocked` is obeying the prompt ("If genuinely blocked
+  // after one honest attempt: set status blocked with a notes entry"), not
+  // failing a gate. Retrying it re-runs a full session to reach the identical
+  // conclusion — observed twice on Kryptkeeper 2026-07-28 (W3-02, W5-08), and
+  // the W3-02 agent predicted it: "resetting status to in_progress without
+  // correcting it will reproduce this same block every retry."
+  const selfBlocked = row?.status === 'blocked';
   if (!row || row.status !== 'done') gaps.push(doneCheckGap(row?.status, CONFIG.boardPath));
   if (Number(git('rev-list', '--count', `main..${branch}`)) < 1) gaps.push('no commits on ticket branch');
   const changed = git('diff', '--name-only', `main...${branch}`).split('\n').filter(Boolean);
@@ -274,7 +281,7 @@ function runGates(t, branch, wt) {
     advisory = runValidators(wt, changed, CONFIG.validators?.advisory);
     if (advisory.length) log('validators.advisory', { ticket: t.id, msg: `${advisory.length} finding(s) fed to review` });
   }
-  return { gaps, advisory };
+  return { gaps, advisory, selfBlocked };
 }
 
 // ---------- prompts ----------
@@ -362,6 +369,13 @@ async function executeTicket(t) {
     await runSession(codingPrompt(t, gaps, CONFIG.boardPath), model, `code:${t.id}`, wt);
     const g = runGates(t, branch, wt);
     gaps = g.gaps;
+    if (g.selfBlocked) {
+      // Deliberate, not a failure: stop the attempt ladder and let markBlocked
+      // record it. The agent's own reasoning is already committed to the branch.
+      log('ticket.selfblocked', { ticket: t.id, msg: `agent set status=blocked on attempt ${i + 1} — honouring it, not retrying` });
+      gaps = [`agent set status=blocked deliberately on attempt ${i + 1}; its reasoning is in the ticket's notes on the evidence branch`];
+      break;
+    }
     if (gaps.length) { log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) }); continue; }
 
     const diff = git('diff', `main...${branch}`).slice(0, 180_000);
@@ -412,11 +426,19 @@ function resetStatus(wt, id) {
   try { gitIn(wt, 'add', CONFIG.boardPath); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
 }
 
-function pushRemotes(ticket) {
+function pushRemotes(ticket, extraBranch = null) {
   if (!DO_PUSH) return;
+  // `extraBranch` is the ticket's own branch, pushed alongside main. Without it
+  // a blocked ticket's evidence branch and a --no-merge parked branch only ever
+  // existed on this machine: pushRemotes pushed main, and main is exactly what
+  // does NOT contain them. Kryptkeeper 2026-07-28 ran for an hour with every
+  // completed and every blocked branch unreplicated.
+  const refs = ['main', ...(extraBranch ? [extraBranch] : [])];
   for (const rem of CONFIG.remotes) {
-    try { sh('git', ['push', rem, 'main'], { timeout: 60_000 }); }
-    catch (e) { log('push.fail', { ticket, msg: `${rem}: ${String(e.message).slice(0, 80)}` }); }
+    for (const ref of refs) {
+      try { sh('git', ['push', rem, ref], { timeout: 60_000 }); }
+      catch (e) { log('push.fail', { ticket, msg: `${rem} ${ref}: ${String(e.message).slice(0, 80)}` }); }
+    }
   }
 }
 
@@ -451,6 +473,9 @@ function land(t, branch, wt) {
     pushRemotes(t.id);
   } else {
     log('parked', { ticket: t.id, msg: `left on ${branch} (worktree ${wt}) for review (--no-merge)` });
+    // Push the parked branch: it holds finished, gate-green, review-approved
+    // work that main will not carry until a human merges it.
+    pushRemotes(t.id, branch);
     return 'parked';
   }
   return 'merged';
@@ -475,7 +500,7 @@ function markBlocked(t, gaps, branch, wt) {
   let keepName = `blocked/${t.id.toLowerCase()}`;
   try { git('rev-parse', '--verify', keepName); keepName = `${keepName}-${stamp}`; } catch { /* free */ }
   try { git('branch', '-m', branch, keepName); } catch { /* branch may not exist */ }
-  pushRemotes(t.id);
+  pushRemotes(t.id, keepName);
 }
 
 // ---------- human-signed security waivers ----------
