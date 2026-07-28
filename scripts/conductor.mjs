@@ -38,7 +38,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CONFIG,
-  mergeConfig,
+  loadConfigFile,
   loadPlanFrom,
   writePlan,
   wave,
@@ -56,10 +56,16 @@ const LOG = resolve(ROOT, 'docs/work/conductor-log.jsonl');
 const STOPFILE = resolve(ROOT, 'STOP');
 
 // ---------- config (project-specific; script stays repo-agnostic) ----------
+// A malformed conductor.config.json (e.g. hand-edited, trailing comma) is
+// caught here and turned into a startup error naming the file and the
+// parser's own reason, not a raw SyntaxError stack from the module job.
 const CONFIG = (() => {
-  const f = resolve(ROOT, 'conductor.config.json');
-  if (!existsSync(f)) return DEFAULT_CONFIG;
-  return mergeConfig(DEFAULT_CONFIG, JSON.parse(readFileSync(f, 'utf8')));
+  try {
+    return loadConfigFile(ROOT, DEFAULT_CONFIG);
+  } catch (e) {
+    console.error(`conductor: ${e.message}\nFix conductor.config.json's JSON syntax, or delete the file to use built-in defaults.`);
+    process.exit(1);
+  }
 })();
 const WT_BASE = resolve(ROOT, CONFIG.worktreeDir);
 

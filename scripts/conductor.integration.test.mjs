@@ -153,4 +153,19 @@ describe('conductor.mjs integration: configurable boardPath (W9-10)', () => {
     expect(out).not.toContain('at ModuleJob.run');
     expect(code).toBe(1);
   });
+
+  it('W9-12 follow-up: malformed JSON in conductor.config.json itself (not the "models" key — the file\'s own syntax) produces an actionable error, not a raw SyntaxError/stack trace', async () => {
+    const board = { version: 1, tickets: [] };
+    const dir = await buildFixture('plan.json', board);
+    // Overwrite with hand-broken JSON (trailing comma) — the exact defect
+    // shape a fresh repo's hand-authored config is likely to have.
+    await fs.writeFile(path.join(dir, 'conductor.config.json'), '{ "boardPath": "plan.json", }');
+
+    const { out, code } = runLint(dir);
+
+    expect(out).toContain('conductor.config.json is not valid JSON');
+    expect(out).not.toContain('SyntaxError');
+    expect(out).not.toContain('at ModuleJob.run');
+    expect(code).toBe(1);
+  });
 });
