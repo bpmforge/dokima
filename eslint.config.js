@@ -185,13 +185,7 @@ export default tseslint.config(
     // lints another agent's copy of the tree and reports its files as errors
     // in this one. Gitignoring `.claude/` does not help: flat config does not
     // read `.gitignore` unless explicitly wired via `includeIgnoreFile`.
-    ignores: [
-      '**/dist/**',
-      '**/node_modules/**',
-      '**/.shipwright/**',
-      '**/.claude/**',
-      'scripts/**',
-    ],
+    ignores: ['**/dist/**', '**/node_modules/**', '**/.shipwright/**', '**/.claude/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

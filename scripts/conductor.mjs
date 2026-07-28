@@ -24,28 +24,27 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_CONFIG,
+  mergeConfig,
+  planPath,
+  loadPlanFrom,
+  serializePlan,
+  wave,
+  nonWildPrefix,
+  globToRegex,
+  parseJson,
+} from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LOG = resolve(ROOT, 'docs/work/conductor-log.jsonl');
 const STOPFILE = resolve(ROOT, 'STOP');
-const planPath = (dir) => resolve(dir, 'plan.json');
 
 // ---------- config (project-specific; script stays repo-agnostic) ----------
-const DEFAULT_CONFIG = {
-  branchPrefix: 'sw/',
-  worktreeDir: '../.shipwright-worktrees',
-  isolation: 'worktree',
-  toolchainMarker: 'package.json',
-  install: ['pnpm', ['install', '--prefer-offline']],
-  gates: [['pnpm', ['lint']], ['pnpm', ['typecheck']], ['pnpm', ['test']]],
-  gateTimeoutMin: 15,
-  remotes: ['github', 'origin'],
-  alwaysOk: ['plan.json', 'docs/STATUS.md', 'docs/work/**', 'docs/TECH_STACK.md', 'pnpm-lock.yaml', 'package.json'],
-};
 const CONFIG = (() => {
   const f = resolve(ROOT, 'conductor.config.json');
   if (!existsSync(f)) return DEFAULT_CONFIG;
-  return { ...DEFAULT_CONFIG, ...JSON.parse(readFileSync(f, 'utf8')) };
+  return mergeConfig(DEFAULT_CONFIG, JSON.parse(readFileSync(f, 'utf8')));
 })();
 const WT_BASE = resolve(ROOT, CONFIG.worktreeDir);
 
@@ -71,7 +70,9 @@ const now = () => new Date().toISOString();
 const log = (kind, data) => {
   const row = { ts: now(), kind, ...data };
   console.log(`[${row.ts}] ${kind}${data.ticket ? ` ${data.ticket}` : ''}${data.msg ? ` — ${data.msg}` : ''}`);
-  try { mkdirSync(dirname(LOG), { recursive: true }); appendFileSync(LOG, JSON.stringify(row) + '\n'); } catch {}
+  // Best-effort durable audit trail; console.log above already surfaced this
+  // event, so a failed write here (disk full, permissions) is not fatal.
+  try { mkdirSync(dirname(LOG), { recursive: true }); appendFileSync(LOG, JSON.stringify(row) + '\n'); } catch { /* intentional: see comment above */ }
 };
 const sh = (cmd, cmdArgs, opts = {}) =>
   // 512MB buffer: git diffs on large tickets blow past execFileSync's 1MB default (ENOBUFS).
@@ -80,18 +81,8 @@ const git = (...a) => sh('git', a).trim();               // runs in ROOT (stays 
 const gitIn = (dir, ...a) => sh('git', a, { cwd: dir }).trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const loadPlan = (dir = ROOT) => JSON.parse(readFileSync(planPath(dir), 'utf8'));
-const wave = (id) => id.split('-')[0];
+const loadPlan = (dir = ROOT) => loadPlanFrom(dir);
 
-function globToRegex(glob) {
-  const esc = glob
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '\x01')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\x01/g, '.*')
-    .replace(/\?/g, '[^/]');
-  return new RegExp(`^${esc}$`);
-}
 // Shared infra any ticket may touch regardless of write_scope (config-driven).
 const ALWAYS_OK = CONFIG.alwaysOk.map(globToRegex);
 
@@ -114,7 +105,6 @@ function pickModel(t) {
 }
 
 // ---------- plan linter (preflight; catches bad tickets before a run) ----------
-const nonWildPrefix = (glob) => glob.replace(/[*?].*$/, '');
 function lintPlan(plan) {
   const errors = [], warnings = [];
   const ids = new Set(plan.tickets.map((t) => t.id));
@@ -289,16 +279,20 @@ ${diff}`;
 function makeWorktree(t) {
   const branch = `${CONFIG.branchPrefix}${t.id.toLowerCase()}`;
   const wt = resolve(WT_BASE, t.id);
-  try { git('worktree', 'remove', '--force', wt); } catch {}
-  try { rmSync(wt, { recursive: true, force: true }); } catch {}
-  try { git('branch', '-D', branch); } catch {}
+  // Best-effort pre-clean of a stale worktree/branch left by a prior crashed
+  // run; the common case is that none of these exist yet, which is fine.
+  try { git('worktree', 'remove', '--force', wt); } catch { /* intentional: no prior worktree to remove */ }
+  try { rmSync(wt, { recursive: true, force: true }); } catch { /* intentional: no prior worktree dir on disk */ }
+  try { git('branch', '-D', branch); } catch { /* intentional: no prior branch to delete */ }
   mkdirSync(WT_BASE, { recursive: true });
   git('worktree', 'add', '-q', '-b', branch, wt, 'main');
   return { branch, wt };
 }
 function removeWorktree(wt) {
-  try { git('worktree', 'remove', '--force', wt); } catch {}
-  try { rmSync(wt, { recursive: true, force: true }); } catch {}
+  // Best-effort teardown after landing/blocking a ticket; the worktree may
+  // already be gone (e.g. a re-run after a partial failure).
+  try { git('worktree', 'remove', '--force', wt); } catch { /* intentional: worktree already removed */ }
+  try { rmSync(wt, { recursive: true, force: true }); } catch { /* intentional: dir already gone */ }
 }
 
 // ---------- per-ticket flow ----------
@@ -356,11 +350,6 @@ async function executeTicket(t) {
   return { ok: false, branch, wt, gaps: ledger };
 }
 
-function parseJson(text) {
-  const m = text.match(/\{[\s\S]*\}/);
-  try { return m ? JSON.parse(m[0]) : null; } catch { return null; }
-}
-
 // Reset ticket status to in_progress IN THE WORKTREE (on the branch) so a stale
 // blocked/done from a prior attempt doesn't pre-fail the next attempt's gate.
 function resetStatus(wt, id) {
@@ -368,8 +357,10 @@ function resetStatus(wt, id) {
   const row = plan.tickets.find((x) => x.id === id);
   if (!row || row.status === 'in_progress') return;
   row.status = 'in_progress';
-  writeFileSync(planPath(wt), JSON.stringify(plan, null, 2) + '\n');
-  try { gitIn(wt, 'add', 'plan.json'); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch {}
+  writeFileSync(planPath(wt), serializePlan(plan));
+  // Best-effort: if nothing changed to commit (e.g. status was already reset
+  // on a prior pass), git exits non-zero — not an error worth surfacing here.
+  try { gitIn(wt, 'add', 'plan.json'); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
 }
 
 function pushRemotes(ticket) {
@@ -385,17 +376,18 @@ function land(t, branch, wt) {
   if (DO_MERGE) {
     try {
       git('merge', '--no-ff', '-q', '-m', `Merge ${branch}: ${t.id} ${t.title}\n\nConductor-verified: gates green + independent review APPROVE (sticky findings all resolved).\nStanding approval: docs/work/APPROVALS.md A-001.\n\nCo-Authored-By: Claude (conductor run) <noreply@anthropic.com>`, branch);
-    } catch (err) {
+    } catch {
       // Merge conflict (main moved since the branch forked — L-30): NEVER fatal here.
       // A fatal crashes the conductor, and the supervisor's cleanup then deletes the
       // finished, reviewed branch (the W4-01 incident). Abort, preserve the branch
       // outside the sw/ cleanup namespace, park the ticket for human integration.
-      try { git('merge', '--abort'); } catch {}
+      try { git('merge', '--abort'); } catch { /* intentional: no in-progress merge to abort */ }
       markBlocked(t, [`merge conflict vs moved main — reviewed work preserved (gates+review already green); human integrates`], branch, wt);
       return;
     }
     removeWorktree(wt);
-    try { git('branch', '-d', branch); } catch {}
+    // Best-effort: branch may already be gone (e.g. re-run after a partial land).
+    try { git('branch', '-d', branch); } catch { /* intentional: branch already deleted */ }
     // If the merge touched any package.json, ROOT's node_modules is now stale —
     // re-link workspace deps so a subsequent test on ROOT (e.g. the stop-hook's
     // `npm test`) doesn't hit "Cannot find package @shipwright/*" (L-40).
@@ -421,7 +413,7 @@ function markBlocked(t, gaps, branch, wt) {
   // notes is historically string-or-array (review-pass tickets use strings) — normalize.
   if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
   row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts. Branch ${branch} kept. Gaps: ${gaps.join(' | ').slice(0, 600)}`);
-  writeFileSync(planPath(ROOT), JSON.stringify(plan, null, 2) + '\n');
+  writeFileSync(planPath(ROOT), serializePlan(plan));
   git('add', 'plan.json'); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
   removeWorktree(wt);
   // Rename the kept evidence branch OUT of the sw/ namespace: supervise.sh's crash
