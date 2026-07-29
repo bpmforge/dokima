@@ -22,6 +22,7 @@ import {
   planPath,
   serializePlan,
   claimableTickets,
+  migrationCollisions,
   nodePinMismatch,
   testSiblingWarning,
   validateModels,
@@ -633,5 +634,40 @@ describe('conductor-lib: testSiblingWarning — a ticket must be able to write i
 
   it('handles a ticket with no write_scope', () => {
     expect(testSiblingWarning({ id: 'X-1' }, GO)).toBeNull();
+  });
+});
+
+describe('conductor-lib: migrationCollisions — two tickets must not share a version', () => {
+  const CFG = { pattern: '/(\\d{6})_' };
+  const T = (id, status, ...scope) => ({ id, status, write_scope: scope });
+  const M = (n, name) => `internal/db/migrations/postgres/${n}_${name}.up.sql`;
+
+  it('flags two open tickets claiming the same version', () => {
+    const out = migrationCollisions([T('S-25','todo',M('000030','a')), T('W6-02','blocked',M('000030','b'))], CFG);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('000030');
+    expect(out[0]).toContain('silently overwrite');
+  });
+
+  it('flags an open ticket claiming a version already on disk', () => {
+    const out = migrationCollisions([T('W5-05','todo',M('000027','x'))], CFG, ['000027']);
+    expect(out[0]).toContain('already exists on disk');
+  });
+
+  it('does NOT flag a done ticket whose migration is legitimately on disk', () => {
+    expect(migrationCollisions([T('W9-04','done',M('000027','x'))], CFG, ['000027'])).toEqual([]);
+  });
+
+  it('does NOT flag several done tickets sharing a historical version', () => {
+    expect(migrationCollisions([T('S-20','done',M('000027','x')), T('W9-04','done',M('000027','y'))], CFG, ['000027'])).toEqual([]);
+  });
+
+  it('is quiet when every open ticket has its own free version', () => {
+    expect(migrationCollisions([T('A-1','todo',M('000033','a')), T('B-2','todo',M('000034','b'))], CFG, ['000029'])).toEqual([]);
+  });
+
+  it('ignores non-migration paths and is off without config', () => {
+    expect(migrationCollisions([T('A-1','todo','internal/x.go')], CFG)).toEqual([]);
+    expect(migrationCollisions([T('A-1','todo',M('000030','a')), T('B','todo',M('000030','b'))], null)).toEqual([]);
   });
 });

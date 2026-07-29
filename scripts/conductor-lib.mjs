@@ -39,6 +39,10 @@ export const DEFAULT_CONFIG = {
   // Off by default (null) so the script stays language-agnostic; a project
   // opts in, e.g. { source: '\\.go$', test: '_test\\.go$' }.
   testSibling: null,
+  // Warn when two tickets claim the same versioned-migration number, or when a
+  // ticket still to be built claims one that already exists. Off by default:
+  // { pattern: '/(\\d{6})_', dirs: ['internal/db/migrations'] }
+  migrationVersions: null,
   install: ['pnpm', ['install', '--prefer-offline']],
   gates: [
     ['pnpm', ['lint']],
@@ -148,6 +152,49 @@ export function testSiblingWarning(ticket, cfg) {
   if (!impl.length) return null;
   if (scope.some((f) => testRe.test(f))) return null;
   return `${ticket.id}: write_scope has implementation (${impl.join(', ')}) but no test sibling matching ${cfg.test} — the agent cannot add tests without an out-of-scope gate failure`;
+}
+
+
+/**
+ * Lint rule: versioned-migration collisions.
+ *
+ * A migration runner that keys files by numeric prefix (Kryptkeeper's
+ * loadMigrations uses map[int]*migrationFile over a filename-sorted embed.FS)
+ * will silently let one version's SQL overwrite another's, while the schema
+ * table records whichever name sorts first. Idempotent schema creation means
+ * the test suite may stay green over a corrupted schema.
+ *
+ * Kryptkeeper 2026-07-29 had two live collisions at once: 000030 claimed by
+ * two tickets, and 000027 claimed by a todo ticket that was already on disk.
+ * A third would have happened had an agent's invented number stuck.
+ *
+ * `onDisk` is the set of versions that already exist. Done tickets are ignored
+ * — their migration has shipped and legitimately occupies its number.
+ */
+export function migrationCollisions(tickets, cfg, onDisk = []) {
+  if (!cfg || !cfg.pattern) return [];
+  const re = new RegExp(cfg.pattern);
+  const shipped = new Set(onDisk);
+  const claims = new Map();
+  for (const t of tickets) {
+    for (const f of t.write_scope || []) {
+      const m = re.exec(f);
+      if (!m) continue;
+      if (!claims.has(m[1])) claims.set(m[1], new Set());
+      claims.get(m[1]).add(t);
+    }
+  }
+  const out = [];
+  for (const [version, owners] of [...claims].sort()) {
+    const open = [...owners].filter((t) => t.status !== 'done');
+    if (!open.length) continue;
+    if (owners.size > 1) {
+      out.push(`migration ${version} is claimed by ${[...owners].map((t) => `${t.id}(${t.status})`).join(', ')} — two tickets writing one version silently overwrite each other`);
+    } else if (shipped.has(version)) {
+      out.push(`migration ${version} is claimed by ${open[0].id}(${open[0].status}) but already exists on disk — it would overwrite a shipped migration`);
+    }
+  }
+  return out;
 }
 
 /**

@@ -52,6 +52,7 @@ import {
   nodePinMismatch,
   claimableTickets,
   testSiblingWarning,
+  migrationCollisions,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -178,6 +179,13 @@ function pickModel(t) {
 // ---------- plan linter (preflight; catches bad tickets before a run) ----------
 function lintPlan(plan) {
   const errors = [], warnings = [];
+  if (CONFIG.migrationVersions?.pattern) {
+    const onDisk = (CONFIG.migrationVersions.dirs || []).flatMap((d) => {
+      try { return sh('git', ['ls-files', d]).split('\n').map((f) => new RegExp(CONFIG.migrationVersions.pattern).exec(f)).filter(Boolean).map((m) => m[1]); }
+      catch { return []; }
+    });
+    warnings.push(...migrationCollisions(plan.tickets, CONFIG.migrationVersions, onDisk));
+  }
   const ids = new Set(plan.tickets.map((t) => t.id));
   for (const t of plan.tickets) {
     for (const k of ['id', 'title', 'lane', 'write_scope', 'depends_on', 'acceptance', 'status']) {
