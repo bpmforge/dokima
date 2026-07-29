@@ -28,6 +28,17 @@ export const DEFAULT_CONFIG = {
   isolation: 'worktree',
   toolchainMarker: 'package.json',
   boardPath: 'plan.json',
+  // W3-15 portability: where THIS project pins its Node version. Shipwright
+  // pins at the repo root; Kryptkeeper pins at ui/.nvmrc (its CI reads the same
+  // file via node-version-file) and has no root .nvmrc. A project that pins
+  // nowhere sets this to null, or simply has no such file — the check is then
+  // skipped rather than fataling. Same defect class as W9-12's models.json:
+  // an unconditional read of a Shipwright-shaped path at startup.
+  nvmrcPath: '.nvmrc',
+  // Warn when a ticket may write implementation but not its test siblings.
+  // Off by default (null) so the script stays language-agnostic; a project
+  // opts in, e.g. { source: '\\.go$', test: '_test\\.go$' }.
+  testSibling: null,
   install: ['pnpm', ['install', '--prefer-offline']],
   gates: [
     ['pnpm', ['lint']],
@@ -84,6 +95,74 @@ export function validateModels(models) {
     }
   }
   return errors;
+}
+
+/**
+ * Pure claim filter — which tickets may be claimed next, in id order.
+ *
+ * `excluded` holds ids the CURRENT RUN must not claim again. This is what
+ * makes `--no-merge` terminate: a parked ticket's `done` status is committed
+ * only on its own branch and never merged, so the board at ROOT still reads
+ * `todo`. Without the exclusion the loop re-claims the same ticket forever —
+ * and because starting a ticket force-removes and recreates its worktree, each
+ * re-claim RESETS the branch to main and destroys the parked work. Observed on
+ * Kryptkeeper 2026-07-28: S-01 completed, reviewed APPROVE, parked, was
+ * immediately re-claimed, and its three commits became unreachable.
+ */
+export function claimableTickets(plan, { waves = null, hold = [], excluded = [] } = {}) {
+  const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
+  const busyLanes = new Set(plan.tickets.filter((t) => t.status === 'in_progress').map((t) => t.lane));
+  const holdSet = new Set(hold);
+  const excludedSet = new Set(excluded);
+  return plan.tickets
+    .filter((t) => t.status === 'todo')
+    .filter((t) => !holdSet.has(t.id)) // F2: human-pair tickets are never claimed unattended
+    .filter((t) => !excludedSet.has(t.id))
+    .filter((t) => !waves || waves.includes(wave(t.id)))
+    .filter((t) => (t.depends_on ?? []).every((d) => done.has(d)))
+    .filter((t) => !busyLanes.has(t.lane))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+
+/**
+ * Lint rule: a ticket whose write_scope can touch implementation files but not
+ * their test siblings cannot add tests without tripping the out-of-scope gate.
+ *
+ * Kryptkeeper W6-01, 2026-07-28: the agent implemented HA leader election,
+ * wrote five table-driven tests plus a prove-the-negative red-check, verified
+ * them, then DELETED them and self-blocked — because write_scope listed three
+ * .go files and no _test.go, and ALWAYS_OK carries no test pattern. It obeyed
+ * MASTER_PROMPT's "never self-amend write_scope" rule and the harness punished
+ * it for it. Catching this at filing time costs nothing; catching it mid-ticket
+ * costs a full session and loses the tests.
+ *
+ * Returns a warning string, or null when the ticket is fine or the check is off.
+ */
+export function testSiblingWarning(ticket, cfg) {
+  if (!cfg || !cfg.source || !cfg.test) return null;
+  const sourceRe = new RegExp(cfg.source);
+  const testRe = new RegExp(cfg.test);
+  const scope = ticket.write_scope || [];
+  const impl = scope.filter((f) => sourceRe.test(f) && !testRe.test(f));
+  if (!impl.length) return null;
+  if (scope.some((f) => testRe.test(f))) return null;
+  return `${ticket.id}: write_scope has implementation (${impl.join(', ')}) but no test sibling matching ${cfg.test} — the agent cannot add tests without an out-of-scope gate failure`;
+}
+
+/**
+ * W3-15 portability: compare the running Node against a project's version pin.
+ *
+ * Returns null when the pin is satisfied (or is empty/unreadable), else a
+ * message. The FILE is read by the caller — this stays pure so it is testable
+ * without a fixture tree, and so a project with no pin at all is simply not
+ * checked rather than refused. See CONFIG.nvmrcPath.
+ */
+export function nodePinMismatch(nodeVersion, pinContents) {
+  const want = String(pinContents ?? '').trim();
+  if (!want) return null;
+  if (nodeVersion.startsWith(`v${want}.`)) return null;
+  return `node ${nodeVersion} != v${want}.x`;
 }
 
 /** Shallow-merges a project's conductor.config.json over the defaults (same as the original `{ ...DEFAULT_CONFIG, ...override }`). */

@@ -49,6 +49,9 @@ import {
   doneCheckGap,
   codingPrompt,
   validateModels,
+  nodePinMismatch,
+  claimableTickets,
+  testSiblingWarning,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -132,17 +135,39 @@ const loadPlan = (dir = ROOT) => loadPlanFrom(dir, CONFIG.boardPath);
 // always includes CONFIG.boardPath even if a project's alwaysOk override omits it.
 const ALWAYS_OK = alwaysOkPatterns(CONFIG).map(globToRegex);
 
-function claimable(plan) {
-  const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
-  const busyLanes = new Set(plan.tickets.filter((t) => t.status === 'in_progress').map((t) => t.lane));
-  const hold = new Set(CONFIG.holdTickets ?? []);
-  return plan.tickets
-    .filter((t) => t.status === 'todo')
-    .filter((t) => !hold.has(t.id)) // F2: human-pair tickets are never claimed unattended
-    .filter((t) => !WAVES || WAVES.includes(wave(t.id)))
-    .filter((t) => t.depends_on.every((d) => done.has(d)))
-    .filter((t) => !busyLanes.has(t.lane))
-    .sort((a, b) => a.id.localeCompare(b.id));
+/**
+ * Ticket ids that already have a parked branch carrying commits.
+ *
+ * Under --no-merge a finished ticket's `done` status is committed only to its
+ * own branch, so the board at ROOT still reads `todo`. The in-process
+ * parkedThisRun set stops a re-claim within one run, but a RESTART begins with
+ * an empty set and re-claims the ticket — and makeWorktree's pre-clean deletes
+ * and recreates the branch, destroying the parked work. That happened to
+ * kk/s-02 on Kryptkeeper 2026-07-28 (3 commits, recovered from the object
+ * store only by luck), and the manual workaround — hand-adding every finished
+ * ticket to holdTickets and renaming its branch out of the prefix — had to be
+ * repeated for five tickets before this existed.
+ *
+ * Reading it off the branches makes restarts safe without bookkeeping.
+ */
+function parkedBranchIds() {
+  if (DO_MERGE) return []; // merged runs delete the branch; nothing to protect
+  const ids = [];
+  for (const b of git('for-each-ref', '--format=%(refname:short)', 'refs/heads/').split('\n')) {
+    if (!b || !b.startsWith(CONFIG.branchPrefix)) continue;
+    try {
+      if (Number(git('rev-list', '--count', `main..${b}`)) > 0) {
+        ids.push(b.slice(CONFIG.branchPrefix.length).toUpperCase());
+      }
+    } catch { /* branch vanished between listing and counting */ }
+  }
+  return ids;
+}
+
+function claimable(plan, excluded = []) {
+  const parked = parkedBranchIds();
+  if (parked.length) log('claim.skip-parked', { msg: `already parked with commits: ${parked.join(', ')}` });
+  return claimableTickets(plan, { waves: WAVES, hold: CONFIG.holdTickets ?? [], excluded: [...excluded, ...parked] });
 }
 
 function pickModel(t) {
@@ -159,6 +184,7 @@ function lintPlan(plan) {
       if (t[k] === undefined) errors.push(`${t.id || '?'}: missing '${k}'`);
     }
     if (t.write_scope && !t.write_scope.length) errors.push(`${t.id}: empty write_scope`);
+    { const w = testSiblingWarning(t, CONFIG.testSibling); if (w) warnings.push(w); }
     if (t.acceptance && !t.acceptance.length) errors.push(`${t.id}: empty acceptance`);
     for (const d of t.depends_on || []) if (!ids.has(d)) errors.push(`${t.id}: depends_on unknown ticket '${d}'`);
 
@@ -261,6 +287,13 @@ function runValidators(wt, changed, names) {
 function runGates(t, branch, wt) {
   const gaps = [];
   const row = loadPlan(wt).tickets.find((x) => x.id === t.id);
+  // An agent that sets `blocked` is obeying the prompt ("If genuinely blocked
+  // after one honest attempt: set status blocked with a notes entry"), not
+  // failing a gate. Retrying it re-runs a full session to reach the identical
+  // conclusion — observed twice on Kryptkeeper 2026-07-28 (W3-02, W5-08), and
+  // the W3-02 agent predicted it: "resetting status to in_progress without
+  // correcting it will reproduce this same block every retry."
+  const selfBlocked = row?.status === 'blocked';
   if (!row || row.status !== 'done') gaps.push(doneCheckGap(row?.status, CONFIG.boardPath));
   if (Number(git('rev-list', '--count', `main..${branch}`)) < 1) gaps.push('no commits on ticket branch');
   const changed = git('diff', '--name-only', `main...${branch}`).split('\n').filter(Boolean);
@@ -281,7 +314,7 @@ function runGates(t, branch, wt) {
     advisory = runValidators(wt, changed, CONFIG.validators?.advisory);
     if (advisory.length) log('validators.advisory', { ticket: t.id, msg: `${advisory.length} finding(s) fed to review` });
   }
-  return { gaps, advisory };
+  return { gaps, advisory, selfBlocked };
 }
 
 // ---------- prompts ----------
@@ -320,6 +353,28 @@ function makeWorktree(t) {
   try { git('branch', '-D', branch); } catch { /* intentional: no prior branch to delete */ }
   mkdirSync(WT_BASE, { recursive: true });
   git('worktree', 'add', '-q', '-b', branch, wt, 'main');
+  // Provision the tree the AGENT works in.
+  //
+  // CONFIG.install also runs in runGates(), but that is the conductor's own
+  // post-session verification pass — by then the agent has already finished.
+  // A fresh worktree has no node_modules/vendored deps, so without this the
+  // agent cannot run the project's own lint/test command, and an honest agent
+  // does exactly what the prompt tells it to: sets the ticket `blocked`.
+  // Observed on Kryptkeeper 2026-07-28 — every ui-lane ticket blocked this
+  // way (W3-02, W5-08), each burning a retry session first, with seven more
+  // queued behind the same wall.
+  //
+  // Non-fatal: a failed install is logged, not thrown. The agent may still do
+  // useful work, and runGates() re-runs install and will surface a real
+  // breakage as a gap.
+  if (!DRY && existsSync(resolve(wt, CONFIG.toolchainMarker))) {
+    try {
+      sh(CONFIG.install[0], CONFIG.install[1], { cwd: wt, timeout: 10 * 60_000 });
+      log('worktree.install', { ticket: t.id, msg: 'dependencies installed for the agent session' });
+    } catch (e) {
+      log('worktree.install.warn', { ticket: t.id, msg: String(e.stdout || e.message).slice(-300) });
+    }
+  }
   return { branch, wt };
 }
 function removeWorktree(wt) {
@@ -347,6 +402,13 @@ async function executeTicket(t) {
     await runSession(codingPrompt(t, gaps, CONFIG.boardPath), model, `code:${t.id}`, wt);
     const g = runGates(t, branch, wt);
     gaps = g.gaps;
+    if (g.selfBlocked) {
+      // Deliberate, not a failure: stop the attempt ladder and let markBlocked
+      // record it. The agent's own reasoning is already committed to the branch.
+      log('ticket.selfblocked', { ticket: t.id, msg: `agent set status=blocked on attempt ${i + 1} — honouring it, not retrying` });
+      gaps = [`agent set status=blocked deliberately on attempt ${i + 1}; its reasoning is in the ticket's notes on the evidence branch`];
+      break;
+    }
     if (gaps.length) { log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) }); continue; }
 
     const diff = git('diff', `main...${branch}`).slice(0, 180_000);
@@ -397,11 +459,19 @@ function resetStatus(wt, id) {
   try { gitIn(wt, 'add', CONFIG.boardPath); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
 }
 
-function pushRemotes(ticket) {
+function pushRemotes(ticket, extraBranch = null) {
   if (!DO_PUSH) return;
+  // `extraBranch` is the ticket's own branch, pushed alongside main. Without it
+  // a blocked ticket's evidence branch and a --no-merge parked branch only ever
+  // existed on this machine: pushRemotes pushed main, and main is exactly what
+  // does NOT contain them. Kryptkeeper 2026-07-28 ran for an hour with every
+  // completed and every blocked branch unreplicated.
+  const refs = ['main', ...(extraBranch ? [extraBranch] : [])];
   for (const rem of CONFIG.remotes) {
-    try { sh('git', ['push', rem, 'main'], { timeout: 60_000 }); }
-    catch (e) { log('push.fail', { ticket, msg: `${rem}: ${String(e.message).slice(0, 80)}` }); }
+    for (const ref of refs) {
+      try { sh('git', ['push', rem, ref], { timeout: 60_000 }); }
+      catch (e) { log('push.fail', { ticket, msg: `${rem} ${ref}: ${String(e.message).slice(0, 80)}` }); }
+    }
   }
 }
 
@@ -436,7 +506,12 @@ function land(t, branch, wt) {
     pushRemotes(t.id);
   } else {
     log('parked', { ticket: t.id, msg: `left on ${branch} (worktree ${wt}) for review (--no-merge)` });
+    // Push the parked branch: it holds finished, gate-green, review-approved
+    // work that main will not carry until a human merges it.
+    pushRemotes(t.id, branch);
+    return 'parked';
   }
+  return 'merged';
 }
 
 function markBlocked(t, gaps, branch, wt) {
@@ -458,7 +533,7 @@ function markBlocked(t, gaps, branch, wt) {
   let keepName = `blocked/${t.id.toLowerCase()}`;
   try { git('rev-parse', '--verify', keepName); keepName = `${keepName}-${stamp}`; } catch { /* free */ }
   try { git('branch', '-m', branch, keepName); } catch { /* branch may not exist */ }
-  pushRemotes(t.id);
+  pushRemotes(t.id, keepName);
 }
 
 // ---------- human-signed security waivers ----------
@@ -512,11 +587,23 @@ async function main() {
   for (const bin of ['claude', 'git']) {
     try { sh('which', [bin]); } catch { console.error(`missing prerequisite: ${bin}`); process.exit(1); }
   }
-  // W3-15: refuse a Node that doesn't match .nvmrc — a mismatch ABI-breaks better-sqlite3.
-  const nvmrc = readFileSync('.nvmrc', 'utf8').trim();
-  if (!process.version.startsWith(`v${nvmrc}.`)) {
-    console.error(`node ${process.version} != .nvmrc v${nvmrc}.x — fix PATH/fnm before running (W3-15)`);
-    process.exit(1);
+  // W3-15: refuse a Node that doesn't match the project's pin — a mismatch
+  // ABI-breaks native modules (better-sqlite3 here). The pin's LOCATION is
+  // project-specific (CONFIG.nvmrcPath), and a project that pins nowhere is
+  // skipped rather than refused: this used to be a bare readFileSync('.nvmrc')
+  // that fataled any repo without a root .nvmrc — the same portability defect
+  // W9-12 fixed for models.json, found the same way, by an external import.
+  // Resolved against ROOT, not cwd, so the check does not depend on where the
+  // conductor was invoked from.
+  if (CONFIG.nvmrcPath) {
+    const pinFile = resolve(ROOT, CONFIG.nvmrcPath);
+    if (existsSync(pinFile)) {
+      const mismatch = nodePinMismatch(process.version, readFileSync(pinFile, 'utf8'));
+      if (mismatch) {
+        console.error(`${mismatch} (pinned by ${CONFIG.nvmrcPath}) — fix PATH/fnm before running (W3-15)`);
+        process.exit(1);
+      }
+    }
   }
   if (CONFIG.holdTickets?.length) log('conductor.hold', { msg: `human-pair hold (F2): ${CONFIG.holdTickets.join(', ')} — never claimed unattended` });
   if (git('status', '--porcelain')) { console.error('working tree not clean — commit or stash first'); process.exit(1); }
@@ -524,12 +611,16 @@ async function main() {
   log('conductor.start', { msg: `breakpoint=${BREAKPOINT} waves=${WAVES ?? 'all'} isolation=${CONFIG.isolation} merge=${DO_MERGE} models=${JSON.stringify(MODELS)}` });
 
   let doneCount = 0;
+  // Tickets parked by --no-merge: done on their branch, still `todo` on the
+  // board at ROOT. Must not be re-claimed, or the loop never terminates and
+  // each re-claim resets the parked branch. See claimableTickets().
+  const parkedThisRun = new Set();
   let currentWave = null;
   let waveBase = git('rev-parse', 'HEAD');
 
   while (doneCount < MAX_TICKETS) {
     if (existsSync(STOPFILE)) { log('conductor.stop', { msg: 'STOP file' }); break; }
-    const next = claimable(loadPlan())[0];
+    const next = claimable(loadPlan(), parkedThisRun)[0];
     if (!next) { log('conductor.idle', { msg: 'nothing claimable (done or all blocked)' }); break; }
 
     if (currentWave && wave(next.id) !== currentWave) {
@@ -544,7 +635,7 @@ async function main() {
     log('ticket.start', { ticket: next.id, msg: `${next.title} [${pickModel(next)}]` });
     const res = await executeTicket(next);
     if (res.ok) {
-      land(next, res.branch, res.wt);
+      if (land(next, res.branch, res.wt) === 'parked') parkedThisRun.add(next.id);
       doneCount++;
       log('ticket.done', { ticket: next.id, msg: `${doneCount} landed this run` });
       if (BREAKPOINT === 'ticket') { log('conductor.breakpoint', { msg: 'per-ticket breakpoint' }); break; }

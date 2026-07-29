@@ -11,14 +11,44 @@
 set -u
 cd "$(dirname "$0")/.."
 
-# W3-15: resolve Node from .nvmrc — never a hardcoded version. A mismatched Node
-# ABI-breaks better-sqlite3 (native module) for everyone else on the repo.
-NVMRC_MAJOR="$(tr -d '[:space:]' < .nvmrc)"
-NODE_BIN="$(ls -d "$HOME/.local/share/fnm/node-versions/v${NVMRC_MAJOR}"*/installation/bin 2>/dev/null | sort -V | tail -1)"
-if [ -z "$NODE_BIN" ]; then echo "[supervise] FATAL: no fnm Node v${NVMRC_MAJOR}.x installed (fnm install ${NVMRC_MAJOR})"; exit 1; fi
-export PATH="$NODE_BIN:$PATH"
-ACTUAL="$(node -v)"
-case "$ACTUAL" in v${NVMRC_MAJOR}.*) : ;; *) echo "[supervise] FATAL: node $ACTUAL != .nvmrc v${NVMRC_MAJOR}.x"; exit 1;; esac
+# W3-15: resolve Node from the project's version pin — never a hardcoded version.
+# A mismatched Node ABI-breaks native modules (better-sqlite3 here).
+#
+# The pin's LOCATION is project-specific: conductor.config.json's `nvmrcPath`,
+# defaulting to .nvmrc. Shipwright pins at the root; a ported repo may pin
+# elsewhere (Kryptkeeper: ui/.nvmrc) or not at all. No pin => use whatever Node
+# is already on PATH, rather than refusing to start. Mirrors the same check in
+# conductor.mjs; keep the two in step.
+PIN_PATH='.nvmrc'
+if [ -f conductor.config.json ]; then
+  CFG_PIN="$(sed -n 's/.*"nvmrcPath"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' conductor.config.json | head -1)"
+  # An explicit `"nvmrcPath": null` means "this project pins nowhere".
+  if grep -Eq '"nvmrcPath"[[:space:]]*:[[:space:]]*null' conductor.config.json; then PIN_PATH=''
+  elif [ -n "$CFG_PIN" ]; then PIN_PATH="$CFG_PIN"; fi
+fi
+
+if [ -n "$PIN_PATH" ] && [ -f "$PIN_PATH" ]; then
+  NVMRC_MAJOR="$(tr -d '[:space:]' < "$PIN_PATH")"
+  NODE_BIN="$(ls -d "$HOME/.local/share/fnm/node-versions/v${NVMRC_MAJOR}"*/installation/bin 2>/dev/null | sort -V | tail -1)"
+  if [ -z "$NODE_BIN" ]; then echo "[supervise] FATAL: no fnm Node v${NVMRC_MAJOR}.x installed (fnm install ${NVMRC_MAJOR})"; exit 1; fi
+  export PATH="$NODE_BIN:$PATH"
+  ACTUAL="$(node -v)"
+  case "$ACTUAL" in v${NVMRC_MAJOR}.*) : ;; *) echo "[supervise] FATAL: node $ACTUAL != ${PIN_PATH} v${NVMRC_MAJOR}.x"; exit 1;; esac
+else
+  command -v node >/dev/null 2>&1 || { echo "[supervise] FATAL: no node on PATH and no version pin to resolve one"; exit 1; }
+  echo "[supervise] no Node pin (${PIN_PATH:-nvmrcPath=null}) — using $(node -v) from PATH"
+fi
+
+# Crash-cleanup targets are project-specific too: which branches this conductor
+# owns, and where it puts worktrees. Defaults match Shipwright.
+BRANCH_PREFIX='sw/'
+WORKTREE_DIR='../.shipwright-worktrees'
+if [ -f conductor.config.json ]; then
+  CFG_BP="$(sed -n 's/.*"branchPrefix"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' conductor.config.json | head -1)"
+  CFG_WD="$(sed -n 's/.*"worktreeDir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' conductor.config.json | head -1)"
+  [ -n "$CFG_BP" ] && BRANCH_PREFIX="$CFG_BP"
+  [ -n "$CFG_WD" ] && WORKTREE_DIR="$CFG_WD"
+fi
 
 MAX=${SUPERVISE_MAX:-30}     # give up after this many crash-restarts
 BACKOFF=${SUPERVISE_BACKOFF:-30}
@@ -36,10 +66,29 @@ while :; do
   git checkout -f main >/dev/null 2>&1
   git clean -fd >/dev/null 2>&1
   git worktree prune >/dev/null 2>&1
+  # NEVER delete a branch that carries commits main does not have.
+  #
+  # This cleanup exists to clear a crashed attempt's debris, but under
+  # --no-merge the conductor's FINISHED work is parked on exactly these
+  # prefixed branches and is deliberately never merged. Deleting by prefix
+  # alone therefore destroys every completed ticket on the first crash-restart.
+  # Observed 2026-07-28: launching supervise.sh silently deleted a parked,
+  # review-APPROVED branch. `git branch -d` (not -D) refuses unmerged branches,
+  # so the safe behaviour is also the simpler one — an unmerged branch is
+  # reported and kept for the human instead.
   git for-each-ref --format='%(refname:short)' refs/heads/ \
-    | grep -E '^(sw/|feat/w[0-9].*-auto$)' \
-    | while read -r b; do git worktree remove --force "$(git worktree list --porcelain | grep -A2 "branch refs/heads/$b" | grep '^worktree ' | cut -d' ' -f2)" >/dev/null 2>&1; git branch -D "$b" >/dev/null 2>&1; done
-  rm -rf ../.shipwright-worktrees >/dev/null 2>&1
+    | grep -E "^(${BRANCH_PREFIX}|feat/w[0-9].*-auto$)" \
+    | while read -r b; do
+        wt_path="$(git worktree list --porcelain | grep -A2 "branch refs/heads/$b" | grep '^worktree ' | cut -d' ' -f2)"
+        [ -n "$wt_path" ] && git worktree remove --force "$wt_path" >/dev/null 2>&1
+        if [ "$(git rev-list --count "main..$b" 2>/dev/null || echo 0)" -gt 0 ]; then
+          log "keeping $b — has commits not on main (parked work, or a crash mid-ticket)"
+        else
+          git branch -d "$b" >/dev/null 2>&1
+        fi
+      done
+  # Only remove worktree checkouts, never the branches they pointed at.
+  rm -rf "$WORKTREE_DIR" >/dev/null 2>&1
 
   log "starting conductor (launch $((n+1)))"
   node scripts/conductor.mjs "$@"
