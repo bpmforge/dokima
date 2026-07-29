@@ -162,34 +162,55 @@ export function testSiblingWarning(ticket, cfg) {
  * loadMigrations uses map[int]*migrationFile over a filename-sorted embed.FS)
  * will silently let one version's SQL overwrite another's, while the schema
  * table records whichever name sorts first. Idempotent schema creation means
- * the test suite may stay green over a corrupted schema.
+ * the test suite may stay green over a corrupted schema. Versions themselves
+ * are gap-tolerant (loadMigrations applies in sorted numeric order
+ * regardless of gaps) — see CLAUDE.md "Migration version numbers" — so this
+ * rule only cares whether a version number resolves to more than one
+ * distinct migration file, never whether the numbering is contiguous.
  *
  * Kryptkeeper 2026-07-29 had two live collisions at once: 000030 claimed by
  * two tickets, and 000027 claimed by a todo ticket that was already on disk.
- * A third would have happened had an agent's invented number stuck.
+ * A third would have happened had an agent's invented number stuck. That
+ * same day, S-27 fixed a false positive on 000027: W9-04 and S-20 both
+ * legitimately claim 000027_ca_key_rotations — the SAME file, deliberately
+ * shared — which is not two tickets writing one version. Collision detection
+ * therefore compares the distinct migration FILENAMES claimed under a
+ * version, not just the count of claiming tickets.
  *
- * `onDisk` is the set of versions that already exist. Done tickets are ignored
- * — their migration has shipped and legitimately occupies its number.
+ * `onDisk` is the set of versions that already exist. A version with no open
+ * (non-`done`) owner is skipped entirely — nothing left to warn about. Once
+ * there is an open owner, sharing the same filename with a `done` owner
+ * still surfaces the "already exists on disk" warning: it is a
+ * schema-corruption-relevant check, so a noisy prompt for a human to confirm
+ * the sharing is deliberate beats staying silent on a case this function
+ * cannot fully distinguish from an open ticket about to overwrite a shipped
+ * migration.
  */
 export function migrationCollisions(tickets, cfg, onDisk = []) {
   if (!cfg || !cfg.pattern) return [];
   const re = new RegExp(cfg.pattern);
   const shipped = new Set(onDisk);
-  const claims = new Map();
+  const claims = new Map(); // version -> Map<ticket, Set<migration base filename>>
   for (const t of tickets) {
     for (const f of t.write_scope || []) {
       const m = re.exec(f);
       if (!m) continue;
-      if (!claims.has(m[1])) claims.set(m[1], new Set());
-      claims.get(m[1]).add(t);
+      const version = m[1];
+      const base = f.slice(f.lastIndexOf('/') + 1).replace(/\.(up|down)\.sql$/, '');
+      if (!claims.has(version)) claims.set(version, new Map());
+      const byTicket = claims.get(version);
+      if (!byTicket.has(t)) byTicket.set(t, new Set());
+      byTicket.get(t).add(base);
     }
   }
   const out = [];
-  for (const [version, owners] of [...claims].sort()) {
-    const open = [...owners].filter((t) => t.status !== 'done');
+  for (const [version, byTicket] of [...claims].sort()) {
+    const owners = [...byTicket.keys()];
+    const open = owners.filter((t) => t.status !== 'done');
     if (!open.length) continue;
-    if (owners.size > 1) {
-      out.push(`migration ${version} is claimed by ${[...owners].map((t) => `${t.id}(${t.status})`).join(', ')} — two tickets writing one version silently overwrite each other`);
+    const distinctFiles = new Set([...byTicket.values()].flatMap((s) => [...s]));
+    if (distinctFiles.size > 1) {
+      out.push(`migration ${version} is claimed by ${owners.map((t) => `${t.id}(${t.status})`).join(', ')} — two tickets writing one version silently overwrite each other`);
     } else if (shipped.has(version)) {
       out.push(`migration ${version} is claimed by ${open[0].id}(${open[0].status}) but already exists on disk — it would overwrite a shipped migration`);
     }

@@ -666,6 +666,36 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
     expect(migrationCollisions([T('A-1','todo',M('000033','a')), T('B-2','todo',M('000034','b'))], CFG, ['000029'])).toEqual([]);
   });
 
+  // Regression, Kryptkeeper 2026-07-29: the rule keyed only on the version number,
+  // so two tickets deliberately SHARING one migration file read as a collision.
+  // W9-04 and S-20 both legitimately claim 000027_ca_key_rotations — one file, two
+  // owners — and the board linter cried collision on every run. A version is only
+  // dangerous when it resolves to more than one distinct migration FILE.
+  it('does NOT flag two tickets that share one migration file (same version, same name)', () => {
+    const out = migrationCollisions(
+      [T('W9-04','todo',M('000027','ca_key_rotations')), T('S-20','todo',M('000027','ca_key_rotations'))],
+      CFG,
+    );
+    expect(out).toEqual([]);
+  });
+
+  it('still flags two tickets at one version when the filenames differ', () => {
+    const out = migrationCollisions(
+      [T('W9-04','todo',M('000027','ca_key_rotations')), T('S-20','todo',M('000027','something_else'))],
+      CFG,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('000027');
+  });
+
+  it('treats the up/down pair of one migration as a single file, not two', () => {
+    const pair = (n, name) => [
+      `internal/db/migrations/postgres/${n}_${name}.up.sql`,
+      `internal/db/migrations/postgres/${n}_${name}.down.sql`,
+    ];
+    expect(migrationCollisions([T('A-1','todo',...pair('000030','a'))], CFG)).toEqual([]);
+  });
+
   it('ignores non-migration paths and is off without config', () => {
     expect(migrationCollisions([T('A-1','todo','internal/x.go')], CFG)).toEqual([]);
     expect(migrationCollisions([T('A-1','todo',M('000030','a')), T('B','todo',M('000030','b'))], null)).toEqual([]);

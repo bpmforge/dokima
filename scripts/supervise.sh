@@ -39,6 +39,29 @@ else
   echo "[supervise] no Node pin (${PIN_PATH:-nvmrcPath=null}) — using $(node -v) from PATH"
 fi
 
+# A Go project's gate tools (golangci-lint et al) install to $(go env GOPATH)/bin,
+# which an interactive shell gets from the user's profile but a nohup'd daemon does
+# NOT. Without this, `make lint` dies with "golangci-lint: No such file or directory"
+# and the conductor reads it as a ticket gate failure, burning a retry per ticket
+# rather than reporting a broken environment once. Observed in Kryptkeeper
+# 2026-07-29: S-27 failed this way on attempt 1 and retried on a defect that was
+# never in the ticket. Inert here (Shipwright has no go.mod) but this file is the
+# canonical copy that ported projects vendor.
+if [ -f go.mod ] && command -v go >/dev/null 2>&1; then
+  GOBIN_DIR="$(go env GOPATH 2>/dev/null)/bin"
+  if [ -d "$GOBIN_DIR" ]; then
+    case ":$PATH:" in *":$GOBIN_DIR:"*) : ;; *) export PATH="$GOBIN_DIR:$PATH";; esac
+  fi
+  # Fail fast and loudly rather than letting every Go ticket discover it one at a time.
+  if grep -qE '^[[:space:]]*"make",?$|"lint"' conductor.config.json 2>/dev/null; then
+    command -v golangci-lint >/dev/null 2>&1 || {
+      echo "[supervise] FATAL: conductor.config.json gates on 'make lint' but golangci-lint is not on PATH"
+      echo "[supervise]        looked in ${GOBIN_DIR} — install it, or drop the lint gate from the config"
+      exit 1
+    }
+  fi
+fi
+
 # Crash-cleanup targets are project-specific too: which branches this conductor
 # owns, and where it puts worktrees. Defaults match Shipwright.
 BRANCH_PREFIX='sw/'
