@@ -155,12 +155,27 @@ const ALWAYS_OK = alwaysOkPatterns(CONFIG).map(globToRegex);
 function parkedBranchIds() {
   if (DO_MERGE) return []; // merged runs delete the branch; nothing to protect
   const ids = [];
+  const boardOnly = new Set([CONFIG.boardPath, 'docs/STATUS.md']);
   for (const b of git('for-each-ref', '--format=%(refname:short)', 'refs/heads/').split('\n')) {
     if (!b || !b.startsWith(CONFIG.branchPrefix)) continue;
     try {
-      if (Number(git('rev-list', '--count', `main..${b}`)) > 0) {
-        ids.push(b.slice(CONFIG.branchPrefix.length).toUpperCase());
+      if (Number(git('rev-list', '--count', `main..${b}`)) === 0) continue;
+      // A branch whose ONLY commits touch the board is a claim ("mark
+      // in_progress") left by a conductor that died mid-ticket. Counting it as
+      // parked work strands its ticket permanently: nothing to protect, but the
+      // ticket is skipped on every subsequent run and can never be re-claimed.
+      // Observed on Kryptkeeper S-29, 2026-07-29 — one commit, one line, and the
+      // ticket was unreachable until the branch was deleted by hand.
+      //
+      // Real parked work always touches something outside the board. Comparing
+      // the file list is cheaper and more robust than reading the branch's board
+      // and trusting a status field the dead session may never have written.
+      const touched = git('diff', '--name-only', `main...${b}`).split('\n').filter(Boolean);
+      if (touched.length && touched.every((f) => boardOnly.has(f))) {
+        log('claim.stale-claim', { msg: `${b} carries only board commits (dead claim) — not treating as parked` });
+        continue;
       }
+      ids.push(b.slice(CONFIG.branchPrefix.length).toUpperCase());
     } catch { /* branch vanished between listing and counting */ }
   }
   return ids;
