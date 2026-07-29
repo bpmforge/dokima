@@ -418,3 +418,49 @@ export function parseJson(text) {
     return null;
   }
 }
+
+/**
+ * Decide what a review verdict actually means for the retry loop.
+ *
+ * Severity policy: only CRITICAL/HIGH findings, plus prior findings the reviewer
+ * explicitly marks STILL PRESENT, block a ticket. That policy has a sharp edge —
+ * a FIX verdict carrying nothing but MEDIUM/LOW findings produces an EMPTY
+ * blocker list. Retrying on an empty list asks the agent to fix nothing, burns a
+ * session, and when attempts run out blocks the ticket with an empty ledger:
+ * "blocked" with no recorded reason, which is the worst of both outcomes.
+ *
+ * Observed on Kryptkeeper S-30, 2026-07-29:
+ *   review.result  verdict=FIX newHigh=0 priorsStillPresent=0 (sticky-seen 0)
+ *   review.fix     0 blocker(s): 0 new + 0 still-present
+ *   ticket.retry   attempt 2
+ *
+ * So: the presence of blockers is the decision, not the verdict string. The
+ * reviewer is the authority on whether something blocks; the severity filter is
+ * how that authority is expressed. Sub-blocking findings are returned as
+ * `advisory` so they are recorded rather than silently dropped.
+ */
+export function reviewDecision(verdict) {
+  const v = verdict ?? {};
+  const findings = Array.isArray(v.findings) ? v.findings : [];
+  const priors = Array.isArray(v.prior_status) ? v.prior_status : [];
+
+  const isBlocking = (f) => ['CRITICAL', 'HIGH'].includes(f?.severity);
+  const currentHigh = findings.filter(isBlocking);
+  const presentPriors = priors.filter((ps) => ps?.status === 'PRESENT');
+
+  const blockers = [
+    ...currentHigh.map((f) => `[${f.severity}] ${f.file}: ${f.issue} — fix: ${f.fix}`),
+    ...presentPriors.map((ps) => `[STILL-PRESENT] ${ps.finding} — ${ps.evidence || ''}`),
+  ];
+
+  return {
+    approve: blockers.length === 0,
+    blockers,
+    currentHigh,
+    presentPriors,
+    advisory: findings.filter((f) => !isBlocking(f)),
+    // True when the reviewer said FIX but raised nothing that blocks — the case
+    // that used to spin. Callers log it so the override stays visible.
+    verdictOverridden: blockers.length === 0 && v.verdict !== 'APPROVE',
+  };
+}

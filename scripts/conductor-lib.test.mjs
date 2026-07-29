@@ -23,6 +23,7 @@ import {
   serializePlan,
   claimableTickets,
   migrationCollisions,
+  reviewDecision,
   nodePinMismatch,
   testSiblingWarning,
   validateModels,
@@ -699,5 +700,56 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
   it('ignores non-migration paths and is off without config', () => {
     expect(migrationCollisions([T('A-1','todo','internal/x.go')], CFG)).toEqual([]);
     expect(migrationCollisions([T('A-1','todo',M('000030','a')), T('B','todo',M('000030','b'))], null)).toEqual([]);
+  });
+});
+
+describe('conductor-lib: reviewDecision — a FIX verdict with no blockers must not spin', () => {
+  const HIGH = { severity: 'HIGH', file: 'a.ts', issue: 'boom', fix: 'do x' };
+  const MED  = { severity: 'MEDIUM', file: 'b.ts', issue: 'meh', fix: 'maybe' };
+
+  // Kryptkeeper S-30, 2026-07-29: reviewer returned FIX, raised nothing above
+  // MEDIUM, so blockers came out empty. The loop retried the agent with an empty
+  // gap list — fix nothing — and on attempt exhaustion would have blocked the
+  // ticket with an empty ledger.
+  it('approves a FIX verdict that carries no CRITICAL/HIGH and no still-present priors', () => {
+    const d = reviewDecision({ verdict: 'FIX', findings: [], prior_status: [] });
+    expect(d.approve).toBe(true);
+    expect(d.blockers).toEqual([]);
+    expect(d.verdictOverridden).toBe(true);
+  });
+
+  it('approves a FIX verdict carrying only sub-blocking findings, and keeps them as advisory', () => {
+    const d = reviewDecision({ verdict: 'FIX', findings: [MED], prior_status: [] });
+    expect(d.approve).toBe(true);
+    expect(d.advisory).toHaveLength(1);
+    expect(d.verdictOverridden).toBe(true);
+  });
+
+  it('still blocks on a CRITICAL/HIGH finding', () => {
+    const d = reviewDecision({ verdict: 'FIX', findings: [HIGH], prior_status: [] });
+    expect(d.approve).toBe(false);
+    expect(d.blockers).toHaveLength(1);
+    expect(d.blockers[0]).toContain('boom');
+    expect(d.verdictOverridden).toBe(false);
+  });
+
+  it('still blocks on a prior finding the reviewer marks STILL PRESENT, even on APPROVE', () => {
+    const d = reviewDecision({ verdict: 'APPROVE', findings: [], prior_status: [{ status: 'PRESENT', finding: 'old leak', evidence: 'line 9' }] });
+    expect(d.approve).toBe(false);
+    expect(d.blockers[0]).toContain('STILL-PRESENT');
+  });
+
+  it('does not mark an ordinary APPROVE as overridden', () => {
+    const d = reviewDecision({ verdict: 'APPROVE', findings: [MED], prior_status: [] });
+    expect(d.approve).toBe(true);
+    expect(d.verdictOverridden).toBe(false);
+  });
+
+  it('survives a malformed or empty verdict without throwing', () => {
+    for (const v of [null, undefined, {}, { findings: null, prior_status: 'nope' }]) {
+      const d = reviewDecision(v);
+      expect(d.approve).toBe(true);
+      expect(d.blockers).toEqual([]);
+    }
   });
 });

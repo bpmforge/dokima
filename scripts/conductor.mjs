@@ -53,6 +53,7 @@ import {
   claimableTickets,
   testSiblingWarning,
   migrationCollisions,
+  reviewDecision,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -430,20 +431,25 @@ async function executeTicket(t) {
     // the finding and approves is the authority, not my bookkeeping. (The earlier gate —
     // "APPROVE && zero-unresolved-sticky" with brittle text-matched resolution — false-
     // blocked W0-05/W1-01/W1-03: the reviewer APPROVED but the sticky rows never cleared.)
-    const currentHigh = (verdict.findings ?? []).filter((x) => ['CRITICAL', 'HIGH'].includes(x.severity));
+    const decision = reviewDecision(verdict);
+    const { currentHigh, presentPriors, blockers, advisory } = decision;
     for (const f of currentHigh) {
       const key = `${f.file}:${f.issue}`;
       if (!sticky.some((s) => s.key === key)) sticky.push({ key, severity: f.severity, file: f.file, issue: f.issue, fix: f.fix });
     }
-    const presentPriors = (verdict.prior_status ?? []).filter((ps) => ps.status === 'PRESENT');
-    const blockers = [
-      ...currentHigh.map((f) => `[${f.severity}] ${f.file}: ${f.issue} — fix: ${f.fix}`),
-      ...presentPriors.map((ps) => `[STILL-PRESENT] ${ps.finding} — ${ps.evidence || ''}`),
-    ];
     log('review.result', { ticket: t.id, msg: `verdict=${verdict.verdict} newHigh=${currentHigh.length} priorsStillPresent=${presentPriors.length} (sticky-seen ${sticky.length})` });
 
-    if (verdict.verdict === 'APPROVE' && blockers.length === 0) {
-      log('review.approve', { ticket: t.id, msg: `informed APPROVE; ${sticky.length} prior finding(s) not re-raised` });
+    // See reviewDecision() in conductor-lib.mjs: the presence of blockers is the
+    // decision, not the verdict string. A FIX verdict with nothing above MEDIUM
+    // used to retry on an empty gap list and could block a ticket with an empty
+    // ledger — "blocked" with no recorded reason.
+    if (decision.approve) {
+      if (decision.verdictOverridden) {
+        log('review.approve', { ticket: t.id, msg: `verdict=${verdict.verdict} but no CRITICAL/HIGH findings and no still-present priors — treating as APPROVE; ${advisory.length} advisory finding(s) recorded, not blocking` });
+      } else {
+        log('review.approve', { ticket: t.id, msg: `informed APPROVE; ${sticky.length} prior finding(s) not re-raised${advisory.length ? `; ${advisory.length} advisory` : ''}` });
+      }
+      for (const a of advisory) log('review.advisory', { ticket: t.id, msg: `[${a.severity}] ${a.file}: ${a.issue}` });
       return { ok: true, branch, wt };
     }
     log('review.fix', { ticket: t.id, msg: `${blockers.length} blocker(s): ${currentHigh.length} new + ${presentPriors.length} still-present` });
