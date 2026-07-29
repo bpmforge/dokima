@@ -54,6 +54,7 @@ import {
   testSiblingWarning,
   migrationCollisions,
   reviewDecision,
+  selectGates,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -327,7 +328,13 @@ function runGates(t, branch, wt) {
   let advisory = [];
   if (existsSync(resolve(wt, CONFIG.toolchainMarker)) && !DRY) {
     try { sh(CONFIG.install[0], CONFIG.install[1], { cwd: wt, timeout: 10 * 60_000 }); } catch (e) { gaps.push(`install failed: ${String(e.stdout || e.message).slice(-300)}`); }
-    for (const [cmd, cmdArgs] of CONFIG.gates) {
+    // Scope-conditional gates: a frontend suite run for a backend-only ticket is
+    // not extra safety, it is extra failure surface. See selectGates().
+    const { run: gatesToRun, skipped: gatesSkipped } = selectGates(CONFIG.gates, t);
+    for (const g of gatesSkipped) {
+      log('gates.skip', { ticket: t.id, msg: `${g.cmd} ${(g.args || []).join(' ')} — write_scope matches none of ${g.when.join(', ')}` });
+    }
+    for (const [cmd, cmdArgs] of gatesToRun) {
       try { sh(cmd, cmdArgs, { cwd: wt, timeout: CONFIG.gateTimeoutMin * 60_000 }); }
       catch (e) { gaps.push(`${cmd} ${cmdArgs[0]} failed: ${String(e.stdout || e.message).slice(-800)}`); }
     }

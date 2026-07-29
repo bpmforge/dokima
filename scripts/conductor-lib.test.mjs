@@ -24,6 +24,7 @@ import {
   claimableTickets,
   migrationCollisions,
   reviewDecision,
+  selectGates,
   nodePinMismatch,
   testSiblingWarning,
   validateModels,
@@ -751,5 +752,49 @@ describe('conductor-lib: reviewDecision — a FIX verdict with no blockers must 
       expect(d.approve).toBe(true);
       expect(d.blockers).toEqual([]);
     }
+  });
+});
+
+describe('conductor-lib: selectGates — do not gate a backend ticket on a frontend suite', () => {
+  const GO = ['go', ['build', './...']];
+  const UI = { cmd: 'npm', args: ['--prefix', 'ui', 'run', 'test'], when: ['ui/**'] };
+
+  // Kryptkeeper S-32, 2026-07-29: write_scope was internal/bootstrap/* plus
+  // tests/smoke/**, not one ui/ path, and it failed twice on a flaky ui vitest
+  // run while an unrelated opengrep scan had the box at load 155.
+  it('skips a scoped gate when the ticket touches nothing it covers', () => {
+    const t = { write_scope: ['internal/bootstrap/response.go', 'tests/smoke/**'] };
+    const { run, skipped } = selectGates([GO, UI], t);
+    expect(run).toEqual([GO]);
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0].cmd).toBe('npm');
+  });
+
+  it('runs the scoped gate when the ticket does touch that area', () => {
+    const t = { write_scope: ['ui/src/pages/Keys.tsx'] };
+    const { run, skipped } = selectGates([GO, UI], t);
+    expect(run).toHaveLength(2);
+    expect(skipped).toEqual([]);
+  });
+
+  it('treats a legacy [cmd, args] tuple as unconditional', () => {
+    const t = { write_scope: ['docs/README.md'] };
+    expect(selectGates([GO], t).run).toEqual([GO]);
+  });
+
+  it('treats an object gate with no when as unconditional', () => {
+    const t = { write_scope: ['docs/README.md'] };
+    const g = { cmd: 'make', args: ['lint'] };
+    expect(selectGates([g], t).run).toEqual([['make', ['lint']]]);
+  });
+
+  it('matches a glob-style scope entry, not just literal paths', () => {
+    const t = { write_scope: ['ui/src/**'] };
+    expect(selectGates([UI], t).run).toHaveLength(1);
+  });
+
+  it('survives a ticket with no write_scope and an empty gate list', () => {
+    expect(selectGates([UI], {}).run).toEqual([]);
+    expect(selectGates(undefined, { write_scope: ['x'] }).run).toEqual([]);
   });
 });

@@ -464,3 +464,38 @@ export function reviewDecision(verdict) {
     verdictOverridden: blockers.length === 0 && v.verdict !== 'APPROVE',
   };
 }
+
+/**
+ * Select which gates apply to a ticket.
+ *
+ * A gate entry is either the legacy tuple `[cmd, args]` — always runs — or an
+ * object `{cmd, args, when}` where `when` is a list of globs matched against the
+ * ticket's write_scope. If none of the ticket's scope entries match, the gate is
+ * skipped.
+ *
+ * Why: running a frontend suite for a backend-only ticket is not extra safety,
+ * it is extra failure surface. Kryptkeeper S-32 (write_scope: internal/bootstrap
+ * plus tests/smoke, not one ui/ path) failed twice on a flaky `npm --prefix ui
+ * test` while a large opengrep scan had the machine at load 155 — a gate it
+ * could not possibly have affected, charged to the ticket as a defect. That
+ * repo's CLAUDE.md already scopes the ui pair to "tickets touching ui/"; this
+ * makes the harness honour the policy the project already states.
+ *
+ * A skipped gate is returned in `skipped` so the caller can log it — silently
+ * running fewer checks than the operator believes is its own hazard.
+ */
+export function selectGates(gates, ticket, globToRegexFn = globToRegex) {
+  const scope = ticket?.write_scope ?? [];
+  const run = [];
+  const skipped = [];
+  for (const g of gates ?? []) {
+    if (Array.isArray(g)) { run.push(g); continue; }          // legacy tuple: always
+    const entry = [g.cmd, g.args ?? []];
+    if (!g.when || !g.when.length) { run.push(entry); continue; }
+    const res = g.when.map(globToRegexFn);
+    const applies = scope.some((p) => res.some((r) => r.test(p)));
+    if (applies) run.push(entry);
+    else skipped.push({ cmd: g.cmd, args: g.args ?? [], when: g.when });
+  }
+  return { run, skipped };
+}
