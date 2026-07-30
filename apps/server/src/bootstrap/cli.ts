@@ -14,7 +14,7 @@ import {
   type ApiServer,
 } from '../api/index.js';
 import { openEventLog } from '@shipwright/events';
-import { computeShipwrightHome } from '@shipwright/shared';
+import { computeShipwrightHome, resolveAsset } from '@shipwright/shared';
 import { runBackupCommand, type BackupCommandDeps } from '../cli/ops/backup-cmd.js';
 import { runDoctorCommand, type DoctorDeps } from '../cli/ops/doctor.js';
 import {
@@ -58,8 +58,9 @@ export function resolvePort(env: NodeJS.ProcessEnv): number {
 }
 
 function webDistDir(): string {
-  const here = path.dirname(new URL(import.meta.url).pathname);
-  return path.resolve(here, '..', '..', '..', 'web', 'dist');
+  // Anchored to the distribution root, not to this file: under a bundle the
+  // '..' hops landed outside the package entirely (W9-13).
+  return resolveAsset('apps', 'web', 'dist');
 }
 
 async function runPacksUpdate(io: CliIO, deps: CliDeps): Promise<number> {

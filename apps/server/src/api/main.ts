@@ -13,7 +13,8 @@
  */
 
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
+import { resolveAsset } from '@shipwright/shared';
 import { openEventLog } from '@shipwright/events';
 import {
   buildApiServer,
@@ -57,8 +58,9 @@ export async function buildServer(opts: BuildServerOptions): Promise<ApiServer> 
 }
 
 function defaultWebDistDir(): string {
-  const here = fileURLToPath(new URL('.', import.meta.url));
-  return path.resolve(here, '../../../web/dist');
+  // Anchored to the distribution root: this is the SPA the packaged server
+  // serves, and the old hop broke under bundling (W9-13).
+  return resolveAsset('apps', 'web', 'dist');
 }
 
 async function main(): Promise<void> {

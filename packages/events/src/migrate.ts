@@ -1,13 +1,12 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolveAsset } from '@shipwright/shared';
 import type Database from 'better-sqlite3';
 
-const MIGRATIONS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  'migrations',
-);
+// Anchored to the distribution root rather than to this file: a bundle
+// collapses every source dir into one file, so the old '..' hop resolved to
+// <bundle-dir>/migrations and died with ENOENT before the DB opened (W9-13).
+const MIGRATIONS_DIR = resolveAsset('packages', 'events', 'migrations');
 
 const MIGRATION_FILE_PATTERN = /^(\d+)_.*\.sql$/;
 

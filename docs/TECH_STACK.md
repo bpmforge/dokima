@@ -58,6 +58,7 @@ Pin exact majors in this table when each adapter's wave starts.
 |---|---|---|
 | React | **19.x** | D-003; current major at project start — no legacy codebase to protect. |
 | Vite | **6.x** | D-003; SPA build served by apps/server; no build-time server coupling. |
+| esbuild | **0.28.x** | W9-13: bundles apps/server + all 12 workspace packages into one plain-JS `dist/main.js` so the published package runs under bare `node` with no `tsx`. Chosen over per-package `tsc` emit because that path implies publishing 13 registry names in lockstep. Already present transitively (vite, tsx) — declared explicitly rather than relied on as a phantom dependency. `better-sqlite3`/`execa`/`fastify`/`google-auth-library`/`zod` stay external. |
 | CodeMirror | **6** (`@codemirror/*`) | Diffs (merge view) + markdown/doc editing in the Artifact Viewer. |
 | Mermaid | **11.x** | Client-side rendering of architecture diagrams, ticket DAG, sequence diagrams (FR-C3). |
 | Tailwind CSS | **4.x** | Utility styling for the Canvas; CSS-first config (see traps). |

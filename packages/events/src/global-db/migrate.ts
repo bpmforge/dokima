@@ -1,10 +1,15 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolveAsset } from '@shipwright/shared';
 import type Database from 'better-sqlite3';
 
-const MIGRATIONS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
+// See ../migrate.ts: anchored to the distribution root so this survives
+// bundling (W9-13).
+const MIGRATIONS_DIR = resolveAsset(
+  'packages',
+  'events',
+  'src',
+  'global-db',
   'migrations',
 );
 
