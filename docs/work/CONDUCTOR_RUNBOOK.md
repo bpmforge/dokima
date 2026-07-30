@@ -49,11 +49,35 @@ supervisor for unattended runs.
 
 ```bash
 cd ~/Code/shipwright
+pnpm autorun                       # or: scripts/autorun.sh start
+tail -f docs/work/conductor.out    # watch a few tickets, then walk away
+```
+
+`autorun` is the front door (W9-16): it wraps `nohup` + `caffeinate` + the
+supervisor, records the pid, and appends to `docs/work/conductor.out`. Extra
+arguments pass straight through, so scope it the same way as before —
+`pnpm autorun --waves W0,W1,W2 --breakpoint never`, or `--no-merge` to park
+branches for morning review.
+
+**It refuses to start on a dirty tree or off `main`, and that refusal is
+load-bearing.** The supervisor resets to `main` and runs `git clean -fd` before
+every launch; starting mid-edit silently discards uncommitted changes and deletes
+untracked files. That is not theoretical — W9-16 lost its own first draft to it.
+`supervise.sh` now refuses the same way if you call it directly. Commit or stash,
+then launch. Crash-restarts *within* a run still reset, because there the dirty
+tree really is a dead attempt's debris.
+
+`--escalate` is deliberately **not** the default: `conductor.config.json`'s
+`$modelsNote` keeps overnight runs on the sonnet ladder, because frontier spend
+should require a human typing it (D-018).
+
+Raw form, still supported for anything the wrapper does not cover:
+
+```bash
 nohup caffeinate -dimsu bash scripts/supervise.sh \
   --waves W0,W1,W2 --breakpoint never --escalate \
   >> docs/work/conductor.out 2>&1 &
 echo $! > docs/work/supervise.pid
-tail -f docs/work/conductor.out    # watch a few tickets, then walk away
 ```
 
 The supervisor gives up after `SUPERVISE_MAX` (default 30) crash-restarts and
@@ -72,11 +96,13 @@ with `--breakpoint wave`.
 
 | Action | Command |
 |---|---|
-| Stop gracefully (between sessions) | `touch ~/Code/shipwright/STOP` |
+| Stop gracefully (between sessions) | `pnpm autorun:stop` — writes `STOP` (conductor stops between tickets) then stops the supervisor |
+| Is it running? | `pnpm autorun:status` — supervisor liveness, recent log, board tally |
+| Stop by hand | `touch ~/Code/shipwright/STOP` |
 | Resume after stop | `rm STOP` and relaunch — idempotent: board state + branches carry over; a claimed-but-unfinished ticket is retried from its branch |
 | Watch | `tail -f docs/work/conductor.out` or `jq . docs/work/conductor-log.jsonl` |
 | Board state | `git pull && jq '[.tickets[] | .status] | group_by(.) | map({(.[0]): length}) | add' plan.json` |
-| Kill hard | `touch STOP` then `kill $(cat docs/work/supervise.pid)` (kills supervisor; STOP stops the conductor between tickets) |
+| Kill hard | `pnpm autorun:stop`, or by hand: `touch STOP` then `kill $(cat docs/work/supervise.pid)` |
 
 ## Monday-morning review checklist
 

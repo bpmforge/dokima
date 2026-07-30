@@ -18,7 +18,10 @@
     "test": "vitest run --retry=2",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "build": "pnpm --filter @shipwright/web build && node apps/server/build.mjs"
+    "build": "pnpm --filter @shipwright/web build && node apps/server/build.mjs",
+    "autorun": "bash scripts/autorun.sh start",
+    "autorun:stop": "bash scripts/autorun.sh stop",
+    "autorun:status": "bash scripts/autorun.sh status"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
