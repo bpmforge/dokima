@@ -9,6 +9,11 @@ coverage/
 docs/work/conductor-log.jsonl
 docs/work/conductor.out
 docs/work/conductor.pid
+docs/work/supervise.pid
+# validator run telemetry: appended by content/validators/_lib.sh on every
+# run, read by nothing. Tracked until 2026-07-30, where it showed up dirty in
+# ticket after ticket and every agent had to reason about whether to stage it.
+docs/work/telemetry.jsonl
 STOP
 .keys/
 
