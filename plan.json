@@ -3372,6 +3372,38 @@
       "status": "done",
       "notes": "FILED 2026-07-28 by the Kryptkeeper dry-run (EXECUTION_ORDER.md Phase B1). FOURTH undeclared dependency found this session by attempting the thing rather than reasoning about it \u2014 after export-routes' signingKey, W9-06's unreachable imports, and W9-08's content-pack signature. The dry-run itself succeeded once models.json was copied: 0 errors / 0 warnings against Kryptkeeper's 125-ticket board, with boardPath proven honoured (bogus path -> ENOENT on that exact name; real path -> 125 tickets, project=kryptkeeper). See [[feedback-ticket-scope-reachability]].",
       "stories": []
+    },
+    {
+      "id": "W9-13",
+      "title": "No compile step: packages ship raw TypeScript, so the documented `npx shipwright` install path cannot work from a registry",
+      "phase": 9,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "tsconfig.base.json",
+        "packages/*/tsconfig*.json",
+        "packages/*/package.json",
+        "apps/server/tsconfig*.json",
+        "apps/server/package.json",
+        "apps/server/src/bootstrap/cli-entry.mjs",
+        "package.json",
+        ".gitignore",
+        "docs/DEPLOYMENT.md",
+        "docs/TECH_STACK.md"
+      ],
+      "depends_on": [],
+      "points": 5,
+      "status": "todo",
+      "acceptance": [
+        "FILED 2026-07-30 from live verification, not from docs. No `build` script exists anywhere except `apps/web` (`vite build`); all 12 packages declare `exports: {\".\": {\"types\": \"./src/index.ts\", \"default\": \"./src/index.ts\"}}`; `tsconfig.base.json` sets `noEmit: true`. The blocker is that `tsx` is in `apps/server` **devDependencies** while `cli-entry.mjs` spawns `node_modules/.bin/tsx` at runtime, and every `@shipwright/*` dep is `workspace:*` \u2014 a consumer installing from a registry gets neither, so the shim fails at `spawn` and the workspace protocol does not resolve. DEPLOYMENT.md 1's `npx shipwright` row is therefore NOT deliverable today; it works locally only because a dev install has `tsx`. W8-05 closed naming this an honest gap (\"no real npm-publish build step yet\") and it was never ticketed.",
+        "`pnpm build` at the root emits real JavaScript + `.d.ts` for all 12 packages and `apps/server`. NO new build dependency: TypeScript 5.9 is already pinned in docs/TECH_STACK.md, and adding a bundler would be a TECH_STACK change requiring a lockstep version record under CLAUDE.md law 2. Emit via `tsc` (project references or per-package build configs), not a bundler.",
+        "The dev workflow is unchanged, and this is acceptance rather than a nicety: `pnpm test`, `pnpm typecheck`, `pnpm lint` and `pnpm dev` all continue to resolve workspace packages from `src/` with no build required first. Repointing in-repo resolution at `dist/` would give every suite a build prerequisite and a stale-dist failure mode \u2014 prefer `publishConfig` overrides that apply only at pack time, so source stays authoritative inside the monorepo.",
+        "PROVEN BY EXECUTION, not by the build exiting 0: the compiled server boots under **plain `node`, with no `tsx` on PATH and no TypeScript loader**, and answers `/healthz` with `{\"status\":\"ok\",\"db\":true,\"ws\":true}`. A build emitting files nobody runs is the \"disconnected pipeline\" class this repo has caught before (W9-06, W9-11) \u2014 acceptance is a running process, not an artifact.",
+        "The registry path is verified as far as it can be offline (C-1, law 9 \u2014 no live registry calls): `pnpm pack` produces a tarball whose contents are inspected to confirm `dist/` ships, `src/` does not, the `bin` target is plain JS that never references `tsx`, and no `workspace:*` specifier survives into the packed manifest. Installing that tarball into a scratch directory and running the binary is the strongest proof available without a network.",
+        "`dist/` gitignored; `docs/DEPLOYMENT.md` 1 corrected (it currently states the repo \"has no compile step yet\" and defers a registry channel as a follow-up \u2014 this ticket IS that follow-up, so the section must describe what actually ships). Full gate green including `pnpm --filter @shipwright/web e2e`, counts in the commit body. NOTE: at filing, this machine sits at load ~150 from an unrelated Kryptkeeper conductor run and both suites produce timeout-only failures under it \u2014 verify on a quiet machine per the 2026-07-30 STATUS entry."
+      ],
+      "notes": "FILED 2026-07-30 by the session that verified runtime state end to end: the server boots via the tsx shim and answers /healthz, SPA shell 200, API 401 unauthenticated, and `pnpm --filter @shipwright/web build` is clean in 412ms. The product RUNS today; what it cannot do is compile or ship. Deliberately separate from W9-08 (blocked on a content re-sign): that one gates the phase-advance loop at runtime, this one gates distribution. Neither blocks the other.",
+      "stories": []
     }
   ]
 }
