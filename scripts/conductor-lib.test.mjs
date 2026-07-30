@@ -917,3 +917,49 @@ describe('conductor-lib: boardUnreadableGap — a vanished worktree fails the ti
     expect(boardUnreadableGap('plan.json', 'disk on fire')).toContain('disk on fire');
   });
 });
+
+describe('conductor-lib: testSiblingWarning — per-file, not "any test anywhere"', () => {
+  const GO = { source: '\\.go$', test: '_test\\.go$' };
+
+  // Kryptkeeper S-05, 2026-07-30. The rule returned null as soon as ONE scoped
+  // path matched the test regex, so two implementation files plus an unrelated
+  // integration test passed clean while neither impl file could get a sibling.
+  // The agent found it by hitting it.
+  it('flags impl files whose directory has no scoped test, despite a test elsewhere in scope', () => {
+    const w = testSiblingWarning({
+      id: 'S-05',
+      write_scope: [
+        'cmd/kryptkeeper-agent/installers/iis.go',
+        'cmd/kryptkeeper-agent/installers/haproxy.go',
+        'tests/integration/apache_e2e_test.go',
+      ],
+    }, GO);
+    expect(w).toContain('iis.go');
+    expect(w).toContain('haproxy.go');
+    expect(w).not.toContain('apache_e2e_test.go');
+  });
+
+  it('is silent for a proper sibling', () => {
+    expect(testSiblingWarning({ id: 'X', write_scope: ['internal/a/foo.go', 'internal/a/foo_test.go'] }, GO)).toBeNull();
+  });
+
+  // Deliberately looser than exact-sibling naming: Go allows package-level test
+  // files covering several impl files. Demanding foo.go -> foo_test.go exactly
+  // would warn on legitimate layouts — the false-positive trap that got
+  // pageMountWarning narrowed.
+  it('accepts one package-level test covering several impl files in the same directory', () => {
+    expect(testSiblingWarning({
+      id: 'Y',
+      write_scope: ['internal/a/foo.go', 'internal/a/bar.go', 'internal/a/pkg_test.go'],
+    }, GO)).toBeNull();
+  });
+
+  it('flags only the uncovered directory when scope spans two', () => {
+    const w = testSiblingWarning({
+      id: 'Z',
+      write_scope: ['internal/a/foo.go', 'internal/a/foo_test.go', 'internal/b/bar.go'],
+    }, GO);
+    expect(w).toContain('internal/b/bar.go');
+    expect(w).not.toContain('internal/a/foo.go');
+  });
+});

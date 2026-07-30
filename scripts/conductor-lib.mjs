@@ -150,8 +150,25 @@ export function testSiblingWarning(ticket, cfg) {
   const scope = ticket.write_scope || [];
   const impl = scope.filter((f) => sourceRe.test(f) && !testRe.test(f));
   if (!impl.length) return null;
-  if (scope.some((f) => testRe.test(f))) return null;
-  return `${ticket.id}: write_scope has implementation (${impl.join(', ')}) but no test sibling matching ${cfg.test} — the agent cannot add tests without an out-of-scope gate failure`;
+
+  // Per-implementation-file, NOT "is there any test file at all". The earlier
+  // form returned null as soon as ONE scoped path matched the test regex, so a
+  // ticket scoping two implementation files plus one unrelated integration test
+  // passed clean while neither impl file could get a sibling. Kryptkeeper S-05
+  // hit exactly that: cmd/kryptkeeper-agent/installers/{iis,haproxy}.go with
+  // tests/integration/apache_e2e_test.go in scope — different directory,
+  // different subject, rule silent.
+  //
+  // A test counts for an impl file when it sits in the same directory. That is
+  // deliberately looser than exact-sibling naming (foo.go -> foo_test.go),
+  // because Go allows foo_internal_test.go and table tests grouped per package,
+  // and a rule that demands one exact filename would produce false warnings on
+  // legitimate layouts — the failure mode that got pageMountWarning narrowed.
+  const dirOf = (f) => f.slice(0, f.lastIndexOf('/') + 1);
+  const testDirs = new Set(scope.filter((f) => testRe.test(f)).map(dirOf));
+  const uncovered = impl.filter((f) => !testDirs.has(dirOf(f)));
+  if (!uncovered.length) return null;
+  return `${ticket.id}: write_scope has implementation (${uncovered.join(', ')}) but no test sibling in the same directory matching ${cfg.test} — the agent cannot add tests for it without an out-of-scope gate failure`;
 }
 
 
