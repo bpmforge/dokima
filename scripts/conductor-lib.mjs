@@ -520,11 +520,20 @@ export function selectGates(gates, ticket, globToRegexFn = globToRegex) {
  * acceptance implies mutation also needs the API client, because forking a
  * request helper duplicates whatever auth/tenant headers it centralises.
  */
-export function pageMountWarning(ticket, cfg) {
+export function pageMountWarning(ticket, cfg, existingPages = []) {
   if (!cfg || !cfg.page || !Array.isArray(cfg.mounts)) return null;
+  // A done ticket's mounting is already settled one way or the other; warning
+  // about it is pure noise on every lint run.
+  if (ticket?.status === 'done') return null;
   const scope = ticket?.write_scope ?? [];
   const pageRe = new RegExp(cfg.page);
-  if (!scope.some((p) => pageRe.test(p))) return null;
+  // Only a NEW page needs mounting. A ticket editing an existing page needs no
+  // route and no nav entry, and warning about those is the false-positive that
+  // makes a linter get ignored — the same trap migrationCollisions fell into by
+  // comparing version numbers instead of filenames.
+  const existing = new Set(existingPages);
+  const newPages = scope.filter((p) => pageRe.test(p) && !existing.has(p));
+  if (!newPages.length) return null;
 
   const missing = cfg.mounts.filter((m) => !scope.includes(m));
 

@@ -850,3 +850,38 @@ describe('conductor-lib: pageMountWarning — a new UI page must be mountable', 
     expect(pageMountWarning({ id: 'X' }, CFG)).toBeNull();
   });
 });
+
+describe('conductor-lib: pageMountWarning — must not cry wolf', () => {
+  const CFG = {
+    page: '^ui/src/pages/.*\\.tsx$',
+    mounts: ['ui/src/App.tsx', 'ui/src/lib/nav.ts'],
+  };
+  const ON_DISK = ['ui/src/pages/CryptoPosture.tsx'];
+
+  // The rule fired on 12 Kryptkeeper tickets on first run, nearly all of them
+  // editing an EXISTING page (which needs no route or nav) or already done.
+  it('is silent for a ticket editing a page that already exists', () => {
+    expect(pageMountWarning({
+      id: 'W3-02',
+      status: 'todo',
+      write_scope: ['ui/src/pages/CryptoPosture.tsx'],
+    }, CFG, ON_DISK)).toBeNull();
+  });
+
+  it('still flags a genuinely new page alongside an edited one', () => {
+    const w = pageMountWarning({
+      id: 'X-1',
+      status: 'todo',
+      write_scope: ['ui/src/pages/CryptoPosture.tsx', 'ui/src/pages/Brand.tsx'],
+    }, CFG, ON_DISK);
+    expect(w).toContain('ui/src/App.tsx');
+  });
+
+  it('is silent for a done ticket regardless', () => {
+    expect(pageMountWarning({
+      id: 'W8-02',
+      status: 'done',
+      write_scope: ['ui/src/pages/Totally.tsx'],
+    }, CFG, [])).toBeNull();
+  });
+});

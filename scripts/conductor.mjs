@@ -205,13 +205,21 @@ function lintPlan(plan) {
     warnings.push(...migrationCollisions(plan.tickets, CONFIG.migrationVersions, onDisk));
   }
   const ids = new Set(plan.tickets.map((t) => t.id));
+  // Pages already on disk: a ticket EDITING one needs no route or nav entry.
+  const existingPages = (() => {
+    const pat = CONFIG.pageMount?.page;
+    if (!pat) return [];
+    try {
+      return git('ls-files').split('\n').filter((f) => new RegExp(pat).test(f));
+    } catch { return []; }
+  })();
   for (const t of plan.tickets) {
     for (const k of ['id', 'title', 'lane', 'write_scope', 'depends_on', 'acceptance', 'status']) {
       if (t[k] === undefined) errors.push(`${t.id || '?'}: missing '${k}'`);
     }
     if (t.write_scope && !t.write_scope.length) errors.push(`${t.id}: empty write_scope`);
     { const w = testSiblingWarning(t, CONFIG.testSibling); if (w) warnings.push(w); }
-    { const w = pageMountWarning(t, CONFIG.pageMount); if (w) warnings.push(w); }
+    { const w = pageMountWarning(t, CONFIG.pageMount, existingPages); if (w) warnings.push(w); }
     if (t.acceptance && !t.acceptance.length) errors.push(`${t.id}: empty acceptance`);
     for (const d of t.depends_on || []) if (!ids.has(d)) errors.push(`${t.id}: depends_on unknown ticket '${d}'`);
 
