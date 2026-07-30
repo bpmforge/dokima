@@ -3416,22 +3416,48 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/web/e2e/trace.spec.ts",
+        "apps/web/e2e/**",
+        "apps/web/playwright.config.ts",
         "apps/web/src/**",
         "apps/server/src/api/**"
       ],
       "depends_on": [],
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "acceptance": [
         "FILED 2026-07-30 from a quiet-machine e2e run (load ~10, suite 3.7m): `e2e/trace.spec.ts:54` (\"the trace view is honestly empty for a ticket no run has ever touched\") and `:73` (\"replays a run's events labeled by kind\") both fail in the shared `openFreshProject` helper at `trace.spec.ts:49`, on `expect(locator('.project-card').filter({hasText: 'Trace E2E <uuid>'})).toBeVisible()` -> `element(s) not found` after 5000ms. The other 56 specs pass.",
         "NOT a W9-13 regression, and this was established rather than assumed: this session's FIRST e2e run, against unmodified `main` before any code change, failed the same two specs with a byte-identical signature \u2014 same locator shape, same helper line, differing only in the random project UUID. W9-13 took the suite from 30 failures to 2; these are the 2 that were always there.",
-        "Likely-related signal from the same run, worth checking first rather than last: the server log carries `[fleet] computeProjectStats open failed for <tmp>/.shipwright/state.db: TypeError: Cannot open database because the directory does not exist`. If project creation returns before `.shipwright/` exists, the Fleet card would legitimately never render and the helper would be correct to fail. Confirm whether the card is missing because creation is incomplete, or because the card only renders once stats resolve.",
-        "Root-cause it before touching the test. A timing fix in the spec (retry/extend the wait) is only acceptable if the product behaviour is proven correct and merely slow; if the card genuinely does not appear until a stats read succeeds, that is a product defect and the fix belongs in the app, not in the assertion. Do not make a red test green by widening its timeout.",
-        "Both specs pass on a QUIET machine, run three times consecutively. This repo has a long record of load-induced e2e flake (see the 2026-07-30 STATUS entry: 30 failed at load 154, 2 failed at load 10) and a single green run under contention proves nothing either way.",
+        "ROOT-CAUSED 2026-07-30, and it is NOT what this ticket first guessed. The `computeProjectStats open failed ... directory does not exist` line is a RED HERRING: it appears on a fully green run too, since tests legitimately delete their own tmp dirs. The real cause is that `playwright.config.ts` points `SHIPWRIGHT_HOME` at a FIXED tmp path shared by every test AND every run, with `reuseExistingServer` locally, so the Fleet registry is never cleaned. It had reached **1,164 projects / 422KB of fleet.json**, accumulating since 2026-07-23.",
+        "PROVEN by wiping that home and re-running the identical suite: **58/58 passed in 22.0s**, against 2 failed in 3.7m immediately before \u2014 a 10x wall-clock difference and the failures gone. So the product is not defective and the assertion is not too tight; the harness is not hermetic. The fix therefore belongs in the e2e setup, NOT in trace.spec.ts (whose assertion was correct all along) and NOT in a widened timeout. `GET /api/v1/projects` was separately timed at 286ms with all 1,164 registered, which rules out server latency and points at client-side render volume.",
+        "The suite starts from a clean SHIPWRIGHT_HOME every run, via Playwright globalSetup, so this cannot silently re-accumulate. Verified the hard way: restore the real 1,164-project fleet.json, then run the full suite and watch it pass anyway \u2014 a fix that only works from an already-clean home has not fixed anything.",
         "Full gate green including `pnpm --filter @shipwright/web e2e`; counts in the commit body."
       ],
-      "notes": "FILED 2026-07-30 by the W9-13 session, deliberately as a separate ticket rather than folded into it: W9-13 was a packaging change and these two specs were red before it started. Filing it separately keeps that boundary auditable instead of letting a packaging commit quietly absorb an unrelated UI defect.",
+      "notes": "FILED 2026-07-30 by the W9-13 session, deliberately as a separate ticket rather than folded into it: W9-13 was a packaging change and these two specs were red before it started. Filing it separately keeps that boundary auditable instead of letting a packaging commit quietly absorb an unrelated UI defect. AMENDED 2026-07-30 mid-implementation: write_scope widened to add apps/web/playwright.config.ts and apps/web/e2e/** because the fix lives in the harness, not in the spec or the app -- the original scope (trace.spec.ts + src/**) could not hold it. THIRD time this session that a ticket was filed with a scope its own fix could not reach (W9-06 imports, W9-13 tsconfigs, now this), which is worth reading as a signal about how these are scoped rather than three unlucky one-offs: the scope was written from where the SYMPTOM appeared, not from where the cause turned out to live, and the symptom location is exactly what a pre-dispatch reachability check cannot know. DONE 2026-07-30. Fix is a Playwright globalSetup that clears SHIPWRIGHT_HOME + the state DB (and its -wal/-shm siblings) before every run, plus e2e/env-paths.ts shared by the config and the setup so the two cannot drift onto different directories \u2014 a stale copy in one would silently clear a directory nobody uses. trace.spec.ts was NOT touched: its assertion was correct all along, and widening the timeout would have hidden a real 10x slowdown. Verified the hard way per acceptance: the genuine 1,164-project fleet.json was restored and the suite run against it \u2014 58/58 green, globalSetup having cleared it. Then three consecutive full runs, 58/58 each, with the registry holding steady at 33 entries (one run's worth) instead of climbing 1164 -> 1197 -> 1230; wall clock converged 1.8m -> 56s -> 21.9s. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 400 files / 2885 passed | 1 skipped.",
+      "stories": []
+    },
+    {
+      "id": "W9-15",
+      "title": "Fleet has no way to remove a project, so an entry whose directory is gone is permanent",
+      "phase": 9,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/server/src/api/projects.ts",
+        "apps/server/src/api/server/**"
+      ],
+      "depends_on": [],
+      "points": 3,
+      "status": "todo",
+      "acceptance": [
+        "FILED 2026-07-30 out of W9-14, deliberately as a product ticket rather than folded into that test fix. There is no remove/forget/unregister path for a project: grepping `apps/server/src/api/projects.ts` and `apps/web/src/fleet/**` finds no DELETE route and no UI affordance. A project registered once stays in `fleet.json` forever, including after its directory is deleted.",
+        "This is not hypothetical and W9-14 measured the consequence. The e2e registry reached **1,164 entries**, almost all pointing at deleted tmp directories, and the Fleet view degraded badly enough that a newly-onboarded project card did not render inside 5s \u2014 while `GET /api/v1/projects` itself still answered in 286ms. The server is fine; the accumulated list is what hurts, and a real user hits the same shape more slowly by onboarding, moving, and deleting repos over months.",
+        "Decide and record the intended behaviour before building, because two reasonable products differ here: (a) an explicit \"Remove from Fleet\" action that forgets the registry entry without touching the project on disk, and/or (b) rendering an entry whose directory is missing as a distinct \"unavailable\" state with a remove affordance, rather than as an ordinary card whose stats silently read zero. Removing a project from the Fleet must never delete the user's repo or its `.shipwright/state.db` \u2014 that is the sharp edge in this ticket.",
+        "Whatever is chosen, the honest-absence rule applies (the same one `healthz` and the trace view already follow): a project whose directory has vanished must not be shown as a healthy card with zeroed stats, since that is indistinguishable from a real, empty project.",
+        "Red fixture: a registry containing an entry whose directory does not exist renders the unavailable state (not a zeroed normal card), and removing it leaves the on-disk directory of a still-present project untouched \u2014 asserted against the filesystem, not just the API response.",
+        "Full gate green including `pnpm --filter @shipwright/web e2e`; counts in the commit body."
+      ],
+      "notes": "FILED 2026-07-30 by the W9-14 session. W9-14 fixed the TEST harness so runs stop accumulating; this ticket is the PRODUCT question that accumulation exposed, and the two were kept separate on purpose \u2014 \"prune entries whose directory is missing\" would have been a product behaviour change smuggled in as a test fix.",
       "stories": []
     }
   ]

@@ -8,16 +8,15 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
-import os from 'node:os';
-import path from 'node:path';
-
-const PORT = 4402;
-const HOME = path.join(os.tmpdir(), 'shipwright-web-e2e-home');
-const STATE_DB = path.join(os.tmpdir(), 'shipwright-web-e2e-state.db');
+import { HOME, PORT, STATE_DB } from './e2e/env-paths.js';
 
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
+  // Clears the fixed SHIPWRIGHT_HOME before every run. Without it the Fleet
+  // registry accumulates across runs forever -- it reached 1,164 projects and
+  // took trace.spec.ts red plus the suite from 22s to 3.7m (W9-14).
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   retries: 0,
   reporter: 'list',
