@@ -3459,6 +3459,32 @@
       ],
       "notes": "FILED 2026-07-30 by the W9-14 session. W9-14 fixed the TEST harness so runs stop accumulating; this ticket is the PRODUCT question that accumulation exposed, and the two were kept separate on purpose \u2014 \"prune entries whose directory is missing\" would have been a product behaviour change smuggled in as a test fix.",
       "stories": []
+    },
+    {
+      "id": "W9-16",
+      "title": "One-command autorun \u2014 and stop the supervisor destroying uncommitted work on launch",
+      "phase": 9,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "scripts/autorun.sh",
+        "scripts/supervise.sh",
+        "package.json",
+        "docs/work/CONDUCTOR_RUNBOOK.md"
+      ],
+      "depends_on": [],
+      "points": 3,
+      "status": "in_progress",
+      "acceptance": [
+        "Launching unattended currently means hand-typing four lines from CONDUCTOR_RUNBOOK.md (`nohup caffeinate -dimsu bash scripts/supervise.sh ... >> docs/work/conductor.out 2>&1 &` plus a manual pid write). Three of the four fail SILENTLY when forgotten: no caffeinate and the machine sleeps mid-run, no redirect and an overnight run has no log, no pid file and `stop` becomes pkill guesswork against a tree that includes agent sessions. `scripts/autorun.sh start|stop|status` wraps it, passing extra args (`--waves`, `--no-merge`, `--breakpoint`) through to supervise.sh unchanged.",
+        "DEFECT FOUND WHILE BUILDING THIS, and it is the more important half of the ticket. `supervise.sh` runs `git checkout -f main` + `git clean -fd` at the TOP OF ITS LAUNCH LOOP \u2014 so on every start, not only after a crash, despite the comment describing it as crash recovery. Launching from a feature branch with uncommitted work therefore destroys that work silently. Reproduced by accident, on this ticket: the first `autorun.sh start --lint` discarded W9-16's own uncommitted board filing and deleted the untracked `scripts/autorun.sh` outright.",
+        "Same class as the 2026-07-28 fix that stopped this cleanup deleting unmerged BRANCHES \u2014 that one protected committed work on branches and left uncommitted and untracked work unprotected. The first launch of a run is a deliberate human act, not crash debris: supervise.sh must REFUSE to start when the tree is dirty or the checkout is not on main, naming what it would have destroyed. Crash-RESTARTS (iteration 2+) keep resetting exactly as today, because there the dirty tree genuinely is a dead attempt's debris.",
+        "`autorun.sh start` performs the same check up front so the refusal arrives before anything is backgrounded, and a stale pid file (rebooted machine, SIGKILLed supervisor) never permanently blocks a relaunch \u2014 liveness is `kill -0`, not the file's existence.",
+        "NOT escalated by default: conductor.config.json $modelsNote records \"Overnight runs launch WITHOUT --escalate: sonnet-only ladder, frontier spend requires a human (D-018)\". A convenience wrapper that quietly raises the spend ceiling is not a convenience. caffeinate is macOS-only and its absence degrades to running without it (W3-15 portability precedent), never aborts.",
+        "Verified WITHOUT spending provider tokens: launch through the wrapper with `--lint` (conductor exits immediately), asserting pid file written, log appended, process reaped, and `status` honest before and after. Separately assert the dirty-tree refusal by launching with a deliberately uncommitted file present and confirming the file SURVIVES. Runbook Launch/Control sections lead with the wrapper, raw incantation kept beneath as the escape hatch."
+      ],
+      "notes": "FILED 2026-07-30 at Brad's request (\"can you do that for this product as well so we can just auto run\"). Shipwright is where conductor.mjs and supervise.sh were BUILT and from which Kryptkeeper vendored them, so the harness was always here \u2014 only the front door was missing. The destroy-uncommitted-work defect was found the hard way, by this ticket losing its own first draft to it, which is the most direct possible evidence for why the guard belongs in the tool rather than in the runbook.",
+      "stories": []
     }
   ]
 }
