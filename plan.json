@@ -3422,7 +3422,7 @@
       ],
       "depends_on": [],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "acceptance": [
         "FILED 2026-07-30 from a quiet-machine e2e run (load ~10, suite 3.7m): `e2e/trace.spec.ts:54` (\"the trace view is honestly empty for a ticket no run has ever touched\") and `:73` (\"replays a run's events labeled by kind\") both fail in the shared `openFreshProject` helper at `trace.spec.ts:49`, on `expect(locator('.project-card').filter({hasText: 'Trace E2E <uuid>'})).toBeVisible()` -> `element(s) not found` after 5000ms. The other 56 specs pass.",
         "NOT a W9-13 regression, and this was established rather than assumed: this session's FIRST e2e run, against unmodified `main` before any code change, failed the same two specs with a byte-identical signature \u2014 same locator shape, same helper line, differing only in the random project UUID. W9-13 took the suite from 30 failures to 2; these are the 2 that were always there.",
