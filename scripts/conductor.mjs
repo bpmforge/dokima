@@ -56,6 +56,7 @@ import {
   reviewDecision,
   selectGates,
   pageMountWarning,
+  boardUnreadableGap,
 } from './conductor-lib.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -134,6 +135,14 @@ const gitIn = (dir, ...a) => sh('git', a, { cwd: dir }).trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const loadPlan = (dir = ROOT) => loadPlanFrom(dir, CONFIG.boardPath);
+
+// Same, but returns null instead of throwing when the board cannot be read —
+// used at the two sites that run against a TICKET WORKTREE, which can vanish
+// under us (crashed run, pruned worktree). See boardUnreadableGap.
+const tryLoadPlan = (dir) => {
+  try { return { plan: loadPlan(dir), err: null }; }
+  catch (e) { return { plan: null, err: e }; }
+};
 
 // Shared infra any ticket may touch regardless of write_scope (config-driven);
 // always includes CONFIG.boardPath even if a project's alwaysOk override omits it.
@@ -321,7 +330,12 @@ function runValidators(wt, changed, names) {
 // ---------- gates (run OUTSIDE the session, in the ticket's worktree) ----------
 function runGates(t, branch, wt) {
   const gaps = [];
-  const row = loadPlan(wt).tickets.find((x) => x.id === t.id);
+  const { plan: wtPlan, err: wtPlanErr } = tryLoadPlan(wt);
+  if (wtPlanErr) {
+    log('gates.board-unreadable', { ticket: t.id, msg: String(wtPlanErr.code || wtPlanErr.message) });
+    return { gaps: [boardUnreadableGap(CONFIG.boardPath, wtPlanErr)], advisory: [], selfBlocked: false };
+  }
+  const row = wtPlan.tickets.find((x) => x.id === t.id);
   // An agent that sets `blocked` is obeying the prompt ("If genuinely blocked
   // after one honest attempt: set status blocked with a notes entry"), not
   // failing a gate. Retrying it re-runs a full session to reach the identical
@@ -495,7 +509,11 @@ async function executeTicket(t) {
 // Reset ticket status to in_progress IN THE WORKTREE (on the branch) so a stale
 // blocked/done from a prior attempt doesn't pre-fail the next attempt's gate.
 function resetStatus(wt, id) {
-  const plan = loadPlan(wt);
+  // A vanished worktree here must not kill the run: the reset is preparation
+  // for a retry, and failing to prepare is a reason to skip the retry, not to
+  // abort every remaining ticket.
+  const { plan, err } = tryLoadPlan(wt);
+  if (err) { log('reset.skipped', { ticket: id, msg: `board unreadable in worktree (${String(err.code || err.message)})` }); return; }
   const row = plan.tickets.find((x) => x.id === id);
   if (!row || row.status === 'in_progress') return;
   row.status = 'in_progress';

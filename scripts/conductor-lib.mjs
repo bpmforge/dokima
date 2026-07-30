@@ -547,3 +547,23 @@ export function pageMountWarning(ticket, cfg, existingPages = []) {
   if (!missing.length) return null;
   return `${ticket.id}: write_scope adds a UI page but omits ${[...new Set(missing)].join(', ')} — the page would compile and be unreachable`;
 }
+
+/**
+ * Gap text for a board that could not be read at all.
+ *
+ * Distinct from doneCheckGap on purpose. An unreadable board and a board saying
+ * the wrong status are different failures with different fixes — the first
+ * means the worktree is gone or the file was never written, the second means
+ * the agent did not close the ticket. Collapsing them into one message sends
+ * whoever reads the log looking at the agent when the worktree is the problem.
+ *
+ * Kryptkeeper 2026-07-30: an unguarded loadPlan(wt) on a worktree that no
+ * longer existed threw ENOENT out of runGates and killed the entire run three
+ * times. supervise.sh recovered each time (~35s), but a missing worktree should
+ * fail its TICKET, not the run — every other ticket in the queue is unaffected
+ * by one worktree going missing.
+ */
+export function boardUnreadableGap(boardPath, err) {
+  const reason = String(err?.code || err?.message || err || 'unknown error');
+  return `${boardPath} could not be read in the ticket worktree (${reason}) — treating as a ticket failure, not a run failure`;
+}

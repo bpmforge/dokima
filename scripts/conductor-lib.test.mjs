@@ -26,6 +26,7 @@ import {
   reviewDecision,
   selectGates,
   pageMountWarning,
+  boardUnreadableGap,
   nodePinMismatch,
   testSiblingWarning,
   validateModels,
@@ -883,5 +884,36 @@ describe('conductor-lib: pageMountWarning — must not cry wolf', () => {
       status: 'done',
       write_scope: ['ui/src/pages/Totally.tsx'],
     }, CFG, [])).toBeNull();
+  });
+});
+
+describe('conductor-lib: boardUnreadableGap — a vanished worktree fails the ticket, not the run', () => {
+  // Kryptkeeper 2026-07-30: an unguarded loadPlan(wt) on a worktree that no
+  // longer existed threw ENOENT out of runGates and killed the whole run three
+  // times. supervise.sh recovered each time, but every other queued ticket was
+  // collateral damage from one worktree going missing.
+  it('names the board path and the underlying reason', () => {
+    const g = boardUnreadableGap('docs/board/plan.json', { code: 'ENOENT' });
+    expect(g).toContain('docs/board/plan.json');
+    expect(g).toContain('ENOENT');
+  });
+
+  it('says explicitly that this is a ticket failure, not a run failure', () => {
+    expect(boardUnreadableGap('plan.json', new Error('boom')))
+      .toContain('not a run failure');
+  });
+
+  it('is distinguishable from doneCheckGap, which means something different', () => {
+    const unreadable = boardUnreadableGap('plan.json', { code: 'ENOENT' });
+    const wrongStatus = doneCheckGap('todo', 'plan.json');
+    expect(unreadable).not.toEqual(wrongStatus);
+    // a wrong status names the status; an unreadable board must not pretend to
+    expect(wrongStatus).toContain("'todo'");
+    expect(unreadable).not.toContain("'todo'");
+  });
+
+  it('degrades gracefully on a bare or missing error', () => {
+    expect(boardUnreadableGap('plan.json', undefined)).toContain('unknown error');
+    expect(boardUnreadableGap('plan.json', 'disk on fire')).toContain('disk on fire');
   });
 });
