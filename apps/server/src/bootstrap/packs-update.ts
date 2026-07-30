@@ -21,7 +21,7 @@ import crypto from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { distributionRoot } from '@shipwright/shared';
 
 const ALLOWLISTED_LICENSES = new Set([
   'MIT',
@@ -165,8 +165,9 @@ export function defaultFirstPartyPackSource(): {
   contentDir: string;
   publicKeyPath: string;
 } {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const repoRoot = path.resolve(here, '..', '..', '..', '..');
+  // Anchored to the distribution root so the shipped content pack is found
+  // from a bundle as well as from source (W9-13).
+  const repoRoot = distributionRoot();
   return {
     manifestPath: path.join(repoRoot, 'content', 'manifest.json'),
     contentDir: path.join(repoRoot, 'content', 'validators'),

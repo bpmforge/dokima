@@ -11,7 +11,7 @@ import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolveAsset } from '@shipwright/shared';
 import { promisify } from 'node:util';
 import type { CliIO } from '../../bootstrap/cli.js';
 
@@ -27,8 +27,10 @@ export interface ServiceCommandTarget {
 
 /** The packaged runtime's own entry point — invoking it directly works whether shipwright was installed globally or run from a local checkout (DEPLOYMENT.md §1). */
 export function defaultServiceCommand(): ServiceCommandTarget {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const cliEntry = path.resolve(here, '..', '..', 'bootstrap', 'cli-entry.mjs');
+  // Anchored to the distribution root; the bin shim ships at this same
+  // repo-relative path inside the package, so one expression serves both
+  // a source checkout and an installed copy (W9-13).
+  const cliEntry = resolveAsset('apps', 'server', 'src', 'bootstrap', 'cli-entry.mjs');
   return { command: process.execPath, args: [cliEntry] };
 }
 

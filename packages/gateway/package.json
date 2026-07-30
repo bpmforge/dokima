@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@shipwright/events": "workspace:*",
+    "@shipwright/shared": "workspace:*",
     "google-auth-library": "^10.7.0"
   }
 }

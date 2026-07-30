@@ -7,7 +7,7 @@
 
 import { promises as fsPromises, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { distributionRoot } from '@shipwright/shared';
 import { openEventLog, type EventLog } from '@shipwright/events';
 import {
   CATALOG_CONTENT_PATH,
@@ -17,10 +17,9 @@ import {
 import { stateDbPath } from './server/settings-db.js';
 import type { PlanItemRow } from './plans-types.js';
 
-const REPO_ROOT = path.resolve(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../../..',
-);
+// Anchored to the distribution root rather than counting '..' hops, which a
+// bundle invalidates (W9-13).
+const REPO_ROOT = distributionRoot();
 
 export function loadCatalogEntries(): ReturnType<typeof parseCatalog> {
   const raw = readFileSync(path.join(REPO_ROOT, CATALOG_CONTENT_PATH), 'utf8');

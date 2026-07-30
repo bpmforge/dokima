@@ -25,13 +25,12 @@
  * metadata per expert.
  */
 
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   loadGlobalConfig,
   loadProjectSettings,
   type ScopedSettings,
+  resolveAsset,
 } from '@shipwright/shared';
 import {
   defaultGlobalDbPath,
@@ -52,8 +51,9 @@ import { buildAgentHistory } from './roster-history.js';
 import { problem, PROBLEM_CONTENT_TYPE } from './problem.js';
 
 function defaultContentDir(): string {
-  const here = fileURLToPath(new URL('.', import.meta.url));
-  return path.resolve(here, '../../../../content/experts');
+  // Anchored to the distribution root so the shipped expert pack resolves from
+  // a bundle too (W9-13).
+  return resolveAsset('content', 'experts');
 }
 
 export interface RosterRoutesOptions {

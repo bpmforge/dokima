@@ -23,26 +23,23 @@
  * this wall is never to self-widen `write_scope` (confirmed the hard way on
  * W8-06: a maker's own edit to its own ticket's declared scope is treated as
  * illegitimate self-authorization regardless of whether the validator
- * tolerates the overlap) — it is the sanctioned workaround this repo
- * already uses elsewhere for exactly this shape of wall (`apps/web/e2e/
- * fixtures/seed-board-tickets.mjs`'s module header): `import()` the other
- * package's real `src/index.ts` by absolute `file://` URL. `tsx` (this
- * app's dev/CLI runtime) and `vitest` (its test runtime) both transform
- * `.ts` on any import, static or dynamic, so this reaches the REAL
- * `runSession` — not a reimplementation of it — at the cost of losing
- * static typing across this one boundary (a dynamic, non-literal import
- * specifier is `any` to `tsc`), so every value crossing it is defensively
- * treated as untrusted/unknown, same discipline as a gateway completion.
+ * tolerates the overlap).
+ *
+ * RESOLVED 2026-07-30 (W9-13). This used to `import()` the other package's
+ * real `src/index.ts` by absolute `file://` URL, built by counting `..` hops
+ * off `import.meta.url`. That was a write_scope workaround, not a design
+ * choice — the header said so — and it does not survive packaging twice over:
+ * the hops break under a bundle, and the target is a `.ts` SOURCE file that
+ * plain `node` cannot import at all once `tsx` is out of the picture. This
+ * ticket's scope includes `apps/server/package.json`, so `@shipwright/loop`
+ * is now a declared dependency and the specifier is a plain bare one. It stays
+ * a dynamic `import()` deliberately — that preserves the lazy load and the
+ * `loadLoopModuleForTests` seam — but a bare specifier is statically
+ * analysable, so a bundler inlines it and `tsc` can type it.
  */
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import path from 'node:path';
 import { createOaiCompatProvider, type Provider } from '@shipwright/gateway';
 import { MalformedModelOutputError } from './errors.js';
 import { parseOnboardCompletion, type OnboardStepArtifact } from './onboard-types.js';
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-// apps/server/src/api/pipeline/ -> repo root -> packages/loop/src/index.ts
-const LOOP_ENTRY = path.resolve(here, '../../../../../packages/loop/src/index.ts');
 
 interface LoopModule {
   readonly runSession: (input: {
@@ -70,11 +67,11 @@ interface LoopModule {
 
 let cachedLoopModule: Promise<LoopModule> | undefined;
 
-/** Loads the real `@shipwright/loop` module exactly once per process — see
- * module header for why this is a dynamic `file://` import rather than a
- * static one. Overridable (tests only) via `loadLoopModuleForTests`. */
+/** Loads the real `@shipwright/loop` module exactly once per process. Dynamic
+ * to keep the load lazy and to keep the `loadLoopModuleForTests` seam, but the
+ * specifier is a plain bare one so it survives bundling (W9-13). */
 function loadLoopModule(): Promise<LoopModule> {
-  cachedLoopModule ??= import(pathToFileURL(LOOP_ENTRY).href) as Promise<LoopModule>;
+  cachedLoopModule ??= import('@shipwright/loop') as unknown as Promise<LoopModule>;
   return cachedLoopModule;
 }
 

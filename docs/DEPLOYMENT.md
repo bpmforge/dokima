@@ -23,13 +23,35 @@ Platforms (NFR-7): macOS + Linux first-class; **Windows = WSL2 at v1** (D-009) �
 docs' Windows path installs Node 22 inside WSL; native Windows is post-v1. Apple-Silicon
 local inference (LM Studio) is a first-class tested path.
 
-The `bin` entry the package manager resolves for `npx shipwright`/`shipwright` is a plain
-JS shim (`apps/server/src/bootstrap/cli-entry.mjs`) — this repo has no compile step yet,
-so a TypeScript entry can't run under plain `node`; the shim spawns `tsx` (already an
-`apps/server` dev dependency) against the real entry point. Verified locally end-to-end
-with no network (C-1): `npx --package=<repo> shipwright` boots the server and answers
-`/healthz`; a real npm-registry publish channel needs a build step emitting this as plain
-JS, which is unverifiable here (no live registry calls) and tracked as a follow-up.
+`pnpm build` produces what ships: `vite build` for the SPA, then
+`apps/server/build.mjs`, which esbuild-bundles the server **and all 12 workspace
+packages** into a single plain-JS `apps/server/dist/main.js` (~428 KB). Five real runtime
+dependencies stay external and are declared on the root package — `better-sqlite3` (a
+native addon, unbundlable by definition), `execa`, `fastify`, `google-auth-library`,
+`zod`. One published package, not thirteen: inlining the workspace graph avoids
+coordinating lockstep versions across 13 registry names on every release.
+
+The `bin` entry (`apps/server/src/bootstrap/cli-entry.mjs`) is plain JS that prefers the
+built bundle and falls back to spawning `tsx` when there isn't one, so a fresh source
+checkout still runs with no build step. The packaged branch is checked first on purpose:
+a dev machine has both, and silently preferring `tsx` there would mean the bundle was
+never exercised by the person most likely to notice it was broken.
+
+**Assets keep their repo-relative layout inside the tarball** — `content/`,
+`packages/events/migrations`, `apps/web/dist`, `e2e/fitness-fixtures`. Runtime code finds
+them through `resolveAsset()` / `distributionRoot()` in `@shipwright/shared`, which
+anchors on the root `package.json`'s name rather than counting `../` hops from
+`import.meta.url`. That is what makes one path expression correct from a source checkout
+*and* from an installed copy; the old depth-counting silently pointed outside the package
+once bundled (W9-13).
+
+Verified end-to-end with no network (C-1): `pnpm pack` → extract → run the `bin` entry
+under plain `node` with no `tsx` present and no TypeScript source in the tree → server
+boots, `/healthz` returns `{"status":"ok","db":true,"ws":true}` (`db:true` is the
+load-bearing part — it proves the SQL migrations resolved), the SPA shell serves 200, and
+`/api/v1/roster` + `/api/v1/guide/:topic` return 200, proving the content packs resolve.
+The tarball carries no `.ts` sources and no `workspace:*` specifiers. What remains
+unverifiable here is only the registry round trip itself (no live publish).
 
 ## 2. Where things live
 

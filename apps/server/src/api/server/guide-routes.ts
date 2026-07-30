@@ -13,13 +13,13 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolveAsset } from '@shipwright/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 function defaultContentGuideDir(): string {
-  const here = fileURLToPath(new URL('.', import.meta.url));
-  // apps/server/src/api/server/ -> repo root -> content/guide
-  return path.resolve(here, '../../../../../content/guide');
+  // Anchored to the distribution root so the shipped guide pack resolves from
+  // a bundle too (W9-13).
+  return resolveAsset('content', 'guide');
 }
 
 const TOPIC_RE = /^[a-z0-9][a-z0-9-]*$/;

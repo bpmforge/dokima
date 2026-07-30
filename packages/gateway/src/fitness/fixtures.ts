@@ -10,14 +10,14 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { resolveAsset } from '@shipwright/shared';
 import type { AgentRole } from '../routing/types.js';
 import type { FitnessTask } from './types.js';
 
-const FIXTURES_DIR = fileURLToPath(
-  new URL('../../../../e2e/fitness-fixtures', import.meta.url),
-);
+// Anchored to the distribution root: the old four-level '..' hop off
+// import.meta.url pointed outside the bundle entirely (W9-13).
+const FIXTURES_DIR = resolveAsset('e2e', 'fitness-fixtures');
 
 export class FitnessFixtureError extends Error {
   constructor(
