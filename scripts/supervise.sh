@@ -78,6 +78,27 @@ BACKOFF=${SUPERVISE_BACKOFF:-30}
 n=0
 log(){ echo "[supervise $(date -u +%FT%TZ)] $*"; }
 
+# FIRST launch is a deliberate human act, not crash debris — so it must never
+# destroy anything. The reset below (checkout -f + clean -fd) is correct for a
+# crashed attempt and catastrophic for a developer who launched from a feature
+# branch with work in progress: it silently discards uncommitted changes and
+# deletes untracked files. Observed 2026-07-30 while building autorun.sh, which
+# lost its own first draft and its board filing to exactly this.
+#
+# Same shape as the 2026-07-28 fix that stopped this cleanup deleting unmerged
+# BRANCHES: that protected committed work and left uncommitted work exposed.
+if [ -n "$(git status --porcelain 2>/dev/null)" ] || \
+   [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" != 'main' ]; then
+  log "refusing to start: the working tree is dirty or not on main."
+  log "  branch: $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  log "  the supervisor resets to main and runs 'git clean -fd' before each launch,"
+  log "  which would DESTROY uncommitted changes and untracked files. Commit or stash"
+  log "  first, then relaunch. (Crash-restarts within a run still reset — there the"
+  log "  dirty tree really is a dead attempt's debris.)"
+  git status --short 2>/dev/null | sed 's/^/  /' | head -20
+  exit 2
+fi
+
 while :; do
   if [ -f STOP ]; then log "STOP present — exiting"; break; fi
 
@@ -86,6 +107,7 @@ while :; do
   # can re-claim from board state. Only abandons the crashed attempt (redone idempotently).
   # (With worktree isolation, ROOT stays on main even across a crash — this is mostly
   #  belt-and-suspenders — but a crashed run can leave dangling worktrees + sw/ branches.)
+  # Guarded above on the FIRST iteration; from iteration 2 this is genuine recovery.
   git checkout -f main >/dev/null 2>&1
   git clean -fd >/dev/null 2>&1
   git worktree prune >/dev/null 2>&1
