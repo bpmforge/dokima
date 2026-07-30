@@ -25,6 +25,7 @@ import {
   migrationCollisions,
   reviewDecision,
   selectGates,
+  pageMountWarning,
   nodePinMismatch,
   testSiblingWarning,
   validateModels,
@@ -796,5 +797,56 @@ describe('conductor-lib: selectGates — do not gate a backend ticket on a front
   it('survives a ticket with no write_scope and an empty gate list', () => {
     expect(selectGates([UI], {}).run).toEqual([]);
     expect(selectGates(undefined, { write_scope: ['x'] }).run).toEqual([]);
+  });
+});
+
+describe('conductor-lib: pageMountWarning — a new UI page must be mountable', () => {
+  const CFG = {
+    page: '^ui/src/pages/.*\\.tsx$',
+    mounts: ['ui/src/App.tsx', 'ui/src/lib/nav.ts'],
+    writes: 'configur|set |writes|in-app',
+    writeMounts: ['ui/src/lib/api.ts'],
+  };
+
+  // Kryptkeeper W8-04 and W8-07, 2026-07-29/30: both filed as a lone page file,
+  // both blocked for the same reason. The first fix lived in a note, so it
+  // taught nobody and the second ticket repeated it.
+  it('flags a lone page file with no route or nav', () => {
+    const w = pageMountWarning({ id: 'W8-07', write_scope: ['ui/src/pages/RenewalPolicy.tsx'] }, CFG);
+    expect(w).toContain('ui/src/App.tsx');
+    expect(w).toContain('ui/src/lib/nav.ts');
+  });
+
+  it('is silent once route and nav are in scope', () => {
+    expect(pageMountWarning({
+      id: 'W8-07',
+      write_scope: ['ui/src/pages/RenewalPolicy.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
+    }, CFG)).toBeNull();
+  });
+
+  it('additionally demands the API client when the page writes', () => {
+    const w = pageMountWarning({
+      id: 'W8-07',
+      write_scope: ['ui/src/pages/RenewalPolicy.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
+      acceptance: ['set auto-renew threshold per target in-app'],
+    }, CFG);
+    expect(w).toContain('ui/src/lib/api.ts');
+  });
+
+  it('does not demand the API client for a read-only page', () => {
+    expect(pageMountWarning({
+      id: 'X-1',
+      write_scope: ['ui/src/pages/Report.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
+      acceptance: ['renders a chart of issuance over time'],
+    }, CFG)).toBeNull();
+  });
+
+  it('ignores a ticket that touches no page', () => {
+    expect(pageMountWarning({ id: 'S-34', write_scope: ['internal/bootstrap/auth.go'] }, CFG)).toBeNull();
+  });
+
+  it('is off when the project sets no config, and survives a scopeless ticket', () => {
+    expect(pageMountWarning({ id: 'X', write_scope: ['ui/src/pages/A.tsx'] }, null)).toBeNull();
+    expect(pageMountWarning({ id: 'X' }, CFG)).toBeNull();
   });
 });

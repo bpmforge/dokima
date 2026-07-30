@@ -499,3 +499,42 @@ export function selectGates(gates, ticket, globToRegexFn = globToRegex) {
   }
   return { run, skipped };
 }
+
+/**
+ * Lint rule: a ticket that adds a new UI page must also be able to mount it.
+ *
+ * A page component nothing imports is wired to nothing. In an app with a single
+ * route table and a single nav registry, adding `pages/Foo.tsx` without also
+ * holding the route file and the nav file produces a component that compiles,
+ * ships, and is unreachable by any user.
+ *
+ * Kryptkeeper hit this twice in one day. W8-04 was filed as
+ * [pages/Integrations.tsx] alone and blocked; widened to add App.tsx, nav.ts and
+ * lib/api.ts, it landed. W8-07 was then filed the same way and blocked the same
+ * way — the earlier fix taught nobody, because it lived in a note instead of a
+ * check. Hence this rule.
+ *
+ * `cfg` shape (null disables): {page, mounts:[...], writes?, writeMounts?:[...]}
+ * where `page` matches a new-page path and `mounts` are the files that must
+ * accompany it. `writes`/`writeMounts` add a second tier: a page whose
+ * acceptance implies mutation also needs the API client, because forking a
+ * request helper duplicates whatever auth/tenant headers it centralises.
+ */
+export function pageMountWarning(ticket, cfg) {
+  if (!cfg || !cfg.page || !Array.isArray(cfg.mounts)) return null;
+  const scope = ticket?.write_scope ?? [];
+  const pageRe = new RegExp(cfg.page);
+  if (!scope.some((p) => pageRe.test(p))) return null;
+
+  const missing = cfg.mounts.filter((m) => !scope.includes(m));
+
+  if (cfg.writes && Array.isArray(cfg.writeMounts)) {
+    const text = [...(ticket.acceptance ?? []), ticket.title ?? ''].join(' ');
+    if (new RegExp(cfg.writes, 'i').test(text)) {
+      for (const m of cfg.writeMounts) if (!scope.includes(m)) missing.push(m);
+    }
+  }
+
+  if (!missing.length) return null;
+  return `${ticket.id}: write_scope adds a UI page but omits ${[...new Set(missing)].join(', ')} — the page would compile and be unreachable`;
+}
