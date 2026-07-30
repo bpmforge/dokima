@@ -3397,7 +3397,7 @@
       ],
       "depends_on": [],
       "points": 8,
-      "status": "todo",
+      "status": "in_progress",
       "acceptance": [
         "FILED 2026-07-30 from live verification. No `build` script exists except `apps/web`; all 12 packages export `./src/index.ts`; `tsconfig.base.json` sets `noEmit: true`. The blocker: `tsx` is an `apps/server` **devDependency** while `cli-entry.mjs` spawns `node_modules/.bin/tsx` at runtime, and every `@shipwright/*` dep is `workspace:*` \u2014 a registry consumer gets neither, so the shim fails at `spawn`. DEPLOYMENT.md 1's `npx shipwright` row is NOT deliverable today. W8-05 closed naming this an honest gap and it was never ticketed.",
         "SHAPE DECIDED 2026-07-30 (founder): bundle into ONE published package, not 13. esbuild inlines `apps/server` + all 12 workspace packages; `better-sqlite3`, `execa`, `fastify`, `google-auth-library` and `zod` stay external and become real `dependencies` of the shipped package (they currently live in three different packages' node_modules). esbuild becomes an EXPLICIT devDependency recorded in docs/TECH_STACK.md \u2014 it is already in the tree transitively via vite and tsx, and a phantom dependency must not be relied on.",
