@@ -963,3 +963,15 @@ describe('conductor-lib: testSiblingWarning — per-file, not "any test anywhere
     expect(w).not.toContain('internal/a/foo.go');
   });
 });
+
+describe('conductor-lib: testSiblingWarning — silent on settled tickets', () => {
+  const GO = { source: '\\.go$', test: '_test\\.go$' };
+  // 27 of 29 warnings on Kryptkeeper's board were on done tickets. Noise that
+  // buries the two actionable ones is how a linter stops being read.
+  it('is silent for a done ticket', () => {
+    expect(testSiblingWarning({ id: 'W1-04', status: 'done', write_scope: ['internal/a/foo.go'] }, GO)).toBeNull();
+  });
+  it('still warns for an open one', () => {
+    expect(testSiblingWarning({ id: 'W5-12', status: 'todo', write_scope: ['internal/a/foo.go'] }, GO)).toContain('foo.go');
+  });
+});

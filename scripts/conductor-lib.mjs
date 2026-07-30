@@ -145,6 +145,10 @@ export function claimableTickets(plan, { waves = null, hold = [], excluded = [] 
  */
 export function testSiblingWarning(ticket, cfg) {
   if (!cfg || !cfg.source || !cfg.test) return null;
+  // A done ticket's scope is settled; warning about it every lint run is noise
+  // that buries the actionable ones. On Kryptkeeper's board this was 27 of 29
+  // warnings. Same guard pageMountWarning already carries.
+  if (ticket?.status === 'done') return null;
   const sourceRe = new RegExp(cfg.source);
   const testRe = new RegExp(cfg.test);
   const scope = ticket.write_scope || [];
