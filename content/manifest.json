@@ -219,6 +219,10 @@
       "hash": "sha256:c38abf0493b10bca1ecd5e532dbed68207e760136bca96c885f97bd129d1bfee"
     },
     {
+      "path": "validate-remote-parity.sh",
+      "hash": "sha256:4246ecefbae5b767a8ad606702f38ecb9ddfe20987641be44f8df146cf293d96"
+    },
+    {
       "path": "validate-requirement-closure.sh",
       "hash": "sha256:4b0cae61b57045a40d3286c233d0b03558864cda1cefef75f7100d022e58970c"
     },
@@ -307,11 +311,15 @@
       "hash": "sha256:b43fcdea35526e2f072ad0e82b31dc88d8f4cb387ea95a6f692228aec2e67b8e"
     },
     {
+      "path": "validate-verification-integrity.sh",
+      "hash": "sha256:fd43cbafba735cf833d797a9f746a5720efe389089d3388f8db175b91deb8f2c"
+    },
+    {
       "path": "validate-wcag-coverage.sh",
       "hash": "sha256:48f29f80180ffc3f24649e279a5731bef0be538ad94d4383a10279baf9b0e450"
     }
   ],
-  "signature": "a78ce42aacdc7b3a7c7c499f00abc3112e93beb1261d426125e53e23a014c8342608a334447553e0519a9c543b56ff35a4092ee2305dd11a6b99bec53b98a10c",
+  "signature": "bc9e31beb0801f77a0ad9a0abe1fdee55902e44e470ab72d5554408c4d3420c3dff707e1b46726f74285909eaf4398ac2a08072b283616570b841674f269c006",
   "publisher": "shipwright",
-  "signedAt": "2026-07-20T20:01:27.686Z"
+  "signedAt": "2026-08-02T19:06:17.027Z"
 }
