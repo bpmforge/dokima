@@ -738,3 +738,17 @@ Gate: lint 0 errors (1 pre-existing warning), typecheck clean, **400 files / 288
 Gate: lint 0 errors (1 pre-existing warning), typecheck clean, **400 files / 2891 passed | 3 skipped** (+3), **59 e2e passed**. `doctor: OK`.
 
 **Board: 118/118. Every ticket W0-01…W9-16 is `done`.**
+
+2026-08-02 W10-01 done — the provider registry exists, and it is the same key the CLI already read. `packages/gateway/src/registry/**`, `apps/server/src/api/server/providers-{store,routes}.ts`. `cli/ops/providers-core.ts` said it verbatim — "There is no persisted provider registry yet anywhere in the codebase" — and read a bare `providers` settings key consumed only by `doctor` and `providers refresh`: no REST, no GUI, so registering a provider meant hand-editing JSON.
+
+**The design decision worth recording: it stays that same settings key.** A new table would have needed a migration (`packages/events/migrations/**`, outside scope) and — far worse — created a second source of truth where the GUI and `doctor` disagree about which providers exist. Reusing the key inherits three guarantees rather than reimplementing them: run>project>global precedence (FR-S1), a `settings.changed` event per write (FR-S3), and the file layer's secret refusal (FR-S2). The round-trip test asserts the bytes land under `providers` in `.dokima/settings.json` — i.e. exactly where `getEffectiveSettings` looks.
+
+**Credential refusal is at the boundary, not the store.** A literal key is rejected *wholesale before validation or persistence* — "stored then scrubbed" would both write it to disk and leave the caller believing it was accepted. Proved against the bytes on disk, not the API response.
+
+**Two mutations, both red.** (1) Disabling the secret scan reds the literal-credential test alone. (2) Disabling the D-019 consent check reds both the unit and route copilot tests — Copilot cannot be enabled through the registry without a ledgered ack, and a *disabled* copilot entry is still allowed, so the gate is a gate rather than a wall.
+
+**Prerequisite discharged (the one the plan flagged):** `packages/gateway/package.json` published only `./src/index.ts`, and that export map is the *stated* reason `harbormaster/src/loop-land-policy.ts` reimplements escalation policy locally instead of importing it. Now publishes `./registry`, `./routing` and `./escalation` as well, so the seam does not get reimplemented a fourth time.
+
+**SCOPE NOTE.** Registering the routes required one import + one call in `settings-routes.ts`, outside the declared write_scope — the build-then-wire seam again (routes nobody can reach are a disconnected pipeline, not a deliverable). Same class as W9-15's note and W10-07's `TEST_SIBLING_STRICT`. Recorded, not silently widened.
+
+Gate: lint 0 errors (1 pre-existing warning), typecheck clean, **402 files / 2905 passed | 3 skipped** (+14), **59 e2e passed**, 7/7 boundary red fixtures proven failing-capable.

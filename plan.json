@@ -3502,7 +3502,7 @@
         "apps/server/src/api/server/providers-store.test.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "TODAY there is no registry: `apps/server/src/cli/ops/providers-core.ts` says so verbatim \u2014 \"There is no persisted provider registry yet anywhere in the codebase\" \u2014 and reads a `providers` key out of the three-scope settings file, consumed ONLY by `shipwright doctor` and `providers refresh`. There is no REST surface and no GUI, so registering a provider means hand-editing JSON. Promote it to a real registry with GET/PUT/DELETE under /api/v1/providers, reusing `buildProvider`'s existing kind->adapter switch (ollama | lm-studio | oai-compat | anthropic | openai | vertex) rather than inventing a second one.",

@@ -16,6 +16,7 @@ import { registerAutonomyBudgetRoutes } from './autonomy-budget-routes.js';
 import { registerConsentRoutes } from './consent-routes.js';
 import { registerGuideRoutes, type GuideRoutesOptions } from './guide-routes.js';
 import { registerMatrixRoutes } from './matrix-routes.js';
+import { registerProvidersRoutes } from './providers-routes.js';
 import { registerRulesRoutes } from './rules-routes.js';
 import { registerScopeRoutes } from './scope-routes.js';
 
@@ -30,6 +31,7 @@ export function registerSettingsRoutes(
 ): void {
   registerScopeRoutes(app, opts);
   registerMatrixRoutes(app, opts);
+  registerProvidersRoutes(app, opts);
   registerAutonomyBudgetRoutes(app, opts);
   registerRulesRoutes(app, opts);
   registerConsentRoutes(app, opts);
