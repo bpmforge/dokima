@@ -3523,7 +3523,10 @@
       "title": "Model catalog + discovery \u2014 surface the models listModels() already finds",
       "write_scope": [
         "packages/gateway/src/catalog/**",
-        "content/model-catalog/**"
+        "content/model-catalog/**",
+        "packages/gateway/src/index.ts",
+        "apps/server/src/cli/ops/providers-refresh.ts",
+        "apps/server/src/cli/ops/providers-refresh.test.ts"
       ],
       "depends_on": [
         "W10-01"
@@ -3537,7 +3540,7 @@
         "Recorded fixtures only, never a live call in a test (Law 9). Contract-test the `/v1/models` shape against recorded LM Studio and Ollama responses, the same discipline `packages/gateway/src/providers/*-fixtures.ts` already uses.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": "W10 Phase G. Sizing note from the plan: because listModels() and providers refresh already exist, the work is exposing what is there plus the offline catalog \u2014 NOT building discovery."
+      "notes": "W10 Phase G. Sizing note from the plan: because listModels() and providers refresh already exist, the work is exposing what is there plus the offline catalog \u2014 NOT building discovery. SCOPE WIDENED 2026-08-02 (schema fix, not a workaround): the original write_scope was packages/gateway/src/catalog/** + content/model-catalog/** only, which made the ticket UNSATISFIABLE \u2014 its own acceptance criterion 1 names apps/server/src/cli/ops/providers-refresh.ts as the file that must stop discarding the list, and surfacing the catalog needs the gateway barrel. An unattended attempt built the right thing (13 files, 728 insertions, tests included) and was correctly rejected by the out-of-scope gate; retrying unchanged would either fail identically or, worse, ship catalog code nothing calls that passes gates as a disconnected pipeline. Contention checked before widening: every current owner of both files is a DONE ticket (providers-refresh.ts -> W0-01/W0-08/W8-06/W9-13; gateway/src/index.ts -> W0-01/W3-11), so nothing live competes. Same build-then-wire seam as W10-01 and the W10-07 TEST_SIBLING_STRICT class; the test sibling is included here rather than left to be discovered again."
     },
     {
       "id": "W10-03",
