@@ -55,6 +55,28 @@ Treat the key as **public**. It has been pushed to a hosted remote; whether
 that remote is private is not a control you can rely on retroactively (forks,
 clones, CI caches, local copies).
 
+## Scope of the trust root — bounded, and smaller than feared
+
+Everything that verifies against this keypair, traced through every non-test
+caller of `loadPublicKey` / `verifyManifestSignature`:
+
+- `packages/validators/src/signing/loader.ts` — the content-pack loader
+- `apps/server/src/bootstrap/packs-update.ts` — `shipwright packs update` and
+  `doctor`'s `pack-signatures` check
+
+**Content packs only.** Export bundles, receipts, the event hash-chain, and the
+plan catalog do **not** chain to this key — they have their own integrity
+mechanisms. So rotation is one artifact: regenerate the pair, re-sign
+`content/manifest.json`, ship the new public key.
+
+Confirmed on the remote, not inferred from a stale fetch:
+`git merge-base --is-ancestor 1039ff0 <github/main head 1445da0>` → **yes**.
+The leaked commit is in GitHub's published `main`.
+
+Note `49f7861` ("key provisioning compliance — move public key to content/keys,
+read private key from env") — a real compliance fix that moved the private key
+out of the tree and into an env var. It did not, and could not, purge history.
+
 ## Remediation — founder decision required
 
 Two independent actions. **(1) is mandatory and sufficient for future safety;

@@ -628,6 +628,36 @@ calls into the UI"* — a second in-repo acknowledgement, independent of
 
 ---
 
+## 6d. Phase S — the release blocker found on 2026-08-02 (lane `quality`)
+
+Full finding: [`SECURITY_RELEASE_BLOCKER_2026-08-02.md`](SECURITY_RELEASE_BLOCKER_2026-08-02.md).
+The Ed25519 content-signing **private** key is in pushed git history
+(`1039ff0`, confirmed an ancestor of GitHub's published `main`), and it derives
+byte-for-byte the public key the product ships. Proven forgeable against the
+real `content/manifest.json`.
+
+**W10-26 · quality · 3 pts — rotate the signing key.**
+`write_scope: content/keys/**`, `content/manifest.json`, `scripts/sign-content.mjs`
+New Ed25519 pair, private key outside the repo, re-sign, ship the new public
+key, permanently distrust the old one. Scope is bounded to content packs (see
+the finding's trust-root trace). **Sequence before W10-02/03** — the content
+re-import re-signs too, and W9-08's write_scope also includes
+`content/manifest.json`. Rotating first means one re-sign, not three.
+
+**W10-27 · quality · 3 pts — history scanning joins the release gate.**
+`write_scope: scripts/validate-history-secrets.mjs`, `docs/TESTING.md`
+`content/validators/secrets-scan.sh` (W3-13, SC-06) scans the working **tree**.
+A gitignored, tree-removed key reads clean while history is compromised —
+that is exactly how this survived from 2026-07-20 to 2026-08-02. Add a history
+pass (gitleaks did 759 commits in 591ms) with the 21 known-benign fixture
+findings baselined so the signal isn't buried. **Red fixture:** commit a
+throwaway key on a scratch branch and confirm the gate reds.
+
+> Recorded here and not only in the dated finding file on purpose — a lesson
+> that lives in a work note is a lesson that gets re-learned.
+
+---
+
 ## 7. Sources for §5
 
 - [Claude Code CHANGELOG (official)](https://raw.githubusercontent.com/anthropics/claude-code/refs/heads/main/CHANGELOG.md)
