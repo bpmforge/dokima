@@ -4,7 +4,10 @@
 // Rules (stable IDs):
 //   P1  plan.version === 1; tickets non-empty array
 //   P2  fixed key set per ticket (TICKET_KEYS required; OPTIONAL_KEYS allowed; unknown keys fail)
-//   P3  id matches /^W\d-\d{2}[a-c]?$/; unique; phase === wave prefix
+//   P3  id matches /^W\d+-\d{2}[a-c]?$/; unique; phase === wave prefix
+//        (\d+, not \d: waves reached double digits at W10. The old single-digit
+//         regex would have rejected every W10 ticket, and `Number(t.id[1])`
+//         read one character, so W10-01 parsed as phase 1.)
 //   P4  title non-empty; module ∈ MODULES; lane ∈ LANES; status ∈ STATUSES; points ∈ POINTS
 //   P5  write_scope non-empty array of non-empty globs; acceptance 1–6 non-empty strings
 //       (house deviation from repopulse's 2–5: several landed single-criterion tickets)
@@ -84,10 +87,11 @@ for (const t of T) {
   const label = t.id ?? '<no id>';
   for (const k of TICKET_KEYS) if (!(k in t)) err(`P2 ${label}: missing key ${k}`);
   for (const k of Object.keys(t)) if (!TICKET_KEYS.includes(k) && !OPTIONAL_KEYS.includes(k)) err(`P2 ${label}: unknown key ${k}`);
-  if (!/^W\d-\d{2}[a-c]?$/.test(t.id ?? '')) { err(`P3 ${label}: bad id`); continue; }
+  const idMatch = /^W(\d+)-\d{2}[a-c]?$/.exec(t.id ?? '');
+  if (!idMatch) { err(`P3 ${label}: bad id`); continue; }
   if (ids.has(t.id)) err(`P3 ${t.id}: duplicate id`);
   ids.add(t.id);
-  if (t.phase !== Number(t.id[1])) err(`P3 ${t.id}: phase ${t.phase} != wave prefix`);
+  if (t.phase !== Number(idMatch[1])) err(`P3 ${t.id}: phase ${t.phase} != wave prefix`);
   if (!t.title) err(`P4 ${t.id}: empty title`);
   if (!MODULES.includes(t.module)) err(`P4 ${t.id}: module ${t.module}`);
   if (!LANES.includes(t.lane)) err(`P4 ${t.id}: lane ${t.lane}`);

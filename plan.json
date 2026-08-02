@@ -3485,6 +3485,165 @@
       ],
       "notes": "FILED 2026-07-30 at Brad's request (\"can you do that for this product as well so we can just auto run\"). Dokima is where conductor.mjs and supervise.sh were BUILT and from which Kryptkeeper vendored them, so the harness was always here \u2014 only the front door was missing. The destroy-uncommitted-work defect was found the hard way, by this ticket losing its own first draft to it, which is the most direct possible evidence for why the guard belongs in the tool rather than in the runbook. DONE 2026-07-30. scripts/autorun.sh start|stop|status + pnpm autorun/autorun:stop/autorun:status. Both layers guarded: autorun refuses before backgrounding anything (so the refusal is on your terminal, not buried in a log you have to go read), and supervise.sh refuses independently for anyone calling it directly. Verified without spending a token: --lint launch writes the pid, appends the log, is reaped, and status reports honestly before and after; a deliberately untracked CANARY.txt SURVIVED both an autorun start and a direct supervise.sh call that would previously have deleted it. Board unchanged throughout. Runbook Launch/Control now lead with the wrapper, raw incantation kept beneath.",
       "stories": []
+    },
+    {
+      "id": "W10-01",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 8,
+      "title": "Persisted provider registry \u2014 a provider you can add without editing JSON by hand",
+      "write_scope": [
+        "packages/gateway/src/registry/**",
+        "packages/gateway/package.json",
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/server/src/api/server/providers-store.ts",
+        "apps/server/src/api/server/providers-store.test.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "TODAY there is no registry: `apps/server/src/cli/ops/providers-core.ts` says so verbatim \u2014 \"There is no persisted provider registry yet anywhere in the codebase\" \u2014 and reads a `providers` key out of the three-scope settings file, consumed ONLY by `shipwright doctor` and `providers refresh`. There is no REST surface and no GUI, so registering a provider means hand-editing JSON. Promote it to a real registry with GET/PUT/DELETE under /api/v1/providers, reusing `buildProvider`'s existing kind->adapter switch (ollama | lm-studio | oai-compat | anthropic | openai | vertex) rather than inventing a second one.",
+        "Credentials are keychain refs ONLY (Law 8, FR-S2, D-012). RED FIXTURE: a POST whose body carries a literal API key is REFUSED (4xx, named rule) and nothing is persisted \u2014 not \"stored then scrubbed\". `packages/shared`'s settings layer already throws SettingsFileSecretError on secret-shaped values; that guarantee must still hold through the new path, asserted by re-reading the persisted bytes.",
+        "Every registry write appends a `settings.changed` event (FR-S3), same discipline as the model matrix (see `settings-events.ts`). RED FIXTURE: a write that skips the event fails the test.",
+        "PREREQUISITE, in scope on purpose: `packages/gateway/package.json`'s export map publishes only `./src/index.ts`, and that is the STATED reason `harbormaster/src/loop-land-policy.ts` reimplements escalation policy locally rather than importing it. Widen the map here, or this seam gets reimplemented a fourth time.",
+        "D-019 holds: Copilot never appears as a peer entry that can be enabled without the existing consent gate. RED FIXTURE: registering Copilot without a ledgered `copilot.consent_ack` is refused (the CONSENT_GATED_KEYS precedent from W4-06).",
+        "Full gate green including `pnpm --filter @dokima/web e2e`; counts in the commit body."
+      ],
+      "notes": "W10 Phase G, filed 2026-08-02 from docs/work/W10_PLAN.md \u00a76a. The adapters and the routing matrix are DONE and contract-tested (W2-01..09); what is missing is the registry, the picker, and the wire. This ticket is the registry."
+    },
+    {
+      "id": "W10-02",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "title": "Model catalog + discovery \u2014 surface the models listModels() already finds",
+      "write_scope": [
+        "packages/gateway/src/catalog/**",
+        "content/model-catalog/**"
+      ],
+      "depends_on": [
+        "W10-01"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "Discovery ALREADY EXISTS and is thrown away: the `Provider` contract carries `listModels()`, and `apps/server/src/cli/ops/providers-refresh.ts` calls it \u2014 then keeps `modelCount` and DISCARDS the list. Persist the list per provider and expose it. This is a plumbing ticket, not a build-discovery ticket; size it accordingly.",
+        "Law 9 / C-1 is the design constraint, not a nice-to-have: opencode's 75-provider list comes from the remote models.dev registry, and first run here must work with ZERO network. Ship a bundled static catalog under `content/model-catalog/` (versioned and provenance-headed like the rest of `content/`), with live `/v1/models` discovery layered on top for any reachable endpoint. A remote registry may be optional; it may never be required.",
+        "RED FIXTURE: with no network and no reachable endpoint, the catalog still resolves and the provider is reported UNREACHABLE with the reason \u2014 never silently empty, never a fabricated model list (the honest-absence rule W9-15 applied to the Fleet).",
+        "Recorded fixtures only, never a live call in a test (Law 9). Contract-test the `/v1/models` shape against recorded LM Studio and Ollama responses, the same discipline `packages/gateway/src/providers/*-fixtures.ts` already uses.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "W10 Phase G. Sizing note from the plan: because listModels() and providers refresh already exist, the work is exposing what is there plus the offline catalog \u2014 NOT building discovery."
+    },
+    {
+      "id": "W10-03",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 8,
+      "title": "Wire the seam: the model the user picks is the model that runs",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.test.ts"
+      ],
+      "depends_on": [
+        "W10-01"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "THE DEFECT, stated exactly: the only production model-call path in the product is `gateway-model-port.ts` (and its twin `onboard-dispatch-port.ts`), and both build a hardcoded `createOaiCompatProvider` from THREE ENVIRONMENT VARIABLES \u2014 `resolveGatewayConfigFromEnv` returns `{baseUrl: DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1', apiKey, model: DOKIMA_MODEL_ID ?? 'local-model'}`. Neither call site imports the router, `resolveModelChain`, the matrix, or the registry. The Anthropic, OpenAI-native, Copilot and Vertex adapters are therefore NEVER CONSTRUCTED on any production path \u2014 only by their own tests. Resolve provider + model through the registry (W10-01) and the role matrix instead.",
+        "THE RED FIXTURE IS THE WHOLE ACCEPTANCE, and it is the W9-11 mutation applied to the bug it would have caught: set the matrix to provider B, assert the call goes to B \u2014 then revert ONLY the resolution call site and confirm the test REDS. A test that stays green when the wire is cut is the exact defect this ticket exists to fix, and it must be demonstrated, not asserted.",
+        "The matrix is currently read by `roster-resolve.ts` for DISPLAY only (\"which model would this role use?\"). After this ticket, display and dispatch must agree by construction \u2014 resolve once, use for both \u2014 so the roster can never advertise a model the pipeline will not call.",
+        "Environment variables survive as a documented override for CI and fixtures, and lose to an explicit registry/matrix selection. RED FIXTURE pins the precedence in both directions.",
+        "Law 5 / C-4 is preserved mechanically: `guardMakerVerifierDistinct` still refuses a verifier role landing on the maker model through the NEW path. RED FIXTURE proves the guard fires post-wiring \u2014 it must not become bypassable by going through the registry.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "W10 Phase G, and the single highest-value ticket in the wave: it converts five finished, contract-tested adapters and a finished routing matrix from shelf-ware into the product. Corroborated independently by apps/web/playwright.config.ts, whose own comment says the fake-model gateway \"stands in when a future ticket wires provider calls into the UI\"."
+    },
+    {
+      "id": "W10-04",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "title": "Providers & Models panel \u2014 pick a model from a list, not a free-text box",
+      "write_scope": [
+        "apps/web/src/settings/ProvidersPanel.tsx",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "apps/web/src/settings/ModelMatrixPanel.tsx",
+        "apps/web/src/settings/providers-api.ts",
+        "apps/web/src/settings/providers-api.test.ts"
+      ],
+      "depends_on": [
+        "W10-01",
+        "W10-02",
+        "W10-05"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "TODAY `ModelMatrixPanel.tsx` takes the model as a FREE-TEXT STRING (`draft.model`, a bare text input) with no catalog, no validation, and no way to discover what a provider actually serves. Register/edit/test an endpoint (Ollama, LM Studio, any OpenAI-compatible, plus the cloud adapters), see the discovered models from W10-02, and select per role x task-type from a LIST.",
+        "Built against the UX_SPEC section W10-05 writes \u2014 not invented while building. Covers the states that spec names: empty, unreachable-endpoint, and the maker!=verifier refusal explained INLINE with its reason (the \"drag-refusals explained\" precedent from the board, FR-C).",
+        "An API-key field writes to the keychain and persists a REF, never a literal (Law 8). RED FIXTURE: the value never appears in any settings file or event-log payload, asserted by reading the persisted bytes back.",
+        "Fold `settings/types.ts`'s duplicated `MODEL_MATRIX_PRESETS` into gateway's `routing/presets.ts` \u2014 the web copy currently shadows the canonical one and can drift silently.",
+        "a11y holds: the panel passes the existing axe gate (`apps/web/e2e/a11y/settings.spec.ts`) and is keyboard-operable end to end, same bar as every other settings surface.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "W10 Phase G/H seam. depends_on W10-05 deliberately: a panel built with no spec behind it is exactly what the Design Loop exists to prevent."
+    },
+    {
+      "id": "W10-05",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "title": "UX_SPEC gains the provider/model surface it never had",
+      "write_scope": [
+        "docs/design/UX_SPEC.md"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "`docs/design/UX_SPEC.md` is 209 lines and its sections stop at the W4 surfaces (Fleet, three-pane, board, artifacts, settings matrix, notifications, first-fifteen, a11y). There is NO section for a provider/model picker and none for the guide. Add the provider/model section in the file's existing voice: flows, screen inventory, and the states.",
+        "Every state is written, not improvised \u2014 \u00a72b's own rule that every screen has an empty state, plus: no providers configured, endpoint unreachable, discovery returned nothing, model no longer served by the endpoint, and the maker!=verifier refusal with its explanation text.",
+        "Names the exact copy for the destructive/risky affordances so implementation cannot soften them: the Copilot consent warning (D-019) and what removing a provider does and does not touch.",
+        "W10-04 depends on this ticket; the acceptance is that a reader could build the panel from the spec without asking a question."
+      ],
+      "notes": "W10 Phase H. Filed because the plan's first draft asserted a Providers panel with no design phase behind it \u2014 an omission caught by auditing the plan against attest's Phase 3.5 Design Loop (ux-researcher -> design-system-lead -> content-designer -> ux-engineer -> frontend-design -> a11y)."
+    },
+    {
+      "id": "W10-06",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "title": "Make it look shipped: a real token scale, no raw hexes, and a board that fits its pane",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts",
+        "apps/web/src/**/*.css",
+        "eslint.config.js"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED STARTING POINT (2026-08-02): FIVE tokens exist \u2014 `--sw-bg`, `--sw-fg`, `--sw-border`, `--sw-accent`, `--sw-transition-duration`. There is NO spacing, type, or radius scale (13 distinct ad-hoc px values), and **66 hardcoded hex colours**, of which **54 sit in feature CSS** outside `styles.css` \u2014 so they cannot respond to the `data-theme` flip at all. Extend to a real scale (spacing, type, radius, plus semantic colour roles for the state chips the board and morning queue currently improvise) and migrate the 54.",
+        "RED FIXTURE, and it is the point of the ticket: a lint or test rule that FAILS on a raw hex or a raw px in feature CSS \u2014 verified by adding one and confirming red. `styles.test.ts` currently asserts `border-radius: 6px` as a LITERAL, so the repo's only design test pins a magic number rather than a token; replace that assertion with a token reference.",
+        "LAYOUT, from reading the shipped tour screenshots: the board's six fixed-min-width columns do not fit the centre pane at 1440px, so `docs/tour/img/05-board-seeded.png` shows columns clipped mid-word (\"In Pro...\"). Fix so the board is readable at the default window size without horizontal clipping \u2014 the board is the centre pane and the product's signature surface.",
+        "Both themes stay correct after the migration \u2014 every migrated declaration is driven by a `--sw-*` custom property that flips under `:root[data-theme=\"dark\"]`, never a hardcoded value. The existing dark-theme tour capture is the regression check.",
+        "Honest scope note: this is the token/layout pass only. The typography-hierarchy and whitespace work the tour also exposes (the morning queue is ~60% empty at 1440x900, raw locale timestamps, an unlabelled `+120 -4` diff stat) is deliberately NOT in this ticket \u2014 file it separately rather than smuggling a redesign into a token migration.",
+        "Full gate green including e2e and the a11y specs (contrast must not regress); counts in the commit body."
+      ],
+      "notes": "W10 Phase H. Numbers measured directly 2026-08-02: `grep -c` over apps/web/src for hex literals and var(--sw-) uses (66 vs 164), and the clipped-column observation is from the shipped docs/tour/img/05-board-seeded.png, not a guess."
     }
   ]
 }
