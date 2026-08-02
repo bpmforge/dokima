@@ -52,7 +52,8 @@ The app opens on the portfolio, not a project. One card per project:
 | Notifications, empty | activity-feed link only |
 | Artifact viewer, no docs yet | "Deliverables appear as phases produce them." → current phase |
 | Receipts list, none | "No gates have run yet." |
-| Settings, no providers | wizard entry point (FR-S4) |
+| Settings, no providers | "No providers yet. Dokima runs fully local — point it at Ollama or LM Studio and nothing leaves this machine." → `Add provider` + wizard entry point (FR-S4); full state table in §6a |
+| Model matrix, no model chosen for a cell | "No model selected." → the provider's discovered list (§6a); never a silently applied default |
 
 ## 2a. Project layout — three panes (FR-C1)
 
@@ -150,6 +151,114 @@ bad edits with the same explain pattern.
   of the panel edits global defaults vs this project's overrides; run-scope values are
   set at launch time and shown read-only here. Credentials render as keychain-ref names
   with a "test connection" action — never the secret itself (FR-S2).
+
+## 6a. Providers & Models (FR-G1, D-007, D-019 — the surface W10-04 builds)
+
+§6 says provider onboarding "lives here". This is what "here" means. Everything
+below binds to shapes that already exist — `ProviderKind`, `ProviderEntry` and the
+`rule` string on `ProviderRegistryError` (`packages/gateway/src/registry/`), and
+`GET`/`PUT /api/v1/projects/:id/providers` +
+`DELETE /api/v1/projects/:id/providers/:providerId`. Where copy is quoted below it
+is the copy, not a paraphrase: a refusal the user reads should be the refusal the
+code raised.
+
+**The defect this replaces:** the model matrix takes its model as a free-text
+string. There is no list, no validation, and no way to find out what an endpoint
+actually serves. A typo is indistinguishable from a model that is simply not
+installed, and you find out at run time.
+
+### Layout — two stacked regions in the Settings panel
+
+`[ Providers ]` a table of registered endpoints, then `[ Models ]` the role x
+task-type matrix from §6, whose cells become **selects populated from the catalog**
+rather than text inputs.
+
+**Providers table** — one row per `ProviderEntry`, columns: enabled toggle · `id` ·
+kind · endpoint · credential · reachability chip · model count · row actions
+(Test · Refresh · Remove). Below it a single `Add provider` affordance.
+
+### Provider kinds — the field set is a function of the kind
+
+| Kind | Endpoint | Credential | Notes |
+|---|---|---|---|
+| `ollama`, `lm-studio` | optional — a well-known localhost default is prefilled and editable | none | the local-first default path (C-1) |
+| `oai-compat` | **required** (`missing-base-url` if blank) | optional keychain ref | any OpenAI-shaped server |
+| `anthropic`, `openai`, `vertex` | fixed, not shown | keychain ref | registerable now, **not yet runnable** — see the refusal below |
+| `copilot` | fixed, not shown | keychain ref | consent-gated (D-019) |
+
+`id` is the handle the model matrix routes against: lowercase alphanumeric with
+dashes, 1–64 chars (`invalid-id`). `baseUrl` must parse and must be http(s)
+(`invalid-base-url`, `invalid-base-url-scheme`). The form surfaces the `rule` name
+against the offending field — a refusal names which field and why, never a bare
+"invalid".
+
+**Credentials are never typed into a settings field that persists them.** The API
+key input writes to the keychain and stores only a named ref (Law 8, FR-S2); the
+row then renders the ref name plus "test connection", exactly as §6 requires. A
+literal key submitted to the registry is rejected **wholesale at the boundary**
+before validation or persistence — never stored-then-scrubbed.
+
+### Flows
+
+1. **Add** → pick kind → the field set above → Test → Save. Test is available
+   *before* Save so an unreachable endpoint is discovered while the form is still
+   open, not after it is persisted.
+2. **Test** → reachability chip resolves to Reachable / Unreachable(reason).
+3. **Refresh** → re-runs discovery for that provider and updates its model list and
+   count. This is `providers refresh`'s list, kept rather than discarded (W10-02).
+4. **Select a model** → in the Models matrix, per role x task-type, from the
+   discovered catalog. A cell shows the fitness card §6 already specifies.
+5. **Remove** → see the destructive copy below.
+
+### Every state, written (§2b's rule)
+
+| State | What the user sees |
+|---|---|
+| **No providers registered** | "No providers yet. Dokima runs fully local — point it at Ollama or LM Studio and nothing leaves this machine." → `Add provider`, plus the first-run wizard entry (FR-S4) |
+| **Endpoint unreachable** | row chip **Unreachable**, with the transport reason verbatim (refused / timeout / TLS / HTTP status). Never a bare "error", and **never a silently empty model list** presented as "no models" |
+| **Discovery returned nothing** | "Reachable, but this endpoint serves no models yet." → for local kinds, the pull/download hint for that server. Distinct from unreachable *and* distinct from empty-because-we-failed |
+| **Offline / no network at all** | the bundled catalog under `content/model-catalog/` still resolves and renders, marked **bundled** rather than **discovered**. First run works with zero network (C-1, Law 9) — a fabricated model list is never an acceptable substitute |
+| **Selected model no longer served** | the matrix cell keeps the name, marks it **missing from <provider>**, and offers the discovered alternatives. The selection is not silently rewritten and not silently dropped |
+| **Provider disabled** | rows stay visible and greyed; the matrix marks any cell routing to it as unroutable. A disabled provider is a refusal to *use*, not a reason to *hide* |
+| **Cloud kind selected** | registerable and savable, but any attempt to route to it reports, verbatim: *"provider kind "openai" is registered but not yet constructible from the pipeline: it needs a resolved credential and a real price table (W10 follow-up). Local kinds (ollama, lm-studio, oai-compat) work today."* Never a silent fallback to localhost, never a fabricated $0 cost |
+| **maker = verifier** | the assignment is refused **inline in the cell**, with the reason: *"refusing to route '<verifier role>' to '<model>' — same model as maker role '<maker role>'; set an explicit override to allow it"*. C-4 is structural; the panel explains it the way the board explains a drag refusal (FR-C), and the override is an explicit, ledgered action — not a checkbox that quietly disables the guard |
+
+### Copy for the risky affordances — implementation may not soften these
+
+**Enabling Copilot (D-019).** Default-off. The toggle cannot enable it directly;
+it opens an acknowledgement the user must accept, and the API refuses regardless
+until that ack is ledgered (`consent-required`). The warning says, in plain
+language and without hedging:
+
+> GitHub Copilot support uses `copilot_internal`, an **undocumented API**.
+> GitHub's Generative AI terms cite proxy usage as grounds for enforcement, and
+> enforcement can **permanently ban your GitHub account**. The risk is to your
+> account, not to Dokima. Enabling this records an acknowledgement in the event
+> log.
+
+Same pattern as the unfit-model ack (FR-G6). Declining leaves the provider
+registered and disabled, never half-enabled.
+
+**Removing a provider.** The confirm names what it does and what it does not
+touch — a remove dialog that says only "are you sure?" is not acceptable here:
+
+> Remove **<id>**? This deletes the endpoint from this project's registry and
+> unbinds any matrix cell routing to it. It does **not** delete the keychain
+> entry `<ref>`, does not touch the models on the endpoint itself, and does not
+> alter any run that already happened — receipts and the event log are
+> append-only (C-6).
+
+Cells left unbound render as the "no model selected" empty state, never as a
+silently reassigned default.
+
+### Accessibility (§9 applies unchanged)
+
+Keyboard-operable end to end: the table is a real table, every row action is a
+button in the tab order, and the add/edit form is reachable and dismissible
+without a pointer. Reachability is **never colour alone** — the chip carries text
+(Reachable / Unreachable / Bundled). Refusals are `role="alert"` and associated
+with the field they refer to, so a screen reader gets the reason and not just
+"invalid". Passes the existing axe gate for Settings.
 
 ## 7. Notifications — Decide / Review / Record (FR-N4)
 

@@ -3609,7 +3609,7 @@
         "docs/design/UX_SPEC.md"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "`docs/design/UX_SPEC.md` is 209 lines and its sections stop at the W4 surfaces (Fleet, three-pane, board, artifacts, settings matrix, notifications, first-fifteen, a11y). There is NO section for a provider/model picker and none for the guide. Add the provider/model section in the file's existing voice: flows, screen inventory, and the states.",
