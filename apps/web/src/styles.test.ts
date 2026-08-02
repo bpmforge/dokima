@@ -107,7 +107,10 @@ const PX_EXEMPT_PROPERTIES: Record<string, string> = {
   // board/Lane.test.tsx. Tokenising these would break that contract for
   // no design benefit — they are the size of a fade, not a gap.
   'background-size': 'scroll-shadow gradient geometry (W9-05)',
-  'background-position': 'scroll-shadow gradient geometry (W9-05)',
+  // NOTE: `background-position` is deliberately NOT exempt. It sits beside
+  // background-size in the same rule and looks like it belongs here, but
+  // its value is `0 0, 100% 0, ...` — no px at all. An exemption nothing
+  // needs is the first crack in an allowlist.
 };
 
 function cssFiles(): string[] {
@@ -143,12 +146,13 @@ function declarations(file: string): Declaration[] {
     const afterBrace = chunk.lastIndexOf('{');
     const text = afterBrace === -1 ? chunk : chunk.slice(afterBrace + 1);
     const match = /^\s*(--[\w-]+|[a-zA-Z-]+)\s*:\s*([\s\S]+)$/.exec(text);
-    if (match) {
-      const indexInChunk = chunk.length - text.length + text.indexOf(match[1]);
+    const [, prop, value] = match ?? [];
+    if (prop && value) {
+      const indexInChunk = chunk.length - text.length + text.indexOf(prop);
       const absolute = offset + indexInChunk;
       out.push({
-        prop: match[1],
-        value: match[2],
+        prop,
+        value,
         file,
         line: stripped.slice(0, absolute).split('\n').length,
       });
@@ -220,9 +224,9 @@ describe('design tokens (W10-06)', () => {
     const referenced = new Set<string>();
     const withFallback: Declaration[] = [];
     for (const d of all) {
-      for (const [, name, fallback] of d.value.matchAll(
-        /var\(\s*(--[\w-]+)\s*(,[^)]*)?\)/g,
-      )) {
+      for (const match of d.value.matchAll(/var\(\s*(--[\w-]+)\s*(,[^)]*)?\)/g)) {
+        const [, name, fallback] = match;
+        if (!name) continue;
         referenced.add(name);
         if (fallback) withFallback.push(d);
       }

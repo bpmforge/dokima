@@ -68,6 +68,11 @@
   --sw-divider-width: 6px; /* split-pane drag handle hit target */
   --sw-scrollbar-size: 8px;
 
+  /* Narrowest a Board column may get before the lane reflows it onto
+     another row. Sets how many of the six lifecycle states sit
+     side-by-side in the ~470px centre pane. */
+  --sw-board-column-min: 9rem;
+
   --sw-transition-duration: 150ms;
 }
 

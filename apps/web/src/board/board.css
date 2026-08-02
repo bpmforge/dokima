@@ -70,7 +70,28 @@
 }
 
 .board-lane__columns {
-  display: flex;
+  /* W10-06: reflow instead of running off the edge. The Board is the
+     centre one of three panes, so at a 1440px window it gets ~470px —
+     six 12rem columns needed ~1200px and the shipped tour capture
+     (docs/tour/img/05-board-seeded.png) showed the third header cut to
+     "In Pro…" with columns 4-6 off-pane entirely. Both board e2e specs
+     force a 2400px viewport to work around exactly this; reflowing
+     keeps every column — and so every drop target — on screen.
+
+     Grid rather than `flex-wrap`, which was tried first and rejected:
+     `flex-grow` stretches whatever lands on the final row, so a 4+2
+     wrap rendered Blocked and Done at double width and read as a
+     rendering bug. `auto-fit` + `minmax` gives every column one width
+     and keeps rows aligned. Measured at 1440x900: 2 columns per row at
+     219px; 8.5rem would fit 3 at 143px but wrapped "Move ticket E2E-1"
+     mid-identifier, which is the defect this ticket exists to remove.
+
+     `overflow-x` below is still load-bearing: the pane is draggable
+     down to --sw-space-10, far under one column's minimum, so the
+     W9-05 edge-fade still has a width range where it does its job
+     (verified: at a 120px pane the strip scrolls 128px of content). */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--sw-board-column-min), 1fr));
   gap: var(--sw-space-2);
   overflow-x: auto;
   /* Six fixed-width columns routinely overflow a narrower Board pane
@@ -124,8 +145,8 @@
 }
 
 .board-column {
-  flex: 1 1 12rem;
-  min-width: 12rem;
+  /* Width comes from the grid track above (--sw-board-column-min). */
+  min-width: 0;
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-md);
   padding: 0.4rem;
