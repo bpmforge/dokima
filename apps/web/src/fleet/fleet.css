@@ -1,7 +1,7 @@
 .fleet {
   flex: 1;
   overflow: auto;
-  padding: 1.5rem;
+  padding: var(--sw-space-6);
 }
 
 .fleet__header {
@@ -9,28 +9,28 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: var(--sw-space-3);
+  margin-bottom: var(--sw-space-6);
 }
 
 .fleet__header h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--sw-text-xl);
 }
 
 .fleet__actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
   flex-wrap: wrap;
 }
 
 .fleet__actions button {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border-radius: var(--sw-radius-md);
+  padding: 0.4rem var(--sw-space-3);
   cursor: pointer;
 }
 
@@ -38,91 +38,91 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.85rem;
+  font-size: var(--sw-text-base);
 }
 
 .fleet__error {
-  color: #c0392b;
+  color: var(--sw-danger);
 }
 
 .fleet__empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 2rem 0;
+  gap: var(--sw-space-3);
+  padding: var(--sw-space-8) 0;
 }
 
 .fleet__form {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
   max-width: 24rem;
-  border: 1px solid var(--sw-border);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-lg);
+  padding: var(--sw-space-4);
+  margin-bottom: var(--sw-space-6);
 }
 
 .fleet__form label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
+  gap: var(--sw-space-1);
+  font-size: var(--sw-text-base);
 }
 
 .fleet__form input {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: var(--sw-bg);
   color: var(--sw-fg);
-  border-radius: 6px;
-  padding: 0.4rem 0.5rem;
+  border-radius: var(--sw-radius-md);
+  padding: 0.4rem var(--sw-space-2);
 }
 
 .fleet__form-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
 }
 
 .fleet__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 1rem;
+  gap: var(--sw-space-4);
 }
 
 .project-card {
-  border: 1px solid var(--sw-border);
-  border-radius: 8px;
-  padding: 1rem;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-lg);
+  padding: var(--sw-space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
 }
 
 .project-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
 }
 
 .project-card__header h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--sw-text-lg);
 }
 
 .project-card__phase-chip {
-  font-size: 0.75rem;
-  border: 1px solid var(--sw-border);
-  border-radius: 999px;
-  padding: 0.15rem 0.5rem;
+  font-size: var(--sw-text-sm);
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-pill);
+  padding: 0.15rem var(--sw-space-2);
 }
 
 .project-card__board {
   display: flex;
-  gap: 1rem;
+  gap: var(--sw-space-4);
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
 }
 
 .project-card__board div {
@@ -145,44 +145,44 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
 }
 
 .project-card__heartbeat-dot {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  background: #2ecc71;
+  background: var(--sw-success);
   display: inline-block;
 }
 
 .project-card__heartbeat-dot--stale {
-  background: #e67e22;
+  background: var(--sw-warning);
 }
 
 .project-card__decide {
   align-self: flex-start;
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
   font-weight: 600;
-  color: #c0392b;
+  color: var(--sw-danger);
 }
 
 .project-card__spend {
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
   opacity: 0.8;
 }
 
 .project-card__actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
+  gap: var(--sw-space-2);
+  margin-top: var(--sw-space-1);
 }
 
 .project-card__actions button {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-md);
   padding: 0.3rem 0.6rem;
   cursor: pointer;
 }

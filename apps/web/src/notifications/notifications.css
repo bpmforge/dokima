@@ -1,10 +1,10 @@
 /* App.tsx header bell (UX_SPEC §2a: "notification bell (Decide badge count only)"). Lives here rather than styles.css, which is outside this ticket's write_scope — App.tsx imports this file globally. */
 .app-shell__notifications-bell {
   position: relative;
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
+  border-radius: var(--sw-radius-md);
+  padding: 0.3rem var(--sw-space-2);
   cursor: pointer;
   line-height: 1;
 }
@@ -13,10 +13,10 @@
   position: absolute;
   top: -0.35rem;
   right: -0.35rem;
-  background: var(--sw-attention, #d64545);
-  color: #fff;
-  border-radius: 999px;
-  font-size: 0.65rem;
+  background: var(--sw-danger-bg);
+  color: var(--sw-on-danger);
+  border-radius: var(--sw-radius-pill);
+  font-size: var(--sw-text-2xs);
   min-width: 1.1rem;
   height: 1.1rem;
   display: inline-flex;
@@ -28,7 +28,7 @@
 .notifications-view {
   flex: 1;
   overflow: auto;
-  padding: 1.5rem;
+  padding: var(--sw-space-6);
 }
 
 .notifications-view__header {
@@ -36,21 +36,21 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--sw-space-3);
+  margin-bottom: var(--sw-space-4);
 }
 
 .notifications-view__tabs {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
 }
 
 .notifications-view__tabs button {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border-radius: var(--sw-radius-md);
+  padding: 0.4rem var(--sw-space-3);
   cursor: pointer;
 }
 
@@ -64,7 +64,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.85rem;
+  font-size: var(--sw-text-base);
 }
 
 .morning-queue__header,
@@ -73,8 +73,8 @@
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: var(--sw-space-2);
+  margin-bottom: var(--sw-space-3);
 }
 
 .morning-queue__header h2,
@@ -84,13 +84,13 @@
 }
 
 .morning-queue__timer {
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
   opacity: 0.75;
   font-variant-numeric: tabular-nums;
 }
 
 .morning-queue__timer[data-over-target='true'] {
-  color: var(--sw-warning, #e0a800);
+  color: var(--sw-warning);
   opacity: 1;
 }
 
@@ -100,12 +100,12 @@
 }
 
 .notification-center__filter {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-md);
   padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
   cursor: pointer;
 }
 
@@ -117,13 +117,13 @@
 
 .morning-queue__error,
 .notification-center__error {
-  color: #c0392b;
+  color: var(--sw-danger);
 }
 
 .morning-queue__empty,
 .notification-center__empty {
   opacity: 0.75;
-  padding: 1rem 0;
+  padding: var(--sw-space-4) 0;
 }
 
 .morning-queue__list,
@@ -133,20 +133,20 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
 }
 
 .notification-card {
-  border: 1px solid var(--sw-border);
-  border-radius: 8px;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-lg);
   padding: 0.6rem 0.8rem;
 }
 
 .notification-card__header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
+  gap: var(--sw-space-2);
+  font-size: var(--sw-text-sm);
   text-transform: uppercase;
 }
 
@@ -162,7 +162,7 @@
  * solid, already-AA colors instead of alpha.
  */
 .notification-card__tier--decide {
-  color: var(--sw-attention, #b3261e);
+  color: var(--sw-danger);
 }
 
 .notification-card__tier--review {
@@ -185,7 +185,7 @@
 
 .notification-card__summary {
   margin: 0.2rem 0 0;
-  font-size: 0.85rem;
+  font-size: var(--sw-text-base);
   opacity: 0.8;
 }
 
@@ -193,12 +193,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: var(--sw-space-2);
+  margin-top: var(--sw-space-2);
 }
 
 .notification-card__time {
-  font-size: 0.75rem;
+  font-size: var(--sw-text-sm);
   opacity: 0.6;
 }
 
@@ -209,10 +209,10 @@
 
 .notification-card__actions button,
 .notification-card__footer > button {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-md);
   padding: 0.3rem 0.6rem;
   cursor: pointer;
 }

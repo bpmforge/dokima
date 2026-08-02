@@ -1,16 +1,95 @@
+/* ─────────────────────────────────────────────────────────────────────
+   Design tokens (W10-06)
+
+   This block is the ONLY place in apps/web where a raw hex colour or a
+   raw px length may appear — `styles.test.ts` walks every other
+   stylesheet and fails on one. That is the whole point: a hex outside
+   here cannot respond to the `data-theme` flip, which is how 54
+   declarations across 14 feature stylesheets ended up frozen to the
+   light theme.
+
+   Every semantic colour has a light AND a dark value, and each was
+   measured against the background it actually sits on before being
+   committed (WCAG 2.2 AA, ratios in the comments — six of them were
+   failing before this ticket).
+   ───────────────────────────────────────────────────────────────────── */
 :root {
+  /* Surfaces and text */
   --sw-bg: #ffffff;
   --sw-fg: #10151a;
+  --sw-fg-muted: #586069; /* 6.38:1 on --sw-bg */
   --sw-border: #d7dce1;
   --sw-accent: #2e6bff;
+  --sw-on-accent: #ffffff; /* 4.50:1 on --sw-accent */
+
+  /* Semantic state roles. Before W10-06 each of these was improvised
+     per file: six different reds, five ambers, five greens, all with
+     no dark-theme value at all. */
+  --sw-danger: #c0392b; /* 5.44:1 on --sw-bg */
+  --sw-warning: #b45309; /* 5.02:1 on --sw-bg */
+  --sw-success: #1a7f37; /* 5.08:1 on --sw-bg */
+
+  /* Filled danger badge: a background, so it carries its own foreground.
+     Deliberately does NOT flip — white-on-this reads at 5.44:1 in both
+     themes, and the fill stays >=3:1 against either page background. */
+  --sw-danger-bg: #c0392b;
+  --sw-on-danger: #ffffff; /* 5.44:1 on --sw-danger-bg */
+
+  /* Spacing — a 0.25rem grid. --sw-space-N is N * 0.25rem. */
+  --sw-space-0-5: 0.125rem; /* half-step, for hairline gaps */
+  --sw-space-1: 0.25rem;
+  --sw-space-2: 0.5rem;
+  --sw-space-3: 0.75rem;
+  --sw-space-4: 1rem;
+  --sw-space-5: 1.25rem;
+  --sw-space-6: 1.5rem;
+  --sw-space-8: 2rem;
+  --sw-space-10: 2.5rem;
+  --sw-space-12: 3rem;
+
+  /* Type scale */
+  --sw-text-2xs: 0.65rem;
+  --sw-text-xs: 0.7rem;
+  --sw-text-sm: 0.75rem;
+  --sw-text-md: 0.8rem;
+  --sw-text-base: 0.85rem;
+  --sw-text-lg: 1rem;
+  --sw-text-xl: 1.25rem;
+
+  /* Radius */
+  --sw-radius-sm: 4px;
+  --sw-radius-md: 6px;
+  --sw-radius-lg: 8px;
+  --sw-radius-pill: 999px;
+
+  /* Line weights and control geometry */
+  --sw-border-width: 1px;
+  --sw-focus-ring-width: 2px;
+  --sw-divider-width: 6px; /* split-pane drag handle hit target */
+  --sw-scrollbar-size: 8px;
+
+  /* Narrowest a Board column may get before the lane reflows it onto
+     another row. Sets how many of the six lifecycle states sit
+     side-by-side in the ~470px centre pane. */
+  --sw-board-column-min: 9rem;
+
   --sw-transition-duration: 150ms;
 }
 
+/* Only the values that differ from the light theme are restated. The
+   `@media` block below MUST stay identical to this one — first paint
+   uses it before ThemeProvider's effect runs, and a drift between the
+   two shows up as a colour flash. `styles.test.ts` asserts they match. */
 :root[data-theme='dark'] {
   --sw-bg: #10151a;
   --sw-fg: #e8ecf1;
+  --sw-fg-muted: #9aa4b0; /* 7.26:1 — was #666 at 3.20:1, an AA failure */
   --sw-border: #2a333c;
   --sw-accent: #6ea0ff;
+  --sw-on-accent: #10151a; /* 7.11:1 — was #fff at 2.58:1, an AA failure */
+  --sw-danger: #ff8a80; /* 8.04:1 */
+  --sw-warning: #e0a800; /* 8.54:1 */
+  --sw-success: #3fb950; /* 7.22:1 */
 }
 
 /* Fallback for first paint before ThemeProvider's effect sets data-theme. */
@@ -18,8 +97,13 @@
   :root:not([data-theme]) {
     --sw-bg: #10151a;
     --sw-fg: #e8ecf1;
+    --sw-fg-muted: #9aa4b0; /* 7.26:1 — was #666 at 3.20:1, an AA failure */
     --sw-border: #2a333c;
     --sw-accent: #6ea0ff;
+    --sw-on-accent: #10151a; /* 7.11:1 — was #fff at 2.58:1, an AA failure */
+    --sw-danger: #ff8a80; /* 8.04:1 */
+    --sw-warning: #e0a800; /* 8.54:1 */
+    --sw-success: #3fb950; /* 7.22:1 */
   }
 }
 
@@ -66,8 +150,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--sw-border);
+  padding: var(--sw-space-3) var(--sw-space-4);
+  border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
 /* W9-04: one styled control everywhere — every plain <button> gets the
@@ -77,11 +161,11 @@ body {
    style their buttons differently (tabs, chips, icon toggles) are
    unaffected. */
 button {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border-radius: var(--sw-radius-md);
+  padding: 0.4rem var(--sw-space-3);
   font: inherit;
   cursor: pointer;
 }
@@ -92,31 +176,31 @@ button:disabled {
 }
 
 .theme-toggle {
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   color: var(--sw-fg);
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border-radius: var(--sw-radius-md);
+  padding: 0.4rem var(--sw-space-3);
   cursor: pointer;
 }
 
 .shortcuts-overlay {
   position: fixed;
-  inset: 5rem 1rem auto;
+  inset: 5rem var(--sw-space-4) auto;
   margin: 0 auto;
   max-width: 28rem;
   background: var(--sw-bg);
-  border: 1px solid var(--sw-border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-lg);
+  padding: var(--sw-space-4) var(--sw-space-5);
   box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
   z-index: 1000;
 }
 
 .shortcuts-overlay__row {
   display: flex;
-  gap: 0.75rem;
-  padding: 0.25rem 0;
+  gap: var(--sw-space-3);
+  padding: var(--sw-space-1) 0;
 }
 
 .split-pane {
@@ -127,11 +211,11 @@ button:disabled {
 }
 
 .split-pane__pane {
-  min-width: 2.5rem;
+  min-width: var(--sw-space-10);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--sw-border);
+  border-right: var(--sw-border-width) solid var(--sw-border);
 }
 
 .split-pane__pane:last-child {
@@ -142,9 +226,9 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  border-bottom: 1px solid var(--sw-border);
+  padding: var(--sw-space-2) var(--sw-space-3);
+  font-size: var(--sw-text-base);
+  border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
 .split-pane__pane-header button {
@@ -153,11 +237,11 @@ button:disabled {
   color: var(--sw-fg);
   cursor: pointer;
   padding: 0.15rem 0.35rem;
-  border-radius: 4px;
+  border-radius: var(--sw-radius-sm);
 }
 
 .split-pane__divider {
-  width: 6px;
+  width: var(--sw-divider-width);
   cursor: col-resize;
   background: var(--sw-border);
 }

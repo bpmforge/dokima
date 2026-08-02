@@ -3633,7 +3633,7 @@
         "eslint.config.js"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED STARTING POINT (2026-08-02): FIVE tokens exist \u2014 `--sw-bg`, `--sw-fg`, `--sw-border`, `--sw-accent`, `--sw-transition-duration`. There is NO spacing, type, or radius scale (13 distinct ad-hoc px values), and **66 hardcoded hex colours**, of which **54 sit in feature CSS** outside `styles.css` \u2014 so they cannot respond to the `data-theme` flip at all. Extend to a real scale (spacing, type, radius, plus semantic colour roles for the state chips the board and morning queue currently improvise) and migrate the 54.",
@@ -3644,6 +3644,34 @@
         "Full gate green including e2e and the a11y specs (contrast must not regress); counts in the commit body."
       ],
       "notes": "W10 Phase H. Numbers measured directly 2026-08-02: `grep -c` over apps/web/src for hex literals and var(--sw-) uses (66 vs 164), and the clipped-column observation is from the shipped docs/tour/img/05-board-seeded.png, not a guess."
+    },
+    {
+      "id": "W10-28",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "title": "Typography hierarchy and whitespace \u2014 the half W10-06 deliberately left",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts",
+        "apps/web/src/**/*.css",
+        "apps/web/src/**/*.test.ts",
+        "apps/web/src/**/*.test.tsx"
+      ],
+      "depends_on": [
+        "W10-06"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED STARTING POINT (2026-08-02, immediately after W10-06): the colour/radius/px migration is complete and gated, but 112 spacing declarations still sit OFF the 0.25rem grid \u2014 0.4rem x32, 0.35rem x28, 0.2rem x13, 0.6rem x11, 0.3rem x11, 0.1rem x6, 0.15rem x4, 0.05rem x3, plus four singletons. W10-06 migrated only exact on-scale values, because snapping the rest CHANGES LAYOUT and is a design decision rather than a mechanical substitution. Snap them onto --sw-space-* and extend the styles.test.ts gate to fail on an off-scale rem in a spacing property, the same way it already fails on a raw px.",
+        "Four font sizes sit off the type scale: 0.8125rem, 0.875rem, 0.9rem, 1.1rem. Collapse them onto --sw-text-* (or justify a new step) and extend the gate to font-size the same way.",
+        "TYPOGRAPHY HIERARCHY, from the shipped tour captures: the morning queue is ~60% empty at 1440x900, timestamps render as raw locale strings, and the artifacts diff stat shows a bare +120 -4 with no label saying what it counts. These are the readability defects W10-06 explicitly refused to smuggle into a token migration.",
+        "Both themes stay correct and no a11y contrast regresses \u2014 W10-06 fixed six live WCAG AA failures (muted text at 3.20:1 in dark, the active settings tab at 2.58:1, three improvised warning/attention colours below 4.5:1) and they must stay fixed. The axe e2e specs are the regression check.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Filed BY W10-06, as its own acceptance required (\"file it separately rather than smuggling a redesign into a token migration\"). W10-06 built the scale and the gate; this ticket finishes adopting it in the places where adoption needs design judgement rather than a script."
     }
   ]
 }

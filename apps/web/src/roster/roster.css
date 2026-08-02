@@ -1,26 +1,26 @@
 .roster {
   flex: 1;
   overflow: auto;
-  padding: 1.5rem;
+  padding: var(--sw-space-6);
 }
 
 .roster__header {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--sw-space-6);
 }
 
 .roster__header h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--sw-text-xl);
 }
 
 .roster__cluster {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--sw-space-6);
 }
 
 .roster__cluster h2 {
-  font-size: 1rem;
+  font-size: var(--sw-text-lg);
   text-transform: capitalize;
-  color: var(--sw-fg-muted, #888);
+  color: var(--sw-fg-muted);
 }
 
 .roster__expert-list {
@@ -29,19 +29,19 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sw-space-2);
 }
 
 .roster__expert {
-  border: 1px solid var(--sw-border);
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-md);
+  padding: var(--sw-space-2) var(--sw-space-3);
 }
 
 .roster__expert-summary {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--sw-space-3);
   width: 100%;
   background: transparent;
   border: none;
@@ -58,16 +58,16 @@
 }
 
 .roster__expert-mode {
-  font-size: 0.75rem;
+  font-size: var(--sw-text-sm);
   opacity: 0.75;
 }
 
 .roster__expert-scope {
   margin-left: auto;
-  font-size: 0.75rem;
+  font-size: var(--sw-text-sm);
   padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid var(--sw-border);
+  border-radius: var(--sw-radius-sm);
+  border: var(--sw-border-width) solid var(--sw-border);
 }
 
 .roster__expert-description {
@@ -78,8 +78,8 @@
 .roster__expert-model,
 .roster__expert-fitness,
 .roster__expert-instruction-cost {
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
+  font-size: var(--sw-text-md);
+  margin-top: var(--sw-space-1);
 }
 
 .roster__unconfigured {
@@ -91,27 +91,27 @@
   display: inline-block;
   margin-right: 0.4rem;
   padding: 0.05rem 0.35rem;
-  border-radius: 4px;
-  border: 1px solid var(--sw-border);
+  border-radius: var(--sw-radius-sm);
+  border: var(--sw-border-width) solid var(--sw-border);
 }
 
 .roster__fitness-badge--fit {
-  border-color: #3a3;
+  border-color: var(--sw-success);
 }
 
 .roster__fitness-badge--unfit {
-  border-color: #a33;
+  border-color: var(--sw-danger);
 }
 
 .roster__fitness-badge--marginal {
-  border-color: #aa3;
+  border-color: var(--sw-warning);
 }
 
 .roster__history-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0.5rem 0 0;
+  gap: var(--sw-space-4);
+  margin: var(--sw-space-2) 0 0;
 }
 
 .roster__history-stats > div {
@@ -119,22 +119,22 @@
 }
 
 .roster__history-stats dt {
-  font-size: 0.7rem;
+  font-size: var(--sw-text-xs);
   opacity: 0.7;
 }
 
 .roster__history-stats dd {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--sw-text-lg);
 }
 
 .roster__history-loading {
-  font-size: 0.8rem;
+  font-size: var(--sw-text-md);
   opacity: 0.7;
 }
 
 .roster__error {
-  color: #c33;
+  color: var(--sw-danger);
 }
 
 .roster__empty {

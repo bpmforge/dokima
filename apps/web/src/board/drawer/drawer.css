@@ -13,8 +13,8 @@
   overflow-y: auto;
   background: var(--sw-bg);
   color: var(--sw-fg);
-  border-left: 1px solid var(--sw-border);
-  padding: 1rem 1.25rem;
+  border-left: var(--sw-border-width) solid var(--sw-border);
+  padding: var(--sw-space-4) var(--sw-space-5);
 }
 
 .ticket-drawer__header {
@@ -24,14 +24,14 @@
 }
 
 .ticket-drawer *:focus-visible {
-  outline: 2px solid var(--sw-accent);
-  outline-offset: 2px;
+  outline: var(--sw-focus-ring-width) solid var(--sw-accent);
+  outline-offset: var(--sw-focus-ring-width);
 }
 
 .ticket-drawer__contract-grid {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.35rem 0.75rem;
+  gap: 0.35rem var(--sw-space-3);
 }
 
 .ticket-drawer__empty {
@@ -51,8 +51,8 @@
 
 .ticket-drawer__spend-table th,
 .ticket-drawer__spend-table td {
-  border: 1px solid var(--sw-border);
-  padding: 0.25rem 0.5rem;
+  border: var(--sw-border-width) solid var(--sw-border);
+  padding: var(--sw-space-1) var(--sw-space-2);
   text-align: left;
 }
 
@@ -65,8 +65,8 @@
 }
 
 .ticket-drawer__dag-chip {
-  border: 1px solid var(--sw-border);
-  border-radius: 999px;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-pill);
   padding: 0.15rem 0.6rem;
 }
 
@@ -81,7 +81,7 @@
 }
 
 .ticket-drawer__dag-result--refused {
-  color: #b3261e;
+  color: var(--sw-danger);
 }
 
 .ticket-drawer__dag-result--not-persisted {

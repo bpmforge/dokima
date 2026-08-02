@@ -1,15 +1,15 @@
 .estimate {
   flex: 1;
   overflow: auto;
-  padding: 1.5rem;
+  padding: var(--sw-space-6);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--sw-space-6);
 }
 
 .estimate__section h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
+  margin: 0 0 var(--sw-space-2);
+  font-size: var(--sw-text-lg);
 }
 
 .estimate__table {
@@ -20,50 +20,50 @@
 .estimate__table th,
 .estimate__table td {
   text-align: left;
-  padding: 0.35rem 0.5rem;
-  border-bottom: 1px solid var(--sw-border);
+  padding: 0.35rem var(--sw-space-2);
+  border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
 .estimate__error {
-  color: #c0392b;
+  color: var(--sw-danger);
 }
 
 .estimate__empty {
-  color: var(--sw-fg-muted, #888);
+  color: var(--sw-fg-muted);
 }
 
 .estimate__assumptions {
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--sw-fg-muted, #888);
+  margin-top: var(--sw-space-2);
+  font-size: var(--sw-text-md);
+  color: var(--sw-fg-muted);
 }
 
 .estimate__what-if {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: var(--sw-space-3);
+  margin-top: var(--sw-space-3);
   flex-wrap: wrap;
 }
 
 .estimate__what-if label {
   display: flex;
   flex-direction: column;
-  font-size: 0.8rem;
-  gap: 0.25rem;
+  font-size: var(--sw-text-md);
+  gap: var(--sw-space-1);
 }
 
 .estimate__digest-card {
-  border: 1px solid var(--sw-border);
-  border-radius: 8px;
-  padding: 1rem;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-lg);
+  padding: var(--sw-space-4);
 }
 
 .estimate__tier-badge {
   display: inline-block;
-  border-radius: 999px;
+  border-radius: var(--sw-radius-pill);
   padding: 0.1rem 0.6rem;
-  font-size: 0.75rem;
+  font-size: var(--sw-text-sm);
   text-transform: uppercase;
-  border: 1px solid var(--sw-border);
+  border: var(--sw-border-width) solid var(--sw-border);
 }
