@@ -3,6 +3,19 @@
 # Source path: scripts/validators/validate-mermaid.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
+#
+# LOCAL PATCH (Shipwright W9-08, 2026-07-28): this script used to be the only
+# validator in this directory that did not source `_lib.sh` and never emitted
+# an envelope — on a clean scan it printed zero bytes to stdout while still
+# exiting 0, which `packages/validators/src/contract.ts`'s
+# `parseValidatorOutput('')` correctly treats as untrustworthy (malformed),
+# not a pass. Since every phase in `PHASES[0..5]` requires this validator
+# (R-H3), no phase could ever gate cleanly. Fixed by sourcing `_lib.sh` and
+# routing every real finding through `gap`/`warn` so `validator_exit` always
+# emits a conforming envelope, on every run including the zero-findings case.
+# The scan logic (checks M001-M013, MRENDER) and the pass/fail judgement
+# (fail iff at least one ERROR-level finding; warnings never fail the gate)
+# are unchanged — this patch only fixes how the verdict is reported.
 
 #
 # validate-mermaid.sh — scan markdown files for Mermaid syntax problems
@@ -30,29 +43,38 @@
 #   validate-mermaid.sh [root-dir] [scan-path]
 #   Defaults: root-dir=$(pwd), scan-path=root-dir/docs
 #
-# Exit: 0 = clean, 1 = errors found, 2 = invocation error
-# stdout: one JSON object per line: {"file":"...","line":N,"code":"...","message":"...","severity":"error|warning"}
-# stderr: human-readable summary
+# Exit: 0 = clean, 1 = gaps found, 2 = validator error (per _lib.sh contract)
+# stdout: _lib.sh envelope — {"validator":"validate-mermaid","gaps":N,
+#         "exit":0|1,"items":[{"category":"M0xx","detail":"..."}]}
+#         M004/M010 are warnings — reported on stderr only, never counted as
+#         a gap (they never failed the gate before this patch either).
+# stderr: human-readable summary (colorized if a tty)
 #
 
-set -uo pipefail
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+
+validator_init "validate-mermaid"
 
 ROOT="${1:-$(pwd)}"
 SCAN_PATH="${2:-$ROOT/docs}"
 
 [[ ! -d "$SCAN_PATH" ]] && SCAN_PATH="$ROOT"
 
-total_errors=0
 total_warnings=0
 files_scanned=0
 
 emit() {
-  # emit JSON finding to stdout
+  # Route one finding to the envelope (errors) or to stderr only (warnings) —
+  # never both, so warnings keep their pre-existing non-blocking behavior.
   local severity="$1" file="$2" line="$3" code="$4" msg="$5"
-  # escape double quotes in msg
-  msg="${msg//\"/\\\"}"
-  printf '{"severity":"%s","file":"%s","line":%d,"code":"%s","message":"%s"}\n' \
-    "$severity" "$file" "$line" "$code" "$msg"
+  local rel="$file"
+  [[ -n "${ROOT:-}" && "$file" == "$ROOT/"* ]] && rel="${file#"$ROOT/"}"
+  if [[ "$severity" == "error" ]]; then
+    gap "$code" "${rel}:${line} — ${msg}"
+  else
+    warn "${rel}:${line} — ${code}: ${msg}"
+  fi
 }
 
 scan_file() {
@@ -61,7 +83,6 @@ scan_file() {
   local mermaid_open_line=0
   local diagram_type=""
   local lineno=0
-  local file_errors=0
   local file_warnings=0
 
   while IFS= read -r rawline; do
@@ -112,7 +133,6 @@ scan_file() {
       if [[ ! "$line" =~ $arrow_label_pattern ]]; then
         emit "error" "$file" "$lineno" "M001" \
           "Unquoted / in node label: [${label}] — wrap in double quotes: [\"${label}\"]"
-        file_errors=$((file_errors + 1))
       fi
     fi
 
@@ -120,14 +140,12 @@ scan_file() {
     if [[ "$line" =~ ^[[:space:]]*Note[[:space:]]+over[[:space:]]+[A-Za-z,[:space:]]+:[[:space:]].*\; ]]; then
       emit "error" "$file" "$lineno" "M002" \
         "Semicolon in Note over text breaks Mermaid parser — replace ; with , or remove"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M003: Unicode arrow → in Mermaid block ─────────────────────────────
     if [[ "$line" == *"→"* ]]; then
       emit "error" "$file" "$lineno" "M003" \
         "Unicode arrow → in Mermaid block — replace with ASCII ->"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M004: unquoted | in square-bracket label (likely pipe-syntax confusion)
@@ -155,7 +173,6 @@ scan_file() {
     if [[ "$line" =~ [^a-zA-Z0-9]\[\][[:space:]] || "$line" =~ [^a-zA-Z0-9]\(\)[[:space:]] ]]; then
       emit "error" "$file" "$lineno" "M005" \
         "Empty node label [] or () — all Mermaid nodes must have labels"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M007: unquoted parentheses inside a square-bracket node label ──────
@@ -165,7 +182,6 @@ scan_file() {
     if [[ "$line" =~ $paren_label_pat && "$line" != *'["'* && "$line" != *'(['* && "$line" != *'[('* ]]; then
       emit "error" "$file" "$lineno" "M007" \
         "Unquoted ( ) in node label — wrap the label text in double quotes"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M008: reserved word 'end' (lowercase) used as a node id ────────────
@@ -174,7 +190,6 @@ scan_file() {
        [[ "$line" =~ (^|[[:space:]])end[\[\(\{] ]]; then
       emit "error" "$file" "$lineno" "M008" \
         "Reserved word 'end' as node id — rename to 'End' or 'endNode' (lowercase end closes blocks)"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M009: smart quotes / em-dash / en-dash / non-breaking space ────────
@@ -183,7 +198,6 @@ scan_file() {
           "$line" == *$' '* ]]; then
       emit "error" "$file" "$lineno" "M009" \
         "Smart quote / em-dash / non-breaking space in Mermaid — use straight ASCII quotes and hyphens (run mermaid-fix.mjs --write)"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M010: markdown emphasis (**bold**) inside a node label ─────────────
@@ -211,14 +225,12 @@ scan_file() {
     if [[ "$line" == *'`'* && ! "$line" =~ ^[[:space:]]*%% ]]; then
       emit "error" "$file" "$lineno" "M013" \
         "Backtick in Mermaid diagram text breaks the parser (confirmed publish-fallback bug) — remove the backtick or rephrase without it"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M011: // comment (Mermaid uses %%) ─────────────────────────────────
     if [[ "$line" =~ ^[[:space:]]*// ]]; then
       emit "error" "$file" "$lineno" "M011" \
         "// is not a Mermaid comment — use %% instead"
-      file_errors=$((file_errors + 1))
     fi
 
     # ── M012: unbalanced [ ] on a node line ────────────────────────────────
@@ -241,7 +253,6 @@ scan_file() {
       if [[ "$opens" -ne "$closes" ]]; then
         emit "error" "$file" "$lineno" "M012" \
           "Unbalanced square brackets (${opens} '[' vs ${closes} ']') — likely a typo"
-        file_errors=$((file_errors + 1))
       fi
     fi
 
@@ -251,12 +262,9 @@ scan_file() {
   if [[ $in_mermaid -eq 1 ]]; then
     emit "error" "$file" "$mermaid_open_line" "M006" \
       "Unclosed mermaid code block — missing closing backtick fence"
-    file_errors=$((file_errors + 1))
   fi
 
-  total_errors=$((total_errors + file_errors))
   total_warnings=$((total_warnings + file_warnings))
-  [[ $((file_errors + file_warnings)) -gt 0 ]] && return 1 || return 0
 }
 
 # ── scan all markdown files ───────────────────────────────────────────────────
@@ -280,12 +288,16 @@ render_check_file() {
       in_m=0
       tmp="$(mktemp -t mermaid.XXXXXX.mmd)"
       printf '%s\n' "$block" > "$tmp"
-      errout="$($MMDC -i "$tmp" -o "$tmp.svg" 2>&1)"; rc=$?
+      # Disable errexit around the external render call — its non-zero exit
+      # is the very thing we're checking, not a validator-internal failure.
+      set +e
+      errout="$($MMDC -i "$tmp" -o "$tmp.svg" 2>&1)"
+      rc=$?
+      set -e
       rm -f "$tmp" "$tmp.svg"
       if [[ $rc -ne 0 ]]; then
         local msg; msg="$(printf '%s' "$errout" | grep -iE 'error|expecting|parse' | head -1)"
         emit "error" "$file" "$open_line" "MRENDER" "Mermaid render failed: ${msg:-see mmdc output}"
-        total_errors=$((total_errors + 1))
       fi
       continue
     fi
@@ -302,43 +314,17 @@ while IFS= read -r -d '' mdfile; do
 done < <(find "$SCAN_PATH" -name "*.md" -print0 2>/dev/null)
 
 # ── summary to stderr ─────────────────────────────────────────────────────────
-{
-  if [[ $total_errors -eq 0 && $total_warnings -eq 0 ]]; then
-    echo "validate-mermaid: PASS — $files_scanned files scanned, no issues found"
-  else
-    echo "validate-mermaid: $total_errors errors, $total_warnings warnings across $files_scanned files"
-    echo ""
-    echo "Codes:"
-    echo "  M001  Unquoted / in node label"
-    echo "  M002  Semicolon in Note over text"
-    echo "  M003  Unicode → arrow"
-    echo "  M004  Unquoted | in node label"
-    echo "  M005  Empty node label"
-    echo "  M006  Unclosed mermaid block"
-    echo "  M007  Unquoted ( ) in node label"
-    echo "  M008  Reserved 'end' as node id"
-    echo "  M009  Smart quote / em-dash / nbsp"
-    echo "  M010  Markdown in node label"
-    echo "  M011  // comment (use %%)"
-    echo "  M012  Unbalanced [ ]"
-    echo "  M013  Backtick in diagram body (ERROR — confirmed publish-fallback bug)"
-    echo "  MRENDER  Real mmdc parse failure"
-    echo ""
-    echo "  Auto-fix the mechanical ones:  node scripts/mermaid-fix.mjs <file> --write"
-  fi
-  [[ -z "$MMDC" && "${MERMAID_NO_RENDER:-0}" != "1" ]] && \
-    echo "  (mmdc not installed — static checks only; install @mermaid-js/mermaid-cli for authoritative render validation)"
-} >&2
-
-
-# Telemetry (plan 4.12) — same row shape as _lib.sh validator_exit.
-if [[ "${EXPERTS_TELEMETRY:-1}" != "0" ]]; then
-  {
-    mkdir -p docs/work &&
-    printf '{"ts":"%s","source":"validator","validator":"validate-mermaid","gaps":%d,"exit":%d}\n' \
-      "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$total_errors" "$([[ $total_errors -eq 0 ]] && echo 0 || echo 1)" \
-      >> docs/work/telemetry.jsonl
-  } 2>/dev/null || true
+if [[ "$GAP_COUNT" -eq 0 ]]; then
+  pass "$files_scanned file(s) scanned — no issues found"
+else
+  note "$GAP_COUNT error(s) across $files_scanned file(s) scanned"
 fi
+if [[ "$total_warnings" -gt 0 ]]; then
+  note "$total_warnings warning(s) also found (non-blocking — M004/M010)"
+fi
+if [[ -z "$MMDC" && "${MERMAID_NO_RENDER:-0}" != "1" ]]; then
+  note "mmdc not installed — static checks only; install @mermaid-js/mermaid-cli for authoritative render validation"
+fi
+note "auto-fix the mechanical findings: node scripts/mermaid-fix.mjs <file> --write"
 
-[[ $total_errors -eq 0 ]]
+validator_exit

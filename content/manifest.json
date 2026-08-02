@@ -168,7 +168,7 @@
     },
     {
       "path": "validate-mermaid.sh",
-      "hash": "sha256:8dc78a15e0250de28390a4bcc58eb86da7596f81fdda211339c15f0b93592649"
+      "hash": "sha256:bcbe842a372ba68af6b5fbc782ee92e4a7b7f6a37368bacb6e5516f5928867bd"
     },
     {
       "path": "validate-migrations.sh",
@@ -319,7 +319,7 @@
       "hash": "sha256:48f29f80180ffc3f24649e279a5731bef0be538ad94d4383a10279baf9b0e450"
     }
   ],
-  "signature": "ac72f3feef15ffe186895ba80a5ba955f4d43df0fcad208cf59fc93d4109ec07361a45fc85bc007a1cec6c9110c8f742985e22f1d7e3d8e9850bda20b3993909",
+  "signature": "0d023c816f39b41a80a81c6ae8f69e244769eb4622c4e4c79feba0dffe9e9ec453a23ac1692986c75e5e38b4c2ae6d9c7e4d240be9c1a0797530971becef570b",
   "publisher": "dokima",
-  "signedAt": "2026-08-02T20:40:32.420Z"
+  "signedAt": "2026-08-02T21:12:23.426Z"
 }

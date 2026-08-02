@@ -1,6 +1,21 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runValidator, runValidatorPack, type ValidatorSpec } from './run.js';
 import { createTempDir, writeScript, type TempDir } from './test-helpers.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+/** `packages/validators/src` -> repo root -> `content/validators`. */
+const REAL_MERMAID_VALIDATOR = path.resolve(
+  HERE,
+  '..',
+  '..',
+  '..',
+  'content',
+  'validators',
+  'validate-mermaid.sh',
+);
 
 describe('runValidator', () => {
   let temp: TempDir;
@@ -102,6 +117,96 @@ describe('runValidator', () => {
     const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
     expect(result.exitCode).toBe(2);
     expect(result.gaps[0]?.category).toBe('spawn-error');
+  });
+});
+
+/**
+ * W9-08 unblock proof: the REAL, unmodified `content/validators/
+ * validate-mermaid.sh` — not a synthetic stand-in — run through the real
+ * `runValidator`. Before this ticket, a clean scan exited 0 with zero-byte
+ * stdout, which `parseValidatorOutput('')` correctly reports as malformed
+ * (Defect 1), so `runValidator` normalized every clean mermaid run to
+ * `exitCode: 2`. `PHASES[0]` (Idea) and `PHASES[1]` (Plan) declare only
+ * `MERMAID_VALIDATOR` (`packages/pipeline/src/phases/topology.ts`), so this
+ * exact assertion — `exitCode: 0` for a clean real run — is what makes those
+ * two phases gateable; `runPhaseGate`'s own end-to-end demonstration belongs
+ * to W9-07, not here. `MERMAID_NO_RENDER=1` keeps this test independent of
+ * whether the optional `mmdc` CLI happens to be installed on the runner
+ * (Law 9 — local-first, no external tool dependency for a clean-pass proof).
+ */
+describe('runValidator against the real content/validators/validate-mermaid.sh (W9-08)', () => {
+  let temp: TempDir;
+  let previousNoRender: string | undefined;
+  let previousTelemetry: string | undefined;
+
+  beforeEach(() => {
+    // `runValidator` has no env-override seam — it inherits `process.env` via
+    // execa's default behavior — so this test controls the two knobs
+    // `validate-mermaid.sh` itself reads directly on `process.env`
+    // (`MERMAID_NO_RENDER` skips the optional `mmdc` render pass so the
+    // result doesn't depend on whether that CLI happens to be installed on
+    // the runner; `EXPERTS_TELEMETRY=0` keeps this test from writing rows to
+    // any `docs/work/telemetry.jsonl`).
+    previousNoRender = process.env.MERMAID_NO_RENDER;
+    previousTelemetry = process.env.EXPERTS_TELEMETRY;
+    process.env.MERMAID_NO_RENDER = '1';
+    process.env.EXPERTS_TELEMETRY = '0';
+  });
+
+  afterEach(async () => {
+    await temp?.cleanup();
+    if (previousNoRender === undefined) delete process.env.MERMAID_NO_RENDER;
+    else process.env.MERMAID_NO_RENDER = previousNoRender;
+    if (previousTelemetry === undefined) delete process.env.EXPERTS_TELEMETRY;
+    else process.env.EXPERTS_TELEMETRY = previousTelemetry;
+  });
+
+  it('reports exitCode 0 for a clean run — the mermaid gate is unblocked', async () => {
+    temp = await createTempDir('mermaid-clean');
+    await fs.mkdir(path.join(temp.dir, 'docs'), { recursive: true });
+    await fs.writeFile(
+      path.join(temp.dir, 'docs', 'VISION.md'),
+      '# Vision\n\nA plain document with no Mermaid diagrams at all.\n',
+    );
+
+    const spec: ValidatorSpec = {
+      name: 'validate-mermaid',
+      path: REAL_MERMAID_VALIDATOR,
+    };
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 15_000 });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.gapCount).toBe(0);
+    expect(result.gaps).toEqual([]);
+  });
+
+  it('reports exitCode 1 (not 2) for a single real finding — Defect 2 fixed end to end', async () => {
+    temp = await createTempDir('mermaid-one-finding');
+    await fs.mkdir(path.join(temp.dir, 'docs'), { recursive: true });
+    // Exactly ONE M013 backtick error — the single-finding case that used to
+    // misparse as malformed (exitCode 2) instead of "1 real gap" (exitCode 1).
+    await fs.writeFile(
+      path.join(temp.dir, 'docs', 'VISION.md'),
+      [
+        '# Vision',
+        '',
+        '```mermaid',
+        'flowchart TD',
+        '  A[`bad label`] --> B[Ok]',
+        '```',
+        '',
+      ].join('\n'),
+    );
+
+    const spec: ValidatorSpec = {
+      name: 'validate-mermaid',
+      path: REAL_MERMAID_VALIDATOR,
+    };
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 15_000 });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.gapCount).toBe(1);
+    expect(result.gaps[0]?.category).toBe('M013');
   });
 });
 
