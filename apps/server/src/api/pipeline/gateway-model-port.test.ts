@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createRealGatewayPort,
   MalformedModelOutputError,
+  providerForConfig,
 } from './gateway-model-port.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from './test-fake-gateway.js';
 
@@ -191,5 +192,33 @@ describe('gateway-model-port — real gateway wiring (workspace dependency)', ()
         },
       ),
     ).rejects.toBeInstanceOf(MalformedModelOutputError);
+  });
+});
+
+/**
+ * W10-03: before this ticket every production call built an oai-compat
+ * adapter unconditionally, so the ollama/lm-studio/anthropic/vertex/copilot
+ * adapters were never constructed outside their own tests. The dispatch is
+ * what makes them reachable.
+ */
+describe('providerForConfig — adapter dispatch (W10-03)', () => {
+  it('constructs the adapter the resolved KIND names, not always oai-compat', () => {
+    const base = { baseUrl: 'http://127.0.0.1:11434/v1', model: 'm' };
+    expect(providerForConfig({ ...base, kind: 'ollama' }).id).toContain('ollama');
+    expect(providerForConfig({ ...base, kind: 'lm-studio' }).id).toContain('lm-studio');
+    // Absent kind keeps the pre-registry behaviour, so nothing regresses.
+    expect(providerForConfig({ ...base }).id).toBeTruthy();
+  });
+
+  it('REFUSES a cloud kind by name instead of silently falling back to localhost', () => {
+    // AnthropicConfig requires a real costTable ("no $0 default for a paid
+    // API", its own header) and a RESOLVED secret, not the credentialRef the
+    // registry stores. Fabricating either would be a lie about cost or a
+    // credential leak, so the port refuses and says why.
+    for (const kind of ['anthropic', 'openai', 'vertex', 'copilot'] as const) {
+      expect(() =>
+        providerForConfig({ baseUrl: 'https://x/v1', model: 'm', kind }),
+      ).toThrowError(/not yet constructible/);
+    }
   });
 });

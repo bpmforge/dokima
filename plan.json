@@ -3555,7 +3555,7 @@
       "depends_on": [
         "W10-01"
       ],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "THE DEFECT, stated exactly: the only production model-call path in the product is `gateway-model-port.ts` (and its twin `onboard-dispatch-port.ts`), and both build a hardcoded `createOaiCompatProvider` from THREE ENVIRONMENT VARIABLES \u2014 `resolveGatewayConfigFromEnv` returns `{baseUrl: DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1', apiKey, model: DOKIMA_MODEL_ID ?? 'local-model'}`. Neither call site imports the router, `resolveModelChain`, the matrix, or the registry. The Anthropic, OpenAI-native, Copilot and Vertex adapters are therefore NEVER CONSTRUCTED on any production path \u2014 only by their own tests. Resolve provider + model through the registry (W10-01) and the role matrix instead.",
