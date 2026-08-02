@@ -1,72 +1,119 @@
-# Release tracker — Shipwright (SECOND in the release order; PAUSED)
+# Release tracker — Shipwright
 
-**State 2026-07-12:** 23/65 tickets landed (W0–W2 foundation + E2E complete); W3-01 blocked;
-build **deliberately paused** until bpm-opencode-experts v2.1.0 ships (founder decision).
-Board = `plan.json` · alignment = `bpm-opencode-experts/docs/ALIGNMENT_MATRIX.md` (SW-* items).
+**State 2026-08-02:** board complete through W9 — **116 of 118 tickets done**
+(1 blocked, 1 todo). The v1.0 dogfood gate passed. **Not tagged**, and three
+things still stand between here and a public tag (§Pre-public checklist).
 
-## The process issue — why the build is down (written for the record)
+Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal =
+`docs/work/W10_PLAN.md`.
 
-Four distinct causes, none of them "the models can't code":
+> **This file was stale from 2026-07-14 to 2026-08-02**, still reporting
+> "23/65 tickets, PAUSED" against a reality of 116/118 done. It is how a human
+> resumes cold, so that drift was itself a release-readiness defect. The
+> historical pause narrative is preserved in §Historical below.
 
-1. **W3-01 hit the hardest-primitive pattern.** The Harbormaster ticket loop is the third
-   trust-core ticket (after W0-02 hash chain, W0-05 receipts) to exhaust the Sonnet→Sonnet→Opus
-   ladder. Trust-core primitives reliably need human hands or pairing; the straightforward 80%
-   lands autonomously. This is a *known, budgeted* cost, not a failure — but W3-01 is also a
-   **dependency chokepoint**: every other W3 ticket depends on it, so its block idle-exits the
-   whole run (nothing else claimable).
-2. **W3-01 violates our own decomposition policy.** 5 points, orchestrator-core, review kept
-   finding one-more-blocker each pass ("ceiling while progressing = the ticket is too big —
-   split it", FINDING_LOOP_POLICY §3). It bundles claim-loop + out-of-session gates + land/park
-   into one ticket.
-3. **Account-level limit contention.** Two conductors (Shipwright + amplifier) share one Claude
-   account; running both halves throughput and doubles limit pauses. Serializing programs is
-   strictly faster end-to-end.
-4. **Upstream content drift.** Shipwright imported the expert library at v2.0.0-day-0; the
-   amplifier stream is actively changing it (v2.1.0 pending). Building the product against a
-   moving canonical library invites a re-import churn mid-build.
-
-## The fix plan (execute at resume)
-
-- **F1 — split W3-01** into W3-01a (claim loop + fresh-session dispatch), W3-01b (out-of-session
-  gate execution vs a fixture manifest), W3-01c (land/park + failure comments) — each ≤3 pts with
-  its own verify; keep the existing branch's code as seed material. *(Fixes cause 2 → unblocks 1.)*
-- **F2 — human-pair the trust-core lane:** W3-01a/b get hand-review before merge regardless of
-  ladder outcome (same treatment that landed W0-02/W0-05 clean).
-- **F3 — resume only after opencode v2.1.0** (cause 3+4): then `node scripts/import-content.mjs`
-  re-sync (SW-R1) so `content/` matches the released library, commit, and relaunch:
-  `nohup caffeinate -dimsu bash scripts/supervise.sh --waves W0,W1,W2,W3 --breakpoint never --escalate >> docs/work/conductor.out 2>&1 &`
-- **F4 — W3-08/W3-09 early:** finding ledger + Harbormaster symlink-safety land inside W3 (they
-  harden the very loop being built).
+---
 
 ## Release milestones
 
-| Tag | Scope | Gate |
-|---|---|---|
-| **v0.1.0-foundation** | W0–W3 complete (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board |
-| v0.2.0 | + W4 Canvas/Fleet | Playwright E2E over fake-model gateway |
-| v0.3.0 | + W5 Pipeline/PM (interview→blueprint→slates→decompose) | sample idea runs <15 min on a local model |
-| v0.9.0 | + W6 integrations, W7 memory | forge-mirror reconciliation + anti-Jarvis-gap recall test |
-| **v1.0.0** | W8 dogfood: Shipwright audits itself | its own security cluster passes; receipts published in docs/dogfood/ |
+| Tag | Scope | Gate | Status |
+|---|---|---|---|
+| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged |
+| v0.2.0 | + W4 Canvas/Fleet | Playwright E2E over fake-model gateway | ✅ met, untagged |
+| v0.3.0 | + W5 Pipeline/PM | sample idea runs <15 min on a local model | ✅ met, untagged |
+| v0.9.0 | + W6 integrations, W7 memory | forge-mirror reconciliation + anti-Jarvis-gap recall test | ✅ met, untagged |
+| **v1.0.0** | W8 dogfood: Shipwright audits itself | own security cluster passes; receipts in `docs/dogfood/` | ✅ **met**, untagged |
 
-Pre-public checklist (any tag ≥0.3): D-001 naming pass (shipwright.io collision) · LICENSE
-(D-006 open — founder picks Apache-2.0/MIT) · README quickstart · history secrets scan.
+Every milestone gate has been met. Nothing has been tagged, because the
+pre-public checklist below was never finished.
+
+## Pre-public checklist (required for any tag ≥0.3)
+
+| Item | Status |
+|---|---|
+| LICENSE file | ✅ **done 2026-08-02** — Apache-2.0 per D-017 (decided 2026-07-14; the file had simply never been written) |
+| README quickstart | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified |
+| History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below |
+| **D-001 naming pass** | ❌ **OPEN — the remaining hard blocker.** Two collisions, not one: `shipwright.io` (CNCF image builds, already recorded in D-001) **and the npm name `shipwright`**, taken by `hellofloat/shipwright` ("DigitalOcean CLI control") which declares the same `bin` name. There is no `npx` install path until this is decided. |
+
+### The secrets scan found a real one
+
+The Ed25519 content-signing **private** key was in pushed history since
+2026-07-20 and derived byte-for-byte the public key the product shipped —
+proven forgeable against the real `content/manifest.json`.
+
+**Remediated 2026-08-02**: key rotated (old key proven dead), history purged
+across all six branches, force-pushed to both remotes. Full write-up, including
+what the rewrite does *not* undo:
+[`docs/work/SECURITY_RELEASE_BLOCKER_2026-08-02.md`](work/SECURITY_RELEASE_BLOCKER_2026-08-02.md).
+
+Durable fix ticketed as W10-27 in `docs/work/W10_PLAN.md`: `secrets-scan.sh`
+scans the working **tree**, so a gitignored, tree-removed key reads clean while
+history is compromised. History scanning needs to join the release gate.
+
+## Known gaps at time of writing
+
+Not release blockers by themselves, but a reader deserves them stated:
+
+- Provider/model selection is editable in the UI and **not wired** to the
+  pipeline's model calls (W10 Phase G — the engine is built and tested, the
+  wire is missing)
+- Visual design is unfinished — 4 design tokens, 66 hardcoded hexes, clipped
+  board columns (W10 Phase H)
+- The bundled expert library is ~133 upstream changes behind (W10 Phases A/B)
+- `shipwright --help`, and any mistyped command, boots the server
+- `plan.json`: W9-08 blocked, W9-15 todo
 
 ## Test truth
-`pnpm lint && pnpm typecheck && pnpm test` (616+ tests) per ticket (conductor-gated) ·
-planted-defect harness (every gate must FAIL when attacked — TESTING.md) · toy-project E2E incl.
-symlink-escape regression · fitness bench fixtures W2-08 · Playwright from W4 · dogfood at W8.
+
+`pnpm lint && pnpm typecheck && pnpm test` **plus** `pnpm --filter
+@shipwright/web e2e` per ticket (Law 3; e2e joined the gate 2026-07-27) ·
+planted-defect harness — every gate must FAIL when attacked (`docs/TESTING.md`)
+· toy-project E2E incl. symlink-escape regression · fitness bench fixtures ·
+dogfood receipts at W8.
+
+Last full gate (2026-08-02, post-rewrite): lint 0 errors / 1 pre-existing
+warning · typecheck clean · **2883 passed | 3 skipped across 400 files** · **58
+e2e passed**.
 
 ## Automation
-Already built and field-proven in this repo: `scripts/conductor.mjs` (config-driven, worktree
-isolation, plan-lint preflight, diff-scoped validators, sticky-finding review, limit recovery)
-+ `scripts/supervise.sh` (crash restart). Resume = F3 command above; control `touch STOP`;
-runbook `docs/work/CONDUCTOR_RUNBOOK.md`.
+
+`scripts/conductor.mjs` (config-driven, worktree isolation, plan-lint preflight,
+diff-scoped validators, sticky-finding review, limit recovery) +
+`scripts/supervise.sh` (crash restart), fronted by `pnpm autorun` /
+`autorun:status` / `autorun:stop` (W9-16). Overnight runs launch **without**
+`--escalate` by design — sonnet-only ladder; frontier spend requires a human
+(D-018 by configuration). Control: `touch STOP`. Runbook:
+`docs/work/CONDUCTOR_RUNBOOK.md`.
+
+Note: an autorun today claims W9-15 and idle-exits — the board has no other
+claimable work. W10 must be filed into `plan.json` before autorun has anything
+to do.
+
+---
+
+## Historical — the 2026-07-12 pause (kept for the audit trail)
+
+The build was deliberately paused at 23/65 tickets pending an upstream content
+release. Four causes were recorded, none of them "the models can't code":
+W3-01 hit the hardest-primitive pattern and was a dependency chokepoint; it
+violated the project's own decomposition policy (5 pts, bundled three concerns);
+account-level limit contention between two concurrent conductors; and upstream
+content drift while the canonical library was moving.
+
+The fix plan (F1 split W3-01 into a/b/c, F2 human-pair the trust-core lane, F3
+resume after the upstream release + resync, F4 pull W3-08/09 early) was executed
+— W3-01a/b/c and the whole W3 wave closed long since. **The durable lesson,
+still true:** trust-core primitives reliably need human hands or pairing; the
+straightforward 80% lands autonomously. Budget for it rather than treating it as
+failure.
 
 ## Status log
-- 2026-07-12 — paused pending opencode v2.1.0; process issue + fix plan recorded; W3-01 marked
-  for split (F1) at resume.
-- 2026-07-14 — **F3 precondition satisfied upstream:** bpm-opencode-experts v2.1.0 shipped
-  2026-07-13; library is now at v2.9.0 (loop-classifier mechanics changed in v2.4.0 — the
-  SW-R1 resync at resume must target the current release, not v2.1.0). Design-review pass
-  running on branch `review/design-review-hardening` (docs/work/DESIGN_REVIEW.md); resume
-  remains gated on the review completing + founder adoption decisions + SW-R1.
+
+- 2026-07-12 — paused pending upstream v2.1.0; process issue + fix plan recorded.
+- 2026-07-14 — upstream precondition satisfied; design-review pass folded in.
+- **2026-08-02** — tracker refreshed after 3 weeks of drift. Board 116/118, all
+  milestone gates met, nothing tagged. LICENSE + README landed. History secrets
+  scan found and remediated a CRITICAL signing-key leak (rotate + purge, both
+  remotes force-pushed). **D-001 naming is now the single remaining pre-public
+  blocker**, and it is a founder decision.

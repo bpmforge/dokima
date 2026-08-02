@@ -2,8 +2,13 @@
 
 **Found:** 2026-08-02, during the pre-public "history secrets scan" checklist
 item (docs/RELEASE_TRACKER.md).
-**Severity:** CRITICAL. **Status:** unremediated — remediation is a founder
-decision (it touches two pushed remotes).
+**Severity:** CRITICAL. **Status: REMEDIATED 2026-08-02** — founder authorized
+both rotation and history purge. Outcome in §Remediation performed.
+
+> **Commit hashes in this document are pre-rewrite and no longer resolve.**
+> `1039ff0` and every commit after it were rewritten by the purge. They are
+> kept as the historical record of what was found; `git show 1039ff0` now
+> correctly fails with "invalid object name".
 
 ---
 
@@ -100,6 +105,56 @@ Two independent actions. **(1) is mandatory and sufficient for future safety;
    copies anyone already has. Given (1) makes the key worthless, the honest
    default is: **rotate, do not rewrite**, and record the leak here rather than
    pretend it did not happen. Rewrite only if a policy requires it.
+
+## Remediation performed (2026-08-02)
+
+Founder authorized **rotate + rewrite**. Both executed; a verified
+`git bundle --all` of the pre-rewrite repo was taken first.
+
+**1. Key rotated.** New Ed25519 pair; private key at `~/.shipwright/keys/`
+(0600, outside the repo). `content/manifest.json` re-signed over 79 validators;
+new public key `MCowBQYDK2VwAyEAOXXhyzPZOTboivn24fZ3FJr8fBtqh2jfPGeZX20eAxs=`
+shipped. Proven the rotation *killed* the old key rather than merely replacing
+it:
+
+```
+old key still matches shipped pubkey: false
+LEAKED KEY CAN STILL FORGE:          false
+```
+
+and the product's own verifiers accept the new signature — `doctor` reports
+`[OK] pack-signatures: manifest + all file hashes verified`, `packs update`
+reports `79 file(s) verified + installed`.
+
+**The old public key `…R14nxPmYOSZ+z9fwpphGsgTmJbTU0rGSVD9su/1AcSI=` is
+permanently distrusted.** Any content still signed by it is untrusted.
+
+**2. History purged.** `git filter-repo --invert-paths --path .keys/`.
+
+A completeness trap worth recording: three branches
+(`fix/conductor-migration-collision-lint`, `fix/conductor-node-pin-portability`,
+`review/design-review-hardening`) existed **only on the remotes**, with no local
+counterpart. A naive rewrite of local branches would have purged `main` while
+leaving the key alive on those. All were localized first, so the purge covered
+all six branches. Both remotes were confirmed byte-identical per branch
+beforehand. No tags existed.
+
+Verification after the purge:
+
+| Check | Result |
+|---|---|
+| `git log --all -- .keys/` | empty |
+| `git rev-list --all --objects \| grep .keys` | no reachable object |
+| `git show 1039ff0:.keys/shipwright-private.pem` | `fatal: invalid object name` |
+| `gitleaks` full history | 22 → **21**; the only remaining `private-key` finding is `secrets-scan-validator.test.ts`, a fixture |
+| `git fsck` | clean |
+| commits preserved | 887 (none lost) |
+| Gate | lint 0 errors · typecheck clean · **2883 passed / 3 skipped (400 files)** · **58 e2e passed** |
+
+**What the rewrite does not undo:** anyone who cloned, forked, or CI-cached the
+repo before 2026-08-02 still holds the old key. That is precisely why rotation —
+not the rewrite — is the control that matters. The rewrite removes the artifact;
+rotation removes its value.
 
 ## Why the existing controls did not catch this
 
