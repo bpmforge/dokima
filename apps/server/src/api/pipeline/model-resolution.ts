@@ -1,0 +1,191 @@
+/**
+ * Resolves WHICH provider and WHICH model a pipeline call actually uses
+ * (W10-03).
+ *
+ * Before this module the answer was three environment variables. The only
+ * production model-call path in the product —`gateway-model-port.ts` and its
+ * twin `onboard-dispatch-port.ts` — built a hardcoded `createOaiCompatProvider`
+ * from `DOKIMA_MODEL_BASE_URL` / `DOKIMA_MODEL_API_KEY` / `DOKIMA_MODEL_ID`.
+ * Neither call site imported the router, `resolveModelChain`, the role matrix
+ * or the registry, so the Anthropic, OpenAI-native, Copilot and Vertex
+ * adapters were never constructed on any production path — only by their own
+ * tests. The matrix WAS read, but by `roster-resolve.ts`, for display only:
+ * the UI could advertise a model the pipeline would never call.
+ *
+ * Resolution order, and the reason for it:
+ *   1. An explicit registry + matrix selection — what the user actually chose.
+ *   2. The environment variables — kept as a DOCUMENTED override for CI and
+ *      fixtures (the e2e fake-model gateway relies on them), and deliberately
+ *      LOSING to an explicit selection. A config that silently beats the UI is
+ *      the bug this ticket exists to fix, in the other direction.
+ *
+ * Model->provider binding uses the `<providerId>/<model>` prefix convention
+ * already half-present in the codebase: `matrix-routes.ts` flags Copilot rows
+ * by a `copilot/` prefix. An unprefixed model resolves against the single
+ * enabled provider when there is exactly one, and is otherwise ambiguous —
+ * reported, never guessed.
+ */
+
+import {
+  FitnessCardStore,
+  route,
+  type AgentRole,
+  type ProviderEntry,
+  type ProviderKind,
+  type ScopedRoleMatrix,
+  type TaskType,
+} from '@dokima/gateway';
+import { listProviders } from '../server/providers-store.js';
+import { listModelMatrix } from '../server/model-matrix-store.js';
+import type { ModelMatrixRow } from '../server/settings-types.js';
+
+export class ModelResolutionError extends Error {
+  constructor(
+    message: string,
+    public readonly rule: string,
+  ) {
+    super(message);
+    this.name = 'ModelResolutionError';
+  }
+}
+
+export interface ResolvedModelTarget {
+  readonly providerId: string;
+  readonly kind: ProviderKind;
+  readonly baseUrl?: string;
+  readonly credentialRef?: string;
+  /** The bare model id sent on the wire — prefix stripped. */
+  readonly model: string;
+  /** How this was decided, so a run can explain itself. */
+  readonly source: 'registry' | 'env';
+}
+
+/** Builds the routing matrix's project scope from the stored rows. */
+export function matrixFromRows(rows: readonly ModelMatrixRow[]): ScopedRoleMatrix {
+  const project: Record<string, { default: { model: string; fallbackChain: string[] } }> =
+    {};
+  for (const row of rows) {
+    // The store is keyed (role, taskType); the router resolves per role with
+    // optional per-task-type overrides. Rows for the same role collapse onto
+    // the role default here, with task-type overrides layered on below.
+    project[row.role] ??= {
+      default: { model: row.model, fallbackChain: [...row.fallback] },
+    };
+  }
+  const withTaskTypes: Record<string, unknown> = {};
+  for (const [role, routing] of Object.entries(project)) {
+    const taskTypes: Record<string, { model: string; fallbackChain: string[] }> = {};
+    for (const row of rows.filter((r) => r.role === role)) {
+      taskTypes[row.taskType] = { model: row.model, fallbackChain: [...row.fallback] };
+    }
+    withTaskTypes[role] = { ...routing, taskTypes };
+  }
+  return { project: withTaskTypes } as ScopedRoleMatrix;
+}
+
+/** Splits `<providerId>/<model>` into its parts; an unprefixed value has no providerId. */
+export function splitModelRef(value: string): {
+  providerId?: string;
+  model: string;
+} {
+  const slash = value.indexOf('/');
+  if (slash <= 0) return { model: value };
+  return { providerId: value.slice(0, slash), model: value.slice(slash + 1) };
+}
+
+function bindProvider(
+  modelRef: string,
+  providers: readonly ProviderEntry[],
+): ResolvedModelTarget {
+  const { providerId, model } = splitModelRef(modelRef);
+  const enabled = providers.filter((p) => p.enabled);
+
+  if (providerId !== undefined) {
+    const match = enabled.find((p) => p.id === providerId);
+    if (!match) {
+      throw new ModelResolutionError(
+        `the matrix routes to "${modelRef}" but no ENABLED provider is registered with id "${providerId}"`,
+        'unknown-provider',
+      );
+    }
+    return { ...toTarget(match), model, source: 'registry' };
+  }
+
+  if (enabled.length === 1) {
+    return { ...toTarget(enabled[0]!), model, source: 'registry' };
+  }
+  throw new ModelResolutionError(
+    enabled.length === 0
+      ? `the matrix routes to "${modelRef}" but no provider is enabled`
+      : `"${modelRef}" has no provider prefix and ${enabled.length} providers are enabled — qualify it as "<providerId>/${modelRef}"`,
+    enabled.length === 0 ? 'no-enabled-provider' : 'ambiguous-provider',
+  );
+}
+
+function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'source'> {
+  return {
+    providerId: entry.id,
+    kind: entry.kind,
+    ...(entry.baseUrl === undefined ? {} : { baseUrl: entry.baseUrl }),
+    ...(entry.credentialRef === undefined ? {} : { credentialRef: entry.credentialRef }),
+  };
+}
+
+/** The env fallback — unchanged behaviour, now explicitly second in line. */
+export function envTarget(env: NodeJS.ProcessEnv = process.env): ResolvedModelTarget {
+  return {
+    providerId: 'env',
+    kind: 'oai-compat',
+    baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
+    model: env.DOKIMA_MODEL_ID ?? 'local-model',
+    source: 'env',
+  };
+}
+
+export interface ResolveModelTargetInput {
+  /** Absent (no project in view) means env-only resolution. */
+  readonly projectPath?: string;
+  readonly role: AgentRole;
+  readonly taskType: TaskType;
+  readonly actorId?: string;
+  readonly env?: NodeJS.ProcessEnv;
+  /** Test seams — real callers use the stores. */
+  readonly loadProviders?: (projectPath: string) => Promise<ProviderEntry[]>;
+  readonly loadMatrixRows?: (projectPath: string) => Promise<ModelMatrixRow[]>;
+}
+
+/**
+ * THE SEAM. Returns the provider+model a call will actually use.
+ *
+ * `route()` (not a bare `resolveModelChain`) is used deliberately: it makes
+ * the maker != verifier guard STRUCTURAL (C-4 / Law 5) — routing a verifier
+ * role auto-resolves the maker role for the same task type and refuses a
+ * collision — so wiring the registry in cannot become a way to bypass it.
+ */
+export async function resolveModelTarget(
+  input: ResolveModelTargetInput,
+): Promise<ResolvedModelTarget> {
+  const { projectPath } = input;
+  if (projectPath === undefined) return envTarget(input.env);
+
+  const loadProviders = input.loadProviders ?? listProviders;
+  const loadMatrixRows = input.loadMatrixRows ?? listModelMatrix;
+
+  const [providers, rows] = await Promise.all([
+    loadProviders(projectPath),
+    loadMatrixRows(projectPath),
+  ]);
+
+  // Nothing configured is a normal first-run state, not an error (C-1).
+  if (rows.length === 0 || providers.length === 0) return envTarget(input.env);
+
+  const routed = await route({
+    matrix: matrixFromRows(rows),
+    role: input.role,
+    taskType: input.taskType,
+    actorId: input.actorId ?? 'pipeline',
+    fitnessStore: new FitnessCardStore(),
+  });
+
+  return bindProvider(routed.chain[0]!, providers);
+}

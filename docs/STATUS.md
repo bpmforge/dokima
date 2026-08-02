@@ -752,3 +752,17 @@ Gate: lint 0 errors (1 pre-existing warning), typecheck clean, **400 files / 289
 **SCOPE NOTE.** Registering the routes required one import + one call in `settings-routes.ts`, outside the declared write_scope — the build-then-wire seam again (routes nobody can reach are a disconnected pipeline, not a deliverable). Same class as W9-15's note and W10-07's `TEST_SIBLING_STRICT`. Recorded, not silently widened.
 
 Gate: lint 0 errors (1 pre-existing warning), typecheck clean, **402 files / 2905 passed | 3 skipped** (+14), **59 e2e passed**, 7/7 boundary red fixtures proven failing-capable.
+
+2026-08-02 W10-03 done — the model the user picks is now the model that runs. `apps/server/src/api/pipeline/model-resolution.ts` (new), `gateway-model-port.ts`. The defect, stated exactly as it was: the ONLY production model-call path in the product built a hardcoded `createOaiCompatProvider` from three environment variables, and neither call site imported the router, `resolveModelChain`, the matrix or the registry. So five finished, contract-tested adapters (W2-01…09) were never constructed on any production path — only by their own tests — and the matrix was read by `roster-resolve.ts` for DISPLAY only, meaning the UI could advertise a model the pipeline would never call.
+
+**Resolution order is explicit and both directions are pinned:** an explicit registry+matrix selection wins; the env vars survive as the documented CI/fixture override (the e2e fake-model gateway depends on them) and deliberately LOSE to a real selection. With nothing configured, env still wins — a first run must keep working offline (C-1), not hard-fail.
+
+**Model→provider binding uses the `<providerId>/<model>` prefix** already half-present in the codebase (`matrix-routes.ts` flags Copilot rows by a `copilot/` prefix). An unprefixed model binds when exactly one provider is enabled and is otherwise reported as ambiguous — never guessed. A disabled provider is refused rather than silently used.
+
+**`route()` deliberately, not a bare `resolveModelChain`:** that keeps maker≠verifier STRUCTURAL (C-4/Law 5), so wiring the registry in cannot become a way around the guard. A verifier landing on the maker's model still throws `SameModelRefusedError` through the new path — asserted, not assumed.
+
+**THE MUTATION IS THE ACCEPTANCE.** Reverting only the resolution call site to env-only — the exact pre-ticket behaviour — reds **8 of 11** seam tests, including "routes to the provider the MATRIX names, not the env default". That is the W9-11 test applied to the bug it would have caught, and it was executed, not asserted.
+
+**One thing refused rather than faked.** `providerForConfig` now dispatches on kind, which makes ollama/lm-studio reachable from production for the first time. The cloud kinds (anthropic/openai/vertex/copilot) throw a NAMED refusal instead: `AnthropicConfig.costTable` is required with no $0 default ("no $0 default for a paid API" — its own header), and the adapter needs a resolved secret rather than the `credentialRef` the registry stores. Fabricating either would have been a lie about cost or a credential leak. A user selecting a cloud provider gets an explanation, never a silent fallback to localhost. **HANDOFF:** keychain resolution + a real price table is the follow-up that makes cloud kinds constructible.
+
+Gate: lint 0 errors (1 pre-existing warning), typecheck clean, **403 files / 2918 passed | 3 skipped** (+13), **59 e2e passed**.

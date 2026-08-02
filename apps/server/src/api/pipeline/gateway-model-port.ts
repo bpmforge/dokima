@@ -16,7 +16,18 @@
  * resolvable import — no more sidestepping pnpm's per-package `node_modules`
  * linking with a hand-constructed `file://` URL off `import.meta.url`.
  */
-import { createOaiCompatProvider, type Provider } from '@dokima/gateway';
+import {
+  createLmStudioProvider,
+  createOaiCompatProvider,
+  createOllamaProvider,
+  type Provider,
+} from '@dokima/gateway';
+import {
+  envTarget,
+  ModelResolutionError,
+  resolveModelTarget,
+  type ResolvedModelTarget,
+} from './model-resolution.js';
 import type {
   DeliverableDraft,
   SynthesizeBlueprintInput,
@@ -39,19 +50,106 @@ export interface GatewayConfig {
   readonly baseUrl: string;
   readonly apiKey?: string;
   readonly model: string;
+  /** Which adapter to construct (W10-03). Absent => oai-compat, the pre-registry behaviour. */
+  readonly kind?: import('@dokima/gateway').ProviderKind;
+  /** Which registry entry this came from, for provenance in traces. */
+  readonly providerId?: string;
   /** Test-only override — real callers always get the real `fetch`. */
   readonly fetchImpl?: typeof fetch;
 }
 
-/** Local-first default (C-1): an LM Studio-shaped endpoint on localhost, zero network required. */
+/**
+ * Local-first default (C-1): an LM Studio-shaped endpoint on localhost, zero
+ * network required. Retained as the DOCUMENTED override for CI and fixtures
+ * (the e2e fake-model gateway sets these), and now explicitly second in line
+ * behind an explicit registry+matrix selection — see `model-resolution.ts`.
+ */
 export function resolveGatewayConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): GatewayConfig {
+  const t = envTarget(env);
   return {
-    baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
+    baseUrl: t.baseUrl ?? 'http://127.0.0.1:1234/v1',
     apiKey: env.DOKIMA_MODEL_API_KEY,
-    model: env.DOKIMA_MODEL_ID ?? 'local-model',
+    model: t.model,
   };
+}
+
+/**
+ * W10-03: resolve the provider+model the user actually chose, falling back to
+ * the env config when nothing is configured. `projectPath` absent => env-only.
+ */
+export async function resolveGatewayConfigForProject(
+  projectPath: string | undefined,
+  opts: {
+    role?: string;
+    taskType?: 'reasoning' | 'code' | 'verification' | 'embed' | 'escalation';
+    env?: NodeJS.ProcessEnv;
+    fetchImpl?: typeof fetch;
+  } = {},
+): Promise<GatewayConfig> {
+  const target = await resolveModelTarget({
+    projectPath,
+    role: opts.role ?? 'coding-agent',
+    taskType: opts.taskType ?? 'reasoning',
+    env: opts.env,
+  });
+  return targetToConfig(target, opts.env ?? process.env, opts.fetchImpl);
+}
+
+function targetToConfig(
+  target: ResolvedModelTarget,
+  env: NodeJS.ProcessEnv,
+  fetchImpl?: typeof fetch,
+): GatewayConfig {
+  return {
+    baseUrl: target.baseUrl ?? 'http://127.0.0.1:1234/v1',
+    // A credentialRef NAMES a keychain entry; the keychain resolves it at call
+    // time (Law 8). The env key remains the CI path only.
+    apiKey: env.DOKIMA_MODEL_API_KEY,
+    model: target.model,
+    kind: target.kind,
+    providerId: target.providerId,
+    ...(fetchImpl ? { fetchImpl } : {}),
+  };
+}
+
+/**
+ * Constructs the adapter the resolved KIND names — not an unconditional
+ * `createOaiCompatProvider`. This is what makes the Anthropic/Ollama/LM Studio
+ * adapters reachable from a production path for the first time.
+ */
+export function providerForConfig(config: GatewayConfig): Provider {
+  const id = config.providerId ?? 'pipeline-run';
+  switch (config.kind) {
+    case 'ollama':
+      return createOllamaProvider(config.baseUrl ? { baseUrl: config.baseUrl } : {});
+    case 'lm-studio':
+      return createLmStudioProvider(config.baseUrl ? { baseUrl: config.baseUrl } : {});
+    case 'anthropic':
+    case 'openai':
+    case 'vertex':
+    case 'copilot':
+      // Deliberately refused rather than faked. These adapters require inputs
+      // this port cannot honestly supply yet: `AnthropicConfig.costTable` is
+      // REQUIRED with no $0 default ("no $0 default for a paid API", its own
+      // header), and the credential must be a resolved secret rather than the
+      // `credentialRef` the registry stores. Wiring a keychain resolution +
+      // price table is a follow-up ticket; until then a user who selects a
+      // cloud provider gets a named refusal, never a silent fallback to
+      // localhost, and never a fabricated $0 cost.
+      throw new ModelResolutionError(
+        `provider kind "${config.kind}" is registered but not yet constructible from the pipeline: it needs a resolved credential and a real price table (W10 follow-up). Local kinds (ollama, lm-studio, oai-compat) work today.`,
+        'kind-not-constructible',
+      );
+    default:
+      return createOaiCompatProvider({
+        id,
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        fetchImpl: config.fetchImpl,
+      });
+  }
 }
 
 async function chatJson(
@@ -312,12 +410,7 @@ export interface RealGatewayPort {
 export async function createRealGatewayPort(
   config: GatewayConfig = resolveGatewayConfigFromEnv(),
 ): Promise<RealGatewayPort> {
-  const provider = createOaiCompatProvider({
-    id: 'pipeline-run',
-    baseUrl: config.baseUrl,
-    apiKey: config.apiKey,
-    fetchImpl: config.fetchImpl,
-  });
+  const provider = providerForConfig(config);
 
   return {
     async resolveBlueprintInput(drafts, title) {
