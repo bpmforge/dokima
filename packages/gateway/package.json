@@ -7,6 +7,18 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./registry": {
+      "types": "./src/registry/index.ts",
+      "default": "./src/registry/index.ts"
+    },
+    "./routing": {
+      "types": "./src/routing/index.ts",
+      "default": "./src/routing/index.ts"
+    },
+    "./escalation": {
+      "types": "./src/escalation/index.ts",
+      "default": "./src/escalation/index.ts"
     }
   },
   "scripts": {
