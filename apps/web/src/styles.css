@@ -36,6 +36,7 @@
   --sw-on-danger: #ffffff; /* 5.44:1 on --sw-danger-bg */
 
   /* Spacing — a 0.25rem grid. --sw-space-N is N * 0.25rem. */
+  --sw-space-0-5: 0.125rem; /* half-step, for hairline gaps */
   --sw-space-1: 0.25rem;
   --sw-space-2: 0.5rem;
   --sw-space-3: 0.75rem;
