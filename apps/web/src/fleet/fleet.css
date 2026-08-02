@@ -186,3 +186,33 @@
   padding: 0.3rem 0.6rem;
   cursor: pointer;
 }
+
+/* W9-15 — a project whose directory has vanished. Deliberately distinct from a
+   healthy card: zeroed stats would be indistinguishable from a real, empty
+   project, so the stats are omitted entirely rather than shown as zeros.
+   Colours are driven only by the --sw-* tokens so both themes follow. */
+.project-card--unavailable {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.project-card__phase-chip--unavailable {
+  border-color: var(--sw-border);
+  font-style: italic;
+}
+
+.project-card__unavailable-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sw-fg);
+}
+
+.project-card__unavailable-note code {
+  word-break: break-all;
+}
+
+.project-card__unavailable-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}

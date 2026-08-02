@@ -2,7 +2,12 @@ import { expect, test } from '@playwright/test';
 
 test('serves the SPA shell through the real apps/server', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Dokima')).toBeVisible();
+  // Scoped to the header wordmark, not a bare page-wide getByText('Dokima'):
+  // that matched case-insensitively and substring-wise, so it also hit any
+  // project card rendering a `/tmp/dokima-*` path — which W9-15's unavailable
+  // card does. The loose locator was always one stale registry entry away from
+  // a strict-mode violation; this pins it to the element actually under test.
+  await expect(page.locator('.app-shell__header').getByText('Dokima')).toBeVisible();
 });
 
 test('theme toggle switches and persists across reload', async ({ page }) => {

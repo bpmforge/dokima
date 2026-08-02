@@ -4,6 +4,7 @@ import {
   createProject as createProjectRequest,
   fetchProjects,
   FleetApiError,
+  removeProject as removeProjectRequest,
 } from './api.js';
 import { ProjectCard } from './ProjectCard.js';
 import { sortByAttention } from './sort.js';
@@ -76,6 +77,15 @@ export function FleetHome({ onOpenProject }: FleetHomeProps) {
     [refresh],
   );
 
+  /** W9-15: forgets the registry entry only — the server never touches the folder. */
+  const handleRemove = useCallback(
+    async (id: string) => {
+      await removeProjectRequest(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const handleReopen = useCallback(
     async (projectPath: string) => {
       await createProjectRequest({ path: projectPath, mode: 'import' });
@@ -139,6 +149,7 @@ export function FleetHome({ onOpenProject }: FleetHomeProps) {
               onOpen={() => onOpenProject(card.id)}
               onArchive={() => void handleArchive(card.id)}
               onReopen={() => void handleReopen(card.path)}
+              onRemove={() => void handleRemove(card.id)}
             />
           ))}
         </div>

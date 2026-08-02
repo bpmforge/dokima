@@ -12,6 +12,7 @@ interface ProjectCardWire {
   path: string;
   name: string;
   archived: boolean;
+  available: boolean;
   created_at: string;
   last_opened_at: string;
   phase: number | null;
@@ -28,6 +29,7 @@ function fromWire(wire: ProjectCardWire): ProjectCard {
     path: wire.path,
     name: wire.name,
     archived: wire.archived,
+    available: wire.available,
     createdAt: wire.created_at,
     lastOpenedAt: wire.last_opened_at,
     phase: wire.phase,
@@ -82,6 +84,8 @@ async function request(
         : undefined;
     throw new FleetApiError(res.status, detail);
   }
+  // 204 No Content (DELETE /projects/:id) has no body to parse.
+  if (res.status === 204) return undefined;
   return res.json();
 }
 
@@ -122,4 +126,20 @@ export async function archiveProject(
     opts,
   )) as ProjectCardWire;
   return fromWire(wire);
+}
+
+/**
+ * Forgets a project from the Fleet registry (W9-15). Registry-only — the
+ * server never touches the project directory, so the user's repo and its
+ * `.dokima/state.db` survive. Re-onboarding the same path restores it.
+ */
+export async function removeProject(
+  id: string,
+  opts: FleetApiOptions = {},
+): Promise<void> {
+  await request(
+    `/api/v1/projects/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+    opts,
+  );
 }

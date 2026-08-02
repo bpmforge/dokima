@@ -8,6 +8,7 @@ function card(overrides: Partial<ProjectCard>): ProjectCard {
     path: '/tmp/p',
     name: overrides.id ?? 'p',
     archived: false,
+    available: true,
     createdAt: '2026-01-01T00:00:00Z',
     lastOpenedAt: '2026-01-01T00:00:00Z',
     phase: null,

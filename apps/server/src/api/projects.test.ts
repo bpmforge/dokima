@@ -18,6 +18,7 @@ import {
   ProjectDirectoryError,
   ProjectNotFoundError,
   registerProject,
+  removeProject,
 } from './projects.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -276,6 +277,74 @@ describe('registerProject / archiveProject / listProjectCards', () => {
   });
 });
 
+describe('W9-15 — a vanished directory is visible as gone, and removable', () => {
+  const dirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  async function freshRegistry(): Promise<string> {
+    const home = await tmpDir('dokima-w915-home-');
+    dirs.push(home);
+    return computeFleetRegistryPath(home);
+  }
+
+  it('marks a project whose directory has vanished as unavailable, not as a zeroed card', async () => {
+    const registryPath = await freshRegistry();
+    const projectDir = await tmpDir('dokima-w915-gone-');
+    await registerProject(registryPath, { path: projectDir, mode: 'new' });
+
+    // The whole point: before deletion it is available; after, it must NOT
+    // simply look like a healthy project whose counters happen to read zero.
+    const before = await listProjectCards(registryPath, { archived: false });
+    expect(before[0]?.available).toBe(true);
+
+    await fs.rm(projectDir, { recursive: true, force: true });
+
+    const after = await listProjectCards(registryPath, { archived: false });
+    expect(after).toHaveLength(1);
+    expect(after[0]?.available).toBe(false);
+    // Zeroed stats alone would be indistinguishable from a real empty project —
+    // `available` is the field that carries the distinction, so assert it is
+    // what differs rather than the (identical) zeros.
+    expect(after[0]?.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+  });
+
+  it('removeProject forgets the entry and leaves every project directory on disk untouched', async () => {
+    const registryPath = await freshRegistry();
+    const goneDir = await tmpDir('dokima-w915-remove-');
+    const keptDir = await tmpDir('dokima-w915-kept-');
+    const gone = await registerProject(registryPath, { path: goneDir, mode: 'new' });
+    await registerProject(registryPath, { path: keptDir, mode: 'new' });
+
+    await removeProject(registryPath, gone.id);
+
+    const cards = await listProjectCards(registryPath, { archived: false });
+    expect(cards.map((c) => c.path)).toEqual([keptDir]);
+
+    // THE SHARP EDGE (ticket acceptance): asserted against the filesystem, not
+    // the API response. Removing from the Fleet must never delete the user's
+    // repo or its state.db — for the removed project OR the surviving one.
+    await expect(fs.stat(goneDir)).resolves.toBeDefined();
+    await expect(
+      fs.stat(path.join(goneDir, '.dokima', 'state.db')),
+    ).resolves.toBeDefined();
+    await expect(
+      fs.stat(path.join(keptDir, '.dokima', 'state.db')),
+    ).resolves.toBeDefined();
+  });
+
+  it('removeProject refuses an unknown id rather than silently succeeding', async () => {
+    const registryPath = await freshRegistry();
+    await expect(removeProject(registryPath, 'no-such-id')).rejects.toBeInstanceOf(
+      ProjectNotFoundError,
+    );
+  });
+});
+
 describe('project routes — buildApiServer integration', () => {
   const dirs: string[] = [];
   let active: ApiServer | undefined;
@@ -412,6 +481,44 @@ describe('project routes — buildApiServer integration', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/projects/does-not-exist/archive',
+      headers: authHeaders(),
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('DELETE /api/v1/projects/:id forgets the entry (204) and leaves the folder on disk', async () => {
+    const { app } = await boot();
+    const projectDir = await tmpDir('dokima-w915-route-');
+    dirs.push(projectDir);
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: authHeaders(),
+      payload: { path: projectDir, mode: 'new' },
+    });
+    const id = created.json().id as string;
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/projects/${id}`,
+      headers: authHeaders(),
+    });
+    expect(del.statusCode).toBe(204);
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects',
+      headers: authHeaders(),
+    });
+    expect(list.json()).toEqual({ projects: [] });
+    await expect(fs.stat(projectDir)).resolves.toBeDefined();
+  });
+
+  it('DELETE /api/v1/projects/:id 404s on an unknown id', async () => {
+    const { app } = await boot();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/projects/does-not-exist',
       headers: authHeaders(),
     });
     expect(res.statusCode).toBe(404);

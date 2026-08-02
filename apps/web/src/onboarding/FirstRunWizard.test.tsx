@@ -75,6 +75,7 @@ describe('FirstRunWizard sample step -> done (guided sample embedded)', () => {
       path: '/tmp/x',
       name: 'Dokima Sample',
       archived: false,
+      available: true,
       createdAt: '2026-07-20T00:00:00Z',
       lastOpenedAt: '2026-07-20T00:00:00Z',
       phase: null,

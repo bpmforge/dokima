@@ -3448,7 +3448,7 @@
       ],
       "depends_on": [],
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "acceptance": [
         "FILED 2026-07-30 out of W9-14, deliberately as a product ticket rather than folded into that test fix. There is no remove/forget/unregister path for a project: grepping `apps/server/src/api/projects.ts` and `apps/web/src/fleet/**` finds no DELETE route and no UI affordance. A project registered once stays in `fleet.json` forever, including after its directory is deleted.",
         "This is not hypothetical and W9-14 measured the consequence. The e2e registry reached **1,164 entries**, almost all pointing at deleted tmp directories, and the Fleet view degraded badly enough that a newly-onboarded project card did not render inside 5s \u2014 while `GET /api/v1/projects` itself still answered in 286ms. The server is fine; the accumulated list is what hurts, and a real user hits the same shape more slowly by onboarding, moving, and deleting repos over months.",

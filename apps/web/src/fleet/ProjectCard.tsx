@@ -15,6 +15,7 @@ export interface ProjectCardProps {
   onOpen: () => void;
   onArchive: () => void;
   onReopen: () => void;
+  onRemove: () => void;
 }
 
 export function ProjectCard({
@@ -23,8 +24,44 @@ export function ProjectCard({
   onOpen,
   onArchive,
   onReopen,
+  onRemove,
 }: ProjectCardProps) {
   const stale = card.heartbeatAgeMs !== null && card.heartbeatAgeMs > STALE_HEARTBEAT_MS;
+
+  // W9-15: a project whose directory has vanished is NOT rendered as an
+  // ordinary card with zeroed stats — zeros there are indistinguishable from a
+  // real, empty project. It gets its own state and the one action that can help.
+  if (!card.available) {
+    return (
+      <article
+        className="project-card project-card--unavailable"
+        data-testid={`project-card-${card.id}`}
+        data-unavailable="true"
+      >
+        <header className="project-card__header">
+          <h2>{card.name}</h2>
+          <span className="project-card__phase-chip project-card__phase-chip--unavailable">
+            Unavailable
+          </span>
+        </header>
+
+        <p className="project-card__unavailable-note">
+          This folder is gone — nothing at <code>{card.path}</code>. It was moved,
+          renamed, or deleted. Its stats can&rsquo;t be read, so none are shown.
+        </p>
+
+        <footer className="project-card__actions">
+          <button type="button" onClick={onRemove}>
+            Remove from Fleet
+          </button>
+        </footer>
+        <p className="project-card__unavailable-hint">
+          Removing only forgets this entry. Nothing on disk is touched, and onboarding the
+          folder again restores it.
+        </p>
+      </article>
+    );
+  }
 
   return (
     <article className="project-card" data-testid={`project-card-${card.id}`}>

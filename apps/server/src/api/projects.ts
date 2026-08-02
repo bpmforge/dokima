@@ -55,6 +55,14 @@ export interface ProjectBoardStats {
 }
 
 export interface ProjectCard extends ProjectRecord {
+  /**
+   * Whether the registered directory still exists on disk (W9-15). A project
+   * whose directory has vanished MUST NOT render as a healthy card with zeroed
+   * stats — zeros are indistinguishable from a real, empty project, and the
+   * honest-absence rule (same one `healthz` and the trace view follow) says the
+   * two must look different.
+   */
+  available: boolean;
   /** Project-level phase (W5-01 phase machine); null until that lands. */
   phase: number | null;
   board: ProjectBoardStats;
@@ -175,7 +183,31 @@ export async function archiveProject(
   return record;
 }
 
-const EMPTY_STATS: Omit<ProjectCard, keyof ProjectRecord> = {
+/**
+ * Forgets a registry entry (W9-15). Registry-only by construction: this
+ * function has no filesystem write path other than `saveRegistry`, so it
+ * cannot delete the user's repo or its `.dokima/state.db` — the sharp edge
+ * this ticket exists to avoid. Re-registering the same path later is the
+ * normal `registerProject` call and restores the project.
+ */
+export async function removeProject(
+  registryPath: string,
+  id: string,
+): Promise<ProjectRecord> {
+  const records = await loadRegistry(registryPath);
+  const record = records.find((r) => r.id === id);
+  if (!record) throw new ProjectNotFoundError(`no project registered with id ${id}`);
+  await saveRegistry(
+    registryPath,
+    records.filter((r) => r.id !== id),
+  );
+  return record;
+}
+
+/** The DB-derived half of a card. `available` is a filesystem fact, not a stat, so it is deliberately not part of this shape. */
+type ProjectStats = Omit<ProjectCard, keyof ProjectRecord | 'available'>;
+
+const EMPTY_STATS: ProjectStats = {
   phase: null,
   board: { ready: 0, blocked: 0, done: 0 },
   berthsRunning: 0,
@@ -200,9 +232,7 @@ function isUnmigratedSchemaError(err: unknown): boolean {
 }
 
 /** Reads live stats straight from the project's own `state.db` — never cached (DATABASE.md §7). */
-async function computeProjectStats(
-  projectPath: string,
-): Promise<Omit<ProjectCard, keyof ProjectRecord>> {
+async function computeProjectStats(projectPath: string): Promise<ProjectStats> {
   const dbPath = path.join(projectPath, STATE_DB_RELATIVE);
   if (!(await pathExists(dbPath))) return EMPTY_STATS;
 
@@ -238,7 +268,12 @@ async function computeProjectStats(
 }
 
 async function toCard(record: ProjectRecord): Promise<ProjectCard> {
-  return { ...record, ...(await computeProjectStats(record.path)) };
+  const available = await pathExists(record.path);
+  // Don't even probe the DB for a directory that isn't there — the stats would
+  // be zeros either way, and `available: false` is what makes those zeros
+  // readable as "gone" rather than "empty".
+  if (!available) return { ...record, ...EMPTY_STATS, available };
+  return { ...record, ...(await computeProjectStats(record.path)), available };
 }
 
 export async function listProjectCards(
@@ -256,6 +291,7 @@ function wireCard(card: ProjectCard) {
     path: card.path,
     name: card.name,
     archived: card.archived,
+    available: card.available,
     created_at: card.createdAt,
     last_opened_at: card.lastOpenedAt,
     phase: card.phase,
@@ -332,6 +368,40 @@ export function registerProjectRoutes(
       throw err;
     }
   });
+
+  /**
+   * DELETE /api/v1/projects/:id — forget the registry entry (W9-15).
+   * Never touches the project directory; `archive` and `remove` are different
+   * verbs on purpose (archive keeps the entry and is reversible in the UI,
+   * remove drops it).
+   */
+  app.delete(
+    '/api/v1/projects/:id',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      try {
+        await removeProject(registryPath, id);
+        return reply.code(204).send();
+      } catch (err) {
+        if (err instanceof ProjectNotFoundError) {
+          return reply
+            .code(404)
+            .type(PROBLEM_CONTENT_TYPE)
+            .send(
+              problem({
+                type: 'https://dokima.dev/errors/not-found',
+                title: 'Project not found',
+                status: 404,
+                detail: err.message,
+                instance: request.url,
+                requestId: request.id.toString(),
+              }),
+            );
+        }
+        throw err;
+      }
+    },
+  );
 
   app.post(
     '/api/v1/projects/:id/archive',

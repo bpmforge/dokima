@@ -13,6 +13,8 @@ export interface ProjectCard {
   path: string;
   name: string;
   archived: boolean;
+  /** Whether the registered directory still exists on disk (W9-15). */
+  available: boolean;
   createdAt: string;
   lastOpenedAt: string;
   /** Project-level phase (W5-01 phase machine); null until that lands. */

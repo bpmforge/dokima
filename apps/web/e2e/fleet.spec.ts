@@ -105,3 +105,56 @@ test('opening a project switches to its workspace; "Fleet" breadcrumb returns', 
     .getByRole('button', { name: 'Archive' })
     .click();
 });
+
+test('W9-15: a project whose directory vanished shows as unavailable, and Remove forgets it without deleting a live project', async ({
+  page,
+}) => {
+  const gone = freshProjectPath();
+  const kept = freshProjectPath();
+  await page.goto('/');
+  const header = page.locator('.fleet__header');
+
+  // Two real projects through the real UI, so the registry is genuine.
+  for (const p of [gone, kept]) {
+    await header.getByRole('button', { name: 'New Product', exact: true }).click();
+    await page.getByLabel('Directory path').fill(p.dir);
+    await page.getByLabel('Name (optional)').fill(p.name);
+    await withProjectRegistryLock(async () => {
+      await page
+        .locator('.fleet__form')
+        .getByRole('button', { name: 'New Product' })
+        .click();
+      await expect(page.locator('.project-card', { hasText: p.name })).toBeVisible();
+    });
+  }
+
+  // Delete one project's directory out from under the Fleet.
+  await fs.rm(gone.dir, { recursive: true, force: true });
+  await page.reload();
+
+  // It must NOT render as an ordinary card with zeroed counters — that is
+  // indistinguishable from a real empty project (the honest-absence rule).
+  const goneCard = page.locator('.project-card', { hasText: gone.name });
+  await expect(goneCard).toHaveAttribute('data-unavailable', 'true');
+  await expect(goneCard.getByText('Unavailable')).toBeVisible();
+  await expect(goneCard.getByText('Ready')).toHaveCount(0);
+  await expect(goneCard.getByRole('button', { name: 'Open' })).toHaveCount(0);
+
+  // The healthy one is still an ordinary card.
+  const keptCard = page.locator('.project-card', { hasText: kept.name });
+  await expect(keptCard).not.toHaveAttribute('data-unavailable', 'true');
+  await expect(keptCard.getByText('Ready')).toBeVisible();
+
+  await withProjectRegistryLock(async () => {
+    await goneCard.getByRole('button', { name: 'Remove from Fleet' }).click();
+    await expect(page.locator('.project-card', { hasText: gone.name })).toHaveCount(0);
+  });
+
+  // The sharp edge, asserted against the filesystem: removing one entry must
+  // never touch the OTHER project's directory or its state.db.
+  await expect(page.locator('.project-card', { hasText: kept.name })).toBeVisible();
+  await expect(fs.stat(kept.dir)).resolves.toBeDefined();
+  await expect(fs.stat(path.join(kept.dir, '.dokima', 'state.db'))).resolves.toBeDefined();
+
+  await fs.rm(kept.dir, { recursive: true, force: true });
+});
