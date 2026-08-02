@@ -11,7 +11,7 @@
  * required `fitnessStore` field on RouteRequest, same structural-guard
  * shape as guardMakerVerifierDistinct); (2) FitnessCardStore (store.ts) is
  * backed by docs/DATABASE.md §7's model_fitness table
- * (`@shipwright/events`'s global-db module) when constructed with a
+ * (`@dokima/events`'s global-db module) when constructed with a
  * `GlobalDb` handle — falls back to in-memory when constructed with none.
  */
 

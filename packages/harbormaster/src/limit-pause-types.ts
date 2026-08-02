@@ -2,7 +2,7 @@
  * Provider-limit park/resume types (BLUEPRINT §3.3/§3.6, FR-G8, ARCHITECTURE.md §8 "Provider
  * limit window"). `LimitClassification` mirrors `packages/gateway/src/limits/types.ts`'s
  * `ProviderErrorClassification` field-for-field by hand — not imported, because
- * `@shipwright/gateway`'s package.json only exports `.` → `src/index.ts`, which does not
+ * `@dokima/gateway`'s package.json only exports `.` → `src/index.ts`, which does not
  * (yet) re-export the `limits` module (that file is out of this ticket's write_scope,
  * `packages/gateway/src/limits/**`; the gap is the same one `packages/gateway/src/budget/
  * index.ts` documents for its own module, closed by a later ticket). Whoever wires this module

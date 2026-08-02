@@ -10,7 +10,7 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { JsonValue, SettingsMap } from '@shipwright/shared';
+import type { JsonValue, SettingsMap } from '@dokima/shared';
 import {
   badRequest,
   forbidden,

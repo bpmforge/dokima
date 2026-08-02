@@ -93,7 +93,7 @@ describe('sweepOrphans (NFR-3 crash recovery)', () => {
     // appendEvent to model the same gap.
     const crashed = openEventLog(temp.dbPath);
     createIdentity(crashed, { id: 'human-1', name: 'Operator', kind: 'human' });
-    createIdentity(crashed, { id: 'shipwright-system', name: 'System', kind: 'machine' });
+    createIdentity(crashed, { id: 'dokima-system', name: 'System', kind: 'machine' });
     const started = appendEvent(crashed, {
       eventType: 'ticket.claim.started',
       actorId: 'human-1',
@@ -103,7 +103,7 @@ describe('sweepOrphans (NFR-3 crash recovery)', () => {
     crashed.close();
 
     // Session 2: reopen with a systemActorId — orphan sweep runs on open.
-    const recovered = openEventLog(temp.dbPath, { systemActorId: 'shipwright-system' });
+    const recovered = openEventLog(temp.dbPath, { systemActorId: 'dokima-system' });
     const events = listEvents(recovered);
 
     const orphanEvent = events.find((e) => e.eventType === 'ticket.claim.orphaned');
@@ -112,7 +112,7 @@ describe('sweepOrphans (NFR-3 crash recovery)', () => {
       startedSeq: started.seq,
       reason: 'crash-recovery-sweep',
     });
-    expect(orphanEvent?.actorId).toBe('shipwright-system');
+    expect(orphanEvent?.actorId).toBe('dokima-system');
     expect(pendingCount(events)).toBe(0);
     recovered.close();
   });
@@ -121,14 +121,14 @@ describe('sweepOrphans (NFR-3 crash recovery)', () => {
     temp = await createTempDbPath();
     const log = openEventLog(temp.dbPath);
     createIdentity(log, { id: 'human-1', name: 'Operator', kind: 'human' });
-    createIdentity(log, { id: 'shipwright-system', name: 'System', kind: 'machine' });
+    createIdentity(log, { id: 'dokima-system', name: 'System', kind: 'machine' });
     persistBeforeExecute(
       { log, operation: 'ticket.claim', actorId: 'human-1' },
       () => 'ok',
     );
 
     const before = listEvents(log).length;
-    const orphaned = sweepOrphans(log, 'shipwright-system');
+    const orphaned = sweepOrphans(log, 'dokima-system');
     expect(orphaned).toHaveLength(0);
     expect(listEvents(log)).toHaveLength(before);
     log.close();

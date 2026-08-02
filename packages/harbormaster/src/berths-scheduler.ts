@@ -1,7 +1,7 @@
 /**
  * Lane-exclusive ticket selection (BLUEPRINT §5/§3.4, D-010, FR-H5): "at
  * most one berth per lane" is enforced here, at pick time, rather than by
- * post-hoc conflict detection. `busyLanes` mirrors `@shipwright/tickets`'
+ * post-hoc conflict detection. `busyLanes` mirrors `@dokima/tickets`'
  * `lanes.ts` `isLaneActive` check (private there — FR-T3's own
  * `claimed`/`in_progress`/`in_review` "still occupies its write_scope
  * until accepted" definition) so a ticket landed to `in_review` keeps its
@@ -20,9 +20,9 @@
  * point, no distributed locking needed."
  */
 
-import { isClaimable, type Ticket, type TicketStatus } from '@shipwright/tickets';
+import { isClaimable, type Ticket, type TicketStatus } from '@dokima/tickets';
 
-/** Matches `@shipwright/tickets`' `lanes.ts` `ACTIVE_LANE_STATUSES` (private there, FR-T3): a lane holding any ticket in one of these statuses cannot take a second active ticket. */
+/** Matches `@dokima/tickets`' `lanes.ts` `ACTIVE_LANE_STATUSES` (private there, FR-T3): a lane holding any ticket in one of these statuses cannot take a second active ticket. */
 const ACTIVE_LANE_STATUSES: ReadonlySet<TicketStatus> = new Set([
   'claimed',
   'in_progress',

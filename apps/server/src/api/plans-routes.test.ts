@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { PlanEvaluationSnapshot } from '@shipwright/pipeline';
+import type { PlanEvaluationSnapshot } from '@dokima/pipeline';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApiServer, type ApiServer } from './server.js';
 import { registerProject } from './projects.js';
@@ -49,7 +49,7 @@ describe('plans routes', () => {
     app: ApiServer['app'];
     projectId: string;
   }> {
-    const fleetHome = await tmpDir('shipwright-plans-routes-');
+    const fleetHome = await tmpDir('dokima-plans-routes-');
     dirs.push(fleetHome);
     const projectDir = path.join(fleetHome, 'project-a');
     const record = await registerProject(path.join(fleetHome, 'fleet.json'), {

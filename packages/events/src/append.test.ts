@@ -5,7 +5,7 @@ import {
   collectSecretValues,
   createInMemoryCredentialStore,
   createProjectSecretsVault,
-} from '@shipwright/shared';
+} from '@dokima/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { appendEvent } from './append.js';
 import { openEventLog } from './db.js';
@@ -39,16 +39,16 @@ describe('appendEvent', () => {
   });
 
   it('redacts a planted vault-registered and .env-sourced secret before hashing/persisting (SC-06)', async () => {
-    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-append-test-home-'));
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-append-test-home-'));
     const projectDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-append-test-project-'),
+      path.join(os.tmpdir(), 'dokima-append-test-project-'),
     );
     try {
       const vault = createProjectSecretsVault(
         createInMemoryCredentialStore(),
         projectDir,
         {
-          SHIPWRIGHT_HOME: home,
+          DOKIMA_HOME: home,
         },
       );
       await vault.register('forge-token', 'vault-planted-value');

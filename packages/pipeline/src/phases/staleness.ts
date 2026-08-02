@@ -2,7 +2,7 @@
  * FR-P3: "user can edit any deliverable at any time; edits invalidate
  * downstream receipts (hash change) and the UI states which receipts became
  * stale and why." A single phase's own staleness (input-hash mismatch or
- * validator-set drift) is `verifyReceipt`'s job (`@shipwright/events`,
+ * validator-set drift) is `verifyReceipt`'s job (`@dokima/events`,
  * injected here — see advance.ts). What that primitive does *not* know is
  * the cross-phase consequence: phase N+1 was only ever advanced-into because
  * phase N's receipt verified clean *at that time* — if phase N's receipt is

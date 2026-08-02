@@ -19,7 +19,7 @@ say so rather than guessing; never soften a failure.
 1. From the repo root, capture a fresh run (~1 min, local only):
 
    ```sh
-   pnpm --filter @shipwright/web run build   # only if apps/web/dist is stale
+   pnpm --filter @dokima/web run build   # only if apps/web/dist is stale
    node apps/web/scripts/capture-acceptance.mjs
    ```
 

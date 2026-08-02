@@ -36,7 +36,7 @@ import {
   mintReceipt,
   openEventLog,
   verifyReceipt,
-} from '@shipwright/events';
+} from '@dokima/events';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildAllowlist } from './allowlist.js';
@@ -67,7 +67,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
   });
 
   async function boot(): Promise<{ app: FastifyInstance; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-triage-fleet-');
+    const fleetHome = await tmpDir('dokima-triage-fleet-');
     dirs.push(fleetHome);
     const app = Fastify({ logger: false });
     registerExportRoutes(app, {
@@ -86,7 +86,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
       'field, not just receipt/event presence',
     async () => {
       const { app, fleetHome } = await boot();
-      const projectDir = await tmpDir('shipwright-triage-tamper-src-');
+      const projectDir = await tmpDir('dokima-triage-tamper-src-');
       dirs.push(projectDir);
       const registryPath = path.join(fleetHome, 'fleet.json');
       const record = await registerProject(registryPath, {
@@ -95,7 +95,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
         name: 'triage-tamper-src',
       });
 
-      const log = openEventLog(path.join(projectDir, '.shipwright', 'state.db'));
+      const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
       createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
       mintReceipt(
         log,
@@ -126,7 +126,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
       tampered[0].exitCode = 999;
       bundle.receipts[0].validatorsJson = JSON.stringify(tampered);
 
-      const targetDir = await tmpDir('shipwright-triage-tamper-dst-');
+      const targetDir = await tmpDir('dokima-triage-tamper-dst-');
       dirs.push(targetDir);
       const targetRecord = await registerProject(registryPath, {
         path: targetDir,
@@ -155,7 +155,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
       'DB, so the gap cannot be used to make an agent-signed waiver pass a real gate',
     async () => {
       const { app, fleetHome } = await boot();
-      const projectDir = await tmpDir('shipwright-triage-waiver-src-');
+      const projectDir = await tmpDir('dokima-triage-waiver-src-');
       dirs.push(projectDir);
       const registryPath = path.join(fleetHome, 'fleet.json');
       const record = await registerProject(registryPath, {
@@ -164,7 +164,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
         name: 'triage-waiver-src',
       });
 
-      const log = openEventLog(path.join(projectDir, '.shipwright', 'state.db'));
+      const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
       createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
       createIdentity(log, { id: 'human-alice', name: 'Alice', kind: 'human' });
       // Genuine mint: mintReceipt enforces FR-P2 at mint time (signer must
@@ -207,7 +207,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
         name: 'claude-bot',
       };
 
-      const targetDir = await tmpDir('shipwright-triage-waiver-dst-');
+      const targetDir = await tmpDir('dokima-triage-waiver-dst-');
       dirs.push(targetDir);
       const targetRecord = await registerProject(registryPath, {
         path: targetDir,
@@ -233,7 +233,7 @@ describe('receipt anchor triage (sec/receipt-triage)', () => {
       // and packages/harbormaster's resume always do before acting on a
       // waiver) still catches it via FR-P2, using the target's *current*
       // (tampered) identities table.
-      const targetLog = openEventLog(path.join(targetDir, '.shipwright', 'state.db'));
+      const targetLog = openEventLog(path.join(targetDir, '.dokima', 'state.db'));
       const result = verifyReceipt(targetLog, 'rcpt-waiver-1', {
         signingKey: SIGNING_KEY,
         inputFiles: [],

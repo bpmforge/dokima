@@ -17,16 +17,16 @@ async function gitIn(
 
 /** A bare repo standing in for a real forge remote — local filesystem only, no network. */
 async function createBareRemote(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-dual-remote-bare-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-dual-remote-bare-'));
   await gitIn(dir, ['init', '--bare', '-b', 'main']);
   return dir;
 }
 
 async function createWorkingRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-dual-remote-work-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-dual-remote-work-'));
   await gitIn(dir, ['init', '-b', 'main']);
-  await gitIn(dir, ['config', 'user.name', 'Shipwright Test']);
-  await gitIn(dir, ['config', 'user.email', 'test@shipwright.invalid']);
+  await gitIn(dir, ['config', 'user.name', 'Dokima Test']);
+  await gitIn(dir, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(dir, 'README.md'), '# fixture\n');
   await gitIn(dir, ['add', '--', 'README.md']);
   await gitIn(dir, ['commit', '-m', 'chore: initial commit']);
@@ -83,7 +83,7 @@ describe('pushToRemotes', () => {
     // no real network involved, still fully local-first.
     const badRemotePath = path.join(
       os.tmpdir(),
-      'shipwright-dual-remote-missing-so-invalid',
+      'dokima-dual-remote-missing-so-invalid',
     );
     await gitIn(repo, ['remote', 'add', 'github', badRemotePath]);
 

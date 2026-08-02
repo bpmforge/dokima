@@ -1,4 +1,4 @@
-import { TicketError, type TicketErrorCode } from '@shipwright/tickets';
+import { TicketError, type TicketErrorCode } from '@dokima/tickets';
 import { problem, PROBLEM_CONTENT_TYPE, type ProblemDetails } from '../problem.js';
 
 /**
@@ -18,7 +18,7 @@ export function ticketErrorToProblem(
   return {
     status,
     body: problem({
-      type: `https://shipwright.dev/errors/${err.code.toLowerCase().replaceAll('_', '-')}`,
+      type: `https://dokima.dev/errors/${err.code.toLowerCase().replaceAll('_', '-')}`,
       title: `${err.code}`,
       status,
       detail: err.message,

@@ -76,7 +76,7 @@ function problemFor(
 ) {
   if (result.reason === 'host') {
     return problem({
-      type: 'https://shipwright.dev/errors/forbidden-host',
+      type: 'https://dokima.dev/errors/forbidden-host',
       title: 'Forbidden: Host header not in the localhost allowlist',
       status: 403,
       detail: 'Host header is not an allowed localhost origin (SC-08)',
@@ -87,7 +87,7 @@ function problemFor(
   }
   if (result.reason === 'origin') {
     return problem({
-      type: 'https://shipwright.dev/errors/forbidden-origin',
+      type: 'https://dokima.dev/errors/forbidden-origin',
       title: 'Forbidden: Origin header not in the localhost allowlist',
       status: 403,
       detail: 'Origin header is not an allowed localhost origin (SC-08)',
@@ -97,7 +97,7 @@ function problemFor(
     });
   }
   return problem({
-    type: 'https://shipwright.dev/errors/unauthorized',
+    type: 'https://dokima.dev/errors/unauthorized',
     title: 'Unauthorized: missing or invalid bearer token',
     status: 401,
     detail: 'Authorization: Bearer <token> is required (D-005)',

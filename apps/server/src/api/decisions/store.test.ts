@@ -7,7 +7,7 @@ import {
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 
 /**
  * SEC TRIAGE (sec/ledger-atomicity): lets one test force `appendEvent` to
@@ -19,8 +19,8 @@ import {
  * the real implementation; only the one test below flips the flag.
  */
 let forceAppendEventFailure = false;
-vi.mock('@shipwright/events', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@shipwright/events')>();
+vi.mock('@dokima/events', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dokima/events')>();
   return {
     ...actual,
     appendEvent: (...args: Parameters<typeof actual.appendEvent>) => {
@@ -46,7 +46,7 @@ async function tmpProject(): Promise<{
   projectPath: string;
   cleanup: () => Promise<void>;
 }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-decisions-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-decisions-'));
   return {
     projectPath: dir,
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),
@@ -90,7 +90,7 @@ describe('decision slate store', () => {
     return { log, projectPath };
   }
 
-  it('creates a founder slate as open, validated through @shipwright/pipeline', async () => {
+  it('creates a founder slate as open, validated through @dokima/pipeline', async () => {
     const { log } = await boot();
     const created = createSlate(
       log,
@@ -211,7 +211,7 @@ describe('decision slate store', () => {
    * ID-DERIVATION FIX (W5-13 acceptance #2, sticky across earlier attempts):
    * a ledger whose free-text (rationale/options) contains a D-shaped
    * substring like "D-999" must not advance the next assigned ID — the ID
-   * comes only from `@shipwright/pipeline`'s hardened `nextDecisionId`,
+   * comes only from `@dokima/pipeline`'s hardened `nextDecisionId`,
    * routed through `decideSlate`'s real ledger-read path, not tested
    * against `nextDecisionId` directly.
    */

@@ -7,8 +7,8 @@ import {
 import { computeReceiptAnchor, type MirrorCloseReceiptSummary } from './types.js';
 import type { IssueComment, IssueInfo } from '../types.js';
 
-const REVIEWER_LOGIN = 'shipwright-reviewer';
-const MAKER_LOGIN = 'shipwright-maker';
+const REVIEWER_LOGIN = 'dokima-reviewer';
+const MAKER_LOGIN = 'dokima-maker';
 
 const RECEIPT: MirrorCloseReceiptSummary = {
   ticketId: 'W6-03',

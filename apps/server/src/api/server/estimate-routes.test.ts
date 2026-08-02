@@ -2,14 +2,14 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog } from '@shipwright/events';
+import { createIdentity, openEventLog } from '@dokima/events';
 import {
   acceptTicket,
   claimTicket,
   closeTicket,
   createTicket,
   startTicket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import { buildApiServer, type ApiServer } from '../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -32,7 +32,7 @@ describe('estimate/spend/digest routes (BLUEPRINT §12.2, FR-G7, US-307/309)', (
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-estimate-routes-');
+    const fleetHome = await tmpDir('dokima-estimate-routes-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -62,7 +62,7 @@ describe('estimate/spend/digest routes (BLUEPRINT §12.2, FR-G7, US-307/309)', (
       payload: { path: projectDir, mode: 'new' },
     });
     const { id } = res.json() as { id: string };
-    return { id, dbPath: path.join(projectDir, '.shipwright', 'state.db') };
+    return { id, dbPath: path.join(projectDir, '.dokima', 'state.db') };
   }
 
   describe('GET /projects/:id/estimate', () => {

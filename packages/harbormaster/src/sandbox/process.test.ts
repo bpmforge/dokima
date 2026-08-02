@@ -7,7 +7,7 @@ import { isProcessSandboxAvailable, runInProcessSandbox } from './process.js';
 import { SandboxUnavailableError } from './types.js';
 
 async function withTempDir<T>(run: (dir: string) => Promise<T>): Promise<T> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-sandbox-proc-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-sandbox-proc-'));
   try {
     return await run(dir);
   } finally {
@@ -83,18 +83,18 @@ describe('runInProcessSandbox', () => {
   );
 
   it('never carries the parent process env through to the sandboxed command', async () => {
-    process.env.SHIPWRIGHT_SANDBOX_TEST_SECRET = 'sk-should-never-leak';
+    process.env.DOKIMA_SANDBOX_TEST_SECRET = 'sk-should-never-leak';
     try {
       await withTempDir(async (cwd) => {
         const result = await runInProcessSandbox({
           cwd,
-          command: 'echo "[$SHIPWRIGHT_SANDBOX_TEST_SECRET]"',
+          command: 'echo "[$DOKIMA_SANDBOX_TEST_SECRET]"',
           allowNetwork: true,
         });
         expect(result.stdout).toContain('[]');
       });
     } finally {
-      delete process.env.SHIPWRIGHT_SANDBOX_TEST_SECRET;
+      delete process.env.DOKIMA_SANDBOX_TEST_SECRET;
     }
   });
 

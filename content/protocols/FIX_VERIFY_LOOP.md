@@ -154,7 +154,7 @@ After re-verification:
 - Iteration counter increments
 
 **Classify the iteration before spending the next one** (field-validated on the
-Shipwright conductor run 2026-07-12 — a flat cap treats two different failures
+Dokima conductor run 2026-07-12 — a flat cap treats two different failures
 identically; see `issues/` field reports). Using the per-row verdicts
 (CLOSED / STILL-OPEN / NEW / REGRESSED):
 

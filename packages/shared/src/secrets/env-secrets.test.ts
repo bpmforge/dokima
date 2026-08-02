@@ -7,7 +7,7 @@ import { loadEnvFileSecretValues } from './env-secrets.js';
 let tmpDirs: string[] = [];
 
 async function mkTmp(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-env-secrets-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-env-secrets-test-'));
   tmpDirs.push(dir);
   return dir;
 }

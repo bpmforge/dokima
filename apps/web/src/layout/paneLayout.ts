@@ -39,7 +39,7 @@ export function clampPaneSize(pct: number): number {
 }
 
 export function paneLayoutStorageKey(projectId: string): string {
-  return `shipwright.paneLayout.${projectId}`;
+  return `dokima.paneLayout.${projectId}`;
 }
 
 export function serializePaneLayout(layout: PaneLayout): string {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@shipwright/events';
+import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
 import { digestOf } from './digest.js';
 import { McpError } from './errors.js';
 import { getPendingApproval, listPendingApprovals, listToolCalls } from './query.js';

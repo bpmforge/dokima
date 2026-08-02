@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Ticket } from '@shipwright/tickets';
+import type { Ticket } from '@dokima/tickets';
 import { DEFAULT_VERIFY_COMMAND, defaultHandoffBuilder } from './loop-handoff.js';
 
 function ticket(overrides: Partial<Ticket> = {}): Ticket {

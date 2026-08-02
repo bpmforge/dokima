@@ -1,17 +1,17 @@
-# Shipwright — SRS & System Architecture Blueprint
+# Dokima — SRS & System Architecture Blueprint
 
 **Version:** 0.4.0 · **Date:** 2026-07-10 · **Status:** Approved — decision-complete (decisions in §11); SDLC package cut from this document
 **Author:** Principal Architect session (Claude Fable 5) with Brad Matthews
 
-> **Shipwright** is a local-first, human-in-the-loop developer platform where a person takes an idea to a secure, well-built, shipped product. It acts as their product manager and their agentic development team: a guided SDLC program with expert AI agents, gated pipelines, per-item micro-loops, cheapest-model-first execution with escalation, a native Kanban/ticket engine, and an evidence-based trust model in which **the platform holds the gates, not the agents**.
+> **Dokima** is a local-first, human-in-the-loop developer platform where a person takes an idea to a secure, well-built, shipped product. It acts as their product manager and their agentic development team: a guided SDLC program with expert AI agents, gated pipelines, per-item micro-loops, cheapest-model-first execution with escalation, a native Kanban/ticket engine, and an evidence-based trust model in which **the platform holds the gates, not the agents**.
 
 ---
 
-## 0. Provenance — what Shipwright productizes
+## 0. Provenance — what Dokima productizes
 
-Shipwright is the productization of three proven internal systems. Every mechanism in this blueprint traces to a design that has already run, failed, been fixed, and re-run in those systems. This is not a green-field fantasy; it is a packaging exercise over battle-tested operational logic.
+Dokima is the productization of three proven internal systems. Every mechanism in this blueprint traces to a design that has already run, failed, been fixed, and re-run in those systems. This is not a green-field fantasy; it is a packaging exercise over battle-tested operational logic.
 
-| Source system | What it contributes | Shipwright subsystem |
+| Source system | What it contributes | Dokima subsystem |
 |---|---|---|
 | **bpm-opencode-experts** (expert system + SDLC pipeline: ~70 agents, 66 validators, phase gates, HANDOFF protocol, micro-loop contract, ticket schema, autonomy protocol) | The *discipline*: phase pipeline 0–5, receipt-based gates, Challenger veracity layer, coverage loops, maker≠verifier scoring, plan-as-contract tickets with lanes and write-scopes | **Pipeline Engine**, **Validator Packs**, **Ticket Engine**, **Expert Registry** |
 | **bpm-agent-amplifier** (program repo: gap analysis, gate-integrity audit M27, Conductor design M28, Gitea-ledger research, advisor/rung-ladder M30, board-server) | The *integrity and economics*: receipts-not-flags, "conductor holds the gates", per-role model routing, escalation ladder, morning-review queue, forge-as-audit-ledger with per-identity credentials, memory-as-first-line-advisor | **Harbormaster (Conductor)**, **Trust & Receipts layer**, **Model Gateway routing policy**, **Forge Mirror** |
@@ -32,20 +32,20 @@ Shipwright is the productization of three proven internal systems. Every mechani
 
 ### 1.1 The one-paragraph pitch
 
-You describe a product idea in plain English. Shipwright interviews you like a good product manager, produces the vision, scope, requirements, and threat model with you in the loop, then decomposes the build into a dependency-ordered ticket board and executes it with a crew of expert AI agents — starting every task on the cheapest capable model and escalating only when a task provably fails its gates. You watch the board move in real time, answer the occasional crisp question, and review a small morning queue of decisions only a human may make (merges, releases, destructive operations). What comes out the other end is a secure, tested, documented product — with an audit trail proving every gate that passed actually ran.
+You describe a product idea in plain English. Dokima interviews you like a good product manager, produces the vision, scope, requirements, and threat model with you in the loop, then decomposes the build into a dependency-ordered ticket board and executes it with a crew of expert AI agents — starting every task on the cheapest capable model and escalating only when a task provably fails its gates. You watch the board move in real time, answer the occasional crisp question, and review a small morning queue of decisions only a human may make (merges, releases, destructive operations). What comes out the other end is a secure, tested, documented product — with an audit trail proving every gate that passed actually ran.
 
 ### 1.2 Who it is for
 
-| Persona | Need Shipwright serves |
+| Persona | Need Dokima serves |
 |---|---|
-| **Solo builder / indie hacker** | An idea and no team. Shipwright is the PM, architect, security reviewer, and dev crew. |
+| **Solo builder / indie hacker** | An idea and no team. Dokima is the PM, architect, security reviewer, and dev crew. |
 | **Professional dev** | Wants the discipline (gates, threat model, coverage) without the ceremony; wants agents doing the bulk work under supervision. |
 | **Small team lead** | Replaces Jira + GitHub + scattered AI extensions with one cohesive surface; agents and humans share the same board. |
 | **Local-LLM enthusiast** | Owns hardware; wants maximum work out of local models with frontier spend only where it matters — with receipts proving the cheap tier is honest. |
 
 ### 1.3 What it replaces
 
-A traditional stack of Jira/Linear (tracking) + GitHub (code/PRs) + disparate AI chat extensions (unaccountable helpers) — three tools with no shared state, where "the AI said it's done" is unverifiable. Shipwright's answer: one canvas where the chat, the board, and the artifacts are projections of one event-sourced execution state, and "done" is a machine-checked receipt.
+A traditional stack of Jira/Linear (tracking) + GitHub (code/PRs) + disparate AI chat extensions (unaccountable helpers) — three tools with no shared state, where "the AI said it's done" is unverifiable. Dokima's answer: one canvas where the chat, the board, and the artifacts are projections of one event-sourced execution state, and "done" is a machine-checked receipt.
 
 ### 1.4 Product principles
 
@@ -71,7 +71,7 @@ flowchart TB
         SET["Settings Matrix<br/>models · autonomy · budgets"]
     end
 
-    subgraph Core["Shipwright Core (Node 22 / TypeScript, local server)"]
+    subgraph Core["Dokima Core (Node 22 / TypeScript, local server)"]
         GW["API Gateway<br/>REST + WebSocket/SSE"]
         HM["Harbormaster<br/>(Conductor: claims tickets,<br/>holds gates, routes models)"]
         PIPE["Pipeline Engine<br/>phases 0–5 · receipts · waivers"]
@@ -147,7 +147,7 @@ Representative event types: `ticket.claimed`, `ticket.closed`, `gate.receipt_min
 A React SPA served by the local core. Three-pane split layout, every pane collapsible; layouts persist per project.
 
 **3.1.1 Chat Workspace (left pane).**
-- **Threads are per-concern, not one endless scroll**: a program thread (you ↔ Shipwright-as-PM), plus ephemeral agent threads that open when an agent needs you (clarification) and archive when resolved.
+- **Threads are per-concern, not one endless scroll**: a program thread (you ↔ Dokima-as-PM), plus ephemeral agent threads that open when an agent needs you (clarification) and archive when resolved.
 - Asynchronous by design: agents post structured messages (finding cards, question cards, manifest cards) that render as interactive components, not walls of text. You can answer a question hours later; the affected loop suspends and resumes exactly there (checkpoint/resume, §3.7).
 - Every agent message carries provenance: agent name, model used, ticket ID, cost of the turn. Click-through to the underlying receipt/artifact.
 - Slash-commands expose expert escape hatches (`/security --deep`, `/review`, `/perf`) that dispatch a specialist directly onto the current project without the full program.
@@ -183,12 +183,12 @@ The productized six-phase SDLC, run as a state machine per project:
 | 4 | **Build** | code, tests, per-module runtime reports — executed as the ticket board | per-ticket gates + wave gates |
 | 5 | **Launch** | FIX_BACKLOG closed, release notes, tagged release | release-readiness validators + NEVER-AUTO human approval |
 
-- Phases 0–2 are **interview-driven**: Shipwright-as-PM runs a discovery interview (adaptive question depth), drafts deliverables, and iterates with the user. These phases are deliberately human-paced — this is where "helps be a product manager" lives.
+- Phases 0–2 are **interview-driven**: Dokima-as-PM runs a discovery interview (adaptive question depth), drafts deliverables, and iterates with the user. These phases are deliberately human-paced — this is where "helps be a product manager" lives.
 - **Gate mechanism**: each phase has a declared validator set. A clean run mints a **gate receipt** (`gates/<phase>-receipt.json`: validator names, exit codes, gap counts, input-file content hash). Advancing to phase N re-verifies phase N−1's receipt two ways — recompute the input hash (catches silently edited docs) and confirm every currently-required validator appears with exit 0 (catches gate-definition drift). The only bypass is an explicit **waiver receipt** signed by the human (name required; agent identities rejected).
 - **Challenger gate** (veracity): after coverage passes, every HIGH/CRITICAL finding and every design claim marked *needs verification* gets an independent challenge pass producing a CHALLENGE_REPORT with per-claim verdicts (CONFIRMED / CONTRADICTED / UNVERIFIABLE — a challenge without a citation is discarded, never treated as a contradiction). CONTRADICTED → mandatory revision HANDOFF to the originating agent.
 - **Two-track verification**: the default is the **coverage loop** (deterministic — is every inventory row covered?); subjective 1–10 confidence scoring exists but is *advisory only* with an **asymmetric threshold** (R-B2, 2026-07-14): ≥7 accept, 5–6 request polish (bounded), **1–4 escalate to the human — a low subjective score never auto-fails a passing deterministic gate**. Every reviewer/challenger verdict must carry a `re-ran independently: <command, counts, exit code>` evidence line; a verdict without one is INCOMPLETE and is bounced, not counted.
 - **Decision slates (founder decisions as a first-class primitive).** Whenever the program hits a fork that belongs to the founder — product name, deployment shape, tracker model, licensing, pricing, any irreversible architectural choice — the PM presents a **slate card**: 2–4 concrete options, each with trade-offs spelled out and one marked *Recommended* with the reasoning. The choice (and any free-text rationale) is appended to `docs/DECISIONS.md`, an ADR-lite ledger with stable IDs (D-001…), and downstream documents cite decision IDs instead of restating them. Slates are the productization of refuse-to-guess: an agent that cannot decide a founder-owned fork must slate it, never assume it.
-- **The Blueprint stage (Phase 2.5 — this document's own genesis, productized).** Before any ticket decomposition, Shipwright synthesizes a founding **BLUEPRINT** — condensed SRS + system architecture + an explicit *Open Questions* section — and hands it to the founder with slate cards for every open question. Founder answers; the blueprint is revised with a decisions section (exactly the v0.1 → v0.2 cycle this document went through); the revision loop repeats until decision-complete. **Gate:** Phase 3 detailed design and Phase 4 decomposition are locked while any unresolved founder-decision marker remains in the blueprint. This stage exists because it is where products get their shape cheaply — one review of a 20-page blueprint prevents a hundred mis-aimed tickets.
+- **The Blueprint stage (Phase 2.5 — this document's own genesis, productized).** Before any ticket decomposition, Dokima synthesizes a founding **BLUEPRINT** — condensed SRS + system architecture + an explicit *Open Questions* section — and hands it to the founder with slate cards for every open question. Founder answers; the blueprint is revised with a decisions section (exactly the v0.1 → v0.2 cycle this document went through); the revision loop repeats until decision-complete. **Gate:** Phase 3 detailed design and Phase 4 decomposition are locked while any unresolved founder-decision marker remains in the blueprint. This stage exists because it is where products get their shape cheaply — one review of a 20-page blueprint prevents a hundred mis-aimed tickets.
 - **The research path (woven through every phase, not bolted on).** Each phase has a research lane producing *cited* deliverables in `docs/research/`:
   - Phase 0 — market landscape + competitive analysis (who exists, what they charge, where the gap is);
   - Phase 1 — feasibility studies (can this be built under these constraints; license/API viability of critical dependencies);
@@ -197,11 +197,11 @@ The productized six-phase SDLC, run as a state machine per project:
   Research discipline: depth is selectable (`quick` / `standard` / `deep` — deep fans out multi-source with adversarial verification); every report uses a tiered source catalog (primary docs > maintainer statements > community posts) with per-claim citations; HIGH-impact claims pass the **Challenger** (CONFIRMED / CONTRADICTED / UNVERIFIABLE) before a decision may cite them; confirmed findings enter the research fact bank, which is consulted at escalation rung R0 before any new research spend.
 - **Modes**: `New Product` (full program), `Onboard` (map an existing codebase: landscape, entry points, components, health assessment), `Feature` (scoped mini-program over an onboarded repo), `Improve` (audit + fix backlog). All four ship at v1 in the UI as "What are we doing today?"
 
-**The full expert system ships in the box.** Shipwright launches with the *entire* expert-system content library, one-time imported (D-008): all coordinators and phase specialists, the security / code-health / performance micro-agent clusters with their synthesizers, the game-dev cluster, the onboard specialists, the Challenger, all 66+ validators, and the shared protocols (HANDOFF, micro-loop, gate scoring, autonomy). Nothing is held back for a "pro tier" (D-006). Equally important: Shipwright is the **go-forward home of the expert-system roadmap** — the amplifier program's designed improvements land here as native subsystems rather than bolt-ons (ticket-lifecycle integrity → the Ticket Engine's verbs; gate integrity → the receipts layer; the Conductor → the Harbormaster; lessons intake → the learning pipeline §12.6; advisor/tier-guard → escalation rung R0 and the role matrix guards).
+**The full expert system ships in the box.** Dokima launches with the *entire* expert-system content library, one-time imported (D-008): all coordinators and phase specialists, the security / code-health / performance micro-agent clusters with their synthesizers, the game-dev cluster, the onboard specialists, the Challenger, all 66+ validators, and the shared protocols (HANDOFF, micro-loop, gate scoring, autonomy). Nothing is held back for a "pro tier" (D-006). Equally important: Dokima is the **go-forward home of the expert-system roadmap** — the amplifier program's designed improvements land here as native subsystems rather than bolt-ons (ticket-lifecycle integrity → the Ticket Engine's verbs; gate integrity → the receipts layer; the Conductor → the Harbormaster; lessons intake → the learning pipeline §12.6; advisor/tier-guard → escalation rung R0 and the role matrix guards).
 
 ### 3.3 Model Gateway (LLM-agnostic)
 
-**Providers.** First-class adapters at MVP: Anthropic, OpenAI, **GitHub Copilot**, and **Google Vertex AI** (cloud); LM Studio, Ollama, and any OpenAI-compatible endpoint (local). Copilot and Vertex are MVP-mandatory for adoption parity: the earliest corporate users already run opencode against employer-provisioned Copilot subscriptions and Vertex projects, and Shipwright must slot into those credentials on day one (Copilot via the device-auth token flow; Vertex via Application Default Credentials / service-account JSON with region + project ID in provider settings). Provider layer handles: model discovery, warm-up pings (local models cold-start), request queueing per endpoint, context-length introspection, and normalized usage accounting (tokens in/out → cost via a per-model price table; local models cost $0 but tokens are still metered for budget/velocity stats).
+**Providers.** First-class adapters at MVP: Anthropic, OpenAI, **GitHub Copilot**, and **Google Vertex AI** (cloud); LM Studio, Ollama, and any OpenAI-compatible endpoint (local). Copilot and Vertex are MVP-mandatory for adoption parity: the earliest corporate users already run opencode against employer-provisioned Copilot subscriptions and Vertex projects, and Dokima must slot into those credentials on day one (Copilot via the device-auth token flow; Vertex via Application Default Credentials / service-account JSON with region + project ID in provider settings). Provider layer handles: model discovery, warm-up pings (local models cold-start), request queueing per endpoint, context-length introspection, and normalized usage accounting (tokens in/out → cost via a per-model price table; local models cost $0 but tokens are still metered for budget/velocity stats).
 
 **Task/role routing.** Two orthogonal axes, kept separate deliberately:
 1. **Role matrix** (`models.json` equivalent, editable in Settings): each agent role maps to a model + fallback chain, e.g. `coding-agent → local-qwen-coder`, `code-reviewer → claude-opus`, `challenger → claude-opus`, `test-engineer → local-qwen`, `pm-interviewer → claude-sonnet`, `default → cheapest-capable`. Cross-model review is an **integrity feature**: the maker's model never reviews its own work.
@@ -236,7 +236,7 @@ R4  Blocked-with-evidence                  — ticket parked with failure receip
 
 **Reflow.** `claimable = ready ∧ unowned ∧ deps done`, recomputed on every event; blocked⇄ready auto-resolve; the dependency DAG renders as a live Mermaid diagram in the Artifact Viewer.
 
-**Forge Mirror (optional, recommended).** When a forge is connected, every ticket mirrors to a GitHub/Gitea Issue and lifecycle verbs write through: claim = assign + label, evidence = comment, close = state change + receipt comment, accept = reviewer-identity comment. The platform provisions **two machine identities with separate scoped tokens** (`shipwright-maker`, `shipwright-reviewer`); the reviewer token is held only by the Harbormaster and never enters an agent session. The forge timeline becomes an append-only audit ledger *outside* every agent's write scope — the Jira-grade guarantee, without Jira. Offline-tolerant: verbs queue locally in ticket `history[]` and flush when the forge is reachable.
+**Forge Mirror (optional, recommended).** When a forge is connected, every ticket mirrors to a GitHub/Gitea Issue and lifecycle verbs write through: claim = assign + label, evidence = comment, close = state change + receipt comment, accept = reviewer-identity comment. The platform provisions **two machine identities with separate scoped tokens** (`dokima-maker`, `dokima-reviewer`); the reviewer token is held only by the Harbormaster and never enters an agent session. The forge timeline becomes an append-only audit ledger *outside* every agent's write scope — the Jira-grade guarantee, without Jira. Offline-tolerant: verbs queue locally in ticket `history[]` and flush when the forge is reachable.
 
 ### 3.5 Loop Engine (micro-loops with anchors)
 
@@ -298,7 +298,7 @@ Built-in (in-process, not an optional sidecar — the #1 lesson from the source 
 
 **Forge adapters.** GitHub (REST/GraphQL + webhooks), Gitea (REST + webhooks), generic self-hosted git (SSH + optional adapter plug-in API). Adapters expose: repo CRUD, branch protection, PR lifecycle, issue mirror, commit status, and identity/token management.
 
-**MCP host.** Shipwright is an MCP *client*: users register MCP servers (filesystem scopes, databases, browsers, external APIs) per project. Tools surface to agents through a permission matrix: each agent role gets an allowlist; side-effectful tools carry `requiresApproval` (dynamic for shell). Tool calls are events (audited, costed, replayable). MCP servers run outside the agent trust boundary — an agent requests a tool call; the core executes it under the project's permission policy.
+**MCP host.** Dokima is an MCP *client*: users register MCP servers (filesystem scopes, databases, browsers, external APIs) per project. Tools surface to agents through a permission matrix: each agent role gets an allowlist; side-effectful tools carry `requiresApproval` (dynamic for shell). Tool calls are events (audited, costed, replayable). MCP servers run outside the agent trust boundary — an agent requests a tool call; the core executes it under the project's permission policy.
 
 **Execution sandbox.** Agent-generated code runs in the project worktree under a restricted process (no network by default for test runs; opt-in per project), or in a container (Podman/Docker) when configured. The sandbox is where verify commands, test suites, and tool anchors execute — its results are what receipts attest to.
 
@@ -308,18 +308,18 @@ Three scopes with strict precedence (**run > project > global**), all file-backe
 
 | Scope | Location | Contains |
 |---|---|---|
-| **Global** | `~/.shipwright/config.json` | Provider registrations + credential *references*, default model-matrix presets (All-local / Hybrid / All-cloud), notification preferences + quiet hours, UI prefs, telemetry opt-in, global concurrency governor (max total berths, per-endpoint queue limits) |
-| **Project** | `<repo>/.shipwright/settings.json` | Model matrix overrides, autonomy dial, budgets, default berths, forge connection (by credential ref), MCP server registrations + per-role tool allowlists, validator-pack selection, expert overrides/additions |
+| **Global** | `~/.dokima/config.json` | Provider registrations + credential *references*, default model-matrix presets (All-local / Hybrid / All-cloud), notification preferences + quiet hours, UI prefs, telemetry opt-in, global concurrency governor (max total berths, per-endpoint queue limits) |
+| **Project** | `<repo>/.dokima/settings.json` | Model matrix overrides, autonomy dial, budgets, default berths, forge connection (by credential ref), MCP server registrations + per-role tool allowlists, validator-pack selection, expert overrides/additions |
 | **Run** | ephemeral (UI/CLI flags) | Breakpoint mode, berths for this run, run budget, depth (quick/standard/deep) for research |
 
-Rules: **credentials never live in any settings file** — they go to the OS keychain (macOS Keychain / libsecret) under named refs that settings files point to, so `.shipwright/settings.json` is safe to commit (a project can share its matrix and autonomy policy with collaborators without leaking keys). Every effective-settings resolution is computable and visible in the UI ("why is this role on this model?" shows the winning scope). Settings changes are events — the audit trail covers configuration, not just execution. First-run onboarding is a settings wizard: pick a preset, register one provider (or point at LM Studio), optionally connect a forge — then the guided sample project (§12.3).
+Rules: **credentials never live in any settings file** — they go to the OS keychain (macOS Keychain / libsecret) under named refs that settings files point to, so `.dokima/settings.json` is safe to commit (a project can share its matrix and autonomy policy with collaborators without leaking keys). Every effective-settings resolution is computable and visible in the UI ("why is this role on this model?" shows the winning scope). Settings changes are events — the audit trail covers configuration, not just execution. First-run onboarding is a settings wizard: pick a preset, register one provider (or point at LM Studio), optionally connect a forge — then the guided sample project (§12.3).
 
 ### 3.11 Multi-project — the Fleet
 
-A user runs several programs at once; Shipwright treats that as the normal case:
+A user runs several programs at once; Dokima treats that as the normal case:
 
 - **Fleet home screen** — the app opens on a portfolio view: one card per project (current phase, board stats ready/blocked/done, running berths with heartbeat freshness, pending Decide count, today's spend). New Product / Onboard / Import start here.
-- **Isolation per project** — each project owns its SQLite event log + projections (`.shipwright/state.db` beside the repo) and its own Harbormaster instance. State travels with the repo directory; archiving a project is closing a folder. Nothing cross-contaminates: memory facts, calibration, receipts, and budgets are per-project.
+- **Isolation per project** — each project owns its SQLite event log + projections (`.dokima/state.db` beside the repo) and its own Harbormaster instance. State travels with the repo directory; archiving a project is closing a folder. Nothing cross-contaminates: memory facts, calibration, receipts, and budgets are per-project.
 - **Shared global services** — the Model Gateway is one process-wide pool: per-endpoint request queues with **fair scheduling across projects**, so three autorunning projects can't thrash a single LM Studio host; the global concurrency governor caps total berths across all projects. The credential store and provider registry are global (register Copilot once, use it everywhere).
 - **One inbox** — the notification center and morning queue aggregate across all projects (sorted by leverage, filterable per project). A night of three autorunning programs is still one ten-minute review.
 - **Cross-project learning (opt-in)** — the playbook is two-level: per-project entries by default; a lesson that is project-agnostic (a library trap, a validator fix, a pattern) can be **promoted to the global playbook** with provenance, and global entries are consulted at R0 for every project. Promotion is explicit (human or reviewer-gated), never automatic — one project's convention must not silently become another's rule.
@@ -334,7 +334,7 @@ The canonical trace. User types: *"I want an app where dog owners in my neighbor
 sequenceDiagram
     autonumber
     actor U as User
-    participant PM as Shipwright PM<br/>(interviewer role)
+    participant PM as Dokima PM<br/>(interviewer role)
     participant HM as Harbormaster
     participant TD as Task Decomposer
     participant TE as Ticket Engine
@@ -406,7 +406,7 @@ RETURN: Completion Manifest (files produced, verify result, evidence)
 
 ## 5. UX/DX highlight — HITL & notifications without alert fatigue
 
-**The core insight from the source systems:** interruptions are cheap to emit and expensive to receive. Shipwright treats human attention as the scarcest budget in the system and applies the same discipline it applies to tokens.
+**The core insight from the source systems:** interruptions are cheap to emit and expensive to receive. Dokima treats human attention as the scarcest budget in the system and applies the same discipline it applies to tokens.
 
 ### 5.1 Notification taxonomy (three tiers, strictly enforced)
 
@@ -433,7 +433,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - **Cost transparency:** every card and chat turn shows its token/dollar cost; the escalation ladder's spend is attributed per ticket, so users *see* the cheap-first policy paying off.
 - **The pause button:** one global control (the kill-file productized) — finishes the current ticket, checkpoints, stops. Resume is one click and provably idempotent.
 - **Explain-this-refusal:** whenever an invariant refuses an action (drag, claim, close), the UI shows the specific rule and the receipt/evidence behind it — the platform teaches its own discipline.
-- **Escape hatches are first-class:** experts can dispatch any specialist directly, edit the ticket DAG, write custom validators (a validator is any executable returning 0/1 + JSON gaps), and script the Harbormaster via CLI (`shipwright run --breakpoint wave`), because the UI and CLI drive the same verbs.
+- **Escape hatches are first-class:** experts can dispatch any specialist directly, edit the ticket DAG, write custom validators (a validator is any executable returning 0/1 + JSON gaps), and script the Harbormaster via CLI (`dokima run --breakpoint wave`), because the UI and CLI drive the same verbs.
 
 ---
 
@@ -448,7 +448,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-C4: Board renders lanes/columns/typed cards from live projections ≤1s after the underlying event.
 - FR-C5: Receipt inspector renders gate/coverage/challenge/ledger artifacts as structured views.
 - FR-C6: Guided first-fifteen-minutes sample project wired into the first-run wizard.
-- FR-C7: CLI parity: the `shipwright` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). *(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)*
+- FR-C7: CLI parity: the `dokima` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). *(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)*
 - FR-C8: Artifact feedback loop: deliverables (markdown + rendered Mermaid) accept inline feedback; feedback on a gated deliverable emits a revision HANDOFF to the producing role; the revision renders as a diff against the commented version. *(R-H2, 2026-07-14.)*
 
 **FR-PIPE (Pipeline)**
@@ -523,7 +523,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 **FR-FLEET (Multi-project)**
 - FR-F1: Fleet home screen: per-project cards (phase, board stats, berths + heartbeats, pending Decide count, spend today); create/onboard/import/archive.
-- FR-F2: Per-project isolation: own event log/DB (`.shipwright/state.db` with the repo), own Harbormaster, own memory/calibration/budgets; state travels with the directory.
+- FR-F2: Per-project isolation: own event log/DB (`.dokima/state.db` with the repo), own Harbormaster, own memory/calibration/budgets; state travels with the directory.
 - FR-F3: Global gateway pool: per-endpoint queues with fair cross-project scheduling; global governor caps total berths across projects.
 - FR-F4: Aggregated notification center + morning queue across projects with per-project filtering.
 - FR-F5: Two-level playbook: per-project by default; explicit, provenance-carrying promotion to a global playbook consulted at R0 everywhere; promotion never automatic.
@@ -546,10 +546,10 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 ### 6.2 Non-functional requirements
 
-- **NFR-1 Local-first:** full functionality offline with local models and no forge; single-command install (`npx shipwright` or packaged binary); state in one SQLite file per project + user-level config.
+- **NFR-1 Local-first:** full functionality offline with local models and no forge; single-command install (`npx dokima` or packaged binary); state in one SQLite file per project + user-level config.
 - **NFR-2 Performance:** board interactions <100ms; projection lag <1s; UI never blocks on model calls.
 - **NFR-3 Reliability:** crash-safe by construction (persist-before-execute, orphan sweep on boot, no phase stuck `running`); watchdog on every agent session; global failure handlers fail active work loudly.
-- **NFR-4 Security:** agent sessions are untrusted (write-scope enforcement via diff, no credential exposure — reviewer/forge tokens live only in the Harbormaster); secrets never enter prompts (scrubber on context packets); audit log is hash-chained; threat model ships as a v1 deliverable of Shipwright's own pipeline.
+- **NFR-4 Security:** agent sessions are untrusted (write-scope enforcement via diff, no credential exposure — reviewer/forge tokens live only in the Harbormaster); secrets never enter prompts (scrubber on context packets); audit log is hash-chained; threat model ships as a v1 deliverable of Dokima's own pipeline.
 - **NFR-5 Extensibility:** experts, validators, forge adapters, and model providers are plug-in surfaces with documented contracts; expert content is data (markdown + frontmatter), not code.
 - **NFR-6 Honesty:** every completion claim in the UI is backed by an openable receipt; SKIPPED/WAIVED are permanently visible in coverage history.
 - **NFR-7 Portability:** macOS/Linux first, Windows via WSL at v1; Apple-Silicon-friendly local inference (LM Studio) is a first-class tested path.
@@ -604,7 +604,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 | Validators | Executable contract: exit 0/1 + JSON gaps on stdout; packs ship as versioned plug-ins (bash/node) | Ports the 66-validator library as launch content |
 | Experts | Markdown + frontmatter definitions compiled at build (the canonical→generated pattern) | Expert content is reviewable data |
 | Sandbox | Process isolation default; Podman/Docker optional profile | Zero-dependency default, hardened opt-in |
-| Packaging | npm global / npx + packaged binaries (later); config in `~/.shipwright/`, project state in `.shipwright/` | "Anyone can use" onboarding |
+| Packaging | npm global / npx + packaged binaries (later); config in `~/.dokima/`, project state in `.dokima/` | "Anyone can use" onboarding |
 
 ## 9. Delivery roadmap (wave sketch — full plan.json in the follow-up package)
 
@@ -616,13 +616,13 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - **W5 Pipeline & PM:** interview-driven phases 0–3, decision slates + Blueprint stage + DECISIONS ledger, the research path (cited reports, depth levels, fact bank), Challenger, gate receipts UI, the four modes.
 - **W6 Integrations:** forge adapters + mirror + branch protection; MCP host; dual-remote.
 - **W7 Memory & learning:** playbook, consolidation, error-first recall, R0 advisor.
-- **W8 Hardening:** Shipwright runs its own pipeline on itself (threat model, security suite, a11y) — the dogfood gate for 1.0.
+- **W8 Hardening:** Dokima runs its own pipeline on itself (threat model, security suite, a11y) — the dogfood gate for 1.0.
 
 ## 10. Naming & glossary
 
-**Shipwright** — the platform: the master builder who takes your vision from blueprint to launch, and won't let an unseaworthy product ship. Component names used in this document: **Harbormaster** (the conductor), **the Canvas** (UI), **lanes/berths** (parallel work streams), **manifest** (completion evidence — the nautical and logistics senses coincide), **launch** (release), **morning queue** (the reviewer's harbor office). Metaphor budget is deliberately capped: tickets are tickets, gates are gates, receipts are receipts.
+**Dokima** — the platform: the master builder who takes your vision from blueprint to launch, and won't let an unseaworthy product ship. Component names used in this document: **Harbormaster** (the conductor), **the Canvas** (UI), **lanes/berths** (parallel work streams), **manifest** (completion evidence — the nautical and logistics senses coincide), **launch** (release), **morning queue** (the reviewer's harbor office). Metaphor budget is deliberately capped: tickets are tickets, gates are gates, receipts are receipts.
 
-**Known namespace collision:** "Shipwright" is also a CNCF project for building container images (shipwright.io). Distinct domain (image builds vs. SDLC platform), but worth a naming pass before any public launch — `shipwright.dev`-style branding or a qualifier (e.g., "Shipwright Studio") are the obvious mitigations.
+**Known namespace collision:** "Dokima" is also a CNCF project for building container images (dokima.io). Distinct domain (image builds vs. SDLC platform), but worth a naming pass before any public launch — `dokima.dev`-style branding or a qualifier (e.g., "Dokima Studio") are the obvious mitigations.
 
 **Vocabulary canon (added 2026-07-14, design review G-14 — cheap agents copy these exactly):**
 - **Ticket lifecycle** (board columns): `ready → claimed → in_progress → in_review → done` (+ `blocked` overlay) — lower-snake in code/events, Title Case only as UI column labels. `blocked-with-evidence` is a *badge* on a blocked card (dead-letter/R4 cases), not a distinct status.
@@ -641,7 +641,7 @@ Canonical ledger with stable IDs: [`docs/DECISIONS.md`](DECISIONS.md) (D-001…D
 1. **Multi-user → v2, with SSO/auth.** v1 stays single-operator. v2 adds first-class auth: SSO (OIDC/SAML), per-human identities alongside the machine identities, and role-based rights over the NEVER-AUTO surface (who may merge, who may deploy). Architectural pre-commitment now so v2 isn't a rewrite: every event already carries an actor identity; the identity table gets a `kind: human|machine` and an `auth_provider` column from W0, and the API gateway is built behind an auth middleware that v1 simply runs in single-user mode.
 2. **Expert content ships open** — adoption is the goal. The expert/validator library is open source with the platform; the moat is the integrated trust runtime + the compounding playbook, not withheld markdown. Community-contributed expert/validator packs become an adoption flywheel (with a signed-pack mechanism so users know what they're installing).
 3. **Copilot + Vertex are MVP** (§3.3, FR-G1) — parity with what corporate first-users already run under opencode. Onboarding treats "sign in with my employer's Copilot / point at my Vertex project" as a first-run path, not an advanced setting.
-4. **Shipwright stands on its own — recommendation: one-time import, then Shipwright is canonical for itself.** Do **not** build a live build-step dependency on bpm-opencode-experts (the canonical→generated pattern is right for internal twins, wrong for a product that must be clonable by strangers). Instead: (a) snapshot-import the expert definitions, validator packs, and shared protocols into `content/` at W1, with provenance headers; (b) re-implement the runtime clean in this repo — port the *contracts and algorithms* (micro-loop, coverage tracker, ticket lifecycle semantics, receipt format), not the code, with the source systems' test fixtures re-used as the conformance suite; (c) consolidate the two Jarvis SDLC drivers into the single Pipeline Engine (runner's loop mechanics + engine's phase machine) — neither ports wholesale; (d) bpm-opencode-experts remains Brad's internal lab and may upstream lessons as ordinary PRs, and anything proven in Shipwright can flow back the same way. Two-way PRs between peers, no umbilical.
+4. **Dokima stands on its own — recommendation: one-time import, then Dokima is canonical for itself.** Do **not** build a live build-step dependency on bpm-opencode-experts (the canonical→generated pattern is right for internal twins, wrong for a product that must be clonable by strangers). Instead: (a) snapshot-import the expert definitions, validator packs, and shared protocols into `content/` at W1, with provenance headers; (b) re-implement the runtime clean in this repo — port the *contracts and algorithms* (micro-loop, coverage tracker, ticket lifecycle semantics, receipt format), not the code, with the source systems' test fixtures re-used as the conformance suite; (c) consolidate the two Jarvis SDLC drivers into the single Pipeline Engine (runner's loop mechanics + engine's phase machine) — neither ports wholesale; (d) bpm-opencode-experts remains Brad's internal lab and may upstream lessons as ordinary PRs, and anything proven in Dokima can flow back the same way. Two-way PRs between peers, no umbilical.
 5. **Windows-native → post-v1.** WSL is the supported Windows path at 1.0 (NFR-7 stands).
 6. **Parallel + sequential build with autorun → in scope for v1** (§3.6 Berths, FR-H5): per-project concurrency dial (1–N workers), lane-safe by construction, autorun = breakpoint `never` × berths N.
 

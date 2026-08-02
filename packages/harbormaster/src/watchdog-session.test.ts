@@ -7,10 +7,10 @@ import {
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import { git } from '@shipwright/git';
-import type { Handoff } from '@shipwright/loop';
-import { claimTicket, createTicket, getTicket, startTicket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { git } from '@dokima/git';
+import type { Handoff } from '@dokima/loop';
+import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
 import { runWatchdogSession } from './watchdog-session.js';
 
 interface Fixture {
@@ -22,16 +22,16 @@ interface Fixture {
 
 async function setupFixture(): Promise<Fixture> {
   const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-watchdog-sess-repo-'),
+    path.join(os.tmpdir(), 'dokima-watchdog-sess-repo-'),
   );
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-sess-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-sess-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
 

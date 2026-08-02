@@ -7,7 +7,7 @@
  * for, kept independently testable per CODE_BOOK_PROTOCOL.md.
  */
 
-import type { ReceiptRecord } from '@shipwright/events';
+import type { ReceiptRecord } from '@dokima/events';
 import {
   CARD_KINDS,
   type CardKind,

@@ -1,9 +1,9 @@
-# Shipwright — Database Design (SQLite WAL, per project)
+# Dokima — Database Design (SQLite WAL, per project)
 
 Traces to: BLUEPRINT.md §2.3/§3.4/§3.8/§3.10/§3.11, ARCHITECTURE.md §3/§4 law 4/§6,
 DECISIONS.md D-003 (SQLite WAL), D-005 (identity model), D-013 (Fleet). One database file
-per project: **`.shipwright/state.db`** (gitignored — state travels with the repo dir,
-FR-F2); the fleet-level global registry lives in `~/.shipwright/` (§7) and holds no
+per project: **`.dokima/state.db`** (gitignored — state travels with the repo dir,
+FR-F2); the fleet-level global registry lives in `~/.dokima/` (§7) and holds no
 project state. Conventions: `snake_case`; PKs
 `INTEGER PRIMARY KEY` (rowid) unless noted; timestamps ISO-8601 TEXT (UTC); JSON columns
 are TEXT validated by zod contracts in `packages/shared` at the `events` API boundary.
@@ -33,7 +33,7 @@ v1 runs single-operator).
 `id TEXT PK, name TEXT, kind TEXT CHECK(kind IN ('human','machine')),
 auth_provider TEXT NULL (v1: 'local'; v2: 'oidc'|'saml'|…), role TEXT
 ('operator'|'maker'|'reviewer'|'berth'), model_hint TEXT NULL, created_at`.
-Seeded rows: the human operator, `shipwright-maker`, `shipwright-reviewer`, plus one
+Seeded rows: the human operator, `dokima-maker`, `dokima-reviewer`, plus one
 machine identity per berth as berths are created (D-010). Reviewer ≠ maker identity is
 what `accept` checks (BLUEPRINT §3.4).
 
@@ -47,7 +47,7 @@ event carrying the receipt id — the chain proves *when*, the row holds *what*.
 
 ## 3. Projection tables (rebuildable from the log)
 
-Maintained transactionally with their source events; `shipwright rebuild-projections`
+Maintained transactionally with their source events; `dokima rebuild-projections`
 regenerates all of them — a projection is never the only copy of anything except as noted.
 
 **tickets** — contract layer + live status (BLUEPRINT §3.4). Contract fields arrive in
@@ -171,9 +171,9 @@ PK (role, task_type)` — the *project-scope override* of the global preset; eff
 matrix = run > project > global resolution (FR-S1, BLUEPRINT §3.10).
 Provider *credentials are never in any DB or settings file* — secrets live in the OS
 keychain under named refs (SC-06, FR-S2); settings files store the refs, which is what
-makes `.shipwright/settings.json` safe to commit.
+makes `.dokima/settings.json` safe to commit.
 
-## 7. Global registry — `~/.shipwright/global.db` (Fleet scope, D-013)
+## 7. Global registry — `~/.dokima/global.db` (Fleet scope, D-013)
 
 Fleet-level data that is project-independent by definition (ARCHITECTURE §6). Same
 engine, same discipline (WAL, single writer = the core process, additive-first
@@ -196,8 +196,8 @@ migrations). Tables:
   harness_version TEXT, receipt_payload TEXT(JSON), run_at`;
   PK `(model, role, harness_version)`.
 
-Settings *files* (global `~/.shipwright/config.json`, project
-`.shipwright/settings.json`) stay file-backed and inspectable per BLUEPRINT §3.10 — the
+Settings *files* (global `~/.dokima/config.json`, project
+`.dokima/settings.json`) stay file-backed and inspectable per BLUEPRINT §3.10 — the
 DBs never duplicate them; settings changes are audited as `settings.changed` events
 (FR-S3) in the affected project's log (global-scope changes log to every open project's
 feed by reference).
@@ -207,7 +207,7 @@ feed by reference).
 - Numbered SQL files in `packages/events/migrations/NNN_name.sql`; applied in order inside
   a transaction on DB open; `PRAGMA user_version` tracks position. Forward-only — no down
   migrations; a pre-migration backup copy of `state.db` is written to
-  `.shipwright/backups/` first (DEPLOYMENT.md §4).
+  `.dokima/backups/` first (DEPLOYMENT.md §4).
 - **Additive-first**: new columns nullable-or-defaulted; renames = add + backfill + drop
   across separate releases.
 - **Event payloads are versioned independently** of tables: each `event_type` payload

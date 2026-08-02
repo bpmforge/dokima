@@ -2,7 +2,7 @@
 
 export type Theme = 'light' | 'dark';
 
-export const THEME_STORAGE_KEY = 'shipwright.theme';
+export const THEME_STORAGE_KEY = 'dokima.theme';
 
 /** First paint: explicit user choice wins; otherwise follow the OS (`prefers-color-scheme`). */
 export function resolveInitialTheme(

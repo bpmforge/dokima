@@ -6,7 +6,7 @@ import { openGlobalDb, type GlobalDb } from './db.js';
 import { getModelFitness, listModelFitness, putModelFitness } from './model-fitness.js';
 
 async function openTemp(): Promise<{ global: GlobalDb; cleanup: () => Promise<void> }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-model-fitness-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-model-fitness-test-'));
   return {
     global: openGlobalDb(path.join(dir, 'global.db')),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),

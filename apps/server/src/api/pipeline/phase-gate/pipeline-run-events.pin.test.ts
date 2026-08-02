@@ -11,8 +11,8 @@
  * `gate.receipt_minted`/`gate.waived` event in the log).
  */
 import { describe, expect, it } from 'vitest';
-import { listEvents, openEventLog, type EventLog } from '@shipwright/events';
-import type { PipelineRunEvent } from '@shipwright/pipeline';
+import { listEvents, openEventLog, type EventLog } from '@dokima/events';
+import type { PipelineRunEvent } from '@dokima/pipeline';
 import { emitPhaseEvent } from '../pipeline-routes/events.js';
 import { ensureOperatorIdentity } from '../../server/board-actor.js';
 

@@ -3,8 +3,8 @@
 **Status:** proposal, not yet ticketed into `plan.json`.
 **Date:** 2026-08-02. **Author:** planning session.
 
-Three asks, one wave: (1) Shipwright should do what the expert system does,
-and the expert system has moved; (2) Shipwright is a GUI, so it needs a
+Three asks, one wave: (1) Dokima should do what the expert system does,
+and the expert system has moved; (2) Dokima is a GUI, so it needs a
 scribe-grade screenshot tour, not a happy-path slideshow; (3) tests that
 demonstrate the functional surface actually works, mutation-gated rather
 than green-by-construction. A fourth thread — current Claude Code
@@ -19,11 +19,11 @@ run under `scripts/conductor.mjs` per Law 1, not as a free-floating doc.
 ## 0. What the drift actually is (measured, not estimated)
 
 The upstream repo was **renamed**: `bpm-opencode-experts` → **`attest`**
-(commit `1052241`, shipped in v3.0.0). Nothing in Shipwright records this.
+(commit `1052241`, shipped in v3.0.0). Nothing in Dokima records this.
 
 | Fact | Value | How measured |
 |---|---|---|
-| Shipwright `content/` import date | 2026-07-12, `sourceRepo: bpm-opencode-experts` | `content/index.json` |
+| Dokima `content/` import date | 2026-07-12, `sourceRepo: bpm-opencode-experts` | `content/index.json` |
 | Upstream version then | v2.1.0–v2.12.0 era | `~/Code/attest/CHANGELOG.md` |
 | Upstream version now | **v3.1.24** | `~/Code/attest/package.json` |
 | Commits in `v2.12.0..v3.1.24` | **169** (**133** non-merge) | `git rev-list [--no-merges] v2.12.0..v3.1.24` |
@@ -50,14 +50,14 @@ rewrite would have made that number zero, as it did for validators.
 **A defect the measurement surfaced, pre-existing and about to get worse.**
 72 already-imported files hardcode `~/.config/opencode/agents/shared/…`
 and `~/.config/opencode/scripts/validators/…` — a host-install path that
-does not exist under Shipwright. `scripts/import-content.mjs` does no path
+does not exist under Dokima. `scripts/import-content.mjs` does no path
 rewriting (verified: its only `.replace` calls strip comments and file
 extensions). Upstream has grown that to 95 files, so a naive re-import
 makes an existing portability bug 30% worse.
 
 **The signal in that table:** the heavy validator drift is concentrated
 in exactly the gate machinery — completion-manifest, handoff-discipline,
-scope, tickets, phase-gate. That is the trust core Shipwright reimplements
+scope, tickets, phase-gate. That is the trust core Dokima reimplements
 in TypeScript (`packages/tickets`, `packages/loop`, `packages/harbormaster`,
 `packages/validators`). So parity is **not** a data refresh. It is a data
 refresh *plus* an engine question, and the two must be sized separately.
@@ -77,7 +77,7 @@ Its write_scope is inside imported content, which is why ROADMAP calls it
 "blocked on a content re-sign, not on code." **Upstream has not fixed it**
 — attest's current `validate-mermaid.sh` still has `validator_exit` only as
 a comment (line 329), and diffs clean against our copy. So the fix is
-Shipwright-local, and a re-import run *after* W9-08 would silently clobber
+Dokima-local, and a re-import run *after* W9-08 would silently clobber
 it. W10-02 must therefore ship a local-override registry (or W9-08 lands
 after W10-03 and is re-applied on top). Either way it is an explicit
 sequencing decision, not something to discover at merge time.
@@ -99,7 +99,7 @@ SHA list of the commits that make it up.
 Classify every change into exactly one bucket:
 
 - **C — content-only.** A prompt/agent/protocol edit. Fixed by re-import.
-- **E — needs Shipwright code.** A mechanic Shipwright reimplements in TS.
+- **E — needs Dokima code.** A mechanic Dokima reimplements in TS.
 - **N — no analogue.** An attest-internal implementation detail (its own
   build scripts, its `dist/` generation, its opencode packaging).
 
@@ -107,7 +107,7 @@ Each **E** row names a real target path in `packages/*` and a proposed
 ticket. Known E-bucket candidates from the changelog, to be confirmed or
 demoted by the matrix:
 
-| Upstream | Change | Likely Shipwright target |
+| Upstream | Change | Likely Dokima target |
 |---|---|---|
 | v2.39.0 | verify-receipt: the agent no longer authors its own pass/fail | `packages/loop`, `packages/tickets` — already C-4 law here; confirm parity |
 | v2.42.0 | declared invariants + bounded review packets | `packages/loop` |
@@ -148,9 +148,9 @@ Un-break the importer, four changes:
    `bpm-opencode-experts` as a documented alias so existing headers stay
    explicable.
 3. **Host-path portability** — rewrite `~/.config/opencode/…` references to
-   Shipwright's content-relative form at import time (§0: 72 files today,
+   Dokima's content-relative form at import time (§0: 72 files today,
    95 upstream).
-4. **Local-override registry** — files Shipwright has patched locally
+4. **Local-override registry** — files Dokima has patched locally
    (`validate-mermaid.sh` per W9-08) are re-applied after import, or the
    import refuses and names them. Silent clobber is the failure mode.
 
@@ -194,7 +194,7 @@ red the new test. Verified by reverting the parser, not by reading it.
 
 Upstream ships **43 skills + 6 commands**; `content/` carries no skills
 tier at all. W10-01's matrix decides whether that is a gap or a non-goal
-(Shipwright's pipeline phases may already subsume them). Either outcome is
+(Dokima's pipeline phases may already subsume them). Either outcome is
 acceptable — but it gets **written down** in `docs/NON_GOALS.md` if it is a
 non-goal, rather than remaining an unexamined absence.
 
@@ -236,7 +236,7 @@ later artifact is graded against.**
 Upstream tooling status, checked: `skills/user-guide/scripts/img-gate.mjs`
 and `annotate.mjs` **exist and are tested** (T21.2 — portable, deps `sharp`
 + `pixelmatch`). The spec-replay runner (T21.3) and
-`validate-guide-coverage.sh` (T21.4) **do not exist upstream** — Shipwright
+`validate-guide-coverage.sh` (T21.4) **do not exist upstream** — Dokima
 would build them first.
 
 ### W10-10 · 8 pts · deps: none (parallel with Phase B)
@@ -257,7 +257,7 @@ skipped-with-reason. That's a deterministic check.
 ### W10-11 · 8 pts · deps: none
 **write_scope:** `apps/web/scripts/guide/**`
 
-Capture tooling. Port `img-gate.mjs` + `annotate.mjs` under Shipwright's own
+Capture tooling. Port `img-gate.mjs` + `annotate.mjs` under Dokima's own
 provenance discipline, then build what upstream lacks: the **replayable spec
 runner** — `docs/guide/specs/<task>.json`, one action per step, re-runnable
 with `--refresh`. Gates per `GUIDE_CAPTURE.md` §3:
@@ -282,7 +282,7 @@ must trip Gate C. A gate that cannot be made to fail is not a gate.
 
 Execute the capture over every story. Triage every Gate-B trip **before
 proceeding**: bug (→ `BUG_LOG.md` row + excluded from the manual + a real
-Shipwright ticket) / documented error state (→ Troubleshooting chapter) /
+Dokima ticket) / documented error state (→ Troubleshooting chapter) /
 suspect (→ documented **and** `⚠ suspect` row). Never resolve ambiguity
 silently.
 
@@ -324,12 +324,12 @@ from the guide, or is retired in its favor.
 
 **Design constraint stated up front (Law 9 / C-1):** every item here is a
 **gateway adapter plus recorded fixtures**. No test makes a live model call;
-no Shipwright component becomes model-agentic. "Make it agentic" framings
+no Dokima component becomes model-agentic. "Make it agentic" framings
 are out of scope by construction.
 
 Current surface, verified against the official changelog (see §7):
 
-| Capability | Version | Why Shipwright cares |
+| Capability | Version | Why Dokima cares |
 |---|---|---|
 | `--forward-subagent-text` / `CLAUDE_CODE_FORWARD_SUBAGENT_TEXT` | v2.1.211 | subagent text + thinking in stream-json — the **session-trace viewer** currently sees nothing from nested work |
 | `mcp_server_errors` in the stream-json init event | v2.1.219 | a skipped `--mcp-config` entry is currently a silent capability loss mid-run |
@@ -428,9 +428,9 @@ The only production model-call path in the product is
 ```ts
 export function resolveGatewayConfigFromEnv(env = process.env): GatewayConfig {
   return {
-    baseUrl: env.SHIPWRIGHT_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
-    apiKey:  env.SHIPWRIGHT_MODEL_API_KEY,
-    model:   env.SHIPWRIGHT_MODEL_ID ?? 'local-model',
+    baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
+    apiKey:  env.DOKIMA_MODEL_API_KEY,
+    model:   env.DOKIMA_MODEL_ID ?? 'local-model',
   };
 }
 ```
@@ -472,7 +472,7 @@ string into the matrix, and the pipeline will call `localhost:1234` with
 endpoint, a `models` map of model-id → display config, the **models.dev**
 registry supplying metadata for 75+ providers, and a `/models` runtime
 picker. Ollama and LM Studio are the same config shape with different
-`baseURL`s. Shipwright already has the adapter equivalent of all of this;
+`baseURL`s. Dokima already has the adapter equivalent of all of this;
 what it lacks is the registry, the picker, and the wire.
 
 ### Design forks to settle before ticketing (not deferrable)
@@ -610,7 +610,7 @@ attest separates these agents for exactly this reason.
 `write_scope: docs/uat/**`, `apps/web/e2e/journeys/**`
 Goal-completion journeys, not element coverage. Minimum set:
 
-1. *"Point Shipwright at my local LM Studio and run a ticket through it."*
+1. *"Point Dokima at my local LM Studio and run a ticket through it."*
 2. *"Onboard an existing repo and get to a board I can claim from."*
 3. *"Review overnight work and accept one ticket."*
 4. *"Understand why a ticket was refused and fix it."*
@@ -715,7 +715,7 @@ decision depends on. Phases B, C, E, F then get scoped against real numbers.
 `validate-guide-coverage.mjs` joins the workspace gate (W10-13) — cheap,
 no browser. The guide **capture** run does not; it triggers on
 `apps/web/src/**` changes via `--refresh`, and fully at wave close. The
-existing gate (`lint && typecheck && test` + `--filter @shipwright/web e2e`,
+existing gate (`lint && typecheck && test` + `--filter @dokima/web e2e`,
 ~30s for e2e) is otherwise unchanged.
 
 ### Cross-lane write_scope check (Law 1)

@@ -2,7 +2,7 @@
  * Code-index audit events (FR-M4: "agent code_search calls are audited
  * events"). Same injectable-sink constraint as `consolidation/events.ts`/
  * `gateway/budget/events.ts`: this package can't depend on
- * `@shipwright/events` (no `package.json` dependency declared within this
+ * `@dokima/events` (no `package.json` dependency declared within this
  * ticket's write_scope), so events are minted here and handed to a
  * caller-supplied sink wired to the real event log elsewhere.
  *

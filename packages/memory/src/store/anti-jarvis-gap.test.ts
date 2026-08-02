@@ -2,7 +2,7 @@
  * The anti-Jarvis-gap test (source-system-foreman-jarvis.md §5's
  * "cautionary tale": a mature memory engine that's never wired into the
  * loop recalls 0 times and is worth nothing). `packages/memory` may not
- * statically import `@shipwright/loop` (ARCHITECTURE.md §4 — loop depends
+ * statically import `@dokima/loop` (ARCHITECTURE.md §4 — loop depends
  * on memory, never the reverse) or declare it as a dependency (this
  * ticket's write_scope has no `package.json` to add it under), so this
  * test dynamically imports the REAL loop package by absolute `file://` URL

@@ -2,12 +2,12 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openGlobalDb, type GlobalDb } from '@shipwright/events';
+import { openGlobalDb, type GlobalDb } from '@dokima/events';
 import { FitnessCardStore } from './store.js';
 import type { FitnessCard } from './types.js';
 
 async function openTemp(): Promise<{ global: GlobalDb; cleanup: () => Promise<void> }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-fitness-store-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-fitness-store-test-'));
   return {
     global: openGlobalDb(path.join(dir, 'global.db')),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),

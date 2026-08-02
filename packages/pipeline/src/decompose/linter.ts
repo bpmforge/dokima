@@ -9,7 +9,7 @@ function interfaceKey(ref: InterfaceRef): string {
  * Seam lesson #1 (field report §10, the W0-08 class): a ticket whose
  * deliverable imports a workspace sibling can only declare that dependency
  * if its own write_scope covers its own package's `package.json` — W0-08
- * needed `@shipwright/{events,tickets,shared}` in `apps/server/package.json`
+ * needed `@dokima/{events,tickets,shared}` in `apps/server/package.json`
  * but its write_scope was only `apps/server/src/cli/**` and could not add
  * its own dependency. Doc-only tickets (`ownPackage === null`) are exempt.
  */

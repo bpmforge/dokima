@@ -3,6 +3,6 @@ import { APP_NAME } from './index.js';
 
 describe('apps/web placeholder', () => {
   it('exports the app name', () => {
-    expect(APP_NAME).toBe('Shipwright');
+    expect(APP_NAME).toBe('Dokima');
   });
 });

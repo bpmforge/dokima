@@ -1,8 +1,8 @@
 /**
  * Fleet REST client (API_DESIGN §1/§2 "projects & runs"). The server
  * auto-injects the bearer token into the served `index.html` as
- * `window.__SHIPWRIGHT_TOKEN__` (server.ts's `injectToken`) — a browser
- * page has no other way to read `~/.shipwright/token` (SC-08).
+ * `window.__DOKIMA_TOKEN__` (server.ts's `injectToken`) — a browser
+ * page has no other way to read `~/.dokima/token` (SC-08).
  */
 
 import type { CreateProjectInput, ProjectBoardStats, ProjectCard } from './types.js';
@@ -50,7 +50,7 @@ export class FleetApiError extends Error {
 }
 
 export function readInjectedToken(): string | undefined {
-  return (globalThis as { __SHIPWRIGHT_TOKEN__?: string }).__SHIPWRIGHT_TOKEN__;
+  return (globalThis as { __DOKIMA_TOKEN__?: string }).__DOKIMA_TOKEN__;
 }
 
 export interface FleetApiOptions {

@@ -1,5 +1,5 @@
 {
-  "name": "@shipwright/validators",
+  "name": "@dokima/validators",
   "private": true,
   "type": "module",
   "version": "0.0.0",
@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shipwright/events": "workspace:*",
+    "@dokima/events": "workspace:*",
     "execa": "^9.6.1",
     "zod": "^4.4.1"
   }

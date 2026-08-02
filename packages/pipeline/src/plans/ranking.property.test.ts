@@ -9,7 +9,7 @@ import type { PlanItemRecord } from './types.js';
  * documents: no declared workspace/dev dependency ⇒ no symlink in
  * `packages/pipeline/node_modules` ⇒ `tsc`/`vitest` can't resolve it —
  * confirmed empirically here the same way W5-01 confirmed it for
- * `@shipwright/*`). This hand-rolled seeded PRNG (mulberry32, deterministic
+ * `@dokima/*`). This hand-rolled seeded PRNG (mulberry32, deterministic
  * given a fixed seed — no `Math.random()`) gives the same property-testing
  * guarantee — many generated cases checked against an invariant, shrink-free
  * — without the dependency. A future ticket that DOES own package.json can

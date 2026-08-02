@@ -7,9 +7,9 @@ export interface TempProject {
   cleanup: () => Promise<void>;
 }
 
-/** A throwaway project directory (no `.shipwright/` yet) for CLI integration tests. */
+/** A throwaway project directory (no `.dokima/` yet) for CLI integration tests. */
 export async function createTempProject(): Promise<TempProject> {
-  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-cli-test-'));
+  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-cli-test-'));
   return {
     cwd,
     cleanup: () => fs.rm(cwd, { recursive: true, force: true }),

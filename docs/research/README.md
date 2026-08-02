@@ -1,4 +1,4 @@
-# Research — Shipwright's founding research path
+# Research — Dokima's founding research path
 
 This directory is the dogfood of FR-P8 (the research path): every major
 design decision in `docs/BLUEPRINT.md` traces to a cited study here.
@@ -13,7 +13,7 @@ Provenance: all three are primary-source studies of Brad Matthews' internal
 repos (`bpm-opencode-experts`, `bpm-agent-amplifier`, `ai-assistant-agent`),
 conducted 2026-07-10 by independent exploration agents with file:line
 citations. Per D-008 these repos are *research inputs*, not dependencies —
-the reports are the durable record so Shipwright never needs to read them
+the reports are the durable record so Dokima never needs to read them
 again.
 
 Standing rule for future entries (from FR-P8): cited claims only, tiered

@@ -9,7 +9,7 @@ import { createProjectSecretsVault } from './vault.js';
 let tmpDirs: string[] = [];
 
 async function mkTmp(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-secret-values-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-secret-values-test-'));
   tmpDirs.push(dir);
   return dir;
 }
@@ -24,7 +24,7 @@ describe('collectSecretValues', () => {
     const home = await mkTmp();
     const projectDir = await mkTmp();
     const vault = createProjectSecretsVault(createInMemoryCredentialStore(), projectDir, {
-      SHIPWRIGHT_HOME: home,
+      DOKIMA_HOME: home,
     });
     await vault.register('forge-token', 'vault-secret-value');
     await fs.writeFile(path.join(projectDir, '.env'), 'DB_PASSWORD=env-secret-value\n');
@@ -37,7 +37,7 @@ describe('collectSecretValues', () => {
     const home = await mkTmp();
     const projectDir = await mkTmp();
     const vault = createProjectSecretsVault(createInMemoryCredentialStore(), projectDir, {
-      SHIPWRIGHT_HOME: home,
+      DOKIMA_HOME: home,
     });
     await vault.register('a', 'only-secret');
 

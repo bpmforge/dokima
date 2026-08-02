@@ -2,8 +2,8 @@
  * Local port types for the research path (BLUEPRINT §3.2/§3.8, FR-P8, US-105).
  *
  * `ClaimVerdict`/`ClaimVerdictResult` are imported directly from `../challenger/` — that
- * module lives in this same package (`@shipwright/pipeline`), so no workspace-dependency
- * wall applies (unlike the `@shipwright/events`/`@shipwright/loop` primitives `../phases/
+ * module lives in this same package (`@dokima/pipeline`), so no workspace-dependency
+ * wall applies (unlike the `@dokima/events`/`@dokima/loop` primitives `../phases/
  * types.ts` and `../challenger/rerun.ts` had to mirror locally). This is the actual
  * "challenger wiring" FR-P8 asks for: a research claim's Challenger outcome is the real
  * W5-06 `ClaimVerdictResult`, not a duplicated shape.

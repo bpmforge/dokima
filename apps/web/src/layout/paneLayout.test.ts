@@ -23,8 +23,8 @@ describe('clampPaneSize', () => {
 
 describe('paneLayoutStorageKey', () => {
   it('namespaces the key per project id', () => {
-    expect(paneLayoutStorageKey('proj-a')).toBe('shipwright.paneLayout.proj-a');
-    expect(paneLayoutStorageKey('proj-b')).toBe('shipwright.paneLayout.proj-b');
+    expect(paneLayoutStorageKey('proj-a')).toBe('dokima.paneLayout.proj-a');
+    expect(paneLayoutStorageKey('proj-b')).toBe('dokima.paneLayout.proj-b');
   });
 });
 

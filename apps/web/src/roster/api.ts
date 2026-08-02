@@ -1,7 +1,7 @@
 /**
  * Roster REST client (API_DESIGN §"roster & feedback"). Same
  * bearer-token-injected-by-the-SPA discipline as `fleet/api.ts` — the
- * token comes from `window.__SHIPWRIGHT_TOKEN__`, never fetched over an
+ * token comes from `window.__DOKIMA_TOKEN__`, never fetched over an
  * unauthenticated endpoint (SC-08).
  */
 

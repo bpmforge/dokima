@@ -26,7 +26,7 @@
  * / `run-*` / `secrets-scan`, `pack.ts`'s own discovery pattern — the
  * codebase's existing definition of "a validator", reused here rather than
  * inventing a second one), but two of them (`secrets-scan.sh`, W3-13;
- * `validate-remote-parity.sh`, FR-I2) are natively Shipwright-authored, not
+ * `validate-remote-parity.sh`, FR-I2) are natively Dokima-authored, not
  * part of the bpm-opencode-experts import (no `Provenance:` header, unlike
  * every one of the other 76 — `coverage-manifest.test.ts` re-derives this
  * split from disk at test time and asserts it). AC2 asks for "the imported
@@ -126,7 +126,7 @@ const GATE_ANTI_SLOP_RULE_IDS: ReadonlySet<string> = new Set([
 const SHADOW_ANTI_SLOP_RULE_IDS: ReadonlySet<string> = new Set(['R-30']);
 
 /** The 76 validators imported from bpm-opencode-experts (provenance-headed) —
- * excludes the 2 natively Shipwright-authored scripts (`secrets-scan`,
+ * excludes the 2 natively Dokima-authored scripts (`secrets-scan`,
  * `validate-remote-parity`); see header + coverage-manifest.test.ts. */
 const VALIDATOR_NAMES: readonly string[] = [
   'run-coverage-loop',

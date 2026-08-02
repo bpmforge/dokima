@@ -8,7 +8,7 @@ import {
   openEventLog,
   openGlobalDb,
   putModelFitness,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { buildApiServer, type ApiServer } from './server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -28,7 +28,7 @@ const CLEAN_EXPERT = [
 ].join('\n');
 
 async function writeFixtureContentDir(dirs: string[]): Promise<string> {
-  const contentDir = await tmpDir('shipwright-roster-fixture-content-');
+  const contentDir = await tmpDir('dokima-roster-fixture-content-');
   dirs.push(contentDir);
   await fs.mkdir(path.join(contentDir, 'coordinators'), { recursive: true });
   await fs.writeFile(
@@ -58,7 +58,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
   async function boot(
     rosterContentDir: string,
   ): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-roster-routes-');
+    const fleetHome = await tmpDir('dokima-roster-routes-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -115,7 +115,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
 
   it('resolves against the global config when no project is given (winning scope: global)', async () => {
     const contentDir = await writeFixtureContentDir(dirs);
-    const fleetHome = await tmpDir('shipwright-roster-global-');
+    const fleetHome = await tmpDir('dokima-roster-global-');
     dirs.push(fleetHome);
     await fs.writeFile(
       path.join(fleetHome, 'config.json'),
@@ -161,7 +161,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
     );
     const { id, projectDir } = await registerProject(app, fleetHome, 'proj-a');
     await fs.writeFile(
-      path.join(projectDir, '.shipwright', 'settings.json'),
+      path.join(projectDir, '.dokima', 'settings.json'),
       JSON.stringify({
         'roleMatrix.sdlc-lead': {
           default: { model: 'project-model', fallbackChain: ['fb'] },
@@ -185,7 +185,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
 
   it('surfaces a fitness card only for the configured model, not every model this role has ever been benched on', async () => {
     const contentDir = await writeFixtureContentDir(dirs);
-    const fleetHome = await tmpDir('shipwright-roster-fitness-wired-');
+    const fleetHome = await tmpDir('dokima-roster-fitness-wired-');
     dirs.push(fleetHome);
     await fs.writeFile(
       path.join(fleetHome, 'config.json'),
@@ -244,7 +244,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
   });
 
   it('refuses roster content with a hardcoded model id, naming the violated rule (FR-E2)', async () => {
-    const contentDir = await tmpDir('shipwright-roster-poisoned-content-');
+    const contentDir = await tmpDir('dokima-roster-poisoned-content-');
     dirs.push(contentDir);
     await fs.writeFile(
       path.join(contentDir, 'poisoned.md'),
@@ -298,7 +298,7 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
       const { app, fleetHome } = await boot(contentDir);
       const { id, projectDir } = await registerProject(app, fleetHome, 'proj-hist');
 
-      const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+      const dbPath = path.join(projectDir, '.dokima', 'state.db');
       const log = openEventLog(dbPath);
       createIdentity(log, { id: 'sdlc-lead', name: 'SDLC Lead', kind: 'machine' });
       appendEvent(log, {

@@ -8,7 +8,7 @@ import {
 } from './index.js';
 import { createTempDbPath, type TempDb } from './test-helpers.js';
 
-describe('@shipwright/events public API', () => {
+describe('@dokima/events public API', () => {
   let temp: TempDb;
 
   afterEach(async () => {

@@ -10,7 +10,7 @@ import {
 } from './index.js';
 
 afterEach(() => {
-  delete process.env.SHIPWRIGHT_DIST_ROOT;
+  delete process.env.DOKIMA_DIST_ROOT;
   resetDistributionRootCache();
 });
 
@@ -20,7 +20,7 @@ describe('distributionRoot (W9-13)', () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
     ) as { name: string };
-    expect(manifest.name).toBe('shipwright');
+    expect(manifest.name).toBe('dokima');
   });
 
   it('resolves the assets the bundled run actually died on', () => {
@@ -32,7 +32,7 @@ describe('distributionRoot (W9-13)', () => {
     expect(fs.existsSync(resolveAsset('content', 'validators'))).toBe(true);
   });
 
-  it('walks PAST @shipwright/* package manifests rather than stopping at the first package.json', () => {
+  it('walks PAST @dokima/* package manifests rather than stopping at the first package.json', () => {
     // This module lives in packages/shared, which has its own package.json. If
     // the probe stopped at the nearest manifest it would answer packages/shared
     // and every asset path would be wrong -- silently, since the join still
@@ -42,21 +42,21 @@ describe('distributionRoot (W9-13)', () => {
     expect(fs.existsSync(path.join(root, 'pnpm-workspace.yaml'))).toBe(true);
   });
 
-  it('honours SHIPWRIGHT_DIST_ROOT, so an unusual install can override the probe', () => {
+  it('honours DOKIMA_DIST_ROOT, so an unusual install can override the probe', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sw-root-'));
-    process.env.SHIPWRIGHT_DIST_ROOT = tmp;
+    process.env.DOKIMA_DIST_ROOT = tmp;
     expect(distributionRoot()).toBe(path.resolve(tmp));
     expect(resolveAsset('content', 'experts')).toBe(path.join(tmp, 'content', 'experts'));
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
   it('throws a named, actionable error when no root manifest is above it', () => {
-    // Proven by pointing the override at a directory tree with no shipwright
+    // Proven by pointing the override at a directory tree with no dokima
     // manifest is not enough -- the override short-circuits the probe. Assert
     // the error type is exported and carries the override hint instead.
     const err = new DistributionRootNotFoundError('/nowhere');
     expect(err.name).toBe('DistributionRootNotFoundError');
-    expect(err.message).toContain('SHIPWRIGHT_DIST_ROOT');
+    expect(err.message).toContain('DOKIMA_DIST_ROOT');
     expect(err.message).toContain('/nowhere');
   });
 });

@@ -1,9 +1,9 @@
 /**
  * Proves `prepareValidatorFixTicket`'s payload is accepted by the REAL
- * `@shipwright/tickets` `createTicket` (`packages/tickets/src/create.ts`,
+ * `@dokima/tickets` `createTicket` (`packages/tickets/src/create.ts`,
  * `CreateTicketInput`) — dynamically imported by absolute `file://` URL,
  * same technique as `../playbook/promote.test.ts`, since `packages/memory`
- * can't statically depend on `@shipwright/tickets` (ARCHITECTURE §4, this
+ * can't statically depend on `@dokima/tickets` (ARCHITECTURE §4, this
  * ticket's write_scope has no `package.json` to declare it under).
  */
 import path from 'node:path';
@@ -72,7 +72,7 @@ async function loadTicketsPackage(): Promise<TicketsModules> {
 
 const NOW = () => '2026-07-20T12:00:00.000Z';
 
-describe('prepareValidatorFixTicket -> the real @shipwright/tickets createTicket', () => {
+describe('prepareValidatorFixTicket -> the real @dokima/tickets createTicket', () => {
   it('a prepared payload creates a real bug ticket with the field report evidence in acceptance', async () => {
     const handle = createTestHandle();
     const report = fileFieldReport(

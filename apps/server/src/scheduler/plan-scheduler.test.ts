@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createIdentity, openEventLog, openEventLogReader } from '@shipwright/events';
-import { completeRun, createRun } from '@shipwright/harbormaster';
+import { createIdentity, openEventLog, openEventLogReader } from '@dokima/events';
+import { completeRun, createRun } from '@dokima/harbormaster';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   acceptPlanItem,
@@ -33,7 +33,7 @@ vi.mock('../api/plans-store.js', async (importOriginal) => {
 });
 
 async function tmpFleetHome(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-plan-scheduler-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-plan-scheduler-'));
 }
 
 /** Flags 'R-DEMO' as a demotion-flagged `gate` rule via the real rule_state lifecycle (PC-005's live source). */
@@ -55,7 +55,7 @@ async function appendRunEvent(
   mode: 'improve' | 'feature',
   complete: boolean,
 ): Promise<void> {
-  const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+  const dbPath = path.join(projectDir, '.dokima', 'state.db');
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
   const log = openEventLog(dbPath);
   try {

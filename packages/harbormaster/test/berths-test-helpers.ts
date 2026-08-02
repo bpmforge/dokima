@@ -1,6 +1,6 @@
 /**
  * Shared randomized-testing helpers for the berths suite. `fast-check` is
- * a devDependency of `@shipwright/events`/`@shipwright/tickets` only —
+ * a devDependency of `@dokima/events`/`@dokima/tickets` only —
  * out of this ticket's write_scope to add to
  * `packages/harbormaster/package.json` — so property-style coverage here
  * uses a small seeded PRNG instead: deterministic per run (failures

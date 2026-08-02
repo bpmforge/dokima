@@ -19,7 +19,7 @@ import {
   type TechnicalSlate,
   type TechnicalSlateInput,
   type TicketDraftInput,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import type { RealGatewayPort } from '../gateway-model-port.js';
 import { BUILD_PHASE_ID } from './events.js';
 import type { RunPipelineRequestBody } from './request-body.js';

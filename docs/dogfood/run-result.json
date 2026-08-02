@@ -34,7 +34,7 @@
     "landscape": {
       "stepId": "landscape",
       "role": "landscape-mapper",
-      "summary": "The codebase follows the Shipwright conventions with clear separation of server, web, and shared layers. Core modules for decisions, auth, and export bundles are present and enforce SC‑08 and D‑005 rules. However, the decision ledger uses synchronous file I/O without transactional safety, export bundle verification omits receipt signature checks, and auth enforcement can be sidestepped by new route files. Addressing these issues will strengthen gate integrity and prevent state corruption.",
+      "summary": "The codebase follows the Dokima conventions with clear separation of server, web, and shared layers. Core modules for decisions, auth, and export bundles are present and enforce SC‑08 and D‑005 rules. However, the decision ledger uses synchronous file I/O without transactional safety, export bundle verification omits receipt signature checks, and auth enforcement can be sidestepped by new route files. Addressing these issues will strengthen gate integrity and prevent state corruption.",
       "findings": [
         {
           "title": "Decision ledger writes are not atomic across concurrent requests",
@@ -57,7 +57,7 @@
         {
           "title": "Export bundle version constant appears in multiple files causing potential skew",
           "severity": "LOW",
-          "recommendation": "Consolidate the version definition into a single shared module (e.g., @shipwright/export-bundle/constants) and update all imports.",
+          "recommendation": "Consolidate the version definition into a single shared module (e.g., @dokima/export-bundle/constants) and update all imports.",
           "verify": "Run the repository's lint script and ensure no duplicate definitions of EXPORT_BUNDLE_VERSION remain."
         }
       ],
@@ -94,7 +94,7 @@
         {
           "title": "Export bundle version constant appears in multiple files causing potential skew",
           "severity": "LOW",
-          "recommendation": "Consolidate the version definition into a single shared module (e.g., `@shipwright/export-bundle/constants`) and update all imports to reference that module. This eliminates the risk of divergent version numbers across the codebase.",
+          "recommendation": "Consolidate the version definition into a single shared module (e.g., `@dokima/export-bundle/constants`) and update all imports to reference that module. This eliminates the risk of divergent version numbers across the codebase.",
           "verify": "Run the repository's lint script and verify that no file defines or imports `EXPORT_BUNDLE_VERSION` directly; all references should resolve to the shared constant."
         }
       ],
@@ -156,7 +156,7 @@
         {
           "title": "Export bundle version constant appears in multiple files causing potential skew",
           "severity": "LOW",
-          "recommendation": "Consolidate the version definition into a single shared module (e.g., `@shipwright/export-bundle/constants`) and update all imports. This eliminates the risk of divergent version numbers across the codebase.",
+          "recommendation": "Consolidate the version definition into a single shared module (e.g., `@dokima/export-bundle/constants`) and update all imports. This eliminates the risk of divergent version numbers across the codebase.",
           "verify": "Run the repository's lint script and ensure no file defines or imports `EXPORT_BUNDLE_VERSION` directly; all references should resolve to the shared constant."
         }
       ],
@@ -306,7 +306,7 @@
     "security-secrets": {
       "stepId": "security-secrets",
       "role": "secrets-scanner",
-      "summary": "The repository does not contain obvious hard‑coded secrets such as passwords, API keys, or signing certificates in the source files that were examined. The only potential secret artifact is a `.npmrc` file which commonly stores an npm registry authentication token. No other files reference external credentials, and the codebase follows the Shipwright security conventions (e.g., SC‑08 host/origin checks, D‑005 bearer token enforcement).",
+      "summary": "The repository does not contain obvious hard‑coded secrets such as passwords, API keys, or signing certificates in the source files that were examined. The only potential secret artifact is a `.npmrc` file which commonly stores an npm registry authentication token. No other files reference external credentials, and the codebase follows the Dokima security conventions (e.g., SC‑08 host/origin checks, D‑005 bearer token enforcement).",
       "findings": [
         {
           "title": "Potential hard‑coded npm registry token in .npmrc",

@@ -30,7 +30,7 @@ export interface PlaybookConsultResult {
 
 /**
  * The shape of a promoted row this package needs to consult — reproduced
- * rather than imported from `@shipwright/events`' `GlobalPlaybookRecord`
+ * rather than imported from `@dokima/events`' `GlobalPlaybookRecord`
  * (`packages/events/src/global-db/global-playbook.ts`), same cross-package
  * constraint documented throughout this module. The caller is responsible
  * for reading the real global_playbook table (this package can't open a DB

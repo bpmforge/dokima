@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, type EventLog } from '@shipwright/events';
-import { createTicket } from '@shipwright/tickets';
+import { createIdentity, type EventLog } from '@dokima/events';
+import { createTicket } from '@dokima/tickets';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { runCli } from './run.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';

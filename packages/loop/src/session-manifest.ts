@@ -17,7 +17,7 @@ export interface CompletionManifest {
   readonly commits: readonly string[];
   readonly evidence: readonly string[];
   /**
-   * What this session persisted to `@shipwright/memory` (e.g. `fact:42`),
+   * What this session persisted to `@dokima/memory` (e.g. `fact:42`),
    * an untrusted claim like every other manifest field. R-G2 (the v2.5.0
    * library lesson: 44/45 agents silently skipped write-back until it was
    * manifest-gated): omitted for roles that aren't memory-eligible; the

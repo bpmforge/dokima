@@ -19,7 +19,7 @@ import {
   listEvents,
   type EventLog,
   type EventRecord,
-} from '@shipwright/events';
+} from '@dokima/events';
 import type { ConflictDetection } from './conflict-types.js';
 
 export interface MintConflictEventOptions {
@@ -117,7 +117,7 @@ export function mintConflictParked(
  * event lands for `ticketId` until a `conflict.rebased`/`conflict.parked`
  * event resolves it — durable and rebuildable from the log (CLAUDE.md law
  * 7), the same "no separate stored flag, recompute from the log" discipline
- * `@shipwright/tickets`' `reflow.ts` uses for `blocked`. A caller wiring a
+ * `@dokima/tickets`' `reflow.ts` uses for `blocked`. A caller wiring a
  * running micro-loop to this (out of this ticket's write_scope,
  * `packages/loop`) checks it between passes exactly the way
  * `loop-killswitch.ts`'s `StopSwitch` is checked between tickets.

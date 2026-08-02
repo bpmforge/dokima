@@ -5,7 +5,7 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { JsonValue } from '@shipwright/shared';
+import type { JsonValue } from '@dokima/shared';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
 import { getProjectSettings, putProjectSetting } from './settings-scope.js';
 import {

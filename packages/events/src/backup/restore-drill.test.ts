@@ -77,7 +77,7 @@ describe('restore drill', () => {
     await restoreFromBackup(backupPath, temp.dbPath);
 
     // Real audit verify, on the restored file: integrity_check + the actual
-    // hash-chain walk (the same primitive `shipwright verify-chain` reports).
+    // hash-chain walk (the same primitive `dokima verify-chain` reports).
     const restoredDb = openEventLogReader(temp.dbPath);
     try {
       expect(restoredDb.pragma('integrity_check', { simple: true })).toBe('ok');

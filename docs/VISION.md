@@ -1,4 +1,4 @@
-# Shipwright — Vision
+# Dokima — Vision
 
 Traces to: `docs/BLUEPRINT.md` (§0–§1, §11) and founder decisions D-001, D-003–D-010.
 This document restates direction; it does not re-open any locked decision.
@@ -20,9 +20,9 @@ development on a stack that cannot be trusted or afforded end-to-end:
    product manager in the loop turning an idea into vision, scope, requirements, a
    threat model, and a dependency-ordered plan before the first ticket executes.
 
-## The Shipwright answer
+## The Dokima answer
 
-Shipwright is a **local-first, human-in-the-loop platform** that takes an idea to a
+Dokima is a **local-first, human-in-the-loop platform** that takes an idea to a
 shipped product (D-003: Node 22/TS/Fastify/SQLite/React, one install, offline-capable
 against local models). It acts as your PM and your agentic dev crew: a guided
 six-phase SDLC program, expert agents on per-item micro-loops, a native Kanban board
@@ -57,9 +57,9 @@ delegation all become safe.
 
 Expanded in USER_PERSONAS.md; summary from BLUEPRINT §1.2:
 
-| Persona | Need Shipwright serves |
+| Persona | Need Dokima serves |
 |---|---|
-| P1 Solo builder / indie hacker | An idea and no team — Shipwright is the PM, architect, security reviewer, and dev crew. |
+| P1 Solo builder / indie hacker | An idea and no team — Dokima is the PM, architect, security reviewer, and dev crew. |
 | P2 Professional dev | The discipline (gates, threat model, coverage) without the ceremony; agents do bulk work under supervision. |
 | P3 Small team lead | Replaces Jira + GitHub + scattered AI extensions with one surface where agents and humans share the same board. |
 | P4 Local-LLM enthusiast | Maximum work from owned hardware, frontier spend only where receipts prove it's needed. |
@@ -89,7 +89,7 @@ Expanded in USER_PERSONAS.md; summary from BLUEPRINT §1.2:
 4. **The economics are visible:** role→model matrix with Copilot + Vertex among the
    providers (D-007), escalation events ledgered per ticket, dry-run cost estimate
    before autorun.
-5. **Dogfood gate (W8):** Shipwright runs its own pipeline on itself — threat model,
+5. **Dogfood gate (W8):** Dokima runs its own pipeline on itself — threat model,
    security suite, a11y — and the receipts ship with the release.
 6. **Onboarding proves it:** the guided first-fifteen-minutes sample project runs the
    whole lifecycle in miniature on local-or-cheap models.
@@ -98,22 +98,22 @@ Expanded in USER_PERSONAS.md; summary from BLUEPRINT §1.2:
 
 Full landscape in COMPETITIVE_ANALYSIS.md.
 
-- vs Jira/Linear + Copilot stacks: they track *or* act; Shipwright is one canvas
+- vs Jira/Linear + Copilot stacks: they track *or* act; Dokima is one canvas
   where chat, board, and artifacts are projections of one execution state.
 - vs Devin/Factory-class autonomous agents: they ask you to trust the agent;
-  Shipwright assumes agents are untrusted and shows receipts (C-2, C-3).
-- vs OpenHands/SWE-agent OSS: they execute tasks; Shipwright runs the whole program
+  Dokima assumes agents are untrusted and shows receipts (C-2, C-3).
+- vs OpenHands/SWE-agent OSS: they execute tasks; Dokima runs the whole program
   — PM interview, gates, board, budget — around execution.
 - vs Cursor/Claude Code-class IDE agents: they live in the editor session;
-  Shipwright is the out-of-session conductor that survives the session ending.
+  Dokima is the out-of-session conductor that survives the session ending.
 - vs opencode: shared lineage, different product — opencode is a terminal agent;
-  Shipwright is the platform (board, receipts, morning queue) an agent runs inside.
+  Dokima is the platform (board, receipts, morning queue) an agent runs inside.
 
 ## Naming (D-001)
 
-**Shipwright**: the master builder who takes a vision from blueprint to launch and
-won't let an unseaworthy product ship. Known collision with the CNCF shipwright.io
-image-build project (distinct domain); a branding pass (`shipwright.dev`-style or a
+**Dokima**: the master builder who takes a vision from blueprint to launch and
+won't let an unseaworthy product ship. Known collision with the CNCF dokima.io
+image-build project (distinct domain); a branding pass (`dokima.dev`-style or a
 qualifier) is required before public launch — tracked in RISKS.md R-4. Metaphor
 budget is capped (BLUEPRINT §10): tickets are tickets, gates are gates, receipts are
 receipts.

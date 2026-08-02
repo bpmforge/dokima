@@ -1,7 +1,7 @@
 /** Maps the pipeline route's typed errors to RFC 7807 problem responses. */
 import { randomUUID } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
-import { SigningKeyRequiredError } from '@shipwright/events';
+import { SigningKeyRequiredError } from '@dokima/events';
 import {
   DuplicateOpenQuestionKeyError,
   IncompleteInterviewSessionError,
@@ -9,7 +9,7 @@ import {
   InvalidOpenQuestionKeyError,
   InvalidTechnicalSlateError,
   UnresolvedFounderDecisionError,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import { InvalidPipelineRunRequestError, MalformedModelOutputError } from '../errors.js';
 
 interface ProblemMapping {
@@ -85,7 +85,7 @@ export function problemForError(
   return {
     status: mapping.status,
     body: {
-      type: `https://shipwright.dev/errors/${mapping.rule?.toLowerCase().replaceAll('_', '-') ?? 'pipeline-run-error'}`,
+      type: `https://dokima.dev/errors/${mapping.rule?.toLowerCase().replaceAll('_', '-') ?? 'pipeline-run-error'}`,
       title: mapping.title,
       status: mapping.status,
       detail: err.message,

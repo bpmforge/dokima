@@ -4,7 +4,7 @@ import {
   type ReceiptInputFile,
   type ReceiptKind,
   type ReceiptRecord,
-} from '@shipwright/events';
+} from '@dokima/events';
 import type { ValidatorRunResult } from './run.js';
 
 export interface MintValidatorRunReceiptInput {

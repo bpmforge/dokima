@@ -9,7 +9,7 @@
  * derives the real value from the project's own `docs/DECISIONS.md`; a
  * `ledgerMarkdown` key in the JSON body, if present, is simply never read.
  */
-import type { InterviewSession } from '@shipwright/pipeline';
+import type { InterviewSession } from '@dokima/pipeline';
 import { InvalidPipelineRunRequestError } from '../errors.js';
 
 export interface RunPipelineRequestBody {

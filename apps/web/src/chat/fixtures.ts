@@ -110,7 +110,7 @@ export const CHAT_FIXTURE_EVENTS: ServerEnvelope[] = [
       id: 'card-slate-1',
       thread_id: 'thread-program',
       provenance: {
-        agent: 'shipwright-pm',
+        agent: 'dokima-pm',
         model: 'claude-opus-4-8',
         ticket_id: 'W4-04',
         cost_usd: 0.005,

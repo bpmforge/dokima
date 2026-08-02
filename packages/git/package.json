@@ -1,5 +1,5 @@
 {
-  "name": "@shipwright/git",
+  "name": "@dokima/git",
   "private": true,
   "type": "module",
   "version": "0.0.0",
@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shipwright/shared": "workspace:*",
+    "@dokima/shared": "workspace:*",
     "execa": "^9.6.1"
   }
 }

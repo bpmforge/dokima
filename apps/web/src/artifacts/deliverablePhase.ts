@@ -3,8 +3,8 @@
  * `packages/pipeline/src/phases/topology.ts`'s `PHASES`). Mirrored rather
  * than imported: `apps/web/package.json` sits outside this ticket's
  * write_scope (`apps/web/src/artifacts/**`), so a workspace dependency on
- * `@shipwright/pipeline` can't be declared here (same constraint
- * `memory/shipwright-narrow-write-scope-pattern.md` documents elsewhere).
+ * `@dokima/pipeline` can't be declared here (same constraint
+ * `memory/dokima-narrow-write-scope-pattern.md` documents elsewhere).
  * Keep in sync with `topology.ts`'s `PHASES` if BLUEPRINT §3.2 changes.
  *
  * Populating this on the client is what feeds `phase` into

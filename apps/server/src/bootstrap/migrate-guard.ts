@@ -1,7 +1,7 @@
 /**
  * Downgrade refusal + pre-migration backup (DEPLOYMENT.md §3): "newer
  * `user_version` refuses to open, loudly, rather than corrupting" and "a
- * pre-migration backup copy of `state.db` is written to `.shipwright/backups/`
+ * pre-migration backup copy of `state.db` is written to `.dokima/backups/`
  * first." `packages/events/src/migrate.ts` (out of this ticket's write_scope)
  * applies migrations forward-only but never refuses a *newer* db — this
  * module adds that check in front of it, using only the public
@@ -13,7 +13,7 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { openEventLog, openEventLogReader } from '@shipwright/events';
+import { openEventLog, openEventLogReader } from '@dokima/events';
 
 export interface SchemaCompatibility {
   /** `false` when the on-disk db is newer than this binary's latest known migration. */
@@ -79,7 +79,7 @@ export class DowngradeRefusedError extends Error {
       `refusing to open ${dbPath}: its schema (user_version=${dbVersion}) is newer than ` +
         `this binary's latest known migration (user_version=${latestVersion}) — this ` +
         `looks like a downgrade. Reinstall the newer version, or restore a pre-migration ` +
-        `backup from its .shipwright/backups/ directory and reinstall the matching ` +
+        `backup from its .dokima/backups/ directory and reinstall the matching ` +
         `version (DEPLOYMENT.md §3).`,
     );
     this.name = 'DowngradeRefusedError';

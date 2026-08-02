@@ -1,4 +1,4 @@
-# Shipwright — Test Strategy
+# Dokima — Test Strategy
 
 Traces to `docs/SRS.md`, `docs/BLUEPRINT.md` §2.2/§6, `docs/DECISIONS.md` (esp. D-008).
 Non-negotiables: **CI never calls a real model provider or forge host** — every LLM call is
@@ -23,7 +23,7 @@ pitch is "the gates cannot be spoofed" proves it in CI, on itself. Runner: vites
 | Crash/chaos matrix (kill −9, watchdog, drift) | NFR-3, FR-H2/H3 | pre-wave-gate W3+ | wave gate |
 | Offline soak (network-blocked full mini-program) | NFR-1 | W4+ wave gates, release | wave gate |
 | a11y (axe) + perf timers (NFR-2) | all routed Canvas pages | pre-merge on web tickets + W4/W8 gates | merge/gate |
-| Dogfood gate | Shipwright runs its own pipeline on itself | W8 | 1.0 release |
+| Dogfood gate | Dokima runs its own pipeline on itself | W8 | 1.0 release |
 
 Per-ticket definition of done: `pnpm lint && pnpm typecheck && pnpm test` workspace-wide
 plus the ticket's own `verify` command — which is exactly what FR-T2 re-runs at close.
@@ -75,7 +75,7 @@ brings, with provenance headers, fixture sets under `test/conformance/`:
 
 - **Micro-loop fixtures** (Jarvis/Foreman `runItemMicroLoop` + MICRO_LOOP contract):
   criterion-refusal cases, gap-checksum no-progress kills, bounded evidence actions, honest
-  PARTIAL exits, anchor-reconciliation cases. Shipwright's Loop Engine must reproduce the
+  PARTIAL exits, anchor-reconciliation cases. Dokima's Loop Engine must reproduce the
   expected pass/exit sequence for every fixture.
 - **Coverage-tracker fixtures** (coverage-tracker branch): inventory→state mappings including
   the WAIVED-attribution and SKIPPED-flagging cases; end-of-phase report shape.
@@ -85,7 +85,7 @@ brings, with provenance headers, fixture sets under `test/conformance/`:
 - **Receipt/HANDOFF format fixtures** (gate receipts, HANDOFF blocks): parse + round-trip.
 
 Rules: fixtures are imported **once** (no live sync — no umbilical, D-008); divergence is
-resolved by changing Shipwright or consciously forking the fixture with a provenance note in
+resolved by changing Dokima or consciously forking the fixture with a provenance note in
 the fixture header; the conformance suite is a distinct vitest project so its pass/fail is
 reported as its own line in CI.
 
@@ -161,7 +161,7 @@ Each row is one fixture directory + one named test; new spoof classes discovered
   board that cannot lie"); W1 adds conformance (§4); W2 adds fitness-harness + ledger/breaker
   properties; W3 adds crash/chaos matrix; W4 adds E2E journeys + a11y + NFR-2 timers; W5 adds
   pipeline/receipt E2E (UC-01, UC-10, UC-12); W6 adds forge contract + mirror reconciliation
-  (UC-08); W7 adds memory/playbook suites (offline BM25 path); **W8 = dogfood**: Shipwright
+  (UC-08); W7 adds memory/playbook suites (offline BM25 path); **W8 = dogfood**: Dokima
   executes its own pipeline on this repo — threat model, security suite, a11y — and the 1.0
   tag requires that run's receipts committed in-repo.
 - Traceability check at every wave gate: each SRS acceptance sketch for the wave maps to a

@@ -1,4 +1,4 @@
-import { listEvents, rebuildProjection, type EventLog } from '@shipwright/events';
+import { listEvents, rebuildProjection, type EventLog } from '@dokima/events';
 import { ticketsProjection } from './reducer.js';
 import type { Ticket } from './types.js';
 

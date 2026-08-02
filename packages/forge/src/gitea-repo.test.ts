@@ -8,7 +8,7 @@ import {
   repoSuccessFixture,
 } from './gitea-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 const BASE_URL = 'https://gitea.example.com';
 
 describe('GiteaForgeAdapter — getRepo() (FR-I2)', () => {
@@ -26,14 +26,14 @@ describe('GiteaForgeAdapter — getRepo() (FR-I2)', () => {
     const repo = await adapter.getRepo(REF);
 
     expect(repo).toEqual({
-      fullName: 'shipwright-org/demo',
+      fullName: 'dokima-org/demo',
       defaultBranch: 'main',
       private: true,
       archived: false,
       permissions: { admin: true, push: true, pull: true },
     });
     expect(calls[0]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo',
     );
     expect(calls[0]?.headers.authorization).toBe('token maker-token');
     expect(calls[0]?.headers.accept).toBe('application/json');
@@ -52,7 +52,7 @@ describe('GiteaForgeAdapter — getRepo() (FR-I2)', () => {
 
     await adapter.getRepo(REF);
     expect(calls[0]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo',
     );
   });
 

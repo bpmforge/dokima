@@ -9,7 +9,7 @@ import {
 } from './suppression-store.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-suppressions-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-suppressions-'));
 }
 
 describe('suppression store', () => {

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog } from '@shipwright/events';
+import { createIdentity, openEventLog } from '@dokima/events';
 import { createTicket } from './create.js';
 import { TicketError } from './errors.js';
 import { loadTickets } from './query.js';

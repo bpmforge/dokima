@@ -12,7 +12,7 @@
     },
     {
       "path": "secrets-scan.sh",
-      "hash": "sha256:9a3e53af387a0c7f77a1a2c448e75e63ff8e08dc5f0ceb604b98bf918ddb5bdd"
+      "hash": "sha256:b44a2df131851b426110106b9cc8e6afe3b866a48621311c6190d0bda0b921e4"
     },
     {
       "path": "validate-adrs.sh",
@@ -64,11 +64,11 @@
     },
     {
       "path": "validate-code-health.sh",
-      "hash": "sha256:6e43a84f6e60842e5688464306f0ec88191bf856456d6c76ea5a3ea5933f6f0b"
+      "hash": "sha256:b3aeed87497593675fc21a326a9cffe3309837ba203cc2b6384f5ef041bb2bd0"
     },
     {
       "path": "validate-completion-manifest.sh",
-      "hash": "sha256:700ef911e8b35f3cde7c9ac75d90300f895babe095e742ba03fc36bc24ab268d"
+      "hash": "sha256:72279b9ffb7a3b952bc1b972c4ef512e1c90123953dff3dd5ff916c3982efe30"
     },
     {
       "path": "validate-contract-conformance.sh",
@@ -80,7 +80,7 @@
     },
     {
       "path": "validate-dead-code.sh",
-      "hash": "sha256:8d348d65dd43579d8f5a7e062b474d636ad6c12e2dd7d28fb5d382dbccb2ba00"
+      "hash": "sha256:b1bb05f2ce617bd29e862eaa2b286896a9de57b4d55bd8198d8f943ff34e9b59"
     },
     {
       "path": "validate-deps.sh",
@@ -319,7 +319,7 @@
       "hash": "sha256:48f29f80180ffc3f24649e279a5731bef0be538ad94d4383a10279baf9b0e450"
     }
   ],
-  "signature": "bc9e31beb0801f77a0ad9a0abe1fdee55902e44e470ab72d5554408c4d3420c3dff707e1b46726f74285909eaf4398ac2a08072b283616570b841674f269c006",
-  "publisher": "shipwright",
-  "signedAt": "2026-08-02T19:06:17.027Z"
+  "signature": "ac72f3feef15ffe186895ba80a5ba955f4d43df0fcad208cf59fc93d4109ec07361a45fc85bc007a1cec6c9110c8f742985e22f1d7e3d8e9850bda20b3993909",
+  "publisher": "dokima",
+  "signedAt": "2026-08-02T20:40:32.420Z"
 }

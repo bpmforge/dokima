@@ -1,4 +1,4 @@
-# Shipwright — Architecture
+# Dokima — Architecture
 
 Traces to: BLUEPRINT.md §2–3/§7, DECISIONS.md D-003 (local-first Node/Fastify/SQLite/React),
 D-004 (native board + forge mirror), D-005 (identity model), D-008 (standalone runtime),
@@ -12,7 +12,7 @@ boundaries in §4 are lint-enforced (**enforcement ticket W3-10 — not yet acti
 flowchart TB
     subgraph Local["User's machine (trusted)"]
       WEB["apps/web — Canvas SPA<br/>chat · board · artifacts · settings"]
-      subgraph Core["apps/server — Shipwright Core (Node 22, Fastify)"]
+      subgraph Core["apps/server — Dokima Core (Node 22, Fastify)"]
         API["API Gateway<br/>REST /api/v1 + WS"]
         HM["Harbormaster<br/>claims tickets · holds gates<br/>· routes models · berths"]
         PIPE["pipeline<br/>phases 0–5 · interview ·<br/>slates · research · Challenger"]
@@ -21,7 +21,7 @@ flowchart TB
         VAL["validators<br/>pack runner · receipts"]
         GW["gateway<br/>role matrix · escalation R0–R4 ·<br/>budget breakers"]
         MEM["memory<br/>facts FTS5 · playbook · calibration"]
-        EVT[("events<br/>append-only log + projections<br/>SQLite WAL, .shipwright/state.db")]
+        EVT[("events<br/>append-only log + projections<br/>SQLite WAL, .dokima/state.db")]
       end
       SBX["Execution sandbox<br/>worktree + restricted process<br/>(no network default)"]
       AS["Agent sessions (UNTRUSTED)<br/>child process per ticket<br/>HANDOFF in · manifest out"]
@@ -86,7 +86,7 @@ crash resume, tamper-evident audit.
 
 **Event envelope:** `seq, event_type, actor_id, project_id, ticket_id?, payload JSON,
 created_at, prev_hash, hash` — `hash = sha256(prev_hash‖seq‖type‖actor‖payload)` forms a
-per-project hash chain; `shipwright audit verify` walks it (SC-11).
+per-project hash chain; `dokima audit verify` walks it (SC-11).
 
 **Event types** (representative, from BLUEPRINT §2.3): `ticket.created / claimed / closed /
 accepted / released / commented`, `gate.receipt_minted`, `gate.waived`,
@@ -195,7 +195,7 @@ WIP=1 per actor holds per berth; the claim step re-checks lane occupancy atomica
 **One core process serves N registered projects** (BLUEPRINT §3.11):
 
 - **Per-project isolation (FR-F2):** each project owns its event log + projections
-  (`.shipwright/state.db` beside the repo) and its **own Harbormaster instance**; memory
+  (`.dokima/state.db` beside the repo) and its **own Harbormaster instance**; memory
   facts, calibration, receipts, and budgets are per-project. State travels with the repo
   directory — archiving a project is closing a folder. Nothing cross-contaminates.
 - **Shared global services (FR-F3):** the Model Gateway is one process-wide pool —

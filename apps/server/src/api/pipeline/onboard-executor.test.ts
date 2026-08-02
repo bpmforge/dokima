@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { listEvents, openEventLog, type EventLog } from '@shipwright/events';
+import { listEvents, openEventLog, type EventLog } from '@dokima/events';
 import type { OnboardStepArtifact } from './onboard-types.js';
 import { runOnboardExecution, specialistActorId } from './onboard-executor.js';
 import type { RealOnboardDispatch } from './onboard-dispatch-port.js';

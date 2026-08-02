@@ -1,9 +1,9 @@
 /**
- * Seeds a project's `.shipwright/state.db` with ticket events for
+ * Seeds a project's `.dokima/state.db` with ticket events for
  * board.spec.ts (FR-C4/FR-T4). Run via the real `tsx` binary so the dynamic
  * `import()`s below — of each package's `src/index.ts` by absolute `file://`
  * URL — get TS transformed; `apps/web` isn't allowed a direct dependency on
- * `@shipwright/tickets`/`@shipwright/events` (its `package.json` sits
+ * `@dokima/tickets`/`@dokima/events` (its `package.json` sits
  * outside this ticket's write_scope), and even if it were, apps/web's own
  * node_modules has no path to those workspace packages (pnpm strict mode,
  * no phantom deps) — an absolute-path dynamic import sidesteps both.

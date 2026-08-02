@@ -3,7 +3,7 @@
  * `packages/memory/src/index.ts` — that file, and `package.json`'s
  * dependency list, are outside this ticket's write_scope
  * (`packages/memory/src/code-index/**` only). A future ticket wires this
- * module into the package's public barrel + declares `@shipwright/events`
+ * module into the package's public barrel + declares `@dokima/events`
  * as a real dependency before any other package can import it; see this
  * ticket's HANDOFF note in `plan.json`.
  */

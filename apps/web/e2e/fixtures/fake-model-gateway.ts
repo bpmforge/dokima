@@ -9,7 +9,7 @@
  * packages/gateway's OaiCompatProvider consumes (verified against
  * platform docs at W2-01) — a plain `node:http` server rather than an
  * import of packages/gateway, since apps/web may only depend on
- * `@shipwright/shared` (ARCHITECTURE §4 dependency matrix) and a real
+ * `@dokima/shared` (ARCHITECTURE §4 dependency matrix) and a real
  * HTTP fake is what a real provider config (`local`, base_url) points at
  * anyway.
  */

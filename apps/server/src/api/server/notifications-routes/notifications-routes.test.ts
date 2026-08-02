@@ -8,8 +8,8 @@ import {
   claimTicket,
   createTicket,
   startTicket,
-} from '@shipwright/tickets';
-import { createIdentity, openEventLog } from '@shipwright/events';
+} from '@dokima/tickets';
+import { createIdentity, openEventLog } from '@dokima/events';
 import { buildApiServer, type ApiServer } from '../../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -32,7 +32,7 @@ describe('notification center + morning queue routes (FR-N4, FR-F4, US-704/US-40
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-notifications-routes-');
+    const fleetHome = await tmpDir('dokima-notifications-routes-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -62,7 +62,7 @@ describe('notification center + morning queue routes (FR-N4, FR-F4, US-704/US-40
       payload: { path: projectDir, mode: 'new' },
     });
     const { id } = res.json() as { id: string };
-    return { id, dbPath: path.join(projectDir, '.shipwright', 'state.db') };
+    return { id, dbPath: path.join(projectDir, '.dokima', 'state.db') };
   }
 
   async function emit(

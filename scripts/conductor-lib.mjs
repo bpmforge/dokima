@@ -24,16 +24,16 @@ import { resolve } from 'node:path';
 // one) that don't set it.
 export const DEFAULT_CONFIG = {
   branchPrefix: 'sw/',
-  worktreeDir: '../.shipwright-worktrees',
+  worktreeDir: '../.dokima-worktrees',
   isolation: 'worktree',
   toolchainMarker: 'package.json',
   boardPath: 'plan.json',
-  // W3-15 portability: where THIS project pins its Node version. Shipwright
+  // W3-15 portability: where THIS project pins its Node version. Dokima
   // pins at the repo root; Kryptkeeper pins at ui/.nvmrc (its CI reads the same
   // file via node-version-file) and has no root .nvmrc. A project that pins
   // nowhere sets this to null, or simply has no such file — the check is then
   // skipped rather than fataling. Same defect class as W9-12's models.json:
-  // an unconditional read of a Shipwright-shaped path at startup.
+  // an unconditional read of a Dokima-shaped path at startup.
   nvmrcPath: '.nvmrc',
   // Warn when a ticket may write implementation but not its test siblings.
   // Off by default (null) so the script stays language-agnostic; a project

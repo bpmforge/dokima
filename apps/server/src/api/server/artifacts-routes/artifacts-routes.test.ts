@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, mintReceipt, openEventLog } from '@shipwright/events';
+import { createIdentity, mintReceipt, openEventLog } from '@dokima/events';
 import { registerProject } from '../../projects.js';
 import { buildApiServer, type ApiServer } from '../../server.js';
 
@@ -55,7 +55,7 @@ describe('artifact routes — buildApiServer integration', () => {
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-fleet-artifacts-');
+    const fleetHome = await tmpDir('dokima-fleet-artifacts-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -73,7 +73,7 @@ describe('artifact routes — buildApiServer integration', () => {
   }
 
   async function registerGitProject(fleetHome: string, name: string) {
-    const projectDir = await tmpDir(`shipwright-project-${name}-`);
+    const projectDir = await tmpDir(`dokima-project-${name}-`);
     dirs.push(projectDir);
     await initGitProject(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
@@ -167,7 +167,7 @@ describe('artifact routes — buildApiServer integration', () => {
   it('GET /artifacts/doc refuses a dot-prefixed path (state.db / .env leak) with 400', async () => {
     const { app, fleetHome } = await boot();
     const { projectId } = await registerGitProject(fleetHome, 'dotleak');
-    for (const leak of ['.shipwright/state.db', '.env', '.git/config']) {
+    for (const leak of ['.dokima/state.db', '.env', '.git/config']) {
       const res = await app.inject({
         method: 'GET',
         url: `/api/v1/projects/${projectId}/artifacts/doc?path=${encodeURIComponent(leak)}`,
@@ -177,7 +177,7 @@ describe('artifact routes — buildApiServer integration', () => {
     }
   });
 
-  it('GET /artifacts/doc refuses a docs/ symlink that resolves to .shipwright/state.db (W1-07-class symlink escape)', async () => {
+  it('GET /artifacts/doc refuses a docs/ symlink that resolves to .dokima/state.db (W1-07-class symlink escape)', async () => {
     const { app, fleetHome } = await boot();
     const { projectDir, projectId } = await registerGitProject(
       fleetHome,
@@ -189,7 +189,7 @@ describe('artifact routes — buildApiServer integration', () => {
     // surface for an untrusted agent session (CLAUDE.md law #4).
     await fs.mkdir(path.join(projectDir, 'docs'), { recursive: true });
     await fs.symlink(
-      path.join('..', '.shipwright', 'state.db'),
+      path.join('..', '.dokima', 'state.db'),
       path.join(projectDir, 'docs', 'leak.md'),
     );
 
@@ -209,7 +209,7 @@ describe('artifact routes — buildApiServer integration', () => {
       'rev-injection',
     );
     await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
-    const pwnedDir = await tmpDir('shipwright-pwned-');
+    const pwnedDir = await tmpDir('dokima-pwned-');
     dirs.push(pwnedDir);
     const pwnedFile = path.join(pwnedDir, 'pwned.txt');
 
@@ -229,7 +229,7 @@ describe('artifact routes — buildApiServer integration', () => {
       'doc-diff-injection',
     );
     await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
-    const pwnedDir = await tmpDir('shipwright-pwned-');
+    const pwnedDir = await tmpDir('dokima-pwned-');
     dirs.push(pwnedDir);
     const pwnedFile = path.join(pwnedDir, 'pwned.txt');
 
@@ -377,7 +377,7 @@ describe('artifact routes — buildApiServer integration', () => {
     await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
 
     // Seed a gate receipt for ticket W4-05 directly against the project's state.db.
-    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const dbPath = path.join(projectDir, '.dokima', 'state.db');
     const log = openEventLog(dbPath);
     createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
     mintReceipt(
@@ -428,7 +428,7 @@ describe('artifact routes — buildApiServer integration', () => {
 
     // Seed a phase-receipt for phase 3 — a *different*, gated phase — and no
     // receipt for phase 2 at all.
-    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const dbPath = path.join(projectDir, '.dokima', 'state.db');
     const log = openEventLog(dbPath);
     createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
     mintReceipt(
@@ -475,7 +475,7 @@ describe('artifact routes — buildApiServer integration', () => {
     await writeAndCommit(projectDir, 'docs/SRS.md', '# SRS\n\nv1', 'v1');
 
     // Seed a phase-receipt for phase 2 — docs/SRS.md's real, gated phase.
-    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const dbPath = path.join(projectDir, '.dokima', 'state.db');
     const log = openEventLog(dbPath);
     createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
     mintReceipt(

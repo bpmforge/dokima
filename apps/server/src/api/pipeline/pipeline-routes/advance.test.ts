@@ -14,9 +14,9 @@ import {
   verifyReceipt,
   type EventLog,
   type ValidatorResult,
-} from '@shipwright/events';
-import { mintValidatorRunReceipt, type ValidatorRunResult } from '@shipwright/validators';
-import { getPhase } from '@shipwright/pipeline';
+} from '@dokima/events';
+import { mintValidatorRunReceipt, type ValidatorRunResult } from '@dokima/validators';
+import { getPhase } from '@dokima/pipeline';
 import { registerProject } from '../../projects.js';
 import { stateDbPath } from '../../server/board-project.js';
 import {
@@ -112,9 +112,9 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
     projectDir: string;
     dbPath: string;
   }> {
-    const fleetHome = await tmpDir('shipwright-advance-route-home-');
+    const fleetHome = await tmpDir('dokima-advance-route-home-');
     dirs.push(fleetHome);
-    const projectDir = await tmpDir('shipwright-advance-route-project-');
+    const projectDir = await tmpDir('dokima-advance-route-project-');
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
@@ -674,9 +674,9 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
   });
 
   it('returns 503 (SIGNING_KEY_REQUIRED) rather than a forgeable empty-key check when no signing key is configured', async () => {
-    const fleetHome = await tmpDir('shipwright-advance-route-home-');
+    const fleetHome = await tmpDir('dokima-advance-route-home-');
     dirs.push(fleetHome);
-    const projectDir = await tmpDir('shipwright-advance-route-project-');
+    const projectDir = await tmpDir('dokima-advance-route-project-');
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });

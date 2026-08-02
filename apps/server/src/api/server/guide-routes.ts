@@ -13,7 +13,7 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { resolveAsset } from '@shipwright/shared';
+import { resolveAsset } from '@dokima/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 function defaultContentGuideDir(): string {
@@ -35,7 +35,7 @@ export function registerGuideRoutes(
 ): void {
   const guideDir =
     opts.contentGuideDir ??
-    process.env.SHIPWRIGHT_CONTENT_GUIDE_DIR ??
+    process.env.DOKIMA_CONTENT_GUIDE_DIR ??
     defaultContentGuideDir();
 
   app.get(

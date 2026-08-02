@@ -1,7 +1,7 @@
 /**
  * Boot-time audit step (DEPLOYMENT.md §8, SC-11): a *fast* tail check — not
- * `shipwright audit verify`'s full from-genesis walk — plus the high-water
- * seq mirror to `~/.shipwright/` that lets the *next* boot detect a
+ * `dokima audit verify`'s full from-genesis walk — plus the high-water
+ * seq mirror to `~/.dokima/` that lets the *next* boot detect a
  * truncated log (rows deleted since the mirror was last written).
  *
  * The tail check reuses `computeEventHash` (the same primitive
@@ -13,7 +13,7 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { computeEventHash, GENESIS_HASH, type EventLog } from '@shipwright/events';
+import { computeEventHash, GENESIS_HASH, type EventLog } from '@dokima/events';
 
 interface TailRow {
   seq: number;

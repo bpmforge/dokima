@@ -1,18 +1,18 @@
-# Conductor Field Report — bootstrap build of Shipwright
+# Conductor Field Report — bootstrap build of Dokima
 
 **Window:** 2026-07-11 13:06 → 2026-07-12 02:29 (UTC), ~13.4h wall-clock
-**Subject:** Building Shipwright (the product) using a throwaway conductor harness that is itself a thin approximation of Shipwright's design.
+**Subject:** Building Dokima (the product) using a throwaway conductor harness that is itself a thin approximation of Dokima's design.
 **Author:** Claude Fable 5 session, with Brad Matthews.
 
-> This is a live field report, not a retrospective written after the fact. Every stat is pulled from `docs/work/conductor-log.jsonl` and `plan.json`. The headline: the bootstrap harness kept failing in exactly the ways the source systems (bpm-opencode-experts + Jarvis/Foreman) already solve — which is the strongest evidence available that productizing them (Shipwright) is aimed at the right problems.
+> This is a live field report, not a retrospective written after the fact. Every stat is pulled from `docs/work/conductor-log.jsonl` and `plan.json`. The headline: the bootstrap harness kept failing in exactly the ways the source systems (bpm-opencode-experts + Jarvis/Foreman) already solve — which is the strongest evidence available that productizing them (Dokima) is aimed at the right problems.
 
 ---
 
 ## 1. The thesis under test
 
-**Claim:** Taking bpm-opencode-experts (the SDLC discipline + guardrails) and Jarvis/Foreman (the autonomous loop runtime) and formalizing them into a product (Shipwright) is the right thing to build.
+**Claim:** Taking bpm-opencode-experts (the SDLC discipline + guardrails) and Jarvis/Foreman (the autonomous loop runtime) and formalizing them into a product (Dokima) is the right thing to build.
 
-**Test:** We built a deliberately thin executor — `scripts/conductor.mjs`, one Node script — to drive the Shipwright plan.json board unattended with cheap models (Sonnet/Haiku, escalating to Opus). Each defect the thin harness hit is a natural experiment: does it map to a mechanism the real systems already have?
+**Test:** We built a deliberately thin executor — `scripts/conductor.mjs`, one Node script — to drive the Dokima plan.json board unattended with cheap models (Sonnet/Haiku, escalating to Opus). Each defect the thin harness hit is a natural experiment: does it map to a mechanism the real systems already have?
 
 **Result so far:** Every single failure mapped. The thin harness re-derived, the hard way, the receipts layer, the Challenger, deterministic validators, the watchdog, sticky findings, and the calibration problem — all pre-existing in the source designs. See §4.
 
@@ -121,7 +121,7 @@ A second-order finding: even *deterministic* validators aren't a silver bullet. 
 1. **The bootstrap has served its purpose as a probe.** Its remaining value is finishing the straightforward tickets. Don't keep hardening the shell script; let the product's real layers (deterministic validators + Challenger + receipt-backed state) supersede it as they land.
 2. **Calibrate validators with red fixtures** before promoting any from `advisory[]` to `gate[]` — the run proved raw grep heuristics false-block.
 3. **The trust-core primitives want human authoring or pairing**, not one-shot autonomous generation — they are where the guardrails earn their keep and where the models most often need escalation.
-4. **Fold this report into the product's lessons/field-report intake** (the M29 pattern) — it is a real field report of the exact kind Shipwright is designed to consume.
+4. **Fold this report into the product's lessons/field-report intake** (the M29 pattern) — it is a real field report of the exact kind Dokima is designed to consume.
 
 ---
 
@@ -151,9 +151,9 @@ The run continued unattended after the validator wiring and ended cleanly on sco
 
 All 3 were fixed by hand and landed (board → **22 done, 0 blocked**; full W0–W2 foundation complete). Each taught something the earlier incidents hadn't:
 
-1. **Cascading errors mask a single root cause (W0-08).** The visible failure was `'err' is of type 'unknown'` — which reads like a code defect. It wasn't. The CLI imported `@shipwright/tickets`, that module wouldn't resolve (missing dependency), so `TicketError` was `any`, so the `instanceof` narrowing silently failed, so `err` stayed `unknown`. **One missing dep produced a dozen errors, and the most prominent one pointed away from the cause.** A harness that just feeds the top error back to the model chases the symptom. The fix was one line — add the workspace deps.
+1. **Cascading errors mask a single root cause (W0-08).** The visible failure was `'err' is of type 'unknown'` — which reads like a code defect. It wasn't. The CLI imported `@dokima/tickets`, that module wouldn't resolve (missing dependency), so `TicketError` was `any`, so the `instanceof` narrowing silently failed, so `err` stayed `unknown`. **One missing dep produced a dozen errors, and the most prominent one pointed away from the cause.** A harness that just feeds the top error back to the model chases the symptom. The fix was one line — add the workspace deps.
 
-2. **The write-scope-too-narrow pattern recurred, at the package boundary (W0-08).** The CLI needed `@shipwright/events/tickets/shared` as dependencies in `apps/server/package.json`, but its write_scope was only `apps/server/src/cli/**` — it *could not add its own dependencies*. This is the exact class that blocked W0-01 (lockfile) and W0-05 (migrations dir). **Recommendation for the plan-linter: when a ticket's code imports a workspace sibling, its write_scope must include that package's `package.json`.** Static, checkable, would have caught this before the run.
+2. **The write-scope-too-narrow pattern recurred, at the package boundary (W0-08).** The CLI needed `@dokima/events/tickets/shared` as dependencies in `apps/server/package.json`, but its write_scope was only `apps/server/src/cli/**` — it *could not add its own dependencies*. This is the exact class that blocked W0-01 (lockfile) and W0-05 (migrations dir). **Recommendation for the plan-linter: when a ticket's code imports a workspace sibling, its write_scope must include that package's `package.json`.** Static, checkable, would have caught this before the run.
 
 3. **The seam between two correct tickets is nobody's job (W1-02).** W0-05 built `mintReceipt`; W1-02 consumed it. Neither was wrong in isolation — but W0-05 never re-exported receipts from the package's public `index.ts`, so the function existed and was invisible. **Interface contracts between tickets need an explicit owner.** The ticket schema's `interface`/`module` fields exist for exactly this; the bootstrap conductor doesn't enforce them, so the seam fell through. The product's module-design layer does.
 

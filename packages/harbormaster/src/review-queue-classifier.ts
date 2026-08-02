@@ -25,7 +25,7 @@ import {
  * classified (FR-N2 requires all five, deterministically) but are not in
  * this hard-block set: crossing an escalation tier or a spend threshold
  * already has its own park/token/breaker path (`loop-land-policy.ts`,
- * `@shipwright/gateway`'s budget breakers) rather than the unconditional
+ * `@dokima/gateway`'s budget breakers) rather than the unconditional
  * "never execute in-loop" rule this set enforces.
  *
  * Exported as a frozen array (SC-10: "compiled into packages/harbormaster —

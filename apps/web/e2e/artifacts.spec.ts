@@ -17,7 +17,7 @@ async function git(cwd: string, args: string[]): Promise<void> {
 function freshProjectPath(label: string): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-artifacts-e2e-${label}-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-artifacts-e2e-${label}-${id}`),
     name: `Artifacts E2E ${label} ${id}`,
   };
 }

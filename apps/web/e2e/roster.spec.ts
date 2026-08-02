@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test';
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-roster-e2e-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-roster-e2e-${id}`),
     name: `Roster E2E ${id}`,
   };
 }

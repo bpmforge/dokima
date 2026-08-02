@@ -2,11 +2,11 @@
  * Test-only handle factory (mirrors `store/test-helpers.ts`). Uses Node 22's
  * builtin `node:sqlite` (`DatabaseSync`) — no `package.json` dependency edit
  * needed. Applies `011_code_index.sql` directly by reading it off disk
- * rather than going through `@shipwright/events`' migration runner (a
+ * rather than going through `@dokima/events`' migration runner (a
  * static import this ticket's write_scope can't declare a dependency on);
  * the migration file itself is proven to apply cleanly through the real
  * runner in `migration.integration.test.ts`, which dynamically imports
- * `@shipwright/events` by absolute `file://` URL instead.
+ * `@dokima/events` by absolute `file://` URL instead.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

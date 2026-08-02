@@ -13,7 +13,7 @@ import {
   openEventLog,
   openEventLogReader,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   EVENT_SEQ_HEADER,
   extractIdempotencyKey,
@@ -126,7 +126,7 @@ export function registerArtifactCommentRoutes(
           .type(PROBLEM_CONTENT_TYPE)
           .send(
             problem({
-              type: 'https://shipwright.dev/errors/db-busy',
+              type: 'https://dokima.dev/errors/db-busy',
               title: 'Project database busy',
               status: 503,
               detail: err instanceof Error ? err.message : String(err),

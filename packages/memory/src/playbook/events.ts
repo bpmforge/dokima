@@ -2,7 +2,7 @@
  * R0 consult hit/miss events (FR-M2's acceptance sketch: "R0 hit on a
  * repeated fixture task skips the model call"). Mirrors
  * `packages/gateway/src/escalation/events.ts`'s injectable-sink pattern:
- * this package can't depend on `@shipwright/events` (no `package.json`
+ * this package can't depend on `@dokima/events` (no `package.json`
  * dependency declared within this ticket's write_scope), so events are
  * minted here and handed to a caller-supplied sink wired to the real event
  * log elsewhere. Distinct namespace from gateway's `escalation.*` events —

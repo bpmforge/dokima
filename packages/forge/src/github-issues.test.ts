@@ -8,7 +8,7 @@ import {
   issueSuccessFixture,
 } from './github-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 describe('GitHubForgeAdapter — issue mirror primitives', () => {
   it('createIssue() sends title/body/labels/assignees under the maker identity', async () => {
@@ -22,7 +22,7 @@ describe('GitHubForgeAdapter — issue mirror primitives', () => {
       title: issueSuccessFixture.title,
       body: 'mirrored ticket body',
       labels: ['lane:integrations'],
-      assignees: ['shipwright-maker'],
+      assignees: ['dokima-maker'],
     });
 
     expect(issue).toEqual({
@@ -31,9 +31,9 @@ describe('GitHubForgeAdapter — issue mirror primitives', () => {
       stateReason: null,
       title: issueSuccessFixture.title,
       body: 'mirrored ticket body',
-      htmlUrl: 'https://github.com/shipwright-org/demo/issues/7',
+      htmlUrl: 'https://github.com/dokima-org/demo/issues/7',
       labels: ['lane:integrations'],
-      assignees: ['shipwright-maker'],
+      assignees: ['dokima-maker'],
     });
     expect(calls[0]?.headers.authorization).toBe('Bearer maker-token');
     expect(calls[0]?.body).toMatchObject({ labels: ['lane:integrations'] });
@@ -75,7 +75,7 @@ describe('GitHubForgeAdapter — issue mirror primitives', () => {
       'reviewer',
     );
 
-    expect(comment.authorLogin).toBe('shipwright-reviewer');
+    expect(comment.authorLogin).toBe('dokima-reviewer');
     expect(calls[0]?.headers.authorization).toBe('Bearer reviewer-token');
   });
 

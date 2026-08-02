@@ -1,7 +1,7 @@
 /**
  * Per-agent history projection (SRS FR-E2 "per-agent history queried from
  * events: HANDOFFs run, outcomes, verdict scores, spend, escalations").
- * A real `@shipwright/events` `Projection<S>` (docs/DATABASE.md §3's "pure
+ * A real `@dokima/events` `Projection<S>` (docs/DATABASE.md §3's "pure
  * fold from the log") so `GET /roster/:agent/history` and the
  * incremental-equals-rebuild property test both fold the exact same
  * reducer over the exact same events — the test only proves something
@@ -22,7 +22,7 @@
  * (closed/accepted/released).
  */
 
-import { rebuildProjection, type EventRecord, type Projection } from '@shipwright/events';
+import { rebuildProjection, type EventRecord, type Projection } from '@dokima/events';
 
 export type RosterHistoryKind =
   'handoff' | 'outcome' | 'verdict' | 'spend' | 'escalation' | 'other';

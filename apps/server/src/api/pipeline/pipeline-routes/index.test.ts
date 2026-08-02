@@ -2,14 +2,14 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { listChainRows, listEvents, openEventLog, verifyChain } from '@shipwright/events';
-import { getTicket } from '@shipwright/tickets';
+import { listChainRows, listEvents, openEventLog, verifyChain } from '@dokima/events';
+import { getTicket } from '@dokima/tickets';
 import {
   INTERVIEW_TOPICS,
   beginTopic,
   startSession,
   type InterviewSession,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerProject } from '../../projects.js';
 import { stateDbPath } from '../../server/board-project.js';
@@ -145,9 +145,9 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
   async function boot(
     responses: readonly string[],
   ): Promise<{ app: FastifyInstance; projectId: string; projectDir: string }> {
-    const fleetHome = await tmpDir('shipwright-pipeline-routes-');
+    const fleetHome = await tmpDir('dokima-pipeline-routes-');
     dirs.push(fleetHome);
-    const projectDir = await tmpDir('shipwright-pipeline-project-');
+    const projectDir = await tmpDir('dokima-pipeline-project-');
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });

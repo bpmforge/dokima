@@ -8,7 +8,7 @@
  * and its anchoring event land atomically.
  */
 
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import {
   assertValidTaxonomy,
   type EmitOptions,

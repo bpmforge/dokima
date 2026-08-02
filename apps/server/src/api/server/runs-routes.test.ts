@@ -2,8 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
-import { createTicket } from '@shipwright/tickets';
+import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
+import { createTicket } from '@dokima/tickets';
 import { registerProject } from '../projects.js';
 import { buildApiServer, type ApiServer } from '../server.js';
 
@@ -27,7 +27,7 @@ describe('runs routes — session trace (UX_SPEC §4, API_DESIGN "runs/:id/trace
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-runs-routes-');
+    const fleetHome = await tmpDir('dokima-runs-routes-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -45,7 +45,7 @@ describe('runs routes — session trace (UX_SPEC §4, API_DESIGN "runs/:id/trace
   }
 
   async function registerBareProject(fleetHome: string, name: string) {
-    const projectDir = await tmpDir(`shipwright-runs-project-${name}-`);
+    const projectDir = await tmpDir(`dokima-runs-project-${name}-`);
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, {
@@ -53,7 +53,7 @@ describe('runs routes — session trace (UX_SPEC §4, API_DESIGN "runs/:id/trace
       mode: 'new',
       name,
     });
-    const dbDir = path.join(projectDir, '.shipwright');
+    const dbDir = path.join(projectDir, '.dokima');
     await fs.mkdir(dbDir, { recursive: true });
     const dbPath = path.join(dbDir, 'state.db');
     return { id: record.id, dbPath };

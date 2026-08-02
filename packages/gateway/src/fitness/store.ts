@@ -1,7 +1,7 @@
 /**
  * Fitness card store, keyed (model, role, harnessVersion) per
  * docs/DATABASE.md §7's model_fitness PK. Optionally backed by the fleet
- * registry (`~/.shipwright/global.db`, `@shipwright/events`'s
+ * registry (`~/.dokima/global.db`, `@dokima/events`'s
  * `global-db` module): when a `GlobalDb` handle is passed in, every read
  * and write goes straight through SQLite (better-sqlite3 is synchronous —
  * TECH_STACK.md — so there is no async/cache-staleness split to manage);
@@ -16,7 +16,7 @@ import {
   putModelFitness,
   type GlobalDb,
   type ModelFitnessRecord,
-} from '@shipwright/events';
+} from '@dokima/events';
 import type { AgentRole, FitnessCard } from './types.js';
 
 function cardKey(model: string, role: AgentRole, harnessVersion: string): string {

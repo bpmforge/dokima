@@ -3,7 +3,7 @@
  * (mirrors `packages/shared/src/export/validate.ts`'s checks — see
  * `export-bundle.ts`'s module header for why the logic is duplicated rather
  * than imported). Does NOT verify the hash chain; that's `importExportBundle`
- * (export-bundle-import.ts), which reuses `@shipwright/events`'s
+ * (export-bundle-import.ts), which reuses `@dokima/events`'s
  * `verifyChain` directly.
  */
 import {

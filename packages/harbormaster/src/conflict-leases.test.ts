@@ -2,8 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@shipwright/events';
-import { claimTicket, createTicket, startTicket } from '@shipwright/tickets';
+import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import { claimTicket, createTicket, startTicket } from '@dokima/tickets';
 import { activeLeases, leaseBadges } from './conflict-leases.js';
 
 interface Fixture {
@@ -13,7 +13,7 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-conflict-leases-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-conflict-leases-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
   return {

@@ -8,7 +8,7 @@ import { createProjectSecretsVault } from './vault.js';
 let tmpDirs: string[] = [];
 
 async function mkTmp(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-secrets-vault-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-secrets-vault-test-'));
   tmpDirs.push(dir);
   return dir;
 }
@@ -22,7 +22,7 @@ async function makeVault() {
   const home = await mkTmp();
   const projectDir = await mkTmp();
   const store = createInMemoryCredentialStore();
-  const vault = createProjectSecretsVault(store, projectDir, { SHIPWRIGHT_HOME: home });
+  const vault = createProjectSecretsVault(store, projectDir, { DOKIMA_HOME: home });
   return { vault, store, home, projectDir };
 }
 
@@ -32,7 +32,7 @@ describe('createProjectSecretsVault', () => {
     await vault.register('github-pat', 'ghp_fake');
     expect(await vault.get('github-pat')).toBe('ghp_fake');
     // The stored ref is namespaced by project, not the bare secret name.
-    expect(await store.get('shipwright-project-secret:github-pat')).toBeUndefined();
+    expect(await store.get('dokima-project-secret:github-pat')).toBeUndefined();
   });
 
   it('lists registered names without ever touching values', async () => {
@@ -65,31 +65,31 @@ describe('createProjectSecretsVault', () => {
     expect(await vault.listNames()).toEqual([]);
   });
 
-  it('persists the name index to disk under SHIPWRIGHT_HOME, independent of the credential store instance', async () => {
+  it('persists the name index to disk under DOKIMA_HOME, independent of the credential store instance', async () => {
     const home = await mkTmp();
     const projectDir = await mkTmp();
     const storeA = createInMemoryCredentialStore();
     const vaultA = createProjectSecretsVault(storeA, projectDir, {
-      SHIPWRIGHT_HOME: home,
+      DOKIMA_HOME: home,
     });
     await vaultA.register('a', 'secret-a');
 
     const storeB = createInMemoryCredentialStore();
     const vaultB = createProjectSecretsVault(storeB, projectDir, {
-      SHIPWRIGHT_HOME: home,
+      DOKIMA_HOME: home,
     });
     // storeB is a distinct credential-store instance (no value for 'a'),
     // but the on-disk index for this same project reports the name.
     expect(await vaultB.listNames()).toEqual(['a']);
   });
 
-  it('never collides across two different projects sharing one credential store and SHIPWRIGHT_HOME', async () => {
+  it('never collides across two different projects sharing one credential store and DOKIMA_HOME', async () => {
     const home = await mkTmp();
     const projectA = await mkTmp();
     const projectB = await mkTmp();
     const store = createInMemoryCredentialStore();
-    const vaultA = createProjectSecretsVault(store, projectA, { SHIPWRIGHT_HOME: home });
-    const vaultB = createProjectSecretsVault(store, projectB, { SHIPWRIGHT_HOME: home });
+    const vaultA = createProjectSecretsVault(store, projectA, { DOKIMA_HOME: home });
+    const vaultB = createProjectSecretsVault(store, projectB, { DOKIMA_HOME: home });
 
     await vaultA.register('github-pat', 'project-a-secret');
     await vaultB.register('github-pat', 'project-b-secret');

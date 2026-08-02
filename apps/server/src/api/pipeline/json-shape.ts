@@ -1,6 +1,6 @@
 /**
  * Minimal structural validators for parsing a model's JSON completion into
- * `@shipwright/pipeline`'s typed port inputs (`gateway-model-port.ts`). Deep
+ * `@dokima/pipeline`'s typed port inputs (`gateway-model-port.ts`). Deep
  * semantic validation (option counts, dimension completeness, duplicate
  * keys, ...) stays in the pure phase modules themselves
  * (`synthesizeBlueprint`/`buildTechnicalSlate`, both already throw typed

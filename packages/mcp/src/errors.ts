@@ -10,7 +10,7 @@ export type McpErrorCode =
   | 'SELF_APPROVAL'
   | 'EXECUTOR_REQUIRED';
 
-/** Refusals are reasoned, never a bare throw (mirrors `@shipwright/tickets`' `TicketError`, FR-T4). */
+/** Refusals are reasoned, never a bare throw (mirrors `@dokima/tickets`' `TicketError`, FR-T4). */
 export class McpError extends Error {
   readonly code: McpErrorCode;
 

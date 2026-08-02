@@ -4,7 +4,7 @@
  * already-open notification (UX_SPEC §7).
  */
 
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   type ApprovalDecision,

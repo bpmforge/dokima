@@ -1,4 +1,4 @@
-# Release tracker — Shipwright
+# Release tracker — Dokima
 
 **State 2026-08-02:** board complete through W9 — **116 of 118 tickets done**
 (1 blocked, 1 todo). The v1.0 dogfood gate passed. **Not tagged**, and three
@@ -22,7 +22,7 @@ Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal 
 | v0.2.0 | + W4 Canvas/Fleet | Playwright E2E over fake-model gateway | ✅ met, untagged |
 | v0.3.0 | + W5 Pipeline/PM | sample idea runs <15 min on a local model | ✅ met, untagged |
 | v0.9.0 | + W6 integrations, W7 memory | forge-mirror reconciliation + anti-Jarvis-gap recall test | ✅ met, untagged |
-| **v1.0.0** | W8 dogfood: Shipwright audits itself | own security cluster passes; receipts in `docs/dogfood/` | ✅ **met**, untagged |
+| **v1.0.0** | W8 dogfood: Dokima audits itself | own security cluster passes; receipts in `docs/dogfood/` | ✅ **met**, untagged |
 
 Every milestone gate has been met. Nothing has been tagged, because the
 pre-public checklist below was never finished.
@@ -34,7 +34,7 @@ pre-public checklist below was never finished.
 | LICENSE file | ✅ **done 2026-08-02** — Apache-2.0 per D-017 (decided 2026-07-14; the file had simply never been written) |
 | README quickstart | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified |
 | History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below |
-| **D-001 naming pass** | ❌ **OPEN — the remaining hard blocker.** Two collisions, not one: `shipwright.io` (CNCF image builds, already recorded in D-001) **and the npm name `shipwright`**, taken by `hellofloat/shipwright` ("DigitalOcean CLI control") which declares the same `bin` name. There is no `npx` install path until this is decided. |
+| D-001 naming pass | ✅ **done 2026-08-02 — renamed to Dokima (D-021).** The old name had two collisions: `shipwright.io`, CNCF's container-image build framework, whose trademarks were donated to the **Linux Foundation** — an adjacent market, not the "different domain" D-001 assumed; and npm `shipwright`, held since 2015 by `hellofloat/shipwright` ("DigitalOcean CLI control"), declaring the same `bin`. Ships as `@bpmforge/dokima`, home `dokima.sh`. **Formal trademark clearance is still open and needs a lawyer.** |
 
 ### The secrets scan found a real one
 
@@ -61,13 +61,13 @@ Not release blockers by themselves, but a reader deserves them stated:
 - Visual design is unfinished — 4 design tokens, 66 hardcoded hexes, clipped
   board columns (W10 Phase H)
 - The bundled expert library is ~133 upstream changes behind (W10 Phases A/B)
-- `shipwright --help`, and any mistyped command, boots the server
+- `dokima --help`, and any mistyped command, boots the server
 - `plan.json`: W9-08 blocked, W9-15 todo
 
 ## Test truth
 
 `pnpm lint && pnpm typecheck && pnpm test` **plus** `pnpm --filter
-@shipwright/web e2e` per ticket (Law 3; e2e joined the gate 2026-07-27) ·
+@dokima/web e2e` per ticket (Law 3; e2e joined the gate 2026-07-27) ·
 planted-defect harness — every gate must FAIL when attacked (`docs/TESTING.md`)
 · toy-project E2E incl. symlink-escape regression · fitness bench fixtures ·
 dogfood receipts at W8.

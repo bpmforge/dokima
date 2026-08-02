@@ -11,7 +11,7 @@ import {
   secondaryRateLimitFixture,
 } from './github-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 describe('GitHubForgeAdapter — PR lifecycle', () => {
   it('createPullRequest() sends the maker bearer by default and parses the response', async () => {
@@ -33,8 +33,8 @@ describe('GitHubForgeAdapter — PR lifecycle', () => {
       state: 'open',
       title: 'feat(W6-01): forge framework + GitHub adapter',
       body: 'ticket body',
-      htmlUrl: 'https://github.com/shipwright-org/demo/pull/42',
-      authorLogin: 'shipwright-maker',
+      htmlUrl: 'https://github.com/dokima-org/demo/pull/42',
+      authorLogin: 'dokima-maker',
       headRef: 'sw/w6-01-github-adapter',
       headSha: 'abc123def456',
       baseRef: 'main',
@@ -42,7 +42,7 @@ describe('GitHubForgeAdapter — PR lifecycle', () => {
     });
     expect(calls[0]?.method).toBe('POST');
     expect(calls[0]?.headers.authorization).toBe('Bearer maker-token');
-    expect(calls[0]?.url).toBe('https://api.github.com/repos/shipwright-org/demo/pulls');
+    expect(calls[0]?.url).toBe('https://api.github.com/repos/dokima-org/demo/pulls');
   });
 
   it('listPullRequests() defaults to state=open and maps every entry', async () => {
@@ -56,7 +56,7 @@ describe('GitHubForgeAdapter — PR lifecycle', () => {
     expect(prs).toHaveLength(1);
     expect(prs[0]?.number).toBe(42);
     expect(calls[0]?.url).toBe(
-      'https://api.github.com/repos/shipwright-org/demo/pulls?state=open',
+      'https://api.github.com/repos/dokima-org/demo/pulls?state=open',
     );
   });
 
@@ -91,7 +91,7 @@ describe('GitHubForgeAdapter — PR lifecycle', () => {
     expect(calls[0]?.headers.authorization).toBe('Bearer reviewer-token');
     expect(calls[0]?.method).toBe('PUT');
     expect(calls[0]?.url).toBe(
-      'https://api.github.com/repos/shipwright-org/demo/pulls/42/merge',
+      'https://api.github.com/repos/dokima-org/demo/pulls/42/merge',
     );
   });
 

@@ -1,4 +1,4 @@
-# Shipwright — Scope
+# Dokima — Scope
 
 Traces to: `docs/BLUEPRINT.md` (§3, §6, §9, §11, §12) and founder decisions D-003–D-010.
 Scope items are numbered **S-x** for traceability; downstream FR-x/NFR-x requirements
@@ -84,8 +84,8 @@ and tickets must cite an S-x. Wave mapping follows BLUEPRINT §9.
 
 | ID | Item | Trace |
 |----|------|-------|
-| S-28 | Shipwright runs its own pipeline on itself: threat model, security suite, a11y; receipts ship with the 1.0 release. Secrets hygiene: vault, redaction in packets + event log, secrets-scanner validator on close gates — **pulled forward to W3 (ticket W3-13, adopted AM-2 2026-07-14)** so the redaction window closes before the autonomous W3 runs; the W8 dogfood re-verifies it. | NFR-4, BLUEPRINT §9, §12.5 |
-| S-29 | Packaging: `npx shipwright` / npm global; config `~/.shipwright/`, project state `.shipwright/`; macOS/Linux first-class, Windows via WSL (D-009). | D-003, D-009, NFR-1/7 |
+| S-28 | Dokima runs its own pipeline on itself: threat model, security suite, a11y; receipts ship with the 1.0 release. Secrets hygiene: vault, redaction in packets + event log, secrets-scanner validator on close gates — **pulled forward to W3 (ticket W3-13, adopted AM-2 2026-07-14)** so the redaction window closes before the autonomous W3 runs; the W8 dogfood re-verifies it. | NFR-4, BLUEPRINT §9, §12.5 |
+| S-29 | Packaging: `npx dokima` / npm global; config `~/.dokima/`, project state `.dokima/`; macOS/Linux first-class, Windows via WSL (D-009). | D-003, D-009, NFR-1/7 |
 
 ## Out of scope — v1
 
@@ -101,7 +101,7 @@ build-step dependency on internal repos (D-008).
 | S-40 | Multi-user with SSO (OIDC/SAML), per-human identities, role-based rights over the NEVER-AUTO surface (who may merge/deploy). v1 pre-commitments: identity table columns (S-1) and auth middleware running in single-user mode. | D-005 |
 | S-41 | Windows-native (no WSL). | D-009 |
 | S-42 | Fast-follow candidates from BLUEPRINT §12: session trace viewer (#4), lessons-intake → playbook pipeline (#6), starter archetypes (#7), board export/import (#8). Signed community expert/validator packs (D-006 flywheel). | BLUEPRINT §11.2, §12 |
-| S-43 | Public-launch naming pass for the shipwright.io collision (D-001) — pre-launch gate, not a code wave. | D-001, RISKS.md R-4 |
+| S-43 | Public-launch naming pass for the dokima.io collision (D-001) — pre-launch gate, not a code wave. | D-001, RISKS.md R-4 |
 
 ## Change control
 

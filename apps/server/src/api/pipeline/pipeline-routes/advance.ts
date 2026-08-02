@@ -2,15 +2,15 @@
  * `POST /api/v1/projects/:id/phases/:n/advance` (W9-07, FR-P1/P2/P3, BLUEPRINT
  * §3.2 "Gate mechanism") — the phase-advance decision, wired for real.
  *
- * This route is a thin caller around `@shipwright/pipeline`'s `decideAdvance`
+ * This route is a thin caller around `@dokima/pipeline`'s `decideAdvance`
  * (packages/pipeline/src/phases/advance.ts). That module's own logic is
  * already pinned by `advance.test.ts` and is NOT reimplemented or duplicated
  * here (Law 4/6 — "do not cheat the trust machine"; never let a component
  * verify its own output). The only job of this file is to bind
- * `AdvanceDeps.verifyReceipt` to the REAL `@shipwright/events` `verifyReceipt`,
+ * `AdvanceDeps.verifyReceipt` to the REAL `@dokima/events` `verifyReceipt`,
  * closed over:
  *
- *   - the project's real `.shipwright/state.db`, opened READ-ONLY
+ *   - the project's real `.dokima/state.db`, opened READ-ONLY
  *     (`openEventLogReader`) — `decideAdvance`/`verifyReceipt` never write;
  *     W9-06's `runPhaseGate` (a distinct writer, run separately) is the only
  *     thing that ever mints a gate receipt;
@@ -57,7 +57,7 @@ import {
   verifyReceipt,
   type EventLog,
   type ReceiptInputFile,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   decideAdvance,
   getPhase,
@@ -67,7 +67,7 @@ import {
   type AdvanceDeps,
   type AdvanceResult,
   type PhaseId,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../../projects.js';
 import { PROBLEM_CONTENT_TYPE } from '../../problem.js';
@@ -87,7 +87,7 @@ export interface AdvanceRouteOptions {
    * `verifyReceipt`/`mintReceipt` and the CLI's `--signing-key` use.
    * `server.ts`'s existing `registerPipelineRoutes(app, { home: opts.fleetHome })`
    * call sits outside this ticket's write_scope and does not thread a
-   * signing key through, so this defaults to `SHIPWRIGHT_SIGNING_KEY`
+   * signing key through, so this defaults to `DOKIMA_SIGNING_KEY`
    * (mirrors `apps/server/src/api/main.ts`'s own resolution of the same env
    * var). Absent/empty at request time surfaces as `SigningKeyRequiredError`
    * -> 503 (already wired in `./problems.js`) — fail-closed, never a
@@ -239,7 +239,7 @@ export function registerAdvanceRoute(
         }
       }
 
-      const signingKey = opts.signingKey ?? process.env.SHIPWRIGHT_SIGNING_KEY ?? '';
+      const signingKey = opts.signingKey ?? process.env.DOKIMA_SIGNING_KEY ?? '';
       const dbPath = stateDbPath(record.path);
       const db = openEventLogReader(dbPath);
       try {

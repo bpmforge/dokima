@@ -59,7 +59,7 @@
  * real CredentialStore (same constraint noted in anthropic.ts's and
  * openai.ts's file headers) — CopilotCredentialStore (types.ts) is
  * structurally identical, so packages/shared's implementations satisfy it
- * unmodified. The default ref name 'shipwright:copilot:github-token'
+ * unmodified. The default ref name 'dokima:copilot:github-token'
  * matches the convention already exercised by packages/shared's own tests
  * (credential-store.test.ts, settings-files.test.ts). The short-lived
  * Copilot API bearer is cache-only (in memory), never persisted — it's

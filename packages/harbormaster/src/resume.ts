@@ -50,8 +50,8 @@ import {
   verifyReceipt,
   type EventLog,
   type ReceiptInputFile,
-} from '@shipwright/events';
-import { closeTicket, listTickets, type Ticket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { closeTicket, listTickets, type Ticket } from '@dokima/tickets';
 import { DEFAULT_REQUIRED_VALIDATORS } from './loop-gates-types.js';
 import { classifyManifestFile, classifyManifestFiles } from './scope.js';
 import type {
@@ -170,7 +170,7 @@ export async function checkClaimedTicket(
     return { outcome: 'drift', ticketId: ticket.id, reasons: manifestReasons };
   }
 
-  const worktreePath = path.join(options.repoRoot, '.shipwright', 'worktrees', ticket.id);
+  const worktreePath = path.join(options.repoRoot, '.dokima', 'worktrees', ticket.id);
   const files = receiptFiles(receipt);
 
   // SECURITY (W1-07 symlink-escape class): resolved via fs.realpath and

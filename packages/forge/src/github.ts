@@ -21,7 +21,7 @@
  * adapter never touches a keychain (same discipline as
  * packages/gateway/src/providers/copilot.ts). packages/forge/package.json
  * declares no dependencies (out of this ticket's write_scope to add one),
- * so this package cannot import @shipwright/shared's CredentialStore even
+ * so this package cannot import @dokima/shared's CredentialStore even
  * though ARCHITECTURE.md §4 allows forge -> shared in principle; every type
  * needed lives locally in types.ts.
  *

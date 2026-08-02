@@ -16,7 +16,7 @@ import {
 let tmpDirs: string[] = [];
 
 async function mkTmp(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-vault-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-vault-test-'));
   tmpDirs.push(dir);
   return dir;
 }
@@ -29,8 +29,8 @@ afterEach(async () => {
 describe('resolveCredentialRef', () => {
   it('returns the stored secret for a known ref', async () => {
     const store = createInMemoryCredentialStore();
-    await store.set('shipwright:copilot:github-token', 'ghp_fake');
-    expect(await resolveCredentialRef(store, 'shipwright:copilot:github-token')).toBe(
+    await store.set('dokima:copilot:github-token', 'ghp_fake');
+    expect(await resolveCredentialRef(store, 'dokima:copilot:github-token')).toBe(
       'ghp_fake',
     );
   });
@@ -38,16 +38,16 @@ describe('resolveCredentialRef', () => {
   it('throws a named-ref error rather than falling back to plaintext when the ref is unset', async () => {
     const store = createInMemoryCredentialStore();
     await expect(
-      resolveCredentialRef(store, 'shipwright:missing'),
+      resolveCredentialRef(store, 'dokima:missing'),
     ).rejects.toBeInstanceOf(CredentialRefNotFoundError);
   });
 
   it('deleting a ref breaks resolution with the same named-ref error (never plaintext)', async () => {
     const store = createInMemoryCredentialStore();
-    await store.set('shipwright:vertex:adc', 'secret-value');
-    await store.delete('shipwright:vertex:adc');
+    await store.set('dokima:vertex:adc', 'secret-value');
+    await store.delete('dokima:vertex:adc');
     await expect(
-      resolveCredentialRef(store, 'shipwright:vertex:adc'),
+      resolveCredentialRef(store, 'dokima:vertex:adc'),
     ).rejects.toBeInstanceOf(CredentialRefNotFoundError);
   });
 });
@@ -55,18 +55,18 @@ describe('resolveCredentialRef', () => {
 describe('encrypted-file credential store', () => {
   it('round-trips a secret through set/get', async () => {
     const home = await mkTmp();
-    const env = { SHIPWRIGHT_HOME: home, SHIPWRIGHT_VAULT_KEY: 'test-vault-key' };
+    const env = { DOKIMA_HOME: home, DOKIMA_VAULT_KEY: 'test-vault-key' };
     const store = createEncryptedFileCredentialStore(env);
 
-    await store.set('shipwright:copilot:github-token', 'ghp_fake_token_value');
-    expect(await store.get('shipwright:copilot:github-token')).toBe(
+    await store.set('dokima:copilot:github-token', 'ghp_fake_token_value');
+    expect(await store.get('dokima:copilot:github-token')).toBe(
       'ghp_fake_token_value',
     );
   });
 
   it('persists across separate store instances backed by the same file + key', async () => {
     const home = await mkTmp();
-    const env = { SHIPWRIGHT_HOME: home, SHIPWRIGHT_VAULT_KEY: 'test-vault-key' };
+    const env = { DOKIMA_HOME: home, DOKIMA_VAULT_KEY: 'test-vault-key' };
 
     await createEncryptedFileCredentialStore(env).set('ref-a', 'value-a');
     const secondInstance = createEncryptedFileCredentialStore(env);
@@ -75,9 +75,9 @@ describe('encrypted-file credential store', () => {
 
   it('the on-disk vault file never contains the plaintext secret', async () => {
     const home = await mkTmp();
-    const env = { SHIPWRIGHT_HOME: home, SHIPWRIGHT_VAULT_KEY: 'test-vault-key' };
+    const env = { DOKIMA_HOME: home, DOKIMA_VAULT_KEY: 'test-vault-key' };
     await createEncryptedFileCredentialStore(env).set(
-      'shipwright:copilot:github-token',
+      'dokima:copilot:github-token',
       'ghp_super_secret_value_1234567890',
     );
 
@@ -87,39 +87,39 @@ describe('encrypted-file credential store', () => {
 
   it('delete removes the entry', async () => {
     const home = await mkTmp();
-    const env = { SHIPWRIGHT_HOME: home, SHIPWRIGHT_VAULT_KEY: 'test-vault-key' };
+    const env = { DOKIMA_HOME: home, DOKIMA_VAULT_KEY: 'test-vault-key' };
     const store = createEncryptedFileCredentialStore(env);
     await store.set('ref-a', 'value-a');
     await store.delete('ref-a');
     expect(await store.get('ref-a')).toBeUndefined();
   });
 
-  it('throws VaultKeyMissingError when SHIPWRIGHT_VAULT_KEY is not set', () => {
+  it('throws VaultKeyMissingError when DOKIMA_VAULT_KEY is not set', () => {
     expect(() => createEncryptedFileCredentialStore({})).toThrow(VaultKeyMissingError);
   });
 
   it('cannot decrypt with the wrong vault key', async () => {
     const home = await mkTmp();
     await createEncryptedFileCredentialStore({
-      SHIPWRIGHT_HOME: home,
-      SHIPWRIGHT_VAULT_KEY: 'correct-key',
+      DOKIMA_HOME: home,
+      DOKIMA_VAULT_KEY: 'correct-key',
     }).set('ref-a', 'value-a');
 
     const wrongKeyStore = createEncryptedFileCredentialStore({
-      SHIPWRIGHT_HOME: home,
-      SHIPWRIGHT_VAULT_KEY: 'wrong-key',
+      DOKIMA_HOME: home,
+      DOKIMA_VAULT_KEY: 'wrong-key',
     });
     await expect(wrongKeyStore.get('ref-a')).rejects.toThrow();
   });
 });
 
 describe('resolveCredentialStore', () => {
-  it('uses the encrypted-file vault when SHIPWRIGHT_NO_KEYCHAIN is set', async () => {
+  it('uses the encrypted-file vault when DOKIMA_NO_KEYCHAIN is set', async () => {
     const home = await mkTmp();
     const env = {
-      SHIPWRIGHT_NO_KEYCHAIN: '1',
-      SHIPWRIGHT_HOME: home,
-      SHIPWRIGHT_VAULT_KEY: 'test-vault-key',
+      DOKIMA_NO_KEYCHAIN: '1',
+      DOKIMA_HOME: home,
+      DOKIMA_VAULT_KEY: 'test-vault-key',
     };
     const store = resolveCredentialStore(env);
     await store.set('ref-a', 'value-a');
@@ -154,11 +154,11 @@ describe('resolveCredentialStore', () => {
 // Skipped by default so `pnpm test` never touches a developer's real
 // keychain or requires an unlocked login keychain in CI.
 describe.skipIf(
-  process.platform !== 'darwin' || process.env.SHIPWRIGHT_TEST_REAL_KEYCHAIN !== '1',
+  process.platform !== 'darwin' || process.env.DOKIMA_TEST_REAL_KEYCHAIN !== '1',
 )('macOS keychain credential store (real keychain, opt-in)', () => {
   it('round-trips a secret through the real keychain', async () => {
     const store = createMacKeychainCredentialStore();
-    const ref = `shipwright-test-${Date.now()}`;
+    const ref = `dokima-test-${Date.now()}`;
     try {
       await store.set(ref, 'integration-test-value');
       expect(await store.get(ref)).toBe('integration-test-value');

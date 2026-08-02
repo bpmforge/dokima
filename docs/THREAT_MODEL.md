@@ -1,10 +1,10 @@
-# Shipwright — Threat Model (STRIDE per trust boundary)
+# Dokima — Threat Model (STRIDE per trust boundary)
 
 Traces to: BLUEPRINT.md §2.2 (trust boundary), §3.9, NFR-4; ARCHITECTURE.md §2;
 DECISIONS.md D-004 (per-identity forge tokens), D-005 (auth middleware), D-006 (signed
 content packs). Mitigations reference SECURITY_CONTROLS.md SC-## IDs. Rating =
 likelihood × impact, H/M/L. Re-run at each wave gate that adds a boundary (forge mirror
-W6, MCP host W6, multi-user v2). Shipwright's own pipeline re-derives this model as a
+W6, MCP host W6, multi-user v2). Dokima's own pipeline re-derives this model as a
 dogfood gate at W8.
 
 ## 1. Data-flow diagram with trust boundaries
@@ -13,10 +13,10 @@ dogfood gate at W8.
 graph LR
     subgraph TB-L["Local machine — operator's OS"]
       BR[Canvas SPA<br/>browser tab]
-      subgraph TB-C["Shipwright core (trusted)"]
+      subgraph TB-C["Dokima core (trusted)"]
         SRV[apps/server<br/>localhost:port]
         HM[Harbormaster<br/>gates · verbs · reviewer token]
-        DB[(.shipwright/state.db<br/>events · receipts · ledgers)]
+        DB[(.dokima/state.db<br/>events · receipts · ledgers)]
         VLT[Secrets vault<br/>OS keychain]
       end
       subgraph TB-A["Agent sessions (UNTRUSTED)"]
@@ -58,7 +58,7 @@ private (other local processes, browser tabs — SC-08).
 | A4 | The user's source code | repo, worktrees, prompts | Egress to providers is inherent; scope discipline is the control |
 | A5 | User secrets in repo/env (.env, keys) | project dir | Must never enter prompts, event log, or receipts (SC-06) |
 | A6 | Approvals/waivers ledger + NEVER-AUTO surface | state.db, Harbormaster | If an agent can approve/waive, autonomy guarantees collapse |
-| A7 | Content packs (experts, validators) | content/, ~/.shipwright/packs | Validators are *executables* that gate everything — a poisoned pack is arbitrary code with gate authority (D-006) |
+| A7 | Content packs (experts, validators) | content/, ~/.dokima/packs | Validators are *executables* that gate everything — a poisoned pack is arbitrary code with gate authority (D-006) |
 
 ## 3. STRIDE per boundary
 
@@ -107,7 +107,7 @@ private (other local processes, browser tabs — SC-08).
 | T-19 | S/E | Another local process or website reaches the API: DNS-rebinding / CSRF onto localhost, drive-by verb calls | M×H=H | SC-08 (localhost bind, bearer token, Origin/Host allowlist, no CORS wildcard) |
 | T-20 | I | Token/config file readable by other users on shared machine | L×M=M | SC-08 (0600 perms), SC-06 (secrets in keychain, not files) |
 | T-21 | E | **Poisoned content pack**: community expert/validator pack executes with gate authority | M×H=H | SC-09 (signed packs, D-006), SC-07 (validator runs sandboxed) |
-| T-22 | T | Supply chain: malicious npm dep in Shipwright itself | M×H=M | SC-16 (lockfile, ignore-scripts, audit gate) |
+| T-22 | T | Supply chain: malicious npm dep in Dokima itself | M×H=M | SC-16 (lockfile, ignore-scripts, audit gate) |
 
 ### 3.6 Event log & ledgers (A3, A6)
 
@@ -115,7 +115,7 @@ private (other local processes, browser tabs — SC-08).
 |---|---|---|---|---|
 | T-23 | T | Direct `state.db` edit rewrites history/receipts (any local process incl. an agent that escaped scope) | M×H=H | SC-11 (hash chain + `audit verify`; DB outside every write-scope), SC-01 |
 | T-24 | R | Waiver/approval minted retroactively or by an agent | M×H=H | SC-05 (human signature + blocklist), SC-11 (chain position proves ordering) |
-| T-25 | T | Log truncation/rollback to a consistent prefix (chain intact but shorter) | L×M=M | SC-11 (forge mirror as external anchor when connected; seq high-water in `~/.shipwright/`) |
+| T-25 | T | Log truncation/rollback to a consistent prefix (chain intact but shorter) | L×M=M | SC-11 (forge mirror as external anchor when connected; seq high-water in `~/.dokima/`) |
 
 ## 4. Abuse cases
 

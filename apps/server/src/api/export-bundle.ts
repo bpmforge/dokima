@@ -20,7 +20,7 @@
  *
  * The two bundle shapes are kept in sync by hand (field-for-field mirror,
  * see export-bundle-types.ts); the algorithmically load-bearing piece —
- * hash-chain verification — is NOT reimplemented here: `@shipwright/events`
+ * hash-chain verification — is NOT reimplemented here: `@dokima/events`
  * is already a direct dependency of `apps/server`, so `verifyChain` is
  * reused as the single source of truth for what "valid chain" means
  * operationally, exactly as `packages/shared/src/export/hash-chain.ts`'s

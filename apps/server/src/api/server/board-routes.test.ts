@@ -7,8 +7,8 @@ import {
   listEvents,
   openEventLog,
   openEventLogReader,
-} from '@shipwright/events';
-import { claimTicket, closeTicket, createTicket, startTicket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { claimTicket, closeTicket, createTicket, startTicket } from '@dokima/tickets';
 import { buildApiServer, type ApiServer } from '../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -31,7 +31,7 @@ describe('board routes — GET tickets / POST verbs', () => {
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-board-routes-');
+    const fleetHome = await tmpDir('dokima-board-routes-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -61,7 +61,7 @@ describe('board routes — GET tickets / POST verbs', () => {
       payload: { path: projectDir, mode: 'new' },
     });
     const { id } = res.json() as { id: string };
-    return { id, dbPath: path.join(projectDir, '.shipwright', 'state.db') };
+    return { id, dbPath: path.join(projectDir, '.dokima', 'state.db') };
   }
 
   it('rejects an unauthenticated GET tickets list with 401', async () => {
@@ -383,7 +383,7 @@ describe('D-020 accept-actor: operator != agent-maker by construction', () => {
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-accept-actor-');
+    const fleetHome = await tmpDir('dokima-accept-actor-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -412,7 +412,7 @@ describe('D-020 accept-actor: operator != agent-maker by construction', () => {
       payload: { path: projectDir, mode: 'new' },
     });
     const { id } = res.json() as { id: string };
-    return { id, dbPath: path.join(projectDir, '.shipwright', 'state.db') };
+    return { id, dbPath: path.join(projectDir, '.dokima', 'state.db') };
   }
 
   it('accept SUCCEEDS on a ticket owned by an agent/maker (via Harbormaster/CLI, never through this API)', async () => {
@@ -463,7 +463,7 @@ describe('D-020 accept-actor: operator != agent-maker by construction', () => {
     // the fixed operator identity (API_DESIGN §1 "v1: the operator"), so this
     // models a human doing their own manual work end to end via the board.
     const log = openEventLog(
-      path.join(fleetHome, 'accept-actor-project', '.shipwright', 'state.db'),
+      path.join(fleetHome, 'accept-actor-project', '.dokima', 'state.db'),
     );
     createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
     createTicket(log, 'agent-1', {
@@ -531,7 +531,7 @@ describe('board WS projection (FR-C4, API_DESIGN §3)', () => {
   });
 
   it('a successful verb publishes a board:{projectId} envelope over WS', async () => {
-    const fleetHome = await tmpDir('shipwright-board-ws-');
+    const fleetHome = await tmpDir('dokima-board-ws-');
     dirs.push(fleetHome);
     const port = PORT + 2;
     const server = await buildApiServer({
@@ -553,7 +553,7 @@ describe('board WS projection (FR-C4, API_DESIGN §3)', () => {
       payload: { path: projectDir, mode: 'new' },
     });
     const { id } = createRes.json() as { id: string };
-    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const dbPath = path.join(projectDir, '.dokima', 'state.db');
     const log = openEventLog(dbPath);
     createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
     createTicket(log, 'agent-1', {

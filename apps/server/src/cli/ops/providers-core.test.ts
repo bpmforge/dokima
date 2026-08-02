@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { saveProjectSettings } from '@shipwright/shared';
+import { saveProjectSettings } from '@dokima/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CliIO } from '../../bootstrap/cli.js';
 import { buildProvider, loadConfiguredProviders } from './providers-core.js';
@@ -23,7 +23,7 @@ describe('loadConfiguredProviders', () => {
       stdout: vi.fn(),
       stderr: vi.fn(),
       cwd: projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
     };
   }
 

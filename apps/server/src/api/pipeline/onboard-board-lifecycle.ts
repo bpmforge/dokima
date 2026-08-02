@@ -11,7 +11,7 @@
  * catalogId already tracked) then means the SAME finding reported by a
  * later onboard run does not mint a second board ticket; only a genuinely
  * new finding does. This is the same "content fingerprint, not run id"
- * design `@shipwright/loop`'s `computeFindingFingerprint` uses for its own
+ * design `@dokima/loop`'s `computeFindingFingerprint` uses for its own
  * finding ledger.
  *
  * AC3(a) (a finding cannot become a ticket without the receipts/verbs
@@ -34,8 +34,8 @@
  * structurally never the identity that ACCEPTS it onto the board.
  */
 import { createHash } from 'node:crypto';
-import { appendEvent } from '@shipwright/events';
-import { proposeFromMatches, type CatalogMatch } from '@shipwright/pipeline';
+import { appendEvent } from '@dokima/events';
+import { proposeFromMatches, type CatalogMatch } from '@dokima/pipeline';
 import { acceptPlanItem } from '../plans-store.js';
 import type { PlanItemRow } from '../plans-types.js';
 import {
@@ -121,7 +121,7 @@ function laneForStepId(stepId: string): string {
  * risk" can legitimately require touching any file in the repo. So this is
  * a deliberate, statically-authored whole-repo grant — `HARD_EXCLUSIONS`
  * (`packages/git/src/scope.ts`) still applies underneath it regardless,
- * so `.git/**`/`.github/workflows/**`/`.shipwright/**` stay unreachable. */
+ * so `.git/**`/`.github/workflows/**`/`.dokima/**` stay unreachable. */
 export const ONBOARD_TICKET_WRITE_SCOPE: readonly string[] = ['**'];
 
 /** Collapses NEW findings that share a catalogId WITHIN the same batch (e.g.

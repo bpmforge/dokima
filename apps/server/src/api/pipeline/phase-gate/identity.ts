@@ -15,7 +15,7 @@
  * executes, so a same-identity call can never even produce a run, let alone a receipt.
  * A red fixture (`identity.test.ts`) proves the refusal.
  */
-import { createIdentity, getIdentity, type EventLog } from '@shipwright/events';
+import { createIdentity, getIdentity, type EventLog } from '@dokima/events';
 
 /** The phase-gate runner's own identity — distinct by construction from any
  * content-authoring role (`specialist:<role>`, human operator, etc). Created lazily

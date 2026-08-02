@@ -9,8 +9,8 @@
  * to-playbook / accept-to-ticket / reject) reachable at all in production
  * (W7-05 conductor gate-fix).
  */
-import { listEvents, type EventLog } from '@shipwright/events';
-import type { FieldReportSource } from '@shipwright/memory';
+import { listEvents, type EventLog } from '@dokima/events';
+import type { FieldReportSource } from '@dokima/memory';
 
 /** `undefined` (caller falls back to `OPERATOR_ACTOR_ID`) for `source: 'manual'` or an unresolvable `sourceRef`. */
 export function resolveFiledBy(

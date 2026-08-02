@@ -9,5 +9,5 @@ import os from 'node:os';
 import path from 'node:path';
 
 export const PORT = 4402;
-export const HOME = path.join(os.tmpdir(), 'shipwright-web-e2e-home');
-export const STATE_DB = path.join(os.tmpdir(), 'shipwright-web-e2e-state.db');
+export const HOME = path.join(os.tmpdir(), 'dokima-web-e2e-home');
+export const STATE_DB = path.join(os.tmpdir(), 'dokima-web-e2e-state.db');

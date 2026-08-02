@@ -1,7 +1,7 @@
 {
   "$note": "Project config for scripts/conductor.mjs. Everything project-specific lives here — including the board's own location (boardPath) — so the conductor script is reusable across repos unchanged. Absent keys fall back to built-in defaults.",
   "branchPrefix": "sw/",
-  "worktreeDir": "../.shipwright-worktrees",
+  "worktreeDir": "../.dokima-worktrees",
   "isolation": "worktree",
   "toolchainMarker": "package.json",
   "boardPath": "plan.json",
@@ -47,7 +47,7 @@
       "pnpm",
       [
         "--filter",
-        "@shipwright/web",
+        "@dokima/web",
         "e2e"
       ]
     ]

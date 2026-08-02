@@ -17,7 +17,7 @@ import {
   getIdentity,
   type EventLog,
   type IdentityRecord,
-} from '@shipwright/events';
+} from '@dokima/events';
 
 /** Deterministic identity id for berth `berthIndex` (1-based) of `runId`. */
 export function berthIdentityId(runId: string, berthIndex: number): string {

@@ -7,7 +7,7 @@
  * drafts into blueprint sections, or a decided blueprint into ticket-draft
  * proposals, is real LLM work. This ticket's write_scope
  * (`packages/pipeline/src/run/**` + `src/index.ts`) has no reach to
- * `@shipwright/gateway` (no new workspace import — `packages/pipeline/
+ * `@dokima/gateway` (no new workspace import — `packages/pipeline/
  * package.json` stays dependency-free, same wall every other engine module
  * in this package documents), so every seam between phases is an injected
  * function on `PipelineModelPort` instead — the wiring ticket (W5-18) binds
@@ -74,7 +74,7 @@ export interface PipelineModelPort {
 }
 
 /** One per completed phase in the chain, in call order — the wiring
- * ticket's `emit` appends each as an event via `@shipwright/events`
+ * ticket's `emit` appends each as an event via `@dokima/events`
  * (Law 7); this package only defines the shape. */
 export type PipelineRunEvent =
   | { readonly kind: 'interview-complete'; readonly topicCount: number }

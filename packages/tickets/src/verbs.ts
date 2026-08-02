@@ -1,4 +1,4 @@
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import type { TicketVerbOptions } from './create.js';
 import { TicketError } from './errors.js';
 import { loadTickets } from './query.js';

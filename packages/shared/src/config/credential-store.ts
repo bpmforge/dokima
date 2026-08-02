@@ -8,7 +8,7 @@
  *    dependency — packages/shared/package.json is outside this ticket's
  *    write_scope, see plan.json W0-07 notes).
  *  - Encrypted-file vault (node:crypto AES-256-GCM), the headless/WSL
- *    fallback behind SHIPWRIGHT_NO_KEYCHAIN (P-003, DEPLOYMENT §6). This
+ *    fallback behind DOKIMA_NO_KEYCHAIN (P-003, DEPLOYMENT §6). This
  *    is also the backend exercised by the automated test suite: it is
  *    fully local, deterministic, and never touches a real OS keychain.
  *
@@ -23,7 +23,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { computeShipwrightHome } from './settings-files.js';
+import { computeDokimaHome } from './settings-files.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -68,7 +68,7 @@ export function createInMemoryCredentialStore(): CredentialStore {
   };
 }
 
-const MAC_KEYCHAIN_SERVICE = 'shipwright';
+const MAC_KEYCHAIN_SERVICE = 'dokima';
 
 /** macOS Keychain adapter (thin shell-out to `security`; no native dependency). */
 export function createMacKeychainCredentialStore(): CredentialStore {
@@ -188,7 +188,7 @@ async function writeVault(
 export class VaultKeyMissingError extends Error {
   constructor() {
     super(
-      'SHIPWRIGHT_NO_KEYCHAIN is set but SHIPWRIGHT_VAULT_KEY is not — the encrypted-file ' +
+      'DOKIMA_NO_KEYCHAIN is set but DOKIMA_VAULT_KEY is not — the encrypted-file ' +
         'vault needs a key (interactive prompting is a CLI-layer concern, not this package)',
     );
     this.name = 'VaultKeyMissingError';
@@ -199,9 +199,9 @@ export class VaultKeyMissingError extends Error {
 export function createEncryptedFileCredentialStore(
   env: NodeJS.ProcessEnv = process.env,
 ): CredentialStore {
-  const vaultKey = env.SHIPWRIGHT_VAULT_KEY;
+  const vaultKey = env.DOKIMA_VAULT_KEY;
   if (!vaultKey) throw new VaultKeyMissingError();
-  const filePath = path.join(computeShipwrightHome(env), VAULT_FILENAME);
+  const filePath = path.join(computeDokimaHome(env), VAULT_FILENAME);
   return {
     async get(ref) {
       const entries = await readVault(filePath, vaultKey);
@@ -223,18 +223,18 @@ export function createEncryptedFileCredentialStore(
 export class NoKeychainAdapterError extends Error {
   constructor(platform: string) {
     super(
-      `no OS keychain adapter for platform "${platform}" yet — set SHIPWRIGHT_NO_KEYCHAIN=1 ` +
-        'and SHIPWRIGHT_VAULT_KEY to use the encrypted-file credential store instead',
+      `no OS keychain adapter for platform "${platform}" yet — set DOKIMA_NO_KEYCHAIN=1 ` +
+        'and DOKIMA_VAULT_KEY to use the encrypted-file credential store instead',
     );
     this.name = 'NoKeychainAdapterError';
   }
 }
 
-/** Picks the credential store backend per SHIPWRIGHT_NO_KEYCHAIN / platform (P-003). */
+/** Picks the credential store backend per DOKIMA_NO_KEYCHAIN / platform (P-003). */
 export function resolveCredentialStore(
   env: NodeJS.ProcessEnv = process.env,
 ): CredentialStore {
-  if (env.SHIPWRIGHT_NO_KEYCHAIN) return createEncryptedFileCredentialStore(env);
+  if (env.DOKIMA_NO_KEYCHAIN) return createEncryptedFileCredentialStore(env);
   if (process.platform === 'darwin') return createMacKeychainCredentialStore();
   throw new NoKeychainAdapterError(process.platform);
 }

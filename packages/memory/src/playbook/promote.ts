@@ -3,7 +3,7 @@
  * playbook entries stay local by default; a project-agnostic lesson may be
  * promoted to the Fleet-scope global playbook only explicitly, carrying
  * provenance, and never automatically. This module never talks to the
- * global DB itself — `packages/memory` can't depend on `@shipwright/events`
+ * global DB itself — `packages/memory` can't depend on `@dokima/events`
  * (no workspace dependency declared in this ticket's write_scope) — it only
  * *prepares* the exact payload shape
  * `packages/events/src/global-db/global-playbook.ts`'s real
@@ -27,7 +27,7 @@ export interface PreparePromotionInput {
   readonly promotedBy: string;
 }
 
-/** The exact shape `@shipwright/events`' `promoteGlobalPlaybookEntry` (`PromoteGlobalPlaybookInput`) expects, reproduced rather than imported. */
+/** The exact shape `@dokima/events`' `promoteGlobalPlaybookEntry` (`PromoteGlobalPlaybookInput`) expects, reproduced rather than imported. */
 export interface GlobalPromotionPayload {
   readonly taskClass: string;
   readonly entry: string;

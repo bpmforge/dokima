@@ -10,7 +10,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import { computeFleetRegistryPath } from '../../projects.js';
 import { notFound } from '../../server/artifacts-helpers.js';
 import { PROBLEM_CONTENT_TYPE } from '../../problem.js';

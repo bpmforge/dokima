@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Ticket, TicketStatus } from '@shipwright/tickets';
+import type { Ticket, TicketStatus } from '@dokima/tickets';
 import { busyLanes, pickNextBerthTicket } from '../src/berths-scheduler.js';
 
 function makeTicket(

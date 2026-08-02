@@ -1,4 +1,4 @@
-# Shipwright nightly E2E — docs/TESTING.md §7 (Playwright over the Canvas,
+# Dokima nightly E2E — docs/TESTING.md §7 (Playwright over the Canvas,
 # fake-model gateway only). Green-skips until `pnpm e2e` exists (lands with
 # W4 — apps/web + the fake-model gateway); never calls a real provider/forge.
 name: Nightly E2E

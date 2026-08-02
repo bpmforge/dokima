@@ -6,7 +6,7 @@
  */
 
 export const repoSuccessFixture = {
-  full_name: 'shipwright-org/demo',
+  full_name: 'dokima-org/demo',
   default_branch: 'main',
   private: true,
   archived: false,
@@ -14,7 +14,7 @@ export const repoSuccessFixture = {
 };
 
 export const repoMissingPermissionsFixture = {
-  full_name: 'shipwright-org/demo',
+  full_name: 'dokima-org/demo',
   default_branch: 'main',
   private: true,
   archived: false,
@@ -77,9 +77,9 @@ export const pullRequestSuccessFixture = {
   state: 'open',
   title: 'feat(W6-01): forge framework + GitHub adapter',
   body: 'ticket body',
-  html_url: 'https://github.com/shipwright-org/demo/pull/42',
+  html_url: 'https://github.com/dokima-org/demo/pull/42',
   merged: false,
-  user: { login: 'shipwright-maker' },
+  user: { login: 'dokima-maker' },
   head: { ref: 'sw/w6-01-github-adapter', sha: 'abc123def456' },
   base: { ref: 'main' },
 };
@@ -117,9 +117,9 @@ export const issueSuccessFixture = {
   state_reason: null,
   title: 'W6-01 — Forge framework + GitHub adapter (PRs, protection, webhooks)',
   body: 'mirrored ticket body',
-  html_url: 'https://github.com/shipwright-org/demo/issues/7',
+  html_url: 'https://github.com/dokima-org/demo/issues/7',
   labels: [{ name: 'lane:integrations' }],
-  assignees: [{ login: 'shipwright-maker' }],
+  assignees: [{ login: 'dokima-maker' }],
 };
 
 export const issueClosedFixture = {
@@ -131,15 +131,15 @@ export const issueClosedFixture = {
 export const issueCommentSuccessFixture = {
   id: 5001,
   body: 'accepted — reviewer!=author verified',
-  user: { login: 'shipwright-reviewer' },
-  html_url: 'https://github.com/shipwright-org/demo/issues/7#issuecomment-5001',
+  user: { login: 'dokima-reviewer' },
+  html_url: 'https://github.com/dokima-org/demo/issues/7#issuecomment-5001',
   created_at: '2026-07-16T12:00:00Z',
 };
 
 export const commitStatusSuccessFixture = {
   id: 9001,
   state: 'success',
-  context: 'shipwright/gate',
+  context: 'dokima/gate',
   created_at: '2026-07-16T12:05:00Z',
 };
 

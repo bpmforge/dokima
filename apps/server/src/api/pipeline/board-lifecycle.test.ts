@@ -1,9 +1,9 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openEventLog } from '@shipwright/events';
-import { getTicket as getBoardTicket } from '@shipwright/tickets';
-import type { DecomposedPlan, DecomposedTicket } from '@shipwright/pipeline';
+import { openEventLog } from '@dokima/events';
+import { getTicket as getBoardTicket } from '@dokima/tickets';
+import type { DecomposedPlan, DecomposedTicket } from '@dokima/pipeline';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   acceptDecomposedPlanItems,
@@ -14,7 +14,7 @@ import { listPlanItems } from '../plans-store.js';
 import { stateDbPath } from '../server/board-project.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-board-lifecycle-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-board-lifecycle-'));
 }
 
 function fixtureTicket(overrides: Partial<DecomposedTicket> = {}): DecomposedTicket {

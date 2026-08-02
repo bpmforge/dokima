@@ -1,4 +1,4 @@
-# Shipwright — Competitive Analysis
+# Dokima — Competitive Analysis
 
 Traces to: `docs/BLUEPRINT.md` (§1.3, §11) and founder decisions D-001, D-003, D-004,
 D-006, D-007, D-008. **Verification status:** drafted 2026-07-10 from working
@@ -29,14 +29,14 @@ claim needing that pass, not an assertion.
 | Claude Code | No — agentic sessions + subagents, human-driven; SDLC discipline only if user supplies it | Permission prompts + human review; completion self-reported | Anthropic API/subscription pricing | Local CLI, cloud models | No |
 | GitHub Copilot coding agent | No — assigned-issue → PR automation | PR review is the gate; in-run claims self-reported | Copilot subscription (`UNVERIFIED` metering) | No — GitHub Actions cloud | GitHub Issues/Projects, no execution invariants |
 | opencode | Partial — with expert-pack content it runs SDLC-style flows | Session-level; gates live in content/validators, not a runtime holding them | BYO model incl. LM Studio/Ollama — closest to our economics | Yes — OSS terminal app | No — files/forge issues, no lifecycle-verb engine |
-| **Shipwright** | **Yes — phases 0–5, PM interview, decision slates, blueprint stage** | **Platform holds gates; receipts; maker≠verifier mechanical (C-2/C-3/C-4)** | **Cheapest-first ladder R0–R4, per-ticket, ledgered; budget breakers** | **Yes — local-first, SQLite, offline vs local models (C-1)** | **Yes — event-sourced board with enforced verbs (D-004)** |
+| **Dokima** | **Yes — phases 0–5, PM interview, decision slates, blueprint stage** | **Platform holds gates; receipts; maker≠verifier mechanical (C-2/C-3/C-4)** | **Cheapest-first ladder R0–R4, per-ticket, ledgered; budget breakers** | **Yes — local-first, SQLite, offline vs local models (C-1)** | **Yes — event-sourced board with enforced verbs (D-004)** |
 
 ## Per-stack notes
 
 - **Jira/Linear + Copilot** — the incumbent to displace (BLUEPRINT §1.3): three tools,
   no shared state, "the AI said it's done" unverifiable. Linear is adding agent
   delegation to issues (`UNVERIFIED` depth); even so, the tracker records claims, it
-  does not re-run gates. Shipwright's board *is* the execution state.
+  does not re-run gates. Dokima's board *is* the execution state.
 - **Devin / Factory** — validated the demand for unattended agent work and the
   price ceiling for it. Their model is trust-the-agent in a cloud sandbox; failure
   mode is plausible-looking wrong work accepted for lack of receipts. Enterprise
@@ -47,16 +47,16 @@ claim needing that pass, not an assertion.
   have no PM program, no economics layer, no board. Complementary risk: an OSS
   platform could add a trust runtime — see RISKS.md R-8.
 - **Cursor / Claude Code / Copilot coding agent** — own the inner loop and the
-  developer's hands. Shipwright does not compete for the editor (NON_GOALS.md N-1);
+  developer's hands. Dokima does not compete for the editor (NON_GOALS.md N-1);
   it is the out-of-session layer that conducts many sessions, holds the gates they
   cannot, and survives any one session dying. Claude Code-class tools are also a
   *provider* surface for us (agent sessions are provider-agnostic, BLUEPRINT §8).
 - **opencode** — closest relative; the founder's expert system runs on it today.
-  Shipwright productizes what opencode + content cannot enforce: out-of-session gate
+  Dokima productizes what opencode + content cannot enforce: out-of-session gate
   execution, lifecycle-verb invariants, receipts, budget breakers, morning queue.
   D-008: one-time content import, then standalone — no umbilical.
 
-## The wedge (why Shipwright wins its segment)
+## The wedge (why Dokima wins its segment)
 
 1. **Evidence-based trust.** Nobody in the table makes "done" a machine-checked
    receipt minted outside the agent session (C-2, C-3), with maker≠verifier enforced
@@ -67,7 +67,7 @@ claim needing that pass, not an assertion.
    nowhere else.
 3. **PM-guided program.** Interview → vision/scope/SRS → threat model → blueprint →
    decision slates → ticket DAG. Everyone else starts at "here's an issue, go."
-   Shipwright starts at "here's an idea."
+   Dokima starts at "here's an idea."
 4. **Local-first (C-1).** One install, one SQLite file per project, offline against
    LM Studio/Ollama. Autonomous-agent competitors are cloud sandboxes; corporate and
    privacy-bound users keep everything on their machine.
@@ -93,5 +93,5 @@ claim needing that pass, not an assertion.
 Before the Phase 0 gate: verify current pricing/plans for Devin, Cursor, Copilot,
 Linear agent features; confirm OpenHands' current tracking/GUI capabilities; survey
 whether any competitor has shipped receipt-style verification since knowledge
-cutoff; confirm shipwright.io collision posture and name availability (RISKS.md
+cutoff; confirm dokima.io collision posture and name availability (RISKS.md
 R-4). Findings land in `docs/research/` with per-claim citations (BLUEPRINT FR-P8).

@@ -1,1 +1,1 @@
-export const APP_NAME = 'Shipwright';
+export const APP_NAME = 'Dokima';

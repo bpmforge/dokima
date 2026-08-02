@@ -2,14 +2,14 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { git } from '@shipwright/git';
+import { git } from '@dokima/git';
 import {
   createIdentity,
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import { claimTicket, createTicket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { claimTicket, createTicket } from '@dokima/tickets';
 import {
   detectConflicts,
   parsePorcelainStatus,
@@ -71,10 +71,10 @@ interface RepoFixture {
 }
 
 async function createTempRepo(): Promise<RepoFixture> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-conflict-watch-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-conflict-watch-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.mkdir(path.join(repoRoot, 'src', 'auth'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'src', 'auth', 'session.ts'), 'export {};\n');
   await git(repoRoot, ['add', '--', 'src/auth/session.ts']);
@@ -117,7 +117,7 @@ async function setupFixture(): Promise<Fixture> {
   const repo = await createTempRepo();
   // state.db lives outside repoRoot — inside it, `git status --porcelain`
   // would report the db file itself as an untracked "human edit".
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-conflict-watch-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-conflict-watch-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
   createIdentity(log, { id: 'human-1', name: 'P2 Dev', kind: 'human' });

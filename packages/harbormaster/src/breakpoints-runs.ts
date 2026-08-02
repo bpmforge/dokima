@@ -7,7 +7,7 @@
  * trail neither can drift from the other.
  */
 
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import type {
   BreakpointMode,
   RunMode,

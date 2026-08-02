@@ -15,7 +15,7 @@ import {
   listEvents,
   verifyChain,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   isBlockedAgentName,
   LEDGER_EVENT_TYPE,

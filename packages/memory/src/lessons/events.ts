@@ -1,7 +1,7 @@
 /**
  * Field-report lifecycle events (BLUEPRINT §12.6). Mirrors
  * `../playbook/events.ts`'s injectable-sink pattern: this package can't
- * depend on `@shipwright/events` (no `package.json` dependency declared
+ * depend on `@dokima/events` (no `package.json` dependency declared
  * within this ticket's write_scope), so events are minted here and handed to
  * a caller-supplied sink wired to the real event log elsewhere. Distinct
  * namespace from `playbook.*` (R0 consult) and `escalation.*` (ladder rung

@@ -3,15 +3,15 @@
 /**
  * Sign the first-party content pack.
  *
- * Usage: SHIPWRIGHT_SIGNING_KEY="..." node scripts/sign-content.mjs
+ * Usage: DOKIMA_SIGNING_KEY="..." node scripts/sign-content.mjs
  *
  * This script creates or updates content/manifest.json with:
  * - File list with SHA256 hashes
  * - Publisher signature using Ed25519
  * - License field (first-party for first-party content)
  *
- * The public key is committed to content/keys/shipwright-public.pem.
- * The private key must be provided via SHIPWRIGHT_SIGNING_KEY environment variable
+ * The public key is committed to content/keys/dokima-public.pem.
+ * The private key must be provided via DOKIMA_SIGNING_KEY environment variable
  * (PEM format or base64-encoded). Never commit the private key to the repo.
  */
 
@@ -26,17 +26,17 @@ const repoRoot = path.resolve(__dirname, '..');
 
 const CONTENT_DIR = path.join(repoRoot, 'content', 'validators');
 const MANIFEST_PATH = path.join(repoRoot, 'content', 'manifest.json');
-const PUBLIC_KEY_PATH = path.join(repoRoot, 'content', 'keys', 'shipwright-public.pem');
+const PUBLIC_KEY_PATH = path.join(repoRoot, 'content', 'keys', 'dokima-public.pem');
 
 /**
- * Load the private key from SHIPWRIGHT_SIGNING_KEY environment variable.
+ * Load the private key from DOKIMA_SIGNING_KEY environment variable.
  * The key can be in PEM format or base64-encoded.
  */
 function loadPrivateKeyFromEnv() {
-  const keyData = process.env.SHIPWRIGHT_SIGNING_KEY;
+  const keyData = process.env.DOKIMA_SIGNING_KEY;
   if (!keyData) {
     throw new Error(
-      'SHIPWRIGHT_SIGNING_KEY environment variable is not set. ' +
+      'DOKIMA_SIGNING_KEY environment variable is not set. ' +
       'Provide the Ed25519 private key in PEM format or base64-encoded.',
     );
   }
@@ -125,7 +125,7 @@ async function signContent() {
     version: 1,
     license: 'first-party',
     files,
-    publisher: 'shipwright',
+    publisher: 'dokima',
     signedAt,
   };
 
@@ -146,7 +146,7 @@ async function signContent() {
     license: 'first-party',
     files,
     signature: signature.toString('hex'),
-    publisher: 'shipwright',
+    publisher: 'dokima',
     signedAt,
   };
 

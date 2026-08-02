@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "provenance": "original Shipwright content — Improvement Plans recommendation catalog (D-016, docs/design/IMPROVEMENT_PLANS.md §1, FR-PLAN1). Seed set of 12 entries per the design doc's named list. Authored W5-10, 2026-07-18. Loader: packages/pipeline/src/plans/catalog.ts.",
+  "provenance": "original Dokima content — Improvement Plans recommendation catalog (D-016, docs/design/IMPROVEMENT_PLANS.md §1, FR-PLAN1). Seed set of 12 entries per the design doc's named list. Authored W5-10, 2026-07-18. Loader: packages/pipeline/src/plans/catalog.ts.",
   "entries": [
     {
       "id": "PC-001",

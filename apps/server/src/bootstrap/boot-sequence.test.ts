@@ -7,7 +7,7 @@ import {
   computeEventHash,
   createIdentity,
   openEventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveProjectPaths } from './config.js';
 import { DowngradeRefusedError, latestKnownSchemaVersion } from './migrate-guard.js';
@@ -39,21 +39,21 @@ describe('runBootSequence', () => {
     const { projectDir, home } = await scratchProject();
     const { log, report } = await runBootSequence({
       projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
       now: clock,
     });
     expect(report.backupPath).toBeNull();
     expect(report.orphaned).toEqual([]);
     expect(report.tailCheck.valid).toBe(true);
     expect(report.highWater.truncated).toBe(false);
-    await expect(fs.stat(report.paths.shipwrightDir)).resolves.toBeDefined();
+    await expect(fs.stat(report.paths.dokimaDir)).resolves.toBeDefined();
     log.close();
   });
 
   it('resolves an unresolved <op>.started event as orphaned on the next boot', async () => {
     const { projectDir, home } = await scratchProject();
     const paths = resolveProjectPaths(projectDir);
-    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+    await fs.mkdir(paths.dokimaDir, { recursive: true });
 
     const seedLog = openEventLog(paths.dbPath);
     createIdentity(
@@ -75,7 +75,7 @@ describe('runBootSequence', () => {
 
     const { log, report } = await runBootSequence({
       projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
       now: clock,
     });
     expect(report.orphaned).toHaveLength(1);
@@ -86,7 +86,7 @@ describe('runBootSequence', () => {
   it('backs up state.db before applying a pending migration', async () => {
     const { projectDir, home } = await scratchProject();
     const paths = resolveProjectPaths(projectDir);
-    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+    await fs.mkdir(paths.dokimaDir, { recursive: true });
 
     // Roll the db back to a genuinely-valid prior schema version, not just a
     // rewound pragma: drop what the latest migration (012_field_reports.sql)
@@ -100,7 +100,7 @@ describe('runBootSequence', () => {
 
     const { log, report } = await runBootSequence({
       projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
       now: clock,
     });
     expect(report.backupPath).not.toBeNull();
@@ -111,14 +111,14 @@ describe('runBootSequence', () => {
   it('refuses to boot a db newer than this binary knows (downgrade)', async () => {
     const { projectDir, home } = await scratchProject();
     const paths = resolveProjectPaths(projectDir);
-    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+    await fs.mkdir(paths.dokimaDir, { recursive: true });
 
     const seedLog = openEventLog(paths.dbPath);
     seedLog.db.pragma(`user_version = ${latestKnownSchemaVersion() + 1}`);
     seedLog.close();
 
     await expect(
-      runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
+      runBootSequence({ projectDir, env: { DOKIMA_HOME: home }, now: clock }),
     ).rejects.toThrow(DowngradeRefusedError);
   });
 
@@ -127,7 +127,7 @@ describe('runBootSequence', () => {
 
     const first = await runBootSequence({
       projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
       now: clock,
     });
     createIdentity(
@@ -149,7 +149,7 @@ describe('runBootSequence', () => {
     // first boot's own mirror write happened before these events existed.
     const second = await runBootSequence({
       projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
       now: clock,
     });
     expect(second.report.highWater.currentSeq).toBe(10);
@@ -170,14 +170,14 @@ describe('runBootSequence', () => {
     staleLog.close();
 
     await expect(
-      runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
+      runBootSequence({ projectDir, env: { DOKIMA_HOME: home }, now: clock }),
     ).rejects.toThrow(TruncatedLogError);
   });
 
   it('refuses to boot when the audit tail check finds a hash-chain break (reviewer HIGH: tamper-evidence must be enforced, not just reported)', async () => {
     const { projectDir, home } = await scratchProject();
     const paths = resolveProjectPaths(projectDir);
-    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+    await fs.mkdir(paths.dokimaDir, { recursive: true });
 
     // events are INSERT-only (no UPDATE/DELETE, DATABASE.md §2) — a tamper
     // attempt through this app is already rejected by the DB trigger. To
@@ -214,7 +214,7 @@ describe('runBootSequence', () => {
     seedLog.close();
 
     await expect(
-      runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
+      runBootSequence({ projectDir, env: { DOKIMA_HOME: home }, now: clock }),
     ).rejects.toThrow(TamperedAuditTailError);
 
     // The high-water mirror must NOT advance past a refused boot — a
@@ -230,7 +230,7 @@ describe('runBootSequence', () => {
     // Establish a real mirror file first so there's a genuine baseline...
     const first = await runBootSequence({
       projectDir,
-      env: { SHIPWRIGHT_HOME: home },
+      env: { DOKIMA_HOME: home },
       now: clock,
     });
     first.log.close();
@@ -243,7 +243,7 @@ describe('runBootSequence', () => {
     await fs.writeFile(homeFile, '{ not valid json');
 
     await expect(
-      runBootSequence({ projectDir, env: { SHIPWRIGHT_HOME: home }, now: clock }),
+      runBootSequence({ projectDir, env: { DOKIMA_HOME: home }, now: clock }),
     ).rejects.toThrow();
   });
 });

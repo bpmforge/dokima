@@ -1,6 +1,6 @@
 /**
  * Bridges the real, async `RealOnboardDispatch` (`./onboard-dispatch-port.js`)
- * to the pure, synchronous `runOnboard` (`@shipwright/pipeline`, W8-08) —
+ * to the pure, synchronous `runOnboard` (`@dokima/pipeline`, W8-08) —
  * the exact "preflight (real gateway calls) -> pure replay" shape
  * `pipeline-routes/preflight.ts` uses for the creation pipeline, generalized
  * to a step list this package doesn't statically know (see below).
@@ -42,7 +42,7 @@
  * (W8-08 AC3), preserved across this two-call wrapper.
  *
  * SELF-ATTEST NOTE (Law 4/5, mirrors `pipeline-routes/events.ts`'s
- * SECURITY_W5 fix): `emit` here NEVER mints a `@shipwright/events` receipt.
+ * SECURITY_W5 fix): `emit` here NEVER mints a `@dokima/events` receipt.
  * No independent validator ever runs on a specialist's own reported
  * findings, so minting a "gate"/"coverage" receipt for them would be the
  * exact self-attestation antipattern that fix removed from the creation
@@ -59,14 +59,14 @@ import {
   createIdentity,
   getIdentity,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   runOnboard,
   type OnboardDispatchContext,
   type OnboardPort,
   type OnboardRunResult,
   type RunOnboardInput,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import type { RealOnboardDispatch } from './onboard-dispatch-port.js';
 import type { OnboardStepArtifact } from './onboard-types.js';
 
@@ -168,7 +168,7 @@ export async function runOnboardExecution(
       // Real per-step session evidence (exit code + observed write-scope
       // violations from the `runSession` call already made in the real
       // preflight pass) rides along on the same audit event as "the run's
-      // receipts" (ticket AC2) — never a minted `@shipwright/events`
+      // receipts" (ticket AC2) — never a minted `@dokima/events`
       // receipt (see module header SELF-ATTEST NOTE).
       const artifact = cache[event.stepId];
       appendEvent(

@@ -1,4 +1,4 @@
-# Shipwright — User Stories
+# Dokima — User Stories
 
 Traces to `docs/SRS.md` (FR/NFR IDs), `docs/BLUEPRINT.md` §1.2 personas, and
 `docs/DECISIONS.md` (D-001…D-010). Points: Fibonacci (1/2/3/5/8).
@@ -40,7 +40,7 @@ As P2, I want per-phase research (market, feasibility, design-options, build-vs-
 - AC-3: Confirmed findings are retrievable from the R0 fact bank in later phases
 
 ### US-106 Four modes — 3 pts — FR-P5
-As P2, I want to point Shipwright at an existing repo (Onboard/Feature/Improve) as easily as starting a new product, so that the platform fits my real backlog, not just green fields.
+As P2, I want to point Dokima at an existing repo (Onboard/Feature/Improve) as easily as starting a new product, so that the platform fits my real backlog, not just green fields.
 - AC-1: "What are we doing today?" offers all four modes at v1
 - AC-2: Feature mode refuses on a repo that was never onboarded, with the fix suggested
 - AC-3: Onboard produces landscape/entry-point/component docs as gated artifacts
@@ -109,7 +109,7 @@ As P4, I want a role×task-type model matrix with All-local / Hybrid / All-cloud
 - AC-3: Presets apply atomically and are editable per cell afterward
 
 ### US-302 Corporate credentials day one — 5 pts — FR-G1, D-007
-As P2 (corporate), I want to sign in with my employer's Copilot subscription or point at our Vertex project during first-run onboarding, so that Shipwright slots into credentials I already have.
+As P2 (corporate), I want to sign in with my employer's Copilot subscription or point at our Vertex project during first-run onboarding, so that Dokima slots into credentials I already have.
 - AC-1: Copilot device-auth flow completes in onboarding, not buried in advanced settings
 - AC-2: Vertex ADC / service-account JSON + region + project ID accepted and validated
 - AC-3: Both providers appear in the matrix with discovered models
@@ -300,7 +300,7 @@ As P3, I want the Decide/Review/Record taxonomy enforced in code — Record neve
 As P3, I want the app to open on a portfolio of project cards (phase, board stats, berths + heartbeats, pending Decide count, spend today) with one aggregated inbox, so that running several programs at once is the normal case, not a hack.
 - AC-1: One live card per project; injected events update the right card ≤1s
 - AC-2: Notification center + morning queue aggregate across projects, leverage-sorted, filterable per project
-- AC-3: Each project's state lives in `.shipwright/state.db` beside its repo — moving the directory moves the project; archiving is closing a folder
+- AC-3: Each project's state lives in `.dokima/state.db` beside its repo — moving the directory moves the project; archiving is closing a folder
 - AC-4: No memory fact, calibration stat, receipt, or budget ever crosses projects (isolation walker)
 
 ### US-802 First-run wizard — 3 pts — FR-S4, FR-C6, D-012
@@ -310,7 +310,7 @@ As P1, I want first run to be: pick a preset → register one provider (or point
 - AC-3: Wizard-written config lands in the correct scopes (global vs project)
 
 ### US-803 Settings I can commit — 3 pts — FR-S1, FR-S2, FR-S3
-As P1, I want run > project > global settings with secrets only in the OS keychain, so that I can commit `.shipwright/settings.json` to share my matrix and autonomy policy without leaking keys.
+As P1, I want run > project > global settings with secrets only in the OS keychain, so that I can commit `.dokima/settings.json` to share my matrix and autonomy policy without leaking keys.
 - AC-1: Effective-settings inspector shows the winning scope for any key ("why is this role on this model?")
 - AC-2: Secret-scan of both settings files finds refs only, never secrets; a missing keychain entry fails loudly by named ref, never a plaintext fallback
 - AC-3: Every settings change is an audited `settings.changed` event (actor, scope, old→new)

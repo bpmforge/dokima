@@ -15,7 +15,7 @@ import {
   validationErrorFixture,
 } from './gitea-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 const BASE_URL = 'https://gitea.example.com';
 
 describe('GiteaForgeAdapter — capabilities() (FR-I2)', () => {

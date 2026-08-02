@@ -8,7 +8,7 @@
  *
  * Ledger rows are events, not a separate table: `approvals_ledger` is
  * documented as "append-only like events (same trigger guard)" and no
- * migration for it exists in `@shipwright/events` (out of this ticket's
+ * migration for it exists in `@dokima/events` (out of this ticket's
  * write_scope to add one) — so rows are minted via the same `appendEvent`
  * primitive every other durable write in this codebase uses (C-6: single
  * writer, hash-chained), and read back by filtering `listEvents` on this
@@ -17,7 +17,7 @@
  * `validateAutonomyLedger`) rather than needing a second signing scheme.
  *
  * NEVER-AUTO rows require a human signer (CONSTRAINTS.md C-5, SC-05): the
- * same discipline `@shipwright/events`' `mintReceipt` applies to waiver
+ * same discipline `@dokima/events`' `mintReceipt` applies to waiver
  * receipts (FR-P2), reproduced here for the ledger's own `humanSignature`
  * field rather than imported, because a receipt's shape (validators,
  * input-tree hash, verify command/exit) does not fit a ledger row at all —
@@ -31,7 +31,7 @@ import {
   getIdentity,
   listEvents,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   ALL_PAUSE_SITE_KINDS,
   isNeverAutoPauseSite,
@@ -80,7 +80,7 @@ export class AgentSignatureRejectedError extends Error {
 }
 
 /**
- * Mirrors `@shipwright/events`' receipts.ts private helper of the same name
+ * Mirrors `@dokima/events`' receipts.ts private helper of the same name
  * (see module doc). Exported so `autonomy-ledger-validate.ts` applies the
  * exact same blocklist matching at read-time that this module applies at
  * mint-time, without a second implementation to drift.

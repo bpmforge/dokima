@@ -1,4 +1,4 @@
-import type { Ticket, TicketStatus } from '@shipwright/tickets';
+import type { Ticket, TicketStatus } from '@dokima/tickets';
 
 /** Column order for the text board (DATABASE.md §3 `tickets.status`). */
 const STATUS_COLUMNS: readonly TicketStatus[] = [

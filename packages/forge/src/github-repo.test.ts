@@ -8,7 +8,7 @@ import {
   repoSuccessFixture,
 } from './github-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 describe('GitHubForgeAdapter — getRepo()', () => {
   it('parses a repo response and sends the maker bearer + required headers', async () => {
@@ -21,13 +21,13 @@ describe('GitHubForgeAdapter — getRepo()', () => {
     const repo = await adapter.getRepo(REF);
 
     expect(repo).toEqual({
-      fullName: 'shipwright-org/demo',
+      fullName: 'dokima-org/demo',
       defaultBranch: 'main',
       private: true,
       archived: false,
       permissions: { admin: true, push: true, pull: true },
     });
-    expect(calls[0]?.url).toBe('https://api.github.com/repos/shipwright-org/demo');
+    expect(calls[0]?.url).toBe('https://api.github.com/repos/dokima-org/demo');
     expect(calls[0]?.headers.authorization).toBe('Bearer maker-token');
     expect(calls[0]?.headers.accept).toBe('application/vnd.github+json');
     expect(calls[0]?.headers['x-github-api-version']).toBe('2022-11-28');

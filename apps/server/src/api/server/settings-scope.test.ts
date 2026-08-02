@@ -2,8 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listEvents, openEventLog } from '@shipwright/events';
-import { computeShipwrightHome } from '@shipwright/shared';
+import { listEvents, openEventLog } from '@dokima/events';
+import { computeDokimaHome } from '@dokima/shared';
 import {
   getEffectiveProjectSettings,
   getGlobalSettings,
@@ -14,7 +14,7 @@ import {
 import { stateDbPath } from './settings-db.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-settings-scope-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-settings-scope-'));
 }
 
 describe('settings-scope', () => {
@@ -55,15 +55,15 @@ describe('settings-scope', () => {
   });
 
   it('global setting write with no logging project is unaudited but still persisted', async () => {
-    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-home-'));
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-home-'));
     homes.push(home);
-    expect(computeShipwrightHome({ SHIPWRIGHT_HOME: home })).toBe(home);
-    process.env.SHIPWRIGHT_HOME = home;
+    expect(computeDokimaHome({ DOKIMA_HOME: home })).toBe(home);
+    process.env.DOKIMA_HOME = home;
     try {
       await putGlobalSetting('defaultPreset', 'hybrid');
       expect(await getGlobalSettings()).toEqual({ defaultPreset: 'hybrid' });
     } finally {
-      delete process.env.SHIPWRIGHT_HOME;
+      delete process.env.DOKIMA_HOME;
     }
   });
 

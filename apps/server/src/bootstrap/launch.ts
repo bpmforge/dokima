@@ -1,6 +1,6 @@
 /**
  * Second-invocation core detection + opening the Canvas (DEPLOYMENT.md §1/§6):
- * "a second `shipwright` invocation detects the running core (port + healthz)
+ * "a second `dokima` invocation detects the running core (port + healthz)
  * and opens the Canvas against it instead of double-binding."
  */
 

@@ -1,7 +1,7 @@
 /** FR-N4: quiet hours + idle-blocked push promotion for Decide-tier notifications. */
 
-import { appendEvent, type EventLog } from '@shipwright/events';
-import { isClaimable, type Ticket } from '@shipwright/tickets';
+import { appendEvent, type EventLog } from '@dokima/events';
+import { isClaimable, type Ticket } from '@dokima/tickets';
 import {
   type EmitOptions,
   type NotificationRecord,

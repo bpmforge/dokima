@@ -19,7 +19,7 @@ function isAbsolutePath(candidate: string): boolean {
  * A viewable artifact path: relative, no `..`, no empty segments, and — the
  * security-load-bearing rule (SC-01 hard-exclusion parity) — no dot-prefixed
  * segment. The artifact viewer renders the repo's tracked docs/source; a
- * dot-prefixed path (`.shipwright/state.db`, `.env`, `.git/**`, `.ssh/**`) is
+ * dot-prefixed path (`.dokima/state.db`, `.env`, `.git/**`, `.ssh/**`) is
  * never a legitimate artifact and would leak secrets/DB through the doc/diff
  * routes even without any `..` (W4-05 review HIGH). This checks the lexical
  * *input* path; `git-read.ts` applies the same rule to a symlink's *resolved*
@@ -51,7 +51,7 @@ export function isSafeGitRevision(candidate: string): boolean {
 
 export function notFound(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/not-found',
+    type: 'https://dokima.dev/errors/not-found',
     title: 'Not found',
     status: 404,
     detail,
@@ -62,7 +62,7 @@ export function notFound(request: FastifyRequest, detail: string) {
 
 export function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,

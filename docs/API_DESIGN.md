@@ -1,9 +1,9 @@
-# Shipwright — API Design (REST /api/v1 + WS)
+# Dokima — API Design (REST /api/v1 + WS)
 
 Traces to: BLUEPRINT.md §3 (all components), ARCHITECTURE.md §3/§4, DATABASE.md tables,
 DECISIONS.md D-005 (auth middleware from W0, single-user mode at v1), D-012 (settings
 scopes), D-013 (multi-project Fleet). Consumers: the
-Canvas SPA and the `shipwright` CLI — both drive the same verbs (BLUEPRINT §5.3).
+Canvas SPA and the `dokima` CLI — both drive the same verbs (BLUEPRINT §5.3).
 Served by apps/server on localhost only (SC-08).
 
 ## 1. Conventions
@@ -12,7 +12,7 @@ Served by apps/server on localhost only (SC-08).
   route schemas, served at `/api/v1/openapi.json` in dev.
 - **Auth (D-005):** every route (except `/healthz`) sits behind the auth middleware.
   v1 single-user mode: a bearer token generated at first run, stored in
-  `~/.shipwright/token`, auto-injected by the served SPA and the CLI —
+  `~/.dokima/token`, auto-injected by the served SPA and the CLI —
   `Authorization: Bearer <token>`. Missing/wrong ⇒ 401. v2 swaps the middleware's
   verifier for OIDC/SAML without touching routes. Origin/Host allowlist on every
   request; WS upgrade re-checks both (SC-08).
@@ -106,8 +106,8 @@ Served by apps/server on localhost only (SC-08).
 | Method+Path | Req → Res |
 |---|---|
 | `GET /projects/{id}/settings/effective?run=` | every settings key → `{value, winning_scope: run\|project\|global, overridden: [{scope, value}]}` — the "why this value" payload (FR-S1) |
-| `GET/PUT /settings/global` | global scope (`~/.shipwright/config.json`): provider registrations by **credential ref** (never secrets — FR-S2), matrix presets, notification prefs + quiet hours, global berth governor |
-| `GET/PUT /projects/{id}/settings` | project scope (`.shipwright/settings.json`, safe to commit — FR-S2): matrix overrides, autonomy, budgets, berths default, forge ref, MCP registrations |
+| `GET/PUT /settings/global` | global scope (`~/.dokima/config.json`): provider registrations by **credential ref** (never secrets — FR-S2), matrix presets, notification prefs + quiet hours, global berth governor |
+| `GET/PUT /projects/{id}/settings` | project scope (`.dokima/settings.json`, safe to commit — FR-S2): matrix overrides, autonomy, budgets, berths default, forge ref, MCP registrations |
 | — | run scope has no endpoint: it is the flags on `POST /projects/{id}/runs` |
 
 Every settings PUT appends a `settings.changed` event (FR-S3) — configuration is audited
@@ -168,7 +168,7 @@ decision). Protocol:
 { "items": [ /* ... */ ], "next_cursor": null }
 
 // RFC 7807 refusal (verb invariant) — the explain-this-refusal payload
-{ "type": "https://shipwright.dev/errors/close-requires-receipt",
+{ "type": "https://dokima.dev/errors/close-requires-receipt",
   "title": "close refused: verify has not passed",
   "status": 409,
   "detail": "ticket W2-04 verify `pnpm test --filter gateway` exited 1; see evidence",

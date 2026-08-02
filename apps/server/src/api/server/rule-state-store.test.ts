@@ -12,7 +12,7 @@ import {
 } from './rule-state-store.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-rule-state-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-rule-state-'));
 }
 
 describe('rule state store', () => {

@@ -45,7 +45,7 @@ import {
   type ForgeAdapter,
 } from './types.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 /** The connect-time contract every adapter configures (SC-14) — same rules object for both targets. */
 const CONNECT_TIME_RULES: BranchProtectionRules = {
@@ -138,7 +138,7 @@ describe.each(TARGETS)(
       const adapter = target.createAdapter([ok(target.fixtures.repoSuccessFixture)]);
       const repo = await adapter.getRepo(REF);
       expect(repo).toEqual({
-        fullName: 'shipwright-org/demo',
+        fullName: 'dokima-org/demo',
         defaultBranch: 'main',
         private: true,
         archived: false,
@@ -223,7 +223,7 @@ describe.each(TARGETS)(
         number: 42,
         state: 'open',
         merged: false,
-        authorLogin: 'shipwright-maker',
+        authorLogin: 'dokima-maker',
         baseRef: 'main',
       });
     });
@@ -235,7 +235,7 @@ describe.each(TARGETS)(
       expect(prs[0]).toMatchObject({
         number: 42,
         state: 'open',
-        authorLogin: 'shipwright-maker',
+        authorLogin: 'dokima-maker',
       });
     });
 
@@ -256,7 +256,7 @@ describe.each(TARGETS)(
         title: target.fixtures.issueSuccessFixture.title,
       });
       expect(Array.isArray(issue.labels)).toBe(true);
-      expect(issue.assignees).toEqual(['shipwright-maker']);
+      expect(issue.assignees).toEqual(['dokima-maker']);
     });
 
     it('updateIssue(): maps the closed response to IssueInfo (no labels — single-call path on both adapters)', async () => {
@@ -273,7 +273,7 @@ describe.each(TARGETS)(
       expect(comment).toEqual({
         id: 5001,
         body: 'accepted — reviewer!=author verified',
-        authorLogin: 'shipwright-reviewer',
+        authorLogin: 'dokima-reviewer',
         htmlUrl: target.fixtures.issueCommentSuccessFixture.html_url,
         createdAt: target.fixtures.issueCommentSuccessFixture.created_at,
       });
@@ -285,12 +285,12 @@ describe.each(TARGETS)(
       ]);
       const status = await adapter.createCommitStatus(REF, 'abc123', {
         state: 'success',
-        context: 'shipwright/gate',
+        context: 'dokima/gate',
       });
       expect(status).toEqual({
         id: 9001,
         state: 'success',
-        context: 'shipwright/gate',
+        context: 'dokima/gate',
         createdAt: target.fixtures.commitStatusSuccessFixture.created_at,
       });
     });

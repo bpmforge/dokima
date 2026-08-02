@@ -1,9 +1,9 @@
 /**
  * Proves 011_code_index.sql applies cleanly through the REAL migration
- * runner (`@shipwright/events`' `openEventLog` -> `applyMigrations`, the
+ * runner (`@dokima/events`' `openEventLog` -> `applyMigrations`, the
  * better-sqlite3-backed single-writer connection, ARCHITECTURE.md §4 law
  * 4) — mirrors `store/migration.integration.test.ts` for 009_memory.sql.
- * `memory` can't statically import `@shipwright/events` (no package.json
+ * `memory` can't statically import `@dokima/events` (no package.json
  * dependency in this ticket's write_scope), so this dynamically imports it
  * by absolute `file://` URL — same technique as
  * `store/migration.integration.test.ts`/`anti-jarvis-gap.test.ts`.
@@ -49,7 +49,7 @@ async function loadEventsPackage(): Promise<EventsModule> {
 
 const NOW = () => '2026-07-20T12:00:00.000Z';
 
-describe('011_code_index.sql through the real @shipwright/events runner', () => {
+describe('011_code_index.sql through the real @dokima/events runner', () => {
   it('creates code_chunks/code_chunks_fts, and FTS5 triggers stay in sync', async () => {
     const { openEventLog, createTempDbPath } = await loadEventsPackage();
     const temp = await createTempDbPath();

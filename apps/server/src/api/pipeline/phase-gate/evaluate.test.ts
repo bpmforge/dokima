@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ValidatorRunResult } from '@shipwright/validators';
+import type { ValidatorRunResult } from '@dokima/validators';
 import { evaluatePhaseGateResults } from './evaluate.js';
 
 function result(overrides: Partial<ValidatorRunResult>): ValidatorRunResult {

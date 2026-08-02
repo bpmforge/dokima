@@ -17,7 +17,7 @@ import {
 import type { AnswerActor, InterviewAnswer, InterviewTopic } from './types.js';
 
 const HUMAN: AnswerActor = { id: 'brad', kind: 'human' };
-const AGENT: AnswerActor = { id: 'shipwright-coder', kind: 'agent' };
+const AGENT: AnswerActor = { id: 'dokima-coder', kind: 'agent' };
 
 const VISION: InterviewTopic = { phaseId: 0, deliverableId: 'docs/VISION.md' };
 const SCOPE: InterviewTopic = { phaseId: 1, deliverableId: 'docs/SCOPE.md' };

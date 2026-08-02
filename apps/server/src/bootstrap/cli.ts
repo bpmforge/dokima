@@ -13,8 +13,8 @@ import {
   listenLocalhost,
   type ApiServer,
 } from '../api/index.js';
-import { openEventLog } from '@shipwright/events';
-import { computeShipwrightHome, resolveAsset } from '@shipwright/shared';
+import { openEventLog } from '@dokima/events';
+import { computeDokimaHome, resolveAsset } from '@dokima/shared';
 import { runBackupCommand, type BackupCommandDeps } from '../cli/ops/backup-cmd.js';
 import { runDoctorCommand, type DoctorDeps } from '../cli/ops/doctor.js';
 import {
@@ -52,7 +52,7 @@ export interface CliDeps {
 }
 
 export function resolvePort(env: NodeJS.ProcessEnv): number {
-  const raw = env.SHIPWRIGHT_PORT;
+  const raw = env.DOKIMA_PORT;
   const parsed = raw ? Number(raw) : NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PORT;
 }
@@ -66,7 +66,7 @@ function webDistDir(): string {
 async function runPacksUpdate(io: CliIO, deps: CliDeps): Promise<number> {
   const packsUpdateImpl = deps.packsUpdate ?? packsUpdate;
   const result: PacksUpdateResult = await packsUpdateImpl(
-    path.join(computeShipwrightHome(io.env), 'packs'),
+    path.join(computeDokimaHome(io.env), 'packs'),
   );
   if (!result.manifestValid) {
     io.stderr('packs update refused: manifest signature does not verify');
@@ -98,7 +98,7 @@ async function runServerBoot(io: CliIO, deps: CliDeps): Promise<number> {
   // to state.db (SQLITE_BUSY risk) and sweepOrphans() would falsely mark
   // any operation still legitimately in-flight in the live core as crashed.
   if (await detectRunningCoreImpl({ port })) {
-    io.stdout(`shipwright is already running at ${url} — opening the Canvas`);
+    io.stdout(`dokima is already running at ${url} — opening the Canvas`);
     openBrowserImpl(url);
     return 0;
   }
@@ -112,7 +112,7 @@ async function runServerBoot(io: CliIO, deps: CliDeps): Promise<number> {
     });
     boot = opened;
     // Boot sequence's own connection is only needed to migrate/sweep/verify —
-    // the real serving connection below opens fresh so `@shipwright/server`'s
+    // the real serving connection below opens fresh so `@dokima/server`'s
     // existing api/main.ts machinery (out of write_scope to change the
     // signature of) stays the single writer for the actual session.
     opened.log.close();
@@ -123,7 +123,7 @@ async function runServerBoot(io: CliIO, deps: CliDeps): Promise<number> {
 
   if (logLevel === 'debug') {
     io.stderr(
-      `[shipwright] boot: backup=${boot.report.backupPath ?? 'none'} orphaned=${boot.report.orphaned.length} tailValid=${boot.report.tailCheck.valid}`,
+      `[dokima] boot: backup=${boot.report.backupPath ?? 'none'} orphaned=${boot.report.orphaned.length} tailValid=${boot.report.tailCheck.valid}`,
     );
   }
 
@@ -140,7 +140,7 @@ async function runServerBoot(io: CliIO, deps: CliDeps): Promise<number> {
     log.close();
   });
   await listenLocalhostImpl(server.app, port);
-  io.stdout(`shipwright: listening at ${url}`);
+  io.stdout(`dokima: listening at ${url}`);
   openBrowserImpl(url);
   return 0;
 }
@@ -170,7 +170,7 @@ export async function runPackagedCli(
         deps.service,
       );
     }
-    io.stderr(`usage: shipwright service <${SERVICE_SUBCOMMANDS.join('|')}>`);
+    io.stderr(`usage: dokima service <${SERVICE_SUBCOMMANDS.join('|')}>`);
     return 2;
   }
   if (argv[0] === 'providers' && argv[1] === 'refresh') {

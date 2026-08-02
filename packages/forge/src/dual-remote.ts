@@ -8,7 +8,7 @@
  * `Promise.allSettled` and gets its own per-remote status back — never a
  * single all-or-nothing promise.
  *
- * Uses `node:child_process` directly rather than `@shipwright/git`'s
+ * Uses `node:child_process` directly rather than `@dokima/git`'s
  * execa-based `git()` helper: `packages/forge/package.json` declares zero
  * dependencies today (see `generic-git.ts`'s header comment, W6-02, which
  * flagged this same forge -> git gap as future work) and adding one is

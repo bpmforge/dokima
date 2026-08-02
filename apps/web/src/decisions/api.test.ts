@@ -19,7 +19,7 @@ const FOUNDER_RECORD: SlateRecord = {
     kind: 'founder',
     title: 'Product name',
     options: [
-      { id: 'opt-a', label: 'Shipwright', tradeoffs: 'Nautical theme, memorable.' },
+      { id: 'opt-a', label: 'Dokima', tradeoffs: 'Nautical theme, memorable.' },
       { id: 'opt-b', label: 'Buildbot', tradeoffs: 'Generic, unmemorable.' },
     ],
     recommendedId: 'opt-a',
@@ -66,8 +66,8 @@ describe('decideSlate', () => {
         id: 'slate-1',
         d_id: 'D-021',
         date: '2026-07-19',
-        decision: 'Product name: Shipwright',
-        options_considered: 'Shipwright, Buildbot',
+        decision: 'Product name: Dokima',
+        options_considered: 'Dokima, Buildbot',
         rationale: 'Distinct branding.',
       }),
     );

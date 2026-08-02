@@ -1,16 +1,16 @@
 {
-  "name": "@shipwright/harbormaster",
+  "name": "@dokima/harbormaster",
   "private": true,
   "type": "module",
   "version": "0.0.0",
   "dependencies": {
-    "@shipwright/events": "workspace:*",
-    "@shipwright/gateway": "workspace:*",
-    "@shipwright/git": "workspace:*",
-    "@shipwright/loop": "workspace:*",
-    "@shipwright/shared": "workspace:*",
-    "@shipwright/tickets": "workspace:*",
-    "@shipwright/validators": "workspace:*"
+    "@dokima/events": "workspace:*",
+    "@dokima/gateway": "workspace:*",
+    "@dokima/git": "workspace:*",
+    "@dokima/loop": "workspace:*",
+    "@dokima/shared": "workspace:*",
+    "@dokima/tickets": "workspace:*",
+    "@dokima/validators": "workspace:*"
   },
   "exports": {
     ".": {

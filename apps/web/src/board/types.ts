@@ -1,7 +1,7 @@
 /**
  * Wire types for the board (API_DESIGN §2 "tickets", §4 canonical shapes;
  * DATABASE.md §3 `tickets`/`board`). apps/web may only depend on
- * `@shipwright/shared` types (ARCHITECTURE §4) — these are hand-mirrored
+ * `@dokima/shared` types (ARCHITECTURE §4) — these are hand-mirrored
  * from `packages/tickets/src/types.ts`, not imported, by design: the UI
  * trusts the REST/WS wire contract, never the domain package directly.
  */

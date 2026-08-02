@@ -5,7 +5,7 @@
  * sibling file, not a subdirectory.
  */
 
-import type { ValidatorRunResult } from '@shipwright/validators';
+import type { ValidatorRunResult } from '@dokima/validators';
 import type {
   CompletionManifest,
   ParsedGapLocation,

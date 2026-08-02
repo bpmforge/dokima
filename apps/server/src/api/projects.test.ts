@@ -2,14 +2,14 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createIdentity, openEventLog } from '@shipwright/events';
+import { createIdentity, openEventLog } from '@dokima/events';
 import {
   acceptTicket,
   claimTicket,
   closeTicket,
   createTicket,
   startTicket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import { buildApiServer, type ApiServer } from './server.js';
 import {
   archiveProject,
@@ -79,14 +79,14 @@ describe('registerProject / archiveProject / listProjectCards', () => {
   });
 
   async function freshRegistry(): Promise<string> {
-    const home = await tmpDir('shipwright-fleet-home-');
+    const home = await tmpDir('dokima-fleet-home-');
     dirs.push(home);
     return computeFleetRegistryPath(home);
   }
 
   it('mode "new" creates the directory and an initialized state.db', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = path.join(await tmpDir('shipwright-fleet-parent-'), 'my-product');
+    const projectDir = path.join(await tmpDir('dokima-fleet-parent-'), 'my-product');
     dirs.push(path.dirname(projectDir));
 
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
@@ -95,13 +95,13 @@ describe('registerProject / archiveProject / listProjectCards', () => {
     expect(record.name).toBe('my-product');
     await expect(fs.stat(projectDir)).resolves.toBeDefined();
     await expect(
-      fs.stat(path.join(projectDir, '.shipwright', 'state.db')),
+      fs.stat(path.join(projectDir, '.dokima', 'state.db')),
     ).resolves.toBeDefined();
   });
 
   it('mode "onboard"/"import" refuse a directory that does not exist', async () => {
     const registryPath = await freshRegistry();
-    const missing = path.join(os.tmpdir(), `shipwright-fleet-missing-${Date.now()}`);
+    const missing = path.join(os.tmpdir(), `dokima-fleet-missing-${Date.now()}`);
 
     await expect(
       registerProject(registryPath, { path: missing, mode: 'onboard' }),
@@ -113,11 +113,11 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('an unreadable state.db degrades the card to empty stats, never crashes the endpoint (SQLITE_CANTOPEN regression)', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = path.join(await tmpDir('shipwright-fleet-cantopen-'), 'locked');
+    const projectDir = path.join(await tmpDir('dokima-fleet-cantopen-'), 'locked');
     dirs.push(path.dirname(projectDir));
     await registerProject(registryPath, { path: projectDir, mode: 'new' });
 
-    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const dbPath = path.join(projectDir, '.dokima', 'state.db');
     await fs.chmod(dbPath, 0o000);
     try {
       const cards = await listProjectCards(registryPath, { archived: false });
@@ -130,7 +130,7 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('registering the same path twice reactivates the same record (reopen flow, G-10f)', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-reopen-');
+    const projectDir = await tmpDir('dokima-fleet-reopen-');
     dirs.push(projectDir);
 
     const first = await registerProject(registryPath, {
@@ -164,7 +164,7 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('archive never touches the project directory (FR-F2: state travels with the repo dir)', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-archive-keep-');
+    const projectDir = await tmpDir('dokima-fleet-archive-keep-');
     dirs.push(projectDir);
     const record = await registerProject(registryPath, {
       path: projectDir,
@@ -175,16 +175,16 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
     await expect(fs.stat(projectDir)).resolves.toBeDefined();
     await expect(
-      fs.stat(path.join(projectDir, '.shipwright', 'state.db')),
+      fs.stat(path.join(projectDir, '.dokima', 'state.db')),
     ).resolves.toBeDefined();
   });
 
   it('computes live board stats (ready/blocked/done) from the project state.db', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-board-');
+    const projectDir = await tmpDir('dokima-fleet-board-');
     dirs.push(projectDir);
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
-    seedTickets(path.join(record.path, '.shipwright', 'state.db'));
+    seedTickets(path.join(record.path, '.dokima', 'state.db'));
 
     const cards = await listProjectCards(registryPath, { archived: false });
     expect(cards).toHaveLength(1);
@@ -200,13 +200,13 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('a project with no state.db yet reports zeroed stats instead of throwing', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-nodb-');
+    const projectDir = await tmpDir('dokima-fleet-nodb-');
     dirs.push(projectDir);
     const record = await registerProject(registryPath, {
       path: projectDir,
       mode: 'import',
     });
-    await fs.rm(path.join(record.path, '.shipwright'), { recursive: true, force: true });
+    await fs.rm(path.join(record.path, '.dokima'), { recursive: true, force: true });
 
     const cards = await listProjectCards(registryPath, { archived: false });
     expect(cards).toHaveLength(1);
@@ -215,15 +215,15 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('an unmigrated (pre-tables) state.db degrades to zeroed stats without logging', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-unmigrated-');
+    const projectDir = await tmpDir('dokima-fleet-unmigrated-');
     dirs.push(projectDir);
     const record = await registerProject(registryPath, {
       path: projectDir,
       mode: 'import',
     });
-    const dbPath = path.join(record.path, '.shipwright', 'state.db');
+    const dbPath = path.join(record.path, '.dokima', 'state.db');
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
-    // A 0-byte file is a valid, empty SQLite database with none of @shipwright/events'
+    // A 0-byte file is a valid, empty SQLite database with none of @dokima/events'
     // migrated tables — the exact "old schema" shape computeProjectStats degrades for.
     await fs.writeFile(dbPath, '');
 
@@ -239,13 +239,13 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('an unreadable/corrupt state.db degrades to zeroed stats AND logs the unexpected error', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-corrupt-');
+    const projectDir = await tmpDir('dokima-fleet-corrupt-');
     dirs.push(projectDir);
     const record = await registerProject(registryPath, {
       path: projectDir,
       mode: 'import',
     });
-    const dbPath = path.join(record.path, '.shipwright', 'state.db');
+    const dbPath = path.join(record.path, '.dokima', 'state.db');
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
     await fs.writeFile(dbPath, 'not a sqlite database, just garbage bytes');
 
@@ -262,14 +262,14 @@ describe('registerProject / archiveProject / listProjectCards', () => {
 
   it('board stats reflect events injected after the first read (live, not cached)', async () => {
     const registryPath = await freshRegistry();
-    const projectDir = await tmpDir('shipwright-fleet-live-');
+    const projectDir = await tmpDir('dokima-fleet-live-');
     dirs.push(projectDir);
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
 
     const before = await listProjectCards(registryPath, { archived: false });
     expect(before[0]?.board).toEqual({ ready: 0, blocked: 0, done: 0 });
 
-    seedTickets(path.join(record.path, '.shipwright', 'state.db'));
+    seedTickets(path.join(record.path, '.dokima', 'state.db'));
 
     const after = await listProjectCards(registryPath, { archived: false });
     expect(after[0]?.board).toEqual({ ready: 1, blocked: 1, done: 1 });
@@ -289,7 +289,7 @@ describe('project routes — buildApiServer integration', () => {
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-fleet-routes-');
+    const fleetHome = await tmpDir('dokima-fleet-routes-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { resolveAsset } from '@shipwright/shared';
+import { resolveAsset } from '@dokima/shared';
 import type Database from 'better-sqlite3';
 
 // Anchored to the distribution root rather than to this file: a bundle

@@ -172,7 +172,7 @@ describe('FR-F5: a promoted lesson hits at R0 in a second project; an unpromoted
     const { openGlobalDb, promoteGlobalPlaybookEntry, listGlobalPlaybook } =
       await loadEventsGlobal();
     const dir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-r0-global-promotion-test-'),
+      path.join(os.tmpdir(), 'dokima-r0-global-promotion-test-'),
     );
     cleanup = () => fs.rm(dir, { recursive: true, force: true });
     const global = openGlobalDb(path.join(dir, 'global.db'));

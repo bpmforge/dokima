@@ -1,10 +1,10 @@
 /**
  * Decision slate row<->record mapping (DATABASE.md §4, `008_decisions.sql`).
  * The slate shape itself (`Slate` = `FounderSlate | TechnicalSlate`) is
- * `@shipwright/pipeline`'s — this file only adds the DB/wire wrapper around
+ * `@dokima/pipeline`'s — this file only adds the DB/wire wrapper around
  * it (status, chosen/rationale, the assigned D-ID).
  */
-import type { Slate } from '@shipwright/pipeline';
+import type { Slate } from '@dokima/pipeline';
 
 export type SlateStatus = 'open' | 'decided';
 

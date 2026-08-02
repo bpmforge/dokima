@@ -11,8 +11,8 @@
  */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { ReceiptInputFile } from '@shipwright/events';
-import type { PhaseDefinition } from '@shipwright/pipeline';
+import type { ReceiptInputFile } from '@dokima/events';
+import type { PhaseDefinition } from '@dokima/pipeline';
 
 export class PhaseDeliverableMissingError extends Error {
   constructor(

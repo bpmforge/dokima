@@ -53,7 +53,7 @@ export interface BuildApiServerOptions {
   webDistDir?: string;
   logger?: boolean;
   wsHub?: WsHub;
-  /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
+  /** Fleet registry home dir override (defaults to computeDokimaHome()) — tests only. */
   fleetHome?: string;
   /** `content/experts` directory override (defaults to the repo's own content/) — tests only. */
   rosterContentDir?: string;
@@ -146,7 +146,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
 /**
  * `GET /api/v1/projects/:id/chat` (FR-C2, UX_SPEC §3). No chat/message
  * producer exists anywhere in this repo yet — no clarifications/slates/
- * findings event schema in `@shipwright/events`, no cost tracking reachable
+ * findings event schema in `@dokima/events`, no cost tracking reachable
  * from `apps/server` (`packages/gateway`/`packages/loop` aren't declared
  * dependencies here, same class of constraint as this file's own
  * `@fastify/websocket` note above) — so this replays a fixture event
@@ -254,7 +254,7 @@ const CHAT_FIXTURE_ITEMS = [
       id: 'card-slate-1',
       thread_id: 'thread-program',
       provenance: {
-        agent: 'shipwright-pm',
+        agent: 'dokima-pm',
         model: 'claude-opus-4-8',
         ticket_id: 'W4-04',
         cost_usd: 0.005,
@@ -355,14 +355,14 @@ function resolveStaticPath(root: string, urlPath: string): string | undefined {
 
 /**
  * API_DESIGN §1: the bearer token is "auto-injected by the served SPA" —
- * the browser has no other way to read `~/.shipwright/token` (SC-08 static
+ * the browser has no other way to read `~/.dokima/token` (SC-08 static
  * assets are intentionally unauthenticated so the shell can load before it
  * has a token at all). Injected as a global rather than fetched over an
  * unauthenticated endpoint, which would hand the token to any localhost
  * page, not just this one.
  */
 function injectToken(html: string, token: string): string {
-  const script = `<script>window.__SHIPWRIGHT_TOKEN__=${JSON.stringify(token)};</script>`;
+  const script = `<script>window.__DOKIMA_TOKEN__=${JSON.stringify(token)};</script>`;
   return html.includes('</head>')
     ? html.replace('</head>', `${script}</head>`)
     : script + html;

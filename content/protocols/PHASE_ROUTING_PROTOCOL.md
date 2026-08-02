@@ -3,7 +3,7 @@
   Source path: agents/shared/PHASE_ROUTING_PROTOCOL.md
   Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
   DO NOT EDIT — this is imported content
-  NOTE: describes the opencode dispatch runtime; kept as reference — Shipwright has a single dispatch mechanism
+  NOTE: describes the opencode dispatch runtime; kept as reference — Dokima has a single dispatch mechanism
 -->
 
 ---

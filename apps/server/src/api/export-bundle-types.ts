@@ -6,7 +6,7 @@
  * `packages/shared/src/export/types.ts`'s `ExportedIdentity`/
  * `ExportedEvent`/`ExportedReceipt`/`ExportBundle`.
  */
-import type { ChainVerificationResult } from '@shipwright/events';
+import type { ChainVerificationResult } from '@dokima/events';
 
 export const EXPORT_BUNDLE_VERSION = 1;
 

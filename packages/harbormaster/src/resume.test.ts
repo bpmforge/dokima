@@ -9,15 +9,15 @@ import {
   releaseTicket,
   startTicket,
   type CreateTicketInput,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import {
   createIdentity,
   listEvents,
   mintReceipt,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import { createWorktree, git, type WorktreeHandle } from '@shipwright/git';
+} from '@dokima/events';
+import { createWorktree, git, type WorktreeHandle } from '@dokima/git';
 import { checkClaimedTicket, resumeProject } from './resume.js';
 
 const NOW = () => '2026-07-18T00:00:00.000Z';
@@ -32,15 +32,15 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-resume-repo-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-resume-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-resume-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-resume-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   // Separate identities per ticket: WIP=1 per actor (tickets/verbs.ts) means
   // one worker cannot own two claimed/in_progress tickets at once, and this

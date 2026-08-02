@@ -1,8 +1,8 @@
 /**
  * Decision slate domain + wire types (FR-P6, R-H1, API_DESIGN.md "decisions
- * & slates"). Mirrors `@shipwright/pipeline`'s `Slate` shape and
+ * & slates"). Mirrors `@dokima/pipeline`'s `Slate` shape and
  * `apps/server/src/api/decisions/routes.ts`'s `toWire` snake_case payload —
- * apps/web has no dependency on `@shipwright/pipeline` or `apps/server`
+ * apps/web has no dependency on `@dokima/pipeline` or `apps/server`
  * (out of this ticket's write_scope to add one, same as
  * `artifacts/deliverablePhase.ts` mirroring pipeline's phase topology for
  * W5-12), so this module owns its own copy rather than importing either.

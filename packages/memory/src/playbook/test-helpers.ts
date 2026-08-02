@@ -2,7 +2,7 @@
  * Test-only handle factory for the playbook package. Same technique as
  * `../store/test-helpers.ts` (Node 22's builtin `node:sqlite`, schema
  * applied by reading migration files directly rather than going through
- * `@shipwright/events`' migration runner) — extended to also apply
+ * `@dokima/events`' migration runner) — extended to also apply
  * `010_playbook.sql`, since `consult.ts` needs both `facts` and `playbook`.
  * `migration.integration.test.ts`-style dynamic-import tests prove each
  * migration file also applies cleanly through the real runner.

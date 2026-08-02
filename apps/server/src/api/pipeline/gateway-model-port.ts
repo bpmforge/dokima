@@ -1,6 +1,6 @@
 /**
  * Real-gateway adapter for `runPipeline`'s `PipelineModelPort` (CLAUDE.md
- * law #6: model access only via `@shipwright/gateway`, never a direct
+ * law #6: model access only via `@dokima/gateway`, never a direct
  * provider). `runPipeline` (`packages/pipeline/src/run/run-pipeline.ts`) and
  * its port methods are synchronous by design (see `pipeline-routes/index.ts`'s
  * module header for why), but a gateway call is inherently async — so this
@@ -11,12 +11,12 @@
  * hands the *cached results* to `runPipeline` through a trivial synchronous
  * port.
  *
- * SECURITY_W5 MEDIUM FIX: `@shipwright/gateway` is now a proper workspace
+ * SECURITY_W5 MEDIUM FIX: `@dokima/gateway` is now a proper workspace
  * dependency (`apps/server/package.json`), so it is a normal, statically
  * resolvable import — no more sidestepping pnpm's per-package `node_modules`
  * linking with a hand-constructed `file://` URL off `import.meta.url`.
  */
-import { createOaiCompatProvider, type Provider } from '@shipwright/gateway';
+import { createOaiCompatProvider, type Provider } from '@dokima/gateway';
 import type {
   DeliverableDraft,
   SynthesizeBlueprintInput,
@@ -24,7 +24,7 @@ import type {
   TechnicalSlateInput,
   TechnicalSlate,
   TicketDraftInput,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import { MalformedModelOutputError } from './errors.js';
 import {
   requireArray,
@@ -48,9 +48,9 @@ export function resolveGatewayConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): GatewayConfig {
   return {
-    baseUrl: env.SHIPWRIGHT_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
-    apiKey: env.SHIPWRIGHT_MODEL_API_KEY,
-    model: env.SHIPWRIGHT_MODEL_ID ?? 'local-model',
+    baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
+    apiKey: env.DOKIMA_MODEL_API_KEY,
+    model: env.DOKIMA_MODEL_ID ?? 'local-model',
   };
 }
 
@@ -83,7 +83,7 @@ async function chatJson(
 }
 
 const BLUEPRINT_SYSTEM_PROMPT =
-  'You are the Shipwright blueprint synthesizer. Given a title and a list of ' +
+  'You are the Dokima blueprint synthesizer. Given a title and a list of ' +
   'interview deliverable drafts, respond with ONLY a JSON object of the shape ' +
   '{"sections": [{"heading": string, "body": string}], "openQuestions": ' +
   '[{"key": string, "slate": {"title": string, "options": ' +
@@ -149,7 +149,7 @@ function parseBlueprintInput(
 }
 
 const TECHNICAL_SLATE_SYSTEM_PROMPT =
-  'You are the Shipwright technical-fork slate builder. Given the current ' +
+  'You are the Dokima technical-fork slate builder. Given the current ' +
   'blueprint markdown, respond with ONLY a JSON object of the shape ' +
   '{"title": string, "options": [{"label": "Minimal"|"Clean"|"Pragmatic", ' +
   '"summary": string, "dimensions": {"time": string, "maintainability": ' +
@@ -206,7 +206,7 @@ function parseTechnicalSlateInput(raw: Record<string, unknown>): TechnicalSlateI
 }
 
 const TICKET_DRAFTS_SYSTEM_PROMPT =
-  'You are the Shipwright task decomposer specialist. Given the blueprint ' +
+  'You are the Dokima task decomposer specialist. Given the blueprint ' +
   'markdown and the decided technical slate, respond with ONLY a JSON object ' +
   'of the shape {"tickets": [{"id": string, "type": "epic"|"story"|"task"|' +
   '"bug", "title": string, "writeScope": string[], "dependsOn": string[], ' +

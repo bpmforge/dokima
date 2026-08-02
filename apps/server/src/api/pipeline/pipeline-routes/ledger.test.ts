@@ -14,7 +14,7 @@ describe('readLedgerMarkdown — real per-project ledger, never caller-suppliabl
   });
 
   it('returns the real docs/DECISIONS.md content when the file exists', async () => {
-    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-ledger-'));
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-ledger-'));
     dirs.push(projectDir);
     await fs.mkdir(path.join(projectDir, 'docs'), { recursive: true });
     await fs.writeFile(
@@ -29,7 +29,7 @@ describe('readLedgerMarkdown — real per-project ledger, never caller-suppliabl
   });
 
   it('returns an empty string for a fresh project with no ledger file yet', async () => {
-    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-ledger-'));
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-ledger-'));
     dirs.push(projectDir);
 
     const markdown = await readLedgerMarkdown(projectDir);

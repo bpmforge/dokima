@@ -1,9 +1,9 @@
-import { globOverlaps, writeScopesOverlap } from '@shipwright/shared';
+import { globOverlaps, writeScopesOverlap } from '@dokima/shared';
 import type { Ticket, TicketStatus } from './types.js';
 
 // Re-exported for existing call sites (FR-T3); canonical implementation
 // (segment DP over the write_scope glob dialect, G-20) lives in
-// @shipwright/shared, which `tickets` may depend on (ARCHITECTURE.md §4).
+// @dokima/shared, which `tickets` may depend on (ARCHITECTURE.md §4).
 export { globOverlaps, writeScopesOverlap };
 
 /**

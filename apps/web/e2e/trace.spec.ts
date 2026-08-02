@@ -23,7 +23,7 @@ const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-trace-e2e-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-trace-e2e-${id}`),
     name: `Trace E2E ${id}`,
   };
 }
@@ -56,7 +56,7 @@ test('the trace view is honestly empty for a ticket no run has ever touched', as
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'trace');
+  seed(path.join(dir, '.dokima', 'state.db'), 'trace');
   await page.reload();
 
   await page.getByTestId('card-E2E-TRACE-EMPTY').click();
@@ -75,7 +75,7 @@ test("replays a run's events labeled by kind, each feeding the lessons form (BLU
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'trace');
+  seed(path.join(dir, '.dokima', 'state.db'), 'trace');
   await page.reload();
 
   await page.getByTestId('card-E2E-TRACE-1').click();

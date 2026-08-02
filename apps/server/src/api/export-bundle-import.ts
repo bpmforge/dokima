@@ -9,7 +9,7 @@
  * anything (so a tampered bundle never touches the DB), and once more by
  * reading the freshly-written rows back and re-running `verifyChain` — this
  * catches any transcription bug in the insert path itself, not just a
- * tampered *input*. `verifyChain` itself is `@shipwright/events`'s, already
+ * tampered *input*. `verifyChain` itself is `@dokima/events`'s, already
  * a direct `apps/server` dependency — the single, authoritative
  * implementation of "valid chain" for the operational (SQLite-backed) path.
  *
@@ -39,7 +39,7 @@ import {
   type ReceiptContent,
   type ReceiptKind,
   type ValidatorResult,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { timingSafeEqual } from 'node:crypto';
 import {
   ChainVerificationFailedError,

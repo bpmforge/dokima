@@ -4,7 +4,7 @@ import {
   createIdentity,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { createTicket } from './create.js';
 import { TicketError, type TicketErrorCode } from './errors.js';
 import * as ticketsModule from './index.js';

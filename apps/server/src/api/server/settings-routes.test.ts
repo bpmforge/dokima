@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listEvents, openEventLog } from '@shipwright/events';
+import { listEvents, openEventLog } from '@dokima/events';
 import { buildApiServer, type ApiServer } from '../server.js';
 import { registerProject } from '../projects.js';
 import { stateDbPath } from './settings-db.js';
@@ -32,7 +32,7 @@ describe('settings routes', () => {
     projectId: string;
     projectDir: string;
   }> {
-    const fleetHome = await tmpDir('shipwright-settings-routes-');
+    const fleetHome = await tmpDir('dokima-settings-routes-');
     dirs.push(fleetHome);
     const projectDir = path.join(fleetHome, 'project-a');
     const record = await registerProject(path.join(fleetHome, 'fleet.json'), {

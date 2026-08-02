@@ -43,9 +43,9 @@ describe('decision routes', () => {
   });
 
   async function boot(): Promise<{ app: FastifyInstance; projectId: string }> {
-    const fleetHome = await tmpDir('shipwright-decision-routes-');
+    const fleetHome = await tmpDir('dokima-decision-routes-');
     dirs.push(fleetHome);
-    const projectDir = await tmpDir('shipwright-decision-project-');
+    const projectDir = await tmpDir('dokima-decision-project-');
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });

@@ -13,7 +13,7 @@ export class MalformedModelOutputError extends Error {
   }
 }
 
-/** The request body isn't a well-formed `RunPipelineInput` (`@shipwright/pipeline`). */
+/** The request body isn't a well-formed `RunPipelineInput` (`@dokima/pipeline`). */
 export class InvalidPipelineRunRequestError extends Error {
   constructor(reason: string) {
     super(`invalid pipeline run request: ${reason}`);

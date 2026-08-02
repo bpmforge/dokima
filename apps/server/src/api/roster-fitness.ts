@@ -1,7 +1,7 @@
 /**
  * Fitness cards for the roster (SRS FR-E2 "fitness cards per configured
- * model (W2-08)"). `@shipwright/events`'s global-db module already carries
- * `listModelFitness` over `~/.shipwright/global.db` (W4-09) — this just
+ * model (W2-08)"). `@dokima/events`'s global-db module already carries
+ * `listModelFitness` over `~/.dokima/global.db` (W4-09) — this just
  * reads it read-only and filters to one role, degrading to an empty list
  * the same way `projects.ts`'s `computeProjectStats` degrades on a missing
  * or unreadable db (never crash the roster endpoint over bench data that
@@ -14,7 +14,7 @@ import {
   listModelFitness,
   openGlobalDbReader,
   type ModelFitnessRecord,
-} from '@shipwright/events';
+} from '@dokima/events';
 
 async function pathExists(target: string): Promise<boolean> {
   try {

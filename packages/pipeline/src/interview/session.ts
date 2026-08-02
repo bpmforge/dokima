@@ -7,7 +7,7 @@
  * artifact viewer as I answer").
  *
  * "Ask a question" and "draft from answers" are both real LLM work — out of
- * this write_scope's reach (no `@shipwright/gateway` dependency declared
+ * this write_scope's reach (no `@dokima/gateway` dependency declared
  * for this package, see `../phases/types.ts`'s write_scope note for the
  * identical wiring-gap precedent). Both are injected seams (`InterviewDeps`)
  * this module calls but never implements; the wiring ticket binds them to

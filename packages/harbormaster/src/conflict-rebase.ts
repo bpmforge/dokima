@@ -20,9 +20,9 @@
  * human work, ever").
  */
 
-import { git, type WorktreeHandle } from '@shipwright/git';
-import { commentTicket, releaseTicket, type Ticket } from '@shipwright/tickets';
-import type { EventLog } from '@shipwright/events';
+import { git, type WorktreeHandle } from '@dokima/git';
+import { commentTicket, releaseTicket, type Ticket } from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
 import { renderDecideCard, type DecideCard } from './loop-land-policy.js';
 import {
   mintConflictParked,
@@ -63,7 +63,7 @@ export interface CommitHumanEditOptions {
   readonly repoRoot: string;
   readonly paths: readonly string[];
   readonly message: string;
-  /** The branch a worktree rebase will later pull this commit in from. Refuses if `repoRoot` isn't currently on it — same guard `@shipwright/git`'s `mergeLocal` uses, because a mismatch here would silently commit the human's edit somewhere a rebase never sees, reporting a false "human wins". */
+  /** The branch a worktree rebase will later pull this commit in from. Refuses if `repoRoot` isn't currently on it — same guard `@dokima/git`'s `mergeLocal` uses, because a mismatch here would silently commit the human's edit somewhere a rebase never sees, reporting a false "human wins". */
   readonly expectedBranch: string;
 }
 

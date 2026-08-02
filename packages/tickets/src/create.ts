@@ -1,4 +1,4 @@
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import { getTicket } from './query.js';
 import type { TicketCreatedPayload } from './reducer.js';
 import type { CreateTicketInput, Ticket } from './types.js';

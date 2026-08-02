@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createIdentity, openEventLog } from '@shipwright/events';
-import { completeRun, createRun } from '@shipwright/harbormaster';
+import { createIdentity, openEventLog } from '@dokima/events';
+import { completeRun, createRun } from '@dokima/harbormaster';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   isImproveModeEntry,
@@ -11,11 +11,11 @@ import {
 } from './run-events.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-run-events-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-run-events-'));
 }
 
 async function openProjectLog(dir: string) {
-  const dbPath = path.join(dir, '.shipwright', 'state.db');
+  const dbPath = path.join(dir, '.dokima', 'state.db');
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
   const log = openEventLog(dbPath);
   createIdentity(log, { id: 'human-1', name: 'Test Human', kind: 'human' });

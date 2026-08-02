@@ -3,12 +3,12 @@
  * leases registered with the Ticket Engine... The UI shows leased paths
  * (subtle lock badge in any file tree)"). A ticket leases its write_scope
  * for as long as it is actively owned — `claimed` or `in_progress`, the
- * exact `isActiveOwnership` boundary `@shipwright/tickets`' `verbs.ts`
+ * exact `isActiveOwnership` boundary `@dokima/tickets`' `verbs.ts`
  * already draws for WIP=1: `in_review` does not lease (close is what frees
  * the worker, so the scope is no longer being actively written).
  */
 
-import type { Ticket } from '@shipwright/tickets';
+import type { Ticket } from '@dokima/tickets';
 import type { LeaseRecord, LeasedPathBadge } from './conflict-types.js';
 
 function isActivelyLeased(ticket: Ticket): boolean {

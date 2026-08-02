@@ -8,8 +8,8 @@
  * a completed prerequisite until the producing role responds, independent of
  * whether the file on disk has changed yet.
  *
- * `revision.requested`'s real home is `@shipwright/events`' `appendEvent`;
- * the real HANDOFF render is `@shipwright/loop`'s `renderHandoff` — both out
+ * `revision.requested`'s real home is `@dokima/events`' `appendEvent`;
+ * the real HANDOFF render is `@dokima/loop`'s `renderHandoff` — both out
  * of reach from this write_scope (types.ts header). This module returns the
  * plain descriptors (`RevisionRequestedEvent`, `RevisionHandoff`) the wiring
  * ticket feeds into those two functions unchanged.

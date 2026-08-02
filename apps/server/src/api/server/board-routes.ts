@@ -3,7 +3,7 @@ import {
   openEventLog,
   openEventLogReader,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   acceptTicket,
   claimTicket,
@@ -15,7 +15,7 @@ import {
   TicketError,
   type LifecycleVerb,
   type Ticket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   EVENT_SEQ_HEADER,
@@ -31,7 +31,7 @@ import { toWireBoardTicket } from './board-wire.js';
 import { problem } from '../problem.js';
 
 export interface BoardRoutesOptions {
-  /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
+  /** Fleet registry home dir override (defaults to computeDokimaHome()) — tests only. */
   home?: string;
   wsHub: WsHub;
 }
@@ -61,7 +61,7 @@ function isLifecycleVerb(value: string): value is LifecycleVerb {
 
 function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -70,7 +70,7 @@ function badRequest(request: FastifyRequest, detail: string) {
   });
 }
 
-/** Opens `{project}/.shipwright/state.db`, or replies 404 (unregistered id)
+/** Opens `{project}/.dokima/state.db`, or replies 404 (unregistered id)
  * / 503 (corrupt `fleet.json`, THREAT_MODEL §5.6) and returns `undefined`. */
 async function openProjectLog(
   request: FastifyRequest,

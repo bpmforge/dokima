@@ -1,7 +1,7 @@
 /** R-A1/US-310: trust-graduation suggestion evidence + emission. */
 
-import { isClaimable, type Ticket } from '@shipwright/tickets';
-import type { EventLog } from '@shipwright/events';
+import { isClaimable, type Ticket } from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
 import { emitNotification } from './emit.js';
 import { type EmitOptions, LEVERAGE_BY_KIND, type NotificationRecord } from './types.js';
 

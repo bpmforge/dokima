@@ -7,7 +7,7 @@
 
 import { exec as execCallback } from 'node:child_process';
 import { promisify } from 'node:util';
-import { git } from '@shipwright/git';
+import { git } from '@dokima/git';
 import type { VerifyRunResult } from './loop-gates-types.js';
 
 const execAsync = promisify(execCallback);

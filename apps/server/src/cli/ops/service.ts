@@ -1,5 +1,5 @@
 /**
- * `shipwright service install|status|stop` (DEPLOYMENT.md §6): "writes a
+ * `dokima service install|status|stop` (DEPLOYMENT.md §6): "writes a
  * user unit — launchd agent (macOS) or systemd user unit (Linux/WSL) — so
  * autorun survives logout of the terminal." Process execution (`launchctl`/
  * `systemctl`) is injectable so tests never touch the real service manager;
@@ -11,21 +11,21 @@ import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { resolveAsset } from '@shipwright/shared';
+import { resolveAsset } from '@dokima/shared';
 import { promisify } from 'node:util';
 import type { CliIO } from '../../bootstrap/cli.js';
 
 const execFileAsync = promisify(execFile);
 
-export const LAUNCHD_LABEL = 'com.shipwright.core';
-export const SYSTEMD_UNIT_NAME = 'shipwright.service';
+export const LAUNCHD_LABEL = 'com.dokima.core';
+export const SYSTEMD_UNIT_NAME = 'dokima.service';
 
 export interface ServiceCommandTarget {
   command: string;
   args: string[];
 }
 
-/** The packaged runtime's own entry point — invoking it directly works whether shipwright was installed globally or run from a local checkout (DEPLOYMENT.md §1). */
+/** The packaged runtime's own entry point — invoking it directly works whether dokima was installed globally or run from a local checkout (DEPLOYMENT.md §1). */
 export function defaultServiceCommand(): ServiceCommandTarget {
   // Anchored to the distribution root; the bin shim ships at this same
   // repo-relative path inside the package, so one expression serves both
@@ -107,7 +107,7 @@ export function renderSystemdUnit(target: ServiceCommandTarget, logDir: string):
     .map((part) => (part.includes(' ') ? `"${part}"` : part))
     .join(' ');
   return `[Unit]
-Description=Shipwright core (night-shift mode)
+Description=Dokima core (night-shift mode)
 
 [Service]
 ExecStart=${execStart}
@@ -141,7 +141,7 @@ function resolveTarget(deps: ServiceDeps): ServiceCommandTarget {
 export class UnsupportedPlatformError extends Error {
   constructor(platform: string) {
     super(
-      `shipwright service is not supported on platform "${platform}" — macOS (launchd) and Linux/WSL (systemd user units) only (DEPLOYMENT.md §6, D-009)`,
+      `dokima service is not supported on platform "${platform}" — macOS (launchd) and Linux/WSL (systemd user units) only (DEPLOYMENT.md §6, D-009)`,
     );
     this.name = 'UnsupportedPlatformError';
   }
@@ -154,7 +154,7 @@ async function installLaunchd(
   target: ServiceCommandTarget,
 ): Promise<number> {
   const plistPath = launchdPlistPath(homedir);
-  const logDir = path.join(homedir, '.shipwright', 'logs');
+  const logDir = path.join(homedir, '.dokima', 'logs');
   await fs.mkdir(path.dirname(plistPath), { recursive: true });
   await fs.mkdir(logDir, { recursive: true });
   await fs.writeFile(plistPath, renderLaunchdPlist(target, logDir));
@@ -175,7 +175,7 @@ async function installSystemd(
   target: ServiceCommandTarget,
 ): Promise<number> {
   const unitPath = systemdUnitPath(homedir);
-  const logDir = path.join(homedir, '.shipwright', 'logs');
+  const logDir = path.join(homedir, '.dokima', 'logs');
   await fs.mkdir(path.dirname(unitPath), { recursive: true });
   await fs.mkdir(logDir, { recursive: true });
   await fs.writeFile(unitPath, renderSystemdUnit(target, logDir));

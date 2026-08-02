@@ -1,4 +1,4 @@
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import { McpError } from './errors.js';
 import type { McpVerbOptions } from './options.js';
 import { loadMcpState } from './query.js';

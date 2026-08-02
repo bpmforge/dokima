@@ -149,7 +149,7 @@ export interface PlanViewProps {
  * provenance, verify criterion, state, linked ticket, and accept/dismiss
  * actions — fully functional with zero LLM calls (AC1). Item creation
  * (catalog evaluation against a live snapshot) and re-verification are
- * `@shipwright/pipeline`-engine primitives this view does not trigger
+ * `@dokima/pipeline`-engine primitives this view does not trigger
  * itself (W5-15 wires the run-completion/nightly caller); this screen only
  * ever reads and mutates what the store already has.
  */

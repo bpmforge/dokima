@@ -5,7 +5,7 @@ import {
   collectSecretValues,
   createInMemoryCredentialStore,
   createProjectSecretsVault,
-} from '@shipwright/shared';
+} from '@dokima/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderHandoff, type Handoff } from './handoff.js';
 
@@ -63,7 +63,7 @@ describe('renderHandoff redaction (SC-06)', () => {
   });
 
   async function mkTmp(): Promise<string> {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-handoff-test-'));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-handoff-test-'));
     tmpDirs.push(dir);
     return dir;
   }
@@ -72,7 +72,7 @@ describe('renderHandoff redaction (SC-06)', () => {
     const home = await mkTmp();
     const projectDir = await mkTmp();
     const vault = createProjectSecretsVault(createInMemoryCredentialStore(), projectDir, {
-      SHIPWRIGHT_HOME: home,
+      DOKIMA_HOME: home,
     });
     await vault.register('forge-token', 'vault-planted-value');
     await fs.writeFile(path.join(projectDir, '.env'), 'DB_PASSWORD=env-planted-value\n');

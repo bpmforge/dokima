@@ -102,7 +102,7 @@ describe('parseMermaid — sequenceDiagram subset', () => {
     const source = [
       'sequenceDiagram',
       '  participant U as User',
-      '  participant PM as Shipwright PM',
+      '  participant PM as Dokima PM',
       '  U->>PM: Idea (plain English)',
       '  PM-->>U: Discovery interview',
     ].join('\n');
@@ -110,7 +110,7 @@ describe('parseMermaid — sequenceDiagram subset', () => {
     expect(diagram.kind).toBe('sequence');
     expect(diagram.participants).toEqual([
       { id: 'U', label: 'User' },
-      { id: 'PM', label: 'Shipwright PM' },
+      { id: 'PM', label: 'Dokima PM' },
     ]);
     expect(diagram.messages).toEqual([
       { from: 'U', to: 'PM', text: 'Idea (plain English)', style: 'solid' },

@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, listEvents, openEventLog } from '@shipwright/events';
-import { git } from '@shipwright/git';
-import { createTicket } from '@shipwright/tickets';
+import { createIdentity, listEvents, openEventLog } from '@dokima/events';
+import { git } from '@dokima/git';
+import { createTicket } from '@dokima/tickets';
 import {
   configuredRemotes,
   pushLandedBranch,
@@ -13,10 +13,10 @@ import {
 } from './land-push.js';
 
 async function createWorkingRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-land-push-work-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-land-push-work-'));
   await git(dir, ['init', '-b', 'main']);
-  await git(dir, ['config', 'user.name', 'Shipwright Test']);
-  await git(dir, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(dir, ['config', 'user.name', 'Dokima Test']);
+  await git(dir, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(dir, 'README.md'), '# fixture\n');
   await git(dir, ['add', '--', 'README.md']);
   await git(dir, ['commit', '-m', 'chore: initial commit']);
@@ -114,7 +114,7 @@ describe('recordFailedPushes', () => {
   });
 
   async function setupLog() {
-    const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-land-push-log-'));
+    const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-land-push-log-'));
     cleanupDirs.push(dbDir);
     const log = openEventLog(path.join(dbDir, 'state.db'));
     createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });

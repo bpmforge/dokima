@@ -27,10 +27,10 @@ async function mkTempDir(prefix: string): Promise<string> {
 
 describe('gatherOnboardRepoContext (W8-09 fix — real repo material for the single-turn specialist)', () => {
   it('reads the directory listing, commit log, and key file contents from a real git repo', async () => {
-    const repoRoot = await mkTempDir('shipwright-onboard-repo-context-git-');
+    const repoRoot = await mkTempDir('dokima-onboard-repo-context-git-');
     await git(repoRoot, ['init', '-b', 'main']);
-    await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-    await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+    await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+    await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
     await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture repo\n');
     await fs.mkdir(path.join(repoRoot, 'src'));
     await fs.writeFile(path.join(repoRoot, 'src', 'index.ts'), 'export const x = 1;\n');
@@ -52,10 +52,10 @@ describe('gatherOnboardRepoContext (W8-09 fix — real repo material for the sin
   });
 
   it('samples real source-file contents (bounded, deterministic, never test files)', async () => {
-    const repoRoot = await mkTempDir('shipwright-onboard-repo-context-samples-');
+    const repoRoot = await mkTempDir('dokima-onboard-repo-context-samples-');
     await git(repoRoot, ['init', '-b', 'main']);
-    await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-    await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+    await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+    await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
     await fs.mkdir(path.join(repoRoot, 'src'));
     for (let i = 0; i < 14; i += 1) {
       await fs.writeFile(
@@ -79,7 +79,7 @@ describe('gatherOnboardRepoContext (W8-09 fix — real repo material for the sin
   });
 
   it('falls back to a filesystem walk and yields empty commits/keyFiles for a non-git directory', async () => {
-    const root = await mkTempDir('shipwright-onboard-repo-context-nogit-');
+    const root = await mkTempDir('dokima-onboard-repo-context-nogit-');
     await fs.writeFile(path.join(root, 'notes.txt'), 'hello\n');
     await fs.mkdir(path.join(root, 'node_modules'));
     await fs.writeFile(path.join(root, 'node_modules', 'ignored.js'), 'x\n');
@@ -94,10 +94,10 @@ describe('gatherOnboardRepoContext (W8-09 fix — real repo material for the sin
   });
 
   it('truncates an oversized key file and flags a large directory listing as truncated', async () => {
-    const repoRoot = await mkTempDir('shipwright-onboard-repo-context-trunc-');
+    const repoRoot = await mkTempDir('dokima-onboard-repo-context-trunc-');
     await git(repoRoot, ['init', '-b', 'main']);
-    await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-    await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+    await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+    await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
     await fs.writeFile(path.join(repoRoot, 'README.md'), 'x'.repeat(5000));
     const names = ['README.md'];
     for (let i = 0; i < 401; i += 1) {

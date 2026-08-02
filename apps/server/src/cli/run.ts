@@ -8,7 +8,7 @@ import {
   startTicket,
   TicketError,
   type Ticket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import { renderBoard } from './board.js';
 import { openReadOnlyLog, openWritableLog, resolveDbPath } from './db.js';
 import { ensureActorIdentity } from './identity.js';

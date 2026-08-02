@@ -1,11 +1,11 @@
-# Shipwright — screenshot tour
+# Dokima — screenshot tour
 
 A scribe-style walkthrough of the shipped product, captured against the
 real server + real event log with zero mocks (Law 9 local-first: no
-network, throwaway `.shipwright` home). Regenerate any time with:
+network, throwaway `.dokima` home). Regenerate any time with:
 
 ```sh
-pnpm --filter @shipwright/web run build   # if dist/ is stale
+pnpm --filter @dokima/web run build   # if dist/ is stale
 node apps/web/scripts/capture-tour.mjs
 ```
 

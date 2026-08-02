@@ -1,13 +1,13 @@
 /**
  * Improvement Plans row/wire types (FR-PLAN2/4, D-016, DATABASE.md §5b).
  * Engine types (`PlanEvaluationSnapshot`, `PlanItemRecord`, `CatalogMatch`,
- * ...) come straight from `@shipwright/pipeline` — this file only adds the
+ * ...) come straight from `@dokima/pipeline` — this file only adds the
  * two fields the engine deliberately keeps out of its scope (`dismissedAt`/
  * `dismissedReason`, see `plans-store.ts`'s header) and the funnel shape
  * AC2 asks for.
  */
 
-import type { PlanItemRecord, PlanItemState } from '@shipwright/pipeline';
+import type { PlanItemRecord, PlanItemState } from '@dokima/pipeline';
 
 export type { PlanItemState };
 

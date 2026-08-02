@@ -1,6 +1,6 @@
 /**
  * Single-user bearer token (D-005, SC-08). Generated once at first run into
- * `~/.shipwright/token` (mode 0600, dir 0700) and reused thereafter — the
+ * `~/.dokima/token` (mode 0600, dir 0700) and reused thereafter — the
  * SPA and CLI both read the same file to authenticate against the local
  * server. No plaintext fallback path: a corrupt/empty file is treated as
  * absent and regenerated.
@@ -9,14 +9,14 @@
 import { randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { computeShipwrightHome } from '@shipwright/shared';
+import { computeDokimaHome } from '@dokima/shared';
 
 export const TOKEN_FILENAME = 'token';
 export const TOKEN_FILE_MODE = 0o600;
 export const TOKEN_HOME_MODE = 0o700;
 
 export function computeTokenPath(env: NodeJS.ProcessEnv = process.env): string {
-  return path.join(computeShipwrightHome(env), TOKEN_FILENAME);
+  return path.join(computeDokimaHome(env), TOKEN_FILENAME);
 }
 
 function generateToken(): string {
@@ -27,7 +27,7 @@ function generateToken(): string {
 export async function ensureAuthToken(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ token: string; tokenPath: string }> {
-  const home = computeShipwrightHome(env);
+  const home = computeDokimaHome(env);
   await fs.mkdir(home, { recursive: true });
   await fs.chmod(home, TOKEN_HOME_MODE);
   const tokenPath = computeTokenPath(env);

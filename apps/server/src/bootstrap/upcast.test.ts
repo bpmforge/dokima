@@ -3,7 +3,7 @@ import {
   createIdentity,
   listEvents,
   openEventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { describe, expect, it } from 'vitest';
 import { upcastPayload, type UpcastRegistry } from './upcast.js';
 

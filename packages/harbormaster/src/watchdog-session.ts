@@ -1,6 +1,6 @@
 /**
  * One watched agent session (BLUEPRINT §3.6/§7.1, FR-H2): wires
- * `watchdog-process.ts`'s real session-tree spawner to `@shipwright/loop`'s
+ * `watchdog-process.ts`'s real session-tree spawner to `@dokima/loop`'s
  * `runSession` and `watchdog.ts`'s dead-letter escalation, so a caller
  * gets the same `SessionResult` shape `loop-claim.ts`/`loop-land.ts`
  * already work with, plus the watchdog guard, in one call. Not yet wired
@@ -9,8 +9,8 @@
  * future ticket composes into the claim/land loops.
  */
 
-import { runSession, type Handoff, type SessionResult } from '@shipwright/loop';
-import type { EventLog } from '@shipwright/events';
+import { runSession, type Handoff, type SessionResult } from '@dokima/loop';
+import type { EventLog } from '@dokima/events';
 import { createWatchdogChildProcessSpawn } from './watchdog-process.js';
 import {
   deadLetterAndBlock,

@@ -5,7 +5,7 @@
  *
  * No cross-package imports: packages/forge/package.json declares zero
  * dependencies (out of this ticket's write_scope to change), so this file
- * cannot import @shipwright/shared even though the ARCHITECTURE.md §4 import
+ * cannot import @dokima/shared even though the ARCHITECTURE.md §4 import
  * matrix allows forge -> shared in principle — the workspace symlink only
  * exists once a package.json dependency is declared. Every shape needed here
  * (including the CredentialStore-like identity types) is defined locally,

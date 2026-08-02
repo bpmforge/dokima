@@ -41,7 +41,7 @@ test('a ready ticket can be claimed keyboard-only (Tab to the verb menu, ArrowDo
   page,
 }) => {
   const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `shipwright-a11y-kbd-board-${id}`);
+  const dir = path.join(os.tmpdir(), `dokima-a11y-kbd-board-${id}`);
   const name = `A11y Keyboard Board ${id}`;
   await fs.mkdir(dir, { recursive: true });
 
@@ -61,7 +61,7 @@ test('a ready ticket can be claimed keyboard-only (Tab to the verb menu, ArrowDo
   await projectCard.getByRole('button', { name: 'Open' }).click();
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 
-  seed(path.join(dir, '.shipwright', 'state.db'), 'drag-claim');
+  seed(path.join(dir, '.dokima', 'state.db'), 'drag-claim');
   await page.reload();
 
   const card = page.getByTestId('card-E2E-DRAG-1');
@@ -93,7 +93,7 @@ test('the morning queue Decide Approve action is reachable and operable keyboard
   page,
 }) => {
   const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `shipwright-a11y-kbd-queue-${id}`);
+  const dir = path.join(os.tmpdir(), `dokima-a11y-kbd-queue-${id}`);
   const name = `A11y Keyboard Queue ${id}`;
   await fs.mkdir(dir, { recursive: true });
 
@@ -112,7 +112,7 @@ test('the morning queue Decide Approve action is reachable and operable keyboard
 
   const projectId = new URL(page.url()).searchParams.get('project');
   const token = await page.evaluate(
-    () => (window as unknown as { __SHIPWRIGHT_TOKEN__?: string }).__SHIPWRIGHT_TOKEN__,
+    () => (window as unknown as { __DOKIMA_TOKEN__?: string }).__DOKIMA_TOKEN__,
   );
   const res = await page.request.post(`/api/v1/projects/${projectId}/notifications`, {
     headers: { Authorization: `Bearer ${token}` },

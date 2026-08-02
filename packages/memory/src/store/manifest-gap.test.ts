@@ -3,7 +3,7 @@
  * write-back until it was manifest-gated). `packages/harbormaster`'s
  * `checkMemoryWritten` already landed inert, waiting for this ticket
  * (`loop-gates-secrets.ts`: "deferred until W7-01 lands"). `memory` can't
- * statically import `@shipwright/harbormaster` (ARCHITECTURE.md §4 — the
+ * statically import `@dokima/harbormaster` (ARCHITECTURE.md §4 — the
  * dependency runs the other way), so this dynamically imports the REAL
  * function by absolute `file://` URL, same technique as
  * `anti-jarvis-gap.test.ts`. Proves both directions: a manifest with no

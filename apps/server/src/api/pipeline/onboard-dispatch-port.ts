@@ -1,10 +1,10 @@
 /**
  * Real specialist dispatch for `runOnboard`'s `OnboardDispatch` seam (W8-09
  * AC1): every onboard/security-cluster/threat-model-refresh step's role is
- * run as a real `@shipwright/loop` HANDOFF session — the exact contract
+ * run as a real `@dokima/loop` HANDOFF session — the exact contract
  * `packages/harbormaster/src/loop-claim.ts` uses to run a ticket's coding
  * session — except this session's `spawn` calls the real gateway
- * (`@shipwright/gateway`'s `createOaiCompatProvider`, Law 6: model access
+ * (`@dokima/gateway`'s `createOaiCompatProvider`, Law 6: model access
  * only through the gateway, never a direct provider) instead of a child
  * process CLI: an onboard/analysis specialist reads and reports on the repo,
  * it has no code to write, but it still goes through the same
@@ -12,11 +12,11 @@
  * thinking-strip, and the same real `git diff` write-scope check every
  * other specialist session does (`runSession`, `packages/loop/src/session.ts`).
  *
- * DYNAMIC IMPORT (not a static `from '@shipwright/loop'`): this ticket's
+ * DYNAMIC IMPORT (not a static `from '@dokima/loop'`): this ticket's
  * write_scope is `apps/server/src/api/pipeline/**` + `.../cli/run-cmd.ts`
  * only — it does not include `apps/server/package.json`, so there is no
  * glob this ticket may use to add a declared workspace dependency on
- * `@shipwright/loop` (pnpm's strict, non-hoisted linking means an
+ * `@dokima/loop` (pnpm's strict, non-hoisted linking means an
  * undeclared package is simply not resolvable via a static import here; the
  * SAME wall `packages/pipeline/src/plans/types.ts` and `phases/types.ts`
  * document for THEIR narrower write_scopes). The correct move on hitting
@@ -31,13 +31,13 @@
  * choice — the header said so — and it does not survive packaging twice over:
  * the hops break under a bundle, and the target is a `.ts` SOURCE file that
  * plain `node` cannot import at all once `tsx` is out of the picture. This
- * ticket's scope includes `apps/server/package.json`, so `@shipwright/loop`
+ * ticket's scope includes `apps/server/package.json`, so `@dokima/loop`
  * is now a declared dependency and the specifier is a plain bare one. It stays
  * a dynamic `import()` deliberately — that preserves the lazy load and the
  * `loadLoopModuleForTests` seam — but a bare specifier is statically
  * analysable, so a bundler inlines it and `tsc` can type it.
  */
-import { createOaiCompatProvider, type Provider } from '@shipwright/gateway';
+import { createOaiCompatProvider, type Provider } from '@dokima/gateway';
 import { MalformedModelOutputError } from './errors.js';
 import { parseOnboardCompletion, type OnboardStepArtifact } from './onboard-types.js';
 
@@ -67,11 +67,11 @@ interface LoopModule {
 
 let cachedLoopModule: Promise<LoopModule> | undefined;
 
-/** Loads the real `@shipwright/loop` module exactly once per process. Dynamic
+/** Loads the real `@dokima/loop` module exactly once per process. Dynamic
  * to keep the load lazy and to keep the `loadLoopModuleForTests` seam, but the
  * specifier is a plain bare one so it survives bundling (W9-13). */
 function loadLoopModule(): Promise<LoopModule> {
-  cachedLoopModule ??= import('@shipwright/loop') as unknown as Promise<LoopModule>;
+  cachedLoopModule ??= import('@dokima/loop') as unknown as Promise<LoopModule>;
   return cachedLoopModule;
 }
 
@@ -100,14 +100,14 @@ export function resolveOnboardGatewayConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): OnboardGatewayConfig {
   return {
-    baseUrl: env.SHIPWRIGHT_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
-    apiKey: env.SHIPWRIGHT_MODEL_API_KEY,
-    model: env.SHIPWRIGHT_MODEL_ID ?? 'local-model',
+    baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
+    apiKey: env.DOKIMA_MODEL_API_KEY,
+    model: env.DOKIMA_MODEL_ID ?? 'local-model',
   };
 }
 
 const ONBOARD_SPECIALIST_SYSTEM_PROMPT =
-  'You are a Shipwright onboard/analysis specialist. You are given a HANDOFF ' +
+  'You are a Dokima onboard/analysis specialist. You are given a HANDOFF ' +
   'block naming your role and a JSON context (seed context + prior steps’ ' +
   'artifacts). Analyze the repository and respond with ONLY a JSON object of ' +
   'the shape {"summary": string, "findings": [{"title": string, "severity": ' +

@@ -3,8 +3,8 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 // ARCHITECTURE.md §4 "allowed-dependency matrix" (row imports column) — the single
-// source of truth this file encodes. Keys are @shipwright/<name> workspace package
-// names; 'server'/'web' are apps/server and apps/web (also @shipwright/-scoped).
+// source of truth this file encodes. Keys are @dokima/<name> workspace package
+// names; 'server'/'web' are apps/server and apps/web (also @dokima/-scoped).
 export const ALLOWED_IMPORTS = {
   shared: [],
   events: ['shared'],
@@ -60,7 +60,7 @@ export const PROVIDER_SDK_PACKAGES = [
 export const DB_DRIVER_PACKAGES = ['better-sqlite3'];
 
 // TECH_STACK.md "Repository conventions": packages export via `exports` maps only.
-export const DEEP_IMPORT_REGEX = '^@shipwright/[^/]+/.+';
+export const DEEP_IMPORT_REGEX = '^@dokima/[^/]+/.+';
 
 // SC-04 (docs/SECURITY_CONTROLS.md): promise-token / magic-string completion is
 // forbidden — completion is receipt-existence only, never a regex over session output.
@@ -104,7 +104,7 @@ const PROMISE_TOKEN_FIXTURE_GLOBS = {
 export function buildDependencyRuleConfig(name, { includeFixtures = false } = {}) {
   const forbiddenSiblings = ALL_PACKAGE_NAMES.filter(
     (other) => other !== name && !ALLOWED_IMPORTS[name].includes(other),
-  ).map((other) => `@shipwright/${other}`);
+  ).map((other) => `@dokima/${other}`);
 
   const paths = [];
 
@@ -124,7 +124,7 @@ export function buildDependencyRuleConfig(name, { includeFixtures = false } = {}
     for (const pkg of PROVIDER_SDK_PACKAGES) {
       patterns.push({
         group: [pkg, `${pkg}/**`],
-        message: `ARCHITECTURE.md §4 law 2: provider SDKs are egress-only through packages/gateway — @shipwright/${name} may not import '${pkg}' (including subpaths).`,
+        message: `ARCHITECTURE.md §4 law 2: provider SDKs are egress-only through packages/gateway — @dokima/${name} may not import '${pkg}' (including subpaths).`,
       });
     }
   }
@@ -132,14 +132,14 @@ export function buildDependencyRuleConfig(name, { includeFixtures = false } = {}
     for (const pkg of DB_DRIVER_PACKAGES) {
       patterns.push({
         group: [pkg, `${pkg}/**`],
-        message: `ARCHITECTURE.md §4 law 4: only packages/events opens the DB write path — @shipwright/${name} may not import '${pkg}' (including subpaths).`,
+        message: `ARCHITECTURE.md §4 law 4: only packages/events opens the DB write path — @dokima/${name} may not import '${pkg}' (including subpaths).`,
       });
     }
   }
   if (forbiddenSiblings.length > 0) {
     patterns.push({
       group: forbiddenSiblings,
-      message: `ARCHITECTURE.md §4: @shipwright/${name} may only import ${ALLOWED_IMPORTS[name].length ? ALLOWED_IMPORTS[name].map((n) => `@shipwright/${n}`).join(', ') : 'nothing (foundation package)'}.`,
+      message: `ARCHITECTURE.md §4: @dokima/${name} may only import ${ALLOWED_IMPORTS[name].length ? ALLOWED_IMPORTS[name].map((n) => `@dokima/${n}`).join(', ') : 'nothing (foundation package)'}.`,
     });
   }
 
@@ -185,7 +185,7 @@ export default tseslint.config(
     // lints another agent's copy of the tree and reports its files as errors
     // in this one. Gitignoring `.claude/` does not help: flat config does not
     // read `.gitignore` unless explicitly wired via `includeIgnoreFile`.
-    ignores: ['**/dist/**', '**/node_modules/**', '**/.shipwright/**', '**/.claude/**'],
+    ignores: ['**/dist/**', '**/node_modules/**', '**/.dokima/**', '**/.claude/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

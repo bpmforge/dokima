@@ -8,11 +8,11 @@ import {
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import { BudgetBreakerTracker, CostLedger } from '@shipwright/gateway';
-import { branchNameFor, git } from '@shipwright/git';
-import type { SpawnSession } from '@shipwright/loop';
-import { createTicket, getTicket, type Ticket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
+import { branchNameFor, git } from '@dokima/git';
+import type { SpawnSession } from '@dokima/loop';
+import { createTicket, getTicket, type Ticket } from '@dokima/tickets';
 import type { PushToRemotesFn } from './land-push.js';
 import type { CompletionManifest } from './loop-gates.js';
 import { defaultHandoffBuilder } from './loop-handoff.js';
@@ -39,15 +39,15 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-land-repo-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-land-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-land-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-land-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
 
@@ -389,7 +389,7 @@ describe('runLandLoop', () => {
     // Remotes are shared repo-wide (`git worktree add`), so configuring them
     // on repoRoot is visible from the ticket's own worktree too.
     const goodRemote = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-land-remote-good-'),
+      path.join(os.tmpdir(), 'dokima-land-remote-good-'),
     );
     extraTempDirs.push(goodRemote);
     await git(goodRemote, ['init', '--bare', '-b', 'main']);
@@ -398,12 +398,12 @@ describe('runLandLoop', () => {
     // — no real network, still fully local-first.
     const badRemotePath = path.join(
       os.tmpdir(),
-      'shipwright-land-remote-missing-so-invalid',
+      'dokima-land-remote-missing-so-invalid',
     );
     await git(repoRoot, ['remote', 'add', 'github', badRemotePath]);
 
     const calls: { cwd: string; remotes: readonly string[]; ref: string }[] = [];
-    // Mirrors `@shipwright/forge`'s `pushToRemotes` per-remote isolation
+    // Mirrors `@dokima/forge`'s `pushToRemotes` per-remote isolation
     // (Promise.allSettled): one remote failing never throws or short-
     // circuits the others, and it always resolves with one result per
     // remote — never a single all-or-nothing rejection.
@@ -434,7 +434,7 @@ describe('runLandLoop', () => {
     expect(result.processed[1]!.landed).toBe(true);
 
     const branch1 = branchNameFor('W9-01', 'Ticket W9-01');
-    const worktreePath1 = path.join(repoRoot, '.shipwright', 'worktrees', 'W9-01');
+    const worktreePath1 = path.join(repoRoot, '.dokima', 'worktrees', 'W9-01');
     expect(calls).toHaveLength(2);
     expect(calls[0]).toEqual({
       cwd: worktreePath1,

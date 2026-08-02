@@ -1,11 +1,11 @@
 /**
  * Phase-validator runner (W9-06): executes a phase's declared validator set for real
  * and mints a genuine gate receipt under a distinct verifier identity — the FIRST
- * production caller of `@shipwright/validators`' `mintValidatorRunReceipt` (whose
+ * production caller of `@dokima/validators`' `mintValidatorRunReceipt` (whose
  * header calls itself "the only path from a validator run to a receipt").
  *
  * FR-P1 "no receipt without a real run": `phase.validators` is read live off
- * `@shipwright/pipeline`'s topology on every call via `getPhase` — never frozen at an
+ * `@dokima/pipeline`'s topology on every call via `getPhase` — never frozen at an
  * earlier mint time or duplicated into this file — then run for real via
  * `loadValidatorPack`/`runValidatorPack` against the project's actual on-disk
  * deliverables (`packages/harbormaster/src/loop-gates.ts` is the working precedent for
@@ -23,7 +23,7 @@
  * the same identity that produced the content.
  *
  * KNOWN GAP (found while building this, confirmed empirically, out of this ticket's
- * write_scope): every phase in `@shipwright/pipeline`'s `PHASES` (0–5) unconditionally
+ * write_scope): every phase in `@dokima/pipeline`'s `PHASES` (0–5) unconditionally
  * declares `validate-mermaid` (R-H3, `packages/pipeline/src/phases/topology.ts`).
  * `content/validators/validate-mermaid.sh` does not source `_lib.sh` (unlike every
  * other validator) and emits ZERO bytes to stdout on a genuinely clean scan — verified
@@ -53,9 +53,9 @@ import {
   runValidatorPack,
   UnknownValidatorSelectionError,
   type ValidatorRunResult,
-} from '@shipwright/validators';
-import type { EventLog, ReceiptInputFile, ReceiptRecord } from '@shipwright/events';
-import { getPhase, type PhaseId } from '@shipwright/pipeline';
+} from '@dokima/validators';
+import type { EventLog, ReceiptInputFile, ReceiptRecord } from '@dokima/events';
+import { getPhase, type PhaseId } from '@dokima/pipeline';
 import { evaluatePhaseGateResults } from './evaluate.js';
 import {
   assertVerifierDistinctFromAuthor,
@@ -87,7 +87,7 @@ export interface RunPhaseGateInput {
 }
 
 export interface RunPhaseGateOptions {
-  /** Keychain-resolved minting secret — see `@shipwright/events`' `mintReceipt`. */
+  /** Keychain-resolved minting secret — see `@dokima/events`' `mintReceipt`. */
   readonly signingKey: string;
 }
 

@@ -5,8 +5,8 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listTickets } from '@shipwright/tickets';
-import { openEventLogReader } from '@shipwright/events';
+import { listTickets } from '@dokima/tickets';
+import { openEventLogReader } from '@dokima/events';
 import { registerProject } from '../../projects.js';
 import { stateDbPath } from '../../server/board-project.js';
 import { resetLoopModuleCacheForTests } from '../onboard-dispatch-port.js';
@@ -21,11 +21,11 @@ async function git(cwd: string, args: string[]): Promise<void> {
 
 async function tmpGitProjectDir(): Promise<string> {
   const dir = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-onboard-route-project-'),
+    path.join(os.tmpdir(), 'dokima-onboard-route-project-'),
   );
   await git(dir, ['init', '-b', 'main']);
-  await git(dir, ['config', 'user.name', 'Shipwright Test']);
-  await git(dir, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(dir, ['config', 'user.name', 'Dokima Test']);
+  await git(dir, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(dir, 'README.md'), '# fixture\n');
   await git(dir, ['add', '--', 'README.md']);
   await git(dir, ['commit', '-m', 'chore: initial commit']);
@@ -63,7 +63,7 @@ describe('POST /api/v1/projects/:id/pipeline/onboard-run', () => {
   });
 
   it('starts and advances a real onboard run, persists the coverage manifest, and turns findings into real board tickets', async () => {
-    const fleetHome = await tmpDir('shipwright-onboard-route-home-');
+    const fleetHome = await tmpDir('dokima-onboard-route-home-');
     dirs.push(fleetHome);
     const projectDir = await tmpGitProjectDir();
     dirs.push(projectDir);
@@ -111,7 +111,7 @@ describe('POST /api/v1/projects/:id/pipeline/onboard-run', () => {
   });
 
   it('404s for an unregistered project id, never touching the gateway', async () => {
-    const fleetHome = await tmpDir('shipwright-onboard-route-home-');
+    const fleetHome = await tmpDir('dokima-onboard-route-home-');
     dirs.push(fleetHome);
     const server = await startFakeGatewayServer([COMPLETION]);
     servers.push(server);

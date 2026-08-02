@@ -10,7 +10,7 @@ import {
   driftedStatusChecksFixture,
 } from './gitea-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 const BASE_URL = 'https://gitea.example.com';
 
 /** The connect-time contract SC-14 requires: reviewer!=author, no force-push, required checks. */
@@ -44,7 +44,7 @@ describe('GiteaForgeAdapter — configureBranchProtection() (FR-I2)', () => {
     expect(calls[0]?.method).toBe('GET');
     expect(calls[1]?.method).toBe('POST');
     expect(calls[1]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/branch_protections',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/branch_protections',
     );
     expect(calls[1]?.body).toEqual({
       rule_name: 'main',
@@ -75,7 +75,7 @@ describe('GiteaForgeAdapter — configureBranchProtection() (FR-I2)', () => {
     expect(calls[0]?.method).toBe('GET');
     expect(calls[1]?.method).toBe('PATCH');
     expect(calls[1]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/branch_protections/main',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/branch_protections/main',
     );
     expect(calls[1]?.body).toEqual({
       required_approvals: 1,

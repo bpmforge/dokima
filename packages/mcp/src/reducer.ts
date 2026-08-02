@@ -1,4 +1,4 @@
-import type { EventRecord, Projection } from '@shipwright/events';
+import type { EventRecord, Projection } from '@dokima/events';
 import type {
   McpRole,
   McpServerDefinition,

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, createIdentity, type EventLog } from '@shipwright/events';
+import { appendEvent, createIdentity, type EventLog } from '@dokima/events';
 import { checkChain, renderChainResult } from './verify-chain.js';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { createTempProject, type TempProject } from './test-helpers.js';

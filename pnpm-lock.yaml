@@ -65,38 +65,38 @@ importers:
 
   apps/server:
     dependencies:
-      '@shipwright/events':
+      '@dokima/events':
         specifier: workspace:*
         version: link:../../packages/events
-      '@shipwright/gateway':
+      '@dokima/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway
-      '@shipwright/harbormaster':
+      '@dokima/harbormaster':
         specifier: workspace:*
         version: link:../../packages/harbormaster
-      '@shipwright/loop':
+      '@dokima/loop':
         specifier: workspace:*
         version: link:../../packages/loop
-      '@shipwright/memory':
+      '@dokima/memory':
         specifier: workspace:*
         version: link:../../packages/memory
-      '@shipwright/pipeline':
+      '@dokima/pipeline':
         specifier: workspace:*
         version: link:../../packages/pipeline
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@shipwright/tickets':
+      '@dokima/tickets':
         specifier: workspace:*
         version: link:../../packages/tickets
-      '@shipwright/validators':
+      '@dokima/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       fastify:
         specifier: ^5.10.0
         version: 5.10.0
     devDependencies:
-      '@shipwright/git':
+      '@dokima/git':
         specifier: workspace:*
         version: link:../../packages/git
       tsx:
@@ -139,7 +139,7 @@ importers:
 
   packages/events:
     dependencies:
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
       better-sqlite3:
@@ -157,10 +157,10 @@ importers:
 
   packages/gateway:
     dependencies:
-      '@shipwright/events':
+      '@dokima/events':
         specifier: workspace:*
         version: link:../events
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
       google-auth-library:
@@ -169,7 +169,7 @@ importers:
 
   packages/git:
     dependencies:
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
       execa:
@@ -178,37 +178,37 @@ importers:
 
   packages/harbormaster:
     dependencies:
-      '@shipwright/events':
+      '@dokima/events':
         specifier: workspace:*
         version: link:../events
-      '@shipwright/gateway':
+      '@dokima/gateway':
         specifier: workspace:*
         version: link:../gateway
-      '@shipwright/git':
+      '@dokima/git':
         specifier: workspace:*
         version: link:../git
-      '@shipwright/loop':
+      '@dokima/loop':
         specifier: workspace:*
         version: link:../loop
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
-      '@shipwright/tickets':
+      '@dokima/tickets':
         specifier: workspace:*
         version: link:../tickets
-      '@shipwright/validators':
+      '@dokima/validators':
         specifier: workspace:*
         version: link:../validators
 
   packages/loop:
     dependencies:
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
 
   packages/mcp:
     dependencies:
-      '@shipwright/events':
+      '@dokima/events':
         specifier: workspace:*
         version: link:../events
     devDependencies:
@@ -224,10 +224,10 @@ importers:
 
   packages/tickets:
     dependencies:
-      '@shipwright/events':
+      '@dokima/events':
         specifier: workspace:*
         version: link:../events
-      '@shipwright/shared':
+      '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -237,7 +237,7 @@ importers:
 
   packages/validators:
     dependencies:
-      '@shipwright/events':
+      '@dokima/events':
         specifier: workspace:*
         version: link:../events
       execa:

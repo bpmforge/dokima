@@ -99,7 +99,7 @@ try {
   // ── Improvement plan: propose → accept ───────────────────────────────
   // String form: the expression runs in the browser, where `window` exists —
   // an arrow function here would trip node-side no-undef.
-  const token = await page.evaluate('window.__SHIPWRIGHT_TOKEN__');
+  const token = await page.evaluate('window.__DOKIMA_TOKEN__');
   await page.request.post(`${app.base}/api/v1/projects/${projectId}/plan/evaluate`, {
     headers: { Authorization: `Bearer ${token}` },
     data: { snapshot: PLAN_SNAPSHOT },

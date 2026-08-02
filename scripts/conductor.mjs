@@ -558,7 +558,7 @@ function land(t, branch, wt) {
     try { git('branch', '-d', branch); } catch { /* intentional: branch already deleted */ }
     // If the merge touched any package.json, ROOT's node_modules is now stale —
     // re-link workspace deps so a subsequent test on ROOT (e.g. the stop-hook's
-    // `npm test`) doesn't hit "Cannot find package @shipwright/*" (L-40).
+    // `npm test`) doesn't hit "Cannot find package @dokima/*" (L-40).
     try {
       const merged = git('diff', '--name-only', 'HEAD~1', 'HEAD');
       if (/(^|\/)package\.json$/m.test(merged)) {

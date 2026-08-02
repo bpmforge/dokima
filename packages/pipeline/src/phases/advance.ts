@@ -2,7 +2,7 @@
  * Advance-to-next-phase decision (FR-P1/P2, BLUEPRINT §3.2 "Gate mechanism").
  *
  * FR-P1 (receipts): a clean phase-validator run mints a gate receipt
- * (`@shipwright/events` `mintReceipt`/`mintValidatorRunReceipt` — out of
+ * (`@dokima/events` `mintReceipt`/`mintValidatorRunReceipt` — out of
  * reach from this write_scope, see types.ts header) keyed by this module's
  * `PHASES[n].validators` as the required set.
  *
@@ -10,7 +10,7 @@
  * phase N's gate receipt two ways — recomputed input-tree hash (catches
  * silently edited docs) and validator-set currency (catches gate-definition
  * drift, i.e. `PHASES[n].validators` growing since the receipt was minted).
- * Both checks already live in `@shipwright/events`' `verifyReceipt`; this
+ * Both checks already live in `@dokima/events`' `verifyReceipt`; this
  * module does not re-implement them — `deps.verifyReceipt` is the injected
  * seam the wiring ticket binds to the real function (called with
  * `requiredValidators: PHASES[n].validators`, per FR-P2's "currently
@@ -38,7 +38,7 @@ export interface AdvanceInput {
 export interface AdvanceDeps {
   /** Re-verifies a receipt (gate or waiver) against current input files + the
    * given required validator set — the real implementation is
-   * `@shipwright/events`' `verifyReceipt`. Called with `fromPhase.validators`
+   * `@dokima/events`' `verifyReceipt`. Called with `fromPhase.validators`
    * for the gate receipt (FR-P2's "currently required" set, read live off
    * `PHASES` — never frozen at mint time) and `[]` for the waiver receipt
    * (a waiver's job is bypassing failed validators, so re-checking validator

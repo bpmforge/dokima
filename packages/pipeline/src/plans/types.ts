@@ -5,29 +5,29 @@
  * This ticket's write_scope is `packages/pipeline/src/plans/**` +
  * `content/plan-catalog/**` + the `index.ts` barrel only —
  * `packages/pipeline/package.json` (where a workspace dependency on
- * `@shipwright/events`/`@shipwright/tickets`/`@shipwright/loop` would be
+ * `@dokima/events`/`@dokima/tickets`/`@dokima/loop` would be
  * declared) is out of glob and, per W5-01's empirically-confirmed finding,
  * outside `conductor.config.json`'s `alwaysOk` too (only the *root*
  * package.json is covered). Without a declared dependency pnpm never links
  * the sibling package into this package's `node_modules` (confirmed here:
- * `packages/pipeline/node_modules` has no `@shipwright/*` entries after a
+ * `packages/pipeline/node_modules` has no `@dokima/*` entries after a
  * clean `pnpm install`), so `tsc`/`vitest` cannot resolve a real
- * `@shipwright/*` import from this module. Same wall, same fix as
+ * `@dokima/*` import from this module. Same wall, same fix as
  * `../phases/types.ts`: local interfaces that mirror the real primitives'
  * shapes field-for-field —
  *   - `PlanEvaluationSnapshot` mirrors the read-only inputs FR-PLAN1 names
- *     (receipts, `@shipwright/loop`'s `CoverageReport.requiredSkipped`, the
- *     `@shipwright/loop` finding ledger / rule FP funnel, board/ticket
+ *     (receipts, `@dokima/loop`'s `CoverageReport.requiredSkipped`, the
+ *     `@dokima/loop` finding ledger / rule FP funnel, board/ticket
  *     stats, spend ledger) — no engine here re-derives those numbers, it
  *     only consumes an already-computed snapshot (the wiring ticket,
  *     W5-15, assembles the real one).
- *   - `BoardTicketDraft` mirrors `@shipwright/tickets`' `CreateTicketInput`
+ *   - `BoardTicketDraft` mirrors `@dokima/tickets`' `CreateTicketInput`
  *     (types.ts) field-for-field so `accept()`'s output binds straight into
  *     `createTicket(log, actorId, draft)` with a one-line adapter, never a
  *     rewrite.
  * Nothing here re-implements receipt minting, event appending, or ticket
- * creation — those stay exclusively in `@shipwright/events` /
- * `@shipwright/tickets` (CLAUDE.md law #6, PLAYBOOK.md "do not cheat the
+ * creation — those stay exclusively in `@dokima/events` /
+ * `@dokima/tickets` (CLAUDE.md law #6, PLAYBOOK.md "do not cheat the
  * trust machine").
  */
 
@@ -67,17 +67,17 @@ export class CatalogValidationError extends Error {
 
 // --- Evaluation snapshot (FR-PLAN1: receipts/coverage/finding-ledger inputs) -----------------
 
-/** Mirrors the subset of `@shipwright/events` receipt state a catalog condition can read. */
+/** Mirrors the subset of `@dokima/events` receipt state a catalog condition can read. */
 export interface ReceiptsSnapshot {
   readonly staleCount: number;
 }
 
-/** Mirrors `@shipwright/loop`'s `CoverageReport` (coverage.ts): `requiredSkipped.length`. */
+/** Mirrors `@dokima/loop`'s `CoverageReport` (coverage.ts): `requiredSkipped.length`. */
 export interface CoverageSnapshot {
   readonly requiredSkipped: number;
 }
 
-/** Mirrors `@shipwright/loop`'s finding ledger (findings-types.ts `FindingFunnel` + gate state). */
+/** Mirrors `@dokima/loop`'s finding ledger (findings-types.ts `FindingFunnel` + gate state). */
 export interface FindingsSnapshot {
   readonly openCriticalUnwaived: number;
 }
@@ -87,7 +87,7 @@ export interface RulesSnapshot {
   readonly fpHeavyCount: number;
 }
 
-/** Board/ticket stats (`@shipwright/tickets` projections). */
+/** Board/ticket stats (`@dokima/tickets` projections). */
 export interface TicketsSnapshot {
   readonly oscillatingCount: number;
   readonly blockedWithEvidenceMaxAgeDays: number;
@@ -192,7 +192,7 @@ export class PlanLifecycleError extends Error {
   }
 }
 
-/** Mirrors `@shipwright/tickets`' `CreateTicketInput` (types.ts) field-for-field. */
+/** Mirrors `@dokima/tickets`' `CreateTicketInput` (types.ts) field-for-field. */
 export interface BoardTicketDraft {
   readonly id: string;
   readonly type: 'task';

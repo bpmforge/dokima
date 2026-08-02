@@ -25,13 +25,13 @@
  * app-level hook — so these routes require authentication on their own,
  * independent of whether/where this module is later wired into `server.ts`.
  */
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import {
   InvalidFounderSlateError,
   InvalidTechnicalSlateError,
   type FounderSlateInput,
   type TechnicalSlateInput,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { checkAuth, type AuthPluginOptions } from '../auth-plugin.js';
 import { computeFleetRegistryPath } from '../projects.js';

@@ -7,7 +7,7 @@ import {
   createIdentity,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { appendAutoDefaultRow, LEDGER_EVENT_TYPE } from './autonomy-ledger.js';
 import {
   AutonomyLedgerInvalidError,
@@ -22,7 +22,7 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-autonomy-gate-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-autonomy-gate-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
   return {

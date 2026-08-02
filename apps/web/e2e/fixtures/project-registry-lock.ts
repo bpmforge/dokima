@@ -19,7 +19,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const LOCK_DIR = path.join(os.tmpdir(), 'shipwright-web-e2e-project-registry.lock');
+const LOCK_DIR = path.join(os.tmpdir(), 'dokima-web-e2e-project-registry.lock');
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -2,8 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@shipwright/events';
-import type { Ticket, TicketHistoryEntry } from '@shipwright/tickets';
+import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import type { Ticket, TicketHistoryEntry } from '@dokima/tickets';
 import {
   computeTrustGraduationEvidence,
   decideNotification,
@@ -26,7 +26,7 @@ import {
 const NOW = () => '2026-07-18T12:00:00.000Z';
 
 async function tmpDbPath(): Promise<{ dbPath: string; cleanup: () => Promise<void> }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-notifications-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-notifications-'));
   return {
     dbPath: path.join(dir, 'state.db'),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),

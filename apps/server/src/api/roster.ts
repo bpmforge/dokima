@@ -31,13 +31,13 @@ import {
   loadProjectSettings,
   type ScopedSettings,
   resolveAsset,
-} from '@shipwright/shared';
+} from '@dokima/shared';
 import {
   defaultGlobalDbPath,
   listEvents,
   openEventLogReader,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { computeFleetRegistryPath } from './projects.js';
 import { resolveProjectRecord, stateDbPath } from './server/board-project.js';
 import {
@@ -59,17 +59,17 @@ function defaultContentDir(): string {
 export interface RosterRoutesOptions {
   /** Directory to load experts from — defaults to the repo's `content/experts`. Tests only. */
   contentDir?: string;
-  /** `~/.shipwright` home override (fleet registry, global config, global.db) — tests only. */
+  /** `~/.dokima` home override (fleet registry, global config, global.db) — tests only. */
   home?: string;
 }
 
 function envFor(home: string | undefined): NodeJS.ProcessEnv {
-  return home ? { ...process.env, SHIPWRIGHT_HOME: home } : process.env;
+  return home ? { ...process.env, DOKIMA_HOME: home } : process.env;
 }
 
 function notFound(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/not-found',
+    type: 'https://dokima.dev/errors/not-found',
     title: 'Not found',
     status: 404,
     detail,
@@ -80,7 +80,7 @@ function notFound(request: FastifyRequest, detail: string) {
 
 function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -154,7 +154,7 @@ function registerListRoute(app: FastifyInstance, opts: RosterRoutesOptions): voi
           .type(PROBLEM_CONTENT_TYPE)
           .send(
             problem({
-              type: 'https://shipwright.dev/errors/roster-content-refused',
+              type: 'https://dokima.dev/errors/roster-content-refused',
               title: 'Roster content refused',
               status: 500,
               detail: err.message,

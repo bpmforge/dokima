@@ -40,14 +40,14 @@ export function checkMirrorPrerequisites(
     gaps.push({
       hpId: 'HP-5',
       message:
-        'shipwright-maker machine account/token not configured (docs/PREREQUISITES.md HP-5)',
+        'dokima-maker machine account/token not configured (docs/PREREQUISITES.md HP-5)',
     });
   }
   if (!config.reviewerToken || !config.reviewerLogin) {
     gaps.push({
       hpId: 'HP-5',
       message:
-        'shipwright-reviewer machine account/token not configured (docs/PREREQUISITES.md HP-5)',
+        'dokima-reviewer machine account/token not configured (docs/PREREQUISITES.md HP-5)',
     });
   }
   if (

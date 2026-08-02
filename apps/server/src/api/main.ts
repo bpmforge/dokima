@@ -14,8 +14,8 @@
 
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolveAsset } from '@shipwright/shared';
-import { openEventLog } from '@shipwright/events';
+import { resolveAsset } from '@dokima/shared';
+import { openEventLog } from '@dokima/events';
 import {
   buildApiServer,
   ensureAuthToken,
@@ -27,7 +27,7 @@ const DEFAULT_PORT = 4317;
 
 export interface BuildServerOptions {
   port?: number;
-  /** Project event log path (`.shipwright/state.db` beside the project, DATABASE.md). */
+  /** Project event log path (`.dokima/state.db` beside the project, DATABASE.md). */
   dbPath: string;
   webDistDir?: string;
   token?: string;
@@ -46,10 +46,10 @@ export async function buildServer(opts: BuildServerOptions): Promise<ApiServer> 
     webDistDir: opts.webDistDir ?? defaultWebDistDir(),
     logger: opts.logger,
     // Same env var and precedence the CLI already uses for `run resume`
-    // (`run-cmd.ts`: `--signing-key` ?? SHIPWRIGHT_SIGNING_KEY). Unset means
+    // (`run-cmd.ts`: `--signing-key` ?? DOKIMA_SIGNING_KEY). Unset means
     // the export/import routes stay unregistered — see
     // BuildApiServerOptions.signingKey.
-    signingKey: process.env.SHIPWRIGHT_SIGNING_KEY,
+    signingKey: process.env.DOKIMA_SIGNING_KEY,
   });
   server.app.addHook('onClose', async () => {
     log.close();
@@ -64,13 +64,13 @@ function defaultWebDistDir(): string {
 }
 
 async function main(): Promise<void> {
-  const port = Number(process.env.SHIPWRIGHT_PORT ?? DEFAULT_PORT);
+  const port = Number(process.env.DOKIMA_PORT ?? DEFAULT_PORT);
   const dbPath =
-    process.env.SHIPWRIGHT_STATE_DB ??
-    path.join(process.cwd(), '.shipwright', 'state.db');
+    process.env.DOKIMA_STATE_DB ??
+    path.join(process.cwd(), '.dokima', 'state.db');
   const { app } = await buildServer({ port, dbPath });
   await listenLocalhost(app, port);
-  app.log.info(`shipwright server listening on http://127.0.0.1:${port}`);
+  app.log.info(`dokima server listening on http://127.0.0.1:${port}`);
 }
 
 const isMainModule =

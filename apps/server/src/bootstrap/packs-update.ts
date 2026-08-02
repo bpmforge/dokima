@@ -1,17 +1,17 @@
 /**
- * `shipwright packs update` (DEPLOYMENT.md §3, SC-09): re-verifies the
+ * `dokima packs update` (DEPLOYMENT.md §3, SC-09): re-verifies the
  * first-party content pack's signature + file hashes and (re)installs it
- * into `~/.shipwright/packs/`.
+ * into `~/.dokima/packs/`.
  *
  * The real verification engine already exists — `packages/validators/src/
- * signing/{signer,loader}.ts` (built by W6-07) — but `@shipwright/validators`
- * isn't a declared dependency of `@shipwright/server`, and `apps/server/
+ * signing/{signer,loader}.ts` (built by W6-07) — but `@dokima/validators`
+ * isn't a declared dependency of `@dokima/server`, and `apps/server/
  * package.json` is outside this ticket's write_scope to add it (the exact
  * wall W4-02/W4-08 document hitting for their own out-of-scope deps). This
  * hand-mirrors the same two primitives (Ed25519 manifest-signature verify,
  * SHA-256 per-file hash verify) directly against `node:crypto`/`node:fs` —
  * no new dependency needed — operating on the real, committed
- * `content/manifest.json` + `content/keys/shipwright-public.pem`. HANDOFF:
+ * `content/manifest.json` + `content/keys/dokima-public.pem`. HANDOFF:
  * once a future ticket can touch `apps/server/package.json`, replace this
  * with a direct `loadSignedPack` import instead of keeping two copies of
  * the verification logic in sync.
@@ -21,7 +21,7 @@ import crypto from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { distributionRoot } from '@shipwright/shared';
+import { distributionRoot } from '@dokima/shared';
 
 const ALLOWLISTED_LICENSES = new Set([
   'MIT',
@@ -171,7 +171,7 @@ export function defaultFirstPartyPackSource(): {
   return {
     manifestPath: path.join(repoRoot, 'content', 'manifest.json'),
     contentDir: path.join(repoRoot, 'content', 'validators'),
-    publicKeyPath: path.join(repoRoot, 'content', 'keys', 'shipwright-public.pem'),
+    publicKeyPath: path.join(repoRoot, 'content', 'keys', 'dokima-public.pem'),
   };
 }
 
@@ -181,7 +181,7 @@ export interface PacksUpdateResult extends VerifyPackResult {
 
 /**
  * Verifies the first-party pack and copies every file that passed into
- * `~/.shipwright/packs/first-party/` (SC-09: only verified files are ever
+ * `~/.dokima/packs/first-party/` (SC-09: only verified files are ever
  * installed — a failed file is skipped, not copied anyway and flagged).
  */
 export async function packsUpdate(

@@ -6,7 +6,7 @@ import {
   verifyReceipt,
   type EventLog,
   type ReceiptInputFile,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mintValidatorRunReceipt } from './receipt.js';
 import type { ValidatorRunResult } from './run.js';

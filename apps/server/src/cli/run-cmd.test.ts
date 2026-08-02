@@ -5,16 +5,16 @@ import {
   listEvents,
   mintReceipt,
   type EventLog,
-} from '@shipwright/events';
-import { claimTicket, createTicket, startTicket } from '@shipwright/tickets';
-import { createWorktree, git } from '@shipwright/git';
+} from '@dokima/events';
+import { claimTicket, createTicket, startTicket } from '@dokima/tickets';
+import { createWorktree, git } from '@dokima/git';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { runCli } from './run.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
 
 const NOW = () => '2026-07-18T00:00:00.000Z';
 
-describe('shipwright run (FR-C7 — CLI drives the same @shipwright/harbormaster verbs a route would)', () => {
+describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a route would)', () => {
   let project: TempProject;
 
   afterEach(async () => {
@@ -137,8 +137,8 @@ describe('shipwright run (FR-C7 — CLI drives the same @shipwright/harbormaster
     project = await createTempProject();
     const cwd = project.cwd;
     await git(cwd, ['init', '-b', 'main']);
-    await git(cwd, ['config', 'user.name', 'Shipwright Test']);
-    await git(cwd, ['config', 'user.email', 'test@shipwright.invalid']);
+    await git(cwd, ['config', 'user.name', 'Dokima Test']);
+    await git(cwd, ['config', 'user.email', 'test@dokima.invalid']);
     await fs.writeFile(`${cwd}/README.md`, '# fixture\n');
     await git(cwd, ['add', '--', 'README.md']);
     await git(cwd, ['commit', '-m', 'chore: initial commit']);

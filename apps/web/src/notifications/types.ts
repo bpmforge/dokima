@@ -1,6 +1,6 @@
 /**
  * Hand-mirrored from `apps/server/src/api/notifications.ts` (apps/web may
- * not import `@shipwright/*` packages directly — ARCHITECTURE.md §4; same
+ * not import `@dokima/*` packages directly — ARCHITECTURE.md §4; same
  * discipline as `apps/web/src/board/types.ts`'s own header comment).
  */
 

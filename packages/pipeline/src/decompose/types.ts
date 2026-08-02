@@ -3,17 +3,17 @@
  *
  * This ticket's write_scope is `packages/pipeline/src/decompose/**` only —
  * `packages/pipeline/package.json` (where a workspace dependency on
- * `@shipwright/tickets`/`@shipwright/shared` would be declared) is out of
+ * `@dokima/tickets`/`@dokima/shared` would be declared) is out of
  * glob, same wall `phases/types.ts` documents. So the shapes below mirror
- * `@shipwright/tickets`' `Ticket`/`AcceptanceCriterion` field-for-field
+ * `@dokima/tickets`' `Ticket`/`AcceptanceCriterion` field-for-field
  * instead of importing them, and `lanes.ts` carries its own copy of the
- * write_scope glob-overlap check (mirroring `@shipwright/shared`'s segment
+ * write_scope glob-overlap check (mirroring `@dokima/shared`'s segment
  * DP — the same move `packages/tickets/src/lanes.ts` made for the git glob
  * dialect). A future wiring ticket that does carry the dependency binds
  * these to the real types with a one-line adapter, never a rewrite.
  */
 
-/** Matches `@shipwright/tickets`' `TicketType`. */
+/** Matches `@dokima/tickets`' `TicketType`. */
 export type TicketDraftType = 'epic' | 'story' | 'task' | 'bug';
 
 /** One named export a package's public barrel is expected to carry. */
@@ -43,7 +43,7 @@ export interface TicketDraftInput {
   /** Workspace package path (e.g. "apps/server") this ticket's deliverable lives
    * in, or null for a doc-only ticket that has no package of its own. */
   readonly ownPackage: string | null;
-  /** `@shipwright/*` package names this ticket's code imports (seam lesson
+  /** `@dokima/*` package names this ticket's code imports (seam lesson
    * #1, field report §10 / the W0-08 class: a consumer needs its OWN
    * package.json in write_scope to declare the dependency). */
   readonly importsWorkspacePackages: readonly string[];
@@ -55,7 +55,7 @@ export interface TicketDraftInput {
   readonly consumesInterfaces: readonly InterfaceRef[];
 }
 
-/** Matches `@shipwright/tickets`' `AcceptanceCriterion`. */
+/** Matches `@dokima/tickets`' `AcceptanceCriterion`. */
 export interface DecomposedAcceptanceCriterion {
   readonly id: string;
   readonly text: string;

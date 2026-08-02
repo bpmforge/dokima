@@ -24,11 +24,11 @@ interface TempRepo {
 
 async function createTempRepo(): Promise<TempRepo> {
   const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-onboard-dispatch-test-'),
+    path.join(os.tmpdir(), 'dokima-onboard-dispatch-test-'),
   );
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
@@ -59,7 +59,7 @@ describe('createRealOnboardDispatch (W8-09 AC1 — real gateway + real runSessio
     resetLoopModuleCacheForTests();
   });
 
-  it('runs a real @shipwright/loop runSession whose spawn calls the real gateway (no network — fake HTTP server only)', async () => {
+  it('runs a real @dokima/loop runSession whose spawn calls the real gateway (no network — fake HTTP server only)', async () => {
     repo = await createTempRepo();
     server = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
 

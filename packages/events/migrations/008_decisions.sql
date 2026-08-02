@@ -13,7 +13,7 @@
 -- adding `pushed_at` and `007_plan_items.sql`'s wider row: `id` here is the
 -- slate's own stable id (assigned at creation), and `d_id` is the
 -- documented `docs/DECISIONS.md` ledger id, nullable until decided, unique
--- once set. `slate` carries the full `Slate` (`@shipwright/pipeline`
+-- once set. `slate` carries the full `Slate` (`@dokima/pipeline`
 -- `FounderSlate | TechnicalSlate`) as JSON so the options/recommendation
 -- shown to the founder are exactly what `buildFounderSlate`/
 -- `buildTechnicalSlate` validated at create time.

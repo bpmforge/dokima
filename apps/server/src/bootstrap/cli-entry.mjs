@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Root `package.json`'s `bin` target (`npx shipwright` / `shipwright`,
+ * Root `package.json`'s `bin` target (`npx dokima` / `dokima`,
  * DEPLOYMENT.md §1).
  *
  * Two runtimes, one entry point:
@@ -33,7 +33,7 @@ if (existsSync(bundle)) {
 
   if (!existsSync(tsxBin)) {
     console.error(
-      `shipwright: no built bundle at ${bundle} and no tsx at ${tsxBin}.\n` +
+      `dokima: no built bundle at ${bundle} and no tsx at ${tsxBin}.\n` +
         `Run \`pnpm build\` (packaged path) or \`pnpm install\` (source path).`,
     );
     process.exitCode = 1;

@@ -16,8 +16,8 @@ describe('identities', () => {
     const created = createIdentity(
       log,
       {
-        id: 'shipwright-maker',
-        name: 'Shipwright Maker',
+        id: 'dokima-maker',
+        name: 'Dokima Maker',
         kind: 'machine',
         authProvider: 'local',
         role: 'maker',
@@ -26,15 +26,15 @@ describe('identities', () => {
       { now: () => '2026-07-11T00:00:00.000Z' },
     );
     expect(created).toEqual({
-      id: 'shipwright-maker',
-      name: 'Shipwright Maker',
+      id: 'dokima-maker',
+      name: 'Dokima Maker',
       kind: 'machine',
       authProvider: 'local',
       role: 'maker',
       modelHint: 'sonnet',
       createdAt: '2026-07-11T00:00:00.000Z',
     });
-    expect(getIdentity(log, 'shipwright-maker')).toEqual(created);
+    expect(getIdentity(log, 'dokima-maker')).toEqual(created);
     log.close();
   });
 

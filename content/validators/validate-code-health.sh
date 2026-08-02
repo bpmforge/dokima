@@ -260,7 +260,7 @@ while IFS= read -r src_file; do
 
   # Match: bare numbers > 1 in non-const, non-test, non-config contexts
   # Exclude: 0, 1, -1 (common sentinel values), port 3000, common HTTP codes 200/404/500
-  # TS calibration (Shipwright field run 2026-07-12): strip comment lines,
+  # TS calibration (Dokima field run 2026-07-12): strip comment lines,
   # inline // tails, and string/template contents BEFORE matching — the raw
   # grep flagged `256` inside "AES-256-GCM" in a doc comment, dates in file
   # headers, and model-id strings, which false-blocks any hard gate built on

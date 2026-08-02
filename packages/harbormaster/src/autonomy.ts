@@ -7,7 +7,7 @@
  * and the runtime gate that blocks progress on an invalid ledger.
  */
 
-import type { EventLog } from '@shipwright/events';
+import type { EventLog } from '@dokima/events';
 import {
   validateAutonomyLedger,
   type LedgerValidationResult,

@@ -6,7 +6,7 @@
   "high": [
     {
       "file": "packages/harbormaster/src/berths.ts",
-      "issue": "`resolveBerthWorktree` builds the on-disk worktree path via `path.join(repoRoot, '.shipwright', 'worktrees', ticket.id)` with no validation that `ticket.id` is a safe path segment. If a ticket record with an id like `../../../etc` or containing path separators ever reaches this code (ticket creation is a verb API, not something this module re-validates), `git worktree add`/`fs.realpath` would operate outside the intended `.shipwright/worktrees` sandbox, and `listWorktrees`/`createWorktree` would follow.",
+      "issue": "`resolveBerthWorktree` builds the on-disk worktree path via `path.join(repoRoot, '.dokima', 'worktrees', ticket.id)` with no validation that `ticket.id` is a safe path segment. If a ticket record with an id like `../../../etc` or containing path separators ever reaches this code (ticket creation is a verb API, not something this module re-validates), `git worktree add`/`fs.realpath` would operate outside the intended `.dokima/worktrees` sandbox, and `listWorktrees`/`createWorktree` would follow.",
       "fix": "Validate/allowlist ticket ids (e.g. match the plan.json ticket-id pattern, reject path separators and `..`) before using them in `path.join`, or resolve the final path and assert it is still contained within the worktrees root before using it."
     }
   ],

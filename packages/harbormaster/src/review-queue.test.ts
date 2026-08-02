@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReceiptRecord } from '@shipwright/events';
+import type { ReceiptRecord } from '@dokima/events';
 import {
   assertExecutionAllowed,
   NeverAutoExecutionBlockedError,
@@ -169,7 +169,7 @@ describe('end-to-end: NEVER-AUTO actions never execute in-loop, work stages inst
     // ...but the ticket's real diff and close receipt still surface as a
     // staged card on the queue instead — the "PR opened/drafted, parked
     // in_review" path (out of this module's write_scope: the ticket-status
-    // transition itself is `@shipwright/tickets`' `closeTicket`, already
+    // transition itself is `@dokima/tickets`' `closeTicket`, already
     // exercised by W3-01b/c's `runCloseGate`/`runLandLoop`; this module
     // only guarantees the card carries real, verified data).
     const card = buildReviewCard({

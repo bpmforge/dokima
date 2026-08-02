@@ -18,7 +18,7 @@
     },
     {
       "file": "packages/loop/src/session-scope.ts",
-      "issue": "detectScopeViolations/computeChangedPaths is explicitly documented as a non-authoritative 'basic glob-classification' primitive — it has no hard exclusions for .git/**, .github/workflows/**, .shipwright/** and no symlink-escape resolution via realpath, both called out in the file's own comment as belonging to the real SC-01 enforcement (packages/git's checkWriteScope, not yet built). If a future integrator (e.g. the W3-01 harbormaster wiring) mistakenly treats session.ts's `scopeViolations` as the authoritative gate instead of routing through the real checkWriteScope, an agent session could write to .git/hooks, CI workflow files, or escape via a symlink undetected.",
+      "issue": "detectScopeViolations/computeChangedPaths is explicitly documented as a non-authoritative 'basic glob-classification' primitive — it has no hard exclusions for .git/**, .github/workflows/**, .dokima/** and no symlink-escape resolution via realpath, both called out in the file's own comment as belonging to the real SC-01 enforcement (packages/git's checkWriteScope, not yet built). If a future integrator (e.g. the W3-01 harbormaster wiring) mistakenly treats session.ts's `scopeViolations` as the authoritative gate instead of routing through the real checkWriteScope, an agent session could write to .git/hooks, CI workflow files, or escape via a symlink undetected.",
       "fix": "Keep this module opt-in/advisory only, and add a loud runtime assertion or lint rule (or a README/type-level marker) preventing any gate/receipt-issuing code path from consuming `session.ts`'s scopeViolations directly until it is replaced by packages/git's checkWriteScope in W3-01."
     }
   ],

@@ -1,10 +1,10 @@
 /**
  * Interview/pipeline-run wire types (BLUEPRINT §12.3, FR-S4, R-M1). Mirrors
- * `@shipwright/pipeline`'s `InterviewSession`/`InterviewTopic`/`TopicState`
+ * `@dokima/pipeline`'s `InterviewSession`/`InterviewTopic`/`TopicState`
  * (`packages/pipeline/src/interview/types.ts`) and
  * `apps/server/src/api/pipeline/pipeline-routes/index.ts`'s
  * `POST .../pipeline/run` request/response shapes — apps/web has no
- * dependency on `@shipwright/pipeline` (out of this ticket's write_scope to
+ * dependency on `@dokima/pipeline` (out of this ticket's write_scope to
  * add), so this module owns its own copy rather than importing it, same
  * precedent as `apps/web/src/decisions/types.ts` (W5-14) and
  * `apps/web/src/artifacts/deliverablePhase.ts` (W5-12).

@@ -1,11 +1,11 @@
 /**
- * `shipwright providers refresh` (DEPLOYMENT.md §7/§8): "re-runs
+ * `dokima providers refresh` (DEPLOYMENT.md §7/§8): "re-runs
  * discovery/warm-up" for every configured provider — the fix for stale
  * endpoint discovery (Ollama and LM Studio expose different discovery
  * routes; a proxy in between often strips them).
  */
 
-import type { Provider } from '@shipwright/gateway';
+import type { Provider } from '@dokima/gateway';
 import type { CliIO } from '../../bootstrap/cli.js';
 import {
   buildProvider,

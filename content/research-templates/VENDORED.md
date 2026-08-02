@@ -10,7 +10,7 @@ divergence: DESIGN_OPTIONS_template.md adapts the skill's fixed structure -- exa
 files: DESIGN_OPTIONS_template.md
 
 The other four templates in this directory (MARKET_RESEARCH, FEASIBILITY, BUILD_VS_ADOPT,
-PRE_CODE_API_VERIFICATION) are original Shipwright content. Checked against
+PRE_CODE_API_VERIFICATION) are original Dokima content. Checked against
 bpm-opencode-experts skills/ and agents/templates/, including skill names that could plausibly
 overlap (migration-planner, architect, research) and phrasing variants ("build vs buy", "make
 vs buy", "feasibility"): agents/sdlc-init-phases-0-2.md delegates a feasibility investigation

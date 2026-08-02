@@ -6,7 +6,7 @@
  * `ladder` up to a named tier boundary, then requires an approval-minted
  * escalation token before crossing it).
  *
- * `@shipwright/gateway` already implements this exact state machine
+ * `@dokima/gateway` already implements this exact state machine
  * (`escalation/policy.ts`'s `resolveEscalationPolicy`/`runEscalationPolicy`)
  * but that module is not re-exported from `escalation/index.ts` or the
  * package's top-level barrel — `packages/gateway/package.json`'s `exports`
@@ -15,7 +15,7 @@
  * barrel gap, same class as W3-01a's harbormaster-deps seam — outside this
  * ticket's write_scope to fix; see the HANDOFF note in this ticket's
  * plan.json entry). The mode SHAPE is reproduced structurally rather than
- * imported, the same discipline `@shipwright/gateway`'s own
+ * imported, the same discipline `@dokima/gateway`'s own
  * `escalation/types.ts` uses for `FailureReceipt` ("this package cannot
  * depend on [it]... so the shape is reproduced rather than imported").
  *

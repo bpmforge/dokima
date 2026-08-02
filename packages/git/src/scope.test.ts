@@ -37,7 +37,7 @@ describe('checkWriteScope', () => {
   it.each([
     ['.git/hooks/pre-commit'],
     ['.github/workflows/ci.yml'],
-    ['.shipwright/settings.json'],
+    ['.dokima/settings.json'],
   ])(
     'refuses hard-excluded path %s even when write_scope would otherwise allow it',
     async (hardExcluded) => {

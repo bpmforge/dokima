@@ -4,7 +4,7 @@
  * defines the event shape + an injectable `SettingsEventSink` port but
  * cannot itself depend on packages/events (ARCHITECTURE §4 law 4) — this
  * module is the concrete sink apps/server supplies, appending through
- * `@shipwright/events`'s real `appendEvent`.
+ * `@dokima/events`'s real `appendEvent`.
  *
  * v1 is single-user (API_DESIGN §1): every mutation through this API is the
  * one authenticated operator, so a single well-known human identity is
@@ -20,12 +20,12 @@ import {
   getIdentity,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import type {
   JsonValue,
   SettingsChangedEvent,
   SettingsEventSink,
-} from '@shipwright/shared';
+} from '@dokima/shared';
 import { stateDbPath } from './settings-db.js';
 import type { ModelMatrixRow } from './settings-types.js';
 

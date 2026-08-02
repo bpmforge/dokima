@@ -36,7 +36,7 @@ EXCLUDE_ARGS=(
   --exclude-dir=build
   --exclude-dir=coverage
   --exclude-dir=.turbo
-  --exclude-dir=.shipwright
+  --exclude-dir=.dokima
 )
 
 # category|extended-regex (grep -E compatible)

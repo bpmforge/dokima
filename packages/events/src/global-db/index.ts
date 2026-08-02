@@ -1,7 +1,7 @@
 /**
  * Barrel for the fleet-scope registry (DATABASE.md §7, D-013):
- * `~/.shipwright/global.db`, same WAL/single-writer/migration discipline as
- * a project's `state.db`. Re-exported from `../index.ts` — `@shipwright/*`
+ * `~/.dokima/global.db`, same WAL/single-writer/migration discipline as
+ * a project's `state.db`. Re-exported from `../index.ts` — `@dokima/*`
  * packages export via their top-level `exports` map only (TECH_STACK.md),
  * so this is the only path consumers (e.g. packages/gateway) reach it
  * through.

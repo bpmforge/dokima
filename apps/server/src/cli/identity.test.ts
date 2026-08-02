@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getIdentity, type EventLog } from '@shipwright/events';
+import { getIdentity, type EventLog } from '@dokima/events';
 import { ensureActorIdentity } from './identity.js';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { createTempProject, type TempProject } from './test-helpers.js';

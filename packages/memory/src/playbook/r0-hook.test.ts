@@ -2,7 +2,7 @@
  * Proves `createPlaybookMemoryConsultHook` is a real, working R0 rung for
  * the escalation ladder (BLUEPRINT §3.3, FR-M2/FR-G3) — not just a
  * structurally-typed guess. `packages/memory` can't statically import
- * `@shipwright/gateway` (no workspace dependency declared in this ticket's
+ * `@dokima/gateway` (no workspace dependency declared in this ticket's
  * write_scope, same constraint gateway's own `memory-hook.ts` documents in
  * reverse), so this dynamically imports the REAL, unmodified
  * `runEscalationLadder` by absolute `file://` URL — same technique as
