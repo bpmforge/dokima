@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, mintReceipt, openEventLog } from '@shipwright/events';
+import { createIdentity, mintReceipt, openEventLog } from '@dokima/events';
 import { registerProject } from '../projects.js';
 import { buildApiServer, type ApiServer } from '../server.js';
 
@@ -26,7 +26,7 @@ describe('receipt routes — buildApiServer integration', () => {
   });
 
   async function boot(): Promise<{ app: ApiServer['app']; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-fleet-receipts-');
+    const fleetHome = await tmpDir('dokima-fleet-receipts-');
     dirs.push(fleetHome);
     const server = await buildApiServer({
       token: TOKEN,
@@ -44,7 +44,7 @@ describe('receipt routes — buildApiServer integration', () => {
   }
 
   async function registerBareProject(fleetHome: string, name: string) {
-    const projectDir = await tmpDir(`shipwright-project-${name}-`);
+    const projectDir = await tmpDir(`dokima-project-${name}-`);
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, {
@@ -60,7 +60,7 @@ describe('receipt routes — buildApiServer integration', () => {
     projectId: string,
     overrides: { id: string; kind: 'gate' | 'coverage' | 'challenge'; ticketId?: string },
   ) {
-    const dbPath = path.join(projectDir, '.shipwright', 'state.db');
+    const dbPath = path.join(projectDir, '.dokima', 'state.db');
     const log = openEventLog(dbPath);
     if (!log.db.prepare('SELECT id FROM identities WHERE id = ?').get('maker-1')) {
       createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });

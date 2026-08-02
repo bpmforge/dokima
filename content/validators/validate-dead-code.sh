@@ -82,7 +82,7 @@ printf '\n[3] unreachable code\n' >&2
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   # a COMPLETED return/throw/break/continue immediately followed by a
-  # non-brace, non-comment statement. TS calibration (Shipwright field run
+  # non-brace, non-comment statement. TS calibration (Dokima field run
   # 2026-07-12): the statement must END on its line (`;` terminated, or the
   # bare keyword) — the old pattern treated multiline expressions (`return (`,
   # `throw new Error(` continuing on the next line) as "unreachable after",

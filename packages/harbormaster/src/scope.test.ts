@@ -18,7 +18,7 @@ describe('classifyManifestFiles', () => {
   });
 
   it('classifies a file that exists inside the worktree as ok', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     await fs.mkdir(path.join(worktreeRoot, 'packages', 'example'), { recursive: true });
     await fs.writeFile(
       path.join(worktreeRoot, 'packages/example/file.ts'),
@@ -32,7 +32,7 @@ describe('classifyManifestFiles', () => {
   });
 
   it('classifies a file that does not exist as missing', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
 
     const result = await classifyManifestFiles(worktreeRoot, [
       'packages/example/never-existed.ts',
@@ -44,9 +44,9 @@ describe('classifyManifestFiles', () => {
   });
 
   it('refuses a symlink whose leaf resolves outside the worktree (acceptance 1)', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+      path.join(os.tmpdir(), 'dokima-scope-outside-'),
     );
     extraTempDirs.push(outsideDir);
 
@@ -66,9 +66,9 @@ describe('classifyManifestFiles', () => {
   });
 
   it('refuses a symlinked ancestor directory even when the leaf itself does not exist', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+      path.join(os.tmpdir(), 'dokima-scope-outside-'),
     );
     extraTempDirs.push(outsideDir);
 
@@ -86,7 +86,7 @@ describe('classifyManifestFiles', () => {
   });
 
   it('does not misclassify an in-worktree symlink that resolves back inside the root', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     await fs.mkdir(path.join(worktreeRoot, 'packages', 'example'), { recursive: true });
     await fs.writeFile(
       path.join(worktreeRoot, 'packages/example/real.ts'),
@@ -116,7 +116,7 @@ describe('classifyManifestFile — read', () => {
   });
 
   it('reads file content from the same fd used for the containment check', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     await fs.mkdir(path.join(worktreeRoot, 'packages', 'example'), { recursive: true });
     await fs.writeFile(
       path.join(worktreeRoot, 'packages/example/file.ts'),
@@ -133,7 +133,7 @@ describe('classifyManifestFile — read', () => {
   });
 
   it('never returns content for a missing file', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     const realRoot = await fs.realpath(worktreeRoot);
 
     const result = await classifyManifestFile(
@@ -145,9 +145,9 @@ describe('classifyManifestFile — read', () => {
   });
 
   it('never returns content for a symlink escape', async () => {
-    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+    worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
     const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+      path.join(os.tmpdir(), 'dokima-scope-outside-'),
     );
     extraTempDirs.push(outsideDir);
     const outsideFile = path.join(outsideDir, 'secret.txt');
@@ -170,9 +170,9 @@ describe('classifyManifestFile — read', () => {
       'symlink in the exact window between the realpath containment check ' +
       'and the fd open is refused, never read',
     async () => {
-      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
       const outsideDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+        path.join(os.tmpdir(), 'dokima-scope-outside-'),
       );
       extraTempDirs.push(outsideDir);
       const outsideSecret = path.join(outsideDir, 'secret.txt');
@@ -212,9 +212,9 @@ describe('classifyManifestFile — read', () => {
       'open is refused, never read — O_NOFOLLOW on the leaf alone cannot ' +
       'catch this, only fdStillWithinRoot can',
     async () => {
-      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
       const outsideDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+        path.join(os.tmpdir(), 'dokima-scope-outside-'),
       );
       extraTempDirs.push(outsideDir);
       // The outside directory has a REAL (non-symlink) file at the same
@@ -254,9 +254,9 @@ describe('classifyManifestFile — read', () => {
       'fstat/lstat identity mismatch — the ancestor walk alone would see ' +
       'a restored, unescaped directory and miss it',
     async () => {
-      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
       const outsideDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+        path.join(os.tmpdir(), 'dokima-scope-outside-'),
       );
       extraTempDirs.push(outsideDir);
       const outsideSecret = path.join(outsideDir, 'file.ts');
@@ -299,9 +299,9 @@ describe('classifyManifestFile — read', () => {
     'adversarial race: content is never leaked across many concurrent ' +
       'symlink swaps racing the containment check (acceptance 3)',
     async () => {
-      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-scope-'));
+      worktreeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-scope-'));
       const outsideDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), 'shipwright-scope-outside-'),
+        path.join(os.tmpdir(), 'dokima-scope-outside-'),
       );
       extraTempDirs.push(outsideDir);
       const outsideSecret = path.join(outsideDir, 'secret.txt');

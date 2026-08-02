@@ -18,7 +18,7 @@ export async function resolveProjectOrProblem(
         .type(PROBLEM_CONTENT_TYPE)
         .send(
           problem({
-            type: 'https://shipwright.dev/errors/not-found',
+            type: 'https://dokima.dev/errors/not-found',
             title: 'Project not found',
             status: 404,
             detail: err.message,
@@ -34,7 +34,7 @@ export async function resolveProjectOrProblem(
 
 export function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -46,7 +46,7 @@ export function badRequest(request: FastifyRequest, detail: string) {
 /** D-019: consent-gated keys refused on the generic settings PUT (see scope-routes.ts's CONSENT_GATED_KEYS). */
 export function forbidden(request: FastifyRequest, detail: string, rule?: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/forbidden',
+    type: 'https://dokima.dev/errors/forbidden',
     title: 'Forbidden',
     status: 403,
     detail,
@@ -59,7 +59,7 @@ export function forbidden(request: FastifyRequest, detail: string, rule?: string
 /** API_DESIGN §1: invariant refusals return 409 with the specific rule named. */
 export function conflict(request: FastifyRequest, detail: string, rule?: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/conflict',
+    type: 'https://dokima.dev/errors/conflict',
     title: 'Refused',
     status: 409,
     detail,

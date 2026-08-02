@@ -40,7 +40,7 @@ describe('packs-update', () => {
     expect(result.verifiedFiles.length).toBeGreaterThan(0);
   });
 
-  it('packsUpdate installs every verified file into ~/.shipwright/packs/first-party/', async () => {
+  it('packsUpdate installs every verified file into ~/.dokima/packs/first-party/', async () => {
     const home = await scratchDir();
     const packsDir = path.join(home, 'packs');
     const result = await packsUpdate(packsDir);

@@ -20,7 +20,7 @@ import { registerRulesRoutes } from './rules-routes.js';
 import { registerScopeRoutes } from './scope-routes.js';
 
 export interface SettingsRoutesOptions extends GuideRoutesOptions {
-  /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
+  /** Fleet registry home dir override (defaults to computeDokimaHome()) — tests only. */
   home?: string;
 }
 

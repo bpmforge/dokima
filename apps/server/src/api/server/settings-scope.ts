@@ -1,5 +1,5 @@
 /**
- * Thin wrapper over @shipwright/shared's three-scope settings engine
+ * Thin wrapper over @dokima/shared's three-scope settings engine
  * (FR-S1..S3) — the generic run>project>global resolver, file-backed
  * global/project scopes, and settings.changed audit event all already
  * exist there (W0-07); this module just wires apps/server's project
@@ -18,7 +18,7 @@ import {
   type JsonValue,
   type SettingsMap,
   type SettingsScope,
-} from '@shipwright/shared';
+} from '@dokima/shared';
 import { DEFAULT_ACTOR_ID, createProjectSettingsEventSink } from './settings-events.js';
 
 export async function getProjectSettings(projectPath: string): Promise<SettingsMap> {

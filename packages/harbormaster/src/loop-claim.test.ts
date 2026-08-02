@@ -2,17 +2,17 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@shipwright/events';
-import { BudgetBreakerTracker, CostLedger } from '@shipwright/gateway';
-import { createChildProcessSpawn, type SpawnSession } from '@shipwright/loop';
+import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
+import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
 import {
   closeTicket,
   createTicket,
   getTicket,
   type Ticket,
   type TicketStatus,
-} from '@shipwright/tickets';
-import { git } from '@shipwright/git';
+} from '@dokima/tickets';
+import { git } from '@dokima/git';
 import { defaultHandoffBuilder } from './loop-handoff.js';
 import { runClaimLoop } from './loop-claim.js';
 
@@ -24,15 +24,15 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-hm-repo-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-hm-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-hm-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-hm-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
 
@@ -312,7 +312,7 @@ describe('runClaimLoop', () => {
     const { log, repoRoot } = fixture;
     seedTicket(log, 'W9-01');
 
-    process.env.SHIPWRIGHT_TEST_PLANTED_SECRET = 'sk-should-not-leak';
+    process.env.DOKIMA_TEST_PLANTED_SECRET = 'sk-should-not-leak';
     try {
       const spawn = createChildProcessSpawn({
         command: 'node',
@@ -330,14 +330,14 @@ describe('runClaimLoop', () => {
 
       const session = result.processed[0]!.attempts[0]!.session;
       const childEnv = JSON.parse(session.output) as Record<string, string | undefined>;
-      expect(childEnv.SHIPWRIGHT_TEST_PLANTED_SECRET).toBeUndefined();
+      expect(childEnv.DOKIMA_TEST_PLANTED_SECRET).toBeUndefined();
       expect(childEnv.PATH).toBe(process.env.PATH);
       const unexpected = Object.keys(childEnv).filter(
         (key) => key !== 'PATH' && !key.startsWith('__CF_'),
       );
       expect(unexpected).toEqual([]);
     } finally {
-      delete process.env.SHIPWRIGHT_TEST_PLANTED_SECRET;
+      delete process.env.DOKIMA_TEST_PLANTED_SECRET;
     }
   });
 });

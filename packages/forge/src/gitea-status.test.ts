@@ -4,7 +4,7 @@ import { ForgeResponseShapeError } from './types.js';
 import { fakeFetch } from './gitea-test-helpers.js';
 import { commitStatusSuccessFixture } from './gitea-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 const BASE_URL = 'https://gitea.example.com';
 
 describe('GiteaForgeAdapter — createCommitStatus() (FR-I2)', () => {
@@ -21,21 +21,21 @@ describe('GiteaForgeAdapter — createCommitStatus() (FR-I2)', () => {
 
     const status = await adapter.createCommitStatus(REF, 'abc123', {
       state: 'success',
-      context: 'shipwright/gate',
+      context: 'dokima/gate',
     });
 
     expect(status).toEqual({
       id: 9001,
       state: 'success',
-      context: 'shipwright/gate',
+      context: 'dokima/gate',
       createdAt: '2026-07-18T12:05:00Z',
     });
     expect(calls[0]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/statuses/abc123',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/statuses/abc123',
     );
     expect(calls[0]?.body).toEqual({
       state: 'success',
-      context: 'shipwright/gate',
+      context: 'dokima/gate',
       description: undefined,
       target_url: undefined,
     });
@@ -55,7 +55,7 @@ describe('GiteaForgeAdapter — createCommitStatus() (FR-I2)', () => {
     await expect(
       adapter.createCommitStatus(REF, 'abc123', {
         state: 'success',
-        context: 'shipwright/gate',
+        context: 'dokima/gate',
       }),
     ).rejects.toThrow(ForgeResponseShapeError);
   });

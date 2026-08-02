@@ -1,4 +1,4 @@
-import { redactDeep } from '@shipwright/shared';
+import { redactDeep } from '@dokima/shared';
 import { computeEventHash, GENESIS_HASH, type ChainRow } from './hash.js';
 import type { EventInput, EventLog, EventRecord } from './types.js';
 
@@ -34,7 +34,7 @@ export interface AppendEventOptions {
   /**
    * Extra secret values to redact beyond known live-credential shapes
    * (SC-06) — typically the result of `collectSecretValues(vault,
-   * projectDir)` (`@shipwright/shared`), gathered by the caller since
+   * projectDir)` (`@dokima/shared`), gathered by the caller since
    * collecting them is async while `appendEvent` must stay sync (it runs
    * inside a single better-sqlite3 transaction). Omit to still get
    * pattern-based redaction only.

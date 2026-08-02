@@ -2,9 +2,9 @@ import type { BoardTicket } from '../types.js';
 
 /**
  * `board-wire.ts`'s `toWireBoardTicket` spreads the full
- * `@shipwright/tickets` `Ticket` (which has `writeScope`) onto the wire
+ * `@dokima/tickets` `Ticket` (which has `writeScope`) onto the wire
  * payload, but `board/types.ts`'s hand-mirrored `Ticket` interface omits
- * it (apps/web may not import `@shipwright/tickets` directly, so it can
+ * it (apps/web may not import `@dokima/tickets` directly, so it can
  * only declare what it chooses to read) — the field really is on every
  * response, just untyped there. The drawer's "full contract" (UX_SPEC §4)
  * needs it, so this widens the type locally rather than editing

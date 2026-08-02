@@ -1,4 +1,4 @@
-# Shipwright CI — per-push/PR gate (docs/TESTING.md tiers, docs/SECURITY_CONTROLS.md SC-16).
+# Dokima CI — per-push/PR gate (docs/TESTING.md tiers, docs/SECURITY_CONTROLS.md SC-16).
 #
 # No job here ever talks to a real model provider or forge host (docs/TESTING.md
 # non-negotiable): every job below only runs local vitest/eslint/tsc against

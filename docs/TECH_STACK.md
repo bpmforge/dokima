@@ -1,4 +1,4 @@
-# Shipwright — Tech Stack (Phase 3, pinned)
+# Dokima — Tech Stack (Phase 3, pinned)
 
 Traces to: BLUEPRINT.md §8, DECISIONS.md D-003 (Node 22 / TypeScript / Fastify / SQLite
 WAL / React + Vite), D-007 (Copilot + Vertex MVP providers), D-008 (standalone — no
@@ -40,7 +40,7 @@ scripts/               dev/build/release tooling
 | Piece | Pin | Why |
 |---|---|---|
 | Fastify | **5.x** | D-003; schema-first routes via zod type provider; encapsulated plugins map to route groups. |
-| better-sqlite3 | **12.x** | Synchronous API is *correct* for a single-writer event log (no async interleaving between check and append); WAL mode; one file per project (`.shipwright/state.db`, DATABASE.md). |
+| better-sqlite3 | **12.x** | Synchronous API is *correct* for a single-writer event log (no async interleaving between check and append); WAL mode; one file per project (`.dokima/state.db`, DATABASE.md). |
 | zod | **4.x** | One validation library everywhere: routes, event payloads, ticket contracts, LLM/manifest output, config. |
 | ws | **8.x** | Server-side WebSocket for projection streaming (decision in traps §SSE-vs-WS below). |
 | execa | **9.x** | Agent child-process sessions, validator runs, git — sane subprocess handling over raw child_process. |
@@ -166,7 +166,7 @@ registries) is a slate.
 
 ## Tool-ecosystem licensing (validators, tool anchors, integrations — R-M3, researched 2026-07-14)
 
-Verdicts for tools Shipwright's validator packs / tool anchors / integrations may invoke.
+Verdicts for tools Dokima's validator packs / tool anchors / integrations may invoke.
 Sources: repo LICENSE files + official terms pages, per-claim URLs in
 docs/work/IMPROVEMENT_RECOMMENDATIONS.md addendum §M research (agent report, 2026-07-14).
 Rule (D-014 provenance law): **OK-as-subprocess** tools are invoked from the user's

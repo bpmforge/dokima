@@ -26,9 +26,9 @@
  * write.
  */
 
-import { openEventLogReader } from '@shipwright/events';
-import type { Ticket } from '@shipwright/tickets';
-import { loadTickets } from '@shipwright/tickets';
+import { openEventLogReader } from '@dokima/events';
+import type { Ticket } from '@dokima/tickets';
+import { loadTickets } from '@dokima/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { problem } from '../problem.js';
@@ -134,7 +134,7 @@ export function registerTicketEditRoutes(
             .type(PROBLEM_CONTENT_TYPE)
             .send(
               problem({
-                type: 'https://shipwright.dev/errors/depends-on-unknown-ticket',
+                type: 'https://dokima.dev/errors/depends-on-unknown-ticket',
                 title: 'Unknown dependency',
                 status: 409,
                 detail: `dependsOn references ticket id(s) that do not exist: ${unknown.join(', ')}`,
@@ -152,7 +152,7 @@ export function registerTicketEditRoutes(
             .type(PROBLEM_CONTENT_TYPE)
             .send(
               problem({
-                type: 'https://shipwright.dev/errors/depends-on-cycle',
+                type: 'https://dokima.dev/errors/depends-on-cycle',
                 title: 'Dependency cycle',
                 status: 409,
                 detail: `this edit introduces a dependency cycle: ${cycle.join(' -> ')}`,
@@ -169,7 +169,7 @@ export function registerTicketEditRoutes(
           .type(PROBLEM_CONTENT_TYPE)
           .send(
             problem({
-              type: 'https://shipwright.dev/errors/not-persisted',
+              type: 'https://dokima.dev/errors/not-persisted',
               title: 'Validated, not yet persisted',
               status: 501,
               detail:

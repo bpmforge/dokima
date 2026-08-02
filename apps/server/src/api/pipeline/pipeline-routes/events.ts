@@ -15,8 +15,8 @@
  * close) mint real receipts elsewhere, from real checks, by a distinct
  * verifier identity — untouched by this fix.
  */
-import { appendEvent, type EventLog } from '@shipwright/events';
-import type { PipelineRunEvent } from '@shipwright/pipeline';
+import { appendEvent, type EventLog } from '@dokima/events';
+import type { PipelineRunEvent } from '@dokima/pipeline';
 import { OPERATOR_ACTOR_ID } from '../../server/board-actor.js';
 
 /** Build (phase 4) is decompose's own deliverable — matches `run-pipeline.ts`'s `BUILD_PHASE_ID`. */

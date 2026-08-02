@@ -73,9 +73,9 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   const handleCreateSample = async () => {
     try {
       const card = await createProject({
-        path: `/tmp/shipwright-sample-${Date.now()}`,
+        path: `/tmp/dokima-sample-${Date.now()}`,
         mode: 'new',
-        name: 'Shipwright Sample',
+        name: 'Dokima Sample',
       });
       setCreatedProjectId(card.id);
       setStep('done');

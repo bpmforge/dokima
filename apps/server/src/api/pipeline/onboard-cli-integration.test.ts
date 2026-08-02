@@ -1,5 +1,5 @@
 /**
- * Covers the `shipwright run start --mode onboard` call-site itself (W8-09
+ * Covers the `dokima run start --mode onboard` call-site itself (W8-09
  * AC1) — that `cli/run-cmd.ts` really drives `runOnboardAnalysis` end to
  * end via env-resolved gateway config, not just that `runOnboardAnalysis`
  * works when called directly (already covered by `onboard-run.test.ts`).
@@ -10,8 +10,8 @@
  */
 import { promises as fs } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listTickets } from '@shipwright/tickets';
-import { git } from '@shipwright/git';
+import { listTickets } from '@dokima/tickets';
+import { git } from '@dokima/git';
 import { openWritableLog, resolveDbPath } from '../../cli/db.js';
 import { runCli } from '../../cli/run.js';
 import {
@@ -24,13 +24,13 @@ import { startFakeGatewayServer, type FakeGatewayServer } from './test-fake-gate
 
 const NOW = () => '2026-07-21T00:00:00.000Z';
 
-describe('shipwright run start --mode onboard (W8-09 — real gateway + real runSession, findings become board tickets)', () => {
+describe('dokima run start --mode onboard (W8-09 — real gateway + real runSession, findings become board tickets)', () => {
   let project: TempProject;
   let server: FakeGatewayServer | undefined;
   const envKeysToRestore = [
-    'SHIPWRIGHT_MODEL_BASE_URL',
-    'SHIPWRIGHT_MODEL_API_KEY',
-    'SHIPWRIGHT_MODEL_ID',
+    'DOKIMA_MODEL_BASE_URL',
+    'DOKIMA_MODEL_API_KEY',
+    'DOKIMA_MODEL_ID',
   ] as const;
   const savedEnv: Record<string, string | undefined> = {};
 
@@ -50,8 +50,8 @@ describe('shipwright run start --mode onboard (W8-09 — real gateway + real run
     project = await createTempProject();
     const cwd = project.cwd;
     await git(cwd, ['init', '-b', 'main']);
-    await git(cwd, ['config', 'user.name', 'Shipwright Test']);
-    await git(cwd, ['config', 'user.email', 'test@shipwright.invalid']);
+    await git(cwd, ['config', 'user.name', 'Dokima Test']);
+    await git(cwd, ['config', 'user.email', 'test@dokima.invalid']);
     await fs.writeFile(`${cwd}/README.md`, '# fixture\n');
     await git(cwd, ['add', '--', 'README.md']);
     await git(cwd, ['commit', '-m', 'chore: initial commit']);
@@ -69,8 +69,8 @@ describe('shipwright run start --mode onboard (W8-09 — real gateway + real run
         ],
       }),
     ]);
-    savedEnv.SHIPWRIGHT_MODEL_BASE_URL = process.env.SHIPWRIGHT_MODEL_BASE_URL;
-    process.env.SHIPWRIGHT_MODEL_BASE_URL = server.url;
+    savedEnv.DOKIMA_MODEL_BASE_URL = process.env.DOKIMA_MODEL_BASE_URL;
+    process.env.DOKIMA_MODEL_BASE_URL = server.url;
 
     const start = collectIO();
     const startCode = await runCli(

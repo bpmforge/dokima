@@ -1,7 +1,7 @@
 /**
  * Improvement Plans persistence (FR-PLAN1-4, D-016, DATABASE.md §5b,
  * docs/design/IMPROVEMENT_PLANS.md). The deterministic engine
- * (catalog matching, ranking, lifecycle transitions) is `@shipwright/
+ * (catalog matching, ranking, lifecycle transitions) is `@dokima/
  * pipeline`'s `plans/*` module — already self-contained (zero cross-package
  * imports of its own), so it's a real workspace dependency here rather than
  * ~800 lines reimplemented against apps/server's own tables (the pattern
@@ -25,7 +25,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { appendEvent } from '@shipwright/events';
+import { appendEvent } from '@dokima/events';
 import {
   CATALOG_VERSION,
   PlanLifecycleError,
@@ -39,8 +39,8 @@ import {
   type BoardTicketDraft,
   type PlanEvaluationSnapshot,
   type PlanItemRecord,
-} from '@shipwright/pipeline';
-import { createTicket, getTicket, type CreateTicketInput } from '@shipwright/tickets';
+} from '@dokima/pipeline';
+import { createTicket, getTicket, type CreateTicketInput } from '@dokima/tickets';
 import { emitReviewItem } from './notifications/emit.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from './server/board-actor.js';
 import { withSettingsReader } from './server/settings-db.js';
@@ -77,7 +77,7 @@ export interface ListPlanItemsOptions {
   readonly now?: () => string;
 }
 
-/** Ranked (deterministic, `@shipwright/pipeline`'s `rankItems`) + the funnel over every row. */
+/** Ranked (deterministic, `@dokima/pipeline`'s `rankItems`) + the funnel over every row. */
 export async function listPlanItems(
   projectPath: string,
   opts: ListPlanItemsOptions = {},

@@ -1,6 +1,6 @@
 /**
  * A real, minimal OpenAI-compatible HTTP server (`POST /v1/chat/completions`)
- * for tests — not a mock of `@shipwright/gateway`'s TypeScript interfaces.
+ * for tests — not a mock of `@dokima/gateway`'s TypeScript interfaces.
  * `gateway-model-port.ts` loads the real `createOaiCompatProvider` (via a
  * dynamic `file://` import — see that module's header) and points it at
  * this server's `url`, so a test exercising it proves the REAL adapter's

@@ -1,7 +1,7 @@
 /**
  * The Harbormaster claim loop (BLUEPRINT §3.6, FR-H1/H2, F1 split 1/3):
  * claim the lowest-id claimable ticket (WIP=1 per worker, enforced by
- * `@shipwright/tickets`' `claimTicket`), give it a fresh git worktree, and
+ * `@dokima/tickets`' `claimTicket`), give it a fresh git worktree, and
  * dispatch up to `maxSessionsPerTicket` fresh agent sessions through
  * W1-06's session runner. A session never mutates ticket state itself
  * (SC-02) — out-of-session gate execution and `close` are W3-01b's job;
@@ -33,9 +33,9 @@ import {
   listWorktrees,
   type CreateWorktreeOptions,
   type WorktreeHandle,
-} from '@shipwright/git';
-import { policyForLevel, type BreakerLevel } from '@shipwright/gateway';
-import { runSession, type SessionResult, type SpawnSession } from '@shipwright/loop';
+} from '@dokima/git';
+import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
+import { runSession, type SessionResult, type SpawnSession } from '@dokima/loop';
 import {
   claimTicket,
   commentTicket,
@@ -45,8 +45,8 @@ import {
   releaseTicket,
   startTicket,
   type Ticket,
-} from '@shipwright/tickets';
-import type { EventLog } from '@shipwright/events';
+} from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
 
@@ -136,7 +136,7 @@ async function resolveWorktree(
   options: ClaimLoopOptions,
   ticket: Ticket,
 ): Promise<WorktreeHandle> {
-  const worktreePath = path.join(options.repoRoot, '.shipwright', 'worktrees', ticket.id);
+  const worktreePath = path.join(options.repoRoot, '.dokima', 'worktrees', ticket.id);
   // `git worktree list --porcelain` reports symlink-resolved paths (matters on macOS,
   // where the default tmpdir sits behind /var -> /private/var); resolve ours the same
   // way before comparing. A missing directory can't be an existing worktree.

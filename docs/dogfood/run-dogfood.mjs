@@ -6,7 +6,7 @@
  * composes for the CLI (`run start --mode onboard`) and the HTTP route,
  * called directly here rather than through that one convenience wrapper
  * (see DEDUP note below for why). Model access goes through the real
- * `@shipwright/gateway` OpenAI-compat provider, pointed at a local
+ * `@dokima/gateway` OpenAI-compat provider, pointed at a local
  * OpenAI-compatible server (LM Studio on localhost) -- local-first (Law 9),
  * no network, no fake gateway.
  *
@@ -93,7 +93,7 @@ const { MalformedModelOutputError } = await importRepoModule(
 );
 
 const ACTOR_ID = process.env.DOGFOOD_ACTOR_ID ?? 'dogfood-agent';
-const PROJECT_ID = process.env.DOGFOOD_PROJECT_ID ?? 'shipwright-self';
+const PROJECT_ID = process.env.DOGFOOD_PROJECT_ID ?? 'dokima-self';
 const MAX_ATTEMPTS = Number(process.env.DOGFOOD_MAX_ATTEMPTS ?? '4');
 
 // Sequential retries only (never concurrent dispatch calls -- runRealPreflight
@@ -117,7 +117,7 @@ function jitteredFetch(url, init) {
 
 const gatewayConfig = {
   ...resolveOnboardGatewayConfigFromEnv(),
-  model: process.env.SHIPWRIGHT_MODEL_ID ?? 'nemotron-cascade-2-30b-a3b',
+  model: process.env.DOKIMA_MODEL_ID ?? 'nemotron-cascade-2-30b-a3b',
   fetchImpl: jitteredFetch,
 };
 
@@ -259,13 +259,13 @@ await writeFile(
       note:
         'Per-step audit evidence (session exitCode + observed write-scope ' +
         'violations from the real runSession/git-diff check), not a minted ' +
-        '@shipwright/events ReceiptRecord -- onboard findings are a ' +
+        '@dokima/events ReceiptRecord -- onboard findings are a ' +
         "specialist's own self-report with no independent validator run " +
         'against them, so minting a gate/coverage receipt for them would be ' +
         'the self-attestation antipattern Law 4/5 forbids (see ' +
         'apps/server/src/api/pipeline/onboard-executor.ts SELF-ATTEST NOTE). ' +
         'Each row here corresponds to one real onboard.step-complete AUDIT ' +
-        'event, hash-chained into .shipwright/state.db and signed by that ' +
+        'event, hash-chained into .dokima/state.db and signed by that ' +
         "step's specialist:<role> identity (never the operator identity).",
       runId: run.id,
       startedAt,

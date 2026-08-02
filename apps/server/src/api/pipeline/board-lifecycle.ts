@@ -1,5 +1,5 @@
 /**
- * Bridges a pipeline run's `DecomposedPlan` (`@shipwright/pipeline`'s
+ * Bridges a pipeline run's `DecomposedPlan` (`@dokima/pipeline`'s
  * `decompose()` output) onto the board through the EXISTING Improvement
  * Plans lifecycle (`proposeFromMatches`/`acceptItem`) rather than a
  * bespoke ticket-creation path (ticket acceptance criterion #1). This is
@@ -43,12 +43,12 @@
  * `Promise.all`) — each call opens and closes its own writer in turn, so at
  * most one connection to the project's `state.db` is ever open at a time.
  */
-import { appendEvent } from '@shipwright/events';
+import { appendEvent } from '@dokima/events';
 import {
   proposeFromMatches,
   type CatalogMatch,
   type DecomposedPlan,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import { acceptPlanItem } from '../plans-store.js';
 import type { PlanItemRow } from '../plans-types.js';
 import {

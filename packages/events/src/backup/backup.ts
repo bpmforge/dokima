@@ -1,5 +1,5 @@
 /**
- * `shipwright backup` (DEPLOYMENT.md §4/§8): a SQLite online backup via
+ * `dokima backup` (DEPLOYMENT.md §4/§8): a SQLite online backup via
  * `VACUUM INTO` — safe to run while the core has the db open (WAL allows
  * concurrent readers; `VACUUM INTO` only needs to *read* the source, so it
  * runs against a read-only connection rather than contending for the
@@ -32,7 +32,7 @@ function backupFileName(now: () => string): string {
  * Performs the online backup (`VACUUM INTO`) of `dbPath` into `backupsDir`,
  * returning the path of the file just written. `VACUUM INTO` refuses to
  * overwrite an existing destination file, so the timestamped name must be
- * unique per call — safe even if `shipwright backup` runs more than once in
+ * unique per call — safe even if `dokima backup` runs more than once in
  * the same second-resolution instant only if `now()` also advances; callers
  * driving this from a real clock get a fresh name every call in practice.
  */

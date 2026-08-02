@@ -9,7 +9,7 @@
  * call, no HANDOFF dispatch); a future wiring ticket binds `ONBOARD_STEPS`
  * to real specialist invocations the same way a wiring ticket would bind
  * `phases/advance.ts`'s `AdvanceDeps.verifyReceipt` seam to
- * `@shipwright/events`.
+ * `@dokima/events`.
  *
  * The four specialists named in FR-P5 AC1 ("landscape, entry points,
  * components, health") are the four no-skill onboard specialists from the

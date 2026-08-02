@@ -7,14 +7,14 @@
  * prefix instead of a `loop-gates/` directory.
  */
 
-import type { WorktreeHandle } from '@shipwright/git';
-import type { SessionResult } from '@shipwright/loop';
-import type { ValidatorGap } from '@shipwright/validators';
-import type { EventLog, ReceiptRecord } from '@shipwright/events';
-import type { Ticket } from '@shipwright/tickets';
+import type { WorktreeHandle } from '@dokima/git';
+import type { SessionResult } from '@dokima/loop';
+import type { ValidatorGap } from '@dokima/validators';
+import type { EventLog, ReceiptRecord } from '@dokima/events';
+import type { Ticket } from '@dokima/tickets';
 
 /**
- * The untrusted Completion Manifest a session returns. `@shipwright/loop`'s
+ * The untrusted Completion Manifest a session returns. `@dokima/loop`'s
  * public barrel doesn't export the `CompletionManifest` type by name (only
  * `SessionResult`, whose `manifest` field carries it) — derived structurally
  * here rather than reaching past the barrel into a relative import.

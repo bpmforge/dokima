@@ -14,8 +14,8 @@ describe('ensureAuthToken', () => {
   let env: NodeJS.ProcessEnv;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-token-test-'));
-    env = { SHIPWRIGHT_HOME: path.join(tmpDir, '.shipwright') };
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-token-test-'));
+    env = { DOKIMA_HOME: path.join(tmpDir, '.dokima') };
   });
 
   afterEach(async () => {

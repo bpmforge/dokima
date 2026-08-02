@@ -1,9 +1,9 @@
 /**
  * Proves `preparePlaybookPromotion` produces a payload the REAL
- * `@shipwright/events` global-scope promotion accepts (DATABASE.md §7,
+ * `@dokima/events` global-scope promotion accepts (DATABASE.md §7,
  * FR-F5) — dynamically imported by absolute `file://` URL, same technique
  * as `../store/migration.integration.test.ts`, since `packages/memory`
- * can't statically depend on `@shipwright/events`.
+ * can't statically depend on `@dokima/events`.
  */
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -70,7 +70,7 @@ async function loadGlobalDb(): Promise<GlobalDbModule & GlobalPlaybookModule> {
 
 const NOW = () => '2026-07-20T12:00:00.000Z';
 
-describe('preparePlaybookPromotion -> the real @shipwright/events global_playbook (FR-F5)', () => {
+describe('preparePlaybookPromotion -> the real @dokima/events global_playbook (FR-F5)', () => {
   let cleanup: (() => Promise<void>) | undefined;
 
   afterEach(async () => {
@@ -99,7 +99,7 @@ describe('preparePlaybookPromotion -> the real @shipwright/events global_playboo
     const { openGlobalDb, promoteGlobalPlaybookEntry, listGlobalPlaybook } =
       await loadGlobalDb();
     const dir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-playbook-promote-test-'),
+      path.join(os.tmpdir(), 'dokima-playbook-promote-test-'),
     );
     cleanup = () => fs.rm(dir, { recursive: true, force: true });
     const global = openGlobalDb(path.join(dir, 'global.db'));
@@ -157,7 +157,7 @@ describe('preparePlaybookPromotion -> the real @shipwright/events global_playboo
 
     const { openGlobalDb, listGlobalPlaybook } = await loadGlobalDb();
     const dir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-playbook-promote-test-'),
+      path.join(os.tmpdir(), 'dokima-playbook-promote-test-'),
     );
     cleanup = () => fs.rm(dir, { recursive: true, force: true });
     const global = openGlobalDb(path.join(dir, 'global.db'));

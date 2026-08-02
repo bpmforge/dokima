@@ -4,10 +4,10 @@
  * actually touched (observed via `git diff`, not the session's own claims)
  * and a ticket's `write_scope[]` globs, report which touched paths fall
  * outside scope. The full SC-01 enforcement — hard exclusions
- * (`.git/**`, `.github/workflows/**`, `.shipwright/**`), symlink-escape
+ * (`.git/**`, `.github/workflows/**`, `.dokima/**`), symlink-escape
  * resolution via realpath, and refuse-to-apply — is `packages/git`'s
  * `checkWriteScope` (lands with harbormaster). The glob dialect itself is
- * `@shipwright/shared`'s canonical implementation (G-20) — `loop` may not
+ * `@dokima/shared`'s canonical implementation (G-20) — `loop` may not
  * import `git` (ARCHITECTURE.md §4), but both may import `shared`.
  *
  * Uses `node:child_process` directly (not the `execa` wrapper) so this
@@ -17,7 +17,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { globToRegExp } from '@shipwright/shared';
+import { globToRegExp } from '@dokima/shared';
 
 const execFileAsync = promisify(execFile);
 

@@ -10,7 +10,7 @@ import { scanForA11yViolations } from './axeHelper.js';
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-a11y-queue-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-a11y-queue-${id}`),
     name: `A11y Queue ${id}`,
   };
 }
@@ -34,9 +34,9 @@ async function openFreshProject(page: Page, name: string, dir: string): Promise<
 
 async function readToken(page: Page): Promise<string> {
   const token = await page.evaluate(
-    () => (window as unknown as { __SHIPWRIGHT_TOKEN__?: string }).__SHIPWRIGHT_TOKEN__,
+    () => (window as unknown as { __DOKIMA_TOKEN__?: string }).__DOKIMA_TOKEN__,
   );
-  if (!token) throw new Error('expected window.__SHIPWRIGHT_TOKEN__ to be injected');
+  if (!token) throw new Error('expected window.__DOKIMA_TOKEN__ to be injected');
   return token;
 }
 

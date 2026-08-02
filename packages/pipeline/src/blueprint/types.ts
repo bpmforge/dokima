@@ -17,7 +17,7 @@
  * This ticket's write_scope is `packages/pipeline/src/blueprint/**` only —
  * `packages/pipeline/package.json` is out of glob (same wall documented in
  * `../phases/types.ts` and `../decisions/types.ts`), so this module has no
- * reach to `@shipwright/events`/`@shipwright/loop` or to the filesystem.
+ * reach to `@dokima/events`/`@dokima/loop` or to the filesystem.
  * The real `docs/BLUEPRINT.md` is never read or written here; a future
  * wiring ticket binds `synthesizeBlueprint`/`resolveOpenQuestion`'s pure
  * markdown transforms to the actual file, the same shape of gap

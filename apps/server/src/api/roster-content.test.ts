@@ -29,7 +29,7 @@ async function independentlyCountDispatchableExperts(dir: string): Promise<numbe
 
 const tmpDirs: string[] = [];
 async function tmpContentDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-roster-content-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-roster-content-'));
   tmpDirs.push(dir);
   return dir;
 }

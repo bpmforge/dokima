@@ -6,7 +6,7 @@
 
 ## 1. Runtime shape — and the consolidation warning
 
-Two overlapping SDLC drivers coexist in the source: **AutonomousSdlcRunner** (autonomous goal→software; five runtime phases research→requirements→design→implement→verify, each wrapped in a gate loop, plus a fix-verify loop after implement) and the older **WorkflowEngine** (chat-path phases; the engine Foreman v2 targets). This duplication is an accident of history, not a design: **Shipwright's Pipeline Engine consolidates them** (D-008) — the runner's loop mechanics under the engine's phase machine. Runtime host: 24/7 Fastify server, dashboard APIs (goals, workflows, approvals, clarifications, costs, traces), multi-channel adapters. LLM layer: provider chain with task-based routing (`reasoning`/`code`/`verification`/`embed`), local providers (LM Studio/Ollama) via an OpenAI-compatible adapter, model discovery/warm-up/queueing — the direct ancestor of Shipwright's Model Gateway.
+Two overlapping SDLC drivers coexist in the source: **AutonomousSdlcRunner** (autonomous goal→software; five runtime phases research→requirements→design→implement→verify, each wrapped in a gate loop, plus a fix-verify loop after implement) and the older **WorkflowEngine** (chat-path phases; the engine Foreman v2 targets). This duplication is an accident of history, not a design: **Dokima's Pipeline Engine consolidates them** (D-008) — the runner's loop mechanics under the engine's phase machine. Runtime host: 24/7 Fastify server, dashboard APIs (goals, workflows, approvals, clarifications, costs, traces), multi-channel adapters. LLM layer: provider chain with task-based routing (`reasoning`/`code`/`verification`/`embed`), local providers (LM Studio/Ollama) via an OpenAI-compatible adapter, model discovery/warm-up/queueing — the direct ancestor of Dokima's Model Gateway.
 
 ## 2. Micro-loop architecture (the Loop Engine's ancestor)
 
@@ -21,7 +21,7 @@ Two overlapping SDLC drivers coexist in the source: **AutonomousSdlcRunner** (au
 | C Challenger | second skeptical judgment, fired on *borderline* confidence only |
 | D Adaptive budget | spend passes where they demonstrably help |
 
-**Coverage tracker** (`src/orchestration/coverage-tracker.ts`): every expected unit ends DONE / BLOCKED / FAILED / **SKIPPED** (required-but-never-executed = a missed gate, loudly visible) / **WAIVED** (intentional, recorded, never silent). Emits COVERAGE_REPORT.md + .json. This is the honesty mechanism Shipwright adopts verbatim (FR-L4).
+**Coverage tracker** (`src/orchestration/coverage-tracker.ts`): every expected unit ends DONE / BLOCKED / FAILED / **SKIPPED** (required-but-never-executed = a missed gate, loudly visible) / **WAIVED** (intentional, recorded, never silent). Emits COVERAGE_REPORT.md + .json. This is the honesty mechanism Dokima adopts verbatim (FR-L4).
 
 **Calibration (bias clamp):** per-(model, phase) gap between self-confidence and *verified* outcomes adjusts the gate, not the model's number — rescue-only, clamped [0,3], ≥5 samples, applied **only when an anchor is present**. History: the first implementation had an inverted-bias bug (high tool-backed confidence produced *negative* bias, flipping DONE→BLOCKED) — fixed by the rescue-only clamp. Lesson carried into FR-L3: calibration can rescue, never manufacture.
 
@@ -35,7 +35,7 @@ Two overlapping SDLC drivers coexist in the source: **AutonomousSdlcRunner** (au
 
 ## 4. Foreman v2 (the approval-queue operating model)
 
-`docs/foreman/VISION.md + ARCHITECTURE.md`: the expert-system's discipline executing inside the 24/7 runtime; the human stops being the scheduler and becomes **reviewer of an approval queue**. Principles adopted by Shipwright: *validators own gates, not vibes* (LLM scoring only after objective gates pass); *disk is source of truth* (append-only work logs); *every human dead-end gets an autonomous policy* (never park silently); *budgets are circuit breakers*; *learning on a leash* (exemplars auto-editable; agent prompts human-gated).
+`docs/foreman/VISION.md + ARCHITECTURE.md`: the expert-system's discipline executing inside the 24/7 runtime; the human stops being the scheduler and becomes **reviewer of an approval queue**. Principles adopted by Dokima: *validators own gates, not vibes* (LLM scoring only after objective gates pass); *disk is source of truth* (append-only work logs); *every human dead-end gets an autonomous policy* (never park silently); *budgets are circuit breakers*; *learning on a leash* (exemplars auto-editable; agent prompts human-gated).
 
 Proven in build (waves W0–W1 shipped): global failure handlers, **persist-before-execute + orphan sweep** (no phase stuck `running` after crash), persistent project locks, backoff + loop caps, dead-letter escalation, workflow cost ledger, **budget enforcement with 70/85/100% circuit breakers**, cost dashboard. Dogfooding data point: the independent Challenger caught **two real, test-passing HIGH bugs** in the budget/ledger work (cost keyed on the wrong ID; per-phase budget check when a phase fires 10+ calls) — maker≠verifier catches what self-verification cannot. Designed (W2–W6): ApprovalQueue with risk-classed cards (`deploy|main-merge|destructive|escalation|budget`; risk classification rule-first, LLM may raise but never lower), typed HANDOFF objects with write-scope enforced via git diff, ValidatorRunner, GateScorer (binary gates first, rubric second, best-of-3 median on small tiers), expert performance ledger, heartbeat watchdog.
 
@@ -43,7 +43,7 @@ Proven in build (waves W0–W1 shipped): global failure handlers, **persist-befo
 
 Two tiers by design: T1 working memory (flat local JSON, always-on: findings + calibration) and T2 long-term (a full memory engine: SQLite+FTS5+vectors, hybrid retrieval, token-budgeted assembly, consolidation, fact store, goal anchors, checkpoints).
 
-**The documented failure:** the mature T2 engine was **never wired into the loop** — the recall anchor fired 0 times across a full A/B run; fact/checkpoint APIs had zero loop call sites; context was packed by naive `code.slice()` truncation; consolidation was manual-only. An engine without a consumer is worth nothing. Consequences in Shipwright: Memory Service is **in-process and wired from W1** (FR-M1), context packing is relevance-ranked under an explicit token budget (§7.2), consolidation is scheduled by default (FR-M3), and the loop's memory hooks are part of the Loop Engine's contract, not an integration afterthought.
+**The documented failure:** the mature T2 engine was **never wired into the loop** — the recall anchor fired 0 times across a full A/B run; fact/checkpoint APIs had zero loop call sites; context was packed by naive `code.slice()` truncation; consolidation was manual-only. An engine without a consumer is worth nothing. Consequences in Dokima: Memory Service is **in-process and wired from W1** (FR-M1), context packing is relevance-ranked under an explicit token budget (§7.2), consolidation is scheduled by default (FR-M3), and the loop's memory hooks are part of the Loop Engine's contract, not an integration afterthought.
 
 Governing rules adopted: **distill-never-replay** (history never replayed into prompts), **delta-edit only** (ACE-style playbook edits), **verified-before-stored** (only tool/challenger-confirmed outcomes enter long-term memory).
 
@@ -54,7 +54,7 @@ Governing rules adopted: **distill-never-replay** (history never replayed into p
 - **ApprovalQueue:** risk-classed cards; suspension modeled as a typed error → checkpoint + suspend → resolution resumes. → FR-N2 and the morning queue.
 - **Escalation-policy table:** every formerly-human branch mapped to a policy (auto-pass thresholds, park-with-card, retry-one-tier-up, hard-stop on budget, `possible-broken-validator` flag on stuck gaps). → the Harbormaster's autonomous-policy catalogue.
 
-## Shipwright takeaways
+## Dokima takeaways
 
 1. Per-item micro-loops with external anchors are the unit of execution; one-shot phase judgments are banned (FR-L1/L2).
 2. Coverage honesty (SKIPPED/WAIVED visible forever) ports verbatim (FR-L4).

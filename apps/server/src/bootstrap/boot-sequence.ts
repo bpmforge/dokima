@@ -15,7 +15,7 @@ import {
   sweepOrphans,
   type EventLog,
   type EventRecord,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   auditTailCheck,
   checkAndUpdateHighWater,
@@ -69,7 +69,7 @@ export class TamperedAuditTailError extends Error {
     super(
       `refusing to boot ${dbPath}: audit tail check found a hash-chain break at seq ` +
         `${brokenAtSeq ?? 'unknown'} (${reason ?? 'unknown reason'}) — the event log looks ` +
-        `tampered. Restore a known-good backup from .shipwright/backups/ and investigate ` +
+        `tampered. Restore a known-good backup from .dokima/backups/ and investigate ` +
         `before continuing (DEPLOYMENT.md §8, SC-11).`,
     );
     this.name = 'TamperedAuditTailError';

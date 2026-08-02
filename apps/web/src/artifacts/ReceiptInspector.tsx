@@ -3,8 +3,8 @@
  * report, challenge report, or ledger row opens as a structured view
  * (validator table with exit codes and gap counts, input hash, timestamps,
  * signer) — raw JSON one toggle away." Coverage payloads are duck-typed
- * (`units`/`counts` shape) rather than imported from `@shipwright/loop` —
- * `apps/web` may only import *types* from `@shipwright/shared`
+ * (`units`/`counts` shape) rather than imported from `@dokima/loop` —
+ * `apps/web` may only import *types* from `@dokima/shared`
  * (ARCHITECTURE.md §4), never another package directly.
  */
 

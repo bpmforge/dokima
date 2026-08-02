@@ -1,13 +1,13 @@
 /**
  * Real event minting for provider-limit pauses (FR-G8): appends `limit.pause` /
- * `limit.resume` to the actual hash-chained event log (`@shipwright/events`, CLAUDE.md law 7 —
+ * `limit.resume` to the actual hash-chained event log (`@dokima/events`, CLAUDE.md law 7 —
  * append-only, single writer). Both event types carry a literal `tier: 'record'` — a limit
  * pause never raises a Decide-tier approval card, enforced here by the payload's own type, not
  * by convention. Distinct `eventType` strings from `packages/gateway/src/budget/events.ts`'s
  * `budget.*` family (provider ceiling vs user ceiling, FR-G8 vs FR-G4).
  */
 
-import { appendEvent, type EventLog, type EventRecord } from '@shipwright/events';
+import { appendEvent, type EventLog, type EventRecord } from '@dokima/events';
 import type { LimitBerthKey, LimitPauseRecord } from './limit-pause-types.js';
 
 export interface LimitPauseEventPayload extends LimitPauseRecord {

@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getTicket, listTickets } from '@shipwright/tickets';
-import { openEventLogReader } from '@shipwright/events';
-import { matchesAnyGlob } from '@shipwright/shared';
+import { getTicket, listTickets } from '@dokima/tickets';
+import { openEventLogReader } from '@dokima/events';
+import { matchesAnyGlob } from '@dokima/shared';
 import { stateDbPath } from '../server/settings-db.js';
 import {
   catalogIdFor,
@@ -17,7 +17,7 @@ import {
 import type { OnboardStepArtifact } from './onboard-types.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-onboard-lifecycle-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-onboard-lifecycle-'));
 }
 
 const NOW = () => '2026-07-21T00:00:00.000Z';
@@ -157,7 +157,7 @@ describe('onboard-board-lifecycle (W8-09 AC2 — findings become board items via
 
       // Representative fix touching an arbitrary source file — the same
       // glob primitive `detectScopeViolations` (loop) / `checkWriteScope`
-      // (git) both build on (`@shipwright/shared`'s `matchesAnyGlob`) must
+      // (git) both build on (`@dokima/shared`'s `matchesAnyGlob`) must
       // NOT flag it as outside scope.
       const representativeChange = 'packages/gateway/src/provider.ts';
       expect(matchesAnyGlob(representativeChange, ticket!.writeScope)).toBe(true);

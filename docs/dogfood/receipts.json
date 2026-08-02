@@ -1,5 +1,5 @@
 {
-  "note": "Per-step audit evidence (session exitCode + observed write-scope violations from the real runSession/git-diff check), not a minted @shipwright/events ReceiptRecord -- onboard findings are a specialist's own self-report with no independent validator run against them, so minting a gate/coverage receipt for them would be the self-attestation antipattern Law 4/5 forbids (see apps/server/src/api/pipeline/onboard-executor.ts SELF-ATTEST NOTE). Each row here corresponds to one real onboard.step-complete AUDIT event, hash-chained into .shipwright/state.db and signed by that step's specialist:<role> identity (never the operator identity).",
+  "note": "Per-step audit evidence (session exitCode + observed write-scope violations from the real runSession/git-diff check), not a minted @dokima/events ReceiptRecord -- onboard findings are a specialist's own self-report with no independent validator run against them, so minting a gate/coverage receipt for them would be the self-attestation antipattern Law 4/5 forbids (see apps/server/src/api/pipeline/onboard-executor.ts SELF-ATTEST NOTE). Each row here corresponds to one real onboard.step-complete AUDIT event, hash-chained into .dokima/state.db and signed by that step's specialist:<role> identity (never the operator identity).",
   "runId": "run-dogfood-1784673609795",
   "startedAt": "2026-07-21T22:40:09.794Z",
   "finishedAt": "2026-07-21T22:46:10.548Z",
@@ -9,7 +9,7 @@
     {
       "stepId": "landscape",
       "role": "landscape-mapper",
-      "summary": "The codebase follows the Shipwright conventions with clear separation of server, web, and shared layers. Core modules for decisions, auth, and export bundles are present and enforce SC‑08 and D‑005 rules. However, the decision ledger uses synchronous file I/O without transactional safety, export bundle verification omits receipt signature checks, and auth enforcement can be sidestepped by new route files. Addressing these issues will strengthen gate integrity and prevent state corruption.",
+      "summary": "The codebase follows the Dokima conventions with clear separation of server, web, and shared layers. Core modules for decisions, auth, and export bundles are present and enforce SC‑08 and D‑005 rules. However, the decision ledger uses synchronous file I/O without transactional safety, export bundle verification omits receipt signature checks, and auth enforcement can be sidestepped by new route files. Addressing these issues will strengthen gate integrity and prevent state corruption.",
       "findingCount": 4,
       "session": {
         "exitCode": 0,
@@ -105,7 +105,7 @@
     {
       "stepId": "security-secrets",
       "role": "secrets-scanner",
-      "summary": "The repository does not contain obvious hard‑coded secrets such as passwords, API keys, or signing certificates in the source files that were examined. The only potential secret artifact is a `.npmrc` file which commonly stores an npm registry authentication token. No other files reference external credentials, and the codebase follows the Shipwright security conventions (e.g., SC‑08 host/origin checks, D‑005 bearer token enforcement).",
+      "summary": "The repository does not contain obvious hard‑coded secrets such as passwords, API keys, or signing certificates in the source files that were examined. The only potential secret artifact is a `.npmrc` file which commonly stores an npm registry authentication token. No other files reference external credentials, and the codebase follows the Dokima security conventions (e.g., SC‑08 host/origin checks, D‑005 bearer token enforcement).",
       "findingCount": 1,
       "session": {
         "exitCode": 0,

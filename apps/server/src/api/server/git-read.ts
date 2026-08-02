@@ -12,7 +12,7 @@
  * `merge-base`); nothing here ever mutates the repo.
  *
  * Symlink defense (W1-07 class, W4-05 review HIGH): a git-tracked symlink
- * inside `docs/` can point at `../.shipwright/state.db` or `../.env`.
+ * inside `docs/` can point at `../.dokima/state.db` or `../.env`.
  * `readWorkingTree()` used to `fs.readFile(path.join(projectPath,
  * filePath))` directly, which follows OS symlinks — the lexical
  * `isSafeRelativePath` check (artifacts-helpers.ts) only ever saw the
@@ -22,11 +22,11 @@
  * check it stays under the project root) plus applies the *same*
  * dot-prefix rule to the resolved-and-rerooted path — a symlink that
  * escapes the root outright (`path.relative` starts with `..`) and a
- * symlink that resolves to an in-root dot-path (`.shipwright/state.db`,
+ * symlink that resolves to an in-root dot-path (`.dokima/state.db`,
  * lexically safe as a *target* but never a legitimate artifact) are both
  * refused. `showAtRev` reads via `git show rev:path`, which returns the
  * *blob content* for a tracked symlink (the target string itself, e.g.
- * `../.shipwright/state.db`) rather than following it — no filesystem
+ * `../.dokima/state.db`) rather than following it — no filesystem
  * symlink-follow is possible through it — but `isSymlinkAtRev` still
  * refuses a symlink tree entry outright so the viewer never renders a
  * target-path string as if it were the deliverable's real content.

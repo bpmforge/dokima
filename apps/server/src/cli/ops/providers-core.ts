@@ -1,6 +1,6 @@
 /**
- * Shared provider-config resolution for `shipwright doctor`'s reachability
- * check and `shipwright providers refresh` (DEPLOYMENT.md §7/§8). There is
+ * Shared provider-config resolution for `dokima doctor`'s reachability
+ * check and `dokima providers refresh` (DEPLOYMENT.md §7/§8). There is
  * no persisted provider registry yet anywhere in the codebase — this reuses
  * the existing three-scope settings resolver (`getEffectiveSettings` /
  * `resolveEffectiveValue`, project overrides global) against a `providers`
@@ -14,8 +14,8 @@ import {
   createOaiCompatProvider,
   createOllamaProvider,
   type Provider,
-} from '@shipwright/gateway';
-import { getEffectiveSettings, resolveEffectiveValue } from '@shipwright/shared';
+} from '@dokima/gateway';
+import { getEffectiveSettings, resolveEffectiveValue } from '@dokima/shared';
 import type { CliIO } from '../../bootstrap/cli.js';
 
 export const PROVIDERS_SETTINGS_KEY = 'providers';

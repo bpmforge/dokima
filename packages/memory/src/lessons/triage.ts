@@ -10,7 +10,7 @@
  * playbook report legitimately carries `verifiedBy: 'challenger'`.
  *
  * The validator-fix-ticket path never creates a real ticket — this package
- * can't depend on `@shipwright/tickets` (ARCHITECTURE §4) — it only
+ * can't depend on `@dokima/tickets` (ARCHITECTURE §4) — it only
  * *prepares* the exact `CreateTicketInput` shape
  * `packages/tickets/src/types.ts` expects; `triage-ticket.test.ts` proves the
  * structural match by dynamically importing the real `createTicket`.
@@ -125,7 +125,7 @@ export function triageToPlaybookEntry(
   return { report, playbookEntry };
 }
 
-/** The exact shape `@shipwright/tickets`' `createTicket` (`CreateTicketInput`, `packages/tickets/src/types.ts`) expects, reproduced rather than imported. */
+/** The exact shape `@dokima/tickets`' `createTicket` (`CreateTicketInput`, `packages/tickets/src/types.ts`) expects, reproduced rather than imported. */
 export interface ValidatorFixTicketPayload {
   readonly id: string;
   readonly type: 'bug';

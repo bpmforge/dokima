@@ -20,11 +20,11 @@ interface TempRepo {
 /** A throwaway git repo (main branch, one commit, local identity) for tests. */
 async function createTempRepo(): Promise<TempRepo> {
   const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-loop-session-test-'),
+    path.join(os.tmpdir(), 'dokima-loop-session-test-'),
   );
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.mkdir(path.join(repoRoot, 'packages', 'loop', 'src'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);

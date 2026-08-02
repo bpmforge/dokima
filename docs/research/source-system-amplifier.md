@@ -8,9 +8,9 @@
 
 The amplifier program's goal: turn three separately-built agent stacks over shared local hardware + rationed frontier into one pipeline with a shared cognitive substrate (memory, playbook, nightly consolidation) and an escalation ledger proving week-over-week that local models need the frontier less. Headline gap findings:
 
-1. **"The engine and the loop were built in separate rooms."** A full memory engine existed (hybrid retrieval, consolidation, decay, provenance) with **zero consumers** — the loop's recall anchor fired 0 times in A/B validation. *Wiring beats building.* → Shipwright's Memory Service is in-process and wired from W1 (BLUEPRINT §3.8).
-2. **"Verification ahead, learning behind."** Anchored loops, challenger gates, 60+ validators matched 2026 harness-scaling practice, but every run started from the same priors — no playbook curation, no consolidation feeding the next run. → Shipwright ships the ACE playbook + sleep consolidation as W7 core, not add-ons.
-3. **Sleep-time compute owned but never flipped on.** → on by default in Shipwright.
+1. **"The engine and the loop were built in separate rooms."** A full memory engine existed (hybrid retrieval, consolidation, decay, provenance) with **zero consumers** — the loop's recall anchor fired 0 times in A/B validation. *Wiring beats building.* → Dokima's Memory Service is in-process and wired from W1 (BLUEPRINT §3.8).
+2. **"Verification ahead, learning behind."** Anchored loops, challenger gates, 60+ validators matched 2026 harness-scaling practice, but every run started from the same priors — no playbook curation, no consolidation feeding the next run. → Dokima ships the ACE playbook + sleep consolidation as W7 core, not add-ons.
+3. **Sleep-time compute owned but never flipped on.** → on by default in Dokima.
 
 ## 2. Gate-integrity audit (M27) — the twelve holes
 
@@ -34,7 +34,7 @@ Three parallel audits with file:line evidence, independently re-verified by a fr
 11. Dual-remote push unverified (CI checks one remote; fabricated evidence survives on the other).
 12. No branch protection / self-merge possible (no reviewer≠author check anywhere).
 
-**Design principles that answer them (adopted wholesale in BLUEPRINT §2.2):** *receipts not flags* (every gate emits an evidence-bearing receipt: what ran, exit codes, gap counts, input tree-hash; consumers verify receipts, not file existence); *only real runs mint receipts*; *mandatory means wired*; *truth checks over presence checks* (stat the claimed files, re-run the verify, require the artifact); *red fixtures for every gate* (a planted-defect suite proving each gate actually fails when it should — Shipwright TESTING.md carries this). Threat model: a sloppy/eager agent skipping steps, not a cryptographic adversary — receipts are tamper-evident (content+hash), which is sufficient for single-operator v1.
+**Design principles that answer them (adopted wholesale in BLUEPRINT §2.2):** *receipts not flags* (every gate emits an evidence-bearing receipt: what ran, exit codes, gap counts, input tree-hash; consumers verify receipts, not file existence); *only real runs mint receipts*; *mandatory means wired*; *truth checks over presence checks* (stat the claimed files, re-run the verify, require the artifact); *red fixtures for every gate* (a planted-defect suite proving each gate actually fails when it should — Dokima TESTING.md carries this). Threat model: a sloppy/eager agent skipping steps, not a cryptographic adversary — receipts are tamper-evident (content+hash), which is sufficient for single-operator v1.
 
 ## 3. Conductor design (M28) → Harbormaster
 
@@ -50,11 +50,11 @@ Loop: claim (WIP=1) → execute (fresh session per ticket, model chosen per role
 
 **Breakpoints:** ticket / wave / never. **Resume:** idempotent from receipts; refuses when state records and disk disagree.
 
-All of the above is the Harbormaster's specification (BLUEPRINT §3.6), plus Shipwright's D-010 extension: N parallel berths, one per lane.
+All of the above is the Harbormaster's specification (BLUEPRINT §3.6), plus Dokima's D-010 extension: N parallel berths, one per lane.
 
 ## 4. Ticket lifecycle integrity (M26)
 
-Born from a real incident: an executor skipped claim/comment/close on a run and the audit trail was lost — root cause, honor-system lifecycle. Fixes: enforced six-verb transition graph, schema v2 (history[], evidence, claimed_at), WIP=1, close-before-next-claim, and a **reconciliation tool** grading every ticket VERIFIED / UNVERIFIED / ORPHAN-CODE against manifests, gate results, and git history. Shipwright inherits the verbs natively (FR-T1/T2) and the reconciliation audit for the forge mirror (FR-T5).
+Born from a real incident: an executor skipped claim/comment/close on a run and the audit trail was lost — root cause, honor-system lifecycle. Fixes: enforced six-verb transition graph, schema v2 (history[], evidence, claimed_at), WIP=1, close-before-next-claim, and a **reconciliation tool** grading every ticket VERIFIED / UNVERIFIED / ORPHAN-CODE against manifests, gate results, and git history. Dokima inherits the verbs natively (FR-T1/T2) and the reconciliation audit for the forge mirror (FR-T5).
 
 ## 5. Forge-as-ledger research (build vs adopt)
 
@@ -66,9 +66,9 @@ Adopted architecture (BLUEPRINT §3.4 Forge Mirror): planning/contract layer sta
 
 Cheapest-model-by-default with the frontier as a rationed advisor; **memory as the first-line advisor** (consult playbook/facts before any model call); a rung ladder for spend. Productized as escalation rung R0 and the role-matrix guards (BLUEPRINT §3.3).
 
-## Shipwright takeaways
+## Dokima takeaways
 
-1. Every M27 hole maps to a Shipwright control: receipts (SC: no flags), out-of-session gates, manifest truth-checks, challenger artifact requirement, runtime ledger validation, branch protection + reviewer≠author, remote-parity validator, and a red-fixture test suite proving gates fail when attacked.
+1. Every M27 hole maps to a Dokima control: receipts (SC: no flags), out-of-session gates, manifest truth-checks, challenger artifact requirement, runtime ledger validation, branch protection + reviewer≠author, remote-parity validator, and a red-fixture test suite proving gates fail when attacked.
 2. The Harbormaster is the M28 Conductor, generalized with berths (D-010).
 3. The Forge Mirror is the Gitea-ledger design, forge-agnostic (D-004).
 4. The economics (R0 advisor, cheap-first ladder, escalation ledger) are first-class product features with UI, not scripts.

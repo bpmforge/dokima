@@ -2,7 +2,7 @@
  * Receipt Inspector routes (FR-C5; UX_SPEC §5). Receipts are real DB rows
  * (`packages/events/migrations/002_receipts.sql`) — this is the one part of
  * the artifact/receipt surface with a durable backing store, so these
- * routes read straight through `@shipwright/events`'s `getReceipt`.
+ * routes read straight through `@dokima/events`'s `getReceipt`.
  *
  * The `approvals_ledger` table (DATABASE.md §4, FR-N3) has no migration
  * anywhere in `packages/events/migrations/` yet (only 001_init/002_receipts
@@ -13,7 +13,7 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { getReceipt, openEventLogReader, type ReceiptRecord } from '@shipwright/events';
+import { getReceipt, openEventLogReader, type ReceiptRecord } from '@dokima/events';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectOrProblem, stateDbPath } from './board-project.js';

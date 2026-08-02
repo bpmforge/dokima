@@ -3,7 +3,7 @@
  * job) rewrites facts/playbook via ordinary events (`memory.consolidated`)
  * so even memory mutations are audited"). Same injectable-sink constraint
  * documented throughout this package (`playbook/events.ts`): this package
- * can't depend on `@shipwright/events` (no `package.json` dependency
+ * can't depend on `@dokima/events` (no `package.json` dependency
  * declared within this ticket's write_scope), so events are minted here and
  * handed to a caller-supplied sink wired to the real event log elsewhere.
  * `memory.error_first_recall` is a distinct type from `playbook.r0_hit` —

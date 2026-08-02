@@ -1,6 +1,6 @@
 /** Resolving open notifications: notification-center dismiss and morning-queue decide. */
 
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import { type EmitOptions, NotificationNotFoundError } from './types.js';
 
 interface ResolveOptions extends EmitOptions {

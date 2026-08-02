@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PACKAGE_NAME } from './index.js';
 
-describe('@shipwright/loop placeholder', () => {
+describe('@dokima/loop placeholder', () => {
   it('is scaffolded', () => {
     expect(PACKAGE_NAME).toBe('loop');
   });

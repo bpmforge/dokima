@@ -8,7 +8,7 @@ import { registerProject } from './projects.js';
 
 async function tempDbPath(): Promise<{ dbPath: string; cleanup: () => Promise<void> }> {
   const dir = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-global-db-writer-test-'),
+    path.join(os.tmpdir(), 'dokima-global-db-writer-test-'),
   );
   return {
     dbPath: path.join(dir, 'global.db'),

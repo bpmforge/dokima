@@ -72,7 +72,7 @@ export function fakeMirrorAdapter(opts?: {
       return {
         id: commentSeq++,
         body,
-        authorLogin: identity === 'reviewer' ? 'shipwright-reviewer' : 'shipwright-maker',
+        authorLogin: identity === 'reviewer' ? 'dokima-reviewer' : 'dokima-maker',
         htmlUrl: `https://example.test/issues/${issueNumber}#comment`,
         createdAt: '2026-07-18T00:00:00.000Z',
       };

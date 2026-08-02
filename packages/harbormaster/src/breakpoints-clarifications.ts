@@ -13,7 +13,7 @@
  * rather than a second ledger-writing path.
  */
 
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import { appendAutoDefaultRow } from './autonomy-ledger.js';
 import type { ClarificationRecord, ClarificationStatus } from './breakpoints-types.js';
 

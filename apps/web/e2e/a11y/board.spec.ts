@@ -18,7 +18,7 @@ const SEED_SCRIPT = path.join(here, '..', 'fixtures', 'seed-board-tickets.mjs');
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-a11y-board-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-a11y-board-${id}`),
     name: `A11y Board ${id}`,
   };
 }
@@ -51,7 +51,7 @@ test('board has no WCAG 2.2 AA violations with live cards/columns/strips', async
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'basic');
+  seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
 
   await expect(page.getByTestId('pane-board').getByTestId('board-view')).toBeVisible();

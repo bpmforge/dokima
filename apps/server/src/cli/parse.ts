@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import type { VerifyResult } from '@shipwright/tickets';
+import type { VerifyResult } from '@dokima/tickets';
 
 export class CliUsageError extends Error {}
 
@@ -20,7 +20,7 @@ export type CliCommand =
       dbPath?: string;
     }
   | { kind: 'comment'; ticketId: string; actorId: string; body: string; dbPath?: string }
-  /** `shipwright run <start|pause|resume|stop> ...` (FR-C7) — `args` is the untouched rest, owned and parsed by `run-cmd.ts`. */
+  /** `dokima run <start|pause|resume|stop> ...` (FR-C7) — `args` is the untouched rest, owned and parsed by `run-cmd.ts`. */
   | { kind: 'run'; args: string[] };
 
 function isSimpleVerb(command: string): command is SimpleVerb {
@@ -44,7 +44,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
   const [command, ...rest] = argv;
   if (!command) {
     throw new CliUsageError(
-      'usage: shipwright <board|verify-chain|claim|start|close|accept|release|comment|run> ...',
+      'usage: dokima <board|verify-chain|claim|start|close|accept|release|comment|run> ...',
     );
   }
 
@@ -69,7 +69,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
     });
     const ticketId = requirePositional(
       positionals,
-      `usage: shipwright ${command} <ticketId> --actor <actorId> [--db <path>]`,
+      `usage: dokima ${command} <ticketId> --actor <actorId> [--db <path>]`,
     );
     if (!values.actor) throw new CliUsageError(`${command} requires --actor <actorId>`);
     return {
@@ -93,7 +93,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
     });
     const ticketId = requirePositional(
       positionals,
-      'usage: shipwright comment <ticketId> --actor <actorId> --body <text> [--db <path>]',
+      'usage: dokima comment <ticketId> --actor <actorId> --body <text> [--db <path>]',
     );
     if (!values.actor) throw new CliUsageError('comment requires --actor <actorId>');
     if (values.body === undefined)
@@ -122,7 +122,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
     });
     const ticketId = requirePositional(
       positionals,
-      'usage: shipwright close <ticketId> --actor <id> --files <a,b> --commits <c1,c2> ' +
+      'usage: dokima close <ticketId> --actor <id> --files <a,b> --commits <c1,c2> ' +
         '--verify-cmd <cmd> [--verify-exit <n>] [--db <path>]',
     );
     if (!values.actor) throw new CliUsageError('close requires --actor <actorId>');

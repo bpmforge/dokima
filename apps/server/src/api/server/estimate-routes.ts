@@ -3,12 +3,12 @@
  * (BLUEPRINT §12.2, FR-G7, US-309, GATE_ECONOMICS §3).
  *
  * This route computes its own estimate rather than importing
- * `computeWaveEstimate` from `@shipwright/gateway`: `@shipwright/gateway`
+ * `computeWaveEstimate` from `@dokima/gateway`: `@dokima/gateway`
  * is not a declared dependency of `apps/server`, and neither
  * `apps/server/package.json` nor `packages/gateway/package.json` (its
  * `exports` map) are in this ticket's `write_scope`, so the import is not
  * achievable without an out-of-scope edit (verified empirically — `import
- * '@shipwright/gateway'` from `apps/server` throws `Cannot find package`).
+ * '@dokima/gateway'` from `apps/server` throws `Cannot find package`).
  * A prior attempt at this ticket kept a duplicate, more general engine
  * under `packages/gateway/src/estimate/**` "for a future Harbormaster
  * consumer" and claimed `packages/loop` already depended on it; neither
@@ -16,7 +16,7 @@
  * it), so it has been deleted rather than left as unreachable dead code.
  *
  * What is honestly delivered here, and why the rest isn't (C-1):
- *  - Per-wave breakdown: `@shipwright/tickets`' `Ticket` has no `points`
+ *  - Per-wave breakdown: `@dokima/tickets`' `Ticket` has no `points`
  *    field and `board-wire.ts`'s `wave` is always 0 (no producer,
  *    grep-verified) — every ticket estimates at 1 point in a single
  *    wave-0 bucket until a sizing/wave producer exists on the ticket
@@ -37,8 +37,8 @@
  *    `apps/server/src/api/projects.ts`'s `spend_today: 0`.
  */
 
-import { openEventLogReader } from '@shipwright/events';
-import { loadTickets, type TicketStatus } from '@shipwright/tickets';
+import { openEventLogReader } from '@dokima/events';
+import { loadTickets, type TicketStatus } from '@dokima/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
@@ -46,7 +46,7 @@ import { resolveProjectOrProblem, stateDbPath } from './board-project.js';
 import { problem } from '../problem.js';
 
 export interface EstimateRoutesOptions {
-  /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
+  /** Fleet registry home dir override (defaults to computeDokimaHome()) — tests only. */
   home?: string;
 }
 
@@ -127,7 +127,7 @@ function estimateForTicketCount(
 
 function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,

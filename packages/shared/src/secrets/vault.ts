@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { CredentialStore } from '../config/credential-store.js';
-import { computeShipwrightHome } from '../config/settings-files.js';
+import { computeDokimaHome } from '../config/settings-files.js';
 
-const REF_PREFIX = 'shipwright-project-secret:';
+const REF_PREFIX = 'dokima-project-secret:';
 const INDEX_FILENAME = 'secrets-index.json';
 
 /**
@@ -60,7 +60,7 @@ async function writeIndex(indexPath: string, names: readonly string[]): Promise<
  * name index is what makes `listValues()` possible without one.
  *
  * Both keychain backends share one global namespace/service on the
- * machine (`computeShipwrightHome`'s single `~/.shipwright`, the macOS
+ * machine (`computeDokimaHome`'s single `~/.dokima`, the macOS
  * backend's single fixed keychain service name), so `projectDir` is
  * hashed into the credential ref *and* the index path — two projects
  * registering the same secret name can never overwrite each other's
@@ -73,7 +73,7 @@ export function createProjectSecretsVault(
 ): ProjectSecretsVault {
   const projectId = computeProjectId(projectDir);
   const indexPath = path.join(
-    computeShipwrightHome(env),
+    computeDokimaHome(env),
     'secrets',
     projectId,
     INDEX_FILENAME,

@@ -5,8 +5,8 @@ import { openReadOnlyLog, openWritableLog, resolveDbPath } from './db.js';
 import { createTempProject, type TempProject } from './test-helpers.js';
 
 describe('resolveDbPath', () => {
-  it('defaults to .shipwright/state.db under the project cwd', () => {
-    expect(resolveDbPath('/repo')).toBe(path.join('/repo', '.shipwright', 'state.db'));
+  it('defaults to .dokima/state.db under the project cwd', () => {
+    expect(resolveDbPath('/repo')).toBe(path.join('/repo', '.dokima', 'state.db'));
   });
 
   it('resolves an override relative to cwd', () => {
@@ -27,7 +27,7 @@ describe('openWritableLog', () => {
     await project?.cleanup();
   });
 
-  it('creates .shipwright/ on first use', async () => {
+  it('creates .dokima/ on first use', async () => {
     project = await createTempProject();
     const dbPath = resolveDbPath(project.cwd);
     expect(existsSync(path.dirname(dbPath))).toBe(false);

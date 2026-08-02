@@ -97,7 +97,7 @@ describe('fireTicketVerb', () => {
 
   it('surfaces a 409 invariant refusal as a problem+json result (FR-T4)', async () => {
     const problem = {
-      type: 'https://shipwright.dev/errors/close-requires-receipt',
+      type: 'https://dokima.dev/errors/close-requires-receipt',
       title: 'close refused: verify has not passed',
       status: 409,
       detail: 'ticket W2-04 verify exited 1',

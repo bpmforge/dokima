@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getIdentity, openEventLog, type EventLog } from '@shipwright/events';
+import { getIdentity, openEventLog, type EventLog } from '@dokima/events';
 import {
   assertVerifierDistinctFromAuthor,
   ensurePhaseGateVerifierIdentity,

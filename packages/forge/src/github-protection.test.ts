@@ -10,7 +10,7 @@ import {
   driftedStatusChecksFixture,
 } from './github-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 /** The connect-time contract SC-14 requires: reviewer!=author, no force-push, required checks. */
 const CONNECT_CONTRACT: BranchProtectionRules = {
@@ -35,7 +35,7 @@ describe('GitHubForgeAdapter — configureBranchProtection()', () => {
 
     expect(calls[0]?.method).toBe('PUT');
     expect(calls[0]?.url).toBe(
-      'https://api.github.com/repos/shipwright-org/demo/branches/main/protection',
+      'https://api.github.com/repos/dokima-org/demo/branches/main/protection',
     );
     expect(calls[0]?.body).toEqual({
       required_status_checks: { strict: true, contexts: ['ci/gate'] },

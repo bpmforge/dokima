@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveProjectPaths } from './config.js';
 import { runPackagedCli, type CliIO } from './cli.js';
@@ -110,7 +110,7 @@ describe('runPackagedCli', () => {
 
   it('binds a fresh server + opens the Canvas when nothing is running yet', async () => {
     const { projectDir, io } = await scratchProject();
-    await fs.mkdir(resolveProjectPaths(projectDir).shipwrightDir, { recursive: true });
+    await fs.mkdir(resolveProjectPaths(projectDir).dokimaDir, { recursive: true });
     const boot = fakeBootResult(projectDir);
     const runBootSequence = vi.fn().mockResolvedValue(boot);
     const detectRunningCore = vi.fn().mockResolvedValue(false);
@@ -140,9 +140,9 @@ describe('runPackagedCli', () => {
     expect(addHook).toHaveBeenCalledWith('onClose', expect.any(Function));
   });
 
-  it('honors SHIPWRIGHT_PORT', async () => {
+  it('honors DOKIMA_PORT', async () => {
     const { projectDir, io } = await scratchProject();
-    io.env.SHIPWRIGHT_PORT = '5555';
+    io.env.DOKIMA_PORT = '5555';
     const boot = fakeBootResult(projectDir);
     const runBootSequence = vi.fn().mockResolvedValue(boot);
     const detectRunningCore = vi.fn().mockResolvedValue(true);
@@ -232,7 +232,7 @@ describe('runPackagedCli', () => {
     const badCode = await runPackagedCli(['service', 'bogus'], io);
     expect(badCode).toBe(2);
     expect(io.stderr).toHaveBeenCalledWith(
-      expect.stringContaining('usage: shipwright service'),
+      expect.stringContaining('usage: dokima service'),
     );
   });
 

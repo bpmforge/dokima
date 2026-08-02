@@ -9,13 +9,13 @@ this ticket's write_scope (see `plan.json`'s W4-11 notes).
 
 ## The residual, precisely
 
-`server.ts`'s `injectToken()` writes `window.__SHIPWRIGHT_TOKEN__ = "<token>"`
+`server.ts`'s `injectToken()` writes `window.__DOKIMA_TOKEN__ = "<token>"`
 into every served `index.html` response, unconditionally — static assets are
 intentionally unauthenticated (the SPA shell must load before it has a
 token). Any process on the operator's machine that can reach
 `127.0.0.1:<port>` (including an agent session whose sandbox permits
 loopback, per SC-07's residual) can `curl`/`fetch` `/` and read the token
-out of the HTML, without ever touching the 0600 `~/.shipwright/token` file.
+out of the HTML, without ever touching the 0600 `~/.dokima/token` file.
 The Host/Origin allowlist (SC-08) does **not** help here: a same-machine
 `curl` or `fetch(..., {mode: 'no-cors'})` can omit `Origin` entirely (the
 allowlist treats a missing Origin as same-machine-tool-friendly, per
@@ -57,7 +57,7 @@ open that connection. This doesn't solve the bootstrap problem; it relocates
 it. The only way this closes the residual is if the token is provisioned to
 the browser through a channel `curl` can't casually replicate — e.g., a
 one-time-use short-lived exchange code minted by a local CLI command
-(`shipwright open`) that launches the browser with the code in the URL
+(`dokima open`) that launches the browser with the code in the URL
 fragment (never sent to the server, per URL-fragment semantics), which the
 SPA then exchanges once for the real token over an authenticated call. This
 is the strongest mitigation but is a real feature (new CLI command, new

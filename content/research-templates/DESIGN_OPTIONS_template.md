@@ -8,7 +8,7 @@
   compared on the same 6 dimensions in the same order: time, maintainability, scalability,
   team fit, risk, reversibility), plus FR-P8 per-claim citation tagging and a Challenger-review
   table the source has no equivalent for.
-  Author: Shipwright W5-05 (research path)
+  Author: Dokima W5-05 (research path)
   Created: 2026-07-18
 -->
 

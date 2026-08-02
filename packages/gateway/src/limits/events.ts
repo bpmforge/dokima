@@ -10,7 +10,7 @@
  * package cannot depend on `packages/events` from this ticket's write_scope
  * (`packages/gateway/src/limits/**`), so events are minted here and handed to a caller-supplied
  * sink wired to the real event log elsewhere (`packages/harbormaster/src/limit-pause*.ts`, this
- * ticket's harbormaster half, does that wiring against the real `@shipwright/events` log).
+ * ticket's harbormaster half, does that wiring against the real `@dokima/events` log).
  */
 
 export type LimitEventType = 'limit.pause' | 'limit.resume';

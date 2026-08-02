@@ -8,7 +8,7 @@
  * ticket's own canonical verify command (never the manifest's claimed
  * command — that's untrusted, attacker-controlled metadata, only ever
  * compared, never executed), and mints a durable, HMAC-anchored receipt
- * (@shipwright/events `mintReceipt`) recording what it found — on both the
+ * (@dokima/events `mintReceipt`) recording what it found — on both the
  * accept and the refusal path, so refusals carry a receipt too ("receipts
  * show why").
  */

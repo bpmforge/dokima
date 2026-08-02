@@ -7,16 +7,16 @@ import {
   getIdentity,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import type { BreakerLevel } from '@shipwright/gateway';
-import { git } from '@shipwright/git';
+} from '@dokima/events';
+import type { BreakerLevel } from '@dokima/gateway';
+import { git } from '@dokima/git';
 import {
   closeTicket,
   createTicket,
   getTicket,
   listTickets,
   type Ticket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import { berthIdentityId } from '../src/berths-identity.js';
 import {
   runBerths,
@@ -33,15 +33,15 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-berths-repo-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-berths-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-berths-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-berths-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'human-1', name: 'Brad', kind: 'human' });
 
@@ -478,10 +478,10 @@ describe('runBerths (D-010, FR-H5)', () => {
     // whole board, so reusing one log across seeds would let a later seed's
     // berths pick up an earlier seed's leftover `ready` tickets and corrupt
     // the count this test is checking.
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-berths-repo-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-berths-repo-'));
     await git(repoRoot, ['init', '-b', 'main']);
-    await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-    await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+    await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+    await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
     await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
     await git(repoRoot, ['add', '--', 'README.md']);
     await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
@@ -491,7 +491,7 @@ describe('runBerths (D-010, FR-H5)', () => {
 
     try {
       await forEachSeedAsync(8, async (rng, seed) => {
-        const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-berths-db-'));
+        const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-berths-db-'));
         dbDirs.push(dbDir);
         const log = openEventLog(path.join(dbDir, 'state.db'));
         createIdentity(log, { id: 'human-1', name: 'Brad', kind: 'human' });

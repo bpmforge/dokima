@@ -1,7 +1,7 @@
 /**
  * Real session-tree spawner enforcing `watchdog.ts`'s limits (BLUEPRINT
  * §3.6/§7.1, FR-H2). A `node:child_process` implementation that runs the
- * child in its own process group (mirroring `@shipwright/validators`'
+ * child in its own process group (mirroring `@dokima/validators`'
  * `run.ts` hang-kill pattern) and polls `checkWatchdogBreach` against
  * wall-clock elapsed time and stdout/stderr activity (the heartbeat proxy
  * — no other liveness signal exists at the process-I/O level). On breach
@@ -14,14 +14,14 @@
  * finish draining. Callers wire it straight to `deadLetterAndBlock` so
  * the ticket flips within seconds independent of teardown time (FR-H2).
  *
- * Produces a plain `SpawnSession` — the exact `@shipwright/loop` contract
+ * Produces a plain `SpawnSession` — the exact `@dokima/loop` contract
  * `loop-claim.ts`/`loop-land.ts` already use — so wiring this in later is
  * a drop-in swap for `createChildProcessSpawn`, no changes needed outside
  * this ticket's write-scope.
  */
 
 import { spawn as nodeSpawn } from 'node:child_process';
-import type { SpawnSession, SpawnSessionOutput } from '@shipwright/loop';
+import type { SpawnSession, SpawnSessionOutput } from '@dokima/loop';
 import {
   checkWatchdogBreach,
   type WatchdogBreach,

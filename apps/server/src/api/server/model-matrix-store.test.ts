@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { listModelMatrix, putModelMatrix } from './model-matrix-store.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-model-matrix-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-model-matrix-'));
 }
 
 describe('model matrix store', () => {

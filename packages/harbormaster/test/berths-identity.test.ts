@@ -2,13 +2,13 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openEventLog, type EventLog } from '@shipwright/events';
+import { openEventLog, type EventLog } from '@dokima/events';
 import { berthIdentityId, ensureBerthIdentities } from '../src/berths-identity.js';
 
 const NOW = () => '2026-07-18T00:00:00.000Z';
 
 async function setup(): Promise<{ log: EventLog; dir: string }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-berths-identity-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-berths-identity-'));
   const log = openEventLog(path.join(dir, 'state.db'));
   return { log, dir };
 }

@@ -1,13 +1,13 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { matchesAnyGlob } from '@shipwright/shared';
+import { matchesAnyGlob } from '@dokima/shared';
 
 // SC-01 (docs/SECURITY_CONTROLS.md): no write_scope may grant these, ever.
 export const HARD_EXCLUSIONS = [
   '.git',
   '.git/**',
   '.github/workflows/**',
-  '.shipwright/**',
+  '.dokima/**',
 ];
 
 export type ScopeViolationReason = 'hard-excluded' | 'outside-scope' | 'symlink-escape';

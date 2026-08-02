@@ -120,7 +120,7 @@ try {
   // ── Improvement plan ─────────────────────────────────────────────────
   // String form: the expression runs in the browser, where `window` exists —
   // an arrow function here would trip node-side no-undef.
-  const token = await page.evaluate('window.__SHIPWRIGHT_TOKEN__');
+  const token = await page.evaluate('window.__DOKIMA_TOKEN__');
   await page.request.post(`${app.base}/api/v1/projects/${projectId}/plan/evaluate`, {
     headers: { Authorization: `Bearer ${token}` },
     data: { snapshot: PLAN_SNAPSHOT },
@@ -205,14 +205,14 @@ try {
 
   // ── TOUR.md ──────────────────────────────────────────────────────────
   const md = [
-    '# Shipwright — screenshot tour',
+    '# Dokima — screenshot tour',
     '',
     'A scribe-style walkthrough of the shipped product, captured against the',
     'real server + real event log with zero mocks (Law 9 local-first: no',
-    'network, throwaway `.shipwright` home). Regenerate any time with:',
+    'network, throwaway `.dokima` home). Regenerate any time with:',
     '',
     '```sh',
-    'pnpm --filter @shipwright/web run build   # if dist/ is stale',
+    'pnpm --filter @dokima/web run build   # if dist/ is stale',
     'node apps/web/scripts/capture-tour.mjs',
     '```',
     '',

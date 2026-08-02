@@ -1,7 +1,7 @@
 /**
  * Wire types for Improvement Plans (FR-PLAN2/4, D-016). Hand-mirrored from
  * `apps/server/src/api/plans-types.ts` — apps/web may not import
- * `@shipwright/*` packages directly (ARCHITECTURE §4), same discipline as
+ * `@dokima/*` packages directly (ARCHITECTURE §4), same discipline as
  * `board/types.ts`'s own header comment.
  */
 

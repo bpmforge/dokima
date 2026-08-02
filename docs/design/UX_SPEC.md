@@ -1,4 +1,4 @@
-# Shipwright — UX Specification (the Canvas)
+# Dokima — UX Specification (the Canvas)
 
 Traces to: BLUEPRINT.md §3.1 (Canvas), §5 (HITL & notifications), §12.3 (guided first
 fifteen minutes); FR-C1..C5, FR-N1..N4; DECISIONS.md D-004 (native board), D-010
@@ -64,7 +64,7 @@ verbs, "What are we doing today?" mode picker (New Product / Onboard / Feature /
 
 ## 3. Chat Workspace (left pane — FR-C2)
 
-- **Threads per concern**: one program thread (you ↔ Shipwright-as-PM) pinned on top;
+- **Threads per concern**: one program thread (you ↔ Dokima-as-PM) pinned on top;
   ephemeral agent threads open when an agent needs you and archive on resolution.
 - **Structured cards, not walls of text**:
   - *Question card* (clarification): context, the question, options, default-if-unanswered

@@ -7,8 +7,8 @@ import {
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import { claimTicket, createTicket, getTicket, startTicket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
 import { checkWatchdogBreach, deadLetterAndBlock } from './watchdog.js';
 
 describe('checkWatchdogBreach', () => {
@@ -64,7 +64,7 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
   return {

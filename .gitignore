@@ -3,7 +3,7 @@ dist/
 apps/server/dist/
 *.tsbuildinfo
 coverage/
-.shipwright/
+.dokima/
 *.log
 .DS_Store
 .env

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   backupBeforeMigrate,
@@ -58,9 +58,9 @@ describe('migrate-guard', () => {
   });
 
   it('DowngradeRefusedError names the backup-restore path', () => {
-    const err = new DowngradeRefusedError('/proj/.shipwright/state.db', 13, 12);
+    const err = new DowngradeRefusedError('/proj/.dokima/state.db', 13, 12);
     expect(err.message).toMatch(/backup/i);
-    expect(err.message).toMatch(/\.shipwright\/backups/);
+    expect(err.message).toMatch(/\.dokima\/backups/);
     expect(err.message).toMatch(/downgrade/i);
   });
 

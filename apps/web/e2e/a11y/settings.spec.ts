@@ -11,10 +11,10 @@ test('settings page has no WCAG 2.2 AA violations', async ({ page, baseURL }) =>
   const api = await request.newContext({ baseURL });
   const tokenRes = await api.get('/');
   const html = await tokenRes.text();
-  const tokenMatch = /__SHIPWRIGHT_TOKEN__=("(?:[^"\\]|\\.)*")/.exec(html);
+  const tokenMatch = /__DOKIMA_TOKEN__=("(?:[^"\\]|\\.)*")/.exec(html);
   const token = tokenMatch ? (JSON.parse(tokenMatch[1]!) as string) : undefined;
 
-  const dir = path.join(os.tmpdir(), `shipwright-a11y-settings-${randomUUID()}`);
+  const dir = path.join(os.tmpdir(), `dokima-a11y-settings-${randomUUID()}`);
   const created = await withProjectRegistryLock(async () => {
     const res = await api.post('/api/v1/projects', {
       headers: { Authorization: `Bearer ${token}` },

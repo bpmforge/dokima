@@ -8,7 +8,7 @@ import { repoSuccessFixture as githubRepoFixture } from './github-fixtures.js';
 import { repoSuccessFixture as giteaRepoFixture } from './gitea-fixtures.js';
 import type { ForgeAdapter } from './types.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 function realAdapters(): { github: ForgeAdapter; gitea: ForgeAdapter } {
   const { fetchImpl: githubFetch } = githubFakeFetch(() => ({

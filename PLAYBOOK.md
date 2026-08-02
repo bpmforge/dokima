@@ -1,4 +1,4 @@
-# Shipwright Playbook — ticket execution discipline
+# Dokima Playbook — ticket execution discipline
 
 Companion to `MASTER_PROMPT.md`. That file says *what governs you*; this one
 says *how a ticket flows*. Ticket board: `plan.json` (schema note at top).

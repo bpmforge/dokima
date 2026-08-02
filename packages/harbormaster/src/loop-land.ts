@@ -9,12 +9,12 @@
  * mints the close receipt AND verifies the ticket branch's own commit(s)
  * (both "receipt + commit" — acceptance 1's checkpoint), then moves
  * `closeTicket` from `in_progress` to `in_review`. `in_review` does NOT
- * count toward WIP=1 (`@shipwright/tickets`' `verbs.ts`: "close is what
+ * count toward WIP=1 (`@dokima/tickets`' `verbs.ts`: "close is what
  * frees the worker to claim the next ticket" — the exact BLUEPRINT §3.6
  * "claim … -> close -> checkpoint -> repeat" shape this ticket names), so
  * this loop advances to the next claimable ticket without releasing.
  *
- * `mergeLocal` (`@shipwright/git`) is deliberately NOT wired into this
+ * `mergeLocal` (`@dokima/git`) is deliberately NOT wired into this
  * loop: landing on `main` is D-018/BLUEPRINT §297/§388's NEVER-AUTO path
  * ("the Harbormaster physically cannot self-merge... only the human (or
  * the reviewer identity under explicit policy) holds merge rights on
@@ -39,13 +39,13 @@ import {
   listWorktrees,
   type CreateWorktreeOptions,
   type WorktreeHandle,
-} from '@shipwright/git';
+} from '@dokima/git';
 import {
   policyForLevel,
   ROLE_CODING_AGENT,
   type BreakerLevel,
-} from '@shipwright/gateway';
-import { runSession, type SessionResult, type SpawnSession } from '@shipwright/loop';
+} from '@dokima/gateway';
+import { runSession, type SessionResult, type SpawnSession } from '@dokima/loop';
 import {
   claimTicket,
   commentTicket,
@@ -55,8 +55,8 @@ import {
   releaseTicket,
   startTicket,
   type Ticket,
-} from '@shipwright/tickets';
-import type { EventLog } from '@shipwright/events';
+} from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
 import { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
@@ -113,7 +113,7 @@ export interface LandLoopOptions {
   readonly contentDir: string;
   readonly signingKey: string;
   readonly spawn: SpawnSession;
-  /** Dual-remote push primitive (FR-I2). Inject `@shipwright/forge`'s `pushToRemotes` in production. */
+  /** Dual-remote push primitive (FR-I2). Inject `@dokima/forge`'s `pushToRemotes` in production. */
   readonly pushToRemotes: PushToRemotesFn;
   readonly buildHandoff: HandoffBuilder;
   /** Commit-ish each ticket's worktree branches from AND the close gate's fork point. Defaults to 'main'. */
@@ -189,7 +189,7 @@ async function resolveWorktree(
   ticket: Ticket,
   baseRef: string,
 ): Promise<WorktreeHandle> {
-  const worktreePath = path.join(options.repoRoot, '.shipwright', 'worktrees', ticket.id);
+  const worktreePath = path.join(options.repoRoot, '.dokima', 'worktrees', ticket.id);
   const resolvedWorktreePath = await fs.realpath(worktreePath).catch(() => undefined);
   const existing = await listWorktrees(options.repoRoot);
   const found = resolvedWorktreePath

@@ -3,7 +3,7 @@ import { problem } from '../problem.js';
 
 export function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -14,7 +14,7 @@ export function badRequest(request: FastifyRequest, detail: string) {
 
 export function notFoundProblem(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/not-found',
+    type: 'https://dokima.dev/errors/not-found',
     title: 'Not found',
     status: 404,
     detail,
@@ -26,7 +26,7 @@ export function notFoundProblem(request: FastifyRequest, detail: string) {
 /** API_DESIGN §1: invariant refusals (already-decided slate, invalid choice) return 409 with the specific rule named. */
 export function conflictProblem(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/conflict',
+    type: 'https://dokima.dev/errors/conflict',
     title: 'Refused',
     status: 409,
     detail,
@@ -38,7 +38,7 @@ export function conflictProblem(request: FastifyRequest, detail: string) {
 /** SC-08: evil/missing Host or Origin header, same rule `auth-plugin.ts`'s hook enforces app-wide. */
 export function forbiddenProblem(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/forbidden-host',
+    type: 'https://dokima.dev/errors/forbidden-host',
     title: 'Forbidden',
     status: 403,
     detail,
@@ -51,7 +51,7 @@ export function forbiddenProblem(request: FastifyRequest, detail: string) {
 /** D-005: missing/invalid bearer token, same rule `auth-plugin.ts`'s hook enforces app-wide. */
 export function unauthorizedProblem(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/unauthorized',
+    type: 'https://dokima.dev/errors/unauthorized',
     title: 'Unauthorized',
     status: 401,
     detail,

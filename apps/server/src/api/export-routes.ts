@@ -10,7 +10,7 @@
  * WIRED into `apps/server/src/api/server.ts` as of 2026-07-27, closing
  * ROADMAP's W8 exit criterion in the product rather than only at module
  * level. **Conditionally**: registration is skipped entirely unless a
- * `signingKey` is configured (`SHIPWRIGHT_SIGNING_KEY`, same env var the
+ * `signingKey` is configured (`DOKIMA_SIGNING_KEY`, same env var the
  * CLI's `run resume` uses). `POST /import` replays each receipt's anchor
  * MAC with that key, so a route registered with an empty key would let
  * anyone holding the Bearer token forge matching MACs and plant receipts —
@@ -27,8 +27,8 @@
  * as `decisions/routes.ts`, so these routes are self-protecting regardless
  * of whether/when `server.ts` registers them.
  */
-import { openEventLog, openEventLogReader } from '@shipwright/events';
-import { computeBoard, loadTickets } from '@shipwright/tickets';
+import { openEventLog, openEventLogReader } from '@dokima/events';
+import { computeBoard, loadTickets } from '@dokima/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { checkAuth, type AuthPluginOptions } from './auth-plugin.js';
 import {
@@ -75,7 +75,7 @@ function requireAuth(auth: AuthPluginOptions) {
         .type(PROBLEM_CONTENT_TYPE)
         .send(
           problem({
-            type: 'https://shipwright.dev/errors/forbidden-host',
+            type: 'https://dokima.dev/errors/forbidden-host',
             title: 'Forbidden',
             status: 403,
             detail: `${result.reason === 'host' ? 'Host' : 'Origin'} header is not an allowed localhost origin (SC-08)`,
@@ -91,7 +91,7 @@ function requireAuth(auth: AuthPluginOptions) {
       .type(PROBLEM_CONTENT_TYPE)
       .send(
         problem({
-          type: 'https://shipwright.dev/errors/unauthorized',
+          type: 'https://dokima.dev/errors/unauthorized',
           title: 'Unauthorized',
           status: 401,
           detail: 'Authorization: Bearer <token> is required (D-005)',
@@ -105,7 +105,7 @@ function requireAuth(auth: AuthPluginOptions) {
 
 function notFoundProblem(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/not-found',
+    type: 'https://dokima.dev/errors/not-found',
     title: 'Not found',
     status: 404,
     detail,
@@ -120,7 +120,7 @@ function badRequestProblem(
   evidence?: Record<string, unknown>,
 ) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -136,7 +136,7 @@ function conflictProblem(
   evidence?: Record<string, unknown>,
 ) {
   return problem({
-    type: 'https://shipwright.dev/errors/conflict',
+    type: 'https://dokima.dev/errors/conflict',
     title: 'Refused',
     status: 409,
     detail,

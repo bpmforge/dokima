@@ -1,4 +1,4 @@
-import { createIdentity, getIdentity, type EventLog } from '@shipwright/events';
+import { createIdentity, getIdentity, type EventLog } from '@dokima/events';
 
 /**
  * v1 is single-operator (DECISIONS.md D-005) and this CLI is the only human

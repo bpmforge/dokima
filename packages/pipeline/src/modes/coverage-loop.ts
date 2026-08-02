@@ -1,7 +1,7 @@
 /**
  * Macro coverage loop (RALPH_WIGGUM_LOOP.md, R-B5) — the mode-level
  * INVENTORY -> DISCOVER -> VERIFY -> GAP -> REPEAT loop, as distinct from
- * `@shipwright/loop`'s per-item micro-loop (FR-L1, `runMicroLoop`) which
+ * `@dokima/loop`'s per-item micro-loop (FR-L1, `runMicroLoop`) which
  * this package cannot import (package.json is out of write_scope, the wall
  * `phases/types.ts` documents). `computeGapChecksum` is therefore a local
  * port of `micro-loop.ts`'s function of the same name and behavior
@@ -50,7 +50,7 @@ export interface CoverageLoopResult {
 }
 
 /** Deterministic checksum over a gap row set, order-independent — local
- * port of `@shipwright/loop`'s `computeGapChecksum` (see module header). */
+ * port of `@dokima/loop`'s `computeGapChecksum` (see module header). */
 export function computeGapChecksum(rows: readonly CoverageRow[]): string {
   const normalized = rows
     .map((row) => `${row.id}\x00${row.category}\x00${row.description}`)

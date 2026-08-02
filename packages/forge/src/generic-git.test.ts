@@ -5,7 +5,7 @@ import {
   GenericGitUnsupportedError,
 } from './generic-git.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 describe('GenericGitForgeAdapter — capabilities() (FR-I2: honest degradation)', () => {
   it('declares no forge support at all: prs, issues, protection, statuses all false', () => {

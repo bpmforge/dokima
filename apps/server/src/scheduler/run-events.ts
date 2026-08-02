@@ -4,9 +4,9 @@
  * harbormaster loop that emits them (orchestrator lane, out of this
  * ticket's write_scope — W5-15's own notes say SUBSCRIBE, don't rewire the
  * emitter). `run.completed`/`run.created` are both appended by
- * `@shipwright/harbormaster`'s `completeRun`/`createRun`
+ * `@dokima/harbormaster`'s `completeRun`/`createRun`
  * (packages/harbormaster/src/breakpoints-runs.ts) straight into the
- * project's `.shipwright/state.db` — the same file `plans-store.ts`
+ * project's `.dokima/state.db` — the same file `plans-store.ts`
  * already reads/writes via `withSettingsReader`, so a plain read-only SQL
  * scan is enough; no in-process event emitter exists to subscribe to
  * (harbormaster runs as a separate CLI process, not inside apps/server).

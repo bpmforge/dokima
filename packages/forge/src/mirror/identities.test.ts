@@ -3,9 +3,9 @@ import { checkMirrorPrerequisites } from './identities.js';
 
 const FULL_CONFIG = {
   makerToken: 'maker-tok',
-  makerLogin: 'shipwright-maker',
+  makerLogin: 'dokima-maker',
   reviewerToken: 'reviewer-tok',
-  reviewerLogin: 'shipwright-reviewer',
+  reviewerLogin: 'dokima-reviewer',
   repoAdminConfirmed: true,
 };
 

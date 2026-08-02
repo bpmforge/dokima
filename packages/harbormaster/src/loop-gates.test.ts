@@ -9,8 +9,8 @@ import {
   openEventLog,
   verifyReceipt,
   type EventLog,
-} from '@shipwright/events';
-import { createWorktree, git, type WorktreeHandle } from '@shipwright/git';
+} from '@dokima/events';
+import { createWorktree, git, type WorktreeHandle } from '@dokima/git';
 import {
   claimTicket,
   createTicket,
@@ -18,7 +18,7 @@ import {
   startTicket,
   type CreateTicketInput,
   type Ticket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import {
   classifySecretsGaps,
   parseGapLocation,
@@ -58,17 +58,17 @@ interface SetupOptions {
 }
 
 async function setupFixture(opts: SetupOptions = {}): Promise<Fixture> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-gates-repo-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
   await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
   if (opts.seedMain) await opts.seedMain(repoRoot);
 
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-gates-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
 
@@ -294,7 +294,7 @@ describe('runCloseGate', () => {
     );
 
     const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-gates-outside-'),
+      path.join(os.tmpdir(), 'dokima-gates-outside-'),
     );
     extraTempDirs.push(outsideDir);
     const outsideSecret = path.join(outsideDir, 'secret.txt');
@@ -338,7 +338,7 @@ describe('runCloseGate', () => {
 
   it("RED FIXTURE (TOCTOU): a claimed file swapped for an escaping symlink by the ticket's own verify command, after the initial check, is still refused at receipt-read time and never hashed into a receipt (acceptance 1/3, W1-07 symlink-escape class)", async () => {
     const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-gates-outside-'),
+      path.join(os.tmpdir(), 'dokima-gates-outside-'),
     );
     extraTempDirs.push(outsideDir);
     const outsideSecret = path.join(outsideDir, 'secret.txt');
@@ -600,7 +600,7 @@ describe('runCloseGate', () => {
     // scanner straight through to a minted close receipt. This proves that no
     // longer happens.
     const fixtureContentDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-gates-fake-validators-'),
+      path.join(os.tmpdir(), 'dokima-gates-fake-validators-'),
     );
     extraTempDirs.push(fixtureContentDir);
     await fs.writeFile(
@@ -653,7 +653,7 @@ describe('runCloseGate', () => {
     const { log, worktree } = fixture;
 
     const bareRemote = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-gates-remote-'),
+      path.join(os.tmpdir(), 'dokima-gates-remote-'),
     );
     extraTempDirs.push(bareRemote);
     await git(bareRemote, ['init', '--bare', '-b', 'main']);
@@ -696,7 +696,7 @@ describe('runCloseGate', () => {
     const { log, worktree } = fixture;
 
     const bareRemote = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'shipwright-gates-remote-'),
+      path.join(os.tmpdir(), 'dokima-gates-remote-'),
     );
     extraTempDirs.push(bareRemote);
     await git(bareRemote, ['init', '--bare', '-b', 'main']);

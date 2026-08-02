@@ -4,20 +4,20 @@
  * handle (mirrors `apps/server/src/api/notifications/emit.ts`): the row and
  * its anchoring event land in one `db.transaction()`.
  *
- * `createSlate` validates through `@shipwright/pipeline`'s
+ * `createSlate` validates through `@dokima/pipeline`'s
  * `buildFounderSlate`/`buildTechnicalSlate` (FR-P6 2-4 options / R-H1's
  * fixed 3x6 grid) — this module never reimplements that validation, only
  * persists the result.
  *
  * ID-DERIVATION (W5-13 acceptance #2, W5-19): `decideSlate` gets its next
- * D-ID exclusively from `@shipwright/pipeline`'s hardened `nextDecisionId`,
+ * D-ID exclusively from `@dokima/pipeline`'s hardened `nextDecisionId`,
  * which reads only the ledger's `| D-<n> |` ID column — never scanning
  * free-text cells (a slate's title/options/rationale is untrusted content
  * that could otherwise smuggle a `D-999`-shaped substring to jump the
  * sequence). This module must never re-derive that ID itself.
  */
 import { randomUUID } from 'node:crypto';
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import {
   buildFounderSlate,
   buildTechnicalSlate,
@@ -26,7 +26,7 @@ import {
   type FounderSlateInput,
   type Slate,
   type TechnicalSlateInput,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import {
   appendDecisionToLedger,
   ledgerPath,

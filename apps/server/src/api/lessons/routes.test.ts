@@ -1,9 +1,9 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
-import { fileFieldReport, type FieldReportRecord } from '@shipwright/memory';
-import { getTicket } from '@shipwright/tickets';
+import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
+import { fileFieldReport, type FieldReportRecord } from '@dokima/memory';
+import { getTicket } from '@dokima/tickets';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerProject } from '../projects.js';
@@ -58,9 +58,9 @@ describe('lessons routes', () => {
     projectId: string;
     projectPath: string;
   }> {
-    const fleetHome = await tmpDir('shipwright-lessons-routes-');
+    const fleetHome = await tmpDir('dokima-lessons-routes-');
     dirs.push(fleetHome);
-    const projectDir = await tmpDir('shipwright-lessons-project-');
+    const projectDir = await tmpDir('dokima-lessons-project-');
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });

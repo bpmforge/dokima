@@ -18,8 +18,8 @@ describe('isIdentityKind', () => {
 describe('contract shapes', () => {
   it('IdentityContract carries kind + auth_provider per D-005', () => {
     const identity: IdentityContract = {
-      id: 'shipwright-maker',
-      name: 'Shipwright Maker',
+      id: 'dokima-maker',
+      name: 'Dokima Maker',
       kind: 'machine',
       authProvider: null,
       role: 'maker',
@@ -33,7 +33,7 @@ describe('contract shapes', () => {
     const event: EventEnvelopeContract = {
       seq: 1,
       eventType: 'ticket.created',
-      actorId: 'shipwright-maker',
+      actorId: 'dokima-maker',
       ticketId: 'W0-02',
       runId: null,
       payload: { title: 'test' },

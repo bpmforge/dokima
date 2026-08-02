@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   emitNotification,

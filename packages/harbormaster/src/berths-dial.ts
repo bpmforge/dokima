@@ -1,7 +1,7 @@
 /**
  * Concurrency dial resolution (BLUEPRINT §5/§12, D-010, FR-H5, FR-S1):
  * "berths 1–N" is a project setting like any other under the three-scope
- * system (`@shipwright/shared`'s `run > project > global` precedence,
+ * system (`@dokima/shared`'s `run > project > global` precedence,
  * D-012) — a run's berth count is just the effective value of the
  * `berths` key, with the run scope acting as the per-run override
  * (`ScopedSettings.run`, e.g. a CLI `--berths` flag or the UI's run
@@ -15,7 +15,7 @@
  * most conservative mode, when none was).
  */
 
-import { resolveEffectiveValue, type ScopedSettings } from '@shipwright/shared';
+import { resolveEffectiveValue, type ScopedSettings } from '@dokima/shared';
 import type { BreakpointMode } from './breakpoints-types.js';
 
 export const BERTHS_SETTINGS_KEY = 'berths';

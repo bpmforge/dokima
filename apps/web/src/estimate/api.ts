@@ -1,7 +1,7 @@
 /**
  * Estimate/spend/digest REST client (`apps/server/src/api/server/
  * estimate-routes.ts`). Bearer token comes from
- * `window.__SHIPWRIGHT_TOKEN__`, same server-injected global
+ * `window.__DOKIMA_TOKEN__`, same server-injected global
  * `apps/web/src/fleet/api.ts`/`apps/web/src/chat/api.ts` already read.
  */
 
@@ -96,7 +96,7 @@ export class EstimateApiError extends Error {
 }
 
 export function readInjectedToken(): string | undefined {
-  return (globalThis as { __SHIPWRIGHT_TOKEN__?: string }).__SHIPWRIGHT_TOKEN__;
+  return (globalThis as { __DOKIMA_TOKEN__?: string }).__DOKIMA_TOKEN__;
 }
 
 export interface EstimateApiOptions {

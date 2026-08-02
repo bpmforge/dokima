@@ -1,9 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { openEventLog, openEventLogReader, type EventLog } from '@shipwright/events';
+import { openEventLog, openEventLogReader, type EventLog } from '@dokima/events';
 
 /** Project-local state per DATABASE.md §5 — gitignored, travels with the repo dir. */
-export const PROJECT_STATE_DIR = '.shipwright';
+export const PROJECT_STATE_DIR = '.dokima';
 export const PROJECT_STATE_FILE = 'state.db';
 
 export function resolveDbPath(cwd: string, override?: string): string {
@@ -12,7 +12,7 @@ export function resolveDbPath(cwd: string, override?: string): string {
 }
 
 /**
- * Opens the writable log for board/verb commands. Creates the `.shipwright/`
+ * Opens the writable log for board/verb commands. Creates the `.dokima/`
  * directory on first use (better-sqlite3 does not create parent dirs) — verb
  * commands are the CLI's own single writer for the duration of the call
  * (C6); the connection closes before the process exits.

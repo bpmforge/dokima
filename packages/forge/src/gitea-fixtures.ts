@@ -7,7 +7,7 @@
  */
 
 export const repoSuccessFixture = {
-  full_name: 'shipwright-org/demo',
+  full_name: 'dokima-org/demo',
   default_branch: 'main',
   private: true,
   archived: false,
@@ -15,7 +15,7 @@ export const repoSuccessFixture = {
 };
 
 export const repoMissingPermissionsFixture = {
-  full_name: 'shipwright-org/demo',
+  full_name: 'dokima-org/demo',
   default_branch: 'main',
   private: true,
   archived: false,
@@ -68,10 +68,10 @@ export const pullRequestSuccessFixture = {
   state: 'open',
   title: 'feat(W6-02): Gitea adapter + generic git fallback',
   body: 'ticket body',
-  html_url: 'https://gitea.example.com/shipwright-org/demo/pulls/42',
+  html_url: 'https://gitea.example.com/dokima-org/demo/pulls/42',
   merged: false,
   merge_commit_sha: null,
-  user: { login: 'shipwright-maker' },
+  user: { login: 'dokima-maker' },
   head: { ref: 'sw/w6-02-gitea-adapter', sha: 'abc123def456' },
   base: { ref: 'main' },
 };
@@ -103,9 +103,9 @@ export const issueSuccessFixture = {
   state: 'open',
   title: 'W6-02 — Gitea adapter + generic git fallback',
   body: 'mirrored ticket body',
-  html_url: 'https://gitea.example.com/shipwright-org/demo/issues/7',
+  html_url: 'https://gitea.example.com/dokima-org/demo/issues/7',
   labels: [],
-  assignees: [{ login: 'shipwright-maker' }],
+  assignees: [{ login: 'dokima-maker' }],
 };
 
 export const issueClosedFixture = {
@@ -118,15 +118,15 @@ export const issueLabelsAppliedFixture = [{ name: 'lane:integrations' }];
 export const issueCommentSuccessFixture = {
   id: 5001,
   body: 'accepted — reviewer!=author verified',
-  user: { login: 'shipwright-reviewer' },
-  html_url: 'https://gitea.example.com/shipwright-org/demo/issues/7#issuecomment-5001',
+  user: { login: 'dokima-reviewer' },
+  html_url: 'https://gitea.example.com/dokima-org/demo/issues/7#issuecomment-5001',
   created_at: '2026-07-18T12:00:00Z',
 };
 
 export const commitStatusSuccessFixture = {
   id: 9001,
   status: 'success',
-  context: 'shipwright/gate',
+  context: 'dokima/gate',
   created_at: '2026-07-18T12:05:00Z',
 };
 

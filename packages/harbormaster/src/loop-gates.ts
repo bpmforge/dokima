@@ -28,10 +28,10 @@
 
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import { computeChangedPaths } from '@shipwright/loop';
-import { loadValidatorPack, runValidatorPack } from '@shipwright/validators';
-import { mintReceipt, type ReceiptInputFile } from '@shipwright/events';
-import { closeTicket, commentTicket } from '@shipwright/tickets';
+import { computeChangedPaths } from '@dokima/loop';
+import { loadValidatorPack, runValidatorPack } from '@dokima/validators';
+import { mintReceipt, type ReceiptInputFile } from '@dokima/events';
+import { closeTicket, commentTicket } from '@dokima/tickets';
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
 import {
   DEFAULT_REQUIRED_VALIDATORS,

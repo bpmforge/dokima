@@ -122,7 +122,7 @@ extract_paths() {
   grep -oE '`[^`]*/[^`]*`' | tr -d '`'
 }
 
-# Symlink/traversal-safe existence check (Shipwright field run 2026-07-12,
+# Symlink/traversal-safe existence check (Dokima field run 2026-07-12,
 # W1-07 escape class): a bare `-e "$ROOT/$p"` (a) resolves `../` traversal
 # outside ROOT and (b) FOLLOWS a symlink the session created inside its own
 # scope pointing outside (src/leak.txt -> ~/.ssh/id_rsa) -- so a manifest

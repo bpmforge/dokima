@@ -98,7 +98,7 @@ export function ExpertOverridesPanel({ projectId }: ExpertOverridesPanelProps) {
           <input
             value={draft.path}
             onChange={(e) => setDraft({ ...draft, path: e.target.value })}
-            placeholder=".shipwright/experts/my-expert.md"
+            placeholder=".dokima/experts/my-expert.md"
           />
         </label>
         <label className="settings__checkbox">

@@ -1,6 +1,6 @@
 # Dogfood run report (W8-01)
 
-The 1.0 gate (BLUEPRINT §9 W8): Shipwright's own onboard pipeline —
+The 1.0 gate (BLUEPRINT §9 W8): Dokima's own onboard pipeline —
 including the security cluster and threat-model refresh — run against this
 repo through the real gateway (LM Studio, `nemotron-cascade-2-30b-a3b`,
 local-first per Law 9, no network). Driver: `docs/dogfood/run-dogfood.mjs`,
@@ -96,8 +96,8 @@ set — no suppression occurred, so raw == effective for this manifest.
 - `receipts.json` — per-step audit evidence (session exit code + observed
   write-scope check), each row backed by a real `onboard.step-complete`
   AUDIT event signed by that step's `specialist:<role>` identity, hash
-  -chained into `.shipwright/state.db` — not a minted
-  `@shipwright/events` receipt, since onboard findings are a specialist's
+  -chained into `.dokima/state.db` — not a minted
+  `@dokima/events` receipt, since onboard findings are a specialist's
   self-report with no independent validator run against them (see the
   file's own `note` field and `onboard-executor.ts`'s SELF-ATTEST NOTE —
   minting a gate/coverage receipt for a self-report would be the

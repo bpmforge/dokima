@@ -2,7 +2,7 @@ import type { TicketDraftInput } from './types.js';
 
 /**
  * write_scope glob-overlap detector — duplicated (not imported, see types.ts
- * header) from `@shipwright/shared`'s `glob/overlap.ts`: `*` = single path
+ * header) from `@dokima/shared`'s `glob/overlap.ts`: `*` = single path
  * segment run, `**` = zero or more full segments, `?` = one non-slash char.
  */
 function segmentTextOverlaps(a: string, b: string): boolean {

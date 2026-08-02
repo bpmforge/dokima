@@ -20,7 +20,7 @@ const LICENSING_SLATE: FounderSlateInput = {
 describe('synthesizeBlueprint', () => {
   it('assembles a version-1 document with sections and one slate per open question', () => {
     const result = synthesizeBlueprint({
-      title: 'Shipwright — Blueprint',
+      title: 'Dokima — Blueprint',
       sections: [
         { heading: 'Software Requirements (condensed)', body: 'FR-P7: ...' },
         { heading: 'High-level architecture', body: 'Event-sourced core, ...' },
@@ -32,7 +32,7 @@ describe('synthesizeBlueprint', () => {
     expect(result.slates).toHaveLength(1);
     expect(result.slates[0]).toMatchObject({ kind: 'founder', title: 'What license?' });
 
-    expect(result.document.markdown).toContain('# Shipwright — Blueprint');
+    expect(result.document.markdown).toContain('# Dokima — Blueprint');
     expect(result.document.markdown).toContain('## Software Requirements (condensed)');
     expect(result.document.markdown).toContain('## High-level architecture');
     expect(result.document.markdown).toContain('## Open Questions');

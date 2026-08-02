@@ -15,7 +15,7 @@ import {
   validationErrorFixture,
 } from './github-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 
 describe('GitHubForgeAdapter — capabilities()', () => {
   it('declares full support: prs, issues, protection, statuses', () => {

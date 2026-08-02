@@ -1,5 +1,5 @@
 /**
- * `shipwright doctor` (DEPLOYMENT.md §8): port free, DB integrity
+ * `dokima doctor` (DEPLOYMENT.md §8): port free, DB integrity
  * (`PRAGMA integrity_check` + audit tail check), keychain reachable,
  * provider reachability, pack signatures, worktree orphans. Each check is
  * independent and reported individually — one check's failure never hides
@@ -7,9 +7,9 @@
  */
 
 import { promises as fs } from 'node:fs';
-import { openEventLogReader, type EventLog } from '@shipwright/events';
-import { type CredentialStore, resolveCredentialStore } from '@shipwright/shared';
-import { listTickets } from '@shipwright/tickets';
+import { openEventLogReader, type EventLog } from '@dokima/events';
+import { type CredentialStore, resolveCredentialStore } from '@dokima/shared';
+import { listTickets } from '@dokima/tickets';
 import { auditTailCheck } from '../../bootstrap/audit-tail.js';
 import { type CliIO, resolvePort } from '../../bootstrap/cli.js';
 import { resolveProjectPaths, type ProjectPaths } from '../../bootstrap/config.js';
@@ -61,7 +61,7 @@ async function checkPort(io: CliIO, deps: DoctorDeps): Promise<DoctorCheck> {
     name: 'port',
     status: 'ok',
     detail: occupied
-      ? `port ${port} is in use by a running shipwright core`
+      ? `port ${port} is in use by a running dokima core`
       : `port ${port} is free`,
   };
 }
@@ -105,7 +105,7 @@ async function checkDbIntegrity(paths: ProjectPaths): Promise<DoctorCheck> {
   }
 }
 
-const KEYCHAIN_PROBE_REF = 'shipwright-doctor-probe';
+const KEYCHAIN_PROBE_REF = 'dokima-doctor-probe';
 
 async function checkKeychain(io: CliIO, deps: DoctorDeps): Promise<DoctorCheck> {
   const resolveCredentialStoreImpl =
@@ -155,7 +155,7 @@ async function checkProviders(io: CliIO, deps: DoctorDeps): Promise<DoctorCheck>
     return {
       name: 'providers',
       status: 'warn',
-      detail: `unreachable: ${unreachable.join(', ')} (run 'shipwright providers refresh' after fixing)`,
+      detail: `unreachable: ${unreachable.join(', ')} (run 'dokima providers refresh' after fixing)`,
     };
   }
   return {

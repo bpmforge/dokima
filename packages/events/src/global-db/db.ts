@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { computeShipwrightHome } from '@shipwright/shared';
+import { computeDokimaHome } from '@dokima/shared';
 import { applyGlobalMigrations } from './migrate.js';
 
 /** A single writable/readable connection to the fleet-scope registry (DATABASE.md §7). */
@@ -12,13 +12,13 @@ export interface GlobalDb {
 }
 
 export interface OpenGlobalDbOptions {
-  /** Overrides `computeShipwrightHome()`'s env source — tests only. */
+  /** Overrides `computeDokimaHome()`'s env source — tests only. */
   env?: NodeJS.ProcessEnv;
 }
 
-/** `~/.shipwright/global.db` (relocatable via SHIPWRIGHT_HOME, same as `config.json`). */
+/** `~/.dokima/global.db` (relocatable via DOKIMA_HOME, same as `config.json`). */
 export function defaultGlobalDbPath(env: NodeJS.ProcessEnv = process.env): string {
-  return path.join(computeShipwrightHome(env), 'global.db');
+  return path.join(computeDokimaHome(env), 'global.db');
 }
 
 /**
@@ -27,8 +27,8 @@ export function defaultGlobalDbPath(env: NodeJS.ProcessEnv = process.env): strin
  * project's `state.db` (`../db.ts`'s `openEventLog`) — `timeout: 0` fails a
  * second writer loudly (SQLITE_BUSY) instead of blocking. Unlike
  * `openEventLog`, this creates its own parent directory: a project's
- * `.shipwright/` has an established caller-side `mkdir` (apps/server's
- * project registration flow); `~/.shipwright/` has no such owner yet within
+ * `.dokima/` has an established caller-side `mkdir` (apps/server's
+ * project registration flow); `~/.dokima/` has no such owner yet within
  * this ticket's write_scope, so a first-run open would otherwise ENOENT.
  */
 export function openGlobalDb(dbPath?: string, opts: OpenGlobalDbOptions = {}): GlobalDb {

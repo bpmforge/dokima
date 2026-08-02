@@ -1,6 +1,6 @@
 # Source study — bpm-opencode-experts (expert-system SDLC pipeline)
 
-**Question:** What is the operational logic Shipwright must productize from the expert-system pipeline?
+**Question:** What is the operational logic Dokima must productize from the expert-system pipeline?
 **Method:** primary-source exploration of `~/Code/bpm-opencode-experts` (2026-07-10), file-path citations throughout.
 **Feeds:** Pipeline Engine, Ticket Engine, Validator Packs, Expert Registry (BLUEPRINT §3.2/3.4/3.5; D-011).
 
@@ -59,7 +59,7 @@ Nested: micro-agents in macro-loops, each running its own bounded micro-loop (`a
 
 ## 5. Autonomy protocol
 
-`agents/shared/AUTONOMY_PROTOCOL.md`. Source of truth `autonomy:` in `docs/work/.model-context`. Two levels: `interactive` (default) and `auto` (each gated pause takes its documented default → one line appended to APPROVALS.md → continue). Ledger row: `| timestamp | pause_site_id | default_taken | signed_by | what would have been asked |`, validated by `validate-autonomy-ledger.sh`. Gated sites G-1…G-8 each with a documented auto-default. **NEVER-AUTO NA-1…NA-7** (always pause even in auto): interviews, destructive DB ops, merges/releases/deploys, tech-stack additions, auth/crypto fixes, scope-boundary blocks, no-safe-default escalations. NA rows must be human-signed (agent-name blocklist). Known residual gap (their own admission): the ledger is self-written — a deterrent, not proof — closing it requires an out-of-process conductor. **Shipwright's Harbormaster is exactly that closure.**
+`agents/shared/AUTONOMY_PROTOCOL.md`. Source of truth `autonomy:` in `docs/work/.model-context`. Two levels: `interactive` (default) and `auto` (each gated pause takes its documented default → one line appended to APPROVALS.md → continue). Ledger row: `| timestamp | pause_site_id | default_taken | signed_by | what would have been asked |`, validated by `validate-autonomy-ledger.sh`. Gated sites G-1…G-8 each with a documented auto-default. **NEVER-AUTO NA-1…NA-7** (always pause even in auto): interviews, destructive DB ops, merges/releases/deploys, tech-stack additions, auth/crypto fixes, scope-boundary blocks, no-safe-default escalations. NA rows must be human-signed (agent-name blocklist). Known residual gap (their own admission): the ledger is self-written — a deterrent, not proof — closing it requires an out-of-process conductor. **Dokima's Harbormaster is exactly that closure.**
 
 ## 6. Ticket contract
 
@@ -71,12 +71,12 @@ Nested: micro-agents in macro-loops, each running its own bounded micro-loop (`a
 
 ## 7. Validators
 
-66 `validate-*.sh` scripts + orchestrators (`validate-phase-gate.sh`, `run-coverage-loop.sh`, `run-handoff-gates.sh`). Categories: phase-artifact/requirements; architecture/design (module boundaries, circular deps, C3 coverage, ADRs, observability, resilience, data governance); API/DB (api-coverage/consistency, contract conformance, ERD, sequences, migrations); implementation/code-health (build, lint, tests, tests-mapping, e2e-setup, dead code, file size, smoke, deps, no-reinvent); security (owasp, security-controls, iac); UX/a11y (ux-spec, design-system, wcag); doc quality (catalog, counts, render health, mermaid); process/gate integrity (phase-gate, challenger-gate, completion-manifest, scope, handoff-discipline, tracker-fresh, state-drift, loop-readiness, persistence); tickets/autonomy (tickets, ticket-hygiene, close-receipt, autonomy-ledger, autonomy-wiring); mode-scoped coverage. A parallel `scripts/test-*.ts` suite (~30 files) unit-tests the validators themselves — that suite is the seed of Shipwright's conformance tests (D-008).
+66 `validate-*.sh` scripts + orchestrators (`validate-phase-gate.sh`, `run-coverage-loop.sh`, `run-handoff-gates.sh`). Categories: phase-artifact/requirements; architecture/design (module boundaries, circular deps, C3 coverage, ADRs, observability, resilience, data governance); API/DB (api-coverage/consistency, contract conformance, ERD, sequences, migrations); implementation/code-health (build, lint, tests, tests-mapping, e2e-setup, dead code, file size, smoke, deps, no-reinvent); security (owasp, security-controls, iac); UX/a11y (ux-spec, design-system, wcag); doc quality (catalog, counts, render health, mermaid); process/gate integrity (phase-gate, challenger-gate, completion-manifest, scope, handoff-discipline, tracker-fresh, state-drift, loop-readiness, persistence); tickets/autonomy (tickets, ticket-hygiene, close-receipt, autonomy-ledger, autonomy-wiring); mode-scoped coverage. A parallel `scripts/test-*.ts` suite (~30 files) unit-tests the validators themselves — that suite is the seed of Dokima's conformance tests (D-008).
 
-## Shipwright takeaways
+## Dokima takeaways
 
 1. Import the whole roster + validator library as content (D-011); the validator *contract* (exit 0/1 + JSON gaps) is the plug-in API.
-2. Receipts (T27.1 pattern) are the gate primitive — Shipwright generalizes them to every state transition (C3).
-3. The micro-loop contract and the HANDOFF block port as-is; executor dispatch collapses to one mechanism (child-process sessions) since Shipwright owns its runtime.
+2. Receipts (T27.1 pattern) are the gate primitive — Dokima generalizes them to every state transition (C3).
+3. The micro-loop contract and the HANDOFF block port as-is; executor dispatch collapses to one mechanism (child-process sessions) since Dokima owns its runtime.
 4. The autonomy protocol's admitted gap (self-written ledger) is closed structurally by the Harbormaster.
-5. The ticket schema is adopted nearly verbatim; Shipwright adds event-sourcing underneath it.
+5. The ticket schema is adopted nearly verbatim; Dokima adds event-sourcing underneath it.

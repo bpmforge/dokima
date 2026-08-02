@@ -1,5 +1,5 @@
 {
-  "name": "@shipwright/events",
+  "name": "@dokima/events",
   "private": true,
   "type": "module",
   "version": "0.0.0",
@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shipwright/shared": "workspace:*",
+    "@dokima/shared": "workspace:*",
     "better-sqlite3": "^12.11.1"
   },
   "devDependencies": {

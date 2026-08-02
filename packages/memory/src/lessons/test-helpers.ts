@@ -2,7 +2,7 @@
  * Test-only handle factory for the lessons package. Same technique as
  * `../playbook/test-helpers.ts` (Node 22's builtin `node:sqlite`, schema
  * applied by reading migration files directly rather than going through
- * `@shipwright/events`' migration runner) — `010_playbook.sql` is included
+ * `@dokima/events`' migration runner) — `010_playbook.sql` is included
  * because `triage.ts` writes into the `playbook` table, and
  * `012_field_reports.sql`'s `resulting_playbook_entry_id` column references
  * it.

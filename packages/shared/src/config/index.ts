@@ -22,7 +22,7 @@ export {
   SettingsFileShapeError,
   computeGlobalConfigPath,
   computeProjectSettingsPath,
-  computeShipwrightHome,
+  computeDokimaHome,
   findSecretLikeKeys,
   loadGlobalConfig,
   loadProjectSettings,

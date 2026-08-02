@@ -9,7 +9,7 @@ import {
   issueSuccessFixture,
 } from './gitea-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 const BASE_URL = 'https://gitea.example.com';
 
 describe('GiteaForgeAdapter — issue mirror (FR-I2)', () => {
@@ -27,7 +27,7 @@ describe('GiteaForgeAdapter — issue mirror (FR-I2)', () => {
     const issue = await adapter.createIssue(REF, {
       title: 'W6-02 — Gitea adapter + generic git fallback',
       body: 'mirrored ticket body',
-      assignees: ['shipwright-maker'],
+      assignees: ['dokima-maker'],
     });
 
     expect(calls).toHaveLength(1);
@@ -35,7 +35,7 @@ describe('GiteaForgeAdapter — issue mirror (FR-I2)', () => {
     expect(calls[0]?.body).toEqual({
       title: 'W6-02 — Gitea adapter + generic git fallback',
       body: 'mirrored ticket body',
-      assignees: ['shipwright-maker'],
+      assignees: ['dokima-maker'],
     });
     expect(issue).toEqual({
       number: 7,
@@ -43,9 +43,9 @@ describe('GiteaForgeAdapter — issue mirror (FR-I2)', () => {
       stateReason: null,
       title: 'W6-02 — Gitea adapter + generic git fallback',
       body: 'mirrored ticket body',
-      htmlUrl: 'https://gitea.example.com/shipwright-org/demo/issues/7',
+      htmlUrl: 'https://gitea.example.com/dokima-org/demo/issues/7',
       labels: [],
-      assignees: ['shipwright-maker'],
+      assignees: ['dokima-maker'],
     });
   });
 
@@ -68,7 +68,7 @@ describe('GiteaForgeAdapter — issue mirror (FR-I2)', () => {
     expect(calls).toHaveLength(2);
     expect(calls[1]?.method).toBe('PUT');
     expect(calls[1]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/issues/7/labels',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/issues/7/labels',
     );
     expect(calls[1]?.body).toEqual({ labels: ['lane:integrations'] });
     expect(issue.labels).toEqual(['lane:integrations']);
@@ -132,8 +132,8 @@ describe('GiteaForgeAdapter — issue mirror (FR-I2)', () => {
     expect(comment).toEqual({
       id: 5001,
       body: 'accepted — reviewer!=author verified',
-      authorLogin: 'shipwright-reviewer',
-      htmlUrl: 'https://gitea.example.com/shipwright-org/demo/issues/7#issuecomment-5001',
+      authorLogin: 'dokima-reviewer',
+      htmlUrl: 'https://gitea.example.com/dokima-org/demo/issues/7#issuecomment-5001',
       createdAt: '2026-07-18T12:00:00Z',
     });
     expect(calls[0]?.body).toEqual({ body: 'accepted' });

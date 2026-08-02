@@ -6,8 +6,8 @@
  * Neither caller re-implements the real dispatch/executor/lifecycle wiring
  * — both just supply `projectPath` + an already-open `EventLog`.
  */
-import { appendEvent, type EventLog } from '@shipwright/events';
-import type { OnboardRunResult, RunOnboardInput } from '@shipwright/pipeline';
+import { appendEvent, type EventLog } from '@dokima/events';
+import type { OnboardRunResult, RunOnboardInput } from '@dokima/pipeline';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../server/board-actor.js';
 import {
   acceptOnboardPlanItems,

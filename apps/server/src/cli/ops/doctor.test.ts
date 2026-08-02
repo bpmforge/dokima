@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { appendEvent, createIdentity, openEventLog } from '@shipwright/events';
-import { createInMemoryCredentialStore, type CredentialStore } from '@shipwright/shared';
+import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
+import { createInMemoryCredentialStore, type CredentialStore } from '@dokima/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CliIO } from '../../bootstrap/cli.js';
 import { resolveProjectPaths } from '../../bootstrap/config.js';
@@ -67,7 +67,7 @@ describe('runDoctor', () => {
   it('passes db-integrity on a real seeded event log', async () => {
     const io = await scratchIo();
     const paths = resolveProjectPaths(io.cwd);
-    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+    await fs.mkdir(paths.dokimaDir, { recursive: true });
     const log = openEventLog(paths.dbPath);
     createIdentity(log, { id: 'human-1', name: 'Operator', kind: 'human' });
     appendEvent(log, { eventType: 'ticket.commented', actorId: 'human-1', payload: {} });
@@ -87,7 +87,7 @@ describe('runDoctor', () => {
   it('fails db-integrity when the chain is broken', async () => {
     const io = await scratchIo();
     const paths = resolveProjectPaths(io.cwd);
-    await fs.mkdir(paths.shipwrightDir, { recursive: true });
+    await fs.mkdir(paths.dokimaDir, { recursive: true });
     const log = openEventLog(paths.dbPath);
     createIdentity(log, { id: 'human-1', name: 'Operator', kind: 'human' });
     // events are INSERT-only (no UPDATE, DATABASE.md §2) — a tamper attempt

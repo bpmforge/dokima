@@ -15,29 +15,29 @@ describe('resolveLogLevel', () => {
   });
 
   it('accepts debug', () => {
-    expect(resolveLogLevel({ SHIPWRIGHT_LOG_LEVEL: 'debug' })).toBe('debug');
+    expect(resolveLogLevel({ DOKIMA_LOG_LEVEL: 'debug' })).toBe('debug');
   });
 
   it('falls back to info for an unrecognized value', () => {
-    expect(resolveLogLevel({ SHIPWRIGHT_LOG_LEVEL: 'verbose' })).toBe('info');
+    expect(resolveLogLevel({ DOKIMA_LOG_LEVEL: 'verbose' })).toBe('info');
   });
 });
 
 describe('resolveHomePaths', () => {
-  it('honors SHIPWRIGHT_HOME', () => {
-    const home = resolveHomePaths({ SHIPWRIGHT_HOME: '/tmp/sw-home' });
+  it('honors DOKIMA_HOME', () => {
+    const home = resolveHomePaths({ DOKIMA_HOME: '/tmp/sw-home' });
     expect(home.home).toBe('/tmp/sw-home');
     expect(home.packsDir).toBe('/tmp/sw-home/packs');
   });
 });
 
 describe('resolveProjectPaths', () => {
-  it('derives .shipwright/ layout from the project dir', () => {
+  it('derives .dokima/ layout from the project dir', () => {
     const paths = resolveProjectPaths('/tmp/my-project');
-    expect(paths.shipwrightDir).toBe('/tmp/my-project/.shipwright');
-    expect(paths.dbPath).toBe('/tmp/my-project/.shipwright/state.db');
-    expect(paths.backupsDir).toBe('/tmp/my-project/.shipwright/backups');
-    expect(paths.worktreesDir).toBe('/tmp/my-project/.shipwright/worktrees');
+    expect(paths.dokimaDir).toBe('/tmp/my-project/.dokima');
+    expect(paths.dbPath).toBe('/tmp/my-project/.dokima/state.db');
+    expect(paths.backupsDir).toBe('/tmp/my-project/.dokima/backups');
+    expect(paths.worktreesDir).toBe('/tmp/my-project/.dokima/worktrees');
   });
 });
 
@@ -50,17 +50,17 @@ describe('ensureConfigDirs', () => {
     }
   });
 
-  it('creates ~/.shipwright and <project>/.shipwright, mode 0700', async () => {
+  it('creates ~/.dokima and <project>/.dokima, mode 0700', async () => {
     const home = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-home-'));
     const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-project-'));
     scratchDirs.push(home, projectDir);
 
     const { home: homePaths, project } = await ensureConfigDirs(projectDir, {
-      SHIPWRIGHT_HOME: home,
+      DOKIMA_HOME: home,
     });
 
     const homeStat = await fs.stat(homePaths.home);
-    const projectStat = await fs.stat(project.shipwrightDir);
+    const projectStat = await fs.stat(project.dokimaDir);
     expect(homeStat.mode & 0o777).toBe(0o700);
     expect(projectStat.mode & 0o777).toBe(0o700);
     await expect(fs.stat(homePaths.packsDir)).resolves.toBeDefined();

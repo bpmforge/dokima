@@ -5,7 +5,7 @@
  * would require re-`JSON.stringify`-ing it for the bundle, which is not
  * guaranteed to reproduce the exact bytes the hash was computed over.
  */
-import type { EventLog } from '@shipwright/events';
+import type { EventLog } from '@dokima/events';
 import {
   EXPORT_BUNDLE_VERSION,
   type EventRow,

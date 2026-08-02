@@ -1,14 +1,14 @@
 /**
- * `shipwright backup` (DEPLOYMENT.md §4/§8): SQLite online backup
+ * `dokima backup` (DEPLOYMENT.md §4/§8): SQLite online backup
  * (`VACUUM INTO`) of the current project's `state.db` into
- * `.shipwright/backups/`, then prunes to the retention count (default 7).
+ * `.dokima/backups/`, then prunes to the retention count (default 7).
  */
 
 import {
   createOnlineBackup,
   pruneBackups,
   DEFAULT_RETENTION_COUNT,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { resolveProjectPaths } from '../../bootstrap/config.js';
 import type { CliIO } from '../../bootstrap/cli.js';
 

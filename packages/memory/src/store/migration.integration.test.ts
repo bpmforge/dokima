@@ -1,12 +1,12 @@
 /**
  * Proves 009_memory.sql applies cleanly through the REAL migration runner
- * (`@shipwright/events`' `openEventLog` -> `applyMigrations`, the
+ * (`@dokima/events`' `openEventLog` -> `applyMigrations`, the
  * better-sqlite3-backed single-writer connection, ARCHITECTURE.md §4 law
  * 4) — every other test in this package uses `test-helpers.ts`'s
  * `createTestHandle` (node:sqlite, schema applied by reading the migration
  * file directly), which never exercises the external-content FTS5 triggers
  * against the actual engine a real caller will use. `memory` can't
- * statically import `@shipwright/events` (no package.json dependency in
+ * statically import `@dokima/events` (no package.json dependency in
  * this ticket's write_scope), so this dynamically imports it by absolute
  * `file://` URL — same technique as anti-jarvis-gap.test.ts/
  * manifest-gap.test.ts.
@@ -52,7 +52,7 @@ async function loadEventsPackage(): Promise<EventsModule> {
 
 const NOW = () => '2026-07-20T12:00:00.000Z';
 
-describe('009_memory.sql through the real @shipwright/events runner', () => {
+describe('009_memory.sql through the real @dokima/events runner', () => {
   it('creates facts/facts_fts/calibration/working_findings, and FTS5 triggers stay in sync', async () => {
     const { openEventLog, createTempDbPath } = await loadEventsPackage();
     const temp = await createTempDbPath();

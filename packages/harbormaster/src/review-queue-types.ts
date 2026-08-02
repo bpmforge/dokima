@@ -5,7 +5,7 @@
  * without importing each other in a cycle.
  */
 
-import type { ReceiptRecord } from '@shipwright/events';
+import type { ReceiptRecord } from '@dokima/events';
 
 /**
  * The five risk classes an approval card can carry (DATABASE.md §4
@@ -39,7 +39,7 @@ export interface ActionDescriptor {
   readonly command?: string;
   /** Paths this action would touch, when applicable. */
   readonly touchedPaths?: readonly string[];
-  /** Write-scope violations already detected for this action (@shipwright/loop's detectScopeViolations). */
+  /** Write-scope violations already detected for this action (@dokima/loop's detectScopeViolations). */
   readonly scopeViolations?: readonly string[];
   /** Non-empty when this action would add a dependency not already in the tech-stack manifest. */
   readonly newDependencies?: readonly string[];

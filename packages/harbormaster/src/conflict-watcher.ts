@@ -17,8 +17,8 @@
  * repeatedly.
  */
 
-import { git, matchesAnyGlob } from '@shipwright/git';
-import type { EventLog } from '@shipwright/events';
+import { git, matchesAnyGlob } from '@dokima/git';
+import type { EventLog } from '@dokima/events';
 import type { ConflictDetection, HumanEdit, LeaseRecord } from './conflict-types.js';
 import { mintConflictDetected, mintHumanFileEdited } from './conflict-events.js';
 

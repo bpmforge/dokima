@@ -7,8 +7,8 @@
 
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { openEventLog, type EventLog } from '@shipwright/events';
-import { loadTickets } from '@shipwright/tickets';
+import { openEventLog, type EventLog } from '@dokima/events';
+import { loadTickets } from '@dokima/tickets';
 import type { FastifyRequest } from 'fastify';
 import {
   listProjectCards,
@@ -32,7 +32,7 @@ import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../board-actor.js';
 import { stateDbPath } from '../board-project.js';
 
 export interface NotificationRoutesOptions {
-  /** Fleet registry home dir override (defaults to computeShipwrightHome()) — tests only. */
+  /** Fleet registry home dir override (defaults to computeDokimaHome()) — tests only. */
   home?: string;
 }
 
@@ -159,7 +159,7 @@ export function isValidStatus(value: unknown): value is NotificationStatus {
 
 export function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -170,7 +170,7 @@ export function badRequest(request: FastifyRequest, detail: string) {
 
 export function notFoundProblem(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/not-found',
+    type: 'https://dokima.dev/errors/not-found',
     title: 'Not found',
     status: 404,
     detail,

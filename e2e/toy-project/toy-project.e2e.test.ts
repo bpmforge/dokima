@@ -1,8 +1,8 @@
 /**
  * W1-07 — toy-project E2E: one agent, one ticket, full trust chain.
  *
- * Drives a fixture ticket through the real @shipwright/events + tickets +
- * loop packages (imported by relative path, not `@shipwright/*`: this
+ * Drives a fixture ticket through the real @dokima/events + tickets +
+ * loop packages (imported by relative path, not `@dokima/*`: this
  * directory is not a pnpm workspace member and packages/loop's own barrel
  * is still a placeholder pending W3-01 — see the HANDOFF note in
  * plan.json's W1-07 entry) with a fake model at the one boundary BLUEPRINT
@@ -18,7 +18,7 @@
  * Negative paths: a session that lies about a file it never wrote is
  * refused before `closeTicket` is ever called, with a durable refusal
  * receipt recording why; a self-accept attempt is refused by
- * `@shipwright/tickets` itself, and this harness additionally mints a
+ * `@dokima/tickets` itself, and this harness additionally mints a
  * refusal receipt documenting that too.
  */
 
@@ -491,7 +491,7 @@ describe('toy-project E2E — full trust chain', () => {
       { now },
     );
 
-    // the owner tries to accept its own work — refused by @shipwright/tickets itself
+    // the owner tries to accept its own work — refused by @dokima/tickets itself
     let refusal: unknown;
     try {
       acceptTicket(log, { ticketId, actorId: makerId }, { now });

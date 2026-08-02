@@ -8,7 +8,7 @@ import {
   GENESIS_HASH,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import { auditTailCheck, checkAndUpdateHighWater, currentMaxSeq } from './audit-tail.js';
 

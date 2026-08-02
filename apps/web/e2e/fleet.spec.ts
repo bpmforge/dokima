@@ -10,7 +10,7 @@ import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-fleet-e2e-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-fleet-e2e-${id}`),
     name: `Fleet E2E ${id}`,
   };
 }

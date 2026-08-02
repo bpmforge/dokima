@@ -22,7 +22,7 @@ function imageAvailable(): boolean {
 }
 
 async function withTempDir<T>(run: (dir: string) => Promise<T>): Promise<T> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-sandbox-container-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-sandbox-container-'));
   try {
     return await run(dir);
   } finally {

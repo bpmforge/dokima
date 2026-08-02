@@ -19,7 +19,7 @@
  * layout to keep in sync.
  *
  * The anchor is the root `package.json`'s name. It ships inside the package, so
- * the same probe works from source and from an installed copy; `@shipwright/*`
+ * the same probe works from source and from an installed copy; `@dokima/*`
  * package manifests are skipped by name, so a call site inside `packages/shared`
  * walks past its own manifest to the real root.
  */
@@ -28,7 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Root `package.json` name -- the marker that identifies the distribution root. */
-const ROOT_PACKAGE_NAME = 'shipwright';
+const ROOT_PACKAGE_NAME = 'dokima';
 
 /** Guard against walking to `/` on a malformed install. */
 const MAX_ASCENT = 12;
@@ -38,9 +38,9 @@ let cached: string | null = null;
 export class DistributionRootNotFoundError extends Error {
   constructor(startedFrom: string) {
     super(
-      `could not locate the Shipwright distribution root: no package.json named ` +
+      `could not locate the Dokima distribution root: no package.json named ` +
         `"${ROOT_PACKAGE_NAME}" found within ${MAX_ASCENT} directories above ${startedFrom}. ` +
-        `Set SHIPWRIGHT_DIST_ROOT to override.`,
+        `Set DOKIMA_DIST_ROOT to override.`,
     );
     this.name = 'DistributionRootNotFoundError';
   }
@@ -67,12 +67,12 @@ function isRootManifest(dir: string): boolean {
  * The directory containing the root `package.json`: the monorepo root when
  * running from source, the installed package root when running from the bundle.
  *
- * `SHIPWRIGHT_DIST_ROOT` overrides the probe entirely (tests, unusual installs).
+ * `DOKIMA_DIST_ROOT` overrides the probe entirely (tests, unusual installs).
  * The result is cached because this sits on hot-ish paths (every migration run,
  * every roster read) and the answer cannot change within a process.
  */
 export function distributionRoot(): string {
-  const override = process.env.SHIPWRIGHT_DIST_ROOT;
+  const override = process.env.DOKIMA_DIST_ROOT;
   if (override !== undefined && override !== '') return path.resolve(override);
 
   if (cached !== null) return cached;

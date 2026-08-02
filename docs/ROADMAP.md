@@ -1,4 +1,4 @@
-# Shipwright — Roadmap & wave exit criteria
+# Dokima — Roadmap & wave exit criteria
 
 Waves map 1:1 to `plan.json` ticket prefixes. Gate rule (PLAYBOOK.md): wave
 N+1 starts only when wave-N exit criteria pass and are recorded in
@@ -17,7 +17,7 @@ had drifted with it). Design-review deltas: P1 +8 tickets (gap register); P3 ado
 | **W5** | Pipeline & PM | W5-01…22 | 78 | Full program runs on the sample idea against a local model in <15 min: interview → blueprint + slates → DECISIONS.md → decomposition → build → morning queue; phase receipts verify; challenger contradicts a planted false claim and forces revision; SKIPPED required units fail the phase gate; a fixture snapshot yields a deterministic ranked improvement plan whose accepted item mints a ticket and whose regression flips on the next snapshot (W5-10/11). |
 | **W6** | Integrations | W6-01…08 | 31 | GitHub + Gitea adapters green on fixtures; mirror write-through with two identities; reviewer token unreachable from an agent session (test-proven); reconciliation catches an induced drift; MCP tool call round-trip audited; dual-remote parity validator red on induced divergence. |
 | **W7** | Memory & learning | W7-01…06 | 26 | Recall provably fires inside a micro-loop (the anti-Jarvis-gap test); R0 hit skips a model call in a fixture; consolidation runs on schedule; a verified lesson changes run N+1 behavior in a two-run fixture. |
-| **W8** | Hardening & dogfood | W8-01/02/04…10 | 29 | **The 1.0 gate:** Shipwright onboards itself, runs its own security cluster, publishes receipts under docs/dogfood/; planted key blocks a close; export/import round-trips with chain verification; npx install works on a clean macOS/Linux machine + WSL smoke. |
+| **W8** | Hardening & dogfood | W8-01/02/04…10 | 29 | **The 1.0 gate:** Dokima onboards itself, runs its own security cluster, publishes receipts under docs/dogfood/; planted key blocks a close; export/import round-trips with chain verification; npx install works on a clean macOS/Linux machine + WSL smoke. |
 | **W9** | Post-1.0 quality & harness portability | W9-01…12 | 29 | Filed 2026-07-23 after the 1.0 dogfood gate, so it carries no pre-planned exit criteria: W9-01…05 close UI acceptance findings, W9-06/07 wire the phase gate to real validator runs and receipts, W9-08 fixes the validator output contract, and W9-09…12 make the conductor drivable against a repo other than this one (scripts/ under lint+test, configurable board path, byte-preserving board writes, no undeclared config dependency). Wave complete except W9-08, which is blocked on a content re-sign, not on code. |
 
 ## Resume preconditions (RELEASE_TRACKER F3 + review)

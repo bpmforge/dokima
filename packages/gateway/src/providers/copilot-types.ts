@@ -33,16 +33,16 @@ export const GITHUB_BASE_URL = 'https://github.com';
 export const GITHUB_API_BASE_URL = 'https://api.github.com';
 export const DEFAULT_COPILOT_API_BASE_URL = 'https://api.githubcopilot.com';
 export const COPILOT_OAUTH_CLIENT_ID = 'Iv1.b507a08c87ecfe98';
-export const DEFAULT_COPILOT_CREDENTIAL_REF = 'shipwright:copilot:github-token';
+export const DEFAULT_COPILOT_CREDENTIAL_REF = 'dokima:copilot:github-token';
 export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 export const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
 /** Cloud APIs support real parallelism, unlike a single-model local server (RequestQueue's default of 1); kept conservative and fully configurable since neither vendor publishes a universal safe number. */
 export const DEFAULT_CLOUD_CONCURRENCY = 4;
 /** Refresh this long before actual expiry so a request never races a token that dies mid-flight. */
 export const TOKEN_REFRESH_BUFFER_MS = 60_000;
-export const EDITOR_VERSION = 'Shipwright/0.1.0';
-export const EDITOR_PLUGIN_VERSION = 'shipwright-gateway/0.1.0';
-export const USER_AGENT = 'Shipwright-Gateway/0.1.0';
+export const EDITOR_VERSION = 'Dokima/0.1.0';
+export const EDITOR_PLUGIN_VERSION = 'dokima-gateway/0.1.0';
+export const USER_AGENT = 'Dokima-Gateway/0.1.0';
 export const COPILOT_INTEGRATION_ID = 'vscode-chat';
 
 export interface DeviceCodeInfo {

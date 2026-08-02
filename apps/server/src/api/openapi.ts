@@ -170,7 +170,7 @@ export function buildOpenApiDocument(app: FastifyInstance): OpenApiDocument {
   }
   return {
     openapi: '3.1.0',
-    info: { title: 'Shipwright API', version: 'v1' },
+    info: { title: 'Dokima API', version: 'v1' },
     paths,
   };
 }

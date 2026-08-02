@@ -27,7 +27,7 @@ const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-estimate-e2e-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-estimate-e2e-${id}`),
     name: `Estimate E2E ${id}`,
   };
 }
@@ -78,7 +78,7 @@ test('real board tickets drive a per-wave breakdown, and what-if recomputes dete
 }) => {
   const { dir, name } = freshProjectPath();
   await openEstimateTab(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'basic');
+  seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page
@@ -114,7 +114,7 @@ test('escalation-ROI view and weekly digest render honest-empty until a spend le
 }) => {
   const { dir, name } = freshProjectPath();
   await openEstimateTab(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'basic');
+  seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page

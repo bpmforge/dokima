@@ -6,7 +6,7 @@ import {
   createIdentity,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveFiledBy } from './resolve-filed-by.js';
 
@@ -15,7 +15,7 @@ describe('resolveFiledBy', () => {
   let log: EventLog;
 
   beforeEach(async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-resolve-filed-by-'));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-resolve-filed-by-'));
     log = openEventLog(path.join(dir, 'state.db'));
     createIdentity(log, { id: 'agent-w1-01', name: 'agent-w1-01', kind: 'machine' });
   });

@@ -14,7 +14,7 @@ import {
 import { getProvider, listProviders, registerProvider } from './providers.js';
 
 async function openTemp(): Promise<{ global: GlobalDb; cleanup: () => Promise<void> }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-registry-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-registry-test-'));
   return {
     global: openGlobalDb(path.join(dir, 'global.db')),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),

@@ -4,7 +4,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { problem, PROBLEM_CONTENT_TYPE } from '../problem.js';
 import type { ProjectRecord } from '../projects.js';
 
-const STATE_DB_RELATIVE = path.join('.shipwright', 'state.db');
+const STATE_DB_RELATIVE = path.join('.dokima', 'state.db');
 
 /**
  * Thrown when `fleet.json` exists but isn't valid JSON (disk corruption,
@@ -69,7 +69,7 @@ function fleetRegistryCorruptProblem(
   err: FleetRegistryCorruptError,
 ) {
   return problem({
-    type: 'https://shipwright.dev/errors/fleet-registry-corrupt',
+    type: 'https://dokima.dev/errors/fleet-registry-corrupt',
     title: 'Fleet registry unreadable',
     status: 503,
     detail:
@@ -83,7 +83,7 @@ function fleetRegistryCorruptProblem(
 
 function projectNotFoundProblem(request: FastifyRequest, projectId: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/not-found',
+    type: 'https://dokima.dev/errors/not-found',
     title: 'Not found',
     status: 404,
     detail: `no project registered with id ${projectId}`,

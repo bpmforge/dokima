@@ -29,9 +29,9 @@ describe('findMissingPackageJsonScope (seam lesson #1, the W0-08 class)', () => 
       id: 'W0-08',
       ownPackage: 'apps/server',
       importsWorkspacePackages: [
-        '@shipwright/events',
-        '@shipwright/tickets',
-        '@shipwright/shared',
+        '@dokima/events',
+        '@dokima/tickets',
+        '@dokima/shared',
       ],
       writeScope: ['apps/server/src/cli/**'],
     });
@@ -48,7 +48,7 @@ describe('findMissingPackageJsonScope (seam lesson #1, the W0-08 class)', () => 
     const ticket = draft({
       id: 'W0-08',
       ownPackage: 'apps/server',
-      importsWorkspacePackages: ['@shipwright/events'],
+      importsWorkspacePackages: ['@dokima/events'],
       writeScope: ['apps/server/src/cli/**', 'apps/server/package.json'],
     });
     expect(findMissingPackageJsonScope([ticket])).toEqual([]);
@@ -58,7 +58,7 @@ describe('findMissingPackageJsonScope (seam lesson #1, the W0-08 class)', () => 
     const ticket = draft({
       id: 'T',
       ownPackage: 'apps/server',
-      importsWorkspacePackages: ['@shipwright/events'],
+      importsWorkspacePackages: ['@dokima/events'],
       writeScope: ['apps/server/**'],
     });
     expect(findMissingPackageJsonScope([ticket])).toEqual([]);
@@ -68,7 +68,7 @@ describe('findMissingPackageJsonScope (seam lesson #1, the W0-08 class)', () => 
     const ticket = draft({
       id: 'DOC',
       ownPackage: null,
-      importsWorkspacePackages: ['@shipwright/events'],
+      importsWorkspacePackages: ['@dokima/events'],
       writeScope: ['docs/DESIGN.md'],
     });
     expect(findMissingPackageJsonScope([ticket])).toEqual([]);
@@ -91,7 +91,7 @@ describe('findUnownedInterfaces (seam lesson #2, the W1-02 class)', () => {
     const consumer = draft({
       id: 'W1-02',
       consumesInterfaces: [
-        { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+        { packageName: '@dokima/events', exportName: 'mintReceipt' },
       ],
     });
     const violations = findUnownedInterfaces([producer, consumer]);
@@ -100,7 +100,7 @@ describe('findUnownedInterfaces (seam lesson #2, the W1-02 class)', () => {
         kind: 'unowned-interface',
         ticketId: 'W1-02',
         detail:
-          'consumes @shipwright/events#mintReceipt but no ticket in the DAG owns its public re-export',
+          'consumes @dokima/events#mintReceipt but no ticket in the DAG owns its public re-export',
       },
     ]);
   });
@@ -109,13 +109,13 @@ describe('findUnownedInterfaces (seam lesson #2, the W1-02 class)', () => {
     const producer = draft({
       id: 'W0-05',
       providesInterfaces: [
-        { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+        { packageName: '@dokima/events', exportName: 'mintReceipt' },
       ],
     });
     const consumer = draft({
       id: 'W1-02',
       consumesInterfaces: [
-        { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+        { packageName: '@dokima/events', exportName: 'mintReceipt' },
       ],
     });
     expect(findUnownedInterfaces([producer, consumer])).toEqual([]);
@@ -125,10 +125,10 @@ describe('findUnownedInterfaces (seam lesson #2, the W1-02 class)', () => {
     const ticket = draft({
       id: 'T',
       providesInterfaces: [
-        { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+        { packageName: '@dokima/events', exportName: 'mintReceipt' },
       ],
       consumesInterfaces: [
-        { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+        { packageName: '@dokima/events', exportName: 'mintReceipt' },
       ],
     });
     expect(findUnownedInterfaces([ticket])).toEqual([]);
@@ -170,10 +170,10 @@ describe('lintDecomposition', () => {
     const ticket = draft({
       id: 'T',
       ownPackage: 'apps/server',
-      importsWorkspacePackages: ['@shipwright/events'],
+      importsWorkspacePackages: ['@dokima/events'],
       writeScope: ['apps/server/src/cli/**'],
       consumesInterfaces: [
-        { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+        { packageName: '@dokima/events', exportName: 'mintReceipt' },
       ],
       dependsOn: ['T'],
     });

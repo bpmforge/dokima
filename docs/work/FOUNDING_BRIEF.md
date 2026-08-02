@@ -1,16 +1,16 @@
-# Shipwright — Founding brief (for executors)
+# Dokima — Founding brief (for executors)
 
 One page. Do not re-litigate; the full ledger is docs/DECISIONS.md.
 
 **What this is:** a local-first, human-in-the-loop platform where a person
-takes an idea to a secure, shipped product. Shipwright is their product
+takes an idea to a secure, shipped product. Dokima is their product
 manager (interview → blueprint → decision slates → gated program) and their
 dev team (expert agents working a native ticket board, cheapest-model-first
 with evidence-triggered escalation). The platform holds the gates, not the
 agents: every state change is an event; every completion is a receipt;
 maker ≠ verifier is mechanical.
 
-**Decisions in force:** D-001 name Shipwright · D-003 local web app
+**Decisions in force:** D-001 name Dokima · D-003 local web app
 (Node 22/TS/Fastify/SQLite/React) · D-004 native board + forge mirror ·
 D-005 single-operator v1, SSO v2 · D-006 open content · D-007 Copilot +
 Vertex at MVP · D-008 standalone (one-time content import, no umbilical) ·
@@ -29,4 +29,4 @@ receipts not flags; wire memory the day it exists; loops need external
 anchors; the conductor holds the gates.
 
 **Where you come in:** MASTER_PROMPT.md → plan.json → PLAYBOOK.md.
-W8-01 is the finish line: Shipwright must survive its own audit.
+W8-01 is the finish line: Dokima must survive its own audit.

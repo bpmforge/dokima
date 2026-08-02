@@ -127,7 +127,7 @@ describe('writeThroughVerb', () => {
     });
 
     expect(acceptResult.identity).toBe('reviewer');
-    expect(acceptResult.comment?.authorLogin).toBe('shipwright-reviewer');
+    expect(acceptResult.comment?.authorLogin).toBe('dokima-reviewer');
     expect(acceptResult.comment?.body).toContain('looks good');
     expect(acceptResult.comment?.body).toContain(computeReceiptAnchor(receipt));
     // SC-03: the mirror timeline carries two distinct actor identities, never one identity for both.

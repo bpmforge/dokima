@@ -9,7 +9,7 @@ import { scanForA11yViolations } from './axeHelper.js';
 
 test('receipt inspector has no WCAG 2.2 AA violations', async ({ page }) => {
   const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `shipwright-a11y-receipts-${id}`);
+  const dir = path.join(os.tmpdir(), `dokima-a11y-receipts-${id}`);
   const name = `A11y Receipts ${id}`;
   await fs.mkdir(dir, { recursive: true });
 

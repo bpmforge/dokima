@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { defaultGlobalDbPath, openGlobalDb, openGlobalDbReader } from './db.js';
 
 async function tempDir(): Promise<{ dir: string; cleanup: () => Promise<void> }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-global-db-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-global-db-test-'));
   return { dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }
 
@@ -63,8 +63,8 @@ describe('openGlobalDb', () => {
     second.close();
   });
 
-  it('defaultGlobalDbPath resolves under SHIPWRIGHT_HOME', () => {
-    expect(defaultGlobalDbPath({ SHIPWRIGHT_HOME: '/tmp/fake-home' })).toBe(
+  it('defaultGlobalDbPath resolves under DOKIMA_HOME', () => {
+    expect(defaultGlobalDbPath({ DOKIMA_HOME: '/tmp/fake-home' })).toBe(
       path.join('/tmp/fake-home', 'global.db'),
     );
   });

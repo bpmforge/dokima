@@ -17,10 +17,10 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { openEventLog, openEventLogReader } from '@shipwright/events';
-import { computeShipwrightHome } from '@shipwright/shared';
+import { openEventLog, openEventLogReader } from '@dokima/events';
+import { computeDokimaHome } from '@dokima/shared';
 
-const STATE_DB_RELATIVE = path.join('.shipwright', 'state.db');
+const STATE_DB_RELATIVE = path.join('.dokima', 'state.db');
 const FLEET_REGISTRY_FILENAME = 'fleet.json';
 
 export class ProjectNotFoundError extends Error {}
@@ -33,7 +33,7 @@ interface FleetRecordShape {
 /** Resolves a project id to its directory via the Fleet registry (same file `apps/server/src/api/projects.ts` reads/writes). */
 export async function resolveProjectPath(id: string, home?: string): Promise<string> {
   const registryPath = path.join(
-    home ?? computeShipwrightHome(),
+    home ?? computeDokimaHome(),
     FLEET_REGISTRY_FILENAME,
   );
   let raw: string;

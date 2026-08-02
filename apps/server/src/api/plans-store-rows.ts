@@ -7,13 +7,13 @@
 
 import { promises as fsPromises, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { distributionRoot } from '@shipwright/shared';
-import { openEventLog, type EventLog } from '@shipwright/events';
+import { distributionRoot } from '@dokima/shared';
+import { openEventLog, type EventLog } from '@dokima/events';
 import {
   CATALOG_CONTENT_PATH,
   parseCatalog,
   type PlanItemRecord,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import { stateDbPath } from './server/settings-db.js';
 import type { PlanItemRow } from './plans-types.js';
 
@@ -135,7 +135,7 @@ export function updateRow(db: EventLog['db'], record: PlanItemRecord): void {
   });
 }
 
-/** Opens `{project}/.shipwright/state.db` briefly (applying pending migrations), runs `fn` in a transaction, closes. */
+/** Opens `{project}/.dokima/state.db` briefly (applying pending migrations), runs `fn` in a transaction, closes. */
 export async function withPlanWriter<T>(
   projectPath: string,
   fn: (log: EventLog) => T,

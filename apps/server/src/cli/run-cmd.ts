@@ -1,8 +1,8 @@
 /**
- * `shipwright run` (FR-C7, API_DESIGN.md `POST /projects/{id}/runs` +
+ * `dokima run` (FR-C7, API_DESIGN.md `POST /projects/{id}/runs` +
  * `/runs/{id}/pause` + `/runs/{id}/resume`): the CLI drives run creation,
  * pause, and receipt-based resume through the exact same
- * `@shipwright/harbormaster` verbs a future HTTP route would call — there is
+ * `@dokima/harbormaster` verbs a future HTTP route would call — there is
  * no CLI-only reimplementation to drift from the "real" API.
  *
  * Fully self-contained (own arg parsing, own DB open) rather than growing
@@ -36,7 +36,7 @@ import {
   suspendRun,
   type BreakpointMode,
   type RunMode,
-} from '@shipwright/harbormaster';
+} from '@dokima/harbormaster';
 import { runOnboardAnalysis } from '../api/pipeline/index.js';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { ensureActorIdentity } from './identity.js';
@@ -93,7 +93,7 @@ interface RunTargetCommand {
 type RunCommand = StartCommand | RunTargetCommand;
 
 const START_USAGE =
-  'usage: shipwright run start --project <id> --mode <new_product|onboard|feature|improve> ' +
+  'usage: dokima run start --project <id> --mode <new_product|onboard|feature|improve> ' +
   '--breakpoint <ticket|wave|never> --berths <n> --actor <id> ' +
   '[--phase <n>] [--budget-usd <n>] [--budget-tokens <n>] [--db <path>]';
 
@@ -166,14 +166,14 @@ function parseRunTarget(
   const runId = positionals[0];
   if (!runId) {
     throw new CliUsageError(
-      `usage: shipwright run ${kind} <runId> --actor <id> [--db <path>]`,
+      `usage: dokima run ${kind} <runId> --actor <id> [--db <path>]`,
     );
   }
   if (!values.actor) throw new CliUsageError(`run ${kind} requires --actor <id>`);
-  const signingKey = values['signing-key'] ?? process.env.SHIPWRIGHT_SIGNING_KEY;
+  const signingKey = values['signing-key'] ?? process.env.DOKIMA_SIGNING_KEY;
   if (kind === 'resume' && !signingKey) {
     throw new CliUsageError(
-      'run resume requires --signing-key <key> or SHIPWRIGHT_SIGNING_KEY in the environment (FR-S2)',
+      'run resume requires --signing-key <key> or DOKIMA_SIGNING_KEY in the environment (FR-S2)',
     );
   }
   return { kind, runId, actorId: values.actor, dbPath: values.db, signingKey };
@@ -190,12 +190,12 @@ export function parseRunCommand(rest: string[]): RunCommand {
       return parseRunTarget(sub, subRest);
     default:
       throw new CliUsageError(
-        `usage: shipwright run <start|pause|resume|stop> ...\n${START_USAGE}`,
+        `usage: dokima run <start|pause|resume|stop> ...\n${START_USAGE}`,
       );
   }
 }
 
-/** Drives run creation/pause/resume/stop through `@shipwright/harbormaster` — the same verbs a `POST /projects/{id}/runs`-shaped route would call (FR-C7). */
+/** Drives run creation/pause/resume/stop through `@dokima/harbormaster` — the same verbs a `POST /projects/{id}/runs`-shaped route would call (FR-C7). */
 export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<number> {
   let command: RunCommand;
   try {

@@ -7,7 +7,7 @@ import {
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { createRun } from './breakpoints-runs.js';
 import {
   answerClarification,
@@ -23,7 +23,7 @@ import {
 const NOW = () => '2026-07-18T00:00:00.000Z';
 
 async function setup(): Promise<{ log: EventLog; dir: string }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-clarifications-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-clarifications-test-'));
   const log = openEventLog(path.join(dir, 'state.db'));
   createIdentity(log, { id: 'human-1', name: 'Brad', kind: 'human' }, { now: NOW });
   createIdentity(

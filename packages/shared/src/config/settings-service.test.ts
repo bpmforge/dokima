@@ -26,8 +26,8 @@ afterEach(async () => {
 
 describe('writeGlobalSetting / writeProjectSetting', () => {
   it('persists the value and emits a settings.changed event with old->new (FR-S3)', async () => {
-    const home = await mkTmp('shipwright-config-test-');
-    const env = { SHIPWRIGHT_HOME: home };
+    const home = await mkTmp('dokima-config-test-');
+    const env = { DOKIMA_HOME: home };
     const sink = createInMemorySettingsEventSink();
 
     await writeGlobalSetting(
@@ -60,7 +60,7 @@ describe('writeGlobalSetting / writeProjectSetting', () => {
   });
 
   it('writing undefined removes the key and records nextValue undefined', async () => {
-    const projectDir = await mkTmp('shipwright-project-test-');
+    const projectDir = await mkTmp('dokima-project-test-');
     const sink = createInMemorySettingsEventSink();
 
     await writeProjectSetting(projectDir, {
@@ -84,8 +84,8 @@ describe('writeGlobalSetting / writeProjectSetting', () => {
   });
 
   it('does not require a sink (audit trail is opt-in at this layer, mandatory at the wiring layer)', async () => {
-    const home = await mkTmp('shipwright-config-test-');
-    const env = { SHIPWRIGHT_HOME: home };
+    const home = await mkTmp('dokima-config-test-');
+    const env = { DOKIMA_HOME: home };
     await expect(
       writeGlobalSetting({ key: 'a', value: 1, actorId: 'human:brad' }, env),
     ).resolves.toBeUndefined();
@@ -94,9 +94,9 @@ describe('writeGlobalSetting / writeProjectSetting', () => {
 
 describe('getEffectiveSettings + resolveEffectiveValue integration', () => {
   it('resolves run > project > global end to end', async () => {
-    const home = await mkTmp('shipwright-config-test-');
-    const projectDir = await mkTmp('shipwright-project-test-');
-    const env = { SHIPWRIGHT_HOME: home };
+    const home = await mkTmp('dokima-config-test-');
+    const projectDir = await mkTmp('dokima-project-test-');
+    const env = { DOKIMA_HOME: home };
 
     await writeGlobalSetting({ key: 'berths', value: 1, actorId: 'human:brad' }, env);
     await writeProjectSetting(projectDir, {
@@ -116,8 +116,8 @@ describe('getEffectiveSettings + resolveEffectiveValue integration', () => {
   });
 
   it('project scope is omitted (not an empty object) when no projectDir is given', async () => {
-    const home = await mkTmp('shipwright-config-test-');
-    const env = { SHIPWRIGHT_HOME: home };
+    const home = await mkTmp('dokima-config-test-');
+    const env = { DOKIMA_HOME: home };
     const resolved = await getEffectiveSettings({ env });
     expect(resolved.project).toBeUndefined();
   });

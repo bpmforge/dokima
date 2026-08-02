@@ -3,12 +3,12 @@
  * HANDOFF block is the bounded agent contract, rendered identically whether
  * dispatched to a child-process session, an API call, or pasted for a human
  * (docs/research/source-system-experts.md HANDOFF protocol). `packages/loop`
- * may not import `@shipwright/tickets` (ARCHITECTURE.md §4 dependency
+ * may not import `@dokima/tickets` (ARCHITECTURE.md §4 dependency
  * matrix) — `HandoffTicket` is a local, minimal projection of the two
  * ticket fields a HANDOFF needs, not the full ticket contract.
  */
 
-import { redactDeep } from '@shipwright/shared';
+import { redactDeep } from '@dokima/shared';
 
 export interface HandoffTicket {
   readonly id: string;
@@ -39,7 +39,7 @@ export interface RenderHandoffOptions {
   /**
    * Extra secret values to redact beyond known live-credential shapes
    * (SC-06) — typically the result of `collectSecretValues(vault,
-   * projectDir)` (`@shipwright/shared`), gathered by the caller before
+   * projectDir)` (`@dokima/shared`), gathered by the caller before
    * rendering since collecting them is async (vault + `.env` file reads)
    * while `renderHandoff` itself stays sync (BLUEPRINT §4: it must run
    * inline wherever a HANDOFF is assembled, including synchronous

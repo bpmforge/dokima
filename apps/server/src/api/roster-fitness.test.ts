@@ -2,12 +2,12 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openGlobalDb, putModelFitness } from '@shipwright/events';
+import { openGlobalDb, putModelFitness } from '@dokima/events';
 import { loadFitnessCards } from './roster-fitness.js';
 
 const tmpDirs: string[] = [];
 async function tmpGlobalDbPath(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-roster-fitness-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-roster-fitness-'));
   tmpDirs.push(dir);
   return path.join(dir, 'global.db');
 }
@@ -22,7 +22,7 @@ describe('loadFitnessCards', () => {
   it('returns an empty list when global.db does not exist yet (never bench-run, C-1 honesty)', async () => {
     const dbPath = path.join(
       os.tmpdir(),
-      `shipwright-roster-fitness-missing-${Date.now()}.db`,
+      `dokima-roster-fitness-missing-${Date.now()}.db`,
     );
     expect(await loadFitnessCards('sdlc-lead', { globalDbPath: dbPath })).toEqual([]);
   });

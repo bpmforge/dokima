@@ -2,7 +2,7 @@
  * Per-berth limit-pause ledger (FR-G8): tracks how many consecutive provider-limit pauses a
  * berth has hit without an intervening success, and computes the resume time — a stated
  * provider reset time when the classifier found one, otherwise exponential backoff capped at
- * 60 minutes (the acceptance criterion's own cap). Distinct from `@shipwright/gateway`'s
+ * 60 minutes (the acceptance criterion's own cap). Distinct from `@dokima/gateway`'s
  * `CostLedger` (budget/ledger.ts) by construction: that ledger sums USD against a user-set
  * ceiling; this one times a wait against the provider's own limit window — no cost field
  * exists here, and nothing here ever crosses into an approval-card / Decide-tier path.

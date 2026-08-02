@@ -1,7 +1,7 @@
 /**
  * CHALLENGE_REPORT assembly + CONTRADICTED -> revision HANDOFF (FR-P4, US-405 AC-1/AC-3).
  *
- * `RevisionHandoff`'s shape mirrors `@shipwright/loop`'s `Handoff` (handoff.ts) minus the
+ * `RevisionHandoff`'s shape mirrors `@dokima/loop`'s `Handoff` (handoff.ts) minus the
  * renderer, same as `packages/pipeline/src/phases/types.ts`'s `RevisionHandoff` — that package
  * is out of reach from this ticket's write_scope (see `rerun.ts` header), so the wiring ticket
  * feeds these plain descriptors into the real `renderHandoff` unchanged.

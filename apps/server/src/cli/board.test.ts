@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Ticket } from '@shipwright/tickets';
+import type { Ticket } from '@dokima/tickets';
 import { renderBoard } from './board.js';
 
 function fixtureTicket(overrides: Partial<Ticket>): Ticket {

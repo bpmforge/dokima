@@ -65,7 +65,7 @@ describe('decideAdvance (FR-P1/P2)', () => {
   it('RED FIXTURE — a broken mermaid diagram (stale validator set) refuses advance', () => {
     // Simulates a phase whose gate receipt is missing a clean run of the
     // required mermaid validator (R-H3): verifyReceipt reports it as the
-    // stale-validator reason, exactly as @shipwright/events' verifyReceipt
+    // stale-validator reason, exactly as @dokima/events' verifyReceipt
     // would when `validate-mermaid` isn't present with exitCode 0 — and
     // asserts the refusal fires only because `validate-mermaid` really is
     // among the validators decideAdvance demanded (previous test).

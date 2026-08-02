@@ -1,6 +1,6 @@
-# Shipwright — Full-System Review & Hardening Kickoff (the RepoPulse Method)
+# Dokima — Full-System Review & Hardening Kickoff (the RepoPulse Method)
 
-**For: a fresh Claude Code session opened in `~/Code/shipwright`.**
+**For: a fresh Claude Code session opened in `~/Code/dokima`.**
 Written 2026-07-14, immediately after completing this exact arc on `~/Code/repopulse`
 (branch `review/design-review-preflight` — that branch is your exemplar; crib its
 artifacts, don't reinvent them). Brad will say "read REVIEW_KICKOFF_PROMPT.md and go" —
@@ -10,14 +10,14 @@ this file is your complete instruction set.
 
 ## 0. What you are doing, and what you are NOT doing
 
-You are running a **multi-domain design review and hardening pass** over Shipwright's
+You are running a **multi-domain design review and hardening pass** over Dokima's
 existing design package and ticket board, ending with a board so complete, contradiction-
 free, and machine-validated that inexpensive coding agents can execute it wave-by-wave
 with quality gates. On RepoPulse this arc took a 44-ticket board to 89 tickets / 415 pts
 with 122/122 requirements and 65/65 stories machine-traced and zero dangling references.
 
 You are **NOT**:
-- Resuming the build. Shipwright's build is **deliberately paused** (docs/RELEASE_TRACKER.md)
+- Resuming the build. Dokima's build is **deliberately paused** (docs/RELEASE_TRACKER.md)
   until bpm-opencode-experts v2.1.0 ships. Do not run the conductor, do not claim/code
   tickets, do not touch `scripts/supervise.sh`. This is docs + board work only.
 - Re-litigating founder decisions. `docs/DECISIONS.md` (D-001…D-013) is locked, like
@@ -34,7 +34,7 @@ You are **NOT**:
 3. `docs/RELEASE_TRACKER.md` — the pause rationale + fix plan F1–F4 (you will fold
    these into the board)
 4. `docs/STATUS.md` end-to-end + `docs/CONDUCTOR_FIELD_REPORT.md` +
-   `docs/design/FINDING_LOOP_POLICY.md` — **Shipwright has real build telemetry that
+   `docs/design/FINDING_LOOP_POLICY.md` — **Dokima has real build telemetry that
    RepoPulse never had. Mine its own field lessons first; they outrank generic advice.**
 5. The full docs/ tree (SRS, ARCHITECTURE, DATABASE, API_DESIGN, SCOPE, NON_GOALS,
    RISKS, ROADMAP, SECURITY_CONTROLS, TECH_STACK, design/*, research/*) + `plan.json`
@@ -63,14 +63,14 @@ Brad's target across all bpmforge products is the same compounding system:
 3. **Quality loops in the process AND in the product.** Process: wave gates run
    INVENTORY→VERIFY→GAP (cap 3, no-progress halt) then a CHALLENGER (fresh agent,
    maker≠verifier, "re-ran independently: command/counts/exit-code" evidence,
-   CONTRADICTED reopens tickets). Product: Shipwright literally *is* this loop
+   CONTRADICTED reopens tickets). Product: Dokima literally *is* this loop
    productized — its v1.0.0 milestone is auditing itself. Every hardening you make to
    the process is a candidate product feature and vice versa.
 4. **Rules-first, LLM-second.** Deterministic catalogs/validators are the source of
    truth; LLMs order, narrate, draft, propose — never invent, activate, or dismiss.
    Every surface must work with zero LLM calls; LLM output is data, never executed.
 5. **Trust economics.** False-positive noise is the #1 product killer (RepoPulse RISKS
-   R-4; Shipwright's finding-loop policy is the same insight). Every detector/gate
+   R-4; Dokima's finding-loop policy is the same insight). Every detector/gate
    gets: measured FP rates, shadow modes for new rules, justification-gated suppression
    (the VEX pattern), maker≠verifier passes, and honest raw-vs-effective counts.
 
@@ -88,39 +88,39 @@ loop, weekly ritual, the paused-build resume journey), customization surfaces
 (model adapters, gate configs, expert-library import, forge integrations), licensing
 ledger (§5 burn list), and the gap register. Then APPLY the fix pack: contradictions
 fixed in docs, missing tickets added, validators green. RepoPulse found 18 gaps at this
-pass; expect a different mix here because the build already ran — Shipwright's gaps
+pass; expect a different mix here because the build already ran — Dokima's gaps
 will skew toward spec-vs-built drift (compare code in apps//packages/ against docs
 claims for the 23 landed tickets).
 
 **P2 — Domain interrogations.** Run each of these as its own focused pass (research
 agents where noted). These are the questions Brad asked on RepoPulse, generalized —
-ask ALL of them of Shipwright and add domain-specific ones:
+ask ALL of them of Dokima and add domain-specific ones:
 - *Process/UX*: does the UX hold up walked persona-by-persona? Where does a number/
   status dead-end without an action? What brings the user back daily?
 - *Micro-agent & loop architecture*: mine `~/Code/bpm-opencode-experts`
   (agents/shared/{MICRO_LOOP,RALPH_WIGGUM_LOOP,GATE_SCORING_PROTOCOL,FIX_VERIFY_LOOP,
-  CHALLENGER_PROTOCOL}.md) — Shipwright productizes these, so check the PRODUCT spec
+  CHALLENGER_PROTOCOL}.md) — Dokima productizes these, so check the PRODUCT spec
   implements what the library preaches: hard caps, no-progress halts, maker≠verifier,
   oscillation zero-tolerance, decomposition-on-ceiling. FINDING_LOOP_POLICY.md already
   started this — verify it's threaded into SRS/tickets, not just a doc.
-- *Reports → action*: what is Shipwright's "improvement plan" equivalent? (Runs produce
+- *Reports → action*: what is Dokima's "improvement plan" equivalent? (Runs produce
   receipts/findings — do they compose into ranked, auto-verified action queues?)
   Web-research competitors' insight-to-action mechanics if useful (cite everything;
   mark UNVERIFIED).
 - *False-positive economics* (Brad WILL push on this — RepoPulse's was SBOM CVEs):
-  Shipwright's FP surface is **gate findings and review verdicts**. Design the
+  Dokima's FP surface is **gate findings and review verdicts**. Design the
   validation funnel + justification-gated suppression + measured-FP-rate promotion/
   demotion for gate rules. The VEX pattern (SECURITY_SUITE.md §3.6) generalizes:
   dedup → scope → reachability/applicability → effective-risk → propose-never-auto-
   dismiss → justified suppression that reopens when evidence changes.
 - *Code health/anti-slop*: the 30-rule taxonomy + lifecycle already exists in the
-  expert library and in RepoPulse's CODE_HEALTH_SUITE. Shipwright SHIPS these as
+  expert library and in RepoPulse's CODE_HEALTH_SUITE. Dokima SHIPS these as
   product content (`content/`) — verify content coverage (the "name ALL of the set,
   not four examples" lesson in STATUS.md 2026-07-12), rule provenance/licensing, and
   whether the product exposes the rule lifecycle (shadow mode, FP-gated promotion).
 - *Extensibility*: can users add rules/experts/gates/model-adapters without core
   changes? Registry + adapter contracts + license-gated intake, deny-by-default.
-- *Core-brain audit*: RepoPulse's was forge intake; Shipwright's is the
+- *Core-brain audit*: RepoPulse's was forge intake; Dokima's is the
   **conductor loop + gate execution + model gateway/ladder + trust core (hash chain,
   receipts, Harbormaster write-scope enforcement)**. Walk it end-to-end against the
   field reports: is every failure mode in the docs' failure table? Is the W1-07
@@ -143,7 +143,7 @@ stateDiagrams in the design docs. Then build/adapt `scripts/validate-traceabilit
 SCOPE→D; write_scope deliverables exempt; slash-compound citations like FR-X-5/6
 expand). Run the Ralph Wiggum loop over the design package itself until it converges
 (cap 3). Codify the wave-gate loop + challenger protocol in PLAYBOOK.md if the current
-one lacks them (Shipwright's may already — verify rather than duplicate;
+one lacks them (Dokima's may already — verify rather than duplicate;
 FINDING_LOOP_POLICY may supersede parts).
 
 **P5 — Board completion (Part 2).** Add validated `stories: []` linkage to every
@@ -175,7 +175,7 @@ decisions for Brad, and the exact resume sequence for the build.
    nightly CI schedules); test harness + seed tooling; share/permalink endpoints
    (RepoPulse rate-limited routes nobody built); identity/attribution edge cases.
 4. **Acceptance criteria that NAME examples get the examples, not the set.** Say "ALL
-   of X" (Shipwright learned this the hard way — STATUS 2026-07-12 content gap-fill).
+   of X" (Dokima learned this the hard way — STATUS 2026-07-12 content gap-fill).
 5. **No dependency chokepoints.** No single ticket that everything in a wave depends
    on (W3-01 idle-exited the whole run). Ceiling-while-progressing = split the ticket.
 6. **Licensing ledger per dependency**, with actions not vibes: Redis ≥7.4 is
@@ -204,7 +204,7 @@ decisions for Brad, and the exact resume sequence for the build.
 - `validate-plan.mjs`: schema (fixed key set incl. `stories`), dep graph, no forward-
   wave deps, cycle detection, wave gating, points ∈ {1,2,3,5,8}, acceptance 2–5 items.
 - `validate-traceability.mjs`: the two-way chain (see P4). Runs in CI.
-- Existing Shipwright validators (`scripts/`): inventory them first; extend, don't
+- Existing Dokima validators (`scripts/`): inventory them first; extend, don't
   duplicate. Definition of done for the review: **all validators green, N/N FRs and
   N/N stories ticket-covered, zero dangling references, challenger pass recorded.**
 

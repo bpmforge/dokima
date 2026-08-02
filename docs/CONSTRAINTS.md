@@ -1,4 +1,4 @@
-# Shipwright — Constraints
+# Dokima — Constraints
 
 Traces to: `docs/BLUEPRINT.md` (§0 honesty invariants, §2.2, §6.2, §11) and founder
 decisions D-003–D-010. C-1–C-8 are hard constraints: violations block phase gates,
@@ -9,8 +9,8 @@ and no ticket may contradict one without a founder decision in the DECISIONS led
 - Full functionality with no network: local models (LM Studio/Ollama/OpenAI-compatible),
   no forge, no cloud APIs (D-003, NFR-1). Cloud providers and forges are
   integrations, never prerequisites.
-- One-command install (`npx shipwright`); state = one SQLite file per project
-  (`.shipwright/`) + user config (`~/.shipwright/`). No external services required.
+- One-command install (`npx dokima`); state = one SQLite file per project
+  (`.dokima/`) + user config (`~/.dokima/`). No external services required.
 - Offline-tolerant integrations: forge-mirror verbs queue locally and flush on
   reconnect (SCOPE.md S-23); nothing blocks on a remote being reachable.
 - Platform floor: macOS/Linux native, Windows via WSL at 1.0 (D-009, NFR-7).
@@ -44,7 +44,7 @@ and no ticket may contradict one without a founder decision in the DECISIONS led
 ## C-4 — Maker ≠ verifier, mechanically (hard)
 
 - Different agent identity, different model, and — when the forge mirror is on
-  (D-004) — different scoped API token (`shipwright-maker` vs `shipwright-reviewer`).
+  (D-004) — different scoped API token (`dokima-maker` vs `dokima-reviewer`).
 - Enforced in code, not prose: `accept` refuses when reviewer identity == owner
   (FR-T2); the maker's model never reviews its own work by default (FR-G2);
   cross-model review is an integrity feature, not a preference.

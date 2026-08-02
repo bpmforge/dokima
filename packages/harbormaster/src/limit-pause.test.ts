@@ -7,7 +7,7 @@ import {
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   LimitPauseLedger,
   LIMIT_BACKOFF_CAP_MS,
@@ -22,7 +22,7 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-limit-pause-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-limit-pause-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
   return {

@@ -1,6 +1,6 @@
 /**
  * Notification taxonomy core (DATABASE.md §3, UX_SPEC §7, FR-N4, US-704,
- * US-404, R-A1/US-310). One project's `.shipwright/state.db` at a time —
+ * US-404, R-A1/US-310). One project's `.dokima/state.db` at a time —
  * the route layer (`server/notifications-routes/`) fans this out across
  * every registered project for the aggregated morning queue (FR-F4).
  *

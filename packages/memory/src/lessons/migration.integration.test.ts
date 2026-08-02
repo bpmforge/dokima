@@ -1,11 +1,11 @@
 /**
  * Proves 012_field_reports.sql applies cleanly through the REAL migration
- * runner (`@shipwright/events`' `openEventLog` -> `applyMigrations`, the
+ * runner (`@dokima/events`' `openEventLog` -> `applyMigrations`, the
  * better-sqlite3-backed single-writer connection, ARCHITECTURE.md §4 law 4)
  * — every other test in this package uses `test-helpers.ts`'s
  * `createTestHandle` (node:sqlite, schema applied by reading the migration
  * files directly), which never exercises the real engine a production
- * caller uses. `memory` can't statically import `@shipwright/events` (no
+ * caller uses. `memory` can't statically import `@dokima/events` (no
  * package.json dependency in this ticket's write_scope), so this
  * dynamically imports it by absolute `file://` URL — same technique as
  * `../playbook/migration.integration.test.ts`.
@@ -50,7 +50,7 @@ async function loadEventsPackage(): Promise<EventsModule> {
 
 const NOW = () => '2026-07-20T12:00:00.000Z';
 
-describe('012_field_reports.sql through the real @shipwright/events runner', () => {
+describe('012_field_reports.sql through the real @dokima/events runner', () => {
   it('creates the field_reports table and fileFieldReport works against the real engine', async () => {
     const { openEventLog, createTempDbPath } = await loadEventsPackage();
     const temp = await createTempDbPath();

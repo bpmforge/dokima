@@ -3,12 +3,12 @@ import {
   isClaimable,
   isStaleBlocked,
   type Ticket,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 
 /**
  * Wire shape for `apps/web/src/board/types.ts` `BoardTicket` (hand-mirrored
  * there per that file's own comment — apps/web may not import
- * `@shipwright/tickets` directly, ARCHITECTURE §4). `wave`/`sort_key` are
+ * `@dokima/tickets` directly, ARCHITECTURE §4). `wave`/`sort_key` are
  * documented in DATABASE.md §3's `board` table but have no producer in
  * `packages/tickets` yet (no wave/phase concept on a ticket) — honest
  * placeholders rather than invented data (C-1, same precedent as

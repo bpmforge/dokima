@@ -7,7 +7,7 @@ import {
   createIdentity,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import type { PauseSiteKind } from './autonomy-types.js';
 import {
   appendAutoDefaultRow,
@@ -28,7 +28,7 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-autonomy-db-'));
+  const dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-autonomy-db-'));
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
   createIdentity(log, { id: 'human-1', name: 'Operator', kind: 'human' });

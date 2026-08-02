@@ -3,7 +3,7 @@ import { explainRefusal, isRefusal, refusalFixAffordance } from './refusal.js';
 import type { ProblemDetails } from './types.js';
 
 const CLOSE_REFUSAL: ProblemDetails = {
-  type: 'https://shipwright.dev/errors/close-requires-receipt',
+  type: 'https://dokima.dev/errors/close-requires-receipt',
   title: 'close refused: verify has not passed',
   status: 409,
   detail: 'ticket W2-04 verify `pnpm test --filter gateway` exited 1; see evidence',

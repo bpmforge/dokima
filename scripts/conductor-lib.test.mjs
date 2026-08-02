@@ -550,7 +550,7 @@ describe('conductor-lib: Node version pin is project-configurable (W3-15 portabi
     expect(nodePinMismatch('v2.1.0', '22')).toBe('node v2.1.0 != v22.x');
   });
 
-  it('defaults nvmrcPath to .nvmrc so Shipwright behaviour is unchanged', () => {
+  it('defaults nvmrcPath to .nvmrc so Dokima behaviour is unchanged', () => {
     expect(DEFAULT_CONFIG.nvmrcPath).toBe('.nvmrc');
   });
 

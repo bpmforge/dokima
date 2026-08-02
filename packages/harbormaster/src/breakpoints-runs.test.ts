@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@shipwright/events';
+import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
 import {
   completeRun,
   createRun,
@@ -19,7 +19,7 @@ import {
 const NOW = () => '2026-07-18T00:00:00.000Z';
 
 async function setup(): Promise<{ log: EventLog; dir: string }> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-runs-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-runs-test-'));
   const log = openEventLog(path.join(dir, 'state.db'));
   createIdentity(log, { id: 'human-1', name: 'Brad', kind: 'human' }, { now: NOW });
   return { log, dir };

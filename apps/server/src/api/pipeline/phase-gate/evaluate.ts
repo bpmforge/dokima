@@ -6,7 +6,7 @@
  * without needing a live topology phase to reach an empty-results case (the six real
  * `PHASES` entries all declare at least `validate-mermaid`, R-H3).
  */
-import type { ValidatorRunResult } from '@shipwright/validators';
+import type { ValidatorRunResult } from '@dokima/validators';
 
 export interface PhaseGateEvaluation {
   readonly ok: boolean;

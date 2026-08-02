@@ -30,7 +30,7 @@ const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
 function freshProjectPath(): { dir: string; name: string } {
   const id = randomUUID();
   return {
-    dir: path.join(os.tmpdir(), `shipwright-board-e2e-${id}`),
+    dir: path.join(os.tmpdir(), `dokima-board-e2e-${id}`),
     name: `Board E2E ${id}`,
   };
 }
@@ -64,7 +64,7 @@ test('board renders lanes x columns x typed cards from live projections (FR-C4)'
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'basic');
+  seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
 
   const board = page.getByTestId('pane-board').getByTestId('board-view');
@@ -105,7 +105,7 @@ test('dragging a ready card to Claimed fires claim and the card moves column (FR
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'drag-claim');
+  seed(path.join(dir, '.dokima', 'state.db'), 'drag-claim');
   await page.reload();
 
   const lane = page.getByTestId('lane-ui');
@@ -124,7 +124,7 @@ test('dragging an in-progress card to In Review with no manifest is refused inli
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'drag-refuse-close');
+  seed(path.join(dir, '.dokima', 'state.db'), 'drag-refuse-close');
   await page.reload();
 
   const lane = page.getByTestId('lane-ui');
@@ -148,7 +148,7 @@ test('jumping to another ticket while the drawer stays open resets the DAG edit 
 }) => {
   const { dir, name } = freshProjectPath();
   await openFreshProject(page, name, dir);
-  seed(path.join(dir, '.shipwright', 'state.db'), 'dag-switch');
+  seed(path.join(dir, '.dokima', 'state.db'), 'dag-switch');
   await page.reload();
 
   const lane = page.getByTestId('lane-ui');

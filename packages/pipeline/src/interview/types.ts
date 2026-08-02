@@ -15,7 +15,7 @@
  * `assertHumanActor` refuses anything but `'human'`, and no function in this
  * directory can construct an `InterviewAnswer` on its own — it only ever
  * accepts one as caller-supplied input (same discipline as
- * `@shipwright/gateway`'s `EscalationToken`: nothing here can synthesize the
+ * `@dokima/gateway`'s `EscalationToken`: nothing here can synthesize the
  * human side of the exchange).
  */
 import type { PhaseId } from '../phases/types.js';

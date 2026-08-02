@@ -15,7 +15,7 @@
  * D-012) resolved the same way `berths-dial.ts` resolves the per-project
  * berths dial — a flat number per scope, highest-precedence defined value
  * wins outright (no merging). `packages/gateway` has no workspace
- * dependency on `@shipwright/shared` within this ticket's write_scope
+ * dependency on `@dokima/shared` within this ticket's write_scope
  * (`packages/gateway/src/pool/**`; the package's own `package.json` is out
  * of scope, so the dependency can't be declared) — same constraint W2-05's
  * routing module hit, so the precedence algorithm is reimplemented locally

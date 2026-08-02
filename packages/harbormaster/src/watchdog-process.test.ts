@@ -43,7 +43,7 @@ describe('createWatchdogChildProcessSpawn', () => {
   });
 
   it('terminates a hung process once maxSessionSeconds elapses, well under a second', async () => {
-    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-proc-'));
     const breaches: WatchdogBreach[] = [];
     const spawn = createWatchdogChildProcessSpawn({
       command: 'bash',
@@ -66,7 +66,7 @@ describe('createWatchdogChildProcessSpawn', () => {
   });
 
   it('terminates a process that stops heartbeating even though it never hits the wall clock', async () => {
-    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-proc-'));
     const breaches: WatchdogBreach[] = [];
     // Prints once immediately, then goes silent for far longer than the stall threshold.
     const spawn = createWatchdogChildProcessSpawn({
@@ -92,7 +92,7 @@ describe('createWatchdogChildProcessSpawn', () => {
   });
 
   it('kills the whole session tree — a grandchild forked by the killed process dies too', async () => {
-    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-proc-'));
     const pidFile = path.join(cwd, 'grandchild.pid');
     // Forks `sleep 30` directly in this shell (so `$!` is its real pid, not a
     // subshell's), records the pid, then `wait`s — the watchdog must kill the
@@ -120,7 +120,7 @@ describe('createWatchdogChildProcessSpawn', () => {
   });
 
   it('still kills the tree and resolves when onBreach throws synchronously', async () => {
-    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-proc-'));
     const spawn = createWatchdogChildProcessSpawn({
       command: 'bash',
       args: ['-c', 'sleep 30'],
@@ -143,7 +143,7 @@ describe('createWatchdogChildProcessSpawn', () => {
   });
 
   it('escalates to SIGKILL when the tree ignores SIGTERM', async () => {
-    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-watchdog-proc-'));
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-proc-'));
     const breaches: WatchdogBreach[] = [];
     const spawn = createWatchdogChildProcessSpawn({
       command: 'bash',

@@ -42,7 +42,7 @@ export function buildGitHubHeaders(
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': apiVersion,
-    'User-Agent': 'shipwright-forge',
+    'User-Agent': 'dokima-forge',
   };
 }
 

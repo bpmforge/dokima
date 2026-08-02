@@ -13,7 +13,7 @@ describe('createFileStopSwitch', () => {
   });
 
   it('does not stop when neither file exists', async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-killswitch-test-'));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-killswitch-test-'));
     const stopSwitch = createFileStopSwitch({
       killFilePath: path.join(dir, 'KILL'),
       pauseFilePath: path.join(dir, 'PAUSE'),
@@ -22,7 +22,7 @@ describe('createFileStopSwitch', () => {
   });
 
   it('stops when the kill-file exists', async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-killswitch-test-'));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-killswitch-test-'));
     const killFilePath = path.join(dir, 'KILL');
     await fs.writeFile(killFilePath, '');
     const stopSwitch = createFileStopSwitch({
@@ -33,7 +33,7 @@ describe('createFileStopSwitch', () => {
   });
 
   it('stops when the pause-file exists', async () => {
-    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-killswitch-test-'));
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-killswitch-test-'));
     const pauseFilePath = path.join(dir, 'PAUSE');
     await fs.writeFile(pauseFilePath, '');
     const stopSwitch = createFileStopSwitch({

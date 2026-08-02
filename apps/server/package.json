@@ -1,5 +1,5 @@
 {
-  "name": "@shipwright/server",
+  "name": "@dokima/server",
   "private": true,
   "type": "module",
   "version": "0.0.0",
@@ -10,18 +10,18 @@
   },
   "dependencies": {
     "fastify": "^5.10.0",
-    "@shipwright/events": "workspace:*",
-    "@shipwright/gateway": "workspace:*",
-    "@shipwright/harbormaster": "workspace:*",
-    "@shipwright/memory": "workspace:*",
-    "@shipwright/pipeline": "workspace:*",
-    "@shipwright/tickets": "workspace:*",
-    "@shipwright/shared": "workspace:*",
-    "@shipwright/validators": "workspace:*",
-    "@shipwright/loop": "workspace:*"
+    "@dokima/events": "workspace:*",
+    "@dokima/gateway": "workspace:*",
+    "@dokima/harbormaster": "workspace:*",
+    "@dokima/memory": "workspace:*",
+    "@dokima/pipeline": "workspace:*",
+    "@dokima/tickets": "workspace:*",
+    "@dokima/shared": "workspace:*",
+    "@dokima/validators": "workspace:*",
+    "@dokima/loop": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.0",
-    "@shipwright/git": "workspace:*"
+    "@dokima/git": "workspace:*"
   }
 }

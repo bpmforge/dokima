@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ScopedSettings } from '@shipwright/shared';
+import type { ScopedSettings } from '@dokima/shared';
 import { resolveEffectiveModel } from './roster-resolve.js';
 
 describe('resolveEffectiveModel', () => {

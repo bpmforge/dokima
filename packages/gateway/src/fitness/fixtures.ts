@@ -11,7 +11,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { resolveAsset } from '@shipwright/shared';
+import { resolveAsset } from '@dokima/shared';
 import type { AgentRole } from '../routing/types.js';
 import type { FitnessTask } from './types.js';
 

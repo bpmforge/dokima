@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { writeScopesOverlap, type Ticket, type TicketStatus } from '@shipwright/tickets';
+import { writeScopesOverlap, type Ticket, type TicketStatus } from '@dokima/tickets';
 import { pickNextBerthTicket } from '../src/berths-scheduler.js';
 import { forEachSeed, randInt } from './berths-test-helpers.js';
 

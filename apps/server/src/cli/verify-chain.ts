@@ -3,7 +3,7 @@ import {
   verifyChain,
   type ChainVerificationResult,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 
 export function checkChain(log: EventLog): ChainVerificationResult {
   return verifyChain(listChainRows(log));

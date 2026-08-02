@@ -1,19 +1,19 @@
 /**
  * Fleet registry + project cards (FR-F1/F2, DATABASE.md §7, UX_SPEC §2/§2b).
  *
- * DATABASE.md §7 specs the registry as `~/.shipwright/global.db` (SQLite,
+ * DATABASE.md §7 specs the registry as `~/.dokima/global.db` (SQLite,
  * same engine/discipline as a project's `state.db`). `better-sqlite3` is
- * only reachable through `@shipwright/events`'s own migration-managed
+ * only reachable through `@dokima/events`'s own migration-managed
  * connection (`openEventLog`), which applies *that package's* per-project
  * schema (events/identities/receipts) — wrong shape for a directory index,
  * and `better-sqlite3` itself isn't a declared dependency of
  * `apps/server` (adding one means editing `apps/server/package.json`,
  * outside this ticket's write_scope). The registry is a JSON file instead,
- * `<SHIPWRIGHT_HOME>/fleet.json`, following the exact read/write shape
- * `@shipwright/shared`'s `loadGlobalConfig`/`saveGlobalConfig` already use
+ * `<DOKIMA_HOME>/fleet.json`, following the exact read/write shape
+ * `@dokima/shared`'s `loadGlobalConfig`/`saveGlobalConfig` already use
  * for `config.json` in the same directory. Card *stats* are never cached
  * in the registry (DATABASE.md §7's "can't lie about a project it hasn't
- * opened") — every read opens the project's own `.shipwright/state.db`
+ * opened") — every read opens the project's own `.dokima/state.db`
  * fresh via `openEventLogReader` (read-only, WAL-safe alongside a live
  * writer — never contends with the single-writer law, C6).
  *
@@ -29,13 +29,13 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { computeShipwrightHome } from '@shipwright/shared';
-import { openEventLog, openEventLogReader, type EventLog } from '@shipwright/events';
-import { computeBoard, listTickets } from '@shipwright/tickets';
+import { computeDokimaHome } from '@dokima/shared';
+import { openEventLog, openEventLogReader, type EventLog } from '@dokima/events';
+import { computeBoard, listTickets } from '@dokima/tickets';
 import { problem, PROBLEM_CONTENT_TYPE } from './problem.js';
 
 const FLEET_REGISTRY_FILENAME = 'fleet.json';
-const STATE_DB_RELATIVE = path.join('.shipwright', 'state.db');
+const STATE_DB_RELATIVE = path.join('.dokima', 'state.db');
 
 export type ProjectMode = 'new' | 'onboard' | 'import';
 
@@ -68,7 +68,7 @@ export interface ProjectCard extends ProjectRecord {
 export class ProjectDirectoryError extends Error {}
 export class ProjectNotFoundError extends Error {}
 
-export function computeFleetRegistryPath(home: string = computeShipwrightHome()): string {
+export function computeFleetRegistryPath(home: string = computeDokimaHome()): string {
   return path.join(home, FLEET_REGISTRY_FILENAME);
 }
 
@@ -101,7 +101,7 @@ async function saveRegistry(
   await fs.writeFile(registryPath, `${JSON.stringify(records, null, 2)}\n`, 'utf8');
 }
 
-/** Ensures `.shipwright/state.db` has schema applied, without opening (and thus lock-contending) an existing one. */
+/** Ensures `.dokima/state.db` has schema applied, without opening (and thus lock-contending) an existing one. */
 async function ensureStateDb(projectPath: string): Promise<void> {
   const dbPath = path.join(projectPath, STATE_DB_RELATIVE);
   if (await pathExists(dbPath)) return;
@@ -275,7 +275,7 @@ function isValidMode(value: unknown): value is ProjectMode {
 
 function badRequest(request: FastifyRequest, detail: string) {
   return problem({
-    type: 'https://shipwright.dev/errors/invalid-request',
+    type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
     status: 400,
     detail,
@@ -285,7 +285,7 @@ function badRequest(request: FastifyRequest, detail: string) {
 }
 
 export interface ProjectRoutesOptions {
-  /** Overrides `computeShipwrightHome()` — tests only. */
+  /** Overrides `computeDokimaHome()` — tests only. */
   home?: string;
 }
 
@@ -347,7 +347,7 @@ export function registerProjectRoutes(
             .type(PROBLEM_CONTENT_TYPE)
             .send(
               problem({
-                type: 'https://shipwright.dev/errors/not-found',
+                type: 'https://dokima.dev/errors/not-found',
                 title: 'Project not found',
                 status: 404,
                 detail: err.message,

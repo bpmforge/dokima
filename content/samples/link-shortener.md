@@ -1,12 +1,12 @@
 <!--
-  Provenance: Shipwright-native (authored for ticket W5-09, 2026-07-20)
+  Provenance: Dokima-native (authored for ticket W5-09, 2026-07-20)
   The built-in guided-sample idea named in docs/BLUEPRINT.md §12.3 and
   docs/design/UX_SPEC.md §8 ("a link-shortener with auth"). This file is the
   canonical, human-readable source for the sample's interview script; the
   strongly-typed InterviewSession the wizard actually posts to
   POST /api/v1/projects/:id/pipeline/run is a hand-authored copy in
   apps/web/src/onboarding/sample-data.ts (apps/web has no dependency on
-  @shipwright/pipeline to construct/validate the real type from this file at
+  @dokima/pipeline to construct/validate the real type from this file at
   build or run time — same wall as apps/web/src/decisions/types.ts, out of
   this ticket's write_scope to add). Keep the two in sync by hand when
   either changes.

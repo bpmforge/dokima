@@ -1,5 +1,5 @@
 {
-  "name": "@shipwright/gateway",
+  "name": "@dokima/gateway",
   "private": true,
   "type": "module",
   "version": "0.0.0",
@@ -14,8 +14,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shipwright/events": "workspace:*",
-    "@shipwright/shared": "workspace:*",
+    "@dokima/events": "workspace:*",
+    "@dokima/shared": "workspace:*",
     "google-auth-library": "^10.7.0"
   }
 }

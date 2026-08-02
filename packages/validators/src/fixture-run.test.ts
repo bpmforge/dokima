@@ -48,7 +48,7 @@ const CLEAN_ARCHITECTURE_MD = `# Architecture
 
 No UI — UX branch not applicable.
 
-This is a minimal fixture project used to exercise the Shipwright validator pack contract.
+This is a minimal fixture project used to exercise the Dokima validator pack contract.
 `;
 
 const VALID_REQUIREMENTS_MATRIX_MD = `# Requirements Matrix

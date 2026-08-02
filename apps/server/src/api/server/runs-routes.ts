@@ -12,8 +12,8 @@
  * anywhere carries a ticket's run id(s).
  */
 
-import type { EventRecord } from '@shipwright/events';
-import { listEvents, openEventLogReader } from '@shipwright/events';
+import type { EventRecord } from '@dokima/events';
+import { listEvents, openEventLogReader } from '@dokima/events';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { badRequest, notFound } from './artifacts-helpers.js';

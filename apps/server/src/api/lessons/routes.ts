@@ -1,6 +1,6 @@
 /**
  * Field-report intake + triage routes (BLUEPRINT §12.6, UX_SPEC §7 G-10c,
- * W7-05 conductor gate-fix): the real REST surface for `@shipwright/memory`'s
+ * W7-05 conductor gate-fix): the real REST surface for `@dokima/memory`'s
  * `packages/memory/src/lessons/**`, already targeted by `apps/web/src/lessons/**`.
  *
  * `triagedBy` is always the server-resolved `OPERATOR_ACTOR_ID` (Law 4,
@@ -15,10 +15,10 @@
  * an unresolvable `sourceRef`) legitimately stays operator-filed.
  *
  * A `decision: 'ticket'` triage creates the real ticket via
- * `@shipwright/tickets`'s `createTicket` (Law 6: memory only prepares the
+ * `@dokima/tickets`'s `createTicket` (Law 6: memory only prepares the
  * payload) — same prepare-there/create-here split `plans-store.ts` uses.
  */
-import { appendEvent, openEventLog, type EventLog } from '@shipwright/events';
+import { appendEvent, openEventLog, type EventLog } from '@dokima/events';
 import {
   FieldReportAlreadyTriagedError,
   FieldReportNotFoundError,
@@ -33,13 +33,13 @@ import {
   type FieldReportStatus,
   type LessonsEvent,
   type LessonsEventSink,
-} from '@shipwright/memory';
+} from '@dokima/memory';
 import {
   createTicket,
   getTicket,
   type AcceptanceCriterion,
   type CreateTicketInput,
-} from '@shipwright/tickets';
+} from '@dokima/tickets';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { PROBLEM_CONTENT_TYPE } from '../problem.js';
@@ -63,7 +63,7 @@ const VALID_STATUSES: readonly FieldReportStatus[] = [
   'rejected',
 ];
 
-/** Bridges `packages/memory`'s injectable `LessonsEventSink` to the real hash-chained log (Law 6/7: memory can't depend on `@shipwright/events`, so `apps/server` supplies the concrete sink). */
+/** Bridges `packages/memory`'s injectable `LessonsEventSink` to the real hash-chained log (Law 6/7: memory can't depend on `@dokima/events`, so `apps/server` supplies the concrete sink). */
 function eventSinkFor(log: EventLog): LessonsEventSink {
   return {
     emit(event: LessonsEvent) {

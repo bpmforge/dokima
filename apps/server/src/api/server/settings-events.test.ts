@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listEvents, openEventLog } from '@shipwright/events';
+import { listEvents, openEventLog } from '@dokima/events';
 import {
   appendCopilotConsentAck,
   appendModelMatrixChanged,
@@ -12,7 +12,7 @@ import {
 import { stateDbPath } from './settings-db.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-settings-events-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-settings-events-'));
 }
 
 describe('settings-events', () => {

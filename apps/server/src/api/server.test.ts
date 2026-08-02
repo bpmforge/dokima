@@ -46,8 +46,8 @@ async function tmpDir(prefix: string): Promise<string> {
 async function registerTestProject(
   dirs: string[],
 ): Promise<{ fleetHome: string; projectId: string }> {
-  const fleetHome = await tmpDir('shipwright-server-fleet-');
-  const projectDir = await tmpDir('shipwright-server-project-');
+  const fleetHome = await tmpDir('dokima-server-fleet-');
+  const projectDir = await tmpDir('dokima-server-project-');
   dirs.push(fleetHome, projectDir);
   const record = await registerProject(path.join(fleetHome, 'fleet.json'), {
     path: projectDir,

@@ -22,8 +22,8 @@
  * blocked-with-evidence").
  */
 
-import { appendEvent, type EventLog } from '@shipwright/events';
-import { commentTicket, releaseTicket } from '@shipwright/tickets';
+import { appendEvent, type EventLog } from '@dokima/events';
+import { commentTicket, releaseTicket } from '@dokima/tickets';
 
 export type WatchdogBreachReason = 'max_session_seconds' | 'heartbeat_stall';
 

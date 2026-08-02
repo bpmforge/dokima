@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('serves the SPA shell through the real apps/server', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Shipwright')).toBeVisible();
+  await expect(page.getByText('Dokima')).toBeVisible();
 });
 
 test('theme toggle switches and persists across reload', async ({ page }) => {

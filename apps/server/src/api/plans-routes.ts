@@ -7,7 +7,7 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { PlanEvaluationSnapshot } from '@shipwright/pipeline';
+import type { PlanEvaluationSnapshot } from '@dokima/pipeline';
 import {
   badRequest,
   conflict,

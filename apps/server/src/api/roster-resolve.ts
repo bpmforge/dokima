@@ -13,8 +13,8 @@
  * run>project>global precedence locally (the class of duplication
  * `packages/gateway/src/routing/matrix.ts` had to accept only because *it*
  * lacks a `packages/shared` dependency), this reuses
- * `@shipwright/shared`'s `resolveEffectiveValue` directly — `apps/server`
- * already depends on `@shipwright/shared` — storing each role's assignment
+ * `@dokima/shared`'s `resolveEffectiveValue` directly — `apps/server`
+ * already depends on `@dokima/shared` — storing each role's assignment
  * under its own flat settings key (`roleMatrix.<role>`) so the existing
  * atomic per-key resolution (no deep merge across scopes, FR-S1) applies
  * without any local reimplementation. The stored value's shape is a
@@ -37,7 +37,7 @@ import {
   resolveEffectiveValue,
   type JsonValue,
   type ScopedSettings,
-} from '@shipwright/shared';
+} from '@dokima/shared';
 
 export const DEFAULT_ROSTER_ROLE = 'default';
 

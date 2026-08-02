@@ -37,8 +37,8 @@ import {
   listWorktrees,
   type CreateWorktreeOptions,
   type WorktreeHandle,
-} from '@shipwright/git';
-import { policyForLevel, type BreakerLevel } from '@shipwright/gateway';
+} from '@dokima/git';
+import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
 import {
   claimTicket,
   commentTicket,
@@ -48,8 +48,8 @@ import {
   releaseTicket,
   startTicket,
   type Ticket,
-} from '@shipwright/tickets';
-import type { EventLog } from '@shipwright/events';
+} from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
 import { shouldPauseAtBreakpoint, waveOf } from './breakpoints.js';
 import type { BreakpointMode } from './breakpoints-types.js';
 import { ensureBerthIdentities } from './berths-identity.js';
@@ -109,7 +109,7 @@ export interface RunBerthsOptions {
   readonly breakpoint?: BreakpointMode;
   /** Checked once per berth per outer-loop iteration; shared across every berth so a kill/pause takes effect for all of them at their next ticket boundary. */
   readonly stopSwitch?: StopSwitch;
-  /** Shared across every berth (pass the SAME callback, e.g. one backed by one `CostLedger`/`BudgetBreakerTracker` for the run) so one berth's spend halts every berth at its next ticket boundary — `@shipwright/gateway`'s `CostLedger` already aggregates by (project, run) without filtering by berth (FR-H5). Defaults to `'ok'` (unlimited). */
+  /** Shared across every berth (pass the SAME callback, e.g. one backed by one `CostLedger`/`BudgetBreakerTracker` for the run) so one berth's spend halts every berth at its next ticket boundary — `@dokima/gateway`'s `CostLedger` already aggregates by (project, run) without filtering by berth (FR-H5). Defaults to `'ok'` (unlimited). */
   readonly breakerLevel?: () => BreakerLevel | Promise<BreakerLevel>;
   readonly identityNamePrefix?: string;
   readonly now?: () => string;
@@ -167,7 +167,7 @@ async function resolveBerthWorktree(
   ticket: Ticket,
   baseRef: CreateWorktreeOptions['baseRef'],
 ): Promise<WorktreeHandle> {
-  const worktreePath = path.join(repoRoot, '.shipwright', 'worktrees', ticket.id);
+  const worktreePath = path.join(repoRoot, '.dokima', 'worktrees', ticket.id);
   const resolvedWorktreePath = await fs.realpath(worktreePath).catch(() => undefined);
   const existing = await listWorktrees(repoRoot);
   const found = resolvedWorktreePath

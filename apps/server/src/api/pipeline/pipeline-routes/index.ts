@@ -23,7 +23,7 @@
  * package-boundary constraint fixed by W5-17, out of this ticket's reach)
  * while a gateway call is inherently async. Every value in that cache was
  * produced by a REAL call through `../gateway-model-port.js`'s
- * `createRealGatewayPort` (a proper `@shipwright/gateway` workspace import's
+ * `createRealGatewayPort` (a proper `@dokima/gateway` workspace import's
  * `createOaiCompatProvider`, never a direct provider — Law 6 holds) in the
  * pre-flight immediately above.
  *
@@ -56,14 +56,14 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { openEventLog } from '@shipwright/events';
+import { openEventLog } from '@dokima/events';
 import {
   IncompleteInterviewSessionError,
   isInterviewComplete,
   runPipeline,
   type DecomposedPlan,
   type PipelinePort,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 import { computeFleetRegistryPath } from '../../projects.js';
 import { badRequest, notFound } from '../../server/artifacts-helpers.js';
 import { PROBLEM_CONTENT_TYPE } from '../../problem.js';
@@ -100,7 +100,7 @@ export interface PipelineRoutesOptions {
   onboardGatewayConfig?: OnboardRoutesOptions['gatewayConfig'];
   /** Keychain-resolved minting secret threaded to the advance route's `verifyReceipt`
    * calls (FR-S2) — see `./advance.js`'s `AdvanceRouteOptions.signingKey` doc for why
-   * this defaults to `SHIPWRIGHT_SIGNING_KEY` when omitted. */
+   * this defaults to `DOKIMA_SIGNING_KEY` when omitted. */
   signingKey?: string;
 }
 

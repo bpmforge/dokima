@@ -18,7 +18,7 @@
  * (`createCoverageTracker`/`createFindingLedger`) are in-memory, per-run-
  * session objects with no persisted store anywhere in this repo yet
  * (confirmed: zero callers of `toCoverageReportJson`/`createFindingLedger`
- * outside `packages/loop` itself) — importing `@shipwright/loop` here would
+ * outside `packages/loop` itself) — importing `@dokima/loop` here would
  * add a dependency with nothing real to read, so it isn't added. A
  * project-level spend ledger, gate-fixture inventory, provider ToS
  * registry, oscillating-ticket detector, and `global_playbook` staleness
@@ -57,7 +57,7 @@
  * verdict, which is what C-1 local-first honesty requires.
  */
 
-import type { PlanEvaluationSnapshot } from '@shipwright/pipeline';
+import type { PlanEvaluationSnapshot } from '@dokima/pipeline';
 import { listPlanItems } from '../api/plans-store.js';
 import { listRuleStates } from '../api/server/rule-state-store.js';
 

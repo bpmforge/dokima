@@ -30,7 +30,7 @@ export function buildGiteaHeaders(token: string): Record<string, string> {
   return {
     Authorization: `token ${token}`,
     Accept: 'application/json',
-    'User-Agent': 'shipwright-forge',
+    'User-Agent': 'dokima-forge',
   };
 }
 

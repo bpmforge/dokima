@@ -4,13 +4,13 @@
  * hash.ts` it was hand-copied from (that file's own header explains why:
  * `packages/shared` cannot depend on `packages/events`, ARCHITECTURE.md §4).
  * Without this, the two copies could silently drift — a bundle a real
- * project (hashed by `@shipwright/events`) exports would then fail the
+ * project (hashed by `@dokima/events`) exports would then fail the
  * "portable, SQLite-free" verifier's own chain check, defeating its reason
  * to exist.
  *
  * `packages/shared/src/export` is not wired into that package's root
  * barrel yet (see its own `index.ts` header — out of this ticket's
- * write_scope), so it can't be reached via the normal `@shipwright/shared`
+ * write_scope), so it can't be reached via the normal `@dokima/shared`
  * specifier. Loaded here by absolute `file://` URL instead — the same
  * dynamic-import technique `apps/web/e2e/fixtures/seed-board-tickets.mjs`
  * uses to reach a workspace package its own `package.json` doesn't declare,
@@ -23,7 +23,7 @@ import {
   verifyChain,
   GENESIS_HASH,
   type ChainRow,
-} from '@shipwright/events';
+} from '@dokima/events';
 import { describe, expect, it } from 'vitest';
 
 const here = path.dirname(fileURLToPath(import.meta.url));

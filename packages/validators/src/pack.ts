@@ -30,7 +30,7 @@ export interface LoadValidatorPackOptions {
  * `contentDir`, excluding the shared `_lib*.sh` libraries those scripts
  * source (they don't match the naming pattern and aren't independently
  * runnable). `select` implements per-project pack selection (FR-S1,
- * `.shipwright/settings.json` validator-pack selection) — an unknown name
+ * `.dokima/settings.json` validator-pack selection) — an unknown name
  * is a config error, not something to skip silently.
  */
 export async function loadValidatorPack(

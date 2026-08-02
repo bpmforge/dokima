@@ -21,7 +21,7 @@
  *
  * Assets (SQL migrations, content packs, the built SPA) are NOT copied here.
  * They ship via the root `package.json`'s `files` list at their existing
- * repo-relative paths, so `resolveAsset()` in `@shipwright/shared` returns the
+ * repo-relative paths, so `resolveAsset()` in `@dokima/shared` returns the
  * same path from a source checkout and from an installed copy. One layout, no
  * mapping table to keep in sync.
  */

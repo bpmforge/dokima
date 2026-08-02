@@ -9,7 +9,7 @@ import {
   openEventLog,
   ProjectionRegistry,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   buildAgentHistory,
   rosterHistoryProjection,
@@ -19,7 +19,7 @@ import {
 
 const tmpDirs: string[] = [];
 async function tmpLog(): Promise<EventLog> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-roster-history-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-roster-history-'));
   tmpDirs.push(dir);
   return openEventLog(path.join(dir, 'state.db'));
 }

@@ -3,7 +3,7 @@
  * "a link-shortener with auth". Canonical human-readable source:
  * `content/samples/link-shortener.md` — kept in sync by hand, see that
  * file's provenance header for why this can't be a runtime content-loader
- * fetch (no `@shipwright/pipeline` dependency reachable from apps/web to
+ * fetch (no `@dokima/pipeline` dependency reachable from apps/web to
  * validate the shape, and no server route serves `content/samples/**` yet
  * — HANDOFF in plan.json/docs/STATUS.md).
  *

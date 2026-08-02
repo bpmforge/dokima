@@ -1,7 +1,7 @@
 /**
  * Chat REST client (`GET /api/v1/projects/:id/chat` — server.ts, currently
  * fixture-backed, see `fixtures.ts`'s module comment). Bearer token comes
- * from `window.__SHIPWRIGHT_TOKEN__`, the same server-injected global
+ * from `window.__DOKIMA_TOKEN__`, the same server-injected global
  * `apps/web/src/fleet/api.ts` already reads (server.ts's `injectToken`).
  */
 
@@ -18,7 +18,7 @@ export class ChatApiError extends Error {
 }
 
 export function readInjectedToken(): string | undefined {
-  return (globalThis as { __SHIPWRIGHT_TOKEN__?: string }).__SHIPWRIGHT_TOKEN__;
+  return (globalThis as { __DOKIMA_TOKEN__?: string }).__DOKIMA_TOKEN__;
 }
 
 export interface ChatApiOptions {

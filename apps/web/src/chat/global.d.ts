@@ -3,6 +3,6 @@ export {};
 declare global {
   interface Window {
     /** Injected into the served SPA shell by `apps/server/src/api/server.ts` (API_DESIGN §1). */
-    __SHIPWRIGHT_TOKEN__?: string;
+    __DOKIMA_TOKEN__?: string;
   }
 }

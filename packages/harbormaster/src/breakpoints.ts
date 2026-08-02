@@ -10,7 +10,7 @@
  *
  * Wave numbers are derived from the ticket-id convention this board already
  * uses everywhere (`plan.json`, ROADMAP.md: `W<n>-<seq>`) rather than a new
- * schema field — `@shipwright/tickets`' `Ticket` carries no `phase`/`wave`
+ * schema field — `@dokima/tickets`' `Ticket` carries no `phase`/`wave`
  * column to read instead.
  */
 

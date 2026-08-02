@@ -1,6 +1,6 @@
 <!--
-  Provenance: original Shipwright content (no bpm-opencode-experts equivalent to import).
-  Author: Shipwright W5-05 (research path)
+  Provenance: original Dokima content (no bpm-opencode-experts equivalent to import).
+  Author: Dokima W5-05 (research path)
   Created: 2026-07-18
 -->
 

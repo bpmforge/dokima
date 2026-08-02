@@ -1,4 +1,4 @@
-# Shipwright — Use Cases
+# Dokima — Use Cases
 
 End-to-end scenarios validating SRS FRs in combination. Traces to `docs/SRS.md`,
 `docs/USER_STORIES.md`, `docs/DECISIONS.md`. Format: actor · preconditions · main flow ·
@@ -75,7 +75,7 @@ alternate/error flows · FRs exercised. Personas P1–P4 per SRS §1.2.
 
 **Actor:** P2 dev. **Preconditions:** existing codebase on disk; Onboard mode (FR-P5).
 **Main flow:**
-1. Shipwright maps the repo: landscape, entry points, components, health assessment — each a gated, receipted artifact (FR-P1).
+1. Dokima maps the repo: landscape, entry points, components, health assessment — each a gated, receipted artifact (FR-P1).
 2. Coverage tracker enumerates the inventory (routes/tables/services); every row lands DONE or is flagged (FR-L4).
 3. P2 reviews the map in the artifact viewer (FR-C3), then starts a Feature-mode mini-program on top.
 **Alternates:** A1 — repo has no tests: health assessment flags it; Feature mode's decomposition adds a test-baseline ticket before feature tickets (dependency-ordered). A2 — Feature mode requested on a never-onboarded repo: refused with the fix suggested (US-106).

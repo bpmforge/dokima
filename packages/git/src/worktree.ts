@@ -15,7 +15,7 @@ export interface CreateWorktreeOptions {
   slug: string;
   /** Commit-ish to branch from. Defaults to HEAD. */
   baseRef?: string;
-  /** Defaults to `<repoRoot>/.shipwright/worktrees`. */
+  /** Defaults to `<repoRoot>/.dokima/worktrees`. */
   worktreesDir?: string;
 }
 
@@ -44,7 +44,7 @@ export async function createWorktree(
   opts: CreateWorktreeOptions,
 ): Promise<WorktreeHandle> {
   const worktreesDir =
-    opts.worktreesDir ?? path.join(opts.repoRoot, '.shipwright', 'worktrees');
+    opts.worktreesDir ?? path.join(opts.repoRoot, '.dokima', 'worktrees');
   const branch = branchNameFor(opts.ticketId, opts.slug);
   const worktreePath = path.join(worktreesDir, opts.ticketId);
   await fs.mkdir(worktreesDir, { recursive: true });

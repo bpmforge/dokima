@@ -2,11 +2,11 @@
  * Shared types for `resume.ts` (FR-H3). Split per CODE_BOOK_PROTOCOL.md.
  */
 
-import type { EventLog, ReceiptRecord } from '@shipwright/events';
-import type { Ticket } from '@shipwright/tickets';
+import type { EventLog, ReceiptRecord } from '@dokima/events';
+import type { Ticket } from '@dokima/tickets';
 
 export interface CheckClaimedTicketOptions {
-  /** Root a ticket's worktree lives under: `<repoRoot>/.shipwright/worktrees/<ticketId>` (loop-claim.ts's own convention). */
+  /** Root a ticket's worktree lives under: `<repoRoot>/.dokima/worktrees/<ticketId>` (loop-claim.ts's own convention). */
   readonly repoRoot: string;
   /** Same keychain-resolved minting secret `verifyReceipt` needs (FR-S2) — never redone, only re-verified. */
   readonly signingKey: string;

@@ -15,7 +15,7 @@ import {
 } from './snapshot.js';
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-snapshot-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-snapshot-'));
 }
 
 describe('buildPlanEvaluationSnapshot', () => {

@@ -5,7 +5,7 @@
  * `content/research-templates/` path string), same pattern `../phases/topology.ts` already
  * uses for `content/experts`/`content/validators` names. The template bodies live under
  * `content/research-templates/**` (CLAUDE.md law #6: content is data, loaders parse it, code
- * never imports the markdown text itself); four of the five are original Shipwright content,
+ * never imports the markdown text itself); four of the five are original Dokima content,
  * and `design-options` is adapted from bpm-opencode-experts — see that directory's
  * VENDORED.md for full provenance.
  */

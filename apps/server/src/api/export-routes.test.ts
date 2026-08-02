@@ -6,8 +6,8 @@ import {
   createIdentity,
   mintReceipt,
   openEventLog,
-} from '@shipwright/events';
-import { claimTicket, closeTicket, createTicket, startTicket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { claimTicket, closeTicket, createTicket, startTicket } from '@dokima/tickets';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildAllowlist } from './allowlist.js';
@@ -38,7 +38,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
   });
 
   async function boot(): Promise<{ app: FastifyInstance; fleetHome: string }> {
-    const fleetHome = await tmpDir('shipwright-export-fleet-');
+    const fleetHome = await tmpDir('dokima-export-fleet-');
     dirs.push(fleetHome);
     const app = Fastify({ logger: false });
     registerExportRoutes(app, {
@@ -52,7 +52,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
   }
 
   async function registerSeededProject(fleetHome: string, name: string) {
-    const projectDir = await tmpDir(`shipwright-export-project-${name}-`);
+    const projectDir = await tmpDir(`dokima-export-project-${name}-`);
     dirs.push(projectDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, {
@@ -61,7 +61,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
       name,
     });
 
-    const log = openEventLog(path.join(projectDir, '.shipwright', 'state.db'));
+    const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
     createIdentity(log, { id: 'maker-1', name: 'Maker', kind: 'machine' });
     createTicket(log, 'maker-1', {
       id: 'T-1',
@@ -153,7 +153,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
     expect(exportRes.statusCode).toBe(200);
     const bundle = exportRes.json();
 
-    const targetDir = await tmpDir('shipwright-export-target-');
+    const targetDir = await tmpDir('dokima-export-target-');
     dirs.push(targetDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const targetRecord = await registerProject(registryPath, {
@@ -218,7 +218,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
 
   it('import rejects a malformed bundle (400, structural validation)', async () => {
     const { app, fleetHome } = await boot();
-    const targetDir = await tmpDir('shipwright-export-malformed-');
+    const targetDir = await tmpDir('dokima-export-malformed-');
     dirs.push(targetDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: targetDir, mode: 'new' });
@@ -247,7 +247,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
     const bundle = exportRes.json();
     bundle.events[0].payloadJson = '{"tampered":true}';
 
-    const targetDir = await tmpDir('shipwright-export-tamper-dst-');
+    const targetDir = await tmpDir('dokima-export-tamper-dst-');
     dirs.push(targetDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: targetDir, mode: 'new' });
@@ -291,7 +291,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
       createdAt: new Date().toISOString(),
     });
 
-    const targetDir = await tmpDir('shipwright-export-orphan-dst-');
+    const targetDir = await tmpDir('dokima-export-orphan-dst-');
     dirs.push(targetDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: targetDir, mode: 'new' });
@@ -365,7 +365,7 @@ describe('export/import routes (BLUEPRINT §12.8)', () => {
     });
     bundle.receipts.push(forgedReceipt);
 
-    const targetDir = await tmpDir('shipwright-export-forged-mac-dst-');
+    const targetDir = await tmpDir('dokima-export-forged-mac-dst-');
     dirs.push(targetDir);
     const registryPath = path.join(fleetHome, 'fleet.json');
     const record = await registerProject(registryPath, { path: targetDir, mode: 'new' });

@@ -3,12 +3,12 @@
  * `loop-land.ts` per CODE_BOOK_PROTOCOL.md's 400-line file cap: inlining
  * this step in `loop-land.ts` pushed it to 420 lines.
  *
- * Structurally mirrors `@shipwright/forge`'s real `pushToRemotes` rather
+ * Structurally mirrors `@dokima/forge`'s real `pushToRemotes` rather
  * than importing it directly — `packages/harbormaster/package.json`
- * declares no `@shipwright/forge` dependency, and this ticket's
+ * declares no `@dokima/forge` dependency, and this ticket's
  * `write_scope` doesn't grant editing it (no `package.json` glob), so the
  * caller injects the real implementation (the same seam `spawn`/
- * `SpawnSession` already uses for `@shipwright/loop`).
+ * `SpawnSession` already uses for `@dokima/loop`).
  *
  * SCOPE NOTE (review-caught, not a full amplifier-hole-11 close): this
  * pushes the ticket's own pre-review branch (`worktree.branch`) at the
@@ -23,9 +23,9 @@
  * this file and outside this ticket's `write_scope`.
  */
 
-import { git } from '@shipwright/git';
-import { commentTicket } from '@shipwright/tickets';
-import type { EventLog } from '@shipwright/events';
+import { git } from '@dokima/git';
+import { commentTicket } from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
 
 export interface LandPushRemoteResult {
   readonly remote: string;

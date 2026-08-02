@@ -16,19 +16,19 @@ const FAKE_TARGET = { command: '/usr/bin/node', args: ['/repo/cli-entry.mjs'] };
 
 describe('renderLaunchdPlist', () => {
   it('includes the label, program arguments, RunAtLoad, and log paths', () => {
-    const plist = renderLaunchdPlist(FAKE_TARGET, '/home/x/.shipwright/logs');
+    const plist = renderLaunchdPlist(FAKE_TARGET, '/home/x/.dokima/logs');
     expect(plist).toContain(`<string>${LAUNCHD_LABEL}</string>`);
     expect(plist).toContain('<string>/usr/bin/node</string>');
     expect(plist).toContain('<string>/repo/cli-entry.mjs</string>');
     expect(plist).toContain('<key>RunAtLoad</key>');
     expect(plist).toContain('<true/>');
-    expect(plist).toContain('/home/x/.shipwright/logs/service.log');
+    expect(plist).toContain('/home/x/.dokima/logs/service.log');
   });
 });
 
 describe('renderSystemdUnit', () => {
   it('includes ExecStart, Restart, and WantedBy=default.target', () => {
-    const unit = renderSystemdUnit(FAKE_TARGET, '/home/x/.shipwright/logs');
+    const unit = renderSystemdUnit(FAKE_TARGET, '/home/x/.dokima/logs');
     expect(unit).toContain('ExecStart=/usr/bin/node /repo/cli-entry.mjs');
     expect(unit).toContain('Restart=on-failure');
     expect(unit).toContain('WantedBy=default.target');
@@ -37,7 +37,7 @@ describe('renderSystemdUnit', () => {
   it('quotes arguments containing spaces', () => {
     const unit = renderSystemdUnit(
       { command: '/usr/bin/node', args: ['/path with spaces/cli-entry.mjs'] },
-      '/home/x/.shipwright/logs',
+      '/home/x/.dokima/logs',
     );
     expect(unit).toContain('ExecStart=/usr/bin/node "/path with spaces/cli-entry.mjs"');
   });

@@ -29,12 +29,12 @@ describe('runBackupCommand', () => {
 
     expect(code).toBe(0);
     expect(createOnlineBackup).toHaveBeenCalledWith(
-      path.join(io.cwd, '.shipwright', 'state.db'),
-      path.join(io.cwd, '.shipwright', 'backups'),
+      path.join(io.cwd, '.dokima', 'state.db'),
+      path.join(io.cwd, '.dokima', 'backups'),
       expect.objectContaining({ now: io.now }),
     );
     expect(pruneBackups).toHaveBeenCalledWith(
-      path.join(io.cwd, '.shipwright', 'backups'),
+      path.join(io.cwd, '.dokima', 'backups'),
       7,
     );
     expect(io.stdout).toHaveBeenCalledWith(

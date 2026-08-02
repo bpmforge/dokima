@@ -24,10 +24,10 @@ export interface FixtureRepo {
 }
 
 export async function createFixtureRepo(): Promise<FixtureRepo> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-toy-project-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-toy-project-'));
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Toy Project']);
-  await git(repoRoot, ['config', 'user.email', 'toy-project@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Toy Project']);
+  await git(repoRoot, ['config', 'user.email', 'toy-project@dokima.invalid']);
   await fs.mkdir(path.join(repoRoot, 'src'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# toy project fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);

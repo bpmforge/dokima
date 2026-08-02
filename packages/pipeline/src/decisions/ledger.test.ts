@@ -12,11 +12,11 @@ import type { DecisionRecord } from './types.js';
 // "| ID | Date | Decision | Options considered | Rationale |" table, a
 // non-sequential ID (D-020 appended after D-018, mirroring the real file),
 // and a trailing section that must survive untouched.
-const FIXTURE_LEDGER = `# Shipwright — Decisions Ledger
+const FIXTURE_LEDGER = `# Dokima — Decisions Ledger
 
 | ID | Date | Decision | Options considered | Rationale |
 |---|---|---|---|---|
-| D-001 | 2026-07-10 | Name: **Shipwright** | AgentForge, Conductor | founder pick |
+| D-001 | 2026-07-10 | Name: **Dokima** | AgentForge, Conductor | founder pick |
 | D-018 | 2026-07-14 | Escalation policy modes | Auto-ladder only | founder direction |
 
 | D-020 | 2026-07-16 | Accept authority | Synthetic reviewer (rejected) | founder decision |
@@ -42,7 +42,7 @@ describe('nextDecisionId', () => {
   });
 
   it('zero-pads to at least 3 digits from an empty ledger', () => {
-    expect(nextDecisionId('# Shipwright — Decisions Ledger\n')).toBe('D-001');
+    expect(nextDecisionId('# Dokima — Decisions Ledger\n')).toBe('D-001');
   });
 
   it('finds the max even when IDs are non-sequential (mirrors D-020 landing after D-018)', () => {
@@ -96,7 +96,7 @@ describe('appendDecision', () => {
 
   it('is append-only: the original rows are byte-identical, none rewritten', () => {
     const result = appendDecision(FIXTURE_LEDGER, NEW_RECORD);
-    expect(result).toContain('| D-001 | 2026-07-10 | Name: **Shipwright** |');
+    expect(result).toContain('| D-001 | 2026-07-10 | Name: **Dokima** |');
     expect(result).toContain('| D-018 | 2026-07-14 | Escalation policy modes |');
   });
 

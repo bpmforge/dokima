@@ -1,4 +1,4 @@
-# Shipwright — project rules (read first, every session)
+# Dokima — project rules (read first, every session)
 
 Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.md`.
 
@@ -13,7 +13,7 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    `docs/TECH_STACK.md`; upgrade only in lockstep and record it there.
 3. **Full gate before closing any ticket**:
    `pnpm lint && pnpm typecheck && pnpm test` (workspace-wide) **and
-   `pnpm --filter @shipwright/web e2e`**, plus the ticket's own acceptance
+   `pnpm --filter @dokima/web e2e`**, plus the ticket's own acceptance
    criteria. Report test counts in commit bodies.
    **Run everything on Node 22** (`.nvmrc`, `engines.node`): the
    `better-sqlite3` native binary is built for it, and Node 24 fails ~50

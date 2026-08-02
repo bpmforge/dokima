@@ -19,7 +19,7 @@ export class DecisionsApiError extends Error {
 }
 
 export function readInjectedToken(): string | undefined {
-  return (globalThis as { __SHIPWRIGHT_TOKEN__?: string }).__SHIPWRIGHT_TOKEN__;
+  return (globalThis as { __DOKIMA_TOKEN__?: string }).__DOKIMA_TOKEN__;
 }
 
 export interface DecisionsApiOptions {

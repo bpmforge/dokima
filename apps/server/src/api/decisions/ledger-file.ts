@@ -16,7 +16,7 @@ import {
   formatLedgerRow,
   LedgerTableNotFoundError,
   type DecisionRecord,
-} from '@shipwright/pipeline';
+} from '@dokima/pipeline';
 
 const LEDGER_HEADER = [
   '# Decisions',
@@ -45,7 +45,7 @@ export function writeLedgerSync(filePath: string, markdown: string): void {
 }
 
 /**
- * `@shipwright/pipeline`'s `appendDecision` refuses (`LedgerTableNotFoundError`)
+ * `@dokima/pipeline`'s `appendDecision` refuses (`LedgerTableNotFoundError`)
  * when there's no existing `| D-<n> |` row to anchor after — deliberately,
  * per its own doc comment, since guessing where to insert a first row into
  * an ambiguous file is worse than refusing. That refusal is expected and

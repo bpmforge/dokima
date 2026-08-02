@@ -1,7 +1,7 @@
 /**
  * Makes the E2E suite hermetic across runs (W9-14).
  *
- * `SHIPWRIGHT_HOME` is a FIXED tmp path, and `reuseExistingServer` keeps a
+ * `DOKIMA_HOME` is a FIXED tmp path, and `reuseExistingServer` keeps a
  * local server alive between invocations, so the Fleet registry that home
  * holds was never cleaned by anything. It had reached **1,164 projects /
  * 422KB of fleet.json**, accumulated since 2026-07-23 — every project every

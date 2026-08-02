@@ -9,7 +9,7 @@ export interface TempDb {
 
 /** A throwaway file path (not yet created) for a WAL-mode SQLite fixture. */
 export async function createTempDbPath(): Promise<TempDb> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-mcp-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-mcp-test-'));
   return {
     dbPath: path.join(dir, 'state.db'),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),

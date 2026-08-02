@@ -2,14 +2,14 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createWorktree, git, type WorktreeHandle } from '@shipwright/git';
+import { createWorktree, git, type WorktreeHandle } from '@dokima/git';
 import {
   createIdentity,
   listEvents,
   openEventLog,
   type EventLog,
-} from '@shipwright/events';
-import { claimTicket, createTicket, getTicket, startTicket } from '@shipwright/tickets';
+} from '@dokima/events';
+import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
 import {
   commitHumanEdit,
   humanEditConflictDecideCard,
@@ -21,14 +21,14 @@ async function createTempRepo(): Promise<{
   cleanup: () => Promise<void>;
 }> {
   const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-conflict-rebase-'),
+    path.join(os.tmpdir(), 'dokima-conflict-rebase-'),
   );
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   // Ignore the ticket worktree's own metadata dir (HARD_EXCLUSIONS in
-  // @shipwright/git's scope.ts) — it must never show up as a "human edit".
-  await fs.writeFile(path.join(repoRoot, '.gitignore'), '.shipwright/\n');
+  // @dokima/git's scope.ts) — it must never show up as a "human edit".
+  await fs.writeFile(path.join(repoRoot, '.gitignore'), '.dokima/\n');
   await git(repoRoot, ['add', '--', '.gitignore']);
   await fs.mkdir(path.join(repoRoot, 'src', 'auth'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'src', 'auth', 'session.ts'), 'shared\n');
@@ -47,7 +47,7 @@ interface Fixture {
 async function setupFixture(ticketId: string): Promise<Fixture> {
   const repo = await createTempRepo();
   const dbDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-conflict-rebase-db-'),
+    path.join(os.tmpdir(), 'dokima-conflict-rebase-db-'),
   );
   const log = openEventLog(path.join(dbDir, 'state.db'));
   createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });

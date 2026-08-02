@@ -6,7 +6,7 @@ import type { NotificationItem } from './types.js';
 /** Live-update substitute (WS push deferred — same precedent as `fleet/FleetHome.tsx`). */
 const POLL_INTERVAL_MS = 5_000;
 const REVIEW_TARGET_MS = 10 * 60 * 1000;
-const LAST_REVIEWED_KEY = 'shipwright:morning-queue:last-reviewed-at';
+const LAST_REVIEWED_KEY = 'dokima:morning-queue:last-reviewed-at';
 
 function readLastReviewedAt(): string | null {
   try {

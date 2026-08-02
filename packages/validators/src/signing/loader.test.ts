@@ -51,7 +51,7 @@ describe('loader', () => {
       const manifest = await createAndSignManifest(
         contentDir,
         'MIT',
-        'shipwright',
+        'dokima',
         privateKey,
         publicKey,
       );
@@ -80,7 +80,7 @@ describe('loader', () => {
         const manifest = await createAndSignManifest(
           contentDir,
           license,
-          'shipwright',
+          'dokima',
           privateKey,
           publicKey,
         );
@@ -114,7 +114,7 @@ describe('loader', () => {
             { path: 'validate-test1.sh', hash: hash1 },
             { path: 'validate-test2.sh', hash: hash2 },
           ],
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: new Date().toISOString(),
         };
 
@@ -124,7 +124,7 @@ describe('loader', () => {
           license,
           files: signingData.files,
           signature,
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: signingData.signedAt,
         };
 
@@ -149,7 +149,7 @@ describe('loader', () => {
           version: 1,
           license,
           files: [{ path: 'validate-test.sh', hash }],
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: new Date().toISOString(),
         };
 
@@ -159,7 +159,7 @@ describe('loader', () => {
           license,
           files: signingData.files,
           signature,
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: signingData.signedAt,
         };
 
@@ -190,7 +190,7 @@ describe('loader', () => {
             { path: 'validate-test2.sh', hash: hash2 },
           ],
           signature: '0'.repeat(128), // Fake signature (all zeros)
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: new Date().toISOString(),
         };
 
@@ -219,7 +219,7 @@ describe('loader', () => {
             { path: 'validate-test1.sh', hash: 'sha256:' + 'a'.repeat(64) },
             { path: 'validate-test2.sh', hash: 'sha256:' + 'b'.repeat(64) },
           ],
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: new Date().toISOString(),
         };
 
@@ -229,7 +229,7 @@ describe('loader', () => {
           license: 'MIT',
           files: signingData.files,
           signature,
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: signingData.signedAt,
         };
 
@@ -258,7 +258,7 @@ describe('loader', () => {
             { path: 'validate-test1.sh', hash: hash1 },
             { path: 'validate-test-missing.sh', hash: 'sha256:' + 'c'.repeat(64) },
           ],
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: new Date().toISOString(),
         };
 
@@ -268,7 +268,7 @@ describe('loader', () => {
           license: 'MIT',
           files: signingData.files,
           signature,
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: signingData.signedAt,
         };
 
@@ -291,7 +291,7 @@ describe('loader', () => {
           license: 'MIT',
           files: [{ path: '../../../etc/passwd', hash: 'sha256:' + 'a'.repeat(64) }],
           signature: '0'.repeat(128),
-          publisher: 'shipwright',
+          publisher: 'dokima',
           signedAt: new Date().toISOString(),
         };
 
@@ -334,7 +334,7 @@ describe('loader', () => {
       const manifest = await createAndSignManifest(
         contentDir,
         'MIT',
-        'shipwright',
+        'dokima',
         privateKey,
         publicKey,
       );

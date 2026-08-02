@@ -1,1 +1,1 @@
-export { globToRegExp, matchesAnyGlob, matchesGlob } from '@shipwright/shared';
+export { globToRegExp, matchesAnyGlob, matchesGlob } from '@dokima/shared';

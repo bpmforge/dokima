@@ -73,7 +73,7 @@ describe('FirstRunWizard sample step -> done (guided sample embedded)', () => {
     mockedFleetApi.createProject.mockResolvedValue({
       id: 'proj-sample-1',
       path: '/tmp/x',
-      name: 'Shipwright Sample',
+      name: 'Dokima Sample',
       archived: false,
       createdAt: '2026-07-20T00:00:00Z',
       lastOpenedAt: '2026-07-20T00:00:00Z',

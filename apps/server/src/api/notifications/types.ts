@@ -76,7 +76,7 @@ export interface EmitOptions {
  * lane-blocking Decide item vs. a passive Review FYI. Matches the leverage
  * scale `packages/harbormaster`'s W3-05 review-queue already established
  * (merge=40 > approval=30 > clarification=20 > digest=10) — not imported
- * (`@shipwright/harbormaster` is not a declared `apps/server` dependency
+ * (`@dokima/harbormaster` is not a declared `apps/server` dependency
  * and `apps/server/package.json` is outside this ticket's write_scope), so
  * mirrored by value instead. Ties break oldest-first (created_at ASC).
  */

@@ -12,7 +12,7 @@
  * posture as `watchdog-session.ts` documents for its own module.
  */
 
-import type { EventLog } from '@shipwright/events';
+import type { EventLog } from '@dokima/events';
 import { mintLimitPauseEvent, mintLimitResumeEvent } from './limit-pause-events.js';
 import { LimitPauseLedger } from './limit-pause-ledger.js';
 import type { LimitBerthKey, LimitClassification } from './limit-pause-types.js';
@@ -25,7 +25,7 @@ export interface RunWithLimitPauseOptions {
   readonly log: EventLog;
   readonly actorId: string;
   readonly ledger: LimitPauseLedger;
-  /** Classifies a caught error (or any thrown value) as a provider limit or a terminal failure. Production callers pass `@shipwright/gateway`'s `classifyProviderError` once a follow-up ticket exports it (see limit-pause-types.ts's module doc). */
+  /** Classifies a caught error (or any thrown value) as a provider limit or a terminal failure. Production callers pass `@dokima/gateway`'s `classifyProviderError` once a follow-up ticket exports it (see limit-pause-types.ts's module doc). */
   readonly classify: (error: unknown) => LimitClassification;
   /** Injectable wait — real callers get a timer; fixtures inject an instant-resolving fake to simulate an overnight window without actually waiting (TESTING.md §2). */
   readonly sleep?: (ms: number) => Promise<void>;

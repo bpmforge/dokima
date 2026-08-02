@@ -2,7 +2,7 @@
  * FR-G5: soft-gate waivers permitted on phases 0–3 only; build/verify gates
  * (phase 4–5) never soften, regardless of model tier or who signs. This is a
  * *policy* check — is a waiver even eligible for this phase at all — layered
- * in front of `@shipwright/events`' `mintReceipt`/`verifyReceipt`, which
+ * in front of `@dokima/events`' `mintReceipt`/`verifyReceipt`, which
  * already enforces the orthogonal FR-P2 concern (the signer must be human,
  * not agent-blocklisted). Neither primitive substitutes for the other:
  * a validly human-signed waiver receipt for phase 4 must still be rejected

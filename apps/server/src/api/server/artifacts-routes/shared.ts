@@ -5,7 +5,7 @@
  */
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { EventLog } from '@shipwright/events';
+import type { EventLog } from '@dokima/events';
 import { resolveProjectOrProblem } from '../board-project.js';
 
 export const DOCS_SUBDIR = 'docs';

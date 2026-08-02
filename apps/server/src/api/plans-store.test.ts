@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openEventLogReader } from '@shipwright/events';
-import type { PlanEvaluationSnapshot } from '@shipwright/pipeline';
+import { openEventLogReader } from '@dokima/events';
+import type { PlanEvaluationSnapshot } from '@dokima/pipeline';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   acceptPlanItem,
@@ -35,7 +35,7 @@ async function seedDemotionFlaggedRule(projectDir: string): Promise<void> {
 }
 
 async function tmpProjectDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-plans-store-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-plans-store-'));
 }
 
 function baselineSnapshot(

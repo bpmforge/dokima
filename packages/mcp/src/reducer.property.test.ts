@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { rebuildProjection, type EventRecord } from '@shipwright/events';
+import { rebuildProjection, type EventRecord } from '@dokima/events';
 import { MCP_APPROVAL_DOMAIN, mcpProjection } from './reducer.js';
 
 const TOOL_IDS = ['fs-server:read', 'fs-server:write', 'fs-server:shell'] as const;

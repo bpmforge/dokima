@@ -9,7 +9,7 @@ export interface TempDb {
 
 /** A throwaway file path (not yet created) for a WAL-mode SQLite fixture. */
 export async function createTempDbPath(): Promise<TempDb> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shipwright-validators-test-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-validators-test-'));
   return {
     dbPath: path.join(dir, 'state.db'),
     cleanup: () => fs.rm(dir, { recursive: true, force: true }),
@@ -24,7 +24,7 @@ export interface TempDir {
 /** A throwaway directory for fixture projects / fixture validator scripts. */
 export async function createTempDir(prefix: string): Promise<TempDir> {
   const dir = await fs.mkdtemp(
-    path.join(os.tmpdir(), `shipwright-validators-${prefix}-`),
+    path.join(os.tmpdir(), `dokima-validators-${prefix}-`),
   );
   return { dir, cleanup: () => fs.rm(dir, { recursive: true, force: true }) };
 }

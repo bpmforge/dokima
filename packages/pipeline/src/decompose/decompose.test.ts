@@ -52,7 +52,7 @@ describe('decompose (BLUEPRINT §4 step 4, US-203, field report §10)', () => {
       draft({
         id: 'W1-02',
         consumesInterfaces: [
-          { packageName: '@shipwright/events', exportName: 'mintReceipt' },
+          { packageName: '@dokima/events', exportName: 'mintReceipt' },
         ],
       }),
     ]);
@@ -62,7 +62,7 @@ describe('decompose (BLUEPRINT §4 step 4, US-203, field report §10)', () => {
         kind: 'unowned-interface',
         ticketId: 'W1-02',
         detail:
-          'consumes @shipwright/events#mintReceipt but no ticket in the DAG owns its public re-export',
+          'consumes @dokima/events#mintReceipt but no ticket in the DAG owns its public re-export',
       },
     ]);
   });

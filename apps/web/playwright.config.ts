@@ -2,7 +2,7 @@
  * Playwright E2E over the served Canvas SPA (docs/TESTING.md §7): a real
  * `vite build` served by the real apps/server, no mocked browser APIs.
  * `webServer` builds the SPA then boots the real server against a
- * throwaway `.shipwright` home + project DB — no CI job here ever talks to
+ * throwaway `.dokima` home + project DB — no CI job here ever talks to
  * a real model provider (the fake-model-gateway fixture stands in when a
  * future ticket wires provider calls into the UI).
  */
@@ -13,7 +13,7 @@ import { HOME, PORT, STATE_DB } from './e2e/env-paths.js';
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
-  // Clears the fixed SHIPWRIGHT_HOME before every run. Without it the Fleet
+  // Clears the fixed DOKIMA_HOME before every run. Without it the Fleet
   // registry accumulates across runs forever -- it reached 1,164 projects and
   // took trace.spec.ts red plus the suite from 22s to 3.7m (W9-14).
   globalSetup: './e2e/global-setup.ts',
@@ -25,11 +25,11 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'pnpm --filter @shipwright/web run build && pnpm --filter @shipwright/server exec tsx src/api/main.ts',
+      'pnpm --filter @dokima/web run build && pnpm --filter @dokima/server exec tsx src/api/main.ts',
     env: {
-      SHIPWRIGHT_HOME: HOME,
-      SHIPWRIGHT_PORT: String(PORT),
-      SHIPWRIGHT_STATE_DB: STATE_DB,
+      DOKIMA_HOME: HOME,
+      DOKIMA_PORT: String(PORT),
+      DOKIMA_STATE_DB: STATE_DB,
     },
     url: `http://127.0.0.1:${PORT}/healthz`,
     reuseExistingServer: !process.env.CI,

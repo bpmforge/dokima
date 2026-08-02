@@ -1,4 +1,4 @@
-import { createIdentity, getIdentity, type EventLog } from '@shipwright/events';
+import { createIdentity, getIdentity, type EventLog } from '@dokima/events';
 
 /**
  * API_DESIGN §1 "Actor attribution": mutations through this REST API carry

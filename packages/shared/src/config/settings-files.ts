@@ -1,7 +1,7 @@
 /**
  * File-backed global/project settings scopes (FR-S1, BLUEPRINT §3.10).
- * Global: `~/.shipwright/config.json` (relocatable via SHIPWRIGHT_HOME for
- * CI/tests, docs/DEPLOYMENT.md §6). Project: `<repo>/.shipwright/settings.json`.
+ * Global: `~/.dokima/config.json` (relocatable via DOKIMA_HOME for
+ * CI/tests, docs/DEPLOYMENT.md §6). Project: `<repo>/.dokima/settings.json`.
  *
  * FR-S2: credential refs (strings naming a keychain entry) are the only
  * thing these files may hold for secrets. `writeSettingsFile` refuses to
@@ -16,15 +16,15 @@ import path from 'node:path';
 import { isSettingsMap, type SettingsMap } from './settings.js';
 
 export const GLOBAL_CONFIG_FILENAME = 'config.json';
-export const PROJECT_SETTINGS_DIRNAME = '.shipwright';
+export const PROJECT_SETTINGS_DIRNAME = '.dokima';
 export const PROJECT_SETTINGS_FILENAME = 'settings.json';
 
-export function computeShipwrightHome(env: NodeJS.ProcessEnv = process.env): string {
-  return env.SHIPWRIGHT_HOME ?? path.join(os.homedir(), '.shipwright');
+export function computeDokimaHome(env: NodeJS.ProcessEnv = process.env): string {
+  return env.DOKIMA_HOME ?? path.join(os.homedir(), '.dokima');
 }
 
 export function computeGlobalConfigPath(env: NodeJS.ProcessEnv = process.env): string {
-  return path.join(computeShipwrightHome(env), GLOBAL_CONFIG_FILENAME);
+  return path.join(computeDokimaHome(env), GLOBAL_CONFIG_FILENAME);
 }
 
 export function computeProjectSettingsPath(projectDir: string): string {

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { resolveAsset } from '@shipwright/shared';
+import { resolveAsset } from '@dokima/shared';
 import type Database from 'better-sqlite3';
 
 // See ../migrate.ts: anchored to the distribution root so this survives

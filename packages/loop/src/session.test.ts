@@ -24,11 +24,11 @@ interface TempRepo {
 
 async function createTempRepo(): Promise<TempRepo> {
   const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-loop-session-test-'),
+    path.join(os.tmpdir(), 'dokima-loop-session-test-'),
   );
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.mkdir(path.join(repoRoot, 'packages', 'loop', 'src'), { recursive: true });
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await git(repoRoot, ['add', '--', 'README.md']);
@@ -200,7 +200,7 @@ describe('createChildProcessSpawn', () => {
 
   it('does not leak the parent process env into the session by default (SC-03/SC-07)', async () => {
     repo = await createTempRepo();
-    process.env.SHIPWRIGHT_TEST_PLANTED_SECRET = 'sk-should-not-leak';
+    process.env.DOKIMA_TEST_PLANTED_SECRET = 'sk-should-not-leak';
     try {
       const spawn = createChildProcessSpawn({ command: 'node', args: ['-e'] });
       const result = await spawn({
@@ -208,7 +208,7 @@ describe('createChildProcessSpawn', () => {
         cwd: repo.repoRoot,
       });
       const childEnv = JSON.parse(result.stdout) as Record<string, string | undefined>;
-      expect(childEnv.SHIPWRIGHT_TEST_PLANTED_SECRET).toBeUndefined();
+      expect(childEnv.DOKIMA_TEST_PLANTED_SECRET).toBeUndefined();
       expect(childEnv.PATH).toBe(process.env.PATH);
       // Only the OS/runtime may inject entries (e.g. macOS's __CF_USER_TEXT_ENCODING);
       // nothing else from the parent process.env may pass through implicitly.
@@ -217,7 +217,7 @@ describe('createChildProcessSpawn', () => {
       );
       expect(unexpected).toEqual([]);
     } finally {
-      delete process.env.SHIPWRIGHT_TEST_PLANTED_SECRET;
+      delete process.env.DOKIMA_TEST_PLANTED_SECRET;
     }
   });
 

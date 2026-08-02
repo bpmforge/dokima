@@ -1,7 +1,7 @@
 /**
  * Restricted-process sandbox profile (SC-07 default). Runs `bash -c
  * <command>` in `cwd` under a cleaned env, in its own process group (the
- * `@shipwright/validators` `run.ts` / `watchdog-process.ts` hang-kill
+ * `@dokima/validators` `run.ts` / `watchdog-process.ts` hang-kill
  * pattern), and — unless the caller opts in per project — wrapped so the
  * OS itself refuses network egress, loopback included (THREAT_MODEL §5.6):
  *
@@ -116,7 +116,7 @@ async function withSeatbeltProfile<T>(
   run: (profilePath: string | undefined) => Promise<T>,
 ): Promise<T> {
   if (!needed || process.platform !== 'darwin') return run(undefined);
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'shipwright-sandbox-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'dokima-sandbox-'));
   const profilePath = path.join(dir, `${randomUUID()}.sb`);
   await writeFile(profilePath, SEATBELT_DENY_NETWORK_PROFILE, 'utf8');
   try {

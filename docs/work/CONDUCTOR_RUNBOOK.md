@@ -1,6 +1,6 @@
 # Conductor runbook — unattended weekend build
 
-How to run the Shipwright board (plan.json) hands-off with Claude Code
+How to run the Dokima board (plan.json) hands-off with Claude Code
 sessions on Sonnet/Haiku, with the expert-system guardrails and automatic
 recovery from session/usage limits. Standing approvals: `APPROVALS.md`.
 
@@ -32,7 +32,7 @@ is told it may be resuming partial branch work.
 ```bash
 npm i -g pnpm                      # missing on this machine as of 2026-07-10
 claude --version                    # logged in; 2.1.207 OK
-cd ~/Code/shipwright && git status  # clean tree, on main
+cd ~/Code/dokima && git status  # clean tree, on main
 node scripts/conductor.mjs --dry-run   # sanity: claims W0-01, no sessions
 ```
 
@@ -48,7 +48,7 @@ conductor if the **process itself** dies (fatal crash). Always launch via the
 supervisor for unattended runs.
 
 ```bash
-cd ~/Code/shipwright
+cd ~/Code/dokima
 pnpm autorun                       # or: scripts/autorun.sh start
 tail -f docs/work/conductor.out    # watch a few tickets, then walk away
 ```
@@ -98,7 +98,7 @@ with `--breakpoint wave`.
 |---|---|
 | Stop gracefully (between sessions) | `pnpm autorun:stop` — writes `STOP` (conductor stops between tickets) then stops the supervisor |
 | Is it running? | `pnpm autorun:status` — supervisor liveness, recent log, board tally |
-| Stop by hand | `touch ~/Code/shipwright/STOP` |
+| Stop by hand | `touch ~/Code/dokima/STOP` |
 | Resume after stop | `rm STOP` and relaunch — idempotent: board state + branches carry over; a claimed-but-unfinished ticket is retried from its branch |
 | Watch | `tail -f docs/work/conductor.out` or `jq . docs/work/conductor-log.jsonl` |
 | Board state | `git pull && jq '[.tickets[] | .status] | group_by(.) | map({(.[0]): length}) | add' plan.json` |
@@ -116,12 +116,12 @@ with `--breakpoint wave`.
 ## Known limits (deliberate v0 scope)
 
 - Serial (berths=1): one session at a time — right call while limits are
-  account-wide anyway. Parallel lanes arrive with Shipwright W3-04 itself.
+  account-wide anyway. Parallel lanes arrive with Dokima W3-04 itself.
 - Gates require the toolchain: until W0-01 lands, lint/test gates are
   skipped (bootstrap exception) — W0-01 is exactly the ticket that creates
   them, and its review session still applies.
 - The conductor trusts `claude -p` exit behavior for limit detection; if a
   session hangs instead, the per-session watchdog (`--session-minutes`,
   default 45) kills and retries it.
-- Shipwright-the-product gets this same capability natively as FR-G8 /
+- Dokima-the-product gets this same capability natively as FR-G8 /
   ticket W3-07 (gateway-level limit detection + run auto-resume).

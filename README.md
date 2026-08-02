@@ -1,9 +1,9 @@
-# Shipwright
+# Dokima
 
 **Idea → secure, working product.** A local-first workbench where AI agents do
 the building and *the platform* holds the gates — not the agents.
 
-You describe what you want. Shipwright interviews you, writes the blueprint,
+You describe what you want. Dokima interviews you, writes the blueprint,
 decomposes it into a ticket board, and works the board with expert agents:
 cheapest model first, escalating only when it has to. Every state change has
 to earn a receipt. Nothing grades its own homework.
@@ -21,7 +21,7 @@ Requires **Node 22** and **pnpm 11**. Nothing else — storage is SQLite, and no
 external service is needed.
 
 ```sh
-git clone <this-repo> shipwright && cd shipwright
+git clone <this-repo> dokima && cd dokima
 pnpm install
 pnpm build
 node apps/server/src/bootstrap/cli-entry.mjs
@@ -30,10 +30,8 @@ node apps/server/src/bootstrap/cli-entry.mjs
 That boots the workbench and opens the Canvas at `http://127.0.0.1:4317`.
 Run it inside a project directory and it opens (or creates) that project.
 
-> **Not on npm yet.** The name `shipwright` is already taken by an unrelated
-> package, so `npx shipwright` gets you someone else's DigitalOcean CLI — not
-> this. A published-package name is an open decision ([D-001](docs/DECISIONS.md)).
-> Until then, install from source. To get a `shipwright` command on your PATH,
+> **Not published yet.** Dokima ships as `@bpmforge/dokima`; until the first
+> tag, install from source as above. To get a `dokima` command on your PATH,
 > `npm link` from the repo root.
 
 Before you trust it with anything, ask it how it's doing:
@@ -54,17 +52,17 @@ doctor: OK
 
 ### The rest of the CLI
 
-Shown as `shipwright <cmd>` — that's the name after `npm link`; from a plain
+Shown as `dokima <cmd>` — that's the name after `npm link`; from a plain
 checkout it's `node apps/server/src/bootstrap/cli-entry.mjs <cmd>`.
 
 | Command | What it does |
 |---|---|
-| `shipwright` | Boot the workbench and open the Canvas |
-| `shipwright doctor` | Six health checks: port, DB integrity, keychain, providers, content signatures, orphaned worktrees |
-| `shipwright providers refresh` | Re-run model discovery against your configured endpoints |
-| `shipwright packs update` | Verify and install the bundled expert/validator library |
-| `shipwright backup` | Online SQLite backup with retention pruning |
-| `shipwright service install`\|`status`\|`stop` | Run it as a background service for overnight work |
+| `dokima` | Boot the workbench and open the Canvas |
+| `dokima doctor` | Six health checks: port, DB integrity, keychain, providers, content signatures, orphaned worktrees |
+| `dokima providers refresh` | Re-run model discovery against your configured endpoints |
+| `dokima packs update` | Verify and install the bundled expert/validator library |
+| `dokima backup` | Online SQLite backup with retention pruning |
+| `dokima service install`\|`status`\|`stop` | Run it as a background service for overnight work |
 
 ---
 
@@ -78,7 +76,7 @@ distinct from maker ones, so "maker ≠ verifier" holds by construction rather
 than by good intentions.
 
 **The event log is append-only and hash-chained.** Projections are disposable;
-the log is not. `shipwright doctor` verifies the chain, and a tampered history
+the log is not. `dokima doctor` verifies the chain, and a tampered history
 fails loudly instead of quietly.
 
 **Local-first is the default, not a fallback.** Everything works with a local
@@ -112,7 +110,7 @@ TypeScript, ESM, SQLite.
 ## Status — pre-release
 
 The build is complete through wave W9: **116 of 118 tickets done**, the v1.0
-dogfood gate passed (Shipwright onboards itself, runs its own security
+dogfood gate passed (Dokima onboards itself, runs its own security
 cluster, and publishes receipts under [`docs/dogfood/`](docs/dogfood/)), and
 the packaged CLI is verified to install and run on a clean machine.
 
@@ -122,7 +120,7 @@ the packaged CLI is verified to install and run on a clean machine.
   pipeline's model calls — the engine is built and tested, the wire is missing
 - The visual design is unfinished — the layout and token system need a pass
 - The bundled expert library is a few upstream releases behind
-- `shipwright --help` boots the server instead of printing help — as does any
+- `dokima --help` boots the server instead of printing help — as does any
   mistyped command
 - The npm name is taken, so there's no `npx` install yet (D-001)
 

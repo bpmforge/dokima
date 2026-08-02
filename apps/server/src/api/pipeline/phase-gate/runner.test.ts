@@ -9,13 +9,13 @@ import {
   openEventLog,
   verifyReceipt,
   type EventLog,
-} from '@shipwright/events';
+} from '@dokima/events';
 import {
   loadValidatorPack,
   mintValidatorRunReceipt,
   runValidatorPack,
-} from '@shipwright/validators';
-import { PHASES } from '@shipwright/pipeline';
+} from '@dokima/validators';
+import { PHASES } from '@dokima/pipeline';
 import {
   ensurePhaseGateVerifierIdentity,
   PHASE_GATE_VERIFIER_ACTOR_ID,

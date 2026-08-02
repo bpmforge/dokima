@@ -3,8 +3,8 @@
  *
  * This ticket's write_scope is `packages/pipeline/src/phases/**` only —
  * `packages/pipeline/package.json` (where a workspace dependency on
- * `@shipwright/events`/`@shipwright/tickets`/`@shipwright/validators`/
- * `@shipwright/loop` would be declared) is out of glob and not covered by
+ * `@dokima/events`/`@dokima/tickets`/`@dokima/validators`/
+ * `@dokima/loop` would be declared) is out of glob and not covered by
  * `conductor.config.json`'s `alwaysOk` (confirmed precedent: plan.json notes
  * on the apps/server↔gateway wiring gap hit this identical wall — per-package
  * package.json is neither in a ticket's own write_scope nor the always-ok
@@ -12,10 +12,10 @@
  * dependency, pnpm never links the sibling package into this package's
  * `node_modules` (verified empirically: `packages/pipeline/node_modules`
  * doesn't exist after a clean `pnpm install`, unlike e.g. `packages/loop`,
- * which does declare `@shipwright/shared` and gets a real symlink), so
- * `tsc`/`vitest` cannot resolve a real `@shipwright/*` import from here.
+ * which does declare `@dokima/shared` and gets a real symlink), so
+ * `tsc`/`vitest` cannot resolve a real `@dokima/*` import from here.
  *
- * `@shipwright/shared`'s own `events/contracts.ts` already establishes the
+ * `@dokima/shared`'s own `events/contracts.ts` already establishes the
  * fix for exactly this shape of problem ("packages/shared cannot depend on
  * packages/events ... so this module is the boundary-object home for the
  * envelope shape"): this file plays the same role for the phase machine —
@@ -24,7 +24,7 @@
  * dependency) can bind the real functions in with a one-line adapter, never
  * a rewrite. Nothing here re-implements receipt minting, HMAC verification,
  * or the human/agent waiver-signer check — those stay exclusively in
- * `@shipwright/events` (do not duplicate the trust primitive — CLAUDE.md law
+ * `@dokima/events` (do not duplicate the trust primitive — CLAUDE.md law
  * #6, docs/PLAYBOOK.md "do not cheat the trust machine").
  */
 
@@ -50,13 +50,13 @@ export interface PhaseDefinition {
   readonly waiverEligible: boolean;
 }
 
-/** Mirrors `@shipwright/events`' `ReceiptVerificationResult` (receipts.ts). */
+/** Mirrors `@dokima/events`' `ReceiptVerificationResult` (receipts.ts). */
 export interface ReceiptVerificationResult {
   readonly valid: boolean;
   readonly reasons: readonly string[];
 }
 
-/** Mirrors `@shipwright/loop`'s `Handoff` (handoff.ts) minus the renderer — the wiring
+/** Mirrors `@dokima/loop`'s `Handoff` (handoff.ts) minus the renderer — the wiring
  * ticket passes this straight into `renderHandoff` once the real type is reachable. */
 export interface RevisionHandoff {
   readonly role: string;
@@ -68,7 +68,7 @@ export interface RevisionHandoff {
   readonly verify: string;
 }
 
-/** Mirrors `@shipwright/events`' `EventInput` (types.ts), payload narrowed to FR-C8's shape. */
+/** Mirrors `@dokima/events`' `EventInput` (types.ts), payload narrowed to FR-C8's shape. */
 export interface RevisionRequestedEvent {
   readonly eventType: 'revision.requested';
   readonly actorId: string;

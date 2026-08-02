@@ -12,7 +12,7 @@ describe('assertHumanActor (NA-1)', () => {
   });
 
   it.each<AnswerActor>([
-    { id: 'shipwright-coder', kind: 'agent' },
+    { id: 'dokima-coder', kind: 'agent' },
     { id: 'auto-runner', kind: 'agent' },
   ])('RED FIXTURE — refuses actor kind "agent" (%o)', (actor) => {
     expect(() => assertHumanActor(actor)).toThrow(AutoAnswerRefusedError);
@@ -20,12 +20,12 @@ describe('assertHumanActor (NA-1)', () => {
 
   it('the rejection message cites NA-1 and names the actor', () => {
     try {
-      assertHumanActor({ id: 'shipwright-coder', kind: 'agent' });
+      assertHumanActor({ id: 'dokima-coder', kind: 'agent' });
       expect.unreachable();
     } catch (err) {
       expect(err).toBeInstanceOf(AutoAnswerRefusedError);
       expect((err as Error).message).toContain('NA-1');
-      expect((err as Error).message).toContain('shipwright-coder');
+      expect((err as Error).message).toContain('dokima-coder');
     }
   });
 

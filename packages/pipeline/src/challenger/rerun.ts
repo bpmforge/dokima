@@ -5,7 +5,7 @@
  *
  * `packages/loop/src/findings-types.ts` already implements this exact shape for the finding
  * ledger's recheck verdicts. This ticket's write_scope is `packages/pipeline/src/challenger/**`
- * only — `packages/pipeline/package.json` (where a workspace dependency on `@shipwright/loop`
+ * only — `packages/pipeline/package.json` (where a workspace dependency on `@dokima/loop`
  * would be declared) is out of glob, so pnpm never links the sibling package here (confirmed
  * precedent: `packages/pipeline/src/phases/types.ts`'s identical header). This module mirrors
  * `RerunEvidence`/`isValidRerun`/`formatRerunLine` field-for-field so a future wiring ticket can

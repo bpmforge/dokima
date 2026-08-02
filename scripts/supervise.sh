@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 # A mismatched Node ABI-breaks native modules (better-sqlite3 here).
 #
 # The pin's LOCATION is project-specific: conductor.config.json's `nvmrcPath`,
-# defaulting to .nvmrc. Shipwright pins at the root; a ported repo may pin
+# defaulting to .nvmrc. Dokima pins at the root; a ported repo may pin
 # elsewhere (Kryptkeeper: ui/.nvmrc) or not at all. No pin => use whatever Node
 # is already on PATH, rather than refusing to start. Mirrors the same check in
 # conductor.mjs; keep the two in step.
@@ -45,7 +45,7 @@ fi
 # and the conductor reads it as a ticket gate failure, burning a retry per ticket
 # rather than reporting a broken environment once. Observed in Kryptkeeper
 # 2026-07-29: S-27 failed this way on attempt 1 and retried on a defect that was
-# never in the ticket. Inert here (Shipwright has no go.mod) but this file is the
+# never in the ticket. Inert here (Dokima has no go.mod) but this file is the
 # canonical copy that ported projects vendor.
 if [ -f go.mod ] && command -v go >/dev/null 2>&1; then
   GOBIN_DIR="$(go env GOPATH 2>/dev/null)/bin"
@@ -63,9 +63,9 @@ if [ -f go.mod ] && command -v go >/dev/null 2>&1; then
 fi
 
 # Crash-cleanup targets are project-specific too: which branches this conductor
-# owns, and where it puts worktrees. Defaults match Shipwright.
+# owns, and where it puts worktrees. Defaults match Dokima.
 BRANCH_PREFIX='sw/'
-WORKTREE_DIR='../.shipwright-worktrees'
+WORKTREE_DIR='../.dokima-worktrees'
 if [ -f conductor.config.json ]; then
   CFG_BP="$(sed -n 's/.*"branchPrefix"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' conductor.config.json | head -1)"
   CFG_WD="$(sed -n 's/.*"worktreeDir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' conductor.config.json | head -1)"

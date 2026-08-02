@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listEvents } from '@shipwright/events';
-import { getTicket, listTickets } from '@shipwright/tickets';
+import { listEvents } from '@dokima/events';
+import { getTicket, listTickets } from '@dokima/tickets';
 import { openWritableLog, resolveDbPath } from '../../cli/db.js';
 import { resetLoopModuleCacheForTests } from './onboard-dispatch-port.js';
 import { runOnboardAnalysis } from './onboard-run.js';
@@ -24,11 +24,11 @@ interface TempRepo {
 
 async function createTempRepo(): Promise<TempRepo> {
   const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-onboard-run-test-'),
+    path.join(os.tmpdir(), 'dokima-onboard-run-test-'),
   );
   await git(repoRoot, ['init', '-b', 'main']);
-  await git(repoRoot, ['config', 'user.name', 'Shipwright Test']);
-  await git(repoRoot, ['config', 'user.email', 'test@shipwright.invalid']);
+  await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
+  await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(repoRoot, 'src'));
   await fs.writeFile(

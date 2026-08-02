@@ -30,7 +30,7 @@ let tmpDirs: string[] = [];
 
 async function mkTmp(): Promise<string> {
   const dir = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'shipwright-secrets-scan-fixture-'),
+    path.join(os.tmpdir(), 'dokima-secrets-scan-fixture-'),
   );
   tmpDirs.push(dir);
   return dir;

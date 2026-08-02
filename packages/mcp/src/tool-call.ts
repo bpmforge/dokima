@@ -1,4 +1,4 @@
-import { appendEvent, type EventLog } from '@shipwright/events';
+import { appendEvent, type EventLog } from '@dokima/events';
 import {
   resolveRequiresApproval,
   type DynamicApprovalPolicy,
@@ -257,7 +257,7 @@ function appendApprovalDecided(
  * `'approved'` path — a `'denied'` decision never reaches the tool (AC-2:
  * the executor spy sees zero calls for a denied card). Refuses
  * self-approval (`decidedBy === requestedBy`) the same way
- * `@shipwright/tickets`' `acceptTicket` refuses `SELF_ACCEPT` — maker !=
+ * `@dokima/tickets`' `acceptTicket` refuses `SELF_ACCEPT` — maker !=
  * verifier applies to tool-call consent too (THREAT_MODEL T-14: a
  * side-effectful tool must not be approved by the same identity that
  * requested it).

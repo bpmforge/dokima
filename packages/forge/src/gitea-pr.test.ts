@@ -11,7 +11,7 @@ import {
   secondaryRateLimitFixture,
 } from './gitea-fixtures.js';
 
-const REF = { owner: 'shipwright-org', repo: 'demo' };
+const REF = { owner: 'dokima-org', repo: 'demo' };
 const BASE_URL = 'https://gitea.example.com';
 
 describe('GiteaForgeAdapter — PR lifecycle (FR-I2)', () => {
@@ -38,8 +38,8 @@ describe('GiteaForgeAdapter — PR lifecycle (FR-I2)', () => {
       state: 'open',
       title: 'feat(W6-02): Gitea adapter + generic git fallback',
       body: 'ticket body',
-      htmlUrl: 'https://gitea.example.com/shipwright-org/demo/pulls/42',
-      authorLogin: 'shipwright-maker',
+      htmlUrl: 'https://gitea.example.com/dokima-org/demo/pulls/42',
+      authorLogin: 'dokima-maker',
       headRef: 'sw/w6-02-gitea-adapter',
       headSha: 'abc123def456',
       baseRef: 'main',
@@ -48,7 +48,7 @@ describe('GiteaForgeAdapter — PR lifecycle (FR-I2)', () => {
     expect(calls[0]?.method).toBe('POST');
     expect(calls[0]?.headers.authorization).toBe('token maker-token');
     expect(calls[0]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/pulls',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/pulls',
     );
   });
 
@@ -67,7 +67,7 @@ describe('GiteaForgeAdapter — PR lifecycle (FR-I2)', () => {
     expect(prs).toHaveLength(1);
     expect(prs[0]?.number).toBe(42);
     expect(calls[0]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/pulls?state=open',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/pulls?state=open',
     );
   });
 
@@ -111,7 +111,7 @@ describe('GiteaForgeAdapter — PR lifecycle (FR-I2)', () => {
     expect(calls[0]?.headers.authorization).toBe('token reviewer-token');
     expect(calls[0]?.method).toBe('POST');
     expect(calls[0]?.url).toBe(
-      'https://gitea.example.com/api/v1/repos/shipwright-org/demo/pulls/42/merge',
+      'https://gitea.example.com/api/v1/repos/dokima-org/demo/pulls/42/merge',
     );
     expect(calls[0]?.body).toEqual({
       do: 'squash',

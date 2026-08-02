@@ -3,7 +3,7 @@
  * (`capture-tour.mjs`) onto a DB already seeded by
  * `e2e/fixtures/seed-board-tickets.mjs`'s `basic` scenario — that fixture's
  * scenarios each call `createIdentity` and so can't be layered onto one DB.
- * Same real-primitives discipline: events go through `@shipwright/events`'
+ * Same real-primitives discipline: events go through `@dokima/events`'
  * `appendEvent`, never raw SQL. Usage: seed-tour-trace.mjs <dbPath>
  */
 import { pathToFileURL, fileURLToPath } from 'node:url';
