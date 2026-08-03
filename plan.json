@@ -3875,7 +3875,7 @@
         "apps/web/src/settings/AutonomyBudgetPanel.tsx"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "DROPPED NOUNS AND HARDCODED PLURALS: plans/format.ts:13 renders \"1 raw \u2192 1 plan items\" \u2014 the noun is missing (its own doc comment one line above says \"raw findings\") and the plural is hardcoded. NotificationCard.tsx:51 pluralises correctly, so this is an inconsistency rather than house style. ProjectCard.tsx:6-10 and :95 render \"0 berths running \u00b7 no active berth\": the same fact twice, with a separator implying two.",
