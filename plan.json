@@ -4243,6 +4243,32 @@
         "Full gate green including e2e, counts in the commit body; validate-file-size reports 0 over-cap files."
       ],
       "notes": "Filed 2026-08-03, the last three of six. W10-46 cleared the conductor pair, W10-47 receipts.ts. Chapter plans and line estimates come from docs/work/FILE_SIZE_DEBT.md (W10-40). Unlike W10-47 these carry no unmigratable invariant \u2014 ordinary route/port modules \u2014 so the existing suites plus e2e are an adequate regression net without a golden fixture. AGENT 2026-08-03: done. 450->130, 433->49, 408->157; validate-file-size now reports clean, 0 gaps \u2014 first time. All three originals kept as barrels so zero call sites moved. The FILE_SIZE_DEBT naming collision was real: chapters went into the EXISTING ./server/ rather than the proposed bootstrap/, which would have collided with apps/server/src/bootstrap/. gateway-model-port keeps providerForConfig + resolveGatewayConfigForProject exported because W10-45 wired onboard-dispatch-port to both. Six over-cap files -> zero across W10-46/47/48. Repo-wide validator flip (W10-40 AC5) is now unblocked and left as its own ticket. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 416 files / 3127 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-49",
+      "phase": 10,
+      "module": "infra",
+      "lane": "infra",
+      "points": 3,
+      "title": "validate-file-size goes repo-wide now that the count is zero \u2014 otherwise the debt just re-accumulates",
+      "write_scope": [
+        "scripts/conductor/session.mjs",
+        "scripts/conductor-lib/config.mjs",
+        "scripts/conductor-lib.test.mjs",
+        "conductor.config.json"
+      ],
+      "depends_on": [],
+      "status": "in_progress",
+      "stories": [],
+      "acceptance": [
+        "CONTEXT, established by W10-40 and now unblocked: the scan was ALWAYS repo-wide. `runValidators` (scripts/conductor/session.mjs) already runs each validator over the whole worktree and then DISCARDS every finding whose detail does not mention a file in the ticket\u2019s `git diff`. So going repo-wide is deleting a post-filter, not adding a scan \u2014 no new cost. It was blocked only because six files were over cap and the two biggest were the gate-runner itself; as of W10-48 the validator reports clean, 0 gaps.",
+        "TARGETED, NOT GLOBAL. Do NOT drop the diff filter for every validator: `validate-circular-deps` also gates, and the advisory set is explicitly noisy grep-heuristics (conductor.config.json\u2019s own $note). Add an opt-in list \u2014 e.g. `validators.repoWide: [\"validate-file-size\"]` \u2014 so one validator answers for the whole repo while the rest keep answering only for the ticket\u2019s diff.",
+        "A TICKET MUST STILL ONLY ANSWER FOR WHAT IT CAN FIX. Repo-wide file-size is legitimate precisely because the count is zero: any new violation is necessarily something this ticket introduced. Record that reasoning in the config `$note`, because it stops being true the moment the count is non-zero again \u2014 a future reader inheriting a red gate needs to know the invariant it rests on.",
+        "RED FIXTURE, and it must fail for the RIGHT reason: plant an over-cap file that is NOT in the ticket\u2019s diff and prove the gate now reports it, then prove the same finding is still filtered out for a validator left diff-scoped. A test that only checks \"repo-wide returns more findings\" would pass on a bug that disabled filtering everywhere.",
+        "Existing conductor-lib.test.mjs coverage stays green unchanged \u2014 it is the regression net for config merge/selection behaviour.",
+        "Full gate green including e2e, counts in the commit body; `node scripts/conductor.mjs --lint` still exits 0."
+      ],
+      "notes": "Filed 2026-08-03 as the follow-up W10-40 AC5 sequenced after all six over-cap files were under. The filter being removed is the `changed.some((f) => it.detail.includes(f))` guard in runValidators. Deliberately NOT bundled into W10-48: that ticket had to leave the gate config untouched while it was still changing the files the gate measures."
     }
   ]
 }
