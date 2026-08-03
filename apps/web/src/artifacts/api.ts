@@ -38,6 +38,23 @@ export interface ArtifactApiOptions {
   baseUrl?: string;
 }
 
+const API_PREFIX = '/api/v1';
+
+/**
+ * Every urlPath below already hardcodes `/api/v1` — a caller-supplied
+ * baseUrl carrying the same prefix (App.tsx passes `baseUrl="/api/v1"` to
+ * EvidencePanel/CommandPalette, matching board/api.ts's convention where
+ * baseUrl *does* need it) would otherwise double it (W10-29). Strip one
+ * trailing occurrence — after trimming a trailing slash, so "/api/v1/"
+ * degrades the same way "/api/v1" does — so that shape degrades to
+ * passing no baseUrl at all.
+ */
+function resolveBaseUrl(baseUrl: string | undefined): string {
+  if (!baseUrl) return '';
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  return trimmed.endsWith(API_PREFIX) ? trimmed.slice(0, -API_PREFIX.length) : trimmed;
+}
+
 async function request(
   urlPath: string,
   init: RequestInit,
@@ -46,7 +63,15 @@ async function request(
   const fetchImpl = opts.fetchImpl ?? fetch;
   const getToken = opts.getToken ?? readInjectedToken;
   const token = getToken();
-  const res = await fetchImpl(`${opts.baseUrl ?? ''}${urlPath}`, {
+  const url = `${resolveBaseUrl(opts.baseUrl)}${urlPath}`;
+  if (url.includes(`${API_PREFIX}${API_PREFIX}`)) {
+    // Normalization above didn't resolve it (e.g. baseUrl carries the
+    // prefix twice) — fail loudly rather than silently 404ing.
+    throw new Error(
+      `Artifact API baseUrl "${opts.baseUrl}" duplicates the ${API_PREFIX} prefix already in ${urlPath}`,
+    );
+  }
+  const res = await fetchImpl(url, {
     ...init,
     headers: {
       ...init.headers,

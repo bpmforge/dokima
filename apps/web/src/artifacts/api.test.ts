@@ -259,6 +259,98 @@ describe('receipts', () => {
   });
 });
 
+describe('baseUrl prefix duplication guard (W10-29)', () => {
+  it('does not double /api/v1 when baseUrl already carries the prefix (App.tsx real shape)', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchReceipts(
+      'proj-1',
+      { ticket: 'W4-05' },
+      { getToken: () => 'tok', baseUrl: '/api/v1', fetchImpl },
+    );
+    expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/v1/projects/proj-1/receipts?ticket=W4-05',
+      expect.anything(),
+    );
+  });
+
+  it('strips a trailing /api/v1 from a full-origin baseUrl', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchArtifactList('proj-1', {
+      getToken: () => 'tok',
+      baseUrl: 'http://host:9/api/v1',
+      fetchImpl,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://host:9/api/v1/projects/proj-1/artifacts',
+      expect.anything(),
+    );
+  });
+
+  it('strips a duplicating prefix even with a trailing slash on baseUrl', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchArtifactList('proj-1', {
+      getToken: () => 'tok',
+      baseUrl: '/api/v1/',
+      fetchImpl,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/v1/projects/proj-1/artifacts',
+      expect.anything(),
+    );
+  });
+
+  it('strips a duplicating prefix with a trailing slash on a full-origin baseUrl', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchArtifactList('proj-1', {
+      getToken: () => 'tok',
+      baseUrl: 'http://host:9/api/v1/',
+      fetchImpl,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://host:9/api/v1/projects/proj-1/artifacts',
+      expect.anything(),
+    );
+  });
+
+  it('leaves a plain-origin baseUrl (no /api/v1 suffix) untouched', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchArtifactList('proj-1', {
+      getToken: () => 'tok',
+      baseUrl: 'http://127.0.0.1:4317',
+      fetchImpl,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://127.0.0.1:4317/api/v1/projects/proj-1/artifacts',
+      expect.anything(),
+    );
+  });
+
+  it('trims a trailing slash off a plain-origin baseUrl to avoid a double slash', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    await fetchArtifactList('proj-1', {
+      getToken: () => 'tok',
+      baseUrl: 'http://127.0.0.1:4317/',
+      fetchImpl,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://127.0.0.1:4317/api/v1/projects/proj-1/artifacts',
+      expect.anything(),
+    );
+  });
+
+  it('throws instead of silently doubling when a duplicated prefix survives normalization', async () => {
+    const fetchImpl = vi.fn();
+    await expect(
+      fetchArtifactList('proj-1', {
+        getToken: () => 'tok',
+        baseUrl: '/api/v1/api/v1',
+        fetchImpl,
+      }),
+    ).rejects.toThrow(/duplicates the \/api\/v1 prefix/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
 describe('error handling', () => {
   it('throws ArtifactApiError with the RFC 7807 detail on a non-OK response', async () => {
     const fetchImpl = vi
