@@ -83,21 +83,51 @@ export function matrixFromRows(rows: readonly ModelMatrixRow[]): ScopedRoleMatri
   return { project: withTaskTypes } as ScopedRoleMatrix;
 }
 
-/** Splits `<providerId>/<model>` into its parts; an unprefixed value has no providerId. */
-export function splitModelRef(value: string): {
+/**
+ * Splits `<providerId>/<model>` into its parts (W10-60).
+ *
+ * A first-slash split cannot tell a provider prefix from a vendor-namespaced
+ * model id, and no care at the call site fixes that — the information simply
+ * is not in the string. Of the 23 models a live LM Studio served this machine,
+ * 8 carry a slash of their own (`qwen/…`, `google/…`, `nvidia/…`,
+ * `mlx-community/…`), and every one of them used to resolve to a providerId
+ * that does not exist: the W10-04 panel offered the model and the resolver
+ * then refused it.
+ *
+ * THE FIX IS TO CONSULT THE REGISTRY, which is the only place the answer
+ * lives. A prefix is a providerId only when it names a REGISTERED provider;
+ * otherwise the whole value is the model id and goes on the wire intact.
+ * `knownProviderIds` is therefore a required argument rather than an optional
+ * convenience — the ambiguity is not resolvable without it, and a default
+ * would just reintroduce the bug for whoever forgot to pass it.
+ *
+ * Recognition uses ALL registered ids, not just enabled ones. A matrix
+ * pointing at `disabled-box/model` must still report an unusable provider,
+ * not quietly reinterpret `disabled-box/model` as a model name and send it to
+ * whichever provider happens to be the only enabled one.
+ */
+export function splitModelRef(
+  value: string,
+  knownProviderIds: readonly string[],
+): {
   providerId?: string;
   model: string;
 } {
   const slash = value.indexOf('/');
   if (slash <= 0) return { model: value };
-  return { providerId: value.slice(0, slash), model: value.slice(slash + 1) };
+  const prefix = value.slice(0, slash);
+  if (!knownProviderIds.includes(prefix)) return { model: value };
+  return { providerId: prefix, model: value.slice(slash + 1) };
 }
 
 function bindProvider(
   modelRef: string,
   providers: readonly ProviderEntry[],
 ): ResolvedModelTarget {
-  const { providerId, model } = splitModelRef(modelRef);
+  const { providerId, model } = splitModelRef(
+    modelRef,
+    providers.map((p) => p.id),
+  );
   const enabled = providers.filter((p) => p.enabled);
 
   if (providerId !== undefined) {

@@ -38,12 +38,14 @@ function stores(providers: ProviderEntry[], rows: ModelMatrixRow[]) {
 }
 
 describe('splitModelRef', () => {
+  const KNOWN = ['box-a', 'box-b', 'copilot'];
+
   it('splits <providerId>/<model> and leaves an unprefixed model alone', () => {
-    expect(splitModelRef('box-b/qwen-32b')).toEqual({
+    expect(splitModelRef('box-b/qwen-32b', KNOWN)).toEqual({
       providerId: 'box-b',
       model: 'qwen-32b',
     });
-    expect(splitModelRef('qwen-32b')).toEqual({ model: 'qwen-32b' });
+    expect(splitModelRef('qwen-32b', KNOWN)).toEqual({ model: 'qwen-32b' });
   });
 });
 
@@ -132,15 +134,37 @@ describe('resolveModelTarget — THE SEAM (W10-03)', () => {
     ).rejects.toBeInstanceOf(SameModelRefusedError);
   });
 
-  it('refuses a matrix row naming a provider that is not registered', async () => {
-    await expect(
-      resolveModelTarget({
-        projectPath: PROJECT,
-        role: 'coding-agent',
-        taskType: 'reasoning',
-        ...stores([provider('box-a')], [row('coding-agent', 'ghost/model')]),
-      }),
-    ).rejects.toMatchObject({ rule: 'unknown-provider' });
+  /**
+   * CHANGED BY W10-60, deliberately and with a cost — read before "fixing".
+   *
+   * This used to assert `unknown-provider` for `ghost/model`. It cannot any
+   * more, and the reason is that the two readings are the same string:
+   * `ghost/model` is indistinguishable from `qwen/qwen3-coder-next`, a real
+   * model id from this machine's LM Studio. One of them has to win when the
+   * prefix is unregistered, and the vendor-namespaced reading wins because it
+   * is the one users actually hit — 8 of 23 models in a live catalog carry a
+   * slash, and every one of them was unusable while this refusal stood.
+   *
+   * THE COST, stated rather than hidden: a matrix row whose provider prefix is
+   * a typo, or names a provider since removed, now binds to the single enabled
+   * provider instead of refusing. It is bounded — with two or more enabled
+   * providers it is still `ambiguous-provider`, and a registered-but-disabled
+   * prefix is still `unknown-provider` (both asserted below) — but it is real.
+   *
+   * The ambiguity is not resolvable from a string at all, so W10-68 removes
+   * the string: the matrix stores providerId and model as a structured pair.
+   * That is the fix; this is the trade until it lands.
+   */
+  it('binds an unregistered prefix as part of the model id, not as a provider (W10-60)', async () => {
+    const target = await resolveModelTarget({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      ...stores([provider('box-a')], [row('coding-agent', 'ghost/model')]),
+    });
+
+    expect(target.providerId).toBe('box-a');
+    expect(target.model).toBe('ghost/model');
   });
 
   it('refuses a DISABLED provider rather than silently using it', async () => {
@@ -206,5 +230,86 @@ describe('matrixFromRows', () => {
     expect(m.project['coding-agent']?.taskTypes).toMatchObject({
       code: { model: 'p/coder' },
     });
+  });
+});
+
+/**
+ * W10-60 red fixtures. The failure was not hypothetical: of the 23 models a
+ * live LM Studio served this machine, 8 carry a slash of their own, and every
+ * one resolved to a providerId that does not exist. The W10-04 panel offered
+ * them; the resolver refused them.
+ *
+ * Both directions, because a resolver that never refuses is not a resolver:
+ * a vendor-namespaced id must bind and reach the wire INTACT, and a genuinely
+ * unknown provider prefix must still raise `unknown-provider`.
+ */
+describe('vendor-namespaced model ids bind to the single enabled provider (W10-60)', () => {
+  const NAMESPACED = [
+    'qwen/qwen3-coder-next',
+    'qwen/qwen3.5-9b',
+    'google/gemma-4-12b-qat',
+    'nvidia/nemotron-3-nano',
+    'mlx-community/nemotron-3-nano-omni-30b-a3b-reasoning',
+  ];
+
+  for (const modelId of NAMESPACED) {
+    it(`resolves "${modelId}" and sends the FULL id on the wire`, async () => {
+      const target = await resolveModelTarget({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        ...stores([provider('lm-studio')], [row('coding-agent', modelId)]),
+      });
+
+      expect(target.providerId).toBe('lm-studio');
+      expect(target.model).toBe(modelId); // NOT truncated at the first slash
+      expect(target.source).toBe('registry');
+    });
+  }
+
+  it('a REGISTERED prefix is still honoured — the copilot/ convention keeps working', async () => {
+    const target = await resolveModelTarget({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      ...stores(
+        [provider('lm-studio'), provider('box-b')],
+        [row('coding-agent', 'box-b/qwen-32b')],
+      ),
+    });
+
+    expect(target.providerId).toBe('box-b');
+    expect(target.model).toBe('qwen-32b');
+  });
+
+  it('an unknown prefix with SEVERAL enabled providers is ambiguous, not a guess', async () => {
+    await expect(
+      resolveModelTarget({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        ...stores(
+          [provider('box-a'), provider('box-b')],
+          [row('coding-agent', 'qwen/qwen3.5-9b')],
+        ),
+      }),
+    ).rejects.toBeInstanceOf(ModelResolutionError);
+  });
+
+  it('a REGISTERED but DISABLED prefix still reports unknown-provider, never reinterpreted as a model name', async () => {
+    // The dangerous silent path: if recognition used only ENABLED ids,
+    // "off-box/model" would look like a bare model name and get sent to
+    // whichever provider happened to be the only enabled one.
+    await expect(
+      resolveModelTarget({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        ...stores(
+          [provider('lm-studio'), provider('off-box', { enabled: false })],
+          [row('coding-agent', 'off-box/some-model')],
+        ),
+      }),
+    ).rejects.toThrow(/off-box/);
   });
 });
