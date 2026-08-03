@@ -45,6 +45,18 @@ describe('conductor.mjs integration: configurable boardPath (W9-10)', () => {
     await fs.mkdir(path.join(dir, 'scripts'), { recursive: true });
     await fs.copyFile(path.join(THIS_DIR, 'conductor.mjs'), path.join(dir, 'scripts', 'conductor.mjs'));
     await fs.copyFile(path.join(THIS_DIR, 'conductor-lib.mjs'), path.join(dir, 'scripts', 'conductor-lib.mjs'));
+    // W10-46: the two entry points are now barrels over chapter directories, so
+    // vendoring must bring the chapters too. This is the whole point of the
+    // fixture — it proves a repo can vendor the harness and run it, and that
+    // claim is only true if the copy is complete. `recursive` rather than a
+    // file list on purpose: a new chapter must not silently fail to vendor.
+    for (const chapterDir of ['conductor', 'conductor-lib']) {
+      await fs.cp(
+        path.join(THIS_DIR, chapterDir),
+        path.join(dir, 'scripts', chapterDir),
+        { recursive: true },
+      );
+    }
     await fs.writeFile(path.join(dir, '.nvmrc'), '22\n');
     await fs.writeFile(
       path.join(dir, 'conductor.config.json'),

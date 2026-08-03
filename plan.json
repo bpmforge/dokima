@@ -4179,7 +4179,7 @@
         "scripts/conductor.integration.test.mjs"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED: scripts/conductor.mjs is 715 lines and scripts/conductor-lib.mjs is 590, both over the 400-line CODE_BOOK_PROTOCOL cap. W10-40 established these two are why validate-file-size cannot go repo-wide: they are the machinery that RUNS the gate, so flipping it on today fails every ticket including the one that would fix them. Split per the chapter plan in docs/work/FILE_SIZE_DEBT.md; no file over 400 after.",
@@ -4189,7 +4189,7 @@
         "PROVE IT STILL RUNS, not just that it compiles: node scripts/conductor.mjs --lint against the real board exits clean, and the existing conductor-lib.test.mjs / conductor.integration.test.mjs suites pass unchanged (they are the regression net for this split \u2014 do not rewrite them to fit).",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Filed 2026-08-03. Split axes and per-chapter line estimates come from docs/work/FILE_SIZE_DEBT.md (W10-40), which derived them from real symbol names and line ranges rather than guessing. Deliberately does NOT flip validate-file-size to repo-wide \u2014 that is a config change to the very file being split, and belongs in a follow-up once all six over-cap files are under, per W10-40 AC5."
+      "notes": "Filed 2026-08-03. Split axes and per-chapter line estimates come from docs/work/FILE_SIZE_DEBT.md (W10-40), which derived them from real symbol names and line ranges rather than guessing. Deliberately does NOT flip validate-file-size to repo-wide \u2014 that is a config change to the very file being split, and belongs in a follow-up once all six over-cap files are under, per W10-40 AC5. AGENT 2026-08-03: done. conductor-lib.mjs 590->51 and conductor.mjs 715->142, both kept as barrels/entry points at their exact paths so supervise.sh and both test suites needed no change (ESM has no directory-index resolution). The ROOT gotcha was real: fixed to ../.. and ASSERTED by a test rather than eyeballed. Verified behaviourally \u2014 --lint output byte-identical before and after (timestamps stripped), and the real validate-file-size.sh now reports 4 over-cap files instead of 6. Two split-caused breakages found by the existing suites and fixed here: markBlocked undefined in the run loop after land moved, and the integration fixture vendoring by literal filename (now copies chapter dirs recursively so a future chapter cannot silently fail to vendor). Did NOT flip the validator repo-wide \u2014 four files remain over cap. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 415 files / 3123 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }
