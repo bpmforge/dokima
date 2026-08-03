@@ -140,6 +140,18 @@ Each row is one fixture directory + one named test; new spoof classes discovered
   chain on disk afterward.
 - Board projection lag and interaction timings asserted with timers (NFR-2: <1s, <100ms).
 - axe scan per routed page; keyboard-only pass for board verbs and the morning queue.
+- **Fixture event payloads are honest, not richer than reality (W10-41)**: a fixture may
+  seed a *subset* of a real event's payload (e.g. omitting `escalation.*`'s `receipts`/
+  `receiptId`) but never a superset and never a differently-shaped payload — inventing a
+  key (`gate.receipt_minted`'s `payload.validators`, `escalation.*`'s `payload.reason` were
+  both fixture-only fabrications no real appender ever wrote) creates a false contract that
+  outlives the fixture that invented it: a later audit or ticket reads the fixture, assumes
+  the data is real, and builds on it. Where a fixture needs richer content than a plain
+  envelope, seed it through the real seam (`mintReceipt`, the escalation emitter) rather
+  than hand-authoring a payload shape. `apps/web/e2e/fixtures/event-payload-shape.test.ts`
+  derives each event type's real allowed key set from its production appender/type at test
+  time — never a hand-maintained list — and fails if a seeded payload carries a key its real
+  appender doesn't write.
 
 ## 8. Model-fitness bench fixtures (FR-G6)
 
