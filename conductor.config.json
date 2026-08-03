@@ -90,10 +90,7 @@
     ".nvmrc",
     "packages/events/migrations/**"
   ],
-  "holdTickets": [
-    "W10-04",
-    "W10-28"
-  ],
+  "holdTickets": [],
   "models": {
     "maker": "sonnet",
     "cheap": "haiku",
@@ -105,8 +102,8 @@
     ],
     "cheapMaxPoints": 1
   },
-  "$holdNote2": "2026-08-02: W10-04 and W10-28 held for the W10-02 autorun. Both are visual/UX judgement — W10-04 is the Providers panel (the release tracker's own lesson: \"trust-core primitives reliably need human hands; the straightforward 80% lands autonomously\") and W10-28 is the typography/whitespace pass W10-06 deliberately deferred because snapping spacing changes layout. W10-04 also becomes claimable the instant W10-02 merges, so without this hold an unattended run would walk straight into it. Un-hold when a human is driving.",
-  "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review \u2014 the conductor never claims these unattended; Brad works them interactively. 2026-07-16: W3-01a un-held for a SUPERVISED build under Brad's explicit authorization (chose 'conductor builds, you gate merge') \u2014 conductor runs --no-merge --breakpoint ticket, PARKS the branch (never auto-merges), and Brad reviews the diff + red fixtures and authorizes the merge himself. W3-01b/c stay held until their deps merge, then get the same one-at-a-time supervised treatment.",
+  "$holdNote2": "2026-08-02 UN-HELD for an authorized overnight autonomous run (founder: \"auto work through the night\"). W10-04 was held because a Providers panel built without a spec is invention at the keyboard — W10-05 removed that risk by writing UX_SPEC 6a, which names every state, both destructive-affordance copy blocks, and the verbatim refusal strings, so W10-04 now has something to conform TO. W10-28 is a scale-adoption pass whose gate (styles.test.ts) already fails on any regression. D-018 still holds: launched WITHOUT --escalate, sonnet-only ladder. Overnight output is visually verified against screenshots before it is trusted.",
+   "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review \u2014 the conductor never claims these unattended; Brad works them interactively. 2026-07-16: W3-01a un-held for a SUPERVISED build under Brad's explicit authorization (chose 'conductor builds, you gate merge') \u2014 conductor runs --no-merge --breakpoint ticket, PARKS the branch (never auto-merges), and Brad reviews the diff + red fixtures and authorizes the merge himself. W3-01b/c stay held until their deps merge, then get the same one-at-a-time supervised treatment.",
   "$gatesNote": "2026-07-15: board validators added to the per-ticket gate \u2014 an agent's plan.json/notes edits must keep the citation graph green (caught W3-10 hallucinating docs/MODULE_DESIGN.md only on manual re-run; now automatic).",
   "$alwaysOkNote": "2026-07-16: +events/migrations/** \u2014 numbered migrations are append-only shared infra (like pnpm-lock); every ticket adding a table needs a new NNN_*.sql without a per-ticket scope collision (L-04/W4-06). The migration RUNNER (packages/events/src/db.ts) stays out \u2014 only the numbered files.",
   "$modelsNote": "W9-12: per-role model routing used to live in a separate scripts/models.json, read unconditionally at module scope in conductor.mjs \u2014 a repo importing only conductor.mjs + conductor-lib.mjs + this config crashed with a bare ENOENT before --lint or any argument parsing ran (found live importing into Kryptkeeper 2026-07-28). Folded in here so the $note's 'everything project-specific lives here' claim is true of models too; conductor-lib.mjs's DEFAULT_CONFIG.models supplies a generic fallback ladder for repos that omit this key. cheapMaxPoints 2->1 2026-07-14 (amplifier LESSONS 25: sonnet is the floor for release tickets; haiku trivial-only). Overnight runs launch WITHOUT --escalate: sonnet-only ladder, frontier spend requires a human (escalation-token principle by configuration, D-018)."
