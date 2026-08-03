@@ -3791,7 +3791,7 @@
         "apps/web/src/App.tsx"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "acceptance": [
         "DEAD CONTROL 1: board/BoardView.tsx:53 renders <ShippedTicker> with no onSelectTicket. `grep -rn onSelectTicket apps/web/src e2e` returns 3 hits, all inside ShippedTickerStrip.tsx itself. The pill is a real <button> with cursor:pointer, in the tab order, and does nothing on click \u2014 sitting beside a visually identical ClaimNow pill that fires a durable verb. Event delegation does not rescue it: App.tsx:149-151 matches only [data-testid^=\"card-\"]. UX_SPEC.md:102 requires the link.",
@@ -3801,7 +3801,10 @@
         "RED FIXTURE: assert each control actually invokes its handler. A rendered <button> with no wired callback passes every existing test.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+      "notes": [
+        "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test.",
+        "CONDUCTOR 2026-08-03T02:37:33.859Z: blocked after 2 attempts. Branch sw/w10-33 kept. Gaps: agent set status=blocked deliberately on attempt 2; its reasoning is in the ticket's notes on the evidence branch"
+      ]
     },
     {
       "id": "W10-34",
