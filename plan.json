@@ -3582,7 +3582,9 @@
         "apps/web/src/settings/ProvidersPanel.test.tsx",
         "apps/web/src/settings/ModelMatrixPanel.tsx",
         "apps/web/src/settings/providers-api.ts",
-        "apps/web/src/settings/providers-api.test.ts"
+        "apps/web/src/settings/providers-api.test.ts",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/e2e/a11y/settings.spec.ts"
       ],
       "depends_on": [
         "W10-01",
@@ -3590,7 +3592,7 @@
         "W10-05",
         "W10-42"
       ],
-      "status": "blocked",
+      "status": "todo",
       "stories": [],
       "acceptance": [
         "TODAY `ModelMatrixPanel.tsx` takes the model as a FREE-TEXT STRING (`draft.model`, a bare text input) with no catalog, no validation, and no way to discover what a provider actually serves. Register/edit/test an endpoint (Ollama, LM Studio, any OpenAI-compatible, plus the cloud adapters), see the discovered models from W10-02, and select per role x task-type from a LIST.",
@@ -3600,11 +3602,7 @@
         "a11y holds: the panel passes the existing axe gate (`apps/web/e2e/a11y/settings.spec.ts`) and is keyboard-operable end to end, same bar as every other settings surface.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": [
-        "W10 Phase G/H seam. depends_on W10-05 deliberately: a panel built with no spec behind it is exactly what the Design Loop exists to prevent.",
-        "CONDUCTOR 2026-08-03T07:15:20.104Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch",
-        "CONDUCTOR 2026-08-03T10:33:12.288Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 2; its reasoning is in the ticket's notes on the evidence branch"
-      ]
+      "notes": "W10 Phase G/H seam. depends_on W10-05 deliberately: a panel built with no spec behind it is exactly what the Design Loop exists to prevent.,CONDUCTOR 2026-08-03T07:15:20.104Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch,CONDUCTOR 2026-08-03T10:33:12.288Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 2; its reasoning is in the ticket's notes on the evidence branch SCOPE AMENDED 2026-08-03 (final). Attempt 1 shipped a free-text <input list=...> datalist and closed the ticket; the gate review CORRECTLY rejected it \u2014 the ticket's whole premise is \"pick a model from a list, not a free-text box\". Attempt 2 made it a genuine <select> populated from combinedModelOptions(), disabled with a placeholder until a provider catalog is non-empty, and then self-blocked because that breaks apps/web/e2e/settings.spec.ts:86 (\"model matrix: add a row\") \u2014 Playwright .fill() throws on a disabled <select>, confirmed by a 30s timeout. Unlike W10-42's server gap this is NOT separable: the control and the e2e assertion that drives it are mutually dependent, so a sibling ticket could not verify either half alone. Added apps/web/e2e/settings.spec.ts, plus apps/web/e2e/a11y/settings.spec.ts which criterion 5 already required this panel to pass (the conductor's startup lint flagged that omission on the first run and I left it, wrongly). Neither file has a live claimant. Attempt 2's gate was otherwise green: 414 files / 3075 passed | 3 skipped, 58/59 e2e \u2014 the single failure being exactly the out-of-scope test above."
     },
     {
       "id": "W10-05",
