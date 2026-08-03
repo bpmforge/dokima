@@ -62,6 +62,10 @@ export function ProvidersPanel({
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // W10-70: register the provider for every project, not just this one — the
+  // other half of "configure once" alongside the model matrix (W10-64). Off by
+  // default for the same reason: a global write is the wider blast radius.
+  const [applyGlobally, setApplyGlobally] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -160,10 +164,11 @@ export function ProvidersPanel({
       registeredCredentialRef,
     });
     try {
-      const saved = await putProviders(projectId, [
-        ...(entries ?? []).filter((e) => e.id !== next.id),
-        next,
-      ]);
+      const saved = await putProviders(
+        projectId,
+        [...(entries ?? []).filter((e) => e.id !== next.id), next],
+        applyGlobally ? { scope: 'global' } : {},
+      );
       setEntries(saved);
       setDraftError(null);
       handleCancelEdit();
@@ -171,7 +176,7 @@ export function ProvidersPanel({
     } catch (err) {
       setDraftError(errorMessage(err, 'Failed to save the provider'));
     }
-  }, [draft, entries, projectId, testProvider]);
+  }, [applyGlobally, draft, entries, projectId, testProvider]);
 
   const handleRemove = useCallback(
     async (entry: ProviderEntry) => {
@@ -354,6 +359,17 @@ export function ProvidersPanel({
             {draftError}
           </p>
         )}
+        {/* W10-70. Unchecked registers this project only — what the form did
+            before this ticket. Checked registers it for every project, so a
+            product created later inherits it (FR-F3). */}
+        <label className="settings__checkbox">
+          <input
+            type="checkbox"
+            checked={applyGlobally}
+            onChange={(e) => setApplyGlobally(e.target.checked)}
+          />
+          Use for every project
+        </label>
         <button type="submit">{editingId ? 'Save changes' : 'Add provider'}</button>
         {editingId && (
           <button type="button" onClick={handleCancelEdit}>

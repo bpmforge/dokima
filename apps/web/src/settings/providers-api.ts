@@ -121,15 +121,24 @@ export async function fetchProviders(
   return wire.providers.map(fromWireEntry);
 }
 
+/**
+ * W10-70. `scope` is omitted from the wire unless it is 'global', so the
+ * default request stays byte-identical to the pre-ticket one and the server
+ * reads an absent scope as project.
+ */
 export async function putProviders(
   projectId: string,
   entries: ProviderEntry[],
-  opts: SettingsApiOptions = {},
+  opts: SettingsApiOptions & { scope?: 'project' | 'global' } = {},
 ): Promise<ProviderEntry[]> {
+  const { scope, ...requestOpts } = opts;
   const wire = (await request(
     `/api/v1/projects/${encodeURIComponent(projectId)}/providers`,
-    jsonInit('PUT', { providers: entries.map(toWireEntry) }),
-    opts,
+    jsonInit('PUT', {
+      providers: entries.map(toWireEntry),
+      ...(scope === 'global' ? { scope } : {}),
+    }),
+    requestOpts,
   )) as { providers: WireProvider[] };
   return wire.providers.map(fromWireEntry);
 }

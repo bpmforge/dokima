@@ -4809,7 +4809,7 @@
       "depends_on": [
         "W10-64"
       ],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "THE EXACT GAP, measured in a browser. W10-62 made `listProviders` read the EFFECTIVE settings, so a global provider resolves. W10-64 did the same for the matrix AND shipped its write path. Providers never got one: `putProviders` calls `putProjectSetting` unconditionally and the panel has no scope control, so the only way to create a global provider entry is to hand-edit `~/.dokima/config.json`. A read path with no write path is the definition of dead code.",
@@ -4819,7 +4819,7 @@
         "RED FIXTURE: a provider registered globally is visible to a project with no registry of its own and a run resolves through it; a project-scope entry of the same id still wins; and an unknown scope is refused. Plus the isolation guard W10-64 learned the hard way \u2014 any test writing global scope MUST pin `DOKIMA_HOME`, or it writes the developer's real `~/.dokima/config.json` (it did, once).",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Filed 2026-08-03 while closing W10-64, from driving the result rather than from reading the code: the second product inherited the model and still said \"No providers yet\". Note the ordering that makes this cheap \u2014 W10-62 already did the read side, and W10-64 has just established the exact shape for scope on a settings-backed store (parseScope, absent-means-project, diff against the scope being written, panel checkbox off by default, GET reporting the winning scope). This should be a close copy of that, not a fresh design."
+      "notes": "Filed 2026-08-03 while closing W10-64, from driving the result rather than from reading the code: the second product inherited the model and still said \"No providers yet\". Note the ordering that makes this cheap \u2014 W10-62 already did the read side, and W10-64 has just established the exact shape for scope on a settings-backed store (parseScope, absent-means-project, diff against the scope being written, panel checkbox off by default, GET reporting the winning scope). This should be a close copy of that, not a fresh design. \u2014 CLOSED 2026-08-03, VERIFIED IN A BROWSER, and it also closes W10-64 acceptance 4, which W10-64 explicitly could not meet and filed here instead. THE ACCEPTANCE TEST, run exactly as written: registered LM Studio through the panel with \"Use for every project\" checked (written to ~/.dokima/config.json, and the project used to do it kept NO settings file of its own), then created a THIRD product and ran the interview without opening its settings at all. It resolved providers scope=global and matrix scope=global, and LM Studio received \"model\": \"qwen3.6-35b-a3b\" \u2014 the configured model, from a project that has never been configured. Register once, use everywhere is now true for both halves."
     }
   ]
 }

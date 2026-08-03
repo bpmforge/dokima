@@ -18,6 +18,8 @@ let active: ApiServer | undefined;
 afterEach(async () => {
   await active?.app.close();
   active = undefined;
+  if (savedDokimaHome === undefined) delete process.env.DOKIMA_HOME;
+  else process.env.DOKIMA_HOME = savedDokimaHome;
   await Promise.all(
     dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
   );
@@ -31,6 +33,11 @@ async function boot(): Promise<{
   const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-prov-home-'));
   const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-prov-proj-'));
   dirs.push(home, projectDir);
+  // W10-70. `fleetHome` scopes the project registry but NOT the global
+  // settings file, which putGlobalSetting resolves from DOKIMA_HOME. Without
+  // this a scope=global PUT writes the developer's REAL ~/.dokima/config.json
+  // — W10-64 established that the hard way, on this machine.
+  process.env.DOKIMA_HOME = home;
   const record = await registerProject(computeFleetRegistryPath(home), {
     path: projectDir,
     mode: 'new',
@@ -45,6 +52,8 @@ async function boot(): Promise<{
   active = server;
   return { app: server.app, id: record.id, projectDir };
 }
+
+const savedDokimaHome = process.env.DOKIMA_HOME;
 
 const headers = { host: `127.0.0.1:${PORT}`, authorization: `Bearer ${TOKEN}` };
 
@@ -90,7 +99,10 @@ describe('providers routes (W10-01)', () => {
       url: `/api/v1/projects/${id}/providers`,
       headers,
     });
-    expect(empty.json()).toEqual({ providers: [] });
+    // W10-70 added `scope`, reporting where the returned entries came from. A
+    // project with no registry of its own resolves the every-project one, so an
+    // empty result reads as 'global' — nothing is project-scoped yet.
+    expect(empty.json()).toEqual({ providers: [], scope: 'global' });
 
     const put = await app.inject({
       method: 'PUT',
@@ -412,5 +424,108 @@ describe('POST providers/credentials (W10-42 AC3)', () => {
       expect(raw).toContain('red-fixture-key');
     }
     expect(projectHashDirs.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * W10-70: the write path for the every-project registry, mirroring the model
+ * matrix's (W10-64). Without it, W10-62's global READ was unreachable except
+ * by hand-editing ~/.dokima/config.json.
+ */
+describe('providers scope (W10-70)', () => {
+  it('defaults to project scope when the body names none', async () => {
+    const { app, id } = await boot();
+
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/providers`,
+      headers,
+      payload: {
+        providers: [
+          { id: 'local', kind: 'oai-compat', base_url: 'http://127.0.0.1:1234/v1', enabled: true },
+        ],
+      },
+    });
+
+    expect(put.statusCode).toBe(200);
+    expect(put.json().scope).toBe('project');
+
+    const get = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/providers`,
+      headers,
+    });
+    expect(get.json().scope).toBe('project');
+  });
+
+  it('registers for every project when scope is global, and reports it as inherited', async () => {
+    const { app, id } = await boot();
+
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/providers`,
+      headers,
+      payload: {
+        scope: 'global',
+        providers: [
+          { id: 'shared-box', kind: 'oai-compat', base_url: 'http://127.0.0.1:1234/v1', enabled: true },
+        ],
+      },
+    });
+
+    expect(put.statusCode).toBe(200);
+    expect(put.json().scope).toBe('global');
+
+    // The project has no registry of its own, so the GET resolves the global
+    // one and says so — that is what the panel renders as inherited.
+    const get = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/providers`,
+      headers,
+    });
+    expect(get.json().scope).toBe('global');
+    expect(get.json().providers[0]).toMatchObject({ id: 'shared-box' });
+  });
+
+  it('refuses an unknown scope rather than silently narrowing it to project', async () => {
+    const { app, id } = await boot();
+
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/providers`,
+      headers,
+      payload: {
+        scope: 'everywhere',
+        providers: [{ id: 'x', kind: 'ollama', enabled: true }],
+      },
+    });
+
+    expect(put.statusCode).toBe(400);
+    expect(put.json().rule).toBe('invalid-scope');
+  });
+
+  it('a global write still refuses a literal credential (FR-S2 is not scope-dependent)', async () => {
+    const { app, id } = await boot();
+
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/providers`,
+      headers,
+      payload: {
+        scope: 'global',
+        providers: [
+          {
+            id: 'x',
+            kind: 'oai-compat',
+            base_url: 'http://127.0.0.1:1234/v1',
+            credential_ref: 'sk-abcdefghijklmnopqrstuvwx',
+            enabled: true,
+          },
+        ],
+      },
+    });
+
+    expect(put.statusCode).toBe(400);
+    expect(put.json().rule).toBe('literal-credential-refused');
   });
 });

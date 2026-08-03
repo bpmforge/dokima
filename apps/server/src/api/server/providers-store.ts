@@ -17,7 +17,13 @@
 
 import { validateProviderRegistry, type ProviderEntry } from '@dokima/gateway';
 import type { JsonValue } from '@dokima/shared';
-import { getEffectiveProjectSettings, putProjectSetting } from './settings-scope.js';
+import {
+  getEffectiveProjectSettings,
+  getGlobalSettings,
+  getProjectSettings,
+  putGlobalSetting,
+  putProjectSetting,
+} from './settings-scope.js';
 
 export const PROVIDERS_SETTINGS_KEY = 'providers';
 
@@ -57,6 +63,42 @@ export async function listProviders(projectPath: string): Promise<ProviderEntry[
 }
 
 /**
+ * The project's OWN entries, ignoring any global registry (W10-70) — what the
+ * PUT route diffs against, and what tells the GET which scope actually served.
+ */
+export async function listProjectProviders(
+  projectPath: string,
+): Promise<ProviderEntry[]> {
+  const settings = await getProjectSettings(projectPath);
+  const raw = settings[PROVIDERS_SETTINGS_KEY];
+  if (raw === undefined) return [];
+  try {
+    return validateProviderRegistry(raw);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The every-project registry (W10-70). W10-62 made this scope READABLE and
+ * left no way to write it, so the only route to a global provider was
+ * hand-editing `~/.dokima/config.json` — a read path with no write path.
+ *
+ * Same home and same mechanism as the model matrix's global preset (W10-64),
+ * deliberately: the two halves of "register once, use everywhere" (FR-F3)
+ * must not diverge in where they live or which scope wins.
+ */
+export async function listGlobalProviders(): Promise<ProviderEntry[]> {
+  const raw = (await getGlobalSettings())[PROVIDERS_SETTINGS_KEY];
+  if (raw === undefined) return [];
+  try {
+    return validateProviderRegistry(raw);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Replaces the registry wholesale. The caller validates first (so a refusal
  * is explainable with its rule); this re-validates because a store that
  * trusts its caller is one refactor away from persisting garbage.
@@ -70,6 +112,25 @@ export async function putProviders(
     projectPath,
     PROVIDERS_SETTINGS_KEY,
     validated as unknown as JsonValue,
+  );
+  return validated;
+}
+
+/**
+ * Replaces the every-project registry. Re-validates for the same reason
+ * `putProviders` does — and note it runs through the SAME
+ * `validateProviderRegistry`, so a consent-gated kind (D-019) cannot be
+ * smuggled in globally by a path the project-scope check would have refused.
+ */
+export async function putGlobalProviders(
+  entries: readonly ProviderEntry[],
+  loggingProjectPath?: string,
+): Promise<ProviderEntry[]> {
+  const validated = validateProviderRegistry(entries);
+  await putGlobalSetting(
+    PROVIDERS_SETTINGS_KEY,
+    validated as unknown as JsonValue,
+    loggingProjectPath,
   );
   return validated;
 }
