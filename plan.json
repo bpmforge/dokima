@@ -4099,7 +4099,7 @@
         "docs/RELEASE_TRACKER.md"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED, on a real install: `npm pack` + `npm install ./bpmforge-dokima-0.1.0.tgz` into a clean project, then `dokima --help`, dies with DistributionRootNotFoundError. `packages/shared/src/paths/index.ts:31` sets ROOT_PACKAGE_NAME = 'dokima' and isRootManifest() matches package.json name === that literal, so renaming the package to the scoped `@bpmforge/dokima` needed to publish under the org makes every asset unresolvable \u2014 content/, both migration sets, and the web dist. The product installs cleanly and then cannot start.",
@@ -4109,7 +4109,32 @@
         "PROVE IT ON A REAL INSTALL, not a dry run: pack, install the tarball into a clean directory outside this repo, run the binary, and confirm it reaches its own CLI rather than a stack trace. A `--dry-run` file listing cannot catch this class of bug \u2014 it is exactly what looked fine before.",
         "Full gate green including e2e, counts in the commit body; docs/RELEASE_TRACKER.md records the npm claim and what is verified vs still manual."
       ],
-      "notes": "Found 2026-08-03 during operator release work (claiming @bpmforge/dokima, founder-authorized; version 0.1.0 chosen by the founder). Not found by any test: index.test.ts covers the source-checkout probe thoroughly but every case runs under a root manifest already named `dokima`, so the packaged-and-renamed path \u2014 the only one an end user ever exercises \u2014 had no coverage. The name had to change to publish under the org scope, which is what turned a latent coupling into a release blocker."
+      "notes": "Found 2026-08-03 during operator release work (claiming @bpmforge/dokima, founder-authorized; version 0.1.0 chosen by the founder). Not found by any test: index.test.ts covers the source-checkout probe thoroughly but every case runs under a root manifest already named `dokima`, so the packaged-and-renamed path \u2014 the only one an end user ever exercises \u2014 had no coverage. The name had to change to publish under the org scope, which is what turned a latent coupling into a release blocker. AGENT 2026-08-03: done. Marker changed from name-equality to `bin.dokima` presence, which both the source monorepo root and the published package carry and no @dokima/* workspace manifest or consumer manifest does; isRootManifest exported so the rule is directly testable (the probe starts from import.meta.url and DOKIMA_DIST_ROOT short-circuits it, which is why the rule had no direct coverage and the rename reached a real install). +6 tests; reverting to name-equality reds 5 of them including the two pre-existing distributionRoot tests, whose own assertion had encoded the same brittle coupling (name === dokima) and was rewritten onto the bin marker. VERIFIED ON A REAL INSTALL, not a dry run: npm pack + install into a clean project outside the repo, then the installed binary boots, serves the built web dist, materializes packs/ under DOKIMA_HOME, and answers GET /api/v1/projects -> 200 {\"projects\":[]} with a real bearer token. Also added .gitignore *.tgz so a pack artifact cannot be committed. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 415 files / 3111 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-44",
+      "phase": 10,
+      "module": "cli",
+      "lane": "infra",
+      "points": 3,
+      "title": "`dokima --help` boots the server instead of printing help \u2014 the first thing an npx user hits",
+      "write_scope": [
+        "apps/server/src/bootstrap/cli.ts",
+        "apps/server/src/bootstrap/cli.test.ts",
+        "apps/server/src/bootstrap/main.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED against the PACKAGED install (not a source checkout): `dokima --help` printed `dokima is already running at http://127.0.0.1:4317 \u2014 opening the Canvas` and never exited. Any unrecognised argument does the same. Long-standing (already listed in docs/RELEASE_TRACKER.md Known gaps) but it costs much more the moment `npx @bpmforge/dokima` is a real thing a stranger can run.",
+        "`--help` and `-h` print usage to stdout and exit 0 without starting a server, opening a browser, touching DOKIMA_HOME, or probing a port. `--version` prints the version from the package manifest and exits 0.",
+        "An UNRECOGNISED argument prints usage to stderr and exits non-zero \u2014 silently booting a server on a typo is the specific defect, and exiting 0 on an unknown flag would leave scripts unable to tell success from a typo.",
+        "Bare `dokima` with no arguments keeps todays behaviour exactly: boot or attach, then open the Canvas. This ticket adds an argument surface, it does not change the default.",
+        "RED FIXTURE: a test that runs the CLI argument parser with `--help` and asserts no server/browser/port side effect occurs \u2014 proven red against current main first. Cover the typo case too.",
+        "Full gate green including e2e, counts in the commit body; remove the now-fixed line from docs/RELEASE_TRACKER.md Known gaps."
+      ],
+      "notes": "Filed 2026-08-03 from W10-43 release verification, where it was re-confirmed against a real npm install of the 0.1.0 tarball rather than inferred from source. Scope is the bootstrap CLI only; docs/RELEASE_TRACKER.md is alwaysOk so it needs no write_scope entry."
     }
   ]
 }
