@@ -555,17 +555,34 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     await screen.findByText(/missing from any registered provider/);
   });
 
-  it('marks a row "unroutable" (not "missing") when its model is served only by a now-disabled provider', async () => {
+  it('marks a row "unroutable" (not "missing") when its model is served only by a now-disabled provider, even with a second enabled provider registered', async () => {
+    // A second, enabled provider (with an unrelated model) is deliberately
+    // included so `catalogOptions` (enabled-only) is genuinely non-empty
+    // and does NOT contain 'still-technically-served'. With only the
+    // disabled provider registered, `catalogOptions.length === 0` would
+    // trip the "no catalogs fetched yet" guard and force `isKnown = true`
+    // regardless of the unroutable/missing JSX precedence — masking a
+    // regression where that precedence gets reordered. This fixture rules
+    // that out: the missing-badge condition is only false because
+    // `isUnroutable` legitimately took precedence.
     fetchSpy.mockImplementation(
       router([
         getProviders(() =>
-          jsonResponse({ providers: [{ id: 'off1', kind: 'ollama', enabled: false }] }),
+          jsonResponse({
+            providers: [
+              { id: 'off1', kind: 'ollama', enabled: false },
+              { id: 'on1', kind: 'ollama', enabled: true },
+            ],
+          }),
         ),
-        getModels(() =>
+        getModels((providerId) =>
           jsonResponse({
             status: 'ok',
             source: 'discovered',
-            models: [{ id: 'still-technically-served' }],
+            models:
+              providerId === 'off1'
+                ? [{ id: 'still-technically-served' }]
+                : [{ id: 'unrelated-model' }],
           }),
         ),
         getMatrix(() =>
@@ -584,7 +601,10 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     );
     render(<ModelMatrixPanel projectId="p1" />);
     await screen.findByText('off1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    await screen.findByText('on1');
+    for (const button of screen.getAllByRole('button', { name: 'Test' })) {
+      fireEvent.click(button);
+    }
 
     await screen.findByText(/unroutable — provider off1 is disabled/);
     expect(screen.queryByText(/missing from/)).toBeNull();
