@@ -378,7 +378,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     handle: (_u: string, i?: RequestInit) => handle(JSON.parse(i!.body as string)),
   });
 
-  it('offers the discovered/bundled catalog as a datalist on the Model field, kept a fillable text input (backward compatible with the existing free-text e2e flow)', async () => {
+  it('the Model field is a real <select> populated from the discovered/bundled catalog, disabled until one exists (AC1: pick from a LIST, not free text)', async () => {
     fetchSpy.mockImplementation(
       router([
         getProviders(() =>
@@ -395,24 +395,36 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
       ]),
     );
     render(<ModelMatrixPanel projectId="p1" />);
+
+    const modelSelect = (await screen.findByLabelText('Model')) as HTMLSelectElement;
+    expect(modelSelect.tagName).toBe('SELECT');
+    expect(modelSelect.disabled).toBe(true);
+
     await screen.findByText('ollama1');
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
 
-    const modelInput = await screen.findByLabelText('Model');
-    expect(modelInput.getAttribute('list')).toBe('model-matrix-catalog');
     await vi.waitFor(() => {
-      expect(
-        document.querySelector('#model-matrix-catalog option[value="qwen2.5-coder-7b"]'),
-      ).not.toBeNull();
+      expect(modelSelect.disabled).toBe(false);
     });
-    // still a plain fillable text input, not a <select> — existing e2e relies on .fill()
-    expect(modelInput.tagName).toBe('INPUT');
+    expect(modelSelect.querySelector('option[value="qwen2.5-coder-7b"]')).not.toBeNull();
+
+    fireEvent.change(modelSelect, { target: { value: 'qwen2.5-coder-7b' } });
+    expect(modelSelect.value).toBe('qwen2.5-coder-7b');
   });
 
   it('explains a maker!=verifier refusal inline, verbatim, for a brand-new row with no existing table row yet (AC2)', async () => {
     fetchSpy.mockImplementation(
       router([
-        getProviders(() => jsonResponse({ providers: [] })),
+        getProviders(() =>
+          jsonResponse({ providers: [{ id: 'ollama1', kind: 'ollama', enabled: true }] }),
+        ),
+        getModels(() =>
+          jsonResponse({
+            status: 'ok',
+            source: 'discovered',
+            models: [{ id: 'local/qwen' }],
+          }),
+        ),
         getMatrix(() =>
           matrixWire([
             {
@@ -438,13 +450,17 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
       ]),
     );
     render(<ModelMatrixPanel projectId="p1" />);
-    await screen.findByText(/No providers yet/);
+    await screen.findByText('ollama1');
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+
+    const modelSelect = (await screen.findByLabelText('Model')) as HTMLSelectElement;
+    await vi.waitFor(() => expect(modelSelect.disabled).toBe(false));
 
     const form = screen.getByRole('form', { name: 'Add matrix row' });
     fireEvent.change(form.querySelector('input[placeholder="coding-agent"]')!, {
       target: { value: 'challenger' },
     });
-    fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'local/qwen' } });
+    fireEvent.change(modelSelect, { target: { value: 'local/qwen' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add / update row' }));
 
     const alert = await screen.findByRole('alert');

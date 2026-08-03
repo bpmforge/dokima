@@ -216,18 +216,23 @@ export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
         </label>
         <label>
           Model
-          <input
+          <select
             value={draft.model}
             onChange={(e) => setDraft({ ...draft, model: e.target.value })}
-            list="model-matrix-catalog"
-            placeholder="local/qwen2.5-coder or copilot/gpt-4"
-          />
+            disabled={catalogOptions.length === 0}
+          >
+            <option value="" disabled>
+              {catalogOptions.length === 0
+                ? 'No models discovered yet — register and test a provider above'
+                : 'Select a model…'}
+            </option>
+            {catalogOptions.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
         </label>
-        <datalist id="model-matrix-catalog">
-          {catalogOptions.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
         {/* A brand-new role/taskType row that a refusal blocks has no
             existing table row to attach to yet — shown here too so the
             refusal is never lost, not just when editing an existing row. */}
