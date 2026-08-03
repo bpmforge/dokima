@@ -344,6 +344,8 @@ function AppShell() {
                   token={token}
                   projectId={projectId}
                   wsUrl={wsUrl()}
+                  onViewCurrentPhase={() => openView('plans')}
+                  onSelectTicket={setOpenTicketId}
                 />
               </div>,
               boardPaneNode,
@@ -376,7 +378,7 @@ function AppShell() {
           <DrawerTraceLink ticketId={openTicketId} onOpenTrace={openTraceView} />
         </>
       ) : (
-        <FleetHome onOpenProject={openProject} />
+        <FleetHome onOpenProject={openProject} onOpenWizard={() => openView('wizard')} />
       )}
       {modeNotice && (
         <p className="app-shell__mode-notice" role="status" data-testid="mode-notice">

@@ -14,7 +14,9 @@ export interface BoardViewProps {
   projectId: string;
   runId?: string;
   wsUrl: string;
-  onViewCurrentPhase?: () => void;
+  /** Required, not optional (W10-33): UX_SPEC §2b's board-empty link and §4's shipped-ticker link must always be wired — a caller that forgets fails typecheck instead of shipping a dead control. */
+  onViewCurrentPhase: () => void;
+  onSelectTicket: (ticketId: string) => void;
 }
 
 /** Kanban board (UX_SPEC §4, FR-C4/FR-T4) — lanes x columns over live projections. */
@@ -25,6 +27,7 @@ export function BoardView({
   runId,
   wsUrl,
   onViewCurrentPhase,
+  onSelectTicket,
 }: BoardViewProps) {
   const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb, handleDrop } =
     useBoardData({
@@ -51,7 +54,11 @@ export function BoardView({
           onClaim={(ticketId) => void fireVerb(ticketId, 'claim')}
         />
         <ActiveBerthsStrip heartbeats={heartbeats} />
-        <ShippedTicker tickets={tickets} now={new Date()} />
+        <ShippedTicker
+          tickets={tickets}
+          now={new Date()}
+          onSelectTicket={onSelectTicket}
+        />
       </div>
       {refusal && refusalTicket && (
         <RefusalPopover
