@@ -83,10 +83,12 @@ export function CommandPalette({
     void fetchBoardTickets({ baseUrl, token }, projectId).then((res) => {
       if (res.ok) setTickets(res.data);
     });
-    void fetchArtifactList(projectId, { baseUrl, getToken: () => token }).then(setDocs);
-    void fetchReceipts(projectId, {}, { baseUrl, getToken: () => token }).then(
-      setReceipts,
-    );
+    void fetchArtifactList(projectId, { baseUrl, getToken: () => token })
+      .then(setDocs)
+      .catch(() => setDocs([]));
+    void fetchReceipts(projectId, {}, { baseUrl, getToken: () => token })
+      .then(setReceipts)
+      .catch(() => setReceipts([]));
   }, [open, baseUrl, token, projectId]);
 
   useEffect(() => {
