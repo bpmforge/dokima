@@ -3671,7 +3671,7 @@
       "depends_on": [
         "W10-06"
       ],
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "acceptance": [
         "MEASURED STARTING POINT (2026-08-02, immediately after W10-06): the colour/radius/px migration is complete and gated, but 112 spacing declarations still sit OFF the 0.25rem grid \u2014 0.4rem x32, 0.35rem x28, 0.2rem x13, 0.6rem x11, 0.3rem x11, 0.1rem x6, 0.15rem x4, 0.05rem x3, plus four singletons. W10-06 migrated only exact on-scale values, because snapping the rest CHANGES LAYOUT and is a design decision rather than a mechanical substitution. Snap them onto --sw-space-* and extend the styles.test.ts gate to fail on an off-scale rem in a spacing property, the same way it already fails on a raw px.",
@@ -3680,7 +3680,10 @@
         "Both themes stay correct and no a11y contrast regresses \u2014 W10-06 fixed six live WCAG AA failures (muted text at 3.20:1 in dark, the active settings tab at 2.58:1, three improvised warning/attention colours below 4.5:1) and they must stay fixed. The axe e2e specs are the regression check.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": "Filed BY W10-06, as its own acceptance required (\"file it separately rather than smuggling a redesign into a token migration\"). W10-06 built the scale and the gate; this ticket finishes adopting it in the places where adoption needs design judgement rather than a script. WRITE_SCOPE CORRECTED 2026-08-03 \u2014 mine was wrong. I filed this CSS-and-tests-only, but its own criterion 3 (the unlabelled \"+120 -4\" diff stat, and timestamp formatting) lives in NotificationCard.tsx and TraceView.tsx. Attempt 1 produced exactly the right change in both \u2014 `Diff: ${diffStat}` to match the sentence shape of the other summaryLine variants, and an Intl.DateTimeFormat helper with a comment on why not a bare toLocaleString \u2014 and was rejected as out-of-scope. Contention checked before widening: neither file is claimed by any non-done ticket. Note that criterion 3's \"morning queue is ~60% empty\" clause was REFUTED by the visual audit (two items in a 900px viewport with a real empty state defined) and should not be actioned; and TraceView timestamps were already formatted by W10-35, so only the NotificationCard half of that clause may remain."
+      "notes": [
+        "Filed BY W10-06, as its own acceptance required (\"file it separately rather than smuggling a redesign into a token migration\"). W10-06 built the scale and the gate; this ticket finishes adopting it in the places where adoption needs design judgement rather than a script. WRITE_SCOPE CORRECTED 2026-08-03 \u2014 mine was wrong. I filed this CSS-and-tests-only, but its own criterion 3 (the unlabelled \"+120 -4\" diff stat, and timestamp formatting) lives in NotificationCard.tsx and TraceView.tsx. Attempt 1 produced exactly the right change in both \u2014 `Diff: ${diffStat}` to match the sentence shape of the other summaryLine variants, and an Intl.DateTimeFormat helper with a comment on why not a bare toLocaleString \u2014 and was rejected as out-of-scope. Contention checked before widening: neither file is claimed by any non-done ticket. Note that criterion 3's \"morning queue is ~60% empty\" clause was REFUTED by the visual audit (two items in a 900px viewport with a real empty state defined) and should not be actioned; and TraceView timestamps were already formatted by W10-35, so only the NotificationCard half of that clause may remain.",
+        "CONDUCTOR 2026-08-03T07:52:46.916Z: blocked after 2 attempts. Branch sw/w10-28 kept. Gaps: agent set status=blocked deliberately on attempt 2; its reasoning is in the ticket's notes on the evidence branch"
+      ]
     },
     {
       "id": "W10-29",
