@@ -3670,7 +3670,7 @@
       "depends_on": [
         "W10-06"
       ],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED STARTING POINT (2026-08-02, immediately after W10-06): the colour/radius/px migration is complete and gated, but 112 spacing declarations still sit OFF the 0.25rem grid \u2014 0.4rem x32, 0.35rem x28, 0.2rem x13, 0.6rem x11, 0.3rem x11, 0.1rem x6, 0.15rem x4, 0.05rem x3, plus four singletons. W10-06 migrated only exact on-scale values, because snapping the rest CHANGES LAYOUT and is a design decision rather than a mechanical substitution. Snap them onto --sw-space-* and extend the styles.test.ts gate to fail on an off-scale rem in a spacing property, the same way it already fails on a raw px.",
