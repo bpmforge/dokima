@@ -3929,6 +3929,54 @@
         "Full gate green including e2e; counts in the commit body."
       ],
       "notes": "Split out of W10-36 as that ticket said it should be: W10-36 is web-lane copy, this is apps/server-owned. Both found by the 2026-08-03 visual verification sweep; this one re-confirmed live while verifying W10-31."
+    },
+    {
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "id": "W10-39",
+      "points": 3,
+      "title": "App.tsx sits at exactly the 400-line cap, so the next ticket to touch it fails the gate",
+      "write_scope": [
+        "apps/web/src/App.tsx",
+        "apps/web/src/App/**",
+        "apps/web/src/App.test.tsx"
+      ],
+      "acceptance": [
+        "MEASURED 2026-08-03: apps/web/src/App.tsx is EXACTLY 400 lines on main, and validate-file-size hard-fails above 400. There is zero headroom. W10-33 added net 11 lines of legitimate wiring, hit 411, and failed the gate \u2014 `gates.fail W10-33 \u2014 apps/web/src/App.tsx is 411 lines (> 400)`. This is not W10-33's defect; it blocks every future ticket that must wire anything through App.tsx, W10-04 (Providers panel) very likely included.",
+        "Split per content/protocols/CODE_BOOK_PROTOCOL.md as the validator itself prescribes: a directory with an index/barrel plus chapter modules, ONE CONCERN EACH, each comfortably under the cap. Do not merely shave lines to land at 399 \u2014 a file parked one line under a hard cap re-blocks the queue on the next ticket, and shaving is how a line budget gets gamed rather than met.",
+        "App.tsx currently mixes at least: WS/token bootstrap, view routing, the three-pane composition, the board-card event delegation at :149-151, and per-view prop wiring. Those are the natural chapters.",
+        "BEHAVIOUR MUST NOT CHANGE. This is a structural refactor: no new features, no altered props, no changed routing. The existing web suite is the regression check and must stay green with no test edits beyond import paths.",
+        "Leave headroom and prove it: after the split no resulting file exceeds 300 lines (the validator's WARN threshold), so the next ticket has room to work.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found when W10-33 failed the diff-scoped file-size gate. Filed separately rather than folded into W10-33 because splitting a 400-line composition root is its own concern and would make a \"wire two controls\" diff unreviewable. W10-33 should be reset to todo and re-run once this lands."
+    },
+    {
+      "phase": 10,
+      "module": "web",
+      "lane": "quality",
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "id": "W10-40",
+      "points": 3,
+      "title": "Four files are already over the 400-line cap, grandfathered only because the gate is diff-scoped",
+      "write_scope": [
+        "docs/work/FILE_SIZE_DEBT.md"
+      ],
+      "acceptance": [
+        "MEASURED 2026-08-03: four source files on main already EXCEED the validate-file-size hard cap of 400 \u2014 packages/events/src/receipts.ts (553), apps/server/src/api/pipeline/gateway-model-port.ts (450), apps/server/src/api/projects.ts (433), apps/server/src/api/server.ts (408). They pass today only because the conductor runs the validator DIFF-SCOPED, so an untouched file is never checked.",
+        "That makes each one a landmine rather than a known debt: the next ticket that edits receipts.ts inherits a mandatory 553-line split as an unplanned prerequisite, exactly as W10-33 inherited App.tsx. The cost lands on whoever happens to touch it, mid-ticket, with a write_scope that will not cover the split.",
+        "This ticket is the INVENTORY, not the splits: docs/work/FILE_SIZE_DEBT.md listing every file over 400 and every file over the 300-line WARN threshold, each with the concerns it mixes and a proposed chapter breakdown, so a future ticket can be scoped against a plan instead of discovering the work.",
+        "Also record the near-cap set (packages/harbormaster/src/loop-land.ts at 399, packages/mcp/src/tool-call.ts and packages/gateway/src/providers/anthropic.ts at 379) \u2014 those are the next App.tsx.",
+        "Recommend, with reasoning, whether the conductor should run validate-file-size repo-wide rather than diff-scoped. Diff-scoping is defensible (it keeps a ticket honest about what IT changed) but it converts a visible standard into a surprise. State the trade-off; do not silently change the config.",
+        "No production code changes in this ticket."
+      ],
+      "notes": "Found while diagnosing W10-33's file-size gate failure. Deliberately an inventory rather than a refactor: four splits across events/server/gateway in one ticket would be unreviewable, and each belongs to whoever owns that module."
     }
   ]
 }
