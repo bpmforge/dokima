@@ -3,11 +3,14 @@
  *
  * Chapter of the 450-line gateway-model-port.ts, split under the 400-line
  * CODE_BOOK_PROTOCOL cap (W10-48). Extraction only, no behaviour change.
+ *
+ * W10-59: the parse moved to `../model-json.js`, shared with the twin call
+ * site in `onboard-dispatch-port.ts`. Both used a bare `JSON.parse` on a model
+ * completion, and both therefore died on a markdown fence.
  */
 
-import { requireObject } from '../json-shape.js';
 import type { Provider } from '@dokima/gateway';
-import { MalformedModelOutputError } from '../errors.js';
+import { parseModelJson } from '../model-json.js';
 
 export async function chatJson(
   provider: Provider,
@@ -24,16 +27,5 @@ export async function chatJson(
     ],
     temperature: 0,
   });
-  const content = response.message.content;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (err) {
-    throw new MalformedModelOutputError(
-      phase,
-      `response was not valid JSON: ${(err as Error).message}`,
-    );
-  }
-  return requireObject(parsed, phase, '<response>');
+  return parseModelJson(response.message.content, phase);
 }
-
