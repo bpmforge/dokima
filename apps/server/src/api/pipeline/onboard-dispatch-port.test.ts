@@ -10,6 +10,8 @@ import {
 } from './onboard-dispatch-port.js';
 import { MalformedModelOutputError } from './errors.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from './test-fake-gateway.js';
+import { putProviders } from '../server/providers-store.js';
+import { putModelMatrix } from '../server/model-matrix-store.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -130,5 +132,130 @@ describe('createRealOnboardDispatch (W8-09 AC1 — real gateway + real runSessio
         deliverables: [{ id: 'docs/LANDSCAPE.md', producingRole: 'landscape-mapper' }],
       }),
     ).rejects.toBeInstanceOf(MalformedModelOutputError);
+  });
+});
+
+/**
+ * W10-45. The seam W10-03 wired for `gateway-model-port.ts` and left unwired
+ * here: the onboard/analysis path resolved its model from three env vars and
+ * built an unconditional oai-compat provider, so whatever the user picked in
+ * the Providers panel was silently ignored on the one path the dogfood runs.
+ *
+ * Two REAL gateways, not mocks — the assertion is which socket received the
+ * request, which is the only thing that distinguishes a wired seam from a
+ * plausible-looking one.
+ */
+describe('createRealOnboardDispatch model resolution (W10-45)', () => {
+  let repo: TempRepo | undefined;
+  let providerA: FakeGatewayServer | undefined;
+  let providerB: FakeGatewayServer | undefined;
+
+  afterEach(async () => {
+    resetLoopModuleCacheForTests();
+    await providerA?.close();
+    await providerB?.close();
+    await repo?.cleanup();
+    repo = providerA = providerB = undefined;
+  });
+
+  const dispatchOnce = (repoRoot: string, role: string) =>
+    createRealOnboardDispatch({ repoRoot })(role, {
+      stepId: 'security',
+      seedContext: {},
+      priorArtifacts: {},
+      deliverables: [{ id: 'docs/SECURITY.md', producingRole: role }],
+    });
+
+  it('RED FIXTURE: the matrix picks the provider — a row pointing at B routes the call to B, not A', async () => {
+    repo = await createTempRepo();
+    providerA = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+    providerB = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+
+    await putProviders(repo.repoRoot, [
+      { id: 'alpha', kind: 'oai-compat', baseUrl: providerA.url, enabled: true },
+      { id: 'beta', kind: 'oai-compat', baseUrl: providerB.url, enabled: true },
+    ]);
+    // `<providerId>/<model>` is the binding convention model-resolution.ts uses.
+    await putModelMatrix(repo.repoRoot, [
+      { role: 'security-auditor', taskType: 'reasoning', model: 'beta/chosen-model', fallback: [] },
+    ]);
+
+    await dispatchOnce(repo.repoRoot, 'security-auditor');
+
+    // Before this ticket BOTH of these were wrong: A (well, localhost:1234)
+    // got the call and B never heard from anyone.
+    expect(providerB.requests).toHaveLength(1);
+    expect(providerA.requests).toHaveLength(0);
+    expect(providerB.requests[0]).toMatchObject({ model: 'chosen-model' });
+  });
+
+  it('resolves PER ROLE — two roles with different matrix rows reach different providers in one run', async () => {
+    repo = await createTempRepo();
+    providerA = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+    providerB = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+
+    await putProviders(repo.repoRoot, [
+      { id: 'alpha', kind: 'oai-compat', baseUrl: providerA.url, enabled: true },
+      { id: 'beta', kind: 'oai-compat', baseUrl: providerB.url, enabled: true },
+    ]);
+    await putModelMatrix(repo.repoRoot, [
+      { role: 'landscape-mapper', taskType: 'reasoning', model: 'alpha/map-model', fallback: [] },
+      { role: 'security-auditor', taskType: 'reasoning', model: 'beta/audit-model', fallback: [] },
+    ]);
+
+    // Resolving once at construction — the obvious wrong fix — would send both
+    // of these to whichever role happened to be resolved first.
+    await dispatchOnce(repo.repoRoot, 'landscape-mapper');
+    await dispatchOnce(repo.repoRoot, 'security-auditor');
+
+    expect(providerA.requests).toHaveLength(1);
+    expect(providerB.requests).toHaveLength(1);
+    expect(providerA.requests[0]).toMatchObject({ model: 'map-model' });
+    expect(providerB.requests[0]).toMatchObject({ model: 'audit-model' });
+  });
+
+  it('falls back to the env config when nothing is configured — a normal first-run state, not an error (C-1)', async () => {
+    repo = await createTempRepo();
+    providerA = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+
+    // No providers, no matrix rows. The e2e fake-model gateway depends on this
+    // path continuing to work, so env must stay a working documented override.
+    process.env.DOKIMA_MODEL_BASE_URL = providerA.url;
+    process.env.DOKIMA_MODEL_ID = 'env-model';
+    try {
+      await dispatchOnce(repo.repoRoot, 'security-auditor');
+    } finally {
+      delete process.env.DOKIMA_MODEL_BASE_URL;
+      delete process.env.DOKIMA_MODEL_ID;
+    }
+
+    expect(providerA.requests).toHaveLength(1);
+    expect(providerA.requests[0]).toMatchObject({ model: 'env-model' });
+  });
+
+  it('an explicit config still wins outright — the seam tests and the e2e gateway drive', async () => {
+    repo = await createTempRepo();
+    providerA = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+    providerB = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+
+    await putProviders(repo.repoRoot, [
+      { id: 'beta', kind: 'oai-compat', baseUrl: providerB.url, enabled: true },
+    ]);
+    await putModelMatrix(repo.repoRoot, [
+      { role: 'security-auditor', taskType: 'reasoning', model: 'beta/ignored', fallback: [] },
+    ]);
+
+    await createRealOnboardDispatch({
+      repoRoot: repo.repoRoot,
+      config: { baseUrl: providerA.url, model: 'explicit-model', fetchImpl: fetch },
+    })('security-auditor', {
+      stepId: 'security',
+      seedContext: {},
+      priorArtifacts: {},
+      deliverables: [{ id: 'docs/SECURITY.md', producingRole: 'security-auditor' }],
+    });
+
+    expect(providerA.requests).toHaveLength(1);
+    expect(providerB.requests).toHaveLength(0);
   });
 });
