@@ -4710,7 +4710,7 @@
       "id": "W10-67",
       "phase": 10,
       "module": "pipeline",
-      "lane": "pipeline",
+      "lane": "ui",
       "points": 8,
       "title": "The gate correctly asks the founder to decide, and throws away the slates they would decide on",
       "write_scope": [
@@ -4730,7 +4730,7 @@
         "RE-FRAME W10-58 RATHER THAN DUPLICATE IT. That ticket asks for partial progress so a slow run survives; this one shows the run must be able to PAUSE for a human and resume, which is a stronger requirement than \"do not lose work\" and points at the same job-shaped rewrite. Whoever takes either should read both and decide whether they are one ticket.",
         "RED FIXTURE: a run whose blueprint raises open questions persists exactly those slates and reaches a paused, resumable state (not an error state), and answering them produces the board WITHOUT re-running the earlier phases. A run with no open questions still completes straight through, as it does today."
       ],
-      "notes": "Found 2026-08-03 in the browser run that verified W10-66, on the third consecutive idea. This is the fourth distinct failure in the same three-phase pipeline, each only visible once the previous was fixed \u2014 W10-59 (fenced JSON), W10-65 (an empty field), W10-66 (a field in the wrong format), and now a correct refusal with no path through it. The first Trailhead run completed only because it happened to raise ZERO open questions; any idea with a real fork in it hits this. Note the run reached ~420s including one W10-65 retry, so W10-58 timeout pressure is real on longer ideas even though the 91s Trailhead run did not show it."
+      "notes": "Found 2026-08-03 in the browser run that verified W10-66, on the third consecutive idea. This is the fourth distinct failure in the same three-phase pipeline, each only visible once the previous was fixed \u2014 W10-59 (fenced JSON), W10-65 (an empty field), W10-66 (a field in the wrong format), and now a correct refusal with no path through it. The first Trailhead run completed only because it happened to raise ZERO open questions; any idea with a real fork in it hits this. Note the run reached ~420s including one W10-65 retry, so W10-58 timeout pressure is real on longer ideas even though the 91s Trailhead run did not show it. \u2014 LANE CORRECTED to ui before any work: filed as pipeline, which made its write_scope (apps/web/src/onboarding/**) a cross-lane overlap with W10-54, W10-55, W10-58 and W10-61, i.e. the schema bug CLAUDE.md law 1 says to report rather than work around. W10-58 carries the same scope shape (web onboarding + server pipeline routes) and is lane ui, so ui is the consistent home."
     }
   ]
 }
