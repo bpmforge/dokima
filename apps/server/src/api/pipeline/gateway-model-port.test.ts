@@ -5,6 +5,10 @@ import {
   providerForConfig,
 } from './gateway-model-port.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from './test-fake-gateway.js';
+// Imported from its chapter, not the barrel: gateway-model-port.ts does not
+// re-export the prompt and is outside this ticket's write_scope, so widening
+// its public surface for a test is not this ticket's call to make.
+import { BLUEPRINT_SYSTEM_PROMPT } from './gateway-model-port/blueprint-phase.js';
 
 const VALID_BLUEPRINT_INPUT = {
   sections: [{ heading: 'Overview', body: 'A demo project.' }],
@@ -379,5 +383,107 @@ describe('gateway-model-port — one bounded retry with the gap fed back (W10-65
     await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.not.toBeInstanceOf(
       MalformedModelOutputError,
     );
+  });
+});
+
+/**
+ * W10-66. The open-question key becomes a bare token inside a
+ * `<!-- FOUNDER-DECISION: <key> UNRESOLVED -->` sentinel matched by a
+ * fail-closed grammar, so a title with spaces breaks FR-P7's phase lock. The
+ * prompt used to ask for `"key": string` and nothing more.
+ *
+ * Validating at the PORT (rather than letting the downstream 422 stand) is
+ * what makes this recoverable: it becomes a phase-named
+ * MalformedModelOutputError, which is exactly what W10-65's retry feeds back.
+ */
+describe('gateway-model-port — open-question keys are slugs, and a bad one is retryable (W10-66)', () => {
+  let server: FakeGatewayServer | undefined;
+
+  afterEach(async () => {
+    await server?.close();
+    server = undefined;
+  });
+
+  const withKey = (key: string): string =>
+    JSON.stringify({
+      ...VALID_BLUEPRINT_INPUT,
+      openQuestions: [
+        { ...VALID_BLUEPRINT_INPUT.openQuestions[0], key },
+      ],
+    });
+
+  const TITLE_KEY = 'Offline Sync & Conflict Resolution Strategy';
+
+  it('the system prompt states the slug rule with a worked example, not just a regex', () => {
+    expect(BLUEPRINT_SYSTEM_PROMPT).toContain('offline-sync');
+    expect(BLUEPRINT_SYSTEM_PROMPT).toContain('SLUG');
+  });
+
+  it('recovers from the real failure: a human-readable key, corrected on retry', async () => {
+    server = await startFakeGatewayServer([
+      withKey(TITLE_KEY),
+      withKey('offline-sync'),
+    ]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    const result = await port.resolveBlueprintInput([], 'Demo Project');
+
+    expect(result.openQuestions[0]?.key).toBe('offline-sync');
+    expect(server.requests).toHaveLength(2);
+  });
+
+  it('tells the model which path was wrong and where the readable wording belongs', async () => {
+    server = await startFakeGatewayServer([withKey(TITLE_KEY), withKey('offline-sync')]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    await port.resolveBlueprintInput([], 'Demo Project');
+
+    const retry = server.requests[1] as { messages: { role: string; content: string }[] };
+    const userTurn = retry.messages.find((m) => m.role === 'user')?.content ?? '';
+    expect(userTurn).toContain('openQuestions[0].key');
+    expect(userTurn).toContain('slate title');
+  });
+
+  it('still refuses a key that stays malformed — it is a boundary, not a suggestion', async () => {
+    server = await startFakeGatewayServer([withKey(TITLE_KEY)]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.toBeInstanceOf(
+      MalformedModelOutputError,
+    );
+  });
+
+  it('does not slugify on the model behalf — a key it never sent is never invented', async () => {
+    server = await startFakeGatewayServer([withKey(TITLE_KEY)]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.toThrow(
+      /must be a slug/,
+    );
+  });
+
+  it('a well-formed slug passes through untouched', async () => {
+    server = await startFakeGatewayServer([withKey('deployment-shape')]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    const result = await port.resolveBlueprintInput([], 'Demo Project');
+
+    expect(result.openQuestions[0]?.key).toBe('deployment-shape');
+    expect(server.requests).toHaveLength(1);
   });
 });

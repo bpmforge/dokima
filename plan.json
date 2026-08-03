@@ -4694,7 +4694,7 @@
       "depends_on": [
         "W10-65"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED IN A BROWSER, as the failure that appeared once W10-65's retry cleared the previous one. Same idea, same model: the run got PAST blueprint-input and died with `invalid open-question key \"Offline Sync & Conflict Resolution Strategy\" \u2014 must match ^[A-Za-z0-9][\\w.-]*$ (HTTP 422)`. Note the status: 422 from the route, not the port's 502, so it is raised after the port returned and W10-65's retry does not and should not reach it.",
