@@ -3821,7 +3821,7 @@
         "apps/web/src/shortcuts/ShortcutsOverlay.test.tsx"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED (light/21, dark/19, both themes): styles.css:187-198 gives the overlay `position: fixed; inset: 5rem` and a box-shadow but NO backdrop. The page behind stays at full brightness and the panel clips the header's \"New Product\" button to \"Product\" \u2014 it reads as a card that accidentally landed on the toolbar with a half-eaten button behind it. The audit called it the clearest \"looks broken\" item after the anchor contrast.",

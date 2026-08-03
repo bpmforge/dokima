@@ -236,23 +236,38 @@ button:disabled {
   cursor: pointer;
 }
 
-.shortcuts-overlay {
+.shortcuts-overlay__backdrop {
   position: fixed;
-  inset: 5rem var(--sw-space-4) auto;
-  margin: 0 auto;
-  max-width: 28rem;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  /* Fixed, not vh: the app-shell header + (on Fleet) the fleet__header
+     toolbar stacked above it are content-driven heights, not proportional
+     to viewport height — a vh-based offset clears them at one window size
+     and clips them at another. */
+  padding-top: 9rem;
+  /* Above the ticket-drawer (1500) and command-palette (2000) backdrops:
+     '?' is a global "what can I press right now" key and should still work
+     — and render on top — while either of those is open. */
+  z-index: 2100;
+}
+
+.shortcuts-overlay {
+  width: min(28rem, 90vw);
   background: var(--sw-bg);
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-lg);
   padding: var(--sw-space-4) var(--sw-space-5);
   box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
-  z-index: 1000;
 }
 
-.shortcuts-overlay__row {
-  display: flex;
-  gap: var(--sw-space-3);
-  padding: var(--sw-space-1) 0;
+.shortcuts-overlay__list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem var(--sw-space-3);
+  margin: 0;
 }
 
 .split-pane {
