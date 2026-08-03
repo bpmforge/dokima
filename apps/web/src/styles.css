@@ -125,6 +125,17 @@ body {
     color var(--sw-transition-duration) ease;
 }
 
+/* W10-30: no feature stylesheet ever declared an `a` colour, so every
+   anchor fell back to the UA default (#0000EE) — 1.95:1 against
+   --sw-bg in the dark theme, an AA failure invisible to the W10-06 gate
+   because there was no hex to find, only a missing rule. --sw-accent
+   is already the app's established accent-text token (chat/artifacts/
+   decisions all set `color: var(--sw-accent)` on individual elements);
+   declaring it once here covers every anchor, present and future. */
+a {
+  color: var(--sw-accent);
+}
+
 /* NFR: prefers-reduced-motion is respected everywhere, not just here. */
 @media (prefers-reduced-motion: reduce) {
   * {

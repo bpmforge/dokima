@@ -3717,7 +3717,7 @@
         "apps/web/src/**/*.css"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED: no `a` colour selector exists in ANY apps/web/src/**/*.css, nor in the built dist CSS. Anchors therefore fall back to the user-agent default #0000EE, measured at 1.95:1 against the dark card background (WCAG AA text needs 4.5:1). Light measures 8.59:1, so this is dark-only. Photographed instance: the \"evidence\" link on a MEDIUM security finding in the chat card (chat/Card.tsx:52-53), which is the only click-through from that finding to its evidence.",
@@ -3726,7 +3726,7 @@
         "Scope honesty carried from the audit: one instance was photographed and measured; the root cause is verified global; artifacts/MarkdownView.tsx:42 links are code-traced only and were never seen rendered. Fix globally, but do not claim verification you did not do.",
         "Full gate green including e2e and the axe specs; counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. The audit called this \"the more important finding than any single defect\" because it indicts the verification method rather than one value."
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. The audit called this \"the more important finding than any single defect\" because it indicts the verification method rather than one value. FOLLOW-UP (not fixed here, outside write_scope): no e2e/a11y axe spec ever toggles data-theme to dark, so the axe color-contrast rule never actually scanned the theme this bug lived in \u2014 a second reason it survived. Needs a dark-theme pass added to apps/web/e2e/a11y/*.spec.ts."
     },
     {
       "id": "W10-31",
