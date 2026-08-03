@@ -1,8 +1,9 @@
 # Release tracker — Dokima
 
-**State 2026-08-02:** board complete through W9 — **116 of 118 tickets done**
-(1 blocked, 1 todo). The v1.0 dogfood gate passed. **Not tagged**, and three
-things still stand between here and a public tag (§Pre-public checklist).
+**State 2026-08-03:** board **147 / 147 done — nothing claimable, nothing
+blocked.** The v1.0 dogfood gate passed. **Not tagged**, and two things still
+stand between here and a public tag (§Pre-public checklist): formal trademark
+clearance, and the npm publish itself.
 
 Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal =
 `docs/work/W10_PLAN.md`.
@@ -11,6 +12,11 @@ Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal 
 > "23/65 tickets, PAUSED" against a reality of 116/118 done. It is how a human
 > resumes cold, so that drift was itself a release-readiness defect. The
 > historical pause narrative is preserved in §Historical below.
+>
+> It drifted again within a day — by 2026-08-03 the gap list below still claimed
+> four things that were no longer true and one that was. Refreshed 2026-08-03,
+> with **each claim re-verified against the code rather than assumed stale**;
+> that check is what caught the one that survived (the expert-library drift).
 
 ---
 
@@ -68,17 +74,36 @@ caveat this write-up records about what a rewrite does not undo. See
 
 Not release blockers by themselves, but a reader deserves them stated:
 
-- Provider/model selection is editable in the UI and **not wired** to the
-  pipeline's model calls (W10 Phase G — the engine is built and tested, the
-  wire is missing)
-- Visual design is unfinished — 4 design tokens, 66 hardcoded hexes, clipped
-  board columns (W10 Phase H)
-- The bundled expert library is ~133 upstream changes behind (W10 Phases A/B)
+- ~~Provider/model selection is editable in the UI and not wired to the
+  pipeline's model calls~~ — **fixed.** W10-03 wired `gateway-model-port.ts`
+  (registry + role matrix first, env vars as a documented fallback that
+  deliberately loses), and W10-45 wired its twin `onboard-dispatch-port.ts`,
+  which had been left behind and was still resolving from three env vars — the
+  path the W8-01 dogfood actually runs on. Resolution happens **per role**,
+  since the matrix is keyed role × task type.
+- ~~Visual design is unfinished — 4 design tokens, 66 hardcoded hexes, clipped
+  board columns~~ — **fixed 2026-08-03 (W10-06, W10-28, W10-30, W10-32).**
+  Verified now: **96** `--sw-*` tokens, and **zero** raw hexes in any feature
+  stylesheet (the 34 that remain are the token definitions in `styles.css`,
+  which is where literals belong). The board is a CSS grid and no longer clips.
+- **The bundled expert library is still ~133 upstream commits behind** — this
+  one is real, and re-verified rather than assumed stale. The only import this
+  repo has ever done is W1-01 (one-time, by design — D-008, no umbilical). The
+  W10_PLAN Phase B refresh tickets were **never filed**: the board's W10-02 and
+  W10-03 are the model-catalog and seam-wiring tickets, which took those IDs.
+  Upstream also renamed (`bpm-opencode-experts` → `attest`). See
+  `docs/work/W10_PLAN.md` §0 for the measured drift.
 - ~~`dokima --help`, and any mistyped command, boots the server~~ — **fixed
   2026-08-03 (W10-44).** `--help`/`-h`/`--version`/`-V` print and exit 0; an
   unknown command prints usage to stderr and exits 2; an incomplete `packs` or
   `providers` no longer falls through to a boot. Bare `dokima` is unchanged.
-- `plan.json`: W9-08 blocked, W9-15 todo
+- **Cloud provider kinds are still non-constructible.** `anthropic`, `openai`,
+  `vertex` and `copilot` throw a *named* refusal (`kind-not-constructible`)
+  rather than falling back to localhost or faking a $0 cost:
+  `AnthropicConfig.costTable` is required with no default and the adapter needs
+  a resolved secret, not the `credentialRef` the registry stores. W10-42 built
+  the credential-write route, so half the prerequisite exists; a real price
+  table is what remains. Local kinds (ollama, lm-studio, oai-compat) work today.
 
 ## Test truth
 
@@ -88,9 +113,17 @@ planted-defect harness — every gate must FAIL when attacked (`docs/TESTING.md`
 · toy-project E2E incl. symlink-escape regression · fitness bench fixtures ·
 dogfood receipts at W8.
 
-Last full gate (2026-08-02, post-rewrite): lint 0 errors / 1 pre-existing
-warning · typecheck clean · **2883 passed | 3 skipped across 400 files** · **58
-e2e passed**.
+Last full gate (2026-08-03): lint 0 errors / 1 pre-existing warning ·
+typecheck clean across 14 workspace projects · **3131 passed | 3 skipped across
+416 files** · **61 e2e passed** · `validate-file-size` clean (0 gaps) ·
+history-secrets scan clean.
+
+Two gates joined the release surface on 2026-08-03. **History secrets**
+(W10-27): the tree scanner passes `--exclude-dir=.git` and so could never see a
+credential that was committed then deleted — which is how the signing key
+survived thirteen days. **Repo-wide file size** (W10-49): findings used to be
+filtered to the ticket's own diff, so a file drifting over 400 lines only
+surfaced when someone happened to edit it. Both now run on every push.
 
 ## Automation
 
@@ -102,9 +135,16 @@ diff-scoped validators, sticky-finding review, limit recovery) +
 (D-018 by configuration). Control: `touch STOP`. Runbook:
 `docs/work/CONDUCTOR_RUNBOOK.md`.
 
-Note: an autorun today claims W9-15 and idle-exits — the board has no other
-claimable work. W10 must be filed into `plan.json` before autorun has anything
-to do.
+Note: the board is fully drained (147/147), so an autorun today idle-exits
+immediately. More work requires filing tickets first —
+`docs/work/W10_PLAN.md` still carries the unfiled Phase B (content refresh)
+and Phase D (guide/scribe pipeline) queues.
+
+`validators.repoWide` (W10-49) makes `validate-file-size` answer for the whole
+repo rather than the ticket's diff. That is only honest while its count is
+**zero**; if it ever goes non-zero, every ticket fails for debt it did not
+create, so remove the entry rather than waive it. A test asserts the
+precondition so it fails there rather than on a stranger's ticket.
 
 ---
 
