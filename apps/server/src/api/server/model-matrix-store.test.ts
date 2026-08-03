@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   listModelMatrix,
   listProjectModelMatrix,
@@ -12,6 +12,31 @@ import {
 async function tmpProjectDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-model-matrix-'));
 }
+
+/**
+ * W10-64 made `listModelMatrix` fall back to the GLOBAL preset, which lives in
+ * ~/.dokima/config.json. Every test in this file therefore reads the developer's
+ * real home directory unless DOKIMA_HOME is pinned — 'starts empty for a fresh
+ * project' passes on a clean machine and fails on one that has ever configured
+ * an every-project default. Pinned here for the whole file so no individual
+ * case has to remember, and restored after each so nothing leaks the other way.
+ */
+const homeDirs: string[] = [];
+const savedDokimaHome = process.env.DOKIMA_HOME;
+
+beforeEach(async () => {
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-matrix-testhome-'));
+  homeDirs.push(home);
+  process.env.DOKIMA_HOME = home;
+});
+
+afterEach(async () => {
+  await Promise.all(
+    homeDirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+  );
+  if (savedDokimaHome === undefined) delete process.env.DOKIMA_HOME;
+  else process.env.DOKIMA_HOME = savedDokimaHome;
+});
 
 describe('model matrix store', () => {
   const dirs: string[] = [];
@@ -186,5 +211,41 @@ describe('model matrix global preset (W10-64)', () => {
 
     expect(await listProjectModelMatrix(dir)).toEqual([]);
     expect(await listModelMatrix(dir)).toHaveLength(1);
+  });
+});
+
+describe('global preset upserts on (role, taskType) like the project table does (W10-64)', () => {
+  const dirs: string[] = [];
+  const savedHome = process.env.DOKIMA_HOME;
+
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+    if (savedHome === undefined) delete process.env.DOKIMA_HOME;
+    else process.env.DOKIMA_HOME = savedHome;
+  });
+
+  /**
+   * Found by driving the panel, not by reading the code. The panel POSTs
+   * [...existingRows, draftRow], so editing a role/task-type pair that already
+   * exists arrives as TWO rows for one key. The project table's PRIMARY KEY
+   * collapses that on upsert; a plain JSON array has no such constraint, and
+   * the first global write through the UI stored the duplicate.
+   */
+  it('collapses a repeated role/taskType to one row, last write winning', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-matrix-home-'));
+    dirs.push(home);
+    process.env.DOKIMA_HOME = home;
+
+    const stored = await putGlobalModelMatrix([
+      { role: 'coding-agent', taskType: 'code', model: 'first', fallback: [] },
+      { role: 'coding-agent', taskType: 'reasoning', model: 'other-key', fallback: [] },
+      { role: 'coding-agent', taskType: 'code', model: 'second-wins', fallback: [] },
+    ]);
+
+    expect(stored).toHaveLength(2);
+    expect(stored.find((r) => r.taskType === 'code')?.model).toBe('second-wins');
+    expect(stored.find((r) => r.taskType === 'reasoning')?.model).toBe('other-key');
   });
 });
