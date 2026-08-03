@@ -3899,7 +3899,7 @@
         "docs/tour/**"
       ],
       "depends_on": [],
-      "status": "done",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "THE HARNESS CAN CAPTURE CODE THAT IS NOT ON MAIN. `ensureSpaBuilt()` in apps/web/scripts/lib/app-harness.mjs returns early whenever dist/index.html merely EXISTS \u2014 it never checks whether the bundle is older than the source. A dist left from an earlier commit is then served by the real server and photographed as if it were current. Proven 2026-08-03: a capture run against a 19:18 dist reported the W10-29 receipts fix as still broken (404s, doubled /api/v1); rebuilding and re-running showed 200s and zero console errors. The fix was fine; the harness lied. Make it rebuild unconditionally, or compare mtimes against src/ and fail loudly on staleness. Both capture-tour.mjs and capture-acceptance.mjs depend on this, so docs/tour/ is only as trustworthy as this check.",
