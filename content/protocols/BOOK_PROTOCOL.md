@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/BOOK_PROTOCOL.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/BOOK_PROTOCOL.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # BOOK_PROTOCOL.md
 
@@ -176,10 +178,10 @@ When to use a chapter directory: if a single findings chapter would have 8+ sub-
 After writing all book files, run:
 
 ```bash
-node scripts/mermaid-fix.mjs docs/<deliverable-slug>/ --write   # auto-repair mechanical Mermaid issues first
-bash scripts/validators/validate-book-structure.sh docs/<deliverable-slug>/
-bash scripts/validators/validate-mermaid.sh . docs/<deliverable-slug>/
-bash scripts/validators/validate-doc-render-health.sh . docs/<deliverable-slug>/
+node content/scripts/mermaid-fix.mjs docs/<deliverable-slug>/ --write   # auto-repair mechanical Mermaid issues first
+bash content/validators/validate-book-structure.sh docs/<deliverable-slug>/
+bash content/validators/validate-mermaid.sh . docs/<deliverable-slug>/
+bash content/validators/validate-doc-render-health.sh . docs/<deliverable-slug>/
 ```
 
 All three validators must exit 0 before the deliverable is marked DONE. Authoring rules: `references/mermaid-safe-syntax.md`.

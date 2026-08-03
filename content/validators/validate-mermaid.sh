@@ -1,8 +1,13 @@
 #!/bin/bash
-# Provenance: bpm-opencode-experts
+# Provenance: attest (formerly bpm-opencode-experts) — LOCALLY PORTED, NOT a
+#             verbatim import. Registered in LOCAL_OVERRIDES
+#             (scripts/content-import/upstream.mjs) and re-applied over the
+#             upstream copy on every import (W10-51).
 # Source path: scripts/validators/validate-mermaid.sh
-# Import date: 2026-07-12
-# DO NOT EDIT — this is imported content
+# Import date: 2026-07-12 (port), re-applied 2026-08-03 at upstream v3.1.24
+# EDIT WITH CARE — this file deliberately diverges from upstream; see the
+#             LOCAL PATCH note below. Re-applying the port is automatic, but
+#             keeping it CORRECT against a changed upstream is not.
 #
 # LOCAL PATCH (Shipwright W9-08, 2026-07-28): this script used to be the only
 # validator in this directory that did not source `_lib.sh` and never emitted

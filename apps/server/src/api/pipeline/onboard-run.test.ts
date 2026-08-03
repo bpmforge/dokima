@@ -99,7 +99,7 @@ describe('runOnboardAnalysis (W8-09 — full onboard/analysis run, real gateway 
       expect(promptContent).toContain('export function widget()');
 
       expect(Object.keys(outcome.result.stepArtifacts)).toHaveLength(16);
-      expect(outcome.result.coverageManifest.antiSlopRules).toHaveLength(30);
+      expect(outcome.result.coverageManifest.antiSlopRules).toHaveLength(31);
 
       // AC1: emit wired to append-only events.
       const events = listEvents(log);
@@ -114,7 +114,7 @@ describe('runOnboardAnalysis (W8-09 — full onboard/analysis run, real gateway 
       expect(
         (runCompletedEvent?.payload as { coverageManifest: { antiSlopRules: unknown[] } })
           .coverageManifest.antiSlopRules,
-      ).toHaveLength(30);
+      ).toHaveLength(31);
 
       // AC2: findings become board items through the existing plans lifecycle —
       // one finding per step (16 identical-shape completions, distinct stepId/role

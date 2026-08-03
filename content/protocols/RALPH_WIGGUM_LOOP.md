@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/shared/RALPH_WIGGUM_LOOP.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -102,7 +103,7 @@ The inventory is produced by one focused HANDOFF. The agent discovers the units 
 
 The validator catalog below is the menu of checkable criteria; a row that maps to none of them, and to no project test, is a refuse-to-loop row.
 
-**Enforced, not advisory:** run `scripts/validators/validate-loop-readiness.sh [project-root]` on the inventory **before DISCOVER**. It parses the Artifact column and exits 1 with a gap list for every row whose artifact is not objectively checkable ("improve the UX", "make it nicer"). Fix those rows (give them a validator/test/measurable target) or mark them `BLOCKED: no checkable success` and route to a human — do not enter the loop with them.
+**Enforced, not advisory:** run `content/validators/validate-loop-readiness.sh [project-root]` on the inventory **before DISCOVER**. It parses the Artifact column and exits 1 with a gap list for every row whose artifact is not objectively checkable ("improve the UX", "make it nicer"). Fix those rows (give them a validator/test/measurable target) or mark them `BLOCKED: no checkable success` and route to a human — do not enter the loop with them.
 
 ---
 
@@ -122,9 +123,9 @@ Run the corresponding validator script:
 
 | Use case | Validator |
 |----------|-----------|
-| onboard-deep | `scripts/validators/validate-inventory.sh` |
-| security-deep | `scripts/validators/validate-owasp.sh` |
-| architecture | `scripts/validators/validate-architecture.sh` |
+| onboard-deep | `content/validators/validate-inventory.sh` |
+| security-deep | `content/validators/validate-owasp.sh` |
+| architecture | `content/validators/validate-architecture.sh` |
 
 The validator returns:
 - Exit 0 -- all rows covered, loop closed
@@ -242,7 +243,7 @@ fix the inventory, the validator, or the gap-fill strategy, not iterate again.
 - Record the gap list to `docs/work/COVERAGE_LOOP_<phase>_<date>.md`
 - **Capture the lesson** so the same stall is not repeated next week (Cherny's "write it down, don't re-prompt"):
   ```
-  node scripts/loop-learn.mjs \
+  node content/scripts/loop-learn.mjs \
     --symptom "<phase> stuck: <which rows, what gap>" \
     --cause   "<why the gap-fill HANDOFFs didn't close it>" \
     --rule    "<what to do differently — fix inventory / validator / strategy>" \

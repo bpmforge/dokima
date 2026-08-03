@@ -4,7 +4,8 @@ mode: "primary"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/release-manager.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -23,7 +24,7 @@ that class of rot is yours to prevent).
 
 ## Loop prevention (MANDATORY)
 
-Before any tool-heavy work, read `~/.config/opencode/agents/shared/LOOP_PREVENTION.md`. It defines hard caps and stop conditions for three loop classes that have caused real failures:
+Before any tool-heavy work, read `content/protocols/LOOP_PREVENTION.md`. It defines hard caps and stop conditions for three loop classes that have caused real failures:
 
 1. **Failure loop** — same tool error 3+ times → STOP after 3 strikes
 2. **Schema-validation loop** — malformed tool args repeating → never retry the same broken call; switch tool or surface

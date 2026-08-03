@@ -4307,12 +4307,14 @@
         "scripts/import-content.mjs",
         "scripts/content-import/**",
         "scripts/import-content*.test.mjs",
-        "apps/server/src/api/roster-*.test.ts"
+        "apps/server/src/api/roster-*.test.ts",
+        "packages/pipeline/src/modes/coverage-manifest.ts",
+        "packages/pipeline/src/modes/coverage-manifest.test.ts"
       ],
       "depends_on": [
         "W10-50"
       ],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "RE-APPLY THE MERMAID OVERRIDE, do not drop it. I diffed it: content/validators/validate-mermaid.sh is NOT a bug fix upstream absorbed, it is a PORT to Dokima's validator contract \u2014 the local copy sources _lib.sh, calls validator_init, and emits the 0/1/2 JSON envelope, while upstream emits one JSON object per line with no envelope (137 lines differ). Taking upstream as-is silently breaks the validator-pack loader. Reassurance from the same check: 78 of upstream's 80 validators DO use _lib.sh, so the contract is shared and this is one of the two that are not converted \u2014 the other 8 drifted validators are safe to take.",
@@ -4322,7 +4324,33 @@
         "RECORD THE DELTA HONESTLY IN docs/STATUS.md, do not silently drop things: the 6 new agents land, pm-interviewer.md's removal upstream and the 3 removed validators are NAMED, and no `~/.config/opencode/` path survives the import (W10-50 rewrites them; verify zero remain).",
         "Full gate green including e2e, counts in the commit body; validate-file-size and history-secrets both clean; the dry-run report after the import shows zero drift against upstream."
       ],
-      "notes": "Filed 2026-08-03. Re-files W10_PLAN \u00a72 Phase B \"W10-03\" under a free id (the board's W10-03 is the seam-wiring ticket). W10-52 is deliberately NOT filed: its premise was measured false \u2014 see acceptance 3. Upstream ~/Code/attest @ v3.1.24, present locally (Law 9, no network). This is the largest content change since the W1-01 one-time import: ~86 expert files and 8 validators."
+      "notes": "Filed 2026-08-03. Re-files W10_PLAN \u00a72 Phase B \"W10-03\" under a free id (the board's W10-03 is the seam-wiring ticket). W10-52 is deliberately NOT filed: its premise was measured false \u2014 see acceptance 3. Upstream ~/Code/attest @ v3.1.24, present locally (Law 9, no network). This is the largest content change since the W1-01 one-time import: ~86 expert files and 8 validators. SCOPE AMENDED 2026-08-03, recorded rather than done quietly (same as W10-47). The re-import broke two assertions in packages/pipeline/src/modes/coverage-manifest.test.ts, which no scope I could have predicted at filing time would have covered \u2014 and both are the refresh working correctly, not collateral damage. (1) The test filters disk validators on the literal string \"Provenance: bpm-opencode-experts\"; W10-50 renamed provenance to attest, so after the import exactly ONE file still matched \u2014 validate-mermaid.sh, the re-applied local override that had kept its stale header. That is a genuine defect the refresh surfaced: a hardcoded upstream name in a test that claims to match disk 1:1. (2) ANTI_SLOP_RULES.md refreshed and R-30 changed title, so the manifest name no longer matched the heading it is asserted against. Leaving either red was not an option \u2014 a red suite cannot merge \u2014 and splitting them into a follow-up would have meant merging main red in between. Legitimate here only because the operator both filed and worked this ticket; a maker agent hitting this must self-block (W8-06 precedent). AGENT 2026-08-03: done. 203 files, +5811/-1133; post-import dry-run 0 drifted / 0 added / 91 identical. Mermaid override re-applied (it is a port to the _lib.sh envelope contract, not a fix upstream absorbed) and mechanised via --reapply-overrides. W10-52 NOT filed \u2014 premise measured false, all 94 v3 agents parse clean; three regression tests pin it. FOUND: the importer had a hardcoded list of 8 protocol names while content/protocols/ held 26, so 18 docs never refreshed since W1-01 \u2014 now enumerated from disk, host paths 2 -> 0. Re-signed TWICE (first signature invalidated by a later header edit; caught by packs-update real-pack verification). R-30 -> R-31 and R-30 left shadow for advisory, exactly as the old test predicted it would. STATED: pm-interviewer.md kept and named rather than silently deleted; _lib.sh/_lib_sdlc_config.sh remain unsigned (pre-existing, prior manifest also excluded them) and are filed as a follow-up. Gate: lint 0 errors, typecheck clean, 417 files / 3142 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-52",
+      "phase": 10,
+      "module": "content",
+      "lane": "quality",
+      "points": 3,
+      "title": "The shared validator libs every validator sources are unsigned",
+      "write_scope": [
+        "scripts/sign-content.mjs",
+        "content/manifest.json",
+        "packages/validators/src/**"
+      ],
+      "depends_on": [
+        "W10-51"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: content/manifest.json signs 81 of the 83 .sh files in content/validators. The two excluded are _lib.sh and _lib_sdlc_config.sh \u2014 the shared libraries EVERY other validator sources. An attacker who can write _lib.sh controls the behaviour of all 81 signed validators while every signature still verifies, which makes the signing story weaker than it reads.",
+        "PRE-EXISTING, NOT INTRODUCED BY THE REFRESH: verified against the pre-import manifest, which had 79 entries and also excluded both. W10-51 surfaced it while reconciling counts; it did not cause it.",
+        "Sign the shared libs too, or state in the manifest why they are excluded. Silence is the problem \u2014 a reader counting 81 signed of 83 present has no way to tell deliberate from forgotten.",
+        "RED FIXTURE: tamper with _lib.sh after signing and prove the pack now fails verification. Today it passes, which is the whole finding.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Filed 2026-08-03 from W10-51 reconciliation. Note the id reuse: W10_PLAN \u00a72 had a different W10-52 (roster parser for v3 frontmatter) whose premise W10-51 measured false and did not file \u2014 this is unrelated work taking the free number."
     }
   ]
 }

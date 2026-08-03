@@ -4,7 +4,8 @@ mode: "subagent"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/sdlc-init-phase-4.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -20,6 +21,56 @@ mode: "subagent"
 > Mandatory rules (loop prevention, document hygiene, delegation) live in sdlc-init-mode.md.
 > **task() → HANDOFF reminder:** Any `task(agent="X", ...)` = build a HANDOFF block, save state, execute per `agents/shared/EXECUTOR_SELECTION.md`: `autonomy=interactive` (default) → write `docs/work/HANDOFF_<agent>.md`, point the user at it (open /skill, read the doc), wait; `autonomy=auto` → Task tool / subprocess.
 > **Autonomy:** In `autonomy: auto` (per `agents/shared/AUTONOMY_PROTOCOL.md`) never wait on a paste — Executor C degrades to D (inline) per `EXECUTOR_SELECTION.md`.
+
+## HANDOFF intake (MANDATORY — resolve before any other mode)
+
+A HANDOFF can reach you in three shapes. **All three mean: execute the task now.** Resolve this
+section before mode selection, scope-boundary checks, or anything else in this file.
+
+| What arrives in your prompt | What it means |
+|---|---|
+| Starts with `SDLC-TASK for` | The HANDOFF body is inline — execute it |
+| Names a `docs/work/HANDOFF_*.md` path, in **any** wording ("read it and follow it", "it reads X", "open /skill, it reads X", or just the bare path) | `read()` that file first, then execute the `SDLC-TASK for` body inside it |
+| Tells you to open/run a skill that **is you** | You are already that agent. Do not ask the user to open it. Execute. |
+
+**Six rules:**
+
+1. **Read, then do.** If a `docs/work/HANDOFF_*.md` path appears anywhere in your prompt, read that
+   file before you reply. It contains your task, your WRITE-SCOPE, your PRODUCE list, and your
+   completion phrase. A pointer to a HANDOFF is a HANDOFF.
+   **Every path in a HANDOFF is relative to the project root** — read `docs/work/HANDOFF_x.md`, never
+   `/docs/work/HANDOFF_x.md`. A leading `/` escapes to the filesystem root and the read is denied.
+   If a read fails, retry once as a project-relative path before reporting anything.
+2. **Keep a task ledger — your memory lives on disk, not in this conversation.** Your FIRST action
+   after reading the HANDOFF: if `docs/work/TASKS_<agent>-<slug>.md` does not already exist (the
+   orchestrator may have written it), create it by transcribing the HANDOFF's steps verbatim, one
+   `- [ ] <step>` checkbox per step. Tick a box (`- [x]`) the moment that step's evidence exists on
+   disk — never batch ticks. **THE LOOP:** whenever you are unsure where you are — after a
+   compaction, a long detour, or any interruption — re-read the original HANDOFF and the ledger,
+   reconcile each checkbox against what actually exists on disk (files, commits, verify report),
+   fix any box that is wrong in either direction, then do the FIRST unchecked item. Repeat until
+   every box is ticked; only then run the done-gate and print the completion phrase. The runtime
+   re-injects this ledger's status into every turn, so trusting it costs nothing and trusting your
+   memory of the conversation is the known failure mode.
+3. **Never re-emit a HANDOFF you received.** Do not print the block back to the user, do not
+   (re-)write `docs/work/HANDOFF_<yourself>.md`, and do not tell the user to open the skill you are
+   already running. Handing your own task back is the single most common pipeline stall on smaller
+   models — it looks like progress and produces nothing.
+4. **`USER:` lines are not addressed to you.** Lines inside the block aimed at `USER:` (e.g. "open a
+   new session, type `/<skill>`, paste everything below") are delivery instructions for the human who
+   has *already* delivered it. Ignore them. Never relay them back.
+5. **A turn ends only three ways: more work, the completion phrase, or `BLOCKED: <evidence>`.**
+   Never a menu of options (A/B/C…), a confirm-request ("shall I proceed?", "confirm you want the
+   tests"), or a question about which mode, slug, scope, or step to run — the HANDOFF already
+   answered those; asking again stalls an unattended pipeline while looking cooperative. If a
+   detail is genuinely absent, pick the documented default, state it in one line, and proceed.
+6. **Then follow the contract.** Inside a HANDOFF you are governed by
+   `agents/shared/BOUNDED_TASK_CONTRACT.md`: write exactly the PRODUCE files, emit the Completion
+   Manifest, print the completion phrase verbatim, stop.
+
+**The one exception.** Emitting a HANDOFF is correct only when your prompt did *not* deliver one to
+you (no `SDLC-TASK for`, no `HANDOFF_*.md` path). Delegating onward to a **different** agent is
+normal orchestration; re-issuing the handoff you were just given is not.
 
 ## Phase 4: Implementation — BUILD it
 
@@ -77,7 +128,7 @@ Sequential mode processes one module at a time, but **each module goes through t
 **Round 1 — Code:**
 Emit one coding-agent HANDOFF for this module. Wait for completion phrase. Run:
 ```bash
-./scripts/validators/run-handoff-gates.sh \
+content/validators/run-handoff-gates.sh \
   --scope src/<module> \
   --manifest docs/reviews/MANIFEST_<module>_<date>.md \
   --runtime
@@ -116,7 +167,7 @@ If FAIL → fix module → re-run. RUNTIME PASS is required before moving to the
 When the user selects parallel mode `[P]` for a wave, load the full protocol:
 
 ```
-read(filePath="~/.config/opencode/agents/sdlc/PARALLEL_WAVE_PROTOCOL.md")
+read(filePath="content/experts/sdlc/PARALLEL_WAVE_PROTOCOL.md")
 ```
 
 The protocol defines: Round 1 (N parallel code HANDOFFs), Round 2 (N parallel review HANDOFFs + Fix-Verify Loop per module), Round 3 (N parallel runtime-validation HANDOFFs), wave gate, and when to refuse parallel and force sequential.
@@ -138,9 +189,9 @@ Next after resume: run handoff gates (validate-design-system), then test strateg
 ")
 ```
 
-Use **Template 10** from `~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md` for this HANDOFF.
+Use **Template 10** from `content/protocols/HANDOFF_TEMPLATES.md` for this HANDOFF.
 
-→ After "frontend done": run `./scripts/validators/run-handoff-gates.sh --scope src/components --scope src/styles --scope src/theme --manifest <manifest> --coverage validate-design-system.sh` → mark DONE
+→ After "frontend done": run `content/validators/run-handoff-gates.sh --scope src/components --scope src/styles --scope src/theme --manifest <manifest> --coverage validate-design-system.sh` → mark DONE
 
 **Wave 0 must pass before Wave 1 coding begins.** The design system is the foundation for all feature UI — no exceptions.
 
@@ -579,7 +630,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
 ```
 
-→ After "sre done": run `./scripts/validators/run-handoff-gates.sh --scope infra --manifest docs/reviews/MANIFEST_iac_<date>.md --coverage validate-iac.sh` → mark DONE
+→ After "sre done": run `content/validators/run-handoff-gates.sh --scope infra --manifest docs/reviews/MANIFEST_iac_<date>.md --coverage validate-iac.sh` → mark DONE
 
 **6. CI/CD pipeline:**
 
@@ -751,6 +802,9 @@ Per-wave verification:
   Every module has RUNTIME_<module>_<date>.md with PASS verdict: ✓/✗
   Every module FIX_BACKLOG has 0 open CRITICAL/HIGH: ✓/✗
   Every module PR has CI checks green (gh pr checks / tea pr view): ✓/✗
+    (local-only repo — `git remote` empty: no PR and no CI exist, so this row is
+     N/A. Substitute `VERIFY: ALL GREEN` + the module's review docs. An
+     impossible row is never a blocker and never an unearned ✓.)
 
 Infrastructure wave:
   IaC scaffolding: ✓/✗ DONE (infra/ exists, validate-iac.sh passes)

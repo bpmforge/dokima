@@ -4,7 +4,8 @@ mode: "subagent"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/sdlc-init-phases-0-2.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -21,10 +22,60 @@ mode: "subagent"
 > **task() → HANDOFF (compact reminder):** Any `task(agent="X", ...)` in this file = emit a HANDOFF block for X using the `════` delimiter format, save state to `docs/work/sdlc-state.md`, wait for user to return. Full rules in `sdlc-init-mode.md` § Delegation Rule.
 > **Autonomy:** In `autonomy: auto` (per `agents/shared/AUTONOMY_PROTOCOL.md`) never wait on a paste — Executor C degrades to D (inline) per `EXECUTOR_SELECTION.md`.
 
+## HANDOFF intake (MANDATORY — resolve before any other mode)
+
+A HANDOFF can reach you in three shapes. **All three mean: execute the task now.** Resolve this
+section before mode selection, scope-boundary checks, or anything else in this file.
+
+| What arrives in your prompt | What it means |
+|---|---|
+| Starts with `SDLC-TASK for` | The HANDOFF body is inline — execute it |
+| Names a `docs/work/HANDOFF_*.md` path, in **any** wording ("read it and follow it", "it reads X", "open /skill, it reads X", or just the bare path) | `read()` that file first, then execute the `SDLC-TASK for` body inside it |
+| Tells you to open/run a skill that **is you** | You are already that agent. Do not ask the user to open it. Execute. |
+
+**Six rules:**
+
+1. **Read, then do.** If a `docs/work/HANDOFF_*.md` path appears anywhere in your prompt, read that
+   file before you reply. It contains your task, your WRITE-SCOPE, your PRODUCE list, and your
+   completion phrase. A pointer to a HANDOFF is a HANDOFF.
+   **Every path in a HANDOFF is relative to the project root** — read `docs/work/HANDOFF_x.md`, never
+   `/docs/work/HANDOFF_x.md`. A leading `/` escapes to the filesystem root and the read is denied.
+   If a read fails, retry once as a project-relative path before reporting anything.
+2. **Keep a task ledger — your memory lives on disk, not in this conversation.** Your FIRST action
+   after reading the HANDOFF: if `docs/work/TASKS_<agent>-<slug>.md` does not already exist (the
+   orchestrator may have written it), create it by transcribing the HANDOFF's steps verbatim, one
+   `- [ ] <step>` checkbox per step. Tick a box (`- [x]`) the moment that step's evidence exists on
+   disk — never batch ticks. **THE LOOP:** whenever you are unsure where you are — after a
+   compaction, a long detour, or any interruption — re-read the original HANDOFF and the ledger,
+   reconcile each checkbox against what actually exists on disk (files, commits, verify report),
+   fix any box that is wrong in either direction, then do the FIRST unchecked item. Repeat until
+   every box is ticked; only then run the done-gate and print the completion phrase. The runtime
+   re-injects this ledger's status into every turn, so trusting it costs nothing and trusting your
+   memory of the conversation is the known failure mode.
+3. **Never re-emit a HANDOFF you received.** Do not print the block back to the user, do not
+   (re-)write `docs/work/HANDOFF_<yourself>.md`, and do not tell the user to open the skill you are
+   already running. Handing your own task back is the single most common pipeline stall on smaller
+   models — it looks like progress and produces nothing.
+4. **`USER:` lines are not addressed to you.** Lines inside the block aimed at `USER:` (e.g. "open a
+   new session, type `/<skill>`, paste everything below") are delivery instructions for the human who
+   has *already* delivered it. Ignore them. Never relay them back.
+5. **A turn ends only three ways: more work, the completion phrase, or `BLOCKED: <evidence>`.**
+   Never a menu of options (A/B/C…), a confirm-request ("shall I proceed?", "confirm you want the
+   tests"), or a question about which mode, slug, scope, or step to run — the HANDOFF already
+   answered those; asking again stalls an unattended pipeline while looking cooperative. If a
+   detail is genuinely absent, pick the documented default, state it in one line, and proceed.
+6. **Then follow the contract.** Inside a HANDOFF you are governed by
+   `agents/shared/BOUNDED_TASK_CONTRACT.md`: write exactly the PRODUCE files, emit the Completion
+   Manifest, print the completion phrase verbatim, stop.
+
+**The one exception.** Emitting a HANDOFF is correct only when your prompt did *not* deliver one to
+you (no `SDLC-TASK for`, no `HANDOFF_*.md` path). Delegating onward to a **different** agent is
+normal orchestration; re-issuing the handoff you were just given is not.
+
 ## Phase 0: Ideation — WHY are we building this?
 
 **First, bootstrap the repo via `task` tool:**
-- `task(agent="git-expert", prompt="Run --init mode: git init, language-aware .gitignore, initial commit on main (README + .gitignore only), configure remotes (gitea primary + github mirror by default), install commitlint + lefthook/husky hooks, enforce branch protection on main (require PR review, no direct push, require CI), then create and checkout branch 'sdlc/setup'. All SDLC docs (phases 0-3) will be committed to sdlc/setup — NOT main. Write report to docs/git/INIT_<date>.md", timeout=120)` — Run BEFORE any `docs/` files are written so VISION.md is the first tracked artifact on the `sdlc/setup` branch.
+- `task(agent="git-expert", prompt="Run --init mode: git init, language-aware .gitignore, initial commit on main (README + .gitignore only), configure remotes ONLY if this project has them (gitea primary + github mirror is the default WHEN they exist — run `git remote` first; empty means local-only, which is a supported setup: skip-and-report the remote/push/branch-protection steps per git-expert's § Local-only repos and never invent a URL), install commitlint + lefthook/husky hooks (these work locally and are the substitute for branch protection when there is no forge), enforce branch protection on main where a forge exists (require PR review, no direct push, require CI), then create and checkout branch 'sdlc/setup'. All SDLC docs (phases 0-3) will be committed to sdlc/setup — NOT main. Write report to docs/git/INIT_<date>.md", timeout=120)` — Run BEFORE any `docs/` files are written so VISION.md is the first tracked artifact on the `sdlc/setup` branch.
 
 **Initialize the SDLC_TRACKER for Mode 1** (immediately after the repo is bootstrapped):
 ```

@@ -107,7 +107,8 @@ const ANTI_SLOP_RULE_NAMES: readonly [id: string, name: string][] = [
   ['R-27', 'Unimplemented Stubs as Features'],
   ['R-28', 'LLM Output Consumed Without Validation'],
   ['R-29', 'Prose Padding (Local LLM Output Slop)'],
-  ['R-30', 'Library-shaped reimplementation'],
+  ['R-30', 'Library-Shaped Reimplementation (Silent Fork)'],
+  ['R-31', 'Confabulated Analysis (Unfalsifiable Claims)'],
 ];
 
 /** anti-slop-auditor.md's checklist: "Blocking violations (R-01, R-02, R-13,
@@ -122,8 +123,15 @@ const GATE_ANTI_SLOP_RULE_IDS: ReadonlySet<string> = new Set([
   'R-18',
 ]);
 
-/** R-30 has no single canonical definition yet (see header) — shadow, not advisory. */
-const SHADOW_ANTI_SLOP_RULE_IDS: ReadonlySet<string> = new Set(['R-30']);
+/**
+ * W10-51: R-30 is no longer shadow. The v3.1.24 refresh gives it a real
+ * `### R-30` heading in ANTI_SLOP_RULES.md — the single canonical source this
+ * header said it lacked — so it joins its peers as advisory. R-31
+ * (confabulated analysis) arrives in the same refresh with its own heading.
+ * The set is kept rather than deleted: it is the seam for the next rule that
+ * shows up documented in an agent but not yet in the rules doc.
+ */
+const SHADOW_ANTI_SLOP_RULE_IDS: ReadonlySet<string> = new Set([]);
 
 /** The 76 validators imported from bpm-opencode-experts (provenance-headed) —
  * excludes the 2 natively Dokima-authored scripts (`secrets-scan`,
@@ -168,6 +176,7 @@ const VALIDATOR_NAMES: readonly string[] = [
   'validate-inventory',
   'validate-jira-hygiene',
   'validate-lint',
+  'validate-invariants',
   'validate-loop-readiness',
   'validate-mermaid',
   'validate-migrations',
@@ -181,6 +190,7 @@ const VALIDATOR_NAMES: readonly string[] = [
   'validate-owasp',
   'validate-persistence-block',
   'validate-phase-gate',
+  'validate-qa-evidence',
   'validate-release-readiness',
   'validate-requirement-closure',
   'validate-requirements-matrix',

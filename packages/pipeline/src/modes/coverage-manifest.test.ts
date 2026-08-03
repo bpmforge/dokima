@@ -16,7 +16,16 @@ function importedValidatorNamesOnDisk(): string[] {
     .filter((e) => e.isFile() && VALIDATOR_NAME_RE.test(e.name))
     .filter((e) => {
       const contents = readFileSync(path.join(VALIDATORS_DIR, e.name), 'utf8');
-      return contents.includes('Provenance: bpm-opencode-experts');
+      // W10-51: match EITHER provenance name. Upstream renamed
+      // bpm-opencode-experts -> attest in v3.0.0 and W10-50 followed it, so a
+      // filter on the old literal matched exactly one file after the refresh —
+      // the re-applied local override that still carried a stale header. A test
+      // that claims to match disk 1:1 must not silently shrink its own
+      // denominator when an upstream name changes.
+      return (
+        contents.includes('Provenance: attest') ||
+        contents.includes('Provenance: bpm-opencode-experts')
+      );
     })
     .map((e) => e.name.replace(/\.sh$/, ''))
     .sort();
@@ -40,11 +49,12 @@ describe('buildOnboardCoverageManifest (W8-08 AC2: name-ALL-of-the-set)', () => 
     expect(named).toEqual(onDisk);
   });
 
-  it('carries R-01..R-30 sequentially with no gaps', () => {
+  it('carries R-01..R-31 sequentially with no gaps', () => {
+    // W10-51: 30 -> 31. The v3.1.24 refresh adds R-31 (confabulated analysis).
     const manifest = buildOnboardCoverageManifest();
     const ids = manifest.antiSlopRules.map((r) => r.id);
     expect(ids).toEqual(
-      Array.from({ length: 30 }, (_, i) => `R-${String(i + 1).padStart(2, '0')}`),
+      Array.from({ length: 31 }, (_, i) => `R-${String(i + 1).padStart(2, '0')}`),
     );
   });
 
@@ -56,13 +66,18 @@ describe('buildOnboardCoverageManifest (W8-08 AC2: name-ALL-of-the-set)', () => 
         heading.name,
       );
     }
-    // ANTI_SLOP_RULES.md itself only documents R-01..R-29 today (R-30 lives
-    // only in anti-slop-auditor.md) — this pins that known drift so a fix
-    // to the doc is a signal to revisit R-30's tag, not a silent surprise.
-    expect(ruleHeadingsOnDisk().map((h) => h.id)).not.toContain('R-30');
+    // This assertion used to read `.not.toContain('R-30')`, pinning a known
+    // drift: R-30 lived only in anti-slop-auditor.md, with no heading in
+    // ANTI_SLOP_RULES.md. Its comment said a fix to the doc should be "a signal
+    // to revisit R-30's tag, not a silent surprise" — and at v3.1.24 that is
+    // exactly what happened. The drift closed upstream, the pin fired, and
+    // R-30 moved from `shadow` to `advisory`. Inverted rather than deleted, so
+    // a regression that dropped the heading again would be caught.
+    expect(ruleHeadingsOnDisk().map((h) => h.id)).toContain('R-30');
+    expect(ruleHeadingsOnDisk().map((h) => h.id)).toContain('R-31');
   });
 
-  it('every entry has a valid D-014 lifecycle state, and R-30 is shadow (no single canonical source)', () => {
+  it('every entry has a valid D-014 lifecycle state, and nothing is left in shadow', () => {
     const manifest = buildOnboardCoverageManifest();
     const validStates = ['proposed', 'shadow', 'advisory', 'gate', 'deprecated'];
     for (const rule of manifest.antiSlopRules) {
@@ -71,7 +86,11 @@ describe('buildOnboardCoverageManifest (W8-08 AC2: name-ALL-of-the-set)', () => 
     for (const validator of manifest.validators) {
       expect(validStates).toContain(validator.state);
     }
-    expect(manifest.antiSlopRules.find((r) => r.id === 'R-30')?.state).toBe('shadow');
+    // W10-51: R-30 earned a canonical heading at v3.1.24, so it is advisory
+    // like its peers and the shadow set is now empty. The set itself is kept as
+    // the seam for the next rule documented in an agent before the rules doc.
+    expect(manifest.antiSlopRules.find((r) => r.id === 'R-30')?.state).toBe('advisory');
+    expect(manifest.antiSlopRules.filter((r) => r.state === 'shadow')).toEqual([]);
   });
 
   it('the six anti-slop-auditor.md-declared blocking rules are gate-tier', () => {

@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/LOCAL_LLM_PRIMER.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/LOCAL_LLM_PRIMER.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # Local LLM Session Primer
 
@@ -23,13 +25,13 @@ mode: "all"
 
 **Rule 1 — SDLC-TASK overrides everything.**
 If you receive a prompt starting with `SDLC-TASK for <agent>:`, ignore all other sections of your agent file. Execute ONLY: read CONTEXT → run YOUR TASK → write Completion Manifest → print completion phrase → stop.
+**A pointer to a HANDOFF is a HANDOFF.** If your prompt names a `docs/work/HANDOFF_*.md` path in any wording, read that file and execute the `SDLC-TASK for` body inside it. Never re-emit a HANDOFF you were given, and never tell the user to open the skill you are already running.
 
 **Rule 2 — HANDOFF blocks use ════ delimiters.**
-Every delegation block looks like this — do not use `---` or any other separator:
+Every delegation block looks like this — do not use `---` or any other separator. Nothing addressed to the user goes *inside* the delimiters; the specialist reads this body as its task:
 ```
 ════════════════════════════════════════════════════════════
-HANDOFF #N → <agent>  |  open new session → /<skill>
-USER: open a new session, type /<skill>, paste everything below
+HANDOFF #N → <agent>  |  run by: <agent> via /<skill>
 ════════════════════════════════════════════════════════════
 SDLC-TASK for <agent>:
 ...
@@ -39,7 +41,7 @@ END HANDOFF #N
 ```
 
 **Rule 3 — No task() calls.**
-Delegation is always a HANDOFF block. Execute it per `agents/shared/EXECUTOR_SELECTION.md` — Task tool when `has_task_tool=true` in `docs/work/.model-context`, otherwise print it for the user to copy into a new session.
+Delegation is always a HANDOFF block. Execute it per `agents/shared/EXECUTOR_SELECTION.md` — in `autonomy=interactive` (default) print it for the user to copy into a new session; only in `autonomy=auto` dispatch via the Task tool / subprocess.
 
 **Rule 4 — Write to disk immediately.**
 Whenever you produce content > 200 tokens (code, a document, research findings), write it to disk with `write(filePath="...")` before continuing. Do not accumulate large outputs in context.

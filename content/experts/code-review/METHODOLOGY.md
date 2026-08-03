@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/code-review/METHODOLOGY.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -193,7 +194,7 @@ an independent check so an unsanctioned dependency is caught even if the coding-
 self-audit and the phase gate were skipped.
 
 **How to run (deterministic first, then judgment):**
-1. Run `scripts/validators/validate-tech-stack.sh` — every direct dependency in the manifest
+1. Run `content/validators/validate-tech-stack.sh` — every direct dependency in the manifest
    (`package.json` / `pyproject.toml` / `requirements.txt` / `Cargo.toml` / `go.mod`) must
    appear in `docs/TECH_STACK.md`. Each dep not listed = a finding (unsanctioned dependency).
 2. If `docs/TECH_STACK.md` is absent, note it as a coverage gap and fall back to the manifest
@@ -334,7 +335,7 @@ If confidence ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 Grep for every catch/except block. For EACH one: enumerate what the try block can throw, which errors the catch handles specifically, and which it silently swallows. This is the most important pass — do not rush it.
 
 ```
-grep-mcp --pattern "catch\s*\(|except\s|\.catch\s*\(|rescue\s" --recursive
+grep --pattern "catch\s*\(|except\s|\.catch\s*\(|rescue\s" --recursive
 ```
 
 **After scoring — update the tracker (MANDATORY before Pass 4):**
@@ -354,7 +355,7 @@ If confidence ≥ 8: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 Check for the language-specific tripwires from the checklist: `any`, `!` assertions, `unwrap()`, `interface{}`, raw types, `Optional` overuse. For each: read the site, is it at a real trust boundary or just laziness?
 
 ```
-grep-mcp --pattern "any\b|as any|@ts-ignore|ts-nocheck|unwrap\(\)|\.expect\(|interface{}" --recursive
+grep --pattern "any\b|as any|@ts-ignore|ts-nocheck|unwrap\(\)|\.expect\(|interface{}" --recursive
 ```
 
 **After scoring — update the tracker (MANDATORY before Pass 5):**
@@ -390,7 +391,7 @@ If confidence ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 Grep for generic names and abbreviations. For each: is the name clear from the call site without reading the implementation?
 
 ```
-grep-mcp --pattern "\bdata\b|\binfo\b|\btemp\b|\btmp\b|\bres\b|\bobj\b|\bval\b|\bflag\b|\bn\b|\bx\b" --recursive
+grep --pattern "\bdata\b|\binfo\b|\btemp\b|\btmp\b|\bres\b|\bobj\b|\bval\b|\bflag\b|\bn\b|\bx\b" --recursive
 ```
 
 **After scoring — update the tracker (MANDATORY before Pass 7):**
@@ -410,7 +411,7 @@ If confidence ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 Run the stale TODO/FIXME detection from the checklist. Read every comment in the reviewed files — does it still match the code? JSDoc/docstring parameter lists against actual signatures.
 
 ```
-grep-mcp --pattern "TODO|FIXME|XXX|HACK|@deprecated|NOTE:" --recursive
+grep --pattern "TODO|FIXME|XXX|HACK|@deprecated|NOTE:" --recursive
 ```
 
 **After scoring — update the tracker (MANDATORY before Phase 4):**
@@ -514,7 +515,7 @@ This is the 8th scored dimension alongside the 7 in `references/code-health-chec
 
 **Quick scan — script-enforced rules (always run first):**
 ```bash
-bash scripts/validators/validate-code-health.sh .
+bash content/validators/validate-code-health.sh .
 ```
 Script catches: R-01 (catch-all), R-02 (try in loops), R-13 (what-comments), R-16 (emojis), H-01 (functions >50L), H-02 (files >250L), H-03 (TODO/FIXME), H-04 (debug prints), H-05 (magic numbers).
 

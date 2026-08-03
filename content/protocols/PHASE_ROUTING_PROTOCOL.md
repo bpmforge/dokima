@@ -1,17 +1,18 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/PHASE_ROUTING_PROTOCOL.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
-  NOTE: describes the opencode dispatch runtime; kept as reference — Dokima has a single dispatch mechanism
--->
-
 ---
 name: phase-routing-protocol
 description: Smart routing table for sdlc-lead — maps natural-language user intent to modes, escape hatches for narrow asks, two-track gate system (coverage loop vs confidence loop), and validation gate chain per phase.
 metadata:
   type: protocol
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/PHASE_ROUTING_PROTOCOL.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # Phase Routing Protocol
 
@@ -51,7 +52,7 @@ The boundary: Mode 4 is for "what should we improve about this **system**". Sing
 
 ## Validation Gate System
 
-Every phase advance calls `scripts/validators/validate-phase-gate.sh <phase>` which chains the relevant validators. Phases are **ordered** — the gate writes a lock file on success and checks for the prior phase's lock before running.
+Every phase advance calls `content/validators/validate-phase-gate.sh <phase>` which chains the relevant validators. Phases are **ordered** — the gate writes a lock file on success and checks for the prior phase's lock before running.
 
 | Phase | Validators run | Gate type |
 |-------|---------------|-----------|

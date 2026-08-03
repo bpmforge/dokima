@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/security/OWASP_METHODOLOGY.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -70,7 +71,7 @@ Run these checks in order:
 bash -c "which semgrep && semgrep --version" || echo "SEMGREP_NOT_INSTALLED"
 bash -c "[ -d ~/.semgrep/rules/trailofbits ] && echo 'community-rules-cached' || echo 'community-rules-missing'"
 bash -c "[ -f .semgrep/community-rules.lock ] && scripts/update-semgrep-rules.sh --verify || echo 'no-lock-file'"
-bash -c "[ -d ~/.config/opencode/.semgrep/custom-rules ] && echo 'custom-rules-ok' || ([ -d .opencode/.semgrep/custom-rules ] && echo 'custom-rules-ok-project' || echo 'custom-rules-missing')"
+bash -c "[ -d content/.semgrep/custom-rules ] && echo 'custom-rules-ok' || ([ -d .opencode/.semgrep/custom-rules ] && echo 'custom-rules-ok-project' || echo 'custom-rules-missing')"
 ```
 
 If Semgrep is NOT installed, help the user install it (brew/pip/docker fallback). If they decline, proceed with grep-only mode and note the limitation in the report.
@@ -79,11 +80,11 @@ If community rules are missing, run `scripts/update-semgrep-rules.sh` to clone T
 
 > **Community rules canonical cache path:** `~/.semgrep/rules/{trailofbits,elttam,gitlab,0xdea}`. This is the path `scripts/semgrep-full-audit.sh` looks in. Always use `scripts/update-semgrep-rules.sh` to install rules — it clones to the canonical path. Do not clone rules anywhere else or the audit script won't find them.
 
-If custom rules are missing (`custom-rules-missing`), the 98 gap-filler rules were not installed. Re-run `install.sh` (or `install.sh --project`) from the `bpm-opencode-experts` repo. The rules are stored in the user's personal OpenCode store — **not** inside the project being audited.
+If custom rules are missing (`custom-rules-missing`), the 98 gap-filler rules were not installed. Re-run `install.sh` (or `install.sh --project`) from the `attest` repo. The rules are stored in the user's personal OpenCode store — **not** inside the project being audited.
 
 > **Custom rules personal store paths:**
-> - **Global install:** `~/.config/opencode/.semgrep/custom-rules/` — 5 language rulesets (Kotlin, Swift, Rust, PHP, C#)
-> - **Global install:** `~/.config/opencode/.semgrep/cpp-bridge-rules/` — C/C++ bridge security rules
+> - **Global install:** `content/.semgrep/custom-rules/` — 5 language rulesets (Kotlin, Swift, Rust, PHP, C#)
+> - **Global install:** `content/.semgrep/cpp-bridge-rules/` — C/C++ bridge security rules
 > - **Project install:** `.opencode/.semgrep/custom-rules/` (inside the OpenCode project, not the audited repo)
 >
 > `scripts/semgrep-full-audit.sh` resolves these automatically relative to its own install location — you never need to pass the path manually. If the script reports `Custom: 0 language gap-filler ruleset(s) loaded`, the personal store is missing or empty.
@@ -129,7 +130,7 @@ The script:
 - **Probes each registry pack** in isolation before adding it to the config list — 404'd or deprecated packs are logged and skipped rather than silently producing empty results
 - **Auto-detects the community rules cache** (checks `$SEMGREP_COMMUNITY_CACHE`, then `~/.semgrep/rules/` (canonical), then `~/.cache/semgrep-community/` (legacy fallback))
 - **Probes community rule directories** for YAML parse errors before including them (catches broken rule repos like `gitlab/typescript`)
-- Includes: `p/owasp-top-ten`, `p/security-audit`, `p/secrets`, `p/default`, language pack, framework pack, language-native pack (e.g. `p/bandit` for Python, `p/gosec` for Go), IaC packs (if relevant), community rules (Trail of Bits, elttam, GitLab, 0xdea if C/C++), **custom gap-filler rules** (186 rules across 11 languages — loaded from the user's personal store at `~/.config/opencode/.semgrep/custom-rules/` (global) or `.opencode/.semgrep/custom-rules/` (project install), auto-selected per detected language; covers JS/TS, Python, Go, Java, Ruby, C#, Kotlin, Rust, PHP, Swift, C++), project-specific rules from `.semgrep/project-rules/` inside the audited repo
+- Includes: `p/owasp-top-ten`, `p/security-audit`, `p/secrets`, `p/default`, language pack, framework pack, language-native pack (e.g. `p/bandit` for Python, `p/gosec` for Go), IaC packs (if relevant), community rules (Trail of Bits, elttam, GitLab, 0xdea if C/C++), **custom gap-filler rules** (186 rules across 11 languages — loaded from the user's personal store at `content/.semgrep/custom-rules/` (global) or `.opencode/.semgrep/custom-rules/` (project install), auto-selected per detected language; covers JS/TS, Python, Go, Java, Ruby, C#, Kotlin, Rust, PHP, Swift, C++), project-specific rules from `.semgrep/project-rules/` inside the audited repo
 
 Outputs:
 - `docs/security/semgrep-results.json` — JSON findings
@@ -215,7 +216,7 @@ Process findings **one at a time**, severity-order (CRITICAL first):
 
 4. **Check for upstream sanitization/validation middleware:**
    ```
-   grep-mcp --pattern "sanitize|validate|escape|parameterize|prepared|encodeURI|htmlspecialchars|strip_tags" --recursive
+   grep --pattern "sanitize|validate|escape|parameterize|prepared|encodeURI|htmlspecialchars|strip_tags" --recursive
    ```
    Is there a middleware or wrapper layer that processes all requests before they reach this code?
 
@@ -301,9 +302,10 @@ bash -c "command -v gitleaks && gitleaks detect --source . --report-format json 
 **Dependency audit — osv-scanner (primary) + language-native (fallback):**
 ```
 bash -c "command -v osv-scanner && osv-scanner --recursive . --format json -o docs/security/osv.json 2>/dev/null || echo 'osv-scanner not installed — falling back to language-native'"
-bash -c "[ -f package.json ] && npm audit --json > docs/security/npm-audit.json 2>/dev/null || true"
-bash -c "[ -f Cargo.toml ] && cargo audit --json > docs/security/cargo-audit.json 2>/dev/null || true"
-bash -c "[ -f requirements.txt ] && pip-audit --format json > docs/security/pip-audit.json 2>/dev/null || true"
+# gate on BOTH the manifest and the tool; a failed audit must surface, not read clean (see TOOL_PREFLIGHT.md)
+bash -c '[ -f package.json ] || exit 0; command -v npm >/dev/null || { echo "SKIPPED: npm not installed"; exit 0; }; npm audit --json > docs/security/npm-audit.json 2>/dev/null || echo "npm audit FAILED — investigate, not clean"'
+bash -c '[ -f Cargo.toml ] || exit 0; command -v cargo-audit >/dev/null || { echo "SKIPPED: cargo-audit not installed"; exit 0; }; cargo audit --json > docs/security/cargo-audit.json 2>/dev/null || echo "cargo audit FAILED — investigate"'
+bash -c '[ -f requirements.txt ] || exit 0; command -v pip-audit >/dev/null || { echo "SKIPPED: pip-audit not installed"; exit 0; }; pip-audit --format json > docs/security/pip-audit.json 2>/dev/null || echo "pip-audit FAILED — investigate"'
 ```
 
 osv-scanner has the widest ecosystem coverage and freshest CVE data (uses OSV.dev). If it's not installed, suggest `brew install osv-scanner`. Fall back to language-native tools if needed.
@@ -333,7 +335,7 @@ Semgrep + community rules catch the vast majority of pattern-based findings. Gre
 Use grep sparingly. If you find yourself reaching for grep, that's a signal you should WRITE A CUSTOM RULE for `.semgrep/project-rules/` so the next audit catches the pattern automatically.
 
 Use the language detected in Step 2 to pick the right file type flag:
-- TypeScript/JavaScript → `grep-mcp --type ts` or `--type js`
+- TypeScript/JavaScript → `grep --type ts` or `--type js`
 - Python → `--type py`
 - Go → `--type go`
 - Rust → `--type rust`
@@ -384,7 +386,7 @@ the tracker is how you resume without re-doing completed work.
 
 ```bash
 # Read the OWASP tracker template, then write it to the project
-write(filePath="docs/security/OWASP_TRACKER.md", content=$(cat ~/.config/opencode/agents/templates/OWASP_TRACKER_template.md))
+write(filePath="docs/security/OWASP_TRACKER.md", content=$(cat content/experts/templates/OWASP_TRACKER_template.md))
 ```
 
 The template at `agents/templates/OWASP_TRACKER_template.md` contains all 10 OWASP categories (A01–A10), each with the standard structure: Pass log, Confidence score, Verdict. Plus the Semgrep Triage Summary, Pass Progress table, Attack Chain Analysis, and Final Gate sections. Do not invent your own structure — use the template verbatim and update it as the audit progresses.
@@ -443,19 +445,19 @@ outbound HTTP calls — confirmed by grep with 0 matches on `fetch|axios|http.ge
 
 **Step 1 — Map all routes:**
 ```
-grep-mcp --pattern "router\.(get|post|put|patch|delete|use)|app\.(get|post|put|patch|delete|use)|@(Get|Post|Put|Patch|Delete|RequestMapping)" --recursive
+grep --pattern "router\.(get|post|put|patch|delete|use)|app\.(get|post|put|patch|delete|use)|@(Get|Post|Put|Patch|Delete|RequestMapping)" --recursive
 ```
 Read each route file. For each route: identify the middleware chain — is auth applied first?
 
 **Step 2 — Find IDOR candidates:**
 ```
-grep-mcp --pattern "findById|findOne|getById|findByPk|find_by_id|\.find\(|WHERE id\s*=" --recursive
+grep --pattern "findById|findOne|getById|findByPk|find_by_id|\.find\(|WHERE id\s*=" --recursive
 ```
 For each match: read the surrounding 15 lines. Does the query filter by `userId`, `ownerId`, or `req.user.id`? If not, it's an IDOR candidate.
 
 **Step 3 — Find role/permission checks:**
 ```
-grep-mcp --pattern "isAdmin|role\s*===|hasPermission|requireRole|@PreAuthorize|@login_required|authorize\(" --recursive
+grep --pattern "isAdmin|role\s*===|hasPermission|requireRole|@PreAuthorize|@login_required|authorize\(" --recursive
 ```
 Read every file that contains user data mutations — are role checks present?
 
@@ -503,21 +505,21 @@ If confidence < 5 after 3 passes: set Status to `⚠️ BLOCKED` — stop and su
 
 **Step 1 — Find hash/crypto usage:**
 ```
-grep-mcp --pattern "md5|sha1|sha256|createHash|hashlib\.(md5|sha1)|MessageDigest|DigestUtils|crypto\." --recursive
+grep --pattern "md5|sha1|sha256|createHash|hashlib\.(md5|sha1)|MessageDigest|DigestUtils|crypto\." --recursive
 ```
 Read every match. For password storage: only bcrypt, argon2, scrypt, or PBKDF2 are acceptable.
 MD5/SHA1/SHA256 for passwords = CRITICAL finding.
 
 **Step 2 — Find hardcoded secrets:**
 ```
-grep-mcp --pattern "(password|secret|api_key|apikey|token|private_key)\s*=\s*['\"][^'\"]{8,}" --recursive
-grep-mcp --pattern "-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY" --recursive
+grep --pattern "(password|secret|api_key|apikey|token|private_key)\s*=\s*['\"][^'\"]{8,}" --recursive
+grep --pattern "-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY" --recursive
 ```
 Read each match — is this a real secret or a variable name/placeholder?
 
 **Step 3 — Find TLS configuration:**
 ```
-grep-mcp --pattern "rejectUnauthorized|verify\s*=\s*False|ssl_verify|CURL_SSL_VERIFYPEER|InsecureSkipVerify|checkServerIdentity" --recursive
+grep --pattern "rejectUnauthorized|verify\s*=\s*False|ssl_verify|CURL_SSL_VERIFYPEER|InsecureSkipVerify|checkServerIdentity" --recursive
 ```
 Any `rejectUnauthorized: false`, `verify=False`, or `InsecureSkipVerify: true` = HIGH/CRITICAL.
 
@@ -527,7 +529,7 @@ Are real secrets present? Are defaults obviously weak?
 
 **Step 5 — Find custom crypto:**
 ```
-grep-mcp --pattern "XOR|bit_xor|rol\b|ror\b|custom.*cipher|encode.*decode|obfuscat" --recursive
+grep --pattern "XOR|bit_xor|rol\b|ror\b|custom.*cipher|encode.*decode|obfuscat" --recursive
 ```
 Any custom crypto = immediate HIGH finding regardless of intent.
 
@@ -557,36 +559,36 @@ If < 7 after pass 1-2: status `🔄 RE-PASS <N>`. If ≥ 7: `✅ DONE`. If < 5 a
 
 **Step 1 — SQL injection:**
 ```
-grep-mcp --pattern "query\s*\(.*\$\{|execute\s*\(.*\+|\.raw\s*\(|db\.query\s*\(.*req\.|WHERE.*\+" --recursive
-grep-mcp --pattern "f\"SELECT|f'SELECT|f\"INSERT|f\"UPDATE|f\"DELETE|%s.*%.*sql|format.*SELECT" --recursive
+grep --pattern "query\s*\(.*\$\{|execute\s*\(.*\+|\.raw\s*\(|db\.query\s*\(.*req\.|WHERE.*\+" --recursive
+grep --pattern "f\"SELECT|f'SELECT|f\"INSERT|f\"UPDATE|f\"DELETE|%s.*%.*sql|format.*SELECT" --recursive
 ```
 For each match: read 20 lines of context. Is the interpolated value user-controlled?
 Trace: where does the variable come from? `req.params`, `req.body`, `request.GET`?
 
 **Step 2 — Command injection:**
 ```
-grep-mcp --pattern "exec\s*\(|execSync\s*\(|spawn\s*\(|spawnSync\s*\(|subprocess\.(call|run|Popen)|os\.system|shell_exec|passthru|popen" --recursive
+grep --pattern "exec\s*\(|execSync\s*\(|spawn\s*\(|spawnSync\s*\(|subprocess\.(call|run|Popen)|os\.system|shell_exec|passthru|popen" --recursive
 ```
 For each match: is any argument derived from user input? Even indirect — e.g., a filename
 from a form field used in a shell command.
 
 **Step 3 — XSS:**
 ```
-grep-mcp --pattern "innerHTML\s*=|dangerouslySetInnerHTML|document\.write\s*\(|\.html\s*\(|v-html\s*=|render_template_string|mark_safe|\.unescape|sanitize\s*=\s*false" --recursive
+grep --pattern "innerHTML\s*=|dangerouslySetInnerHTML|document\.write\s*\(|\.html\s*\(|v-html\s*=|render_template_string|mark_safe|\.unescape|sanitize\s*=\s*false" --recursive
 ```
 For each match: is the value from user input, a database field, or URL parameters?
 Even database fields can carry stored XSS if not sanitized on write.
 
 **Step 4 — Path traversal:**
 ```
-grep-mcp --pattern "readFile\s*\(.*req\.|createReadStream\s*\(.*req\.|path\.join\s*\(.*req\.|open\s*\(.*request\.|File\s*\(.*request\." --recursive
+grep --pattern "readFile\s*\(.*req\.|createReadStream\s*\(.*req\.|path\.join\s*\(.*req\.|open\s*\(.*request\.|File\s*\(.*request\." --recursive
 ```
 For each match: is the path component user-controlled? Is there a sanitization step that
 strips `../` sequences?
 
 **Step 5 — Template injection:**
 ```
-grep-mcp --pattern "render_template_string\s*\(|Template\s*\(.*format\s*\(|\.render\s*\(.*user|Jinja2|nunjucks\.renderString|ejs\.render\s*\(.*req\." --recursive
+grep --pattern "render_template_string\s*\(|Template\s*\(.*format\s*\(|\.render\s*\(.*user|Jinja2|nunjucks\.renderString|ejs\.render\s*\(.*req\." --recursive
 ```
 Template injection is often overlooked. User-controlled template strings = RCE.
 
@@ -616,14 +618,14 @@ If < 8 after pass 1: status `🔄 RE-PASS <N>`. If ≥ 8: `✅ DONE`. If < 5 aft
 
 **Step 1 — Rate limiting:**
 ```
-grep-mcp --pattern "rateLimit|rate_limit|throttle|RateLimiter|slowDown|express-rate-limit|django-ratelimit|rack-attack|golang.org/x/time/rate" --recursive
+grep --pattern "rateLimit|rate_limit|throttle|RateLimiter|slowDown|express-rate-limit|django-ratelimit|rack-attack|golang.org/x/time/rate" --recursive
 ```
 If no rate limiter found: where are login, password reset, and OTP endpoints defined?
 Read those handlers — is there ANY protection against brute force?
 
 **Step 2 — Account lockout:**
 ```
-grep-mcp --pattern "failedAttempt|loginAttempt|lockout|maxAttempt|failCount|locked_until|lockUntil" --recursive
+grep --pattern "failedAttempt|loginAttempt|lockout|maxAttempt|failCount|locked_until|lockUntil" --recursive
 ```
 No account lockout on auth endpoints = MEDIUM finding (OWASP A07 overlap).
 
@@ -633,7 +635,7 @@ Can a user skip a step by sending a direct API request? Is sequence enforced ser
 
 **Step 4 — Race conditions:**
 ```
-grep-mcp --pattern "check.*then.*use|read.*then.*write|SELECT.*UPDATE|findOne.*then.*save" --recursive
+grep --pattern "check.*then.*use|read.*then.*write|SELECT.*UPDATE|findOne.*then.*save" --recursive
 ```
 Look for time-of-check/time-of-use (TOCTOU) patterns. Are critical operations atomic or
 wrapped in transactions?
@@ -666,28 +668,28 @@ If < 7: `🔄 RE-PASS`. If ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 
 **Step 1 — CORS:**
 ```
-grep-mcp --pattern "cors\s*\(|Access-Control-Allow-Origin|origin:\s*['\"]?\*|allowedOrigins|CORS_ORIGIN" --recursive
+grep --pattern "cors\s*\(|Access-Control-Allow-Origin|origin:\s*['\"]?\*|allowedOrigins|CORS_ORIGIN" --recursive
 ```
 Read every CORS config. `origin: '*'` or `origin: true` on a credentialed endpoint = CRITICAL.
 `Access-Control-Allow-Origin: *` with `Access-Control-Allow-Credentials: true` = exploitable.
 
 **Step 2 — Security headers:**
 ```
-grep-mcp --pattern "helmet\s*\(|x-frame-options|x-content-type|strict-transport|content-security-policy|referrer-policy|permissions-policy" --recursive --caseInsensitive
+grep --pattern "helmet\s*\(|x-frame-options|x-content-type|strict-transport|content-security-policy|referrer-policy|permissions-policy" --recursive --caseInsensitive
 ```
 If no `helmet` or equivalent: read the main server setup file — are headers set manually?
 Missing HSTS on HTTPS service = MEDIUM. Missing CSP = MEDIUM.
 
 **Step 3 — Error handling / information disclosure:**
 ```
-grep-mcp --pattern "stack\s*:.*err\.stack|err\.message|error\.toString|console\.error.*err|send\s*\(err\)|res\.json\s*\(err|response\s*\(.*exception" --recursive
+grep --pattern "stack\s*:.*err\.stack|err\.message|error\.toString|console\.error.*err|send\s*\(err\)|res\.json\s*\(err|response\s*\(.*exception" --recursive
 ```
 Read each match — is the raw error/stack sent to the client? In production, only generic
 error messages should reach the user. Internal paths, SQL errors, stack traces = HIGH.
 
 **Step 4 — Debug/dev mode in production configs:**
 ```
-grep-mcp --pattern "DEBUG\s*=\s*True|debug\s*:\s*true|NODE_ENV.*development|verbose\s*:\s*true|FLASK_DEBUG|APP_DEBUG" --recursive
+grep --pattern "DEBUG\s*=\s*True|debug\s*:\s*true|NODE_ENV.*development|verbose\s*:\s*true|FLASK_DEBUG|APP_DEBUG" --recursive
 ```
 Read every config and .env.example — what are the defaults? If `DEBUG=True` is the default,
 that's a deployment risk.
@@ -728,7 +730,7 @@ A CVE in a dep you use for logging that requires a different vulnerable code pat
 
 **Step 3 — Check for obviously dangerous versions:**
 ```
-grep-mcp --pattern "\"lodash\":|\"moment\":|\"request\":|\"node-serialize\":|\"serialize-javascript\":|log4j|struts|spring-core" --recursive
+grep --pattern "\"lodash\":|\"moment\":|\"request\":|\"node-serialize\":|\"serialize-javascript\":|log4j|struts|spring-core" --recursive
 ```
 These are historically high-CVE packages. Even if no CVE found, note if dramatically outdated.
 
@@ -762,14 +764,14 @@ If < 7: `🔄 RE-PASS`. If ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 
 **Step 1 — Password hashing:**
 ```
-grep-mcp --pattern "bcrypt|argon2|scrypt|pbkdf2|hashpw|check_password|make_password|password_hash|PasswordHasher" --recursive
+grep --pattern "bcrypt|argon2|scrypt|pbkdf2|hashpw|check_password|make_password|password_hash|PasswordHasher" --recursive
 ```
 If no strong hashing found: search for where users are created and passwords stored.
 Read the exact code. `sha256(password)` without salt = CRITICAL.
 
 **Step 2 — JWT validation:**
 ```
-grep-mcp --pattern "jwt\.verify|jwt\.decode|jsonwebtoken|PyJWT|jose|jwtDecode|verify_jwt" --recursive
+grep --pattern "jwt\.verify|jwt\.decode|jsonwebtoken|PyJWT|jose|jwtDecode|verify_jwt" --recursive
 ```
 Read every JWT decode/verify call:
 - Is `algorithms` specified and does it exclude `none`?
@@ -779,7 +781,7 @@ Read every JWT decode/verify call:
 
 **Step 3 — Session / cookie security:**
 ```
-grep-mcp --pattern "httpOnly|secure\s*:|sameSite|cookieOptions|session\s*\(|cookie\s*\(" --recursive
+grep --pattern "httpOnly|secure\s*:|sameSite|cookieOptions|session\s*\(|cookie\s*\(" --recursive
 ```
 Read every cookie/session configuration. Missing `httpOnly: true` = HIGH.
 Missing `secure: true` (sent over HTTP) = HIGH on any HTTPS service.
@@ -794,7 +796,7 @@ Find the password reset endpoint. Read the full handler:
 
 **Step 5 — Multi-factor:**
 ```
-grep-mcp --pattern "totp|otp|2fa|mfa|two.factor|speakeasy|authenticator|google-auth" --recursive
+grep --pattern "totp|otp|2fa|mfa|two.factor|speakeasy|authenticator|google-auth" --recursive
 ```
 Note whether MFA is available and whether it can be bypassed by API calls.
 
@@ -822,7 +824,7 @@ If < 8 after pass 1: `🔄 RE-PASS`. If ≥ 8: `✅ DONE`. If < 5 after 3: `⚠�
 
 **Step 1 — Deserialization:**
 ```
-grep-mcp --pattern "pickle\.loads|pickle\.load|yaml\.load\s*\((?!.*Loader)|unserialize|ObjectInputStream|readObject|JSON\.parse.*req\.|eval\s*\(.*req\.|Function\s*\(.*req\." --recursive
+grep --pattern "pickle\.loads|pickle\.load|yaml\.load\s*\((?!.*Loader)|unserialize|ObjectInputStream|readObject|JSON\.parse.*req\.|eval\s*\(.*req\.|Function\s*\(.*req\." --recursive
 ```
 `pickle.loads(user_data)` = CRITICAL. `yaml.load()` without `Loader=yaml.SafeLoader` = HIGH.
 `eval(req.body.code)` = CRITICAL. Read each match carefully.
@@ -834,7 +836,7 @@ referenced as `${{ secrets.X }}` or hardcoded? Are there `curl | bash` patterns?
 
 **Step 3 — Subresource integrity:**
 ```
-grep-mcp --pattern "<script.*src=|<link.*href=" --recursive
+grep --pattern "<script.*src=|<link.*href=" --recursive
 ```
 If loading external scripts/styles: is `integrity=` attribute present?
 Missing SRI on CDN-hosted scripts = MEDIUM.
@@ -868,7 +870,7 @@ If < 7: `🔄 RE-PASS`. If ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 
 **Step 1 — Find the logging setup:**
 ```
-grep-mcp --pattern "winston|pino|bunyan|morgan|log4j|logback|logging\.getLogger|structlog|zerolog|slog\." --recursive
+grep --pattern "winston|pino|bunyan|morgan|log4j|logback|logging\.getLogger|structlog|zerolog|slog\." --recursive
 ```
 Read the logger configuration file. What log level is used in production? Is PII
 redacted before logging?
@@ -876,21 +878,21 @@ redacted before logging?
 **Step 2 — Auth event logging:**
 Find login, logout, and auth failure handlers. Read them:
 ```
-grep-mcp --pattern "login\s*\(|signIn\s*\(|authenticate\s*\(|failed.*login|login.*failed|unauthorized|forbidden|401|403" --recursive
+grep --pattern "login\s*\(|signIn\s*\(|authenticate\s*\(|failed.*login|login.*failed|unauthorized|forbidden|401|403" --recursive
 ```
 Are these events logged with: timestamp, user ID (not password), IP address, user-agent?
 No logging of failed auth attempts = MEDIUM finding.
 
 **Step 3 — Log injection:**
 ```
-grep-mcp --pattern "log\.(info|warn|error|debug)\s*\(.*req\.|logger\.(info|warn|error)\s*\(.*user\.|log\.\(.*body\." --recursive
+grep --pattern "log\.(info|warn|error|debug)\s*\(.*req\.|logger\.(info|warn|error)\s*\(.*user\.|log\.\(.*body\." --recursive
 ```
 If user-controlled data is logged without sanitization, attackers can inject false log
 entries by including `\n`, `\r`, or ANSI escape sequences in inputs.
 
 **Step 4 — Sensitive data in logs:**
 ```
-grep-mcp --pattern "log.*password|log.*token|log.*secret|log.*credit|log.*ssn|log.*dob" --recursive --caseInsensitive
+grep --pattern "log.*password|log.*token|log.*secret|log.*credit|log.*ssn|log.*dob" --recursive --caseInsensitive
 ```
 Any logging of passwords, tokens, or PII = CRITICAL if in plain text.
 
@@ -922,14 +924,14 @@ If < 7: `🔄 RE-PASS`. If ≥ 7: `✅ DONE`. If < 5 after 3: `⚠️ BLOCKED`.
 
 **Step 1 — Find all outbound HTTP calls:**
 ```
-grep-mcp --pattern "fetch\s*\(|axios\.(get|post|put|delete|request)|http\.(get|request)|https\.(get|request)|request\s*\(|urllib\.request|requests\.(get|post)|http\.NewRequest|http\.Get\s*\(" --recursive
+grep --pattern "fetch\s*\(|axios\.(get|post|put|delete|request)|http\.(get|request)|https\.(get|request)|request\s*\(|urllib\.request|requests\.(get|post)|http\.NewRequest|http\.Get\s*\(" --recursive
 ```
 Read EVERY match. For each outbound request: trace the URL variable backwards. Does it
 originate from user input (request body, query param, header, database field)?
 
 **Step 2 — Webhook and URL-preview features:**
 ```
-grep-mcp --pattern "webhook|callback.*url|callbackUrl|redirectUrl|redirect_url|returnUrl|return_url|imageUrl|image_url|preview.*url|url.*preview" --recursive
+grep --pattern "webhook|callback.*url|callbackUrl|redirectUrl|redirect_url|returnUrl|return_url|imageUrl|image_url|preview.*url|url.*preview" --recursive
 ```
 These are the highest-risk SSRF sources. Read every handler that accepts a URL parameter.
 Is the URL validated against an allowlist before the request is made?
@@ -946,7 +948,7 @@ Look for post-resolution IP validation.
 
 **Step 5 — Redirect following:**
 ```
-grep-mcp --pattern "maxRedirects|followRedirects|follow_redirects|redirect.*follow|allow_redirects" --recursive
+grep --pattern "maxRedirects|followRedirects|follow_redirects|redirect.*follow|allow_redirects" --recursive
 ```
 If redirects are followed without validation: an attacker can chain an external SSRF to
 reach internal services via a redirect chain.
@@ -1396,7 +1398,7 @@ For every finding, replace each marker with concrete content. Use the `update` o
 
 9. **Similar locations to check** — run a targeted search for the same pattern:
    ```
-   grep-mcp --pattern "db\.execute\s*\(.*\$\{|db\.query\s*\(.*\+" --recursive
+   grep --pattern "db\.execute\s*\(.*\$\{|db\.query\s*\(.*\+" --recursive
    ```
    Read each match and classify: **VULNERABLE** / **SAFE** / **NEEDS MANUAL REVIEW**
    List each location with its verdict in the report.
@@ -1484,7 +1486,7 @@ Tell the user:
 - **Fixed code block required** — the corrected version of the vulnerable code, matching the vulnerable block format
 - **Unified diff required** — precise, copy-pasteable, with 2 lines of context
 - **Verification is mandatory** — specific exploit curl/command AND specific unit test. Never "add a test for this."
-- **Similar locations check** — at least one grep-mcp per finding, every match classified VULNERABLE/SAFE/NEEDS REVIEW
+- **Similar locations check** — at least one grep per finding, every match classified VULNERABLE/SAFE/NEEDS REVIEW
 - **Business impact for CRITICAL/HIGH** — non-dev language, mentions regulatory/financial/reputational consequences
 - **Source traceability** — every finding cites rule ID, file, and line number
 - **OWASP deep passes** — all 10 categories must reach confidence ≥ 7. Surface gaps < 5 to user immediately; iterate (up to 3 passes) on 5-6 scores before delivering report.

@@ -1,25 +1,27 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/ANTI_SLOP_RULES.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
 
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/ANTI_SLOP_RULES.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
+
 # ANTI_SLOP_RULES.md
 
 **Canonical list of AI code-quality anti-patterns ("AI slop").**
 
-Single source of truth referenced by `coding-agent.md`, `code-reviewer.md`, and `validate-code-health.sh`. Every specialist that produces or reviews code must check against these rules.
+Single source of truth referenced by `coding-agent.md`, `code-reviewer.md`, `frontend-design.md`, `validate-code-health.sh`, and `validate-vendor-provenance.sh`. Every specialist that produces or reviews code must check against these rules.
 
 Sources: GitClear 2025 (211M LOC study), Veracode GenAI Code Security Report 2025, CSA AI-Generated Code Security Surge 2026, USENIX Security 2025 (package hallucinations), dev community research (Greptile, Addy Osmani, DEV Community, eslint-plugin-llm-core, AI-SLOP Detector v2.7.0, Sloppylint Dec 2025).
 
-**2025-2026 additions (R-21 through R-28):** slopsquatting, architectural privilege escalation, credential leakage, docstring inflation, phantom imports, disconnected pipelines, logic density, and LLM output handling. These were not documented in 2024 editions.
+**2025-2026 additions (R-21 through R-30):** slopsquatting, architectural privilege escalation, credential leakage, docstring inflation, phantom imports, disconnected pipelines, logic density, LLM output handling, prose padding, and library-shaped reimplementation. These were not documented in 2024 editions.
 
 ---
 
@@ -87,6 +89,7 @@ const c = await fetchPrefs(id)
 **Pattern:** `catch { return [] }` or `catch { return "" }` when an operation fails — caller receives an empty result indistinguishable from a successful empty result.
 **Why it fails:** The caller cannot distinguish "no data" from "data could not be fetched." Bugs become invisible. Monitoring misses failures.
 **Rule:** On failure, return a typed error result or throw. Never return a value that looks like success.
+**Also covers — fallbacks that return *correct* results.** `try { fastPath() } catch { slowPath() }` where slowPath yields the same right answer silently hides that fastPath is permanently broken: every caller sees correct output, so nothing looks wrong, while the optimized/primary path never runs. Same trap with a capability flag defaulted inside a swallowed catch (`try { enable() } catch { enabled = false }`) — the feature is dead but degraded-path output stays correct. A fallback that substitutes a degraded path MUST be observable: log a warning, bump a metric, or expose a queryable flag, so "works" can't mask "primary path is dead." (Real bug: a vector-index flag defaulted false inside a catch; the whole test suite passed via brute-force fallback while the index never activated.)
 
 ### R-11 Unspecified retry logic
 **Pattern:** Retry + exponential backoff added to a DB call or API request that has no retry requirement in the spec.
@@ -253,6 +256,18 @@ Each rule is scored per finding:
 
 ---
 
+## Category 8: Vendoring & Provenance Slop (2025-2026 — NEW)
+
+### R-30 Library-Shaped Reimplementation (Silent Fork)
+**Research basis:** Field lesson B-2 (Mode-1 SDLC engagement, external install, field report 2026-07). A design doc claimed "we use library X" for a vendored/copy-paste component set. A reviewing developer identified the actual components as renamed variants, missing sizes, and an older template — not the real library, just library-X-*shaped* — "reinventing the component lib" under the library's name.
+**Pattern:** An agent told to vendor/copy-paste library X generates X-flavored files from memory (training data) instead of pulling the real upstream artifacts via the library's actual CLI, registry, or repo. The design doc, a comment, or a README then asserts "we use X" unqualified, masking the drift. No step ever diffs the vendored copy against upstream, so dropped variants (missing sizes/components), renamed props, and stale structure accumulate invisibly.
+**Why it fails:** The claim "we use X" is untested. The vendored code becomes an unacknowledged fork carrying its own maintenance burden — upstream security fixes and API changes never arrive — with none of the review scrutiny a declared fork would get. The field lesson also found the design doc's *stated reason* for vendoring (a supply-chain rationale) named the wrong library entirely (see R-A5/ADR rules) — B-2 is specifically about the code drifting from upstream, not the rationale being wrong.
+**Rule:** When a library is vendored/copied (not a runtime dependency), it MUST be generated from the library's real CLI, registry, or repository — never approximated from memory — with the source name and version recorded at the vendor site (e.g. a `VENDORED.md` file listing `source`, `tool`/`registry`, `version`, and the exact file/variant list pulled). If a vendored file was in fact written from memory (no CLI/registry pull was possible), that MUST be declared explicitly in the same manifest ("generated from memory, not pulled from upstream — divergence risk") rather than presented as an unqualified "we use X."
+**Reviewer check:** For any "we use library X" claim (docs, comments, ADRs, PR descriptions), spot-diff a sample of the vendored files against the real upstream artifact (the CLI's fresh output, or the tagged release in the upstream repo). Drift — renamed/dropped variants, a stale template, missing affordances — is filed as a **fork / maintenance-debt finding**, distinct from a functional bug: it still blocks the "library X" claim from standing unqualified even when the vendored code works correctly.
+**Detection:** `content/validators/validate-vendor-provenance.sh` — flags (a) a directory with vendoring language ("vendored from", "copied from", "based on", "adapted from" a named library) but no `VENDORED.md` provenance record, and (b) a `VENDORED.md` whose declared file/variant list doesn't match what's actually on disk (dropped variants = declared-but-missing, renamed/undeclared variants = present-but-not-declared).
+
+---
+
 ## Detection Tools (2025-2026)
 
 | Tool | Language | Key rules | Install |
@@ -262,3 +277,11 @@ Each rule is scored per finding:
 | `Sloppylint` | Python | 100+ rules; hallucinated imports, stubs, wrong-language patterns | `pip install sloppylint` |
 | `Sloplint` | Multi-lang | AST-based; similar to sloppylint but language-agnostic | `github.com/dannote/sloplint` |
 | `semgrep` | Multi | Community rules for deprecated APIs, PII logging, bypassed security | `semgrep --config auto` |
+
+### R-31 Confabulated Analysis (Unfalsifiable Claims)
+**Research basis:** Field lesson from the local-model evaluation, 2026-07-25/26 (`issues/field-report-local-model-eval-2026-07.md` §4). Two models produced a requirements analysis of the same brief. One wrote 23.9 KB with 7 "conflicts", **at least 2 of which do not exist** — including an invented Rule 1 ↔ Rule 10 "replenishment slot" contradiction assembled from two rules that never interact. The other wrote 9.1 KB with 10 conflicts, all real. **The confabulated document was 2.6× longer, better formatted, and more confident.**
+**Pattern:** Asked to "identify ambiguities / conflicts / risks / findings", a model produces the *shape* of analysis at the requested volume. Real findings run out long before the section does, so the remainder is filled with plausible-sounding pairings of unrelated items. Each entry has a heading, an Impact line and a Recommendation — the format is indistinguishable from a genuine finding.
+**Why it fails:** Volume reads as rigor. A reviewer skimming both documents rates the confabulated one as more thorough, and the invented conflicts then generate real downstream work — clarification requests to the client, defensive code for contradictions that cannot occur, requirements traced to nothing. This is the requirements-phase analogue of R-19/R-29: output that looks like work and is not. It is *not* a local-model-only defect; volume-padding under a "list the problems" instruction is a general failure mode, and the strongest local model tested was the one that avoided it.
+**Rule:** Every claimed conflict, ambiguity, risk or finding MUST carry (a) the specific IDs/rules/files it relates, and (b) **a concrete case where they actually disagree** — an input, a state, or a scenario, written out. A claim with no concrete disagreeing case is **deleted, not softened**: "may be ambiguous" with nothing behind it is the failure mode, not a hedge against it. Prefer 3 findings with cases to 10 without; state the count found rather than filling to a target.
+**Reviewer check:** For each entry in an Open Questions / Ambiguities / Conflicts / Findings section, read the concrete case and ask whether the two cited items can in fact both apply to it. An entry pairing rules that never co-occur (different operations, different lifecycle stages, different actors) is a **confabulation finding** — it is removed, and its presence lowers confidence in the whole section, which must then be re-derived rather than spot-fixed.
+**Detection:** structural — every entry in such a section must cite ≥2 concrete referents (FR-NNN, rule numbers, `file:line`) and contain a scenario line. Entries that cite fewer than 2 referents, or that contain no concrete case, are flagged for manual adjudication.

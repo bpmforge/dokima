@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/shared/FIX_VERIFY_LOOP.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -109,13 +110,13 @@ verdict that can't be faked:
 
 ```
 # baseline BEFORE the fix (Step 3), per finding source:
-node scripts/fix-verify.mjs snapshot semgrep                 # SAST findings
-node scripts/fix-verify.mjs snapshot validate-dead-code.sh   # dead/stub code
-node scripts/fix-verify.mjs snapshot validate-deps.sh        # dependency CVEs
-node scripts/fix-verify.mjs snapshot validate-contract-conformance.sh  # O2.5: interface drift a fix may introduce (caught in-loop, not only at phase-5)
+node content/scripts/fix-verify.mjs snapshot semgrep                 # SAST findings
+node content/scripts/fix-verify.mjs snapshot validate-dead-code.sh   # dead/stub code
+node content/scripts/fix-verify.mjs snapshot validate-deps.sh        # dependency CVEs
+node content/scripts/fix-verify.mjs snapshot validate-contract-conformance.sh  # O2.5: interface drift a fix may introduce (caught in-loop, not only at phase-5)
 
 # AFTER the fix:
-node scripts/fix-verify.mjs verify semgrep --floor ERROR
+node content/scripts/fix-verify.mjs verify semgrep --floor ERROR
 ```
 
 `fix-verify` re-runs the scan and diffs by fingerprint (rule + file + matched
@@ -154,7 +155,7 @@ After re-verification:
 - Iteration counter increments
 
 **Classify the iteration before spending the next one** (field-validated on the
-Dokima conductor run 2026-07-12 — a flat cap treats two different failures
+Shipwright conductor run 2026-07-12 — a flat cap treats two different failures
 identically; see `issues/` field reports). Using the per-row verdicts
 (CLOSED / STILL-OPEN / NEW / REGRESSED):
 
@@ -189,7 +190,7 @@ On escalation, capture the lesson so the same fix doesn't fail the same way next
 (Cherny's "write it down, don't re-prompt"):
 
 ```
-node scripts/loop-learn.mjs \
+node content/scripts/loop-learn.mjs \
   --symptom "fix-verify stuck: <row, finding>" \
   --cause   "<why the fix keeps failing re-verify>" \
   --rule    "<the durable correction>" \

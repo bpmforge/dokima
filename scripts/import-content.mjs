@@ -41,6 +41,7 @@ import {
   rewriteHostPaths,
 } from './content-import/upstream.mjs'
 import { dryRunReport } from './content-import/dry-run.mjs'
+import { copyAgents, copyValidators } from './content-import/copy.mjs'
 
 // Re-exported so scripts/import-content.test.mjs and any caller keep importing
 // from this path — the same barrel discipline W10-46/47/48 used.
@@ -58,6 +59,7 @@ const repoRoot = join(__dirname, '..')
 const contentRoot = join(repoRoot, 'content')
 const manifestOnly = process.argv.includes('--manifest-only')
 const dryRun = process.argv.includes('--dry-run')
+const reapplyOverrides = process.argv.includes('--reapply-overrides')
 
 
 // Expert clusters, in manifest display order, with their human-readable role.
@@ -144,111 +146,6 @@ function addShProvenance(content, sourcePath) {
   return header + body
 }
 
-/** Copy agents from source, organized by cluster. */
-function copyAgents() {
-  const agentsSource = join(sourceRoot, 'agents')
-
-  // Cluster subdirectories: source dir -> target expert cluster.
-  // agents/sdlc splits: onboard/ -> onboard, everything else -> coordinators.
-  const clusterMap = {
-    'code-review': 'code-review',
-    security: 'security',
-    performance: 'performance',
-    game: 'game',
-  }
-
-  let agentCount = 0
-
-  // Top-level agents, classified by name pattern.
-  for (const file of readdirSync(agentsSource).filter(
-    f => statSync(join(agentsSource, f)).isFile() && f.endsWith('.md')
-  )) {
-    const content = addMdProvenance(readFileSync(join(agentsSource, file), 'utf8'), `agents/${file}`)
-    let category = 'other'
-    if (file.includes('guide') || file.includes('sdlc-lead') || file.includes('task-decomposer')) {
-      category = 'coordinators'
-    } else if (
-      file.includes('specialist') ||
-      file.includes('-designer') ||
-      file.includes('-engineer') ||
-      file.includes('researcher')
-    ) {
-      category = 'phase-specialists'
-    }
-    writeFileSync(join(contentRoot, 'experts', category, file), content, 'utf8')
-    agentCount++
-  }
-
-  function walkCluster(dirPath, relPath, targetFor) {
-    for (const item of readdirSync(dirPath)) {
-      const fullPath = join(dirPath, item)
-      if (statSync(fullPath).isDirectory()) {
-        walkCluster(fullPath, `${relPath}/${item}`, targetFor)
-      } else if (item.endsWith('.md')) {
-        const sourcePath = `agents/${relPath}/${item}`
-        const target = targetFor(`${relPath}/${item}`)
-        const content = addMdProvenance(readFileSync(fullPath, 'utf8'), sourcePath)
-        writeFileSync(join(contentRoot, 'experts', target, item), content, 'utf8')
-        agentCount++
-      }
-    }
-  }
-
-  // sdlc: onboard/ subdir -> onboard cluster; all else -> coordinators.
-  const sdlcPath = join(agentsSource, 'sdlc')
-  if (statSync(sdlcPath, { throwIfNoEntry: false })?.isDirectory()) {
-    walkCluster(sdlcPath, 'sdlc', rel => (rel.includes('/onboard/') ? 'onboard' : 'coordinators'))
-  }
-
-  for (const [clusterDir, category] of Object.entries(clusterMap)) {
-    const clusterPath = join(agentsSource, clusterDir)
-    if (!statSync(clusterPath, { throwIfNoEntry: false })?.isDirectory()) continue
-    walkCluster(clusterPath, clusterDir, () => category)
-  }
-
-  // Shared protocol docs.
-  const sharedPath = join(agentsSource, 'shared')
-  const protocolNames = [
-    'HANDOFF_TEMPLATES.md',
-    'HANDOFF_QUICK_REF.md',
-    'MICRO_LOOP.md',
-    'GATE_SCORING_PROTOCOL.md',
-    'AUTONOMY_PROTOCOL.md',
-    'CHALLENGER_PROTOCOL.md',
-    'RALPH_WIGGUM_LOOP.md',
-    'FIX_VERIFY_LOOP.md',
-  ]
-  for (const file of protocolNames) {
-    const fullPath = join(sharedPath, file)
-    if (!statSync(fullPath, { throwIfNoEntry: false })?.isFile()) continue
-    const content = addMdProvenance(readFileSync(fullPath, 'utf8'), `agents/shared/${file}`)
-    writeFileSync(join(contentRoot, 'protocols', file), content, 'utf8')
-  }
-
-  return agentCount
-}
-
-/** Copy the validator pack: validate-*.sh, the run-*.sh drivers, and the
- *  shared _lib*.sh they source (without which the pack cannot run). */
-function copyValidators() {
-  const validatorsSource = join(sourceRoot, 'scripts/validators')
-  const files = readdirSync(validatorsSource).filter(
-    f =>
-      f.endsWith('.sh') &&
-      (f.startsWith('validate-') || f.startsWith('run-') || f.startsWith('_lib'))
-  )
-  for (const file of files) {
-    const content = addShProvenance(
-      readFileSync(join(validatorsSource, file), 'utf8'),
-      `scripts/validators/${file}`
-    )
-    writeFileSync(join(contentRoot, 'validators', file), content, 'utf8')
-  }
-  return files.length
-}
-
-/** First frontmatter `name:`/`description:` line for an agent/protocol doc,
- *  or the first non-comment content line for a validator script. Truncated. */
 function describe(file, content) {
   if (file.endsWith('.md')) {
     const stripped = content.replace(/<!--[\s\S]*?-->\n\n/, '')
@@ -344,11 +241,43 @@ function main() {
   }
 
   const blocked = Object.keys(LOCAL_OVERRIDES).filter((rel) => existsSync(join(contentRoot, rel)))
+
+  // --reapply-overrides: stash the registered local patches, import, restore.
+  // Mechanised on purpose (W10-51). Doing this by hand is a step someone
+  // forgets at the next refresh, and the failure is SILENT — a validator that
+  // no longer speaks the _lib.sh envelope simply stops gating rather than
+  // erroring, so nothing would surface it.
+  if (reapplyOverrides && blocked.length) {
+    const stashed = new Map()
+    for (const rel of blocked) stashed.set(rel, readFileSync(join(contentRoot, rel), 'utf8'))
+
+    contentDirs.forEach(dir => mkdirSync(dir, { recursive: true }))
+    console.log(`📚 Copying agents from ${sourceRoot} @ v${upstreamVersion}...`)
+    copyAgents({ sourceRoot, contentRoot, addMdProvenance })
+    console.log('🔍 Copying validators...')
+    copyValidators({ sourceRoot, contentRoot, addShProvenance })
+
+    for (const [rel, body] of stashed) {
+      writeFileSync(join(contentRoot, rel), body, 'utf8')
+      console.log(`♻️  re-applied local override: ${rel}`)
+    }
+
+    console.log('📋 Generating manifest from on-disk content...')
+    const manifest = generateManifest()
+    console.log(
+      `✅ Manifest: ${manifest.summary.experts} experts, ` +
+        `${manifest.summary.validators} validators, ${manifest.summary.protocols} protocols`
+    )
+    console.log(`\n⚠️  ${stashed.size} local override(s) restored over upstream. Re-sign the pack before committing.`)
+    return
+  }
+
   if (blocked.length) {
     console.error(
       'content import refused — these files are registered local overrides and would be clobbered:\n' +
         blocked.map((rel) => `  - ${rel}: ${LOCAL_OVERRIDES[rel]}`).join('\n') +
-        '\n\nRe-apply them after import, or remove the registry entry once upstream has absorbed the patch.',
+        '\n\nRe-run with --reapply-overrides to import and restore them automatically,\n' +
+        'or remove the registry entry once upstream has absorbed the patch.',
     )
     process.exitCode = 1
     return
@@ -356,9 +285,9 @@ function main() {
 
   contentDirs.forEach(dir => mkdirSync(dir, { recursive: true }))
   console.log(`📚 Copying agents from ${sourceRoot} @ v${upstreamVersion}...`)
-  copyAgents()
+  copyAgents({ sourceRoot, contentRoot, addMdProvenance })
   console.log('🔍 Copying validators...')
-  copyValidators()
+  copyValidators({ sourceRoot, contentRoot, addShProvenance })
 
   console.log('📋 Generating manifest from on-disk content...')
   const manifest = generateManifest()

@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/security/CLOUD_METHODOLOGY.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content

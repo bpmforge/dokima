@@ -93,7 +93,7 @@ describe('POST /api/v1/projects/:id/pipeline/onboard-run', () => {
       plan_items: { id: string; ticket_created: boolean }[];
     };
     expect(body.run_id).toBeTruthy();
-    expect(body.coverage_manifest.antiSlopRules).toHaveLength(30);
+    expect(body.coverage_manifest.antiSlopRules).toHaveLength(31);
     expect(body.plan_items).toHaveLength(16);
     expect(body.plan_items.every((i) => i.ticket_created)).toBe(true);
 

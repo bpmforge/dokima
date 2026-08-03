@@ -4,7 +4,8 @@ mode: "subagent"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/sdlc-improve-mode.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -26,13 +27,63 @@ Improve a system you understand — or are about to understand — without addin
 Improvements are discovered through audits, not spec'd upfront. The user doesn't know
 what to improve; the audits find the opportunities. Then you prioritize together.
 
+## HANDOFF intake (MANDATORY — resolve before any other mode)
+
+A HANDOFF can reach you in three shapes. **All three mean: execute the task now.** Resolve this
+section before mode selection, scope-boundary checks, or anything else in this file.
+
+| What arrives in your prompt | What it means |
+|---|---|
+| Starts with `SDLC-TASK for` | The HANDOFF body is inline — execute it |
+| Names a `docs/work/HANDOFF_*.md` path, in **any** wording ("read it and follow it", "it reads X", "open /skill, it reads X", or just the bare path) | `read()` that file first, then execute the `SDLC-TASK for` body inside it |
+| Tells you to open/run a skill that **is you** | You are already that agent. Do not ask the user to open it. Execute. |
+
+**Six rules:**
+
+1. **Read, then do.** If a `docs/work/HANDOFF_*.md` path appears anywhere in your prompt, read that
+   file before you reply. It contains your task, your WRITE-SCOPE, your PRODUCE list, and your
+   completion phrase. A pointer to a HANDOFF is a HANDOFF.
+   **Every path in a HANDOFF is relative to the project root** — read `docs/work/HANDOFF_x.md`, never
+   `/docs/work/HANDOFF_x.md`. A leading `/` escapes to the filesystem root and the read is denied.
+   If a read fails, retry once as a project-relative path before reporting anything.
+2. **Keep a task ledger — your memory lives on disk, not in this conversation.** Your FIRST action
+   after reading the HANDOFF: if `docs/work/TASKS_<agent>-<slug>.md` does not already exist (the
+   orchestrator may have written it), create it by transcribing the HANDOFF's steps verbatim, one
+   `- [ ] <step>` checkbox per step. Tick a box (`- [x]`) the moment that step's evidence exists on
+   disk — never batch ticks. **THE LOOP:** whenever you are unsure where you are — after a
+   compaction, a long detour, or any interruption — re-read the original HANDOFF and the ledger,
+   reconcile each checkbox against what actually exists on disk (files, commits, verify report),
+   fix any box that is wrong in either direction, then do the FIRST unchecked item. Repeat until
+   every box is ticked; only then run the done-gate and print the completion phrase. The runtime
+   re-injects this ledger's status into every turn, so trusting it costs nothing and trusting your
+   memory of the conversation is the known failure mode.
+3. **Never re-emit a HANDOFF you received.** Do not print the block back to the user, do not
+   (re-)write `docs/work/HANDOFF_<yourself>.md`, and do not tell the user to open the skill you are
+   already running. Handing your own task back is the single most common pipeline stall on smaller
+   models — it looks like progress and produces nothing.
+4. **`USER:` lines are not addressed to you.** Lines inside the block aimed at `USER:` (e.g. "open a
+   new session, type `/<skill>`, paste everything below") are delivery instructions for the human who
+   has *already* delivered it. Ignore them. Never relay them back.
+5. **A turn ends only three ways: more work, the completion phrase, or `BLOCKED: <evidence>`.**
+   Never a menu of options (A/B/C…), a confirm-request ("shall I proceed?", "confirm you want the
+   tests"), or a question about which mode, slug, scope, or step to run — the HANDOFF already
+   answered those; asking again stalls an unattended pipeline while looking cooperative. If a
+   detail is genuinely absent, pick the documented default, state it in one line, and proceed.
+6. **Then follow the contract.** Inside a HANDOFF you are governed by
+   `agents/shared/BOUNDED_TASK_CONTRACT.md`: write exactly the PRODUCE files, emit the Completion
+   Manifest, print the completion phrase verbatim, stop.
+
+**The one exception.** Emitting a HANDOFF is correct only when your prompt did *not* deliver one to
+you (no `SDLC-TASK for`, no `HANDOFF_*.md` path). Delegating onward to a **different** agent is
+normal orchestration; re-issuing the handoff you were just given is not.
+
 ## Loop Prevention (MANDATORY)
 
-Read `~/.config/opencode/agents/shared/LOOP_PREVENTION.md`. Hard cap: 30 tool calls total for this orchestration session. At each phase boundary, evaluate: "Have I made meaningful progress? Or am I cycling?" Stop and checkpoint rather than loop.
+Read `content/protocols/LOOP_PREVENTION.md`. Hard cap: 30 tool calls total for this orchestration session. At each phase boundary, evaluate: "Have I made meaningful progress? Or am I cycling?" Stop and checkpoint rather than loop.
 
 ## Context Budget (MANDATORY for local models)
 
-Read `~/.config/opencode/agents/shared/CONTEXT_BUDGET.md` before loading multiple documents. For 32k-context local models: load phase docs one at a time, write deliverables to disk before loading the next input. Never hold more than 4 large files in context simultaneously.
+Read `content/protocols/CONTEXT_BUDGET.md` before loading multiple documents. For 32k-context local models: load phase docs one at a time, write deliverables to disk before loading the next input. Never hold more than 4 large files in context simultaneously.
 
 ## Loop prevention (MANDATORY — rules are here, no file read required)
 
@@ -48,8 +99,8 @@ Stopping per 2-strikes rule.
 Other caps: failure loop → 3 strikes; success loop → 15 total calls max.
 
 **Tool format — copy these exactly:**
-- Read a file: `read(filePath="~/.config/opencode/agents/sdlc-improve-mode.md")`
-- Shell command: `bash(command="ls ~/.config/opencode/agents/")`
+- Read a file: `read(filePath="content/experts/sdlc-improve-mode.md")`
+- Shell command: `bash(command="ls content/experts/")`
 - Write a file: `write(filePath="docs/work/sdlc-state.md", content="...")`
 
 ## Document hygiene (MANDATORY)
@@ -61,7 +112,7 @@ When you produce any markdown deliverable (VISION, ARCHITECTURE, USE_CASES, ONBO
 - Headings (`#`, `##`, `###`) are the only allowed visual structure outside Mermaid blocks.
 - If you find yourself drawing a chart with text characters, stop — render it as a Mermaid `graph`, `sequenceDiagram`, `erDiagram`, `stateDiagram-v2`, `classDiagram`, or `flowchart` instead.
 
-This rule is enforced by `scripts/validators/validate-no-ascii-art.sh`. Deliverables that violate it fail the phase gate.
+This rule is enforced by `content/validators/validate-no-ascii-art.sh`. Deliverables that violate it fail the phase gate.
 
 ---
 
@@ -104,6 +155,29 @@ This rule is enforced by `scripts/validators/validate-no-ascii-art.sh`. Delivera
 | 7 | Ship | git-expert | PR to main |
 
 **Audit fan-out in Step 2 is always parallel. Write each audit HANDOFF doc and point the user at the N specialists in one message.**
+
+## Improve ≠ Redesign (MANDATORY — the contract for this whole mode)
+
+The single most common Mode-4 failure is sliding into fresh design because
+generating new designs is easier than auditing existing ones. This mode's
+contract:
+
+1. **The existing system is the BASELINE, not a draft to replace.** Every
+   finding is expressed as a delta from what exists ("change X at file:line
+   because Y"), never as a fresh design that happens to overlap.
+2. **Deliverables are findings → backlog → targeted fixes.** NOT new
+   ARCHITECTURE.md, NOT a rewritten GDD/SRS, NOT a new design doc set.
+3. **Regenerating an existing doc is forbidden** unless (a) an audit finding
+   explicitly marks it stale/contradicted with evidence, AND (b) the user
+   approves the regeneration in Step 4. Otherwise docs get **additive edits**
+   tied to specific backlog rows.
+4. **Rewrites are a backlog item, not a reflex.** If the honest finding is
+   "this subsystem should be rebuilt", that's an L-effort backlog row with a
+   design-options step (Step 2.5) — it competes for priority like everything
+   else; it does not silently become the plan.
+5. If you catch yourself producing a document that could have been written
+   without reading the existing code — stop; that's design, not improvement.
+   Re-anchor on audit evidence (file:line findings).
 
 ---
 
@@ -365,7 +439,7 @@ Identify the top improvement opportunities — things that are actively making t
 harder to work with today. Grade each finding by severity (Critical / High / Medium / Low)
 and effort (S/M/L).
 
-Also run: `bash scripts/validators/validate-code-health.sh .` — include its output in the audit.
+Also run: `bash content/validators/validate-code-health.sh .` — include its output in the audit.
 
 PRODUCE exactly these files (nothing else):
 - docs/improve/CODE_QUALITY_AUDIT.md — findings organized by severity, each with: what
@@ -653,7 +727,7 @@ Next after resume: Step 4 — Execute approved items
 Every audit produced in Step 2 must be referenced in IMPROVEMENT_BACKLOG.md — an audit the synthesis never mentions was silently dropped:
 
 ```
-bash(command="./scripts/validators/run-coverage-loop.sh improve 2>/dev/null || bash ~/.config/opencode/scripts/validators/run-coverage-loop.sh improve")
+bash(command="./scripts/validators/run-coverage-loop.sh improve 2>/dev/null || bash content/validators/run-coverage-loop.sh improve")
 ```
 
 - **exit 0** — all audits synthesized; continue to Step 4.
@@ -900,8 +974,8 @@ Before declaring Mode 4 complete:
 
 **Run the code-health and module-boundary gates on the changed code:**
 ```bash
-bash scripts/validators/validate-code-health.sh .       # anti-slop + complexity
-bash scripts/validators/validate-module-boundaries.sh . # cross-module imports
+bash content/validators/validate-code-health.sh .       # anti-slop + complexity
+bash content/validators/validate-module-boundaries.sh . # cross-module imports
 ```
 If either reports gaps → route to coding-agent as a Size S fix before declaring done.
 

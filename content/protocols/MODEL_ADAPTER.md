@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/MODEL_ADAPTER.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/MODEL_ADAPTER.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # Model Adapter — Adaptive Behavior by Context Tier
 
@@ -81,16 +83,64 @@ More headroom. Most features work without restriction.
 
 Context is not a constraint. Focus on quality.
 
+> **Capability floor — context size is not capability.** The tier is detected from
+> the CONTEXT WINDOW, so cloud "mini/flash/haiku-class" models (gpt-5-mini,
+> gemini-flash, haiku) land in tier=large while behaving like small-tier models on
+> the failure modes that matter. Field basis (2026-07): gpt-5-mini on tier=large
+> replaced a 335-line test file with a 20-line stub (Aider lazy-omission — the
+> exact failure the small-tier edit-format rule exists to prevent) and reported
+> green over red gates. When the executing model is a mini/flash/haiku-class
+> model, apply the small-tier **behavior** rules regardless of tier: Edit format
+> (SEARCH/REPLACE, never whole-file rewrite of existing files), Persistence,
+> Prune error turns (B2), and Evidence before guess. Context-budget rules
+> (phase-file splitting, session restarts) stay large-tier — the window really is
+> big; it's the *discipline* that isn't.
+
 | Behavior | Rule |
 |----------|------|
 | Phase files | Load the full phase file or multiple phase files. No need for phase splitting. |
 | Research | Use all passes. No hard cap pressure — quality over token savings. |
 | Security --deep | Always supported. OWASP_METHODOLOGY.md loads freely. |
-| Specialist sessions | HANDOFF blocks — executor per `EXECUTOR_SELECTION.md` (Task tool if `has_task_tool=true`). |
+| Specialist sessions | HANDOFF blocks — executor per `EXECUTOR_SELECTION.md` (interactive → emit for the user; auto → Task tool / subprocess). |
 | HANDOFF_TEMPLATES | Read full templates for richest HANDOFF format. |
 | Session length | Sessions can run indefinitely — no context pressure restart. |
 | LOCAL_LLM_PRIMER | Not needed. Skip it. |
 | Write-to-disk | Still good practice (disk is durable across sessions), but not mandatory for context. |
+
+---
+
+## Escalation Ledger Integration — Hop Emission
+
+When `detect-model-context.sh` runs, it records a **hop** (model-decision event) to the escalation ledger located at `~/.claude-memory/<projectId>/memory.db`. This ledger powers M7's escalation guidance and weekly reports.
+
+**How it works:**
+1. `detect-model-context.sh` detects the model and provider (cloud or local)
+2. Before exiting, it calls the `log-hop.mjs` CLI shim with the detected model details
+3. The shim writes a `Hop` record to the SQLite ledger (same DB as the memory-MCP server)
+4. The hop includes: task fingerprint, detected model, gate result ('pass' for successful detection), lane ('proc'), and ISO timestamp
+
+**Prerequisites:**
+- Node.js must be on PATH (the shim skips gracefully if unavailable)
+- The escalation-ledger package must be built: run `npm run build` in `bpm-agent-amplifier/` to generate `packages/escalation-ledger/dist/`
+- Both repos must be sibling directories (attest and bpm-agent-amplifier)
+
+**Failure behavior:**
+- If the ledger write fails (DB locked, missing package, etc.), the shim exits silently with code 0
+- Model detection never blocks on ledger operations — failures are logged to stderr but do not break the session
+
+**Querying hops:**
+After running `bash scripts/detect-model-context.sh`, the ledger will contain a record:
+```sql
+SELECT * FROM escalation_hops 
+WHERE lane = 'proc' AND task_fp LIKE 'session/detect-model-context-%' 
+ORDER BY ts DESC LIMIT 1;
+```
+
+Periodic reports are generated via the `@bpm/escalation-ledger` package:
+```js
+import { weeklyReport } from '@bpm/escalation-ledger';
+console.log(weeklyReport()); // Markdown table of escalation trends
+```
 
 ---
 

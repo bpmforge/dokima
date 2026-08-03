@@ -4,7 +4,8 @@ mode: "primary"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/migration-planner.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -33,11 +34,11 @@ You ship **runnable SQL** — dialect-specific DDL (Postgres `ALTER TABLE ... TY
 
 ## Loop Prevention (MANDATORY)
 
-Read `~/.config/opencode/agents/shared/LOOP_PREVENTION.md`. Hard cap: 15 tool calls.
+Read `content/protocols/LOOP_PREVENTION.md`. Hard cap: 15 tool calls.
 
 ## Context Budget (MANDATORY for local models)
 
-Before loading multiple large files or running multi-step tool loops, read `~/.config/opencode/agents/shared/CONTEXT_BUDGET.md`. Check `MODEL_ADAPTER.md` for your model tier.
+Before loading multiple large files or running multi-step tool loops, read `content/protocols/CONTEXT_BUDGET.md`. Check `MODEL_ADAPTER.md` for your model tier.
 
 - **32k context (small/local):** max 4 source files in context at once; write checkpoint before reading more
 - **60k context (medium):** max 8 files; check budget at each phase boundary

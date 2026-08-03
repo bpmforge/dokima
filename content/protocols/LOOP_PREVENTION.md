@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/LOOP_PREVENTION.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/LOOP_PREVENTION.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # LOOP_PREVENTION.md
 
@@ -25,7 +27,7 @@ Before calling any tool, match the verb in your task to the right tool. **Most s
 
 | You want to… | Use this tool | Example |
 |--------------|---------------|---------|
-| Read a markdown reference doc, agent prompt, or any file | `read` | `read({filePath: "~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md"})` |
+| Read a markdown reference doc, agent prompt, or any file | `read` | `read({filePath: "content/protocols/HANDOFF_TEMPLATES.md"})` |
 | Run a slash command (e.g., `/sdlc init`, `/security`) | `skill` | `skill({name: "sdlc"})` |
 | List files matching a pattern | `glob` | `glob({pattern: "**/*.md"})` |
 | Search file contents | `grep` | `grep({pattern: "TODO", path: "src"})` |
@@ -39,7 +41,7 @@ Before calling any tool, match the verb in your task to the right tool. **Most s
 
 - `skill` is for slash commands by **name**, not for "loading" reference docs. Reference docs are files — use `read`.
 - "See `agents/shared/X.md`" / "consult X" / "per the contract in X" all mean **`read` that file**, not "load it as a skill".
-- Relative paths like `agents/shared/X.md` resolve from your install dir. If unsure, prefix with `~/.config/opencode/` (opencode) or `~/.claude/` (Claude Code) and use the absolute path. Or list the dir first via `ls`.
+- Relative paths like `agents/shared/X.md` resolve from your install dir. If unsure, prefix with `content/` (opencode) or `~/.claude/` (Claude Code) and use the absolute path. Or list the dir first via `ls`.
 - A tool with required args you can't fill is the wrong tool. Pick a different one — don't pass `undefined` and hope.
 
 If after 2 tool calls you can't find the right tool for a task, **stop and surface to user** (see Class 2 rule below). Don't bluff.
@@ -108,7 +110,7 @@ After printing this template, **stop calling tools** and end the turn. The user 
 
 **Common causes of this loop, and how to spot them:**
 
-- The agent prompt referenced a path like `agents/shared/X.md` (relative) but you're not sure where it resolves. **Use the absolute path:** `~/.config/opencode/agents/shared/X.md` (opencode) or `~/.claude/agents/shared/X.md` (Claude Code). If you're not sure which, list both directories first via `ls`.
+- The agent prompt referenced a path like `agents/shared/X.md` (relative) but you're not sure where it resolves. **Use the absolute path:** `content/protocols/X.md` (opencode) or `~/.claude/agents/shared/X.md` (Claude Code). If you're not sure which, list both directories first via `ls`.
 - You tried to call a `skill` tool but didn't have a skill name. The `skill` tool is for invoking slash commands by name — not for loading reference docs. To read a doc, use `read` with a file path.
 - You tried to write a file but had no path. The `write` tool needs `filePath` and `content` — both required.
 - A tool's required arg is unclear from your context. Don't guess — surface to user.
@@ -154,6 +156,7 @@ URLs/files already fetched: [<list>]
 Learned so far: [<bullet facts>]
 Still missing: [<specific gaps>]
 Errors so far: <count>/3 strikes
+Retry budgets: tooling <n>/2 · environment <n>/2 · code <n>/3 · review <n>/3 · total <n>/8
 ```
 
 After every successful call, ask before the next one:
@@ -165,9 +168,102 @@ If 3 consecutive successful calls produce nothing new, the work-unit is **as ans
 
 ---
 
+## Retry budgets — four counters, not one
+
+**A tooling mistake must not consume a code-fix attempt.** Field trace 2026-07
+(downstream project): a fence ran `pnpm biome check scripts/conductor` against a config that
+excludes `scripts/`. The agent burned attempts on an invocation defect it could
+not fix, hit the single 3-strike cap, and stopped with the implementation
+finished and unreported. One counter cannot tell "I typed the command wrong" from
+"the code is wrong", so the cheapest failure exhausts the budget for the real one.
+
+### A counter counts REPEATS, not attempts
+
+**This is the part that decides whether the budget helps or strangles you.** A
+strike is an attempt that produced **no new information** — the same failure
+signature you already had. An attempt that *changes* the failure is progress, and
+progress is never charged, however many times it takes.
+
+Field failure 2026-07-30: the first version of this section counted attempts, so
+a coding agent doing ordinary fix → verify → fix → verify work — each pass fixing
+a real defect and surfacing a different one — exhausted `code_remediation` at
+three and reported "retry budget exhausted" while actively making progress. That
+inverted the original Class-1 rule above, which has always been about the *same*
+error repeating. Being stuck is the thing worth stopping; iterating is the job.
+
+**The test is mechanical, from the verify report's failure signatures (v2.44.0):**
+
+| Between two attempts | Charge |
+|---|---|
+| the failing signature set **changed** (different failures, or fewer) | none — this is progress |
+| the failing signature set is **identical** | one strike on the matching counter |
+| the command now **passes** | none, obviously |
+
+So "3" does not mean three fixes. It means three consecutive attempts that moved
+nothing. If you cannot obtain signatures (no verify fence, a tool that prints no
+comparable output), fall back to the Class-1 rule above: the same error text twice
+in a row is a repeat.
+
+Keep **four independent counters** per HANDOFF, plus the existing schema counter:
+
+| Counter | Budget | What it covers |
+|---|---|---|
+| `tooling_retries` | 2 | the command/flag/path is wrong, or the tool's own config excludes the target |
+| `environment_retries` | 2 | the machine is not ready — missing dep, service down, port taken, unauthenticated |
+| `code_remediation_retries` | 3 | a real defect in code you own — charged only when a fix changes nothing |
+| `review_retries` | 3 | rework demanded by a reviewer |
+| `schema_retries` | 2 | malformed tool args (Class 2 above — unchanged) |
+
+**Global cap: 8 attempts total per HANDOFF, whatever the mix** — again counting
+only the no-progress ones. Four counters buy the right *kind* of strike; they do
+not buy unlimited spinning. Hitting the cap stops you exactly like a single
+counter would.
+
+### Classification is read off evidence, never judged
+
+You may only charge an attempt to a counter you can cite evidence for. The
+harness already classifies the common cases for you — use its verdict, do not
+re-decide it:
+
+| Evidence you can point at | Counter |
+|---|---|
+| `VERIFY: RED — fence command matched nothing (path/config defect…)` | `tooling` |
+| `command not found`, `unknown flag`, `No files were processed`, "paths were provided but ignored" | `tooling` |
+| `ENOENT` on a binary, service/DB unreachable, port in use, an auth prompt, a missing lockfile install | `environment` |
+| `VERIFY: RED — exit N from: <cmd>` where the failures are attributed as **NEW** | `code_remediation` |
+| a reviewer finding you accepted | `review` |
+| `VERIFY: BASELINE_RED` / any failure attributed as pre-existing | **none — costs nothing.** It is not your work. Report it and move on. |
+
+**Cannot cite evidence for a class?** It charges `code_remediation` *and* the
+global cap. Unclassifiable failures are the expensive kind on purpose.
+
+> **The abuse this prevents:** relabelling a code failure as "tooling" to buy
+> three more attempts. That is why every charge needs a citation. If you find
+> yourself reasoning "this is probably an environment thing" with nothing to
+> quote, it is a code failure until proven otherwise.
+
+State the counters in the ledger between attempts, and reconcile them against the
+verify report rather than memory:
+
+```
+tooling 0/2 · environment 0/2 · code 1/3 · review 0/3 · schema 0/2 · total 1/8
+Last charge: code — identical signature set to the previous attempt:
+              "FAIL src/auth.test.ts > rejects an expired token"
+(An attempt that changed the failing set is NOT charged — record it as progress.)
+```
+
+When any single counter or the global cap is exhausted, stop with
+`BLOCKED: <evidence>` and say **which counter ran out** — the orchestrator's next
+move depends on it. A tooling exhaustion means fix the fence; a code exhaustion
+means the task is harder than scoped; an environment exhaustion means nothing was
+ever going to run here.
+
+---
+
 ## Universal STOP triggers
 
 Stop and surface to user if ANY of these:
+- any single retry counter exhausted, or the 8-attempt global cap reached
 - ≥ 3 strikes (failure loop)
 - ≥ 2 schema-validation errors on the same tool call shape (validation loop)
 - Same URL fetched twice (you've already lost track — re-read your checkpoint instead)

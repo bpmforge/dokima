@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/CHECKPOINT_STATE.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/CHECKPOINT_STATE.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # Checkpoint & Resume — STATE.md (T4)
 
@@ -73,7 +75,7 @@ is to emit the nudge whenever you notice the threshold crossed.)
 ## Resume (read side — see T5 `/sdlc resume`)
 
 A resuming session: reads `STATE.md` → **drift check** (T27.4:
-`scripts/validators/validate-state-drift.sh . docs/work/STATE.md` — cross-checks every phase Done
+`content/validators/validate-state-drift.sh . docs/work/STATE.md` — cross-checks every phase Done
 claims against a real gate receipt at `docs/work/gates/<phase>-receipt.json`; gaps mean `STATE.md`
 is asserting a phase finished with nothing backing it, so surface that to the user before trusting
 `Next` rather than resuming into fiction) → the catch-up list in order → re-primes the six rules

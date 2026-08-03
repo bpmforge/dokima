@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/shared/CHALLENGER_PROTOCOL.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -125,7 +126,7 @@ Output file: `docs/reviews/CHALLENGE_REPORT_<slug>_<date>.md`
 # Challenge Report — <artifact name>
 **Date:** <YYYY-MM-DD> | **Artifact:** <path> | **Challenger:** challenger agent
 
-> **Artifact field is load-bearing (T22.20):** `scripts/validators/validate-challenger-gate.sh`
+> **Artifact field is load-bearing (T22.20):** `content/validators/validate-challenger-gate.sh`
 > parses this field to correlate a challenge report back to the specific
 > source report it challenges. Always set `<path>` to the actual
 > ROOT-relative path of the artifact being challenged (e.g.
