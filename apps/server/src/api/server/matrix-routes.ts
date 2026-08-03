@@ -2,12 +2,22 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
+  guardMakerVerifierDistinct,
+  isVerifierRole,
+  ROLE_CODING_AGENT,
+  SameModelRefusedError,
+} from '@dokima/gateway';
+import {
   listModelMatrix,
   putModelMatrix,
   type ModelMatrixInput,
 } from './model-matrix-store.js';
-import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
-import { appendModelMatrixChanged } from './settings-events.js';
+import {
+  badRequest,
+  conflict,
+  resolveProjectOrProblem,
+} from './settings-route-helpers.js';
+import { appendModelMatrixChanged, DEFAULT_ACTOR_ID } from './settings-events.js';
 import { getProjectSettings } from './settings-scope.js';
 import { TASK_TYPES, type ModelMatrixRow, type TaskType } from './settings-types.js';
 
@@ -115,6 +125,57 @@ export function registerMatrixRoutes(
           );
       }
       const before = await listModelMatrix(projectPath);
+
+      // FR-G2/C-4: refuse a maker/verifier pair resolving to the same model
+      // for the same task type, in either direction — a submitted verifier
+      // row colliding with an already-stored maker row, a submitted maker
+      // row colliding with an already-stored verifier row, or two rows
+      // colliding within the same PUT. Only task types this PUT actually
+      // touches can newly collide (the invariant already holds for
+      // everything else), so the merged post-write role->model map is
+      // built per touched task type: stored rows first, then the submitted
+      // rows overlaid on top. Fail-fast, before any write.
+      const touchedTaskTypes = new Set(rows.map((row) => row.taskType));
+      const roleModelByTaskType = new Map<TaskType, Map<string, string>>();
+      for (const row of before) {
+        if (!touchedTaskTypes.has(row.taskType)) continue;
+        const roleModel =
+          roleModelByTaskType.get(row.taskType) ?? new Map<string, string>();
+        roleModel.set(row.role, row.model);
+        roleModelByTaskType.set(row.taskType, roleModel);
+      }
+      for (const row of rows) {
+        const roleModel =
+          roleModelByTaskType.get(row.taskType) ?? new Map<string, string>();
+        roleModel.set(row.role, row.model);
+        roleModelByTaskType.set(row.taskType, roleModel);
+      }
+      for (const [taskType, roleModel] of roleModelByTaskType) {
+        const makerModel = roleModel.get(ROLE_CODING_AGENT);
+        if (makerModel === undefined) continue;
+        for (const [role, model] of roleModel) {
+          if (!isVerifierRole(role) || model !== makerModel) continue;
+          try {
+            await guardMakerVerifierDistinct({
+              verifierRole: role,
+              makerRole: ROLE_CODING_AGENT,
+              taskType,
+              verifierModel: model,
+              makerModel,
+              actorId: DEFAULT_ACTOR_ID,
+            });
+          } catch (err) {
+            if (err instanceof SameModelRefusedError) {
+              return reply
+                .code(409)
+                .type('application/problem+json')
+                .send(conflict(request, err.message, 'same-model-refused'));
+            }
+            throw err;
+          }
+        }
+      }
+
       const updated = await putModelMatrix(projectPath, rows);
       appendModelMatrixChanged(projectPath, before, updated);
       const projectSettings = await getProjectSettings(projectPath);
