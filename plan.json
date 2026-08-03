@@ -4553,6 +4553,30 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Found 2026-08-03 while configuring a real LM Studio through the Providers panel for the first time. Latent since W10-03 wired the registry path: the env fallback (`envTarget`) never calls `splitModelRef`, so every earlier run \u2014 including the previous session end-to-end proof on `qwen/qwen3.5-9b` \u2014 took the path that cannot hit this. Sibling: W10-59."
+    },
+    {
+      "id": "W10-61",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "A successful board build looks like a failure \u2014 the Canvas shows empty panes until you reload by hand",
+      "write_scope": [
+        "apps/web/src/onboarding/**",
+        "apps/web/e2e/*.spec.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED IN A BROWSER on the run that first proved the pipeline works end to end (W10-59). \"Build the board\" completed successfully: 9 rows in `plan_items`, 26 events, no error. The Canvas it returned to rendered Chat, Board and Artifacts as three EMPTY panes. A manual page reload then showed all nine tickets. The run had already succeeded; the UI simply never said so.",
+        "THIS IS THE WORST POSSIBLE MOMENT FOR IT. It lands at the end of the single longest wait in the product \u2014 91 seconds of held-open tab on this hardware, longer on slower boxes \u2014 and the payoff screen is indistinguishable from the failure the previous two sessions actually hit. A user who reloads gets their board; a user who concludes it failed and clicks \"Build the board\" again pays for a second full pipeline run.",
+        "A SECOND, SEPARATE LOSS ON THE SAME SCREEN: the interview answers do not survive a reload either. Returning to Describe after the run shows nine empty fields. Every answer the user typed is gone, so the natural recovery action for the first defect (reload) destroys the input for a retry. Fix or explicitly scope out, but do not leave both true at once.",
+        "ROOT CAUSE IS NOT YET ESTABLISHED \u2014 do not fix the first plausible theory. The event log and WebSocket transport already carry board updates (they are what W10-58 proposes to reuse), so the candidates are at least: the Canvas mounts before the run commits its rows; the WS subscription is not established for a project whose board was empty at mount; or the run completes without emitting the event the board listens for. Verify which, with evidence, before changing code.",
+        "RED FIXTURE: an e2e spec that runs the interview to completion against the fake-model gateway and asserts the board is non-empty WITHOUT a page reload. Note this is the same assertion W10-54 acceptance 5 still owes, and it cannot be satisfied by a spec that reloads to get green \u2014 a reload is the workaround, not the behaviour.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 in the browser run that closed W10-59, i.e. by watching what happened AFTER the thing under test succeeded. Directly relevant to W10-58: it proposes returning a run id immediately and streaming per-phase progress, which would replace this screen entirely \u2014 so whoever takes W10-58 should read this first rather than fixing the same surface twice. Sibling of W10-56 (the same fresh product also shows SAMPLE chat cards about Dokima own development, seen again on this run)."
     }
   ]
 }
