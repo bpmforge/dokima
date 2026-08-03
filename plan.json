@@ -3590,7 +3590,7 @@
         "W10-05",
         "W10-42"
       ],
-      "status": "done",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "TODAY `ModelMatrixPanel.tsx` takes the model as a FREE-TEXT STRING (`draft.model`, a bare text input) with no catalog, no validation, and no way to discover what a provider actually serves. Register/edit/test an endpoint (Ollama, LM Studio, any OpenAI-compatible, plus the cloud adapters), see the discovered models from W10-02, and select per role x task-type from a LIST.",
