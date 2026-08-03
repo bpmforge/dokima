@@ -353,19 +353,23 @@ describe('settings routes', () => {
   });
 
   /**
-   * RED FIXTURE (W10-42 AC5): `defaultModelMatrixPreset` is written only
-   * through this route (FirstRunWizard's `savePresetAndProvider`), so an
-   * unrecognized preset name must fail loudly here instead of settling
-   * silently into global scope. `putGlobalSetting`/`getGlobalSettings`
+   * RED FIXTURE (W10-42 AC5): `defaultModelMatrixPreset` is written today
+   * only through the global PUT (FirstRunWizard's `savePresetAndProvider`),
+   * but `getEffectiveProjectSettings` resolves run > project > project >
+   * global, so an unvalidated project-scope write of the same key would
+   * silently win over a validated global one — checked on both PUTs
+   * (`refuseUnknownPreset`, same defense-in-depth reasoning as the
+   * consent-gate check above). `putGlobalSetting`/`getGlobalSettings`
    * (settings-scope.ts, out of this ticket's write_scope) resolve their file
    * path from `process.env` with no test-injectable override, unlike every
    * project-scoped write in this file — the real global config write path
-   * is `~/.dokima/config.json` by default, so a successful PUT here scopes
-   * `DOKIMA_HOME` to a temp dir first (settings-scope.test.ts's own
+   * is `~/.dokima/config.json` by default, so a successful global PUT here
+   * scopes `DOKIMA_HOME` to a temp dir first (settings-scope.test.ts's own
    * precedent for this), never touching the developer's real config.
    */
-  it('PUT settings/global rejects an unknown defaultModelMatrixPreset with 400 rule: unknown-preset', async () => {
-    const { app } = await boot();
+  it('PUT settings/global and PUT projects/:id/settings both reject an unknown defaultModelMatrixPreset with 400 rule: unknown-preset', async () => {
+    const { app, projectId } = await boot();
+    const previousDokimaHome = process.env.DOKIMA_HOME;
     const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-global-home-'));
     dirs.push(home);
     process.env.DOKIMA_HOME = home;
@@ -395,8 +399,25 @@ describe('settings routes', () => {
       expect(good.statusCode).toBe(200);
       expect(good.json().defaultModelMatrixPreset).toBe('all-cloud');
     } finally {
-      delete process.env.DOKIMA_HOME;
+      if (previousDokimaHome === undefined) delete process.env.DOKIMA_HOME;
+      else process.env.DOKIMA_HOME = previousDokimaHome;
     }
+
+    const badProjectScope = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { defaultModelMatrixPreset: 'quantum-cloud' },
+    });
+    expect(badProjectScope.statusCode).toBe(400);
+    expect(badProjectScope.json().rule).toBe('unknown-preset');
+
+    const projectAfter = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+    });
+    expect(projectAfter.json().defaultModelMatrixPreset).toBeUndefined();
   });
 
   it('guide route degrades to markdown:null for a topic with no content yet', async () => {

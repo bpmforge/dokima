@@ -72,10 +72,13 @@ function refuseConsentGatedKey(
 /**
  * `defaultModelMatrixPreset`'s only legal values are `@dokima/gateway`'s
  * shipped preset names (FR-S3, W10-42 AC5). `PUT /api/v1/settings/global`
- * (FirstRunWizard's `savePresetAndProvider`) is this key's sole wire
- * boundary — the generic settings PUT otherwise passes any value straight
- * through with no per-key validation, so an unrecognized preset name would
- * silently settle into global scope instead of failing loudly here.
+ * (FirstRunWizard's `savePresetAndProvider`) is the only caller that writes
+ * this key today, but the generic settings PUT otherwise passes any value
+ * straight through with no per-key validation at *either* scope — and
+ * `getEffectiveProjectSettings` resolves run > project > global, so an
+ * unvalidated project-scope write would win over a validated global one.
+ * Checked on both PUTs for the same reason `refuseConsentGatedKey` is
+ * (defense in depth, not just the one call site in active use).
  */
 function findInvalidPreset(body: Record<string, JsonValue>): JsonValue | undefined {
   if (!('defaultModelMatrixPreset' in body)) return undefined;
@@ -180,6 +183,7 @@ export function registerScopeRoutes(
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
       if (refuseConsentGatedKey(request, reply, request.body)) return;
+      if (refuseUnknownPreset(request, reply, request.body)) return;
       const next = await applyEachKey(request.body, (key, value) =>
         putProjectSetting(projectPath, key, value),
       );
