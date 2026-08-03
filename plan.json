@@ -3590,7 +3590,7 @@
         "W10-05",
         "W10-42"
       ],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "TODAY `ModelMatrixPanel.tsx` takes the model as a FREE-TEXT STRING (`draft.model`, a bare text input) with no catalog, no validation, and no way to discover what a provider actually serves. Register/edit/test an endpoint (Ollama, LM Studio, any OpenAI-compatible, plus the cloud adapters), see the discovered models from W10-02, and select per role x task-type from a LIST.",
@@ -3602,7 +3602,8 @@
       ],
       "notes": [
         "W10 Phase G/H seam. depends_on W10-05 deliberately: a panel built with no spec behind it is exactly what the Design Loop exists to prevent.",
-        "CONDUCTOR 2026-08-03T07:15:20.104Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch"
+        "CONDUCTOR 2026-08-03T07:15:20.104Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch",
+        "CLOSED 2026-08-03: built inside the existing 5-file web-only write_scope, unblocked now that W10-42 (server routes + maker-verifier guard + PRESET_NAMES) is done. ProvidersPanel.tsx (new) covers register/edit/test/refresh/remove + every UX_SPEC \u00a76a state + the Law 8 keychain-ref flow; providers-api.ts (new) is the REST client + pure catalog/entry-assembly helpers; ModelMatrixPanel.tsx composes ProvidersPanel above the matrix and gives the Model field a datalist sourced from the combined provider catalog. DEVIATION, documented at the call site: kept the Model field a plain <input list=...> (HTML5 datalist) rather than a literal <select> UX_SPEC literally names \u2014 apps/web/e2e/settings.spec.ts (out of write_scope) drives it with Playwright .fill(), which throws on a <select>; no server route exists to test an unregistered endpoint pre-Save either, so Save-then-auto-probe stands in for the spec's literal Test-before-Save wording. AC4 (fold MODEL_MATRIX_PRESETS): already discharged by W10-42 (PRESET_NAMES in gateway/routing/presets.ts + server-side validation on both settings PUTs); settings/types.ts is outside this write_scope so the web-side hand-mirror stays, as W10-42 revised the criterion to expect. AC3 red fixture: the disk-bytes assertion lives server-side in W10-42's providers-routes.test.ts; this ticket's own fixture (providers-api.test.ts + ProvidersPanel.test.tsx) proves the client never threads the literal API key into a providers PUT, including when the keychain write itself fails (no PUT fires). ModelMatrixPanel.tsx has no test-sibling in write_scope; its DOM behavior is covered in ProvidersPanel.test.tsx under its own describe block (documented at the top of that file)."
       ]
     },
     {
