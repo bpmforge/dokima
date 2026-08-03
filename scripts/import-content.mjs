@@ -1,29 +1,64 @@
 #!/usr/bin/env node
 
 /**
- * One-time content import from bpm-opencode-experts.
+ * Content import from the upstream expert-system repo.
+ *
  * Copies the expert system (agents), the validator pack (bash scripts + shared
  * libs), and the shared protocol docs into content/, each with a provenance
  * header. No build-time dependency on the source repo remains after this runs
  * (C8): content/ is plain data, and content/index.json is regenerated purely
  * from the on-disk content tree.
  *
+ * W10-50, four fixes. The source root was hardcoded to
+ * `/Users/bmatthews/Code/bpm-opencode-experts`, which stopped existing when
+ * upstream renamed to `attest` in v3.0.0 — so this script threw a raw ENOENT
+ * from `readdirSync` naming a repo nobody would recognise, with no hint that
+ * the fix was a rename. (docs/work/W10_PLAN.md §2 describes that failure as "a
+ * silent empty import"; it is not — `--manifest-only` is the path that works
+ * silently, because it skips the copy entirely.) Now: a configurable, pinned
+ * source root with a named error; host-install paths rewritten at import time;
+ * a local-override registry so a deliberate local patch cannot be clobbered
+ * silently; and `--dry-run`, which writes nothing.
+ *
  * Usage:
  *   node scripts/import-content.mjs                 full import + manifest
+ *   node scripts/import-content.mjs --dry-run       report added/removed/drifted, write nothing
  *   node scripts/import-content.mjs --manifest-only regenerate content/index.json
  *                                                   from the already-imported tree
  *                                                   (no source repo access)
+ *   --source=<path>   override the upstream checkout (default ~/Code/attest)
  */
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'fs'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
+import {
+  UPSTREAM_REPO_NAME,
+  UPSTREAM_REPO_ALIAS,
+  LOCAL_OVERRIDES,
+  resolveSourceRoot,
+  readUpstreamVersion,
+  rewriteHostPaths,
+} from './content-import/upstream.mjs'
+import { dryRunReport } from './content-import/dry-run.mjs'
+
+// Re-exported so scripts/import-content.test.mjs and any caller keep importing
+// from this path — the same barrel discipline W10-46/47/48 used.
+export {
+  UPSTREAM_REPO_NAME,
+  UPSTREAM_REPO_ALIAS,
+  LOCAL_OVERRIDES,
+  resolveSourceRoot,
+  readUpstreamVersion,
+  rewriteHostPaths,
+}
 
 const __dirname = join(fileURLToPath(import.meta.url), '..')
 const repoRoot = join(__dirname, '..')
-const sourceRoot = '/Users/bmatthews/Code/bpm-opencode-experts'
 const contentRoot = join(repoRoot, 'content')
 const manifestOnly = process.argv.includes('--manifest-only')
+const dryRun = process.argv.includes('--dry-run')
+
 
 // Expert clusters, in manifest display order, with their human-readable role.
 // `onboard` mirrors the source repo's agents/sdlc/onboard/ grouping; the rest
@@ -62,16 +97,24 @@ function resolveImportDate() {
 
 const importDate = resolveImportDate()
 
+/** Assigned in main() only when a copy is actually going to happen, so
+ *  `--manifest-only` keeps working with no upstream checkout present. */
+let sourceRoot
+let upstreamVersion = 'unknown'
+
+
 /** Insert an HTML-comment provenance header (after frontmatter when present). */
 function addMdProvenance(content, sourcePath) {
   const header = `<!--
-  Provenance: bpm-opencode-experts
+  Provenance: ${UPSTREAM_REPO_NAME} (formerly ${UPSTREAM_REPO_ALIAS})
+  Upstream version: ${upstreamVersion}
   Source path: ${sourcePath}
   Import date: ${importDate}
   DO NOT EDIT — this is imported content
 -->
 
 `
+  content = rewriteHostPaths(content)
   if (content.startsWith('---')) {
     const endFrontmatter = content.indexOf('\n---\n')
     if (endFrontmatter > 0) {
@@ -89,13 +132,15 @@ function addMdProvenance(content, sourcePath) {
 /** Prepend a bash-comment provenance header, replacing the original shebang. */
 function addShProvenance(content, sourcePath) {
   const header = `#!/bin/bash
-# Provenance: bpm-opencode-experts
+# Provenance: ${UPSTREAM_REPO_NAME} (formerly ${UPSTREAM_REPO_ALIAS})
+# Upstream version: ${upstreamVersion}
 # Source path: ${sourcePath}
 # Import date: ${importDate}
 # DO NOT EDIT — this is imported content
 
 `
-  const body = content.startsWith('#!/') ? content.split('\n').slice(1).join('\n') : content
+  const rewritten = rewriteHostPaths(content)
+  const body = rewritten.startsWith('#!/') ? rewritten.split('\n').slice(1).join('\n') : rewritten
   return header + body
 }
 
@@ -251,7 +296,9 @@ function generateManifest() {
   const manifest = {
     version: 1,
     importDate,
-    sourceRepo: 'bpm-opencode-experts',
+    sourceRepo: UPSTREAM_REPO_NAME,
+    sourceRepoAlias: UPSTREAM_REPO_ALIAS,
+    upstreamVersion,
     summary: {
       experts: expertCount,
       validators: Object.keys(validatorItems).length,
@@ -276,14 +323,42 @@ function generateManifest() {
 }
 
 function main() {
-  contentDirs.forEach(dir => mkdirSync(dir, { recursive: true }))
-
-  if (!manifestOnly) {
-    console.log('📚 Copying agents...')
-    copyAgents()
-    console.log('🔍 Copying validators...')
-    copyValidators()
+  if (manifestOnly) {
+    console.log('📋 Generating manifest from on-disk content...')
+    const manifest = generateManifest()
+    console.log(
+      `✅ Manifest: ${manifest.summary.experts} experts, ` +
+        `${manifest.summary.validators} validators, ${manifest.summary.protocols} protocols`
+    )
+    return
   }
+
+  // Resolved here, not at module scope: --manifest-only must keep working with
+  // no upstream checkout present, and a wrong path must be a named error.
+  sourceRoot = resolveSourceRoot()
+  upstreamVersion = readUpstreamVersion(sourceRoot)
+
+  if (dryRun) {
+    dryRunReport({ sourceRoot, contentRoot, expertClusters, upstreamVersion })
+    return
+  }
+
+  const blocked = Object.keys(LOCAL_OVERRIDES).filter((rel) => existsSync(join(contentRoot, rel)))
+  if (blocked.length) {
+    console.error(
+      'content import refused — these files are registered local overrides and would be clobbered:\n' +
+        blocked.map((rel) => `  - ${rel}: ${LOCAL_OVERRIDES[rel]}`).join('\n') +
+        '\n\nRe-apply them after import, or remove the registry entry once upstream has absorbed the patch.',
+    )
+    process.exitCode = 1
+    return
+  }
+
+  contentDirs.forEach(dir => mkdirSync(dir, { recursive: true }))
+  console.log(`📚 Copying agents from ${sourceRoot} @ v${upstreamVersion}...`)
+  copyAgents()
+  console.log('🔍 Copying validators...')
+  copyValidators()
 
   console.log('📋 Generating manifest from on-disk content...')
   const manifest = generateManifest()
@@ -294,4 +369,12 @@ function main() {
   )
 }
 
-main()
+// Only run when executed directly, so the helpers above are importable by tests.
+if (process.argv[1] && process.argv[1].endsWith('import-content.mjs')) {
+  try {
+    main()
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err))
+    process.exitCode = 1
+  }
+}

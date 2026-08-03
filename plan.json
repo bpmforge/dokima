@@ -4269,6 +4269,31 @@
         "Full gate green including e2e, counts in the commit body; `node scripts/conductor.mjs --lint` still exits 0."
       ],
       "notes": "Filed 2026-08-03 as the follow-up W10-40 AC5 sequenced after all six over-cap files were under. The filter being removed is the `changed.some((f) => it.detail.includes(f))` guard in runValidators. Deliberately NOT bundled into W10-48: that ticket had to leave the gate config untouched while it was still changing the files the gate measures. AGENT 2026-08-03: done. One-line change to the post-filter in runValidators plus an opt-in validators.repoWide list; nothing new is scanned, the scan was always repo-wide. Targeted to validate-file-size only \u2014 circular-deps and the noisy advisory set keep diff-scoping. The zero-count invariant the opt-in rests on is recorded in the config $note AND asserted by a test, so the day it stops holding it fails on this ticket rather than a stranger. Red fixture drives the REAL runValidators against a real temp worktree and the real validator script, not a mirrored predicate; proven red by stashing session.mjs (1 failed / 105 passed), 106/106 after restore. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 416 files / 3131 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-50",
+      "phase": 10,
+      "module": "content",
+      "lane": "content",
+      "points": 5,
+      "title": "The content importer points at a repo that no longer exists \u2014 un-break it before any re-import",
+      "write_scope": [
+        "scripts/import-content.mjs",
+        "scripts/import-content*.test.mjs",
+        "scripts/content-import/**"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "stories": [],
+      "acceptance": [
+        "MEASURED, and this CORRECTS docs/work/W10_PLAN.md \u00a72: the plan says the current failure mode is \"a silent empty import\". It is not \u2014 I ran the paths. `sourceRoot` is hardcoded at scripts/import-content.mjs:24 to `/Users/bmatthews/Code/bpm-opencode-experts`, which no longer exists (upstream renamed to `attest` in v3.0.0), so `copyAgents()` throws a raw ENOENT from `readdirSync` naming a repo nobody will recognise, with no hint the fix is a rename. `--manifest-only` still works because it skips the copy entirely. Record the correction; do not repeat the plan claim.",
+        "CONFIGURABLE, PINNED SOURCE ROOT (same pattern W9-10 used for `boardPath`): read from a config/flag, default to `~/Code/attest`, and record the upstream version actually imported. A missing or wrong source root must exit NON-ZERO with a named, actionable error that says which path was tried and that the repo was renamed \u2014 not an ENOENT stack.",
+        "HOST-PATH PORTABILITY, the pre-existing defect the measurement surfaced: 72 already-imported files hardcode `~/.config/opencode/agents/shared/\u2026` and `.../scripts/validators/\u2026`, a path that does not exist under Dokima; upstream has grown that to 95 files, so a naive re-import makes it ~30% worse. Rewrite those references to Dokima content-relative form AT IMPORT TIME. The importer currently does no path rewriting at all \u2014 its only `.replace` calls strip comments and file extensions.",
+        "LOCAL-OVERRIDE REGISTRY: files Dokima has deliberately patched (W9-08 patched `validate-mermaid.sh`) are either re-applied after import or the import REFUSES and names them. Silent clobber is the failure mode \u2014 the library is signed content the product executes, so an overwrite that goes unnoticed is a supply-chain event, not a merge conflict.",
+        "PROVENANCE RENAME: emit `attest` as the source repo, keeping `bpm-opencode-experts` as a documented alias so the 89 existing headers stay explicable rather than becoming orphan strings.",
+        "`--dry-run` produces an added / removed / drifted report and writes NOTHING. Acceptance is that it reproduces the counts docs/work/W10_PLAN.md \u00a70 measured against `~/Code/attest` @ v3.1.24 \u2014 71 drifted experts, 8 drifted validators, 6 new agents, 1 removed expert, 3 removed / 2 new validators \u2014 or explains each divergence. Red fixtures: a wrong source root exits non-zero with the named error; an import that would clobber a registered override fails loudly."
+      ],
+      "notes": "Filed 2026-08-03. Re-files W10_PLAN \u00a72 Phase B ticket \"W10-02\" under a free id \u2014 the board's W10-02/W10-03 are the model-catalog and seam-wiring tickets, which took those numbers, which is exactly why the tracker refresh nearly wrote this drift off as stale. Prerequisite for the re-import itself (next ticket) and deliberately separate: this one touches only tooling and writes no content, so it can be verified by dry-run against the real upstream without risking the signed library. Upstream confirmed present at ~/Code/attest @ v3.1.24 (Law 9 satisfied, no network). Signing key at ~/.shipwright/keys/ verified to derive the shipped content/keys/dokima-public.pem, so the re-sign in the follow-up is possible. AGENT 2026-08-03: done. Corrected the plan claim \u2014 the failure was a raw ENOENT, not a silent empty import. Dry-run reproduces \u00a70 exactly on added (6, by name) and removed (1); the drift divergence (80/6 vs 71/17) was traced to the host-path rewrite this ticket adds \u2014 without it, 17 identical, matching \u00a70 precisely, and exactly 11 files differ solely because of the rewrite. Report prints both. The real-import refusal on the registered local override was verified by running it and confirming content/ stayed untouched. TWO HONEST NOTES: --manifest-only WRITES and I dirtied content/index.json during verification (reverted; content-signature tests caught it); and W10-49 repo-wide file-size caught THIS ticket growing import-content.mjs to 528 lines, so it was split into scripts/content-import/ with the barrel at 379 \u2014 the gate working on the very next ticket. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 417 files / 3139 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }
