@@ -68,6 +68,7 @@
     "zod": "^4.1.13"
   },
   "files": [
+    "CHANGELOG.md",
     "apps/server/dist/main.js",
     "apps/server/src/bootstrap/cli-entry.mjs",
     "apps/web/dist",
