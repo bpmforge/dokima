@@ -14,7 +14,9 @@ import {
   isValidProviderId,
   needsBaseUrl,
   putProviders,
+  reachability,
   registerCredential,
+  removalCopy,
   type ProviderCatalog,
   type ProviderEntry,
 } from './providers-api.js';
@@ -173,6 +175,70 @@ describe('pure validation helpers', () => {
     expect(hasFixedEndpoint('ollama')).toBe(false);
     expect(hasFixedEndpoint('lm-studio')).toBe(false);
     expect(hasFixedEndpoint('oai-compat')).toBe(false);
+  });
+});
+
+describe('reachability (UX_SPEC §6a "every state, written")', () => {
+  it('is "Not tested yet" before any catalog is fetched', () => {
+    expect(reachability(undefined, 'ollama')).toEqual({ chip: 'Not tested yet' });
+  });
+
+  it('is "Reachable" with no detail when models are present', () => {
+    const catalog: ProviderCatalog = {
+      status: 'ok',
+      source: 'discovered',
+      models: [{ id: 'm1' }],
+    };
+    expect(reachability(catalog, 'oai-compat')).toEqual({ chip: 'Reachable' });
+  });
+
+  it('"Discovery returned nothing": Reachable with zero models carries the local pull/load hint only for local kinds', () => {
+    const catalog: ProviderCatalog = { status: 'ok', source: 'discovered', models: [] };
+    expect(reachability(catalog, 'ollama').detail).toContain('Pull or load a model');
+    expect(reachability(catalog, 'oai-compat').detail).not.toContain('Pull or load');
+  });
+
+  it('is "Bundled" for an unreachable endpoint with a bundled fallback, "Unreachable" otherwise', () => {
+    const bundled: ProviderCatalog = {
+      status: 'unreachable',
+      source: 'bundled',
+      models: [{ id: 'm1' }],
+      reason: 'connect ECONNREFUSED',
+    };
+    const noFallback: ProviderCatalog = {
+      status: 'unreachable',
+      source: null,
+      models: [],
+      reason: 'timeout',
+    };
+    expect(reachability(bundled, 'ollama')).toEqual({
+      chip: 'Bundled',
+      detail: 'connect ECONNREFUSED',
+    });
+    expect(reachability(noFallback, 'ollama')).toEqual({
+      chip: 'Unreachable',
+      detail: 'timeout',
+    });
+  });
+});
+
+describe('removalCopy (UX_SPEC §6a exact removal copy, C-6)', () => {
+  it('names the id and the keychain ref it will NOT delete when one exists', () => {
+    const entry: ProviderEntry = {
+      id: 'gone',
+      kind: 'ollama',
+      enabled: true,
+      credentialRef: 'gone-credential',
+    };
+    const copy = removalCopy(entry);
+    expect(copy).toContain('Remove gone?');
+    expect(copy).toContain('does not delete the keychain entry `gone-credential`');
+    expect(copy).toContain('append-only (C-6)');
+  });
+
+  it('says there is no keychain entry to preserve when the provider never had one', () => {
+    const entry: ProviderEntry = { id: 'bare', kind: 'ollama', enabled: true };
+    expect(removalCopy(entry)).toContain('has no keychain entry to preserve');
   });
 });
 

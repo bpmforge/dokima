@@ -31,6 +31,16 @@ export const PROVIDER_KINDS: readonly ProviderKind[] = [
   'copilot',
 ];
 
+export const KIND_LABEL: Record<ProviderKind, string> = {
+  ollama: 'Ollama (local)',
+  'lm-studio': 'LM Studio (local)',
+  'oai-compat': 'OpenAI-compatible endpoint',
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  vertex: 'Vertex AI',
+  copilot: 'GitHub Copilot (consent-gated)',
+};
+
 /** Kinds whose base URL is user-supplied rather than fixed (UX_SPEC §6a kind table). */
 export const ENDPOINT_KINDS: readonly ProviderKind[] = ['oai-compat'];
 
@@ -148,6 +158,36 @@ export interface ProviderCatalog {
   source: CatalogSource;
   models: CatalogModel[];
   reason?: string;
+}
+
+/** Reachability chip text — never colour alone (UX_SPEC §6a §9): Reachable / Unreachable / Bundled / Not tested yet. */
+export function reachability(
+  catalog: ProviderCatalog | undefined,
+  kind: ProviderKind,
+): { chip: string; detail?: string } {
+  if (!catalog) return { chip: 'Not tested yet' };
+  if (catalog.status === 'ok') {
+    if (catalog.models.length === 0) {
+      const hint =
+        kind === 'ollama' || kind === 'lm-studio'
+          ? ' Pull or load a model on this endpoint, then Refresh.'
+          : '';
+      return { chip: 'Reachable', detail: `Reachable, but serves no models yet.${hint}` };
+    }
+    return { chip: 'Reachable' };
+  }
+  return {
+    chip: catalog.source === 'bundled' ? 'Bundled' : 'Unreachable',
+    detail: catalog.reason,
+  };
+}
+
+/** The exact removal copy UX_SPEC §6a names — what it does and does not touch (C-6). */
+export function removalCopy(entry: ProviderEntry): string {
+  const keychain = entry.credentialRef
+    ? `does not delete the keychain entry \`${entry.credentialRef}\``
+    : 'has no keychain entry to preserve';
+  return `Remove ${entry.id}? This deletes the endpoint from this project's registry and unbinds any matrix cell routing to it. It ${keychain}, does not touch the models on the endpoint itself, and does not alter any run that already happened — receipts and the event log are append-only (C-6).`;
 }
 
 interface WireCatalogModel {
