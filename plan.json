@@ -3905,6 +3905,30 @@
         "Full gate green; counts in the commit body."
       ],
       "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. Filed by the sweep against itself: the honest-absence rule applied to the verification harness rather than the product."
+    },
+    {
+      "id": "W10-38",
+      "phase": 10,
+      "module": "server",
+      "lane": "server",
+      "points": 2,
+      "title": "Cost Estimate shows internals as end-user copy and stamps the digest with a UTC date",
+      "write_scope": [
+        "apps/server/src/api/server/estimate-routes.ts",
+        "apps/server/src/api/server/estimate-routes.test.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "OBSERVED in the running product, dark theme, Settings > Cost Estimate (screenshot 2026-08-03): the pane renders \"no persisted spend ledger reachable from apps/server yet (budget_ledger has no migration)\" and \"no persisted rule/suppression store reachable from apps/server yet (W4-06 blocked on this migration)\". A ticket id, a table name and a source path are being shown to an end user as product copy.",
+        "The DISCLOSURE is correct and must stay \u2014 C-1 local-first honesty requires saying the number is absent rather than printing a fabricated zero. Only the REGISTER is wrong. Rewrite in end-user language and keep the honesty: what is missing, why the number is blank, and what would populate it. Do not soften it into \"no data available\".",
+        "estimate-routes.ts:76/82/84 also surface \"GET /models\" as copy; same treatment.",
+        "estimate-routes.ts:283 stamps \"Weekly digest \u2014 2026-08-03\" from the UTC date, so after ~17:00 Pacific the digest is labelled a day ahead \u2014 confirmed live at 21:14 local on 2026-08-02. Nothing on screen defines whether that date is the week start, the week end, or generation time. Fix the timezone handling and say which one it is.",
+        "RED FIXTURE: a test that pins the digest label across a UTC-day-boundary timestamp (e.g. 2026-08-02T23:30 local / 2026-08-03T06:30Z) and fails on the off-by-one.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Split out of W10-36 as that ticket said it should be: W10-36 is web-lane copy, this is apps/server-owned. Both found by the 2026-08-03 visual verification sweep; this one re-confirmed live while verifying W10-31."
     }
   ]
 }
