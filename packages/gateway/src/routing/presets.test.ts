@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveModelChain } from './matrix.js';
 import {
+  PRESET_NAMES,
   PRESET_ROLES,
   PRESETS,
   presetAsGlobalScope,
@@ -31,6 +32,11 @@ describe('FR-S3: presets All-local/Hybrid/All-cloud ship', () => {
 
   it('presetAsGlobalScope wraps a preset as the global scope', () => {
     expect(presetAsGlobalScope('hybrid')).toEqual({ global: PRESETS.hybrid });
+  });
+
+  /** W10-42: pins the exact list apps/web/src/settings/types.ts hand-mirrors as MODEL_MATRIX_PRESETS. */
+  it('PRESET_NAMES is Object.keys(PRESETS), typed', () => {
+    expect(PRESET_NAMES).toEqual(['all-local', 'hybrid', 'all-cloud']);
   });
 });
 

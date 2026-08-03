@@ -135,5 +135,14 @@ export interface EscalationPolicySetting {
   namedTier?: PolicyRung;
 }
 
+/**
+ * Mirrors `packages/gateway/src/routing/presets.ts`'s `PRESET_NAMES` (that
+ * module's `Object.keys(PRESETS)`, W10-42) — apps/web has no dependency on
+ * `@dokima/gateway` (out of this ticket's write_scope to add, and
+ * ARCHITECTURE §4: the web app talks to the server over REST/WS only,
+ * never a domain package directly), so this module owns its own copy
+ * rather than importing it, same precedent as `apps/web/src/board/types.ts`
+ * and `apps/web/src/onboarding/types.ts`.
+ */
 export const MODEL_MATRIX_PRESETS = ['all-local', 'hybrid', 'all-cloud'] as const;
 export type ModelMatrixPreset = (typeof MODEL_MATRIX_PRESETS)[number];

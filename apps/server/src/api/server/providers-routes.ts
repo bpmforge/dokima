@@ -15,19 +15,34 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   ProviderRegistryError,
+  createLmStudioProvider,
+  createOaiCompatProvider,
+  createOllamaProvider,
+  resolveProviderCatalog,
   validateProviderRegistry,
+  type CatalogModel,
+  type Provider,
   type ProviderEntry,
   type ProviderKind,
 } from '@dokima/gateway';
-import { looksLikeSecret } from '@dokima/shared';
+import {
+  createProjectSecretsVault,
+  looksLikeSecret,
+  resolveCredentialStore,
+  type CredentialStore,
+} from '@dokima/shared';
 import { PROBLEM_CONTENT_TYPE, problem } from '../problem.js';
 import { listProviders, putProviders, removeProvider } from './providers-store.js';
-import { resolveProjectOrProblem } from './settings-route-helpers.js';
+import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
 import { getProjectSettings } from './settings-scope.js';
 
 export interface ProvidersRoutesOptions {
   /** Overrides the fleet home — tests only. */
   home?: string;
+  /** Injects a fake OS-keychain adapter — tests only; production resolves the real one lazily per request. */
+  credentialStore?: CredentialStore;
+  /** Scopes the vault's on-disk name index (DOKIMA_HOME) — tests only; production uses process.env. */
+  env?: NodeJS.ProcessEnv;
 }
 
 interface WireProvider {
@@ -46,6 +61,46 @@ function toWire(entry: ProviderEntry): WireProvider {
     ...(entry.credentialRef === undefined ? {} : { credential_ref: entry.credentialRef }),
     enabled: entry.enabled,
   };
+}
+
+interface WireCatalogModel {
+  id: string;
+  context_length?: number;
+}
+
+function toWireModel(model: CatalogModel): WireCatalogModel {
+  return {
+    id: model.id,
+    ...(model.contextLength === undefined ? {} : { context_length: model.contextLength }),
+  };
+}
+
+/**
+ * `buildProvider`'s kinds (`apps/server/src/cli/ops/providers-core.ts`) —
+ * duplicated here rather than imported, since that module lives under
+ * `cli/ops` and this ticket's write_scope doesn't cover it. Any kind that
+ * adapter doesn't build either (`anthropic`, `openai`, `vertex`, `copilot`)
+ * degrades honestly through `resolveProviderCatalog`'s catch path instead
+ * of being fabricated: the `reason` is the exact UX_SPEC §6a "Cloud kind
+ * selected" copy so the panel renders it verbatim.
+ */
+function buildCatalogProvider(entry: ProviderEntry): Pick<Provider, 'listModels'> {
+  switch (entry.kind) {
+    case 'ollama':
+      return createOllamaProvider(entry.baseUrl ? { baseUrl: entry.baseUrl } : {});
+    case 'lm-studio':
+      return createLmStudioProvider(entry.baseUrl ? { baseUrl: entry.baseUrl } : {});
+    case 'oai-compat':
+      return createOaiCompatProvider({ id: entry.id, baseUrl: entry.baseUrl ?? '' });
+    default:
+      return {
+        async listModels() {
+          throw new Error(
+            `provider kind "${entry.kind}" is registered but not yet constructible from the pipeline: it needs a resolved credential and a real price table (W10 follow-up). Local kinds (ollama, lm-studio, oai-compat) work today.`,
+          );
+        },
+      };
+  }
 }
 
 function fromWire(raw: unknown): unknown {
@@ -107,6 +162,83 @@ export function registerProvidersRoutes(
       if (!projectPath) return;
       const entries = await listProviders(projectPath);
       return reply.send({ providers: entries.map(toWire) });
+    },
+  );
+
+  /**
+   * GET .../providers/:providerId/models (W10-02 AC3, UX_SPEC §6a). Reuses
+   * `resolveProviderCatalog` — the CLI's `providers refresh` was this
+   * function's only caller before this route; now the browser can reach the
+   * same discovered/bundled/honest-absence result the "Test" and "Refresh"
+   * affordances need.
+   */
+  app.get(
+    '/api/v1/projects/:id/providers/:providerId/models',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id, providerId } = request.params as { id: string; providerId: string };
+      const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
+      if (!projectPath) return;
+      const entries = await listProviders(projectPath);
+      const entry = entries.find((e) => e.id === providerId);
+      if (!entry) {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(
+            problem({
+              type: 'https://dokima.dev/errors/not-found',
+              title: 'Provider not found',
+              status: 404,
+              detail: `no provider registered with id ${providerId}`,
+              instance: request.url,
+              requestId: request.id.toString(),
+            }),
+          );
+      }
+      const provider = buildCatalogProvider(entry);
+      const result = await resolveProviderCatalog(entry.id, entry.kind, provider);
+      return reply.send({
+        status: result.status,
+        source: result.source,
+        models: result.models.map(toWireModel),
+        ...(result.reason === undefined ? {} : { reason: result.reason }),
+      });
+    },
+  );
+
+  /**
+   * POST .../providers/credentials (W10-04 self-block AC3, UX_SPEC §6a, Law
+   * 8). Accepts the literal secret exactly once, registers it in the OS
+   * keychain via `ProjectSecretsVault.register`, and returns only the name
+   * the caller chose — the same name `vault.get`/`vault.delete` accept back,
+   * and what the caller then sends as `credential_ref` on the provider
+   * registry PUT. The value itself never touches `settings.json` or the
+   * event log; this route doesn't open either.
+   */
+  app.post(
+    '/api/v1/projects/:id/providers/credentials',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
+      if (!projectPath) return;
+      const body = request.body as { name?: unknown; value?: unknown } | undefined;
+      const name = body?.name;
+      const value = body?.value;
+      if (
+        typeof name !== 'string' ||
+        name.trim() === '' ||
+        typeof value !== 'string' ||
+        value.trim() === ''
+      ) {
+        return reply
+          .code(400)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(badRequest(request, '"name" and "value" must both be non-empty strings'));
+      }
+      const store = opts.credentialStore ?? resolveCredentialStore(opts.env);
+      const vault = createProjectSecretsVault(store, projectPath, opts.env);
+      await vault.register(name, value);
+      return reply.send({ ref: name });
     },
   );
 

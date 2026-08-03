@@ -100,6 +100,19 @@ export const PRESETS: Record<PresetName, RoleMatrix> = {
   'all-cloud': PRESET_ALL_CLOUD,
 };
 
+/**
+ * The typed name list, derived from `PRESETS` rather than hand-listed a
+ * second time (W10-42) — the single source of truth for what
+ * `apps/web/src/settings/types.ts`'s own `MODEL_MATRIX_PRESETS` mirrors.
+ * apps/web cannot import this package directly (ARCHITECTURE §4: web talks
+ * to the server over REST/WS only, never a domain package — see that
+ * file's header comment for the precedent), so the fold this ticket asked
+ * for stops at this export; the web copy stays hand-mirrored.
+ */
+export const PRESET_NAMES: readonly PresetName[] = Object.keys(
+  PRESETS,
+) as readonly PresetName[];
+
 /** The canonical roles every shipped preset must define (used by presets.test.ts's coverage check). */
 export const PRESET_ROLES: readonly AgentRole[] = [
   ROLE_CODING_AGENT,
