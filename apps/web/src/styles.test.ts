@@ -113,6 +113,70 @@ const PX_EXEMPT_PROPERTIES: Record<string, string> = {
   // needs is the first crack in an allowlist.
 };
 
+/**
+ * Standard CSS properties whose values are a spacing insertion (gap between
+ * or around boxes), as opposed to a font-size, radius, or line-length
+ * measurement — each of those is scaled and gated separately. Excludes
+ * `width`/`height`/`min-width`/etc: those size a box to fit its content
+ * (e.g. the notification-bell badge's `1.1rem` circle), which is a
+ * component-geometry decision, not a spacing-scale one.
+ */
+const SPACING_PROPERTIES = new Set([
+  'padding',
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+  'margin',
+  'margin-top',
+  'margin-right',
+  'margin-bottom',
+  'margin-left',
+  'gap',
+  'row-gap',
+  'column-gap',
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'inset',
+]);
+
+/** Every raw (non-token) rem literal in a declaration value, as a number. */
+function remLiterals(value: string): number[] {
+  return [...value.matchAll(/(-?[0-9]*\.?[0-9]+)rem\b/g)].map((m) => parseFloat(m[1]!));
+}
+
+/**
+ * Individual declarations whose rem value is real geometry, not a
+ * spacing-rhythm choice — so a property-level exemption (like
+ * PX_EXEMPT_PROPERTIES above) would be too broad, since the same property
+ * carries genuine spacing-scale values elsewhere (e.g. `padding-top` is
+ * already tokenized in artifacts.css and chat.css). Keyed to the exact
+ * file+prop+value so nothing else can ride along silently.
+ */
+const SPACING_SCALE_EXEMPT: {
+  file: string;
+  prop: string;
+  value: string;
+  reason: string;
+}[] = [
+  {
+    file: 'styles.css',
+    prop: 'padding-top',
+    value: '9rem',
+    reason:
+      ".shortcuts-overlay__backdrop: fixed clearance for the app-shell header (and, on Fleet, the stacked fleet__header toolbar) above it, not a spacing-rhythm step — see the rule's own comment",
+  },
+];
+
+function isSpacingScaleExempt(d: Declaration): boolean {
+  return SPACING_SCALE_EXEMPT.some(
+    (e) =>
+      path.basename(d.file) === e.file && d.prop === e.prop && d.value.trim() === e.value,
+  );
+}
+
 function cssFiles(): string[] {
   return readdirSync(testDir, { recursive: true, encoding: 'utf-8' })
     .filter((f) => f.endsWith('.css'))
@@ -213,6 +277,54 @@ describe('design tokens (W10-06)', () => {
     ).toEqual([]);
   });
 
+  it('declares no off-scale rem in a spacing property (W10-28)', () => {
+    // Derived from the real --sw-space-* definitions rather than hardcoded,
+    // so the gate always tracks the actual scale, not a stale copy of it.
+    const spaceScale = new Set(
+      all
+        .filter((d) => d.prop.startsWith('--sw-space-') && isTokenDefinition(d))
+        .flatMap((d) => remLiterals(d.value)),
+    );
+    expect(spaceScale.size).toBeGreaterThan(0);
+
+    const violations = all.filter(
+      (d) =>
+        !isTokenDefinition(d) &&
+        !isSpacingScaleExempt(d) &&
+        SPACING_PROPERTIES.has(d.prop) &&
+        remLiterals(d.value).some((v) => !spaceScale.has(Math.abs(v))),
+    );
+    expect(
+      violations,
+      `A rem value off the --sw-space-* scale in a spacing property bypasses\n` +
+        `the grid. Snap to the nearest --sw-space-* token:\n` +
+        describeAll(violations),
+    ).toEqual([]);
+  });
+
+  it('declares no off-scale font-size — every value is a --sw-text-* token (W10-28)', () => {
+    // Same derive-from-definitions approach as the spacing scale above.
+    const textScale = new Set(
+      all
+        .filter((d) => d.prop.startsWith('--sw-text-') && isTokenDefinition(d))
+        .flatMap((d) => remLiterals(d.value)),
+    );
+    expect(textScale.size).toBeGreaterThan(0);
+
+    const violations = all.filter(
+      (d) =>
+        !isTokenDefinition(d) &&
+        d.prop === 'font-size' &&
+        remLiterals(d.value).some((v) => !textScale.has(Math.abs(v))),
+    );
+    expect(
+      violations,
+      `A raw rem font-size off the --sw-text-* scale bypasses the type\n` +
+        `scale. Use a --sw-text-* token (or extend the scale in styles.css):\n` +
+        describeAll(violations),
+    ).toEqual([]);
+  });
+
   it('resolves every --sw-* token it references, with no hex fallbacks', () => {
     // Before W10-06 eight tokens were referenced with a hex fallback and
     // never defined anywhere — `var(--sw-success, #2ecc71)` always took
@@ -260,6 +372,62 @@ describe('design tokens (W10-06)', () => {
         .join(';');
     };
     expect(body(':root:not([data-theme])')).toBe(body(":root[data-theme='dark']"));
+  });
+});
+
+/* Proves the spacing/font-size scale checks can actually fail (docs/TESTING.md
+   §6), same discipline as the W10-06 hex/px gates above: a synthetic
+   declaration list is fed through the exact same filters the real gate
+   uses, rather than asserting on prose about what the gate "should" do. */
+describe('gate integrity: the spacing/font-size scale checks can fail (W10-28 red fixture)', () => {
+  const scale = new Set([0.25, 0.5]);
+
+  it('catches an off-scale rem in a spacing property', () => {
+    const declarationValue = '0.4rem var(--sw-space-2)';
+    expect(SPACING_PROPERTIES.has('padding')).toBe(true);
+    expect(remLiterals(declarationValue).some((v) => !scale.has(Math.abs(v)))).toBe(true);
+  });
+
+  it('does not flag a spacing property whose rem values are already on scale', () => {
+    const declarationValue = '0.5rem var(--sw-space-2)';
+    expect(remLiterals(declarationValue).some((v) => !scale.has(Math.abs(v)))).toBe(
+      false,
+    );
+  });
+
+  it('does not flag a non-spacing property carrying an off-scale rem (width/height are geometry)', () => {
+    expect(SPACING_PROPERTIES.has('width')).toBe(false);
+    expect(SPACING_PROPERTIES.has('height')).toBe(false);
+    expect(SPACING_PROPERTIES.has('min-width')).toBe(false);
+  });
+
+  it('catches an off-scale rem font-size', () => {
+    const declarationValue = '1.1rem';
+    expect(remLiterals(declarationValue).some((v) => !scale.has(Math.abs(v)))).toBe(true);
+  });
+
+  it('does not flag a font-size already expressed as a --sw-text-* token', () => {
+    const declarationValue = 'var(--sw-text-lg)';
+    expect(remLiterals(declarationValue)).toEqual([]);
+  });
+
+  it('exempts only the exact declaration named in SPACING_SCALE_EXEMPT, not the property everywhere', () => {
+    expect(
+      isSpacingScaleExempt({
+        prop: 'padding-top',
+        value: '9rem',
+        file: '/x/styles.css',
+        line: 1,
+      }),
+    ).toBe(true);
+    expect(
+      isSpacingScaleExempt({
+        prop: 'padding-top',
+        value: '0.4rem',
+        file: '/x/styles.css',
+        line: 1,
+      }),
+    ).toBe(false);
   });
 });
 

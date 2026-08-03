@@ -20,7 +20,7 @@
 .estimate__table th,
 .estimate__table td {
   text-align: left;
-  padding: 0.35rem var(--sw-space-2);
+  padding: var(--sw-space-1) var(--sw-space-2);
   border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
@@ -62,7 +62,7 @@
 .estimate__tier-badge {
   display: inline-block;
   border-radius: var(--sw-radius-pill);
-  padding: 0.1rem 0.6rem;
+  padding: var(--sw-space-0-5) var(--sw-space-2);
   font-size: var(--sw-text-sm);
   text-transform: uppercase;
   border: var(--sw-border-width) solid var(--sw-border);
