@@ -11,6 +11,7 @@ import {
   UnresolvedFounderDecisionError,
 } from '@dokima/pipeline';
 import { InvalidPipelineRunRequestError, MalformedModelOutputError } from '../errors.js';
+import { ModelResolutionError } from '../model-resolution.js';
 
 interface ProblemMapping {
   readonly status: number;
@@ -67,6 +68,17 @@ const KNOWN_ERROR_STATUSES: readonly [new (...args: never[]) => Error, ProblemMa
     [
       SigningKeyRequiredError,
       { status: 503, title: 'Signing key not configured', rule: 'SIGNING_KEY_REQUIRED' },
+    ],
+    // W10-69. A model the registry cannot bind is a configuration problem the
+    // user can fix — an unknown or ambiguous provider prefix, or a matrix row
+    // pointing at a provider that is disabled or gone. 409 rather than 400:
+    // the request is well-formed, the stored configuration conflicts with it.
+    // Naming it matters more than the code does — the alternative this ticket
+    // replaced was a SILENT fallback to localhost, which told the user nothing
+    // and quietly ran a different model than the one they chose.
+    [
+      ModelResolutionError,
+      { status: 409, title: 'Model could not be resolved', rule: 'MODEL_RESOLUTION' },
     ],
     [
       InvalidPipelineRunRequestError,
