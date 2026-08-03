@@ -23,7 +23,7 @@ export async function resolveProviderCatalog(
       providerId,
       kind,
       status: 'ok',
-      source: 'discovered' satisfies CatalogSource,
+      source: 'discovered',
       models,
     };
   } catch (err) {
