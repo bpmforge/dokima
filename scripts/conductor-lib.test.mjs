@@ -1087,3 +1087,144 @@ describe('repo-wide validator scoping (W10-49)', () => {
     expect(cfg.validators.$note).toContain('ZERO');
   });
 });
+
+/**
+ * W10-53. Two independent glob implementations decide `write_scope`:
+ *
+ *   - `globToRegex` (conductor-lib/parsing.mjs) ENFORCES scope at gate time —
+ *     it decides whether a changed file is out-of-scope and fails the ticket.
+ *   - `globOverlaps` (validate-plan.mjs) decides lane-overlap legality at
+ *     board-validation time.
+ *
+ * They are kept in sync by a comment ("same dialect… keep in sync; W3-12
+ * consolidates"). An external pilot report (2026-08-03) recorded a comparable
+ * harness losing two tickets to exactly this class of gap: a `dir/*.test.ts`
+ * scope its normalization silently treated as a literal directory name, so the
+ * scope gate rejected correct work and the failure was diagnosed as a bad
+ * ticket rather than a dialect bug.
+ *
+ * Dokima does not have that bug — both dialects handle that pattern. These
+ * assertions exist so that stays true by gate rather than by luck: a
+ * divergence names the glob, the path, and both answers.
+ *
+ * Deliberately NOT consolidating the two here. validate-plan.mjs runs as a bare
+ * `node scripts/validate-plan.mjs` in CI with no workspace install, so making
+ * it import conductor-lib is a real coupling decision, not a cleanup.
+ */
+describe('the two write_scope glob dialects agree (W10-53)', () => {
+  /** Lift validate-plan.mjs's matcher without running its top-level board load. */
+  const loadBoardValidatorMatcher = async () => {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const src = readFileSync(path.join(root, 'scripts/validate-plan.mjs'), 'utf8');
+    const body = src.slice(
+      src.indexOf('function segmentTextOverlaps'),
+      src.indexOf('// ---- per ticket'),
+    );
+    const mod = await import(
+      'data:text/javascript,' + encodeURIComponent(body + '\nexport { globOverlaps };')
+    );
+    return mod.globOverlaps;
+  };
+
+  const CASES = [
+    // [glob, path] — answers are not asserted here, only AGREEMENT between the two.
+    ['packages/events/src/*.test.ts', 'packages/events/src/receipts.test.ts'],
+    ['packages/events/src/*.test.ts', 'packages/events/src/sub/deep.test.ts'],
+    ['packages/events/src/*.test.ts', 'packages/events/src/receipts.ts'],
+    ['packages/events/**', 'packages/events/src/receipts.ts'],
+    ['packages/events/**', 'packages/events/package.json'],
+    ['apps/web/src/**/*.css', 'apps/web/src/board/board.css'],
+    ['apps/web/src/**/*.css', 'apps/web/src/styles.css'],
+    ['apps/web/src/**/*.css', 'apps/web/src/board/board.tsx'],
+    ['scripts/conductor*', 'scripts/conductor-lib.mjs'],
+    ['scripts/conductor*', 'scripts/conductor/context.mjs'],
+    ['scripts/conductor*', 'scripts/validate-plan.mjs'],
+    ['content/validators/secrets-scan*', 'content/validators/secrets-scan.sh'],
+    ['docs/*.md', 'docs/STATUS.md'],
+    ['docs/*.md', 'docs/work/W10_PLAN.md'],
+    ['docs/**/*.md', 'docs/work/W10_PLAN.md'],
+    ['a/?/c.ts', 'a/b/c.ts'],
+    ['a/?/c.ts', 'a/bb/c.ts'],
+    ['.github/workflows/*.yml', '.github/workflows/ci.yml'],
+    ['plan.json', 'plan.json'],
+    ['plan.json', 'docs/plan.json'],
+    ['apps/server/src/api/projects*', 'apps/server/src/api/projects/routes.ts'],
+    ['**/*.test.ts', 'packages/tickets/src/lanes.test.ts'],
+  ];
+
+  it('agrees on every hand-picked pattern shape', async () => {
+    const globOverlaps = await loadBoardValidatorMatcher();
+    const diverged = [];
+    for (const [glob, target] of CASES) {
+      const enforcer = globToRegex(glob).test(target);
+      const validator = globOverlaps(glob, target);
+      if (enforcer !== validator) {
+        diverged.push(`${glob} vs ${target}: enforcer=${enforcer} boardValidator=${validator}`);
+      }
+    }
+    expect(diverged).toEqual([]);
+  });
+
+  it('RED FIXTURE: `**/` spans ZERO segments — the bug this differential test found', () => {
+    // globToRegex expanded `a/**/b` to `^a/.*/b$`, leaving the slash literal, so
+    // `**` required at least one intervening directory. The board validator
+    // disagreed, which is how the differential test caught it.
+    //
+    // It had already bitten three times unnoticed: W10-06, W10-28 and W10-30 all
+    // scoped `apps/web/src/**/*.css`, which did NOT cover
+    // `apps/web/src/styles.css`, and each silently worked around it by listing
+    // that file explicitly. An enforcement boundary narrower than it reads is
+    // the dangerous direction — it trains operators to widen scopes by hand.
+    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/styles.css')).toBe(true);
+    // …without over-widening: still one segment deep, still extension-bound,
+    // still anchored at the start.
+    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/board/board.css')).toBe(true);
+    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/a/b/c.css')).toBe(true);
+    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/board/board.tsx')).toBe(false);
+    expect(globToRegex('apps/web/src/**/*.css').test('other/apps/web/src/x.css')).toBe(false);
+    // `?` still means exactly one non-separator character. The fix reorders the
+    // `?` expansion, so this is the case that would break if it regressed.
+    expect(globToRegex('a/?/c.ts').test('a/b/c.ts')).toBe(true);
+    expect(globToRegex('a/?/c.ts').test('a/bb/c.ts')).toBe(false);
+  });
+
+  it('agrees on every write_scope glob actually on the board', async () => {
+    // The cases above are ones I thought of. This one is every glob the project
+    // really uses, crossed against real repo paths — the set that would actually
+    // bite, rather than the set I imagined.
+    const globOverlaps = await loadBoardValidatorMatcher();
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const plan = JSON.parse(readFileSync(path.join(root, 'plan.json'), 'utf8'));
+    const globs = [...new Set(plan.tickets.flatMap((t) => t.write_scope))];
+    expect(globs.length).toBeGreaterThan(50);
+
+    const paths = [
+      'plan.json',
+      'docs/STATUS.md',
+      'scripts/conductor.mjs',
+      'scripts/conductor/context.mjs',
+      'scripts/conductor-lib/parsing.mjs',
+      'packages/events/src/receipts.ts',
+      'packages/events/src/receipts/mac.ts',
+      'apps/web/src/styles.css',
+      'apps/web/src/board/BoardView.tsx',
+      'apps/server/src/api/server.ts',
+      'apps/server/src/api/projects/routes.ts',
+      'content/validators/secrets-scan.sh',
+      'content/experts/security/security-auditor.md',
+      '.github/workflows/ci.yml',
+    ];
+
+    const diverged = [];
+    for (const glob of globs) {
+      for (const target of paths) {
+        const enforcer = globToRegex(glob).test(target);
+        const validator = globOverlaps(glob, target);
+        if (enforcer !== validator) {
+          diverged.push(`${glob} vs ${target}: enforcer=${enforcer} boardValidator=${validator}`);
+        }
+      }
+    }
+    expect(diverged).toEqual([]);
+  });
+});
