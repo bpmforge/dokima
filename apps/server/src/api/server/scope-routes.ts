@@ -11,6 +11,7 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { JsonValue, SettingsMap } from '@dokima/shared';
+import { PRESET_NAMES } from '@dokima/gateway';
 import {
   badRequest,
   forbidden,
@@ -68,6 +69,44 @@ function refuseConsentGatedKey(
   return true;
 }
 
+/**
+ * `defaultModelMatrixPreset`'s only legal values are `@dokima/gateway`'s
+ * shipped preset names (FR-S3, W10-42 AC5). `PUT /api/v1/settings/global`
+ * (FirstRunWizard's `savePresetAndProvider`) is this key's sole wire
+ * boundary — the generic settings PUT otherwise passes any value straight
+ * through with no per-key validation, so an unrecognized preset name would
+ * silently settle into global scope instead of failing loudly here.
+ */
+function findInvalidPreset(body: Record<string, JsonValue>): JsonValue | undefined {
+  if (!('defaultModelMatrixPreset' in body)) return undefined;
+  const value = body.defaultModelMatrixPreset;
+  return typeof value === 'string' && (PRESET_NAMES as readonly string[]).includes(value)
+    ? undefined
+    : value;
+}
+
+/** Sends the 400 refusal and returns true if `body` names an unrecognized `defaultModelMatrixPreset` — malformed input, not a consent denial, hence 400 not 403. */
+function refuseUnknownPreset(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  body: unknown,
+): boolean {
+  if (!isPlainSettingsBody(body)) return false;
+  const invalid = findInvalidPreset(body);
+  if (invalid === undefined) return false;
+  reply
+    .code(400)
+    .type('application/problem+json')
+    .send(
+      badRequest(
+        request,
+        `"defaultModelMatrixPreset" must be one of ${PRESET_NAMES.join(', ')}, got ${JSON.stringify(invalid)}`,
+        'unknown-preset',
+      ),
+    );
+  return true;
+}
+
 async function applyEachKey(
   body: unknown,
   write: (key: string, value: JsonValue | undefined) => Promise<SettingsMap>,
@@ -99,6 +138,7 @@ export function registerScopeRoutes(
     '/api/v1/settings/global',
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (refuseConsentGatedKey(request, reply, request.body)) return;
+      if (refuseUnknownPreset(request, reply, request.body)) return;
       const query = request.query as Record<string, unknown>;
       const loggingProjectPath =
         typeof query.project === 'string'

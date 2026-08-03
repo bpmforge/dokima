@@ -352,6 +352,53 @@ describe('settings routes', () => {
     expect(properEnable.json().enabled).toBe(true);
   });
 
+  /**
+   * RED FIXTURE (W10-42 AC5): `defaultModelMatrixPreset` is written only
+   * through this route (FirstRunWizard's `savePresetAndProvider`), so an
+   * unrecognized preset name must fail loudly here instead of settling
+   * silently into global scope. `putGlobalSetting`/`getGlobalSettings`
+   * (settings-scope.ts, out of this ticket's write_scope) resolve their file
+   * path from `process.env` with no test-injectable override, unlike every
+   * project-scoped write in this file — the real global config write path
+   * is `~/.dokima/config.json` by default, so a successful PUT here scopes
+   * `DOKIMA_HOME` to a temp dir first (settings-scope.test.ts's own
+   * precedent for this), never touching the developer's real config.
+   */
+  it('PUT settings/global rejects an unknown defaultModelMatrixPreset with 400 rule: unknown-preset', async () => {
+    const { app } = await boot();
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-global-home-'));
+    dirs.push(home);
+    process.env.DOKIMA_HOME = home;
+    try {
+      const bad = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/settings/global',
+        headers: authHeaders(),
+        payload: { defaultModelMatrixPreset: 'quantum-cloud' },
+      });
+      expect(bad.statusCode).toBe(400);
+      expect(bad.json().rule).toBe('unknown-preset');
+
+      const after = await app.inject({
+        method: 'GET',
+        url: '/api/v1/settings/global',
+        headers: authHeaders(),
+      });
+      expect(after.json().defaultModelMatrixPreset).toBeUndefined();
+
+      const good = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/settings/global',
+        headers: authHeaders(),
+        payload: { defaultModelMatrixPreset: 'all-cloud' },
+      });
+      expect(good.statusCode).toBe(200);
+      expect(good.json().defaultModelMatrixPreset).toBe('all-cloud');
+    } finally {
+      delete process.env.DOKIMA_HOME;
+    }
+  });
+
   it('guide route degrades to markdown:null for a topic with no content yet', async () => {
     const { app } = await boot();
     const res = await app.inject({

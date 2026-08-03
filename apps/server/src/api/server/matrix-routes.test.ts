@@ -169,16 +169,15 @@ describe('model-matrix PUT: maker != verifier at configuration time (W10-42 AC4,
 
 /**
  * AC5 (revised): apps/web has no `@dokima/gateway` dependency (ARCHITECTURE
- * §4), so `defaultModelMatrixPreset` can't be validated against `PRESETS`
- * where it's actually written (`PUT /api/v1/settings/global`, handled in
- * scope-routes.ts — a flat, unvalidated pass-through by its own header
- * comment, and out of this ticket's write_scope to extend; see plan.json's
- * HANDOFF). This is the honest in-scope ceiling instead: apps/server
- * already carries its own third mirror of the preset name list
+ * §4), so `defaultModelMatrixPreset` can't be validated against `PRESETS` in
+ * the browser. The wire boundary IS enforced now, in scope-routes.ts's
+ * `PUT /api/v1/settings/global` (`refuseUnknownPreset`, 400 problem+json
+ * `rule: 'unknown-preset'` — see settings-routes.test.ts's red fixture for
+ * that). This test covers the remaining honest gap: apps/server also
+ * carries its own third mirror of the preset name list
  * (`settings-types.ts`'s `MODEL_MATRIX_PRESETS`, zero consumers today) —
  * pinning it against the gateway's `PRESET_NAMES` here means the two
- * hand-kept lists can't silently drift without failing this gate, even
- * though the wire boundary itself isn't enforced yet.
+ * hand-kept lists can't silently drift either.
  */
 describe('AC5: MODEL_MATRIX_PRESETS mirror stays pinned to PRESET_NAMES', () => {
   it('settings-types.ts MODEL_MATRIX_PRESETS equals @dokima/gateway PRESET_NAMES', async () => {

@@ -32,7 +32,7 @@ export async function resolveProjectOrProblem(
   }
 }
 
-export function badRequest(request: FastifyRequest, detail: string) {
+export function badRequest(request: FastifyRequest, detail: string, rule?: string) {
   return problem({
     type: 'https://dokima.dev/errors/invalid-request',
     title: 'Invalid request',
@@ -40,6 +40,7 @@ export function badRequest(request: FastifyRequest, detail: string) {
     detail,
     instance: request.url,
     requestId: request.id.toString(),
+    rule,
   });
 }
 
