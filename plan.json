@@ -3675,6 +3675,34 @@
         "Full gate green including e2e; counts in the commit body."
       ],
       "notes": "Filed BY W10-06, as its own acceptance required (\"file it separately rather than smuggling a redesign into a token migration\"). W10-06 built the scale and the gate; this ticket finishes adopting it in the places where adoption needs design judgement rather than a script."
+    },
+    {
+      "id": "W10-29",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "The receipts fetch double-prefixes /api/v1 \u2014 the drawer 404s and the palette fails silently",
+      "write_scope": [
+        "apps/web/src/artifacts/api.ts",
+        "apps/web/src/artifacts/api.test.ts",
+        "apps/web/src/board/drawer/EvidencePanel.tsx",
+        "apps/web/src/board/drawer/EvidencePanel.test.tsx",
+        "apps/web/src/palette/CommandPalette.tsx",
+        "apps/web/src/palette/CommandPalette.test.tsx"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "OBSERVED 2026-08-02 against the real running product, in BOTH themes: opening any ticket drawer fires GET /api/v1/api/v1/projects/<id>/receipts?ticket=<id> \u2014 note the DOUBLED path segment \u2014 which 404s. The Receipts section then renders the raw string \"Artifact API request failed with status 404\" to the end user. Screenshot evidence captured at 1440x900.",
+        "ROOT CAUSE, already traced: `request()` in apps/web/src/artifacts/api.ts:49 builds `${opts.baseUrl ?? ''}${urlPath}`, but every urlPath in that module already hardcodes the /api/v1 prefix (e.g. line 179). ArtifactViewerRoot.tsx:69 works because it passes `{ getToken }` with NO baseUrl; EvidencePanel.tsx:30 passes `{ baseUrl, getToken }` where baseUrl is \"/api/v1\" (App.tsx:343/359/368), so it doubles.",
+        "BLAST RADIUS is four call sites in two components, not one: EvidencePanel.tsx:30 (fetchReceipts) plus CommandPalette.tsx:86 (fetchArtifactList), :87 (fetchReceipts) and :142 (fetchReceipt). The palette calls have NO .catch, so they reject unhandled and the palette silently shows no docs and no receipts \u2014 a silent failure, strictly worse than the drawer's visible error. Fix all four.",
+        "Make the class of bug impossible rather than patching four call sites: either have `request()` reject/normalise a baseUrl that would duplicate the prefix it already carries, or strip the hardcoded prefix from the module and require baseUrl. Pick one and make the other shape a type or runtime error \u2014 a third caller will otherwise reintroduce this.",
+        "RED FIXTURE, and it is the point: assert the REQUEST URL, not just the parsed response. The reason 2923 tests and 59 e2e specs all pass while this ships broken is that EvidencePanel.test.tsx never asserts a URL and CommandPalette.tsx has NO test file at all. Add a test that fails on a doubled /api/v1 \u2014 verified by reverting the fix and confirming red.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-02 by an end-user visual verification sweep (46 screenshots, both themes, real server + real event log) rather than by any test \u2014 the capture harness recorded console errors and HTTP >=400 per state, which is what surfaced it. Worth noting for docs/TESTING.md: the whole suite was green while a user-facing surface was 404ing on every open, because nothing asserted the request URL."
     }
   ]
 }
