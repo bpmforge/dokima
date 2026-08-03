@@ -412,3 +412,81 @@ describe('gate integrity: the missing-declaration check can fail (W10-30 red fix
     expect(contrastRatio(linkColor.dark, bg.dark)).toBeLessThan(4.5);
   });
 });
+
+/* ── W10-31: color-scheme / accent-color gate ────────────────────────
+   Neither `:root` block declared `color-scheme`, so the browser had no
+   signal that the dark theme was dark: every native control (select
+   popups, checkboxes, range thumbs, scrollbars) kept painting its
+   light-mode UA chrome over the app's own dark surfaces — nine controls
+   across five files, all invisible to the W10-06 hex/px scan because
+   there was no colour value to find, only a missing declaration (the
+   same shape as W10-30's anchor bug, one property over). Three separate
+   fixes, three separate assertions: `color-scheme` (select popups,
+   scrollbars, spinners), `accent-color` (checkbox mark, radio dot, range
+   thumb — color-scheme alone does not theme these), and the `<meta>`
+   fallback for the frame before either stylesheet rule can apply. */
+describe('color-scheme and accent-color are declared (W10-31)', () => {
+  it('declares color-scheme: light on the base :root block', () => {
+    const rootRule = ruleBody(':root');
+    expect(rootRule).toMatch(/color-scheme:\s*light\s*;/);
+  });
+
+  it('declares accent-color on the base :root block, driven by --sw-accent', () => {
+    const rootRule = ruleBody(':root');
+    expect(rootRule).toMatch(/accent-color:\s*var\(--sw-accent\)\s*;/);
+  });
+
+  it('declares color-scheme: dark on the explicit dark override block', () => {
+    const darkRule = ruleBody(":root[data-theme='dark']");
+    expect(darkRule).toMatch(/color-scheme:\s*dark\s*;/);
+  });
+
+  it('declares color-scheme: dark on the prefers-color-scheme fallback block, matching the override', () => {
+    const fallbackRule = ruleBody(':root:not([data-theme])');
+    expect(fallbackRule).toMatch(/color-scheme:\s*dark\s*;/);
+  });
+
+  it('keeps the dark override and fallback blocks identical, including color-scheme (no first-paint flash)', () => {
+    // Reuses the same identical-blocks contract as the W10-06 test above:
+    // color-scheme is just another declaration in those two blocks, and a
+    // drift here is the same first-paint-flash bug for native chrome.
+    const body = (start: string): string => {
+      const at = css.indexOf(start);
+      expect(at, `expected "${start}" in styles.css`).toBeGreaterThan(-1);
+      const open = css.indexOf('{', at);
+      return css
+        .slice(open + 1, css.indexOf('}', open))
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .sort()
+        .join(';');
+    };
+    const darkBody = body(":root[data-theme='dark']");
+    expect(darkBody).toContain('color-scheme: dark');
+    expect(darkBody).toBe(body(':root:not([data-theme])'));
+  });
+
+  it('declares a <meta name="color-scheme"> in index.html for first paint, before any CSS rule can apply', () => {
+    const html = readFileSync(path.join(testDir, '..', 'index.html'), 'utf-8');
+    expect(html).toMatch(/<meta\s+name="color-scheme"\s+content="light dark"\s*\/?>/);
+  });
+});
+
+/* Proves the color-scheme gate can actually fail (docs/TESTING.md §6),
+   same discipline as the W10-30 red fixture above: a synthetic stylesheet
+   missing each declaration must trip the corresponding regex. */
+describe('gate integrity: the color-scheme check can fail (W10-31 red fixture)', () => {
+  it('a :root block with no color-scheme declaration does not match', () => {
+    const source = ':root { --sw-bg: #ffffff; accent-color: var(--sw-accent); }';
+    const start = source.indexOf(':root {');
+    const rule = source.slice(start, source.indexOf('}', start) + 1);
+    expect(rule).not.toMatch(/color-scheme:\s*light\s*;/);
+  });
+
+  it('an index.html with no color-scheme meta tag does not match', () => {
+    const html = '<head><meta charset="UTF-8" /><title>Dokima</title></head>';
+    expect(html).not.toMatch(/<meta\s+name="color-scheme"\s+content="light dark"\s*\/?>/);
+  });
+});
