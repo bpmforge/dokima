@@ -645,6 +645,11 @@ re-import re-signs too, and W9-08's write_scope also includes
 `content/manifest.json`. Rotating first means one re-sign, not three.
 
 **W10-27 · quality · 3 pts — history scanning joins the release gate.**
+**FILED AND LANDED 2026-08-03 at 5 pts** (board `plan.json`, merged as `c2a62f7`).
+Resized after measuring: git plumbing + Node scans this repo in ~1.3s, so the
+assumed gitleaks dependency below bought nothing and was dropped (Law 9); the
+extra points cover the CI wiring plus the fail-closed rungs. Baseline came out at
+24 fingerprints, not the 21 estimated. Full record in `docs/STATUS.md`.
 `write_scope: scripts/validate-history-secrets.mjs`, `docs/TESTING.md`
 `content/validators/secrets-scan.sh` (W3-13, SC-06) scans the working **tree**.
 A gitignored, tree-removed key reads clean while history is compromised —
