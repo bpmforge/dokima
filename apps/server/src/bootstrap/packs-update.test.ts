@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -190,5 +191,74 @@ describe('packs-update', () => {
     expect(result.manifestValid).toBe(true);
     expect(result.licenseAllowlisted).toBe(false);
     expect(result.verifiedFiles).toEqual([]);
+  });
+});
+
+/**
+ * W10-52. The gate that was missing, and the reason a completely broken pack
+ * shipped verified.
+ *
+ * `packsUpdate` installs exactly the files `content/manifest.json` names, and
+ * the signer's name pattern excluded `_lib*.sh` — so a real install landed 81
+ * validators and zero shared libraries. Every installed validator sources
+ * `_lib.sh`, so executing any of them exited **127**:
+ *
+ *     validate-adrs.sh: line 37: .../first-party/_lib.sh: No such file or directory
+ *     validate-adrs.sh: line 39: validator_init: command not found
+ *
+ * The existing tests above all passed throughout. They verify signatures,
+ * hashes and install counts — none of them ever RAN an installed validator, so
+ * the pack could be fully verified, fully installed and entirely non-functional
+ * at once. Counting files is not evidence they work.
+ */
+describe('an installed pack actually RUNS (W10-52)', () => {
+  const scratchDirs: string[] = [];
+  afterEach(async () => {
+    for (const dir of scratchDirs.splice(0)) await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it('RED FIXTURE: an installed validator executes on its own 0/1/2 contract, not 127', async () => {
+    const dest = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-pack-run-'));
+    scratchDirs.push(dest);
+    const result = await packsUpdate(dest);
+    expect(result.manifestValid).toBe(true);
+    expect(result.rejectedFiles).toEqual([]);
+
+    const installed = path.join(dest, 'first-party');
+    const validator = path.join(installed, 'validate-adrs.sh');
+    const run = spawnSync('bash', [validator, '.'], { encoding: 'utf8', cwd: os.tmpdir() });
+
+    // 127 is "command not found" — the shape this bug produced. The validator
+    // contract is 0 clean / 1 gaps / 2 error; anything else means it could not
+    // start, which is what shipped.
+    expect(run.status, `stderr: ${(run.stderr || '').slice(0, 300)}`).not.toBe(127);
+    expect([0, 1, 2]).toContain(run.status);
+    expect(run.stderr ?? '').not.toContain('No such file or directory');
+    expect(run.stderr ?? '').not.toContain('command not found');
+  });
+
+  it('ships the shared libraries every validator sources, and they are covered by the signature', async () => {
+    const dest = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-pack-libs-'));
+    scratchDirs.push(dest);
+    const result = await packsUpdate(dest);
+
+    // Present on disk after install…
+    const installed = await fs.readdir(path.join(dest, 'first-party'));
+    expect(installed).toContain('_lib.sh');
+    // …and verified, not merely copied: an unsigned lib is one an attacker can
+    // rewrite to control all 81 validators while every signature still passes.
+    expect(result.verifiedFiles).toContain('_lib.sh');
+
+    // Every installed validator that sources a lib must find it beside itself.
+    const sourcing = installed.filter((f) => f.startsWith('validate-') || f.startsWith('run-'));
+    expect(sourcing.length).toBeGreaterThan(50);
+    const missingLib: string[] = [];
+    for (const file of sourcing) {
+      const body = await fs.readFile(path.join(dest, 'first-party', file), 'utf8');
+      const needs = body.match(/source "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)\/(_lib[\w.-]*\.sh)"/);
+      const lib = needs?.[1];
+      if (lib !== undefined && !installed.includes(lib)) missingLib.push(`${file} -> ${lib}`);
+    }
+    expect(missingLib).toEqual([]);
   });
 });
