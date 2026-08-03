@@ -3791,7 +3791,7 @@
         "apps/web/src/App.tsx"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "DEAD CONTROL 1: board/BoardView.tsx:53 renders <ShippedTicker> with no onSelectTicket. `grep -rn onSelectTicket apps/web/src e2e` returns 3 hits, all inside ShippedTickerStrip.tsx itself. The pill is a real <button> with cursor:pointer, in the tab order, and does nothing on click \u2014 sitting beside a visually identical ClaimNow pill that fires a durable verb. Event delegation does not rescue it: App.tsx:149-151 matches only [data-testid^=\"card-\"]. UX_SPEC.md:102 requires the link.",
@@ -3801,7 +3801,7 @@
         "RED FIXTURE: assert each control actually invokes its handler. A rendered <button> with no wired callback passes every existing test.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. FOLLOW-UP: no committed e2e regression test covers leaving the project workspace via a sub-view (Plan/Roster/notifications/View-current-phase) and returning \u2014 roster.spec.ts:17 and notifications.spec.ts:65 both return to Fleet, never to an open project. Add a apps/web/e2e spec asserting board/chat/artifacts panes stay populated after Back from a sub-view; out of this ticket's write_scope (apps/web/e2e/** untouched here)."
     },
     {
       "id": "W10-34",
