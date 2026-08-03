@@ -3845,7 +3845,7 @@
         "apps/web/src/trace/trace.css"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED: TraceView.tsx:121 renders an escalation as \"Escalation escalation.rung_advanced\" \u2014 the raw event id \u2014 and discards fromRung, toRung and the human-readable reason. This data IS carried in production: packages/gateway/src/escalation/policy.ts:313-314 sets fromRung/toRung and events.ts:17-18 types them. Render the reason and R0->R1.",
