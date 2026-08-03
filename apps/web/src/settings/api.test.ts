@@ -54,6 +54,10 @@ describe('settings api (part 1)', () => {
         },
       ],
       copilotEnabled: false,
+      // W10-64: where the rows came from. A server that predates the field
+      // omits it, and the client reads that as `project` — the meaning it
+      // always had.
+      scope: 'project',
     });
   });
 

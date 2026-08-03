@@ -8,7 +8,10 @@ import {
   SameModelRefusedError,
 } from '@dokima/gateway';
 import {
+  listGlobalModelMatrix,
   listModelMatrix,
+  listProjectModelMatrix,
+  putGlobalModelMatrix,
   putModelMatrix,
   type ModelMatrixInput,
 } from './model-matrix-store.js';
@@ -79,6 +82,20 @@ function parseRows(body: unknown): ModelMatrixInput[] | undefined {
   return rows;
 }
 
+/**
+ * W10-64. `scope` is optional and defaults to `project`, so every existing
+ * caller — the e2e specs, the CLI, the panel before this ticket — keeps its
+ * exact behaviour. `global` writes the preset a project with no rows of its
+ * own inherits, which is what makes "configure the model once" true for the
+ * next product you create rather than only for this one.
+ */
+type MatrixScope = 'project' | 'global';
+
+function parseScope(value: unknown): MatrixScope | undefined {
+  if (value === undefined) return 'project';
+  return value === 'project' || value === 'global' ? value : undefined;
+}
+
 export interface MatrixRoutesOptions {
   home?: string;
 }
@@ -93,14 +110,19 @@ export function registerMatrixRoutes(
       const { id } = request.params as { id: string };
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
-      const [rows, projectSettings] = await Promise.all([
+      const [rows, own, projectSettings] = await Promise.all([
         listModelMatrix(projectPath),
+        listProjectModelMatrix(projectPath),
         getProjectSettings(projectPath),
       ]);
       const copilotEnabled = projectSettings.copilotEnabled === true;
       return reply.send({
         rows: rows.map(toWire),
         copilot_enabled: copilotEnabled,
+        // W10-64: which scope these rows came from. The panel needs to say so
+        // — a row inherited from the global preset looks identical to one
+        // configured here, and editing it silently creates a project override.
+        scope: own.length > 0 ? 'project' : 'global',
       });
     },
   );
@@ -112,6 +134,15 @@ export function registerMatrixRoutes(
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
       const body = request.body as Record<string, unknown> | undefined;
+      const scope = parseScope(body?.scope);
+      if (!scope) {
+        return reply
+          .code(400)
+          .type('application/problem+json')
+          .send(
+            badRequest(request, '"scope" must be "project" or "global" when present'),
+          );
+      }
       const rows = parseRows(body?.rows);
       if (!rows) {
         return reply
@@ -124,7 +155,13 @@ export function registerMatrixRoutes(
             ),
           );
       }
-      const before = await listModelMatrix(projectPath);
+      // Diff against the scope being WRITTEN, not the resolved view: a
+      // project-scope PUT whose `before` included inherited global rows would
+      // report every one of them as a change the project never made.
+      const before =
+        scope === 'global'
+          ? await listGlobalModelMatrix()
+          : await listProjectModelMatrix(projectPath);
 
       // FR-G2/C-4: refuse a maker/verifier pair resolving to the same model
       // for the same task type, in either direction — a submitted verifier
@@ -176,12 +213,19 @@ export function registerMatrixRoutes(
         }
       }
 
-      const updated = await putModelMatrix(projectPath, rows);
+      const updated =
+        scope === 'global'
+          ? await putGlobalModelMatrix(rows, undefined, projectPath)
+          : await putModelMatrix(projectPath, rows);
+      // Audited to the project in view either way (FR-S3). `putGlobalSetting`
+      // already logs the settings.changed event; this is the matrix-shaped
+      // diff the notification surface reads.
       appendModelMatrixChanged(projectPath, before, updated);
       const projectSettings = await getProjectSettings(projectPath);
       return reply.send({
         rows: updated.map(toWire),
         copilot_enabled: projectSettings.copilotEnabled === true,
+        scope,
       });
     },
   );

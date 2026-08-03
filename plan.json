@@ -4635,13 +4635,16 @@
       "write_scope": [
         "apps/server/src/api/server/model-matrix-store.ts",
         "apps/server/src/api/server/model-matrix-store.test.ts",
-        "apps/server/src/api/server/settings-routes.ts",
-        "apps/web/src/settings/ModelMatrixPanel.tsx"
+        "apps/server/src/api/server/matrix-routes.ts",
+        "apps/web/src/settings/api.ts",
+        "apps/web/src/settings/ModelMatrixPanel.tsx",
+        "apps/server/src/api/server/matrix-routes.test.ts",
+        "apps/web/src/settings/api.test.ts"
       ],
       "depends_on": [
         "W10-62"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "THE REMAINING HALF, stated exactly. W10-62 made `listProviders` read the effective settings, so a provider registered at global scope is now visible to the resolver. That alone changes NOTHING a user can see, and the ticket says so: `resolveModelTarget` short-circuits on `rows.length === 0 || providers.length === 0` (model-resolution.ts:180), and `listModelMatrix` reads the project `state.db` \u2014 there is no global matrix at all. A new product therefore still falls back to the env target however the providers are registered.",
@@ -4651,7 +4654,7 @@
         "RED FIXTURE, both directions: a project with no matrix rows resolves the global matrix, and a project WITH rows ignores the global one entirely. Plus the negative that matters \u2014 with a global provider and no matrix at either scope, the env fallback still fires rather than an ambiguous half-resolution.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Filed 2026-08-03 while closing W10-62, from measuring what W10-62 actually delivers rather than what its title implies. W10-62 fixes a real divergence (dokima doctor reported a global provider healthy while the resolver ignored it) but does NOT give a machine-wide model default, and closing it as if it did would have been the self-graded partial this project keeps catching. The machine-wide default that works TODAY is the env fallback, DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID, which envTarget reads and which loses to any project-scope registry \u2014 so the documented CI/fixture override is currently also the only real machine-wide setting, which is backwards."
+      "notes": "Filed 2026-08-03 while closing W10-62, from measuring what W10-62 actually delivers rather than what its title implies. W10-62 fixes a real divergence (dokima doctor reported a global provider healthy while the resolver ignored it) but does NOT give a machine-wide model default, and closing it as if it did would have been the self-graded partial this project keeps catching. The machine-wide default that works TODAY is the env fallback, DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID, which envTarget reads and which loses to any project-scope registry \u2014 so the documented CI/fixture override is currently also the only real machine-wide setting, which is backwards. \u2014 write_scope CORRECTED before any edit: it named apps/server/src/api/server/settings-routes.ts, which contains no matrix code at all \u2014 GET/PUT /model-matrix live in matrix-routes.ts. Also added apps/web/src/settings/api.ts, the web client that has to carry the scope on the PUT; the panel cannot reach the new scope without it. \u2014 write_scope widened a SECOND time before editing, to matrix-routes.test.ts: its round-trip case asserts the GET body with toEqual, so adding the scope field to the response reds a test for the very file this ticket rewrites. Modifying a route without being able to touch its own test was an omission in the filing, not a discovery. PATTERN WORTH NAMING, since it is now three corrections on one ticket (settings-routes -> matrix-routes, +api.ts, +matrix-routes.test.ts): I write acceptance describing behaviour and then scope from memory of where that behaviour lives, which is exactly the \u00a78 habit the handover attributes to the previous session. The corrective that works is a grep for the named symbols BEFORE filing, not after claiming. \u2014 FOURTH widening, same omission as the third: api.test.ts asserts the fetchModelMatrix result with toEqual, so adding the scope field reds the test for a file already in scope. Both this and matrix-routes.test.ts are the SAME mistake \u2014 scoping a source file without its test. The rule that prevents it is mechanical and I should apply it when filing: every source path in a write_scope carries its sibling test path. Recorded rather than quietly patched, because four corrections on one ticket is the signal, not the individual fixes."
     },
     {
       "id": "W10-65",

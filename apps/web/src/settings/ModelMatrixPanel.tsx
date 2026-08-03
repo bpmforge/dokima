@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchModelMatrix, putModelMatrix, SettingsApiError } from './api.js';
+import {
+  fetchModelMatrix,
+  putModelMatrix,
+  SettingsApiError,
+  type ModelMatrixWithScope,
+} from './api.js';
 import {
   MODEL_MATRIX_PRESETS,
   TASK_TYPES,
-  type ModelMatrix,
   type ModelMatrixRow,
   type TaskType,
 } from './types.js';
@@ -42,7 +46,11 @@ function rowKey(role: string, taskType: TaskType): string {
  * discovers, rather than an unvalidated bare string (W10-04).
  */
 export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
-  const [matrix, setMatrix] = useState<ModelMatrix | null>(null);
+  const [matrix, setMatrix] = useState<ModelMatrixWithScope | null>(null);
+  // W10-64: write the preset every project inherits, rather than only this
+  // one. Off by default — a global write is the wider blast radius, so it is
+  // never the thing an unread click does.
+  const [applyGlobally, setApplyGlobally] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [catalogs, setCatalogs] = useState<Record<string, ProviderCatalog>>({});
   const [providerEntries, setProviderEntries] = useState<ProviderEntry[]>([]);
@@ -73,15 +81,23 @@ export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
     const key = rowKey(draft.role.trim(), draft.taskType);
     const existing = matrix?.rows ?? [];
     try {
-      const next = await putModelMatrix(projectId, [
-        ...existing.map((r) => ({
-          role: r.role,
-          taskType: r.taskType,
-          model: r.model,
-          fallback: r.fallback,
-        })),
-        { role: draft.role.trim(), taskType: draft.taskType, model: draft.model.trim() },
-      ]);
+      const next = await putModelMatrix(
+        projectId,
+        [
+          ...existing.map((r) => ({
+            role: r.role,
+            taskType: r.taskType,
+            model: r.model,
+            fallback: r.fallback,
+          })),
+          {
+            role: draft.role.trim(),
+            taskType: draft.taskType,
+            model: draft.model.trim(),
+          },
+        ],
+        applyGlobally ? { scope: 'global' } : {},
+      );
       setMatrix(next);
       setDraft({ role: '', taskType: 'code', model: '' });
       setError(null);
@@ -93,7 +109,7 @@ export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
       // at the top of the panel (the "drag-refusals explained" precedent).
       setRowError({ key, message: errorMessage(err, 'Failed to save the model matrix') });
     }
-  }, [draft, matrix, projectId]);
+  }, [applyGlobally, draft, matrix, projectId]);
 
   const catalogOptions = combinedModelOptions(catalogs, providerEntries);
 
@@ -119,6 +135,17 @@ export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
         Presets: {MODEL_MATRIX_PRESETS.map((p) => PRESET_LABEL[p]).join(' · ')} (applying
         a preset lands with the first-run wizard).
       </p>
+      {/* W10-64. An inherited row is indistinguishable from one configured
+          here, and editing one silently creates a project override — so say
+          where these came from rather than letting the user find out by
+          changing another project. Only shown when rows exist: "inherited
+          nothing" is not worth a line. */}
+      {matrix.scope === 'global' && matrix.rows.length > 0 && (
+        <p className="settings__notice" role="status">
+          These rows come from your every-project defaults. Editing one here configures
+          this project only.
+        </p>
+      )}
       {matrix.copilotEnabled && (
         <p className="settings__notice" role="status">
           Copilot consent is active — rows using a <code>copilot/</code>-prefixed model
@@ -266,6 +293,18 @@ export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
               {rowError.message}
             </p>
           )}
+        {/* W10-64. Unchecked writes this project only, which is what the
+            control did before this ticket existed. Checked writes the preset
+            a product created later inherits — "configure the model once"
+            (FR-F3), which was false for the model until now. */}
+        <label className="settings__checkbox">
+          <input
+            type="checkbox"
+            checked={applyGlobally}
+            onChange={(e) => setApplyGlobally(e.target.checked)}
+          />
+          Use for every project
+        </label>
         <button type="submit">Add / update row</button>
       </form>
     </section>
