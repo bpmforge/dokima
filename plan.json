@@ -4504,6 +4504,53 @@
         "RED FIXTURE: with a deliberately slow provider, assert the route returns promptly with a run id AND that phase-completion events land afterwards. A test that only checks the fast path would pass today and prove nothing."
       ],
       "notes": "Found 2026-08-03 driving the installed product in a browser against LM Studio, immediately after W10-57 raised the local timeout and the run still exceeded it. The 33s / 3,088-token measurement is from a direct curl to the same endpoint the product uses, so it is the floor for one phase, not an estimate. This is the last thing between a user typing their own idea and getting a board \u2014 the interview surface (W10-54) is built and the model demonstrably runs. LANE CORRECTED at filing: filed as lane pipeline, which the board validator rejected as a cross-lane write_scope overlap with W10-54 and W10-55 (both ui, both non-done) over apps/web/src/onboarding/**. Law 1 treats cross-lane overlap as a schema bug to fix rather than work around, and the honest fix is the lane: this ticket lands UI work (progress subscription) alongside the route change, so ui is what it is. Caught by validate-plan.mjs before the commit, not after."
+    },
+    {
+      "id": "W10-59",
+      "phase": 10,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 3,
+      "title": "The creation pipeline dies on a fenced JSON response \u2014 the most common shape an instruct model returns",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port/chat-json.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/chat-json.test.ts"
+      ],
+      "depends_on": [],
+      "status": "in_progress",
+      "stories": [],
+      "acceptance": [
+        "MEASURED IN A BROWSER against a real local model, not inferred. Registered LM Studio through Settings -> Providers, routed coding-agent/reasoning to `qwen3.6-35b-a3b`, filled all nine Describe questions with a real product idea and clicked \"Build the board\". The blueprint and technical-slate phases BOTH completed against the live model (~76s of real inference). The run then died with: `pipeline model port produced malformed output for phase \"ticket-drafts\": response was not valid JSON: Unexpected token BACKTICK, \" ```json { \"... is not valid JSON (HTTP 502)`.",
+        "ROOT CAUSE, read from source and confirmed by the error text itself, not guessed: `chatJson` (apps/server/src/api/pipeline/gateway-model-port/chat-json.ts) calls `JSON.parse(content)` on the raw message content with no handling for a markdown code fence. The error message quotes the model output starting with a fence \u2014 ` ```json { ` \u2014 so the model returned exactly what it was asked for, wrapped the way instruct models almost always wrap it. Ruled out: truncation at max tokens (would fail mid-string, not at offset 0 on a backtick) and reasoning-content leakage (would show a think tag, not a fence).",
+        "THIS IS NOT A MODEL-QUALITY PROBLEM AND MUST NOT BE FIXED BY PROMPTING HARDER. Every system prompt in gateway-model-port already says \"respond with ONLY a JSON object\". Three of them. A local model complying 95% of the time still fails the pipeline 95%-cubed of the time across three sequential phases, and the failure discards every phase before it. Tolerating a fence is the fix; asking more loudly is not.",
+        "DELIVER: `chatJson` strips a leading/trailing markdown fence (```json / ``` / ~~~ variants, with or without a language tag, with surrounding whitespace) before parsing, and only then reports MalformedModelOutputError. The refusal must stay real \u2014 output with no JSON object in it at all still raises, with the phase named. Do NOT reach for a general \"JSON repair\" library; this is fence stripping, and a repairer that silently invents structure is exactly the kind of thing law 4 exists to keep out of a trust boundary.",
+        "RED FIXTURE, both directions: a fenced response parses to the same object its unfenced twin does (```json, bare ```, ~~~, leading prose before the fence), AND a genuinely malformed response still raises MalformedModelOutputError naming its phase. A tolerance that tolerates everything is not a parser.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by driving the running product in a browser, the same way every real defect this month was found. Two of three pipeline phases completed on a real local model and all of that work was discarded \u2014 the run left events 0, receipts 0, plan_items 0 in the project state.db. That discard is W10-58 (partial progress must survive), which this ticket does not fix and does not depend on: even with W10-58 landed, a fenced ticket-drafts response still fails the phase. Sibling: W10-60 (the model picker offers models the resolver cannot bind)."
+    },
+    {
+      "id": "W10-60",
+      "phase": 10,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 2,
+      "title": "The model picker offers 8 of 23 models the resolver then refuses \u2014 splitModelRef splits on the first slash",
+      "write_scope": [
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "READ FROM SOURCE against a real catalog, not hypothesised. `splitModelRef` (apps/server/src/api/pipeline/model-resolution.ts) implements the `<providerId>/<model>` convention by splitting on the FIRST slash. Model ids routinely contain a slash of their own: of the 23 models a live LM Studio served this machine, 8 do \u2014 `qwen/qwen3-coder-next`, `qwen/qwen3.5-9b`, `google/gemma-4-12b-qat`, `google/gemma-4-26b-a4b`, `google/gemma-4-26b-a4b-qat`, `google/gemma-4-e4b`, `nvidia/nemotron-3-nano`, `nvidia/nemotron-3-nano-omni`, `mlx-community/nemotron-3-nano-omni-30b-a3b-reasoning`.",
+        "THE FAILURE IS A REFUSAL AGAINST A SETTING THE UI ITSELF OFFERED. Picking `qwen/qwen3.5-9b` in the W10-04 Providers & Models panel stores it verbatim; `bindProvider` then reads providerId `qwen`, finds no enabled provider with that id, and throws ModelResolutionError `unknown-provider`. The panel populates that dropdown from the provider catalog it just fetched, so the product offers a model and then refuses it. Note this is the model the previous session actually ran the pipeline on \u2014 via the env fallback, which never calls splitModelRef, which is why it worked there and only breaks on the registry path W10-03 built.",
+        "DECIDE THE CONVENTION RATHER THAN PATCHING THE SYMPTOM. A first-slash split cannot distinguish a provider prefix from a vendor-namespaced model id, and no amount of care at the call site changes that. Options, to be chosen and recorded: only treat a prefix as a providerId when it matches a REGISTERED provider id (cheap, resolves every case above, keeps unprefixed ids working); or store the binding as a structured pair rather than a string; or require a delimiter that cannot occur in a model id. Whichever is chosen, the model-matrix row written by the UI must round-trip through the resolver.",
+        "RED FIXTURE: a matrix row naming a slash-containing model id from a single enabled provider resolves to that provider with the FULL model id sent on the wire (not a truncated one), and a genuinely unknown provider prefix still raises `unknown-provider`. Both directions, because a resolver that never refuses is not a resolver.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 while configuring a real LM Studio through the Providers panel for the first time. Latent since W10-03 wired the registry path: the env fallback (`envTarget`) never calls `splitModelRef`, so every earlier run \u2014 including the previous session end-to-end proof on `qwen/qwen3.5-9b` \u2014 took the path that cannot hit this. Sibling: W10-59."
     }
   ]
 }
