@@ -4809,7 +4809,7 @@
       "depends_on": [
         "W10-64"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "THE EXACT GAP, measured in a browser. W10-62 made `listProviders` read the EFFECTIVE settings, so a global provider resolves. W10-64 did the same for the matrix AND shipped its write path. Providers never got one: `putProviders` calls `putProjectSetting` unconditionally and the panel has no scope control, so the only way to create a global provider entry is to hand-edit `~/.dokima/config.json`. A read path with no write path is the definition of dead code.",

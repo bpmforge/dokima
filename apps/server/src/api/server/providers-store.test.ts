@@ -4,8 +4,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ProviderRegistryError, validateProviderRegistry } from '@dokima/gateway';
 import {
+  listGlobalProviders,
+  listProjectProviders,
   listProviders,
   PROVIDERS_SETTINGS_KEY,
+  putGlobalProviders,
   putProviders,
   removeProvider,
 } from './providers-store.js';
@@ -195,6 +198,86 @@ describe('provider registry scope resolution (W10-62)', () => {
     dirs.push(home);
     process.env.DOKIMA_HOME = home;
 
+    expect(await listProviders(await project())).toEqual([]);
+  });
+});
+
+/**
+ * W10-70. W10-62 made the global scope READABLE and left no way to write it,
+ * so the only route to an every-project provider was hand-editing
+ * ~/.dokima/config.json. These cover the write path and the precedence, and
+ * mirror the model matrix's (W10-64) so the two halves of "register once, use
+ * everywhere" cannot drift apart.
+ *
+ * DOKIMA_HOME is pinned throughout. W10-64 learned that the hard way: a
+ * global-scope test without it wrote the developer's REAL config and would
+ * have pointed every project on the machine at a fixture value.
+ */
+describe('every-project provider registry (W10-70)', () => {
+  const savedHome = process.env.DOKIMA_HOME;
+
+  afterEach(() => {
+    if (savedHome === undefined) delete process.env.DOKIMA_HOME;
+    else process.env.DOKIMA_HOME = savedHome;
+  });
+
+  async function scopedHome(): Promise<string> {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-prov-home-'));
+    dirs.push(home);
+    process.env.DOKIMA_HOME = home;
+    return home;
+  }
+
+  const GLOBAL_ENTRY = {
+    id: 'lm-studio',
+    kind: 'oai-compat' as const,
+    baseUrl: 'http://127.0.0.1:1234/v1',
+    enabled: true,
+  };
+
+  it('THE ACCEPTANCE TEST: a product created later sees a provider registered once', async () => {
+    await scopedHome();
+    await putGlobalProviders([GLOBAL_ENTRY]);
+
+    const brandNewProject = await project();
+
+    expect((await listProviders(brandNewProject)).map((e) => e.id)).toEqual([
+      'lm-studio',
+    ]);
+  });
+
+  it('a project registry still WINS over the every-project one', async () => {
+    await scopedHome();
+    await putGlobalProviders([GLOBAL_ENTRY]);
+    const dir = await project();
+    await putProviders(dir, [
+      { id: 'local-only', kind: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', enabled: true },
+    ]);
+
+    expect((await listProviders(dir)).map((e) => e.id)).toEqual(['local-only']);
+  });
+
+  it('listProjectProviders never reports an inherited entry', async () => {
+    await scopedHome();
+    await putGlobalProviders([GLOBAL_ENTRY]);
+    const dir = await project();
+
+    expect(await listProjectProviders(dir)).toEqual([]);
+    expect(await listProviders(dir)).toHaveLength(1);
+  });
+
+  it('a global write goes through the SAME validation — a consent-gated kind cannot slip in', async () => {
+    await scopedHome();
+
+    await expect(
+      putGlobalProviders([{ id: 'gh', kind: 'copilot', enabled: true }]),
+    ).rejects.toBeInstanceOf(ProviderRegistryError);
+
+    expect(await listGlobalProviders()).toEqual([]);
+  });
+
+  it('nothing registered at either scope stays the normal first-run state (C-1)', async () => {
+    await scopedHome();
     expect(await listProviders(await project())).toEqual([]);
   });
 });

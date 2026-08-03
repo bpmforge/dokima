@@ -32,7 +32,13 @@ import {
   type CredentialStore,
 } from '@dokima/shared';
 import { PROBLEM_CONTENT_TYPE, problem } from '../problem.js';
-import { listProviders, putProviders, removeProvider } from './providers-store.js';
+import {
+  listProjectProviders,
+  listProviders,
+  putGlobalProviders,
+  putProviders,
+  removeProvider,
+} from './providers-store.js';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
 import { getProjectSettings } from './settings-scope.js';
 
@@ -150,6 +156,14 @@ function findSecretBearingField(payload: unknown): string | undefined {
   return undefined;
 }
 
+/** W10-70. Absent means project, so no existing caller changes behaviour. */
+type ProviderScope = 'project' | 'global';
+
+function parseScope(value: unknown): ProviderScope | undefined {
+  if (value === undefined) return 'project';
+  return value === 'project' || value === 'global' ? value : undefined;
+}
+
 export function registerProvidersRoutes(
   app: FastifyInstance,
   opts: ProvidersRoutesOptions = {},
@@ -160,8 +174,17 @@ export function registerProvidersRoutes(
       const { id } = request.params as { id: string };
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
-      const entries = await listProviders(projectPath);
-      return reply.send({ providers: entries.map(toWire) });
+      const [entries, own] = await Promise.all([
+        listProviders(projectPath),
+        listProjectProviders(projectPath),
+      ]);
+      // W10-70: which scope served these. An inherited provider is otherwise
+      // indistinguishable from one registered here, and editing it silently
+      // creates a project override — same reasoning as the matrix (W10-64).
+      return reply.send({
+        providers: entries.map(toWire),
+        scope: own.length > 0 ? 'project' : 'global',
+      });
     },
   );
 
@@ -249,8 +272,26 @@ export function registerProvidersRoutes(
       const projectPath = await resolveProjectOrProblem(request, reply, id, opts.home);
       if (!projectPath) return;
 
-      const body = request.body as { providers?: unknown } | undefined;
+      const body = request.body as { providers?: unknown; scope?: unknown } | undefined;
       const submitted = body?.providers;
+
+      // W10-70, mirroring the model matrix (W10-64): absent means project, so
+      // every existing caller — the panel before this ticket, the CLI, the e2e
+      // specs — is unchanged, and an unrecognised value is refused rather than
+      // silently downgraded to the narrower scope.
+      const scope = parseScope(body?.scope);
+      if (!scope) {
+        return reply
+          .code(400)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(
+            refusal(
+              request,
+              '"scope" must be "project" or "global" when present',
+              'invalid-scope',
+            ),
+          );
+      }
 
       // Credential check first — before validation, before the store.
       const secretField = findSecretBearingField(submitted);
@@ -295,8 +336,11 @@ export function registerProvidersRoutes(
         throw err;
       }
 
-      const saved = await putProviders(projectPath, validated);
-      return reply.send({ providers: saved.map(toWire) });
+      const saved =
+        scope === 'global'
+          ? await putGlobalProviders(validated, projectPath)
+          : await putProviders(projectPath, validated);
+      return reply.send({ providers: saved.map(toWire), scope });
     },
   );
 
