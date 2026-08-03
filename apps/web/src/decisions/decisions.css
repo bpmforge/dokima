@@ -33,12 +33,12 @@
 }
 
 .slate-card__badge {
-  margin-left: 0.4rem;
+  margin-left: var(--sw-space-2);
   font-size: var(--sw-text-xs);
   color: var(--sw-accent);
   border: var(--sw-border-width) solid var(--sw-accent);
   border-radius: var(--sw-radius-pill);
-  padding: 0.05rem 0.4rem;
+  padding: var(--sw-space-0-5) var(--sw-space-2);
 }
 
 .slate-card__decided-badge {
@@ -63,14 +63,14 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
 }
 
 .founder-slate-options__option {
   display: block;
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-md);
-  padding: 0.4rem 0.6rem;
+  padding: var(--sw-space-2);
   cursor: pointer;
 }
 
@@ -97,7 +97,7 @@
 .technical-slate-grid th,
 .technical-slate-grid td {
   border: var(--sw-border-width) solid var(--sw-border);
-  padding: 0.35rem var(--sw-space-2);
+  padding: var(--sw-space-1) var(--sw-space-2);
   text-align: left;
   vertical-align: top;
 }

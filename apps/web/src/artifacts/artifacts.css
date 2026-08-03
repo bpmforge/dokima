@@ -19,7 +19,7 @@
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-1) 0.6rem;
+  padding: var(--sw-space-1) var(--sw-space-2);
   cursor: pointer;
 }
 
@@ -57,7 +57,7 @@
   border: none;
   background: transparent;
   color: var(--sw-fg);
-  padding: 0.35rem var(--sw-space-2);
+  padding: var(--sw-space-1) var(--sw-space-2);
   border-radius: var(--sw-radius-sm);
   cursor: pointer;
 }
@@ -74,7 +74,7 @@
 
 .artifact-viewer__versions {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
   margin-bottom: var(--sw-space-2);
   flex-wrap: wrap;
 }
@@ -101,7 +101,7 @@
 .markdown-view code {
   background: var(--sw-border);
   border-radius: var(--sw-radius-sm);
-  padding: 0.1rem 0.3rem;
+  padding: var(--sw-space-0-5) var(--sw-space-1);
 }
 
 .markdown-mermaid {
@@ -175,7 +175,7 @@
 }
 
 .diff-view__stat {
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--sw-space-2);
 }
 
 .diff-view__added {
@@ -215,7 +215,7 @@
 .artifact-viewer__edit {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
   margin-bottom: var(--sw-space-2);
 }
 
@@ -231,7 +231,7 @@
 
 .artifact-viewer__edit-actions {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
 }
 
 .comment-thread {
@@ -247,12 +247,12 @@
 }
 
 .comment-thread__item {
-  padding: 0.4rem 0;
+  padding: var(--sw-space-2) 0;
   border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
 .comment-thread__body {
-  margin: 0 0 0.2rem;
+  margin: 0 0 var(--sw-space-1);
 }
 
 .comment-thread__meta {
@@ -267,7 +267,7 @@
 
 .comment-thread__resolved {
   color: var(--sw-accent);
-  margin: 0.2rem 0 0;
+  margin: var(--sw-space-1) 0 0;
 }
 
 .comment-thread__resolved button {
@@ -275,14 +275,14 @@
   background: transparent;
   color: var(--sw-accent);
   border-radius: var(--sw-radius-sm);
-  padding: 0.1rem 0.4rem;
+  padding: var(--sw-space-0-5) var(--sw-space-2);
   cursor: pointer;
 }
 
 .comment-thread__composer {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
 }
 
 .comment-thread__composer textarea {
@@ -291,13 +291,13 @@
   color: var(--sw-fg);
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-sm);
-  padding: 0.4rem;
+  padding: var(--sw-space-2);
 }
 
 .receipt-inspector__fields {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.15rem var(--sw-space-2);
+  gap: var(--sw-space-0-5) var(--sw-space-2);
   margin: 0 0 var(--sw-space-3);
 }
 
@@ -319,7 +319,7 @@
 .receipt-inspector__validators th,
 .receipt-inspector__validators td {
   border: var(--sw-border-width) solid var(--sw-border);
-  padding: 0.2rem 0.4rem;
+  padding: var(--sw-space-1) var(--sw-space-2);
   text-align: left;
 }
 

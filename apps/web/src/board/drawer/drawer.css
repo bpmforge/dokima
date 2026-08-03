@@ -31,7 +31,7 @@
 .ticket-drawer__contract-grid {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.35rem var(--sw-space-3);
+  gap: var(--sw-space-1) var(--sw-space-3);
 }
 
 .ticket-drawer__empty {
@@ -41,7 +41,7 @@
 
 .ticket-drawer__acceptance li,
 .ticket-drawer__history li {
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--sw-space-1);
 }
 
 .ticket-drawer__spend-table {
@@ -60,14 +60,14 @@
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--sw-space-1);
   padding: 0;
 }
 
 .ticket-drawer__dag-chip {
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-pill);
-  padding: 0.15rem 0.6rem;
+  padding: var(--sw-space-0-5) var(--sw-space-2);
 }
 
 /* The remove-dependency (x) control lives inside an already-pill-shaped
@@ -76,7 +76,7 @@
   border: none;
   background: transparent;
   color: inherit;
-  padding: 0 0 0 0.35rem;
+  padding: 0 0 0 var(--sw-space-1);
   cursor: pointer;
 }
 

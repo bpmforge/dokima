@@ -30,14 +30,14 @@
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.4rem var(--sw-space-3);
+  padding: var(--sw-space-2) var(--sw-space-3);
   cursor: pointer;
 }
 
 .fleet__archived-toggle {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--sw-space-1);
   font-size: var(--sw-text-base);
 }
 
@@ -76,7 +76,7 @@
   background: var(--sw-bg);
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.4rem var(--sw-space-2);
+  padding: var(--sw-space-2);
 }
 
 .fleet__form-actions {
@@ -115,7 +115,7 @@
   font-size: var(--sw-text-sm);
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-pill);
-  padding: 0.15rem var(--sw-space-2);
+  padding: var(--sw-space-0-5) var(--sw-space-2);
 }
 
 .project-card__board {
@@ -144,7 +144,7 @@
 .project-card__berths {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
   font-size: var(--sw-text-md);
 }
 
@@ -183,7 +183,7 @@
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.3rem 0.6rem;
+  padding: var(--sw-space-1) var(--sw-space-2);
   cursor: pointer;
 }
 
@@ -203,7 +203,7 @@
 
 .project-card__unavailable-note {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--sw-text-base);
   color: var(--sw-fg);
 }
 
@@ -213,6 +213,6 @@
 
 .project-card__unavailable-hint {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--sw-text-md);
   opacity: 0.75;
 }
