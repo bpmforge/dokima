@@ -3,6 +3,14 @@
   "license": "first-party",
   "files": [
     {
+      "path": "_lib_sdlc_config.sh",
+      "hash": "sha256:e8a417423d6d84771c88065cfd347feb7dc5542ed6ad65dcee8f38762fa90a95"
+    },
+    {
+      "path": "_lib.sh",
+      "hash": "sha256:e8b1e1d76f117d0125a0172a0b1c6807c35a4e1dc2569f577398269a1b3fb9e8"
+    },
+    {
       "path": "run-coverage-loop.sh",
       "hash": "sha256:ec48b550a300da7da3f9467d45901aa8098107afb5e538df53fdb4ac9a6af5b5"
     },
@@ -327,7 +335,7 @@
       "hash": "sha256:a80e97c267151007025ad939cf271b5f99a8a4c61b934270e00f43868adc5c44"
     }
   ],
-  "signature": "bcb648ade52ee2a97bcba352de79393200a7fd4778c109c9780e107834e9def464fccfa02c9daa3a06e0c277c829393d5e9534548f8b87bc1d5b30b51cfba200",
+  "signature": "7fae1c53c3583e7f6022dccce32380303c626a5741f8328d751f821ae96e2b5754035174fa9ae9ac3d9580ffc9e607bacdee4e8bc73cb8c451a9a883c9538808",
   "publisher": "dokima",
-  "signedAt": "2026-08-03T17:04:38.577Z"
+  "signedAt": "2026-08-03T18:27:15.563Z"
 }

@@ -101,7 +101,21 @@ async function signContent() {
 
   console.log('Scanning validators directory...');
   const entries = await fs.readdir(CONTENT_DIR, { withFileTypes: true });
-  const VALIDATOR_NAME_RE = /^(?:(?:validate|run)-.+|secrets-scan)\.sh$/;
+  // W10-52: `_lib*.sh` MUST be in this set. It is not a naming nicety — it is
+  // what makes the shipped pack runnable at all.
+  //
+  // `packsUpdate` installs exactly the files this manifest names. This regex
+  // used to be the pack-DISCOVERY pattern only, so the shared libraries every
+  // validator sources were never signed and therefore never installed: a real
+  // install landed 81 validators and zero libraries, and executing any one of
+  // them exited 127 with `_lib.sh: No such file or directory`. Nothing caught
+  // it because the repo runs validators from content/validators/ in the source
+  // tree, where the libraries sit beside them.
+  //
+  // Signing them is independently correct: they are executable content the
+  // product runs, and an attacker who could write `_lib.sh` controlled all 81
+  // validators while every signature still verified.
+  const VALIDATOR_NAME_RE = /^(?:(?:validate|run)-.+|secrets-scan|_lib.*)\.sh$/;
 
   const files = [];
   for (const entry of entries) {
