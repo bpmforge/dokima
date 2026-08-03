@@ -236,9 +236,20 @@ button:disabled {
   cursor: pointer;
 }
 
+/* W10-34: `top` moved from 5rem to 9rem to clear both the app-shell
+   header and Fleet's own `.fleet__header` action row beneath it
+   (~7rem combined) -- at 5rem the panel's box landed mid-row, and with
+   no scrim to dim the page behind it, read as a card that had crashed
+   into the toolbar rather than a modal that opened over it.
+
+   `.shortcuts-overlay` still positions itself with its own `position:
+   fixed` (self-sufficient) rather than relying on the backdrop below
+   for placement, so it keeps rendering correctly even before that
+   backdrop is wired into ShortcutsOverlay.tsx (outside this ticket's
+   write_scope -- see plan.json W10-34 notes). */
 .shortcuts-overlay {
   position: fixed;
-  inset: 5rem var(--sw-space-4) auto;
+  inset: 9rem var(--sw-space-4) auto;
   margin: 0 auto;
   max-width: 28rem;
   background: var(--sw-bg);
@@ -249,10 +260,45 @@ button:disabled {
   z-index: 1000;
 }
 
+/* Not yet applied by any component -- wrap the overlay's returned JSX in
+   `<div className="shortcuts-overlay__backdrop">` to wire it, mirroring
+   `.command-palette__backdrop` (palette/palette.css) and
+   `.ticket-drawer__backdrop` (board/drawer/drawer.css), which already
+   use this exact shape (fixed, full-viewport, dim, one z-index step
+   below the panel it sits behind) for the same problem. */
+.shortcuts-overlay__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  z-index: 999;
+}
+
+/* Each row is a `<div class="shortcuts-overlay__row">` wrapping a
+   `<dt>`/`<dd>` pair. As a flex container per row, `dt` sized to that
+   row's own key length ('?' vs 'Esc') independently of every other
+   row, so the description column started at whatever x-position that
+   row's key happened to leave -- ragged across rows, and it only gets
+   worse once a longer key combo (e.g. a palette shortcut) lands.
+   `display: contents` drops the row wrapper's own box so its dt/dd
+   children become direct children of the `<dl>` grid below, sharing
+   ONE pair of column tracks -- the same technique already used for
+   this exact problem elsewhere in the app (`.ticket-drawer__contract-grid`,
+   `.receipt-inspector__fields`) -- so every row's description starts
+   at the same x regardless of key length. */
 .shortcuts-overlay__row {
-  display: flex;
-  gap: var(--sw-space-3);
-  padding: var(--sw-space-1) 0;
+  display: contents;
+}
+
+.shortcuts-overlay dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sw-space-2) var(--sw-space-3);
+  margin: 0;
+}
+
+.shortcuts-overlay dt,
+.shortcuts-overlay dd {
+  margin: 0;
 }
 
 .split-pane {

@@ -613,3 +613,91 @@ describe('gate integrity: the applied-but-undefined class check can fail (W10-32
     expect(classIsApplied(component, 'sr-only')).toBe(false);
   });
 });
+
+/* ── W10-34: shortcuts overlay scrim, position, and column alignment ──
+   The audit's clearest "looks broken" finding after the anchor contrast:
+   `.shortcuts-overlay` was `position: fixed; inset: 5rem` with a
+   box-shadow but no backdrop, so the page behind it stayed at full
+   brightness and the panel's box landed mid-toolbar. These checks guard
+   the two parts fixable within styles.css alone: the position moved
+   clear of the header stack, and the ragged dt/dd column. The scrim
+   class is defined here (reusable, matches `.command-palette__backdrop`
+   / `.ticket-drawer__backdrop`) but is NOT yet applied by any component
+   — that wiring is one line in ShortcutsOverlay.tsx, outside this
+   ticket's write_scope (see plan.json W10-34 notes). */
+describe('shortcuts overlay: position and column alignment (W10-34)', () => {
+  it('positions the panel clear of the header stack, not at the old 5rem that clipped the toolbar', () => {
+    const rule = ruleBody('.shortcuts-overlay');
+    const insetTop = /inset:\s*([\d.]+)rem/.exec(rule)?.[1];
+    expect(
+      insetTop,
+      `expected an "inset: <N>rem ..." top offset in: ${rule}`,
+    ).toBeDefined();
+    expect(Number(insetTop)).toBeGreaterThanOrEqual(9);
+  });
+
+  it('defines a reusable full-viewport scrim, dimmer than a hairline, one z-index step behind the panel', () => {
+    const rule = ruleBody('.shortcuts-overlay__backdrop');
+    expect(rule).toMatch(/position:\s*fixed/);
+    expect(rule).toMatch(/inset:\s*0\s*;/);
+    // Dim background, not a --sw-* token (backdrops are a one-off scrim
+    // colour, not a themed surface) and not a bare hex (would fail the
+    // W10-06 hex gate above anyway).
+    const bgMatch = /background:\s*rgb\(\s*0\s+0\s+0\s*\/\s*(\d+)%\s*\)/.exec(rule);
+    expect(
+      bgMatch,
+      `expected a dim rgb(0 0 0 / N%) background in: ${rule}`,
+    ).toBeDefined();
+    expect(Number(bgMatch?.[1])).toBeGreaterThan(0);
+
+    const panelZ = Number(/z-index:\s*(\d+)/.exec(ruleBody('.shortcuts-overlay'))?.[1]);
+    const backdropZ = Number(/z-index:\s*(\d+)/.exec(rule)?.[1]);
+    expect(backdropZ).toBeLessThan(panelZ);
+  });
+
+  it('shares one grid column pair across every row, so dt width cannot be set per-row again', () => {
+    const rowRule = ruleBody('.shortcuts-overlay__row');
+    expect(rowRule).toMatch(/display:\s*contents\s*;/);
+
+    const dlRule = ruleBody('.shortcuts-overlay dl');
+    expect(dlRule).toMatch(/display:\s*grid\s*;/);
+    const columns = /grid-template-columns:\s*([^;]+);/.exec(dlRule)?.[1];
+    expect(
+      columns?.trim().split(/\s+/).length,
+      `expected two column tracks in: ${dlRule}`,
+    ).toBe(2);
+  });
+
+  it('resets dt/dd margins so the UA default cannot reintroduce a ragged offset', () => {
+    const start = css.indexOf('.shortcuts-overlay dt,');
+    expect(
+      start,
+      'expected a ".shortcuts-overlay dt, .shortcuts-overlay dd" rule',
+    ).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start) + 1);
+    expect(rule).toMatch(/\.shortcuts-overlay dd\s*\{/);
+    expect(rule).toMatch(/margin:\s*0\s*;/);
+  });
+});
+
+describe('gate integrity: the shortcuts-overlay column check can fail (W10-34 red fixture)', () => {
+  it('catches the original bug shape: each row is its own flex container', () => {
+    const source = `
+.shortcuts-overlay__row {
+  display: flex;
+  gap: 0.75rem;
+}
+`;
+    expect(source).not.toMatch(/\.shortcuts-overlay__row\s*\{[^}]*display:\s*contents/s);
+  });
+
+  it('catches a scrim class with no dimming background', () => {
+    const source = `
+.shortcuts-overlay__backdrop {
+  position: fixed;
+  inset: 0;
+}
+`;
+    expect(source).not.toMatch(/background:\s*rgb\(\s*0\s+0\s+0\s*\/\s*\d+%\s*\)/);
+  });
+});
