@@ -22,7 +22,7 @@
 
 .guided-sample__draft-label {
   color: var(--sw-fg-muted);
-  font-size: 0.875rem;
+  font-size: var(--sw-text-base);
 }
 
 .guided-sample__degrade {

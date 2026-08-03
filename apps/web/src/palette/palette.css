@@ -53,7 +53,7 @@
 
 .command-palette__modes button {
   text-align: left;
-  padding: 0.4rem var(--sw-space-2);
+  padding: var(--sw-space-2);
   border: none;
   background: transparent;
   color: inherit;
@@ -72,7 +72,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sw-space-2);
-  padding: 0.35rem var(--sw-space-1);
+  padding: var(--sw-space-1);
   border-radius: var(--sw-radius-sm);
 }
 
@@ -96,7 +96,7 @@
   font-size: var(--sw-text-xs);
   text-transform: uppercase;
   opacity: 0.6;
-  margin-right: 0.35rem;
+  margin-right: var(--sw-space-1);
 }
 
 .command-palette__refusal {

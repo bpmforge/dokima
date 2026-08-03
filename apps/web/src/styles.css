@@ -217,7 +217,7 @@ button {
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.4rem var(--sw-space-3);
+  padding: var(--sw-space-2) var(--sw-space-3);
   font: inherit;
   cursor: pointer;
 }
@@ -232,7 +232,7 @@ button:disabled {
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.4rem var(--sw-space-3);
+  padding: var(--sw-space-2) var(--sw-space-3);
   cursor: pointer;
 }
 
@@ -266,7 +266,7 @@ button:disabled {
 .shortcuts-overlay__list {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.35rem var(--sw-space-3);
+  gap: var(--sw-space-1) var(--sw-space-3);
   margin: 0;
 }
 
@@ -303,7 +303,7 @@ button:disabled {
   background: transparent;
   color: var(--sw-fg);
   cursor: pointer;
-  padding: 0.15rem 0.35rem;
+  padding: var(--sw-space-0-5) var(--sw-space-1);
   border-radius: var(--sw-radius-sm);
 }
 

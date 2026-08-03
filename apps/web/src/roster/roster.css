@@ -65,14 +65,14 @@
 .roster__expert-scope {
   margin-left: auto;
   font-size: var(--sw-text-sm);
-  padding: 0.1rem 0.4rem;
+  padding: var(--sw-space-0-5) var(--sw-space-2);
   border-radius: var(--sw-radius-sm);
   border: var(--sw-border-width) solid var(--sw-border);
 }
 
 .roster__expert-description {
-  margin: 0.35rem 0;
-  font-size: 0.875rem;
+  margin: var(--sw-space-1) 0;
+  font-size: var(--sw-text-base);
 }
 
 .roster__expert-model,
@@ -89,8 +89,8 @@
 
 .roster__fitness-badge {
   display: inline-block;
-  margin-right: 0.4rem;
-  padding: 0.05rem 0.35rem;
+  margin-right: var(--sw-space-2);
+  padding: var(--sw-space-0-5) var(--sw-space-1);
   border-radius: var(--sw-radius-sm);
   border: var(--sw-border-width) solid var(--sw-border);
 }

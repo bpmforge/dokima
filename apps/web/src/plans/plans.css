@@ -11,7 +11,7 @@
 
 .plan-view__funnel {
   color: var(--sw-fg-muted);
-  font-size: 0.9rem;
+  font-size: var(--sw-text-base);
 }
 
 .plan-view__error {
@@ -40,7 +40,7 @@
 .plan-item__header {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--sw-space-2);
   flex-wrap: wrap;
 }
 
@@ -51,7 +51,7 @@
 
 .plan-item__state {
   border-radius: var(--sw-radius-pill);
-  padding: 0.1rem 0.55rem;
+  padding: var(--sw-space-0-5) var(--sw-space-2);
   font-size: var(--sw-text-sm);
   border: var(--sw-border-width) solid var(--sw-border);
 }

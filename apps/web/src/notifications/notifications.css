@@ -4,15 +4,15 @@
   border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;
   border-radius: var(--sw-radius-md);
-  padding: 0.3rem var(--sw-space-2);
+  padding: var(--sw-space-1) var(--sw-space-2);
   cursor: pointer;
   line-height: 1;
 }
 
 .app-shell__decide-badge {
   position: absolute;
-  top: -0.35rem;
-  right: -0.35rem;
+  top: calc(-1 * var(--sw-space-1));
+  right: calc(-1 * var(--sw-space-1));
   background: var(--sw-danger-bg);
   color: var(--sw-on-danger);
   border-radius: var(--sw-radius-pill);
@@ -22,7 +22,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.2rem;
+  padding: 0 var(--sw-space-1);
 }
 
 .notifications-view {
@@ -50,7 +50,7 @@
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.4rem var(--sw-space-3);
+  padding: var(--sw-space-2) var(--sw-space-3);
   cursor: pointer;
 }
 
@@ -63,7 +63,7 @@
 .notifications-view__project-filter {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
   font-size: var(--sw-text-base);
 }
 
@@ -80,7 +80,7 @@
 .morning-queue__header h2,
 .notification-center__header h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--sw-text-lg);
 }
 
 .morning-queue__timer {
@@ -96,7 +96,7 @@
 
 .notification-center__filters {
   display: flex;
-  gap: 0.35rem;
+  gap: var(--sw-space-1);
 }
 
 .notification-center__filter {
@@ -104,7 +104,7 @@
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.3rem 0.6rem;
+  padding: var(--sw-space-1) var(--sw-space-2);
   font-size: var(--sw-text-md);
   cursor: pointer;
 }
@@ -139,7 +139,7 @@
 .notification-card {
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-lg);
-  padding: 0.6rem 0.8rem;
+  padding: var(--sw-space-2) var(--sw-space-3);
 }
 
 .notification-card__header {
@@ -179,12 +179,12 @@
 }
 
 .notification-card__title {
-  margin: 0.35rem 0 0;
+  margin: var(--sw-space-1) 0 0;
   font-weight: 500;
 }
 
 .notification-card__summary {
-  margin: 0.2rem 0 0;
+  margin: var(--sw-space-1) 0 0;
   font-size: var(--sw-text-base);
   opacity: 0.8;
 }
@@ -204,7 +204,7 @@
 
 .notification-card__actions {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--sw-space-2);
 }
 
 .notification-card__actions button,
@@ -213,6 +213,6 @@
   background: transparent;
   color: var(--sw-fg);
   border-radius: var(--sw-radius-md);
-  padding: 0.3rem 0.6rem;
+  padding: var(--sw-space-1) var(--sw-space-2);
   cursor: pointer;
 }
