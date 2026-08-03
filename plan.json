@@ -3590,7 +3590,7 @@
         "W10-05",
         "W10-42"
       ],
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "acceptance": [
         "TODAY `ModelMatrixPanel.tsx` takes the model as a FREE-TEXT STRING (`draft.model`, a bare text input) with no catalog, no validation, and no way to discover what a provider actually serves. Register/edit/test an endpoint (Ollama, LM Studio, any OpenAI-compatible, plus the cloud adapters), see the discovered models from W10-02, and select per role x task-type from a LIST.",
@@ -3602,7 +3602,8 @@
       ],
       "notes": [
         "W10 Phase G/H seam. depends_on W10-05 deliberately: a panel built with no spec behind it is exactly what the Design Loop exists to prevent.",
-        "CONDUCTOR 2026-08-03T07:15:20.104Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch"
+        "CONDUCTOR 2026-08-03T07:15:20.104Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch",
+        "CONDUCTOR 2026-08-03T10:33:12.288Z: blocked after 2 attempts. Branch sw/w10-04 kept. Gaps: agent set status=blocked deliberately on attempt 2; its reasoning is in the ticket's notes on the evidence branch"
       ]
     },
     {
