@@ -3946,7 +3946,7 @@
       "module": "web",
       "lane": "ui",
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "id": "W10-39",
       "points": 3,
