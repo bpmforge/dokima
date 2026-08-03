@@ -3845,19 +3845,17 @@
         "apps/web/src/trace/trace.css"
       ],
       "depends_on": [],
-      "status": "blocked",
+      "status": "todo",
       "stories": [],
       "acceptance": [
-        "MEASURED: TraceView.tsx:121 renders an escalation as \"Escalation escalation.rung_advanced\" \u2014 the raw event id \u2014 and discards fromRung, toRung and the human-readable reason. The data is in hand and thrown away: the fixture seed-tour-trace.mjs:46 carries reason \"validator gap persisted\", and escalationLikeFromTraceEvent already reads the rungs off that same event for the field-report draft at line 129. Render the reason and R0\u2192R1.",
-        "Same omission one row up: the receipt event's `validators: [...]` payload is never surfaced, so BLUEPRINT \u00a712.4's \"gate results per pass\" is not actually shown.",
+        "MEASURED: TraceView.tsx:121 renders an escalation as \"Escalation escalation.rung_advanced\" \u2014 the raw event id \u2014 and discards fromRung, toRung and the human-readable reason. This data IS carried in production: packages/gateway/src/escalation/policy.ts:313-314 sets fromRung/toRung and events.ts:17-18 types them. Render the reason and R0->R1.",
+        "CORRECTED CRITERION (the previous one was wrong and an independent reviewer caught it): do NOT read payload.validators off the gate event. mintReceipt (packages/events/src/receipts.ts:363-372) is the SOLE appender of gate.receipt_minted / gate.waived and anchors them with payload { receiptId, kind, contentMac } only. Validator results live in the separate `receipts` DB table. A UI reading payload.validators works against the tour fixture and NEVER in production. Either surface gate results by fetching the receipt through the receipts API (the data does exist there), or leave the row as-is and say so \u2014 do not read a key the product never emits.",
         "trace.css has no .trace-event__type rule, so the raw dotted event id inherits full --sw-fg at base size while its siblings are muted \u2014 the least human-meaningful token is the loudest thing in the row. Mute it.",
         "TraceView.tsx:123 renders raw ISO-8601 UTC with milliseconds, unlocalised and with no step delta. Format it. (The 1ms spacing in the fixture is an artifact, not a product problem \u2014 do not \"fix\" the fixture.)",
+        "RED FIXTURE: a test that fails if the escalation row renders the bare event id without its reason/rungs.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": [
-        "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test.",
-        "CONDUCTOR 2026-08-03T03:11:12.336Z: blocked after 2 attempts. Branch sw/w10-35 kept. Gaps: [HIGH] apps/web/src/trace/TraceView.tsx: gateValidators() (line 62) reads payload.validators to populate the new gate-results row, but the real, currently-live production event never carries that key: mintReceipt (packages/events/src/receipts.ts:363-372) anchors gate.receipt_minted/gate.waived with payload { receiptId, kind, contentMac } only \u2014 validators are stored in the separate `receipts` DB table, never copied into the event payload. Grep confirms mintReceipt is the sole appender of these event types across the repo (packages/pipeline, packages/harbormaster, apps/server/*, etc. all call i"
-      ]
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test.,CONDUCTOR 2026-08-03T03:11:12.336Z: blocked after 2 attempts. Branch sw/w10-35 kept. Gaps: [HIGH] apps/web/src/trace/TraceView.tsx: gateValidators() (line 62) reads payload.validators to populate the new gate-results row, but the real, currently-live production event never carries that key: mintReceipt (packages/events/src/receipts.ts:363-372) anchors gate.receipt_minted/gate.waived with payload { receiptId, kind, contentMac } only \u2014 validators are stored in the separate `receipts` DB table, never copied into the event payload. Grep confirms mintReceipt is the sole appender of these event types across the repo (packages/pipeline, packages/harbormaster, apps/server/*, etc. all call i BLOCKED then RE-FILED 2026-08-03. Attempt 1 did the work but failed the mechanical `plan.json status is in_progress, expected done` gate, which consumed one of only two attempts (the ladder is 2 without --escalate). Attempt 2 was then blocked by a CORRECT review HIGH: my own criterion told it to surface payload.validators, which mintReceipt never writes \u2014 the key exists only in the tour fixture. The criterion is rewritten above; the escalation reason/rungs half was always valid. The completed work is preserved on branch sw/w10-35."
     },
     {
       "id": "W10-36",
@@ -3984,6 +3982,31 @@
         "No production code changes in this ticket."
       ],
       "notes": "Found while diagnosing W10-33's file-size gate failure. Deliberately an inventory rather than a refactor: four splits across events/server/gateway in one ticket would be unreviewable, and each belongs to whoever owns that module."
+    },
+    {
+      "id": "W10-41",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "The tour fixture fabricates an event payload the product never emits",
+      "write_scope": [
+        "apps/web/scripts/seed-tour-trace.mjs",
+        "apps/web/e2e/fixtures/**",
+        "docs/TESTING.md"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED 2026-08-03: apps/web/scripts/seed-tour-trace.mjs:39 appends a gate event with payload { validators: [{ name, exitCode, gapCount }] }. No production code path ever writes that key. mintReceipt (packages/events/src/receipts.ts:363-372) is the SOLE appender of gate.receipt_minted / gate.waived and anchors them with { receiptId, kind, contentMac }; validator results live in the separate `receipts` table.",
+        "THE HARM IS NOT A WRONG SCREENSHOT, IT IS A WRONG SPEC. A UI built against this fixture reads a key that is always present in the tour and always absent in production. That is exactly what happened: a visual audit read the fixture, concluded the data was available, a ticket was written to surface it, and an agent implemented it before an independent reviewer caught that the payload does not exist. Law 9 says recorded fixtures rather than live calls \u2014 it does not license a fixture to invent a shape the recorder never produced.",
+        "Correct the fixture so every appended event carries only the payload its real appender writes. Where the tour needs richer content, seed it through the real seam (mintReceipt and the receipts table) rather than by hand-authoring an event payload.",
+        "RED FIXTURE: a test that fails when a seeded event payload carries a key the production appender for that eventType does not write. Derive the expected shape from the appender, not from a hand-maintained list, or it rots the moment a payload changes.",
+        "Audit the other seeds in apps/web/e2e/fixtures/** the same way and report what you found \u2014 seed-board-tickets.mjs is used by the e2e suite and the a11y gate, so a fabricated shape there would be load-bearing for far more than the tour.",
+        "Record the rule in docs/TESTING.md: a fixture may record less than production, never more, and never a differently-shaped payload. Full gate green; counts in the commit body."
+      ],
+      "notes": "Found by the independent reviewer that blocked W10-35, and confirmed by hand: grep shows mintReceipt is the only appender of these event types across packages/pipeline, packages/harbormaster and apps/server. This is the more valuable half of that block \u2014 the ticket was one wrong criterion, this is a fixture that can mislead every future ticket that reads it."
     }
   ]
 }
