@@ -273,3 +273,111 @@ describe('providerForConfig — adapter dispatch (W10-03)', () => {
     }
   });
 });
+
+/**
+ * W10-65. The fake gateway serves `responses` in order and repeats the last
+ * entry, which is exactly the shape needed here: [deviating, valid] proves the
+ * retry recovers, [deviating] alone proves it still gives up.
+ *
+ * The deviating payload is the real one — a live local model returned a
+ * blueprint whose `openQuestions[0].slate.recommendedId` was empty on
+ * 2026-08-03, and that one field discarded a 90-second run.
+ */
+describe('gateway-model-port — one bounded retry with the gap fed back (W10-65)', () => {
+  let server: FakeGatewayServer | undefined;
+
+  afterEach(async () => {
+    await server?.close();
+    server = undefined;
+  });
+
+  const DEVIATING_BLUEPRINT = JSON.stringify({
+    sections: [{ heading: 'Overview', body: 'A demo project.' }],
+    openQuestions: [
+      {
+        key: 'deployment-shape',
+        slate: {
+          title: 'Deployment shape?',
+          options: [
+            { id: 'self-hosted', label: 'Self-hosted', tradeoffs: 'more ops work' },
+            { id: 'managed', label: 'Managed', tradeoffs: 'vendor lock-in' },
+          ],
+          recommendedId: '',
+          recommendedReasoning: 'fastest to ship',
+        },
+      },
+    ],
+  });
+
+  it('recovers when the model corrects itself on the second attempt', async () => {
+    server = await startFakeGatewayServer([
+      DEVIATING_BLUEPRINT,
+      JSON.stringify(VALID_BLUEPRINT_INPUT),
+    ]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    const result = await port.resolveBlueprintInput([], 'Demo Project');
+
+    expect(result.openQuestions[0]?.slate.recommendedId).toBe('managed');
+    expect(server.requests).toHaveLength(2);
+  });
+
+  it('feeds the SPECIFIC failing path back, not a bare try-again', async () => {
+    server = await startFakeGatewayServer([
+      DEVIATING_BLUEPRINT,
+      JSON.stringify(VALID_BLUEPRINT_INPUT),
+    ]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    await port.resolveBlueprintInput([], 'Demo Project');
+
+    const retry = server.requests[1] as {
+      messages: { role: string; content: string }[];
+    };
+    const userTurn = retry.messages.find((m) => m.role === 'user')?.content ?? '';
+    expect(userTurn).toContain('openQuestions[0].slate.recommendedId');
+    expect(userTurn).toContain('was rejected');
+  });
+
+  it('still raises when the model deviates every time — the retry is bounded at one', async () => {
+    server = await startFakeGatewayServer([DEVIATING_BLUEPRINT]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.toBeInstanceOf(
+      MalformedModelOutputError,
+    );
+    expect(server.requests).toHaveLength(2);
+  });
+
+  it('names the phase and both attempts when it gives up', async () => {
+    server = await startFakeGatewayServer([DEVIATING_BLUEPRINT]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.toThrow(
+      /blueprint-input.*after one retry with the gap fed back/s,
+    );
+  });
+
+  it('does NOT retry a transport failure — that would double a wait the user is already holding', async () => {
+    const port = await createRealGatewayPort({
+      baseUrl: 'http://127.0.0.1:9/v1', // discard port: connection refused
+      model: 'local-model',
+    });
+
+    await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.not.toBeInstanceOf(
+      MalformedModelOutputError,
+    );
+  });
+});

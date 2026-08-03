@@ -80,6 +80,66 @@ export interface RealGatewayPort {
 }
 
 /**
+ * W10-65: one bounded retry, with the validation failure fed back.
+ *
+ * This is W1-03's micro-loop shape — criterion, gap, feedback, retry — applied
+ * to the one place that had no loop at all. Before this, a phase was a single
+ * shot: a local model that returned well-formed JSON of the right general
+ * shape but left `openQuestions[0].slate.recommendedId` empty threw away the
+ * entire run, including the phases that had already succeeded. Measured in a
+ * browser on 2026-08-03; the same code had passed that phase on a different
+ * idea minutes earlier, so it is input-dependent variance, not a bug in the
+ * model or the parser.
+ *
+ * DECIDED, per the ticket's own instruction to choose rather than do both:
+ * feed the gap back, do NOT loosen the schema. `recommendedId` is not
+ * gratuitous strictness — `buildFounderSlate`
+ * (packages/pipeline/src/decisions/founder-slate.ts:42) refuses a slate whose
+ * `recommendedId` is not among its options, deliberately ("a slate with the
+ * wrong option count is not a smaller problem to paper over"). Accepting an
+ * empty one here would move the same refusal one layer deeper and lose the
+ * phase name on the way.
+ *
+ * EXACTLY ONE retry, and only for `MalformedModelOutputError`. A provider
+ * timeout or transport failure is NOT retried: those are the adapter's
+ * business, the local default is 300s, and re-issuing one would double a wait
+ * a user is already holding a tab open for. A retry that never gives up is a
+ * hang, not a fix.
+ */
+async function withGapFeedback<T>(
+  provider: ReturnType<typeof providerForConfig>,
+  model: string,
+  phase: string,
+  systemPrompt: string,
+  userPrompt: string,
+  parse: (raw: Record<string, unknown>) => T,
+): Promise<T> {
+  try {
+    return parse(await chatJson(provider, model, phase, systemPrompt, userPrompt));
+  } catch (err) {
+    if (!(err instanceof MalformedModelOutputError)) throw err;
+
+    // The gap, stated as the validator stated it. Naming the exact path the
+    // model got wrong is the whole point — "try again" without the reason is
+    // just a second roll of the same dice.
+    const retryPrompt =
+      `${userPrompt}\n\nYour previous response was rejected: ${err.message}\n` +
+      'Return the corrected JSON object only. Fix that specific problem and ' +
+      'keep everything else you produced.';
+
+    try {
+      return parse(await chatJson(provider, model, phase, systemPrompt, retryPrompt));
+    } catch (retryErr) {
+      if (!(retryErr instanceof MalformedModelOutputError)) throw retryErr;
+      throw new MalformedModelOutputError(
+        phase,
+        `${retryErr.message} (after one retry with the gap fed back; the first attempt failed with: ${err.message})`,
+      );
+    }
+  }
+}
+
+/**
  * Builds the real port. `config` defaults to env-resolved local-first
  * settings (`resolveGatewayConfigFromEnv`); tests inject a `fetchImpl`
  * pointed at a fake OpenAI-compatible HTTP server instead of a live one
@@ -92,27 +152,27 @@ export async function createRealGatewayPort(
 
   return {
     async resolveBlueprintInput(drafts, title) {
-      const raw = await chatJson(
+      return withGapFeedback(
         provider,
         config.model,
         'blueprint-input',
         BLUEPRINT_SYSTEM_PROMPT,
         JSON.stringify({ title, drafts }),
+        (raw) => parseBlueprintInput(raw, title),
       );
-      return parseBlueprintInput(raw, title);
     },
     async resolveTechnicalSlateInput(blueprint) {
-      const raw = await chatJson(
+      return withGapFeedback(
         provider,
         config.model,
         'technical-slate-input',
         TECHNICAL_SLATE_SYSTEM_PROMPT,
         JSON.stringify({ blueprintMarkdown: blueprint.document.markdown }),
+        parseTechnicalSlateInput,
       );
-      return parseTechnicalSlateInput(raw);
     },
     async resolveTicketDrafts(blueprint, technicalSlate) {
-      const raw = await chatJson(
+      return withGapFeedback(
         provider,
         config.model,
         'ticket-drafts',
@@ -121,8 +181,8 @@ export async function createRealGatewayPort(
           blueprintMarkdown: blueprint.document.markdown,
           technicalSlate,
         }),
+        parseTicketDrafts,
       );
-      return parseTicketDrafts(raw);
     },
   };
 }

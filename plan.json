@@ -4668,7 +4668,7 @@
       "depends_on": [
         "W10-59"
       ],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED IN A BROWSER on a second, different product idea, with the model resolved through the env fallback and no project configuration at all. The run reached the model, the model returned well-formed JSON of the right general shape, and the run died on ONE field: `pipeline model port produced malformed output for phase \"blueprint-input\": \"openQuestions[0].slate.recommendedId\" must be a non-empty string (HTTP 502)`. The state afterwards: `plan_items 0`, `events 0` \u2014 not even a record that a run was attempted. The SAME code had completed this phase cleanly on the previous idea minutes earlier, so this is input-dependent model variance, not a systematic bug.",
@@ -4678,7 +4678,33 @@
         "RED FIXTURE: a fake gateway that returns a schema-deviating completion FIRST and a valid one second must produce a completed phase, and one that deviates every time must still raise `MalformedModelOutputError` naming the phase and the field. A retry that never gives up is a hang, not a fix.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 while verifying a DIFFERENT claim \u2014 that the env fallback (DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID) really is a machine-wide default. It is: the LM Studio server log shows the 16:21:41 chat request carrying `qwen3.6-35b-a3b` from a project with zero provider config, so env resolution is confirmed working. The run then failed for this unrelated reason, which is the whole point \u2014 the claim was verified by running it rather than asserted. Third independent confirmation of W10-58 partial-progress clause: a run that reached and used a real model left `events 0`. Strongly related to W10-61 (the user sees a red line at the end of a long wait with nothing kept) and to W10-58 (which would give the retry somewhere to record itself)."
+      "notes": "Found 2026-08-03 while verifying a DIFFERENT claim \u2014 that the env fallback (DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID) really is a machine-wide default. It is: the LM Studio server log shows the 16:21:41 chat request carrying `qwen3.6-35b-a3b` from a project with zero provider config, so env resolution is confirmed working. The run then failed for this unrelated reason, which is the whole point \u2014 the claim was verified by running it rather than asserted. Third independent confirmation of W10-58 partial-progress clause: a run that reached and used a real model left `events 0`. Strongly related to W10-61 (the user sees a red line at the end of a long wait with nothing kept) and to W10-58 (which would give the retry somewhere to record itself). \u2014 CLOSED 2026-08-03 and VERIFIED IN A BROWSER, not only by fixture: the same idea that produced the empty `recommendedId` was re-run against the same model, and that failure is gone \u2014 the run proceeded past blueprint-input and died later on an unrelated open-question key format (filed as W10-66). Honest cost note: the retry adds one model call on the failure path only, and on this hardware that is ~30-60s; the run that used it took over 331s before hitting the NEXT defect, against 91s for a run that needed no retry. Decision recorded per acceptance 4: gap-feedback retry, NOT schema loosening, and the reason was verified rather than assumed \u2014 buildFounderSlate refuses a recommendedId that is not among its options, so accepting an empty one at the port would only move the refusal deeper."
+    },
+    {
+      "id": "W10-66",
+      "phase": 10,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 2,
+      "title": "The blueprint prompt asks for a \"key\" without saying it is a slug, and a strict marker grammar then refuses the title the model writes",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port/blueprint-phase.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts"
+      ],
+      "depends_on": [
+        "W10-65"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED IN A BROWSER, as the failure that appeared once W10-65's retry cleared the previous one. Same idea, same model: the run got PAST blueprint-input and died with `invalid open-question key \"Offline Sync & Conflict Resolution Strategy\" \u2014 must match ^[A-Za-z0-9][\\w.-]*$ (HTTP 422)`. Note the status: 422 from the route, not the port's 502, so it is raised after the port returned and W10-65's retry does not and should not reach it.",
+        "THE CONSTRAINT IS LOAD-BEARING \u2014 do not loosen it. `OPEN_QUESTION_KEY_RE` (packages/pipeline/src/blueprint/markers.ts:23) exists because the key becomes a bare token inside an HTML-comment sentinel, `<!-- FOUNDER-DECISION: <key> UNRESOLVED -->`, matched by a strict grammar that is deliberately fail-closed (\"an unparseable marker must block the gate exactly like a genuine unresolved one\"). A key containing spaces and an ampersand would break FR-P7's phase lock.",
+        "THE PROMPT IS WHAT IS WRONG. `BLUEPRINT_SYSTEM_PROMPT` asks for `openQuestions: [{key: string, ...}]` and says nothing about the format. A model given a field called \"key\" next to a field called \"title\" reasonably writes a human-readable one. The system enforces a schema stricter than the schema it describes \u2014 and that gap, not the model, is the defect.",
+        "DELIVER: state the constraint where the model can act on it \u2014 the key must match `^[A-Za-z0-9][\\w.-]*$`, with a worked example (`deployment-shape`, `offline-sync`) rather than the regex alone. Consider ALSO slugifying defensively at the parse boundary and record the decision either way; a prompt is guidance and a boundary is a guarantee, and this key crosses a trust boundary into a gate.",
+        "RED FIXTURE: a completion whose open-question key is a human-readable title is handled per the decision above (rejected with the phase named, or slugified deterministically \u2014 not silently dropped), and a well-formed slug still round-trips into a marker `parseMarkers` accepts.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 in the browser run that VERIFIED W10-65. This is the third distinct failure mode in the same three-phase pipeline, each only visible once the previous was fixed: W10-59 (fenced JSON), W10-65 (a field the model left empty), and now a field the model filled in a format nobody told it about. The pattern worth naming: every one is a mismatch between what the prompts ask for and what the validators enforce, and each costs a full multi-minute run to discover. Related: W10-58 (partial progress would make each discovery cost one phase, not a whole run)."
     }
   ]
 }
