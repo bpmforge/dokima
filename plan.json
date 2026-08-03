@@ -4378,6 +4378,80 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Filed 2026-08-03 from an external pilot report the founder supplied. Both harness bugs that report documents were checked against Dokima and neither applies: (1) the glob-normalization bug \u2014 verified absent, see acceptance 2; (2) the commit-ordering bug, where reviews ran against an uncommitted tree while claiming to check committed work \u2014 structurally impossible here, because Dokima's coding prompt instructs the agent to commit and gates.mjs already hard-fails on \"no commits on ticket branch\" (conductor/gates.mjs:28), so an empty diff cannot pass vacuously. This ticket is the one piece of genuine residue: an unasserted cross-implementation invariant. SCOPE AMENDED 2026-08-03 (third amendment this session \u2014 the pattern is my own ticket-scoping, \u00a710 of RESUME_2026-08-03 exactly). The differential test did not merely pin the invariant, it FOUND A REAL BUG in the enforcer, so the fix has to live in scripts/conductor-lib/parsing.mjs, which the filed scope did not name because I expected a test-only ticket. globToRegex expands a/**/b to ^a/.*/b$ \u2014 the slash after ** is literal, so ** requires AT LEAST ONE directory segment, while every standard glob dialect (bash globstar, minimatch, git pathspec) and validate-plan.mjs itself treat it as zero-or-more. Consequence: apps/web/src/**/*.css did not cover apps/web/src/styles.css. W10-06, W10-28 and W10-30 all carried that glob and all silently worked around it by listing styles.css explicitly \u2014 the enforcement boundary was narrower than it read, three times, unnoticed. This is the pilot report failure shape exactly: a scope the board accepts and the enforcer rejects, diagnosed as a bad ticket rather than a dialect gap. AGENT 2026-08-03: done. Neither pilot bug applies to Dokima (both checked against code). But the differential test found a REAL divergence on first run: globToRegex required >=1 directory segment for **/, while validate-plan.mjs and every standard dialect allow zero \u2014 so apps/web/src/**/*.css did not cover apps/web/src/styles.css. Already worked around unnoticed in W10-06/W10-28/W10-30 by listing the file explicitly. Fixed; the fix needed the ? expansion reordered before the sentinel joins because the replacement contains a literal ? that the blanket pass ate, producing a silently-wrong regex rather than an error. Gate: lint 0 errors, typecheck clean, 417 files / 3145 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-54",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "title": "RELEASE BLOCKER: \"New Product\" is a dead end \u2014 nothing in the UI starts a pipeline on your own idea",
+      "write_scope": [
+        "apps/web/src/App/**",
+        "apps/web/src/onboarding/**",
+        "apps/web/e2e/*.spec.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED IN A BROWSER against the INSTALLED package (npm pack -> install -> dokima -> Chrome), not the repo and not a test. Create a product via Fleet -> New Product. The resulting workspace has this COMPLETE interactive surface, read off the accessibility tree: Roster, Plan, Notifications, Settings, theme toggle, back-to-Fleet, three Collapse buttons, three SAMPLE receipt links, \"View current phase\", and the Docs/Receipts tabs. There is NO control that starts an interview, submits an idea, or runs a pipeline. A user who clicks \"New Product\" cannot begin.",
+        "CONFIRMED IN CODE, not inferred from the screenshot: the only module in apps/web that calls `POST /api/v1/projects/:id/pipeline/run` is `onboarding/GuidedSample.tsx`, reached exclusively from the first-run Setup Wizard, and it runs a HARDCODED idea (\"a link-shortener with auth\"). The route itself requires a complete `InterviewSession` that only the Canvas could assemble \u2014 and the Canvas has no interview surface to assemble it.",
+        "THE PRODUCT PREMISE IS THE THING BLOCKED. README: \"You describe what you want. Dokima interviews you, writes the blueprint, decomposes it into a ticket board.\" The wizard even says the sample lets you \"watch the whole lifecycle before risking your own idea\" \u2014 implying a path for your own idea that does not exist. Every other subsystem behind this is built and tested; what is missing is the entry point.",
+        "DELIVER: a real interview surface reachable from a project workspace \u2014 ask the topic questions, capture answers, draft deliverables, and POST the assembled session to the existing `pipeline/run` route. The server side, the session type, `isInterviewComplete` and `collectDrafts` all already exist; this is the missing seam, not new machinery.",
+        "RED FIXTURE, and it must drive the UI rather than the API: an e2e spec that creates a product, enters an idea through the interview, and asserts the board is non-empty afterwards. An API-level test would have passed all along and is exactly why this survived \u2014 see W10-55.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by driving the installed package in a real browser at the founder\u2019s suggestion, after an API-first attempt had already been derailed by hand-assembling an InterviewSession \u2014 which would have bypassed precisely this gap. Sibling findings: W10-55 (the one path that does call the pipeline produces no durable state) and W10-56 (two first-run UX defects seen in the same pass)."
+    },
+    {
+      "id": "W10-55",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "title": "The guided sample claims to run the whole lifecycle and produces zero durable state",
+      "write_scope": [
+        "apps/web/src/onboarding/**",
+        "apps/web/e2e/*.spec.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED END TO END in a browser against the installed package: completed every beat of the guided sample and clicked Done. The sample project IS created on disk (/tmp/dokima-sample-*/.dokima/state.db, 28 tables). Its contents afterwards: **events 0, receipts 0, no tickets table, no artifacts table**. The API agrees \u2014 tickets, artifacts and receipts all return `{\"items\":[]}`.",
+        "THE MODEL WAS NEVER CALLED. LM Studio was running and configured (the wizard pre-filled localhost:1234 and it was accepted); `lms ps` shows the only loaded model was loaded by a separate manual curl, and the Dokima server logged nothing at all for the whole run. So the \"beats\" are a scripted UI walkthrough with canned question/answer pairs, not a pipeline execution.",
+        "THE COPY MAKES A CLAIM THE RUN DOES NOT KEEP. Wizard step 4: \"Creates a real project, then runs a built-in idea through the interview, blueprint, decisions, and board **on your configured model** \u2014 watch the whole lifecycle before risking your own idea.\" A user reasonably concludes their model works and the lifecycle ran. Neither happened. Under C-1 (local-first honesty) that is the defect, independent of the missing feature.",
+        "DECIDE AND MAKE IT TRUE, EITHER WAY: either the guided sample really does drive `pipeline/run` end to end against the configured model and lands real events/receipts, or the copy stops claiming it does and says plainly that it is a scripted tour. Do not leave a claim the artifact cannot keep.",
+        "RED FIXTURE: an e2e spec that completes the guided sample and asserts the sample project has a non-zero event count. It must fail against current code \u2014 today the count is 0. `GuidedSample` awaits `runGuidedPipeline` and the failure surfaced nowhere: no console error, no server log, no visible UI state. Whatever swallowed it is part of this ticket.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 in the same browser pass as W10-54. Note the shape: 3,147 tests, 61 e2e specs and a green suite throughout, because no test ever completed the guided sample and then looked at the resulting database. Same family as W10-29 (drawers 404ing under a green suite) and W10-52 (a verified, installed, entirely non-functional validator pack) \u2014 the assertion that was missing is always \"and then it actually worked\"."
+    },
+    {
+      "id": "W10-56",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "First-run UX: a mislabeled phase button and someone else\u2019s sample data in your new product",
+      "write_scope": [
+        "apps/web/src/App/**",
+        "apps/web/src/board/**",
+        "apps/web/src/chat/**"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MISLABELED CONTROL, measured: on an empty board the panel reads \"The board fills when Phase 3 design is decomposed\" with a button \"View current phase\". Clicking it navigates to `?view=plans` \u2014 the **Improvement plan** screen, which reports \"0 raw findings -> 0 plan items\" and explains that items \"appear here once a run or nightly auto-verify evaluates the recommendation catalog against this project\". That is a different subsystem from the phase pipeline; the button\u2019s promise and its destination do not match.",
+        "A BRAND-NEW PRODUCT SHOWS SAMPLE CARDS ABOUT DOKIMA ITSELF. Immediately after creating \"CSV Watcher\", the Chat pane renders cards referencing `W4-04`, `FR-C2`, `FR-C5`, `apps/web/src/chat/ChatView.tsx`, models `claude-sonnet-5`/`claude-opus-4-8`, and costs `$0.1290`/`$0.0050`/`$0.0421` \u2014 Dokima\u2019s own development history, in a stranger\u2019s new project.",
+        "THE LABELLING IS ALREADY HONEST \u2014 DO NOT UNDO W9-03. Each card carries a SAMPLE badge and the receipt links resolve, so nothing here is fabricated-looking. The defect is placement, not honesty: sample content belongs in the guided sample, not in every newly created product, and least of all sample content about the tool\u2019s own internals.",
+        "Fix both: point the empty-board control at whatever actually shows the current phase (or remove it if no such surface exists yet \u2014 a button that goes somewhere wrong is worse than no button), and stop seeding Dokima-internal sample cards into user-created projects.",
+        "RED FIXTURE for each: an e2e spec asserting the empty-board control lands on a phase surface rather than the improvement plan, and one asserting a freshly created project\u2019s chat pane contains no SAMPLE cards.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 in the same browser pass as W10-54/W10-55. Deliberately filed separately from the blocker: these are real but cosmetic beside \"you cannot start a pipeline at all\", and bundling them would let the smaller fixes make the ticket look addressed."
     }
   ]
 }
