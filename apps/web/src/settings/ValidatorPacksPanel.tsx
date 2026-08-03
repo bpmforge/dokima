@@ -39,7 +39,7 @@ export function ValidatorPacksPanel({ projectId }: ValidatorPacksPanelProps) {
       <p className="settings__hint">
         Empty selection means the full pack under <code>content/validators/</code> runs.
         Naming an unknown validator here is refused at load time with the exact name shown
-        (`UnknownValidatorSelectionError`).
+        (<code>UnknownValidatorSelectionError</code>).
       </p>
       {error && (
         <p role="alert" className="settings__error">

@@ -10,7 +10,9 @@ export const STATE_LABEL: Record<PlanItemState, string> = {
 
 /** AC2's funnel line: "raw findings -> plan items -> accepted -> done/regressed", FR-RL4 style (every stage shown, raw never hidden). */
 export function funnelSummary(funnel: PlanFunnel): string {
-  return `${funnel.rawFindings} raw → ${funnel.planItems} plan items → ${funnel.accepted} accepted → ${funnel.done} done / ${funnel.regressed} regressed`;
+  const rawFindings = `${funnel.rawFindings} raw finding${funnel.rawFindings === 1 ? '' : 's'}`;
+  const planItems = `${funnel.planItems} plan item${funnel.planItems === 1 ? '' : 's'}`;
+  return `${rawFindings} → ${planItems} → ${funnel.accepted} accepted → ${funnel.done} done / ${funnel.regressed} regressed`;
 }
 
 export function canAccept(state: PlanItemState): boolean {

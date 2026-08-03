@@ -9,6 +9,12 @@ function formatHeartbeat(ageMs: number | null): string {
   return `${Math.round(ageMs / 1000)}s ago`;
 }
 
+/** Berths-running and heartbeat-freshness are the same fact when nothing is running — say it once. */
+function berthsSummary(berthsRunning: number, heartbeatAgeMs: number | null): string {
+  if (berthsRunning === 0) return 'No berths running';
+  return `${berthsRunning} berth${berthsRunning === 1 ? '' : 's'} running · ${formatHeartbeat(heartbeatAgeMs)}`;
+}
+
 export interface ProjectCardProps {
   card: ProjectCardData;
   archivedView: boolean;
@@ -92,8 +98,7 @@ export function ProjectCard({
           className={`project-card__heartbeat-dot${stale ? ' project-card__heartbeat-dot--stale' : ''}`}
           aria-hidden="true"
         />
-        {card.berthsRunning} berth{card.berthsRunning === 1 ? '' : 's'} running ·{' '}
-        {formatHeartbeat(card.heartbeatAgeMs)}
+        {berthsSummary(card.berthsRunning, card.heartbeatAgeMs)}
       </div>
 
       {card.pendingDecideCount > 0 && (

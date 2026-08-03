@@ -36,6 +36,7 @@ export function EvidencePanel({ baseUrl, token, projectId, ticket }: EvidencePan
 
   return (
     <section aria-label="Evidence" data-testid="drawer-evidence">
+      <h3>Evidence</h3>
       {ticket.manifest ? (
         <dl className="ticket-drawer__contract-grid">
           <dt>Verify</dt>
