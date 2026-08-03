@@ -4331,26 +4331,28 @@
       "phase": 10,
       "module": "content",
       "lane": "quality",
-      "points": 3,
-      "title": "The shared validator libs every validator sources are unsigned",
+      "points": 5,
+      "title": "RELEASE BLOCKER: every validator in the shipped pack fails to run \u2014 _lib.sh is never installed",
       "write_scope": [
         "scripts/sign-content.mjs",
         "content/manifest.json",
-        "packages/validators/src/**"
+        "apps/server/src/bootstrap/packs-update.ts",
+        "apps/server/src/bootstrap/packs-update.test.ts"
       ],
       "depends_on": [
         "W10-51"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
-        "MEASURED: content/manifest.json signs 81 of the 83 .sh files in content/validators. The two excluded are _lib.sh and _lib_sdlc_config.sh \u2014 the shared libraries EVERY other validator sources. An attacker who can write _lib.sh controls the behaviour of all 81 signed validators while every signature still verifies, which makes the signing story weaker than it reads.",
-        "PRE-EXISTING, NOT INTRODUCED BY THE REFRESH: verified against the pre-import manifest, which had 79 entries and also excluded both. W10-51 surfaced it while reconciling counts; it did not cause it.",
-        "Sign the shared libs too, or state in the manifest why they are excluded. Silence is the problem \u2014 a reader counting 81 signed of 83 present has no way to tell deliberate from forgotten.",
-        "RED FIXTURE: tamper with _lib.sh after signing and prove the pack now fails verification. Today it passes, which is the whole finding.",
-        "Full gate green including e2e, counts in the commit body."
+        "MEASURED, and worse than this ticket was originally filed as. It was filed as \"the shared libs are unsigned\". They are not merely unsigned \u2014 they are NEVER INSTALLED. `packsUpdate` installs exactly the files named in `content/manifest.json`; `sign-content.mjs` selects them with VALIDATOR_NAME_RE (`^(?:(?:validate|run)-.+|secrets-scan)\\.sh$`), which `_lib.sh` and `_lib_sdlc_config.sh` do not match. So a real install lands 81 validators and zero shared libraries.",
+        "PROVEN AT RUNTIME, not inferred: running an installed validator from a real `packsUpdate` destination exits **127** with `_lib.sh: No such file or directory`, then `validator_init: command not found`, then `detect_project_root: command not found`. Every one of the 81 installed validators sources `_lib.sh`. The shipped validator pack is non-functional in its entirety.",
+        "WHY NOTHING CAUGHT IT \u2014 this is the gate hole, and it is the real deliverable. The repo runs validators from `content/validators/` in the SOURCE TREE, where `_lib.sh` sits beside them, so every gate, every conductor run and every existing test passes. `packs-update.test.ts` verifies signatures, hashes and install counts but never EXECUTES an installed validator. A pack can therefore be fully verified, fully installed, and completely broken \u2014 which is exactly the shape of the W10-29 finding (a green suite over a surface that 404s).",
+        "FIX: include the shared libraries in the signed manifest so they are verified and installed like everything else. They are executable content the product runs, so signing them is also correct on its own terms \u2014 an attacker who can write `_lib.sh` controls all 81 validators, and until now it was not covered by the signature at all.",
+        "RED FIXTURE, the one that would have caught this: install a pack to a temp dir via the real `packsUpdate`, then EXECUTE an installed validator and assert it exits on its own 0/1/2 contract rather than 127. Assert `_lib.sh` is present and verified. Prove it reds against the current code \u2014 it must, since today that run exits 127.",
+        "Full gate green including e2e, counts in the commit body; content re-signed and the signature verified after the manifest changes."
       ],
-      "notes": "Filed 2026-08-03 from W10-51 reconciliation. Note the id reuse: W10_PLAN \u00a72 had a different W10-52 (roster parser for v3 frontmatter) whose premise W10-51 measured false and did not file \u2014 this is unrelated work taking the free number."
+      "notes": "Filed 2026-08-03 from W10-51 reconciliation. Note the id reuse: W10_PLAN \u00a72 had a different W10-52 (roster parser for v3 frontmatter) whose premise W10-51 measured false and did not file \u2014 this is unrelated work taking the free number. REWRITTEN 2026-08-03 after probing rather than trusting the filing. The original framing (\"unsigned shared libs\") understated it: they are absent from the manifest entirely, so packsUpdate never installs them, so every installed validator exits 127. Found while auditing for release-readiness; this is a genuine release blocker, not a hardening nicety. Points 3 -> 5 and write_scope widened to include packs-update + its test, because the missing gate (execute an installed validator) is the substantive half of the fix."
     },
     {
       "id": "W10-53",
