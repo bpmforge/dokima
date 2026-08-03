@@ -222,8 +222,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
+      # The scan's denominator is `git rev-list --all`, so it is only as complete
+      # as the local ref set. Measured in a simulated checkout: with a single-ref
+      # refspec the scanner reports OK on a repo carrying a leaked key on another
+      # branch — not shallow, so the shallowness check never fires; just a
+      # silently smaller denominator, which is the exact failure this gate exists
+      # to kill. Rather than depend on what fetch-depth: 0 happens to fetch, make
+      # every branch present explicitly and then have the scanner verify it.
+      - name: Fetch every branch (the scan's denominator)
+        run: git fetch --prune --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
       - name: Scan every object reachable from every ref (file contents + commit/tag messages)
-        run: node scripts/validate-history-secrets.mjs
+        run: node scripts/validate-history-secrets.mjs --verify-remote-refs
 
   traceability:
     name: traceability (validate-plan, validate-traceability, FR/UC grep)

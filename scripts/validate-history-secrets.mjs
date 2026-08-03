@@ -22,6 +22,7 @@
 // Usage:
 //   node scripts/validate-history-secrets.mjs [repo-root]
 //   node scripts/validate-history-secrets.mjs --update-baseline [repo-root]
+//   node scripts/validate-history-secrets.mjs --verify-remote-refs [repo-root]   (CI)
 //
 // Exit 0 clean · 1 findings · 2 error (same contract as the validator pack).
 // Exit 2 covers "could not scan": not a repo, a shallow clone, no history, or
@@ -76,6 +77,42 @@ function git(root, args, { maxBuffer = 1 << 28, input } = {}) {
   if (res.error) throw new Error(`git ${args[0]} failed to spawn: ${res.error.message}`);
   if (res.status !== 0) throw new Error(`git ${args.join(' ')} exited ${res.status}: ${(res.stderr || '').trim()}`);
   return res.stdout;
+}
+
+/**
+ * Refuse to report clean when the local ref set is narrower than the remote's.
+ *
+ * Measured, not assumed: a checkout fetched with the single-ref refspec
+ * `+refs/heads/main:refs/remotes/origin/main` reports **OK** on a repo carrying
+ * a leaked key on another branch. It is not shallow, so the shallowness check
+ * never fires — the denominator is just silently smaller. That is precisely the
+ * failure this whole gate exists to kill, so the scan is not allowed to trust
+ * that its caller fetched everything.
+ *
+ * Opt-in (`--verify-remote-refs`) because it is the one network call in this
+ * file: CI has already talked to the remote it cloned from, while a local run
+ * must stay offline (Law 9). Off by default, on in CI.
+ */
+function assertRemoteRefsPresent(root) {
+  const remotes = git(root, ['remote']).split('\n').filter(Boolean);
+  if (remotes.length === 0) throw new Error('--verify-remote-refs was requested but this repo has no remote');
+  const remote = remotes.includes('origin') ? 'origin' : remotes[0];
+
+  const local = new Set(git(root, ['for-each-ref', '--format=%(refname)']).split('\n').filter(Boolean));
+  const missing = [];
+  for (const line of git(root, ['ls-remote', '--heads', remote]).split('\n')) {
+    const name = line.split('\t')[1];
+    if (!name) continue;
+    const branch = name.slice('refs/heads/'.length);
+    if (!local.has(name) && !local.has(`refs/remotes/${remote}/${branch}`)) missing.push(branch);
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.length} branch(es) on '${remote}' have no local ref, so --all would scan a narrower history ` +
+        `than exists: ${missing.join(', ')}. Fetch them before scanning: ` +
+        `git fetch --prune ${remote} '+refs/heads/*:refs/remotes/${remote}/*'`,
+    );
+  }
 }
 
 /** Refuse to report clean on a repo whose history is absent or truncated. */
@@ -151,8 +188,9 @@ export function scanText(text) {
  * Scan every reachable object. Returns findings keyed by fingerprint (one entry
  * per distinct secret VALUE, however many objects carry it) plus scan stats.
  */
-export function scanHistory(root) {
+export function scanHistory(root, { verifyRemoteRefs = false } = {}) {
   assertScannableHistory(root);
+  if (verifyRemoteRefs) assertRemoteRefsPresent(root);
   const { scannable, pathBySha, typeBySha } = reachableObjects(root);
 
   const res = spawnSync('git', ['-C', root, 'cat-file', '--batch', '--buffer'], {
@@ -204,6 +242,7 @@ export function scanHistory(root) {
       scanned,
       binarySkipped,
       commits: Number(git(root, ['rev-list', '--all', '--count']).trim()),
+      refs: git(root, ['for-each-ref', '--format=%(refname)']).split('\n').filter(Boolean).length,
     },
   };
 }
@@ -237,13 +276,14 @@ function writeBaseline(root, findings) {
 }
 
 function main(argv) {
-  const args = argv.filter((a) => a !== '--update-baseline');
+  const args = argv.filter((a) => !a.startsWith('--'));
   const update = argv.includes('--update-baseline');
+  const verifyRemoteRefs = argv.includes('--verify-remote-refs');
   const root = resolve(args[0] ?? join(dirname(fileURLToPath(import.meta.url)), '..'));
 
   let result;
   try {
-    result = scanHistory(root);
+    result = scanHistory(root, { verifyRemoteRefs });
   } catch (e) {
     console.error(`ERROR history-secrets: ${e.message}`);
     return 2;
@@ -251,8 +291,8 @@ function main(argv) {
 
   const { findings, stats } = result;
   console.log(
-    `Scanned ${stats.commits} commits · ${stats.objects} reachable objects — file contents, commit and tag messages ` +
-      `(${stats.scanned} text, ${stats.binarySkipped} binary skipped) under ${root}`,
+    `Scanned ${stats.commits} commits over ${stats.refs} refs · ${stats.objects} reachable objects — file contents, ` +
+      `commit and tag messages (${stats.scanned} text, ${stats.binarySkipped} binary skipped) under ${root}`,
   );
 
   if (update) {

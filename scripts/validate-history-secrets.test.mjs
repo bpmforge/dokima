@@ -232,6 +232,41 @@ describe('history-secrets: fails closed, because unknown is not clean', () => {
     expect(res.stderr).toContain('fetch-depth: 0');
   });
 
+  it('RED FIXTURE: a single-ref checkout hides a leak on another branch — and --verify-remote-refs refuses it', () => {
+    const origin = newRepo();
+    git(origin, 'checkout', '-qb', 'feature');
+    plantAndHide(origin, 'ci/token.txt', shape.github(), { keepInTree: true });
+    git(origin, 'checkout', '-q', 'main');
+
+    // Exactly what a narrow refspec produces: full history of ONE branch. Not
+    // shallow — so the shallowness check never fires — just a smaller denominator.
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'dokima-hist-narrow-'));
+    scratch.push(dir);
+    const target = path.join(dir, 'repo');
+    execFileSync('git', ['init', '-q', target], { env: GIT_ENV });
+    git(target, 'remote', 'add', 'origin', `file://${origin}`);
+    git(target, 'fetch', '-q', 'origin', '+refs/heads/main:refs/remotes/origin/main');
+    git(target, 'checkout', '-qB', 'main', 'refs/remotes/origin/main');
+
+    // The defect, demonstrated: a clean bill of health over a repo whose other
+    // branch carries a live-shaped token.
+    const blind = run(target);
+    expect(blind.status).toBe(0);
+    expect(blind.stdout).toContain('OK: no un-baselined credential shapes');
+
+    // The guard. Same repo, same history, refuses to grade it.
+    const guarded = run(target, '--verify-remote-refs');
+    expect(guarded.status).toBe(2);
+    expect(guarded.stderr).toContain('feature');
+    expect(guarded.stderr).toContain('narrower history');
+
+    // And once the missing branch is present, the leak is found.
+    git(target, 'fetch', '-q', '--prune', 'origin', '+refs/heads/*:refs/remotes/origin/*');
+    const full = run(target, '--verify-remote-refs');
+    expect(full.status).toBe(1);
+    expect(full.stderr).toContain('github-token');
+  });
+
   it('a repo with no commits exits 2, not 0', () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'dokima-hist-empty-'));
     scratch.push(dir);

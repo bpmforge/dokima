@@ -150,6 +150,7 @@ Four properties are the point, and each has a planted-defect test in
 | Reads **commit and tag messages**, not only file contents | `git rev-list --objects` prints commit objects with no path, so a parser keyed on the space separator drops them silently — and a credential pasted into a commit message is published history that no tree edit removes | A token in a commit message, and another in an annotated tag message, are each caught with a spotless working tree |
 | Baseline keys on the secret **value**, never the path | A path-scoped allowlist lets a real credential hide inside an already-baselined fixture file, and churns on every edit to one | A second, unbaselined token added to an already-baselined fixture file still fails the gate |
 | Fails **closed** | A shallow clone has no history, so reporting clean would make this a gate that cannot fail | A `--depth 1` clone exits 2, not 0; so do an empty repo, a non-repo, and an unparseable baseline |
+| Verifies its own **denominator** | The scan is `git rev-list --all`, so it is only as complete as the local ref set — and a single-ref checkout is *not shallow*, so nothing else catches it | A clone fetched with `+refs/heads/main:refs/remotes/origin/main` reports OK over a repo whose other branch carries a token; `--verify-remote-refs` exits 2 naming the missing branch, and finds the token once it is fetched |
 | Never prints a secret | A scanner must not become the leak it exists to prevent (Law 8) | Neither stream may contain the planted value — only `ghp_...REDACTED(n chars)` |
 
 Known-benign shapes live in `scripts/history-secrets-baseline.json`, keyed on
@@ -161,6 +162,17 @@ because adding a line to that file is precisely how a real leak would be silence
 Fixture secrets in that test file are assembled at runtime rather than written as literals. A
 literal would be committed once and then gate this repo forever, forcing a permanent baseline
 entry for a test's own fixture. The scanner still sees the fully formed shape at runtime.
+
+CI does not trust `fetch-depth: 0` to have fetched every branch: the job fetches
+`+refs/heads/*:refs/remotes/origin/*` explicitly and then runs with `--verify-remote-refs`, the
+scanner's one network call (opt-in, so local runs stay offline per Law 9).
+
+**Two limits, stated rather than buried.** It covers the same six categories as the tree
+scanner, so a credential shape nobody has a pattern for is invisible to both. And `--all` is
+*reachable*-only by design: a secret that was force-pushed away and garbage-collected reads
+clean locally while it may still be retrievable from the hosting forge's dangling objects —
+which is exactly the caveat the 2026-08-02 write-up records about what a history rewrite does
+not undo.
 
 A history hit is never fixed by deleting the file. Rotate the credential, then purge and
 force-push — the blocker write-up records what a rewrite does *not* undo.

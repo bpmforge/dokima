@@ -53,9 +53,15 @@ compromised — which is exactly how this survived thirteen days. History scanni
 is now part of the gate: `scripts/validate-history-secrets.mjs` reads every object
 reachable from every ref — file contents *and* commit/tag messages (no external
 scanning binary, ~1.3s), CI runs it on every push with `fetch-depth: 0`, and it
-exits **2 rather than 0** on a shallow clone so it can never pass vacuously. The one thing this does *not* do is find a
-credential shape nobody has a pattern for; it covers the same six categories as
-the tree scanner. See [`TESTING.md` §6a](TESTING.md).
+exits **2 rather than 0** on a shallow clone so it can never pass vacuously. CI
+also fetches every branch explicitly and runs with `--verify-remote-refs`,
+because a single-ref checkout is *not* shallow and would silently shrink the
+scan's denominator. Two stated limits: it covers the same six categories as the
+tree scanner, so an unpatterned credential shape is invisible to both; and
+`--all` is reachable-only, so a force-pushed, garbage-collected secret reads
+clean locally while it may still sit in the forge's dangling objects — the same
+caveat this write-up records about what a rewrite does not undo. See
+[`TESTING.md` §6a](TESTING.md).
 
 ## Known gaps at time of writing
 
