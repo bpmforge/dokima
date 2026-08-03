@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "provenance": "original Dokima content — bundled offline model-catalog reference (W10-02, Law 9 / C-1 local-first honesty: first run must work with zero network, so this ships instead of depending on a remote registry like opencode's models.dev). Curated by the implementing agent from its training-data knowledge of each ecosystem's well-known model identifiers as of 2026-08-02 — NOT fetched from any live registry and NOT a claim that any of these are installed or currently served by a given endpoint. Live discovery via a provider's listModels() always takes precedence when the endpoint is reachable; this file only answers when discovery cannot. Loader: packages/gateway/src/catalog/bundled.ts; resolve.ts marks entries drawn from here as source 'bundled', distinct from 'discovered' — see docs/design/UX_SPEC.md §6a's 'Offline / no network at all' row. No entry here implies availability. The lm-studio ids match the identifiers already used in packages/gateway/src/providers/fixtures.ts's recorded /v1/models fixture, not invented fresh. Expected to drift from upstream over time; refresh by adding catalog.v2.json and keeping this file as history, same convention as content/plan-catalog/catalog.v1.json.",
+  "providers": {
+    "ollama": [
+      { "id": "llama3.2" },
+      { "id": "llama3.1" },
+      { "id": "qwen2.5-coder" },
+      { "id": "mistral" },
+      { "id": "deepseek-r1" },
+      { "id": "phi4" },
+      { "id": "gemma2" },
+      { "id": "nomic-embed-text" }
+    ],
+    "lm-studio": [
+      { "id": "qwen2.5-coder-7b-instruct" },
+      { "id": "llama-3.2-3b-instruct" },
+      { "id": "mistral-7b-instruct-v0.3" },
+      { "id": "deepseek-r1-distill-qwen-7b" }
+    ]
+  }
+}
