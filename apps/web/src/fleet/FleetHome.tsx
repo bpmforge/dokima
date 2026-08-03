@@ -37,9 +37,10 @@ function errorMessage(err: unknown, fallback: string): string {
 
 export interface FleetHomeProps {
   onOpenProject: (id: string) => void;
+  onOpenGuidedSample: () => void;
 }
 
-export function FleetHome({ onOpenProject }: FleetHomeProps) {
+export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps) {
   const [archivedFilter, setArchivedFilter] = useState(false);
   const [cards, setCards] = useState<ProjectCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,11 +141,12 @@ export function FleetHome({ onOpenProject }: FleetHomeProps) {
         </p>
       )}
 
-      {!loading && sorted.length === 0 ? (
+      {!loading && !formMode && sorted.length === 0 ? (
         <EmptyState
           archived={archivedFilter}
           onNewProduct={() => setFormMode('new')}
           onOnboard={() => setFormMode('onboard')}
+          onOpenGuidedSample={onOpenGuidedSample}
         />
       ) : (
         <div className="fleet__grid" data-testid="fleet-grid">
@@ -227,10 +229,16 @@ interface EmptyStateProps {
   archived: boolean;
   onNewProduct: () => void;
   onOnboard: () => void;
+  onOpenGuidedSample: () => void;
 }
 
 /** UX_SPEC §2b empty-states table. */
-function EmptyState({ archived, onNewProduct, onOnboard }: EmptyStateProps) {
+function EmptyState({
+  archived,
+  onNewProduct,
+  onOnboard,
+  onOpenGuidedSample,
+}: EmptyStateProps) {
   if (archived) {
     return <p className="fleet__empty">No archived programs.</p>;
   }
@@ -243,6 +251,9 @@ function EmptyState({ archived, onNewProduct, onOnboard }: EmptyStateProps) {
         </button>
         <button type="button" onClick={onOnboard}>
           Onboard existing repo
+        </button>
+        <button type="button" onClick={onOpenGuidedSample}>
+          Try the guided sample
         </button>
       </div>
     </div>

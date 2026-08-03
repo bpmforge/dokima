@@ -126,6 +126,8 @@ export function MainView({
                 token={token}
                 projectId={projectId}
                 wsUrl={wsUrl}
+                onSelectTicket={setOpenTicketId}
+                onViewCurrentPhase={() => openView('plans')}
               />
             </div>,
             boardPaneNode,
@@ -159,5 +161,10 @@ export function MainView({
       </>
     );
   }
-  return <FleetHome onOpenProject={openProject} />;
+  return (
+    <FleetHome
+      onOpenProject={openProject}
+      onOpenGuidedSample={() => openView('wizard')}
+    />
+  );
 }
