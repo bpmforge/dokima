@@ -11,10 +11,25 @@ export interface Shortcut {
   description: string;
 }
 
-export const SHORTCUTS: readonly Shortcut[] = [
-  { keys: '?', description: 'Toggle this shortcuts overlay' },
-  { keys: 'Esc', description: 'Close overlay / dismiss' },
-];
+export interface ShortcutsContext {
+  /** Whether `CommandPalette` (`palette/shortcuts.ts`'s ⌘K/Ctrl+K) is
+   * actually mounted right now. False on the Fleet screen and in any
+   * project sub-view (Roster, Settings, Plan, …) — listing the shortcut
+   * there would document a key that does nothing (W10-34). */
+  paletteActive: boolean;
+}
+
+/** The overlay's row list for the given context — always '?' and Esc, plus the palette shortcut only where it actually does something. */
+export function shortcutsFor(context: ShortcutsContext): readonly Shortcut[] {
+  const shortcuts: Shortcut[] = [
+    { keys: '?', description: 'Toggle this shortcuts overlay' },
+    { keys: 'Esc', description: 'Close overlay / dismiss' },
+  ];
+  if (context.paletteActive) {
+    shortcuts.push({ keys: '⌘K / Ctrl+K', description: 'Open command palette' });
+  }
+  return shortcuts;
+}
 
 const TEXT_ENTRY_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 

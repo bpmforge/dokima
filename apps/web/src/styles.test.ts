@@ -613,3 +613,44 @@ describe('gate integrity: the applied-but-undefined class check can fail (W10-32
     expect(classIsApplied(component, 'sr-only')).toBe(false);
   });
 });
+
+/* ── W10-34: shortcuts overlay scrim, position, and column gate ──────
+   The overlay had a fixed `position: fixed; inset: 5rem` panel with no
+   backdrop of its own — the page behind it stayed full brightness, and a
+   5rem top offset landed inside the app header on the Fleet screen (two
+   stacked headers there, not one). Guards the fix stays a real scrim
+   (a dedicated backdrop element, not just a shadow on the panel) and that
+   the panel itself no longer self-positions with a fixed inset that can
+   land on the toolbar again. */
+describe('shortcuts overlay scrim and position (W10-34)', () => {
+  it('gives the overlay a dedicated backdrop that dims the full page', () => {
+    const backdropRule = ruleBody('.shortcuts-overlay__backdrop');
+    expect(backdropRule).toMatch(/position:\s*fixed/);
+    expect(backdropRule).toMatch(/inset:\s*0/);
+    expect(backdropRule).toMatch(/background:\s*rgb\(0 0 0 \/ \d+%\)/);
+  });
+
+  it("positions the panel via the backdrop's layout, not a fixed inset of its own", () => {
+    const panelRule = ruleBody('.shortcuts-overlay');
+    expect(panelRule).not.toMatch(/position:\s*fixed/);
+    expect(panelRule).not.toMatch(/inset:/);
+  });
+});
+
+/* ── W10-34: dt/dd column gate ────────────────────────────────────────
+   `.shortcuts-overlay__row` gave each key/description pair its own flex
+   row, so column alignment depended on how wide that row's own `<kbd>`
+   text happened to be — "?" and "Esc" render at different x positions.
+   The fix (matching `.ticket-drawer__contract-grid`) puts dt/dd on a
+   shared grid track owned by the list, not the row. */
+describe('shortcuts overlay dt/dd column (W10-34)', () => {
+  it('lays the shortcut list out on a shared grid track', () => {
+    const listRule = ruleBody('.shortcuts-overlay__list');
+    expect(listRule).toMatch(/display:\s*grid/);
+    expect(listRule).toMatch(/grid-template-columns:/);
+  });
+
+  it('no longer has a per-row rule whose own content width could stagger the column', () => {
+    expect(css).not.toMatch(/\.shortcuts-overlay__row\s*\{/);
+  });
+});
