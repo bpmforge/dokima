@@ -3741,7 +3741,7 @@
         "apps/web/index.html"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED: neither :root block in styles.css nor apps/web/index.html declares `color-scheme`. Native controls therefore paint light-mode chrome over the dark theme. Nine controls across five code surfaces, seen in ALL SIX inspection groups: FleetHome.tsx:112, board/Card.tsx select, drawer/DagEditPanel.tsx:71, NotificationsView.tsx:54, EstimateView.tsx:141-160, AutonomyBudgetPanel.tsx:176-184, CopilotConsentPanel.tsx:98-105.",
