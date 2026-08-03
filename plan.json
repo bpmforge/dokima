@@ -4135,6 +4135,32 @@
         "Full gate green including e2e, counts in the commit body; remove the now-fixed line from docs/RELEASE_TRACKER.md Known gaps."
       ],
       "notes": "Filed 2026-08-03 from W10-43 release verification, where it was re-confirmed against a real npm install of the 0.1.0 tarball rather than inferred from source. Scope is the bootstrap CLI only; docs/RELEASE_TRACKER.md is alwaysOk so it needs no write_scope entry. AGENT 2026-08-03: done. Guards run before dispatch and never fall through; unknown command exits 2 (not 0) so a script can distinguish a typo from a real run; packs/providers without a subcommand now refuse instead of booting. --version reads the manifest through resolveAsset, which only resolves on an installed package because of W10-43. +6 red fixtures, each asserting the ABSENCE of boot/browser/port side effects rather than stdout content \u2014 a stdout-only assertion would have passed against the bug. Proven red by stashing only cli.ts and running against real pre-fix code (6 failed / 11 passed), 17/17 after restore. Also discharged a stale main.ts HANDOFF claiming no build step exists. Verified on a real packaged install: --help exits 0 with usage, --version prints 0.1.0, a typo exits 2. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 415 files / 3117 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-45",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "title": "The onboard/analysis path still resolves its model from three env vars \u2014 the twin call site W10-03 left behind",
+      "write_scope": [
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.test.ts",
+        "apps/server/src/api/pipeline/onboard-run.ts",
+        "apps/server/src/api/pipeline/onboard-run.test.ts"
+      ],
+      "depends_on": [],
+      "status": "in_progress",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: `onboard-dispatch-port.ts:99-106` still returns { DOKIMA_MODEL_BASE_URL ?? http://127.0.0.1:1234/v1, DOKIMA_MODEL_API_KEY, DOKIMA_MODEL_ID ?? local-model } and the file never imports model-resolution.js; `createRealOnboardDispatch` then builds an unconditional `createOaiCompatProvider`. W10-03 wired the twin call site (gateway-model-port.ts calls resolveModelTarget at :91) and left this one behind, so the onboard/analysis path \u2014 the one the W8-01 dogfood runs on \u2014 silently ignores whatever provider and model the user picked in the UI.",
+        "RESOLVE PER ROLE, NOT ONCE PER RUN. The matrix is keyed role x task_type and each onboard step dispatches a different specialist role, so resolution must happen inside the returned dispatch function, not at createRealOnboardDispatch construction time. Resolving once would wire the seam and still route every specialist through one role's entry \u2014 a subtler version of the same bug.",
+        "REUSE, DO NOT REIMPLEMENT (ARCHITECTURE module boundaries; the stated cause of this whole seam per W10_PLAN 6a was ticket-scoped local reimplementation). Import `resolveGatewayConfigForProject` and `providerForConfig` from gateway-model-port.ts \u2014 both already exported \u2014 rather than copying resolution or the kind switch. That also inherits its named `kind-not-constructible` refusal for cloud kinds instead of silently falling back to localhost.",
+        "ENV STAYS AS A DOCUMENTED OVERRIDE, DELIBERATELY LOSING to an explicit registry+matrix selection, exactly as model-resolution.ts already specifies \u2014 the e2e fake-model gateway sets DOKIMA_MODEL_* and must keep working. Nothing configured is a normal first-run state (C-1), not an error: with an empty registry or empty matrix the env path is still what runs.",
+        "RED FIXTURE, the whole acceptance: register two providers, point the matrix row for a specialist role at provider B, and assert the onboard dispatch calls B \u2014 then revert only the resolution call and confirm the test reds. That is the W9-11 mutation applied to the bug it would have caught. Also assert the negative: with no matrix rows, the env config is still used.",
+        "Full gate green including e2e, counts in the commit body. Report honestly whether resolveOnboardGatewayConfigFromEnv stays exported (pipeline/index.ts re-exports it, outside write_scope)."
+      ],
+      "notes": "Filed 2026-08-03. Re-verified against source immediately before filing rather than trusting docs/work/W10_PLAN.md 6a, which describes BOTH call sites as unwired \u2014 half stale since W10-03. RELEASE_TRACKER Known gaps carries the same half-stale claim and is being refreshed separately. gateway-model-port.ts is 450 lines (over the 400 cap, on the FILE_SIZE_DEBT list) but is only imported from here, not edited, so no split is inherited."
     }
   ]
 }
