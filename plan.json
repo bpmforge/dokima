@@ -4694,7 +4694,7 @@
       "depends_on": [
         "W10-65"
       ],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED IN A BROWSER, as the failure that appeared once W10-65's retry cleared the previous one. Same idea, same model: the run got PAST blueprint-input and died with `invalid open-question key \"Offline Sync & Conflict Resolution Strategy\" \u2014 must match ^[A-Za-z0-9][\\w.-]*$ (HTTP 422)`. Note the status: 422 from the route, not the port's 502, so it is raised after the port returned and W10-65's retry does not and should not reach it.",
@@ -4704,7 +4704,33 @@
         "RED FIXTURE: a completion whose open-question key is a human-readable title is handled per the decision above (rejected with the phase named, or slugified deterministically \u2014 not silently dropped), and a well-formed slug still round-trips into a marker `parseMarkers` accepts.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 in the browser run that VERIFIED W10-65. This is the third distinct failure mode in the same three-phase pipeline, each only visible once the previous was fixed: W10-59 (fenced JSON), W10-65 (a field the model left empty), and now a field the model filled in a format nobody told it about. The pattern worth naming: every one is a mismatch between what the prompts ask for and what the validators enforce, and each costs a full multi-minute run to discover. Related: W10-58 (partial progress would make each discovery cost one phase, not a whole run)."
+      "notes": "Found 2026-08-03 in the browser run that VERIFIED W10-65. This is the third distinct failure mode in the same three-phase pipeline, each only visible once the previous was fixed: W10-59 (fenced JSON), W10-65 (a field the model left empty), and now a field the model filled in a format nobody told it about. The pattern worth naming: every one is a mismatch between what the prompts ask for and what the validators enforce, and each costs a full multi-minute run to discover. Related: W10-58 (partial progress would make each discovery cost one phase, not a whole run). \u2014 CLOSED 2026-08-03, VERIFIED IN A BROWSER: the same idea re-run produced well-formed slugs (\"conflict-resolution-strategy\", \"sync-mechanism\") and the key failure is gone; the run proceeded past the blueprint into the phase gate. Decision recorded per acceptance 4: REJECT at the port, do not slugify \u2014 two questions can slugify to one key and silently collapse two founder decisions into one marker, and deriving an identifier the model never sent is inventing state at a trust boundary (law 4). A fixture asserts we never do it. Rejecting at the port rather than letting the downstream 422 stand is what makes it recoverable: it becomes the phase-named MalformedModelOutputError that W10-65 retry feeds back. The prompt imports the canonical OPEN_QUESTION_KEY_RE from @dokima/pipeline, so there is no second copy of the pattern to drift."
+    },
+    {
+      "id": "W10-67",
+      "phase": 10,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 8,
+      "title": "The gate correctly asks the founder to decide, and throws away the slates they would decide on",
+      "write_scope": [
+        "apps/server/src/api/pipeline/pipeline-routes/**",
+        "apps/web/src/onboarding/**"
+      ],
+      "depends_on": [
+        "W10-66"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED IN A BROWSER, and the refusal itself is CORRECT \u2014 this ticket is not asking for it to be removed. A real idea produced a blueprint with two founder-owned forks, and the run ended: `phase 4 is locked \u2014 unresolved founder-decision marker(s) remain in the blueprint (FR-P7): \"conflict-resolution-strategy\" is unresolved \u2014 founder has not answered its slate; \"sync-mechanism\" is unresolved \u2014 founder has not answered its slate (HTTP 422)`. That is FR-P7 doing exactly its job, on well-formed slugs, after ~420s of real inference.",
+        "THE FOUNDER CANNOT ANSWER, WHICH IS THE DEFECT. The project state.db afterwards: `decisions 0`, `clarifications 0`, `events 0`. The slates the model produced \u2014 titles, 2-4 options each, tradeoffs, a recommendation and its reasoning \u2014 existed only in memory and were discarded with the rest of the run. The Decisions UI built in W5-13/W5-14 has nothing to show. The system asks a question it did not keep.",
+        "AND IT IS REPORTED AS A FAILURE. The interview surface renders it in the error style, prefixed \"The run failed:\", identical to a genuine 502. A correct decision gate presented as a crash, at the end of a seven-minute wait, with no affordance to do the thing it is asking for, is the single worst first-run outcome available \u2014 the user concludes the product is broken when it is in fact working.",
+        "DELIVER: persist the slates when the gate fires, surface them where the founder can answer (the Decisions surface already exists \u2014 this is wiring, not new machinery), and resume decomposition once they are answered rather than re-running the whole pipeline. The blueprint that produced them must survive too; re-deriving it would produce different slates and silently invalidate the answers.",
+        "RE-FRAME W10-58 RATHER THAN DUPLICATE IT. That ticket asks for partial progress so a slow run survives; this one shows the run must be able to PAUSE for a human and resume, which is a stronger requirement than \"do not lose work\" and points at the same job-shaped rewrite. Whoever takes either should read both and decide whether they are one ticket.",
+        "RED FIXTURE: a run whose blueprint raises open questions persists exactly those slates and reaches a paused, resumable state (not an error state), and answering them produces the board WITHOUT re-running the earlier phases. A run with no open questions still completes straight through, as it does today."
+      ],
+      "notes": "Found 2026-08-03 in the browser run that verified W10-66, on the third consecutive idea. This is the fourth distinct failure in the same three-phase pipeline, each only visible once the previous was fixed \u2014 W10-59 (fenced JSON), W10-65 (an empty field), W10-66 (a field in the wrong format), and now a correct refusal with no path through it. The first Trailhead run completed only because it happened to raise ZERO open questions; any idea with a real fork in it hits this. Note the run reached ~420s including one W10-65 retry, so W10-58 timeout pressure is real on longer ideas even though the 91s Trailhead run did not show it."
     }
   ]
 }
