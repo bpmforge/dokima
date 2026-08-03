@@ -50,6 +50,92 @@ describe('runPackagedCli', () => {
     };
   }
 
+  /**
+   * W10-44. Every test here asserts an ABSENCE — no boot, no browser, no port
+   * probe — because the defect was never a wrong message, it was a fall-through
+   * to `runServerBoot`. Asserting only on stdout would pass against the bug.
+   */
+  function noSideEffectDeps() {
+    return {
+      runBootSequence: vi.fn(),
+      detectRunningCore: vi.fn(),
+      openBrowser: vi.fn(),
+      buildApiServer: vi.fn(),
+      listenLocalhost: vi.fn(),
+      ensureAuthToken: vi.fn(),
+      packsUpdate: vi.fn(),
+    };
+  }
+
+  function expectNothingHappened(deps: ReturnType<typeof noSideEffectDeps>) {
+    expect(deps.detectRunningCore).not.toHaveBeenCalled();
+    expect(deps.runBootSequence).not.toHaveBeenCalled();
+    expect(deps.openBrowser).not.toHaveBeenCalled();
+    expect(deps.buildApiServer).not.toHaveBeenCalled();
+    expect(deps.listenLocalhost).not.toHaveBeenCalled();
+    expect(deps.ensureAuthToken).not.toHaveBeenCalled();
+  }
+
+  it.each(['--help', '-h'])(
+    'RED FIXTURE: `%s` prints usage and exits 0 without booting, probing a port, or opening a browser',
+    async (flag) => {
+      const { io } = await scratchProject();
+      const deps = noSideEffectDeps();
+      // Against pre-W10-44 code this printed nothing and started a server.
+      expect(await runPackagedCli([flag], io, deps)).toBe(0);
+      expectNothingHappened(deps);
+      expect(io.stderr).not.toHaveBeenCalled();
+      const printed = (io.stdout as ReturnType<typeof vi.fn>).mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      expect(printed).toContain('usage:');
+      expect(printed).toContain('dokima doctor');
+      expect(printed).toContain('DOKIMA_PORT');
+    },
+  );
+
+  it.each(['--version', '-V'])(
+    '`%s` prints a bare version and exits 0, with no side effects',
+    async (flag) => {
+      const { io } = await scratchProject();
+      const deps = noSideEffectDeps();
+      expect(await runPackagedCli([flag], io, deps)).toBe(0);
+      expectNothingHappened(deps);
+      const printed = (io.stdout as ReturnType<typeof vi.fn>).mock.calls
+        .map((c) => String(c[0]))
+        .join('\n');
+      // The real manifest version, resolved through the distribution root.
+      expect(printed.trim()).toMatch(/^\d+\.\d+\.\d+/);
+    },
+  );
+
+  it('RED FIXTURE: a mistyped command exits NON-ZERO with usage on stderr, never booting', async () => {
+    const { io } = await scratchProject();
+    const deps = noSideEffectDeps();
+    // `dokma`-style typos, and a plausible-but-wrong subcommand.
+    expect(await runPackagedCli(['docter'], io, deps)).toBe(2);
+    expectNothingHappened(deps);
+    const errs = (io.stderr as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => String(c[0]))
+      .join('\n');
+    expect(errs).toContain("unknown command 'docter'");
+    expect(errs).toContain('usage:');
+    // Exiting 0 here would leave a script unable to tell a typo from a real run.
+    expect(io.stdout).not.toHaveBeenCalled();
+  });
+
+  it('refuses an incomplete known command rather than falling through to a boot', async () => {
+    const { io } = await scratchProject();
+    const deps = noSideEffectDeps();
+    // `packs` and `providers` used to require an exact second token and
+    // silently booted the server when it was missing or wrong.
+    expect(await runPackagedCli(['packs'], io, deps)).toBe(2);
+    expect(await runPackagedCli(['packs', 'instal'], io, deps)).toBe(2);
+    expect(await runPackagedCli(['providers'], io, deps)).toBe(2);
+    expect(deps.packsUpdate).not.toHaveBeenCalled();
+    expectNothingHappened(deps);
+  });
+
   it('dispatches to packsUpdate for `packs update`', async () => {
     const { io } = await scratchProject();
     const packsUpdate = vi.fn().mockResolvedValue({

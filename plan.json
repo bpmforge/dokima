@@ -4124,7 +4124,7 @@
         "apps/server/src/bootstrap/main.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED against the PACKAGED install (not a source checkout): `dokima --help` printed `dokima is already running at http://127.0.0.1:4317 \u2014 opening the Canvas` and never exited. Any unrecognised argument does the same. Long-standing (already listed in docs/RELEASE_TRACKER.md Known gaps) but it costs much more the moment `npx @bpmforge/dokima` is a real thing a stranger can run.",
@@ -4134,7 +4134,7 @@
         "RED FIXTURE: a test that runs the CLI argument parser with `--help` and asserts no server/browser/port side effect occurs \u2014 proven red against current main first. Cover the typo case too.",
         "Full gate green including e2e, counts in the commit body; remove the now-fixed line from docs/RELEASE_TRACKER.md Known gaps."
       ],
-      "notes": "Filed 2026-08-03 from W10-43 release verification, where it was re-confirmed against a real npm install of the 0.1.0 tarball rather than inferred from source. Scope is the bootstrap CLI only; docs/RELEASE_TRACKER.md is alwaysOk so it needs no write_scope entry."
+      "notes": "Filed 2026-08-03 from W10-43 release verification, where it was re-confirmed against a real npm install of the 0.1.0 tarball rather than inferred from source. Scope is the bootstrap CLI only; docs/RELEASE_TRACKER.md is alwaysOk so it needs no write_scope entry. AGENT 2026-08-03: done. Guards run before dispatch and never fall through; unknown command exits 2 (not 0) so a script can distinguish a typo from a real run; packs/providers without a subcommand now refuse instead of booting. --version reads the manifest through resolveAsset, which only resolves on an installed package because of W10-43. +6 red fixtures, each asserting the ABSENCE of boot/browser/port side effects rather than stdout content \u2014 a stdout-only assertion would have passed against the bug. Proven red by stashing only cli.ts and running against real pre-fix code (6 failed / 11 passed), 17/17 after restore. Also discharged a stale main.ts HANDOFF claiming no build step exists. Verified on a real packaged install: --help exits 0 with usage, --version prints 0.1.0, a typo exits 2. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 415 files / 3117 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }

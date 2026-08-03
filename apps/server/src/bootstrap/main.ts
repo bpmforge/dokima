@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 /**
  * The packaged runtime's real entry point (DEPLOYMENT.md §1/§6). `cli-entry.mjs`
- * (the `bin` target in the root `package.json`) spawns `tsx` against this file —
- * there is no compile step in this repo yet, so a `.ts` bin can't run under plain
- * `node`/`npx` (HANDOFF: a real `npm publish` channel needs a build step that
- * emits this as plain JS; unverifiable here per C-1, no live registry/publish).
+ * (the `bin` target in the root `package.json`) prefers the built bundle at
+ * `apps/server/dist/main.js` and only falls back to spawning `tsx` against this
+ * file in a source checkout with no build yet.
+ *
+ * The HANDOFF that used to sit here — "a real publish channel needs a build step
+ * that emits this as plain JS; unverifiable here, no live registry" — is
+ * discharged: `apps/server/build.mjs` (W9-13) emits that bundle, and W10-43
+ * verified the whole path by installing a real tarball into a clean project and
+ * driving the installed binary.
  */
 import { runPackagedCli } from './cli.js';
 
