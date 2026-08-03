@@ -114,7 +114,7 @@ function PlanItemRow({
         Verify: <code>{item.verifyCriterion}</code>
       </p>
       <p className="plan-item__meta">
-        severity {item.severity} · leverage {item.leverage} · rank {item.rank}
+        severity {item.severity} · leverage {item.leverage} · priority score {item.rank}
       </p>
       {!openForm && (
         <div className="plan-item__actions">

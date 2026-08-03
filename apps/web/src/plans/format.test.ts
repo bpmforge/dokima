@@ -5,7 +5,13 @@ describe('funnelSummary', () => {
   it('renders every FR-RL4-style stage, raw first and never hidden', () => {
     expect(
       funnelSummary({ rawFindings: 5, planItems: 4, accepted: 3, done: 1, regressed: 1 }),
-    ).toBe('5 raw → 4 plan items → 3 accepted → 1 done / 1 regressed');
+    ).toBe('5 raw findings → 4 plan items → 3 accepted → 1 done / 1 regressed');
+  });
+
+  it('singularizes raw finding and plan item at a count of one, never hardcoding the plural', () => {
+    expect(
+      funnelSummary({ rawFindings: 1, planItems: 1, accepted: 0, done: 0, regressed: 0 }),
+    ).toBe('1 raw finding → 1 plan item → 0 accepted → 0 done / 0 regressed');
   });
 });
 

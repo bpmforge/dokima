@@ -24,6 +24,13 @@ const MODE_LABEL: Record<ProjectMode, string> = {
   import: 'Import',
 };
 
+/** The commit action needs its own verb — MODE_LABEL alone reads as a noun-phrase mode name, not something a button press does. */
+const SUBMIT_LABEL: Record<ProjectMode, string> = {
+  new: 'Create New Product',
+  onboard: 'Onboard existing repo',
+  import: 'Import',
+};
+
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof FleetApiError ? err.message : fallback;
 }
@@ -206,7 +213,7 @@ function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
       {formError && <p role="alert">{formError}</p>}
       <div className="fleet__form-actions">
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Working…' : MODE_LABEL[mode]}
+          {submitting ? 'Working…' : SUBMIT_LABEL[mode]}
         </button>
         <button type="button" onClick={onCancel}>
           Cancel

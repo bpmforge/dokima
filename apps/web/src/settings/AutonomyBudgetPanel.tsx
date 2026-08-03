@@ -174,7 +174,7 @@ export function AutonomyBudgetPanel({ projectId }: AutonomyBudgetPanelProps) {
       <section aria-label="Berths Slider">
         <h2>Berths</h2>
         <label>
-          Default concurrency: {berths}
+          Default concurrency: {berths} of 8
           <input
             type="range"
             min={1}
