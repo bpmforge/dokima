@@ -4543,7 +4543,7 @@
         "apps/server/src/api/pipeline/model-resolution.test.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "READ FROM SOURCE against a real catalog, not hypothesised. `splitModelRef` (apps/server/src/api/pipeline/model-resolution.ts) implements the `<providerId>/<model>` convention by splitting on the FIRST slash. Model ids routinely contain a slash of their own: of the 23 models a live LM Studio served this machine, 8 do \u2014 `qwen/qwen3-coder-next`, `qwen/qwen3.5-9b`, `google/gemma-4-12b-qat`, `google/gemma-4-26b-a4b`, `google/gemma-4-26b-a4b-qat`, `google/gemma-4-e4b`, `nvidia/nemotron-3-nano`, `nvidia/nemotron-3-nano-omni`, `mlx-community/nemotron-3-nano-omni-30b-a3b-reasoning`.",
@@ -4552,7 +4552,7 @@
         "RED FIXTURE: a matrix row naming a slash-containing model id from a single enabled provider resolves to that provider with the FULL model id sent on the wire (not a truncated one), and a genuinely unknown provider prefix still raises `unknown-provider`. Both directions, because a resolver that never refuses is not a resolver.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 while configuring a real LM Studio through the Providers panel for the first time. Latent since W10-03 wired the registry path: the env fallback (`envTarget`) never calls `splitModelRef`, so every earlier run \u2014 including the previous session end-to-end proof on `qwen/qwen3.5-9b` \u2014 took the path that cannot hit this. Sibling: W10-59."
+      "notes": "Found 2026-08-03 while configuring a real LM Studio through the Providers panel for the first time. Latent since W10-03 wired the registry path: the env fallback (`envTarget`) never calls `splitModelRef`, so every earlier run \u2014 including the previous session end-to-end proof on `qwen/qwen3.5-9b` \u2014 took the path that cannot hit this. Sibling: W10-59. \u2014 CLOSED 2026-08-03. CONVENTION DECIDED per acceptance 3: a prefix is a providerId only when it names a REGISTERED provider; otherwise the whole value is the model id and reaches the wire intact. `splitModelRef` now takes `knownProviderIds` as a REQUIRED argument rather than an optional convenience, because the ambiguity is not resolvable without it and a default would reintroduce the bug for whoever forgot to pass it. Recognition uses ALL registered ids, not just enabled ones, so a matrix pointing at a disabled provider still reports it rather than reinterpreting `off-box/model` as a model name and sending it to whichever provider happens to be the only enabled one \u2014 asserted. HONEST COST: the existing W10-03 test \"refuses a matrix row naming a provider that is not registered\" could no longer hold, because `ghost/model` and `qwen/qwen3-coder-next` are the same shape. It was rewritten to assert the new convention WITH the trade stated in the test body, not deleted. The structural fix is filed as W10-68."
     },
     {
       "id": "W10-61",
@@ -4731,6 +4731,33 @@
         "RED FIXTURE: a run whose blueprint raises open questions persists exactly those slates and reaches a paused, resumable state (not an error state), and answering them produces the board WITHOUT re-running the earlier phases. A run with no open questions still completes straight through, as it does today."
       ],
       "notes": "Found 2026-08-03 in the browser run that verified W10-66, on the third consecutive idea. This is the fourth distinct failure in the same three-phase pipeline, each only visible once the previous was fixed \u2014 W10-59 (fenced JSON), W10-65 (an empty field), W10-66 (a field in the wrong format), and now a correct refusal with no path through it. The first Trailhead run completed only because it happened to raise ZERO open questions; any idea with a real fork in it hits this. Note the run reached ~420s including one W10-65 retry, so W10-58 timeout pressure is real on longer ideas even though the 91s Trailhead run did not show it. \u2014 LANE CORRECTED to ui before any work: filed as pipeline, which made its write_scope (apps/web/src/onboarding/**) a cross-lane overlap with W10-54, W10-55, W10-58 and W10-61, i.e. the schema bug CLAUDE.md law 1 says to report rather than work around. W10-58 carries the same scope shape (web onboarding + server pipeline routes) and is lane ui, so ui is the consistent home."
+    },
+    {
+      "id": "W10-68",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "ui",
+      "points": 5,
+      "title": "Store the matrix binding as a structured pair \u2014 a slash in a string cannot tell a provider from a vendor namespace",
+      "write_scope": [
+        "apps/server/src/api/server/model-matrix-store.ts",
+        "apps/server/src/api/server/model-matrix-store.test.ts",
+        "apps/server/src/api/server/settings-types.ts"
+      ],
+      "depends_on": [
+        "W10-60"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "THE AMBIGUITY IS IN THE DATA MODEL, not in any call site. A matrix row stores one string and the resolver has to guess whether the part before the first slash is a providerId or a vendor namespace. `ghost/model` (a typo, or a provider since removed) and `qwen/qwen3-coder-next` (a real model id from a live LM Studio catalog) are the same shape. No parsing rule distinguishes them, so W10-60 had to pick a winner.",
+        "W10-60 PICKED THE VENDOR READING AND PAID A PRICE, which this ticket exists to refund. Consulting the registry resolves all 8 slash-carrying models in a real catalog and keeps the `copilot/` convention working, but a matrix row whose provider prefix is a typo or names a removed provider now binds to the single enabled provider instead of refusing. That regression is bounded \u2014 two or more enabled providers is still `ambiguous-provider`, a registered-but-disabled prefix is still `unknown-provider` \u2014 and it is documented in a rewritten W10-03 test rather than quietly dropped. It is still a regression.",
+        "DELIVER: `model_matrix` carries `provider_id` and `model` as separate columns, so a row says which provider it means instead of encoding it in punctuation. An absent `provider_id` keeps today's meaning (bind to the single enabled provider, ambiguous if several), so nothing has to be requalified by hand.",
+        "MIGRATE WHAT EXISTS rather than reinterpreting it lazily. Existing single-string rows must be read once and split using the same registry-consulting rule W10-60 established, so a board configured before this ticket resolves identically after it. A migration that changes which model a run calls is worse than the bug.",
+        "RED FIXTURE: a row with an explicit `provider_id` and a model whose own id contains a slash resolves to exactly that provider with the full model id intact; a row with a `provider_id` naming an unregistered provider raises `unknown-provider` again \u2014 restoring the refusal W10-60 had to trade away; and a pre-migration string row resolves to the same target before and after migrating.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Filed 2026-08-03 while closing W10-60, from a regression an EXISTING test caught rather than from a new failure: the W10-03 case \"refuses a matrix row naming a provider that is not registered\" went green-to-red under W10-60's fix and had to be rewritten to assert the new convention. That test was documentation of intent, so the rewrite carries the reasoning and a pointer here rather than a silently-changed expectation. Sibling of W10-64 (the matrix has no global scope either) \u2014 both are the same table and are probably worth doing together. \u2014 LANE set to ui before any work, matching W10-64: both rewrite model-matrix-store.ts, so filing this one under gateway made it a cross-lane overlap (law 1 schema bug). Same lane is also the correct constraint here \u2014 same-lane tickets never run in parallel, and these two must not race on the same table."
     }
   ]
 }
