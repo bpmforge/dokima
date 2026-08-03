@@ -23,6 +23,7 @@ pitch is "the gates cannot be spoofed" proves it in CI, on itself. Runner: vites
 | Crash/chaos matrix (kill −9, watchdog, drift) | NFR-3, FR-H2/H3 | pre-wave-gate W3+ | wave gate |
 | Offline soak (network-blocked full mini-program) | NFR-1 | W4+ wave gates, release | wave gate |
 | a11y (axe) + perf timers (NFR-2) | all routed Canvas pages | pre-merge on web tickets + W4/W8 gates | merge/gate |
+| **History secrets scan (§6a)** | every blob reachable from every ref — what the tree scanner structurally cannot see | every push/PR (CI `history-secrets`) + release | push — never waivable |
 | Dogfood gate | Dokima runs its own pipeline on itself | W8 | 1.0 release |
 
 Per-ticket definition of done: `pnpm lint && pnpm typecheck && pnpm test` workspace-wide
@@ -124,6 +125,43 @@ turned into permanent CI, and it is the release gate's centerpiece (NFR-4/6).
 
 Each row is one fixture directory + one named test; new spoof classes discovered in the field
 (lessons intake, Blueprint §12.6) are added here first, fix second.
+
+## 6a. History secrets scan — the gate that reads what the tree scanner cannot
+
+`content/validators/secrets-scan.sh` (W3-13, SC-06) greps the working **tree** and passes
+`--exclude-dir=.git`. By construction it can never see a credential that was committed and
+later removed. That is not a theoretical hole: the Ed25519 content-signing **private** key sat
+in pushed history from 2026-07-20 to 2026-08-02 — gitignored, absent from the tree, and green
+on every gate the whole time ([`work/SECURITY_RELEASE_BLOCKER_2026-08-02.md`](work/SECURITY_RELEASE_BLOCKER_2026-08-02.md)).
+
+`scripts/validate-history-secrets.mjs` (W10-27) closes it. Every blob reachable from
+`git rev-list --objects --all`, the same six credential categories as the tree scanner, git
+plumbing plus Node and **no scanning binary** (Law 9 — measured at ~1.1s over 1064 commits /
+3952 blobs / 295 MB). Exit `0` clean · `1` findings · `2` could-not-scan. Run it directly, or
+let CI's `history-secrets` job run it on every push.
+
+Four properties are the point, and each has a planted-defect test in
+`scripts/validate-history-secrets.test.mjs`:
+
+| Property | Why it is the property | Planted defect that proves it |
+|---|---|---|
+| Reads history, not the tree | The whole reason the ticket exists | A PEM key committed, then deleted and gitignored: `secrets-scan.sh` — first proven to catch that same key while it is in the tree — then reads clean, while this scanner exits 1 and hands over `git log --find-object=<blob>` |
+| Baseline keys on the secret **value**, never the path | A path-scoped allowlist lets a real credential hide inside an already-baselined fixture file, and churns on every edit to one | A second, unbaselined token added to an already-baselined fixture file still fails the gate |
+| Fails **closed** | A shallow clone has no history, so reporting clean would make this a gate that cannot fail | A `--depth 1` clone exits 2, not 0; so do an empty repo, a non-repo, and an unparseable baseline |
+| Never prints a secret | A scanner must not become the leak it exists to prevent (Law 8) | Neither stream may contain the planted value — only `ghp_...REDACTED(n chars)` |
+
+Known-benign shapes live in `scripts/history-secrets-baseline.json`, keyed on
+`category + sha256(value)[0:16]`. Today: 24 entries, every one a test fixture or documentation
+example (including AWS's own published `AKIAIOSFODNN7EXAMPLE` and a false positive on the prose
+string `sk-at-most-one-question`). Regenerate with `--update-baseline` — and **read the diff**,
+because adding a line to that file is precisely how a real leak would be silenced.
+
+Fixture secrets in that test file are assembled at runtime rather than written as literals. A
+literal would be committed once and then gate this repo forever, forcing a permanent baseline
+entry for a test's own fixture. The scanner still sees the fully formed shape at runtime.
+
+A history hit is never fixed by deleting the file. Rotate the credential, then purge and
+force-push — the blocker write-up records what a rewrite does *not* undo.
 
 ## 7. E2E — Playwright over the Canvas with a fake-model gateway
 

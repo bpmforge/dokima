@@ -33,7 +33,7 @@ pre-public checklist below was never finished.
 |---|---|
 | LICENSE file | ✅ **done 2026-08-02** — Apache-2.0 per D-017 (decided 2026-07-14; the file had simply never been written) |
 | README quickstart | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified |
-| History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below |
+| History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below. **No longer a manual item as of 2026-08-03 (W10-27)**: `node scripts/validate-history-secrets.mjs` runs on every push as CI's `history-secrets` job. Re-running it by hand before a tag is now a confirmation, not the control. |
 | D-001 naming pass | ✅ **done 2026-08-02 — renamed to Dokima (D-021).** The old name had two collisions: `shipwright.io`, CNCF's container-image build framework, whose trademarks were donated to the **Linux Foundation** — an adjacent market, not the "different domain" D-001 assumed; and npm `shipwright`, held since 2015 by `hellofloat/shipwright` ("DigitalOcean CLI control"), declaring the same `bin`. Ships as `@bpmforge/dokima`, home `dokima.sh`. **Formal trademark clearance is still open and needs a lawyer.** |
 
 ### The secrets scan found a real one
@@ -47,9 +47,15 @@ across all six branches, force-pushed to both remotes. Full write-up, including
 what the rewrite does *not* undo:
 [`docs/work/SECURITY_RELEASE_BLOCKER_2026-08-02.md`](work/SECURITY_RELEASE_BLOCKER_2026-08-02.md).
 
-Durable fix ticketed as W10-27 in `docs/work/W10_PLAN.md`: `secrets-scan.sh`
-scans the working **tree**, so a gitignored, tree-removed key reads clean while
-history is compromised. History scanning needs to join the release gate.
+Durable fix **landed 2026-08-03 as W10-27**: `secrets-scan.sh` scans the working
+**tree**, so a gitignored, tree-removed key reads clean while history is
+compromised — which is exactly how this survived thirteen days. History scanning
+is now part of the gate: `scripts/validate-history-secrets.mjs` reads every blob
+reachable from every ref (no external scanning binary, ~1.1s), CI runs it on
+every push with `fetch-depth: 0`, and it exits **2 rather than 0** on a shallow
+clone so it can never pass vacuously. The one thing this does *not* do is find a
+credential shape nobody has a pattern for; it covers the same six categories as
+the tree scanner. See [`TESTING.md` §6a](TESTING.md).
 
 ## Known gaps at time of writing
 
