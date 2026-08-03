@@ -3929,7 +3929,7 @@
         "apps/server/src/api/server/estimate-routes.test.ts"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "OBSERVED in the running product, dark theme, Settings > Cost Estimate (screenshot 2026-08-03): the pane renders \"no persisted spend ledger reachable from apps/server yet (budget_ledger has no migration)\" and \"no persisted rule/suppression store reachable from apps/server yet (W4-06 blocked on this migration)\". A ticket id, a table name and a source path are being shown to an end user as product copy.",

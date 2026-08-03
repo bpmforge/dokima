@@ -73,15 +73,17 @@ const DEFAULT_ROLE_MATRIX: readonly RoleRate[] = [
 ];
 
 const NO_SIZING_PRODUCER_NOTE =
-  'ticket sizing defaults to 1 point/ticket in a single wave-0 bucket — no points/wave producer on the ticket model yet';
+  'every ticket is estimated as the same size right now, so this total cannot yet be broken down by wave or weighted for larger tickets';
 const NO_PRICE_TABLE_NOTE =
-  'rates are illustrative defaults — no persisted model price table (GET /models) reachable from apps/server yet';
+  'rates shown are illustrative defaults, not your configured prices — once real model pricing is set up, the estimate will use those rates instead';
 const NO_HISTORICAL_NOTE =
-  'no historical actuals; estimate uses rate-table list-price only';
+  'this estimate uses standard list-price rates only; there is no history of past spend yet to make it more accurate';
 const NO_LEDGER_NOTE =
-  'no persisted spend ledger reachable from apps/server yet (budget_ledger has no migration) — spend rollups are honest-empty';
+  'spend totals are blank because this project is not recording actual spend yet — once spend tracking is turned on, real dollar amounts will appear here instead of zero';
 const NO_SUPPRESSION_STORE_NOTE =
-  'no persisted rule/suppression store reachable from apps/server yet (W4-06 blocked on this migration) — suppression volume is honest-empty';
+  'suppression counts are blank because this project is not recording rule suppressions yet — once that tracking exists, counts per rule will appear here';
+const DIGEST_DATE_NOTE =
+  'the date above is when this digest was generated, in your local time — not the start or end of a calendar week, since there is no weekly spend history yet to bound it to a real week';
 
 interface WaveEstimateWire {
   wave: number;
@@ -123,6 +125,20 @@ function estimateForTicketCount(
     ],
     totalUsd: estimatedUsd,
   };
+}
+
+/**
+ * Local calendar date (`YYYY-MM-DD`) in the server's own timezone. Never
+ * `Date#toISOString()`, which is always UTC and drifts the label a day
+ * ahead once local wall-clock time has crossed into the next UTC day
+ * (e.g. any evening in a timezone west of UTC) — Dokima runs local-first
+ * (C-1), so the server's wall clock is the user's own.
+ */
+function localDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function badRequest(request: FastifyRequest, detail: string) {
@@ -280,14 +296,14 @@ function registerDigestRoute(app: FastifyInstance, registryPath: string): void {
         projectId,
       );
       if (!record) return reply;
-      const weekOf = new Date().toISOString().slice(0, 10);
+      const weekOf = localDateString(new Date());
       return reply.send({
         tier: 'review',
         week_of: weekOf,
         total_spend_usd: 0,
         by_rung: [],
         suppression_volume: [],
-        assumptions: [NO_LEDGER_NOTE, NO_SUPPRESSION_STORE_NOTE],
+        assumptions: [NO_LEDGER_NOTE, NO_SUPPRESSION_STORE_NOTE, DIGEST_DATE_NOTE],
       });
     },
   );
