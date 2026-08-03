@@ -3664,7 +3664,9 @@
         "apps/web/src/styles.test.ts",
         "apps/web/src/**/*.css",
         "apps/web/src/**/*.test.ts",
-        "apps/web/src/**/*.test.tsx"
+        "apps/web/src/**/*.test.tsx",
+        "apps/web/src/notifications/NotificationCard.tsx",
+        "apps/web/src/trace/TraceView.tsx"
       ],
       "depends_on": [
         "W10-06"
@@ -3678,7 +3680,7 @@
         "Both themes stay correct and no a11y contrast regresses \u2014 W10-06 fixed six live WCAG AA failures (muted text at 3.20:1 in dark, the active settings tab at 2.58:1, three improvised warning/attention colours below 4.5:1) and they must stay fixed. The axe e2e specs are the regression check.",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": "Filed BY W10-06, as its own acceptance required (\"file it separately rather than smuggling a redesign into a token migration\"). W10-06 built the scale and the gate; this ticket finishes adopting it in the places where adoption needs design judgement rather than a script."
+      "notes": "Filed BY W10-06, as its own acceptance required (\"file it separately rather than smuggling a redesign into a token migration\"). W10-06 built the scale and the gate; this ticket finishes adopting it in the places where adoption needs design judgement rather than a script. WRITE_SCOPE CORRECTED 2026-08-03 \u2014 mine was wrong. I filed this CSS-and-tests-only, but its own criterion 3 (the unlabelled \"+120 -4\" diff stat, and timestamp formatting) lives in NotificationCard.tsx and TraceView.tsx. Attempt 1 produced exactly the right change in both \u2014 `Diff: ${diffStat}` to match the sentence shape of the other summaryLine variants, and an Intl.DateTimeFormat helper with a comment on why not a bare toLocaleString \u2014 and was rejected as out-of-scope. Contention checked before widening: neither file is claimed by any non-done ticket. Note that criterion 3's \"morning queue is ~60% empty\" clause was REFUTED by the visual audit (two items in a 900px viewport with a real empty state defined) and should not be actioned; and TraceView timestamps were already formatted by W10-35, so only the NotificationCard half of that clause may remain."
     },
     {
       "id": "W10-29",
