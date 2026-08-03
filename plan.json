@@ -4590,7 +4590,7 @@
         "apps/server/src/api/server/providers-store.test.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "READ FROM SOURCE, both paths. `listProviders(projectPath)` (providers-store.ts) calls `getProjectSettings`, which is `loadProjectSettings` and nothing else \u2014 it reads `<project>/.dokima/settings.json` ONLY. `dokima doctor` and `dokima providers refresh` (cli/ops/providers-core.ts:43) read the same `providers` key through `getEffectiveSettings`, which loads global AND project and resolves run > project > global. The two disagree about where a provider may live.",
@@ -4600,7 +4600,7 @@
         "RED FIXTURE: a `providers` entry present ONLY at global scope resolves for a project that has no project-scope registry, and a project-scope entry still WINS over a global one of the same id (precedence is run > project > global, FR-S1). Both directions, because a global fallback that overrides an explicit project choice is a worse bug than the one being fixed.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 immediately after W10-59, when the model selected through the Providers & Models panel turned out to exist only inside the one test project it was configured in. The machine-wide default that DOES work today is the env fallback (`DOKIMA_MODEL_BASE_URL` + `DOKIMA_MODEL_ID`), which `envTarget` reads and which never touches the registry \u2014 so the documented CI/fixture override is currently also the only way to set a default for every project, which is backwards. Note the model matrix has the same shape of problem and is not in this ticket scope: `listModelMatrix` reads the project state.db, so there is no global matrix at all."
+      "notes": "Found 2026-08-03 immediately after W10-59, when the model selected through the Providers & Models panel turned out to exist only inside the one test project it was configured in. The machine-wide default that DOES work today is the env fallback (`DOKIMA_MODEL_BASE_URL` + `DOKIMA_MODEL_ID`), which `envTarget` reads and which never touches the registry \u2014 so the documented CI/fixture override is currently also the only way to set a default for every project, which is backwards. Note the model matrix has the same shape of problem and is not in this ticket scope: `listModelMatrix` reads the project state.db, so there is no global matrix at all. \u2014 DECISION RECORDED (acceptance 4 asks for one). Global-scope providers are a FALLBACK, not a default: project rows win, so a global registry can never quietly beat an explicit per-project choice. Scope-resolution reading now matches what dokima doctor already did, which is what closes the divergence. Measured honestly at close: this delivers no user-visible change on its own, because resolveModelTarget also requires matrix rows and listModelMatrix has no global scope \u2014 filed as W10-64 rather than implied by this one. Fixtures proven red against the old project-only read, not just green against the new one."
     },
     {
       "id": "W10-63",
@@ -4624,6 +4624,34 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Filed 2026-08-03 immediately after W10-59 landed, from a review of that ticket rather than from a failure. Related honesty note on W10-59: the after-run cannot distinguish \"the model emitted a fence and stripping saved it\" from \"the model happened to emit clean JSON that attempt\" \u2014 temperature is 0 with identical prompts, so the former is very likely, but it is inference and this ticket is what would make it a measurement."
+    },
+    {
+      "id": "W10-64",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "title": "Register once, use everywhere is still half true \u2014 the model matrix has no global scope and no way to write one",
+      "write_scope": [
+        "apps/server/src/api/server/model-matrix-store.ts",
+        "apps/server/src/api/server/model-matrix-store.test.ts",
+        "apps/server/src/api/server/settings-routes.ts",
+        "apps/web/src/settings/ModelMatrixPanel.tsx"
+      ],
+      "depends_on": [
+        "W10-62"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "THE REMAINING HALF, stated exactly. W10-62 made `listProviders` read the effective settings, so a provider registered at global scope is now visible to the resolver. That alone changes NOTHING a user can see, and the ticket says so: `resolveModelTarget` short-circuits on `rows.length === 0 || providers.length === 0` (model-resolution.ts:180), and `listModelMatrix` reads the project `state.db` \u2014 there is no global matrix at all. A new product therefore still falls back to the env target however the providers are registered.",
+        "AND THERE IS NO WRITE PATH, which is why this is not a one-line mirror of W10-62. The Providers & Models panel writes matrix rows through the project-scoped settings route; nothing in the UI or the CLI can write a global matrix, so adding a global READ fallback on its own would be dead code. The scope has to be selectable where the rows are edited.",
+        "DELIVER: a global-scope model matrix that the panel can write and `listModelMatrix` falls back to, with project rows still winning (run > project > global, FR-S1) \u2014 the same precedence W10-62 established for providers, so the two halves cannot disagree about which scope wins.",
+        "THE ACCEPTANCE TEST IS A SECOND PRODUCT, not a unit test. Configure a provider and a model once, create a NEW product, and run the interview without touching its settings \u2014 the run must use the configured model. That is the \"register once, use everywhere\" claim (FR-F3, and `global-db/providers.ts` says it verbatim in its own docstring); today it is false for the model even though it is now true for the provider.",
+        "RED FIXTURE, both directions: a project with no matrix rows resolves the global matrix, and a project WITH rows ignores the global one entirely. Plus the negative that matters \u2014 with a global provider and no matrix at either scope, the env fallback still fires rather than an ambiguous half-resolution.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Filed 2026-08-03 while closing W10-62, from measuring what W10-62 actually delivers rather than what its title implies. W10-62 fixes a real divergence (dokima doctor reported a global provider healthy while the resolver ignored it) but does NOT give a machine-wide model default, and closing it as if it did would have been the self-graded partial this project keeps catching. The machine-wide default that works TODAY is the env fallback, DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID, which envTarget reads and which loses to any project-scope registry \u2014 so the documented CI/fixture override is currently also the only real machine-wide setting, which is backwards."
     }
   ]
 }

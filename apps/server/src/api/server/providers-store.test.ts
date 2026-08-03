@@ -135,3 +135,66 @@ describe('provider registry persistence (W10-01)', () => {
     expect(miss.entries.map((e) => e.id)).toEqual(['b']);
   });
 });
+
+/**
+ * W10-62. `listProviders` used to read the project settings file alone, while
+ * `dokima doctor` and `dokima providers refresh` read the same key through
+ * `getEffectiveSettings`, which merges global. A globally-registered provider
+ * was therefore reported healthy by the CLI and invisible to the resolver.
+ *
+ * Both directions, because a global fallback that overrides an explicit
+ * project choice would be a worse bug than the one being fixed.
+ */
+describe('provider registry scope resolution (W10-62)', () => {
+  const savedHome = process.env.DOKIMA_HOME;
+
+  afterEach(() => {
+    if (savedHome === undefined) delete process.env.DOKIMA_HOME;
+    else process.env.DOKIMA_HOME = savedHome;
+  });
+
+  async function globalHome(entries: unknown): Promise<string> {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-home-'));
+    dirs.push(home);
+    await fs.writeFile(
+      path.join(home, 'config.json'),
+      JSON.stringify({ [PROVIDERS_SETTINGS_KEY]: entries }),
+    );
+    process.env.DOKIMA_HOME = home;
+    return home;
+  }
+
+  it('a global-scope provider resolves for a project that has no registry of its own', async () => {
+    await globalHome([
+      { id: 'lm-studio', kind: 'lm-studio', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true },
+    ]);
+    const dir = await project();
+
+    const entries = await listProviders(dir);
+
+    expect(entries.map((e) => e.id)).toEqual(['lm-studio']);
+    expect(entries[0]?.baseUrl).toBe('http://127.0.0.1:1234/v1');
+  });
+
+  it('a project-scope registry WINS over a global one — a fallback never beats an explicit choice', async () => {
+    await globalHome([
+      { id: 'lm-studio', kind: 'lm-studio', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true },
+    ]);
+    const dir = await project();
+    await putProviders(dir, [
+      { id: 'ollama-box', kind: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', enabled: true },
+    ]);
+
+    const entries = await listProviders(dir);
+
+    expect(entries.map((e) => e.id)).toEqual(['ollama-box']);
+  });
+
+  it('no registry at either scope is still the normal first-run state, not an error (C-1)', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-home-'));
+    dirs.push(home);
+    process.env.DOKIMA_HOME = home;
+
+    expect(await listProviders(await project())).toEqual([]);
+  });
+});
