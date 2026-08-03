@@ -4466,7 +4466,7 @@
         "packages/gateway/src/providers/*.test.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED END TO END IN A BROWSER against the installed package: filled the new interview surface (W10-54) with a real idea, clicked \"Build the board\", watched LM Studio move to GENERATING \u2014 then the run failed with HTTP 500 and the body `pipeline-run: request timed out after 60000ms`. The seam works; the timeout kills it.",
