@@ -76,7 +76,7 @@ import {
 import { InvalidPipelineRunRequestError } from '../errors.js';
 import {
   createRealGatewayPort,
-  resolveGatewayConfigFromEnv,
+  resolveGatewayConfigForProject,
   type GatewayConfig,
   type RealGatewayPort,
 } from '../gateway-model-port.js';
@@ -110,9 +110,36 @@ export function registerPipelineRoutes(
 ): void {
   const registryPath = computeFleetRegistryPath(opts.home);
   const now = opts.now ?? (() => new Date().toISOString());
+  /**
+   * W10-69: resolve the model PER PROJECT, not from the environment.
+   *
+   * This used to be `resolveGatewayConfigFromEnv()`, which meant the creation
+   * pipeline — the path behind "Build the board" — never read the provider
+   * registry or the model matrix at all. `resolveGatewayConfigForProject` is
+   * the resolution W10-03 exists to provide, and until now its only production
+   * caller in the repo was `onboard-dispatch-port.ts` (wired by W10-45); this
+   * call site was left behind, which is the same build-then-wire gap
+   * W10_PLAN §6a traces the original defect to.
+   *
+   * Measured before the fix: a project configured through the Providers &
+   * Models panel to `qwen/qwen3.5-9b`, verified persisted in `model_matrix`,
+   * ran against a core with no `DOKIMA_MODEL_ID` and LM Studio received
+   * `"model": "local-model"` — `envTarget`'s hardcoded default. No error and
+   * no effect, which is precisely why it survived a full browser session and
+   * five model-selection tickets stacked on top of it.
+   *
+   * `opts.gatewayConfig` still wins, deliberately: the e2e fake-model gateway
+   * and every route test inject it, and that override is a documented CI seam
+   * (Law 9). The env config remains reachable underneath — with no registry
+   * configured, `resolveGatewayConfigForProject` falls back to it, so a
+   * first-run project keeps working with nothing set up (C-1).
+   */
   const resolvePort =
     opts.modelPortFactory ??
-    (() => createRealGatewayPort(opts.gatewayConfig ?? resolveGatewayConfigFromEnv()));
+    (async (projectPath: string) =>
+      createRealGatewayPort(
+        opts.gatewayConfig ?? (await resolveGatewayConfigForProject(projectPath)),
+      ));
 
   registerOnboardRoute(app, {
     home: opts.home,
@@ -154,7 +181,7 @@ export function registerPipelineRoutes(
       let plan: DecomposedPlan;
       try {
         const ledgerMarkdown = await readLedgerMarkdown(record.path);
-        const modelPort = await resolvePort();
+        const modelPort = await resolvePort(record.path);
         const preflight = await runPreflight(modelPort, body, ledgerMarkdown);
 
         const runId = randomUUID();
