@@ -1,6 +1,6 @@
 /**
  * Appends session-trace run events for the tour capture
- * (`capture-tour.mjs`) onto a DB already seeded by
+ * (`capture-tour/`) onto a DB already seeded by
  * `e2e/fixtures/seed-board-tickets.mjs`'s `basic` scenario — that fixture's
  * scenarios each call `createIdentity` and so can't be layered onto one DB.
  * Same real-primitives discipline: events go through `@dokima/events`'

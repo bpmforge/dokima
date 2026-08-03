@@ -1,5 +1,5 @@
 /**
- * Coverage tracker for the screenshot sweeps (`capture-tour.mjs`): a
+ * Coverage tracker for the screenshot sweeps (`capture-tour/`): a
  * declared list of states the sweep intends to capture, checked against
  * what actually got captured. Mirrors the project's own DONE/WAIVED/SKIPPED
  * vocabulary (SRS FR-L4) rather than inventing a parallel one: every
@@ -27,10 +27,14 @@ export function createCoverageTracker(declared) {
   function capture(id) {
     const decl = byId.get(id);
     if (!decl) {
-      throw new Error(`captured undeclared state "${id}" — add it to the declared state list first`);
+      throw new Error(
+        `captured undeclared state "${id}" — add it to the declared state list first`,
+      );
     }
     if (decl.waiver) {
-      throw new Error(`state "${id}" is declared WAIVED (${decl.waiver}) — cannot also capture it`);
+      throw new Error(
+        `state "${id}" is declared WAIVED (${decl.waiver}) — cannot also capture it`,
+      );
     }
     if (results.has(id)) {
       throw new Error(`state "${id}" captured twice`);

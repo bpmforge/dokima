@@ -1,5 +1,5 @@
 /**
- * Shared boot/seed helpers for the screenshot tour (`capture-tour.mjs`) and
+ * Shared boot/seed helpers for the screenshot tour (`capture-tour/`) and
  * the acceptance walker (`capture-acceptance.mjs`): a real `vite build`
  * served by the real apps/server against a throwaway `.dokima` home
  * (same shape as playwright.config.ts's webServer). Population goes only

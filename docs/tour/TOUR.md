@@ -8,7 +8,7 @@ app instance) — plus every Settings tab in both themes. Regenerate any
 time with:
 
 ```sh
-node apps/web/scripts/capture-tour.mjs   # always rebuilds dist/ first
+node apps/web/scripts/capture-tour/index.mjs   # always rebuilds dist/ first
 ```
 
 ## Step 1 — Fleet home (first launch)
