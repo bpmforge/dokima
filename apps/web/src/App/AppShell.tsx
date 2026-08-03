@@ -24,9 +24,12 @@ export function AppShell() {
     openTraceView,
     onSelectPaletteMode,
   } = useAppNavigation();
-  const chatPaneNode = useChatPaneNode(projectId);
-  const boardPaneNode = useBoardPaneNode(projectId);
-  const artifactsPaneNode = useArtifactsPaneNode(projectId);
+  // W10-61: no projectId argument — these re-query on every render because the
+  // pane nodes are destroyed and recreated whenever MainView swaps to a
+  // full-screen view and back, which projectId does not observe.
+  const chatPaneNode = useChatPaneNode();
+  const boardPaneNode = useBoardPaneNode();
+  const artifactsPaneNode = useArtifactsPaneNode();
   const { token, apiOpts, wsUrl } = useApiBootstrap();
   const decideBadgeCount = useDecideBadgeCount();
 
