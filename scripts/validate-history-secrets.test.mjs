@@ -139,6 +139,36 @@ describe('history-secrets: the gap this ticket closes', () => {
     expect(git(dir, 'log', '--all', '--oneline', `--find-object=${blob}`)).toContain(sha.slice(0, 7));
   });
 
+  it('a secret pasted into a COMMIT MESSAGE is caught — it is history too, and no tree edit removes it', () => {
+    const dir = newRepo();
+    const secret = shape.openai();
+    writeFileSync(path.join(dir, 'note.txt'), 'nothing to see\n');
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-q', '-m', `rotate creds\n\nold key was ${secret}`);
+
+    // The file tree is spotless. `git rev-list --objects` prints commit objects
+    // with no path, so a parser keyed on the space separator drops them silently.
+    const tree = spawnSync('bash', [TREE_SCANNER, dir], { encoding: 'utf8', env: GIT_ENV });
+    expect(tree.status).toBe(0);
+
+    const res = run(dir);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('commit message');
+    expect(res.stderr).toContain('git cat-file -p');
+    expect(res.stdout + res.stderr).not.toContain(secret);
+  });
+
+  it('an annotated TAG message is caught — tags are not enumerated by rev-list --objects', () => {
+    const dir = newRepo();
+    const secret = shape.githubOther();
+    git(dir, 'tag', '-a', 'v0.0.1', '-m', `release cut; deploy token ${secret}`);
+
+    const res = run(dir);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('tag message');
+    expect(res.stdout + res.stderr).not.toContain(secret);
+  });
+
   it('never prints a raw secret on either stream', () => {
     const dir = newRepo();
     const secret = shape.github();

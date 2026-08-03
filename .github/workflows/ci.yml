@@ -222,7 +222,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-      - name: Scan every blob reachable from every ref
+      - name: Scan every object reachable from every ref (file contents + commit/tag messages)
         run: node scripts/validate-history-secrets.mjs
 
   traceability:

@@ -50,10 +50,10 @@ what the rewrite does *not* undo:
 Durable fix **landed 2026-08-03 as W10-27**: `secrets-scan.sh` scans the working
 **tree**, so a gitignored, tree-removed key reads clean while history is
 compromised — which is exactly how this survived thirteen days. History scanning
-is now part of the gate: `scripts/validate-history-secrets.mjs` reads every blob
-reachable from every ref (no external scanning binary, ~1.1s), CI runs it on
-every push with `fetch-depth: 0`, and it exits **2 rather than 0** on a shallow
-clone so it can never pass vacuously. The one thing this does *not* do is find a
+is now part of the gate: `scripts/validate-history-secrets.mjs` reads every object
+reachable from every ref — file contents *and* commit/tag messages (no external
+scanning binary, ~1.3s), CI runs it on every push with `fetch-depth: 0`, and it
+exits **2 rather than 0** on a shallow clone so it can never pass vacuously. The one thing this does *not* do is find a
 credential shape nobody has a pattern for; it covers the same six categories as
 the tree scanner. See [`TESTING.md` §6a](TESTING.md).
 

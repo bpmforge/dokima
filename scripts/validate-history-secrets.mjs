@@ -92,25 +92,48 @@ function assertScannableHistory(root) {
   }
 }
 
-/** Every blob reachable from any ref, with the path it was last seen at. */
-function reachableBlobs(root) {
+/**
+ * Every scannable object reachable from any ref: file contents (blobs), COMMIT
+ * MESSAGES, and annotated tag messages.
+ *
+ * Commits matter as much as blobs and are easy to miss — `git rev-list
+ * --objects` prints them with no path, so a parser that keys on the space
+ * separator drops them silently. A credential pasted into a commit message is
+ * in published history exactly like one in a file, and no amount of editing the
+ * tree removes it.
+ */
+function reachableObjects(root) {
   const pathBySha = new Map();
   for (const line of git(root, ['rev-list', '--objects', '--all']).split('\n')) {
+    if (!line) continue;
     const sp = line.indexOf(' ');
-    if (sp > 0) {
-      const sha = line.slice(0, sp);
-      if (!pathBySha.has(sha)) pathBySha.set(sha, line.slice(sp + 1));
-    }
+    const sha = sp > 0 ? line.slice(0, sp) : line;
+    if (!pathBySha.has(sha)) pathBySha.set(sha, sp > 0 ? line.slice(sp + 1) : null);
+  }
+  // Annotated tags hang off refs/tags and are not enumerated by rev-list --objects.
+  for (const line of git(root, ['for-each-ref', '--format=%(objectname)', 'refs/tags']).split('\n')) {
+    if (line && !pathBySha.has(line)) pathBySha.set(line, null);
   }
   if (pathBySha.size === 0) throw new Error('no reachable objects — nothing to scan, refusing to report clean');
 
   const shas = [...pathBySha.keys()];
-  const blobs = [];
+  const scannable = [];
+  const typeBySha = new Map();
   for (const line of git(root, ['cat-file', '--batch-check', '--buffer'], { input: shas.join('\n') }).split('\n')) {
     const [sha, type] = line.split(' ');
-    if (type === 'blob') blobs.push(sha);
+    if (type === 'blob' || type === 'commit' || type === 'tag') {
+      scannable.push(sha);
+      typeBySha.set(sha, type);
+    }
   }
-  return { blobs, pathBySha };
+  return { scannable, pathBySha, typeBySha };
+}
+
+/** Where a human should go looking. A commit has no path — name the message. */
+function describeLocation(sha, type, path) {
+  if (type === 'commit') return `commit message ${sha.slice(0, 7)}`;
+  if (type === 'tag') return `tag message ${sha.slice(0, 7)}`;
+  return path ?? '(unknown path)';
 }
 
 /** Every pattern hit in one blob's text. Exported so the match rules are unit-testable. */
@@ -125,15 +148,15 @@ export function scanText(text) {
 }
 
 /**
- * Scan every reachable blob. Returns findings keyed by fingerprint (one entry
- * per distinct secret VALUE, however many blobs carry it) plus scan stats.
+ * Scan every reachable object. Returns findings keyed by fingerprint (one entry
+ * per distinct secret VALUE, however many objects carry it) plus scan stats.
  */
 export function scanHistory(root) {
   assertScannableHistory(root);
-  const { blobs, pathBySha } = reachableBlobs(root);
+  const { scannable, pathBySha, typeBySha } = reachableObjects(root);
 
   const res = spawnSync('git', ['-C', root, 'cat-file', '--batch', '--buffer'], {
-    input: blobs.join('\n') + '\n',
+    input: scannable.join('\n') + '\n',
     maxBuffer: 1 << 30,
   });
   if (res.error) throw new Error(`git cat-file failed to spawn: ${res.error.message}`);
@@ -161,14 +184,27 @@ export function scanHistory(root) {
     for (const { category, value } of scanText(body.toString('utf8'))) {
       const fp = fingerprint(category, value);
       if (!byFingerprint.has(fp)) {
-        byFingerprint.set(fp, { fingerprint: fp, category, masked: mask(value), seen_at: pathBySha.get(sha), blob: sha });
+        const type = typeBySha.get(sha);
+        byFingerprint.set(fp, {
+          fingerprint: fp,
+          category,
+          masked: mask(value),
+          seen_at: describeLocation(sha, type, pathBySha.get(sha)),
+          object: sha,
+          object_type: type,
+        });
       }
     }
   }
 
   return {
     findings: [...byFingerprint.values()].sort((a, b) => a.fingerprint.localeCompare(b.fingerprint)),
-    stats: { blobs: blobs.length, scanned, binarySkipped, commits: Number(git(root, ['rev-list', '--all', '--count']).trim()) },
+    stats: {
+      objects: scannable.length,
+      scanned,
+      binarySkipped,
+      commits: Number(git(root, ['rev-list', '--all', '--count']).trim()),
+    },
   };
 }
 
@@ -215,7 +251,7 @@ function main(argv) {
 
   const { findings, stats } = result;
   console.log(
-    `Scanned ${stats.commits} commits · ${stats.blobs} reachable blobs ` +
+    `Scanned ${stats.commits} commits · ${stats.objects} reachable objects — file contents, commit and tag messages ` +
       `(${stats.scanned} text, ${stats.binarySkipped} binary skipped) under ${root}`,
   );
 
@@ -243,7 +279,11 @@ function main(argv) {
   console.error(`FAIL: ${gating.length} un-baselined credential shape(s) in git history:`);
   for (const f of gating) {
     console.error(`  - [${f.category}] ${f.seen_at} — ${f.masked}`);
-    console.error(`      blob ${f.blob} · find the commit with: git log --all --oneline --find-object=${f.blob}`);
+    console.error(
+      f.object_type === 'blob'
+        ? `      blob ${f.object} · find the commit with: git log --all --oneline --find-object=${f.object}`
+        : `      ${f.object_type} ${f.object} · inspect it with: git cat-file -p ${f.object}`,
+    );
   }
   console.error(
     '\nA history hit is not fixed by deleting the file: rotate the credential first, then purge ' +
