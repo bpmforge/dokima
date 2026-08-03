@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- W10-31: lets the UA paint the right chrome (scrollbars, form
+         controls) on first paint, before styles.css's dark-mode
+         @media fallback or ThemeProvider's data-theme effect runs. -->
+    <meta name="color-scheme" content="light dark" />
     <title>Dokima</title>
   </head>
   <body>
