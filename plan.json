@@ -4199,13 +4199,12 @@
       "points": 5,
       "title": "Split receipts.ts (553 lines) \u2014 the C-6 hash chain, where a serialization change can never be migrated",
       "write_scope": [
-        "packages/events/src/receipts.ts",
+        "packages/events/src/receipts*",
         "packages/events/src/receipts/**",
-        "packages/events/src/receipts.test.ts",
         "packages/events/src/index.ts"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED: packages/events/src/receipts.ts is 553 lines, over the 400-line CODE_BOOK_PROTOCOL cap. Split per docs/work/FILE_SIZE_DEBT.md into receipts/{types,waiver-policy,mac,mint,query,verify}.ts plus an index barrel, tree-shaped deps (mint/verify -> mac/waiver-policy -> types; query -> types), no cycles.",
@@ -4215,7 +4214,7 @@
         "PURE REORGANIZATION: same exported names from @dokima/events, same behaviour. receipts.ts stays as a barrel at its exact path OR index.ts is updated \u2014 whichever leaves every existing importer unchanged; report which and why.",
         "Full gate green including e2e, counts in the commit body; validate-file-size reports one fewer over-cap file."
       ],
-      "notes": "Filed 2026-08-03, fourth of the six over-cap files (W10-46 cleared the two conductor scripts). FILE_SIZE_DEBT.md flags this as the highest-stakes split in the repo and states the instruction directly: diff serialization byte-for-byte before/after, do not just run the suite. mintReceipt is confirmed the sole appender of gate.receipt_minted/gate.waived."
+      "notes": "Filed 2026-08-03, fourth of the six over-cap files (W10-46 cleared the two conductor scripts). FILE_SIZE_DEBT.md flags this as the highest-stakes split in the repo and states the instruction directly: diff serialization byte-for-byte before/after, do not just run the suite. mintReceipt is confirmed the sole appender of gate.receipt_minted/gate.waived. SCOPE AMENDED 2026-08-03, before the split landed and recorded rather than done quietly: acceptance 3 requires a golden fixture + its test as NEW siblings (receipts-golden.fixture.json, receipts-golden.test.ts), and the filed scope named only receipts.ts / receipts.test.ts / receipts/** \u2014 the exact \u00a710 defect of writing acceptance that describes behaviour then scoping from whichever file came to mind. Widened to the glob packages/events/src/receipts* which covers all of them. Legitimate here only because the operator both filed and worked this ticket; a maker agent hitting this must self-block instead (W8-06 precedent). AGENT 2026-08-03: done. 553->51 barrel + 6 chapters, receipts.ts kept at its exact path so no consumer moved. Golden fixture (7 tree hashes, 11 MACs) generated from the PRE-split code and committed before anything moved. KEY FINDING: swapping projectId<->phase in computeReceiptMac leaves all 15 existing receipts.test.ts tests GREEN \u2014 they mint and verify with the same code \u2014 and is caught only by the golden fixture, which is the concrete proof of FILE_SIZE_DEBT.md warning that a passing suite cannot certify this split. The byte-level pin needed a second pass: as first written it never called the implementation, so it would have passed while the code drifted; now pins format == implementation == frozen value, and 2 of 4 golden tests fail under the mutation instead of 1. Six private symbols promoted to exports for cross-chapter use, none added to the package barrel \u2014 public surface unchanged. validate-file-size now reports 3 over-cap files (was 6). Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 416 files / 3127 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }

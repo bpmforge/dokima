@@ -1,0 +1,279 @@
+{
+  "note": "Frozen BEFORE the W10-47 split from the pre-split receipts.ts. These hex values are the on-disk truth for every receipt already minted into the append-only log; they can never be recomputed or migrated. If a change makes these differ, that change is wrong.",
+  "signingKey": "golden-fixture-key-do-not-use-in-production",
+  "inputTreeHashes": {
+    "empty": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "single": "d2a46324d56cc148856fe9906fac7d6f5c797d7221fc5c33f07c50d7da744684",
+    "unsorted": "7e8b1136d161dcb573f7f8d26023cfef3615d292df0e891f7758e1470cf6d4ff",
+    "boundaryShift": "018e0d1d09e2147ccf5a30b398ed427e085e55f114b798afdcc3a859cb4beb87",
+    "boundaryShift2": "eb5085693b58bfe24b72a8ee7b4abc7292873032a87953fcdae0159883ea8d7a",
+    "unicode": "8f0d7412c84a136895dfc9d52adb4a31814e117e0c94c22e85e2281567f4261b",
+    "emptyContent": "a15a544143123f8b806b094a51dc1cfe027902d66c272c1737a08b40cf7f83ea"
+  },
+  "macs": {
+    "base": "80e381e2986c06518cb81ebed6fff25c6ae4e6b18b4aa9aa3f74d44cf68b2065",
+    "nullTicket": "cb0d597b01833792f507f6af7c5cd658fe86bdfdbdea0167c57c24d7ae5653f0",
+    "emptyTicket": "e2567422d5baf3fa91641a947e23c7a767f785dc998a88ab3fa258d3f390a52e",
+    "nullVerify": "b7d39c5fe15efeb2a1a438bc6e64d744576dd8c73d452b4e8f35733ae0b30f43",
+    "emptyVerify": "154f3e9138394e37585e1fbaeca91f9bc6d5fcf31461250aa746188e49399b6c",
+    "swapped": "7f6a07e940b0efb03b251ffe79fdcfcd2baeedb136b8bfd82d1a1a7f5cb07c10",
+    "waiver": "30f6ce3e840f96ddc2bf6adb6b640e5d5059b19ac54a272ac372fc2636b8a005",
+    "multiValidator": "fa6b35313586701d7a3ba9b00a50f228ec5f6ba07a7148b184507bf9d16ac39e",
+    "unicodeFields": "2c405aa6c7691df2503e640f8abb4d110a2ca97eccd9b30bf3b9e0436af74822",
+    "phaseZero": "6bf9ef09c728232b3d96eb6acea2d9499be6d99b84a6c623e6182f9e5707ad00",
+    "phaseNull": "761916b1e7f5ac42678c97d71ff776d53e1e6845ac51fef7828491e9e65a5a2e"
+  },
+  "trees": {
+    "empty": [],
+    "single": [
+      {
+        "path": "a.ts",
+        "content": "x"
+      }
+    ],
+    "unsorted": [
+      {
+        "path": "b.ts",
+        "content": "bee"
+      },
+      {
+        "path": "a.ts",
+        "content": "ay"
+      }
+    ],
+    "boundaryShift": [
+      {
+        "path": "a",
+        "content": "bc"
+      }
+    ],
+    "boundaryShift2": [
+      {
+        "path": "ab",
+        "content": "c"
+      }
+    ],
+    "unicode": [
+      {
+        "path": "docs/café.md",
+        "content": "🔐 naïve\n"
+      }
+    ],
+    "emptyContent": [
+      {
+        "path": "empty.ts",
+        "content": ""
+      }
+    ]
+  },
+  "contents": {
+    "base": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "nullTicket": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": null,
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "emptyTicket": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "nullVerify": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": null,
+      "verifyExit": null,
+      "signedBy": null
+    },
+    "emptyVerify": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "swapped": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "W1-01",
+      "phase": 3,
+      "ticketId": "p-1",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "waiver": {
+      "id": "r-1",
+      "kind": "waiver",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": "a-human"
+    },
+    "multiValidator": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        },
+        {
+          "name": "secrets-scan",
+          "exitCode": 1,
+          "gaps": [
+            {
+              "category": "x",
+              "detail": "y:1"
+            }
+          ]
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "unicodeFields": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 3,
+      "ticketId": "W1-café",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "echo 🔐",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "phaseZero": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": 0,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    },
+    "phaseNull": {
+      "id": "r-1",
+      "kind": "gate",
+      "projectId": "p-1",
+      "phase": null,
+      "ticketId": "W1-01",
+      "validators": [
+        {
+          "name": "lint",
+          "exitCode": 0,
+          "gaps": []
+        }
+      ],
+      "inputTreeHash": "abc123",
+      "verifyCommand": "pnpm test",
+      "verifyExit": 0,
+      "signedBy": null
+    }
+  }
+}
