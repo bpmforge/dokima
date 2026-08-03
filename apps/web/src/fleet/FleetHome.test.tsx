@@ -70,4 +70,19 @@ describe('FleetHome empty state (W10-33)', () => {
 
     expect(onOpenWizard).toHaveBeenCalledTimes(1);
   });
+
+  it('re-clicking the header button for the already-open form closes it instead of no-oping', async () => {
+    render(<FleetHome onOpenProject={vi.fn()} onOpenWizard={vi.fn()} />);
+
+    await screen.findByTestId('fleet-empty');
+    const header = document.querySelector('.fleet__header') as HTMLElement;
+    const headerNewProduct = within(header).getByRole('button', { name: 'New Product' });
+
+    fireEvent.click(headerNewProduct);
+    expect(screen.getByRole('form', { name: 'New Product' })).toBeTruthy();
+
+    fireEvent.click(headerNewProduct);
+    expect(screen.queryByRole('form', { name: 'New Product' })).toBeNull();
+    expect(screen.getByTestId('fleet-empty')).toBeTruthy();
+  });
 });

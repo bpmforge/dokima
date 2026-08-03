@@ -41,6 +41,11 @@ export function FleetHome({ onOpenProject, onOpenWizard }: FleetHomeProps) {
   const [error, setError] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<ProjectMode | null>(null);
 
+  /** Toggles rather than unconditionally sets (W10-33): re-clicking the header button for the already-open form's mode is a real close, not the `setFormMode('new')`-while-already-'new'` no-op click the empty-state button had. */
+  const toggleFormMode = useCallback((mode: ProjectMode) => {
+    setFormMode((current) => (current === mode ? null : mode));
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const projects = await fetchProjects({ archived: archivedFilter });
@@ -101,13 +106,13 @@ export function FleetHome({ onOpenProject, onOpenWizard }: FleetHomeProps) {
       <header className="fleet__header">
         <h1>Fleet</h1>
         <div className="fleet__actions">
-          <button type="button" onClick={() => setFormMode('new')}>
+          <button type="button" onClick={() => toggleFormMode('new')}>
             New Product
           </button>
-          <button type="button" onClick={() => setFormMode('onboard')}>
+          <button type="button" onClick={() => toggleFormMode('onboard')}>
             Onboard existing repo
           </button>
-          <button type="button" onClick={() => setFormMode('import')}>
+          <button type="button" onClick={() => toggleFormMode('import')}>
             Import
           </button>
           <label className="fleet__archived-toggle">

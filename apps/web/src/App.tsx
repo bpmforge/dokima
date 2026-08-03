@@ -97,21 +97,30 @@ function useDecideBadgeCount(): number {
  * project is open, so a mount-only query run while still on Fleet (the
  * common path — Fleet → click Open, no full page reload) would cache a
  * permanent `null` and never portal anything in.
+ *
+ * Also re-queries on `view` (W10-33): `SplitPaneWorkspace` unmounts
+ * whenever `view` switches to `'plans'`/`'roster'`/`'notifications'`/etc
+ * (same top-level ternary that swaps it for `FleetHome` when `projectId`
+ * goes null) and remounts with fresh pane DOM nodes when `view` returns to
+ * `null` — `projectId` itself never changes across that round trip, so a
+ * `[projectId]`-only dependency kept the stale, now-detached node and
+ * portaled into it forever, leaving Chat/Board/Artifacts blank after any
+ * "← Back" from Plan/Roster/notifications/View-current-phase.
  */
-function useChatPaneNode(projectId: string | null): HTMLElement | null {
+function useChatPaneNode(projectId: string | null, view: View): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setNode(document.querySelector<HTMLElement>('[data-testid="pane-chat"]'));
-  }, [projectId]);
+  }, [projectId, view]);
   return node;
 }
 
 /** Same portal pattern as `useChatPaneNode`, targeting the board pane (UX_SPEC §2a). */
-function useBoardPaneNode(projectId: string | null): HTMLElement | null {
+function useBoardPaneNode(projectId: string | null, view: View): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setNode(document.querySelector<HTMLElement>('[data-testid="pane-board"]'));
-  }, [projectId]);
+  }, [projectId, view]);
   return node;
 }
 
@@ -126,11 +135,11 @@ function useBoardPaneNode(projectId: string | null): HTMLElement | null {
  * Server routes/engine and `EstimateWorkspace` itself are untouched, only
  * the mount moves.
  */
-function useArtifactsPaneNode(projectId: string | null): HTMLElement | null {
+function useArtifactsPaneNode(projectId: string | null, view: View): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setNode(document.querySelector<HTMLElement>('[data-testid="pane-artifacts"]'));
-  }, [projectId]);
+  }, [projectId, view]);
   return node;
 }
 
@@ -158,9 +167,9 @@ function AppShell() {
   const [view, setView] = useState<View>(() => readView());
   // Derived at render time, not mirrored into state (same "URL is the source of truth" discipline as readProjectId/readView).
   const traceTicketId = view === 'trace' ? readTraceTicketId() : null;
-  const chatPaneNode = useChatPaneNode(projectId);
-  const boardPaneNode = useBoardPaneNode(projectId);
-  const artifactsPaneNode = useArtifactsPaneNode(projectId);
+  const chatPaneNode = useChatPaneNode(projectId, view);
+  const boardPaneNode = useBoardPaneNode(projectId, view);
+  const artifactsPaneNode = useArtifactsPaneNode(projectId, view);
   const token = readInjectedToken();
   // Stable ref: TraceView's effects key off this by identity — an inline literal would refetch on every unrelated re-render.
   const apiOpts = useMemo(() => (token ? { baseUrl: '/api/v1', token } : null), [token]);
