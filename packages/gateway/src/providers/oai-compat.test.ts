@@ -15,6 +15,7 @@ import {
   rateLimitFixture,
   serverErrorFixture,
 } from './fixtures.js';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from './oai-compat-types.js';
 import {
   createLmStudioProvider,
   createOaiCompatProvider,
@@ -267,6 +268,74 @@ describe('OaiCompatProvider — chat()', () => {
     await expect(
       provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] }),
     ).rejects.toThrow(ProviderTimeoutError);
+  });
+
+  /**
+   * W10-57. Driving the real product against LM Studio, the creation pipeline
+   * died with `pipeline-run: request timed out after 60000ms`. This is the
+   * LOCAL path — LM Studio and Ollama are both OaiCompat variants — and 60s
+   * made the product's headline use case unusable.
+   *
+   * Both directions are asserted on purpose: raising a timeout until nothing
+   * ever trips it is not a fix, it is removing the guard.
+   */
+  it('RED FIXTURE: a response slower than the OLD 60s default now succeeds', async () => {
+    // Simulated rather than actually slow: the point is which side of the
+    // DEFAULT the request falls on, and a real 61s test would be untestable.
+    const slowerThanOldDefault = ((_input: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(
+          () => resolve(new Response(JSON.stringify(chatCompletionSuccessFixture), { status: 200 })),
+          10,
+        );
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(new DOMException('aborted', 'TimeoutError'));
+        });
+      })) as typeof fetch;
+
+    // No requestTimeoutMs override — this is the DEFAULT under test.
+    const provider = createOaiCompatProvider({
+      id: 'local',
+      baseUrl: 'http://x/v1',
+      fetchImpl: slowerThanOldDefault,
+    });
+    const res = await provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] });
+    expect(res.message.content).toBeTruthy();
+    expect(DEFAULT_REQUEST_TIMEOUT_MS).toBeGreaterThan(60_000);
+  });
+
+  it('still raises ProviderTimeoutError past the NEW default — the guard is raised, not removed', async () => {
+    const neverResponds = ((_input: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        // A late resolve, exactly as the existing timeout test does — without
+        // one the promise can hang forever if the abort never lands, and the
+        // test fails on the runner's clock instead of on the assertion.
+        const timer = setTimeout(() => resolve(new Response('{}', { status: 200 })), 200);
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(new DOMException('aborted', 'TimeoutError'));
+        });
+      })) as typeof fetch;
+
+    const provider = createOaiCompatProvider({
+      id: 'local',
+      baseUrl: 'http://x/v1',
+      fetchImpl: neverResponds,
+      requestTimeoutMs: 5,
+    });
+    await expect(
+      provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] }),
+    ).rejects.toThrow(ProviderTimeoutError);
+  });
+
+  it('leaves the CLOUD adapters at 60s — they talk to hosted endpoints', async () => {
+    // A minute of silence from a hosted API really does mean something is
+    // wrong; the local raise must not quietly become a global one.
+    const [{ DEFAULT_REQUEST_TIMEOUT_MS: anthropicDefault }, { DEFAULT_REQUEST_TIMEOUT_MS: copilotDefault }] =
+      await Promise.all([import('./anthropic-types.js'), import('./copilot-types.js')]);
+    expect(anthropicDefault).toBe(60_000);
+    expect(copilotDefault).toBe(60_000);
   });
 
   it('serializes concurrent calls through the per-endpoint queue (default concurrency 1, FR-G1)', async () => {
