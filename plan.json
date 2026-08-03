@@ -4668,7 +4668,7 @@
       "depends_on": [
         "W10-59"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED IN A BROWSER on a second, different product idea, with the model resolved through the env fallback and no project configuration at all. The run reached the model, the model returned well-formed JSON of the right general shape, and the run died on ONE field: `pipeline model port produced malformed output for phase \"blueprint-input\": \"openQuestions[0].slate.recommendedId\" must be a non-empty string (HTTP 502)`. The state afterwards: `plan_items 0`, `events 0` \u2014 not even a record that a run was attempted. The SAME code had completed this phase cleanly on the previous idea minutes earlier, so this is input-dependent model variance, not a systematic bug.",
