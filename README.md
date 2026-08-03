@@ -149,4 +149,15 @@ are in [`CLAUDE.md`](CLAUDE.md).
 
 ## License
 
-[Apache-2.0](LICENSE) © 2026 Bradford Matthews
+**[FSL-1.1-ALv2](LICENSE)** © 2026 Bradford Matthews — the
+[Functional Source License](https://fsl.software/), which becomes Apache-2.0
+two years after each release.
+
+In plain terms: **use it.** Run it at work, run it on client projects, modify
+it, self-host it, build on it. The one thing you may not do is offer Dokima —
+or something substantially like it — to others as a competing product or
+service. Two years after any given release, that restriction lapses and the
+release is Apache-2.0 forever.
+
+`content/` (the bundled expert library and validator pack) is imported from the
+`attest` project and stays under [Apache-2.0](content/LICENSE).

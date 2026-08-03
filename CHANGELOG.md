@@ -18,6 +18,13 @@ name what a change means for that boundary, not just what moved.
   time, refuses to clobber registered local patches, and has a `--dry-run` that
   writes nothing.
 
+### Changed
+
+- **License: Apache-2.0 → FSL-1.1-ALv2** (D-022), before any public release.
+  Use, modification, internal and client use all stay permitted; offering
+  Dokima as a competing product or service does not. Each release becomes
+  Apache-2.0 two years after it ships. Bundled `content/` remains Apache-2.0.
+
 ### Known gaps
 
 - The bundled expert library is ~133 upstream commits behind. The importer is
