@@ -50,6 +50,17 @@ export async function runSession(prompt, model, label, cwd) {
 // summary line: {validator,gaps,exit,items:[{category,detail}]}. Findings are
 // DIFF-SCOPED to files this ticket changed — a ticket answers for its own diff,
 // not the repo's pre-existing debt (and it keeps unrelated validator noise out).
+//
+// W10-49: the scan was always repo-wide; the diff-scoping is the post-filter
+// below, so a validator listed in `validators.repoWide` simply skips it. That
+// costs nothing extra to run — it stops discarding what was already measured.
+//
+// This is opt-in per validator on purpose. It is only honest for a validator
+// whose repo-wide count is ZERO, because then any finding is necessarily
+// something this ticket introduced. Turning it on for a validator with
+// pre-existing findings would fail every ticket for debt it did not create —
+// exactly the self-DoS W10-40 warned about when the two biggest over-cap files
+// were the gate-runner itself.
 export function runValidators(wt, changed, names) {
   const dir = CONFIG.validators?.dir ?? 'content/validators';
   const out = [];
@@ -62,8 +73,9 @@ export function runValidators(wt, changed, names) {
     const line = raw.split('\n').find((l) => l.includes(`"validator":"${name}"`));
     if (!line) continue;
     let parsed; try { parsed = JSON.parse(line); } catch { continue; }
+    const repoWide = (CONFIG.validators?.repoWide ?? []).includes(name);
     for (const it of parsed.items || []) {
-      if (it.detail && changed.some((f) => it.detail.includes(f))) {
+      if (it.detail && (repoWide || changed.some((f) => it.detail.includes(f)))) {
         out.push(`[${name}${it.category ? ':' + it.category : ''}] ${it.detail}`.slice(0, 280));
       }
     }

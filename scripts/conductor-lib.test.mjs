@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { runValidators } from './conductor/session.mjs';
 import {
   DEFAULT_CONFIG,
   alwaysOkPatterns,
@@ -1013,5 +1014,76 @@ describe('conductor chapter split (W10-46)', () => {
     // suites invoke them by name and ESM has no directory-index resolution.
     expect(existsSync(path.join(scripts, 'conductor.mjs'))).toBe(true);
     expect(existsSync(path.join(scripts, 'conductor-lib.mjs'))).toBe(true);
+  });
+});
+
+describe('repo-wide validator scoping (W10-49)', () => {
+  const scratchDirs = [];
+  afterEach(async () => {
+    for (const dir of scratchDirs.splice(0)) await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  // Drives the REAL runValidators from scripts/conductor/session.mjs, against a
+  // real temp worktree running the real content/validators/validate-file-size.sh.
+  // A mirrored copy of the selection predicate would have passed even if the
+  // production one were deleted, which is the whole failure mode here.
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(here, '..');
+
+  /** A worktree carrying the real validator plus one deliberately over-cap file. */
+  async function worktreeWithOverCapFile() {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-repowide-'));
+    scratchDirs.push(dir);
+    await fs.mkdir(path.join(dir, 'content', 'validators'), { recursive: true });
+    for (const f of ['validate-file-size.sh', '_lib.sh']) {
+      await fs.copyFile(
+        path.join(repoRoot, 'content', 'validators', f),
+        path.join(dir, 'content', 'validators', f),
+      );
+    }
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    // 450 lines: over the 400 cap, and NOT in the ticket's changed list below.
+    await fs.writeFile(
+      path.join(dir, 'src', 'untouched-by-this-ticket.ts'),
+      Array.from({ length: 450 }, (_, i) => `export const v${i} = ${i};`).join('\n') + '\n',
+    );
+    return dir;
+  }
+
+  it('RED FIXTURE: an over-cap file OUTSIDE the ticket diff now reaches the gate', async () => {
+    const wt = await worktreeWithOverCapFile();
+    // The ticket touched something else entirely — before W10-49 this returned
+    // nothing, which is exactly how six files drifted over the cap unnoticed.
+    const gaps = runValidators(wt, ['some/other/file.ts'], ['validate-file-size']);
+    expect(gaps.length).toBeGreaterThan(0);
+    expect(gaps.join('\n')).toContain('untouched-by-this-ticket.ts');
+  });
+
+  it('a validator NOT in repoWide still discards the same out-of-diff finding', async () => {
+    // The half that makes the fixture fail for the right reason: a bug that
+    // disabled filtering everywhere would also satisfy the test above.
+    const wt = await worktreeWithOverCapFile();
+    await fs.copyFile(
+      path.join(wt, 'content', 'validators', 'validate-file-size.sh'),
+      path.join(wt, 'content', 'validators', 'validate-not-repo-wide.sh'),
+    );
+    const gaps = runValidators(wt, ['some/other/file.ts'], ['validate-not-repo-wide']);
+    expect(gaps).toEqual([]);
+  });
+
+  it('this repo is at the zero count the opt-in depends on', async () => {
+    // repoWide is only honest while the count is zero — otherwise every ticket
+    // fails for debt it did not create. Assert the precondition, so the day it
+    // stops holding, this fails here rather than on someone else's ticket.
+    const gaps = runValidators(repoRoot, [], ['validate-file-size']);
+    expect(gaps).toEqual([]);
+  });
+
+  it('the real config opts in file-size and ONLY file-size, and records why', () => {
+    const cfg = JSON.parse(readFileSync(path.join(repoRoot, 'conductor.config.json'), 'utf8'));
+    expect(cfg.validators.repoWide).toEqual(['validate-file-size']);
+    expect(cfg.validators.gate).toContain('validate-file-size');
+    // A future reader inheriting a red gate needs the invariant it rests on.
+    expect(cfg.validators.$note).toContain('ZERO');
   });
 });
