@@ -4004,7 +4004,7 @@
         "docs/TESTING.md"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED 2026-08-03, TWO confirmed fabrications in apps/web/scripts/seed-tour-trace.mjs. (1) Line 39 appends a gate event with payload { validators: [{ name, exitCode, gapCount }] } \u2014 mintReceipt (packages/events/src/receipts.ts:363-372) is the SOLE appender of gate.receipt_minted / gate.waived and anchors them with { receiptId, kind, contentMac }; validator results live in the separate `receipts` table. (2) The escalation event carries payload.reason \u2014 but EscalationEvent (packages/gateway/src/escalation/events.ts:13-24) declares type, ticketId, fromRung, toRung, actorId, receipts, receiptId?, occurredAt and NO reason field. fromRung/toRung are real; reason is not.",
