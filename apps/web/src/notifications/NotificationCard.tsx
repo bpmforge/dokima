@@ -53,24 +53,7 @@ export function summaryLine(item: NotificationItem): string {
   if (item.kind === 'suggestion') {
     return (item.body as SuggestionBody | null)?.message ?? '';
   }
-  const diffStat = (item.body as FreeformBody | null)?.diffStat;
-  // W10-28: a bare `+120 -4` doesn't say what it counts — every other
-  // summaryLine shape (digest, suggestion) already reads as a sentence.
-  return diffStat ? `Diff: ${diffStat}` : '';
-}
-
-/**
- * Deliberately not the bare `toLocaleString()` default (verbose — includes
- * seconds no one reads — and inconsistent in shape across locales/browsers,
- * which read as an unstyled "raw" string rather than a designed one).
- * `dateStyle`/`timeStyle` still resolve through the runtime's locale (same
- * i18n behavior as before), just via a deliberately chosen, shorter format.
- */
-export function formatTimestamp(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(iso));
+  return (item.body as FreeformBody | null)?.diffStat ?? '';
 }
 
 export interface NotificationCardProps {
@@ -108,7 +91,7 @@ export function NotificationCard({ item, actions }: NotificationCardProps) {
       )}
       <footer className="notification-card__footer">
         <time className="notification-card__time" dateTime={item.createdAt}>
-          {formatTimestamp(item.createdAt)}
+          {new Date(item.createdAt).toLocaleString()}
         </time>
         {actions}
       </footer>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTimestamp, summaryLine } from './NotificationCard.js';
+import { summaryLine } from './NotificationCard.js';
 import type { NotificationItem } from './types.js';
 
 function item(overrides: Partial<NotificationItem>): NotificationItem {
@@ -43,30 +43,13 @@ describe('summaryLine', () => {
     ).toBe('Berths 2 is earned.');
   });
 
-  it('renders diffStat for a freeform-body card, labeled so a bare count reads as a sentence (W10-28)', () => {
+  it('renders diffStat for a freeform-body card', () => {
     expect(summaryLine(item({ kind: 'pr_ready', body: { diffStat: '+10 -2' } }))).toBe(
-      'Diff: +10 -2',
+      '+10 -2',
     );
   });
 
   it('is empty for a card with no recognizable body shape', () => {
     expect(summaryLine(item({ kind: 'clarification', body: null }))).toBe('');
-  });
-});
-
-describe('formatTimestamp (W10-28)', () => {
-  const iso = '2026-08-03T04:44:07.000Z';
-
-  it('is not the raw ISO string', () => {
-    expect(formatTimestamp(iso)).not.toBe(iso);
-    expect(formatTimestamp(iso)).not.toMatch(/^\d{4}-\d{2}-\d{2}T/);
-  });
-
-  it('drops seconds — a per-second-precision timestamp is noise no reader needs', () => {
-    expect(formatTimestamp(iso)).not.toMatch(/:\d{2}:\d{2}\s/);
-  });
-
-  it('is deterministic for a given instant (no clock/random dependency)', () => {
-    expect(formatTimestamp(iso)).toBe(formatTimestamp(iso));
   });
 });
