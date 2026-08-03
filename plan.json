@@ -3692,7 +3692,7 @@
         "apps/web/src/palette/CommandPalette.test.tsx"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "OBSERVED 2026-08-02 against the real running product, in BOTH themes: opening any ticket drawer fires GET /api/v1/api/v1/projects/<id>/receipts?ticket=<id> \u2014 note the DOUBLED path segment \u2014 which 404s. The Receipts section then renders the raw string \"Artifact API request failed with status 404\" to the end user. Screenshot evidence captured at 1440x900.",
