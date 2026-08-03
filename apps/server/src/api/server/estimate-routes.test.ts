@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, openEventLog } from '@dokima/events';
 import {
   acceptTicket,
@@ -136,6 +136,11 @@ describe('estimate/spend/digest routes (BLUEPRINT §12.2, FR-G7, US-307/309)', (
       expect(body.waves[0]).toMatchObject({ wave: 0, ticket_count: 2 });
       expect(body.total_usd).toBeGreaterThan(0);
       expect(body.assumptions.length).toBeGreaterThan(0);
+      // end-user copy (W10-38): no ticket id, table name, route, or source
+      // path surfaced as product copy.
+      for (const note of body.assumptions) {
+        expect(note).not.toMatch(/budget_ledger|W4-06|GET \/models|apps\/server/i);
+      }
     });
 
     it('excludes done tickets: the estimate is money about to be spent, not money already spent (BLUEPRINT §12.2)', async () => {
@@ -307,6 +312,9 @@ describe('estimate/spend/digest routes (BLUEPRINT §12.2, FR-G7, US-307/309)', (
       expect(body.group_by).toBe('rung');
       expect(body.items).toEqual([]);
       expect(body.assumptions.length).toBeGreaterThan(0);
+      for (const note of body.assumptions) {
+        expect(note).not.toMatch(/budget_ledger|W4-06|GET \/models|apps\/server/i);
+      }
     });
   });
 
@@ -342,6 +350,41 @@ describe('estimate/spend/digest routes (BLUEPRINT §12.2, FR-G7, US-307/309)', (
       expect(body.by_rung).toEqual([]);
       expect(body.suppression_volume).toEqual([]);
       expect(body.assumptions.length).toBeGreaterThanOrEqual(2);
+      // end-user copy (W10-38): discloses the gap in plain language, never
+      // a ticket id, table name, or source path.
+      for (const note of body.assumptions) {
+        expect(note).not.toMatch(/budget_ledger|W4-06|GET \/models|apps\/server/i);
+      }
+      expect(body.assumptions.some((note) => /local time/i.test(note))).toBe(true);
+    });
+
+    describe('digest date across the UTC day boundary (W10-38)', () => {
+      const ORIGINAL_TZ = process.env.TZ;
+
+      afterEach(() => {
+        vi.useRealTimers();
+        if (ORIGINAL_TZ === undefined) delete process.env.TZ;
+        else process.env.TZ = ORIGINAL_TZ;
+      });
+
+      it('labels the digest with the local calendar date, not a day ahead from UTC (RED FIXTURE)', async () => {
+        process.env.TZ = 'America/Los_Angeles';
+        vi.useFakeTimers({ toFake: ['Date'] });
+        // 2026-08-02T23:30 Pacific == 2026-08-03T06:30 UTC: local date must
+        // stay 2026-08-02, not roll forward with the UTC calendar day.
+        vi.setSystemTime(new Date('2026-08-03T06:30:00.000Z'));
+
+        const { app, fleetHome } = await boot();
+        const { id } = await registerProject(app, fleetHome, 'proj-digest-tz');
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/v1/projects/${id}/spend/digest`,
+          headers: headers(),
+        });
+        expect(res.statusCode).toBe(200);
+        const body = res.json() as { week_of: string };
+        expect(body.week_of).toBe('2026-08-02');
+      });
     });
   });
 
