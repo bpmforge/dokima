@@ -1,11 +1,16 @@
 /**
- * Barrel for the routing module (FR-G2, FR-S3). NOTE: not re-exported from
- * packages/gateway/src/index.ts — that file is out of this ticket's
- * write_scope (packages/gateway/src/routing/**, packages/gateway/test/routing*
- * only), same gap W2-01/02/04 left for their own modules. A future ticket
- * that owns src/index.ts should add a `./routing` export. Tests are
- * co-located `*.test.ts` next to source per docs/TESTING.md §2 rather than
- * under packages/gateway/test/routing* — that glob is a single-segment `*`
+ * Barrel for the routing module (FR-G2, FR-S3). Re-exported from
+ * packages/gateway/src/index.ts (`export * from './routing/index.js'`,
+ * W10-01) — callers outside this package import it bare as
+ * `from '@dokima/gateway'` (apps/server does this in six files as of
+ * W10-42). package.json also declares a `./routing` subpath, but DO NOT
+ * import it (`from '@dokima/gateway/routing'`): eslint.config.js's
+ * DEEP_IMPORT_REGEX (`^@dokima/[^/]+/.+`) bans every deep import across a
+ * package boundary repo-wide, no escape hatch — this cost attempt 1 of
+ * W10-42 a full session chasing that exact import. The bare barrel import
+ * is the only legal path in or out of this module. Tests are co-located
+ * `*.test.ts` next to source per docs/TESTING.md §2 rather than under
+ * packages/gateway/test/routing* — that glob is a single-segment `*`
  * (would not cover a nested dir) and every other gateway module already
  * co-locates, so this stays consistent (same call W2-01 made for
  * test/providers*).
@@ -73,6 +78,7 @@ export {
   PRESET_ALL_CLOUD,
   PRESET_ALL_LOCAL,
   PRESET_HYBRID,
+  PRESET_NAMES,
   PRESET_ROLES,
   presetAsGlobalScope,
 } from './presets.js';
