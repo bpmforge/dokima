@@ -60,5 +60,27 @@ export interface OaiCompatStreamChunk {
   usage?: { prompt_tokens: number; completion_tokens: number };
 }
 
-export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+/**
+ * W10-57: 60s -> 300s. This is the LOCAL path — `createLmStudioProvider` and
+ * `createOllamaProvider` are both OaiCompat variants — and 60s made the
+ * product's headline use case unusable.
+ *
+ * Measured, not estimated: driving the real product against LM Studio, the
+ * creation pipeline failed with `pipeline-run: request timed out after
+ * 60000ms`. It makes several SEQUENTIAL inference calls (blueprint, technical
+ * slate, ticket drafts), and a local reasoning model spends nearly all of its
+ * budget reasoning — 199 reasoning tokens out of 203 for a one-word reply on
+ * qwen3.5-9b — so one phase alone can exceed a minute on ordinary hardware.
+ *
+ * A default tuned for a fast hosted API, which times out on the very model the
+ * setup wizard just configured, contradicts C-1 and the README's claim that a
+ * local box is "a first-class setup, not a downgrade".
+ *
+ * The cloud adapters (anthropic, copilot, openai) keep their own 60s: they talk
+ * to hosted endpoints where a minute of silence really does mean something is
+ * wrong. This value is a hung-connection guard, not a latency SLA — so it is
+ * generous, but it is still bounded, and `OaiCompatConfig.requestTimeoutMs`
+ * overrides it per provider.
+ */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
 export const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
