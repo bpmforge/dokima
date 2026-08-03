@@ -4652,6 +4652,33 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Filed 2026-08-03 while closing W10-62, from measuring what W10-62 actually delivers rather than what its title implies. W10-62 fixes a real divergence (dokima doctor reported a global provider healthy while the resolver ignored it) but does NOT give a machine-wide model default, and closing it as if it did would have been the self-graded partial this project keeps catching. The machine-wide default that works TODAY is the env fallback, DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID, which envTarget reads and which loses to any project-scope registry \u2014 so the documented CI/fixture override is currently also the only real machine-wide setting, which is backwards."
+    },
+    {
+      "id": "W10-65",
+      "phase": 10,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 5,
+      "title": "One missing field in one phase throws away the whole run \u2014 the pipeline never retries a model that almost complied",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/chat-json.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts"
+      ],
+      "depends_on": [
+        "W10-59"
+      ],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED IN A BROWSER on a second, different product idea, with the model resolved through the env fallback and no project configuration at all. The run reached the model, the model returned well-formed JSON of the right general shape, and the run died on ONE field: `pipeline model port produced malformed output for phase \"blueprint-input\": \"openQuestions[0].slate.recommendedId\" must be a non-empty string (HTTP 502)`. The state afterwards: `plan_items 0`, `events 0` \u2014 not even a record that a run was attempted. The SAME code had completed this phase cleanly on the previous idea minutes earlier, so this is input-dependent model variance, not a systematic bug.",
+        "THE MODEL WAS NOT WRONG IN AN INTERESTING WAY. `BLUEPRINT_SYSTEM_PROMPT` asks for an `openQuestions[].slate.recommendedId`, and an empty one is a plausible reading of \"I have no recommendation for this fork\" \u2014 which the prompt itself half-invites by saying \"Never fabricate a resolution\". `requireString` rejects it, and there is no path back.",
+        "THE PRODUCT ALREADY OWNS THE MECHANISM IT IS NOT USING. W1-03 built a micro-loop whose whole purpose is criterion -> gaps -> feedback -> retry, and `packages/loop/src/anchors.ts` carries specific gap descriptions for exactly this. `gateway-model-port.ts` has no retry of any kind (grepped: zero occurrences of retry/attempt). A one-shot call to a local model, with a strict schema, across three sequential phases, and no feedback loop, is the least forgiving arrangement available on the least reliable component.",
+        "DECIDE BETWEEN TWO FIXES AND RECORD WHICH, do not do both by reflex. (a) RETRY WITH THE VALIDATION ERROR FED BACK \u2014 re-issue the phase once with the `MalformedModelOutputError` message appended, which is the micro-loop pattern and costs one extra call only on the failure path. (b) LOOSEN THE SCHEMA where the strictness is not earned \u2014 an unrecommended open question is meaningful, and `recommendedId`/`recommendedReasoning` may be legitimately absent. These are not equivalent: (b) alone still dies on the next field, (a) alone keeps a schema stricter than the domain.",
+        "RED FIXTURE: a fake gateway that returns a schema-deviating completion FIRST and a valid one second must produce a completed phase, and one that deviates every time must still raise `MalformedModelOutputError` naming the phase and the field. A retry that never gives up is a hang, not a fix.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 while verifying a DIFFERENT claim \u2014 that the env fallback (DOKIMA_MODEL_BASE_URL + DOKIMA_MODEL_ID) really is a machine-wide default. It is: the LM Studio server log shows the 16:21:41 chat request carrying `qwen3.6-35b-a3b` from a project with zero provider config, so env resolution is confirmed working. The run then failed for this unrelated reason, which is the whole point \u2014 the claim was verified by running it rather than asserted. Third independent confirmation of W10-58 partial-progress clause: a run that reached and used a real model left `events 0`. Strongly related to W10-61 (the user sees a red line at the end of a long wait with nothing kept) and to W10-58 (which would give the retry somewhere to record itself)."
     }
   ]
 }
