@@ -10,7 +10,7 @@
  * from the on-disk content tree.
  *
  * W10-50, four fixes. The source root was hardcoded to
- * `/Users/bmatthews/Code/bpm-opencode-experts`, which stopped existing when
+ * a developer-specific absolute path to the old repo name, which stopped existing when
  * upstream renamed to `attest` in v3.0.0 — so this script threw a raw ENOENT
  * from `readdirSync` naming a repo nobody would recognise, with no hint that
  * the fix was a rename. (docs/work/W10_PLAN.md §2 describes that failure as "a
