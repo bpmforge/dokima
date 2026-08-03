@@ -5,10 +5,14 @@
  * never presented as available when it is only a bundled reference
  * (honest-absence rule, W9-15, applied to discovery per docs/design/
  * UX_SPEC.md §6a's "Offline / no network at all" and "Endpoint unreachable"
- * rows).
+ * rows). Always resolves, never rejects — a bundled-catalog load failure
+ * (malformed/missing content/model-catalog/catalog.v1.json) degrades to an
+ * honest-absence result with the load failure folded into `reason`, rather
+ * than crashing every caller in the same `Promise.all` (e.g. `dokima
+ * providers refresh`).
  */
 import { loadBundledModelsForKind } from './bundled.js';
-import type { CatalogSource, ProviderCatalogResult } from './types.js';
+import type { CatalogModel, CatalogSource, ProviderCatalogResult } from './types.js';
 import type { Provider } from '../providers/types.js';
 
 export async function resolveProviderCatalog(
@@ -27,7 +31,14 @@ export async function resolveProviderCatalog(
       models,
     };
   } catch (err) {
-    const bundled = loadBundled(kind);
+    const discoveryReason = (err as Error).message;
+    let bundled: readonly CatalogModel[] | undefined;
+    let bundledLoadError: Error | undefined;
+    try {
+      bundled = loadBundled(kind);
+    } catch (bundledErr) {
+      bundledLoadError = bundledErr as Error;
+    }
     const source: CatalogSource | null =
       bundled !== undefined && bundled.length > 0 ? 'bundled' : null;
     return {
@@ -36,7 +47,9 @@ export async function resolveProviderCatalog(
       status: 'unreachable',
       source,
       models: bundled ?? [],
-      reason: (err as Error).message,
+      reason: bundledLoadError
+        ? `${discoveryReason} (bundled catalog load also failed: ${bundledLoadError.message})`
+        : discoveryReason,
     };
   }
 }

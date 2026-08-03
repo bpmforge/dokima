@@ -111,4 +111,30 @@ describe('resolveProviderCatalog — bundled loader injection', () => {
     expect(result.models).toEqual([]);
     expect(result.source).toBeNull();
   });
+
+  it('RED FIXTURE: a throwing bundled loader (malformed catalog.v1.json) still resolves, never rejects', async () => {
+    const provider = { listModels: vi.fn().mockRejectedValue(new Error('offline')) };
+    const loadBundled = vi.fn().mockImplementation(() => {
+      throw new Error(
+        'invalid bundled model catalog: version must be a non-empty string',
+      );
+    });
+
+    await expect(
+      resolveProviderCatalog('x', 'custom-kind', provider, loadBundled),
+    ).resolves.toMatchObject({
+      status: 'unreachable',
+      source: null,
+      models: [],
+    });
+
+    const result = await resolveProviderCatalog(
+      'x',
+      'custom-kind',
+      provider,
+      loadBundled,
+    );
+    expect(result.reason).toContain('offline');
+    expect(result.reason).toContain('invalid bundled model catalog');
+  });
 });
