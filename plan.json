@@ -4392,7 +4392,7 @@
         "apps/web/e2e/*.spec.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED IN A BROWSER against the INSTALLED package (npm pack -> install -> dokima -> Chrome), not the repo and not a test. Create a product via Fleet -> New Product. The resulting workspace has this COMPLETE interactive surface, read off the accessibility tree: Roster, Plan, Notifications, Settings, theme toggle, back-to-Fleet, three Collapse buttons, three SAMPLE receipt links, \"View current phase\", and the Docs/Receipts tabs. There is NO control that starts an interview, submits an idea, or runs a pipeline. A user who clicks \"New Product\" cannot begin.",
@@ -4452,6 +4452,31 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Found 2026-08-03 in the same browser pass as W10-54/W10-55. Deliberately filed separately from the blocker: these are real but cosmetic beside \"you cannot start a pipeline at all\", and bundling them would let the smaller fixes make the ticket look addressed."
+    },
+    {
+      "id": "W10-57",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 3,
+      "title": "A 60s provider timeout makes local models \u2014 the headline use case \u2014 unusable",
+      "write_scope": [
+        "packages/gateway/src/providers/*-types.ts",
+        "packages/gateway/src/providers/openai.ts",
+        "packages/gateway/src/providers/*.test.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED END TO END IN A BROWSER against the installed package: filled the new interview surface (W10-54) with a real idea, clicked \"Build the board\", watched LM Studio move to GENERATING \u2014 then the run failed with HTTP 500 and the body `pipeline-run: request timed out after 60000ms`. The seam works; the timeout kills it.",
+        "ROOT CAUSE, read from source rather than guessed: `DEFAULT_REQUEST_TIMEOUT_MS = 60_000` in oai-compat-types.ts, anthropic-types.ts, copilot-types.ts and openai.ts. The creation pipeline makes several SEQUENTIAL inference calls (blueprint, technical slate, ticket drafts), and a local reasoning model spends most of its budget reasoning \u2014 measured 199 reasoning tokens out of 203 for a one-word reply \u2014 so a single phase can exceed 60s on ordinary hardware.",
+        "THIS CONTRADICTS THE PRODUCT PREMISE, which is why it is a defect rather than a tuning preference. C-1 / Law 9: everything must work against a local model. The README calls a local LM Studio or Ollama box \"a first-class setup, not a downgrade\", and the wizard offers All-local as its first preset. A default tuned for a fast hosted API, which times out on the very model the wizard just configured, is the opposite of local-first.",
+        "RAISE THE DEFAULT and make it configurable per provider registry entry, so a slow local box and a fast hosted endpoint are not forced to share one number. Cloud kinds may keep 60s; the local kinds must not.",
+        "RED FIXTURE, both directions: a provider whose fetch takes longer than the OLD 60s default must now succeed, and one that exceeds the NEW default must still raise ProviderTimeoutError. A timeout that never fires is not a timeout.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by driving the installed product in a browser against a real LM Studio model, immediately after W10-54 made the interview reachable. Nothing before this could have found it: no test exercises a multi-phase pipeline run against a real local model, and the only prior caller (the guided sample) swallowed its failure into a silent degraded stage (W10-55)."
     }
   ]
 }

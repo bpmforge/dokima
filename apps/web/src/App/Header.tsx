@@ -47,9 +47,17 @@ export function AppHeader({
                 Roster
               </button>
               {projectId && (
-                <button type="button" onClick={() => openView('plans')}>
-                  Plan
-                </button>
+                <>
+                  {/* W10-54: the entry point to describing your own idea. Sits
+                      beside Plan because that is where a user looks for "what
+                      is this product going to be". */}
+                  <button type="button" onClick={() => openView('interview')}>
+                    Describe
+                  </button>
+                  <button type="button" onClick={() => openView('plans')}>
+                    Plan
+                  </button>
+                </>
               )}
               <button
                 type="button"
