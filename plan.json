@@ -3717,7 +3717,7 @@
         "apps/web/src/**/*.css"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED: no `a` colour selector exists in ANY apps/web/src/**/*.css, nor in the built dist CSS. Anchors therefore fall back to the user-agent default #0000EE, measured at 1.95:1 against the dark card background (WCAG AA text needs 4.5:1). Light measures 8.59:1, so this is dark-only. Photographed instance: the \"evidence\" link on a MEDIUM security finding in the chat card (chat/Card.tsx:52-53), which is the only click-through from that finding to its evidence.",
