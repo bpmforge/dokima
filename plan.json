@@ -4124,7 +4124,7 @@
         "apps/server/src/bootstrap/main.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "MEASURED against the PACKAGED install (not a source checkout): `dokima --help` printed `dokima is already running at http://127.0.0.1:4317 \u2014 opening the Canvas` and never exited. Any unrecognised argument does the same. Long-standing (already listed in docs/RELEASE_TRACKER.md Known gaps) but it costs much more the moment `npx @bpmforge/dokima` is a real thing a stranger can run.",
