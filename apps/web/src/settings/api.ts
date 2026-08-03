@@ -112,16 +112,39 @@ function matrixRowFromWire(row: ModelMatrixWireRow): ModelMatrixRow {
   };
 }
 
+/**
+ * W10-64. The matrix a project SHOWS may be inherited from the global preset,
+ * and a row inherited from elsewhere looks identical to one configured here —
+ * editing it silently creates a project override. So the response carries
+ * where the rows came from.
+ *
+ * Declared here rather than widened onto `ModelMatrix` in types.ts: that is
+ * the shared domain model and this is a response shape, and types.ts is
+ * outside this ticket's write_scope — a reason to layer it correctly, not a
+ * reason to reach for another scope amendment.
+ */
+export interface ModelMatrixWithScope extends ModelMatrix {
+  scope: 'project' | 'global';
+}
+
 export async function fetchModelMatrix(
   projectId: string,
   opts: SettingsApiOptions = {},
-): Promise<ModelMatrix> {
+): Promise<ModelMatrixWithScope> {
   const wire = (await request(
     `/api/v1/projects/${encodeURIComponent(projectId)}/model-matrix`,
     jsonInit('GET'),
     opts,
-  )) as { rows: ModelMatrixWireRow[]; copilot_enabled: boolean };
-  return { rows: wire.rows.map(matrixRowFromWire), copilotEnabled: wire.copilot_enabled };
+  )) as {
+    rows: ModelMatrixWireRow[];
+    copilot_enabled: boolean;
+    scope?: 'project' | 'global';
+  };
+  return {
+    rows: wire.rows.map(matrixRowFromWire),
+    copilotEnabled: wire.copilot_enabled,
+    scope: wire.scope ?? 'project',
+  };
 }
 
 export interface ModelMatrixRowInput {
@@ -131,11 +154,17 @@ export interface ModelMatrixRowInput {
   fallback?: string[];
 }
 
+/**
+ * W10-64. `scope` is omitted from the wire when it is `project`, so this stays
+ * byte-identical to the pre-ticket request for the default path — the server
+ * treats an absent scope as `project` too.
+ */
 export async function putModelMatrix(
   projectId: string,
   rows: ModelMatrixRowInput[],
-  opts: SettingsApiOptions = {},
-): Promise<ModelMatrix> {
+  opts: SettingsApiOptions & { scope?: 'project' | 'global' } = {},
+): Promise<ModelMatrixWithScope> {
+  const { scope, ...requestOpts } = opts;
   const wire = (await request(
     `/api/v1/projects/${encodeURIComponent(projectId)}/model-matrix`,
     jsonInit('PUT', {
@@ -145,10 +174,19 @@ export async function putModelMatrix(
         model: r.model,
         fallback: r.fallback ?? [],
       })),
+      ...(scope === 'global' ? { scope } : {}),
     }),
-    opts,
-  )) as { rows: ModelMatrixWireRow[]; copilot_enabled: boolean };
-  return { rows: wire.rows.map(matrixRowFromWire), copilotEnabled: wire.copilot_enabled };
+    requestOpts,
+  )) as {
+    rows: ModelMatrixWireRow[];
+    copilot_enabled: boolean;
+    scope?: 'project' | 'global';
+  };
+  return {
+    rows: wire.rows.map(matrixRowFromWire),
+    copilotEnabled: wire.copilot_enabled,
+    scope: wire.scope ?? 'project',
+  };
 }
 
 // --- autonomy + budget ---------------------------------------------------

@@ -11,9 +11,13 @@ const PORT = 4412;
 const dirs: string[] = [];
 let active: ApiServer | undefined;
 
+const savedDokimaHome = process.env.DOKIMA_HOME;
+
 afterEach(async () => {
   await active?.app.close();
   active = undefined;
+  if (savedDokimaHome === undefined) delete process.env.DOKIMA_HOME;
+  else process.env.DOKIMA_HOME = savedDokimaHome;
   await Promise.all(
     dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
   );
@@ -21,6 +25,12 @@ afterEach(async () => {
 
 async function boot(): Promise<{ app: ApiServer['app']; id: string }> {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-matrix-home-'));
+  // W10-64. `fleetHome` scopes the project registry but NOT the global
+  // settings file: `putGlobalSetting` resolves ~/.dokima from DOKIMA_HOME.
+  // Without this line a scope=global PUT in a test writes the developer's
+  // REAL ~/.dokima/config.json — caught the hard way, it did exactly that on
+  // this machine and would have pointed every project at a fixture model.
+  process.env.DOKIMA_HOME = home;
   const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-matrix-proj-'));
   dirs.push(home, projectDir);
   const record = await registerProject(computeFleetRegistryPath(home), {
@@ -61,7 +71,10 @@ describe('model-matrix routes (API_DESIGN §89)', () => {
       url: `/api/v1/projects/${id}/model-matrix`,
       headers,
     });
-    expect(empty.json()).toEqual({ rows: [], copilot_enabled: false });
+    // W10-64 added `scope`, which reports where the returned rows came from.
+    // A project with no rows of its own resolves the global preset, so an
+    // empty matrix reads as `global` — there is nothing project-scoped yet.
+    expect(empty.json()).toEqual({ rows: [], copilot_enabled: false, scope: 'global' });
 
     const put = await putMatrix(app, id, [
       { role: 'coding-agent', task_type: 'code', model: 'qwen2.5-coder-7b-instruct' },
@@ -184,5 +197,75 @@ describe('AC5: MODEL_MATRIX_PRESETS mirror stays pinned to PRESET_NAMES', () => 
     const { PRESET_NAMES } = await import('@dokima/gateway');
     const { MODEL_MATRIX_PRESETS } = await import('./settings-types.js');
     expect(MODEL_MATRIX_PRESETS).toEqual(PRESET_NAMES);
+  });
+});
+
+/**
+ * W10-64: the write path. A global READ fallback with no way to write the
+ * preset would be dead code, so these assert the route can actually put one —
+ * and that it still defaults to project scope, because every existing caller
+ * (the e2e specs, the CLI, the panel before this ticket) sends no scope at all.
+ */
+describe('model-matrix scope (W10-64)', () => {
+  it('defaults to project scope when the body names none', async () => {
+    const { app, id } = await boot();
+
+    const put = await putMatrix(app, id, [
+      { role: 'coding-agent', task_type: 'code', model: 'project-model' },
+    ]);
+
+    expect(put.statusCode).toBe(200);
+    expect(put.json().scope).toBe('project');
+
+    const get = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/model-matrix`,
+      headers,
+    });
+    expect(get.json().scope).toBe('project');
+  });
+
+  it('writes the every-project preset when scope is global, and reports it as inherited', async () => {
+    const { app, id } = await boot();
+
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/model-matrix`,
+      headers,
+      payload: {
+        scope: 'global',
+        rows: [{ role: 'coding-agent', task_type: 'code', model: 'every-project-model' }],
+      },
+    });
+
+    expect(put.statusCode).toBe(200);
+    expect(put.json().scope).toBe('global');
+
+    // The project itself still has no rows, so the GET resolves the preset
+    // and says so — that `scope: 'global'` is what the panel renders as
+    // "these come from your every-project defaults".
+    const get = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/model-matrix`,
+      headers,
+    });
+    expect(get.json().scope).toBe('global');
+    expect(get.json().rows[0]).toMatchObject({ model: 'every-project-model' });
+  });
+
+  it('refuses an unknown scope rather than silently treating it as project', async () => {
+    const { app, id } = await boot();
+
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/model-matrix`,
+      headers,
+      payload: {
+        scope: 'globl',
+        rows: [{ role: 'coding-agent', task_type: 'code', model: 'x' }],
+      },
+    });
+
+    expect(put.statusCode).toBe(400);
   });
 });
