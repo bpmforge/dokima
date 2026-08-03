@@ -4161,6 +4161,35 @@
         "Full gate green including e2e, counts in the commit body. Report honestly whether resolveOnboardGatewayConfigFromEnv stays exported (pipeline/index.ts re-exports it, outside write_scope)."
       ],
       "notes": "Filed 2026-08-03. Re-verified against source immediately before filing rather than trusting docs/work/W10_PLAN.md 6a, which describes BOTH call sites as unwired \u2014 half stale since W10-03. RELEASE_TRACKER Known gaps carries the same half-stale claim and is being refreshed separately. gateway-model-port.ts is 450 lines (over the 400 cap, on the FILE_SIZE_DEBT list) but is only imported from here, not edited, so no split is inherited. AGENT 2026-08-03: done. Resolution moved inside the dispatch (per role), not at construction \u2014 resolving once would have wired the seam and still routed every specialist through one role entry. resolveGatewayConfigForProject + providerForConfig imported from gateway-model-port.ts rather than copied, inheriting the kind-aware construction and the named kind-not-constructible refusal. onboard-run.ts stopped eagerly passing an env config, which had made the registry unreachable. resolveOnboardGatewayConfigFromEnv stays exported (pipeline/index.ts re-exports it) and remains the documented override that loses to an explicit selection. +4 tests using two REAL fake gateways \u2014 the assertion is which socket got the request; 2 of them proven red against pre-fix sources via git stash (2 failed / 5 passed), 7/7 after restore; 2 are deliberate both-directions regression guards. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 415 files / 3121 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-46",
+      "phase": 10,
+      "module": "infra",
+      "lane": "infra",
+      "points": 8,
+      "title": "Split the conductor pair \u2014 715 + 590 lines, and they are the gate-runner that blocks every other split",
+      "write_scope": [
+        "scripts/conductor.mjs",
+        "scripts/conductor-lib.mjs",
+        "scripts/conductor/**",
+        "scripts/conductor-lib/**",
+        "scripts/supervise.sh",
+        "scripts/conductor-lib.test.mjs",
+        "scripts/conductor.integration.test.mjs"
+      ],
+      "depends_on": [],
+      "status": "in_progress",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: scripts/conductor.mjs is 715 lines and scripts/conductor-lib.mjs is 590, both over the 400-line CODE_BOOK_PROTOCOL cap. W10-40 established these two are why validate-file-size cannot go repo-wide: they are the machinery that RUNS the gate, so flipping it on today fails every ticket including the one that would fix them. Split per the chapter plan in docs/work/FILE_SIZE_DEBT.md; no file over 400 after.",
+        "BLOCKING GOTCHA, from FILE_SIZE_DEBT.md and it fails SILENTLY: conductor.mjs computes ROOT as resolve(dirname(fileURLToPath(import.meta.url)), '..'), which assumes the file sits directly in scripts/. Any chapter that inherits that computation from a subdirectory resolves ROOT to scripts/ instead of the repo root, so LOG, STOPFILE, WT_BASE and board-path resolution all silently point at the wrong directory without erroring. Assert the resolved ROOT in a test rather than eyeballing it.",
+        "CALL SITES ARE PART OF THE SPLIT, not follow-up: ESM has no directory-index resolution, so scripts/supervise.sh:139 (node scripts/conductor.mjs), scripts/conductor-lib.test.mjs and scripts/conductor.integration.test.mjs all break unless updated or given a re-export shim at the old filename. Prefer keeping scripts/conductor-lib.mjs and scripts/conductor.mjs as thin barrels/entry points so no external caller changes \u2014 plan.json claim scripts and the docs both import conductor-lib.mjs by that exact path.",
+        "REORGANIZATION ONLY \u2014 no behaviour change. Same exported names, same board semantics, same gate sequence. Chapters must not import each other cyclically.",
+        "PROVE IT STILL RUNS, not just that it compiles: node scripts/conductor.mjs --lint against the real board exits clean, and the existing conductor-lib.test.mjs / conductor.integration.test.mjs suites pass unchanged (they are the regression net for this split \u2014 do not rewrite them to fit).",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Filed 2026-08-03. Split axes and per-chapter line estimates come from docs/work/FILE_SIZE_DEBT.md (W10-40), which derived them from real symbol names and line ranges rather than guessing. Deliberately does NOT flip validate-file-size to repo-wide \u2014 that is a config change to the very file being split, and belongs in a follow-up once all six over-cap files are under, per W10-40 AC5."
     }
   ]
 }
