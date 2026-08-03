@@ -38,7 +38,10 @@
  * analysable, so a bundler inlines it and `tsc` can type it.
  */
 import { type Provider } from '@dokima/gateway';
-import { MalformedModelOutputError } from './errors.js';
+// W10-59: shared with `gateway-model-port/chat-json.ts`, which had the
+// identical bare `JSON.parse` on a model completion. A specialist that wraps
+// its findings in a markdown fence used to fail the whole onboard step.
+import { parseModelJson } from './model-json.js';
 // Imported, never reimplemented (W10-45). `providerForConfig` constructs the
 // adapter the resolved KIND names and refuses cloud kinds by name;
 // `resolveGatewayConfigForProject` is the registry+matrix resolution W10-03
@@ -235,15 +238,7 @@ export function createRealOnboardDispatch(
       },
     });
 
-    let parsedJson: unknown;
-    try {
-      parsedJson = JSON.parse(result.output);
-    } catch (err) {
-      throw new MalformedModelOutputError(
-        `onboard-dispatch:${role}`,
-        `response was not valid JSON: ${(err as Error).message}`,
-      );
-    }
+    const parsedJson = parseModelJson(result.output, `onboard-dispatch:${role}`);
     const { summary, findings } = parseOnboardCompletion(
       parsedJson,
       `onboard-dispatch:${role}`,
