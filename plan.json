@@ -4258,7 +4258,7 @@
         "conductor.config.json"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "CONTEXT, established by W10-40 and now unblocked: the scan was ALWAYS repo-wide. `runValidators` (scripts/conductor/session.mjs) already runs each validator over the whole worktree and then DISCARDS every finding whose detail does not mention a file in the ticket\u2019s `git diff`. So going repo-wide is deleting a post-filter, not adding a scan \u2014 no new cost. It was blocked only because six files were over cap and the two biggest were the gate-runner itself; as of W10-48 the validator reports clean, 0 gaps.",
@@ -4268,7 +4268,7 @@
         "Existing conductor-lib.test.mjs coverage stays green unchanged \u2014 it is the regression net for config merge/selection behaviour.",
         "Full gate green including e2e, counts in the commit body; `node scripts/conductor.mjs --lint` still exits 0."
       ],
-      "notes": "Filed 2026-08-03 as the follow-up W10-40 AC5 sequenced after all six over-cap files were under. The filter being removed is the `changed.some((f) => it.detail.includes(f))` guard in runValidators. Deliberately NOT bundled into W10-48: that ticket had to leave the gate config untouched while it was still changing the files the gate measures."
+      "notes": "Filed 2026-08-03 as the follow-up W10-40 AC5 sequenced after all six over-cap files were under. The filter being removed is the `changed.some((f) => it.detail.includes(f))` guard in runValidators. Deliberately NOT bundled into W10-48: that ticket had to leave the gate config untouched while it was still changing the files the gate measures. AGENT 2026-08-03: done. One-line change to the post-filter in runValidators plus an opt-in validators.repoWide list; nothing new is scanned, the scan was always repo-wide. Targeted to validate-file-size only \u2014 circular-deps and the noisy advisory set keep diff-scoping. The zero-count invariant the opt-in rests on is recorded in the config $note AND asserted by a test, so the day it stops holding it fails on this ticket rather than a stranger. Red fixture drives the REAL runValidators against a real temp worktree and the real validator script, not a mirrored predicate; proven red by stashing session.mjs (1 failed / 105 passed), 106/106 after restore. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 416 files / 3131 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }
