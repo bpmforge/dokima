@@ -4820,6 +4820,32 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Filed 2026-08-03 while closing W10-64, from driving the result rather than from reading the code: the second product inherited the model and still said \"No providers yet\". Note the ordering that makes this cheap \u2014 W10-62 already did the read side, and W10-64 has just established the exact shape for scope on a settings-backed store (parseScope, absent-means-project, diff against the scope being written, panel checkbox off by default, GET reporting the winning scope). This should be a close copy of that, not a fresh design. \u2014 CLOSED 2026-08-03, VERIFIED IN A BROWSER, and it also closes W10-64 acceptance 4, which W10-64 explicitly could not meet and filed here instead. THE ACCEPTANCE TEST, run exactly as written: registered LM Studio through the panel with \"Use for every project\" checked (written to ~/.dokima/config.json, and the project used to do it kept NO settings file of its own), then created a THIRD product and ran the interview without opening its settings at all. It resolved providers scope=global and matrix scope=global, and LM Studio received \"model\": \"qwen3.6-35b-a3b\" \u2014 the configured model, from a project that has never been configured. Register once, use everywhere is now true for both halves."
+    },
+    {
+      "id": "W10-71",
+      "phase": 10,
+      "module": "infra",
+      "lane": "ui",
+      "points": 2,
+      "title": "The suite reads the developer's real ~/.dokima \u2014 four tests go red the moment anyone configures a global default",
+      "write_scope": [
+        "apps/server/vitest.config.ts",
+        "apps/server/vitest.setup.ts",
+        "apps/server/src/api/server/providers-store.test.ts",
+        "apps/server/src/api/server/model-matrix-store.test.ts"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "stories": [],
+      "acceptance": [
+        "REPRODUCED, not theorised, and self-inflicted. W10-62/W10-64/W10-70 made `listProviders` and `listModelMatrix` resolve the GLOBAL scope, which lives in `~/.dokima/config.json`. Nothing in the apps/server suite pins `DOKIMA_HOME`, so every test that asserts a \"nothing configured\" state now reads whatever the developer has actually configured. Registering a provider through the panel to verify W10-70 turned `main` red: 4 failures \u2014 providers-store \"round-trips through the SAME providers settings key\", onboard-cli-integration's real-gateway run, onboard-dispatch-port's \"falls back to the env config when nothing is configured (C-1)\", and pipeline-routes/run.test.ts's own env-fallback case.",
+        "THE GATE WAS GREEN WHEN EACH TICKET LANDED, which is the part that matters. The failures depend on machine state that did not exist yet at commit time, so this is not a test anyone wrote badly \u2014 it is a global read introduced under tests that were written when no global scope existed. CI would have stayed green indefinitely and every developer who configured a default would have seen a broken suite.",
+        "DO NOT FIX BY DELETING THE CONFIG. `~/.dokima/config.json` is legitimate state, created through the product exactly as a user creates it, and removing it to get green would hide the fragility and destroy the evidence W10-70 was verified against.",
+        "DELIVER: pin `DOKIMA_HOME` to a throwaway directory for the whole apps/server suite via `setupFiles`, so no individual test has to remember and no future one can forget. Tests that want their own scoped home still set it themselves and must keep working. The two store test files that already pin it by hand can then say why the belt-and-braces is deliberate, or drop their local copies \u2014 decide and record which.",
+        "RED FIXTURE, and it must be honest about what it can assert: with a global provider AND a global model matrix present in the real home, the full suite passes. Verify by RUNNING it with `~/.dokima/config.json` populated, not by reasoning about it \u2014 that is exactly the check that was missing.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a stop hook running the suite after W10-70 merged, i.e. by the machine noticing what I did not: I ran the full gate before writing the global provider through the UI, and never re-ran it afterwards. The lesson is narrow and mechanical \u2014 after verifying a feature by CONFIGURING something through the product, re-run the gate, because the configuration is now part of the environment the suite runs in. Note W10-64 already caught one instance of this and fixed it for model-matrix-store.test.ts only; that was an under-fix, and the systemic version is this ticket. \u2014 LANE set to ui before any work: model-matrix-store.test.ts is also in W10-68 scope, so filing this under quality made it a cross-lane overlap (law 1 schema bug). Same lane is the correct constraint anyway \u2014 both touch that file and must not race. \u2014 CLOSED 2026-08-03. Acceptance 4 decision recorded: the two store test files KEEP their hand-rolled DOKIMA_HOME pins. They are not redundant \u2014 each creates a per-CASE home so that writing a global preset in one case cannot leak into the next within the same file, which a per-FILE setup cannot express. Verified the way acceptance 5 demands, by running rather than reasoning: the full suite passes with a real ~/.dokima/config.json holding 1 provider and 2 matrix rows in place \u2014 the exact state that turned main red \u2014 and disabling the setupFiles pin with that same config present fails 3 of the 4 immediately. The config was NOT deleted."
     }
   ]
 }
