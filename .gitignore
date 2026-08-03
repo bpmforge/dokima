@@ -26,3 +26,6 @@ docs/acceptance/runs/
 # land inside the lint root, so a sibling agent's `pnpm lint` reported 11
 # phantom errors from the OTHER agent's copy of scripts/conductor.mjs.
 .claude/
+
+# npm pack output (release verification artifact, never committed)
+*.tgz

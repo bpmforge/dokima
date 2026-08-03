@@ -27,8 +27,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Root `package.json` name -- the marker that identifies the distribution root. */
-const ROOT_PACKAGE_NAME = 'dokima';
+/**
+ * The marker that identifies the distribution root: the manifest that declares
+ * our `bin`.
+ *
+ * This used to be an equality check against the literal package name `dokima`,
+ * and that broke the moment the package was scoped to `@bpmforge/dokima` to
+ * publish under the org (W10-43). A real `npm install` of the tarball put every
+ * asset — `content/`, both migration sets, the web dist — out of reach, so the
+ * product installed cleanly and then could not start.
+ *
+ * A name allowlist would have fixed that one rename and re-armed the trap for
+ * the next one. The `bin` entry is what actually makes a manifest *the
+ * distribution* rather than some unrelated `package.json` further up the tree:
+ * the source monorepo root and the published package both declare it, an
+ * `@dokima/*` workspace manifest does not, and neither does a consumer's own.
+ */
+const ROOT_BIN_NAME = 'dokima';
 
 /** Guard against walking to `/` on a malformed install. */
 const MAX_ASCENT = 12;
@@ -38,24 +53,34 @@ let cached: string | null = null;
 export class DistributionRootNotFoundError extends Error {
   constructor(startedFrom: string) {
     super(
-      `could not locate the Dokima distribution root: no package.json named ` +
-        `"${ROOT_PACKAGE_NAME}" found within ${MAX_ASCENT} directories above ${startedFrom}. ` +
+      `could not locate the Dokima distribution root: no package.json declaring a ` +
+        `"${ROOT_BIN_NAME}" bin found within ${MAX_ASCENT} directories above ${startedFrom}. ` +
         `Set DOKIMA_DIST_ROOT to override.`,
     );
     this.name = 'DistributionRootNotFoundError';
   }
 }
 
-function isRootManifest(dir: string): boolean {
+/**
+ * Does `dir` hold the distribution's root manifest?
+ *
+ * Exported for test: the probe below starts from this module's own location and
+ * `DOKIMA_DIST_ROOT` short-circuits it entirely, so the marker rule itself is
+ * only directly reachable here. That gap is why the rename shipped as far as a
+ * real `npm install` before anything noticed.
+ */
+export function isRootManifest(dir: string): boolean {
   const manifest = path.join(dir, 'package.json');
   if (!fs.existsSync(manifest)) return false;
   try {
     const parsed: unknown = JSON.parse(fs.readFileSync(manifest, 'utf8'));
-    return (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      (parsed as { name?: unknown }).name === ROOT_PACKAGE_NAME
-    );
+    if (typeof parsed !== 'object' || parsed === null) return false;
+    const bin = (parsed as { bin?: unknown }).bin;
+    // `bin` is either a map of names to paths, or a bare string when the
+    // package's bin is named after the package itself.
+    if (typeof bin === 'string')
+      return (parsed as { name?: unknown }).name === ROOT_BIN_NAME;
+    return typeof bin === 'object' && bin !== null && ROOT_BIN_NAME in bin;
   } catch {
     // A malformed package.json higher up the tree must not abort the search --
     // it is not necessarily ours. Keep ascending.

@@ -34,6 +34,7 @@ pre-public checklist below was never finished.
 | LICENSE file | ✅ **done 2026-08-02** — Apache-2.0 per D-017 (decided 2026-07-14; the file had simply never been written) |
 | README quickstart | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified |
 | History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below. **No longer a manual item as of 2026-08-03 (W10-27)**: `node scripts/validate-history-secrets.mjs` runs on every push as CI's `history-secrets` job. Re-running it by hand before a tag is now a confirmation, not the control. |
+| npm name `@bpmforge/dokima` | 🟡 **prepared 2026-08-03, not yet published** — name confirmed free; root `package.json` now carries the scoped name, `0.1.0`, `publishConfig.access: public`, license/repo/description metadata, and a `prepublishOnly` build so a tarball can never ship without `apps/server/dist/main.js` or `apps/web/dist`. Packing and installing the tarball into a clean project surfaced a **release blocker** (W10-43) — `distributionRoot()` identified the distribution by the literal package name `dokima`, so scoping it made every asset unreachable and the CLI died on startup. Fixed and re-verified end to end: the installed binary boots, serves the built web dist, materializes `packs/` in `DOKIMA_HOME`, and answers `GET /api/v1/projects` → `200 {"projects":[]}` with a real bearer token. **The publish step itself needs an authenticated operator** — log in to npm, then run the publish command from the repo root. |
 | D-001 naming pass | ✅ **done 2026-08-02 — renamed to Dokima (D-021).** The old name had two collisions: `shipwright.io`, CNCF's container-image build framework, whose trademarks were donated to the **Linux Foundation** — an adjacent market, not the "different domain" D-001 assumed; and npm `shipwright`, held since 2015 by `hellofloat/shipwright` ("DigitalOcean CLI control"), declaring the same `bin`. Ships as `@bpmforge/dokima`, home `dokima.sh`. **Formal trademark clearance is still open and needs a lawyer.** |
 
 ### The secrets scan found a real one
@@ -73,7 +74,11 @@ Not release blockers by themselves, but a reader deserves them stated:
 - Visual design is unfinished — 4 design tokens, 66 hardcoded hexes, clipped
   board columns (W10 Phase H)
 - The bundled expert library is ~133 upstream changes behind (W10 Phases A/B)
-- `dokima --help`, and any mistyped command, boots the server
+- `dokima --help`, and any mistyped command, boots the server — **re-confirmed
+  2026-08-03 against the packaged install**: `dokima --help` printed
+  `dokima is already running at … — opening the Canvas` and never exited. This
+  is the first thing a new `npx` user hits, so it costs more once published
+  (ticket W10-44)
 - `plan.json`: W9-08 blocked, W9-15 todo
 
 ## Test truth

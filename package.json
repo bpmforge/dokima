@@ -1,8 +1,31 @@
 {
-  "name": "dokima",
-  "private": true,
+  "name": "@bpmforge/dokima",
+  "version": "0.1.0",
+  "description": "Local-first agentic development platform: agent sessions are untrusted, every durable state change goes through verbs and hash-chained receipts, and no gate can be talked past.",
+  "license": "Apache-2.0",
+  "author": "Bradford Matthews",
+  "homepage": "https://github.com/bpmforge/dokima#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bpmforge/dokima.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bpmforge/dokima/issues"
+  },
+  "keywords": [
+    "agent",
+    "agentic",
+    "llm",
+    "local-first",
+    "sdlc",
+    "code-review",
+    "event-sourcing",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
-  "version": "0.0.0",
   "bin": {
     "dokima": "apps/server/src/bootstrap/cli-entry.mjs"
   },
@@ -21,7 +44,8 @@
     "build": "pnpm --filter @dokima/web build && node apps/server/build.mjs",
     "autorun": "bash scripts/autorun.sh start",
     "autorun:stop": "bash scripts/autorun.sh stop",
-    "autorun:status": "bash scripts/autorun.sh status"
+    "autorun:status": "bash scripts/autorun.sh status",
+    "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
