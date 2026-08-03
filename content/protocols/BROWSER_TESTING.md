@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/BROWSER_TESTING.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/BROWSER_TESTING.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # Browser Testing Primer
 
@@ -25,7 +27,7 @@ This MCP works with any LLM — no vision required (uses accessibility tree snap
 |------|------|
 | Navigate + screenshot + click | `playwright-mcp` (this doc) |
 | Research a URL / web search | `playwright-search` |
-| Extract markdown from a JS-heavy page | `pullmd` |
+| Extract markdown from a JS-heavy page | `playwright-search_web_fetch` |
 | Run Playwright test files (`.spec.ts`) | `bash(command="npx playwright test ...")` |
 
 ---

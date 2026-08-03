@@ -4,7 +4,8 @@ mode: "subagent"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/sdlc-init-phase-3.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -20,6 +21,56 @@ mode: "subagent"
 > Mandatory rules (loop prevention, document hygiene, delegation) live in sdlc-init-mode.md.
 > **task() → HANDOFF reminder:** Any `task(agent="X", ...)` = build a HANDOFF block, save state, execute per `agents/shared/EXECUTOR_SELECTION.md`: `autonomy=interactive` (default) → write `docs/work/HANDOFF_<agent>.md`, point the user at it (open /skill, read the doc), wait; `autonomy=auto` → Task tool / subprocess.
 > **Autonomy:** In `autonomy: auto` (per `agents/shared/AUTONOMY_PROTOCOL.md`) never wait on a paste — Executor C degrades to D (inline) per `EXECUTOR_SELECTION.md`.
+
+## HANDOFF intake (MANDATORY — resolve before any other mode)
+
+A HANDOFF can reach you in three shapes. **All three mean: execute the task now.** Resolve this
+section before mode selection, scope-boundary checks, or anything else in this file.
+
+| What arrives in your prompt | What it means |
+|---|---|
+| Starts with `SDLC-TASK for` | The HANDOFF body is inline — execute it |
+| Names a `docs/work/HANDOFF_*.md` path, in **any** wording ("read it and follow it", "it reads X", "open /skill, it reads X", or just the bare path) | `read()` that file first, then execute the `SDLC-TASK for` body inside it |
+| Tells you to open/run a skill that **is you** | You are already that agent. Do not ask the user to open it. Execute. |
+
+**Six rules:**
+
+1. **Read, then do.** If a `docs/work/HANDOFF_*.md` path appears anywhere in your prompt, read that
+   file before you reply. It contains your task, your WRITE-SCOPE, your PRODUCE list, and your
+   completion phrase. A pointer to a HANDOFF is a HANDOFF.
+   **Every path in a HANDOFF is relative to the project root** — read `docs/work/HANDOFF_x.md`, never
+   `/docs/work/HANDOFF_x.md`. A leading `/` escapes to the filesystem root and the read is denied.
+   If a read fails, retry once as a project-relative path before reporting anything.
+2. **Keep a task ledger — your memory lives on disk, not in this conversation.** Your FIRST action
+   after reading the HANDOFF: if `docs/work/TASKS_<agent>-<slug>.md` does not already exist (the
+   orchestrator may have written it), create it by transcribing the HANDOFF's steps verbatim, one
+   `- [ ] <step>` checkbox per step. Tick a box (`- [x]`) the moment that step's evidence exists on
+   disk — never batch ticks. **THE LOOP:** whenever you are unsure where you are — after a
+   compaction, a long detour, or any interruption — re-read the original HANDOFF and the ledger,
+   reconcile each checkbox against what actually exists on disk (files, commits, verify report),
+   fix any box that is wrong in either direction, then do the FIRST unchecked item. Repeat until
+   every box is ticked; only then run the done-gate and print the completion phrase. The runtime
+   re-injects this ledger's status into every turn, so trusting it costs nothing and trusting your
+   memory of the conversation is the known failure mode.
+3. **Never re-emit a HANDOFF you received.** Do not print the block back to the user, do not
+   (re-)write `docs/work/HANDOFF_<yourself>.md`, and do not tell the user to open the skill you are
+   already running. Handing your own task back is the single most common pipeline stall on smaller
+   models — it looks like progress and produces nothing.
+4. **`USER:` lines are not addressed to you.** Lines inside the block aimed at `USER:` (e.g. "open a
+   new session, type `/<skill>`, paste everything below") are delivery instructions for the human who
+   has *already* delivered it. Ignore them. Never relay them back.
+5. **A turn ends only three ways: more work, the completion phrase, or `BLOCKED: <evidence>`.**
+   Never a menu of options (A/B/C…), a confirm-request ("shall I proceed?", "confirm you want the
+   tests"), or a question about which mode, slug, scope, or step to run — the HANDOFF already
+   answered those; asking again stalls an unattended pipeline while looking cooperative. If a
+   detail is genuinely absent, pick the documented default, state it in one line, and proceed.
+6. **Then follow the contract.** Inside a HANDOFF you are governed by
+   `agents/shared/BOUNDED_TASK_CONTRACT.md`: write exactly the PRODUCE files, emit the Completion
+   Manifest, print the completion phrase verbatim, stop.
+
+**The one exception.** Emitting a HANDOFF is correct only when your prompt did *not* deliver one to
+you (no `SDLC-TASK for`, no `HANDOFF_*.md` path). Delegating onward to a **different** agent is
+normal orchestration; re-issuing the handoff you were just given is not.
 
 ## Phase 3: Design — HOW do we build it?
 
@@ -106,6 +157,20 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ```
 
 **After researcher returns:** Run the Research Findings Review Protocol before writing TECH_STACK.md.
+
+**Every library named in TECH_STACK.md carries a registry-verified version.** A stack entry
+without one is a recommendation, not a decision — downstream agents will resolve it to
+whatever `latest` happens to be, which is the version nobody evaluated. For each library:
+
+```bash
+npm view <pkg> version                                       # what latest resolves to
+node <experts>/scripts/api-surface.mjs --family=<pkg>        # does the FAMILY agree?
+```
+
+Record the exact version. If `--family` reports major skew, record which members must be
+pinned or avoided, and why — that is a stack decision, not an implementation detail, and it
+is invisible to every agent downstream unless TECH_STACK.md states it.
+
 → Write TECH_STACK.md → mark DONE
 
 **Step 2 — Module design (HANDOFF — new):**
@@ -122,9 +187,9 @@ Next after resume: run handoff gates (validate-module-design), then db-architect
 ")
 ```
 
-Use **Template 7** from `~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md` for this HANDOFF.
+Use **Template 7** from `content/protocols/HANDOFF_TEMPLATES.md` for this HANDOFF.
 
-→ After "architecture-designer done": run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest <manifest> --coverage validate-module-design.sh` → mark DONE
+→ After "architecture-designer done": run `content/validators/run-handoff-gates.sh --scope docs --manifest <manifest> --coverage validate-module-design.sh` → mark DONE
 
 **Git checkpoint — save MODULE_DESIGN + INFRASTRUCTURE:**
 ```
@@ -175,7 +240,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
 ```
 
-→ After "db done": run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_database_<date>.md --coverage validate-erd-coverage.sh` → mark DONE
+→ After "db done": run `content/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_database_<date>.md --coverage validate-erd-coverage.sh` → mark DONE
 
 **Git checkpoint — save DATABASE.md:**
 ```
@@ -239,7 +304,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
 ```
 
-→ After "api done": run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_api_design_<date>.md --coverage validate-api-coverage.sh` → mark DONE.
+→ After "api done": run `content/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_api_design_<date>.md --coverage validate-api-coverage.sh` → mark DONE.
 
 **Git checkpoint — save API_DESIGN + OpenAPI spec:**
 ```
@@ -296,7 +361,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ---
 ```
 
-→ After "security done": run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_threat_model_<date>.md` → mark DONE.
+→ After "security done": run `content/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_threat_model_<date>.md` → mark DONE.
 
 **Git checkpoint — save THREAT_MODEL.md:**
 ```
@@ -316,7 +381,7 @@ Next after resume: issue security reconciliation HANDOFFs to db-architect + api-
 ")
 ```
 
-Use **Template 5** from `~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md` for this HANDOFF.
+Use **Template 5** from `content/protocols/HANDOFF_TEMPLATES.md` for this HANDOFF.
 
 → After "security done" (security controls): run handoff gates with `--coverage validate-security-controls.sh` → mark DONE
 
@@ -359,9 +424,9 @@ Next after resume: run handoff gates (validate-infrastructure), then ARCHITECTUR
 ")
 ```
 
-Use **Template 8** from `~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md` for this HANDOFF.
+Use **Template 8** from `content/protocols/HANDOFF_TEMPLATES.md` for this HANDOFF.
 
-→ After "sre done": run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest <manifest> --coverage validate-infrastructure.sh` → mark DONE
+→ After "sre done": run `content/validators/run-handoff-gates.sh --scope docs --manifest <manifest> --coverage validate-infrastructure.sh` → mark DONE
 
 **Git checkpoint — save INFRASTRUCTURE.md:**
 ```
@@ -466,7 +531,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 After "ux done":
 1. Verify all three files exist and are >50 lines each
 2. Run the **Research Findings Review Protocol** — check for conflicts with TECH_STACK, USER_PERSONAS, or DESIGN_CONTEXT
-3. **Run handoff gates:** `./scripts/validators/run-handoff-gates.sh --scope docs/design --manifest <manifest> --coverage validate-ux-spec.sh`
+3. **Run handoff gates:** `content/validators/run-handoff-gates.sh --scope docs/design --manifest <manifest> --coverage validate-ux-spec.sh`
    - Gate uses Track 1 (validate-ux-spec.sh) — objective coverage, not confidence scoring
    - If gaps: return specific gap to ux-engineer with REVISE status (up to 3 iterations)
    - All gaps closed → mark DONE
@@ -885,7 +950,7 @@ Next after resume: Phase 3.5 gate, then Human Approval Gate B, then Phase 4
 ")
 ```
 
-**HANDOFF:** Use **Template 6** from `~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md`.
+**HANDOFF:** Use **Template 6** from `content/protocols/HANDOFF_TEMPLATES.md`.
 
 → After "test-design done": run handoff gates with `--coverage validate-test-design.sh`
 

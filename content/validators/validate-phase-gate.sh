@@ -1,5 +1,6 @@
 #!/bin/bash
-# Provenance: bpm-opencode-experts
+# Provenance: attest (formerly bpm-opencode-experts)
+# Upstream version: 3.1.24
 # Source path: scripts/validators/validate-phase-gate.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
@@ -182,6 +183,12 @@ populate_phase_artifacts() {
         "validate-api-consistency.sh"
         "validate-contract-conformance.sh"
         "validate-release-readiness.sh"
+        # End-user validation guardrail: a UI-bearing project cannot clear the
+        # release gate without an evidence-backed V&V report (qa-vnv-engineer).
+        # Self-skips for non-UI projects; for UI projects a missing report is a
+        # gap, so the expert can't be silently skipped. Turns qa-vnv-engineer
+        # from documentation into an enforced release requirement.
+        "validate-qa-evidence.sh"
         # T29.2 (H1/A-6.3): REQUIREMENT closure, not task closure -- a plan
         # with every module "done" still fails here if a user story was
         # never mapped to a module, or the mandatory reconciliation matrix

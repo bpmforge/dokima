@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/BOUNDED_TASK_CONTRACT.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/BOUNDED_TASK_CONTRACT.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # BOUNDED_TASK_CONTRACT.md
 
@@ -84,6 +86,9 @@ Before the completion phrase, output a Completion Manifest:
 ## Known issues / deferred
 - [Issue] — [why deferred, which agent should address it]
 
+## Memory written
+- memory_store: [type] — "[≤1-line durable decision / error / verified-fact + citation]"   (or "None — nothing durable")
+
 ## Model tier: [small|medium|large] — [estimated context used: low|medium|high]
 
 ## Ready for: [next agent name, or "SDLC lead resume"]
@@ -91,13 +96,15 @@ Before the completion phrase, output a Completion Manifest:
 Tracker updated: [SDLC_TRACKER.md row / PROGRESS.md / DELEGATION_LOG.md / CHANGELOG.md — where this step was recorded]
 ```
 
-All seven sections are required. "None" is a valid value for sections with nothing to report. The **`Tracker updated:` line is mandatory** (G-D, tracking-as-gate): a step that changes work files but records nothing is how work gets lost between steps and sessions — the git-based `validate-tracker-fresh.sh` proves a tracker actually changed, and `validate-completion-manifest.sh` proves the manifest declares it.
+All sections are required. "None" is a valid value for sections with nothing to report. The **`Tracker updated:` line is mandatory** (G-D, tracking-as-gate): a step that changes work files but records nothing is how work gets lost between steps and sessions — the git-based `validate-tracker-fresh.sh` proves a tracker actually changed, and `validate-completion-manifest.sh` proves the manifest declares it.
+
+**`## Memory written` (MEMORY_PRIMER M4 write-back).** You do NOT recall memory — the SDLC lead handed you a memory slice in your context packet. But you MUST **`memory_store` any durable decision, error, or verified fact you established** (with a `citation`), then record it here — otherwise your "Decisions made" evaporate at session end and the next HANDOFF re-derives them. Never store secrets/PII (redact per MEMORY_PRIMER). Nothing durable? Write "None — nothing durable".
 
 ---
 
 ## Why these rules exist
 
-Cross-agent coordination is via explicit HANDOFF documents — dispatched by the Task tool where the runtime supports it (`has_task_tool=true` in `docs/work/.model-context`), pasted into a new session otherwise. Either way the specialist runs in an isolated context. This means:
+Cross-agent coordination is via explicit HANDOFF documents — in `autonomy=interactive` (default) written to `docs/work/HANDOFF_<agent>.md`, which the user opens the specialist against by pasting a one-line `SDLC-TASK for <agent>: read docs/work/HANDOFF_<agent>.md and execute it.`; in `autonomy=auto` dispatched programmatically (Task tool / subprocess). Either way the specialist runs in an isolated context. This means:
 
 - The orchestrator (sdlc-lead) cannot see what a specialist is doing while it runs
 - There is no shared context between sessions — every specialist starts fresh
@@ -152,8 +159,43 @@ Before creating OR overwriting any file:
 2. **Diff against canonical** — if the file is generated, vendored, or sourced from a canonical repo, confirm your change is real and superior by `diff`-ing against that source. **An audit that claims a file is "missing", "wrong", or "a stub" MUST be confirmed with `ls`/`diff`/`grep` against the source before you act on it.** A perception error (false "missing") that triggers a rewrite is the most expensive drift there is.
 3. **Never hand-edit generated files** — anything in `GENERATED_FILES.txt` is a build output; regenerate it via the build, never edit it directly.
 
-Enforced by `scripts/validators/validate-no-reinvent.sh` (hard-fails edits to `GENERATED_FILES.txt` paths; warns on wholesale rewrites of tracked files). This rule exists because a Mode-4 audit once falsely reported canonical loop-engineering files as "missing" and overwrote 6 of them with inferior stubs — a regression a single `diff` would have prevented.
+Enforced by `content/validators/validate-no-reinvent.sh` (hard-fails edits to `GENERATED_FILES.txt` paths; warns on wholesale rewrites of tracked files). This rule exists because a Mode-4 audit once falsely reported canonical loop-engineering files as "missing" and overwrote 6 of them with inferior stubs — a regression a single `diff` would have prevented.
 
 ## Rule 10 — Phase-gated checkpoint/revert (B7)
 
 For multi-phase work (> 3 sequential gated phases), Rule 8's 3-strike escalation is backed by a git checkpoint. After a phase gate returns **PASS**, the orchestrator checkpoints it (commit + `phase/<name>-pass-*` tag). When a later phase fails unrecoverably, it **reverts to the last known-good checkpoint and restarts that phase from clean state** — it does not unwind from the error context (a weak model cannot reliably edit its way out of a broken state). See `agents/shared/CHECKPOINT_REVERT.md`. Reverts are for unrecoverable failure only; exploration uses a branch.
+
+## Rule 11 — Checkpoint as you go, so a compaction can't erase progress
+
+On a long task the runtime may **autocompact** — replace the conversation with a summary — and a weaker model then loses the thread: it re-does finished work, forgets which PRODUCE files it still owes, or drops the completion phrase. You cannot prevent compaction, but you can make it survivable by keeping the truth on disk, where the `resume-anchor` plugin re-reads it into every turn (`plugins/resume-anchor.ts`).
+
+Concretely, **write each finished unit of work to its PRODUCE file the moment it's done — never batch all writes to the end.** A completed finding, a written function, a done sub-section: `write()` it immediately. Two reasons: an existing PRODUCE file is how the anchor (and you, post-compaction) tell finished work from owed work — a file that isn't there yet reads as "still to do"; and `compaction.prune` silently drops old tool results, so a file you read 20 turns ago is gone from context but its path on disk is not. For multi-phase specialists this is already the `phaseN.md`-per-phase pattern; for single-output tasks, append to the PRODUCE file incrementally rather than holding the whole deliverable in context.
+
+If you come back and can't tell where you were, **re-read your HANDOFF and your PRODUCE files before acting** — do not ask the user, and do not restart from scratch. The RESUME ANCHOR block in your context (if present) already lists exactly which PRODUCE files exist and which are missing.
+
+**A compaction does not revoke authorization.** The HANDOFF authorized the whole task once; a summarized history changes nothing about that. After a compaction, resume executing the next unfinished step immediately — ending your turn with "should I proceed?", "say Proceed to continue", or a plan presented for approval is the ask-variant of announce-then-stop (`PERSISTENCE.md`) and stalls an unattended pipeline exactly like a menu does. The only legitimate post-compaction pauses are the ones that were already legitimate before it: a real human gate, a NEVER-AUTO condition, or `BLOCKED: <reason>`.
+
+## Rule 12 — Verify means GREEN, not "ran"
+
+The VERIFY section of a HANDOFF is a set of gates, not a set of chores. Running the commands is not completing them — **passing** them is. Field basis (2026-07): an agent ran all four verify commands, left 15 lint errors and a net loss of 26 tests, and printed the completion phrase anyway; its report pasted a snippet showing only a pre-existing warning while omitting its own errors.
+
+1. **Read every exit code.** Any non-zero verify command → fix and re-run until green (3-strike cap → `BLOCKED`, never a success report). **Asking the user whether to run a verify command is the same violation** — the HANDOFF authorized every command it lists; an environment dependency that's down means run it, capture the literal failure, and report `BLOCKED` with it, not "shall I run it?".
+2. **Never suppress an outcome.** No `|| true`, `; echo done`, or `2>/dev/null` on a verify command, and run them exactly as the HANDOFF wrote them — appending `|| true` is paraphrasing (Rule 3's verbatim discipline applies to commands too).
+3. **Never regress what exists.** If the task touches a suite, the post-change passing count must be ≥ the pre-change baseline plus your additions. A lower count means you deleted or broke existing work — self-reject and restore it; do not report.
+4. **Evidence over claims.** The Completion Manifest carries the LITERAL final summary line of each verify command (counts included). "Truncated", a should-be-true checklist, or a curated excerpt that hides your own failures each void the manifest — the orchestrator independently re-runs these commands, so a masked failure is always discovered and costs a full revision round.
+5. **Fix failures inside the repo — never invent prerequisite infrastructure commands.** A failed verify command is fixed by making THAT command pass (code edits, regenerating generated clients, fixing fixtures) — not by running migrate/deploy/credential/config commands the HANDOFF never listed. Field basis (2026-07): a suite failed on a stale generated client; the agent invented `prisma migrate deploy` against a shared DB, hit a permissions error, and reported a fictional "need DB credentials" blocker with an options menu — while the real suite (testcontainers, self-provisioning) passed clean on re-run. Believing an unlisted command is required is itself a `BLOCKED: <why + evidence>` report — never something to run, never a menu.
+6. **`BLOCKED` must cite the verify command's own post-fix output.** After any fix, re-run the failed verify command itself before claiming anything about it. A different command's failure is not evidence; only the literal, freshly captured output of the exact HANDOFF command is.
+7. **Report the whole task from disk, not the last turn from memory.** Before the Completion Manifest, run `git log origin/main..HEAD --oneline` and `git status --short`; account for every commit and dirty file, and walk the HANDOFF's own step list stating each step's status. (Compaction makes memory-based reports delta-only — the same trace omitted two correct, unpushed commits entirely.) If the HANDOFF says push, unpushed commits mean the step is NOT done.
+8. **No pass-by-proxy.** Every verify command gets its own run and its own literal output. "Covered by the suite" / "another command exercises the same code" is never evidence (field basis 2026-07: an integration config run and a second app's typecheck were both skipped under that claim, and the skipped linter had 57 real errors).
+9. **A negative verdict must carry a diagnosis, not just a label.** Whatever verdict vocabulary your role uses — `BLOCKED`, `RUNTIME: FAIL`, `VERDICT: CHANGES REQUESTED`, a red gate — the failing report states, in plain sentences: **which command or check failed**, **the specific output line that shows it**, **what you believe is actually wrong**, and **whether the cause is the code under review or something pre-existing in the environment**. "Tests failed", "did not pass", and "changes requested" are labels, not diagnoses. The test: someone reading only your explanation, without the rest of the document and without the worktree, must understand the problem well enough to act on it — because that is the situation they will be in. Field basis 2026-07-31: an executor emitted `RUNTIME: FAIL` on two consecutive attempts; the reasoning existed only inside a worktree that the next attempt deleted, so the run's own receipts recorded a failure whose cause could not be recovered without re-running the ticket. An unexplained negative verdict also loses to contrary evidence — an orchestrator that can re-run the command will trust the exit code over an assertion you did not support.
+10. **Never head-truncate output, never relabel errors.** Piping a verify command through `sed -n '1,Np'`/`head` cuts off the final summary line — the one line that IS the evidence; trim with `tail` only. Errors reported as "warnings", "suggestions", or "non-blocking" void the manifest: the literal count line (`Found N errors`, `N failed`) is what gets reported, and any error count above the pre-change baseline is a red gate.
+
+**Prefer the harness over manual discipline:** `bash content/scripts/verify-handoff.sh <packet-file>` runs the packet's ` ```verify ` fence exactly as written, keeps tails, compares the pass-count baseline (`--baseline` before your first edit; auto-stored when the tree is provably pre-change), writes `docs/work/VERIFY_REPORT.md` itself, and prints a single verdict. Items 1–9 are enforced mechanically when you use it; they still bind you fully when you don't.
+
+**Not every RED is yours.** `VERIFY: RED — exit N from: <cmd>` is a failure to fix. `VERIFY: RED — fence command matched nothing` means the command tested nothing (excluded path, bad glob) — a fence defect: report it, do not edit code to chase it. `VERIFY: BASELINE_RED — … 0 new` means every failure already failed at the baseline commit — pre-existing, outside your scope, and the contract forbids you fixing it; name those failures in your report and proceed. The done-gate treats both non-yours cases as warnings, so neither one is grounds for withholding the completion phrase. Attempting to fix another unit's failing tests to turn the fence green is a scope violation, not diligence.
+
+**Gate "done" mechanically too:** before the Completion Manifest, run `bash content/scripts/handoff-done.sh <packet-file>`. It checks the verify report is ALL GREEN **and fresher than your last edit**, the tree is committed, commits are pushed, PRODUCE files exist, and any required completion-report section is present. **`run-handoff-gates.sh` is fail-fast.** It runs scope → manifest → tech-stack → coverage → tracker → runtime and **stops at the first failure**, so every gate after that one is **UNRUN, not passed**. It prints `GATE FAILED: <gate>` with what failed, how to clear it, and that note. Fix the named gate and re-run to reach the rest — do not go looking for problems in a gate that never executed. Field basis 2026-07-30: a specialist hit a SCOPE failure and proposed edits to its completion manifest, which the manifest gate had not yet checked.
+
+**Three output levels, and only one blocks.** `[ok]` passed. `[warn]` is informational and **never blocking** — normally something outside your reach (the HANDOFF has no ` ```verify ` fence, the repo has no remote, another agent left files uncommitted); name it in your report and carry on. `[FAIL]` blocks. The verdict spells out which is which — `DONE-CHECK: RED — N blocking item(s). Warnings above are NOT blockers; these are: …` — so read that list rather than the whole output. Field basis 2026-07-30: a researcher reported "lacks a verify fence and changes are uncommitted/unpushed" as its blockers when both were warnings, and never committed the one file that actually blocked it. A warning reported as a blocker stalls the pipeline exactly as hard as a real failure ignored. `[FAIL]` items are fixed, not argued with; print the completion phrase only on `DONE-CHECK: GREEN`.
+
+The completion phrase asserts all of this. Printing it with a red gate is a contract violation, not an optimistic summary.

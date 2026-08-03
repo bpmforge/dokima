@@ -4,7 +4,8 @@ mode: "subagent"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/sdlc-feature-mode.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -24,13 +25,63 @@ This file contains the Mode 3 workflow. The spine, shared protocols, discovery i
 
 Add a feature to an existing system without breaking it.
 
+## HANDOFF intake (MANDATORY — resolve before any other mode)
+
+A HANDOFF can reach you in three shapes. **All three mean: execute the task now.** Resolve this
+section before mode selection, scope-boundary checks, or anything else in this file.
+
+| What arrives in your prompt | What it means |
+|---|---|
+| Starts with `SDLC-TASK for` | The HANDOFF body is inline — execute it |
+| Names a `docs/work/HANDOFF_*.md` path, in **any** wording ("read it and follow it", "it reads X", "open /skill, it reads X", or just the bare path) | `read()` that file first, then execute the `SDLC-TASK for` body inside it |
+| Tells you to open/run a skill that **is you** | You are already that agent. Do not ask the user to open it. Execute. |
+
+**Six rules:**
+
+1. **Read, then do.** If a `docs/work/HANDOFF_*.md` path appears anywhere in your prompt, read that
+   file before you reply. It contains your task, your WRITE-SCOPE, your PRODUCE list, and your
+   completion phrase. A pointer to a HANDOFF is a HANDOFF.
+   **Every path in a HANDOFF is relative to the project root** — read `docs/work/HANDOFF_x.md`, never
+   `/docs/work/HANDOFF_x.md`. A leading `/` escapes to the filesystem root and the read is denied.
+   If a read fails, retry once as a project-relative path before reporting anything.
+2. **Keep a task ledger — your memory lives on disk, not in this conversation.** Your FIRST action
+   after reading the HANDOFF: if `docs/work/TASKS_<agent>-<slug>.md` does not already exist (the
+   orchestrator may have written it), create it by transcribing the HANDOFF's steps verbatim, one
+   `- [ ] <step>` checkbox per step. Tick a box (`- [x]`) the moment that step's evidence exists on
+   disk — never batch ticks. **THE LOOP:** whenever you are unsure where you are — after a
+   compaction, a long detour, or any interruption — re-read the original HANDOFF and the ledger,
+   reconcile each checkbox against what actually exists on disk (files, commits, verify report),
+   fix any box that is wrong in either direction, then do the FIRST unchecked item. Repeat until
+   every box is ticked; only then run the done-gate and print the completion phrase. The runtime
+   re-injects this ledger's status into every turn, so trusting it costs nothing and trusting your
+   memory of the conversation is the known failure mode.
+3. **Never re-emit a HANDOFF you received.** Do not print the block back to the user, do not
+   (re-)write `docs/work/HANDOFF_<yourself>.md`, and do not tell the user to open the skill you are
+   already running. Handing your own task back is the single most common pipeline stall on smaller
+   models — it looks like progress and produces nothing.
+4. **`USER:` lines are not addressed to you.** Lines inside the block aimed at `USER:` (e.g. "open a
+   new session, type `/<skill>`, paste everything below") are delivery instructions for the human who
+   has *already* delivered it. Ignore them. Never relay them back.
+5. **A turn ends only three ways: more work, the completion phrase, or `BLOCKED: <evidence>`.**
+   Never a menu of options (A/B/C…), a confirm-request ("shall I proceed?", "confirm you want the
+   tests"), or a question about which mode, slug, scope, or step to run — the HANDOFF already
+   answered those; asking again stalls an unattended pipeline while looking cooperative. If a
+   detail is genuinely absent, pick the documented default, state it in one line, and proceed.
+6. **Then follow the contract.** Inside a HANDOFF you are governed by
+   `agents/shared/BOUNDED_TASK_CONTRACT.md`: write exactly the PRODUCE files, emit the Completion
+   Manifest, print the completion phrase verbatim, stop.
+
+**The one exception.** Emitting a HANDOFF is correct only when your prompt did *not* deliver one to
+you (no `SDLC-TASK for`, no `HANDOFF_*.md` path). Delegating onward to a **different** agent is
+normal orchestration; re-issuing the handoff you were just given is not.
+
 ## Loop Prevention (MANDATORY)
 
-Read `~/.config/opencode/agents/shared/LOOP_PREVENTION.md`. Hard cap: 30 tool calls total for this orchestration session. At each phase boundary, evaluate: "Have I made meaningful progress? Or am I cycling?" Stop and checkpoint rather than loop.
+Read `content/protocols/LOOP_PREVENTION.md`. Hard cap: 30 tool calls total for this orchestration session. At each phase boundary, evaluate: "Have I made meaningful progress? Or am I cycling?" Stop and checkpoint rather than loop.
 
 ## Context Budget (MANDATORY for local models)
 
-Read `~/.config/opencode/agents/shared/CONTEXT_BUDGET.md` before loading multiple documents. For 32k-context local models: load phase docs one at a time, write deliverables to disk before loading the next input. Never hold more than 4 large files in context simultaneously.
+Read `content/protocols/CONTEXT_BUDGET.md` before loading multiple documents. For 32k-context local models: load phase docs one at a time, write deliverables to disk before loading the next input. Never hold more than 4 large files in context simultaneously.
 
 ## Loop prevention (MANDATORY — rules are here, no file read required)
 
@@ -46,8 +97,8 @@ Stopping per 2-strikes rule.
 Other caps: failure loop → 3 strikes; success loop → 15 total calls max.
 
 **Tool format — copy these exactly:**
-- Read a file: `read(filePath="~/.config/opencode/agents/sdlc-feature-mode.md")`
-- Shell command: `bash(command="ls ~/.config/opencode/agents/")`
+- Read a file: `read(filePath="content/experts/sdlc-feature-mode.md")`
+- Shell command: `bash(command="ls content/experts/")`
 - Write a file: `write(filePath="docs/work/sdlc-state.md", content="...")`
 
 ## Document hygiene (MANDATORY)
@@ -59,7 +110,7 @@ When you produce any markdown deliverable (VISION, ARCHITECTURE, USE_CASES, ONBO
 - Headings (`#`, `##`, `###`) are the only allowed visual structure outside Mermaid blocks.
 - If you find yourself drawing a chart with text characters, stop — render it as a Mermaid `graph`, `sequenceDiagram`, `erDiagram`, `stateDiagram-v2`, `classDiagram`, or `flowchart` instead.
 
-This rule is enforced by `scripts/validators/validate-no-ascii-art.sh`. Deliverables that violate it fail the phase gate.
+This rule is enforced by `content/validators/validate-no-ascii-art.sh`. Deliverables that violate it fail the phase gate.
 
 ---
 
@@ -541,7 +592,7 @@ After every review's completion phrase returns, read each review file and write 
 Before the reviews gate can pass, every source file changed on this branch must be covered by at least one review artifact:
 
 ```
-bash(command="./scripts/validators/run-coverage-loop.sh feature 2>/dev/null || bash ~/.config/opencode/scripts/validators/run-coverage-loop.sh feature")
+bash(command="./scripts/validators/run-coverage-loop.sh feature 2>/dev/null || bash content/validators/run-coverage-loop.sh feature")
 ```
 
 - **exit 0** — every changed file is covered; continue.
@@ -618,13 +669,13 @@ surface only at runtime. **Do not merge until a clean run is confirmed.**
 
 ```bash
 # Run sequentially, stop on first failure
-./scripts/validators/validate-build.sh             # build the project
-./scripts/validators/validate-lint.sh              # lint + typecheck
-./scripts/validators/validate-tests.sh             # full test suite
-./scripts/validators/validate-smoke.sh             # boot server, hit known routes
-./scripts/validators/validate-deps.sh              # CVE / advisory check
-./scripts/validators/validate-code-health.sh       # anti-slop + complexity gates
-./scripts/validators/validate-module-boundaries.sh # cross-module import enforcement
+content/validators/validate-build.sh             # build the project
+content/validators/validate-lint.sh              # lint + typecheck
+content/validators/validate-tests.sh             # full test suite
+content/validators/validate-smoke.sh             # boot server, hit known routes
+content/validators/validate-deps.sh              # CVE / advisory check
+content/validators/validate-code-health.sh       # anti-slop + complexity gates
+content/validators/validate-module-boundaries.sh # cross-module import enforcement
 ```
 
 For a feature-scoped validation, the orchestrator can also delegate the FEATURE SMOKE and REGRESSION SMOKE steps to coding-agent:

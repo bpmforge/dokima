@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/performance/METHODOLOGY.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -246,7 +247,7 @@ Run these grep scans ONE AT A TIME. Read every hit. Write findings to the tracke
 #### Scan 1 — O(n²) nested loops
 
 ```
-grep-mcp --pattern "for\s|while\s|\.forEach|\.map\(|\.filter\(" --recursive --include "*.ts,*.js,*.py,*.go,*.rs"
+grep --pattern "for\s|while\s|\.forEach|\.map\(|\.filter\(" --recursive --include "*.ts,*.js,*.py,*.go,*.rs"
 ```
 
 For each loop found: check whether its body also contains a loop, a `.find()`, a `.filter()`, or a linear search over a collection. Any nested iteration over the same data = O(n²) suspect.
@@ -277,7 +278,7 @@ Needs profiling: YES — measure actual call frequency before fixing
 #### Scan 2 — N+1 query patterns
 
 ```
-grep-mcp --pattern "await.*find|await.*query|await.*fetch|\.find\(|\.findOne\(|\.query\(" --recursive --include "*.ts,*.js,*.py,*.go"
+grep --pattern "await.*find|await.*query|await.*fetch|\.find\(|\.findOne\(|\.query\(" --recursive --include "*.ts,*.js,*.py,*.go"
 ```
 
 For each DB/fetch call found: check whether it's inside a loop (`for`, `while`, `forEach`, `map`, `reduce`). Any query/fetch inside a loop = N+1 suspect unless the loop has a fixed small upper bound (≤ 5).
@@ -313,7 +314,7 @@ Needs profiling: YES — confirm N+1 with EXPLAIN before fixing
 This scan targets error-handling constructs that hurt runtime performance. These are DISTINCT from correctness issues (which the code-reviewer owns) — this is purely about execution cost.
 
 ```
-grep-mcp --pattern "try\s*\{|try:" --recursive --include "*.ts,*.js,*.py,*.go,*.rs"
+grep --pattern "try\s*\{|try:" --recursive --include "*.ts,*.js,*.py,*.go,*.rs"
 ```
 
 For each `try` block found, check the **surrounding context** — specifically:
@@ -525,11 +526,11 @@ Needs profiling: YES — run --prof before and after to confirm V8 de-opt delta
 #### Scan 4 — Blocking I/O in async paths
 
 ```
-grep-mcp --pattern "readFileSync|writeFileSync|execSync|spawnSync|crypto\.pbkdf2Sync|bcrypt\.hashSync" --recursive --include "*.ts,*.js"
+grep --pattern "readFileSync|writeFileSync|execSync|spawnSync|crypto\.pbkdf2Sync|bcrypt\.hashSync" --recursive --include "*.ts,*.js"
 ```
 
 ```
-grep-mcp --pattern "time\.Sleep|ioutil\.ReadFile|os\.ReadFile" --recursive --include "*.go"
+grep --pattern "time\.Sleep|ioutil\.ReadFile|os\.ReadFile" --recursive --include "*.go"
 ```
 
 Any `*Sync` call, blocking sleep, or synchronous file I/O inside a request handler or async function blocks the event loop / goroutine scheduler. In Node.js this serializes ALL concurrent requests while the sync call runs.
@@ -561,11 +562,11 @@ Needs profiling: YES — measure actual blocking time under load
 #### Scan 5 — Unnecessary allocations in hot paths
 
 ```
-grep-mcp --pattern "new Array\(|\.split\(|JSON\.parse|JSON\.stringify|Object\.assign\(\{\}" --recursive --include "*.ts,*.js"
+grep --pattern "new Array\(|\.split\(|JSON\.parse|JSON\.stringify|Object\.assign\(\{\}" --recursive --include "*.ts,*.js"
 ```
 
 ```
-grep-mcp --pattern "fmt\.Sprintf|strings\.Builder|append\(" --recursive --include "*.go"
+grep --pattern "fmt\.Sprintf|strings\.Builder|append\(" --recursive --include "*.go"
 ```
 
 Look for large allocations inside tight loops or on critical request paths:
@@ -613,7 +614,7 @@ After completing all 5 scans, rate your coverage confidence 1-10 and loop until 
 ```bash
 # How many source files did grep actually examine?
 # Re-run one scan with --include for each extension and compare hit file counts
-grep-mcp --pattern "for\s|while\s" --recursive --include "*.ts" | grep -o "^[^:]*" | sort -u | wc -l
+grep --pattern "for\s|while\s" --recursive --include "*.ts" | grep -o "^[^:]*" | sort -u | wc -l
 # Compare to: grep "\.ts$" /tmp/perf_source_files.txt | wc -l
 ```
 
@@ -644,11 +645,11 @@ Maximum 3 re-pass attempts. If still < 7 after 3 passes: set tracker Phase 1b to
 **Re-pass example (broader scan for missed patterns):**
 ```bash
 # Broader O(n²) re-pass — catches non-standard iteration
-grep-mcp --pattern "\.(forEach|map|filter|reduce|find|findIndex|some|every)\(" --recursive
+grep --pattern "\.(forEach|map|filter|reduce|find|findIndex|some|every)\(" --recursive
 # Catches Python list comprehensions with nested calls
-grep-mcp --pattern "\[.* for .* in .*\]" --recursive --include "*.py"
+grep --pattern "\[.* for .* in .*\]" --recursive --include "*.py"
 # Catches Go range-in-range
-grep-mcp --pattern "for .* range" --recursive --include "*.go"
+grep --pattern "for .* range" --recursive --include "*.go"
 ```
 
 Print your coverage verdict before updating the tracker:

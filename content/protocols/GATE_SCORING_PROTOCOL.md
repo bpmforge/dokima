@@ -6,7 +6,8 @@ metadata:
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/shared/GATE_SCORING_PROTOCOL.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -26,7 +27,7 @@ Read `docs/work/sdlc-state.md` to confirm which agent was delegated and what it 
 For every HANDOFF return, run the gate orchestrator:
 
 ```bash
-./scripts/validators/run-handoff-gates.sh \
+content/validators/run-handoff-gates.sh \
   --scope <assigned-dir> [--scope <dir2> ...] \
   --manifest <manifest-path> \
   [--coverage <validate-something.sh>]
@@ -89,6 +90,12 @@ Examples:
 - `re-ran independently: re-read src/auth/session.ts:40-80 — confirmed the timeout guard the manifest claims — n/a`
 - `re-ran independently: grep for the removed route in router.ts — 0 matches, confirmed gone — exit 0`
 
+**For code HANDOFFs with a ` ```verify ` fence, re-run through the same harness the specialist used:**
+`bash content/scripts/verify-handoff.sh <packet> --report docs/reviews/VERIFY_REPORT_lead.md`
+— identical commands, identical report format, so `diff docs/work/VERIFY_REPORT.md docs/reviews/VERIFY_REPORT_lead.md`
+exposes any divergence between the specialist's evidence and yours directly (differing exit codes or
+pass counts = the manifest misrepresented state; that is auto-reject grounds, not a judgment call).
+
 **A score submitted without this field is INCOMPLETE — not a valid score.** Do not proceed to Step 4; send it back to whoever scored it ("add `re-ran independently: <...>`") and wait for the resubmission. This codifies the single highest-value pattern from the 2026-07-08 field report (H9/D-1): verify-don't-trust caught nearly every serious defect that run precisely *because* verification was independently re-run by the verifier, not read off the maker's manifest. A score with no re-run behind it is a guess wearing a number.
 
 **Checklist — a score is only complete when all of these hold:**
@@ -116,8 +123,43 @@ If Step 2's gates **failed**, the HANDOFF does not reach scoring at all — retu
 Append the result to `docs/work/DELEGATION_LOG.md`. The `re-ran independently` field (see Step 3) is required — a row without it is an incomplete log entry, same as an unscored HANDOFF:
 
 ```
-| <timestamp> | <agent> | <task summary> | DONE/FAILED/REDO | <score>/10 | re-ran independently: <what, counts, exit codes> | <notes> |
+| <timestamp> | <agent> | <task summary> | DONE/FAILED/REDO/DONE-LEAD-FIXED | <score>/10 | re-ran independently: <what, counts, exit codes> | <notes> |
 ```
+
+### If you closed the gap yourself, the outcome is `DONE-LEAD-FIXED`, never `DONE`
+
+Sometimes finishing a small mechanical gap yourself genuinely beats a round-trip,
+and that judgement is yours to make. What is **not** yours is logging it as a clean
+delivery. Field trace 2026-07: a lead closed specialist gaps three times — "I
+already know exactly what's needed and it's mechanical, I'll close these directly
+rather than a round-trip", "~90% correct though — I'll finish the small remaining
+gaps directly", "both small/mechanical — lead fixed directly" — and logged each
+row `DONE`. Rework happened every time; only the identity of who did it changed.
+`delegation-metrics.mjs` counts `DONE` as accepted, so **the models producing the
+most rework scored the cleanest** — exactly backwards for a metric whose purpose is
+to tell you when a tier change is cheaper than another gate.
+
+`DONE-LEAD-FIXED` counts as a correction and is reported as its own subtotal. Put
+what you fixed in the notes column, in one line.
+
+**Two hard bounds on absorbing.** Past either, absorbing is the wrong instrument —
+the HANDOFF or the routing is what needs fixing:
+
+1. **Never absorb a PRODUCE file.** Writing a deliverable the specialist was
+   supposed to produce means the HANDOFF did not land; re-dispatch it with the gap
+   named. Ticking a checkbox on work you did yourself is how a phase reports
+   complete with nobody having verified the thing.
+2. **Twice on the same agent+model in one phase is a routing signal, not a
+   shortcut.** Stop absorbing and change something upstream — tighten the packet,
+   move that agent to a stronger tier (`models.json`), or split the task. A third
+   silent fix buys one step and costs the evidence that would have prevented the
+   next ten.
+
+**It also costs context.** Absorbing pulls the specialist's material into the
+orchestrator's window, which is what `TUI_SESSION_HYGIENE.md` Rule 1 exists to
+prevent — the traced sessions ran to 451K tokens (45% of window) and $33.55 while
+the lead did specialist work inline. A round-trip is often the *cheaper* option in
+tokens, not just the more honest one.
 
 ## Step 6 — Continue or Escalate
 

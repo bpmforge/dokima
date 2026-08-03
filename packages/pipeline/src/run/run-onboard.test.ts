@@ -56,11 +56,11 @@ describe('runOnboard (W8-08 AC1/AC2/AC3)', () => {
     );
   });
 
-  it('AC2: the coverage manifest names all 30 anti-slop rules and every imported validator', () => {
+  it('AC2: the coverage manifest names all 31 anti-slop rules and every imported validator', () => {
     const { port } = fakePort();
     const result = runOnboard({ seedContext: {} }, port);
 
-    expect(result.coverageManifest.antiSlopRules).toHaveLength(30);
+    expect(result.coverageManifest.antiSlopRules).toHaveLength(31);
     expect(result.coverageManifest.validators.length).toBeGreaterThan(0);
     for (const rule of result.coverageManifest.antiSlopRules) {
       expect(['proposed', 'shadow', 'advisory', 'gate', 'deprecated']).toContain(

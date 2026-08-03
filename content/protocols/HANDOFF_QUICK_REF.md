@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/shared/HANDOFF_QUICK_REF.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -18,10 +19,14 @@ mode: "all"
 
 ## Delimiter format (always use this)
 
+> **Nothing addressed to the user goes inside the delimiters.** The block below is written to
+> `docs/work/HANDOFF_<agent>.md` and *read by the specialist* — any `USER: open a new session…`
+> line inside it will be read as a task and relayed back at you. Instructions for the human go in
+> the pointer you print (below), never in the body.
+
 ```
 ════════════════════════════════════════════════════════════
-HANDOFF #N → <agent-name>  |  open new session → /<skill>
-USER: open a new session, type /<skill>, paste EVERYTHING below this line
+HANDOFF #N → <agent-name>  |  run by: <agent-name> via /<skill>
 ════════════════════════════════════════════════════════════
 SDLC-TASK for <agent-name>:
 
@@ -55,9 +60,34 @@ END HANDOFF #N
 ════════════════════════════════════════════════════════════
 ```
 
-## Before every HANDOFF — two mandatory steps
+## Pointer to print for the user (goes ABOVE the delimiters, never inside)
+
+The specialist must receive a prompt that **starts with the `SDLC-TASK for` trigger** — otherwise a
+smaller model falls through to its default/orchestrator mode and hands the task straight back. Give
+the user one line to paste:
+
+```
+── NEXT HANDOFF ──────────────────────────────
+Open agent:  /<skill>          (<agent-name>)
+Paste this one line into it:
+
+    SDLC-TASK for <agent-name>: read docs/work/HANDOFF_<agent>.md and execute it.
+
+It produces: <report path>   ← come back with this
+──────────────────────────────────────────────
+```
+
+## Before every HANDOFF — three mandatory steps
 1. Save state: `write(filePath="docs/work/sdlc-state.md", content="Mode/Phase/Awaiting/Next")`
 2. Write context packet: `write(filePath="docs/work/context-for-<agent>.md", content="<400 words max>")`
+3. **Code tasks with a ` ```verify ` fence — probe the fence yourself, now:**
+   `bash content/scripts/verify-handoff.sh docs/work/context-for-<agent>.md --baseline`
+   You wrote the fence, so its defects are yours. This one run proves each command
+   actually runs here (a `matched nothing` verdict = an excluded path or bad glob —
+   fix it before dispatch), records the pre-existing failures so the specialist is
+   not blamed for them, and flags any fence line whose paths all sit outside the
+   WRITE-SCOPE you just wrote. Dispatching an unprobed fence is how a specialist
+   ends up with the work done, green unreachable, and nothing delivered.
 
 ## Context packet template (400 word cap)
 ```markdown
@@ -70,6 +100,6 @@ END HANDOFF #N
 ```
 
 ## Full templates (load only when needed)
-`read(filePath="~/.config/opencode/agents/shared/HANDOFF_TEMPLATES.md")`
+`read(filePath="content/protocols/HANDOFF_TEMPLATES.md")`
 For: parallel waves (Template 4), remediation (Template 2), re-verification (Template 3), IaC (Template 9),
 requirement reconciliation before Phase 5 (Template 11 — mandatory when `plan.json` modules declare `stories[]`).

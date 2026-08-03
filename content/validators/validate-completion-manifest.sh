@@ -1,5 +1,6 @@
 #!/bin/bash
-# Provenance: bpm-opencode-experts
+# Provenance: attest (formerly bpm-opencode-experts)
+# Upstream version: 3.1.24
 # Source path: scripts/validators/validate-completion-manifest.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
@@ -122,7 +123,7 @@ extract_paths() {
   grep -oE '`[^`]*/[^`]*`' | tr -d '`'
 }
 
-# Symlink/traversal-safe existence check (Dokima field run 2026-07-12,
+# Symlink/traversal-safe existence check (Shipwright field run 2026-07-12,
 # W1-07 escape class): a bare `-e "$ROOT/$p"` (a) resolves `../` traversal
 # outside ROOT and (b) FOLLOWS a symlink the session created inside its own
 # scope pointing outside (src/leak.txt -> ~/.ssh/id_rsa) -- so a manifest
@@ -182,19 +183,148 @@ fi
 # -- 2. Verify result: must cite >=1 artifact, every cited artifact exists --
 verify_body="$(section_body '(verify[[:space:]]+result|verification|test[[:space:]]+result|tests?)')"
 verify_artifacts=0
+
+# Not every backticked token containing "/" is a file path, and calling one a
+# missing artifact blocks a HANDOFF that did nothing wrong. Field failure
+# 2026-07-30: a git-expert manifest said "Branch `sdlc/setup` created from main"
+# and "Removed `.code-search/` per the HANDOFF". Both were reported missing, and
+# the agent's own proposed remedies were to weaken the manifest or to `mkdir` an
+# inert directory purely to satisfy the check — the gate driving the evidence
+# instead of the other way round. Two mechanical discriminators:
+#
+#   1. A token that resolves as a git ref is a REF citation, not a path claim.
+#   2. A citation on a line stating the thing was REMOVED is a claim about
+#      absence; demanding it exist inverts the claim being made.
+is_git_ref() {
+  git -C "$ROOT" rev-parse --verify --quiet "refs/heads/$1"   >/dev/null 2>&1 && return 0
+  git -C "$ROOT" rev-parse --verify --quiet "refs/tags/$1"    >/dev/null 2>&1 && return 0
+  git -C "$ROOT" rev-parse --verify --quiet "refs/remotes/$1" >/dev/null 2>&1 && return 0
+  return 1
+}
+REMOVAL_RE='(removed|deleted|excluded|dropped|no longer|untracked|purged|reverted)'
+
+# Paths that survive filtering — reused by the 2b/2c evidence checks below.
+VERIFY_PATHS=""
 if [[ -n "$verify_body" ]]; then
-  while IFS= read -r p; do
-    [[ -z "$p" ]] && continue
-    verify_artifacts=$((verify_artifacts + 1))
-    if [[ ! -e "$ROOT/$p" ]]; then
-      gap "verify-artifact-not-found" "'Verify result' cites '$p' -- does not exist at $ROOT/$p"
-    fi
-  done < <(printf '%s\n' "$verify_body" | extract_paths)
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    removal=0
+    if printf '%s' "$line" | grep -qiE "$REMOVAL_RE"; then removal=1; fi
+    while IFS= read -r p; do
+      [[ -z "$p" ]] && continue
+      verify_artifacts=$((verify_artifacts + 1))
+      if is_git_ref "$p"; then
+        pass "'Verify result' cites git ref '$p' (a branch/tag, not a file)"
+        continue
+      fi
+      if [[ "$removal" -eq 1 ]]; then
+        pass "'Verify result' cites '$p' as removed -- absence is the claim, not a missing artifact"
+        continue
+      fi
+      # Routed through resolve_in_root like check 1: the 2b/2c checks below READ
+      # these files, and reading an escaping path is strictly worse than stat'ing
+      # one. Same "refused, never read" rule.
+      case "$(resolve_in_root "$p")" in
+        ok) VERIFY_PATHS="$VERIFY_PATHS$p
+" ;;
+        escapes)
+          gap "verify-artifact-escapes-root" "'Verify result' cites '$p' -- resolves outside $ROOT (traversal or symlink escape); refused, never read" ;;
+        *)
+          gap "verify-artifact-not-found" "'Verify result' cites '$p' -- does not exist at $ROOT/$p" ;;
+      esac
+    done < <(printf '%s\n' "$line" | extract_paths)
+  done < <(printf '%s\n' "$verify_body")
 fi
 if [[ -n "$verify_body" && "$verify_artifacts" -eq 0 ]]; then
   gap "verify-no-artifact" "'Verify result' section has no concrete artifact reference (a backtick-quoted path to a test log, receipt, or VERIFY_*.md) -- a bare claim like 'tests pass' isn't checkable"
 elif [[ "$verify_artifacts" -gt 0 ]]; then
   pass "checked $verify_artifacts cited verify artifact(s) against disk"
+fi
+
+# -- 2b/2c. The cited evidence must not CONTRADICT the claim -----------------
+# v2 closed "you cited nothing" and "you cited something that isn't there". It
+# left open the more expensive failure: citing a real artifact that says the
+# OPPOSITE of the claim. Field trace 2026-07 (downstream project), caught by hand three
+# times in one project:
+#   * a report claiming `npx tsc --noEmit` -> "no TypeScript errors" when a
+#     re-run showed 2 real errors,
+#   * a report whose unit-suite output "was never pasted -- only integration",
+#   * a "blocked on DB permissions" claim that was FABRICATED: the integration
+#     tests then ran clean with zero manual setup.
+# Reading a verdict out of the artifact the manifest itself points at is neither
+# a re-run nor an injection vector, so the v2 reasoning above is preserved.
+if [[ "$verify_artifacts" -gt 0 ]]; then
+  # NOTE for anyone extending this file: _lib.sh sets `set -euo pipefail`, so a
+  # bare `grep ... && var=1` ABORTS the validator when grep finds nothing (and a
+  # `var=$(grep ... | tail -1)` aborts via pipefail). Every probe below is an
+  # explicit `if`, or ends in `|| true`, for that reason.
+  claims_pass=0
+  if printf '%s\n' "$verify_body" \
+    | grep -qiE '(all )?(pass|passed|passing|green|clean|success|no (errors|failures)|0 (errors|failures))'; then
+    claims_pass=1
+  fi
+
+  while IFS= read -r p; do
+    [[ -z "$p" ]] && continue
+    # VERIFY_PATHS holds only citations already proven ok inside ROOT — git refs,
+    # removal claims, escapes and missing files were all filtered out above.
+
+    # 2b. A verdict line in the cited artifact outranks any prose claim.
+    artifact_verdict="$(grep -hoE 'VERIFY: (ALL GREEN|BASELINE_RED|RED)[^*]*' "$ROOT/$p" 2>/dev/null | tail -n 1 || true)"
+    case "$artifact_verdict" in
+      *"ALL GREEN"*|*"BASELINE_RED"*|'') ;;
+      *RED*)
+        if [[ "$claims_pass" -eq 1 ]]; then
+          gap "claim-contradicts-evidence" "'Verify result' claims a pass, but the artifact it cites ('$p') ends in '${artifact_verdict}'. The artifact wins -- fix the failure or report it, never narrate past it"
+        fi ;;
+    esac
+
+    # 2c. A named check claimed as passing must appear among the commands the
+    # cited artifact actually ran. "tsc clean" with no tsc command anywhere in
+    # the evidence is an unevidenced claim, not a verification.
+    if [[ "$claims_pass" -eq 1 ]]; then
+      for chk in tsc typecheck lint biome eslint vitest jest pytest; do
+        if ! printf '%s\n' "$verify_body" | grep -qiE "\b${chk}\b"; then continue; fi
+        if grep -qiE "\b${chk}\b" "$ROOT/$p" 2>/dev/null; then continue; fi
+        gap "claim-not-in-evidence" "'Verify result' names '${chk}' as passing, but '${chk}' appears nowhere in the cited artifact '$p' -- the check either never ran under the harness or its output was not captured. Put it in the \`\`\`verify fence so the evidence is generated, not asserted"
+      done
+    fi
+  done <<VERIFYPATHS
+$VERIFY_PATHS
+VERIFYPATHS
+fi
+
+# -- 2e. The manifest must not end the turn with a menu ----------------------
+# BOUNDED_TASK_CONTRACT: a turn ends three ways — more work, the completion
+# phrase, or BLOCKED: <evidence>. Never a menu of options or a confirm-request;
+# asking again stalls an unattended pipeline while looking cooperative. Every
+# agent file already carries that rule, and a specialist broke it anyway (field
+# trace 2026-07, verbatim): "If you want next: 1. I can open a PR against main
+# ... 2. Run any additional checks ... 3. Revert or adjust any of the changes ...
+# Which of the above would you like me to do next?"
+#
+# The conversational turn is not reachable from a validator, but the completion
+# manifest IS — and that is where the menu was written. Phrase-based on purpose: a
+# manifest legitimately contains numbered lists (Known issues, Decisions), so
+# keying on "a numbered list" would fire on every honest report. What is never
+# legitimate is asking the user to choose.
+MENU_RE='would you like me to|which of the above|shall i (proceed|continue|go ahead|start)|do you want me to|let me know (which|if you|whether)|which would you (like|prefer)|if you want next|options?:[[:space:]]*$'
+if grep -qiE "$MENU_RE" "$MANIFEST" 2>/dev/null; then
+  menu_hit="$(grep -hioE "$MENU_RE" "$MANIFEST" | head -n 1 || true)"
+  gap "manifest-asks-user-to-choose" "the manifest asks the user to choose ('${menu_hit}'). A HANDOFF turn ends three ways — more work, the completion phrase, or BLOCKED: <evidence> — never a menu. The HANDOFF already answered which mode/scope/step to run; asking again stalls an unattended pipeline while looking cooperative. Pick the documented default, state it in one line, and finish"
+fi
+
+# -- 2d. A BLOCKED claim needs evidence too ---------------------------------
+# The inverse failure, and the one that reads as caution: an invented blocker
+# costs a full round-trip and looks responsible while doing it.
+if grep -qiE '^[[:space:]]*(#+[[:space:]]*)?(\**)?BLOCKED\b|(^|[[:space:]])BLOCKED:' "$MANIFEST" 2>/dev/null; then
+  blocked_line="$(grep -hiE 'BLOCKED' "$MANIFEST" | head -n 1 || true)"
+  if [[ -z "$(printf '%s\n' "$blocked_line" | extract_paths)" ]] \
+     && ! printf '%s\n' "$blocked_line" | grep -qE '(exit [0-9]+|error|denied|not found|unreachable|refused|timeout|E[A-Z]{4,})'; then
+    gap "blocked-without-evidence" "the manifest declares BLOCKED without citing an artifact path or quoting a concrete error ('$blocked_line'). A blocker with no evidence is indistinguishable from a fabricated one -- quote the failing command's output or the artifact that shows it"
+  else
+    pass "BLOCKED claim carries an artifact or a quoted error"
+  fi
 fi
 
 # -- 3. Maker / Verifier identity: both present, must differ ----------------

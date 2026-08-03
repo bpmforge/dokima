@@ -5,7 +5,8 @@ mode: "all"
 ---
 
 <!--
-  Provenance: bpm-opencode-experts
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
   Source path: agents/shared/HANDOFF_TEMPLATES.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -40,7 +41,7 @@ END HANDOFF #N
 
 **sdlc-lead output rule:** Write the delimiter header, HANDOFF body, and delimiter footer to `docs/work/HANDOFF_<agent>.md`. Never add commentary or instructions inside the delimited region. Explanation to the user goes ABOVE the opening delimiter.
 
-**Receiving agent rule:** When your prompt starts with `SDLC-TASK for` — you are inside a HANDOFF block. Follow the six rules in `agents/shared/BOUNDED_TASK_CONTRACT.md`. Do not look for or process the delimiter lines.
+**Receiving agent rule:** When your prompt starts with `SDLC-TASK for` — or names a `docs/work/HANDOFF_*.md` path in any wording — you are inside a HANDOFF. Read the file if you were given a pointer, then follow the six rules in `agents/shared/BOUNDED_TASK_CONTRACT.md`. Do not look for or process the delimiter lines, and never re-emit the HANDOFF you received. Full rules: the **HANDOFF intake** block at the top of your agent file.
 
 ---
 
@@ -49,15 +50,24 @@ END HANDOFF #N
 **The handoff is a DOCUMENT the specialist reads, not a block the user pastes.** For each handoff:
 
 1. **Write** the full HANDOFF body (the `SDLC-TASK for <agent>` block below) to **`docs/work/HANDOFF_<agent>.md`**.
-2. **Print a short pointer to the user** — which agent to open, which handoff doc to read, and which report they'll submit back:
+2. **Print a short pointer to the user** — which agent to open, the exact line to paste, and which report they'll submit back:
    ```
    ── NEXT HANDOFF ──────────────────────────────
    Open agent:   /<skill>            (<agent-name>)
-   It reads:     docs/work/HANDOFF_<agent>.md   ← its full task is in this file
+   Paste this one line into it:
+
+       SDLC-TASK for <agent-name>: read docs/work/HANDOFF_<agent>.md and execute it.
+
    It produces:  <docs/reviews/REPORT_*.md>     ← come back when done
    I will read that report and continue. I do NOT run this check myself.
    ──────────────────────────────────────────────
    ```
+   **The paste line must start with `SDLC-TASK for`.** That prefix is the trigger every specialist
+   matches on to enter Bounded Task Mode. A bare pointer ("open /<skill>, it reads
+   docs/work/HANDOFF_<agent>.md") is *not* reliable: smaller models fall through to their default or
+   orchestrator mode and hand the task straight back — asking which mode/slug to run, or re-printing
+   the handoff and telling the user to open the very skill they are already in. Verified failure on
+   `gpt-5-mini` (2026-07); the receiving-side backstop is the **HANDOFF intake** block in every agent.
 3. **STOP and wait.** When the user returns with the completion phrase / report path, read the REPORT and continue. Never open the specialist for them, and never do the check yourself.
 
 ## Contents of the handoff document
@@ -92,6 +102,13 @@ total. The parts share one budget — do not let them fight.
 
 **Write this block to `docs/work/HANDOFF_<agent>.md`**, then print the NEXT HANDOFF pointer (above) to the user. The block below IS the document the specialist reads — the `════` delimiters frame the task.
 
+**Also write the task ledger `docs/work/TASKS_<agent>-<slug>.md`** — the HANDOFF's steps as
+`- [ ] <step>` checkboxes, one per step, in order. You (the orchestrator, a strong model) transcribe
+it so the specialist (often a small model) never has to: the specialist ticks boxes as evidence lands
+on disk, the runtime re-injects the next-unchecked items into its every turn, and after a compaction
+its whole job reduces to "reconcile the ledger against disk, do the first unchecked item." A HANDOFF
+without a ledger makes the weakest model in the pipeline do the transcription — write it yourself.
+
 ```
 ════════════════════════════════════════════════════════════
 HANDOFF → <agent-name>   (open /<skill> and read this file)
@@ -123,6 +140,40 @@ VERIFY before completing: Confirm your output explicitly covers:
 - <required topic 2>
 - <required topic 3>
 If any are missing, add them before printing the completion phrase.
+
+[Code tasks only] Runnable verify commands (tests/lint/typecheck) go in the
+context packet inside a fenced block whose opening line is "```verify" -- one
+command per line, verbatim. Then require:
+  bash content/scripts/verify-handoff.sh <packet-file> --baseline   (BEFORE first edit)
+  bash content/scripts/verify-handoff.sh <packet-file>              (loop until ALL GREEN)
+
+YOU RUN THE --baseline PASS YOURSELF, BEFORE DISPATCH. You wrote the fence, so
+its defects are yours to find, and the pre-change state only exists now. That
+one run does three things a specialist cannot do for you:
+  * proves every command actually runs here. A command that matched NOTHING
+    (excluded path, bad glob, a `scripts/` dir the project's linter config
+    ignores) comes back as "fence command matched nothing (path/config defect)"
+    -- at your desk, not as a stalled specialist. Field trace 2026-07: a fence
+    ran `biome check scripts/conductor` against a config that excludes it; the
+    specialist could not fix the config (out of scope) and could not go green,
+    so it stopped with the work done and unreported.
+  * records the pre-existing failures, so a failure the specialist did not cause
+    comes back as BASELINE_RED instead of being blamed on its work.
+  * flags any fence line whose every path lies outside the WRITE-SCOPE you just
+    wrote -- a failure the specialist is forbidden to fix. Scope the fence to
+    what the HANDOFF owns, or say in the packet that the command is a cross-check
+    whose failures are reported, not repaired.
+A repo-wide command (`pnpm test`) is still fine and often right; it is the
+baseline pass that keeps someone else's failure from landing on this specialist.
+The harness runs each command exactly as written, keeps output tails, checks
+the pass-count baseline, and writes docs/work/VERIFY_REPORT.md itself -- the
+specialist pastes that file into the completion report instead of retyping
+outputs (small models relabel errors and truncate summaries when trusted to
+transcribe; the harness makes that impossible). Before reporting, require:
+  bash content/scripts/handoff-done.sh <packet-file>
+which gates the done-claim mechanically (verify GREEN + fresh, committed,
+pushed, PRODUCE files exist, report appended) -- the completion phrase is
+printed only on DONE-CHECK: GREEN.
 
 Include a Completion Manifest at <manifest-path> with required sections:
 - Files produced (path, content summary, line count) -- every path is
@@ -268,7 +319,7 @@ The orchestrator waits for every HANDOFF to print its completion phrase, then ru
 After EVERY HANDOFF returns, before accepting the work, the orchestrator runs:
 
 ```bash
-./scripts/validators/run-handoff-gates.sh \
+content/validators/run-handoff-gates.sh \
   --scope <assigned-dir> [--scope <dir2> ...] \
   --manifest <manifest-path> \
   [--coverage <validate-<name>.sh>]
@@ -358,7 +409,7 @@ Then stop. Do not ask for follow-up.
 ```
 
 After "frontend done":
-1. Run `./scripts/validators/run-handoff-gates.sh --scope src/components --scope src/styles --scope src/theme --manifest docs/work/MANIFEST_design_system_<date>.md --coverage validate-design-system.sh`
+1. Run `content/validators/run-handoff-gates.sh --scope src/components --scope src/styles --scope src/theme --manifest docs/work/MANIFEST_design_system_<date>.md --coverage validate-design-system.sh`
 2. All gaps fixed → Wave 0 complete → feature coding waves may begin
 
 ---
@@ -411,7 +462,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ```
 
 After "architecture-designer done":
-1. Run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_architecture_design_<date>.md --coverage validate-module-design.sh`
+1. Run `content/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_architecture_design_<date>.md --coverage validate-module-design.sh`
 2. If gaps remain, return specific gaps to architecture-designer for REVISE
 3. After gate passes, db-architect and api-designer may start (they both read MODULE_DESIGN.md)
 
@@ -462,7 +513,7 @@ Then stop.
 ---
 ```
 
-After "sre done": run `./scripts/validators/run-handoff-gates.sh --scope docs/INFRASTRUCTURE.md --manifest docs/reviews/MANIFEST_infrastructure_<date>.md --coverage validate-infrastructure.sh`
+After "sre done": run `content/validators/run-handoff-gates.sh --scope docs/INFRASTRUCTURE.md --manifest docs/reviews/MANIFEST_infrastructure_<date>.md --coverage validate-infrastructure.sh`
 
 ---
 
@@ -513,7 +564,7 @@ Then stop.
 ---
 ```
 
-After "sre done": run `./scripts/validators/run-handoff-gates.sh --scope infra --manifest docs/reviews/MANIFEST_iac_<date>.md --coverage validate-iac.sh`
+After "sre done": run `content/validators/run-handoff-gates.sh --scope infra --manifest docs/reviews/MANIFEST_iac_<date>.md --coverage validate-iac.sh`
 
 ---
 
@@ -562,7 +613,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ```
 
 After "security done":
-1. Run `./scripts/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_security_controls_<date>.md --coverage validate-security-controls.sh`
+1. Run `content/validators/run-handoff-gates.sh --scope docs --manifest docs/reviews/MANIFEST_security_controls_<date>.md --coverage validate-security-controls.sh`
 2. If gate passes, issue update HANDOFFs to db-architect and api-designer (use standard Template 1, scope = their respective docs + source dirs)
 3. After both update HANDOFFs return and pass, synthesize final ARCHITECTURE.md
 
@@ -624,7 +675,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ```
 
 After "test-design done":
-1. Run `./scripts/validators/run-handoff-gates.sh --scope docs/testing --manifest docs/reviews/MANIFEST_test_design_<date>.md --coverage validate-test-design.sh`
+1. Run `content/validators/run-handoff-gates.sh --scope docs/testing --manifest docs/reviews/MANIFEST_test_design_<date>.md --coverage validate-test-design.sh`
 2. If gaps remain, iterate via coverage loop (max 3 times, then escalation)
 3. After gate passes, emit **Human Approval Gate B** and wait for user confirmation before Phase 4
 
@@ -690,7 +741,7 @@ Then stop. Do not ask for follow-up. Do not run additional phases.
 ```
 
 After "reconciliation done": run
-`./scripts/validators/validate-requirement-closure.sh` — it fails Phase 5 on any missing row or
+`content/validators/validate-requirement-closure.sh` — it fails Phase 5 on any missing row or
 any `OUTSTANDING` verdict (a `PARTIAL` verdict is allowed through; it's a disclosed gap, not a
 silently-missing one). An `OUTSTANDING` row is a real signal to go implement that story, or to
 explicitly descope it out of `docs/USER_STORIES.md` with the T29.7 scope-cut protocol (never just

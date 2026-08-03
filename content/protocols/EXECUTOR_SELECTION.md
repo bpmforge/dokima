@@ -1,16 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/EXECUTOR_SELECTION.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
-  NOTE: describes the opencode dispatch runtime; kept as reference — Dokima has a single dispatch mechanism
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/EXECUTOR_SELECTION.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # Executor Selection — how a HANDOFF actually runs
 
@@ -38,27 +39,51 @@ If `.model-context` is missing, run the detect script; if you cannot, assume
 | | Executor | When |
 |---|---|---|
 | **A** | **Native Task tool** — dispatch the full HANDOFF block as the subagent prompt; block until the Completion Manifest returns | `has_task_tool=true` AND the specialist needs no MCP tools (or `mcp_in_subagents=true`) |
-| **B** | **Subprocess** — `tools/task.ts` spawns `opencode run --agent <x> --dir <workcopy>` with the HANDOFF as prompt | `opencode_cli=true` and not already inside a subprocess-spawned session — whenever the CLI exists B is preferred over C because it removes the manual-paste pause. Required (not just preferred) when the specialist needs MCP tools and `mcp_in_subagents=false`. A fresh process is a primary session with full MCP access; the only programmatic path with timeout protection. **Always pass an explicit `--dir <workcopy>`** (eval-harness isolation lesson) so parallel B dispatches don't collide. |
-| **C** | **Manual HANDOFF paste** — print the HANDOFF block as text; the user opens a new session, types the skill, pastes | `has_task_tool=false` AND `opencode_cli=false` (no programmatic path), or A/B failed twice, or the user asked to run specialists interactively. **In `autonomy=auto`, C is an error** — auto mode must never emit a paste-and-wait; degrade to D (inline) and log to `docs/work/APPROVALS.md`. |
-| **D** | **Inline** — the coordinator reads the specialist's own agent file and runs its methodology in the same conversation, writing the specialist's output files before continuing | the specialist has **no user-facing `/skill`** AND `has_task_tool=false` — so A is unavailable and C is impossible (there is no slash to paste into). The skill-less security / code-review / performance / onboard micro-agents take this path in opencode. |
+| **B** | **Subprocess** — `tools/task.ts` spawns `opencode run --agent <x> --dir <workcopy>` with the HANDOFF as prompt | **`autonomy=auto` only.** `opencode_cli=true` and not already inside a subprocess-spawned session. Required when a specialist needs MCP tools and `mcp_in_subagents=false`. A fresh process is a primary session with full MCP access and the only programmatic path with timeout protection. **Always pass an explicit `--dir <workcopy>`** (eval-harness isolation lesson) so parallel B dispatches don't collide. **Never used in `interactive`** — there the human opens the specialist (C). |
+| **C** | **HANDOFF document for the user** — write the HANDOFF to `docs/work/HANDOFF_<agent>.md`, then print a short pointer telling the user which agent to open (`/skill`), **the exact line to paste** (`SDLC-TASK for <agent>: read docs/work/HANDOFF_<agent>.md and execute it.` — the `SDLC-TASK for` prefix is the Bounded-Task trigger; a bare "it reads X" pointer lets smaller models fall through to their default mode and hand the task back), and which report to submit back | **The default in `interactive` for any specialist with a `/skill`** — the user drives every handoff and the specialist runs as a first-class conversation they open. Also the fallback if A/B fail twice in auto. **In `autonomy=auto`, C is an error** — auto has no human to paste; degrade to D (inline) and log to `docs/work/APPROVALS.md`. |
+| **D** | **Inline** — the coordinator reads the specialist's own agent file and runs its methodology in the same conversation, writing the specialist's output files before continuing | the specialist has **no user-facing `/skill`** (so it cannot be handed off — there is no slash to open) — in either mode. Also the `auto` fallback when `opencode_cli=false` (no CLI to spawn B). A skill-less specialist that later gains a `/skill` should move to C in interactive. |
 
 ## Selection order & matrix
 
-Pick the **first** viable executor: **A → B → C**, and **→ D** for skill-less specialists that
-can't be pasted. B is now preferred over C whenever `opencode_cli=true` — the manual paste is
-the biggest structural pause, and a subprocess removes it.
+**Autonomy is the primary discriminator.** In `interactive` (a human is at the session — the
+default in the opencode TUI), a specialist that has a `/skill` is **ALWAYS Executor C**: write the HANDOFF to
+`docs/work/HANDOFF_<agent>.md` and tell the user which agent to open (`/skill`), to have it read that doc, and what report to submit back. You do
+**not** run the specialist for them via a hidden Task-tool subagent (A) or an `opencode run`
+subprocess (B). The user drives every handoff and each specialist runs as a first-class conversation
+they open. Only in `auto` (unattended/headless — e.g. the conductor) is dispatch programmatic:
+**A → B → D** (C is forbidden in `auto` — there is no human to paste). Skill-less specialists (no
+slash to open, so they cannot be pasted) fall to **D** (inline) in either mode.
 
-| has_task_tool | opencode_cli | autonomy | specialist | → executor |
-|---|---|---|---|---|
-| true | any | any | native-tools only | **A** |
-| true | true | any | needs MCP (`mcp_in_subagents=false`) | **B** |
-| false | true | any | any | **B** (subprocess) |
-| false | false | interactive | has a `/skill` | **C** (paste) |
-| false | false | interactive | skill-less | **D** (inline) |
-| false | false | **auto** | any | **D** (inline) — C is forbidden in auto; log to APPROVALS.md |
-| false | false | **auto** | needs the user (NEVER-AUTO) | pause anyway (per AUTONOMY_PROTOCOL) |
+| autonomy | specialist | runtime | → executor |
+|---|---|---|---|
+| **interactive** | has a `/skill` | any (`opencode_cli`/`has_task_tool` irrelevant) | **C** — write `docs/work/HANDOFF_<agent>.md`; the user opens the specialist, has it READ that doc, and submits the report back |
+| **interactive** | skill-less (no slash to open) | any | **D** (inline) — cannot be handed off; run its methodology in-conversation |
+| **auto** | native-tools only | `has_task_tool=true` | **A** (native Task tool) |
+| **auto** | needs MCP, or `has_task_tool=false` | `opencode_cli=true` | **B** (subprocess `opencode run`) |
+| **auto** | any | `opencode_cli=false` | **D** (inline) — C is forbidden in auto; log to `docs/work/APPROVALS.md` |
+| **auto** | needs the user (NEVER-AUTO) | — | pause per AUTONOMY_PROTOCOL |
 
-Key cases: **auto + no task tool + CLI → B**; **auto + nothing → D** (never a paste-and-wait).
+Key: **interactive → always the visible HANDOFF (C)** for skilled specialists — never a hidden A/B
+dispatch. **auto → programmatic (A/B/D), never a paste-and-wait.** The `opencode_cli`/`has_task_tool`
+probes only matter in `auto`; in `interactive` the human is the executor.
+
+## TUI mode
+
+The opencode TUI is an **interactive** session — a human is present. Per the matrix, every
+specialist that has a `/skill` is **Executor C**: you write the HANDOFF to
+`docs/work/HANDOFF_<agent>.md` and tell the user which agent to open, to have it read that doc and
+follow it, and what report to submit back. You do **NOT** spawn
+an `opencode run` subprocess (B) or a Task-tool subagent (A) to run a specialist behind the user's
+back — that is the exact behavior this rule forbids. Executor B (subprocess) is for **auto/headless**
+runs (the unattended conductor), not the interactive TUI.
+
+> This supersedes the earlier T30.10 guidance that preferred B in the TUI "to remove the manual-paste
+> pause." The visible, user-driven handoff is the opencode requirement: subagents can't use MCP
+> (#16491) and the user must see each specialist as a first-class conversation they open. The
+> manual-paste "pause" is the intended interaction, not a defect.
+
+Skill-less specialists (no slash to open) are the only interactive exception — they fall to **D**
+(inline). Companion checkpoint/scan-output rules: `agents/shared/TUI_SESSION_HYGIENE.md`.
 
 ## Which specialists need MCP
 
@@ -82,3 +107,46 @@ micro-agents — they read files, run bash, write findings.
 - anomalyco/opencode#16491 — MCP tools unavailable in Task-tool subagents (open; the reason `mcp_in_subagents` defaults false)
 - anomalyco/opencode#6573 — native Task awaits have no timeout (the reason B is preferred for long specialists)
 - anomalyco/opencode#15069 — async dispatch (feature request; would let the runner parallelize natively)
+
+---
+
+## Proof of execution — a dispatch is only a RESULT if it proves it ran
+
+**Field basis (2026-07-25, local-model pipeline evaluation).** Seven distinct
+faults were found while driving local models through this system. Every one made
+a model look *worse* than it was; not one ever made a model look better. That
+asymmetry is structural, not luck: broken plumbing **fails closed** — no output,
+no matching glyph, no permission, wrong agent, wrong directory — and failing
+closed is **indistinguishable from "the model didn't do it."**
+
+So the system's default reading of a silent dispatch ("the specialist ran and
+found nothing") is exactly the wrong one, and it is the reading that ships.
+
+**Rule.** A dispatched specialist's output may be treated as a RESULT only when it
+carries proof of execution:
+
+1. **Completion phrase present** — `✓ <agent> done — [...]` per
+   `BOUNDED_TASK_CONTRACT.md` Rule 3. Enforced in `tools/task.ts`; exit 0 is NOT
+   evidence.
+2. **The requested agent actually ran** — `opencode run --agent <x>` where `x` is
+   `mode:subagent` prints a notice, silently runs the DEFAULT agent, and exits 0.
+   Only `mode:primary` agents are dispatchable via path B; subagents go via path C.
+3. **Artifacts exist at the declared paths, inside the intended tree** — the
+   default-agent fallback also drops `--dir` (`cwd:` survives it), so a session can
+   escape and write into the parent repo. Verify the PRODUCE paths landed where
+   the HANDOFF said, not merely that files appeared somewhere.
+
+**Without all three, the outcome is `NOT RUN` / `UNKNOWN` — never "clean".** An
+absent finding from an unproven dispatch is not a passing result; it is missing
+data, and it must not satisfy a gate.
+
+> This is the dispatch-time analogue of what `validate-completion-manifest.sh` v2
+> already does for manifests that exist ("cannot be faked by content"). The gap it
+> closes is the manifest that never existed at all — which no validator could see,
+> because nothing required one to be there.
+
+**Corollary for reviewers.** When a local model "fails" a task, check in this
+order before recording the failure: provider-qualified model id → agent is
+`mode:primary` → working directory → artifact paths → your success-detector
+actually matches real output. In this evaluation that checklist would have caught
+all seven.

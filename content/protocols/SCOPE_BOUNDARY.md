@@ -1,15 +1,17 @@
-<!--
-  Provenance: bpm-opencode-experts
-  Source path: agents/shared/SCOPE_BOUNDARY.md
-  Import date: 2026-07-12 (gap-fill: W1-01 imported only the 4 named protocols; D-011 mandates the full library)
-  DO NOT EDIT — this is imported content
--->
-
 ---
 description: 'Reference document — read on demand, not an agent.'
 disable: true
 mode: "all"
 ---
+
+<!--
+  Provenance: attest (formerly bpm-opencode-experts)
+  Upstream version: 3.1.24
+  Source path: agents/shared/SCOPE_BOUNDARY.md
+  Import date: 2026-07-12
+  DO NOT EDIT — this is imported content
+-->
+
 
 # SCOPE_BOUNDARY.md
 

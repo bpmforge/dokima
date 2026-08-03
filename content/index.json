@@ -1,11 +1,13 @@
 {
   "version": 1,
   "importDate": "2026-07-12",
-  "sourceRepo": "bpm-opencode-experts",
+  "sourceRepo": "attest",
+  "sourceRepoAlias": "bpm-opencode-experts",
+  "upstreamVersion": "3.1.24",
   "summary": {
-    "experts": 88,
-    "validators": 78,
-    "protocols": 26
+    "experts": 93,
+    "validators": 85,
+    "protocols": 35
   },
   "experts": {
     "coordinators": {
@@ -58,7 +60,7 @@
     },
     "phase-specialists": {
       "role": "Domain specialists for SDLC phases",
-      "count": 12,
+      "count": 13,
       "items": {
         "api-designer": {
           "file": "api-designer.md",
@@ -83,6 +85,10 @@
         "performance-engineer": {
           "file": "performance-engineer.md",
           "description": "description: 'Performance audit coordinator — dispatches 5 specialist micro-agents, synthesizes comp"
+        },
+        "qa-vnv-engineer": {
+          "file": "qa-vnv-engineer.md",
+          "description": "description: 'QA & V&V (Verification and Validation) specialist — the end-user-testing discipline ow"
         },
         "reliability-engineer": {
           "file": "reliability-engineer.md",
@@ -262,11 +268,15 @@
     },
     "game": {
       "role": "Game development specialists",
-      "count": 5,
+      "count": 9,
       "items": {
         "game-asset-pipeline": {
           "file": "game-asset-pipeline.md",
           "description": "name: 'Game Asset Pipeline'"
+        },
+        "game-audio-designer": {
+          "file": "game-audio-designer.md",
+          "description": "name: 'Game Audio Designer'"
         },
         "game-balance-designer": {
           "file": "game-balance-designer.md",
@@ -276,9 +286,21 @@
           "file": "game-designer.md",
           "description": "name: 'Game Designer'"
         },
+        "game-producer": {
+          "file": "game-producer.md",
+          "description": "name: 'Game Producer'"
+        },
         "gameplay-engineer": {
           "file": "gameplay-engineer.md",
           "description": "name: 'Gameplay Engineer'"
+        },
+        "level-designer": {
+          "file": "level-designer.md",
+          "description": "name: 'Level Designer'"
+        },
+        "narrative-designer": {
+          "file": "narrative-designer.md",
+          "description": "name: 'Narrative Designer'"
         },
         "playtest-evaluator": {
           "file": "playtest-evaluator.md",
@@ -320,7 +342,7 @@
         },
         "container-ops": {
           "file": "container-ops.md",
-          "description": "description: 'Container operations expert — Podman/Docker, Dockerfiles, compose, networking, debuggi"
+          "description": "description: 'Container operations expert — detects the local runtime (Docker/Podman/Rancher-nerdctl"
         },
         "data-steward": {
           "file": "data-steward.md",
@@ -411,7 +433,7 @@
   },
   "validators": {
     "overview": "Executable validators (bash scripts) implementing the 0/1 + JSON-gaps contract, plus the shared _lib*.sh they source",
-    "count": 78,
+    "count": 85,
     "items": {
       "_lib": {
         "file": "_lib.sh",
@@ -427,6 +449,10 @@
       },
       "run-handoff-gates": {
         "file": "run-handoff-gates.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "secrets-scan": {
+        "file": "secrets-scan.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
       },
       "validate-adrs": {
@@ -565,6 +591,10 @@
         "file": "validate-infrastructure.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
       },
+      "validate-invariants": {
+        "file": "validate-invariants.sh",
+        "description": "set -uo pipefail"
+      },
       "validate-inventory": {
         "file": "validate-inventory.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
@@ -583,7 +613,7 @@
       },
       "validate-mermaid": {
         "file": "validate-mermaid.sh",
-        "description": "set -uo pipefail"
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
       },
       "validate-migrations": {
         "file": "validate-migrations.sh",
@@ -629,8 +659,16 @@
         "file": "validate-phase-gate.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
       },
+      "validate-qa-evidence": {
+        "file": "validate-qa-evidence.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
       "validate-release-readiness": {
         "file": "validate-release-readiness.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
+      "validate-remote-parity": {
+        "file": "validate-remote-parity.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
       },
       "validate-requirement-closure": {
@@ -721,6 +759,18 @@
         "file": "validate-vendor-provenance.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
       },
+      "validate-verification-integrity.baseline": {
+        "file": "validate-verification-integrity.baseline",
+        "description": "caller-input-state-flip\tapps/server/src/api/plans-routes.ts\tif (!isPlanEvaluationSnapshot(body?.snap"
+      },
+      "validate-verification-integrity.selftest": {
+        "file": "validate-verification-integrity.selftest",
+        "description": "set -uo pipefail"
+      },
+      "validate-verification-integrity": {
+        "file": "validate-verification-integrity.sh",
+        "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
+      },
       "validate-wcag-coverage": {
         "file": "validate-wcag-coverage.sh",
         "description": "source \"$(dirname \"${BASH_SOURCE[0]}\")/_lib.sh\""
@@ -729,7 +779,7 @@
   },
   "protocols": {
     "overview": "Shared protocol specifications and agent coordination patterns",
-    "count": 26,
+    "count": 35,
     "items": {
       "ANTI_SLOP_RULES": {
         "file": "ANTI_SLOP_RULES.md",
@@ -767,6 +817,14 @@
         "file": "CODE_BOOK_PROTOCOL.md",
         "description": "description: 'Reference document — read on demand, not an agent.'"
       },
+      "CODE_SEARCH": {
+        "file": "CODE_SEARCH.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "CONTAINER_RUNTIMES": {
+        "file": "CONTAINER_RUNTIMES.md",
+        "description": "description: 'Reference document — read on demand, not an agent. The runtime-detection + local-lands"
+      },
       "CONTEXT_BUDGET": {
         "file": "CONTEXT_BUDGET.md",
         "description": "description: 'Reference document — read on demand, not an agent.'"
@@ -779,9 +837,21 @@
         "file": "FIX_VERIFY_LOOP.md",
         "description": "description: 'Reference document — read on demand, not an agent.'"
       },
+      "GAME_PRODUCTION": {
+        "file": "GAME_PRODUCTION.md",
+        "description": "description: 'Reference document — read on demand, not an agent. How real games are actually produce"
+      },
+      "GAME_TOOLING": {
+        "file": "GAME_TOOLING.md",
+        "description": "description: 'Reference document — read on demand, not an agent. The game-tool MCP landscape + agent"
+      },
       "GATE_SCORING_PROTOCOL": {
         "file": "GATE_SCORING_PROTOCOL.md",
         "description": "name: gate-scoring-protocol"
+      },
+      "GUIDE_CAPTURE": {
+        "file": "GUIDE_CAPTURE.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
       },
       "HANDOFF_QUICK_REF": {
         "file": "HANDOFF_QUICK_REF.md",
@@ -819,6 +889,10 @@
         "file": "PHASE_ROUTING_PROTOCOL.md",
         "description": "name: phase-routing-protocol"
       },
+      "QA_VNV_TESTING": {
+        "file": "QA_VNV_TESTING.md",
+        "description": "description: 'Reference document — read on demand, not an agent. The runnable QA/V&V technique libra"
+      },
       "RALPH_WIGGUM_LOOP": {
         "file": "RALPH_WIGGUM_LOOP.md",
         "description": "description: 'Reference document — read on demand, not an agent.'"
@@ -831,8 +905,20 @@
         "file": "SCOPE_BOUNDARY.md",
         "description": "description: 'Reference document — read on demand, not an agent.'"
       },
+      "SDLC_RESUME_PROTOCOL": {
+        "file": "SDLC_RESUME_PROTOCOL.md",
+        "description": "description: 'Reference document — read on demand, not an agent. The deterministic procedure for res"
+      },
       "SESSION_PRIMER": {
         "file": "SESSION_PRIMER.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
+      },
+      "TOOL_PREFLIGHT": {
+        "file": "TOOL_PREFLIGHT.md",
+        "description": "description: 'Reference document — read on demand, not an agent. The enforced tool-preflight + diagn"
+      },
+      "TUI_SESSION_HYGIENE": {
+        "file": "TUI_SESSION_HYGIENE.md",
         "description": "description: 'Reference document — read on demand, not an agent.'"
       }
     }

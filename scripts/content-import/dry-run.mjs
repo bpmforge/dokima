@@ -59,7 +59,25 @@ export function dryRunReport({ sourceRoot, contentRoot, expertClusters, upstream
     }
   }
 
-  const added = [...upstreamAgents.keys()].filter((k) => !localAgents.has(k))
+  // An upstream agents/ file can legitimately land somewhere other than
+  // experts/ — E2E_INFRASTRUCTURE.md is a reference and routes to
+  // content/references/. Checking only experts/ reported it "added" on every
+  // run forever, which is a false positive in the one report that exists to be
+  // trusted. Look across the whole content tree before calling anything absent.
+  const elsewhereInContent = new Set()
+  const scanContent = (dir) => {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) scanContent(full)
+      else if (entry.endsWith('.md')) elsewhereInContent.add(entry)
+    }
+  }
+  scanContent(contentRoot)
+
+  const added = [...upstreamAgents.keys()].filter(
+    (k) => !localAgents.has(k) && !elsewhereInContent.has(k),
+  )
   const removed = [...localAgents.keys()].filter((k) => !upstreamAgents.has(k))
   let drifted = 0
   let identical = 0
@@ -89,8 +107,13 @@ export function dryRunReport({ sourceRoot, contentRoot, expertClusters, upstream
   )
 
   console.log(`\nDRY RUN — nothing written. upstream ${sourceRoot} @ v${upstreamVersion}\n`)
-  console.log(`  experts drifted   ${drifted}  (${drifted - (identicalBeforeRewrite - identical)} upstream edits + ${identicalBeforeRewrite - identical} from the host-path rewrite)`)
-  console.log(`  experts identical ${identical}  (${identicalBeforeRewrite} before the host-path rewrite — the number W10_PLAN §0 measured)`)
+  const rewriteOnly = Math.max(0, identicalBeforeRewrite - identical)
+  const upstreamEdits = Math.max(0, drifted - rewriteOnly)
+  console.log(
+    `  experts drifted   ${drifted}` +
+      (drifted > 0 ? `  (${upstreamEdits} upstream edits + ${rewriteOnly} from the host-path rewrite)` : ''),
+  )
+  console.log(`  experts identical ${identical}`)
   console.log(`  experts added     ${added.length}${added.length ? '  ' + added.join(', ') : ''}`)
   console.log(`  experts removed   ${removed.length}${removed.length ? '  ' + removed.join(', ') : ''}`)
   console.log(`  upstream files carrying a ~/.config/opencode path: ${hostPathFiles} (rewritten on import)`)

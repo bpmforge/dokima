@@ -1,5 +1,6 @@
 #!/bin/bash
-# Provenance: bpm-opencode-experts
+# Provenance: attest (formerly bpm-opencode-experts)
+# Upstream version: 3.1.24
 # Source path: scripts/validators/validate-handoff-discipline.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
@@ -123,5 +124,78 @@ while IFS= read -r f; do
   gap "scan-inline-dispatch" "$rel dispatches a scan-heavy specialist (semgrep/secrets/dependency/OWASP/threat-model/cloud/IaC) inline instead of a fresh Executor A/B context -- inline dispatch in an accumulating TUI session is the flood source (LOCAL_CONTEXT_INTEGRITY_DESIGN.md V8); route via task-tool subagent or opencode run subprocess, never inline. See agents/shared/TUI_SESSION_HYGIENE.md."
 done < <(find "$AGENTS_DIR" -name '*.md' -type f)
 
-note "checked $checked task()-shorthand file(s), $dispatchers concurrent-dispatch coordinator(s), and $scan_dispatchers scan-specialist inline-dispatch site(s)"
+# ── User-addressed text inside the delimited HANDOFF body ─────────────
+# The `════` block is written to docs/work/HANDOFF_<agent>.md and READ BY THE
+# SPECIALIST as its task -- so a line addressed to the human inside it ("USER:
+# open a new session, type /<skill>, paste everything below") is read as an
+# instruction and relayed back: the specialist re-prints the handoff and tells
+# the user to open the skill it is already running, producing nothing. Verified
+# on gpt-5-mini, 2026-07. Delivery instructions belong in the pointer printed
+# ABOVE the opening delimiter, never inside it.
+#   HANDOFF_TEMPLATES.md: "Explanation to the user goes ABOVE the opening delimiter."
+handoff_bodies=0
+while IFS= read -r f; do
+  rel="${f#"$ROOT"/}"
+  grep -q '════' "$f" || continue
+  handoff_bodies=$((handoff_bodies + 1))
+  # The invariant is positional and simple: delivery text goes ABOVE the opening
+  # delimiter, so any USER: line at or below the FIRST ════ is misplaced. Do NOT
+  # toggle in/out on each delimiter -- a canonical block has four (header open,
+  # header close, footer open, footer close), so toggling marks the header and
+  # footer as "inside" and the TASK BODY between them as "outside", which is
+  # backwards: the body is precisely the region the specialist reads as its task.
+  # A single "seen the first delimiter yet?" latch catches header, body, and
+  # footer placements uniformly.
+  hits=$(awk '
+    /════/ { seen = 1 }
+    seen && /^[[:space:]]*USER:/ { print NR ": " $0 }
+  ' "$f")
+  if [[ -n "$hits" ]]; then
+    while IFS= read -r h; do
+      gap "user-line-in-handoff-body" "$rel:${h%%:*} has a USER:-addressed line INSIDE the ════ delimiters -- the specialist reads that body as its task and will relay it back instead of executing. Move delivery instructions into the pointer printed above the opening delimiter."
+    done <<< "$hits"
+  fi
+done < <(find "$AGENTS_DIR" "$ROOT/skills" -name '*.md' -type f 2>/dev/null)
+
+# ── Every handoff-receiving agent must carry the HANDOFF intake block ──
+# The intake block is what makes a POINTER to a handoff ("open /review-code, it
+# reads docs/work/HANDOFF_x.md") execute rather than fall through to the agent's
+# default/orchestrator mode. Without it a coordinator re-emits the handoff it was
+# just given. Kept in sync by scripts/build-agents.mjs; this asserts presence.
+INTAKE_HEADING='## HANDOFF intake (MANDATORY'
+missing_intake=0
+while IFS= read -r f; do
+  rel="${f#"$ROOT"/}"
+  case "$rel" in agents/shared/*) continue ;; esac
+  grep -q 'SDLC-TASK for' "$f" || continue
+  grep -qF "$INTAKE_HEADING" "$f" && continue
+  missing_intake=$((missing_intake + 1))
+  gap "missing-handoff-intake" "$rel can receive a HANDOFF (references SDLC-TASK for) but has no '${INTAKE_HEADING}…)' block -- a pointer-delivered handoff will fall through to its default mode and be handed back. Run: node scripts/build-agents.mjs --fix"
+done < <(find "$AGENTS_DIR" -name '*.md' -type f)
+
+# ── Prefix-only mode gates that contradict the intake block ────────────────
+# Several agents also carry a per-agent Bounded-Task gate ("Does your prompt
+# start with SDLC-TASK for?" / "Prompt does NOT start with SDLC-TASK for?
+# Continue to Execution Modes"). If that gate keys ONLY on the literal prefix, it
+# contradicts the intake block above it: a pointer-delivered handoff does not
+# start with SDLC-TASK for, so the gate routes it to the default/orchestrator
+# mode — the exact re-emit failure the block exists to prevent. The block wins in
+# practice (verified on gpt-5-mini), but the contradiction is a latent landmine on
+# a weaker model or a reworded pointer. A compliant gate must also mention the
+# HANDOFF pointer near the SDLC-TASK-for check.
+prefix_gates=0
+while IFS= read -r f; do
+  rel="${f#"$ROOT"/}"
+  case "$rel" in agents/shared/*) continue ;; esac
+  # Only the fall-through phrasing that actively routes elsewhere is the hazard.
+  grep -qE 'does NOT start with `SDLC-TASK for|Prompt (does NOT|neither)' "$f" || continue
+  # Compliant if the same gate line also references a HANDOFF_*.md pointer.
+  if grep -qE 'Prompt (does NOT start with `SDLC-TASK|neither starts with)' "$f" \
+     && ! grep -qE 'nor names a `docs/work/HANDOFF|names a `docs/work/HANDOFF' "$f"; then
+    prefix_gates=$((prefix_gates + 1))
+    gap "prefix-only-mode-gate" "$rel has a Bounded-Task gate that keys only on the literal 'SDLC-TASK for' prefix and routes everything else to its default mode -- a pointer-delivered handoff falls through, contradicting the HANDOFF intake block. Make the gate also recognise a docs/work/HANDOFF_*.md pointer."
+  fi
+done < <(find "$AGENTS_DIR" -name '*.md' -type f)
+
+note "checked $checked task()-shorthand file(s), $dispatchers concurrent-dispatch coordinator(s), $scan_dispatchers scan-specialist inline-dispatch site(s), $handoff_bodies file(s) with HANDOFF delimiters, intake-block presence ($missing_intake missing), and prefix-only gates ($prefix_gates)"
 validator_exit
