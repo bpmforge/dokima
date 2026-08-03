@@ -1,0 +1,82 @@
+/**
+ * gateway-model-port/config.ts — resolving WHICH provider and model a pipeline call uses.
+ *
+ * Chapter of the 450-line gateway-model-port.ts, split under the 400-line
+ * CODE_BOOK_PROTOCOL cap (W10-48). Extraction only, no behaviour change.
+ */
+
+import { envTarget, resolveModelTarget, type ResolvedModelTarget } from '../model-resolution.js';
+
+export interface GatewayConfig {
+  readonly baseUrl: string;
+  readonly apiKey?: string;
+  readonly model: string;
+  /** Which adapter to construct (W10-03). Absent => oai-compat, the pre-registry behaviour. */
+  readonly kind?: import('@dokima/gateway').ProviderKind;
+  /** Which registry entry this came from, for provenance in traces. */
+  readonly providerId?: string;
+  /** Test-only override — real callers always get the real `fetch`. */
+  readonly fetchImpl?: typeof fetch;
+}
+
+/**
+ * Local-first default (C-1): an LM Studio-shaped endpoint on localhost, zero
+ * network required. Retained as the DOCUMENTED override for CI and fixtures
+ * (the e2e fake-model gateway sets these), and now explicitly second in line
+ * behind an explicit registry+matrix selection — see `model-resolution.ts`.
+ */
+export function resolveGatewayConfigFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): GatewayConfig {
+  const t = envTarget(env);
+  return {
+    baseUrl: t.baseUrl ?? 'http://127.0.0.1:1234/v1',
+    apiKey: env.DOKIMA_MODEL_API_KEY,
+    model: t.model,
+  };
+}
+
+/**
+ * W10-03: resolve the provider+model the user actually chose, falling back to
+ * the env config when nothing is configured. `projectPath` absent => env-only.
+ */
+export async function resolveGatewayConfigForProject(
+  projectPath: string | undefined,
+  opts: {
+    role?: string;
+    taskType?: 'reasoning' | 'code' | 'verification' | 'embed' | 'escalation';
+    env?: NodeJS.ProcessEnv;
+    fetchImpl?: typeof fetch;
+  } = {},
+): Promise<GatewayConfig> {
+  const target = await resolveModelTarget({
+    projectPath,
+    role: opts.role ?? 'coding-agent',
+    taskType: opts.taskType ?? 'reasoning',
+    env: opts.env,
+  });
+  return targetToConfig(target, opts.env ?? process.env, opts.fetchImpl);
+}
+
+export function targetToConfig(
+  target: ResolvedModelTarget,
+  env: NodeJS.ProcessEnv,
+  fetchImpl?: typeof fetch,
+): GatewayConfig {
+  return {
+    baseUrl: target.baseUrl ?? 'http://127.0.0.1:1234/v1',
+    // A credentialRef NAMES a keychain entry; the keychain resolves it at call
+    // time (Law 8). The env key remains the CI path only.
+    apiKey: env.DOKIMA_MODEL_API_KEY,
+    model: target.model,
+    kind: target.kind,
+    providerId: target.providerId,
+    ...(fetchImpl ? { fetchImpl } : {}),
+  };
+}
+
+/**
+ * Constructs the adapter the resolved KIND names — not an unconditional
+ * `createOaiCompatProvider`. This is what makes the Anthropic/Ollama/LM Studio
+ * adapters reachable from a production path for the first time.
+ */
