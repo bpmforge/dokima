@@ -11,19 +11,25 @@ name what a change means for that boundary, not just what moved.
 
 ## [Unreleased]
 
-### Added
+Nothing yet.
 
-- Content importer now takes a configurable, validated upstream checkout
-  (`--source=` / `DOKIMA_CONTENT_SOURCE`), rewrites host-install paths at import
-  time, refuses to clobber registered local patches, and has a `--dry-run` that
-  writes nothing.
+## [0.1.0] — 2026-08-03
 
-### Changed
+First public release. Every milestone gate through the v1.0 dogfood criterion
+is met; the version is deliberately conservative while the name clears
+trademark review.
 
-- **License: Apache-2.0 → FSL-1.1-ALv2** (D-022), before any public release.
-  Use, modification, internal and client use all stay permitted; offering
-  Dokima as a competing product or service does not. Each release becomes
-  Apache-2.0 two years after it ships. Bundled `content/` remains Apache-2.0.
+> The `v0.1.0` tag was re-pointed once before release, after verification of the
+> packaged artifact found that the shipped validator pack could not run at all
+> (see *Fixed* below). Nothing had been published or released against the
+> earlier tag. Recorded here rather than quietly retagged.
+
+### Licensing
+
+- **FSL-1.1-ALv2** (D-022). Use, modification, internal and client use are all
+  permitted; offering Dokima as a competing product or service is not. Each
+  release becomes Apache-2.0 two years after it ships. Bundled `content/`
+  remains Apache-2.0 (imported from `attest`).
 
 ### Known gaps
 
@@ -81,6 +87,17 @@ trademark review.
 - The published package could not locate its own assets: the distribution root
   was identified by a hardcoded package name, which scoping the name for
   publication broke.
+- **The shipped validator pack could not run at all.** The shared libraries
+  every validator sources (`_lib.sh`, `_lib_sdlc_config.sh`) were absent from
+  the signed manifest, so a real install landed 81 validators and zero
+  libraries and executing any of them exited 127. The repo never noticed
+  because its own gates run validators from the source tree, where the
+  libraries sit beside them. The pack is now signed and installed complete, and
+  a gate executes an installed validator rather than counting files.
+- The content importer pointed at a repository that no longer exists (upstream
+  renamed), and refreshed only 8 of 26 protocol documents.
+- `**/` in a `write_scope` glob required at least one directory segment, so a
+  scope the board accepted could be rejected by the enforcer.
 
 [Unreleased]: https://github.com/bpmforge/dokima/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/bpmforge/dokima/releases/tag/v0.1.0
