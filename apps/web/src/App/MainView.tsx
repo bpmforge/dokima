@@ -9,6 +9,7 @@ import { NotificationsView } from '../notifications/NotificationsView.js';
 import '../notifications/notifications.css';
 import { CommandPalette } from '../palette/index.js';
 import type { PaletteMode } from '../palette/index.js';
+import { InterviewPanel } from '../onboarding/InterviewPanel.js';
 import { PlanView } from '../plans/PlanView.js';
 import '../plans/plans.css';
 import { RosterView } from '../roster/RosterView.js';
@@ -68,6 +69,18 @@ export function MainView({
   }
   if (view === 'plans' && projectId) {
     return <PlanView projectId={projectId} />;
+  }
+  // W10-54: the entry point that did not exist. Everything downstream — the
+  // blueprint phase, decomposition, the board — was already built and reachable
+  // only from the guided sample's hardcoded idea.
+  if (view === 'interview' && projectId) {
+    return (
+      <InterviewPanel
+        projectId={projectId}
+        projectName={'Untitled'}
+        onComplete={closeView}
+      />
+    );
   }
   if (view === 'trace' && projectId && apiOpts && traceTicketId) {
     return (

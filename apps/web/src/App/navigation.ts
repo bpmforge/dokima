@@ -3,14 +3,23 @@ import type { PaletteMode } from '../palette/index.js';
 import { pushTraceViewUrl, readTraceTicketId } from '../trace/urlParams.js';
 
 export type View =
-  'settings' | 'wizard' | 'roster' | 'notifications' | 'plans' | 'trace' | null;
+  | 'settings'
+  | 'wizard'
+  | 'roster'
+  | 'notifications'
+  | 'plans'
+  | 'trace'
+  // W10-54: where a user describes their own idea. Until this existed the only
+  // path that could start a pipeline was the guided sample, on a canned idea.
+  | 'interview'
+  | null;
 
 /** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications`/`view=plans`/`view=trace` layer over either Fleet or a project. */
 function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
 }
 
-const VALID_VIEWS = ['settings', 'wizard', 'roster', 'notifications', 'plans', 'trace'];
+const VALID_VIEWS = ['settings', 'wizard', 'roster', 'notifications', 'plans', 'trace', 'interview'];
 
 function readView(): View {
   const view = new URLSearchParams(window.location.search).get('view');

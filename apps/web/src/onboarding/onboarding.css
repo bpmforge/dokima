@@ -40,3 +40,52 @@
   flex-direction: column;
   gap: var(--sw-space-1);
 }
+
+/* ── W10-54: the interview surface ──────────────────────────────────────
+   Every value below is a --sw-* token, not a literal: styles.test.ts gates
+   raw hex, raw px and off-scale rem, and a new stylesheet is exactly where
+   those slip in. */
+.interview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-4);
+  max-width: 44rem;
+  padding: var(--sw-space-4);
+}
+
+.interview__hint {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+  margin: 0;
+}
+
+.interview__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+}
+
+.interview__field > span {
+  font-weight: 600;
+}
+
+.interview__field input,
+.interview__field textarea {
+  width: 100%;
+  padding: var(--sw-space-2);
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-sm);
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  font: inherit;
+}
+
+.interview__field small {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-xs);
+}
+
+.interview__error {
+  color: var(--sw-danger);
+  margin: 0;
+}
