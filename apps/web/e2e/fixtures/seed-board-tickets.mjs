@@ -162,12 +162,19 @@ try {
       runId: 'run-e2e-1',
       payload: { pass: 1 },
     });
+    // `gate.receipt_minted` is anchored only by `mintReceipt`
+    // (packages/events/src/receipts.ts) with `payload: { receiptId, kind,
+    // contentMac }` — validator results live in the separate `receipts`
+    // table, never in this event's payload (W10-41). `contentMac` is
+    // omitted rather than faked over a receipt that was never really
+    // minted (no `receipts` row backs this fixture); TESTING.md's rule is
+    // "less than production, never more".
     appendEvent(log, {
       eventType: 'gate.receipt_minted',
       actorId: 'agent-1',
       ticketId: 'E2E-TRACE-1',
       runId: 'run-e2e-1',
-      payload: { validators: [{ name: 'lint', exitCode: 0, gapCount: 0 }] },
+      payload: { receiptId: 'receipt-e2e-1', kind: 'gate' },
     });
     appendEvent(log, {
       eventType: 'escalation.rung_advanced',
