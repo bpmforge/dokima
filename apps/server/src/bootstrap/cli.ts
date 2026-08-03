@@ -4,8 +4,13 @@
  * already-running core first; `packs update` re-verifies + reinstalls the
  * first-party content pack. All the heavy dependencies are injectable so
  * this dispatch logic is testable without a real socket/browser/process.
+ *
+ * Argument handling is checked BEFORE any of that and never falls through to a
+ * boot (W10-44): `--help`, `--version` and every mistyped command print and
+ * exit, because booting a server is not a reasonable response to a typo.
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
 import {
   buildApiServer,
@@ -147,13 +152,82 @@ async function runServerBoot(io: CliIO, deps: CliDeps): Promise<number> {
 
 const SERVICE_SUBCOMMANDS = ['install', 'status', 'stop'] as const;
 
+const USAGE = `dokima — local-first agentic development platform
+
+usage:
+  dokima                        boot the core and open the Canvas (or attach to a running one)
+  dokima doctor                 check the local install and report what is wrong
+  dokima backup                 write a backup of the event log
+  dokima packs update           re-verify and reinstall the first-party content pack
+  dokima providers refresh      re-discover models from every configured provider
+  dokima service <install|status|stop>
+                                manage the background service
+
+  -h, --help                    print this and exit
+  -V, --version                 print the version and exit
+
+environment:
+  DOKIMA_PORT                   port to bind (default ${DEFAULT_PORT})
+  DOKIMA_HOME                   state directory (default ~/.dokima)
+  DOKIMA_LOG_LEVEL              'debug' for boot diagnostics
+  DOKIMA_DIST_ROOT              override the distribution-root probe`;
+
+/**
+ * The version from the distribution's own manifest.
+ *
+ * Read at call time rather than baked in: the bundle is built once and the
+ * manifest beside it is the only thing that knows what version was published.
+ * Anchored via `resolveAsset` so it works from both a source checkout and an
+ * installed package (W10-43).
+ */
+function readVersion(): string {
+  try {
+    const raw = fs.readFileSync(resolveAsset('package.json'), 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const version = (parsed as { version?: unknown }).version;
+      if (typeof version === 'string' && version !== '') return version;
+    }
+    return 'unknown';
+  } catch {
+    // A missing or unreadable manifest is not worth crashing `--version` over.
+    return 'unknown';
+  }
+}
+
+/** Every first token this CLI answers to. Anything else is a typo, not a boot. */
+const KNOWN_COMMANDS = ['packs', 'backup', 'doctor', 'service', 'providers'] as const;
+
 export async function runPackagedCli(
   argv: string[],
   io: CliIO,
   deps: CliDeps = {},
 ): Promise<number> {
-  if (argv[0] === 'packs' && argv[1] === 'update') {
-    return runPacksUpdate(io, deps);
+  // Argument handling comes first and never falls through. Until W10-44 the
+  // final statement of this function was an unconditional `runServerBoot`, so
+  // `--help` — and any mistyped command — booted the core and opened a browser
+  // instead of printing usage. Harmless in a source checkout; it is the first
+  // thing a stranger runs after `npx @bpmforge/dokima`.
+  if (argv[0] === '--help' || argv[0] === '-h') {
+    io.stdout(USAGE);
+    return 0;
+  }
+  if (argv[0] === '--version' || argv[0] === '-V') {
+    io.stdout(readVersion());
+    return 0;
+  }
+  if (argv[0] !== undefined && !(KNOWN_COMMANDS as readonly string[]).includes(argv[0])) {
+    // Exit non-zero, not 0: a script must be able to tell a real run from a
+    // typo, and a silent success here is how the original defect hid.
+    io.stderr(`dokima: unknown command '${argv[0]}'`);
+    io.stderr(USAGE);
+    return 2;
+  }
+
+  if (argv[0] === 'packs') {
+    if (argv[1] === 'update') return runPacksUpdate(io, deps);
+    io.stderr('usage: dokima packs update');
+    return 2;
   }
   if (argv[0] === 'backup') {
     return runBackupCommand(io, deps.backup);
@@ -173,8 +247,12 @@ export async function runPackagedCli(
     io.stderr(`usage: dokima service <${SERVICE_SUBCOMMANDS.join('|')}>`);
     return 2;
   }
-  if (argv[0] === 'providers' && argv[1] === 'refresh') {
-    return runProvidersRefreshCommand(io, deps.providersRefresh);
+  if (argv[0] === 'providers') {
+    if (argv[1] === 'refresh')
+      return runProvidersRefreshCommand(io, deps.providersRefresh);
+    io.stderr('usage: dokima providers refresh');
+    return 2;
   }
+  // Only reachable with no arguments at all — the default, unchanged.
   return runServerBoot(io, deps);
 }

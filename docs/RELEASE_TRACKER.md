@@ -74,11 +74,10 @@ Not release blockers by themselves, but a reader deserves them stated:
 - Visual design is unfinished — 4 design tokens, 66 hardcoded hexes, clipped
   board columns (W10 Phase H)
 - The bundled expert library is ~133 upstream changes behind (W10 Phases A/B)
-- `dokima --help`, and any mistyped command, boots the server — **re-confirmed
-  2026-08-03 against the packaged install**: `dokima --help` printed
-  `dokima is already running at … — opening the Canvas` and never exited. This
-  is the first thing a new `npx` user hits, so it costs more once published
-  (ticket W10-44)
+- ~~`dokima --help`, and any mistyped command, boots the server~~ — **fixed
+  2026-08-03 (W10-44).** `--help`/`-h`/`--version`/`-V` print and exit 0; an
+  unknown command prints usage to stderr and exits 2; an incomplete `packs` or
+  `providers` no longer falls through to a boot. Bare `dokima` is unchanged.
 - `plan.json`: W9-08 blocked, W9-15 todo
 
 ## Test truth
