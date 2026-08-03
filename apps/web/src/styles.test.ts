@@ -262,3 +262,153 @@ describe('design tokens (W10-06)', () => {
     expect(body(':root:not([data-theme])')).toBe(body(":root[data-theme='dark']"));
   });
 });
+
+/* ── W10-30: the missing-declaration gate ────────────────────────────
+   The hex/px scan above only fires on a value that is PRESENT — it is
+   structurally blind to a role that is never styled at all, which is
+   exactly how anchors shipped with zero colour rule anywhere in any
+   feature stylesheet and fell back to the UA default (#0000EE, 1.95:1
+   against --sw-bg in the dark theme, below the 4.5:1 AA floor).
+
+   This guards the missing case directly, for every element that can
+   reproduce that failure shape: bare inline text with no widget
+   background of its own, so a missing colour rule silently inherits
+   the *browser's* default instead of the app's theme. Every helper
+   below takes an explicit `source` string rather than closing over the
+   real stylesheet, so the gate-integrity tests can feed synthetic CSS
+   through the exact same check the real one runs. */
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const channel = (c: number) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const full = clean.length === 3 ? clean.replace(/./g, (c) => c + c) : clean;
+  return [
+    parseInt(full.slice(0, 2), 16),
+    parseInt(full.slice(2, 4), 16),
+    parseInt(full.slice(4, 6), 16),
+  ];
+}
+
+function contrastRatio(fg: string, bg: string): number {
+  const l1 = relativeLuminance(hexToRgb(fg));
+  const l2 = relativeLuminance(hexToRgb(bg));
+  const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** A bare top-level `selector { ... }` rule — never a combinator like `.foo a {`. Null if absent. */
+function topLevelRuleBody(source: string, selector: string): string | null {
+  const opening = new RegExp(`(?:^|[}\\n])\\s*${selector}\\s*\\{`).exec(source);
+  if (!opening) return null;
+  const start = opening.index + opening[0].length - 1;
+  const end = source.indexOf('}', start);
+  return source.slice(start, end + 1);
+}
+
+/** The `--sw-*` token a rule's `color` resolves through, or null (missing rule, raw hex, anything but a bare `var(--sw-*)`). */
+function colorToken(ruleBody: string): string | null {
+  return /color:\s*var\((--sw-[\w-]+)\)/.exec(ruleBody)?.[1] ?? null;
+}
+
+/** `--sw-NAME` hex value under `:root` (light) and `:root[data-theme='dark']`. Null if either is undefined. */
+function tokenHexPair(
+  source: string,
+  token: string,
+): { light: string; dark: string } | null {
+  const light = new RegExp(`:root\\s*\\{[^}]*${token}:\\s*(#[0-9a-fA-F]{3,8})`, 's').exec(
+    source,
+  );
+  const dark = new RegExp(
+    `:root\\[data-theme='dark'\\][^}]*${token}:\\s*(#[0-9a-fA-F]{3,8})`,
+    's',
+  ).exec(source);
+  if (!light || !dark) return null;
+  return { light: light[1]!, dark: dark[1]! };
+}
+
+/**
+ * Elements this app renders as bare text with no UA-painted background of
+ * their own, so a missing colour rule inherits the browser default rather
+ * than the theme — the exact shape of the anchor bug. `a` is the only one
+ * in that category the app actually uses: `mark` never appears anywhere
+ * in apps/web/src (grepped), `button` already has its own gate above
+ * (W9-04), and every `input`/`select`/`textarea` in the app paints its
+ * own UA widget background box — a missing colour there is a different,
+ * separate failure mode this gate does not claim to cover.
+ */
+const BACKGROUNDLESS_TEXT_ROLES = ['a'];
+
+describe('backgroundless text roles resolve a themed colour (W10-30)', () => {
+  for (const selector of BACKGROUNDLESS_TEXT_ROLES) {
+    it(`"${selector}" declares a colour via a --sw-* token, not the UA default`, () => {
+      const rule = topLevelRuleBody(css, selector);
+      expect(
+        rule,
+        `expected a top-level "${selector}" rule in styles.css — without one, ` +
+          `"${selector}" falls back to the UA default colour, which is how the ` +
+          `anchor 1.95:1 AA failure survived`,
+      ).not.toBeNull();
+      expect(
+        colorToken(rule!),
+        `"${selector}" rule must set color via a --sw-* token (found: ${rule})`,
+      ).not.toBeNull();
+    });
+
+    it(`"${selector}"'s colour clears WCAG AA (4.5:1) against --sw-bg in both themes`, () => {
+      const rule = topLevelRuleBody(css, selector)!;
+      const token = colorToken(rule)!;
+      const linkColor = tokenHexPair(css, token)!;
+      const bg = tokenHexPair(css, '--sw-bg')!;
+
+      expect(
+        contrastRatio(linkColor.light, bg.light),
+        `light theme: ${token} (${linkColor.light}) on --sw-bg (${bg.light})`,
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(linkColor.dark, bg.dark),
+        `dark theme: ${token} (${linkColor.dark}) on --sw-bg (${bg.dark})`,
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});
+
+/* Proves the checks above can actually fail (docs/TESTING.md §6): a gate
+   that never goes red isn't a gate. Each case feeds a synthetic
+   stylesheet through the same parameterized helpers the real gate uses,
+   reproducing one way the old, hex-scanning-only gate stayed green while
+   this bug shipped. */
+describe('gate integrity: the missing-declaration check can fail (W10-30 red fixture)', () => {
+  const TOKENS = `
+:root { --sw-bg: #ffffff; --sw-accent: #2e6bff; --sw-low-contrast: #eeeeee; }
+:root[data-theme='dark'] { --sw-bg: #10151a; --sw-accent: #6ea0ff; --sw-low-contrast: #1c2229; }
+`;
+
+  it('catches an `a` rule that is missing entirely', () => {
+    expect(topLevelRuleBody(TOKENS, 'a')).toBeNull();
+  });
+
+  it('catches an `a` rule that sets a raw hex colour instead of a token', () => {
+    const source = `${TOKENS}\na { color: #0000ee; }\n`;
+    const rule = topLevelRuleBody(source, 'a');
+    expect(rule).not.toBeNull();
+    expect(colorToken(rule!)).toBeNull();
+  });
+
+  it('catches a token-based colour that still fails AA contrast', () => {
+    const source = `${TOKENS}\na { color: var(--sw-low-contrast); }\n`;
+    const rule = topLevelRuleBody(source, 'a')!;
+    const token = colorToken(rule)!;
+    const linkColor = tokenHexPair(source, token)!;
+    const bg = tokenHexPair(source, '--sw-bg')!;
+
+    expect(contrastRatio(linkColor.light, bg.light)).toBeLessThan(4.5);
+    expect(contrastRatio(linkColor.dark, bg.dark)).toBeLessThan(4.5);
+  });
+});
