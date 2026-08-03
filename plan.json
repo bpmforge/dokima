@@ -4351,6 +4351,31 @@
         "Full gate green including e2e, counts in the commit body."
       ],
       "notes": "Filed 2026-08-03 from W10-51 reconciliation. Note the id reuse: W10_PLAN \u00a72 had a different W10-52 (roster parser for v3 frontmatter) whose premise W10-51 measured false and did not file \u2014 this is unrelated work taking the free number."
+    },
+    {
+      "id": "W10-53",
+      "phase": 10,
+      "module": "infra",
+      "lane": "infra",
+      "points": 3,
+      "title": "Two glob dialects decide write_scope and nothing asserts they agree",
+      "write_scope": [
+        "scripts/conductor-lib.test.mjs",
+        "scripts/validate-plan.mjs",
+        "scripts/conductor-lib/parsing.mjs"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "stories": [],
+      "acceptance": [
+        "CONTEXT, from an external pilot report (Documents/CONDUCTOR_PILOT_REPORT_REDACTED_2026-08-03.md, \u00a72.4): a comparable harness lost two tickets to a write_scope glob its normalization silently did not recognise \u2014 a filename wildcard (`dir/*.test.ts`) was treated as a literal nonexistent directory, so nothing inside the real directory ever matched and the scope gate rejected correct work. The gate was right; the scope was malformed and nothing said so.",
+        "MEASURED ON DOKIMA: that specific bug does NOT apply \u2014 `globToRegex` handles `dir/*.test.ts`, `**/*.css`, prefix and suffix wildcards correctly, and the enforcer agrees with `validate-plan.mjs`\u2019s independent `segmentTextOverlaps`/`globOverlaps` on every probe tried. This ticket is NOT a bug fix. It converts that agreement from luck into an invariant.",
+        "THE REAL EXPOSURE: two independent glob implementations decide write_scope. `scripts/conductor-lib/parsing.mjs` `globToRegex` ENFORCES scope at gate time; `scripts/validate-plan.mjs` `globOverlaps` decides lane-overlap legality at board-validation time. They are kept in sync by a COMMENT (\"same dialect as packages/tickets/src/lanes.ts \u2014 keep in sync; W3-12 consolidates\"). A divergence produces exactly the pilot\u2019s failure: a scope the board accepts and the enforcer rejects, diagnosed as a bad ticket rather than a dialect gap.",
+        "PIN IT WITH A DIFFERENTIAL TEST: assert the two implementations return the same answer across a broad matrix of (glob, path) pairs \u2014 literal, prefix `*`, suffix `*`, mid-segment `*`, `**` crossing directories, `?`, dotfiles, extension wildcards, and non-matches \u2014 plus every write_scope glob actually on the board crossed against every path it is meant to cover. A divergence must name the glob, the path, and both answers.",
+        "DO NOT CONSOLIDATE THE TWO IMPLEMENTATIONS in this ticket. validate-plan.mjs is deliberately dependency-free (it runs as a bare `node scripts/validate-plan.mjs` in CI with no workspace install), so importing conductor-lib into it is a real coupling decision, not a cleanup. Pinning agreement is the cheap correct step; consolidation stays W3-12\u2019s.",
+        "Full gate green including e2e, counts in the commit body."
+      ],
+      "notes": "Filed 2026-08-03 from an external pilot report the founder supplied. Both harness bugs that report documents were checked against Dokima and neither applies: (1) the glob-normalization bug \u2014 verified absent, see acceptance 2; (2) the commit-ordering bug, where reviews ran against an uncommitted tree while claiming to check committed work \u2014 structurally impossible here, because Dokima's coding prompt instructs the agent to commit and gates.mjs already hard-fails on \"no commits on ticket branch\" (conductor/gates.mjs:28), so an empty diff cannot pass vacuously. This ticket is the one piece of genuine residue: an unasserted cross-implementation invariant. SCOPE AMENDED 2026-08-03 (third amendment this session \u2014 the pattern is my own ticket-scoping, \u00a710 of RESUME_2026-08-03 exactly). The differential test did not merely pin the invariant, it FOUND A REAL BUG in the enforcer, so the fix has to live in scripts/conductor-lib/parsing.mjs, which the filed scope did not name because I expected a test-only ticket. globToRegex expands a/**/b to ^a/.*/b$ \u2014 the slash after ** is literal, so ** requires AT LEAST ONE directory segment, while every standard glob dialect (bash globstar, minimatch, git pathspec) and validate-plan.mjs itself treat it as zero-or-more. Consequence: apps/web/src/**/*.css did not cover apps/web/src/styles.css. W10-06, W10-28 and W10-30 all carried that glob and all silently worked around it by listing styles.css explicitly \u2014 the enforcement boundary was narrower than it read, three times, unnoticed. This is the pilot report failure shape exactly: a scope the board accepts and the enforcer rejects, diagnosed as a bad ticket rather than a dialect gap. AGENT 2026-08-03: done. Neither pilot bug applies to Dokima (both checked against code). But the differential test found a REAL divergence on first run: globToRegex required >=1 directory segment for **/, while validate-plan.mjs and every standard dialect allow zero \u2014 so apps/web/src/**/*.css did not cover apps/web/src/styles.css. Already worked around unnoticed in W10-06/W10-28/W10-30 by listing the file explicitly. Fixed; the fix needed the ? expansion reordered before the sentinel joins because the replacement contains a literal ? that the blanket pass ate, producing a silently-wrong regex rather than an error. Gate: lint 0 errors, typecheck clean, 417 files / 3145 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }

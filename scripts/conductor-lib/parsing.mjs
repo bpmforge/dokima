@@ -14,13 +14,36 @@ export function globToRegex(glob) {
   // '\x01' is a sentinel for '**' chosen before '*' is expanded below, then
   // swapped back — split/join (not a regex literal) so the sentinel never
   // appears inside a RegExp pattern (no-control-regex).
+  //
+  // W10-53: `**/` must span ZERO OR MORE segments, not one-or-more. This used
+  // to expand `a/**/b` to `^a/.*/b$` — the slash after `**` stayed literal, so
+  // the pattern required at least one intervening directory. Every standard
+  // dialect (bash globstar, minimatch, git pathspec) and validate-plan.mjs's
+  // own matcher treat it as zero-or-more, so the ENFORCER was quietly stricter
+  // than the board validator that authorised the scope.
+  //
+  // It bit three times without being noticed: W10-06, W10-28 and W10-30 all
+  // scoped `apps/web/src/**/*.css`, which did not cover
+  // `apps/web/src/styles.css`, and each worked around it by listing that file
+  // explicitly. A boundary narrower than it reads is the dangerous direction
+  // here — it teaches operators to widen scopes by hand.
+  //
+  // The `(?:...)?` wrapper is what makes the separator optional; a bare `.*`
+  // would also let `**` match across a segment boundary it should not.
+  // `?` is expanded BEFORE the sentinels are joined: the replacement for `**/`
+  // contains a literal `?` (the non-capturing `(?:`), and a later blanket
+  // `?` -> `[^/]` pass would eat it, producing `([^/]:...)` — silently wrong
+  // rather than a syntax error.
   const esc = glob
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\?/g, '[^/]')
+    .replace(/\*\*\//g, '\x02')
     .replace(/\*\*/g, '\x01')
     .replace(/\*/g, '[^/]*')
+    .split('\x02')
+    .join('(?:[^/]*\\/)*')
     .split('\x01')
-    .join('.*')
-    .replace(/\?/g, '[^/]');
+    .join('.*');
   return new RegExp(`^${esc}$`);
 }
 
