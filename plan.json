@@ -3703,6 +3703,210 @@
         "Full gate green including e2e; counts in the commit body."
       ],
       "notes": "Found 2026-08-02 by an end-user visual verification sweep (46 screenshots, both themes, real server + real event log) rather than by any test \u2014 the capture harness recorded console errors and HTTP >=400 per state, which is what surfaced it. Worth noting for docs/TESTING.md: the whole suite was green while a user-facing surface was 404ing on every open, because nothing asserted the request URL."
+    },
+    {
+      "id": "W10-30",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "title": "Anchors have no colour rule at all \u2014 1.95:1 in dark \u2014 and the design gate is blind to it",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts",
+        "apps/web/src/**/*.css"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: no `a` colour selector exists in ANY apps/web/src/**/*.css, nor in the built dist CSS. Anchors therefore fall back to the user-agent default #0000EE, measured at 1.95:1 against the dark card background (WCAG AA text needs 4.5:1). Light measures 8.59:1, so this is dark-only. Photographed instance: the \"evidence\" link on a MEDIUM security finding in the chat card (chat/Card.tsx:52-53), which is the only click-through from that finding to its evidence.",
+        "THE GATE HOLE IS THE REAL DELIVERABLE, not the link colour. W10-06 added styles.test.ts, which fails on a raw hex PRESENT in a stylesheet. It cannot see a colour that is NEVER DECLARED \u2014 there is no hex for the walker to find. That is exactly how this seventh AA failure survived a ticket whose headline was \"six AA failures fixed\". Add a check that catches MISSING declarations, not just stray ones: assert every interactive/text role the app renders resolves to a declared --sw-* colour, or assert computed contrast on rendered elements.",
+        "RED FIXTURE: remove the new anchor colour rule and confirm the new test goes red. A gate that cannot be made to fail is not a gate (docs/TESTING.md \u00a76).",
+        "Scope honesty carried from the audit: one instance was photographed and measured; the root cause is verified global; artifacts/MarkdownView.tsx:42 links are code-traced only and were never seen rendered. Fix globally, but do not claim verification you did not do.",
+        "Full gate green including e2e and the axe specs; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. The audit called this \"the more important finding than any single defect\" because it indicts the verification method rather than one value."
+    },
+    {
+      "id": "W10-31",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "color-scheme is never declared \u2014 native controls render light chrome on the dark page",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts",
+        "apps/web/index.html"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: neither :root block in styles.css nor apps/web/index.html declares `color-scheme`. Native controls therefore paint light-mode chrome over the dark theme. Nine controls across five code surfaces, seen in ALL SIX inspection groups: FleetHome.tsx:112, board/Card.tsx select, drawer/DagEditPanel.tsx:71, NotificationsView.tsx:54, EstimateView.tsx:141-160, AutonomyBudgetPanel.tsx:176-184, CopilotConsentPanel.tsx:98-105.",
+        "Worst instance is Cost Estimate in dark (two bright white slabs beside two correctly-dark buttons). The \"Show archived\" checkbox paints as a solid white square \u2014 ambiguous and wrong-looking rather than actively lying, since a checked Chrome box is blue with a checkmark.",
+        "Three parts, not one: `color-scheme` on BOTH :root blocks (and the prefers-color-scheme fallback), `accent-color` separately for the slider thumb and checkbox mark, and a <meta name=\"color-scheme\"> in index.html for first paint.",
+        "This was a miss, not a policy: settings.css:133-140 already themes its own selects, so the app contradicts itself today.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+    },
+    {
+      "id": "W10-32",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "title": ".sr-only is used in 5 components and defined nowhere \u2014 and it distorted W10-06 board layout",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts",
+        "apps/web/src/board/board.css"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: `.sr-only` is applied at board/Card.tsx:74, drawer/DagEditPanel.tsx:70, SpendByRung.tsx:25, ContractPanel.tsx:42 and CommandPalette.tsx:309, and defined in ZERO stylesheets (grep -c sr-only over the built CSS returns 0). Screen-reader-only text therefore renders as visible product copy: every board card prints \"Move ticket E2E-1\" above a dropdown already labelled \"Move to\u2026\". Visible in all six seeded board captures, both themes, on the signature surface. Screen-reader users hear the label twice.",
+        "PAIR THIS WITH THE BOARD COLUMN FLOOR \u2014 the two defects are causally linked. board.css:86-87 records that 8.5rem \"wrapped Move ticket E2E-1 mid-identifier\", which is why styles.css raised --sw-board-column-min to 9rem, which is why the board wraps 2 columns per row instead of 3. That measurement was taken against text that was never meant to paint. Once .sr-only is defined, re-measure: if 8.5rem now fits cleanly, drop the floor and the six lifecycle states return to 3-per-row, which reads as a pipeline again.",
+        "Add the standard visually-hidden pattern (clip-path/1px, not display:none \u2014 display:none removes it from the accessibility tree and defeats the purpose).",
+        "RED FIXTURE: a test that fails when a class is APPLIED in a component but defined in no stylesheet \u2014 same blind spot as W10-30, one level up. This is how five call sites shipped against a class that does not exist.",
+        "Full gate green including e2e; the board must still show all six columns unclipped in both themes at 1440 and 1280. Counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. The causal link between the missing class and the 9rem floor was the audit's sharpest finding: a layout constant was calibrated against a rendering bug."
+    },
+    {
+      "id": "W10-33",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "Two controls invite a click and do nothing, and two empty states withhold their spec-required action",
+      "write_scope": [
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/board/BoardView.test.tsx",
+        "apps/web/src/fleet/FleetHome.tsx",
+        "apps/web/src/fleet/FleetHome.test.tsx",
+        "apps/web/src/App.tsx"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "DEAD CONTROL 1: board/BoardView.tsx:53 renders <ShippedTicker> with no onSelectTicket. `grep -rn onSelectTicket apps/web/src e2e` returns 3 hits, all inside ShippedTickerStrip.tsx itself. The pill is a real <button> with cursor:pointer, in the tab order, and does nothing on click \u2014 sitting beside a visually identical ClaimNow pill that fires a durable verb. Event delegation does not rescue it: App.tsx:149-151 matches only [data-testid^=\"card-\"]. UX_SPEC.md:102 requires the link.",
+        "DEAD CONTROL 2: the Fleet empty-state \"New Product\" button calls setFormMode('new') while the mode is already 'new'.",
+        "WITHHELD ACTION 1: FleetHome.tsx:226-243 omits the guided-sample link UX_SPEC.md:48 requires. Both offered actions open a form whose first required field is a directory path; the guided sample exists (FirstRunWizard.tsx step 'sample', handleCreateSample:73) but only mounts on ?view=wizard, so a first-time user with no folder in mind has no zero-setup route in.",
+        "WITHHELD ACTION 2: App.tsx:342-347 calls BoardView without onViewCurrentPhase. emptyState.ts:4 defines the label and BoardEmptyState.tsx:12-16 renders it conditionally \u2014 the copy shipped, the action did not.",
+        "RED FIXTURE: assert each control actually invokes its handler. A rendered <button> with no wired callback passes every existing test.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+    },
+    {
+      "id": "W10-34",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "Shortcuts overlay has no scrim, sits on the toolbar, and lists two of three shortcuts",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts",
+        "apps/web/src/palette/shortcuts.ts",
+        "apps/web/src/palette/shortcuts.test.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED (light/21, dark/19, both themes): styles.css:187-198 gives the overlay `position: fixed; inset: 5rem` and a box-shadow but NO backdrop. The page behind stays at full brightness and the panel clips the header's \"New Product\" button to \"Product\" \u2014 it reads as a card that accidentally landed on the toolbar with a half-eaten button behind it. The audit called it the clearest \"looks broken\" item after the anchor contrast.",
+        "Add a scrim and position clear of the toolbar. The scrim must not trap focus incorrectly and Escape must still close (existing behaviour).",
+        "shortcuts.ts:14-17 lists exactly \"?\" and \"Esc\". The overlay renders outside the projectId ternary, so it also appears inside projects where Cmd/Ctrl+K works and is NOT listed; on the Fleet screen Cmd+K is inert and the overlay is silent about that too. List the palette shortcut, and make the list reflect the active context.",
+        "styles.css:200-204: the <dt> has no width, so descriptions start at ragged x=577 and x=593. Fix the column; it worsens the moment a third row lands.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+    },
+    {
+      "id": "W10-35",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "The trace row the danger colour draws your eye to explains itself least",
+      "write_scope": [
+        "apps/web/src/trace/TraceView.tsx",
+        "apps/web/src/trace/TraceView.test.tsx",
+        "apps/web/src/trace/trace.css"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: TraceView.tsx:121 renders an escalation as \"Escalation escalation.rung_advanced\" \u2014 the raw event id \u2014 and discards fromRung, toRung and the human-readable reason. The data is in hand and thrown away: the fixture seed-tour-trace.mjs:46 carries reason \"validator gap persisted\", and escalationLikeFromTraceEvent already reads the rungs off that same event for the field-report draft at line 129. Render the reason and R0\u2192R1.",
+        "Same omission one row up: the receipt event's `validators: [...]` payload is never surfaced, so BLUEPRINT \u00a712.4's \"gate results per pass\" is not actually shown.",
+        "trace.css has no .trace-event__type rule, so the raw dotted event id inherits full --sw-fg at base size while its siblings are muted \u2014 the least human-meaningful token is the loudest thing in the row. Mute it.",
+        "TraceView.tsx:123 renders raw ISO-8601 UTC with milliseconds, unlocalised and with no step delta. Format it. (The 1ms spacing in the fixture is an artifact, not a product problem \u2014 do not \"fix\" the fixture.)",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+    },
+    {
+      "id": "W10-36",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "Copy and labelling pass \u2014 dropped nouns, hardcoded plurals, internals shown as user copy",
+      "write_scope": [
+        "apps/web/src/plans/format.ts",
+        "apps/web/src/plans/format.test.ts",
+        "apps/web/src/plans/PlanView.tsx",
+        "apps/web/src/fleet/ProjectCard.tsx",
+        "apps/web/src/fleet/FleetHome.tsx",
+        "apps/web/src/settings/ValidatorPacksPanel.tsx",
+        "apps/web/src/board/drawer/EvidencePanel.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.tsx"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "plans/format.ts:13 renders \"1 raw \u2192 1 plan items\": a dropped noun (its own doc comment one line above says \"raw findings\") and a hardcoded plural. NotificationCard.tsx:51 pluralises correctly, so this is an inconsistency rather than house style.",
+        "ProjectCard.tsx:6-10 and :95 render \"0 berths running \u00b7 no active berth\" \u2014 the same fact twice, with a separator implying two facts.",
+        "FleetHome.tsx:102/192/208/234: three buttons and a heading are all named \"New Product\"; the submit label is MODE_LABEL[mode], so the commit action is never a verb.",
+        "ValidatorPacksPanel.tsx:42 prints literal backticks around UnknownValidatorSelectionError two clauses after using a correct <code> element in the same sentence.",
+        "PlanView.tsx:117 / ranking.ts:29 label a score as \"rank 12\" \u2014 it is severity x leverage x staleness, shown on a one-item list, so it reads as an ordinal position among eleven items that do not exist. Name it a score.",
+        "EvidencePanel.tsx:54 is <section aria-label=\"Evidence\"> with no VISIBLE heading, so \"No manifest yet.\" reads as a second sentence under \"History\" \u2014 the only one of UX_SPEC \u00a74's six drawer sections lacking a visible heading.",
+        "AutonomyBudgetPanel.tsx:176-184: the 1-8 berths range renders no endpoint labels, so at value 1 nothing on screen states the ceiling.",
+        "Full gate green including e2e; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. Deliberately excludes apps/server estimate-routes.ts copy (\"W4-06\", \"budget_ledger\", \"GET /models\" shown as end-user text, and a UTC-stamped \"Weekly digest\" date) \u2014 that is server-owned and belongs in its own ticket."
+    },
+    {
+      "id": "W10-37",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "title": "The capture sweep has coverage gaps \u2014 it cannot yet sign off UX_SPEC \u00a72b",
+      "write_scope": [
+        "apps/web/scripts/**",
+        "docs/tour/**"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "The 2026-08-03 sweep captured 46 screenshots but its \u00a72b answer is PARTIAL, and the gaps are specific: dark/01-fleet-empty.png actually renders the Demo Voyage card (the dark fleet EMPTY state was never captured) and dark/04-workspace-empty.png renders a seeded board (the dark board EMPTY state was never captured). Both were mis-slugged, which is worse than missing \u2014 they look like coverage.",
+        "Settings has TWELVE tabs, not the five captured. Effective Settings, MCP Servers, Expert Overrides, Rule Lifecycle, Suppressions and Escalation Policy are unverified in both themes.",
+        "Decisions, Estimate and Lessons never rendered content, and the command palette never opened \u2014 their empty and no-query states are unverified.",
+        "Make the capture assert its own denominator: a state list it walks, and a failure when a captured state does not match the state it claims to be (the two mis-slugged empties would have been caught by a simple \"assert the empty state is actually empty\" check).",
+        "docs/tour/img/ is ALSO stale on main: the shipped captures predate the Dokima rename (headers still read \"Shipwright\") and 05-board-seeded.png shows the pre-W10-06 six-across clipped layout the code no longer produces. Regenerate.",
+        "Full gate green; counts in the commit body."
+      ],
+      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. Filed by the sweep against itself: the honest-absence rule applied to the verification harness rather than the product."
     }
   ]
 }
