@@ -50,7 +50,24 @@
 
 .trace-event__pass,
 .trace-event__actor,
-.trace-event__time {
+.trace-event__time,
+.trace-event__type {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-base);
+}
+
+.trace-event__escalation-detail {
+  flex-basis: 100%;
+}
+
+.trace-event__validators {
+  flex-basis: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-0-5);
   color: var(--sw-fg-muted);
   font-size: var(--sw-text-base);
 }

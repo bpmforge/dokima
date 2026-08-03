@@ -5,7 +5,14 @@
  * server — same pattern as `board/drawer/TelemetryPanel.test.tsx`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import * as traceApi from './api.js';
 import * as lessonsApi from '../lessons/api.js';
 import { TraceView } from './TraceView.js';
@@ -55,7 +62,7 @@ const GATE_EVENT: TraceEvent = {
   actor_id: 'agent-1',
   ticket_id: 'W1-01',
   run_id: 'run-1',
-  payload: null,
+  payload: { validators: [{ name: 'lint', exitCode: 1, gapCount: 2 }] },
   created_at: '2026-07-20T09:02:00.000Z',
 };
 
@@ -65,7 +72,12 @@ const ESCALATION_EVENT: TraceEvent = {
   actor_id: 'agent-1',
   ticket_id: 'W1-01',
   run_id: 'run-1',
-  payload: { fromRung: 'R1', toRung: 'R2', receiptId: 'rcpt-1' },
+  payload: {
+    fromRung: 'R0',
+    toRung: 'R1',
+    receiptId: 'rcpt-1',
+    reason: 'validator gap persisted',
+  },
   created_at: '2026-07-20T09:03:00.000Z',
 };
 
@@ -116,6 +128,36 @@ describe('TraceView', () => {
     expect(screen.getByText('Gate result')).toBeTruthy();
     expect(screen.getByText('Escalation')).toBeTruthy();
     expect(screen.getAllByTestId('file-field-report-action')).toHaveLength(4);
+
+    const [lifecycleRow, passRow, gateRow, escalationRow] = rows as [
+      HTMLElement,
+      HTMLElement,
+      HTMLElement,
+      HTMLElement,
+    ];
+
+    const gateDetail = within(gateRow).getByTestId('trace-event-validators');
+    expect(gateDetail.textContent).toContain('lint');
+    expect(gateDetail.textContent).toContain('exit 1');
+    expect(gateDetail.textContent).toContain('2 gaps');
+
+    const escalationDetail = within(escalationRow).getByTestId(
+      'trace-event-escalation-detail',
+    );
+    expect(escalationDetail.textContent).toContain('R0 → R1');
+    expect(escalationDetail.textContent).toContain('validator gap persisted');
+
+    for (const row of [lifecycleRow, passRow, gateRow, escalationRow]) {
+      expect(within(row).queryByText(/^\d{4}-\d{2}-\d{2}T/)).toBeNull();
+    }
+
+    const lifecycleTime = lifecycleRow.querySelector('time');
+    expect(lifecycleTime?.getAttribute('datetime')).toBe(LIFECYCLE_EVENT.created_at);
+    expect(lifecycleTime?.textContent).not.toContain('+');
+
+    expect(passRow.querySelector('time')?.textContent).toContain('+1m00s');
+    expect(gateRow.querySelector('time')?.textContent).toContain('+1m00s');
+    expect(escalationRow.querySelector('time')?.textContent).toContain('+1m00s');
   });
 
   it('feeds the lessons form pre-filled from the selected event', async () => {

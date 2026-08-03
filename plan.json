@@ -3846,7 +3846,7 @@
         "apps/web/src/trace/trace.css"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED: TraceView.tsx:121 renders an escalation as \"Escalation escalation.rung_advanced\" \u2014 the raw event id \u2014 and discards fromRung, toRung and the human-readable reason. The data is in hand and thrown away: the fixture seed-tour-trace.mjs:46 carries reason \"validator gap persisted\", and escalationLikeFromTraceEvent already reads the rungs off that same event for the field-report draft at line 129. Render the reason and R0\u2192R1.",
