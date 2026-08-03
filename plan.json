@@ -3909,8 +3909,8 @@
     {
       "id": "W10-38",
       "phase": 10,
-      "module": "server",
-      "lane": "server",
+      "module": "web",
+      "lane": "ui",
       "points": 2,
       "title": "Cost Estimate shows internals as end-user copy and stamps the digest with a UTC date",
       "write_scope": [
