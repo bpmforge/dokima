@@ -5,7 +5,14 @@
  * server — same pattern as `board/drawer/TelemetryPanel.test.tsx`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import * as traceApi from './api.js';
 import * as lessonsApi from '../lessons/api.js';
 import { TraceView } from './TraceView.js';
@@ -55,7 +62,7 @@ const GATE_EVENT: TraceEvent = {
   actor_id: 'agent-1',
   ticket_id: 'W1-01',
   run_id: 'run-1',
-  payload: null,
+  payload: { validators: [{ name: 'lint', exitCode: 1, gapCount: 2 }] },
   created_at: '2026-07-20T09:02:00.000Z',
 };
 
@@ -65,7 +72,12 @@ const ESCALATION_EVENT: TraceEvent = {
   actor_id: 'agent-1',
   ticket_id: 'W1-01',
   run_id: 'run-1',
-  payload: { fromRung: 'R1', toRung: 'R2', receiptId: 'rcpt-1' },
+  payload: {
+    fromRung: 'R0',
+    toRung: 'R1',
+    receiptId: 'rcpt-1',
+    reason: 'validator gap persisted',
+  },
   created_at: '2026-07-20T09:03:00.000Z',
 };
 
@@ -116,6 +128,70 @@ describe('TraceView', () => {
     expect(screen.getByText('Gate result')).toBeTruthy();
     expect(screen.getByText('Escalation')).toBeTruthy();
     expect(screen.getAllByTestId('file-field-report-action')).toHaveLength(4);
+
+    const [lifecycleRow, passRow, gateRow, escalationRow] = rows as [
+      HTMLElement,
+      HTMLElement,
+      HTMLElement,
+      HTMLElement,
+    ];
+
+    for (const row of [lifecycleRow, passRow, gateRow, escalationRow]) {
+      expect(within(row).queryByText(/^\d{4}-\d{2}-\d{2}T/)).toBeNull();
+    }
+
+    const lifecycleTime = lifecycleRow.querySelector('time');
+    expect(lifecycleTime?.getAttribute('datetime')).toBe(LIFECYCLE_EVENT.created_at);
+    expect(lifecycleTime?.textContent).not.toContain('+');
+
+    expect(passRow.querySelector('time')?.textContent).toContain('+1m00s');
+    expect(gateRow.querySelector('time')?.textContent).toContain('+1m00s');
+    expect(escalationRow.querySelector('time')?.textContent).toContain('+1m00s');
+  });
+
+  it('RED FIXTURE: renders an escalation row with its rungs and reason, not the bare event id alone', async () => {
+    mockedTraceApi.fetchTicketRuns.mockResolvedValue(['run-1']);
+    mockedTraceApi.fetchRunTrace.mockResolvedValue([ESCALATION_EVENT]);
+
+    render(
+      <TraceView
+        apiOpts={API_OPTS}
+        projectId="proj-1"
+        ticketId="W1-01"
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => screen.getByTestId('trace-view-runs'));
+    fireEvent.click(screen.getByRole('button', { name: /View session trace/ }));
+    await waitFor(() => screen.getByTestId('trace-view-events'));
+
+    const row = screen.getByTestId('trace-view-event-row');
+    const detail = within(row).getByTestId('trace-event-escalation-detail');
+    expect(detail.textContent).toContain('R0 → R1');
+    expect(detail.textContent).toContain('validator gap persisted');
+  });
+
+  it('never reads payload.validators off a gate event — validators live in the receipts table, not the event log', async () => {
+    mockedTraceApi.fetchTicketRuns.mockResolvedValue(['run-1']);
+    mockedTraceApi.fetchRunTrace.mockResolvedValue([GATE_EVENT]);
+
+    render(
+      <TraceView
+        apiOpts={API_OPTS}
+        projectId="proj-1"
+        ticketId="W1-01"
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => screen.getByTestId('trace-view-runs'));
+    fireEvent.click(screen.getByRole('button', { name: /View session trace/ }));
+    await waitFor(() => screen.getByTestId('trace-view-events'));
+
+    const row = screen.getByTestId('trace-view-event-row');
+    expect(within(row).queryByTestId('trace-event-validators')).toBeNull();
+    expect(within(row).queryByText(/lint/)).toBeNull();
   });
 
   it('feeds the lessons form pre-filled from the selected event', async () => {

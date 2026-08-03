@@ -32,6 +32,52 @@ function escalationLikeFromTraceEvent(event: TraceEvent): EscalationEventLike {
   };
 }
 
+/**
+ * `payload.reason` on an `escalation.*` event. Unlike `fromRung`/`toRung`
+ * (typed and set at the real emit site, `escalation/policy.ts:313-314` and
+ * `escalation/events.ts:17-18`), no production emitter types or sets a
+ * `reason` field — it appears only in `seed-tour-trace.mjs`'s fixture.
+ * Read defensively and rendered only when present, same as any other
+ * untrusted payload key; never assumed to exist.
+ */
+function escalationReason(event: TraceEvent): string | undefined {
+  const payload =
+    typeof event.payload === 'object' && event.payload !== null
+      ? (event.payload as Record<string, unknown>)
+      : {};
+  return typeof payload.reason === 'string' ? payload.reason : undefined;
+}
+
+/**
+ * Gate rows deliberately do NOT surface `payload.validators` (W10-35's
+ * corrected criterion): `mintReceipt` (`packages/events/src/receipts.ts:
+ * 363-372`) is the sole appender of `gate.receipt_minted`/`gate.waived` and
+ * anchors them with `payload: { receiptId, kind, contentMac }` only —
+ * validator results live in the separate `receipts` DB table. Surfacing
+ * them here would mean fetching the receipt via `GET /api/v1/receipts/:id`
+ * (`apps/web/src/artifacts/api.ts`'s `fetchReceipt`), which needs a fetcher
+ * in `trace/api.ts` — outside this ticket's write_scope. Left as a
+ * follow-up rather than reaching into a sibling feature's API module.
+ */
+
+/** `toLocaleString()` (same precedent as `NotificationCard.tsx`'s timestamp) plus the gap since the previous row in the replay — the fixture's ~1ms spacing is real data, not a bug to paper over. */
+function formatEventTime(iso: string, previousIso: string | undefined): string {
+  const localized = new Date(iso).toLocaleString();
+  if (previousIso === undefined) return localized;
+  const deltaMs = new Date(iso).getTime() - new Date(previousIso).getTime();
+  return `${localized} (+${formatStepDelta(deltaMs)})`;
+}
+
+function formatStepDelta(ms: number): string {
+  const clamped = Math.max(0, ms);
+  if (clamped < 1000) return `${Math.round(clamped)}ms`;
+  if (clamped < 60_000) return `${(clamped / 1000).toFixed(1)}s`;
+  const totalSeconds = Math.round(clamped / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m${seconds.toString().padStart(2, '0')}s`;
+}
+
 export interface TraceViewProps {
   apiOpts: BoardApiOptions;
   projectId: string;
@@ -103,9 +149,12 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
             ← Back to runs
           </button>
           <ol className="trace-view__events" data-testid="trace-view-events">
-            {events.map((event) => {
+            {events.map((event, index) => {
               const kind = classifyTraceEvent(event.event_type);
               const pass = passNumber(event.payload);
+              const escalation = escalationLikeFromTraceEvent(event);
+              const reason = escalationReason(event);
+              const previousEvent = index > 0 ? events[index - 1] : undefined;
               return (
                 <li
                   key={event.seq}
@@ -119,14 +168,33 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
                     <span className="trace-event__pass">Pass {pass}</span>
                   )}
                   <span className="trace-event__type">{event.event_type}</span>
+                  {kind === 'escalation' &&
+                    (escalation.fromRung || escalation.toRung || reason) && (
+                      <span
+                        className="trace-event__escalation-detail"
+                        data-testid="trace-event-escalation-detail"
+                      >
+                        {escalation.fromRung && escalation.toRung
+                          ? `${escalation.fromRung} → ${escalation.toRung}`
+                          : null}
+                        {escalation.fromRung && escalation.toRung && reason
+                          ? ' — '
+                          : null}
+                        {reason}
+                      </span>
+                    )}
                   <span className="trace-event__actor">{event.actor_id}</span>
-                  <span className="trace-event__time">{event.created_at}</span>
+                  <span className="trace-event__time">
+                    <time dateTime={event.created_at}>
+                      {formatEventTime(event.created_at, previousEvent?.created_at)}
+                    </time>
+                  </span>
                   <FileFieldReportAction
                     apiOpts={apiOpts}
                     projectId={projectId}
                     draft={
                       kind === 'escalation'
-                        ? draftFromEscalationEvent(escalationLikeFromTraceEvent(event))
+                        ? draftFromEscalationEvent(escalation)
                         : draftFromTraceEvent(event)
                     }
                   />
