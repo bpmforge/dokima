@@ -201,6 +201,39 @@ jobs:
       - name: pnpm audit --prod (fail on high/critical)
         run: pnpm audit --prod --audit-level high
 
+  # W10-27 — the durable half of the 2026-08-02 release blocker. The tree
+  # scanner (content/validators/secrets-scan.sh, SC-06) passes --exclude-dir=.git
+  # and so cannot see a credential that was committed and later deleted; that is
+  # how the content-signing private key survived from 2026-07-20 to 2026-08-02
+  # with every gate green. This job reads history instead. No pnpm install: the
+  # scanner is git plumbing plus Node, deliberately depending on no scanning
+  # binary (Law 9), which also keeps this job honest on a cold runner.
+  history-secrets:
+    name: history secrets (git history, not just the tree — W10-27)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # REQUIRED. The default fetch-depth of 1 leaves no history to scan and
+          # would make this a gate that cannot fail. The scanner independently
+          # refuses to report clean on a shallow clone (exit 2), so removing this
+          # line reds the job rather than silently passing it.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      # The scan's denominator is `git rev-list --all`, so it is only as complete
+      # as the local ref set. Measured in a simulated checkout: with a single-ref
+      # refspec the scanner reports OK on a repo carrying a leaked key on another
+      # branch — not shallow, so the shallowness check never fires; just a
+      # silently smaller denominator, which is the exact failure this gate exists
+      # to kill. Rather than depend on what fetch-depth: 0 happens to fetch, make
+      # every branch present explicitly and then have the scanner verify it.
+      - name: Fetch every branch (the scan's denominator)
+        run: git fetch --prune --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+      - name: Scan every object reachable from every ref (file contents + commit/tag messages)
+        run: node scripts/validate-history-secrets.mjs --verify-remote-refs
+
   traceability:
     name: traceability (validate-plan, validate-traceability, FR/UC grep)
     runs-on: ubuntu-latest
