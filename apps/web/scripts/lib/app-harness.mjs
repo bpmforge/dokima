@@ -1,5 +1,5 @@
 /**
- * Shared boot/seed helpers for the screenshot tour (`capture-tour.mjs`) and
+ * Shared boot/seed helpers for the screenshot tour (`capture-tour/`) and
  * the acceptance walker (`capture-acceptance.mjs`): a real `vite build`
  * served by the real apps/server against a throwaway `.dokima` home
  * (same shape as playwright.config.ts's webServer). Population goes only
@@ -7,7 +7,7 @@
  * fixtures. Zero mocks, zero network beyond 127.0.0.1 (Law 9).
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,9 +20,15 @@ export const TSX_BIN = path.join(serverRoot, 'node_modules', '.bin', 'tsx');
 const SEED_SCRIPT = path.join(webRoot, 'e2e', 'fixtures', 'seed-board-tickets.mjs');
 const TRACE_SCRIPT = path.join(webRoot, 'scripts', 'seed-tour-trace.mjs');
 
+/**
+ * Always rebuilds — same discipline as `playwright.config.ts`'s `webServer.command`
+ * (`pnpm --filter @dokima/web run build && …`). The old check (`dist/index.html`
+ * merely exists → skip) let a stale bundle from an earlier commit get served and
+ * photographed as current (W10-37: a capture run against a stale dist reported a
+ * real fix as still broken). A dist directory a few seconds newer than `src/`
+ * proves nothing about whether it was built from the checkout currently on disk.
+ */
 export function ensureSpaBuilt() {
-  if (existsSync(path.join(webRoot, 'dist', 'index.html'))) return;
-  console.log('dist missing — building the SPA first…');
   execFileSync('pnpm', ['--filter', '@dokima/web', 'run', 'build'], {
     cwd: repoRoot,
     stdio: 'inherit',
