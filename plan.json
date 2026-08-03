@@ -3975,7 +3975,7 @@
       "module": "web",
       "lane": "quality",
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "id": "W10-40",
       "points": 3,
