@@ -490,3 +490,126 @@ describe('gate integrity: the color-scheme check can fail (W10-31 red fixture)',
     expect(html).not.toMatch(/<meta\s+name="color-scheme"\s+content="light dark"\s*\/?>/);
   });
 });
+
+/* ── W10-32: applied-but-undefined utility-class gate ─────────────────
+   The same blind spot as W10-30/W10-31, one level up: those two guard a
+   missing *property* on a known selector. This one guards a missing
+   *selector* entirely — `.sr-only` was applied via `className="sr-only"`
+   at five call sites and defined in zero of the app's fifteen
+   stylesheets, so jsdom (and the real browser) rendered it as plain
+   visible text. Every hex/px/token check above is structurally blind to
+   this: there is no declaration to scan, because the whole rule doesn't
+   exist.
+
+   Scoped to utility classes on purpose, not every className in the app:
+   most classes are feature-specific hooks a component author may
+   legitimately leave unstyled (inherits from a parent, or is a pure
+   test/semantic marker) — a fully generic "every className must resolve
+   to a rule" sweep flags dozens of those as false positives. A utility
+   class is different in kind: it exists ONLY to apply shared behaviour
+   (here, visually hiding text without removing it from the accessibility
+   tree), so an undefined one is never intentional. `sr-only` is the only
+   utility class in the app today (grepped); add future ones here. */
+const UTILITY_CLASSES = ['sr-only'];
+
+function tsxFiles(): string[] {
+  return readdirSync(testDir, { recursive: true, encoding: 'utf-8' })
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => path.join(testDir, f))
+    .sort();
+}
+
+/** Whether `className` appears as a whitespace-separated token inside a
+ * literal (non-dynamic) `className="..."` / `'...'` / `` `...` `` value. */
+function classIsApplied(source: string, className: string): boolean {
+  const re = /className=(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(source))) {
+    const value = match[1] ?? match[2] ?? match[3] ?? '';
+    if (value.split(/\s+/).includes(className)) return true;
+  }
+  return false;
+}
+
+/** Whether `.className` appears as a CSS selector fragment anywhere in
+ * `source` — a real rule, not a longer class name that happens to share
+ * the prefix (`.sr-only-foo` must not satisfy a lookup for `sr-only`) and
+ * not the class name showing up in a comment (a stylesheet's own doc
+ * comments reference class names in prose — see styles.css's W10-32
+ * comment above the real rule, and board.css's — without stripping `/*
+ * ... *\/` first, that prose satisfies the lookup even when the rule
+ * itself has been deleted, which is exactly the false-pass this gate
+ * exists to prevent). Requires the selector to be immediately followed
+ * by (optional whitespace/combinators then) `{`, so only an actual rule
+ * declaration counts as "defined". */
+function classIsDefined(source: string, className: string): boolean {
+  const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\.${escaped}(?![\\w-])[^{}]*\\{`).test(withoutComments);
+}
+
+describe('utility classes applied in components resolve to a stylesheet rule (W10-32)', () => {
+  const componentSources = tsxFiles().map((f) => readFileSync(f, 'utf-8'));
+  const styleSources = cssFiles().map((f) => readFileSync(f, 'utf-8'));
+
+  it('finds the components it is supposed to be guarding', () => {
+    // Guards the guard, same as the W10-06 "finds the stylesheets" check.
+    expect(tsxFiles().length).toBeGreaterThan(50);
+  });
+
+  for (const className of UTILITY_CLASSES) {
+    it(`".${className}" is actually applied somewhere (the check itself isn't vacuous)`, () => {
+      expect(componentSources.some((src) => classIsApplied(src, className))).toBe(true);
+    });
+
+    it(`".${className}" is defined in at least one stylesheet`, () => {
+      expect(
+        styleSources.some((src) => classIsDefined(src, className)),
+        `"${className}" is applied in a component but defined in no stylesheet — ` +
+          `screen-reader-only text renders as visible product copy`,
+      ).toBe(true);
+    });
+  }
+});
+
+/* Proves the applied-but-undefined check can actually fail (docs/TESTING.md
+   §6): fed the exact real-world shape (a component using the class, a
+   stylesheet that never defines it) through the same helpers the gate
+   above uses. */
+describe('gate integrity: the applied-but-undefined class check can fail (W10-32 red fixture)', () => {
+  it('catches a class applied in a component but never defined in any stylesheet', () => {
+    const component = '<span className="sr-only">Move ticket E2E-1</span>';
+    const stylesheet = '.board-card { display: flex; }';
+    expect(classIsApplied(component, 'sr-only')).toBe(true);
+    expect(classIsDefined(stylesheet, 'sr-only')).toBe(false);
+  });
+
+  it('does not false-positive on a longer class name sharing the same prefix', () => {
+    const stylesheet = '.sr-only-legacy { display: none; }';
+    expect(classIsDefined(stylesheet, 'sr-only')).toBe(false);
+  });
+
+  it('does not false-positive on the class name appearing in a comment, not a rule', () => {
+    // The exact shape of the bug this gate previously shipped with: the
+    // real `.sr-only` rule removed, but explanatory prose (like the
+    // comment above the real rule in styles.css, or the one in
+    // board.css) still mentions ".sr-only" in text. A regex over raw
+    // source text — comments included — treats prose as a declaration.
+    const stylesheet = `
+      /* re-measured now that .sr-only actually hides that text, see
+         board.css: \`.sr-only\` is defined (clip-path) */
+      .board-card { display: flex; }
+    `;
+    expect(classIsDefined(stylesheet, 'sr-only')).toBe(false);
+  });
+
+  it('passes once the class gets a real rule', () => {
+    const stylesheet = '.sr-only { position: absolute; clip-path: inset(50%); }';
+    expect(classIsDefined(stylesheet, 'sr-only')).toBe(true);
+  });
+
+  it('does not flag a class that is never applied by any component', () => {
+    const component = '<span className="board-card__id">{ticket.id}</span>';
+    expect(classIsApplied(component, 'sr-only')).toBe(false);
+  });
+});

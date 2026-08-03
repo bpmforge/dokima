@@ -3765,7 +3765,7 @@
         "apps/web/src/board/board.css"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED: `.sr-only` is applied at board/Card.tsx:74, drawer/DagEditPanel.tsx:70, SpendByRung.tsx:25, ContractPanel.tsx:42 and CommandPalette.tsx:309, and defined in ZERO stylesheets (grep -c sr-only over the built CSS returns 0). Screen-reader-only text therefore renders as visible product copy: every board card prints \"Move ticket E2E-1\" above a dropdown already labelled \"Move to\u2026\". Visible in all six seeded board captures, both themes, on the signature surface. Screen-reader users hear the label twice.",

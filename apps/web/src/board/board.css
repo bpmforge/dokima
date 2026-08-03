@@ -82,9 +82,21 @@
      `flex-grow` stretches whatever lands on the final row, so a 4+2
      wrap rendered Blocked and Done at double width and read as a
      rendering bug. `auto-fit` + `minmax` gives every column one width
-     and keeps rows aligned. Measured at 1440x900: 2 columns per row at
-     219px; 8.5rem would fit 3 at 143px but wrapped "Move ticket E2E-1"
-     mid-identifier, which is the defect this ticket exists to remove.
+     and keeps rows aligned. Measured at 1440x900: 8.5rem fits 3 columns
+     per row at 143px each.
+
+     W10-32: --sw-board-column-min was raised from 8.5rem to 9rem
+     (dropping to 2 columns per row) because 8.5rem "wrapped 'Move
+     ticket E2E-1' mid-identifier" — but that text was `.sr-only`
+     content that `styles.css` never actually defined, so it was
+     rendering as visible product copy no card was ever meant to show.
+     Now that `.sr-only` is defined (clip-path, still in the
+     accessibility tree, never painted), that text no longer occupies
+     layout width at all, and 8.5rem fits the real visible content
+     (type/id header, title, owner, receipt dot, the "Move to…" select)
+     cleanly at both 1440x900 and 1280x800, both themes — re-measured
+     by screenshot, not assumed. --sw-board-column-min is back to
+     8.5rem, and the six lifecycle states read as a pipeline again.
 
      `overflow-x` below is still load-bearing: the pane is draggable
      down to --sw-space-10, far under one column's minimum, so the
