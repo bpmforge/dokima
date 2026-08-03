@@ -17,7 +17,6 @@ import {
 } from './onboard-board-lifecycle.js';
 import {
   createRealOnboardDispatch,
-  resolveOnboardGatewayConfigFromEnv,
   type OnboardGatewayConfig,
   type RealOnboardDispatch,
 } from './onboard-dispatch-port.js';
@@ -57,10 +56,17 @@ export async function runOnboardAnalysis(
   opts: RunOnboardAnalysisOptions,
 ): Promise<RunOnboardAnalysisResult> {
   const now = opts.now ?? (() => new Date().toISOString());
+  // W10-45: no longer `?? resolveOnboardGatewayConfigFromEnv()` here. Passing
+  // an env-derived config eagerly meant `createRealOnboardDispatch` always saw
+  // an explicit config and could never reach the registry+matrix — the env
+  // fallback beat the user's own selection, which is the bug in the other
+  // direction. Leaving `config` undefined lets the dispatch resolve per role,
+  // and `resolveModelTarget` still falls back to the env path when the
+  // registry or matrix is empty (a normal first-run state, C-1).
   const dispatch =
     opts.dispatch ??
     createRealOnboardDispatch({
-      config: opts.gatewayConfig ?? resolveOnboardGatewayConfigFromEnv(),
+      ...(opts.gatewayConfig ? { config: opts.gatewayConfig } : {}),
       repoRoot: opts.projectPath,
     });
 

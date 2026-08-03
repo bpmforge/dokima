@@ -37,8 +37,18 @@
  * `loadLoopModuleForTests` seam — but a bare specifier is statically
  * analysable, so a bundler inlines it and `tsc` can type it.
  */
-import { createOaiCompatProvider, type Provider } from '@dokima/gateway';
+import { type Provider } from '@dokima/gateway';
 import { MalformedModelOutputError } from './errors.js';
+// Imported, never reimplemented (W10-45). `providerForConfig` constructs the
+// adapter the resolved KIND names and refuses cloud kinds by name;
+// `resolveGatewayConfigForProject` is the registry+matrix resolution W10-03
+// built. Copying either here is what produced this unwired seam in the first
+// place — W10_PLAN §6a traces it to exactly that habit.
+import {
+  providerForConfig,
+  resolveGatewayConfigForProject,
+  type GatewayConfig,
+} from './gateway-model-port.js';
 import { parseOnboardCompletion, type OnboardStepArtifact } from './onboard-types.js';
 
 interface LoopModule {
@@ -90,12 +100,26 @@ export interface OnboardGatewayConfig {
   readonly baseUrl: string;
   readonly apiKey?: string;
   readonly model: string;
+  /** Which adapter to construct. Absent => oai-compat, the pre-registry
+   * behaviour, which is what the env fallback still resolves to. */
+  readonly kind?: GatewayConfig['kind'];
+  /** Which registry entry this came from, for provenance in traces. */
+  readonly providerId?: string;
   /** Test-only override — real callers always get the real `fetch`. */
   readonly fetchImpl?: typeof fetch;
 }
 
-/** Local-first default (C-1): the same LM Studio-shaped localhost endpoint
- * `gateway-model-port.ts` defaults to. */
+/**
+ * Local-first default (C-1): the same LM Studio-shaped localhost endpoint
+ * `gateway-model-port.ts` defaults to.
+ *
+ * Kept as the DOCUMENTED override for CI and fixtures (the e2e fake-model
+ * gateway sets these), and since W10-45 explicitly SECOND in line behind an
+ * explicit registry+matrix selection. Still exported: `pipeline/index.ts`
+ * re-exports it and `resolveModelTarget` falls back to the env path whenever
+ * the registry or matrix is empty, which is a normal first-run state, not an
+ * error.
+ */
 export function resolveOnboardGatewayConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): OnboardGatewayConfig {
@@ -152,16 +176,37 @@ export interface CreateRealOnboardDispatchOptions {
 export function createRealOnboardDispatch(
   opts: CreateRealOnboardDispatchOptions,
 ): RealOnboardDispatch {
-  const config = opts.config ?? resolveOnboardGatewayConfigFromEnv();
-  const provider: Provider = createOaiCompatProvider({
-    id: 'onboard-run',
-    baseUrl: config.baseUrl,
-    apiKey: config.apiKey,
-    fetchImpl: config.fetchImpl,
-  });
-
   return async (role, context) => {
     const { runSession } = await loadLoopModule();
+
+    // Resolved PER ROLE, inside the dispatch, not once at construction.
+    // The role matrix is keyed role x task_type and every onboard step
+    // dispatches a different specialist, so resolving once would wire the
+    // seam and still route every specialist through one role's entry —
+    // a quieter version of the bug this ticket exists to fix (W10-45).
+    //
+    // An explicit `config` still wins outright: that is the seam tests and
+    // the e2e fake-model gateway drive.
+    const config: OnboardGatewayConfig =
+      opts.config ??
+      (await resolveGatewayConfigForProject(opts.repoRoot, {
+        role,
+        taskType: 'reasoning',
+      }));
+
+    // `providerForConfig` (gateway-model-port.ts), not an unconditional
+    // `createOaiCompatProvider`: it constructs the adapter the resolved KIND
+    // names, and refuses cloud kinds by name rather than falling back to
+    // localhost. Imported rather than reimplemented — local reimplementation
+    // is the documented cause of this seam being unwired in the first place.
+    const provider: Provider = providerForConfig({
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      model: config.model,
+      ...(config.kind ? { kind: config.kind } : {}),
+      providerId: config.providerId ?? 'onboard-run',
+      ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
+    });
 
     const result = await runSession({
       handoff: {
