@@ -6,6 +6,7 @@ import {
   draftFromTraceEvent,
   type EscalationEventLike,
 } from '../lessons/prefill.js';
+import { formatTimestamp } from '../notifications/NotificationCard.js';
 import { fetchRunTrace, fetchTicketRuns, type TraceEvent } from './api.js';
 import { classifyTraceEvent, passNumber, TRACE_EVENT_KIND_LABEL } from './classify.js';
 import './trace.css';
@@ -60,9 +61,9 @@ function escalationReason(event: TraceEvent): string | undefined {
  * follow-up rather than reaching into a sibling feature's API module.
  */
 
-/** `toLocaleString()` (same precedent as `NotificationCard.tsx`'s timestamp) plus the gap since the previous row in the replay — the fixture's ~1ms spacing is real data, not a bug to paper over. */
+/** `NotificationCard.tsx`'s `formatTimestamp` (W10-28: shared, not duplicated — same precedent that was previously just a comment) plus the gap since the previous row in the replay — the fixture's ~1ms spacing is real data, not a bug to paper over. */
 function formatEventTime(iso: string, previousIso: string | undefined): string {
-  const localized = new Date(iso).toLocaleString();
+  const localized = formatTimestamp(iso);
   if (previousIso === undefined) return localized;
   const deltaMs = new Date(iso).getTime() - new Date(previousIso).getTime();
   return `${localized} (+${formatStepDelta(deltaMs)})`;
