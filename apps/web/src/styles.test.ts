@@ -533,10 +533,19 @@ function classIsApplied(source: string, className: string): boolean {
 
 /** Whether `.className` appears as a CSS selector fragment anywhere in
  * `source` — a real rule, not a longer class name that happens to share
- * the prefix (`.sr-only-foo` must not satisfy a lookup for `sr-only`). */
+ * the prefix (`.sr-only-foo` must not satisfy a lookup for `sr-only`) and
+ * not the class name showing up in a comment (a stylesheet's own doc
+ * comments reference class names in prose — see styles.css's W10-32
+ * comment above the real rule, and board.css's — without stripping `/*
+ * ... *\/` first, that prose satisfies the lookup even when the rule
+ * itself has been deleted, which is exactly the false-pass this gate
+ * exists to prevent). Requires the selector to be immediately followed
+ * by (optional whitespace/combinators then) `{`, so only an actual rule
+ * declaration counts as "defined". */
 function classIsDefined(source: string, className: string): boolean {
+  const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, '');
   const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\.${escaped}(?![\\w-])`).test(source);
+  return new RegExp(`\\.${escaped}(?![\\w-])[^{}]*\\{`).test(withoutComments);
 }
 
 describe('utility classes applied in components resolve to a stylesheet rule (W10-32)', () => {
@@ -577,6 +586,20 @@ describe('gate integrity: the applied-but-undefined class check can fail (W10-32
 
   it('does not false-positive on a longer class name sharing the same prefix', () => {
     const stylesheet = '.sr-only-legacy { display: none; }';
+    expect(classIsDefined(stylesheet, 'sr-only')).toBe(false);
+  });
+
+  it('does not false-positive on the class name appearing in a comment, not a rule', () => {
+    // The exact shape of the bug this gate previously shipped with: the
+    // real `.sr-only` rule removed, but explanatory prose (like the
+    // comment above the real rule in styles.css, or the one in
+    // board.css) still mentions ".sr-only" in text. A regex over raw
+    // source text — comments included — treats prose as a declaration.
+    const stylesheet = `
+      /* re-measured now that .sr-only actually hides that text, see
+         board.css: \`.sr-only\` is defined (clip-path) */
+      .board-card { display: flex; }
+    `;
     expect(classIsDefined(stylesheet, 'sr-only')).toBe(false);
   });
 
