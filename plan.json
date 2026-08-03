@@ -3531,7 +3531,7 @@
       "depends_on": [
         "W10-01"
       ],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "Discovery ALREADY EXISTS and is thrown away: the `Provider` contract carries `listModels()`, and `apps/server/src/cli/ops/providers-refresh.ts` calls it \u2014 then keeps `modelCount` and DISCARDS the list. Persist the list per provider and expose it. This is a plumbing ticket, not a build-discovery ticket; size it accordingly.",
