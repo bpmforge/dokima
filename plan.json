@@ -3791,7 +3791,7 @@
         "apps/web/src/App.tsx"
       ],
       "depends_on": [],
-      "status": "done",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "DEAD CONTROL 1: board/BoardView.tsx:53 renders <ShippedTicker> with no onSelectTicket. `grep -rn onSelectTicket apps/web/src e2e` returns 3 hits, all inside ShippedTickerStrip.tsx itself. The pill is a real <button> with cursor:pointer, in the tab order, and does nothing on click \u2014 sitting beside a visually identical ClaimNow pill that fires a durable verb. Event delegation does not rescue it: App.tsx:149-151 matches only [data-testid^=\"card-\"]. UX_SPEC.md:102 requires the link.",
