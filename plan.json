@@ -3989,7 +3989,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "title": "The tour fixture fabricates an event payload the product never emits",
+      "title": "The tour fixture fabricates at least two event payload fields production never emits",
       "write_scope": [
         "apps/web/scripts/seed-tour-trace.mjs",
         "apps/web/e2e/fixtures/**",
@@ -3999,14 +3999,14 @@
       "status": "todo",
       "stories": [],
       "acceptance": [
-        "MEASURED 2026-08-03: apps/web/scripts/seed-tour-trace.mjs:39 appends a gate event with payload { validators: [{ name, exitCode, gapCount }] }. No production code path ever writes that key. mintReceipt (packages/events/src/receipts.ts:363-372) is the SOLE appender of gate.receipt_minted / gate.waived and anchors them with { receiptId, kind, contentMac }; validator results live in the separate `receipts` table.",
-        "THE HARM IS NOT A WRONG SCREENSHOT, IT IS A WRONG SPEC. A UI built against this fixture reads a key that is always present in the tour and always absent in production. That is exactly what happened: a visual audit read the fixture, concluded the data was available, a ticket was written to surface it, and an agent implemented it before an independent reviewer caught that the payload does not exist. Law 9 says recorded fixtures rather than live calls \u2014 it does not license a fixture to invent a shape the recorder never produced.",
-        "Correct the fixture so every appended event carries only the payload its real appender writes. Where the tour needs richer content, seed it through the real seam (mintReceipt and the receipts table) rather than by hand-authoring an event payload.",
-        "RED FIXTURE: a test that fails when a seeded event payload carries a key the production appender for that eventType does not write. Derive the expected shape from the appender, not from a hand-maintained list, or it rots the moment a payload changes.",
-        "Audit the other seeds in apps/web/e2e/fixtures/** the same way and report what you found \u2014 seed-board-tickets.mjs is used by the e2e suite and the a11y gate, so a fabricated shape there would be load-bearing for far more than the tour.",
-        "Record the rule in docs/TESTING.md: a fixture may record less than production, never more, and never a differently-shaped payload. Full gate green; counts in the commit body."
+        "MEASURED 2026-08-03, TWO confirmed fabrications in apps/web/scripts/seed-tour-trace.mjs. (1) Line 39 appends a gate event with payload { validators: [{ name, exitCode, gapCount }] } \u2014 mintReceipt (packages/events/src/receipts.ts:363-372) is the SOLE appender of gate.receipt_minted / gate.waived and anchors them with { receiptId, kind, contentMac }; validator results live in the separate `receipts` table. (2) The escalation event carries payload.reason \u2014 but EscalationEvent (packages/gateway/src/escalation/events.ts:13-24) declares type, ticketId, fromRung, toRung, actorId, receipts, receiptId?, occurredAt and NO reason field. fromRung/toRung are real; reason is not.",
+        "THE HARM IS A FALSE CONTRACT, NOT A WRONG SCREENSHOT. Both fabrications propagated: a visual audit read the fixture, concluded the data existed, tickets were written demanding both be surfaced, and one was implemented before an independent reviewer caught the validators case. The reason case was caught only because the implementing agent checked the emitter itself. Law 9 requires recorded fixtures over live calls; it does not license a fixture to invent a shape the recorder never produced.",
+        "Correct the fixture so every appended event carries only what its real appender writes. Where the tour needs richer content, seed through the real seam (mintReceipt, the receipts table, the escalation emitter) instead of hand-authoring a payload. Note that EscalationEvent already carries `receipts` \u2014 real triggering evidence the trace could show instead of an invented reason string.",
+        "RED FIXTURE: a test that fails when a seeded event payload carries a key its production appender does not write. Derive the expected shape from the emitter/type, not from a hand-maintained list, or it rots the moment a payload changes.",
+        "Audit apps/web/e2e/fixtures/** the same way and report findings \u2014 seed-board-tickets.mjs backs the e2e suite AND the a11y gate, so a fabricated shape there is load-bearing for far more than the tour.",
+        "Record the rule in docs/TESTING.md: a fixture may record LESS than production, never more, and never a differently-shaped payload. Full gate green; counts in the commit body."
       ],
-      "notes": "Found by the independent reviewer that blocked W10-35, and confirmed by hand: grep shows mintReceipt is the only appender of these event types across packages/pipeline, packages/harbormaster and apps/server. This is the more valuable half of that block \u2014 the ticket was one wrong criterion, this is a fixture that can mislead every future ticket that reads it."
+      "notes": "Found by the independent reviewer that blocked W10-35, and confirmed by hand: grep shows mintReceipt is the only appender of these event types across packages/pipeline, packages/harbormaster and apps/server. This is the more valuable half of that block \u2014 the ticket was one wrong criterion, this is a fixture that can mislead every future ticket that reads it. SECOND INSTANCE CONFIRMED 2026-08-03 while verifying W10-35: payload.reason is fixture-only too. W10-35 shipped correctly regardless \u2014 it reads reason defensively and renders it only when present, documents that no production emitter sets it, and deliberately does not surface validators, naming the receipts-API follow-up rather than faking either."
     }
   ]
 }
