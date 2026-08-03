@@ -67,6 +67,23 @@
   font-size: var(--sw-text-base);
 }
 
+/*
+ * W10-28: neither view has a page-level h1 above it (NotificationsView.tsx
+ * has only the queue/all-notifications tabs) — this h2 IS the page's
+ * primary heading, so it takes the same --sw-text-xl every real page h1
+ * uses (settings/roster/fleet), not the section-heading --sw-text-lg
+ * `.project-card__header h2` uses one level down from its own page h1.
+ */
+.morning-queue,
+.notification-center {
+  max-width: 40rem;
+  margin: 0 auto;
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-lg);
+  padding: var(--sw-space-5) var(--sw-space-6);
+  background: var(--sw-bg);
+}
+
 .morning-queue__header,
 .notification-center__header {
   display: flex;
@@ -80,7 +97,7 @@
 .morning-queue__header h2,
 .notification-center__header h2 {
   margin: 0;
-  font-size: var(--sw-text-lg);
+  font-size: var(--sw-text-xl);
 }
 
 .morning-queue__timer {
