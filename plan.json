@@ -3587,9 +3587,10 @@
       "depends_on": [
         "W10-01",
         "W10-02",
-        "W10-05"
+        "W10-05",
+        "W10-42"
       ],
-      "status": "blocked",
+      "status": "todo",
       "stories": [],
       "acceptance": [
         "TODAY `ModelMatrixPanel.tsx` takes the model as a FREE-TEXT STRING (`draft.model`, a bare text input) with no catalog, no validation, and no way to discover what a provider actually serves. Register/edit/test an endpoint (Ollama, LM Studio, any OpenAI-compatible, plus the cloud adapters), see the discovered models from W10-02, and select per role x task-type from a LIST.",
@@ -4018,6 +4019,35 @@
         "Record the rule in docs/TESTING.md: a fixture may record LESS than production, never more, and never a differently-shaped payload. Full gate green; counts in the commit body."
       ],
       "notes": "Found by the independent reviewer that blocked W10-35, and confirmed by hand: grep shows mintReceipt is the only appender of these event types across packages/pipeline, packages/harbormaster and apps/server. This is the more valuable half of that block \u2014 the ticket was one wrong criterion, this is a fixture that can mislead every future ticket that reads it. SECOND INSTANCE CONFIRMED 2026-08-03 while verifying W10-35: payload.reason is fixture-only too. W10-35 shipped correctly regardless \u2014 it reads reason defensively and renders it only when present, documents that no production emitter sets it, and deliberately does not surface validators, naming the receipts-API follow-up rather than faking either. RESOLVED 2026-08-03: seed-tour-trace.mjs's gate.receipt_minted now seeds { receiptId, kind } (mintReceipt's real anchor keys, minus contentMac \u2014 omitted rather than faked over a receipt never actually minted); its escalation.rung_advanced now seeds { fromRung, toRung, receipts } (EscalationEvent's real payload fields, receipts replacing the invented reason string). Added apps/web/e2e/fixtures/event-payload-shape.test.ts: derives each event type's real allowed payload keys by calling mintReceipt and runEscalationLadder at test time (never a hand-maintained list), asserts both seed scripts only ever emit a subset of those keys, and includes a permanent adversarial case (synthetic payload with a planted extra key) proving the check itself still fails red. AUDIT of apps/web/e2e/fixtures/**: seed-board-tickets.mjs's own 'trace' scenario had the identical gate.receipt_minted/payload.validators fabrication (now fixed the same way) \u2014 this one backs trace.spec.ts AND the a11y gate, so it was load-bearing beyond the tour; its escalation.rung_advanced payload ({ fromRung, toRung }) was already a real subset, untouched. record-rule-outcomes.mjs, fake-model-gateway.ts, and project-registry-lock.ts append no events and have no fabrication. SEPARATE FINDING (not fixed, out of write_scope): every gate.receipt_minted/escalation.* event in both fixtures is tagged with a runId for the trace view's per-run grouping, but mintReceipt's and the escalation ladder's real call sites never thread a runId onto their anchoring event at all (confirmed: mintReceipt's internal appendEvent call has no runId param; apps/server/src/api/server/roster-history.ts's own header confirms no producer wires escalation.* into a real event log yet). So in real production these event types are never run-scoped \u2014 the runId tag itself is a fixture convenience with no real counterpart. Fixing it would require changing packages/events/src/receipts.ts and/or apps/server/src/api/server/runs-routes.ts (both outside this ticket's write_scope) and would break trace.spec.ts's row-count assertion as currently written. Flagged as a follow-up, not fabricated payload content."
+    },
+    {
+      "id": "W10-42",
+      "phase": 10,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "title": "The server surface the Providers panel must consume was never built",
+      "write_scope": [
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/server/src/api/server/matrix-routes.ts",
+        "apps/server/src/api/server/matrix-routes.test.ts",
+        "packages/gateway/src/routing/presets.ts",
+        "packages/gateway/src/routing/presets.test.ts",
+        "apps/web/src/settings/types.ts"
+      ],
+      "depends_on": [],
+      "status": "todo",
+      "stories": [],
+      "acceptance": [
+        "W10-04 self-blocked on this: four of its six acceptance criteria need server endpoints that do not exist. Verified by grepping every app.get/post/put/delete under apps/server/src/api \u2014 the ONLY routes are GET/PUT/DELETE /api/v1/projects/:id/providers (W10-01) and GET/PUT /api/v1/projects/:id/model-matrix. No catalog route, no credential-write route, no test-connection route.",
+        "ADD THE CATALOG ROUTE. resolveProviderCatalog (packages/gateway/src/catalog/resolve.ts) has exactly ONE caller in the repo \u2014 apps/server/src/cli/ops/providers-refresh.ts, a CLI command \u2014 so W10-02's catalog is unreachable from a browser. docs/work/W10_PLAN.md:505-511, the draft that became W10-02, specified \"expose GET /api/v1/providers/{id}/models\"; the ticket as filed dropped that from its write_scope and satisfied \"expose it\" via the CLI. Add GET /api/v1/projects/:id/providers/:providerId/models returning { status, source, models, reason } \u2014 source must distinguish `discovered` from `bundled`, and an unreachable endpoint must return the reason, never a silently empty list (W10-02 AC3, UX_SPEC \u00a76a).",
+        "ADD A CREDENTIAL-WRITE ROUTE. packages/shared/src/secrets/vault.ts's ProjectSecretsVault.register(name, value) has ZERO call sites in apps/server/src. UX_SPEC \u00a76a requires the API-key input to write to the keychain and persist only a ref; today FirstRunWizard asks the user to type an already-provisioned ref name instead. Add an endpoint that accepts the secret, calls vault.register, and returns { ref }. RED FIXTURE (Law 8): the literal value must never appear in any settings file or event-log payload \u2014 assert by reading the persisted bytes back, not the API response.",
+        "REFUSE MAKER=VERIFIER AT CONFIGURATION TIME, NOT ONLY AT RUN TIME. guardMakerVerifierDistinct (packages/gateway/src/routing/maker-verifier.ts) is built and tested with ZERO callers in matrix-routes.ts. Enforcement is NOT missing \u2014 W10-03 verified route() still throws SameModelRefusedError on the run path \u2014 so this is fail-late, not an open C-4 hole: a PUT silently accepts a matrix that will fail on the next run, and the panel has no server signal to explain inline. Wire the guard into the PUT handler and surface SameModelRefusedError as a named-rule problem+json refusal so the UI can render the reason (the board's drag-refusal precedent, FR-C).",
+        "FOLD THE DUPLICATED PRESETS. apps/web/src/settings/types.ts shadows packages/gateway/src/routing/presets.ts and can drift silently. presets.ts already has PresetName/PRESETS \u2014 expose Object.keys(PRESETS) as a typed readonly const, export it, and delete the web copy.",
+        "Full gate green including e2e; counts in the commit body. Contention was checked when this was filed: every file above is owned only by DONE tickets, so no live ticket competes."
+      ],
+      "notes": "Filed from W10-04's self-block handoff, which did the analysis and explicitly declined to self-widen its own write_scope \u2014 citing this repo's W8-06 precedent that a maker widening its own scope, even to done-owned P8-clean files, is rejected as illegitimate self-authorization. Its recommendation is reproduced above nearly verbatim because the grep evidence was exhaustive and independently re-verified: zero HTTP callers of resolveProviderCatalog, zero call sites of ProjectSecretsVault.register, zero imports of maker-verifier.js in matrix-routes.ts. Once this lands, W10-04 is buildable inside its existing 5-file web-only write_scope with no further change."
     }
   ]
 }
