@@ -4215,6 +4215,34 @@
         "Full gate green including e2e, counts in the commit body; validate-file-size reports one fewer over-cap file."
       ],
       "notes": "Filed 2026-08-03, fourth of the six over-cap files (W10-46 cleared the two conductor scripts). FILE_SIZE_DEBT.md flags this as the highest-stakes split in the repo and states the instruction directly: diff serialization byte-for-byte before/after, do not just run the suite. mintReceipt is confirmed the sole appender of gate.receipt_minted/gate.waived. SCOPE AMENDED 2026-08-03, before the split landed and recorded rather than done quietly: acceptance 3 requires a golden fixture + its test as NEW siblings (receipts-golden.fixture.json, receipts-golden.test.ts), and the filed scope named only receipts.ts / receipts.test.ts / receipts/** \u2014 the exact \u00a710 defect of writing acceptance that describes behaviour then scoping from whichever file came to mind. Widened to the glob packages/events/src/receipts* which covers all of them. Legitimate here only because the operator both filed and worked this ticket; a maker agent hitting this must self-block instead (W8-06 precedent). AGENT 2026-08-03: done. 553->51 barrel + 6 chapters, receipts.ts kept at its exact path so no consumer moved. Golden fixture (7 tree hashes, 11 MACs) generated from the PRE-split code and committed before anything moved. KEY FINDING: swapping projectId<->phase in computeReceiptMac leaves all 15 existing receipts.test.ts tests GREEN \u2014 they mint and verify with the same code \u2014 and is caught only by the golden fixture, which is the concrete proof of FILE_SIZE_DEBT.md warning that a passing suite cannot certify this split. The byte-level pin needed a second pass: as first written it never called the implementation, so it would have passed while the code drifted; now pins format == implementation == frozen value, and 2 of 4 golden tests fail under the mutation instead of 1. Six private symbols promoted to exports for cross-chapter use, none added to the package barrel \u2014 public surface unchanged. validate-file-size now reports 3 over-cap files (was 6). Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 416 files / 3127 passed | 3 skipped, 61 e2e passed."
+    },
+    {
+      "id": "W10-48",
+      "phase": 10,
+      "module": "web",
+      "lane": "core",
+      "points": 8,
+      "title": "Split the last three over-cap files \u2014 gateway-model-port 450, projects 433, server 408",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port*",
+        "apps/server/src/api/pipeline/gateway-model-port/**",
+        "apps/server/src/api/projects*",
+        "apps/server/src/api/projects/**",
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/**"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "stories": [],
+      "acceptance": [
+        "MEASURED: the last three files over the 400-line CODE_BOOK_PROTOCOL cap \u2014 gateway-model-port.ts 450, projects.ts 433, server.ts 408. Split per the chapter plans in docs/work/FILE_SIZE_DEBT.md. After this, validate-file-size reports ZERO over-cap files for the first time.",
+        "EACH ORIGINAL PATH STAYS as a barrel, the pattern W10-46/W10-47 established: consumers import these by name and ESM has no directory-index resolution, so a barrel means zero call sites move. Report any importer that still had to change and why.",
+        "NAMING COLLISION, flagged in FILE_SIZE_DEBT.md: server.ts already imports from a sibling `./server/` directory, so its chapters must not create a second directory competing for that name. Put them in the existing `./server/` alongside the routes already there rather than inventing `bootstrap/`, which would also collide with the unrelated `apps/server/src/bootstrap/`.",
+        "PURE REORGANIZATION \u2014 no behaviour change, no route path changes, no new exports on any package barrel. gateway-model-port keeps providerForConfig and resolveGatewayConfigForProject exported: W10-45 wired onboard-dispatch-port.ts to both, and breaking that re-unwires the seam that ticket just closed.",
+        "The three inlined feature bodies in server.ts (a 143-line hardcoded chat fixture, WS upgrade dispatch, static asset serving) move out; buildApiServer stays in the barrel as the legitimate Fastify composition root calling ~18 register* functions.",
+        "Full gate green including e2e, counts in the commit body; validate-file-size reports 0 over-cap files."
+      ],
+      "notes": "Filed 2026-08-03, the last three of six. W10-46 cleared the conductor pair, W10-47 receipts.ts. Chapter plans and line estimates come from docs/work/FILE_SIZE_DEBT.md (W10-40). Unlike W10-47 these carry no unmigratable invariant \u2014 ordinary route/port modules \u2014 so the existing suites plus e2e are an adequate regression net without a golden fixture. AGENT 2026-08-03: done. 450->130, 433->49, 408->157; validate-file-size now reports clean, 0 gaps \u2014 first time. All three originals kept as barrels so zero call sites moved. The FILE_SIZE_DEBT naming collision was real: chapters went into the EXISTING ./server/ rather than the proposed bootstrap/, which would have collided with apps/server/src/bootstrap/. gateway-model-port keeps providerForConfig + resolveGatewayConfigForProject exported because W10-45 wired onboard-dispatch-port to both. Six over-cap files -> zero across W10-46/47/48. Repo-wide validator flip (W10-40 AC5) is now unblocked and left as its own ticket. Gate: lint 0 errors (1 pre-existing warning), typecheck clean, 416 files / 3127 passed | 3 skipped, 61 e2e passed."
     }
   ]
 }
