@@ -79,8 +79,11 @@
 
   /* Narrowest a Board column may get before the lane reflows it onto
      another row. Sets how many of the six lifecycle states sit
-     side-by-side in the ~470px centre pane. */
-  --sw-board-column-min: 9rem;
+     side-by-side in the ~470px centre pane. W10-32: was 9rem, raised
+     from 8.5rem by W10-06 against text that was never meant to paint
+     (see board.css) — re-measured now that .sr-only actually hides that
+     text; 8.5rem is the value under test here, confirmed by screenshot. */
+  --sw-board-column-min: 8.5rem;
 
   --sw-transition-duration: 150ms;
 }
@@ -145,6 +148,33 @@ body {
    declaring it once here covers every anchor, present and future. */
 a {
   color: var(--sw-accent);
+}
+
+/* W10-32: applied at five call sites (board/Card.tsx, drawer/DagEditPanel.tsx,
+   SpendByRung.tsx, ContractPanel.tsx, palette/CommandPalette.tsx) and defined
+   in zero stylesheets, so the screen-reader-only text painted as ordinary
+   visible copy — every board card printed "Move ticket E2E-1" above a
+   dropdown already labelled "Move to…". The standard visually-hidden
+   technique: `clip-path` (not `display: none`, which removes the element
+   from the accessibility tree and defeats the point) collapses the box to
+   nothing on screen while a real, non-zero size keeps it in that tree for
+   assistive tech. `clip: rect(0 0 0 0)` is kept alongside `clip-path` for
+   the older screen-reader/browser combinations that don't honor the latter
+   — this is the same dual-declaration technique WebAIM and Bootstrap ship.
+   Sized off --sw-space-0-5 (the smallest spacing step) rather than a bare
+   1px, so this rule doesn't reintroduce the raw-px pattern the W10-06 gate
+   below bans everywhere outside the token block. */
+.sr-only {
+  position: absolute;
+  width: var(--sw-space-0-5);
+  height: var(--sw-space-0-5);
+  padding: 0;
+  margin: calc(-1 * var(--sw-space-0-5));
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* NFR: prefers-reduced-motion is respected everywhere, not just here. */
