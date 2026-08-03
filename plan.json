@@ -4519,7 +4519,7 @@
         "apps/server/src/api/pipeline/onboard-dispatch-port.ts"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED IN A BROWSER against a real local model, not inferred. Registered LM Studio through Settings -> Providers, routed coding-agent/reasoning to `qwen3.6-35b-a3b`, filled all nine Describe questions with a real product idea and clicked \"Build the board\". The blueprint and technical-slate phases BOTH completed against the live model (~76s of real inference). The run then died with: `pipeline model port produced malformed output for phase \"ticket-drafts\": response was not valid JSON: Unexpected token BACKTICK, \" ```json { \"... is not valid JSON (HTTP 502)`.",
