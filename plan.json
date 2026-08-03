@@ -3845,7 +3845,7 @@
         "apps/web/src/trace/trace.css"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "acceptance": [
         "MEASURED: TraceView.tsx:121 renders an escalation as \"Escalation escalation.rung_advanced\" \u2014 the raw event id \u2014 and discards fromRung, toRung and the human-readable reason. The data is in hand and thrown away: the fixture seed-tour-trace.mjs:46 carries reason \"validator gap persisted\", and escalationLikeFromTraceEvent already reads the rungs off that same event for the field-report draft at line 129. Render the reason and R0\u2192R1.",
@@ -3854,7 +3854,10 @@
         "TraceView.tsx:123 renders raw ISO-8601 UTC with milliseconds, unlocalised and with no step delta. Format it. (The 1ms spacing in the fixture is an artifact, not a product problem \u2014 do not \"fix\" the fixture.)",
         "Full gate green including e2e; counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test."
+      "notes": [
+        "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test.",
+        "CONDUCTOR 2026-08-03T03:11:12.336Z: blocked after 2 attempts. Branch sw/w10-35 kept. Gaps: [HIGH] apps/web/src/trace/TraceView.tsx: gateValidators() (line 62) reads payload.validators to populate the new gate-results row, but the real, currently-live production event never carries that key: mintReceipt (packages/events/src/receipts.ts:363-372) anchors gate.receipt_minted/gate.waived with payload { receiptId, kind, contentMac } only \u2014 validators are stored in the separate `receipts` DB table, never copied into the event payload. Grep confirms mintReceipt is the sole appender of these event types across the repo (packages/pipeline, packages/harbormaster, apps/server/*, etc. all call i"
+      ]
     },
     {
       "id": "W10-36",
