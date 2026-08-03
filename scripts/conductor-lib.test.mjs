@@ -3,7 +3,7 @@
 // extraction was necessary: conductor.mjs runs main() as a top-level side
 // effect on import, so its helpers cannot be tested by importing the file
 // directly).
-import { promises as fs, readFileSync } from 'node:fs';
+import { promises as fs, readFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -973,5 +973,45 @@ describe('conductor-lib: testSiblingWarning — silent on settled tickets', () =
   });
   it('still warns for an open one', () => {
     expect(testSiblingWarning({ id: 'W5-12', status: 'todo', write_scope: ['internal/a/foo.go'] }, GO)).toContain('foo.go');
+  });
+});
+
+describe('conductor chapter split (W10-46)', () => {
+  it('ROOT resolves to the REPO root, not scripts/ — the split gotcha that fails silently', async () => {
+    // docs/work/FILE_SIZE_DEBT.md flagged this as blocking: the original
+    // conductor.mjs computed ROOT as `resolve(dirname(import.meta.url), '..')`
+    // because it sat directly in scripts/. The chapter that inherited that
+    // computation lives one level deeper, so '..' would resolve to scripts/
+    // and LOG, STOPFILE, WT_BASE and the board path would all silently point
+    // at the wrong directory — no throw, just wrong. Asserted, not eyeballed.
+    const { ROOT } = await import('./conductor/context.mjs');
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    expect(ROOT).toBe(repoRoot);
+    expect(path.basename(ROOT)).not.toBe('scripts');
+    // The two things ROOT is actually load-bearing for.
+    expect(readFileSync(path.join(ROOT, 'plan.json'), 'utf8').length).toBeGreaterThan(0);
+    expect(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).toContain('"bin"');
+  });
+
+  it('every chapter is under the 400-line cap, and the barrels stayed put', async () => {
+    const { readdirSync } = await import('node:fs');
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const scripts = path.join(root, 'scripts');
+    const over = [];
+    for (const dir of [scripts, path.join(scripts, 'conductor'), path.join(scripts, 'conductor-lib')]) {
+      // Same exemption the real validator applies (validate-file-size.sh:46
+      // excludes `*.test.*`), rather than a rule invented here — this very
+      // file is over the cap and is legitimately exempt.
+      for (const f of readdirSync(dir).filter((n) => n.endsWith('.mjs') && !n.includes('.test.'))) {
+        const full = path.join(dir, f);
+        const lines = readFileSync(full, 'utf8').split('\n').length;
+        if (lines > 400) over.push(`${path.relative(root, full)} (${lines})`);
+      }
+    }
+    expect(over).toEqual([]);
+    // Both entry points keep their exact paths: supervise.sh and both test
+    // suites invoke them by name and ESM has no directory-index resolution.
+    expect(existsSync(path.join(scripts, 'conductor.mjs'))).toBe(true);
+    expect(existsSync(path.join(scripts, 'conductor-lib.mjs'))).toBe(true);
   });
 });
