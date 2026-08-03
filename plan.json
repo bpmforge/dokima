@@ -3888,7 +3888,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "title": "The capture sweep has coverage gaps \u2014 it cannot yet sign off UX_SPEC \u00a72b",
+      "title": "The capture harness can silently shoot a stale build, and its coverage has holes",
       "write_scope": [
         "apps/web/scripts/**",
         "docs/tour/**"
@@ -3897,11 +3897,11 @@
       "status": "todo",
       "stories": [],
       "acceptance": [
-        "The 2026-08-03 sweep captured 46 screenshots but its \u00a72b answer is PARTIAL, and the gaps are specific: dark/01-fleet-empty.png actually renders the Demo Voyage card (the dark fleet EMPTY state was never captured) and dark/04-workspace-empty.png renders a seeded board (the dark board EMPTY state was never captured). Both were mis-slugged, which is worse than missing \u2014 they look like coverage.",
-        "Settings has TWELVE tabs, not the five captured. Effective Settings, MCP Servers, Expert Overrides, Rule Lifecycle, Suppressions and Escalation Policy are unverified in both themes.",
-        "Decisions, Estimate and Lessons never rendered content, and the command palette never opened \u2014 their empty and no-query states are unverified.",
-        "Make the capture assert its own denominator: a state list it walks, and a failure when a captured state does not match the state it claims to be (the two mis-slugged empties would have been caught by a simple \"assert the empty state is actually empty\" check).",
-        "docs/tour/img/ is ALSO stale on main: the shipped captures predate the Dokima rename (headers still read \"Shipwright\") and 05-board-seeded.png shows the pre-W10-06 six-across clipped layout the code no longer produces. Regenerate.",
+        "THE HARNESS CAN CAPTURE CODE THAT IS NOT ON MAIN. `ensureSpaBuilt()` in apps/web/scripts/lib/app-harness.mjs returns early whenever dist/index.html merely EXISTS \u2014 it never checks whether the bundle is older than the source. A dist left from an earlier commit is then served by the real server and photographed as if it were current. Proven 2026-08-03: a capture run against a 19:18 dist reported the W10-29 receipts fix as still broken (404s, doubled /api/v1); rebuilding and re-running showed 200s and zero console errors. The fix was fine; the harness lied. Make it rebuild unconditionally, or compare mtimes against src/ and fail loudly on staleness. Both capture-tour.mjs and capture-acceptance.mjs depend on this, so docs/tour/ is only as trustworthy as this check.",
+        "TWO CAPTURED STATES ARE MIS-SLUGGED, which is worse than missing because they look like coverage: dark/01-fleet-empty.png actually renders a project card, and dark/04-workspace-empty.png renders a seeded board. Assert that a state named \"empty\" is empty.",
+        "Settings has TWELVE tabs, not the five captured. Effective Settings, MCP Servers, Expert Overrides, Rule Lifecycle, Suppressions and Escalation Policy are unverified in both themes. Decisions, Estimate and Lessons never rendered content and the command palette never opened, so their empty and no-query states are unverified too.",
+        "Make the capture assert its own denominator: a declared state list it walks, with a failure when a state is skipped or when a captured state does not match what it claims to be. A sweep that cannot report its own coverage cannot sign off UX_SPEC \u00a72b.",
+        "docs/tour/img/ is stale on main independently of the above: the shipped captures predate the Dokima rename (headers still read \"Shipwright\") and 05-board-seeded.png shows the pre-W10-06 six-across clipped layout the code no longer produces. Regenerate once the harness is trustworthy.",
         "Full gate green; counts in the commit body."
       ],
       "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. Filed by the sweep against itself: the honest-absence rule applied to the verification harness rather than the product."
