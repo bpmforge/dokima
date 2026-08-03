@@ -3873,13 +3873,11 @@
       "status": "todo",
       "stories": [],
       "acceptance": [
-        "plans/format.ts:13 renders \"1 raw \u2192 1 plan items\": a dropped noun (its own doc comment one line above says \"raw findings\") and a hardcoded plural. NotificationCard.tsx:51 pluralises correctly, so this is an inconsistency rather than house style.",
-        "ProjectCard.tsx:6-10 and :95 render \"0 berths running \u00b7 no active berth\" \u2014 the same fact twice, with a separator implying two facts.",
-        "FleetHome.tsx:102/192/208/234: three buttons and a heading are all named \"New Product\"; the submit label is MODE_LABEL[mode], so the commit action is never a verb.",
-        "ValidatorPacksPanel.tsx:42 prints literal backticks around UnknownValidatorSelectionError two clauses after using a correct <code> element in the same sentence.",
-        "PlanView.tsx:117 / ranking.ts:29 label a score as \"rank 12\" \u2014 it is severity x leverage x staleness, shown on a one-item list, so it reads as an ordinal position among eleven items that do not exist. Name it a score.",
-        "EvidencePanel.tsx:54 is <section aria-label=\"Evidence\"> with no VISIBLE heading, so \"No manifest yet.\" reads as a second sentence under \"History\" \u2014 the only one of UX_SPEC \u00a74's six drawer sections lacking a visible heading.",
-        "AutonomyBudgetPanel.tsx:176-184: the 1-8 berths range renders no endpoint labels, so at value 1 nothing on screen states the ceiling.",
+        "DROPPED NOUNS AND HARDCODED PLURALS: plans/format.ts:13 renders \"1 raw \u2192 1 plan items\" \u2014 the noun is missing (its own doc comment one line above says \"raw findings\") and the plural is hardcoded. NotificationCard.tsx:51 pluralises correctly, so this is an inconsistency rather than house style. ProjectCard.tsx:6-10 and :95 render \"0 berths running \u00b7 no active berth\": the same fact twice, with a separator implying two.",
+        "A SCORE LABELLED AS A RANK: PlanView.tsx:117 / ranking.ts:29 show \"rank 12\", which is severity x leverage x staleness \u2014 a score \u2014 displayed on a one-item list, so it reads as an ordinal position among eleven items that do not exist. Name it what it is.",
+        "NO VERB ON THE COMMIT ACTION: FleetHome.tsx:102/192/208/234 give three buttons and a heading the same name, \"New Product\"; the submit label is MODE_LABEL[mode], so the action that actually creates something is never phrased as an action.",
+        "MARKUP LEAKING INTO COPY: ValidatorPacksPanel.tsx:42 prints literal backticks around UnknownValidatorSelectionError, two clauses after correctly using a <code> element in the same sentence.",
+        "A SECTION WITH NO VISIBLE HEADING: EvidencePanel.tsx:54 is <section aria-label=\"Evidence\"> with no rendered heading, so \"No manifest yet.\" reads as a second sentence under \"History\" \u2014 the only one of UX_SPEC \u00a74's six drawer sections lacking a visible heading. Also AutonomyBudgetPanel.tsx:176-184: the 1-8 berths range renders no endpoint labels, so at value 1 nothing on screen states the ceiling.",
         "Full gate green including e2e; counts in the commit body."
       ],
       "notes": "Found 2026-08-03 by a 13-agent end-user visual verification sweep over 46 screenshots (both themes, 1440x900 + 1280x800, real server + real event log), adversarially verified. Not found by any test. Deliberately excludes apps/server estimate-routes.ts copy (\"W4-06\", \"budget_ledger\", \"GET /models\" shown as end-user text, and a UTC-stamped \"Weekly digest\" date) \u2014 that is server-owned and belongs in its own ticket."
