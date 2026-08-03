@@ -88,6 +88,7 @@ describe('BoardView empty state "View current phase" action (UX_SPEC §2b)', () 
         token="t"
         projectId="p1"
         wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
         onViewCurrentPhase={onViewCurrentPhase}
       />,
     );
@@ -99,7 +100,15 @@ describe('BoardView empty state "View current phase" action (UX_SPEC §2b)', () 
   it('renders no action when onViewCurrentPhase is not supplied (never a silent no-op button)', () => {
     mockedUseBoardData.mockReturnValue(boardData({ tickets: [] }));
 
-    render(<BoardView baseUrl="/api/v1" token="t" projectId="p1" wsUrl="ws://x" />);
+    render(
+      <BoardView
+        baseUrl="/api/v1"
+        token="t"
+        projectId="p1"
+        wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
+      />,
+    );
 
     expect(screen.queryByRole('button', { name: 'View current phase' })).toBeNull();
   });

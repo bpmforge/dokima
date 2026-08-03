@@ -15,7 +15,7 @@ export interface BoardViewProps {
   runId?: string;
   wsUrl: string;
   onViewCurrentPhase?: () => void;
-  onSelectTicket?: (ticketId: string) => void;
+  onSelectTicket: (ticketId: string) => void;
 }
 
 /** Kanban board (UX_SPEC §4, FR-C4/FR-T4) — lanes x columns over live projections. */
