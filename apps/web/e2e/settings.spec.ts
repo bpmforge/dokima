@@ -14,12 +14,19 @@ import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
 
 let projectId: string;
 
-test.beforeAll(async ({ baseURL }) => {
-  const api = await request.newContext({ baseURL });
+/** Extracts the injected bearer token from the served shell HTML (repeated per-file boilerplate — see a11y/settings.spec.ts's own copy). */
+async function fetchDokimaToken(
+  api: import('@playwright/test').APIRequestContext,
+): Promise<string | undefined> {
   const tokenRes = await api.get('/');
   const html = await tokenRes.text();
   const tokenMatch = /__DOKIMA_TOKEN__=("(?:[^"\\]|\\.)*")/.exec(html);
-  const token = tokenMatch ? (JSON.parse(tokenMatch[1]!) as string) : undefined;
+  return tokenMatch ? (JSON.parse(tokenMatch[1]!) as string) : undefined;
+}
+
+test.beforeAll(async ({ baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const token = await fetchDokimaToken(api);
 
   const dir = path.join(os.tmpdir(), `dokima-settings-e2e-${randomUUID()}`);
   const created = await withProjectRegistryLock(async () => {
@@ -83,23 +90,54 @@ test('first-run wizard: preset -> provider -> forge (skip) -> sample creates a r
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 });
 
-test('model matrix: add a row, and a copilot/-prefixed model is flagged', async ({
+test('model matrix: pick a model from the provider-discovered list, and a copilot/-prefixed model is flagged (W10-04 AC1)', async ({
   page,
+  baseURL,
 }) => {
+  // Copilot's catalog isn't discoverable yet — buildCatalogProvider
+  // (apps/server/.../providers-routes.ts) has no 'copilot' case, so a
+  // copilot/-backed row can't be produced through the select-driven picker
+  // today (UX_SPEC §6a "Cloud kind selected"). Seed it directly through the
+  // real model-matrix API instead: matrix-routes.ts's PUT is an upsert
+  // (model-matrix-store.ts, PK role+task_type), so it coexists with the row
+  // the UI adds below, and this still proves the copilot_backed flag —
+  // server-driven, unrelated to how a row was created — renders correctly.
+  const api = await request.newContext({ baseURL });
+  const token = await fetchDokimaToken(api);
+  await api.put(`/api/v1/projects/${projectId}/model-matrix`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { rows: [{ role: 'challenger', task_type: 'code', model: 'copilot/gpt-4' }] },
+  });
+  await api.dispose();
+
   await openProjectSettings(page);
   await expect(page.getByTestId('model-matrix-panel')).toBeVisible();
-
-  const form = page.getByRole('form', { name: 'Add matrix row' });
-  await form.getByLabel('Role').fill('coding-agent');
-  await form.getByLabel('Model').fill('local/qwen2.5-coder');
-  await form.getByRole('button', { name: 'Add / update row' }).click();
-  await expect(page.getByRole('row', { name: /coding-agent/ })).toBeVisible();
-
-  await form.getByLabel('Role').fill('challenger');
-  await form.getByLabel('Model').fill('copilot/gpt-4');
-  await form.getByRole('button', { name: 'Add / update row' }).click();
   const copilotRow = page.getByRole('row', { name: /challenger/ });
   await expect(copilotRow.getByText('Copilot-backed')).toBeVisible();
+
+  // Register a provider so the Model field has a real, list-backed catalog
+  // to pick from (AC1: no free text). A closed port (9, "discard") fails
+  // fast and deterministically, falling back to the bundled offline catalog
+  // (content/model-catalog/catalog.v1.json's 'ollama' entries) — never a
+  // live network call (Law 9), and never the machine's real Ollama/LM
+  // Studio install on the default ports this test must not depend on.
+  const providersForm = page.getByRole('form', { name: 'Add provider' });
+  await providersForm.getByLabel('ID').fill('ollama-e2e');
+  await providersForm.getByLabel('Base URL').fill('http://127.0.0.1:9/v1');
+  await providersForm.getByRole('button', { name: 'Add provider' }).click();
+
+  const providerRow = page.getByRole('row', { name: /ollama-e2e/ });
+  await expect(providerRow.getByText('Bundled')).toBeVisible();
+
+  const matrixForm = page.getByRole('form', { name: 'Add matrix row' });
+  await matrixForm.getByLabel('Role').fill('coding-agent');
+  const modelSelect = matrixForm.getByLabel('Model');
+  await expect(modelSelect).toBeEnabled();
+  await modelSelect.selectOption('qwen2.5-coder');
+  await matrixForm.getByRole('button', { name: 'Add / update row' }).click();
+  await expect(page.getByRole('row', { name: /coding-agent/ })).toContainText(
+    'qwen2.5-coder',
+  );
 });
 
 test('autonomy dial always shows the immutable NEVER-AUTO list', async ({ page }) => {
