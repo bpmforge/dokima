@@ -4043,7 +4043,7 @@
         "packages/gateway/src/routing/index.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "W10-04 self-blocked because four of its criteria need server endpoints that do not exist. Attempt 1 of THIS ticket already shipped two of them on branch sw/w10-42 (catalog route + credential-write route, gate green in-scope: 411 files / 3019 passed | 3 skipped, 59 e2e). Re-do or cherry-pick that work; the remaining criteria are below.",
