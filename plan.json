@@ -4615,7 +4615,7 @@
       "depends_on": [
         "W10-59"
       ],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "THE GAP, stated exactly. W10-59 added 20 tests for `parseModelJson` in `model-json.test.ts`, all of which exercise the helper in isolation. If `chat-json.ts` is reverted to `JSON.parse(response.message.content)`, every one of those 20 stays green, the whole 3176-test suite stays green, all 61 e2e stay green \u2014 and the defect that killed every creation-pipeline run is back in production.",

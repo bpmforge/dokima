@@ -149,6 +149,57 @@ describe('gateway-model-port — real gateway wiring (workspace dependency)', ()
     expect(result[0]?.verify).toBe('pnpm test');
   });
 
+  /**
+   * W10-63. W10-59 made `parseModelJson` fence-tolerant and covered it with 20
+   * unit tests — none of which touch this file. Revert `chat-json.ts` to a bare
+   * `JSON.parse(response.message.content)` and all 20 stay green, along with
+   * the whole suite and every e2e: the parser still works, the pipeline just
+   * stops using it. These two cases are the assertion that the phases go
+   * through it, and they fail on that revert.
+   *
+   * The fenced payload is the real shape, not an invented one — a ```json
+   * block is what a live LM Studio returned for ticket-drafts on 2026-08-03,
+   * after blueprint and technical-slate had already completed.
+   */
+  const fenced = (value: unknown): string =>
+    '```json\n' + JSON.stringify(value, null, 2) + '\n```';
+
+  it('resolveTicketDrafts parses a FENCED completion — the phase that failed in production', async () => {
+    server = await startFakeGatewayServer([fenced(VALID_TICKET_DRAFTS)]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    const result = await port.resolveTicketDrafts(
+      { document: { version: 1, markdown: '# Demo' }, slates: [] },
+      {
+        kind: 'technical',
+        title: 'Storage',
+        options: [],
+        recommendedLabel: 'Pragmatic',
+        recommendedConstraint: 'ship in one week',
+      },
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe('T-1');
+    expect(result[0]?.verify).toBe('pnpm test');
+  });
+
+  it('resolveBlueprintInput parses a FENCED completion identically to its unfenced twin', async () => {
+    server = await startFakeGatewayServer([fenced(VALID_BLUEPRINT_INPUT)]);
+    const port = await createRealGatewayPort({
+      baseUrl: server.url,
+      model: 'local-model',
+    });
+
+    const result = await port.resolveBlueprintInput([], 'Demo Project');
+
+    expect(result.sections).toEqual(VALID_BLUEPRINT_INPUT.sections);
+    expect(result.openQuestions[0]?.key).toBe('deployment-shape');
+  });
+
   it('throws MalformedModelOutputError on a non-JSON completion', async () => {
     server = await startFakeGatewayServer(['not json at all']);
     const port = await createRealGatewayPort({
