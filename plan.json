@@ -4042,7 +4042,7 @@
         "apps/web/src/settings/types.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "acceptance": [
         "W10-04 self-blocked on this: four of its six acceptance criteria need server endpoints that do not exist. Verified by grepping every app.get/post/put/delete under apps/server/src/api \u2014 the ONLY routes are GET/PUT/DELETE /api/v1/projects/:id/providers (W10-01) and GET/PUT /api/v1/projects/:id/model-matrix. No catalog route, no credential-write route, no test-connection route.",
@@ -4052,7 +4052,10 @@
         "FOLD THE DUPLICATED PRESETS. apps/web/src/settings/types.ts shadows packages/gateway/src/routing/presets.ts and can drift silently. presets.ts already has PresetName/PRESETS \u2014 expose Object.keys(PRESETS) as a typed readonly const, export it, and delete the web copy.",
         "Full gate green including e2e; counts in the commit body. Contention was checked when this was filed: every file above is owned only by DONE tickets, so no live ticket competes."
       ],
-      "notes": "Filed from W10-04's self-block handoff, which did the analysis and explicitly declined to self-widen its own write_scope \u2014 citing this repo's W8-06 precedent that a maker widening its own scope, even to done-owned P8-clean files, is rejected as illegitimate self-authorization. Its recommendation is reproduced above nearly verbatim because the grep evidence was exhaustive and independently re-verified: zero HTTP callers of resolveProviderCatalog, zero call sites of ProjectSecretsVault.register, zero imports of maker-verifier.js in matrix-routes.ts. Once this lands, W10-04 is buildable inside its existing 5-file web-only write_scope with no further change."
+      "notes": [
+        "Filed from W10-04's self-block handoff, which did the analysis and explicitly declined to self-widen its own write_scope \u2014 citing this repo's W8-06 precedent that a maker widening its own scope, even to done-owned P8-clean files, is rejected as illegitimate self-authorization. Its recommendation is reproduced above nearly verbatim because the grep evidence was exhaustive and independently re-verified: zero HTTP callers of resolveProviderCatalog, zero call sites of ProjectSecretsVault.register, zero imports of maker-verifier.js in matrix-routes.ts. Once this lands, W10-04 is buildable inside its existing 5-file web-only write_scope with no further change.",
+        "CONDUCTOR 2026-08-03T08:19:04.431Z: blocked after 2 attempts. Branch sw/w10-42 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch"
+      ]
     }
   ]
 }
