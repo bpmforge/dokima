@@ -55,7 +55,33 @@ describe('runProvidersRefreshCommand', () => {
     expect(fakeProvider.listModels).toHaveBeenCalled();
     expect(fakeProvider.warmUp).toHaveBeenCalled();
     expect(io.stdout).toHaveBeenCalledWith(
-      expect.stringContaining('2 model(s) discovered, warm-up ok'),
+      expect.stringContaining('2 model(s) discovered [llama3, mistral], warm-up ok'),
+    );
+  });
+
+  it('reports a reachable endpoint that serves no models yet, distinct from unreachable', async () => {
+    const io = await scratchIo();
+    const entry: ProviderConfigEntry = { id: 'ollama', kind: 'ollama' };
+    const fakeProvider = {
+      id: 'ollama',
+      chat: vi.fn(),
+      listModels: vi.fn().mockResolvedValue([]),
+      getContextLength: vi.fn(),
+      health: vi.fn(),
+      warmUp: vi
+        .fn()
+        .mockResolvedValue({ status: 'ok', checkedAt: '2026-08-02T00:00:00Z' }),
+      queueStats: vi.fn(),
+    };
+
+    const code = await runProvidersRefreshCommand(io, {
+      loadConfiguredProviders: vi.fn().mockResolvedValue([entry]),
+      buildProvider: vi.fn().mockReturnValue(fakeProvider),
+    });
+
+    expect(code).toBe(0);
+    expect(io.stdout).toHaveBeenCalledWith(
+      expect.stringContaining('reachable, but this endpoint serves no models yet'),
     );
   });
 
@@ -81,5 +107,68 @@ describe('runProvidersRefreshCommand', () => {
     expect(io.stdout).toHaveBeenCalledWith(
       expect.stringContaining('unreachable: ECONNREFUSED'),
     );
+  });
+
+  it('unreachable ollama falls back to the bundled offline catalog, still reported unreachable (Law 9 / C-1)', async () => {
+    const io = await scratchIo();
+    const entry: ProviderConfigEntry = { id: 'ollama', kind: 'ollama' };
+    const fakeProvider = {
+      id: 'ollama',
+      chat: vi.fn(),
+      listModels: vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')),
+      getContextLength: vi.fn(),
+      health: vi.fn(),
+      warmUp: vi.fn(),
+      queueStats: vi.fn(),
+    };
+
+    const code = await runProvidersRefreshCommand(io, {
+      loadConfiguredProviders: vi.fn().mockResolvedValue([entry]),
+      buildProvider: vi.fn().mockReturnValue(fakeProvider),
+    });
+
+    // Still an unreachable exit code — the bundled catalog is informational,
+    // never presented as if the endpoint answered.
+    expect(code).toBe(1);
+    const call = (io.stdout as ReturnType<typeof vi.fn>).mock.calls
+      .map((args: unknown[]) => args[0] as string)
+      .find((line) => line.includes(entry.id));
+    expect(call).toContain('unreachable: connect ECONNREFUSED');
+    expect(call).toContain('offline: bundled catalog offers');
+  });
+
+  it('RED FIXTURE: zero network, no reachable endpoint, no bundled catalog for the kind — resolves honestly, never silently empty, never fabricated', async () => {
+    const io = await scratchIo();
+    const entry: ProviderConfigEntry = {
+      id: 'my-endpoint',
+      kind: 'oai-compat',
+      baseUrl: 'http://localhost:9/v1',
+    };
+    const fakeProvider = {
+      id: 'my-endpoint',
+      chat: vi.fn(),
+      listModels: vi
+        .fn()
+        .mockRejectedValue(new Error('my-endpoint: endpoint unreachable')),
+      getContextLength: vi.fn(),
+      health: vi.fn(),
+      warmUp: vi.fn(),
+      queueStats: vi.fn(),
+    };
+
+    const code = await runProvidersRefreshCommand(io, {
+      loadConfiguredProviders: vi.fn().mockResolvedValue([entry]),
+      buildProvider: vi.fn().mockReturnValue(fakeProvider),
+    });
+
+    expect(code).toBe(1);
+    const call = (io.stdout as ReturnType<typeof vi.fn>).mock.calls
+      .map((args: unknown[]) => args[0] as string)
+      .find((line) => line.includes(entry.id));
+    // The reason is always present — never a bare/empty report.
+    expect(call).toContain('unreachable: my-endpoint: endpoint unreachable');
+    // No bundled catalog exists for oai-compat (arbitrary user endpoints) —
+    // absence is stated, not papered over with an invented model list.
+    expect(call).not.toContain('bundled catalog');
   });
 });
