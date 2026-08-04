@@ -86,6 +86,8 @@ import { readLedgerMarkdown } from './ledger.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
 import { runPreflight } from './preflight.js';
+import { replyAwaitingDecisions } from './awaiting-decisions.js';
+import { registerResumeRoute } from './resume.js';
 import { parseRequestBody, type RunPipelineRequestBody } from './request-body.js';
 
 export interface PipelineRoutesOptions {
@@ -147,6 +149,7 @@ export function registerPipelineRoutes(
     now: opts.now,
   });
   registerAdvanceRoute(app, { home: opts.home, signingKey: opts.signingKey });
+  registerResumeRoute(app, { registryPath, now, resolvePort });
 
   app.post(
     '/api/v1/projects/:id/pipeline/run',
@@ -183,6 +186,20 @@ export function registerPipelineRoutes(
         const ledgerMarkdown = await readLedgerMarkdown(record.path);
         const modelPort = await resolvePort(record.path);
         const preflight = await runPreflight(modelPort, body, ledgerMarkdown);
+
+        // W10-67: the gate refused, correctly (FR-P7). Keep the slates the
+        // founder is being asked to answer instead of discarding them with the
+        // model call that produced them, and report a PAUSED run rather than a
+        // failed one — this used to render as "The run failed:" with nothing
+        // kept and nowhere to answer.
+        if (preflight.status === 'awaiting-decisions') {
+          return replyAwaitingDecisions(reply, {
+            projectPath: record.path,
+            preflight,
+            blueprintTitle: body.blueprintTitle,
+            now,
+          });
+        }
 
         const runId = randomUUID();
         const dbPath = stateDbPath(record.path);

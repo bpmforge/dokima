@@ -16,7 +16,11 @@ import './onboarding.css';
 import { OnboardingApiError, runGuidedPipeline } from './api.js';
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
 import { buildInterviewSession, hasAnyAnswer } from './buildInterviewSession.js';
-import type { PipelineRunResult } from './types.js';
+import {
+  isAwaitingDecisions,
+  type PipelineAwaitingDecisions,
+  type PipelineRunResult,
+} from './types.js';
 
 export interface InterviewPanelProps {
   readonly projectId: string;
@@ -25,7 +29,7 @@ export interface InterviewPanelProps {
   readonly onComplete?: () => void;
 }
 
-type Stage = 'asking' | 'running' | 'done' | 'failed';
+type Stage = 'asking' | 'running' | 'awaiting' | 'done' | 'failed';
 
 export function InterviewPanel({
   projectId,
@@ -36,6 +40,9 @@ export function InterviewPanel({
   const [title, setTitle] = useState(projectName);
   const [stage, setStage] = useState<Stage>('asking');
   const [error, setError] = useState<string | null>(null);
+  // W10-67: the run paused on a founder decision. Not an error — the gate is
+  // working, and the next step belongs to the founder.
+  const [awaiting, setAwaiting] = useState<PipelineAwaitingDecisions | null>(null);
   const [result, setResult] = useState<PipelineRunResult | null>(null);
 
   const ready = useMemo(
@@ -46,11 +53,17 @@ export function InterviewPanel({
   const run = useCallback(async () => {
     setStage('running');
     setError(null);
+    setAwaiting(null);
     try {
       const runResult = await runGuidedPipeline(projectId, {
         interviewSession: buildInterviewSession(`interview-${projectId}`, answers),
         blueprintTitle: title.trim(),
       });
+      if (isAwaitingDecisions(runResult)) {
+        setAwaiting(runResult);
+        setStage('awaiting');
+        return;
+      }
       setResult(runResult);
       setStage('done');
       onComplete?.();
@@ -67,13 +80,38 @@ export function InterviewPanel({
     }
   }, [answers, onComplete, projectId, title]);
 
+  if (stage === 'awaiting' && awaiting) {
+    return (
+      <div className="interview" data-testid="interview-awaiting-decisions">
+        <h3>Your decision is needed</h3>
+        <p>
+          The blueprint is written and kept. Before the board can be built,{' '}
+          {awaiting.decisions.length === 1
+            ? 'one question needs'
+            : `${String(awaiting.decisions.length)} questions need`}{' '}
+          your answer — these are choices only you can make, so nothing was guessed on
+          your behalf.
+        </p>
+        <ul>
+          {awaiting.decisions.map((d) => (
+            <li key={d.slate_id}>{d.title}</li>
+          ))}
+        </ul>
+        <p className="interview__hint">
+          Answer them in Decisions, then come back and continue — the blueprint will not
+          be rebuilt.
+        </p>
+      </div>
+    );
+  }
+
   if (stage === 'done') {
     return (
       <div className="interview" data-testid="interview-done">
         <h3>Board built</h3>
         <p>
-          {result?.plan.tickets.length ?? 0} ticket(s) from your answers. The board is on the
-          right.
+          {result?.plan.tickets.length ?? 0} ticket(s) from your answers. The board is on
+          the right.
         </p>
       </div>
     );

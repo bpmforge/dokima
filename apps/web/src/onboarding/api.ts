@@ -13,7 +13,11 @@
  * a misconfigured/older server that hasn't mounted the route (404).
  */
 import { readInjectedToken } from '../fleet/api.js';
-import type { GateReceipt, PipelineRunRequest, PipelineRunResult } from './types.js';
+import type {
+  GateReceipt,
+  PipelineRunOutcome,
+  PipelineRunRequest,
+} from './types.js';
 
 export class OnboardingApiError extends Error {
   constructor(
@@ -61,7 +65,7 @@ export async function runGuidedPipeline(
   projectId: string,
   body: PipelineRunRequest,
   opts: OnboardingApiOptions = {},
-): Promise<PipelineRunResult> {
+): Promise<PipelineRunOutcome> {
   return (await request(
     `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/run`,
     {
@@ -70,7 +74,7 @@ export async function runGuidedPipeline(
       body: JSON.stringify(body),
     },
     opts,
-  )) as PipelineRunResult;
+  )) as PipelineRunOutcome;
 }
 
 export async function fetchGateReceipts(

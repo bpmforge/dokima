@@ -7,6 +7,7 @@ import {
   SAMPLE_INTERVIEW_BEATS,
   SAMPLE_INTERVIEW_SESSION,
 } from './sample-data.js';
+import { isAwaitingDecisions } from './types.js';
 import type { GateReceipt, PipelineRunResult } from './types.js';
 
 type Stage = 'interview' | 'ready' | 'running' | 'success' | 'degraded' | 'queue';
@@ -76,6 +77,18 @@ export function GuidedSample({ projectId, onContinue }: GuidedSampleProps) {
         interviewSession: SAMPLE_INTERVIEW_SESSION,
         blueprintTitle: SAMPLE_BLUEPRINT_TITLE,
       });
+      // W10-67. The sample's own idea is unlikely to raise a founder decision,
+      // but "unlikely" is not "cannot", and treating a paused run as a finished
+      // one would show a success screen for a board that does not exist.
+      // Reported through the existing degraded path — the honest one — rather
+      // than teaching this walkthrough a decision surface it has no room for.
+      if (isAwaitingDecisions(runResult)) {
+        setDegradeMessage(
+          'The sample paused on a founder decision — answer it in Decisions to continue.',
+        );
+        setStage('degraded');
+        return;
+      }
       setResult(runResult);
       const gateReceipts = await fetchGateReceipts(projectId).catch(() => []);
       setReceipts(gateReceipts);

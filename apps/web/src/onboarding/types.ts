@@ -88,6 +88,29 @@ export interface PipelineRunResult {
   readonly plan_items: readonly PlanItemResult[];
 }
 
+/**
+ * W10-67: the run paused on a founder decision. A 202, not an error — the
+ * gate is doing its job (FR-P7) and the next step belongs to a human.
+ */
+export interface PipelineAwaitingDecisions {
+  readonly status: 'awaiting_decisions';
+  readonly run_id: string;
+  readonly reasons: readonly string[];
+  readonly decisions: readonly {
+    readonly key: string;
+    readonly slate_id: string;
+    readonly title: string;
+  }[];
+}
+
+export type PipelineRunOutcome = PipelineRunResult | PipelineAwaitingDecisions;
+
+export function isAwaitingDecisions(
+  outcome: PipelineRunOutcome,
+): outcome is PipelineAwaitingDecisions {
+  return (outcome as PipelineAwaitingDecisions).status === 'awaiting_decisions';
+}
+
 /** Gate receipt as `receipts-routes.ts`'s `wireReceipt` serializes it. */
 export interface GateReceipt {
   readonly id: string;
