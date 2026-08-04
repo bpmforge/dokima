@@ -4880,20 +4880,20 @@
       "module": "web",
       "lane": "orchestrator",
       "write_scope": [
-        "apps/server/src/api/server/board-project.ts",
-        "apps/server/src/api/server/board-project.test.ts",
-        "apps/server/src/api/notifications/**"
+        "apps/server/src/api/projects/stats.ts",
+        "apps/server/src/api/projects/stats.test.ts",
+        "apps/server/src/api/projects/types.ts"
       ],
       "depends_on": [],
       "acceptance": [
         "MEASURED 2026-08-04, with a real creation run paused on two founder decisions and both slates status=open in the event-logged store: `GET /api/v1/projects` returned `pending_decide_count: 0` for that project, the notification centre's morning queue rendered \"Nothing needs you.\", and the Decide tab was empty. The one surface whose entire job is \"what needs a human\" was blind to the only thing that did.",
-        "THE DATA IS ALREADY THERE. `GET /api/v1/projects/:id/slates?status=open` returns both slates correctly \u2014 the Decisions board (mounted in W10-72) renders them from exactly that route. Nothing needs to be collected that is not already collected; the projection behind `pending_decide_count` simply does not consult it.",
+        "THE FIELD IS A HARDCODED ZERO, NEVER A COMPUTATION. `projects/stats.ts` declares `EMPTY_STATS` with `pendingDecideCount: 0` and `computeProjectStats` returns `{ ...EMPTY_STATS, board: stats }` on its success path \u2014 so the count is literally the constant 0 for every project in every state, and no code anywhere derives it. `berthsRunning`, `heartbeatAgeMs` and `spendTodayUsd` are the same constant on the same line; whoever takes this should say which of the four they fixed rather than leave the others looking computed. The data needed is already served by `GET /api/v1/projects/:id/slates?status=open`, which the Decisions board (mounted in W10-72) renders from.",
         "THE HEADER BADGE DEPENDS ON THE SAME NUMBER. `AppHeader` renders `decideBadgeCount` on the bell with the aria-label \"Notifications, N awaiting a decision\", so today it announces 0 to a screen reader while two decisions wait. Fixing the count fixes the badge with it.",
-        "DELIVER: `pending_decide_count` reflects open slates, and a project with a paused run appears in the morning queue and the Decide filter. RED FIXTURE: a project with one open founder slate reports a non-zero count and appears in the queue \u2014 failing against today's code, which returns 0 no matter what is open."
+        "DELIVER: `pendingDecideCount` is derived from the open slates rather than pinned at 0, so a project with a paused run appears in the morning queue and the Decide filter. RED FIXTURE: `apps/server/src/api/projects/` has NO test file at all today \u2014 the first one is part of this ticket. A project with one open founder slate must report a non-zero count, failing against today's code, which returns the constant no matter what is open."
       ],
       "points": 3,
       "status": "todo",
-      "notes": "Split out of W10-72 rather than widened into it: W10-72 is lane ui with an apps/web-only write_scope, and this is a server-side projection. W10-72 acceptance 4 names the same measurement and explicitly leaves the wiring to a ticket of its own.",
+      "notes": "Split out of W10-72 rather than widened into it: W10-72 is lane ui with an apps/web-only write_scope, and this is a server-side projection. W10-72 acceptance 4 names the same measurement and explicitly leaves the wiring to a ticket of its own. \u2014 WRITE_SCOPE CORRECTED BEFORE ANY WORK: filed against board-project.ts and api/notifications/** by guess, both wrong. `pending_decide_count` is serialized in projects/cards.ts from `pendingDecideCount`, which is only ever the constant in projects/stats.ts. Verified by grep, not assumed.",
       "stories": []
     }
   ]
