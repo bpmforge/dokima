@@ -4895,6 +4895,81 @@
       "status": "todo",
       "notes": "Split out of W10-72 rather than widened into it: W10-72 is lane ui with an apps/web-only write_scope, and this is a server-side projection. W10-72 acceptance 4 names the same measurement and explicitly leaves the wiring to a ticket of its own. \u2014 WRITE_SCOPE CORRECTED BEFORE ANY WORK: filed against board-project.ts and api/notifications/** by guess, both wrong. `pending_decide_count` is serialized in projects/cards.ts from `pendingDecideCount`, which is only ever the constant in projects/stats.ts. Verified by grep, not assumed.",
       "stories": []
+    },
+    {
+      "id": "W10-74",
+      "title": "RELEASE BLOCKER: nothing an installed user has can execute a ticket \u2014 the lifecycle CLI is never built and there is no HTTP route",
+      "phase": 10,
+      "module": "cli",
+      "lane": "infra",
+      "write_scope": [
+        "apps/server/build.mjs",
+        "apps/server/src/bootstrap/cli.ts",
+        "apps/server/src/bootstrap/cli.test.ts",
+        "package.json"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "MEASURED 2026-08-04 by driving the product end to end. `dokima run` on the shipped binary answers `dokima: unknown command 'run'` and prints a help text listing only boot/doctor/backup/packs/providers/service. The same is true of `board`, `claim`, `start`, `close`, `accept`, `release`, `comment` and `verify-chain`.",
+        "THE COMMANDS EXIST AND WORK. `apps/server/src/cli/index.ts` is a complete `#!/usr/bin/env node` entry that calls `runCli` and answers `usage: dokima <board|verify-chain|claim|start|close|accept|release|comment|run> ...`. Driven through `tsx` it closed a real ticket against a real project: `PLAN-T-001 close -> in_review`, then `accept -> done`, with `verify-chain` reporting `chain OK`. This is not missing machinery \u2014 it is unreachable machinery.",
+        "THE REASON IS TWO LINES OF PACKAGING. Root `package.json` has `bin.dokima` pointing at `apps/server/src/bootstrap/cli-entry.mjs`; `apps/server/package.json` declares no `bin` at all; and `apps/server/build.mjs` has exactly ONE entryPoint (`src/bootstrap/main.ts` -> `dist/main.js`), so `cli/index.ts` is never compiled into the published tarball. `bootstrap/cli.ts` wires only the ops subset and falls through to `unknown command` for everything else.",
+        "AND THERE IS NO HTTP ROUTE EITHER, so the browser cannot do it. `openapi.ts` enumerates `/api/v1/tickets/{id}/{verb}` (lifecycle verbs, which the board uses) but no run-dispatch route; `GET /api/v1/tickets/:id/runs` is read-only. `cli/run-cmd.ts`'s own comment calls itself \"the same verbs a `POST /projects/{id}/runs`-shaped route WOULD call (FR-C7)\" \u2014 that route was never built. Harbormaster is imported by the scheduler and the CLI, never by the API.",
+        "SO THE PRODUCT STOPS AT THE BOARD for anyone who installed it. The creation pipeline works (W10-67/W10-72), the board renders, the verbs are enforced \u2014 and then the only way to advance a ticket is a source checkout and `tsx`. FR-C7 is unmet in the shipped artifact.",
+        "DELIVER: the lifecycle verbs are reachable from the installed `dokima` binary, whether by a second bin entry, a second build entryPoint, or folding `runCli` into `bootstrap/cli.ts`. RED FIXTURE: a test that runs the PACKAGED entry point with `run`/`board`/`close` and asserts it does not answer `unknown command` \u2014 failing today. Whether the HTTP route (FR-C7) lands here or as its own ticket is a judgement call for whoever takes it; say which."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Found 2026-08-04 while driving the product end to end in a browser at the user's request. The browser half went further than expected: claim and start work from the board's \"Move to\u2026\" control, and `close` is correctly REFUSED with `MANIFEST_INVALID \u2014 requires >=1 file, >=1 commit, and verify exit 0 (got files=0, commits=0, verifyExit=1)`, rendered as a dismissible board banner with the optimistic move rolled back. The trust boundary holds from the founder's seat: you cannot click a ticket to Done. What you also cannot do is legitimately finish one. \u2014 Verified by grep and by running, not by reading comments: build.mjs entryPoints, both package.json bin fields, and the shipped binary's own output.",
+      "stories": []
+    },
+    {
+      "id": "W10-75",
+      "title": "A ticket the founder is not moving never moves on screen \u2014 the board is a live projection of HTTP verb calls, not of the event log",
+      "phase": 10,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/server/src/api/server/board-routes.ts",
+        "apps/server/src/api/server/board-routes.test.ts",
+        "apps/server/src/api/events-sse.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "MEASURED 2026-08-04 with the Canvas open and connected. A ticket was closed out-of-band (`dokima close PLAN-T-001 \u2026 -> in_review`, exit 0, receipt minted). The open board did not move: the card sat in In Progress indefinitely. A page reload showed In Review with a filled close-receipt dot, so the write had landed \u2014 only the push was missing.",
+        "THE CAUSE IS WHERE THE PUBLISH LIVES. `wsHub.publish('board:' + projectId, \u2026)` is called inside the `POST /api/v1/tickets/:id/:verb` handler in `board-routes.ts`. Any writer that is not that route \u2014 the CLI, the conductor, a harbormaster berth, an agent session, a second core \u2014 appends to the event log without notifying a single connected client. The projection is of one HTTP handler, not of the log.",
+        "WHY IT MATTERS MORE THAN IT LOOKS: the product's premise is agents doing work while you watch. Every state change worth watching is, by construction, made by something other than the founder's browser. On the current wiring the Canvas is live for exactly the changes the founder made themselves and stale for all the rest \u2014 and it is stale SILENTLY, with no reconnect notice and no \"this board may be out of date\" affordance.",
+        "DELIVER: a board change reaches connected clients regardless of which writer made it. The event log already carries a monotonic `seq` and `ws-client.ts` already sends `resume` with `last_seq` on reconnect, so the machinery for catch-up exists; what is missing is a notification path for out-of-band appends. RED FIXTURE: append a ticket transition directly to the log (not via the verb route) and assert a subscribed client receives it \u2014 failing today."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Found 2026-08-04 driving the product end to end in a browser. Not a regression \u2014 it has always been this way; nothing had ever written to a project out-of-band while a Canvas was open. Related to W10-74: once ticket execution is reachable from the installed binary, EVERY agent-driven transition takes this path, so 74 makes this defect load-bearing rather than theoretical.",
+      "stories": []
+    },
+    {
+      "id": "W10-76",
+      "title": "The decomposer accepts prose where write_scope requires globs \u2014 8 of 8 tickets on a real board, and no validator objects",
+      "phase": 10,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/decompose/linter.ts",
+        "packages/pipeline/src/decompose/linter.test.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/ticket-drafts-phase.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "MEASURED 2026-08-04 on two real boards built minutes apart, same prompt, same model (qwen3.6-35b-a3b), same session. Board A: every ticket has real globs \u2014 `[\"infrastructure/**\",\"config/**\"]`, `[\"src/db/schema.ts\",\"src/types/models.ts\"]`. Board B: **8 of 8** tickets have prose \u2014 `[\"Setup Turborepo workspace structure\",\"Configure TypeScript strict mode and paths\",\u2026]`, `[\"Initialize Supabase project on free tier\",\u2026]`. The model is inconsistent and nothing downstream cares.",
+        "THE FIELDS ARE ALSO SWAPPED ON THE PROSE BOARD. The same ticket carries `acceptance: [{id:\"AC-1\", text:\"npx supabase db push --confirm\"}]` \u2014 the verify command wearing an acceptance criterion's clothes \u2014 while `verify` holds that same string. So the acceptance criteria went into `writeScope`, the verify command went into `acceptance`, and the real write scope was never produced at all.",
+        "NO VALIDATOR OBJECTS. `decompose/linter.ts` checks semantic seams only \u2014 missing package.json scope, unowned interfaces, lane overlap. There is no check that a `writeScope` entry is path-SHAPED. Worse, a prose scope makes the linter QUIETER: `findMissingPackageJsonScope` fires only when `globOverlaps(pattern, ownPackage + \"/package.json\")` fails to match, and prose matches nothing, so board A reported 5 violations and board B reported none. Wrong input produced a cleaner report. (`scripts/validate-plan.mjs`'s P5 glob rule guards this repo's own plan.json and never sees a generated board.)",
+        "AND IT IS THE ENFORCEMENT BOUNDARY. CLAUDE.md law 1 is \"respect `write_scope`\"; harbormaster resolves it per ticket (W3-09) and W10-53 exists because two glob dialects deciding it is already considered a risk. A write_scope that cannot match a path makes scope enforcement meaningless for that ticket \u2014 silently, and in the direction of permitting rather than refusing.",
+        "THE FOUNDER SEES IT AND CANNOT TELL. The ticket drawer renders the prose faithfully under a \"Write scope\" heading, and shows the verify command under \"Acceptance\" \u2014 so the surface looks populated and correct while carrying neither.",
+        "DELIVER: a `writeScope` entry that is not path-shaped is a lint violation, and the ticket-drafts prompt says plainly that write_scope is file paths or globs and acceptance is criteria (the blueprint prompt got exactly this treatment in W10-66 for the same class of confusion). Decide and state whether a prose scope is a REFUSAL or a reported violation the founder can see. RED FIXTURE: a draft whose writeScope is a sentence produces a violation \u2014 failing today, where it produces silence."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Found 2026-08-04 driving the product end to end in a browser, by opening the ticket drawer and noticing \"Write scope\" held prose. The fourth defect in this pipeline found only by running the product rather than the suite, after W10-59 (fenced JSON), W10-65 (an empty field), W10-66 (a field in the wrong format) and W10-69 (the wrong model entirely) \u2014 and it is the same shape as W10-66: the prompt describes a field loosely and the schema enforced downstream is narrower than the description. The difference is that W10-66 broke loudly (a marker grammar refused it) and this one breaks silently.",
+      "stories": []
     }
   ]
 }
