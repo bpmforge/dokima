@@ -1,5 +1,8 @@
+import { promises as fsp } from 'node:fs';
+import os from 'node:os';
+import pathMod from 'node:path';
 import { openEventLog, createIdentity, type EventLog } from '@dokima/events';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createSlate, decideSlate } from '../decisions/store.js';
 import { listNotifications } from './emit.js';
 import { syncDecideSlateNotifications } from './decide-slates.js';
@@ -12,6 +15,7 @@ import { syncDecideSlateNotifications } from './decide-slates.js';
  */
 describe('an open decision slate is a Decide-tier notification (W10-73)', () => {
   let log: EventLog;
+  let ledgerDir: string;
   let n = 0;
   const opts = () => ({
     actorId: 'operator',
@@ -35,10 +39,20 @@ describe('an open decision slate is a Decide-tier notification (W10-73)', () => 
     },
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // A THROWAWAY LEDGER DIRECTORY. `decideSlate` writes a real D-row into
+    // `<projectPath>/docs/DECISIONS.md`, so passing `process.cwd()` here — as
+    // the first version of this file did — appended test rows to THIS REPO's
+    // canonical founder decision ledger, the one CLAUDE.md marks do-not-
+    // re-litigate. Fifteen of them, eleven pushed, before it was noticed.
+    ledgerDir = await fsp.mkdtemp(pathMod.join(os.tmpdir(), 'dokima-decide-ledger-'));
     log = openEventLog(':memory:');
     createIdentity(log, { id: 'operator', name: 'operator', kind: 'human' });
     n = 0;
+  });
+
+  afterEach(async () => {
+    await fsp.rm(ledgerDir, { recursive: true, force: true });
   });
 
   it('RED FIXTURE: an open slate becomes a Decide card the morning queue can show', () => {
@@ -78,7 +92,7 @@ describe('an open decision slate is a Decide-tier notification (W10-73)', () => 
     decideSlate(
       log,
       { slateId: record.id, chosen: 'a' },
-      { projectPath: process.cwd(), actorId: 'operator' },
+      { projectPath: ledgerDir, actorId: 'operator' },
     );
 
     syncDecideSlateNotifications(log, opts());
