@@ -4906,6 +4906,10 @@
         "apps/server/build.mjs",
         "apps/server/src/bootstrap/cli.ts",
         "apps/server/src/bootstrap/cli.test.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/parse.test.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/cli/run.test.ts",
         "package.json"
       ],
       "depends_on": [],
@@ -4914,12 +4918,12 @@
         "THE COMMANDS EXIST AND WORK. `apps/server/src/cli/index.ts` is a complete `#!/usr/bin/env node` entry that calls `runCli` and answers `usage: dokima <board|verify-chain|claim|start|close|accept|release|comment|run> ...`. Driven through `tsx` it closed a real ticket against a real project: `PLAN-T-001 close -> in_review`, then `accept -> done`, with `verify-chain` reporting `chain OK`. This is not missing machinery \u2014 it is unreachable machinery.",
         "THE REASON IS TWO LINES OF PACKAGING. Root `package.json` has `bin.dokima` pointing at `apps/server/src/bootstrap/cli-entry.mjs`; `apps/server/package.json` declares no `bin` at all; and `apps/server/build.mjs` has exactly ONE entryPoint (`src/bootstrap/main.ts` -> `dist/main.js`), so `cli/index.ts` is never compiled into the published tarball. `bootstrap/cli.ts` wires only the ops subset and falls through to `unknown command` for everything else.",
         "AND THERE IS NO HTTP ROUTE EITHER, so the browser cannot do it. `openapi.ts` enumerates `/api/v1/tickets/{id}/{verb}` (lifecycle verbs, which the board uses) but no run-dispatch route; `GET /api/v1/tickets/:id/runs` is read-only. `cli/run-cmd.ts`'s own comment calls itself \"the same verbs a `POST /projects/{id}/runs`-shaped route WOULD call (FR-C7)\" \u2014 that route was never built. Harbormaster is imported by the scheduler and the CLI, never by the API.",
-        "SO THE PRODUCT STOPS AT THE BOARD for anyone who installed it. The creation pipeline works (W10-67/W10-72), the board renders, the verbs are enforced \u2014 and then the only way to advance a ticket is a source checkout and `tsx`. FR-C7 is unmet in the shipped artifact.",
-        "DELIVER: the lifecycle verbs are reachable from the installed `dokima` binary, whether by a second bin entry, a second build entryPoint, or folding `runCli` into `bootstrap/cli.ts`. RED FIXTURE: a test that runs the PACKAGED entry point with `run`/`board`/`close` and asserts it does not answer `unknown command` \u2014 failing today. Whether the HTTP route (FR-C7) lands here or as its own ticket is a judgement call for whoever takes it; say which."
+        "REACHABILITY ALONE IS NOT ENOUGH, so do not stop at \"no longer unknown command\". The lifecycle verbs take `--db <path>`, while `run` takes `--project <id>`. An installed user has a project id from the Fleet; they do not know the on-disk path of that project's `state.db`. A `dokima close PLAN-T-001 --db \u2026` that is reachable and still unguessable has not delivered the journey. Every verb must accept `--project <id>` resolved through the fleet registry, with `--db` kept as the explicit escape hatch it already is.",
+        "DELIVER: the lifecycle verbs are reachable from the INSTALLED `dokima` binary and addressable by project id, and `--help` lists them (W10-44 exists because help was broken once already; a fix that leaves the commands undiscoverable is half-done). RED FIXTURE: run the PACKAGED entry point with `close`/`board` against a project registered by ID and assert the ticket actually moved \u2014 failing today at the first hurdle, `unknown command`. Watch the bundle: `build.mjs` declares five externals and folding `runCli` in pulls `@dokima/harbormaster` into `dist/main.js`, so assert the build reports zero warnings and the bundle still boots."
       ],
       "points": 5,
-      "status": "todo",
-      "notes": "Found 2026-08-04 while driving the product end to end in a browser at the user's request. The browser half went further than expected: claim and start work from the board's \"Move to\u2026\" control, and `close` is correctly REFUSED with `MANIFEST_INVALID \u2014 requires >=1 file, >=1 commit, and verify exit 0 (got files=0, commits=0, verifyExit=1)`, rendered as a dismissible board banner with the optimistic move rolled back. The trust boundary holds from the founder's seat: you cannot click a ticket to Done. What you also cannot do is legitimately finish one. \u2014 Verified by grep and by running, not by reading comments: build.mjs entryPoints, both package.json bin fields, and the shipped binary's own output.",
+      "status": "in_progress",
+      "notes": "Found 2026-08-04 while driving the product end to end in a browser at the user's request. The browser half went further than expected: claim and start work from the board's \"Move to\u2026\" control, and `close` is correctly REFUSED with `MANIFEST_INVALID \u2014 requires >=1 file, >=1 commit, and verify exit 0 (got files=0, commits=0, verifyExit=1)`, rendered as a dismissible board banner with the optimistic move rolled back. The trust boundary holds from the founder's seat: you cannot click a ticket to Done. What you also cannot do is legitimately finish one. \u2014 Verified by grep and by running, not by reading comments: build.mjs entryPoints, both package.json bin fields, and the shipped binary's own output. \u2014 SCOPE SHARPENED AFTER MEASURING WHAT `run start` ACTUALLY DOES, which is nothing: `run start --project <id> --mode new_product --breakpoint never --berths 1` returns in under a second with `run-<ts> started -> running (breakpoint=never berths=1)` and that is the whole of it. Twenty seconds later the board was unchanged, the project log had gained no events, and no session or berth process existed. Reading `run-cmd.ts` confirms it: `createRun` is bookkeeping, and ONLY `command.mode === 'onboard'` goes on to call `runOnboardAnalysis` \u2014 `new_product`, `feature` and `improve` fall through to `return 0`. `--berths` is recorded and ignored. So this ticket delivers reachability to the HUMAN-DRIVEN lifecycle, which is proven to work end to end; it does not deliver an agentic loop, because there is no driver for one. That gap is W10-77 and must not be quietly folded in here.",
       "stories": []
     },
     {
@@ -4969,6 +4973,31 @@
       "points": 5,
       "status": "todo",
       "notes": "Found 2026-08-04 driving the product end to end in a browser, by opening the ticket drawer and noticing \"Write scope\" held prose. The fourth defect in this pipeline found only by running the product rather than the suite, after W10-59 (fenced JSON), W10-65 (an empty field), W10-66 (a field in the wrong format) and W10-69 (the wrong model entirely) \u2014 and it is the same shape as W10-66: the prompt describes a field loosely and the schema enforced downstream is narrower than the description. The difference is that W10-66 broke loudly (a marker grammar refused it) and this one breaks silently.",
+      "stories": []
+    },
+    {
+      "id": "W10-77",
+      "title": "No agentic loop exists for the build modes \u2014 `run start` mints a record and returns, and only `onboard` dispatches anything",
+      "phase": 10,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/cli/run-cmd.ts",
+        "apps/server/src/cli/run-cmd.test.ts"
+      ],
+      "depends_on": [
+        "W10-74"
+      ],
+      "acceptance": [
+        "MEASURED 2026-08-04 against a real 8-ticket board with a ticket sitting `ready`. `dokima run start --project <id> --mode new_product --breakpoint never --berths 1 --actor operator` printed `run-<ts> started -> running (breakpoint=never berths=1)` and returned in under a second \u2014 on a box whose configured local model takes ~30s for a single call, so nothing had been asked of it. Twenty seconds later: the board unchanged, PLAN-T-002 still `ready`, zero new events in the project log, and no berth or session process anywhere.",
+        "THE CODE SAYS THE SAME THING. `run-cmd.ts`'s start branch calls `createRun` (bookkeeping) and then `if (command.mode === 'onboard')` calls `runOnboardAnalysis` \u2014 the real work W8-08/W8-09 wired. `new_product`, `feature` and `improve` fall straight through to `return 0`. `--berths <n>` is validated, persisted onto the run record, and never read by anything that starts a berth.",
+        "THE MACHINERY EXISTS AND IS UNDRIVEN. `@dokima/harbormaster` ships the claim loop and fresh-session dispatch (W3-01a), out-of-session gate execution (W3-01b), land/park (W3-01c) and berths 1-N (W3-04). `apps/server` imports harbormaster from exactly two places \u2014 the plan scheduler and this CLI \u2014 and neither drives the claim loop for a build mode. `resumeProject` (the `run resume` branch) reconciles tickets that are ALREADY claimed and checks for drift; it dispatches nothing new.",
+        "DO NOT CONFUSE THIS WITH `scripts/conductor.mjs`. That is Dokima's own development harness: it drives the shipwright repo by spawning `claude -p` sessions and is explicitly repo-agnostic tooling, not the product's harbormaster. Nothing an installed user has calls it, and it is not evidence that the product can execute its own board.",
+        "DELIVER: `run start` on a build mode claims work off the board and dispatches it, honouring `--berths`, `--breakpoint` and the autonomy/approvals rules already built (W3-05/W3-06). Whether that lives behind the CLI, the missing `POST /projects/{id}/runs` route (FR-C7, named in `run-cmd.ts`'s own comment), or both, is the first decision the ticket has to make and record. RED FIXTURE: a board with one ready ticket and a fake-model gateway reaches a non-`ready` state after `run start` \u2014 failing today, where nothing moves."
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": "Found 2026-08-04 driving the product end to end in a browser and then at the CLI, at the user's request for a working end-to-end. THE HONEST SUMMARY OF THAT PASS: the human-driven lifecycle works and its trust boundary holds \u2014 claim and start from the board, `close` refused MANIFEST_INVALID from the UI, NOT_OWNER for a non-owner, SELF_ACCEPT for the maker (C-4), a legitimate close minting a receipt the drawer renders, `accept` by a distinct reviewer reaching Done, and `verify-chain` reporting chain OK. The AGENTIC lifecycle \u2014 the product's actual premise, agents working the board while you watch \u2014 has no driver at all. Depends on W10-74 only because there is no point dispatching from a binary that cannot be invoked.",
       "stories": []
     }
   ]
