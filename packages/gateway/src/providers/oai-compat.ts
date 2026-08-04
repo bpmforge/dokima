@@ -49,12 +49,17 @@ import type {
   Provider,
   ProviderHealth,
   ProviderQueueStats,
-  ToolCall,
-  ToolSchema,
 } from './types.js';
 import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
-import { normalizeFinishReason, parseRetryAfterMs } from './oai-compat-helpers.js';
+import {
+  applyToolCallDelta,
+  finalizeToolCallDeltas,
+  normalizeFinishReason,
+  normalizeToolCalls,
+  parseRetryAfterMs,
+  toRawTool,
+} from './oai-compat-helpers.js';
 import {
   DEFAULT_HEALTH_TIMEOUT_MS,
   DEFAULT_REQUEST_TIMEOUT_MS,
@@ -67,48 +72,6 @@ import type {
 } from './oai-compat-types.js';
 
 export type { OaiCompatConfig } from './oai-compat-types.js';
-
-/** FR-G9 wire shape, not in oai-compat-types.ts (out of write_scope) — cast at the two access sites like requestJson<T>'s existing untyped pattern. */
-interface RawToolCall {
-  id: string;
-  function: { name: string; arguments: string };
-}
-
-interface RawToolCallDelta {
-  index: number;
-  id?: string;
-  function?: { name?: string; arguments?: string };
-}
-
-/** `ToolSchema` -> the OpenAI wire tool shape; JSON.stringify drops `description` when undefined. */
-function toRawTool(tool: ToolSchema): Record<string, unknown> {
-  return {
-    type: 'function',
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters,
-    },
-  };
-}
-
-/** Raw tool_calls -> normalized `ToolCall[]`, arguments parsed once so callers never re-decode a per-provider JSON string. */
-function normalizeToolCalls(providerId: string, raw: RawToolCall[]): ToolCall[] {
-  return raw.map(({ id, function: fn }) => {
-    try {
-      return {
-        id,
-        name: fn.name,
-        arguments: JSON.parse(fn.arguments) as Record<string, unknown>,
-      };
-    } catch {
-      throw new ProviderResponseShapeError(
-        providerId,
-        `tool call "${fn.name}" has unparseable arguments JSON: ${fn.arguments}`,
-      );
-    }
-  });
-}
 
 export class OaiCompatProvider implements Provider {
   readonly id: string;
@@ -222,7 +185,7 @@ export class OaiCompatProvider implements Provider {
       }
 
       const modelId = raw.model ?? request.model;
-      const rawToolCalls = (choice.message as { tool_calls?: RawToolCall[] }).tool_calls;
+      const rawToolCalls = choice.message.tool_calls;
       return {
         model: modelId,
         message: {
@@ -278,7 +241,7 @@ export class OaiCompatProvider implements Provider {
     let modelId = request.model;
     let finishReasonRaw: string | null = null;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
-    const toolCallDeltas = new Map<number, { id: string; name: string; args: string }>();
+    const toolCallDeltas: Parameters<typeof finalizeToolCallDeltas>[0] = new Map();
 
     for await (const payload of readSseDataLines(response.body)) {
       if (payload === '[DONE]') continue;
@@ -291,14 +254,8 @@ export class OaiCompatProvider implements Provider {
           content += choice.delta.content;
           yield { type: 'delta', content: choice.delta.content };
         }
-        for (const d of (choice.delta as { tool_calls?: RawToolCallDelta[] })
-          .tool_calls ?? []) {
-          const acc = toolCallDeltas.get(d.index) ?? { id: '', name: '', args: '' };
-          if (d.id) acc.id = d.id;
-          if (d.function?.name) acc.name = d.function.name;
-          if (d.function?.arguments) acc.args += d.function.arguments;
-          toolCallDeltas.set(d.index, acc);
-        }
+        for (const d of choice.delta.tool_calls ?? [])
+          applyToolCallDelta(toolCallDeltas, d);
         if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
       }
       if (event.usage) {
@@ -316,12 +273,7 @@ export class OaiCompatProvider implements Provider {
       );
     }
 
-    const rawToolCalls = [...toolCallDeltas.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([, acc]) => ({
-        id: acc.id,
-        function: { name: acc.name, arguments: acc.args },
-      }));
+    const rawToolCalls = finalizeToolCallDeltas(toolCallDeltas);
 
     yield {
       type: 'final',

@@ -21,9 +21,24 @@ export interface OaiCompatConfig {
   fetchImpl?: typeof fetch;
 }
 
+/** FR-G9: one tool call as OpenAI-compatible servers emit it — `arguments` is a JSON-encoded string, not yet parsed. */
+export interface RawToolCall {
+  id: string;
+  type: string;
+  function: { name: string; arguments: string };
+}
+
+/** FR-G9 streaming variant: id/name typically land on the first delta for an index, arguments arrive fragmented across deltas. */
+export interface RawToolCallDelta {
+  index: number;
+  id?: string;
+  type?: string;
+  function?: { name?: string; arguments?: string };
+}
+
 export interface RawChatChoice {
   index: number;
-  message: { role: string; content: string | null };
+  message: { role: string; content: string | null; tool_calls?: RawToolCall[] };
   finish_reason: string | null;
 }
 
@@ -50,7 +65,7 @@ export interface RawModelsResponse {
 }
 
 export interface OaiCompatStreamChoice {
-  delta: { role?: string; content?: string | null };
+  delta: { role?: string; content?: string | null; tool_calls?: RawToolCallDelta[] };
   finish_reason: string | null;
 }
 
