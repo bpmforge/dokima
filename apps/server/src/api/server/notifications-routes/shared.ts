@@ -7,6 +7,7 @@
 
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { syncDecideSlateNotifications } from '../../notifications/decide-slates.js';
 import { openEventLog, type EventLog } from '@dokima/events';
 import { loadTickets } from '@dokima/tickets';
 import type { FastifyRequest } from 'fastify';
@@ -132,6 +133,13 @@ export async function refreshAndListProjectNotifications(
     maybeEmitTrustGraduationSuggestion(log, tickets, {
       id: `suggestion-${randomUUID()}`,
       actorId: OPERATOR_ACTOR_ID,
+    });
+    // W10-73: an open decision slate IS a Decide-tier item. Without this the
+    // morning queue said "Nothing needs you." while a run sat paused on two
+    // founder decisions.
+    syncDecideSlateNotifications(log, {
+      actorId: OPERATOR_ACTOR_ID,
+      mintId: () => `decide-slate-${randomUUID()}`,
     });
     promoteEligibleNotifications(log, tickets, { actorId: OPERATOR_ACTOR_ID });
     return listNotifications(log, filter).map((record) => toWire(record, project));

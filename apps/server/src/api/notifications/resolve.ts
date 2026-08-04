@@ -64,3 +64,29 @@ export function decideNotification(
     opts,
   );
 }
+
+/**
+ * Closes a Decide card whose underlying slate has already been answered
+ * somewhere else — the Decisions board, the CLI, a resumed creation run
+ * (W10-73).
+ *
+ * Not `dismissNotification`: nothing was waved off. Not `decideNotification`:
+ * the founder chose an option on a slate, they did not approve or reject a
+ * card. The card is simply `done`, and the event says why it closed so the
+ * ledger does not imply a decision that was never made here.
+ */
+export function resolveAnsweredSlateNotification(
+  log: EventLog,
+  id: string,
+  slateId: string,
+  opts: ResolveOptions,
+): void {
+  resolveNotification(
+    log,
+    id,
+    'done',
+    'notification.decided',
+    { decision: 'answered', slateId, note: 'slate answered in the decisions store' },
+    opts,
+  );
+}

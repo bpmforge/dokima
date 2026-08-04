@@ -8,6 +8,7 @@
 import path from 'node:path';
 import { openEventLogReader, type EventLog } from '@dokima/events';
 import { computeBoard, listTickets } from '@dokima/tickets';
+import { listSlates } from '../decisions/store.js';
 import { STATE_DB_RELATIVE, type ProjectCard, type ProjectRecord } from './types.js';
 import { pathExists } from './registry-store.js';
 
@@ -38,6 +39,25 @@ export function isUnmigratedSchemaError(err: unknown): boolean {
   );
 }
 
+/**
+ * Open founder/technical slates — the same rows `GET /projects/:id/slates?status=open`
+ * serves the Decisions board, counted rather than listed.
+ *
+ * Degrades to 0 rather than throwing: a project whose `decisions` table
+ * predates the slate migration is a normal older project, not a broken one,
+ * and a Fleet card must never fail to render over a count.
+ */
+function countOpenSlates(log: EventLog): number {
+  try {
+    return listSlates(log, { status: 'open' }).length;
+  } catch (err) {
+    if (!isUnmigratedSchemaError(err)) {
+      console.error(`[fleet] countOpenSlates failed for ${log.path}:`, err);
+    }
+    return 0;
+  }
+}
+
 /** Reads live stats straight from the project's own `state.db` — never cached (DATABASE.md §7). */
 export async function computeProjectStats(projectPath: string): Promise<ProjectStats> {
   const dbPath = path.join(projectPath, STATE_DB_RELATIVE);
@@ -63,7 +83,16 @@ export async function computeProjectStats(projectPath: string): Promise<ProjectS
       else if (entry.status === 'blocked') stats.blocked += 1;
       else if (entry.status === 'done') stats.done += 1;
     }
-    return { ...EMPTY_STATS, board: stats };
+    // W10-73: the one number on this card whose whole job is "does this need
+    // you". It was a hardcoded 0 in EMPTY_STATS and computed nowhere, so a
+    // project with a run paused on two founder decisions reported 0 — and the
+    // Fleet SORTS by this field, so the project that most needed attention
+    // sank to the bottom of the list instead of rising to the top.
+    //
+    // `berthsRunning`, `heartbeatAgeMs` and `spendTodayUsd` are still the
+    // constants they always were, on the line below. Naming that here rather
+    // than leaving three fields looking computed because one of them now is.
+    return { ...EMPTY_STATS, board: stats, pendingDecideCount: countOpenSlates(log) };
   } catch (err) {
     if (!isUnmigratedSchemaError(err)) {
       console.error(`[fleet] computeProjectStats failed for ${dbPath}:`, err);
