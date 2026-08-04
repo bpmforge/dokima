@@ -27,6 +27,7 @@ import {
   type ProvidersRefreshDeps,
 } from '../cli/ops/providers-refresh.js';
 import { runServiceCommand, type ServiceDeps } from '../cli/ops/service.js';
+import { runCli as runLifecycleCli } from '../cli/run.js';
 import { runBootSequence, type BootReport } from './boot-sequence.js';
 import { resolveLogLevel } from './config.js';
 import { detectRunningCore, openBrowser } from './launch.js';
@@ -163,6 +164,19 @@ usage:
   dokima service <install|status|stop>
                                 manage the background service
 
+board & tickets (address a project with --project <id> from the Fleet, or --db <path>):
+  dokima board                  print the ticket board
+  dokima claim|start|release <ticketId> --actor <id>
+                                move a ticket through its lifecycle
+  dokima close <ticketId> --actor <id> --files <a,b> --commits <sha> --verify-cmd <cmd>
+                                close with a manifest — refused without one
+  dokima accept <ticketId> --actor <id>
+                                accept someone ELSE's work (maker != verifier)
+  dokima comment <ticketId> --actor <id> --body <text>
+  dokima verify-chain           verify the event log's hash chain
+  dokima run <start|pause|resume|stop> ...
+                                run bookkeeping (FR-C7)
+
   -h, --help                    print this and exit
   -V, --version                 print the version and exit
 
@@ -195,8 +209,35 @@ function readVersion(): string {
   }
 }
 
+/**
+ * The board/ticket lifecycle (W10-74). These were fully implemented in
+ * `cli/run.ts` and reachable from NOTHING: `build.mjs` bundles only
+ * `bootstrap/main.ts`, no package.json declared a bin for `cli/index.ts`, and
+ * this dispatch answered `unknown command` for every one of them. So an
+ * installed user could create a board and never advance a ticket on it —
+ * measured, and the reason FR-C7 was unmet in the shipped artifact.
+ */
+const LIFECYCLE_COMMANDS = [
+  'board',
+  'verify-chain',
+  'claim',
+  'start',
+  'accept',
+  'release',
+  'close',
+  'comment',
+  'run',
+] as const;
+
 /** Every first token this CLI answers to. Anything else is a typo, not a boot. */
-const KNOWN_COMMANDS = ['packs', 'backup', 'doctor', 'service', 'providers'] as const;
+const KNOWN_COMMANDS = [
+  'packs',
+  'backup',
+  'doctor',
+  'service',
+  'providers',
+  ...LIFECYCLE_COMMANDS,
+] as const;
 
 export async function runPackagedCli(
   argv: string[],
@@ -222,6 +263,16 @@ export async function runPackagedCli(
     io.stderr(`dokima: unknown command '${argv[0]}'`);
     io.stderr(USAGE);
     return 2;
+  }
+
+  if ((LIFECYCLE_COMMANDS as readonly string[]).includes(argv[0] ?? '')) {
+    return runLifecycleCli(argv, {
+      cwd: io.cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      now: io.now,
+      env: io.env,
+    });
   }
 
   if (argv[0] === 'packs') {

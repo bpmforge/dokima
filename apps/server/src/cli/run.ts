@@ -10,7 +10,12 @@ import {
   type Ticket,
 } from '@dokima/tickets';
 import { renderBoard } from './board.js';
-import { openReadOnlyLog, openWritableLog, resolveDbPath } from './db.js';
+import {
+  openReadOnlyLog,
+  openWritableLog,
+  resolveDbPathForProject,
+  UnknownProjectError,
+} from './db.js';
 import { ensureActorIdentity } from './identity.js';
 import { CliUsageError, parseCliArgs, type SimpleVerb } from './parse.js';
 import { executeRunCommand } from './run-cmd.js';
@@ -22,6 +27,8 @@ export interface CliIO {
   stderr: (line: string) => void;
   /** Injectable clock for deterministic tests (TESTING.md §2). */
   now?: () => string;
+  /** W10-74: `--project <id>` resolves through the fleet registry under this env's DOKIMA_HOME. */
+  env?: NodeJS.ProcessEnv;
 }
 
 const SIMPLE_VERB_FNS: Record<
@@ -64,7 +71,22 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
     return executeRunCommand(command.args, io);
   }
 
-  const dbPath = resolveDbPath(io.cwd, command.dbPath);
+  let dbPath: string;
+  try {
+    dbPath = await resolveDbPathForProject(io.cwd, {
+      db: command.dbPath,
+      projectId: command.projectId,
+      env: io.env,
+    });
+  } catch (err) {
+    // An id that is not in the registry is a usage problem, not a crash — and
+    // the message names where to find real ids rather than echoing the bad one.
+    if (err instanceof UnknownProjectError) {
+      io.stderr(`refused: ${err.message}`);
+      return 2;
+    }
+    throw err;
+  }
 
   if (command.kind === 'verify-chain') {
     let log;

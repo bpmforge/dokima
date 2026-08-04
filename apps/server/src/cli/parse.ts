@@ -6,10 +6,22 @@ export class CliUsageError extends Error {}
 const SIMPLE_VERBS = ['claim', 'start', 'accept', 'release'] as const;
 export type SimpleVerb = (typeof SIMPLE_VERBS)[number];
 
+/**
+ * W10-74: every db-addressing command also accepts `--project <id>`, the only
+ * handle a founder who created a product through the Fleet actually has.
+ * `--db` still wins when both are given (see `resolveDbPathForProject`).
+ */
 export type CliCommand =
-  | { kind: 'board'; dbPath?: string }
-  | { kind: 'verify-chain'; dbPath?: string }
-  | { kind: 'verb'; verb: SimpleVerb; ticketId: string; actorId: string; dbPath?: string }
+  | { kind: 'board'; dbPath?: string; projectId?: string }
+  | { kind: 'verify-chain'; dbPath?: string; projectId?: string }
+  | {
+      kind: 'verb';
+      verb: SimpleVerb;
+      ticketId: string;
+      actorId: string;
+      dbPath?: string;
+      projectId?: string;
+    }
   | {
       kind: 'close';
       ticketId: string;
@@ -18,8 +30,16 @@ export type CliCommand =
       commits: string[];
       verify: VerifyResult;
       dbPath?: string;
+      projectId?: string;
     }
-  | { kind: 'comment'; ticketId: string; actorId: string; body: string; dbPath?: string }
+  | {
+      kind: 'comment';
+      ticketId: string;
+      actorId: string;
+      body: string;
+      dbPath?: string;
+      projectId?: string;
+    }
   /** `dokima run <start|pause|resume|stop> ...` (FR-C7) — `args` is the untouched rest, owned and parsed by `run-cmd.ts`. */
   | { kind: 'run'; args: string[] };
 
@@ -55,21 +75,25 @@ export function parseCliArgs(argv: string[]): CliCommand {
   if (command === 'board' || command === 'verify-chain') {
     const { values } = parseArgs({
       args: rest,
-      options: { db: { type: 'string' } },
+      options: { db: { type: 'string' }, project: { type: 'string' } },
       allowPositionals: false,
     });
-    return { kind: command, dbPath: values.db };
+    return { kind: command, dbPath: values.db, projectId: values.project };
   }
 
   if (isSimpleVerb(command)) {
     const { values, positionals } = parseArgs({
       args: rest,
-      options: { actor: { type: 'string' }, db: { type: 'string' } },
+      options: {
+        actor: { type: 'string' },
+        db: { type: 'string' },
+        project: { type: 'string' },
+      },
       allowPositionals: true,
     });
     const ticketId = requirePositional(
       positionals,
-      `usage: dokima ${command} <ticketId> --actor <actorId> [--db <path>]`,
+      `usage: dokima ${command} <ticketId> --actor <actorId> [--project <id> | --db <path>]`,
     );
     if (!values.actor) throw new CliUsageError(`${command} requires --actor <actorId>`);
     return {
@@ -78,6 +102,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
       ticketId,
       actorId: values.actor,
       dbPath: values.db,
+      projectId: values.project,
     };
   }
 
@@ -88,6 +113,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
         actor: { type: 'string' },
         body: { type: 'string' },
         db: { type: 'string' },
+        project: { type: 'string' },
       },
       allowPositionals: true,
     });
@@ -104,6 +130,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
       actorId: values.actor,
       body: values.body,
       dbPath: values.db,
+      projectId: values.project,
     };
   }
 
@@ -117,6 +144,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
         'verify-cmd': { type: 'string' },
         'verify-exit': { type: 'string' },
         db: { type: 'string' },
+        project: { type: 'string' },
       },
       allowPositionals: true,
     });
@@ -145,6 +173,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
       commits: splitCsv(values.commits),
       verify: { command: values['verify-cmd'], exitCode },
       dbPath: values.db,
+      projectId: values.project,
     };
   }
 

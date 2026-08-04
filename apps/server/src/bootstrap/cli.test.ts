@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { openEventLog } from '@dokima/events';
+import { createTicket } from '@dokima/tickets';
+import { ensureActorIdentity } from '../cli/identity.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveProjectPaths } from './config.js';
 import { runPackagedCli, type CliIO } from './cli.js';
@@ -333,5 +335,157 @@ describe('runPackagedCli', () => {
     expect(code).toBe(0);
     expect(loadConfiguredProviders).toHaveBeenCalled();
     expect(io.stdout).toHaveBeenCalledWith(expect.stringContaining('nothing to refresh'));
+  });
+
+  /**
+   * W10-74. The lifecycle verbs were fully implemented in `cli/run.ts` and
+   * reachable from nothing: `build.mjs` bundles only `bootstrap/main.ts`, no
+   * package.json declared a bin for `cli/index.ts`, and this dispatch answered
+   * `unknown command` for every one of them. An installed user could create a
+   * board through the product and never advance a single ticket on it.
+   *
+   * Reachability alone is not the fix, so this asserts the JOURNEY: address a
+   * project the way the Fleet names it (`--project <id>`, resolved through the
+   * registry) from a cwd that is NOT the project, and check the ticket really
+   * moved. A `--db <path>` an installed user cannot guess would pass a
+   * reachability test and still leave them stuck.
+   */
+  it('RED FIXTURE: the ticket lifecycle is reachable from the PACKAGED cli and addressable by project id', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-cli-home-'));
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-cli-proj-'));
+    const elsewhere = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-cli-cwd-'));
+    scratchDirs.push(home, projectDir, elsewhere);
+
+    const projectId = 'proj-w10-74';
+    await fs.writeFile(
+      path.join(home, 'fleet.json'),
+      JSON.stringify([{ id: projectId, path: projectDir, name: 'Packaged CLI E2E' }]),
+    );
+
+    await fs.mkdir(path.join(projectDir, '.dokima'), { recursive: true });
+    const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
+    ensureActorIdentity(log, 'operator');
+    createTicket(log, 'operator', {
+      id: 'T-1',
+      type: 'task',
+      title: 'A ticket the packaged binary must be able to move',
+      lane: 'lane-a',
+      writeScope: ['src/**'],
+      dependsOn: [],
+      acceptance: [{ id: 'AC-1', text: 'it moves', done: false }],
+    });
+    log.close();
+
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    // cwd is deliberately NOT the project: only --project can find it.
+    const io: CliIO = {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line),
+      cwd: elsewhere,
+      env: { DOKIMA_HOME: home },
+    };
+
+    expect(await runPackagedCli(['board', '--project', projectId], io)).toBe(0);
+    expect(stdout.join('\n')).toContain('T-1');
+
+    expect(
+      await runPackagedCli(
+        ['claim', 'T-1', '--actor', 'maker-1', '--project', projectId],
+        io,
+      ),
+    ).toBe(0);
+    expect(stdout.join('\n')).toContain('T-1 claim -> claimed');
+
+    expect(
+      await runPackagedCli(
+        ['start', 'T-1', '--actor', 'maker-1', '--project', projectId],
+        io,
+      ),
+    ).toBe(0);
+
+    // The refusals survive the new route, which is the half that matters:
+    // reachability must not have opened a door around the trust boundary.
+    expect(
+      await runPackagedCli(
+        [
+          'close',
+          'T-1',
+          '--actor',
+          'maker-1',
+          '--files',
+          'src/a.ts',
+          '--commits',
+          'abc1234',
+          '--verify-cmd',
+          'pnpm test',
+          '--verify-exit',
+          '1',
+          '--project',
+          projectId,
+        ],
+        io,
+      ),
+    ).toBe(1);
+    expect(stderr.join('\n')).toContain('MANIFEST_INVALID');
+
+    expect(
+      await runPackagedCli(
+        [
+          'close',
+          'T-1',
+          '--actor',
+          'maker-1',
+          '--files',
+          'src/a.ts',
+          '--commits',
+          'abc1234',
+          '--verify-cmd',
+          'pnpm test',
+          '--verify-exit',
+          '0',
+          '--project',
+          projectId,
+        ],
+        io,
+      ),
+    ).toBe(0);
+    expect(stdout.join('\n')).toContain('T-1 close -> in_review');
+
+    // C-4: the maker cannot sign off their own work, even from here.
+    expect(
+      await runPackagedCli(
+        ['accept', 'T-1', '--actor', 'maker-1', '--project', projectId],
+        io,
+      ),
+    ).toBe(1);
+    expect(stderr.join('\n')).toContain('SELF_ACCEPT');
+
+    // ...and the ticket really reaches done for a distinct reviewer. Asserting
+    // only that the command was FOUND would pass without this.
+    expect(
+      await runPackagedCli(
+        ['accept', 'T-1', '--actor', 'reviewer-1', '--project', projectId],
+        io,
+      ),
+    ).toBe(0);
+    expect(stdout.join('\n')).toContain('T-1 accept -> done');
+  });
+
+  it('an unregistered project id is a usage refusal naming where real ids live, not a crash', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-cli-home-'));
+    scratchDirs.push(home);
+    await fs.writeFile(path.join(home, 'fleet.json'), '[]');
+    const stderr: string[] = [];
+    const io: CliIO = {
+      stdout: vi.fn(),
+      stderr: (line) => stderr.push(line),
+      cwd: home,
+      env: { DOKIMA_HOME: home },
+    };
+
+    expect(await runPackagedCli(['board', '--project', 'nope'], io)).toBe(2);
+    expect(stderr.join('\n')).toContain('no project registered with id nope');
+    expect(stderr.join('\n')).toContain('open the Fleet');
   });
 });
