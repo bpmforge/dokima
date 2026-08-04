@@ -17,6 +17,12 @@
 //       still write (status !== 'done'), unless a ticket declares "scaffold": true;
 //       same-lane overlap is an error only among concurrently-active (in_progress) tickets
 //   P9  wave gating report: per-wave counts + claimable set (informational)
+//   P10 ARCHITECTURE.md §4 dependency matrix must agree, row for row, with each
+//       row-package's declared `@dokima/*` dependencies (dependencies field only) —
+//       exact-set match, not just "no forbidden import": the matrix is a live
+//       record of what's declared, not an aspirational ceiling nobody enforces
+//       (W11-05). A package growing into a new import updates package.json AND
+//       this matrix in the same change, or P10 fails.
 // Exit 1 on any violation; prints the violation list. Exit 0 prints OK + report.
 
 import { readFileSync } from 'node:fs';
@@ -153,6 +159,53 @@ const claimable = T.filter((t) => t.status === 'todo' && (t.depends_on ?? []).ev
 
 console.log(`Inventory: ${T.length} tickets · ${T.reduce((a, x) => a + x.points, 0)} pts · ` + Object.entries(waves).sort().map(([w, v]) => `${w} ${v.done}/${v.total}`).join(' · '));
 console.log(`Claimable now: ${claimable.join(', ') || '(none)'}`);
+
+// ---- P10 ARCHITECTURE.md §4 matrix vs each package's declared @dokima/* deps
+{
+  const archPath = join(root, 'docs', 'ARCHITECTURE.md');
+  const archLines = readFileSync(archPath, 'utf8').split('\n');
+  const headingIdx = archLines.findIndex((l) => l.startsWith('### Declared-dependency matrix'));
+  const splitRow = (line) => line.split('|').slice(1, -1).map((c) => c.trim());
+  if (headingIdx === -1) {
+    err('P10: docs/ARCHITECTURE.md "### Declared-dependency matrix" heading not found');
+  } else {
+    const tableLines = [];
+    for (let i = headingIdx + 1; i < archLines.length; i++) {
+      const l = archLines[i];
+      if (l.trim().startsWith('|')) tableLines.push(l);
+      else if (tableLines.length) break;
+    }
+    // tableLines[0] = header ('imports →' + column names), [1] = '---' separator, [2..] = data rows
+    const columns = splitRow(tableLines[0]).slice(1);
+    const pkgJsonPathFor = (rowName) => (rowName.startsWith('apps/') ? rowName : `packages/${rowName}`);
+    for (const line of tableLines.slice(2)) {
+      const cells = splitRow(line);
+      const rowName = cells[0].replace(/\*\*/g, '').trim();
+      const dataCells = cells.slice(1);
+      const allowed = new Set();
+      for (const m of line.matchAll(/\(\+([\w-]+)\)/g)) allowed.add(m[1]); // e.g. "✅ (+harbormaster)"
+      dataCells.forEach((cell, idx) => { if (cell.includes('✅')) allowed.add(columns[idx]); });
+      const pkgJsonPath = join(root, pkgJsonPathFor(rowName), 'package.json');
+      let pkg;
+      try {
+        pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
+      } catch {
+        err(`P10 ${rowName}: cannot read ${pkgJsonPathFor(rowName)}/package.json`);
+        continue;
+      }
+      const declared = new Set(
+        Object.keys(pkg.dependencies ?? {})
+          .filter((d) => d.startsWith('@dokima/'))
+          .map((d) => d.replace('@dokima/', '')),
+      );
+      const missing = [...allowed].filter((d) => !declared.has(d)).sort();
+      const extra = [...declared].filter((d) => !allowed.has(d)).sort();
+      if (missing.length) err(`P10 ${rowName}: matrix allows but package.json dependencies omit: ${missing.join(', ')}`);
+      if (extra.length) err(`P10 ${rowName}: package.json dependencies declare but matrix forbids: ${extra.join(', ')}`);
+    }
+  }
+}
+
 if (errors.length) {
   console.error(`FAIL: ${errors.length} violation(s):`);
   for (const e of errors) console.error('  - ' + e);

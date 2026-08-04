@@ -112,7 +112,7 @@ the log; a rebuild command exists and is the recovery of last resort.
 | loop | packages/loop | micro-loop engine, anchors (tool/memory/challenger/adaptive), coverage tracker, calibration | §3.5 |
 | validators | packages/validators | validator-pack runner (exit 0/1 + JSON gaps), receipt minting inputs | §3.2 |
 | gateway | packages/gateway | provider adapters (Anthropic/OpenAI/Copilot/Vertex/LM Studio/Ollama/OpenAI-compat), role matrix, escalation ladder R0–R4, budget breakers, spend metering, warm-up/queueing | §3.3, D-007 |
-| agent-session | packages/harbormaster (`src/agent-session/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, commits on the ticket branch, and iterates to a Completion Manifest. Lives in harbormaster because it already declares BOTH `@dokima/gateway` and `@dokima/loop` and already owns the claim loop that consumes a `SpawnSession`. Tool allowlisting, approval and audit reuse `packages/mcp` (W6-04) rather than a parallel mechanism | §3.6, D-023 |
+| agent-session | packages/harbormaster (`src/agent-session/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, commits on the ticket branch, and iterates to a Completion Manifest. Lives in harbormaster because it already declares BOTH `@dokima/gateway` and `@dokima/loop` and already owns the claim loop that consumes a `SpawnSession`. Tool allowlisting, approval and audit reuse `packages/mcp` (W6-04) rather than a parallel mechanism — `@dokima/mcp` is not yet a declared dependency of `harbormaster`; whoever wires it in must add it to `package.json` **and** the ✅ in the §4 matrix below in the same change, or `scripts/validate-plan.mjs` P10 fails (W11-05's ticket notes flag that W11-02's `write_scope` does not currently cover either file) | §3.6, D-023 |
 | harbormaster | packages/harbormaster | out-of-session orchestrator: claim loop, gate re-execution, berths, breakpoints, watchdog, morning queue, resume | §3.6 |
 | pipeline | packages/pipeline | phase state machine 0–5, discovery interview, decision slates + Blueprint stage, research path, Challenger, task decomposer | §3.2, §4 |
 | git | packages/git | worktrees, ticket branches, explicit-path staging, diff-based scope check, landing | §3.9 |
@@ -123,23 +123,42 @@ the log; a rebuild command exists and is the recovery of last resort.
 | apps/web | apps/web | React/Vite Canvas: three-pane UI over projections | §3.1 |
 | content/ | content/ | imported expert definitions + validator packs (markdown/scripts, provenance headers, signed — D-006/D-008) | §11.2/.4 |
 
-### Allowed-dependency matrix (row imports column; blank = forbidden; ESLint-enforced from W3-10)
+### Declared-dependency matrix (row imports column; blank = not currently declared)
+
+A cell records what a package **currently declares** in its `package.json`
+`dependencies` — not a lifetime ceiling nobody is using yet. What's
+permanently *forbidden* regardless of what's declared is Laws 1–6 below
+(ESLint-enforced from W3-10); this table is the narrower, live "who imports
+whom today" fact, and `scripts/validate-plan.mjs` (P10) parses it and fails
+if any row disagrees with that package's declared `@dokima/*` dependencies,
+in either direction (W11-05). Growing into a new import means declaring it
+in `package.json` **and** adding the ✅ here in the same change.
 
 | imports → | shared | events | tickets | validators | gateway | memory | git | forge | mcp | loop | pipeline |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **events** | ✅ | | | | | | | | | | |
 | **tickets** | ✅ | ✅ | | | | | | | | | |
-| **validators** | ✅ | ✅ | | | | | | | | | |
+| **validators** | | ✅ | | | | | | | | | |
 | **gateway** | ✅ | ✅ | | | | | | | | | |
-| **memory** | ✅ | ✅ | | | | | | | | | |
-| **git** | ✅ | ✅ | | | | | | | | | |
-| **forge** | ✅ | ✅ | | | | | ✅ | | | | |
-| **mcp** | ✅ | ✅ | | | | | | | | | |
-| **loop** | ✅ | ✅ | | ✅ | ✅ | ✅ | | | ✅ | | |
-| **pipeline** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | | | ✅ | |
-| **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (+harbormaster) |
-| **apps/web** | (types only) | | | | | | | | | | |
+| **memory** | | | | | | | | | | | |
+| **git** | ✅ | | | | | | | | | | |
+| **forge** | | | | | | | | | | | |
+| **mcp** | | ✅ | | | | | | | | | |
+| **loop** | ✅ | | | | | | | | | | |
+| **pipeline** | | | | | | | | | | | |
+| **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | | | ✅ | |
+| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | | ✅ | ✅ (+harbormaster) |
+| **apps/web** | | | | | | | | | | | |
+
+`memory`, `forge` and `pipeline` each ship real, tested code (BLUEPRINT
+§3.5/§3.2/§3.9) but declare **no** `@dokima/*` dependency today — they are
+self-contained, not unbuilt; none of their current responsibilities happens
+to need calling another package in this graph yet. Row-narrowing here
+records that fact, not a demotion of what those packages do. `apps/web`
+declares no `@dokima/*` dependency either, not even for types (hand-mirrored
+instead, per file-level comments across `apps/web/src/**`, e.g.
+`board/types.ts`, `settings/providers-api.ts`) — it talks to the core
+exclusively over REST/WS (§1 diagram).
 
 Laws (each gets a lint rule or validator — W3-10 wires them; review-enforced until then):
 1. **No package ever imports `apps/*`.** Domain logic is UI/transport-agnostic.
@@ -157,17 +176,17 @@ Laws (each gets a lint rule or validator — W3-10 wires them; review-enforced u
 graph BT
     shared[shared]
     events[events] --> shared
-    tickets[tickets] --> events
+    tickets[tickets] --> events & shared
     validators[validators] --> events
-    gateway[gateway] --> events
-    memory[memory] --> events
-    git[git] --> events
-    forge[forge] --> git
+    gateway[gateway] --> events & shared
+    memory[memory]
+    git[git] --> shared
+    forge[forge]
     mcp[mcp] --> events
-    loop[loop] --> validators & gateway & memory & mcp
-    pipeline[pipeline] --> loop & tickets
-    hm[harbormaster] --> pipeline & forge
-    server[apps/server] --> hm
+    loop[loop] --> shared
+    pipeline[pipeline]
+    hm[harbormaster] --> shared & events & tickets & validators & gateway & git & loop
+    server[apps/server] --> shared & events & tickets & validators & gateway & memory & git & loop & pipeline & hm
     web[apps/web] -.->|REST + WS only| server
 ```
 
