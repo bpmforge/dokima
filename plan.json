@@ -5114,7 +5114,7 @@
         "AND ONE AGAINST A REAL LOCAL MODEL, run by hand and recorded on the ticket rather than in CI (law 9 keeps CI on the fake): qwen3.6-35b-a3b through LM Studio returns a parseable tool call for a trivial schema. A wire format that only the fake gateway honours would pass this ticket and fail the next one."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "W11 opens here because everything else in the wave is blocked on it. Filed 2026-08-04 with D-023. Note the sequencing trap: it is tempting to build the tool LOOP first and stub the transport, but the loop cannot be tested honestly without a transport that really round-trips, and the fake gateway can be made to round-trip anything \u2014 which is how a green suite would prove nothing. \u2014 write_scope widened by the challenge pass round 2: the e2e fake gateway cannot emit tool_calls, and it belongs to whoever defines the wire format.",
       "stories": []
     },
