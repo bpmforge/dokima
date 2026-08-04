@@ -5218,6 +5218,33 @@
       "status": "todo",
       "notes": "Filed 2026-08-04 out of the W11 challenge pass. This is the same family as W3-11 (package public surfaces + dependency declarations, G-3) and W10-78 (an engine exported from nothing): a rule that exists in prose, is contradicted in code, and is enforced by nothing. It is filed ahead of W11-02 rather than inside it because whichever way it is decided changes where a future component may live, and that should not be settled inside a ticket that merely needs an answer.",
       "stories": []
+    },
+    {
+      "id": "W11-06",
+      "title": "OpenAiProvider.chatStream silently drops tools \u2014 the exact thing FR-G9 says an adapter must never do",
+      "phase": 11,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/providers/openai.ts",
+        "packages/gateway/src/providers/openai.test.ts",
+        "packages/gateway/src/providers/types.ts"
+      ],
+      "depends_on": [
+        "W11-01"
+      ],
+      "acceptance": [
+        "(FR-G9) RAISED BY THE CONDUCTOR'S OWN REVIEWER as a MEDIUM advisory on W11-01, and verified independently before filing: `openai.ts` contains a hand-duplicated copy of the OpenAI wire format in `streamEvents()`, which W11-01 did not touch. It never serializes `request.tools` and never parses `choice.delta.tool_calls`, so tool calling silently no-ops on the cloud OpenAI streaming path. Grepping the file for `tools` returns a single `case 'tool_calls':` \u2014 a finish-reason mapping, nothing more.",
+        "IT CONTRADICTS THE REQUIREMENT W11-01 SHIPPED. FR-G9 says in terms: \"an adapter that cannot do tools must refuse the field rather than silently drop it.\" This drops it. A requirement violated by the same wave that introduced it is worse than one not yet met, because the contract now claims a guarantee the adapter does not keep.",
+        "AND THE NEW HEADER COMMENT IS MISLEADING, which is the part most likely to cost someone an afternoon: `providers/types.ts` says `openai.ts` \"delegates to it\", true only for `chat()` with streaming disabled \u2014 `chatStream()` always uses the local duplicate regardless of the `streamEnabled` flag. Fix the comment or fix the delegation; do not leave prose that reads as a guarantee.",
+        "NOT REACHABLE FROM PRODUCTION TODAY, and say so rather than overstating: `gateway-model-port/provider.ts` refuses to construct the `openai` kind at all (`kind-not-constructible`), so nothing in the running product can hit this. It is live PUBLIC API (`createOpenAiProvider`/`chatStream`, exercised by `openai.test.ts`) and will bite whichever ticket wires the cloud adapter up for real.",
+        "DELIVER either honestly: make `chatStream` serialize and parse tools like `oai-compat` now does, OR make it refuse a request carrying `tools` with a named error. Both satisfy FR-G9; silently continuing does not. If the duplication is the root cause, deleting it in favour of real delegation is the better fix and should be said out loud rather than assumed.",
+        "RED FIXTURE: a `chatStream` call carrying `tools` either round-trips them or throws \u2014 failing today, where it returns a normal stream and the caller never learns the field was ignored."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-04 from the conductor's first supervised run. Worth recording HOW it was found: the maker landed W11-01 with an APPROVE verdict and the reviewer attached this as an advisory, which does not block a land \u2014 so the contradiction reached `main` and the ticket still closed correctly. That is the review layer working as designed (maker \u2260 verifier, C-4) and it is also the argument for reading advisories rather than trusting the verdict line. Verified by grep before filing, not taken on the reviewer's word.",
+      "stories": []
     }
   ]
 }
