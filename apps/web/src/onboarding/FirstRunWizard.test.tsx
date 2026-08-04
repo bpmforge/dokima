@@ -28,6 +28,16 @@ vi.mock('../settings/api.js', async () => {
   return { ...actual, putGlobalSettings: vi.fn() };
 });
 
+// W10-55: the wizard now registers the configured provider through the real
+// provider registry once the sample project exists — the write it used to send
+// to `PUT /settings/global`, which drops a `providers` key on the floor.
+vi.mock('../settings/providers-api.js', async () => {
+  const actual = await vi.importActual<typeof import('../settings/providers-api.js')>(
+    '../settings/providers-api.js',
+  );
+  return { ...actual, putProviders: vi.fn().mockResolvedValue([]) };
+});
+
 vi.mock('./GuidedSample.js', () => ({
   GuidedSample: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue} data-testid="stub-guided-sample-continue">

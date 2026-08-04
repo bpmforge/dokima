@@ -2,6 +2,22 @@ import { useState } from 'react';
 import { createProject, FleetApiError } from '../fleet/api.js';
 import { GuidedSample } from '../onboarding/GuidedSample.js';
 import { putGlobalSettings, SettingsApiError } from './api.js';
+import { putProviders, type ProviderEntry, type ProviderKind } from './providers-api.js';
+
+/**
+ * W10-55: this wizard and the provider REGISTRY have always spelled the same
+ * three things differently — `lmstudio`/`openai_compat` here against
+ * `lm-studio`/`oai-compat` there. Nothing caught it because the wizard's
+ * value was posted to `PUT /settings/global`, which ignores a `providers` key
+ * entirely, so the string was never validated by anything. Mapped explicitly
+ * rather than renaming the local union, which is what the radio values and
+ * their labels are keyed on.
+ */
+const REGISTRY_KIND: Record<'lmstudio' | 'openai_compat' | 'vertex', ProviderKind> = {
+  lmstudio: 'lm-studio',
+  openai_compat: 'oai-compat',
+  vertex: 'vertex',
+};
 import { HelpAffordance } from './HelpAffordance.js';
 import { MODEL_MATRIX_PRESETS, type ModelMatrixPreset } from './types.js';
 
@@ -77,6 +93,34 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
         mode: 'new',
         name: 'Dokima Sample',
       });
+
+      // W10-55: THIS is where the provider the user configured in step 2
+      // actually gets registered. `savePresetAndProvider` sends it to
+      // `PUT /settings/global`, which has never handled a `providers` key —
+      // grep `scope-routes.ts` for it and you get nothing — so the entry was
+      // silently dropped and every run fell back to the env default
+      // (`localhost:1234`). On a machine with LM Studio up that looks like it
+      // works; everywhere else "on your configured model" was simply false.
+      //
+      // Registered at GLOBAL scope (W10-70) rather than onto this project, so
+      // it is true for the sample AND for the first real product afterwards —
+      // which is what "register once, use everywhere" (FR-F3) promises. It
+      // happens here rather than in step 2 because the global-scope write is
+      // addressed through a project, and no project exists until now.
+      await putProviders(
+        card.id,
+        [
+          {
+            id: 'first-run',
+            kind: REGISTRY_KIND[providerKind],
+            enabled: true,
+            ...(providerKind !== 'vertex' ? { baseUrl } : {}),
+            ...(providerKind === 'vertex' ? { credentialRef } : {}),
+          } as ProviderEntry,
+        ],
+        { scope: 'global' },
+      );
+
       setCreatedProjectId(card.id);
       setStep('done');
     } catch (err) {
