@@ -115,6 +115,8 @@ private (other local processes, browser tabs — SC-08).
 |---|---|---|---|---|
 | T-23 | T | Direct `state.db` edit rewrites history/receipts (any local process incl. an agent that escaped scope) | M×H=H | SC-11 (hash chain + `audit verify`; DB outside every write-scope), SC-01 |
 | T-24 | R | Waiver/approval minted retroactively or by an agent | M×H=H | SC-05 (human signature + blocklist), SC-11 (chain position proves ordering) |
+| T-26 | T | **Prompt injection reaches a tool call** (D-023): repo content a session reads — a README, a dependency's source, a ticket comment — carries instructions the model follows, turning a read into a write outside the ticket's intent | M×H=H | SC-17 (every write checked against `write_scope` BEFORE it executes, and SC-01 again after), SC-18 (closed tool set: no shell, no network, no installs), SC-02 (the close gate re-runs verify and re-checks the diff out of session, so a session that talks its way past the pre-check still cannot close) |
+| T-27 | E | **Tool loop escapes its own budget** (D-023): a session iterates tool calls indefinitely, or a model loops on a failing edit, spending the ladder's budget without producing a manifest | M×M=M | W2-07 budget breakers metered per call through `gateway` — the reason D-023 keeps inference in-product rather than in a foreign CLI the ledger cannot see; harbormaster session cap (`maxSessionsPerTicket`) and watchdog (W3-02) bound the outer loop |
 | T-25 | T | Log truncation/rollback to a consistent prefix (chain intact but shorter) | L×M=M | SC-11 (forge mirror as external anchor when connected; seq high-water in `~/.dokima/`) |
 
 ## 4. Abuse cases

@@ -112,6 +112,7 @@ the log; a rebuild command exists and is the recovery of last resort.
 | loop | packages/loop | micro-loop engine, anchors (tool/memory/challenger/adaptive), coverage tracker, calibration | §3.5 |
 | validators | packages/validators | validator-pack runner (exit 0/1 + JSON gaps), receipt minting inputs | §3.2 |
 | gateway | packages/gateway | provider adapters (Anthropic/OpenAI/Copilot/Vertex/LM Studio/Ollama/OpenAI-compat), role matrix, escalation ladder R0–R4, budget breakers, spend metering, warm-up/queueing | §3.3, D-007 |
+| agent-session | apps/server (`api/agent/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, iterates to a Completion Manifest. Lives in `apps/server` because it is the one place allowed to import BOTH `gateway` and `loop` — `packages/loop` may not import `gateway` (§4), which is why no package can host it | §3.6, D-023 |
 | harbormaster | packages/harbormaster | out-of-session orchestrator: claim loop, gate re-execution, berths, breakpoints, watchdog, morning queue, resume | §3.6 |
 | pipeline | packages/pipeline | phase state machine 0–5, discovery interview, decision slates + Blueprint stage, research path, Challenger, task decomposer | §3.2, §4 |
 | git | packages/git | worktrees, ticket branches, explicit-path staging, diff-based scope check, landing | §3.9 |

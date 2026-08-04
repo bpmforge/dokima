@@ -158,3 +158,29 @@ ticket. IDs are stable — new controls append, never renumber.
 | T-16..T-18 (providers) | SC-06, SC-02, SC-13, SC-09* (all-local profile visibility) |
 | T-19..T-22 (local surface) | SC-08, SC-06, SC-09, SC-07, SC-16 |
 | T-23..T-25 (log integrity) | SC-11, SC-05, SC-01, SC-15 |
+
+- **SC-17 Tool-boundary write-scope enforcement** (T-3, T-4, T-11, T-23, T-24; D-023).
+  SC-01 checks `write_scope` **after** a session, by diffing the worktree. Dokima's own
+  tool-using session (D-023) can and must do better: every `write`/`edit`/`delete` tool
+  call is checked against the ticket's `write_scope[]` globs **before it executes**, with
+  the same hard exclusions SC-01 names (`.git/**`, hooks, `.github/workflows/**`,
+  `.dokima/**`, anything resolving outside the worktree after `realpath`). A refused tool
+  call returns an error to the model as a normal tool result — the session continues and
+  may correct itself — and is recorded on the session trace.
+  **SC-01 STILL RUNS AFTERWARDS AND IS STILL AUTHORITATIVE.** This is defence in depth,
+  never a replacement: the pre-check is inside the session and therefore inside the trust
+  boundary the whole product is built to distrust (C-2/C-3), so a session that finds a way
+  around it is still caught by the out-of-session diff. A pre-check that made SC-01
+  redundant would be the self-attestation Law 4 exists to refuse.
+  *Lands:* the agent-session wave · apps/server `api/agent/**`. *Verify:* red fixtures for
+  a tool call writing `../outside`, `.git/config`, a workflow file, and a symlink escape —
+  each refused at the boundary AND, with the pre-check disabled, still refused by SC-01.
+
+- **SC-18 Tool surface is closed and least-privilege** (T-5, T-24; D-023). The session's
+  tool set is an explicit allowlist with no arbitrary-shell escape by default: read, list,
+  search, write, edit, and the ticket's own declared `verify` command — nothing that can
+  run a free-form process, install a dependency, or open a socket. Shell access, if it is
+  ever granted, is a per-role MCP-style capability with `requiresApproval` (§3.9,
+  packages/mcp), never an ambient tool. The model chooses tool CALLS; it never chooses the
+  tool SET. *Verify:* a session whose model emits a call to an unlisted tool gets a refusal
+  result, not an execution, and the attempt lands on the trace.

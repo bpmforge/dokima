@@ -231,3 +231,27 @@ force-push — the blocker write-up records what a rewrite does *not* undo.
 - Traceability check at every wave gate: each SRS acceptance sketch for the wave maps to a
   named test (grep FR/UC IDs in test titles); a gap is a gate failure, honestly reported as
   SKIPPED — never silent (FR-L4 applies to our own process too).
+
+## Agent sessions (W11, D-023)
+
+Dokima's own tool-using session is tested the same way every other model-facing
+path is: **against the fake gateway, with no network and no real model** (law 9,
+C-1). A scripted `tool_calls` sequence drives the loop, the loop edits a real
+worktree, and the EXISTING close gate judges the result — if the gate needs
+loosening to accept our own agent, that is a finding to report rather than a
+licence to change it.
+
+Two things the fake gateway cannot prove, and which therefore have to be run by
+hand and recorded on the ticket rather than trusted to CI:
+
+1. **That a real model emits a parseable tool call at all.** The fake gateway
+   round-trips whatever shape we teach it, so a green suite proves the loop, not
+   the wire format. W11-01 requires one hand-run against a local model.
+2. **That the loop converges on real output.** A scripted sequence always
+   terminates; a real model may loop on a failing edit. T-27's budget cap is
+   fixtured, but "does it actually finish a ticket" is measured by running it.
+
+The containment fixtures (SC-17/T-26) are the ones that must never be softened:
+each escape shape is asserted refused at the tool boundary **and** refused again
+by SC-01 with the pre-check disabled. A pre-check that made SC-01 redundant
+would be exactly the self-attestation Law 4 refuses.

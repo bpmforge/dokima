@@ -214,9 +214,11 @@ MCP servers (FR-I3).
 | FR-T6 | §7.3 | W3 | | FR-M1–M3 | §3.8 | W7 |
 | FR-G1–G5 | §3.3 | W2 | | FR-S1–S4 | §3.10 | W0-07 (core) / W4-06 (wizard+UI) |
 | FR-G6, FR-G7 | §12.1–.2 | W2 | | FR-F1–F5 | §3.11 | W4-02/W4-07 (home+inbox) / W7-02 (playbook) |
+| FR-G9 | **Tool calling on the provider contract** (D-023). `ChatRequest` carries an optional tool schema and responses normalize `tool_calls` the same way `NormalizedUsage` normalizes tokens and cost, so a caller sees one shape regardless of provider. The oai-compat adapter is the reference implementation because it is the local path (LM Studio and Ollama both speak the OpenAI tool-calling format); an adapter that cannot do tools must refuse the field rather than silently drop it. | W11-01 |
 | FR-L1–L4 | §3.5 | W1 | | FR-E1 | §3.2 (expert box), §11 | W1-01 |
 | FR-L5 | §7.2 | W1 | | FR-L6/L7 | §3.5 + FINDING_LOOP_POLICY | W3-08 |
 | FR-H1–H5 | §3.6 | W3 | | FR-C7 | §5.3 | W0-08 (CLI) / W4 (parity tests) |
+| FR-H6 | **Dokima runs its own ticket sessions** (D-023). A session is a tool-using loop owned by this product: the HANDOFF and a closed, least-privilege tool set go through `gateway` to the role's model, returned tool calls execute against the ticket worktree, and the loop iterates to a Completion Manifest. Because inference stays in-product, the role→model matrix (FR-G2), the escalation ladder (FR-G3), the budget breakers (FR-G4) and spend metering all govern agent work — none of which apply to a shelled-out CLI. Every write is checked against `write_scope` before it executes (SC-17) and again out-of-session by SC-01, which remains authoritative. An external agent command stays available as an explicit escape hatch. | W11-02, W11-03, W11-04 |
 | NFR-1–7 | §6.2 | per §3 above | | | | |
 
 D-008 additionally binds W1 to the one-time content import + conformance suite (TESTING.md §4).

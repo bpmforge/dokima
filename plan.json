@@ -5089,6 +5089,104 @@
       "status": "done",
       "notes": "Found 2026-08-04 by driving W10-73 in a browser the moment it made these cards reachable \u2014 the defect existed before but no slate-backed card had ever rendered, so nothing could hit it. Note the interaction with W10-73: because the sync reconciles against open slates on every refresh, this cannot be fixed by making the card stay dismissed; the only correct fix is letting the founder answer. \u2014 CLOSED 2026-08-04, PROVEN IN A BROWSER on the real card that produced the ticket. The morning queue now renders the slate itself: both options with their tradeoffs, the Recommended badge, the model reasoning and a rationale field, and NO Approve/Reject. Chose Defer to v1.1 with a rationale, and the whole chain closed \u2014 D-001 written to the projects docs/DECISIONS.md with that rationale, pending_decide_count back to 0, the Decide queue empty, and the card gone. Nothing needs you. is now honest where twenty minutes earlier it was a lie. \u2014 ANSWERED INLINE rather than routed to the Decisions board, because the screen makes its own promise: MorningQueue.tsx header cites UX_SPEC 7, leverage-sorted, Decide/Review only, with no navigation required. Linking away would have satisfied the letter of the acceptance and broken the design. It needed no new endpoint either \u2014 the card already carries refId and projectId, and decisions/api.ts already has the fetch and the decide call the board itself uses. \u2014 SlateCard IS REUSED, not reimplemented: the board and the queue must not drift on what a slate looks like or on what decided means. \u2014 NOTHING RESOLVES THE NOTIFICATION BY HAND, which is the part worth remembering: W10-73s reconcile pass closes any card whose slate is no longer open, so answering plus a refresh is the whole of it. A manual resolve here would have fought that pass and re-created the very bug this ticket fixes. \u2014 A slate answered in another tab or by a resumed run says Already answered rather than offering a choice that would 409, and an ordinary Decide card keeps Approve/Reject \u2014 this narrows nothing else. Fixtures proven RED: 3 of 4 against the shipped card; the fourth is that guard. TYPECHECK CAUGHT WHAT VITEST DID NOT: my fixture used the servers dId/decidedAt field names, and the webs SlateRecord is snake_case (d_id, decided_at) \u2014 the suite passed green because vitest does not typecheck. Gate: lint 0 errors (1 pre-existing warning, unrelated), typecheck clean, 427 files / 3277 passed | 1 skipped (+4), 65 e2e passed.",
       "stories": []
+    },
+    {
+      "id": "W11-01",
+      "title": "The Provider contract cannot send tools \u2014 tool calling was designed for and never built",
+      "phase": 11,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/providers/types.ts",
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "MEASURED BY READING THE CONTRACT, 2026-08-04. `ChatRequest` is `{model, messages, temperature, maxTokens, stop}` \u2014 there is no `tools` field, so no caller can ask a model to use tools. `FinishReason` already includes `'tool_calls'`, so the RESPONSE side was designed for this and the REQUEST side was never built. That asymmetry is the whole reason the only shipped session runner shells out to an external CLI.",
+        "DELIVER on the contract: `tools?: ToolSchema[]` on `ChatRequest`, and a normalized `toolCalls` on the response beside the existing `finishReason`, so every adapter reports tool calls the same shape regardless of provider \u2014 the same normalization `NormalizedUsage` already does for tokens and cost.",
+        "DELIVER in the oai-compat adapter first, because it is the local path (LM Studio and Ollama both speak the OpenAI tool-calling wire format) and D-023 keeps this local-first. Other adapters may follow in their own tickets; a provider that cannot do tools must SAY SO rather than silently drop the field.",
+        "RED FIXTURE, both halves and both against the fake gateway: a request carrying tools serializes them onto the wire, and a scripted `tool_calls` response parses into normalized `toolCalls` with `finishReason: 'tool_calls'`. Failing today, where the field cannot even be expressed.",
+        "AND ONE AGAINST A REAL LOCAL MODEL, run by hand and recorded on the ticket rather than in CI (law 9 keeps CI on the fake): qwen3.6-35b-a3b through LM Studio returns a parseable tool call for a trivial schema. A wire format that only the fake gateway honours would pass this ticket and fail the next one."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "W11 opens here because everything else in the wave is blocked on it. Filed 2026-08-04 with D-023. Note the sequencing trap: it is tempting to build the tool LOOP first and stub the transport, but the loop cannot be tested honestly without a transport that really round-trips, and the fake gateway can be made to round-trip anything \u2014 which is how a green suite would prove nothing.",
+      "stories": []
+    },
+    {
+      "id": "W11-02",
+      "title": "Dokima's own agent session: a tool loop that produces a Completion Manifest",
+      "phase": 11,
+      "module": "web",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/api/agent/**",
+        "apps/server/package.json"
+      ],
+      "depends_on": [
+        "W11-01"
+      ],
+      "acceptance": [
+        "DELIVER a `SpawnSession` (the `@dokima/loop` contract `runSession` already takes) that is backed by the GATEWAY rather than a child process: render the HANDOFF, send it with the tool schema through the role's configured model, execute the returned tool calls against the ticket worktree, feed results back, and iterate until the model emits a Completion Manifest or the budget stops it.",
+        "IT LIVES IN `apps/server`, and the reason is a module-boundary fact rather than a preference: `packages/loop` may not import `packages/gateway` (ARCHITECTURE \u00a74), so no package can host a session that needs both. `apps/server` is the one place that already imports each.",
+        "THE TOOL SET IS CLOSED AND LEAST-PRIVILEGE (SC-18): read, list, search, write, edit, and the ticket's own declared `verify` command. No free-form shell, no network, no installs. The model chooses tool CALLS; it never chooses the tool SET.",
+        "EVERY CALL GOES THROUGH THE GATEWAY, which is the entire point of D-023 \u2014 the role\u2192model matrix decides the model, the R0\u2013R4 ladder can escalate, the W2-07 breakers can break, and the spend ledger sees every token. RED FIXTURE: after a session, the run's spend is non-zero and attributable to the role, which is exactly what a shelled-out CLI could never provide.",
+        "RED FIXTURE for the loop itself, against the fake gateway (law 9): a scripted sequence of tool calls edits a file in the worktree, commits nothing, and returns a manifest \u2014 and the EXISTING close gate accepts it unchanged. If the gate needs changing to accept our own agent, that is a finding to report, not a licence to loosen it.",
+        "AND A SESSION THAT NEVER CONVERGES MUST STOP (T-27): assert an iteration/budget cap produces a parked ticket with evidence rather than an unbounded loop."
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": "The piece W10-77 named and could not build: its acceptance 3 said a gateway CALL cannot be an agent because runSession detects work by git diff and a completion changes no files. True of a completion, false of a tool loop \u2014 this is the resolution, and W10-77 should be read alongside it.",
+      "stories": []
+    },
+    {
+      "id": "W11-03",
+      "title": "A tool call is checked against write_scope BEFORE it runs, and SC-01 still runs after",
+      "phase": 11,
+      "module": "web",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/api/agent/**",
+        "docs/SECURITY_CONTROLS.md"
+      ],
+      "depends_on": [
+        "W11-02"
+      ],
+      "acceptance": [
+        "DELIVER SC-17: every write/edit/delete tool call is matched against the ticket's `write_scope[]` globs before it executes, with SC-01's hard exclusions (`.git/**`, hooks, `.github/workflows/**`, `.dokima/**`, anything resolving outside the worktree after `realpath`). A refusal returns to the model as a normal tool result so the session can correct itself, and lands on the trace.",
+        "SC-01 STILL RUNS AFTERWARDS AND STAYS AUTHORITATIVE. The pre-check is inside the session, therefore inside the boundary the product is built to distrust (C-2/C-3). RED FIXTURE, and this is the one that matters: with the pre-check DISABLED, every escape attempt is still refused by the out-of-session diff. A pre-check that made SC-01 redundant would be the self-attestation Law 4 exists to refuse.",
+        "RED FIXTURE per escape shape, at the tool boundary: `../outside`, `.git/config`, `.github/workflows/ci.yml`, `.dokima/state.db`, and a symlink pointing out of the worktree.",
+        "T-26, PROMPT INJECTION, GETS ITS OWN FIXTURE: a file the session reads contains an instruction to write outside the ticket, and the session cannot produce an out-of-scope write \u2014 refused at the boundary, refused again by SC-01, and the close gate refuses the manifest. Repo content is untrusted input, and this is the first time the product reads attacker-controllable text with tools in hand."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Filed with D-023. This is the ticket that makes the agent safe to point at a real repository, and it should not be collapsed into W11-02 \u2014 the loop working and the loop being contained are different claims with different fixtures.",
+      "stories": []
+    },
+    {
+      "id": "W11-04",
+      "title": "Pick the agent in Settings, not on a command line \u2014 and the external CLI becomes the escape hatch",
+      "phase": 11,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/server/src/api/server/settings-types.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "depends_on": [
+        "W11-02"
+      ],
+      "acceptance": [
+        "MEASURED 2026-08-04: `--agent-command` is a CLI flag with no default and no settings surface, so nothing in the product can configure an agent and an installed user cannot run the loop at all. W10-77 shipped it that way deliberately \u2014 picking an agent spends the founder's money \u2014 but a flag is not a decision surface.",
+        "DELIVER: the session runner is chosen in Settings, project and global scope, same shape as the provider registry (W10-70). Default is Dokima's own agent (D-023). The external CLI is a second option that must be typed in explicitly, and the UI says plainly what it gives up \u2014 the role matrix, the escalation ladder, the budget breakers and the spend ledger all stop applying, because the tokens are spent somewhere Dokima cannot see.",
+        "RED FIXTURE: a project with no agent setting runs on the built-in agent rather than refusing; a project that names an external command uses it; and the warning about what an external agent bypasses is asserted, not merely present in the source."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Depends on W11-02 because defaulting to an agent that does not exist yet would be a lie in the settings surface. The honest-warning clause is the point of the ticket as much as the picker is: an external agent is a legitimate choice and its costs must be stated where the choice is made.",
+      "stories": []
     }
   ]
 }
