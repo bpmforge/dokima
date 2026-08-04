@@ -55,6 +55,54 @@ export interface ChatResponse {
   toolCalls?: ToolCall[];
 }
 
+/**
+ * FR-G9 OpenAI tool-calling wire shapes: shared by any OpenAI-compatible
+ * adapter (oai-compat.ts's local path, and openai.ts's cloud path, which
+ * delegates to it) — declared here rather than in oai-compat.ts because
+ * W11-01's write_scope covers only this file and oai-compat.ts, not the
+ * oai-compat-types.ts/oai-compat-helpers.ts chapter siblings, and
+ * oai-compat.ts has no room left under the 400-line file-size cap.
+ * `arguments` arrives as a JSON-encoded string, not yet parsed.
+ */
+export interface RawToolCall {
+  id: string;
+  type: string;
+  function: { name: string; arguments: string };
+}
+
+/** Streaming variant: id/name typically land on the first delta for an index, arguments arrive fragmented across deltas. */
+export interface RawToolCallDelta {
+  index: number;
+  id?: string;
+  type?: string;
+  function?: { name?: string; arguments?: string };
+}
+
+export type ToolCallAccumulator = Map<number, { id: string; name: string; args: string }>;
+
+/** Folds one streamed tool_calls delta into its by-index accumulator. */
+export function applyToolCallDelta(
+  acc: ToolCallAccumulator,
+  delta: RawToolCallDelta,
+): void {
+  const entry = acc.get(delta.index) ?? { id: '', name: '', args: '' };
+  if (delta.id) entry.id = delta.id;
+  if (delta.function?.name) entry.name = delta.function.name;
+  if (delta.function?.arguments) entry.args += delta.function.arguments;
+  acc.set(delta.index, entry);
+}
+
+/** Once a stream ends, turns the by-index accumulator into wire-shaped `RawToolCall[]`, ordered by index. */
+export function finalizeToolCallDeltas(acc: ToolCallAccumulator): RawToolCall[] {
+  return [...acc.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, { id, name, args }]) => ({
+      id,
+      type: 'function',
+      function: { name, arguments: args },
+    }));
+}
+
 export interface ModelInfo {
   id: string;
   /** Only populated when the provider's discovery response carries it (rare) or a static override is configured. */

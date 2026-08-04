@@ -1,35 +1,13 @@
 /**
- * OpenAI-compatible adapter (FR-G1): serves any endpoint that speaks the
- * `/v1/chat/completions` + `/v1/models` wire format — LM Studio
- * (localhost:1234/v1), Ollama (localhost:11434/v1), and generic
- * self-hosted/third-party OpenAI-compatible servers. Wire shapes verified
- * against OpenAI's chat-completions reference, Ollama's OpenAI-compatibility
- * docs, and LM Studio's OpenAI-compat docs (2026-07-11) — see the ticket's
- * HANDOFF note for sources; contract tests pin these shapes via recorded
- * fixtures, never a live call.
- *
- * Context-length introspection is intentionally static-config-only: neither
- * `/v1/models` response carries a context-length field, and each local
- * server's *native* (non-OpenAI-compat) API that does expose one uses an
- * incompatible, per-server shape (LM Studio's `/api/v0/models` has
- * `max_context_length`; Ollama's `/api/show` buries it in
- * family-prefixed `model_info` keys) — not something a single generic
- * adapter can parse without per-vendor special-casing. Callers that know
- * their model's context window pass it via `contextLengths`.
- *
- * chatStream() (W2-09/G-23) streams the same `/chat/completions` endpoint
- * with `stream: true` + `stream_options.include_usage` — identical chunk
- * shape to openai.ts's cloud path, since both speak the OpenAI-compatible
- * wire format; the SSE framing is shared via streaming.ts.
- *
- * Book-style split (file-size gate, 400-line cap): once this file exceeded
- * the cap it was split into flat sibling chapters — oai-compat-types.ts
- * (config + wire shapes + constants) and oai-compat-helpers.ts
- * (finish-reason normalization, retry-after parsing). Flat siblings (not an
- * oai-compat/ subdirectory) keep every chapter inside the ticket's original
- * `oai-compat*` write_scope, matching copilot.ts's precedent. This file is
- * the barrel: the OaiCompatProvider class and its factories are the public
- * surface.
+ * OpenAI-compatible adapter (FR-G1): serves `/v1/chat/completions` +
+ * `/v1/models` — LM Studio, Ollama, and other OpenAI-compatible servers.
+ * Wire shapes verified against OpenAI/Ollama/LM Studio docs (2026-07-11),
+ * pinned by recorded fixtures. Config/wire shapes live in
+ * oai-compat-types.ts, finish-reason/retry-after in oai-compat-helpers.ts
+ * (book-style split, 400-line cap). Tool-calling shapes (FR-G9, W11-01)
+ * live in providers/types.ts instead — this file has no budget left under
+ * the cap and W11-01's write_scope excludes the chapter siblings; see
+ * types.ts for why they landed there.
  */
 import {
   ProviderAuthError,
@@ -41,37 +19,56 @@ import {
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
 import { readSseDataLines, runQueuedStream } from './streaming.js';
-import type {
-  ChatRole,
-  ChatRequest,
-  ChatResponse,
-  ModelInfo,
-  Provider,
-  ProviderHealth,
-  ProviderQueueStats,
-} from './types.js';
-import type { ChatStreamEvent } from '../types.js';
-import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
 import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
-  normalizeFinishReason,
-  normalizeToolCalls,
-  parseRetryAfterMs,
-  toRawTool,
-} from './oai-compat-helpers.js';
+  type ChatRole,
+  type ChatRequest,
+  type ChatResponse,
+  type ModelInfo,
+  type Provider,
+  type ProviderHealth,
+  type ProviderQueueStats,
+  type RawToolCall,
+  type RawToolCallDelta,
+  type ToolCall,
+  type ToolCallAccumulator,
+  type ToolSchema,
+} from './types.js';
+import type { ChatStreamEvent } from '../types.js';
+import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
+import { normalizeFinishReason, parseRetryAfterMs } from './oai-compat-helpers.js';
 import {
   DEFAULT_HEALTH_TIMEOUT_MS,
   DEFAULT_REQUEST_TIMEOUT_MS,
+  type OaiCompatConfig,
+  type OaiCompatStreamChunk,
+  type RawChatCompletionResponse,
+  type RawModelsResponse,
 } from './oai-compat-types.js';
-import type {
-  OaiCompatConfig,
-  OaiCompatStreamChunk,
-  RawChatCompletionResponse,
-  RawModelsResponse,
-} from './oai-compat-types.js';
-
 export type { OaiCompatConfig } from './oai-compat-types.js';
+/** `ToolSchema` -> the OpenAI wire tool shape; JSON.stringify drops `description` when undefined. */
+function toRawTool(tool: ToolSchema): Record<string, unknown> {
+  const { name, description, parameters } = tool;
+  return { type: 'function', function: { name, description, parameters } };
+}
+/** Raw wire tool_calls -> normalized `ToolCall[]`, arguments parsed once so callers never re-decode a per-provider JSON string. */
+function normalizeToolCalls(providerId: string, raw: RawToolCall[]): ToolCall[] {
+  return raw.map(({ id, function: fn }) => {
+    try {
+      return {
+        id,
+        name: fn.name,
+        arguments: JSON.parse(fn.arguments) as Record<string, unknown>,
+      };
+    } catch {
+      throw new ProviderResponseShapeError(
+        providerId,
+        `tool call "${fn.name}" has unparseable arguments JSON: ${fn.arguments}`,
+      );
+    }
+  });
+}
 
 export class OaiCompatProvider implements Provider {
   readonly id: string;
@@ -185,7 +182,8 @@ export class OaiCompatProvider implements Provider {
       }
 
       const modelId = raw.model ?? request.model;
-      const rawToolCalls = choice.message.tool_calls;
+      const rawToolCalls = (choice.message as unknown as { tool_calls?: RawToolCall[] })
+        .tool_calls;
       return {
         model: modelId,
         message: {
@@ -241,7 +239,7 @@ export class OaiCompatProvider implements Provider {
     let modelId = request.model;
     let finishReasonRaw: string | null = null;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
-    const toolCallDeltas: Parameters<typeof finalizeToolCallDeltas>[0] = new Map();
+    const toolCallDeltas: ToolCallAccumulator = new Map();
 
     for await (const payload of readSseDataLines(response.body)) {
       if (payload === '[DONE]') continue;
@@ -254,7 +252,8 @@ export class OaiCompatProvider implements Provider {
           content += choice.delta.content;
           yield { type: 'delta', content: choice.delta.content };
         }
-        for (const d of choice.delta.tool_calls ?? [])
+        const deltaCalls = choice.delta as unknown as { tool_calls?: RawToolCallDelta[] };
+        for (const d of deltaCalls.tool_calls ?? [])
           applyToolCallDelta(toolCallDeltas, d);
         if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
       }
