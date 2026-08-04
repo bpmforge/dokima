@@ -79,7 +79,11 @@ export interface DecomposedTicket {
 }
 
 export type LintViolationKind =
-  'missing-package-json-scope' | 'unowned-interface' | 'dependency-cycle';
+  | 'missing-package-json-scope'
+  | 'unowned-interface'
+  | 'dependency-cycle'
+  /** W10-76: a `writeScope` entry that is not a path or glob at all. */
+  | 'unpathlike-write-scope';
 
 /** One plan-linter finding (AC2) — surfaced with the DAG, never thrown away silently. */
 export interface LintViolation {

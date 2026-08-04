@@ -4,6 +4,7 @@ export {
   findDependencyCycles,
   findMissingPackageJsonScope,
   findUnownedInterfaces,
+  findUnpathlikeWriteScope,
   lintDecomposition,
 } from './linter.js';
 export { renderMermaid } from './mermaid.js';

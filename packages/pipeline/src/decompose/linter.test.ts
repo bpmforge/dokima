@@ -188,4 +188,74 @@ describe('lintDecomposition', () => {
   it('a clean DAG produces zero violations', () => {
     expect(lintDecomposition([draft({ id: 'T' })])).toEqual([]);
   });
+
+  /**
+   * W10-76 RED FIXTURE. Measured on two boards the same model built minutes
+   * apart from the same prompt: one carried real globs, the other carried the
+   * acceptance criteria in prose on 8 of 8 tickets while the verify command
+   * sat in `acceptance`. Nothing objected — every other check here is about
+   * seams BETWEEN tickets, and none asked whether a scope was path-shaped.
+   */
+  describe('a write_scope that is not a path at all (W10-76)', () => {
+    it('RED FIXTURE: prose in write_scope is a violation naming why it can never match', () => {
+      const violations = lintDecomposition([
+        draft({
+          id: 'T-1',
+          writeScope: [
+            'Initialize Supabase project on free tier',
+            "Define SQL schema for 'lists' and 'items'",
+          ],
+        }),
+      ]);
+
+      expect(violations.map((v) => v.kind)).toEqual([
+        'unpathlike-write-scope',
+        'unpathlike-write-scope',
+      ]);
+      expect(violations[0]?.detail).toContain('prose');
+      // The consequence, not just the shape: an agent's every change would be
+      // refused as out of scope, AFTER the model spend.
+      expect(violations[0]?.detail).toContain('out of scope');
+    });
+
+    it('a bare word is refused too — it can only ever match one file of that exact name', () => {
+      const violations = lintDecomposition([draft({ id: 'T-1', writeScope: ['docs'] })]);
+      expect(violations.map((v) => v.kind)).toEqual(['unpathlike-write-scope']);
+      expect(violations[0]?.detail).toContain('no path separator');
+    });
+
+    it('real paths and globs stay silent — no false positive on the shapes actually in use', () => {
+      const violations = lintDecomposition([
+        draft({
+          id: 'T-1',
+          writeScope: [
+            'src/db/schema.ts',
+            'src/services/**',
+            'apps/web/package.json',
+            'packages/*/src/index.ts',
+            'docs/board/plan.json',
+          ],
+        }),
+      ]);
+      expect(violations).toEqual([]);
+    });
+
+    it('THE QUIET FAILURE: prose suppresses the package.json check that would otherwise fire', () => {
+      // `findMissingPackageJsonScope` fires only when `globOverlaps` fails to
+      // cover `<ownPackage>/package.json`, and prose matches nothing — so the
+      // prose board reported ZERO violations while the correct board reported
+      // five. Wrong input produced a cleaner report; this pins that it no
+      // longer can.
+      const prose = lintDecomposition([
+        draft({
+          id: 'T-1',
+          ownPackage: 'apps/server',
+          importsWorkspacePackages: ['@dokima/events'],
+          writeScope: ['Set up the server package'],
+        }),
+      ]);
+      expect(prose.some((v) => v.kind === 'unpathlike-write-scope')).toBe(true);
+      expect(prose.length).toBeGreaterThan(0);
+    });
+  });
 });

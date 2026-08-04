@@ -17,9 +17,23 @@ export const TICKET_DRAFTS_SYSTEM_PROMPT =
   '"acceptance": string[], "verify": string, "ownPackage": string|null, ' +
   '"importsWorkspacePackages": string[], "providesInterfaces": ' +
   '[{"packageName": string, "exportName": string}], "consumesInterfaces": ' +
-  '[{"packageName": string, "exportName": string}]}]}. "verify" is an ' +
-  'executable shell command. "dependsOn" entries must reference another ' +
-  'ticket id in this same list.';
+  '[{"packageName": string, "exportName": string}]}]}. ' +
+  // W10-76: the prompt used to describe "writeScope": string[] and stop, and a
+  // model given a field beside "acceptance" reasonably filled it with the
+  // acceptance criteria in prose — measured on a real board, 8 of 8 tickets
+  // carried sentences like "Initialize Supabase project on free tier" while
+  // the verify command sat in "acceptance". The system enforces something far
+  // narrower than it described: a scope is compiled with a glob matcher, so a
+  // sentence matches no file and every change an agent makes is refused as
+  // out of scope. Say what the field IS, with worked examples, exactly as
+  // W10-66 had to for the blueprint's "key".
+  '"writeScope" is the FILE PATHS AND GLOBS this ticket may edit — never ' +
+  'prose, never acceptance criteria. Each entry is a repo-relative path or ' +
+  'glob with no spaces, for example "src/db/schema.ts", "src/services/**" or ' +
+  '"apps/web/package.json". "acceptance" is the list of criteria a human ' +
+  'would check, in plain language. "verify" is a single executable shell ' +
+  'command, and belongs nowhere else. "dependsOn" entries must reference ' +
+  'another ticket id in this same list.';
 
 export function parseInterfaceRefs(
   raw: unknown,
