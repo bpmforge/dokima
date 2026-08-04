@@ -109,6 +109,17 @@ test.afterEach(async () => {
   await gateway?.close();
   gateway = undefined;
   await fs.rm(GLOBAL_CONFIG, { force: true });
+  // The wizard hardcodes `/tmp/dokima-sample-<ts>` and nothing cleaned these
+  // up: 179 of them had accumulated by the time this spec was written. That is
+  // W9-14's lesson in a new place (a registry that grew to 1,164 projects took
+  // trace.spec.ts red and the suite from 22s to 3.7m), and it is a latent
+  // FLAKE here too, since `newestSampleProject` picks by sort order.
+  const created = (await fs.readdir('/tmp')).filter((e) =>
+    e.startsWith('dokima-sample-'),
+  );
+  await Promise.all(
+    created.map((e) => fs.rm(path.join('/tmp', e), { recursive: true, force: true })),
+  );
 });
 
 /** Newest `dokima-sample-*` the wizard created, since it names them by timestamp. */
