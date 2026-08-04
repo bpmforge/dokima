@@ -1071,13 +1071,20 @@ describe('repo-wide validator scoping (W10-49)', () => {
     expect(gaps).toEqual([]);
   });
 
+  // 30s, not the 5s default: this shells out to a REPO-WIDE bash scan whose
+  // cost grows with the repo — 766 source files and ~4.8s wall clock as of
+  // 2026-08-04, so the default budget left ~200ms of headroom and the test
+  // failed the moment anything else used the CPU (caught by a stop hook while
+  // a conductor session ran alongside it). The assertion here is about the
+  // GAP COUNT being zero, never about how fast the scan is; a timeout that
+  // trips on load tests the machine, not the invariant.
   it('this repo is at the zero count the opt-in depends on', async () => {
     // repoWide is only honest while the count is zero — otherwise every ticket
     // fails for debt it did not create. Assert the precondition, so the day it
     // stops holding, this fails here rather than on someone else's ticket.
     const gaps = runValidators(repoRoot, [], ['validate-file-size']);
     expect(gaps).toEqual([]);
-  });
+  }, 30_000);
 
   it('the real config opts in file-size and ONLY file-size, and records why', () => {
     const cfg = JSON.parse(readFileSync(path.join(repoRoot, 'conductor.config.json'), 'utf8'));
