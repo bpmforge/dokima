@@ -5215,7 +5215,7 @@
         "RED FIXTURE: a check that fails when a package's declared dependencies contradict the ARCHITECTURE matrix \u2014 failing today on at least `loop` and `harbormaster`. A matrix nothing verifies is documentation, not architecture."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-04 out of the W11 challenge pass. This is the same family as W3-11 (package public surfaces + dependency declarations, G-3) and W10-78 (an engine exported from nothing): a rule that exists in prose, is contradicted in code, and is enforced by nothing. It is filed ahead of W11-02 rather than inside it because whichever way it is decided changes where a future component may live, and that should not be settled inside a ticket that merely needs an answer.",
       "stories": []
     },
