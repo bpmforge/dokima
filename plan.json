@@ -4762,7 +4762,7 @@
       "depends_on": [
         "W10-60"
       ],
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "acceptance": [
         "THE AMBIGUITY IS IN THE DATA MODEL, not in any call site. A matrix row stores one string and the resolver has to guess whether the part before the first slash is a providerId or a vendor namespace. `ghost/model` (a typo, or a provider since removed) and `qwen/qwen3-coder-next` (a real model id from a live LM Studio catalog) are the same shape. No parsing rule distinguishes them, so W10-60 had to pick a winner.",
@@ -4772,7 +4772,10 @@
         "RED FIXTURE: a row with an explicit `provider_id` and a model whose own id contains a slash resolves to exactly that provider with the full model id intact; a row with a `provider_id` naming an unregistered provider raises `unknown-provider` again \u2014 restoring the refusal W10-60 had to trade away; and a pre-migration string row resolves to the same target before and after migrating.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Filed 2026-08-03 while closing W10-60, from a regression an EXISTING test caught rather than from a new failure: the W10-03 case \"refuses a matrix row naming a provider that is not registered\" went green-to-red under W10-60's fix and had to be rewritten to assert the new convention. That test was documentation of intent, so the rewrite carries the reasoning and a pointer here rather than a silently-changed expectation. Sibling of W10-64 (the matrix has no global scope either) \u2014 both are the same table and are probably worth doing together. \u2014 LANE set to ui before any work, matching W10-64: both rewrite model-matrix-store.ts, so filing this one under gateway made it a cross-lane overlap (law 1 schema bug). Same lane is also the correct constraint here \u2014 same-lane tickets never run in parallel, and these two must not race on the same table."
+      "notes": [
+        "Filed 2026-08-03 while closing W10-60, from a regression an EXISTING test caught rather than from a new failure: the W10-03 case \"refuses a matrix row naming a provider that is not registered\" went green-to-red under W10-60's fix and had to be rewritten to assert the new convention. That test was documentation of intent, so the rewrite carries the reasoning and a pointer here rather than a silently-changed expectation. Sibling of W10-64 (the matrix has no global scope either) \u2014 both are the same table and are probably worth doing together. \u2014 LANE set to ui before any work, matching W10-64: both rewrite model-matrix-store.ts, so filing this one under gateway made it a cross-lane overlap (law 1 schema bug). Same lane is also the correct constraint here \u2014 same-lane tickets never run in parallel, and these two must not race on the same table.",
+        "CONDUCTOR 2026-08-04T21:31:19.484Z: blocked after 2 attempts. Branch sw/w10-68 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch"
+      ]
     },
     {
       "id": "W10-69",
