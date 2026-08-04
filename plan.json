@@ -5099,19 +5099,20 @@
       "write_scope": [
         "packages/gateway/src/providers/types.ts",
         "packages/gateway/src/providers/oai-compat.ts",
-        "packages/gateway/src/providers/oai-compat.test.ts"
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "apps/web/e2e/fixtures/fake-model-gateway.ts"
       ],
       "depends_on": [],
       "acceptance": [
         "MEASURED BY READING THE CONTRACT, 2026-08-04. `ChatRequest` is `{model, messages, temperature, maxTokens, stop}` \u2014 there is no `tools` field, so no caller can ask a model to use tools. `FinishReason` already includes `'tool_calls'`, so the RESPONSE side was designed for this and the REQUEST side was never built. That asymmetry is the whole reason the only shipped session runner shells out to an external CLI.",
         "DELIVER on the contract: `tools?: ToolSchema[]` on `ChatRequest`, and a normalized `toolCalls` on the response beside the existing `finishReason`, so every adapter reports tool calls the same shape regardless of provider \u2014 the same normalization `NormalizedUsage` already does for tokens and cost.",
         "DELIVER in the oai-compat adapter first, because it is the local path (LM Studio and Ollama both speak the OpenAI tool-calling wire format) and D-023 keeps this local-first. Other adapters may follow in their own tickets; a provider that cannot do tools must SAY SO rather than silently drop the field.",
-        "RED FIXTURE, both halves and both against the fake gateway: a request carrying tools serializes them onto the wire, and a scripted `tool_calls` response parses into normalized `toolCalls` with `finishReason: 'tool_calls'`. Failing today, where the field cannot even be expressed.",
+        "RED FIXTURE, both halves and both against the fake gateway: a request carrying tools serializes them onto the wire, and a scripted `tool_calls` response parses into normalized `toolCalls` with `finishReason: 'tool_calls'`. Failing today, where the field cannot even be expressed. AND TEACH THE E2E FAKE GATEWAY THE SAME WIRE: apps/web/e2e/fixtures/fake-model-gateway.ts has ZERO tool_calls support today (grep returns 0), and every e2e that drives a model goes through it. The wire format and the fake that speaks it are one concern; splitting them leaves the next ticket unable to write its own fixture.",
         "AND ONE AGAINST A REAL LOCAL MODEL, run by hand and recorded on the ticket rather than in CI (law 9 keeps CI on the fake): qwen3.6-35b-a3b through LM Studio returns a parseable tool call for a trivial schema. A wire format that only the fake gateway honours would pass this ticket and fail the next one."
       ],
       "points": 5,
       "status": "todo",
-      "notes": "W11 opens here because everything else in the wave is blocked on it. Filed 2026-08-04 with D-023. Note the sequencing trap: it is tempting to build the tool LOOP first and stub the transport, but the loop cannot be tested honestly without a transport that really round-trips, and the fake gateway can be made to round-trip anything \u2014 which is how a green suite would prove nothing.",
+      "notes": "W11 opens here because everything else in the wave is blocked on it. Filed 2026-08-04 with D-023. Note the sequencing trap: it is tempting to build the tool LOOP first and stub the transport, but the loop cannot be tested honestly without a transport that really round-trips, and the fake gateway can be made to round-trip anything \u2014 which is how a green suite would prove nothing. \u2014 write_scope widened by the challenge pass round 2: the e2e fake gateway cannot emit tool_calls, and it belongs to whoever defines the wire format.",
       "stories": []
     },
     {
@@ -5138,7 +5139,7 @@
       ],
       "points": 8,
       "status": "todo",
-      "notes": "The piece W10-77 named and could not build: its acceptance 3 said a gateway CALL cannot be an agent because runSession detects work by git diff and a completion changes no files. True of a completion, false of a tool loop \u2014 this is the resolution, and W10-77 should be read alongside it. \u2014 REWRITTEN BY A CHALLENGE PASS 2026-08-04, before a line was written: placement was wrong (harbormaster, not apps/server), the tool layer duplicated packages/mcp, and the tool set could not commit \u2014 which the close gate requires. Three defects that a green suite would never have caught, because they were in the specification. \u2014 write_scope narrowed and a dependency added rather than working around a schema violation: validate-plan refused the first draft for a CROSS-LANE overlap (this ticket is orchestrator, W11-05 is infra) on packages/harbormaster/package.json. CLAUDE.md law 1 calls that a schema bug to report, not route around, so the dependency declaration stays W11-05s and this ticket now depends on it.",
+      "notes": "The piece W10-77 named and could not build: its acceptance 3 said a gateway CALL cannot be an agent because runSession detects work by git diff and a completion changes no files. True of a completion, false of a tool loop \u2014 this is the resolution, and W10-77 should be read alongside it. \u2014 REWRITTEN BY A CHALLENGE PASS 2026-08-04, before a line was written: placement was wrong (harbormaster, not apps/server), the tool layer duplicated packages/mcp, and the tool set could not commit \u2014 which the close gate requires. Three defects that a green suite would never have caught, because they were in the specification. \u2014 write_scope narrowed and a dependency added rather than working around a schema violation: validate-plan refused the first draft for a CROSS-LANE overlap (this ticket is orchestrator, W11-05 is infra) on packages/harbormaster/package.json. CLAUDE.md law 1 calls that a schema bug to report, not route around, so the dependency declaration stays W11-05s and this ticket now depends on it. \u2014 round 2 of the challenge pass also corrected which fake this uses: the acceptance said the fake gateway, but that is the HTTP one in apps/web/e2e/fixtures, which this ticket does not own and which could not emit tool calls anyway until W11-01.",
       "stories": []
     },
     {
