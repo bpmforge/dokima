@@ -12,6 +12,10 @@ export type View =
   // W10-54: where a user describes their own idea. Until this existed the only
   // path that could start a pipeline was the guided sample, on a canned idea.
   | 'interview'
+  // W10-72: the founder-decision slates. `DecisionsBoard` shipped in W5-14 and
+  // was imported by nothing outside its own directory — built, never mounted —
+  // so a run paused on a decision had no surface anywhere to answer it.
+  | 'decisions'
   | null;
 
 /** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications`/`view=plans`/`view=trace` layer over either Fleet or a project. */
@@ -19,7 +23,16 @@ function readProjectId(): string | null {
   return new URLSearchParams(window.location.search).get('project');
 }
 
-const VALID_VIEWS = ['settings', 'wizard', 'roster', 'notifications', 'plans', 'trace', 'interview'];
+const VALID_VIEWS = [
+  'settings',
+  'wizard',
+  'roster',
+  'notifications',
+  'plans',
+  'trace',
+  'interview',
+  'decisions',
+];
 
 function readView(): View {
   const view = new URLSearchParams(window.location.search).get('view');

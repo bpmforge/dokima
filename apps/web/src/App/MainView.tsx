@@ -3,6 +3,7 @@ import { ArtifactViewer } from '../artifacts/ArtifactViewer.js';
 import { BoardView } from '../board/BoardView.js';
 import { TicketDrawer } from '../board/drawer/index.js';
 import { ChatView } from '../chat/ChatView.js';
+import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
 import { FleetHome } from '../fleet/FleetHome.js';
 import { SplitPaneWorkspace } from '../layout/SplitPaneWorkspace.js';
 import { NotificationsView } from '../notifications/NotificationsView.js';
@@ -79,8 +80,16 @@ export function MainView({
         projectId={projectId}
         projectName={'Untitled'}
         onComplete={closeView}
+        token={token}
       />
     );
+  }
+  // W10-72: the surface W5-14 built and nothing ever mounted. A creation run
+  // paused on a founder decision answers its slates inline (see
+  // `InterviewPanel`); this is the standalone entry, for slates raised outside
+  // one and for coming back to a decision later.
+  if (view === 'decisions' && projectId && token) {
+    return <DecisionsBoard projectId={projectId} token={token} />;
   }
   if (view === 'trace' && projectId && apiOpts && traceTicketId) {
     return (

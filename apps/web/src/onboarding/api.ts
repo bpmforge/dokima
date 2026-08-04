@@ -17,6 +17,7 @@ import type {
   GateReceipt,
   PipelineRunOutcome,
   PipelineRunRequest,
+  PipelineRunResult,
 } from './types.js';
 
 export class OnboardingApiError extends Error {
@@ -75,6 +76,35 @@ export async function runGuidedPipeline(
     },
     opts,
   )) as PipelineRunOutcome;
+}
+
+/**
+ * `POST /api/v1/projects/:id/pipeline/:runId/resume` (W10-72).
+ *
+ * W10-67 built this route, persisted the paused run behind it, and proved it
+ * against the real gate/store/ledger — but nothing in this app ever called it,
+ * so the awaiting screen was a dead end and `run_id` reached React state and
+ * died there. This is that missing call site.
+ *
+ * THE `{}` BODY IS DELIBERATE. The route takes no parameters, and Fastify
+ * rejects a `content-type: application/json` request with an empty body:
+ * `400 FST_ERR_CTP_EMPTY_JSON_BODY`. Measured against the running server, not
+ * theorised — a bodyless POST here fails before the handler is ever reached.
+ */
+export async function resumePipeline(
+  projectId: string,
+  runId: string,
+  opts: OnboardingApiOptions = {},
+): Promise<PipelineRunResult> {
+  return (await request(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/${encodeURIComponent(runId)}/resume`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    },
+    opts,
+  )) as PipelineRunResult;
 }
 
 export async function fetchGateReceipts(

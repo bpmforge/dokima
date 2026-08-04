@@ -12,8 +12,9 @@
  * events surfaced nowhere (W10-55). Here the real reason is rendered.
  */
 import { useCallback, useMemo, useState } from 'react';
+import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
 import './onboarding.css';
-import { OnboardingApiError, runGuidedPipeline } from './api.js';
+import { OnboardingApiError, resumePipeline, runGuidedPipeline } from './api.js';
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
 import { buildInterviewSession, hasAnyAnswer } from './buildInterviewSession.js';
 import {
@@ -27,6 +28,12 @@ export interface InterviewPanelProps {
   readonly projectName: string;
   /** Called after a successful run so the workspace can refresh its board. */
   readonly onComplete?: () => void;
+  /**
+   * Bearer token for the inline Decisions board. Absent means the slates
+   * cannot be rendered here, and the awaiting screen says so rather than
+   * showing an empty list that looks like "no questions after all".
+   */
+  readonly token?: string;
 }
 
 type Stage = 'asking' | 'running' | 'awaiting' | 'done' | 'failed';
@@ -35,6 +42,7 @@ export function InterviewPanel({
   projectId,
   projectName,
   onComplete,
+  token,
 }: InterviewPanelProps): React.JSX.Element {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [title, setTitle] = useState(projectName);
@@ -44,6 +52,14 @@ export function InterviewPanel({
   // working, and the next step belongs to the founder.
   const [awaiting, setAwaiting] = useState<PipelineAwaitingDecisions | null>(null);
   const [result, setResult] = useState<PipelineRunResult | null>(null);
+  // W10-72: resuming that paused run. `stillWaiting` is deliberately separate
+  // from `error` — a 409 means the gate re-ran server-side and found a slate
+  // still open, which is the same correct refusal W10-67 stopped rendering as
+  // a crash. Reusing the error style here would reintroduce that mistake one
+  // screen later.
+  const [resuming, setResuming] = useState(false);
+  const [stillWaiting, setStillWaiting] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
 
   const ready = useMemo(
     () => hasAnyAnswer(answers) && title.trim() !== '',
@@ -80,6 +96,33 @@ export function InterviewPanel({
     }
   }, [answers, onComplete, projectId, title]);
 
+  const resume = useCallback(async () => {
+    if (!awaiting) return;
+    setResuming(true);
+    setStillWaiting(null);
+    setResumeError(null);
+    try {
+      const runResult = await resumePipeline(projectId, awaiting.run_id);
+      setResult(runResult);
+      setStage('done');
+      onComplete?.();
+    } catch (err) {
+      if (err instanceof OnboardingApiError && err.status === 409) {
+        setStillWaiting(err.message);
+      } else {
+        setResumeError(
+          err instanceof OnboardingApiError
+            ? `${err.message} (HTTP ${String(err.status)})`
+            : err instanceof Error
+              ? err.message
+              : String(err),
+        );
+      }
+    } finally {
+      setResuming(false);
+    }
+  }, [awaiting, onComplete, projectId]);
+
   if (stage === 'awaiting' && awaiting) {
     return (
       <div className="interview" data-testid="interview-awaiting-decisions">
@@ -97,10 +140,55 @@ export function InterviewPanel({
             <li key={d.slate_id}>{d.title}</li>
           ))}
         </ul>
+        {/*
+          The slates are answered HERE, inline, rather than behind a link to the
+          Decisions view. Navigating away unmounts this panel and takes
+          `awaiting.run_id` with it — there is no route back to a paused run, so
+          "answer over there and come back" would strand the founder on a run
+          they can no longer resume. The same board is reachable on its own
+          (`view=decisions`) for slates raised outside a creation run.
+        */}
+        {token === undefined ? (
+          <p className="interview__error" role="alert">
+            The slates were kept, but this session has no API token to load them — reopen
+            the workspace to answer them.
+          </p>
+        ) : (
+          <DecisionsBoard
+            projectId={projectId}
+            token={token}
+            onDecided={() => setStillWaiting(null)}
+          />
+        )}
         <p className="interview__hint">
-          Answer them in Decisions, then come back and continue — the blueprint will not
-          be rebuilt.
+          Answer each one above, then continue — the blueprint will not be rebuilt.
         </p>
+        <button
+          type="button"
+          disabled={resuming}
+          data-testid="interview-continue"
+          onClick={() => void resume()}
+        >
+          {resuming ? 'Continuing…' : 'Continue'}
+        </button>
+        {stillWaiting !== null && (
+          <p
+            className="interview__hint"
+            role="status"
+            data-testid="interview-still-waiting"
+          >
+            {stillWaiting}
+          </p>
+        )}
+        {resumeError !== null && (
+          <p
+            className="interview__error"
+            role="alert"
+            data-testid="interview-resume-error"
+          >
+            Could not continue: {resumeError}
+          </p>
+        )}
       </div>
     );
   }
