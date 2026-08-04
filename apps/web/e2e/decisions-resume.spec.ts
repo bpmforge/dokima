@@ -223,6 +223,11 @@ test.describe('a paused run has a path through it (W10-72)', () => {
     await answerSlate(page, 'Cloud sync');
     await answerSlate(page, 'Mobile only');
 
+    // The notice must not outlive the condition it describes: left standing, a
+    // present-tense "still awaiting a decision on …" tells a founder who has
+    // just answered that they have not.
+    await expect(page.getByTestId('interview-still-waiting')).toHaveCount(0);
+
     await page.getByTestId('interview-continue').click();
 
     const board = page.locator('[data-testid="pane-board"]');

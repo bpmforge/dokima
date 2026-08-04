@@ -154,7 +154,11 @@ export function InterviewPanel({
             the workspace to answer them.
           </p>
         ) : (
-          <DecisionsBoard projectId={projectId} token={token} />
+          <DecisionsBoard
+            projectId={projectId}
+            token={token}
+            onDecided={() => setStillWaiting(null)}
+          />
         )}
         <p className="interview__hint">
           Answer each one above, then continue — the blueprint will not be rebuilt.

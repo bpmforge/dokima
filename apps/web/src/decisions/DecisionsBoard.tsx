@@ -16,9 +16,15 @@ import type { SlateRecord } from './types.js';
 export interface DecisionsBoardProps {
   projectId: string;
   token: string;
+  /**
+   * Fired after a slate is recorded. W10-72: the interview's awaiting screen
+   * uses it to drop a stale "still awaiting a decision on …" notice, which
+   * otherwise kept reading present-tense after the founder had answered.
+   */
+  onDecided?: () => void;
 }
 
-export function DecisionsBoard({ projectId, token }: DecisionsBoardProps) {
+export function DecisionsBoard({ projectId, token, onDecided }: DecisionsBoardProps) {
   const [slates, setSlates] = useState<SlateRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [decidingId, setDecidingId] = useState<string | null>(null);
@@ -64,6 +70,7 @@ export function DecisionsBoard({ projectId, token }: DecisionsBoardProps) {
               : s,
           ),
         );
+        onDecided?.();
       } catch (err) {
         setDecideErrors((prev) => ({
           ...prev,
@@ -73,7 +80,7 @@ export function DecisionsBoard({ projectId, token }: DecisionsBoardProps) {
         setDecidingId(null);
       }
     },
-    [projectId, token],
+    [onDecided, projectId, token],
   );
 
   return (
