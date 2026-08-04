@@ -5038,7 +5038,9 @@
       "write_scope": [
         "apps/server/src/api/projects/registry-verbs.ts",
         "apps/server/src/api/projects/registry-store.ts",
-        "apps/server/src/api/projects/registry-verbs.test.ts"
+        "apps/server/src/api/projects/registry-verbs.test.ts",
+        "apps/server/package.json",
+        "apps/server/src/api/projects/git-init.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -5048,8 +5050,8 @@
         "RED FIXTURE: create a product through the real registry verb and assert `git rev-parse HEAD` succeeds in its directory \u2014 failing today, where the directory has no `.git` at all."
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "Split out of W10-77 on close, 2026-08-04, with the original acceptance wording preserved rather than reworded \u2014 the same transfer shape W10-54 used for W10-61. W10-77 is deliberately not blocked on it: the loop is proven on a git repo, and this is what makes the documented New Product path able to use it.",
+      "status": "done",
+      "notes": "Split out of W10-77 on close, 2026-08-04, with the original acceptance wording preserved rather than reworded \u2014 the same transfer shape W10-54 used for W10-61. W10-77 is deliberately not blocked on it: the loop is proven on a git repo, and this is what makes the documented New Product path able to use it. \u2014 write_scope widened before editing and named: apps/server/package.json to DECLARE @dokima/git (already present transitively via harbormaster; declaring what you import is what W3-11 asks for, not a workaround), plus git-init.ts so registry-verbs.ts stays under the 400-line cap. \u2014 CLOSED 2026-08-04, PROVEN THROUGH THE BROWSER, which is the one claim a CLI fixture cannot make: created \"Loopdemo\" through New Product, and WITHOUT touching it, ran the loop on it \u2014 landed after 1 attempt, branch sw/PLAN-D-001-add-a-greeting-module carrying the agent commit 30221c6, close receipt naming src/greeting.ts, chain OK, and the Canvas showing the card in In Review owned by worker-1 with the receipt dot filled. Earlier today the same loop only ran against a repo I had git-initialised by hand. \u2014 THREE DECISIONS RECORDED IN THE MODULE, as acceptance 3 asked: an existing repo ROOT is left alone (history and .gitignore untouched); a directory created inside someone else's repo still gets its OWN repo, because adopting the parent would put sw/<ticket> branches and agent commits somewhere the founder never pointed at; and git missing or failing THROWS, because a project created now that silently cannot be worked later is the exact class of defect this ticket came from. The first commit carries a .gitignore rather than being empty \u2014 the loop branches from a fork point, and an agent session must never be able to commit state.db (asserted via git status, not by checking a .gitignore line). \u2014 A REAL BUG IN MY OWN CODE, caught by the fixtures: isRepoRoot compared /Users/bmatthews/Code/shipwright against the raw input path, and every macOS temp dir is a symlink (/var -> /private/var), so it decided an existing repository was not its own root and re-initialised it \u2014 destroying the \"leave an existing repo alone\" guarantee precisely where it matters. Fixed by comparing realpaths, with the W3-09 symlink lesson named in the comment. \u2014 @dokima/git DECLARED in apps/server/package.json rather than relied on transitively through harbormaster: declaring what you import is what W3-11 asks for. Fixtures proven RED: 3 of 5 against the shipped verb; the other two are guards (an existing repo left alone, import/onboard untouched) that must pass both ways. Gate: lint 0 errors (1 pre-existing warning, unrelated), typecheck clean, 423 files / 3257 passed | 1 skipped (+5), 65 e2e passed.",
       "stories": []
     }
   ]

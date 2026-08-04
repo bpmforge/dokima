@@ -16,6 +16,7 @@ import {
   type ProjectRecord,
 } from './types.js';
 import { loadRegistry, saveRegistry, ensureStateDb, pathExists } from './registry-store.js';
+import { ensureGitRepo } from './git-init.js';
 
 export interface RegisterProjectInput {
   path: string;
@@ -38,6 +39,9 @@ export async function registerProject(
 
   if (input.mode === 'new') {
     await fs.mkdir(absPath, { recursive: true });
+    // W10-79: a product must be a git repository, because every ticket the
+    // loop claims runs in its own worktree branched from here.
+    await ensureGitRepo(absPath);
   } else if (!(await pathExists(absPath))) {
     const label = input.mode === 'onboard' ? 'Onboard' : 'Import';
     throw new ProjectDirectoryError(

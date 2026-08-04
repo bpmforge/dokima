@@ -9,16 +9,17 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "fastify": "^5.10.0",
     "@dokima/events": "workspace:*",
     "@dokima/gateway": "workspace:*",
+    "@dokima/git": "workspace:*",
     "@dokima/harbormaster": "workspace:*",
+    "@dokima/loop": "workspace:*",
     "@dokima/memory": "workspace:*",
     "@dokima/pipeline": "workspace:*",
-    "@dokima/tickets": "workspace:*",
     "@dokima/shared": "workspace:*",
+    "@dokima/tickets": "workspace:*",
     "@dokima/validators": "workspace:*",
-    "@dokima/loop": "workspace:*"
+    "fastify": "^5.10.0"
   },
   "devDependencies": {
     "tsx": "^4.23.0",
