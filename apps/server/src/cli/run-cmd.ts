@@ -38,16 +38,13 @@ import {
   type RunMode,
 } from '@dokima/harbormaster';
 import { runOnboardAnalysis } from '../api/pipeline/index.js';
+import { executeBuildRun } from './run-build.js';
+import type { RunCliIO } from './run-types.js';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { ensureActorIdentity } from './identity.js';
 import { CliUsageError } from './parse.js';
 
-export interface RunCliIO {
-  cwd: string;
-  stdout: (line: string) => void;
-  stderr: (line: string) => void;
-  now?: () => string;
-}
+export type { RunCliIO } from './run-types.js';
 
 const RUN_MODES = ['new_product', 'onboard', 'feature', 'improve'] as const;
 const BREAKPOINTS = ['ticket', 'wave', 'never'] as const;
@@ -79,6 +76,13 @@ interface StartCommand {
   readonly budgetTokens: number | null;
   readonly actorId: string;
   readonly dbPath?: string;
+  /**
+   * W10-77: the agent CLI a ticket session runs (`createChildProcessSpawn`).
+   * Absent means the build modes REFUSE rather than pretend — see
+   * `executeBuildRun`. Never defaulted: picking an agent spends the founder's
+   * own quota on unattended runs, which is their decision to make.
+   */
+  readonly agentCommand?: string;
 }
 
 interface RunTargetCommand {
@@ -95,7 +99,8 @@ type RunCommand = StartCommand | RunTargetCommand;
 const START_USAGE =
   'usage: dokima run start --project <id> --mode <new_product|onboard|feature|improve> ' +
   '--breakpoint <ticket|wave|never> --berths <n> --actor <id> ' +
-  '[--phase <n>] [--budget-usd <n>] [--budget-tokens <n>] [--db <path>]';
+  '[--phase <n>] [--budget-usd <n>] [--budget-tokens <n>] [--db <path>] ' +
+  '[--agent-command <cli>]';
 
 function parseStart(rest: string[]): StartCommand {
   const { values } = parseArgs({
@@ -110,6 +115,7 @@ function parseStart(rest: string[]): StartCommand {
       'budget-usd': { type: 'string' },
       'budget-tokens': { type: 'string' },
       db: { type: 'string' },
+      'agent-command': { type: 'string' },
     },
     allowPositionals: false,
   });
@@ -147,6 +153,7 @@ function parseStart(rest: string[]): StartCommand {
     budgetTokens,
     actorId: values.actor,
     dbPath: values.db,
+    agentCommand: values['agent-command'],
   };
 }
 
@@ -246,8 +253,15 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
             `${outcome.proposed.length} findings proposed, ` +
             `${outcome.accepted.length} accepted onto the board`,
         );
+        return 0;
       }
-      return 0;
+
+      // AWAITED, not returned: this sits inside a `try { … } finally {
+      // log.close() }`, and returning the pending promise lets the finally
+      // close the connection out from under the loop — "The database
+      // connection is not open", thrown from the loop's first getTicket.
+      const buildCode = await executeBuildRun(log, command, run.id, io);
+      return buildCode;
     }
 
     try {

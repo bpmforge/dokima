@@ -6,7 +6,7 @@ import {
   mintReceipt,
   type EventLog,
 } from '@dokima/events';
-import { claimTicket, createTicket, startTicket } from '@dokima/tickets';
+import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
 import { createWorktree, git } from '@dokima/git';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { runCli } from './run.js';
@@ -43,10 +43,16 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
       ],
       { cwd, now: NOW, ...start.io },
     );
-    expect(startCode).toBe(0);
+    // W10-77 CONTRACT CHANGE: the run RECORD is still minted (pause/resume/stop
+    // below operate on it), but a build mode with no `--agent-command` now
+    // exits 2 rather than 0. Returning success while claiming nothing is the
+    // exact "looks like execution, does nothing" behaviour this ticket exists
+    // to remove — `run start` means "work the board", and it could not.
+    expect(startCode).toBe(2);
     expect(start.stdout[0]).toMatch(
       /^run-.* started -> running \(breakpoint=wave berths=2\)$/,
     );
+    expect(start.stderr.join('\n')).toContain('no agent is configured');
     const runId = start.stdout[0]?.split(' ')[0];
     expect(runId).toBeTruthy();
 
@@ -236,5 +242,179 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
       listEvents(verifyLog).filter((e) => e.eventType === 'ticket.closed'),
     ).toHaveLength(0);
     verifyLog.close();
+  });
+
+  /**
+   * W10-77 RED FIXTURE — the agentic loop, end to end, under law 9.
+   *
+   * Before this ticket `run start --mode new_product` minted a run record and
+   * returned: measured on a real board, nothing claimed, no events, no session,
+   * and `--berths` read by nothing. The engine it needed (`runLandLoop`) was
+   * built in W3-01a/b/c and exported from nothing until W10-78.
+   *
+   * The agent here is a shell script with no network, no model and no quota
+   * spend — which is not a shortcut but the law-9 requirement ("everything must
+   * work with a fake/local model and no network"). It does what a real coding
+   * session does: edits an in-scope file and COMMITS it. The commit is
+   * load-bearing — the close gate checks the manifest against git rather than
+   * against the agent's word (SC-02), and an agent that only edits is refused
+   * with "uncommitted, or never real". That refusal is asserted too, because a
+   * loop that lands work nobody committed would be worse than one that lands
+   * nothing.
+   */
+  async function gitRepoProject(): Promise<TempProject> {
+    const proj = await createTempProject();
+    await git(proj.cwd, ['init', '-b', 'main']);
+    await git(proj.cwd, ['config', 'user.email', 'demo@dokima.local']);
+    await git(proj.cwd, ['config', 'user.name', 'Demo']);
+    await fs.mkdir(`${proj.cwd}/src`, { recursive: true });
+    await fs.writeFile(`${proj.cwd}/src/app.ts`, 'export const answer = 0;\n');
+    await git(proj.cwd, ['add', '-A']);
+    await git(proj.cwd, ['commit', '-m', 'initial']);
+    return proj;
+  }
+
+  async function writeAgent(dir: string, commit: boolean): Promise<string> {
+    const file = `${dir}/agent-${commit ? 'commits' : 'edits-only'}.sh`;
+    const commitLines = commit
+      ? [
+          'git add src/app.ts',
+          'git -c user.email=a@b.c -c user.name=agent commit -qm "T-1: 42"',
+          'SHA="$(git rev-parse HEAD)"',
+        ].join('\n')
+      : 'SHA=""';
+    await fs.writeFile(
+      file,
+      [
+        '#!/usr/bin/env bash',
+        'set -eu',
+        "printf 'export const answer = 42;\\n' > src/app.ts",
+        commitLines,
+        'cat <<JSON',
+        '{"ticket":"T-1","files":["src/app.ts"],"verify":{"command":"true","exit":0},' +
+          '"commits":["$SHA"],"evidence":["e"],"memory_written":["m"]}',
+        'JSON',
+        '',
+      ].join('\n'),
+    );
+    await fs.chmod(file, 0o755);
+    return file;
+  }
+
+  function seedBoard(log: EventLog): void {
+    createIdentity(log, { id: 'worker-1', name: 'worker-1', kind: 'machine' });
+    createTicket(log, 'worker-1', {
+      id: 'T-1',
+      type: 'task',
+      title: 'Set the answer to 42',
+      lane: 'core',
+      writeScope: ['src/**'],
+      verify: 'true',
+      acceptance: [{ id: 'AC-1', text: 'answer is 42', done: false }],
+    });
+  }
+
+  async function startBuildRun(cwd: string, agent: string) {
+    const io = collectIO();
+    const previousKey = process.env.DOKIMA_SIGNING_KEY;
+    process.env.DOKIMA_SIGNING_KEY = 'test-signing-key';
+    try {
+      const code = await runCli(
+        [
+          'run', 'start',
+          '--project', 'proj-1',
+          '--mode', 'new_product',
+          '--breakpoint', 'never',
+          '--berths', '1',
+          '--actor', 'worker-1',
+          '--agent-command', agent,
+        ],
+        { cwd, ...io.io },
+      );
+      return { code, io };
+    } finally {
+      if (previousKey === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+      else process.env.DOKIMA_SIGNING_KEY = previousKey;
+    }
+  }
+
+  it('RED FIXTURE: `run start` on a build mode claims a ticket, runs an agent session, and LANDS it', async () => {
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    seedBoard(log);
+    log.close();
+
+    const agent = await writeAgent(project.cwd, true);
+    const { code, io } = await startBuildRun(project.cwd, agent);
+
+    expect(code).toBe(0);
+    expect(io.stdout.join('\n')).toContain('T-1: landed');
+
+    // The ticket reached in_review with a real close receipt — NOT done: the
+    // loop is the maker and may not accept its own work (C-4).
+    const after = openWritableLog(resolveDbPath(project.cwd));
+    const ticket = getTicket(after, 'T-1');
+    after.close();
+    expect(ticket?.status).toBe('in_review');
+    expect(ticket?.manifest?.closeReceipt?.files).toEqual(['src/app.ts']);
+
+    // And the agent's work is really on the ticket branch, not merely claimed.
+    const { stdout: branchFile } = await git(project.cwd, [
+      'show',
+      'sw/T-1-set-the-answer-to-42:src/app.ts',
+    ]);
+    expect(branchFile).toContain('42');
+  }, 120_000);
+
+  it('an agent that edits without committing is REFUSED by the close gate, and the ticket is parked', async () => {
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    seedBoard(log);
+    log.close();
+
+    const agent = await writeAgent(project.cwd, false);
+    const { io } = await startBuildRun(project.cwd, agent);
+
+    expect(io.stdout.join('\n')).toContain('T-1: parked');
+    const after = openWritableLog(resolveDbPath(project.cwd));
+    const ticket = getTicket(after, 'T-1');
+    after.close();
+    expect(ticket?.manifest?.closeReceipt).toBeFalsy();
+    const comments = ticket?.history.filter((h) => h.verb === 'comment') ?? [];
+    const evidence = comments.map((c) => c.body).join('\n');
+    expect(evidence).toContain('close gate refused');
+    expect(evidence).toContain('no commits found on the ticket branch');
+  }, 120_000);
+
+  it('refuses a build mode with no agent, and with no signing key, rather than pretending', async () => {
+    project = await gitRepoProject();
+    const noAgent = collectIO();
+    expect(
+      await runCli(
+        ['run', 'start', '--project', 'p', '--mode', 'new_product',
+         '--breakpoint', 'never', '--berths', '1', '--actor', 'worker-1'],
+        { cwd: project.cwd, ...noAgent.io },
+      ),
+    ).toBe(2);
+    expect(noAgent.stderr.join('\n')).toContain('no agent is configured');
+
+    const previousKey = process.env.DOKIMA_SIGNING_KEY;
+    delete process.env.DOKIMA_SIGNING_KEY;
+    try {
+      const noKey = collectIO();
+      expect(
+        await runCli(
+          ['run', 'start', '--project', 'p', '--mode', 'new_product',
+           '--breakpoint', 'never', '--berths', '1', '--actor', 'worker-1',
+           '--agent-command', '/bin/true'],
+          { cwd: project.cwd, ...noKey.io },
+        ),
+      ).toBe(2);
+      // A close gate that minted receipts against a placeholder key would
+      // produce receipts verifying against nothing — worse than refusing.
+      expect(noKey.stderr.join('\n')).toContain('DOKIMA_SIGNING_KEY');
+    } finally {
+      if (previousKey !== undefined) process.env.DOKIMA_SIGNING_KEY = previousKey;
+    }
   });
 });
