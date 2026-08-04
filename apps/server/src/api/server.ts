@@ -28,6 +28,8 @@ import { registerRosterRoutes } from './roster.js';
 import { registerArtifactRoutes, registerBoardRoutes, registerEstimateRoutes, registerNotificationRoutes, registerReceiptRoutes, registerRunsRoutes, registerTicketEditRoutes } from './server/index.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
+import { createBoardWatcher } from './server/board-watcher.js';
+import { computeFleetRegistryPath } from './projects/registry-store.js';
 import { registerChatRoute } from './server/chat-fixture.js';
 import { handleUpgrade } from './server/ws-upgrade.js';
 import { registerStatic } from './server/static-assets.js';
@@ -88,6 +90,15 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   const wsHub = opts.wsHub ?? new WsHub();
   wsHub.start();
 
+  // W10-75: the board is a projection of the event log, not of one HTTP
+  // handler. The CLI and the harbormaster loop write from OTHER PROCESSES, so
+  // without this an open Canvas is stale for every change an agent makes.
+  const boardWatcher = createBoardWatcher({
+    wsHub,
+    registryPath: computeFleetRegistryPath(opts.fleetHome),
+  });
+  boardWatcher.start();
+
   registerAuthHook(app, authOpts);
   registerHealthz(app, { isDbOpen: opts.isDbOpen, wsHub });
   registerProjectRoutes(app, { home: opts.fleetHome });
@@ -130,6 +141,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   });
 
   app.addHook('onClose', async () => {
+    boardWatcher.stop();
     planScheduler.stop();
     wsHub.close();
   });

@@ -4935,9 +4935,10 @@
       "module": "web",
       "lane": "ui",
       "write_scope": [
-        "apps/server/src/api/server/board-routes.ts",
-        "apps/server/src/api/server/board-routes.test.ts",
-        "apps/server/src/api/events-sse.ts"
+        "apps/server/src/api/ws-hub.ts",
+        "apps/server/src/api/server/board-watcher.ts",
+        "apps/server/src/api/server/board-watcher.test.ts",
+        "apps/server/src/api/server.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -4947,8 +4948,8 @@
         "DELIVER: a board change reaches connected clients regardless of which writer made it. The event log already carries a monotonic `seq` and `ws-client.ts` already sends `resume` with `last_seq` on reconnect, so the machinery for catch-up exists; what is missing is a notification path for out-of-band appends. RED FIXTURE: append a ticket transition directly to the log (not via the verb route) and assert a subscribed client receives it \u2014 failing today."
       ],
       "points": 5,
-      "status": "todo",
-      "notes": "Found 2026-08-04 driving the product end to end in a browser. Not a regression \u2014 it has always been this way; nothing had ever written to a project out-of-band while a Canvas was open. Related to W10-74: once ticket execution is reachable from the installed binary, EVERY agent-driven transition takes this path, so 74 makes this defect load-bearing rather than theoretical.",
+      "status": "done",
+      "notes": "Found 2026-08-04 driving the product end to end in a browser. Not a regression \u2014 it has always been this way; nothing had ever written to a project out-of-band while a Canvas was open. Related to W10-74: once ticket execution is reachable from the installed binary, EVERY agent-driven transition takes this path, so 74 makes this defect load-bearing rather than theoretical. \u2014 write_scope corrected before editing and named: the filed scope guessed board-routes.ts + events-sse.ts. The publish call site in board-routes.ts is the DIAGNOSIS, not the fix \u2014 nothing there changes. What is needed is an accessor on ws-hub.ts, a watcher module of its own, and server.ts to start/stop it. \u2014 CLOSED 2026-08-04, PROVEN IN A BROWSER WITH NO RELOAD, which is the whole claim: opened Loopdemo's Canvas, left it alone, and ran the loop from a shell. PLAN-D-002 moved Ready -> In Review on screen, owner worker-1, receipt dot filled, without a navigation or a refresh. Before this, the same sequence left the card sitting in its old column indefinitely. \u2014 POLLING, DELIBERATELY, and the reason is the shape of the problem rather than laziness: the writer is usually a DIFFERENT PROCESS (the CLI, a spawned agent session, a second core), so no in-process hook can reach it; C-6 is single-writer per database, not per machine. A read-only reader per tick is exactly what computeProjectStats already does for every Fleet card. Checked for the one failure mode that would make this worse than the staleness it fixes: ran the full land loop with a browser subscribed and the core log shows zero SQLITE_BUSY. \u2014 ONLY CHANGED ROWS ARE PUBLISHED, and that is asserted rather than merely implemented: the hub mints its own per-subscription seq and keeps a 200-envelope replay buffer that ws-client.ts resume depends on, so republishing unchanged tickets every second would trade a stale board for a lossy one. The first tick per project establishes a baseline WITHOUT broadcasting, since a client that just subscribed already fetched the board over REST. \u2014 SSE IS COVERED FOR FREE, checked rather than assumed: events-sse.ts presents a HubSocket adapter and registers through the same wsHub.handleConnection, so an SSE client is an active subscription like any other and receives the same deltas. No second ticket needed. \u2014 write_scope corrected before editing and named: the filed scope guessed board-routes.ts and events-sse.ts; the publish call site was the DIAGNOSIS, not the fix, and nothing in it changed. Fixtures proven RED: 1 of 3 \u2014 the one that matters, a transition written straight to the log reaching a subscribed client. The other two are guards (no publish when nothing changed, no publish when nobody is watching) that pass both ways by design, and are reported as guards rather than counted as red. Gate: lint 0 errors (1 pre-existing warning, unrelated), typecheck clean, 424 files / 3260 passed | 1 skipped (+3), 65 e2e passed.",
       "stories": []
     },
     {

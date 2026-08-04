@@ -111,6 +111,20 @@ export class WsHub {
     socket.on('close', () => this.cleanup(socket, state));
   }
 
+  /**
+   * Subscription names that currently have at least one live socket (W10-75).
+   *
+   * The board watcher polls only what someone is actually looking at — a
+   * projection nobody is subscribed to costs nothing. Names with a buffer but
+   * no sockets are deliberately excluded: they exist so a reconnecting client
+   * can `resume`, not because anyone is watching now.
+   */
+  activeSubscriptions(): string[] {
+    return [...this.subs.entries()]
+      .filter(([, sub]) => sub.sockets.size > 0)
+      .map(([name]) => name);
+  }
+
   /** Appends + broadcasts a projection delta; returns the minted envelope. */
   publish(sub: string, type: string, data: unknown): ServerEnvelope {
     const subscription = this.getOrCreateSub(sub);
