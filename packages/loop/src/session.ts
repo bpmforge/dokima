@@ -9,11 +9,16 @@
  * The actual command spawned is fully injected via `spawn` — this module
  * never hardcodes a specific agent CLI or model (that's a role→model matrix
  * decision, FR-G2, made by whoever wires this up) and never opens a socket
- * to a model endpoint itself (ARCHITECTURE.md §4: all model calls go
- * through `gateway`, which `loop` may not import). `createChildProcessSpawn`
- * below is a real, ready-to-use `node:child_process` implementation for
- * callers that just want to run a CLI; tests inject a fake per the
- * local-first/no-network law (CLAUDE.md law 9).
+ * to a model endpoint itself: this is the escape-hatch runner for an
+ * external agent CLI (D-023), not the tool-using session. The session that
+ * sends the handoff and a tool schema through `gateway` and executes the
+ * returned tool calls lives in `packages/harbormaster/src/agent-session/**`
+ * (D-023, ARCHITECTURE.md §4) — `loop` has no `gateway` import today because
+ * nothing here calls a model, not because the dependency law forbids it
+ * (D-023 corrected that exact misreading before any code was written).
+ * `createChildProcessSpawn` below is a real, ready-to-use `node:child_process`
+ * implementation for callers that just want to run a CLI; tests inject a
+ * fake per the local-first/no-network law (CLAUDE.md law 9).
  */
 
 import { spawn as nodeSpawn } from 'node:child_process';
