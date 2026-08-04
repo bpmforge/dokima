@@ -57,6 +57,12 @@ export function AppHeader({
                   <button type="button" onClick={() => openView('plans')}>
                     Plan
                   </button>
+                  {/* W10-72: the Decisions board was unreachable from anywhere
+                      in the app, so a run paused on a founder decision had no
+                      surface to answer it. */}
+                  <button type="button" onClick={() => openView('decisions')}>
+                    Decisions
+                  </button>
                 </>
               )}
               <button
