@@ -43,6 +43,12 @@ export function providerForConfig(config: GatewayConfig): Provider {
         baseUrl: config.baseUrl,
         apiKey: config.apiKey,
         fetchImpl: config.fetchImpl,
+        // W10-57: the registry entry's own timeout, when it set one. Without
+        // this the field was settable and inert — the provider kept its
+        // default no matter what the user configured.
+        ...(config.requestTimeoutMs === undefined
+          ? {}
+          : { requestTimeoutMs: config.requestTimeoutMs }),
       });
   }
 }

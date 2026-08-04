@@ -4466,12 +4466,16 @@
       "points": 3,
       "title": "A 60s provider timeout makes local models \u2014 the headline use case \u2014 unusable",
       "write_scope": [
-        "packages/gateway/src/providers/*-types.ts",
-        "packages/gateway/src/providers/openai.ts",
-        "packages/gateway/src/providers/*.test.ts"
+        "packages/gateway/src/registry/types.ts",
+        "packages/gateway/src/registry/validate.ts",
+        "packages/gateway/src/registry/validate.test.ts",
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/config.ts"
       ],
       "depends_on": [],
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MEASURED END TO END IN A BROWSER against the installed package: filled the new interview surface (W10-54) with a real idea, clicked \"Build the board\", watched LM Studio move to GENERATING \u2014 then the run failed with HTTP 500 and the body `pipeline-run: request timed out after 60000ms`. The seam works; the timeout kills it.",
@@ -4481,7 +4485,7 @@
         "RED FIXTURE, both directions: a provider whose fetch takes longer than the OLD 60s default must now succeed, and one that exceeds the NEW default must still raise ProviderTimeoutError. A timeout that never fires is not a timeout.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 by driving the installed product in a browser against a real LM Studio model, immediately after W10-54 made the interview reachable. Nothing before this could have found it: no test exercises a multi-phase pipeline run against a real local model, and the only prior caller (the guided sample) swallowed its failure into a silent degraded stage (W10-55)."
+      "notes": "Found 2026-08-03 by driving the installed product in a browser against a real LM Studio model, immediately after W10-54 made the interview reachable. Nothing before this could have found it: no test exercises a multi-phase pipeline run against a real local model, and the only prior caller (the guided sample) swallowed its failure into a silent degraded stage (W10-55). \u2014 RESUMED 2026-08-04 after two sessions in_progress. Commit 33cfb21 already landed the first half on main (local oai-compat default 60s -> 300s, cloud kinds left at 60s per acceptance 4, with fixtures both directions in oai-compat.test.ts). What remained is the SECOND half of acceptance 4 \u2014 per-registry-entry configurability \u2014 which was never wired: requestTimeoutMs exists on the provider CONFIG but not on ProviderEntry, so a user could not set it through the registry at all. write_scope replaced accordingly and named. \u2014 CLOSED 2026-08-04 after two sessions in_progress, by finishing the half that was missing rather than re-doing the half that was not. Commit 33cfb21 had already raised the LOCAL oai-compat default 60s -> 300s and left the cloud kinds at 60s, exactly as acceptance 4 permits, with fixtures in both directions. The rest of that sentence \u2014 and make it configurable per provider registry entry \u2014 had never been wired: requestTimeoutMs existed on the provider CONFIG and on no registry ENTRY, so a user could not set it at all. Now threaded end to end: ProviderEntry -> validateProviderEntry -> ResolvedModelTarget -> GatewayConfig -> createOaiCompatProvider. \u2014 THE BUG THE FIXTURE CAUGHT IN MY OWN WORK: validateProviderEntry builds its result as an ALLOWLIST, so a field validated but not copied is silently dropped. My first pass validated requestTimeoutMs and did not carry it, which would have shipped a registry field that was settable and inert \u2014 the precise failure mode this ticket exists to remove. A test asserting the value SURVIVES validation caught it; a test that only asserted the refusals would not have. \u2014 Refusals asserted too: 0, -1, 1.5, a string and null are all rejected, because a timeout that never fires is not a timeout (acceptance 5). Fixtures proven RED: 6 of 6 against the shipped validator. Gate: lint 0 errors (1 pre-existing warning, unrelated), typecheck clean, 428 files / 3284 passed | 1 skipped (+7), 68 e2e passed."
     },
     {
       "id": "W10-58",

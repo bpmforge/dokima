@@ -63,6 +63,21 @@ export function validateProviderEntry(
       'missing-base-url',
     );
   }
+  if (v.requestTimeoutMs !== undefined) {
+    // A timeout that never fires is not a timeout (W10-57 acceptance 5), so a
+    // non-positive or non-integer value is refused rather than coerced.
+    if (
+      typeof v.requestTimeoutMs !== 'number' ||
+      !Number.isInteger(v.requestTimeoutMs) ||
+      v.requestTimeoutMs <= 0
+    ) {
+      throw new ProviderRegistryError(
+        `requestTimeoutMs must be a positive integer (ms), got ${JSON.stringify(v.requestTimeoutMs)}`,
+        'invalid-request-timeout',
+      );
+    }
+  }
+
   if (v.baseUrl !== undefined && typeof v.baseUrl !== 'string') {
     throw new ProviderRegistryError('baseUrl must be a string', 'invalid-base-url');
   }
@@ -114,6 +129,12 @@ export function validateProviderEntry(
       ? { baseUrl: v.baseUrl }
       : {}),
     ...(typeof v.credentialRef === 'string' ? { credentialRef: v.credentialRef } : {}),
+    // W10-57. This construction is an ALLOWLIST — a field validated above but
+    // omitted here is silently dropped, which is how the entry would have gone
+    // out settable and inert.
+    ...(typeof v.requestTimeoutMs === 'number'
+      ? { requestTimeoutMs: v.requestTimeoutMs }
+      : {}),
   };
   return entry;
 }

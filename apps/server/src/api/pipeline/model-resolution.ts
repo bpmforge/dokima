@@ -54,6 +54,8 @@ export interface ResolvedModelTarget {
   readonly kind: ProviderKind;
   readonly baseUrl?: string;
   readonly credentialRef?: string;
+  /** W10-57: the entry's own timeout, when it set one. Absent = the kind's default. */
+  readonly requestTimeoutMs?: number;
   /** The bare model id sent on the wire — prefix stripped. */
   readonly model: string;
   /** How this was decided, so a run can explain itself. */
@@ -158,6 +160,9 @@ function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'so
     kind: entry.kind,
     ...(entry.baseUrl === undefined ? {} : { baseUrl: entry.baseUrl }),
     ...(entry.credentialRef === undefined ? {} : { credentialRef: entry.credentialRef }),
+    ...(entry.requestTimeoutMs === undefined
+      ? {}
+      : { requestTimeoutMs: entry.requestTimeoutMs }),
   };
 }
 

@@ -53,6 +53,14 @@ export interface ProviderEntry {
    * The keychain resolves it at call time; nothing here ever holds the secret.
    */
   readonly credentialRef?: string;
+  /**
+   * Per-entry request timeout (W10-57). A slow local box and a fast hosted
+   * endpoint must not be forced to share one number: the local default is
+   * already 300s and the cloud kinds are 60s, but a 70B on a laptop can
+   * exceed even 300s while a hosted endpoint that hangs for 300s is a bug you
+   * want surfaced in 30. Absent means the provider kind's own default.
+   */
+  readonly requestTimeoutMs?: number;
   readonly enabled: boolean;
 }
 

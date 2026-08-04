@@ -15,6 +15,8 @@ export interface GatewayConfig {
   readonly kind?: import('@dokima/gateway').ProviderKind;
   /** Which registry entry this came from, for provenance in traces. */
   readonly providerId?: string;
+  /** W10-57: the registry entry's own request timeout, when it set one. */
+  readonly requestTimeoutMs?: number;
   /** Test-only override — real callers always get the real `fetch`. */
   readonly fetchImpl?: typeof fetch;
 }
@@ -71,6 +73,11 @@ export function targetToConfig(
     model: target.model,
     kind: target.kind,
     providerId: target.providerId,
+    // W10-57: without this the registry field was settable and inert — the
+    // provider kept its kind default no matter what the user configured.
+    ...(target.requestTimeoutMs === undefined
+      ? {}
+      : { requestTimeoutMs: target.requestTimeoutMs }),
     ...(fetchImpl ? { fetchImpl } : {}),
   };
 }

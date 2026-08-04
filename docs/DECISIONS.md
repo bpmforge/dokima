@@ -38,6 +38,7 @@ restating. Do not re-litigate without a new entry superseding the old one.
 | D-029 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
 | D-030 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
 | D-031 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
+| D-032 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
 
 ## Pending slates (founder input wanted; working assumptions in force)
 
