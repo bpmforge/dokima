@@ -96,7 +96,9 @@ test('board empty state renders when no tickets exist yet (UX_SPEC §2b)', async
   const board = page.getByTestId('pane-board');
   await expect(board.getByTestId('board-empty')).toBeVisible();
   await expect(
-    board.getByText('The board fills when Phase 3 design is decomposed.'),
+    board.getByText(
+      'The board fills once you describe your product and it is decomposed into tickets.',
+    ),
   ).toBeVisible();
 });
 

@@ -149,7 +149,9 @@ export function MainView({
                 projectId={projectId}
                 wsUrl={wsUrl}
                 onSelectTicket={setOpenTicketId}
-                onViewCurrentPhase={() => openView('plans')}
+                // W10-56: was `openView('plans')` — the Improvement Plan screen,
+                // a different feature. Describing the product is what fills a board.
+                onViewCurrentPhase={() => openView('interview')}
               />
             </div>,
             boardPaneNode,

@@ -2,7 +2,7 @@
 /**
  * W10-33: two board controls that render as real, clickable buttons but
  * silently do nothing — the shipped-ticker pill (no onSelectTicket wired)
- * and the empty-state "View current phase" action (no onViewCurrentPhase
+ * and the empty-state "Describe your product" action (no onViewCurrentPhase
  * wired at the call site). A rendered <button> with no callback passes
  * every test that only checks it exists, so these assert the click
  * actually reaches the handler.
@@ -77,7 +77,7 @@ describe('BoardView shipped-ticker pill (UX_SPEC §4 "linked to their tickets")'
   });
 });
 
-describe('BoardView empty state "View current phase" action (UX_SPEC §2b)', () => {
+describe('BoardView empty state "Describe your product" action (UX_SPEC §2b)', () => {
   it('invokes onViewCurrentPhase when clicked', () => {
     mockedUseBoardData.mockReturnValue(boardData({ tickets: [] }));
     const onViewCurrentPhase = vi.fn();
@@ -93,7 +93,7 @@ describe('BoardView empty state "View current phase" action (UX_SPEC §2b)', () 
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'View current phase' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Describe your product' }));
     expect(onViewCurrentPhase).toHaveBeenCalledTimes(1);
   });
 
@@ -110,6 +110,6 @@ describe('BoardView empty state "View current phase" action (UX_SPEC §2b)', () 
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 'View current phase' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Describe your product' })).toBeNull();
   });
 });

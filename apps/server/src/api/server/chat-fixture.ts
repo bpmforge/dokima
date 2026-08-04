@@ -8,6 +8,8 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { computeDokimaHome } from '@dokima/shared';
+import { computeFleetRegistryPath, loadRegistry } from '../projects/registry-store.js';
 
 /**
  * `GET /api/v1/projects/:id/chat` (FR-C2, UX_SPEC §3). No chat/message
@@ -144,11 +146,37 @@ const CHAT_FIXTURE_ITEMS = [
   },
 ];
 
-export function registerChatRoute(app: FastifyInstance): void {
+export interface ChatRouteOptions {
+  /** Fleet home; a REGISTERED project is a real product and gets a real (empty) stream. */
+  readonly home?: string;
+}
+
+/**
+ * W10-56: a real product's chat stream is EMPTY, not a demo of Dokima itself.
+ *
+ * This route returned the same hardcoded fixture for every project id, so
+ * creating "CSV Watcher" immediately showed cards about `W4-04`, `FR-C2`,
+ * `apps/web/src/chat/ChatView.tsx` and costs in dollars — Dokima's own
+ * internals, in a stranger's project, on their first screen. The cards were
+ * badged SAMPLE and their receipts resolved (W9-03 made that honest and this
+ * does not undo it); the defect was never honesty, it was PLACEMENT.
+ *
+ * The rule is a fact about the product, not a test convenience: no chat or
+ * message producer exists anywhere in this repo yet (see this module's header
+ * — no clarifications/slates/findings event schema, no reachable cost
+ * tracking), so a registered product genuinely HAS no chat, and an empty
+ * stream is the truthful answer. The fixture stays reachable for the preview
+ * surface that documents FR-C2's four card types, which is not a product a
+ * founder created.
+ */
+export function registerChatRoute(app: FastifyInstance, opts: ChatRouteOptions = {}): void {
+  const registryPath = computeFleetRegistryPath(computeDokimaHome(opts.home ? { DOKIMA_HOME: opts.home } : undefined));
   app.get(
     '/api/v1/projects/:id/chat',
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      return reply.send({ items: CHAT_FIXTURE_ITEMS });
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const registered = (await loadRegistry(registryPath)).some((r) => r.id === id);
+      return reply.send({ items: registered ? [] : CHAT_FIXTURE_ITEMS });
     },
   );
 }

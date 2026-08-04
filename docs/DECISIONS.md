@@ -33,6 +33,9 @@ restating. Do not re-litigate without a new entry superseding the old one.
 | D-024 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
 | D-025 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
 | D-026 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
+| D-027 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
+| D-028 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
+| D-029 | 2026-08-04 | How does data sync: Option A | Option A, Option B |  |
 
 ## Pending slates (founder input wanted; working assumptions in force)
 

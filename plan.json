@@ -4438,10 +4438,13 @@
       "write_scope": [
         "apps/web/src/App/**",
         "apps/web/src/board/**",
-        "apps/web/src/chat/**"
+        "apps/web/src/chat/**",
+        "apps/server/src/api/server/chat-fixture.ts",
+        "apps/server/src/api/server/chat-fixture.test.ts",
+        "apps/web/e2e/*.spec.ts"
       ],
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "acceptance": [
         "MISLABELED CONTROL, measured: on an empty board the panel reads \"The board fills when Phase 3 design is decomposed\" with a button \"View current phase\". Clicking it navigates to `?view=plans` \u2014 the **Improvement plan** screen, which reports \"0 raw findings -> 0 plan items\" and explains that items \"appear here once a run or nightly auto-verify evaluates the recommendation catalog against this project\". That is a different subsystem from the phase pipeline; the button\u2019s promise and its destination do not match.",
@@ -4451,7 +4454,7 @@
         "RED FIXTURE for each: an e2e spec asserting the empty-board control lands on a phase surface rather than the improvement plan, and one asserting a freshly created project\u2019s chat pane contains no SAMPLE cards.",
         "Full gate green including e2e, counts in the commit body."
       ],
-      "notes": "Found 2026-08-03 in the same browser pass as W10-54/W10-55. Deliberately filed separately from the blocker: these are real but cosmetic beside \"you cannot start a pipeline at all\", and bundling them would let the smaller fixes make the ticket look addressed."
+      "notes": "Found 2026-08-03 in the same browser pass as W10-54/W10-55. Deliberately filed separately from the blocker: these are real but cosmetic beside \"you cannot start a pipeline at all\", and bundling them would let the smaller fixes make the ticket look addressed. \u2014 write_scope widened before editing and named: the sample cards are SERVED, not rendered from a client constant \u2014 GET /projects/:id/chat returns the same hardcoded fixture for every project id \u2014 so the fix is in chat-fixture.ts, and the acceptance asks for e2e fixtures. \u2014 CLOSED 2026-08-04, both halves. THE SAMPLE CARDS WERE SERVED, NOT RENDERED: GET /projects/:id/chat returned the same hardcoded fixture for every project id, so any new product showed cards about W4-04, FR-C2, apps/web/src/chat/ChatView.tsx and dollar costs. The route now serves an empty stream for a REGISTERED product, and the rule is a fact about the product rather than a test convenience \u2014 no chat or message producer exists anywhere in this repo (the module header says so), so a real product genuinely has no chat and an empty stream is the truthful answer. The fixture stays reachable for the preview surface that documents FR-C2 four card types, which is not a product a founder created, so chat.spec.ts stays green unchanged. W9-03 is NOT undone: the badges and resolving receipts were always honest; the defect was placement. \u2014 THE CONTROL went to the Improvement Plan screen, a different feature. What actually fills an empty board is describing the product, so the copy and the destination now say and do that: The board fills once you describe your product and it is decomposed into tickets / Describe your product / view=interview. \u2014 MY OWN FIXTURE WAS WRONG FIRST, and it is the mistake worth recording: the chat case asserted only ABSENCE (toHaveCount(0)), which a pane that has not finished fetching satisfies trivially \u2014 so it PASSED against the very code it was written to fail. Anchored on a positive signal (the chat empty state must be visible first), after which both cases fail against the shipped code, 2 of 2. Two existing assertions on the old label and old copy were updated as consequences of the change, not worked around. Gate: lint 0 errors (1 pre-existing warning, unrelated), typecheck clean, 427 files / 3277 passed | 1 skipped, 67 e2e passed (+2)."
     },
     {
       "id": "W10-57",

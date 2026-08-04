@@ -126,7 +126,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerLessonsRoutes(app, { home: opts.fleetHome });
   registerRosterRoutes(app, { home: opts.fleetHome, contentDir: opts.rosterContentDir });
   registerSettingsRoutes(app, { home: opts.fleetHome });
-  registerChatRoute(app);
+  registerChatRoute(app, { home: opts.fleetHome });
   registerOpenApiRoute(app);
   registerEventsSseRoute(app, { wsHub });
   registerStatic(app, opts.webDistDir, opts.token);
