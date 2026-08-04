@@ -4987,9 +4987,7 @@
         "apps/server/src/cli/run-cmd.ts",
         "apps/server/src/cli/run-cmd.test.ts"
       ],
-      "depends_on": [
-        "W10-74"
-      ],
+      "depends_on": [],
       "acceptance": [
         "MEASURED 2026-08-04 against a real 8-ticket board with a ticket sitting `ready`. `dokima run start --project <id> --mode new_product --breakpoint never --berths 1 --actor operator` printed `run-<ts> started -> running (breakpoint=never berths=1)` and returned in under a second \u2014 on a box whose configured local model takes ~30s for a single call, so nothing had been asked of it. Twenty seconds later: the board unchanged, PLAN-T-002 still `ready`, zero new events in the project log, and no berth or session process anywhere.",
         "THE CODE SAYS THE SAME THING. `run-cmd.ts`'s start branch calls `createRun` (bookkeeping) and then `if (command.mode === 'onboard')` calls `runOnboardAnalysis` \u2014 the real work W8-08/W8-09 wired. `new_product`, `feature` and `improve` fall straight through to `return 0`. `--berths <n>` is validated, persisted onto the run record, and never read by anything that starts a berth.",
@@ -4999,7 +4997,7 @@
       ],
       "points": 8,
       "status": "todo",
-      "notes": "Found 2026-08-04 driving the product end to end in a browser and then at the CLI, at the user's request for a working end-to-end. THE HONEST SUMMARY OF THAT PASS: the human-driven lifecycle works and its trust boundary holds \u2014 claim and start from the board, `close` refused MANIFEST_INVALID from the UI, NOT_OWNER for a non-owner, SELF_ACCEPT for the maker (C-4), a legitimate close minting a receipt the drawer renders, `accept` by a distinct reviewer reaching Done, and `verify-chain` reporting chain OK. The AGENTIC lifecycle \u2014 the product's actual premise, agents working the board while you watch \u2014 has no driver at all. Depends on W10-74 only because there is no point dispatching from a binary that cannot be invoked.",
+      "notes": "Found 2026-08-04 driving the product end to end in a browser and then at the CLI, at the user's request for a working end-to-end. THE HONEST SUMMARY OF THAT PASS: the human-driven lifecycle works and its trust boundary holds \u2014 claim and start from the board, `close` refused MANIFEST_INVALID from the UI, NOT_OWNER for a non-owner, SELF_ACCEPT for the maker (C-4), a legitimate close minting a receipt the drawer renders, `accept` by a distinct reviewer reaching Done, and `verify-chain` reporting chain OK. The AGENTIC lifecycle \u2014 the product's actual premise, agents working the board while you watch \u2014 has no driver at all. Depends on W10-74 only because there is no point dispatching from a binary that cannot be invoked. \u2014 DEPENDENCY CLEARED the same day: filed depending on W10-74 because there was no point dispatching from a binary nobody could invoke; W10-74 landed, so the depends_on is dropped rather than left to read as a live blocker.",
       "stories": []
     }
   ]
