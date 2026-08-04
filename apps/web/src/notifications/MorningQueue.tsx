@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { decideSlate, fetchSlates } from '../decisions/api.js';
+import { SlateCard } from '../decisions/SlateCard.js';
+import type { SlateRecord } from '../decisions/types.js';
 import { decideApproval, fetchMorningQueue, NotificationsApiError } from './api.js';
 import { NotificationCard } from './NotificationCard.js';
 import type { NotificationItem } from './types.js';
@@ -45,9 +48,25 @@ export interface MorningQueueProps {
 
 /**
  * The morning queue (UX_SPEC §7 signature screen): leverage-sorted,
- * Decide/Review only, Approve/Reject with no navigation required. The
+ * Decide/Review only, answerable with no navigation required. The
  * elapsed-review timer is the design's own "ten-minute review" nudge,
  * tracked client-side since there is no session concept on the server.
+ *
+ * W10-80: a Decide card backed by a decision SLATE is answered inline, not
+ * approved or rejected. Measured in a browser the day slate-backed cards first
+ * became reachable (W10-73): Approve resolved the card, and the reconcile pass
+ * correctly brought the same card straight back a second later, because
+ * `decideNotification` closes the notification and never touches the slate —
+ * which is still open, and still needs an answer. The behaviour was right and
+ * the buttons were not: a founder slate offers 2-4 named options with
+ * tradeoffs and a recommendation, so answering means CHOOSING one.
+ *
+ * Answering here rather than linking to the Decisions board keeps the screen's
+ * own promise ("no navigation required"), and needs no new endpoint: the card
+ * already carries `refId` and `projectId`, and `decisions/api.ts` already has
+ * the fetch and the decide call the board itself uses. Nothing resolves the
+ * notification by hand afterwards — W10-73's reconcile pass closes any card
+ * whose slate is no longer open, so a refresh is the whole of it.
  */
 export function MorningQueue({ projectId }: MorningQueueProps) {
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -134,7 +153,13 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
               key={item.id}
               item={item}
               actions={
-                item.tier === 'decide' ? (
+                item.refType === 'slate' && item.refId ? (
+                  <SlateAnswer
+                    projectId={item.projectId}
+                    slateId={item.refId}
+                    onAnswered={() => void refresh()}
+                  />
+                ) : item.tier === 'decide' ? (
                   <div className="notification-card__actions">
                     <button
                       type="button"
@@ -157,6 +182,89 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * The slate behind a Decide card, answerable in place (W10-80).
+ *
+ * Reuses `SlateCard` rather than re-rendering options here: the board and the
+ * queue must not drift on what a slate looks like or on what "decided" means.
+ * A slate that has vanished (answered in another tab, or by a resumed run)
+ * says so instead of offering a choice that would 409.
+ */
+function SlateAnswer({
+  projectId,
+  slateId,
+  onAnswered,
+}: {
+  projectId: string;
+  slateId: string;
+  onAnswered: () => void;
+}) {
+  const [record, setRecord] = useState<SlateRecord | null>(null);
+  const [missing, setMissing] = useState(false);
+  const [deciding, setDeciding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void fetchSlates(projectId, 'open')
+      .then((slates) => {
+        if (!live) return;
+        const found = slates.find((s) => s.id === slateId) ?? null;
+        setRecord(found);
+        setMissing(found === null);
+      })
+      .catch((err: unknown) => {
+        if (live) setError(errorMessage(err, 'Could not load this decision'));
+      });
+    return () => {
+      live = false;
+    };
+  }, [projectId, slateId]);
+
+  if (error) {
+    return (
+      <p className="notification-card__error" role="alert">
+        {error}
+      </p>
+    );
+  }
+  if (missing) {
+    return (
+      <p className="notification-card__hint" role="status">
+        Already answered — this card will clear on the next refresh.
+      </p>
+    );
+  }
+  if (!record) return null;
+
+  return (
+    <div data-testid={`queue-slate-${slateId}`}>
+      <SlateCard
+        record={record}
+        deciding={deciding}
+        error={null}
+        onDecide={async (chosen: string, rationale: string) => {
+          setDeciding(true);
+          setError(null);
+          try {
+            await decideSlate(projectId, slateId, {
+              chosen,
+              rationale: rationale || undefined,
+            });
+            // No manual resolve: W10-73's reconcile pass closes the card once
+            // the slate is no longer open, so refreshing is the whole of it.
+            onAnswered();
+          } catch (err) {
+            setError(errorMessage(err, 'Could not record that decision'));
+          } finally {
+            setDeciding(false);
+          }
+        }}
+      />
     </div>
   );
 }
