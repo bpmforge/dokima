@@ -16,9 +16,18 @@
 
 import { createServer, type Server } from 'node:http';
 
+/** OpenAI wire shape for one scripted tool call — `arguments` is a raw JSON-encoded string, exactly as a real provider emits it, so the adapter's own parsing is what's under test. */
+export interface ScriptedToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
 export interface ScriptedTurn {
   content: string;
   latencyMs?: number;
+  /** When present, the turn answers with `tool_calls` + `finish_reason: 'tool_calls'` instead of a plain `stop` (FR-G9, W11-01). */
+  toolCalls?: ScriptedToolCall[];
 }
 
 export interface FakeModelGatewayConfig {
@@ -86,6 +95,18 @@ export async function startFakeModelGateway(
       const turn: ScriptedTurn = script[scriptIndex] ?? { content: '' };
       if (turn.latencyMs) await sleep(turn.latencyMs);
 
+      const message: Record<string, unknown> = {
+        role: 'assistant',
+        content: turn.content,
+      };
+      if (turn.toolCalls) {
+        message.tool_calls = turn.toolCalls.map((call) => ({
+          id: call.id,
+          type: 'function',
+          function: { name: call.name, arguments: call.arguments },
+        }));
+      }
+
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -96,8 +117,8 @@ export async function startFakeModelGateway(
           choices: [
             {
               index: 0,
-              message: { role: 'assistant', content: turn.content },
-              finish_reason: 'stop',
+              message,
+              finish_reason: turn.toolCalls ? 'tool_calls' : 'stop',
             },
           ],
           usage: {

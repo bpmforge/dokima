@@ -285,7 +285,10 @@ describe('OaiCompatProvider — chat()', () => {
     const slowerThanOldDefault = ((_input: string | URL | Request, init?: RequestInit) =>
       new Promise<Response>((resolve, reject) => {
         const timer = setTimeout(
-          () => resolve(new Response(JSON.stringify(chatCompletionSuccessFixture), { status: 200 })),
+          () =>
+            resolve(
+              new Response(JSON.stringify(chatCompletionSuccessFixture), { status: 200 }),
+            ),
           10,
         );
         init?.signal?.addEventListener('abort', () => {
@@ -300,7 +303,10 @@ describe('OaiCompatProvider — chat()', () => {
       baseUrl: 'http://x/v1',
       fetchImpl: slowerThanOldDefault,
     });
-    const res = await provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] });
+    const res = await provider.chat({
+      model: 'm',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
     expect(res.message.content).toBeTruthy();
     expect(DEFAULT_REQUEST_TIMEOUT_MS).toBeGreaterThan(60_000);
   });
@@ -332,8 +338,10 @@ describe('OaiCompatProvider — chat()', () => {
   it('leaves the CLOUD adapters at 60s — they talk to hosted endpoints', async () => {
     // A minute of silence from a hosted API really does mean something is
     // wrong; the local raise must not quietly become a global one.
-    const [{ DEFAULT_REQUEST_TIMEOUT_MS: anthropicDefault }, { DEFAULT_REQUEST_TIMEOUT_MS: copilotDefault }] =
-      await Promise.all([import('./anthropic-types.js'), import('./copilot-types.js')]);
+    const [
+      { DEFAULT_REQUEST_TIMEOUT_MS: anthropicDefault },
+      { DEFAULT_REQUEST_TIMEOUT_MS: copilotDefault },
+    ] = await Promise.all([import('./anthropic-types.js'), import('./copilot-types.js')]);
     expect(anthropicDefault).toBe(60_000);
     expect(copilotDefault).toBe(60_000);
   });
@@ -403,6 +411,284 @@ describe('OaiCompatProvider — chat()', () => {
     ]);
 
     expect(peak).toBe(2);
+  });
+});
+
+/** Inline per FR-G9/W11-01: fixtures.ts and openai-fixtures.ts are outside this ticket's write_scope. */
+const toolCallCompletionFixture = {
+  id: 'chatcmpl-fixture-tools-001',
+  object: 'chat.completion',
+  created: 1_752_000_010,
+  model: 'qwen2.5-coder-7b-instruct',
+  choices: [
+    {
+      index: 0,
+      message: {
+        role: 'assistant',
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_abc123',
+            type: 'function',
+            function: { name: 'get_weather', arguments: '{"location":"NYC"}' },
+          },
+        ],
+      },
+      finish_reason: 'tool_calls',
+    },
+  ],
+  usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+};
+
+const sseChunk = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
+
+/** A single tool call whose id/name arrive on the first delta, arguments arrive split across two deltas — exactly how real OpenAI-compatible streams fragment tool_calls. */
+const toolCallStreamSse =
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [
+      {
+        index: 0,
+        delta: {
+          role: 'assistant',
+          tool_calls: [
+            {
+              index: 0,
+              id: 'call_stream_1',
+              type: 'function',
+              function: { name: 'get_weather', arguments: '' },
+            },
+          ],
+        },
+        finish_reason: null,
+      },
+    ],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [
+      {
+        index: 0,
+        delta: { tool_calls: [{ index: 0, function: { arguments: '{"location":' } }] },
+        finish_reason: null,
+      },
+    ],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [
+      {
+        index: 0,
+        delta: { tool_calls: [{ index: 0, function: { arguments: '"NYC"}' } }] },
+        finish_reason: null,
+      },
+    ],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [],
+    usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+  }) +
+  'data: [DONE]\n\n';
+
+describe('OaiCompatProvider — tool calling (FR-G9, D-023, W11-01)', () => {
+  it('RED FIXTURE: serializes request.tools onto the wire in the OpenAI tool-calling shape', async () => {
+    const calls: Call[] = [];
+    const { fetchImpl } = fakeFetch(
+      (call) =>
+        call.path.endsWith('/models')
+          ? { status: 200, body: modelsListFixture }
+          : { status: 200, body: chatCompletionSuccessFixture },
+      calls,
+    );
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://x/v1',
+      fetchImpl,
+    });
+
+    await provider.chat({
+      model: 'm',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools: [
+        {
+          name: 'get_weather',
+          description: 'Look up current weather for a location',
+          parameters: {
+            type: 'object',
+            properties: { location: { type: 'string' } },
+            required: ['location'],
+          },
+        },
+      ],
+    });
+
+    const chatCall = calls.find((c) => c.path.endsWith('/chat/completions'));
+    expect((chatCall?.body as { tools?: unknown }).tools).toEqual([
+      {
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          description: 'Look up current weather for a location',
+          parameters: {
+            type: 'object',
+            properties: { location: { type: 'string' } },
+            required: ['location'],
+          },
+        },
+      },
+    ]);
+  });
+
+  it('omits tools from the wire when the request carries none', async () => {
+    const calls: Call[] = [];
+    const { fetchImpl } = fakeFetch(
+      (call) =>
+        call.path.endsWith('/models')
+          ? { status: 200, body: modelsListFixture }
+          : { status: 200, body: chatCompletionSuccessFixture },
+      calls,
+    );
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://x/v1',
+      fetchImpl,
+    });
+
+    await provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] });
+
+    const chatCall = calls.find((c) => c.path.endsWith('/chat/completions'));
+    expect(chatCall?.body).not.toHaveProperty('tools');
+  });
+
+  it('RED FIXTURE: parses a scripted tool_calls response into normalized toolCalls with finishReason "tool_calls"', async () => {
+    const { fetchImpl } = fakeFetch((call) =>
+      call.path.endsWith('/models')
+        ? { status: 200, body: modelsListFixture }
+        : { status: 200, body: toolCallCompletionFixture },
+    );
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://x/v1',
+      fetchImpl,
+    });
+
+    const response = await provider.chat({
+      model: 'qwen2.5-coder-7b-instruct',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools: [{ name: 'get_weather', parameters: { type: 'object', properties: {} } }],
+    });
+
+    expect(response.finishReason).toBe('tool_calls');
+    expect(response.toolCalls).toEqual([
+      { id: 'call_abc123', name: 'get_weather', arguments: { location: 'NYC' } },
+    ]);
+  });
+
+  it('throws ProviderResponseShapeError when a tool call carries unparseable arguments JSON', async () => {
+    const { fetchImpl } = fakeFetch((call) =>
+      call.path.endsWith('/models')
+        ? { status: 200, body: modelsListFixture }
+        : {
+            status: 200,
+            body: {
+              ...toolCallCompletionFixture,
+              choices: [
+                {
+                  ...toolCallCompletionFixture.choices[0],
+                  message: {
+                    ...toolCallCompletionFixture.choices[0]?.message,
+                    tool_calls: [
+                      {
+                        id: 'call_bad',
+                        type: 'function',
+                        function: { name: 'get_weather', arguments: '{not json' },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+    );
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://x/v1',
+      fetchImpl,
+    });
+
+    await expect(
+      provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] }),
+    ).rejects.toThrow(ProviderResponseShapeError);
+  });
+
+  it('RED FIXTURE: serializes request.tools onto the streaming wire', async () => {
+    const calls: Call[] = [];
+    const { fetchImpl } = fakeStreamFetch(streamSuccessSse, calls);
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl,
+    });
+
+    const stream = provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: [{ name: 'get_weather', parameters: { type: 'object', properties: {} } }],
+    });
+    const iterator = stream[Symbol.asyncIterator]();
+    while (!(await iterator.next()).done) {
+      // drain
+    }
+
+    const chatCall = calls.find((c) => c.path.endsWith('/chat/completions'));
+    expect((chatCall?.body as { tools?: unknown }).tools).toEqual([
+      {
+        type: 'function',
+        function: { name: 'get_weather', parameters: { type: 'object', properties: {} } },
+      },
+    ]);
+  });
+
+  it('RED FIXTURE: accumulates streamed tool_calls deltas into normalized toolCalls with finishReason "tool_calls"', async () => {
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://localhost:9999/v1',
+      fetchImpl: fakeStreamFetch(toolCallStreamSse).fetchImpl,
+    });
+
+    let final: import('./types.js').ChatResponse | undefined;
+    for await (const event of provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools: [{ name: 'get_weather', parameters: { type: 'object', properties: {} } }],
+    })) {
+      if (event.type === 'final') final = event.response;
+    }
+
+    expect(final?.finishReason).toBe('tool_calls');
+    expect(final?.toolCalls).toEqual([
+      { id: 'call_stream_1', name: 'get_weather', arguments: { location: 'NYC' } },
+    ]);
   });
 });
 

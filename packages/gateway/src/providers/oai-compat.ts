@@ -49,6 +49,8 @@ import type {
   Provider,
   ProviderHealth,
   ProviderQueueStats,
+  ToolCall,
+  ToolSchema,
 } from './types.js';
 import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
@@ -65,6 +67,48 @@ import type {
 } from './oai-compat-types.js';
 
 export type { OaiCompatConfig } from './oai-compat-types.js';
+
+/** FR-G9 wire shape, not in oai-compat-types.ts (out of write_scope) — cast at the two access sites like requestJson<T>'s existing untyped pattern. */
+interface RawToolCall {
+  id: string;
+  function: { name: string; arguments: string };
+}
+
+interface RawToolCallDelta {
+  index: number;
+  id?: string;
+  function?: { name?: string; arguments?: string };
+}
+
+/** `ToolSchema` -> the OpenAI wire tool shape; JSON.stringify drops `description` when undefined. */
+function toRawTool(tool: ToolSchema): Record<string, unknown> {
+  return {
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters,
+    },
+  };
+}
+
+/** Raw tool_calls -> normalized `ToolCall[]`, arguments parsed once so callers never re-decode a per-provider JSON string. */
+function normalizeToolCalls(providerId: string, raw: RawToolCall[]): ToolCall[] {
+  return raw.map(({ id, function: fn }) => {
+    try {
+      return {
+        id,
+        name: fn.name,
+        arguments: JSON.parse(fn.arguments) as Record<string, unknown>,
+      };
+    } catch {
+      throw new ProviderResponseShapeError(
+        providerId,
+        `tool call "${fn.name}" has unparseable arguments JSON: ${fn.arguments}`,
+      );
+    }
+  });
+}
 
 export class OaiCompatProvider implements Provider {
   readonly id: string;
@@ -157,6 +201,7 @@ export class OaiCompatProvider implements Provider {
           : {}),
         ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
         ...(request.stop !== undefined ? { stop: request.stop } : {}),
+        ...(request.tools !== undefined ? { tools: request.tools.map(toRawTool) } : {}),
       };
 
       const raw = await this.requestJson<RawChatCompletionResponse>(
@@ -177,6 +222,7 @@ export class OaiCompatProvider implements Provider {
       }
 
       const modelId = raw.model ?? request.model;
+      const rawToolCalls = (choice.message as { tool_calls?: RawToolCall[] }).tool_calls;
       return {
         model: modelId,
         message: {
@@ -192,6 +238,9 @@ export class OaiCompatProvider implements Provider {
           modelId,
           this.costTable,
         ),
+        ...(rawToolCalls !== undefined
+          ? { toolCalls: normalizeToolCalls(this.id, rawToolCalls) }
+          : {}),
       };
     });
   }
@@ -211,6 +260,7 @@ export class OaiCompatProvider implements Provider {
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
       ...(request.stop !== undefined ? { stop: request.stop } : {}),
+      ...(request.tools !== undefined ? { tools: request.tools.map(toRawTool) } : {}),
     };
 
     const response = await this.fetchRaw(
@@ -228,6 +278,7 @@ export class OaiCompatProvider implements Provider {
     let modelId = request.model;
     let finishReasonRaw: string | null = null;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
+    const toolCallDeltas = new Map<number, { id: string; name: string; args: string }>();
 
     for await (const payload of readSseDataLines(response.body)) {
       if (payload === '[DONE]') continue;
@@ -239,6 +290,14 @@ export class OaiCompatProvider implements Provider {
         if (choice.delta.content) {
           content += choice.delta.content;
           yield { type: 'delta', content: choice.delta.content };
+        }
+        for (const d of (choice.delta as { tool_calls?: RawToolCallDelta[] })
+          .tool_calls ?? []) {
+          const acc = toolCallDeltas.get(d.index) ?? { id: '', name: '', args: '' };
+          if (d.id) acc.id = d.id;
+          if (d.function?.name) acc.name = d.function.name;
+          if (d.function?.arguments) acc.args += d.function.arguments;
+          toolCallDeltas.set(d.index, acc);
         }
         if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
       }
@@ -257,6 +316,13 @@ export class OaiCompatProvider implements Provider {
       );
     }
 
+    const rawToolCalls = [...toolCallDeltas.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, acc]) => ({
+        id: acc.id,
+        function: { name: acc.name, arguments: acc.args },
+      }));
+
     yield {
       type: 'final',
       response: {
@@ -264,6 +330,9 @@ export class OaiCompatProvider implements Provider {
         message: { role, content },
         finishReason: normalizeFinishReason(finishReasonRaw),
         usage: normalizeUsage(usage, modelId, this.costTable),
+        ...(rawToolCalls.length > 0
+          ? { toolCalls: normalizeToolCalls(this.id, rawToolCalls) }
+          : {}),
       },
     };
   }

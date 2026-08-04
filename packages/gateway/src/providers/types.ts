@@ -12,12 +12,20 @@ export interface ChatMessage {
   content: string;
 }
 
+/** A callable tool the model may invoke, described as JSON Schema (FR-G9, D-023) — the same shape every provider's wire format is normalized to/from. */
+export interface ToolSchema {
+  name: string;
+  description?: string;
+  parameters: Record<string, unknown>;
+}
+
 export interface ChatRequest {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
   stop?: string[];
+  tools?: ToolSchema[];
 }
 
 /** Normalized regardless of provider: tokens in/out and cost via the price table (local = $0). */
@@ -31,11 +39,20 @@ export interface NormalizedUsage {
 export type FinishReason =
   'stop' | 'length' | 'content_filter' | 'tool_calls' | 'unknown';
 
+/** One tool invocation the model requested, normalized regardless of provider wire shape (arguments always a parsed object, never a raw JSON string a caller must re-decode per-provider). */
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
 export interface ChatResponse {
   model: string;
   message: ChatMessage;
   finishReason: FinishReason;
   usage: NormalizedUsage;
+  /** Present only when the model actually returned tool calls — absent, not empty, otherwise. */
+  toolCalls?: ToolCall[];
 }
 
 export interface ModelInfo {
