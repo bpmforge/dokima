@@ -179,8 +179,10 @@ ticket. IDs are stable — new controls append, never renumber.
 - **SC-18 Tool surface is closed and least-privilege** (T-5, T-24; D-023). The session's
   tool set is an explicit allowlist with no arbitrary-shell escape by default: read, list,
   search, write, edit, and the ticket's own declared `verify` command — nothing that can
-  run a free-form process, install a dependency, or open a socket. Shell access, if it is
-  ever granted, is a per-role MCP-style capability with `requiresApproval` (§3.9,
-  packages/mcp), never an ambient tool. The model chooses tool CALLS; it never chooses the
+  run a free-form process, install a dependency, or open a socket. The allowlist, the approval policy and the audited
+  tool-call events are `packages/mcp`'s (W6-04: `setRoleAllowlist`, `decideToolCall`,
+  `requestToolCall`, `DynamicApprovalPolicy`) — NOT a parallel mechanism built beside it,
+  which is what the first draft of this control specified. Shell access, if it is ever
+  granted, is a per-role capability with `requiresApproval` there, never an ambient tool. The model chooses tool CALLS; it never chooses the
   tool SET. *Verify:* a session whose model emits a call to an unlisted tool gets a refusal
   result, not an execution, and the attempt lands on the trace.

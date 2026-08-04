@@ -5121,23 +5121,24 @@
       "module": "web",
       "lane": "orchestrator",
       "write_scope": [
-        "apps/server/src/api/agent/**",
-        "apps/server/package.json"
+        "packages/harbormaster/src/agent-session/**",
+        "packages/harbormaster/src/index.ts"
       ],
       "depends_on": [
-        "W11-01"
+        "W11-01",
+        "W11-05"
       ],
       "acceptance": [
-        "DELIVER a `SpawnSession` (the `@dokima/loop` contract `runSession` already takes) that is backed by the GATEWAY rather than a child process: render the HANDOFF, send it with the tool schema through the role's configured model, execute the returned tool calls against the ticket worktree, feed results back, and iterate until the model emits a Completion Manifest or the budget stops it.",
-        "IT LIVES IN `apps/server`, and the reason is a module-boundary fact rather than a preference: `packages/loop` may not import `packages/gateway` (ARCHITECTURE \u00a74), so no package can host a session that needs both. `apps/server` is the one place that already imports each.",
-        "THE TOOL SET IS CLOSED AND LEAST-PRIVILEGE (SC-18): read, list, search, write, edit, and the ticket's own declared `verify` command. No free-form shell, no network, no installs. The model chooses tool CALLS; it never chooses the tool SET.",
+        "DELIVER a `SpawnSession` (the `@dokima/loop` contract `runSession` already takes) that is backed by the GATEWAY rather than a child process: render the HANDOFF, send it with the tool schema through the role's configured model, execute the returned tool calls against the ticket worktree, feed results back, and iterate until the model emits a Completion Manifest or the budget stops it. IT LIVES IN `packages/harbormaster`, corrected by a challenge pass before any code. The first draft put it in `apps/server`, justified by \"`packages/loop` may not import `gateway`, so no package can host it\" \u2014 which is false: harbormaster already DECLARES `@dokima/gateway` and `@dokima/loop` in its own package.json, and it already owns `runClaimLoop`/`runLandLoop`, the callers that consume a `SpawnSession`. Putting it in the app would have pushed the product's core loop out of the packages layer for a reason that was not true.",
+        "THE TOOL SET IS CLOSED AND LEAST-PRIVILEGE (SC-18), AND IT REUSES `packages/mcp` \u2014 also corrected by the challenge pass. W6-04 already ships per-role allowlists, an approval policy and audited tool-call events (`setRoleAllowlist`, `decideToolCall`, `requestToolCall`, `DynamicApprovalPolicy`); the first draft specified a parallel mechanism beside it. The set is read, list, search, write, edit, commit and the ticket's own declared `verify` \u2014 no free-form shell, no network, no installs. The model chooses tool CALLS; it never chooses the tool SET. NOTE: harbormaster does not currently declare `@dokima/mcp`, which is part of W11-05's seam.",
         "EVERY CALL GOES THROUGH THE GATEWAY, which is the entire point of D-023 \u2014 the role\u2192model matrix decides the model, the R0\u2013R4 ladder can escalate, the W2-07 breakers can break, and the spend ledger sees every token. RED FIXTURE: after a session, the run's spend is non-zero and attributable to the role, which is exactly what a shelled-out CLI could never provide.",
+        "THE SESSION COMMITS ITS OWN WORK, and this is the correction that would otherwise have sunk the ticket. `runCloseGate` READS commits (`commitsSince`) and refuses with \"no commits found on the ticket branch since its fork point\" when there are none \u2014 it does not create them; its own comment calls them \"the untrusted, already-exited session's own commits\". The first draft's tool set had no commit tool, so every session built to it would have been refused by the gate 100% of the time. `commit` is therefore a first-class tool, scoped to the ticket branch inside the worktree.",
         "RED FIXTURE for the loop itself, against the fake gateway (law 9): a scripted sequence of tool calls edits a file in the worktree, commits nothing, and returns a manifest \u2014 and the EXISTING close gate accepts it unchanged. If the gate needs changing to accept our own agent, that is a finding to report, not a licence to loosen it.",
         "AND A SESSION THAT NEVER CONVERGES MUST STOP (T-27): assert an iteration/budget cap produces a parked ticket with evidence rather than an unbounded loop."
       ],
       "points": 8,
       "status": "todo",
-      "notes": "The piece W10-77 named and could not build: its acceptance 3 said a gateway CALL cannot be an agent because runSession detects work by git diff and a completion changes no files. True of a completion, false of a tool loop \u2014 this is the resolution, and W10-77 should be read alongside it.",
+      "notes": "The piece W10-77 named and could not build: its acceptance 3 said a gateway CALL cannot be an agent because runSession detects work by git diff and a completion changes no files. True of a completion, false of a tool loop \u2014 this is the resolution, and W10-77 should be read alongside it. \u2014 REWRITTEN BY A CHALLENGE PASS 2026-08-04, before a line was written: placement was wrong (harbormaster, not apps/server), the tool layer duplicated packages/mcp, and the tool set could not commit \u2014 which the close gate requires. Three defects that a green suite would never have caught, because they were in the specification. \u2014 write_scope narrowed and a dependency added rather than working around a schema violation: validate-plan refused the first draft for a CROSS-LANE overlap (this ticket is orchestrator, W11-05 is infra) on packages/harbormaster/package.json. CLAUDE.md law 1 calls that a schema bug to report, not route around, so the dependency declaration stays W11-05s and this ticket now depends on it.",
       "stories": []
     },
     {
@@ -5147,7 +5148,7 @@
       "module": "web",
       "lane": "orchestrator",
       "write_scope": [
-        "apps/server/src/api/agent/**",
+        "packages/harbormaster/src/agent-session/**",
         "docs/SECURITY_CONTROLS.md"
       ],
       "depends_on": [
@@ -5161,7 +5162,7 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": "Filed with D-023. This is the ticket that makes the agent safe to point at a real repository, and it should not be collapsed into W11-02 \u2014 the loop working and the loop being contained are different claims with different fixtures.",
+      "notes": "Filed with D-023. This is the ticket that makes the agent safe to point at a real repository, and it should not be collapsed into W11-02 \u2014 the loop working and the loop being contained are different claims with different fixtures. \u2014 write_scope follows W11-02 to harbormaster after the challenge pass.",
       "stories": []
     },
     {
@@ -5186,6 +5187,32 @@
       "points": 3,
       "status": "todo",
       "notes": "Depends on W11-02 because defaulting to an agent that does not exist yet would be a lie in the settings surface. The honest-warning clause is the point of the ticket as much as the picker is: an external agent is a legitimate choice and its costs must be stated where the choice is made.",
+      "stories": []
+    },
+    {
+      "id": "W11-05",
+      "title": "The module import matrix, the declared dependencies and a load-bearing code comment all disagree",
+      "phase": 11,
+      "module": "infra",
+      "lane": "infra",
+      "write_scope": [
+        "docs/ARCHITECTURE.md",
+        "packages/loop/src/session.ts",
+        "packages/loop/package.json",
+        "packages/harbormaster/package.json",
+        "scripts/validate-plan.mjs"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "FOUND 2026-08-04 by challenging the W11 design against the code instead of re-reading the design. THREE SOURCES DISAGREE about what `packages/loop` may import. ARCHITECTURE.md's \u00a74 matrix says loop \u2192 `shared, events, validators, gateway, memory, mcp`. `packages/loop/package.json` declares **only `@dokima/shared`**. And `session.ts`'s module header states as fact that \"all model calls go through `gateway`, which `loop` may not import\" \u2014 the opposite of the matrix.",
+        "IT IS NOT COSMETIC: that comment is load-bearing. It is the stated reason the only shipped session runner shells out to an external process, and it is the reason the first draft of D-023 put the agent session in `apps/server` \u2014 a placement that would have moved the product's core loop out of the packages layer to satisfy a rule that may not exist.",
+        "HARBORMASTER DISAGREES TOO, in the other direction: the matrix says it imports everything including `mcp` and `memory`; its package.json declares neither. W11-02 needs `@dokima/mcp` and will hit this.",
+        "DECIDE WHICH IS AUTHORITATIVE and make the other two follow. G-3/W3-11 already say a package must declare what it imports; nothing yet says the matrix must match the declarations, which is why they drifted apart unnoticed.",
+        "RED FIXTURE: a check that fails when a package's declared dependencies contradict the ARCHITECTURE matrix \u2014 failing today on at least `loop` and `harbormaster`. A matrix nothing verifies is documentation, not architecture."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-04 out of the W11 challenge pass. This is the same family as W3-11 (package public surfaces + dependency declarations, G-3) and W10-78 (an engine exported from nothing): a rule that exists in prose, is contradicted in code, and is enforced by nothing. It is filed ahead of W11-02 rather than inside it because whichever way it is decided changes where a future component may live, and that should not be settled inside a ticket that merely needs an answer.",
       "stories": []
     }
   ]
