@@ -93,7 +93,9 @@
     ".nvmrc",
     "packages/events/migrations/**"
   ],
-  "holdTickets": [],
+  "holdTickets": [
+    "W10-58"
+  ],
   "models": {
     "maker": "sonnet",
     "cheap": "haiku",
@@ -109,5 +111,6 @@
   "$holdNote": "F2 (RELEASE_TRACKER): trust-core lane needs human-pair review — the conductor never claims these unattended; Brad works them interactively. 2026-07-16: W3-01a un-held for a SUPERVISED build under Brad's explicit authorization (chose 'conductor builds, you gate merge') — conductor runs --no-merge --breakpoint ticket, PARKS the branch (never auto-merges), and Brad reviews the diff + red fixtures and authorizes the merge himself. W3-01b/c stay held until their deps merge, then get the same one-at-a-time supervised treatment.",
   "$gatesNote": "2026-07-15: board validators added to the per-ticket gate — an agent's plan.json/notes edits must keep the citation graph green (caught W3-10 hallucinating docs/MODULE_DESIGN.md only on manual re-run; now automatic).",
   "$alwaysOkNote": "2026-07-16: +events/migrations/** — numbered migrations are append-only shared infra (like pnpm-lock); every ticket adding a table needs a new NNN_*.sql without a per-ticket scope collision (L-04/W4-06). The migration RUNNER (packages/events/src/db.ts) stays out — only the numbered files.",
-  "$modelsNote": "W9-12: per-role model routing used to live in a separate scripts/models.json, read unconditionally at module scope in conductor.mjs — a repo importing only conductor.mjs + conductor-lib.mjs + this config crashed with a bare ENOENT before --lint or any argument parsing ran (found live importing into Kryptkeeper 2026-07-28). Folded in here so the $note's 'everything project-specific lives here' claim is true of models too; conductor-lib.mjs's DEFAULT_CONFIG.models supplies a generic fallback ladder for repos that omit this key. cheapMaxPoints 2->1 2026-07-14 (amplifier LESSONS 25: sonnet is the floor for release tickets; haiku trivial-only). Overnight runs launch WITHOUT --escalate: sonnet-only ladder, frontier spend requires a human (escalation-token principle by configuration, D-018)."
+  "$modelsNote": "W9-12: per-role model routing used to live in a separate scripts/models.json, read unconditionally at module scope in conductor.mjs — a repo importing only conductor.mjs + conductor-lib.mjs + this config crashed with a bare ENOENT before --lint or any argument parsing ran (found live importing into Kryptkeeper 2026-07-28). Folded in here so the $note's 'everything project-specific lives here' claim is true of models too; conductor-lib.mjs's DEFAULT_CONFIG.models supplies a generic fallback ladder for repos that omit this key. cheapMaxPoints 2->1 2026-07-14 (amplifier LESSONS 25: sonnet is the floor for release tickets; haiku trivial-only). Overnight runs launch WITHOUT --escalate: sonnet-only ladder, frontier spend requires a human (escalation-token principle by configuration, D-018).",
+  "$holdNote3": "2026-08-04: W10-58 HELD from unattended claim. Its premise was re-measured and its acceptance rewritten the same day — the timeout justification is dead and the remaining requirement is to GENERALISE W10-67 paused-run machinery rather than re-solve it. That is a reading-comprehension dependency on another ticket, on an 8-point architectural change touching packages/events, and it is the kind of nuance an unattended session misses while still producing something that passes gates. Founder chose a held, one-ticket, no-push first run."
 }
