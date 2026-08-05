@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   listModelMatrix,
   listProjectModelMatrix,
+  migrateLegacyModelMatrixRows,
   putGlobalModelMatrix,
   putModelMatrix,
 } from './model-matrix-store.js';
@@ -106,6 +107,121 @@ describe('model matrix store', () => {
   });
 });
 
+describe('provider_id column (W10-68)', () => {
+  const dirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  it('stores an explicit providerId separately from the model id, even when the model id has its own slash', async () => {
+    const dir = await tmpProjectDir();
+    dirs.push(dir);
+    const rows = await putModelMatrix(dir, [
+      {
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        providerId: 'lm-studio',
+        model: 'qwen/qwen3-coder-next',
+        fallback: [],
+      },
+    ]);
+    expect(rows[0]).toMatchObject({
+      providerId: 'lm-studio',
+      model: 'qwen/qwen3-coder-next',
+    });
+    expect(await listModelMatrix(dir)).toEqual(rows);
+  });
+
+  it('an absent providerId round-trips as absent', async () => {
+    const dir = await tmpProjectDir();
+    dirs.push(dir);
+    const rows = await putModelMatrix(dir, [
+      { role: 'coding-agent', taskType: 'reasoning', model: 'bare-model', fallback: [] },
+    ]);
+    expect(rows[0]?.providerId).toBeUndefined();
+  });
+});
+
+/**
+ * W10-68 acceptance 4: existing single-string rows are read once and split
+ * using the same registry-consulting rule W10-60 established, and the split
+ * is PERSISTED — not re-derived on every call.
+ */
+describe('migrateLegacyModelMatrixRows (W10-68)', () => {
+  const dirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  it('splits a legacy single-string row using the registry and persists it', async () => {
+    const dir = await tmpProjectDir();
+    dirs.push(dir);
+    await putModelMatrix(dir, [
+      {
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        model: 'box-b/qwen-32b',
+        fallback: [],
+      },
+    ]);
+    // Simulates a row written before this ticket: `provider_id` is NULL and
+    // the registered prefix is still folded into `model`.
+    expect((await listProjectModelMatrix(dir))[0]).toMatchObject({
+      providerId: undefined,
+      model: 'box-b/qwen-32b',
+    });
+
+    await migrateLegacyModelMatrixRows(dir, async () => ['box-a', 'box-b']);
+
+    expect((await listProjectModelMatrix(dir))[0]).toMatchObject({
+      providerId: 'box-b',
+      model: 'qwen-32b',
+    });
+  });
+
+  it('leaves a row alone when its prefix names no registered provider', async () => {
+    const dir = await tmpProjectDir();
+    dirs.push(dir);
+    await putModelMatrix(dir, [
+      { role: 'coding-agent', taskType: 'reasoning', model: 'ghost/model', fallback: [] },
+    ]);
+
+    await migrateLegacyModelMatrixRows(dir, async () => ['box-a']);
+
+    expect((await listProjectModelMatrix(dir))[0]).toMatchObject({
+      providerId: undefined,
+      model: 'ghost/model',
+    });
+  });
+
+  it('is idempotent — running it again on already-migrated rows changes nothing', async () => {
+    const dir = await tmpProjectDir();
+    dirs.push(dir);
+    await putModelMatrix(dir, [
+      {
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        model: 'box-b/qwen-32b',
+        fallback: [],
+      },
+    ]);
+
+    await migrateLegacyModelMatrixRows(dir, async () => ['box-a', 'box-b']);
+    await migrateLegacyModelMatrixRows(dir, async () => ['box-a', 'box-b']);
+
+    expect((await listProjectModelMatrix(dir))[0]).toMatchObject({
+      providerId: 'box-b',
+      model: 'qwen-32b',
+    });
+  });
+});
+
 /**
  * W10-64 red fixtures. The user-visible claim is "configure the model once and
  * a product you create afterwards uses it" — FR-F3, which `global-db/
@@ -169,7 +285,12 @@ describe('model matrix global preset (W10-64)', () => {
     await scopedHome();
     await putGlobalModelMatrix([
       ROW,
-      { role: 'code-reviewer', taskType: 'verification', model: 'global-only', fallback: [] },
+      {
+        role: 'code-reviewer',
+        taskType: 'verification',
+        model: 'global-only',
+        fallback: [],
+      },
     ]);
     const dir = await tmpProjectDir();
     dirs.push(dir);

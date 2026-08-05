@@ -1,3 +1,6 @@
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SameModelRefusedError, type ProviderEntry } from '@dokima/gateway';
 import {
@@ -6,14 +9,25 @@ import {
   resolveModelTarget,
   splitModelRef,
 } from './model-resolution.js';
+import {
+  listModelMatrix,
+  migrateLegacyModelMatrixRows,
+  putModelMatrix,
+} from '../server/model-matrix-store.js';
 import type { ModelMatrixRow } from '../server/settings-types.js';
 
 const PROJECT = '/tmp/does-not-matter-stores-are-injected';
 
-function row(role: string, model: string, taskType = 'reasoning'): ModelMatrixRow {
+function row(
+  role: string,
+  model: string,
+  taskType = 'reasoning',
+  providerId?: string,
+): ModelMatrixRow {
   return {
     role,
     taskType: taskType as ModelMatrixRow['taskType'],
+    providerId,
     model,
     fallback: [],
     updatedAt: '2026-08-02T00:00:00Z',
@@ -311,5 +325,96 @@ describe('vendor-namespaced model ids bind to the single enabled provider (W10-6
         ),
       }),
     ).rejects.toThrow(/off-box/);
+  });
+});
+
+/**
+ * W10-68 RED FIXTURES (acceptance 5): the structured `provider_id` pair
+ * removes the ambiguity a slash-in-a-string could never resolve, restoring
+ * the refusal W10-60 had to trade away for an EXPLICIT selection while
+ * leaving that trade's bounded regression in place for rows that predate
+ * this ticket (asserted above, unchanged).
+ */
+describe('the structured provider_id pair (W10-68)', () => {
+  it('an explicit providerId resolves to exactly that provider with the full model id intact, even when the model id has its own slash', async () => {
+    const target = await resolveModelTarget({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      ...stores(
+        [provider('lm-studio'), provider('box-b')],
+        [row('coding-agent', 'qwen/qwen3-coder-next', 'reasoning', 'lm-studio')],
+      ),
+    });
+    expect(target.providerId).toBe('lm-studio');
+    expect(target.model).toBe('qwen/qwen3-coder-next'); // NOT split on its own slash
+    expect(target.source).toBe('registry');
+  });
+
+  it('a providerId naming an unregistered provider raises unknown-provider again — the refusal W10-60 traded away', async () => {
+    await expect(
+      resolveModelTarget({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        ...stores(
+          [provider('box-a')],
+          [row('coding-agent', 'some-model', 'reasoning', 'ghost')],
+        ),
+      }),
+    ).rejects.toMatchObject({ rule: 'unknown-provider' });
+  });
+
+  /**
+   * W10-68 acceptance 5's third clause, exercised against the REAL store
+   * (not `stores()`'s stubs): a row written before this ticket must resolve
+   * to the identical target both before `migrateLegacyModelMatrixRows` runs
+   * (via the `bindProvider` fallback, W10-60's rule applied live) and after
+   * (via the row's own persisted `provider_id`, applied directly). A
+   * migration that changed which model a run calls would be worse than the
+   * bug it fixes (acceptance 4).
+   */
+  it('a pre-migration string row resolves to the same target before and after migrating', async () => {
+    const home = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'dokima-model-resolution-home-'),
+    );
+    const dir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'dokima-model-resolution-project-'),
+    );
+    const savedHome = process.env.DOKIMA_HOME;
+    process.env.DOKIMA_HOME = home;
+    try {
+      await putModelMatrix(dir, [
+        {
+          role: 'coding-agent',
+          taskType: 'reasoning',
+          model: 'box-b/qwen-32b',
+          fallback: [],
+        },
+      ]);
+
+      const resolve = () =>
+        resolveModelTarget({
+          projectPath: dir,
+          role: 'coding-agent',
+          taskType: 'reasoning',
+          loadProviders: async () => [provider('box-a'), provider('box-b')],
+          loadMatrixRows: async () => listModelMatrix(dir),
+        });
+
+      const before = await resolve();
+      await migrateLegacyModelMatrixRows(dir, async () => ['box-a', 'box-b']);
+      const after = await resolve();
+
+      expect(after).toEqual(before);
+      expect(after).toMatchObject({ providerId: 'box-b', model: 'qwen-32b' });
+    } finally {
+      if (savedHome === undefined) delete process.env.DOKIMA_HOME;
+      else process.env.DOKIMA_HOME = savedHome;
+      await Promise.all([
+        fs.rm(home, { recursive: true, force: true }),
+        fs.rm(dir, { recursive: true, force: true }),
+      ]);
+    }
   });
 });

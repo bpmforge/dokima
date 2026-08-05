@@ -28,6 +28,8 @@ export const TASK_TYPES: readonly TaskType[] = [
 export interface ModelMatrixRow {
   readonly role: AgentRole;
   readonly taskType: TaskType;
+  /** Which provider this row means (W10-68). Absent keeps the pre-ticket meaning: bind to the single enabled provider, ambiguous if several. */
+  readonly providerId?: string;
   readonly model: string;
   readonly fallback: readonly string[];
   readonly updatedAt: string;
