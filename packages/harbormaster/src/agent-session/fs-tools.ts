@@ -279,6 +279,7 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
   const deadline = Date.now() + SEARCH_TIME_BUDGET_MS;
   let linesSinceTimeCheck = 0;
   let timedOut = false;
+  let skippedLongLines = 0;
   outer: for (const file of files) {
     let content: string;
     try {
@@ -297,7 +298,10 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
         }
       }
       const line = lines[i]!;
-      if (matcher.usesRegex && line.length > MAX_MATCH_LINE_LENGTH) continue;
+      if (matcher.usesRegex && line.length > MAX_MATCH_LINE_LENGTH) {
+        skippedLongLines += 1;
+        continue;
+      }
       if (matcher.test(line)) {
         matches.push({
           file: normalizeRelPath(path.relative(cwd, file)),
@@ -314,6 +318,13 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
     matches,
     truncated: matches.length >= MAX_SEARCH_MATCHES || timedOut,
     timedOut,
+    // Honest-degrade (never silent): a refused/invalid pattern still
+    // returns `{ok: true, matches: []}` on a real miss, indistinguishable
+    // from "your pattern was too complex, so we searched literally
+    // instead" unless the caller can see which mode actually ran, and how
+    // many candidate lines the regex-only length cap skipped outright.
+    matchMode: matcher.usesRegex ? 'regex' : 'literal',
+    skippedLongLines,
   };
 }
 

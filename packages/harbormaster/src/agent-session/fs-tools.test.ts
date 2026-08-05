@@ -201,6 +201,42 @@ describe('agent-session fs-tools', () => {
     expect(result.matches).toHaveLength(0);
   });
 
+  it(
+    "search reports matchMode so a refused pattern's empty result isn't " +
+      'indistinguishable from a genuine no-match (honest-degrade, never ' +
+      'silent) — a real regex reports "regex", a refused/invalid pattern ' +
+      'falling back to literal-substring reports "literal"',
+    async () => {
+      const dir = await tmpWorktree();
+      await writeTool(dir, { path: 'src/a.ts', content: 'foo123bar\n' });
+
+      const real = (await searchTool(dir, { pattern: '\\d+' })) as { matchMode: string };
+      expect(real.matchMode).toBe('regex');
+
+      const refused = (await searchTool(dir, { pattern: '(a+)+$' })) as {
+        matchMode: string;
+      };
+      expect(refused.matchMode).toBe('literal');
+    },
+  );
+
+  it(
+    'search reports skippedLongLines rather than silently omitting lines ' +
+      'past the regex-only length cap',
+    async () => {
+      const dir = await tmpWorktree();
+      const longLine = `${'x'.repeat(4000)}NEEDLE${'x'.repeat(100)}`;
+      await writeTool(dir, { path: 'src/a.ts', content: `${longLine}\n` });
+
+      const result = (await searchTool(dir, { pattern: '\\d+' })) as {
+        matches: unknown[];
+        skippedLongLines: number;
+      };
+      expect(result.matches).toHaveLength(0);
+      expect(result.skippedLongLines).toBe(1);
+    },
+  );
+
   describe('isUnsafeSearchPattern (ReDoS static heuristic)', () => {
     it('flags a nested-quantifier group as unsafe', () => {
       expect(isUnsafeSearchPattern('(a+)+$')).toBe(true);
