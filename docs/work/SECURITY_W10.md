@@ -1,4 +1,4 @@
-# Security pass — wave W10 (2026-08-04T21:32:39.952Z)
+# Security pass — wave W10 (2026-08-05T19:37:01.431Z)
 
 ```json
 {
@@ -6,22 +6,22 @@
   "high": [
     {
       "file": "plan.json",
-      "issue": "Ticket W10-68 status flips todo→blocked and a new freeform 'notes' entry (authored by an automated 'CONDUCTOR' process, embedding a literal branch name 'sw/w10-68' and timestamp) is appended directly to plan.json with no receipt/event-log entry visible in this diff. Project Law 4 requires every durable ticket/phase state change go through the verbs/receipts API and forbids a code path that flips status without a receipt — a raw plan.json state mutation is exactly the prohibited pattern.",
-      "fix": "Confirm this write was produced by writePlan()/the receipts pipeline and has a corresponding hash-chained events-table entry, not a direct file edit; if no receipt exists, revert and re-apply the status change through the proper API."
-    },
-    {
-      "file": "plan.json",
-      "issue": "The appended note is agent-session-authored free text (per Law 4, agent sessions are untrusted) that now lives in durable state and references a branch name. If any downstream tooling shells out to git using ticket notes/branch fields via string interpolation rather than argv-array execFile/spawn, this is a command-injection vector since the content is not operator-authored.",
-      "fix": "Audit all call sites that read plan.json notes/branch data and pass them to child_process or git commands; ensure argument-array invocation only (never shell:true or template-built command strings), and treat notes as untrusted display data."
+      "issue": "This diff flips ticket W10-68's status (todo→blocked) and appends a CONDUCTOR-authored note directly in plan.json, with no receipt or verb-call artifact visible in the diff itself. Project CLAUDE.md Law 4 (C-2/C-3) states agent/conductor sessions are untrusted and every durable ticket/phase state change must go through the verbs/receipts API — a bare plan.json mutation is exactly the trust-boundary bypass that control exists to prevent.",
+      "fix": "Confirm this change was produced by the conductor invoking a receipts-backed verb (e.g. a blockTicket verb) that logged an event, not a direct file write by the agent process. If it was a direct write, route status transitions through the verbs API and require a corresponding receipt/event-log entry before the status field is considered authoritative."
     }
   ],
   "medium": [
     {
       "file": "plan.json",
-      "issue": "'notes' changed from a single string to an array of strings for this ticket with no accompanying schema/migration change in the diff. Consumers that assume notes:string (rendering, hashing, concatenation) will misbehave or throw for this record and any future mixed-type records.",
-      "fix": "Add a normalizer at the read boundary (string|string[] → string[]) and update the plan.json validator/schema so all tickets validate consistently; add a regression test for legacy string-notes records."
+      "issue": "The patch is a narrow two-hunk diff rather than a full-file rewrite, consistent with a byte-preserving writer, but nothing in the diff proves it went through the project's known-safe writePlan() path (see prior incident: naive JSON.stringify writes reformatted the file and broke a W9-11 test). Conductor-driven writers are a plausible place for that regression to reappear since they run unattended.",
+      "fix": "Add a CI check asserting plan.json bytes outside the touched ticket's fields are unchanged for every writer path (including the conductor), not just for manually-invoked CLI edits."
+    },
+    {
+      "file": "plan.json",
+      "issue": "The appended note is free-text narrative from an autonomous conductor process; if this field is later rendered in a web UI (apps/web) without escaping, attacker- or model-controlled content in ticket notes could enable stored XSS. Not confirmed in this diff since no rendering code is included.",
+      "fix": "Verify the web UI renders plan.json note/text fields as escaped text (not dangerouslySetInnerHTML/raw HTML) wherever ticket notes are displayed."
     }
   ],
-  "notes": "Diff is data-only (plan.json ticket bookkeeping) — no source code, dependency manifests, or literal secrets present, so no findings on hardcoded credentials, unsafe deserialization, or dependency risk from what's shown. Both high items are conditional: they flag exactly the failure modes this project's own CLAUDE.md calls out (Law 4 receipts requirement; git child-process shelling) that this diff's pattern (raw state-file mutation + agent-authored freeform text newly entering that file) would violate if the surrounding write path and downstream git-invocation sites don't already guard against them — verify against the actual writePlan() call site and git-spawning code before treating as confirmed."
+  "notes": "This diff contains no application/runtime code, shell invocations, secrets, dependency manifests, or deserialization logic — only a plan.json status flip and an appended note. Most standard OWASP/injection/dependency categories don't apply to this specific diff. The only substantive finding is architectural: plan.json encodes durable ticket state, and per this project's own Law 4 such transitions must be receipt-backed since agent sessions are untrusted; this diff alone cannot confirm that invariant held."
 }
 ```
