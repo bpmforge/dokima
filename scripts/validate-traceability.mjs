@@ -51,7 +51,15 @@ function expandFrCitations(text) {
   return out;
 }
 
-const ticketText = (t) => [t.title, ...(t.acceptance ?? []), typeof t.notes === 'string' ? t.notes : ''].join('\n');
+// `notes` is string-or-array by history, and conductor/land.mjs converts a
+// string to an array the first time any ticket is blocked. The earlier form
+// (`typeof t.notes === 'string' ? t.notes : ''`) silently scanned NOTHING for
+// every array-shaped ticket — 95 of 186 on this board when the wave-W11
+// security pass found it, i.e. the F1 doc-path and F2 FR/NFR-citation checks
+// had been half-blind for most of the project's history, and got blinder every
+// time the conductor blocked a ticket. Handle both shapes.
+const ticketText = (t) =>
+  [t.title, ...(t.acceptance ?? []), Array.isArray(t.notes) ? t.notes.join('\n') : (t.notes ?? '')].join('\n');
 const deliverables = plan.tickets.flatMap((t) => t.write_scope ?? []);
 const coveredByScope = (p) => deliverables.some((w) => w === p || p.startsWith(w.replace(/\*\*?$/, '')));
 
