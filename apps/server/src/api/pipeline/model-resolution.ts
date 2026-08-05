@@ -19,14 +19,19 @@
  *      LOSING to an explicit selection. A config that silently beats the UI is
  *      the bug this ticket exists to fix, in the other direction.
  *
- * Model->provider binding uses the `<providerId>/<model>` prefix convention
- * already half-present in the codebase: `matrix-routes.ts` flags Copilot rows
- * by a `copilot/` prefix. An unprefixed model resolves against the single
- * enabled provider when there is exactly one, and is otherwise ambiguous —
- * reported, never guessed.
+ * Model->provider binding (W10-68): a matrix row's own `provider_id` column
+ * is authoritative when set — the structured pair this ticket added so a
+ * row states which provider it means instead of encoding it in punctuation.
+ * A row without one predates this ticket (or was entered with no prefix at
+ * all) and falls back to W10-60's `<providerId>/<model>` string convention
+ * (`matrix-routes.ts` still flags Copilot rows by a `copilot/` prefix that
+ * way). An unprefixed model resolves against the single enabled provider
+ * when there is exactly one, and is otherwise ambiguous — reported, never
+ * guessed.
  */
 
 import {
+  DEFAULT_ROLE,
   FitnessCardStore,
   route,
   type AgentRole,
@@ -122,21 +127,71 @@ export function splitModelRef(
   return { providerId: prefix, model: value.slice(slash + 1) };
 }
 
+/**
+ * Looks up the providerId of the SPECIFIC row that produced a resolved
+ * chain's primary model (W10-68) — the same (role, then role's own default)
+ * selection `matrixFromRows`/`resolveModelChain` make internally, replayed
+ * here because `route()` only hands back the flattened model string, not
+ * the row it came from. `role` must already be the EFFECTIVE role
+ * (`DEFAULT_ROLE` when `route()` reports `usedDefaultRole`), matching
+ * whichever role's rows `matrixFromRows` actually used.
+ */
+function findRowProviderId(
+  rows: readonly ModelMatrixRow[],
+  role: AgentRole,
+  taskType: TaskType,
+): string | undefined {
+  const roleRows = rows.filter((r) => r.role === role);
+  const exact = roleRows.find((r) => r.taskType === taskType);
+  return (exact ?? roleRows[0])?.providerId;
+}
+
+interface BoundModel {
+  readonly modelRef: string;
+  /** The row's OWN provider binding (W10-68), when it has one. */
+  readonly providerId?: string;
+}
+
+/**
+ * Binds a resolved model string to a provider.
+ *
+ * `providerId` set (a structured row, or a migrated legacy one) is the
+ * whole answer: no string parsing, no ambiguity, and an id naming no
+ * ENABLED provider refuses with `unknown-provider` — RESTORING the refusal
+ * W10-60 had to trade away (see `splitModelRef`'s docstring). `providerId`
+ * absent means the row predates this ticket and was never migrated (its
+ * `model` may still encode "<providerId>/<model>"): fall back to W10-60's
+ * registry-consulting split, the bounded, DOCUMENTED regression this
+ * ticket does not remove — see "binds an unregistered prefix..." in
+ * model-resolution.test.ts.
+ */
 function bindProvider(
-  modelRef: string,
+  bound: BoundModel,
   providers: readonly ProviderEntry[],
 ): ResolvedModelTarget {
+  const enabled = providers.filter((p) => p.enabled);
+
+  if (bound.providerId !== undefined) {
+    const match = enabled.find((p) => p.id === bound.providerId);
+    if (!match) {
+      throw new ModelResolutionError(
+        `the matrix routes to "${bound.modelRef}" but no ENABLED provider is registered with id "${bound.providerId}"`,
+        'unknown-provider',
+      );
+    }
+    return { ...toTarget(match), model: bound.modelRef, source: 'registry' };
+  }
+
   const { providerId, model } = splitModelRef(
-    modelRef,
+    bound.modelRef,
     providers.map((p) => p.id),
   );
-  const enabled = providers.filter((p) => p.enabled);
 
   if (providerId !== undefined) {
     const match = enabled.find((p) => p.id === providerId);
     if (!match) {
       throw new ModelResolutionError(
-        `the matrix routes to "${modelRef}" but no ENABLED provider is registered with id "${providerId}"`,
+        `the matrix routes to "${bound.modelRef}" but no ENABLED provider is registered with id "${providerId}"`,
         'unknown-provider',
       );
     }
@@ -148,8 +203,8 @@ function bindProvider(
   }
   throw new ModelResolutionError(
     enabled.length === 0
-      ? `the matrix routes to "${modelRef}" but no provider is enabled`
-      : `"${modelRef}" has no provider prefix and ${enabled.length} providers are enabled — qualify it as "<providerId>/${modelRef}"`,
+      ? `the matrix routes to "${bound.modelRef}" but no provider is enabled`
+      : `"${bound.modelRef}" has no provider prefix and ${enabled.length} providers are enabled — qualify it as "<providerId>/${bound.modelRef}"`,
     enabled.length === 0 ? 'no-enabled-provider' : 'ambiguous-provider',
   );
 }
@@ -222,5 +277,13 @@ export async function resolveModelTarget(
     fitnessStore: new FitnessCardStore(),
   });
 
-  return bindProvider(routed.chain[0]!, providers);
+  // The row that WON is not necessarily keyed by `input.role`: `route()`
+  // falls back to the `DEFAULT_ROLE` role's rows when `input.role` has none
+  // of its own (`usedDefaultRole`), and `matrixFromRows` did the same thing
+  // building the matrix `route()` read. Looking the provider up under the
+  // wrong role would silently find a different row's binding, or none.
+  const effectiveRole = routed.usedDefaultRole ? DEFAULT_ROLE : input.role;
+  const providerId = findRowProviderId(rows, effectiveRole, input.taskType);
+
+  return bindProvider({ modelRef: routed.chain[0]!, providerId }, providers);
 }
