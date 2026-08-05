@@ -4766,7 +4766,7 @@
       "depends_on": [
         "W10-60"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "THE AMBIGUITY IS IN THE DATA MODEL, not in any call site. A matrix row stores one string and the resolver has to guess whether the part before the first slash is a providerId or a vendor namespace. `ghost/model` (a typo, or a provider since removed) and `qwen/qwen3-coder-next` (a real model id from a live LM Studio catalog) are the same shape. No parsing rule distinguishes them, so W10-60 had to pick a winner.",
