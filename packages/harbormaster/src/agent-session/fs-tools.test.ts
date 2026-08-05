@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   editTool,
+  isUnsafeSearchPattern,
   listTool,
   normalizeRelPath,
   readTool,
@@ -198,5 +199,64 @@ describe('agent-session fs-tools', () => {
       matches: unknown[];
     };
     expect(result.matches).toHaveLength(0);
+  });
+
+  describe('isUnsafeSearchPattern (ReDoS static heuristic)', () => {
+    it('flags a nested-quantifier group as unsafe', () => {
+      expect(isUnsafeSearchPattern('(a+)+$')).toBe(true);
+      expect(isUnsafeSearchPattern('(a*)*')).toBe(true);
+      expect(isUnsafeSearchPattern('(a{2,}){2,}')).toBe(true);
+    });
+
+    it('flags an overlapping-alternation group as unsafe', () => {
+      expect(isUnsafeSearchPattern('(a|a)+$')).toBe(true);
+    });
+
+    it('flags an oversized pattern as unsafe', () => {
+      expect(isUnsafeSearchPattern('a'.repeat(500))).toBe(true);
+    });
+
+    it('does not flag ordinary search patterns', () => {
+      expect(isUnsafeSearchPattern('NEEDLE')).toBe(false);
+      expect(isUnsafeSearchPattern('TODO:.*')).toBe(false);
+      expect(isUnsafeSearchPattern('export (const|function)')).toBe(false);
+      expect(isUnsafeSearchPattern('\\(a\\+\\)\\+')).toBe(false);
+      expect(isUnsafeSearchPattern('[a-z]+\\d+')).toBe(false);
+    });
+  });
+
+  it(
+    'search stays fast against a classic catastrophic-backtracking pattern ' +
+      '(ReDoS: a hung regex would block the whole harbormaster event loop, ' +
+      'not just this call)',
+    async () => {
+      const dir = await tmpWorktree();
+      const adversarialLine = `${'a'.repeat(40)}!`;
+      await writeTool(dir, { path: 'src/a.ts', content: `${adversarialLine}\n` });
+
+      const start = Date.now();
+      const result = (await searchTool(dir, { pattern: '(a+)+$' })) as {
+        ok: boolean;
+        matches: unknown[];
+      };
+      const elapsedMs = Date.now() - start;
+
+      expect(elapsedMs).toBeLessThan(1000);
+      expect(result.ok).toBe(true);
+      expect(result.matches).toHaveLength(0);
+    },
+  );
+
+  it('search falls back to literal-substring matching for an unsafe pattern', async () => {
+    const dir = await tmpWorktree();
+    await writeTool(dir, {
+      path: 'src/a.ts',
+      content: 'the literal text (a+)+$ appears here\n',
+    });
+    const result = (await searchTool(dir, { pattern: '(a+)+$' })) as {
+      matches: { file: string; line: number }[];
+    };
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]!.file).toBe('src/a.ts');
   });
 });

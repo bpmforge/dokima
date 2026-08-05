@@ -32,6 +32,32 @@ import { classifyManifestFile } from '../scope.js';
 const MAX_SEARCH_MATCHES = 200;
 const SEARCH_SKIP_DIRS = new Set(['.git', 'node_modules']);
 
+/**
+ * SECURITY (ReDoS, SC-18): `search`'s `pattern` is model-supplied and the
+ * schema documents regex support, so a catastrophic-backtracking pattern
+ * (`(a+)+$`, `(a|a)+$`) is trivially reachable by design. JS regex
+ * execution is synchronous on the single harbormaster event loop and
+ * nothing upstream (`requestToolCall` in packages/mcp) wraps a tool call
+ * in a timeout, so a single pathological `search` call can hang the whole
+ * process forever — including past T-27's own iteration cap, since a
+ * hung call never returns to let the loop count the turn. Three bounds,
+ * matching the timeout discipline `reRunVerify` gives `verify`:
+ * (1) `isUnsafeSearchPattern` statically refuses the nested-quantifier/
+ * overlapping-alternation shapes behind every well-known catastrophic
+ * pattern before a regex is ever constructed — `toMatcher` falls back to
+ * literal-substring matching for anything refused, same as it already
+ * does for a syntactically invalid pattern; (2) `MAX_MATCH_LINE_LENGTH`
+ * caps the input handed to any one `.test()` call, bounding even a
+ * pattern the heuristic misses; (3) `SEARCH_TIME_BUDGET_MS` is a
+ * wall-clock budget checked between lines, bounding the call's *total*
+ * time across many files/lines (it cannot interrupt a single hung
+ * `.test()` call already in progress — bound (1) is what prevents that).
+ */
+const MAX_PATTERN_LENGTH = 200;
+const MAX_MATCH_LINE_LENGTH = 4000;
+const SEARCH_TIME_BUDGET_MS = 3000;
+const TIME_CHECK_INTERVAL_LINES = 200;
+
 export class ToolPathEscapeError extends Error {
   constructor(relPath: string) {
     super(`path "${relPath}" escapes the ticket worktree`);
@@ -138,7 +164,60 @@ export interface SearchToolArgs {
   readonly path?: string;
 }
 
+/**
+ * Conservative static heuristic: true if `pattern` contains a quantified
+ * group — `(...)+`, `(...)*`, `(...){n,}` — whose body itself contains
+ * another quantifier or an alternation (`*`, `+`, `{`, `|`), the shape
+ * behind every well-known catastrophic-backtracking example. Deliberately
+ * errs toward over-rejecting an unusual-but-safe pattern over
+ * under-rejecting a dangerous one: a false positive costs `toMatcher`
+ * precision (it falls back to literal-substring matching), never safety.
+ * Content inside a `[...]` character class is exempt — `[+*|]` is a
+ * literal class, not a quantifier.
+ */
+export function isUnsafeSearchPattern(pattern: string): boolean {
+  if (pattern.length > MAX_PATTERN_LENGTH) return true;
+  let inClass = false;
+  const groupBodyRisky: boolean[] = [];
+  for (let i = 0; i < pattern.length; i += 1) {
+    const ch = pattern[i];
+    if (ch === '\\') {
+      i += 1;
+      continue;
+    }
+    if (inClass) {
+      if (ch === ']') inClass = false;
+      continue;
+    }
+    if (ch === '[') {
+      inClass = true;
+      continue;
+    }
+    if (ch === '(') {
+      groupBodyRisky.push(false);
+      continue;
+    }
+    if (ch === ')') {
+      const bodyRisky = groupBodyRisky.pop() ?? false;
+      const next = pattern[i + 1];
+      const quantified = next === '*' || next === '+' || next === '{';
+      if (quantified && bodyRisky) return true;
+      if (bodyRisky && groupBodyRisky.length > 0) {
+        groupBodyRisky[groupBodyRisky.length - 1] = true;
+      }
+      continue;
+    }
+    if (ch === '*' || ch === '+' || ch === '{' || ch === '|') {
+      if (groupBodyRisky.length > 0) groupBodyRisky[groupBodyRisky.length - 1] = true;
+    }
+  }
+  return false;
+}
+
 function toMatcher(pattern: string): (line: string) => boolean {
+  if (isUnsafeSearchPattern(pattern)) {
+    return (line) => line.includes(pattern);
+  }
   try {
     const re = new RegExp(pattern);
     return (line) => re.test(line);
@@ -166,6 +245,9 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
   const files: string[] = [];
   await walk(root, files);
   const isMatch = toMatcher(args.pattern);
+  const deadline = Date.now() + SEARCH_TIME_BUDGET_MS;
+  let linesSinceTimeCheck = 0;
+  let timedOut = false;
   outer: for (const file of files) {
     let content: string;
     try {
@@ -175,11 +257,21 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
     }
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i += 1) {
-      if (isMatch(lines[i]!)) {
+      linesSinceTimeCheck += 1;
+      if (linesSinceTimeCheck >= TIME_CHECK_INTERVAL_LINES) {
+        linesSinceTimeCheck = 0;
+        if (Date.now() >= deadline) {
+          timedOut = true;
+          break outer;
+        }
+      }
+      const line = lines[i]!;
+      if (line.length > MAX_MATCH_LINE_LENGTH) continue;
+      if (isMatch(line)) {
         matches.push({
           file: normalizeRelPath(path.relative(cwd, file)),
           line: i + 1,
-          text: lines[i]!,
+          text: line,
         });
         if (matches.length >= MAX_SEARCH_MATCHES) break outer;
       }
@@ -189,7 +281,8 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
     ok: true,
     pattern: args.pattern,
     matches,
-    truncated: matches.length >= MAX_SEARCH_MATCHES,
+    truncated: matches.length >= MAX_SEARCH_MATCHES || timedOut,
+    timedOut,
   };
 }
 

@@ -62,7 +62,11 @@ export const AGENT_SESSION_TOOL_SCHEMAS: readonly ToolSchema[] = [
       properties: {
         pattern: {
           type: 'string',
-          description: 'Literal substring or JS regular expression.',
+          description:
+            'Literal substring or JS regular expression. A pattern with a ' +
+            'catastrophic-backtracking shape (nested quantifiers, overlapping ' +
+            'alternation) or over 200 characters is used as a literal substring ' +
+            'instead of a regular expression.',
         },
         path: {
           type: 'string',
