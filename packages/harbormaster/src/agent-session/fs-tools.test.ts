@@ -216,6 +216,17 @@ describe('agent-session fs-tools', () => {
       expect(isUnsafeSearchPattern('a'.repeat(500))).toBe(true);
     });
 
+    it(
+      'flags adjacent, ungrouped unbounded quantifiers as unsafe — a ' +
+        'polynomial-backtracking shape a purely group-nested check misses ' +
+        'entirely (measured: /.*.*.*.*.*=/ has no groups at all, yet is ' +
+        'multi-second against inputs well under a few hundred characters)',
+      () => {
+        expect(isUnsafeSearchPattern('.*.*.*.*.*=')).toBe(true);
+        expect(isUnsafeSearchPattern('.*.*.*=')).toBe(true);
+      },
+    );
+
     it('does not flag ordinary search patterns', () => {
       expect(isUnsafeSearchPattern('NEEDLE')).toBe(false);
       expect(isUnsafeSearchPattern('TODO:.*')).toBe(false);
@@ -259,4 +270,55 @@ describe('agent-session fs-tools', () => {
     expect(result.matches).toHaveLength(1);
     expect(result.matches[0]!.file).toBe('src/a.ts');
   });
+
+  it(
+    'search stays fast against a long line for a polynomial-backtracking ' +
+      'pattern that has no groups at all (adjacent unbounded quantifiers): ' +
+      'measured at ~11s against a single 4000-char line before the ' +
+      'regex-only line-length cap existed',
+    async () => {
+      const dir = await tmpWorktree();
+      const adversarialLine = `${'a'.repeat(4000)}!`;
+      await writeTool(dir, { path: 'src/a.ts', content: `${adversarialLine}\n` });
+
+      const start = Date.now();
+      const result = (await searchTool(dir, { pattern: '.*.*=' })) as {
+        ok: boolean;
+        matches: unknown[];
+      };
+      const elapsedMs = Date.now() - start;
+
+      expect(elapsedMs).toBeLessThan(1000);
+      expect(result.ok).toBe(true);
+    },
+  );
+
+  it(
+    'search still runs a real (allowed) regex against lines within the ' + 'length cap',
+    async () => {
+      const dir = await tmpWorktree();
+      await writeTool(dir, { path: 'src/a.ts', content: 'foo123bar\n' });
+      const result = (await searchTool(dir, { pattern: '\\d+' })) as {
+        matches: { file: string; line: number; text: string }[];
+      };
+      expect(result.matches).toHaveLength(1);
+      expect(result.matches[0]!.text).toBe('foo123bar');
+    },
+  );
+
+  it(
+    "search's line-length cap only applies to a real regex — the literal-" +
+      'substring fallback for a refused pattern still finds a match past ' +
+      'MAX_MATCH_LINE_LENGTH (literal .includes() is always linear, so ' +
+      'capping it costs precision for no safety benefit)',
+    async () => {
+      const dir = await tmpWorktree();
+      const longLine = `${'x'.repeat(4000)}(a+)+$${'x'.repeat(100)}`;
+      await writeTool(dir, { path: 'src/a.ts', content: `${longLine}\n` });
+      const result = (await searchTool(dir, { pattern: '(a+)+$' })) as {
+        matches: { file: string; line: number }[];
+      };
+      expect(result.matches).toHaveLength(1);
+    },
+  );
 });
