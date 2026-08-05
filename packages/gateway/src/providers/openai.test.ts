@@ -535,6 +535,171 @@ describe('OpenAiProvider — chatStream()', () => {
   });
 });
 
+/** Inline per FR-G9/W11-06: openai-fixtures.ts is outside this ticket's write_scope (mirrors oai-compat.test.ts's own inline fixture, filed under the same constraint by W11-01). */
+const sseChunk = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
+
+/** A single tool call whose id/name arrive on the first delta, arguments arrive split across two deltas — exactly how real OpenAI streams fragment tool_calls. */
+const toolCallStreamSse =
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [
+      {
+        index: 0,
+        delta: {
+          role: 'assistant',
+          tool_calls: [
+            {
+              index: 0,
+              id: 'call_stream_1',
+              type: 'function',
+              function: { name: 'get_weather', arguments: '' },
+            },
+          ],
+        },
+        finish_reason: null,
+      },
+    ],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [
+      {
+        index: 0,
+        delta: { tool_calls: [{ index: 0, function: { arguments: '{"location":' } }] },
+        finish_reason: null,
+      },
+    ],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [
+      {
+        index: 0,
+        delta: { tool_calls: [{ index: 0, function: { arguments: '"NYC"}' } }] },
+        finish_reason: null,
+      },
+    ],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }],
+  }) +
+  sseChunk({
+    id: 'chatcmpl-fixture-stream-tools-001',
+    object: 'chat.completion.chunk',
+    created: 1_752_000_011,
+    model: 'gpt-5.1',
+    choices: [],
+    usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+  }) +
+  'data: [DONE]\n\n';
+
+describe('OpenAiProvider — chatStream() tool calling (FR-G9, W11-06)', () => {
+  it('RED FIXTURE: serializes request.tools onto the streaming wire', async () => {
+    const calls: Call[] = [];
+    const { fetchImpl } = fakeStreamFetch(streamSuccessSse, calls);
+    const provider = createOpenAiProvider({
+      apiKey: 'sk-test',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const stream = provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools: [{ name: 'get_weather', parameters: { type: 'object', properties: {} } }],
+    });
+    const iterator = stream[Symbol.asyncIterator]();
+    while (!(await iterator.next()).done) {
+      // drain
+    }
+
+    const chatCall = calls.find((c) => c.path.endsWith('/chat/completions'));
+    expect((chatCall?.body as { tools?: unknown }).tools).toEqual([
+      {
+        type: 'function',
+        function: { name: 'get_weather', parameters: { type: 'object', properties: {} } },
+      },
+    ]);
+  });
+
+  it('omits tools from the streaming wire when the request carries none', async () => {
+    const calls: Call[] = [];
+    const { fetchImpl } = fakeStreamFetch(streamSuccessSse, calls);
+    const provider = createOpenAiProvider({
+      apiKey: 'sk-test',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const stream = provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    const iterator = stream[Symbol.asyncIterator]();
+    while (!(await iterator.next()).done) {
+      // drain
+    }
+
+    const chatCall = calls.find((c) => c.path.endsWith('/chat/completions'));
+    expect(chatCall?.body).not.toHaveProperty('tools');
+  });
+
+  it('RED FIXTURE: accumulates streamed tool_calls deltas into normalized toolCalls with finishReason "tool_calls"', async () => {
+    const provider = createOpenAiProvider({
+      apiKey: 'sk-test',
+      fetchImpl: fakeStreamFetch(toolCallStreamSse).fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    let final: import('./types.js').ChatResponse | undefined;
+    for await (const event of provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools: [{ name: 'get_weather', parameters: { type: 'object', properties: {} } }],
+    })) {
+      if (event.type === 'final') final = event.response;
+    }
+
+    expect(final?.finishReason).toBe('tool_calls');
+    expect(final?.toolCalls).toEqual([
+      { id: 'call_stream_1', name: 'get_weather', arguments: { location: 'NYC' } },
+    ]);
+  });
+
+  it('RED FIXTURE: chat() with the internal stream toggle also round-trips tools (shared streamEvents())', async () => {
+    const provider = createOpenAiProvider({
+      apiKey: 'sk-test',
+      fetchImpl: fakeStreamFetch(toolCallStreamSse).fetchImpl,
+      costTable: SAMPLE_COST,
+      stream: true,
+    });
+
+    const response = await provider.chat({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools: [{ name: 'get_weather', parameters: { type: 'object', properties: {} } }],
+    });
+
+    expect(response.finishReason).toBe('tool_calls');
+    expect(response.toolCalls).toEqual([
+      { id: 'call_stream_1', name: 'get_weather', arguments: { location: 'NYC' } },
+    ]);
+  });
+});
+
 describe('factory', () => {
   it('createOpenAiProvider defaults id to "openai" and baseUrl to api.openai.com/v1', async () => {
     const calls: Call[] = [];

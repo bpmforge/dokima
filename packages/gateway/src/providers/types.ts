@@ -4,6 +4,7 @@
  * ladder, budget breakers, and role matrix (later gateway tickets) never
  * special-case a specific vendor.
  */
+import { ProviderResponseShapeError } from './errors.js';
 
 export type ChatRole = 'system' | 'user' | 'assistant';
 
@@ -17,6 +18,12 @@ export interface ToolSchema {
   name: string;
   description?: string;
   parameters: Record<string, unknown>;
+}
+
+/** `ToolSchema` -> the OpenAI wire tool shape; JSON.stringify drops `description` when undefined. */
+export function toRawTool(tool: ToolSchema): Record<string, unknown> {
+  const { name, description, parameters } = tool;
+  return { type: 'function', function: { name, description, parameters } };
 }
 
 export interface ChatRequest {
@@ -56,13 +63,28 @@ export interface ChatResponse {
 }
 
 /**
- * FR-G9 OpenAI tool-calling wire shapes: shared by any OpenAI-compatible
- * adapter (oai-compat.ts's local path, and openai.ts's cloud path, which
- * delegates to it) — declared here rather than in oai-compat.ts because
- * W11-01's write_scope covers only this file and oai-compat.ts, not the
- * oai-compat-types.ts/oai-compat-helpers.ts chapter siblings, and
- * oai-compat.ts has no room left under the 400-line file-size cap.
- * `arguments` arrives as a JSON-encoded string, not yet parsed.
+ * FR-G9 OpenAI tool-calling wire shapes, and the (de)serialize helpers above
+ * (`toRawTool`, `applyToolCallDelta`, `finalizeToolCallDeltas`,
+ * `normalizeToolCalls`): shared by any OpenAI-compatible adapter. Precisely
+ * what "shared" means differs by call (W11-06, correcting an earlier version
+ * of this comment that claimed openai.ts's cloud path delegates to
+ * oai-compat.ts across the board — true only for non-streaming Provider
+ * methods, via the `OaiCompatProvider` instance openai.ts holds as
+ * `this.inner`): openai.ts's own SSE loop (`streamEvents()`, backing both
+ * `chat()`'s internal `stream` toggle and the public `chatStream()`) imports
+ * these wire-shape functions directly rather than delegating to
+ * `this.inner.chatStream()`, because that method awaits a warm-up ping and
+ * queues on a second, independent RequestQueue before its SSE loop starts —
+ * acceptable for oai-compat.ts's local-server callers, but a concurrency-
+ * contract and extra-round-trip change openai.ts's cloud callers did not ask
+ * for. oai-compat.ts keeps its own private, pre-existing copies of
+ * `toRawTool`/`normalizeToolCalls` (unchanged here, outside W11-06's
+ * write_scope) rather than importing these; a future ticket that owns that
+ * file can finish the consolidation. Declared here rather than in
+ * oai-compat.ts because W11-01's write_scope covered only this file and
+ * oai-compat.ts, not the oai-compat-types.ts/oai-compat-helpers.ts chapter
+ * siblings, and oai-compat.ts has no room left under the 400-line file-size
+ * cap. `arguments` arrives as a JSON-encoded string, not yet parsed.
  */
 export interface RawToolCall {
   id: string;
@@ -101,6 +123,24 @@ export function finalizeToolCallDeltas(acc: ToolCallAccumulator): RawToolCall[] 
       type: 'function',
       function: { name, arguments: args },
     }));
+}
+
+/** Raw wire tool_calls -> normalized `ToolCall[]`, arguments parsed once so callers never re-decode a per-provider JSON string. */
+export function normalizeToolCalls(providerId: string, raw: RawToolCall[]): ToolCall[] {
+  return raw.map(({ id, function: fn }) => {
+    try {
+      return {
+        id,
+        name: fn.name,
+        arguments: JSON.parse(fn.arguments) as Record<string, unknown>,
+      };
+    } catch {
+      throw new ProviderResponseShapeError(
+        providerId,
+        `tool call "${fn.name}" has unparseable arguments JSON: ${fn.arguments}`,
+      );
+    }
+  });
 }
 
 export interface ModelInfo {

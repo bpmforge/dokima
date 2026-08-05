@@ -37,15 +37,21 @@ import {
 import { createOaiCompatProvider } from './oai-compat.js';
 import { RequestQueue } from './request-queue.js';
 import { readSseDataLines, runQueuedStream } from './streaming.js';
-import type {
-  ChatRole,
-  ChatRequest,
-  ChatResponse,
-  FinishReason,
-  ModelInfo,
-  Provider,
-  ProviderHealth,
-  ProviderQueueStats,
+import {
+  applyToolCallDelta,
+  finalizeToolCallDeltas,
+  normalizeToolCalls,
+  toRawTool,
+  type ChatRole,
+  type ChatRequest,
+  type ChatResponse,
+  type FinishReason,
+  type ModelInfo,
+  type Provider,
+  type ProviderHealth,
+  type ProviderQueueStats,
+  type RawToolCallDelta,
+  type ToolCallAccumulator,
 } from './types.js';
 import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, type CostTable } from './usage.js';
@@ -76,7 +82,7 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 const DEFAULT_CLOUD_CONCURRENCY = 4;
 
 interface OpenAiStreamChoice {
-  delta: { role?: string; content?: string | null };
+  delta: { role?: string; content?: string | null; tool_calls?: RawToolCallDelta[] };
   finish_reason: string | null;
 }
 
@@ -212,6 +218,7 @@ export class OpenAiProvider implements Provider {
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
       ...(request.stop !== undefined ? { stop: request.stop } : {}),
+      ...(request.tools !== undefined ? { tools: request.tools.map(toRawTool) } : {}),
     };
 
     const response = await this.fetchRaw('/chat/completions', {
@@ -228,6 +235,7 @@ export class OpenAiProvider implements Provider {
     let modelId = request.model;
     let finishReasonRaw: string | null = null;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
+    const toolCallDeltas: ToolCallAccumulator = new Map();
 
     for await (const payload of readSseDataLines(response.body)) {
       if (payload === '[DONE]') continue;
@@ -240,6 +248,8 @@ export class OpenAiProvider implements Provider {
           content += choice.delta.content;
           yield { type: 'delta', content: choice.delta.content };
         }
+        for (const d of choice.delta.tool_calls ?? [])
+          applyToolCallDelta(toolCallDeltas, d);
         if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
       }
       if (event.usage) {
@@ -257,6 +267,8 @@ export class OpenAiProvider implements Provider {
       );
     }
 
+    const rawToolCalls = finalizeToolCallDeltas(toolCallDeltas);
+
     yield {
       type: 'final',
       response: {
@@ -264,6 +276,9 @@ export class OpenAiProvider implements Provider {
         message: { role, content },
         finishReason: normalizeFinishReason(finishReasonRaw),
         usage: normalizeUsage(usage, modelId, this.costTable),
+        ...(rawToolCalls.length > 0
+          ? { toolCalls: normalizeToolCalls(this.id, rawToolCalls) }
+          : {}),
       },
     };
   }
