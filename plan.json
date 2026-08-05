@@ -5337,6 +5337,34 @@
       "status": "todo",
       "notes": "Filed 2026-08-05 from the wave-W11 security pass, which is the layer that found it \u2014 the per-ticket reviewer never sees the harness, only the ticket diff. Composes with W11-08: both are gaps in the same scope-enforcement machinery (W11-08 adds a filing-time lint so a ticket that needs a migration is TOLD to scope it; this one closes the runtime hole that makes forgetting cheap), and they are one job for whoever picks them up, though they touch different files. Worth stating plainly so the next reader does not misread the risk: W10-68's widening is EXPLICIT in its write_scope, so it never depended on this hole \u2014 the exposure is every other ticket, not that one.",
       "stories": []
+    },
+    {
+      "id": "W11-10",
+      "title": "Migration 013 trades a loud error for silent data loss \u2014 a re-applied recreate resets every provider_id it was written to preserve",
+      "phase": 11,
+      "module": "infra",
+      "lane": "ui",
+      "write_scope": [
+        "packages/events/migrations/*model_matrix*",
+        "packages/events/src/migrate.ts",
+        "packages/events/src/db.test.ts",
+        "apps/server/src/bootstrap/boot-sequence.test.ts"
+      ],
+      "depends_on": [
+        "W10-68"
+      ],
+      "acceptance": [
+        "(C-6) RAISED AS A MEDIUM ADVISORY ON W10-68 by the conductor's reviewer, which APPROVEd anyway because advisories do not block a land \u2014 so this reached main. Reproduced independently before filing rather than taken on the reviewer's word: applying `013_model_matrix_provider.sql` to a seeded `model_matrix`, setting `provider_id='lm-studio'`, then applying the same file again returns `provider_id: null`. The recreate's `INSERT INTO model_matrix_new (role, task_type, model, fallback, updated_at) SELECT ...` never carries `provider_id` across.",
+        "IT CONTRADICTS ITS OWN COMMENT, which is what makes it costly rather than merely wrong: the file says the recreate 'keeps applyMigrations able to reapply this file to a db whose provider_id column is already present without erroring.' It does avoid the error \u2014 by silently reverting exactly the data the ticket existed to introduce. W10-68's own acceptance says a migration that changes which model a run calls is worse than the bug it fixes; this is that, one level down.",
+        "UNDERSTAND WHY IT IS SHAPED THIS WAY BEFORE CHANGING IT, because the first shape was correct and got rejected for a different reason. W10-68's attempt 1 used a plain `ALTER TABLE model_matrix ADD COLUMN provider_id`. That made `boot-sequence.test.ts`'s rewound-`user_version` fixture re-apply the migration and hit 'duplicate column name'. The maker was out of scope for that test file, so it reshaped the migration instead. The reshape is the defect. The honest question this ticket must answer is which invariant is real.",
+        "DECIDE AND STATE IT, rather than patching the SQL until the suite is green. Either (a) migrations are genuinely re-appliable, in which case 013 must preserve `provider_id` across the recreate and `db.test.ts` gets a fixture proving a populated column survives re-application; or (b) they are not, `user_version` is the sole authority, and the boot-sequence fixture that rewinds it without undoing the migration's effect is the thing to fix. DATABASE.md's forward-only claim is evidence for (b) but does not settle it \u2014 say which reading was taken and why.",
+        "RED FIXTURE: seed `model_matrix` with a populated `provider_id`, apply migration 013 a second time, and assert the value survives (under reading a) or that re-application is refused outright rather than silently succeeding (under reading b). Failing today, where it returns NULL and reports success.",
+        "SCOPE NOTE, checked before filing so the maker does not discover it mid-session: `packages/events/src/migrate.ts` and `apps/server/src/bootstrap/boot-sequence.test.ts` are both in this write_scope precisely because either reading may need them \u2014 W10-68 could reach neither, which is why it reshaped the SQL instead. The one collision found was real and is resolved by LANE, not by narrowing: W10-58 (ui) claims `packages/events/src/**`, which covers `migrate.ts` and `db.test.ts`, so filing this as `infra` produced a P8 cross-lane overlap. Lane set to `ui` to match \u2014 same-lane tickets never run in parallel, which is the actual constraint wanted here, and it is the same reasoning W10-68's notes record for pairing with W10-64. Narrowing the scope instead would have reproduced W10-68's exact defect: a ticket that cannot reach the file its fix must live in."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-05, the fourth ticket this session originating in a reviewer advisory or a maker's own disclosure rather than a red test \u2014 after W11-06 (FR-G9 tool-drop), W11-07 (the promised consolidation), and W11-09 (the alwaysOk write-gate hole). The pattern is worth stating: on this board the APPROVE line is the least informative part of a review, and every genuinely new defect this session arrived as an advisory that did not block, a self-block that did, or a wave-level pass reading code no per-ticket reviewer sees. Also the third instance in one session of a fix being itself incomplete \u2014 W11-02's first ReDoS bound missed adjacent quantifiers, its first symlink hardening missed the leaf case, and here a migration reshaped to avoid an error introduced silent data loss instead. None of the three were caught by the author; all three were caught by the next layer.",
+      "stories": []
     }
   ]
 }
