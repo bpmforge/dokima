@@ -8,6 +8,7 @@
     "@dokima/gateway": "workspace:*",
     "@dokima/git": "workspace:*",
     "@dokima/loop": "workspace:*",
+    "@dokima/mcp": "workspace:*",
     "@dokima/shared": "workspace:*",
     "@dokima/tickets": "workspace:*",
     "@dokima/validators": "workspace:*"

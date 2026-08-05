@@ -112,7 +112,7 @@ the log; a rebuild command exists and is the recovery of last resort.
 | loop | packages/loop | micro-loop engine, anchors (tool/memory/challenger/adaptive), coverage tracker, calibration | §3.5 |
 | validators | packages/validators | validator-pack runner (exit 0/1 + JSON gaps), receipt minting inputs | §3.2 |
 | gateway | packages/gateway | provider adapters (Anthropic/OpenAI/Copilot/Vertex/LM Studio/Ollama/OpenAI-compat), role matrix, escalation ladder R0–R4, budget breakers, spend metering, warm-up/queueing | §3.3, D-007 |
-| agent-session | packages/harbormaster (`src/agent-session/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, commits on the ticket branch, and iterates to a Completion Manifest. Lives in harbormaster because it already declares BOTH `@dokima/gateway` and `@dokima/loop` and already owns the claim loop that consumes a `SpawnSession`. Tool allowlisting, approval and audit reuse `packages/mcp` (W6-04) rather than a parallel mechanism — `@dokima/mcp` is not yet a declared dependency of `harbormaster`; whoever wires it in must add it to `package.json` **and** the ✅ in the §4 matrix below in the same change, or `scripts/validate-plan.mjs` P10 fails (W11-05's ticket notes flag that W11-02's `write_scope` does not currently cover either file) | §3.6, D-023 |
+| agent-session | packages/harbormaster (`src/agent-session/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, commits on the ticket branch, and iterates to a Completion Manifest. Lives in harbormaster because it already declares BOTH `@dokima/gateway` and `@dokima/loop` and already owns the claim loop that consumes a `SpawnSession`. Tool allowlisting, approval and audit reuse `packages/mcp` (W6-04) rather than a parallel mechanism — that import is now **declared and permitted** (founder decision 2026-08-05): `@dokima/mcp` is in `harbormaster`'s `package.json` and carries its ✅ in the §4 matrix below, made as one change so `scripts/validate-plan.mjs` P10 stays green. It is a safe edge, not merely a convenient one: `@dokima/mcp` itself declares only `@dokima/events`, which `harbormaster` already had, so the graph gains no cycle and no new leaf. W11-02 therefore consumes an existing dependency rather than amending the architecture mid-ticket | §3.6, D-023 |
 | harbormaster | packages/harbormaster | out-of-session orchestrator: claim loop, gate re-execution, berths, breakpoints, watchdog, morning queue, resume | §3.6 |
 | pipeline | packages/pipeline | phase state machine 0–5, discovery interview, decision slates + Blueprint stage, research path, Challenger, task decomposer | §3.2, §4 |
 | git | packages/git | worktrees, ticket branches, explicit-path staging, diff-based scope check, landing | §3.9 |
@@ -146,7 +146,7 @@ in `package.json` **and** adding the ✅ here in the same change.
 | **mcp** | | ✅ | | | | | | | | | |
 | **loop** | ✅ | | | | | | | | | | |
 | **pipeline** | | | | | | | | | | | |
-| **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | | | ✅ | |
+| **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | | ✅ | ✅ | |
 | **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | | ✅ | ✅ (+harbormaster) |
 | **apps/web** | | | | | | | | | | | |
 

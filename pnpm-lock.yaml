@@ -190,6 +190,9 @@ importers:
       '@dokima/loop':
         specifier: workspace:*
         version: link:../loop
+      '@dokima/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@dokima/shared':
         specifier: workspace:*
         version: link:../shared
