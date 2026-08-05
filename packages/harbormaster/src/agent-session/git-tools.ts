@@ -10,6 +10,7 @@
 
 import { commitWithScopeCheck, type WorktreeHandle } from '@dokima/git';
 import { reRunVerify } from '../loop-gates-verify.js';
+import { normalizeRelPath } from './fs-tools.js';
 
 const MAX_OUTPUT_CHARS = 4000;
 
@@ -40,8 +41,9 @@ export async function commitTool(
       reason: 'commit requires at least one explicit file — never a wildcard',
     };
   }
+  const files = args.files.map(normalizeRelPath);
   const result = await commitWithScopeCheck(toWorktreeHandle(cwd), {
-    paths: [...args.files],
+    paths: files,
     message: args.message,
     writeScope: [...writeScope],
   });
@@ -52,7 +54,7 @@ export async function commitTool(
       violations: result.violations,
     };
   }
-  return { ok: true, committed: true, files: args.files };
+  return { ok: true, committed: true, files };
 }
 
 export async function verifyTool(

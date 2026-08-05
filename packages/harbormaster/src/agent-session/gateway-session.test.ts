@@ -150,7 +150,7 @@ describe('createGatewaySpawnSession', () => {
     return { log, cwd };
   }
 
-  it('(acceptance 1) sends the tool schema through the routed model and returns the final message with no manifest yet to parse', async () => {
+  it('(acceptance 1, FR-H6) sends the tool schema through the routed model and returns the final message with no manifest yet to parse', async () => {
     const { log, cwd } = await setup();
     const provider = new ScriptedFakeProvider([finalResponse('plain text, no manifest')]);
     const ledger = new CostLedger();
@@ -255,7 +255,7 @@ describe('createGatewaySpawnSession', () => {
     expect(alwaysToolCalls.calls).toHaveLength(3);
   });
 
-  it('stops once the optional per-session cost cap is reached (the other half of "or the budget stops it")', async () => {
+  it('stops once the optional per-ticket cost cap is reached (the other half of "or the budget stops it")', async () => {
     const { log, cwd } = await setup();
     const provider = new ScriptedFakeProvider([
       toolCallResponse([{ id: 'call_1', name: 'list', arguments: {} }], 0.6),
@@ -263,7 +263,7 @@ describe('createGatewaySpawnSession', () => {
     ]);
     const ledger = new CostLedger();
     const spawn = createGatewaySpawnSession(
-      baseSpawnOptions(log, provider, ledger, { maxIterations: 10, maxCostUsd: 1 }),
+      baseSpawnOptions(log, provider, ledger, { maxIterations: 10, maxTicketCostUsd: 1 }),
     );
 
     const result = await spawn({
@@ -272,8 +272,41 @@ describe('createGatewaySpawnSession', () => {
     });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('per-session cost cap ($1)');
+    expect(result.stderr).toContain('per-ticket cost cap ($1)');
     expect(provider.calls).toHaveLength(2);
+  });
+
+  it('the cost cap is per-ticket, not per-session: a second attempt sharing the same ledger stops on its very first call once the ticket total already covers the cap', async () => {
+    const { log, cwd } = await setup();
+    const ledger = new CostLedger();
+
+    const firstAttemptProvider = new ScriptedFakeProvider([
+      finalResponse('draft, no manifest', 0.9),
+    ]);
+    const firstSpawn = createGatewaySpawnSession(
+      baseSpawnOptions(log, firstAttemptProvider, ledger, { maxTicketCostUsd: 1 }),
+    );
+    const firstResult = await firstSpawn({
+      prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+      cwd,
+    });
+    expect(firstResult.exitCode).toBe(0); // under the cap on its own
+
+    const secondAttemptProvider = new ScriptedFakeProvider([
+      toolCallResponse([{ id: 'call_1', name: 'list', arguments: {} }], 0.2),
+    ]);
+    const secondSpawn = createGatewaySpawnSession(
+      baseSpawnOptions(log, secondAttemptProvider, ledger, { maxTicketCostUsd: 1 }),
+    );
+    const secondResult = await secondSpawn({
+      prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+      cwd,
+    });
+
+    // 0.9 (attempt 1) + 0.2 (attempt 2's one call) = 1.1 >= 1 — stops after
+    // its FIRST call, because the ledger already carried attempt 1's spend.
+    expect(secondResult.exitCode).toBe(1);
+    expect(secondAttemptProvider.calls).toHaveLength(1);
   });
 });
 
@@ -426,7 +459,7 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     );
   });
 
-  it('(acceptance 6) a session whose model never stops calling tools parks the ticket with evidence rather than looping forever', async () => {
+  it('(acceptance 6, T-27) a session whose model never stops calling tools parks the ticket with evidence rather than looping forever', async () => {
     const fixture = await setupRepo();
     seedTicket(fixture.log, 'W9-01');
 
@@ -448,6 +481,17 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     expect(result.processed[0]!.parkedReason).toBe('ladder_exhausted');
     expect(result.processed[0]!.attempts[0]!.closeGate).toBeNull();
     expect(result.processed[0]!.attempts[0]!.session.manifest).toBeNull();
+    // The park comment's own header ("auto-blocked with evidence") is
+    // reason-agnostic — every park reason renders it. What actually proves
+    // THIS is a T-27 budget stop (not a spoofed manifest or any other
+    // park cause) is the session's own output, which folds in the
+    // gateway-session stderr `runSession` captured (loop-land.ts renders
+    // only exitCode/manifest-presence into the park comment itself, not
+    // the session's stop reason — a render gap worth a future HANDOFF, but
+    // out of this ticket's write_scope to fix).
+    expect(result.processed[0]!.attempts[0]!.session.output).toContain(
+      'exceeded the per-session tool-iteration budget (2)',
+    );
 
     const ticket = getTicket(fixture.log, 'W9-01') as Ticket;
     expect(ticket.status).toBe('ready');

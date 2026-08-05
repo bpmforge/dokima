@@ -71,8 +71,16 @@ export interface GatewaySpawnSessionOptions {
   readonly ledger: CostLedger;
   /** Per-session tool-call-turn cap (T-27: "a session iterates tool calls indefinitely... without producing a manifest"). */
   readonly maxIterations?: number;
-  /** Optional per-session USD cap, checked against `ledger.totalForTicket` between iterations — the other half of acceptance 1's "or the budget stops it". */
-  readonly maxCostUsd?: number;
+  /**
+   * Optional USD cap, checked between iterations against
+   * `ledger.totalForTicket` — the other half of acceptance 1's "or the
+   * budget stops it". This is a per-TICKET cap, not per-session: `ledger`
+   * is constructed once and shared across every attempt a claim/land loop
+   * makes on a ticket, so `totalForTicket` already includes spend from
+   * earlier attempts on the same ticket. A ticket that blew the cap on
+   * attempt 1 will stop attempt 2 after its very first model call.
+   */
+  readonly maxTicketCostUsd?: number;
   readonly verifyTimeoutMs?: number;
   readonly now?: () => string;
 }
@@ -136,18 +144,19 @@ export function createGatewaySpawnSession(
         recordedAt: now(),
       });
 
-      if (options.maxCostUsd !== undefined) {
+      if (options.maxTicketCostUsd !== undefined) {
         const spent = options.ledger.totalForTicket({
           projectId: options.projectId,
           runId: options.runId,
           ticketId,
         });
-        if (spent >= options.maxCostUsd) {
+        if (spent >= options.maxTicketCostUsd) {
           return {
             stdout: '',
             stderr:
-              `agent session stopped: per-session cost cap ($${options.maxCostUsd}) reached ` +
-              `after ${iteration} model call(s) ($${spent.toFixed(4)} spent)`,
+              `agent session stopped: per-ticket cost cap ($${options.maxTicketCostUsd}) ` +
+              `reached after ${iteration} model call(s) this session ` +
+              `($${spent.toFixed(4)} spent on this ticket across all attempts)`,
             exitCode: 1,
           };
         }

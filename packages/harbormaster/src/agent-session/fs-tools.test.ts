@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   editTool,
   listTool,
+  normalizeRelPath,
   readTool,
   resolveWithinWorktree,
   searchTool,
@@ -14,10 +15,15 @@ import {
 
 describe('agent-session fs-tools', () => {
   let cwd: string | undefined;
+  let extraTempDirs: string[] = [];
 
   afterEach(async () => {
     if (cwd) await fs.rm(cwd, { recursive: true, force: true });
     cwd = undefined;
+    await Promise.all(
+      extraTempDirs.map((dir) => fs.rm(dir, { recursive: true, force: true })),
+    );
+    extraTempDirs = [];
   });
 
   async function tmpWorktree(): Promise<string> {
@@ -58,6 +64,51 @@ describe('agent-session fs-tools', () => {
       status: string;
     };
     expect(result).toEqual({ ok: false, status: 'missing', path: 'nope.ts' });
+  });
+
+  it('normalizeRelPath strips a leading ./ and normalizes backslash separators', () => {
+    expect(normalizeRelPath('./packages/example/file.ts')).toBe(
+      'packages/example/file.ts',
+    );
+    expect(normalizeRelPath('packages/example/file.ts')).toBe('packages/example/file.ts');
+  });
+
+  it('write refuses through a symlinked ancestor that escapes the worktree (SC-01 symlink-escape, the fourth Verify case)', async () => {
+    const dir = await tmpWorktree();
+    const outsideDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+    );
+    extraTempDirs.push(outsideDir);
+    await fs.symlink(outsideDir, path.join(dir, 'evil'));
+
+    const result = (await writeTool(dir, {
+      path: 'evil/leak.ts',
+      content: 'exfiltrated',
+    })) as { ok: boolean };
+
+    expect(result.ok).toBe(false);
+    await expect(fs.stat(path.join(outsideDir, 'leak.ts'))).rejects.toThrow();
+  });
+
+  it('edit refuses through a symlinked ancestor that escapes the worktree (SC-01 symlink-escape)', async () => {
+    const dir = await tmpWorktree();
+    const outsideDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+    );
+    extraTempDirs.push(outsideDir);
+    await fs.writeFile(path.join(outsideDir, 'leak.ts'), 'original\n');
+    await fs.symlink(outsideDir, path.join(dir, 'evil'));
+
+    const result = (await editTool(dir, {
+      path: 'evil/leak.ts',
+      oldString: 'original',
+      newString: 'tampered',
+    })) as { ok: boolean };
+
+    expect(result.ok).toBe(false);
+    await expect(fs.readFile(path.join(outsideDir, 'leak.ts'), 'utf8')).resolves.toBe(
+      'original\n',
+    );
   });
 
   it('write refuses a direct `.git` write (hard-excluded, SC-01)', async () => {
