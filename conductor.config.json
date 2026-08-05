@@ -94,7 +94,8 @@
     "packages/events/migrations/**"
   ],
   "holdTickets": [
-    "W10-58"
+    "W10-58",
+    "W11-02"
   ],
   "models": {
     "maker": "sonnet",
@@ -112,5 +113,6 @@
   "$gatesNote": "2026-07-15: board validators added to the per-ticket gate — an agent's plan.json/notes edits must keep the citation graph green (caught W3-10 hallucinating docs/MODULE_DESIGN.md only on manual re-run; now automatic).",
   "$alwaysOkNote": "2026-07-16: +events/migrations/** — numbered migrations are append-only shared infra (like pnpm-lock); every ticket adding a table needs a new NNN_*.sql without a per-ticket scope collision (L-04/W4-06). The migration RUNNER (packages/events/src/db.ts) stays out — only the numbered files.",
   "$modelsNote": "W9-12: per-role model routing used to live in a separate scripts/models.json, read unconditionally at module scope in conductor.mjs — a repo importing only conductor.mjs + conductor-lib.mjs + this config crashed with a bare ENOENT before --lint or any argument parsing ran (found live importing into Kryptkeeper 2026-07-28). Folded in here so the $note's 'everything project-specific lives here' claim is true of models too; conductor-lib.mjs's DEFAULT_CONFIG.models supplies a generic fallback ladder for repos that omit this key. cheapMaxPoints 2->1 2026-07-14 (amplifier LESSONS 25: sonnet is the floor for release tickets; haiku trivial-only). Overnight runs launch WITHOUT --escalate: sonnet-only ladder, frontier spend requires a human (escalation-token principle by configuration, D-018).",
+  "$holdNote4": "2026-08-05: W11-02 HELD, and the reason is a decision that belongs to a human, not a missing dependency. W11-05 made package.json authoritative and added a validate-plan P10 check that FAILS when a package declares a dependency the ARCHITECTURE matrix forbids. The corrected matrix does not permit harbormaster -> mcp, so W11-02's plan to reuse packages/mcp for its tool allowlist now needs an explicit matrix amendment AND the declaration together — a deliberate architectural change. Its depends_on (W11-01, W11-05) are both done, so claimableTickets considers it claimable and sorts it FIRST of the open W11 tickets; a run launched to work W11-06 claimed W11-02 instead and was stopped ~2s in. Un-hold once the matrix call is made. Note that the conductor's claim logic is deliberately looser than validate-plan.mjs's 'Claimable now' report, which additionally requires the wave to be open — the report says only W10-58 while the conductor sees all four open W11 tickets; do not use the report to predict what the conductor will claim.",
   "$holdNote3": "2026-08-04: W10-58 HELD from unattended claim. Its premise was re-measured and its acceptance rewritten the same day — the timeout justification is dead and the remaining requirement is to GENERALISE W10-67 paused-run machinery rather than re-solve it. That is a reading-comprehension dependency on another ticket, on an 8-point architectural change touching packages/events, and it is the kind of nuance an unattended session misses while still producing something that passes gates. Founder chose a held, one-ticket, no-push first run."
 }
