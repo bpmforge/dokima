@@ -5285,7 +5285,7 @@
         "NO BEHAVIOUR CHANGE IS INTENDED, so state the evidence honestly rather than claiming a red fixture this ticket does not have: `oai-compat.test.ts` must pass UNCHANGED, and `grep -c 'function toRawTool\\|function normalizeToolCalls' oai-compat.ts` must return 0. If an existing test needs editing to accommodate the import, then the two copies were NOT identical after all \u2014 report that as a finding rather than editing the test to fit."
       ],
       "points": 2,
-      "status": "todo",
+      "status": "done",
       "notes": "Filed 2026-08-05 from the second supervised conductor run, in the same spirit as W11-06: the maker landed with an APPROVE verdict and disclosed the residual itself in a header comment, and the reviewer attached a separate LOW advisory. Neither blocks a land, so both would have decayed into folklore if nobody read them. Recorded here rather than in a comment because a comment promising 'a future ticket' with no ticket behind it is how a codebase acquires debt it believes is scheduled. Also worth recording: this residual is the DIRECT COST of narrow write_scope, and it is the right trade \u2014 the maker obeyed law 1 (report, don't widen), took the in-scope path, and paid for it with 20 duplicated lines and an honest comment, rather than reaching into a file it did not own.",
       "stories": []
     },
