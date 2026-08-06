@@ -293,9 +293,7 @@ describe('runCloseGate', () => {
       'feat: add file',
     );
 
-    const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'dokima-gates-outside-'),
-    );
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-outside-'));
     extraTempDirs.push(outsideDir);
     const outsideSecret = path.join(outsideDir, 'secret.txt');
     await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
@@ -337,9 +335,7 @@ describe('runCloseGate', () => {
   });
 
   it("RED FIXTURE (TOCTOU): a claimed file swapped for an escaping symlink by the ticket's own verify command, after the initial check, is still refused at receipt-read time and never hashed into a receipt (acceptance 1/3, W1-07 symlink-escape class)", async () => {
-    const outsideDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'dokima-gates-outside-'),
-    );
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-outside-'));
     extraTempDirs.push(outsideDir);
     const outsideSecret = path.join(outsideDir, 'secret.txt');
     await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
@@ -426,6 +422,155 @@ describe('runCloseGate', () => {
     expect(result.reasons.some((r) => r.includes('not touched by any commit'))).toBe(
       true,
     );
+  });
+
+  it('RED FIXTURE (W11-13, SC-17): a real diff containing a path outside ticket.writeScope is refused even when manifest.files is a perfect (honest) subset of that diff', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    // In scope, and the ONLY file the manifest claims — an honest manifest
+    // that under-reports nothing relative to what it declares.
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+    // Out of scope (ticket.writeScope is packages/example/**), landed by the
+    // same session on the same branch, but never declared in the manifest.
+    // Before this ticket's fix, nothing checked the real diff/commit set
+    // against ticket.writeScope, so this escaped undetected.
+    await commitFile(
+      worktree,
+      'packages/other/extra.ts',
+      'export const escaped = true;\n',
+      'feat: escape write_scope',
+    );
+
+    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok)
+      throw new Error('expected refusal (out-of-scope real diff must FAIL verification)');
+    expect(
+      result.reasons.some(
+        (r) =>
+          r.includes('outside ticket.writeScope') &&
+          r.includes('packages/other/extra.ts') &&
+          r.includes('outside-scope'),
+      ),
+    ).toBe(true);
+    // Never blamed on the manifest itself — the existing asymmetric (subset)
+    // checks must NOT fire here, since manifest.files under-reports nothing.
+    const joinedReasons = result.reasons.join('\n');
+    expect(joinedReasons.includes('not observed in the real diff')).toBe(false);
+    expect(joinedReasons.includes('not touched by any commit')).toBe(false);
+    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+  });
+
+  it('RED FIXTURE (W11-13, HARD_EXCLUSIONS shape): a real diff touching .github/workflows/** is refused even though the manifest never claims it', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+    // SC-01 hard exclusion: no write_scope may ever grant this, regardless
+    // of whether the manifest declares it.
+    await commitFile(
+      worktree,
+      '.github/workflows/ci.yml',
+      'name: ci\non: push\n',
+      'feat: sneak in a workflow change',
+    );
+
+    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok)
+      throw new Error('expected refusal (HARD_EXCLUSIONS path must FAIL verification)');
+    expect(
+      result.reasons.some(
+        (r) =>
+          r.includes('outside ticket.writeScope') &&
+          r.includes('.github/workflows/ci.yml') &&
+          r.includes('hard-excluded'),
+      ),
+    ).toBe(true);
+    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+  });
+
+  it('the symmetric write-scope check is checked against real COMMITS, not the raw untracked working-tree diff: a stray untracked out-of-scope file that was never committed does not block close', async () => {
+    fixture = await setupFixture();
+    const { log, worktree } = fixture;
+
+    await commitFile(
+      worktree,
+      'packages/example/file.ts',
+      'export const x = 1;\n',
+      'feat: add file',
+    );
+    // Untracked, out of ticket.writeScope, and NEVER committed — e.g. the
+    // kind of side-effect artifact the close gate's own verify command or
+    // required validator pack can leave behind in the worktree (real
+    // example: content/validators/_lib.sh's telemetry hook). Since it
+    // never lands in the ticket branch's real commit history, no merge
+    // ever delivers it — checking it against write_scope would fail the
+    // gate closed permanently on the gate's own side effects, which is why
+    // the check below is scoped to committed files only.
+    await fs.mkdir(path.join(worktree.path, 'packages', 'other'), { recursive: true });
+    await fs.writeFile(
+      path.join(worktree.path, 'packages/other/stray-artifact.txt'),
+      'never committed, never merged\n',
+    );
+
+    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+    const result = await runCloseGate({
+      log,
+      actorId: 'worker-1',
+      projectId: PROJECT_ID,
+      ticket: requireTicket(log, 'W9-01'),
+      worktree,
+      manifest,
+      baseRef: 'main',
+      contentDir: CONTENT_VALIDATORS_DIR,
+      signingKey: TEST_SIGNING_KEY,
+      now: NOW,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok)
+      throw new Error(`expected success, got: ${result.reasons.join('; ')}`);
   });
 
   it("graded entity never grades itself: the ticket's real verify is re-run, ignoring the manifest's claimed command/exit", async () => {
@@ -652,9 +797,7 @@ describe('runCloseGate', () => {
     fixture = await setupFixture();
     const { log, worktree } = fixture;
 
-    const bareRemote = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'dokima-gates-remote-'),
-    );
+    const bareRemote = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-remote-'));
     extraTempDirs.push(bareRemote);
     await git(bareRemote, ['init', '--bare', '-b', 'main']);
     await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
@@ -695,9 +838,7 @@ describe('runCloseGate', () => {
     fixture = await setupFixture();
     const { log, worktree } = fixture;
 
-    const bareRemote = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'dokima-gates-remote-'),
-    );
+    const bareRemote = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-remote-'));
     extraTempDirs.push(bareRemote);
     await git(bareRemote, ['init', '--bare', '-b', 'main']);
     // Configured but deliberately never pushed — the normal offline / fresh
