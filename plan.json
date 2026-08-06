@@ -5485,7 +5485,7 @@
         "SAY WHETHER THE SAME GAP EXISTS ON ANY OTHER TOOL RESULT rather than fixing only the one that was reported: the search, read and git tools all return content the model sees next turn. If they need the same pass, do it here; if they do not, say why."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-06 from W11-11's own KNOWN LIMITATION comment. Seventh ticket this session originating in a maker disclosure or reviewer advisory rather than a red test, and the second where the disclosure lived ONLY in a code comment with no ticket behind it (W11-12 was the first). W11-11 did the right thing by naming the limit precisely and not widening its own scope to fix it; the failure mode to avoid is the comment being the only record. Note the trap for whoever takes it: W11-11's existing red fixture uses a credential-shaped string, which the pattern pass catches, so re-using that fixture shape would prove nothing about the exact-value pass. \u2014 ALSO FIX THE STALE COMMENT, added 2026-08-06 because this ticket already owns the file and W11-12's maker flagged it from outside its own scope: `gateway-session.ts`'s KNOWN LIMITATION header says the tool-role gap was 'filed as a HANDOFF in this ticket's notes' (it was not \u2014 that HANDOFF is W11-13's runCloseGate gap, and the tool-role gap became W11-12 only because the comment was read) and states the pre-W11-12 wire situation as current fact. Once W11-12 lands, the gateway half of that paragraph is false. Correct it to describe what is actually true then, including that gateway-session.ts still does not itself emit the new fields \u2014 W11-12's acceptance 6 named that separate.",
       "stories": []
     },
