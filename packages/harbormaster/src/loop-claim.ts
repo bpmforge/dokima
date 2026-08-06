@@ -36,6 +36,7 @@ import {
 } from '@dokima/git';
 import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
 import { runSession, type SessionResult, type SpawnSession } from '@dokima/loop';
+import { redactDeep } from '@dokima/shared';
 import {
   claimTicket,
   commentTicket,
@@ -67,6 +68,8 @@ export interface ClaimLoopOptions {
   /** Checked once per outer-loop iteration; the resulting level is fed through the real W2-07 `policyForLevel`. Defaults to 'ok' (unlimited). */
   readonly breakerLevel?: () => BreakerLevel | Promise<BreakerLevel>;
   readonly maxSessionsPerTicket?: number;
+  /** Extra secret values (W11-16/W11-17, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `processTicket`). Omit for pattern-only redaction. Not on this package's live path today — see `runClaimLoop`'s own docstring. */
+  readonly secretValues?: readonly string[];
 }
 
 export type ClaimLoopStopReason = 'idle' | 'stopped' | 'budget';
@@ -171,6 +174,14 @@ async function processTicket(
 
   const worktree = await resolveWorktree(options, ticket);
 
+  // `secretValues` (W11-17) wraps `spawn` to redact the rendered prompt
+  // before it leaves the process, since `runSession` has no redaction hook
+  // of its own (mirrors `loop-land.ts`'s `attemptOnce`).
+  const secrets = options.secretValues;
+  const spawn: SpawnSession = secrets?.length
+    ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
+    : options.spawn;
+
   const attempts: TicketAttempt[] = [];
   let current = requireTicket(options.log, ticket.id);
 
@@ -180,11 +191,7 @@ async function processTicket(
     attempt++
   ) {
     const handoff = options.buildHandoff(current);
-    const session = await runSession({
-      handoff,
-      cwd: worktree.path,
-      spawn: options.spawn,
-    });
+    const session = await runSession({ handoff, cwd: worktree.path, spawn });
     attempts.push({ attempt, session });
     current = requireTicket(options.log, ticket.id);
   }
@@ -203,7 +210,17 @@ async function processTicket(
   return { ticketId: ticket.id, attempts, autoBlocked, finalStatus: current.status };
 }
 
-/** Runs the claim loop until idle (nothing claimable), stopped (kill-file/pause), or budget-stopped (W2-07 hard_stop). */
+/**
+ * Runs the claim loop until idle (nothing claimable), stopped (kill-file/
+ * pause), or budget-stopped (W2-07 hard_stop).
+ *
+ * NOT ON A LIVE PATH TODAY (checked at W11-17, re-verify before citing this
+ * as coverage): `apps/server`'s only wired execution engine is
+ * `runLandLoop` (`loop-land.ts`, called from `run-build.ts`). Nothing in
+ * `apps/*` calls `runClaimLoop` — its only callers are its own tests. The
+ * `secretValues` redaction wired in here therefore has no live caller
+ * either, exactly like `watchdog-session.ts`'s `runWatchdogSession`.
+ */
 export async function runClaimLoop(options: ClaimLoopOptions): Promise<ClaimLoopResult> {
   const maxSessions = options.maxSessionsPerTicket ?? DEFAULT_MAX_SESSIONS_PER_TICKET;
   const skip = new Set<string>();

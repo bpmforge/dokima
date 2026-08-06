@@ -340,4 +340,38 @@ describe('runClaimLoop', () => {
       delete process.env.DOKIMA_TEST_PLANTED_SECRET;
     }
   });
+
+  it(
+    '(W11-17, FR-S2/SC-06 red fixture) a `secretValues` supplied to `ClaimLoopOptions` ' +
+      'reaches the spawn boundary: an exact value with no known credential shape, ' +
+      'embedded in the ticket context that ends up in the rendered HANDOFF prompt, ' +
+      'does not appear in the prompt `spawn` actually receives',
+    async () => {
+      fixture = await setupFixture();
+      const { log, repoRoot } = fixture;
+      const secret = 'correcthorsebatterystaple';
+      seedTicket(log, 'W9-01', { interface: `token=${secret}` });
+
+      const prompts: string[] = [];
+      const capturingSpawn: SpawnSession = async (input) => {
+        prompts.push(input.prompt);
+        return { stdout: '', stderr: '', exitCode: 0 };
+      };
+
+      await runClaimLoop({
+        log,
+        actorId: 'worker-1',
+        repoRoot,
+        spawn: capturingSpawn,
+        buildHandoff: defaultHandoffBuilder(),
+        maxSessionsPerTicket: 1,
+        secretValues: [secret],
+      });
+
+      expect(prompts).toHaveLength(1);
+      expect(prompts[0]).toContain('CONTEXT: token=');
+      expect(prompts[0]).not.toContain(secret);
+      expect(prompts[0]).toContain('[REDACTED:secret]');
+    },
+  );
 });

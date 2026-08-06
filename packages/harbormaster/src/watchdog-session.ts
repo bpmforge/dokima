@@ -9,8 +9,14 @@
  * future ticket composes into the claim/land loops.
  */
 
-import { runSession, type Handoff, type SessionResult } from '@dokima/loop';
+import {
+  runSession,
+  type Handoff,
+  type SessionResult,
+  type SpawnSession,
+} from '@dokima/loop';
 import type { EventLog } from '@dokima/events';
+import { redactDeep } from '@dokima/shared';
 import { createWatchdogChildProcessSpawn } from './watchdog-process.js';
 import {
   deadLetterAndBlock,
@@ -31,6 +37,8 @@ export interface RunWatchdogSessionOptions extends WatchdogLimits {
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly pollIntervalMs?: number;
   readonly forceKillGraceMs?: number;
+  /** Extra secret values (W11-16/W11-17, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches the watchdog spawn (see `runWatchdogSession`). Omit for pattern-only redaction. Not on this package's live path today — see `runWatchdogSession`'s own docstring. */
+  readonly secretValues?: readonly string[];
 }
 
 export interface RunWatchdogSessionResult {
@@ -44,13 +52,20 @@ export interface RunWatchdogSessionResult {
  * awaiting the killed tree's teardown), then still awaits `runSession` so
  * the caller gets a complete `SessionResult` (truncated output, whatever
  * manifest — if any — the tree emitted before it was killed).
+ *
+ * NOT ON A LIVE PATH TODAY (checked at W11-17, re-verify before citing this
+ * as coverage): this module's own header already says so — "not yet wired
+ * into those loops … this is the drop-in unit a future ticket composes
+ * into the claim/land loops" — and that remains true: nothing in
+ * `apps/*` or `loop-claim.ts`/`loop-land.ts` calls `runWatchdogSession`.
+ * Its only callers are its own tests.
  */
 export async function runWatchdogSession(
   options: RunWatchdogSessionOptions,
 ): Promise<RunWatchdogSessionResult> {
   let breach: WatchdogBreach | null = null;
 
-  const spawn = createWatchdogChildProcessSpawn({
+  const watchdogSpawn = createWatchdogChildProcessSpawn({
     maxSessionSeconds: options.maxSessionSeconds,
     heartbeatStallSeconds: options.heartbeatStallSeconds,
     command: options.command,
@@ -69,6 +84,14 @@ export async function runWatchdogSession(
       });
     },
   });
+
+  // `secretValues` (W11-17) wraps `spawn` to redact the rendered prompt
+  // before it leaves the process, since `runSession` has no redaction hook
+  // of its own (mirrors `loop-land.ts`'s `attemptOnce`).
+  const secrets = options.secretValues;
+  const spawn: SpawnSession = secrets?.length
+    ? (input) => watchdogSpawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
+    : watchdogSpawn;
 
   const session = await runSession({ handoff: options.handoff, cwd: options.cwd, spawn });
   return { session, breach };
