@@ -14,13 +14,15 @@
  * is applied. Truncation alone is not redaction: it bounds size, not
  * secrecy.
  *
- * KNOWN LIMITATION: `redactString` runs here with no `secretValues` — only
- * the known-shape patterns (`SECRET_PATTERNS`: gh/AWS/OpenAI-style keys,
- * PEM blocks, DB connection strings) are caught, not vault-registered or
- * `.env` secret values (the exact-value pass `renderHandoff` gets via
- * `collectSecretValues(vault, projectDir)`). Threading `secretValues` here
- * would require a vault handle on `AgentSessionToolContext`
- * (`tool-executor.ts`), which is out of this ticket's `write_scope`.
+ * `redactString` runs BOTH passes here (W11-14): the known-shape patterns
+ * (`SECRET_PATTERNS`: gh/AWS/OpenAI-style keys, PEM blocks, DB connection
+ * strings) plus the exact-value pass against `secretValues` — vault-
+ * registered and `.env` secret values, the same set `renderHandoff` gets via
+ * `collectSecretValues(vault, projectDir)` (`@dokima/shared`). The caller
+ * (`gateway-session.ts`) collects that array once — collection is async,
+ * this module stays sync — and passes it down through
+ * `AgentSessionToolContext` (`tool-executor.ts`); omitted, `verifyTool`
+ * still gets pattern-only redaction, never a crash.
  */
 
 import { commitWithScopeCheck, type WorktreeHandle } from '@dokima/git';
@@ -48,8 +50,11 @@ interface RedactedOutput {
  * runs over the full, untruncated command output and only the
  * already-redacted result gets capped.
  */
-function redactAndTruncate(text: string): RedactedOutput {
-  const redacted = redactString(text);
+function redactAndTruncate(
+  text: string,
+  secretValues: readonly string[],
+): RedactedOutput {
+  const redacted = redactString(text, secretValues);
   return {
     text: truncate(redacted),
     redacted: redacted !== text,
@@ -98,10 +103,11 @@ export async function verifyTool(
   cwd: string,
   verifyCommand: string,
   timeoutMs: number,
+  secretValues: readonly string[] = [],
 ): Promise<unknown> {
   const result = await reRunVerify(cwd, verifyCommand, timeoutMs);
-  const stdout = redactAndTruncate(result.stdout);
-  const stderr = redactAndTruncate(result.stderr);
+  const stdout = redactAndTruncate(result.stdout, secretValues);
+  const stderr = redactAndTruncate(result.stderr, secretValues);
   return {
     ok: true,
     command: result.command,

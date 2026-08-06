@@ -192,6 +192,38 @@ describe('agent-session git-tools', () => {
   );
 
   it(
+    '(FR-S2, SC-06, W11-14) verify redacts a vault-registered value whose ' +
+      'shape matches NO pattern in SECRET_PATTERNS — a plain word, not a ' +
+      'credential-shaped string — when passed as `secretValues`, and reports ' +
+      'that redaction happened',
+    async () => {
+      const dir = await tmpRepo();
+      const secret = 'correcthorsebatterystaple';
+      const result = (await verifyTool(dir, `echo secret=${secret}`, 5000, [secret])) as {
+        stdout: string;
+        redacted: boolean;
+      };
+      expect(result.stdout).not.toContain(secret);
+      expect(result.stdout).toContain('[REDACTED:secret]');
+      expect(result.redacted).toBe(true);
+    },
+  );
+
+  it(
+    '(FR-S2, SC-06, W11-14) a plain-word secret NOT registered in ' +
+      '`secretValues` is left alone — the exact-value pass only redacts ' +
+      "values the caller actually supplied, it doesn't guess",
+    async () => {
+      const dir = await tmpRepo();
+      const result = (await verifyTool(dir, 'echo secret=notregistered', 5000, [
+        'someotherword',
+      ])) as { stdout: string; redacted: boolean };
+      expect(result.stdout).toContain('notregistered');
+      expect(result.redacted).toBe(false);
+    },
+  );
+
+  it(
     'verify reports `truncated` structurally alongside the existing inline ' +
       "…(truncated) marker, symmetric with searchTool's `truncated` field " +
       '— stating what was cut, not just cutting it',

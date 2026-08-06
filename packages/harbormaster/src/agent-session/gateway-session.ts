@@ -18,10 +18,14 @@
  * `tool_calls` it made. A real OpenAI-compatible wire round-trip requires
  * both. Tool results are therefore fed back as a synthetic `user` message
  * (`mcp-wiring.ts`'s `runToolCalls`) — this satisfies the fake-provider
- * test harness and this ticket's own red fixtures, but will not reach a
+ * test harness and this module's own red fixtures, but will not reach a
  * live cloud provider without `packages/gateway` adding a `tool` role and
- * a `toolCalls` echo field to `ChatMessage`/`ChatRequest`. Filed as a
- * HANDOFF in this ticket's `notes`.
+ * a `toolCalls` echo field to `ChatMessage`/`ChatRequest`. Tracked as its
+ * own ticket, W11-12 (`packages/gateway/src/providers/**`) — NOT this
+ * ticket's own `notes` field, which covers a different gap (the
+ * `runCloseGate` asymmetric-scope-check HANDOFF, filed separately as
+ * W11-13). This module still does not itself emit whatever new fields
+ * W11-12 adds (its own acceptance criteria name that as a separate claim).
  *
  * `SpawnSession`'s fixed `{prompt, cwd}` signature also carries no
  * `Handoff` object, so the ticket id this loop needs is recovered from the
@@ -152,6 +156,17 @@ export interface GatewaySpawnSessionOptions {
   readonly maxTicketCostUsd?: number;
   readonly verifyTimeoutMs?: number;
   readonly now?: () => string;
+  /**
+   * Extra secret values for the `verify` tool's redaction pass beyond the
+   * known live-credential shapes (FR-S2, SC-06, W11-14) — vault-registered
+   * and `.env` secret values, typically the result of
+   * `collectSecretValues(vault, projectDir)` (`@dokima/shared`), gathered
+   * by the caller since collecting them is async while `toolCtx` here is
+   * built synchronously per session (same pattern as `RenderHandoffOptions.
+   * secretValues` in `packages/loop/src/handoff.ts`). Omit for pattern-only
+   * redaction.
+   */
+  readonly secretValues?: readonly string[];
 }
 
 /** Delivers the `@dokima/loop` `SpawnSession` contract `runSession` already takes (FR-H6), backed by the gateway rather than a child process. */
@@ -185,6 +200,7 @@ export function createGatewaySpawnSession(
       writeScope: ticket?.writeScope ?? [],
       verifyCommand: fields.verifyCommand ?? DEFAULT_VERIFY_COMMAND,
       verifyTimeoutMs,
+      secretValues: options.secretValues ?? [],
     };
 
     const messages: ChatMessage[] = [{ role: 'user', content: input.prompt }];
