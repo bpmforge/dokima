@@ -5414,7 +5414,8 @@
       ],
       "depends_on": [
         "W11-01",
-        "W11-03"
+        "W11-03",
+        "W11-15"
       ],
       "acceptance": [
         "(FR-G9, C-1) DISCLOSED BY W11-03's MAKER IN A FILE COMMENT rather than by a failing test, and verified at the source before filing: gateway-session.ts's tool loop echoes tool calls and results back through mcp-wiring.ts's runToolCalls, which satisfies the fake-provider harness and W11-03's own red fixtures \u2014 but `ChatRole` in providers/types.ts:9 is `'system' | 'user' | 'assistant'` with no `'tool'`, and `ChatMessage` carries no `toolCalls` field to echo an assistant turn back. `toolCalls` exists only on `ChatResponse` (types.ts:62). So a real OpenAI-compatible provider cannot be given the conversation the loop produces.",
@@ -5425,10 +5426,11 @@
         "SAY WHAT REMAINS OUT OF SCOPE rather than implying the loop is then production-ready: this ticket makes the wire format expressible. Whether harbormaster's session actually drives a cloud provider end to end is a separate claim needing its own evidence."
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "Filed 2026-08-06 from a comment W11-03's maker left in gateway-session.ts's header. It named the gap precisely and said it was 'filed as a HANDOFF in this ticket's notes' \u2014 but the notes HANDOFF covers the runCloseGate gap (now W11-13) and not this one, so this would have survived only as a code comment. That is exactly the pattern W11-07 was filed for: a comment promising a future ticket with no ticket behind it. Sixth ticket this session originating in a maker disclosure or reviewer advisory rather than a red test.",
-        "CONDUCTOR 2026-08-06T15:01:21.829Z: blocked after 2 attempts. Branch sw/w11-12 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch"
+        "CONDUCTOR 2026-08-06T15:01:21.829Z: blocked after 2 attempts. Branch sw/w11-12 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch",
+        "UNBLOCKED 2026-08-06: the refusal this ticket needs is filed as W11-15 and added to depends_on; status back to todo. START BY RECOVERING THE COMPLETED WORK \u2014 this is a RESUME, not a rewrite. The full implementation and its passing red fixtures are committed on `blocked/w11-12` (688e79e), which the conductor's pre-clean does not touch (it only deletes `sw/w11-12`). Merge that branch as the FIRST commit, then rebase over whatever W11-15 changed. Verified before instructing it: every file on that branch is inside this write_scope or alwaysOk. A separate unblocking ticket is viable here \u2014 unlike W11-02's case, where the module existed only on the blocked branch \u2014 because anthropic-helpers.ts and vertex-chat.ts are ordinary files on main."
       ],
       "stories": []
     },
@@ -5484,7 +5486,34 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "Filed 2026-08-06 from W11-11's own KNOWN LIMITATION comment. Seventh ticket this session originating in a maker disclosure or reviewer advisory rather than a red test, and the second where the disclosure lived ONLY in a code comment with no ticket behind it (W11-12 was the first). W11-11 did the right thing by naming the limit precisely and not widening its own scope to fix it; the failure mode to avoid is the comment being the only record. Note the trap for whoever takes it: W11-11's existing red fixture uses a credential-shaped string, which the pattern pass catches, so re-using that fixture shape would prove nothing about the exact-value pass.",
+      "notes": "Filed 2026-08-06 from W11-11's own KNOWN LIMITATION comment. Seventh ticket this session originating in a maker disclosure or reviewer advisory rather than a red test, and the second where the disclosure lived ONLY in a code comment with no ticket behind it (W11-12 was the first). W11-11 did the right thing by naming the limit precisely and not widening its own scope to fix it; the failure mode to avoid is the comment being the only record. Note the trap for whoever takes it: W11-11's existing red fixture uses a credential-shaped string, which the pattern pass catches, so re-using that fixture shape would prove nothing about the exact-value pass. \u2014 ALSO FIX THE STALE COMMENT, added 2026-08-06 because this ticket already owns the file and W11-12's maker flagged it from outside its own scope: `gateway-session.ts`'s KNOWN LIMITATION header says the tool-role gap was 'filed as a HANDOFF in this ticket's notes' (it was not \u2014 that HANDOFF is W11-13's runCloseGate gap, and the tool-role gap became W11-12 only because the comment was read) and states the pre-W11-12 wire situation as current fact. Once W11-12 lands, the gateway half of that paragraph is false. Correct it to describe what is actually true then, including that gateway-session.ts still does not itself emit the new fields \u2014 W11-12's acceptance 6 named that separate.",
+      "stories": []
+    },
+    {
+      "id": "W11-15",
+      "title": "Anthropic and Vertex must refuse a tool-role message with a named error, not be widened to mis-serialize one",
+      "phase": 11,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/providers/anthropic-helpers.ts",
+        "packages/gateway/src/providers/anthropic.test.ts",
+        "packages/gateway/src/providers/vertex-chat.ts",
+        "packages/gateway/src/providers/vertex-chat.test.ts",
+        "packages/gateway/src/providers/errors.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "(FR-G9) UNBLOCKS W11-12, WHICH SELF-BLOCKED WITH ITS WORK COMPLETE AND GREEN. Adding 'tool' to `ChatRole` makes workspace typecheck fail at exactly two out-of-scope sites: `anthropic-helpers.ts:50` (`splitSystem`'s `rest.push({role: m.role, ...})`, typed `Array<{role: 'user'|'assistant'}>`) and `vertex-chat.ts:58` (`mapRole(message.role)`, accepting only 'user'|'assistant'). Both narrow on ChatRole-minus-'system' and now see the new member. Reproducible from repo state: the implementation and its passing tests are committed on `blocked/w11-12`.",
+        "WIDENING THE ANNOTATIONS WOULD BE THE BUG, NOT THE FIX, and this is the whole reason a separate ticket exists rather than a two-character edit. Anthropic sends tool results as `tool_result` content blocks INSIDE a user-role message carrying `tool_use_id`; `splitSystem`'s return shape (`Array<{role, content: string}>`) has nowhere to put a `toolCallId`, so accepting 'tool' there would map a tool-result turn to plain user text and silently drop the id. Gemini carries tool results as `functionResponse` parts, not text parts \u2014 same silent drop if `mapRole`'s signature were merely widened. Either would type-check, look done, and be wrong on a real run.",
+        "DELIVER THE REFUSAL, which FR-G9 already sanctions: W11-06's acceptance blessed 'refuse the field with a named error' as an equally valid delivery to real serialization. Each site throws a named error class from `errors.ts` (per W11-06's scope note that every provider error lives there) on encountering a 'tool'-role `ChatMessage`. Typecheck unblocks without either adapter pretending it supports tool results.",
+        "SAY WHAT THIS DOES NOT DO, in the error message and in the code, so nobody reads the refusal as support: real Anthropic/Gemini tool-result wire support is separate, later, design-heavy work. The error should name the adapter and the unsupported role rather than failing generically.",
+        "RED FIXTURE: a `ChatRequest` whose `messages` contain a 'tool'-role entry makes each adapter throw the named error \u2014 asserted per adapter, against recorded fixtures, never a live call (C-1). Note the sequencing: these fixtures cannot compile until `ChatRole` gains 'tool', which lands with W11-12. If this ticket is worked first, take the type change from `blocked/w11-12` or state plainly how the fixture was made to compile.",
+        "SCOPE PRE-CHECKED before filing: no open ticket claims any of these five paths (only W2-01, done, held `providers/**` broadly). `anthropic-helpers.test.ts` does NOT exist \u2014 `anthropic.test.ts` is the suite covering that module, and is in scope instead, so this ticket cannot self-block for want of a test file."
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from W11-12's self-block, and the ask is the maker's OWN narrowed version, not my reading of it. Its first note asked for a full Anthropic/Gemini tool-result wire-format design ticket; it then reconsidered on a second pass and narrowed the request to this refusal, citing W11-06's acceptance as precedent for refusal being a legitimate delivery. That second pass also went back and verified the red fixtures empirically rather than resting on type inference \u2014 checking out pre-implementation provider files over the tree, re-running both suites (61 passed, 2 failed exactly as predicted), then restoring HEAD with zero diff. Both moves are the behaviour this harness is for: it did not widen its own scope, did not guess, and did not leave the follow-up bigger than it needed to be.",
       "stories": []
     }
   ]
