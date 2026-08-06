@@ -8,190 +8,35 @@
  * makes anything durable. A file can be drafted here inside write_scope
  * and simply never survive a commit if it strays outside it.
  *
- * SECURITY (symlink-escape, SC-01's fourth enumerated case,
- * docs/SECURITY_CONTROLS.md): a cheap `path.resolve` check alone (no
- * `realpath`) misses two shapes: (1) an ANCESTOR directory that is itself a
- * symlink pointing outside the worktree — `write {path: 'evil/x.ts'}` where
- * `evil -> /tmp/outside` resolves to a string starting with the worktree
- * root, passes a pure-string check, and would write outside the worktree
- * entirely; (2) the LEAF component itself being a pre-existing symlink
- * pointing outside — `write {path: 'evil.txt'}` where `evil.txt ->
- * /tmp/outside/leak.txt` — which `fs.writeFile`'s default `open()` follows
- * (Node has no `O_NOFOLLOW` by default). `checkWriteScope` (commit time)
- * can't catch either after the fact — a write that landed outside the
- * worktree never appears in `git diff` at all.
- *
- * `assertRealWithinWorktree` closes both: `realpathOfTarget` attempts
- * `fs.realpath` on the FULL target first — this resolves a symlink leaf (or
- * chain) whose ultimate target exists, catching case (2) directly, same as
- * `../scope.js`'s `classifyManifestFile` already does for reads. Only when
- * the leaf has no filesystem entry at all (`fs.lstat` also fails — the
- * genuine write-new-file case) does it fall back to
- * `realpathOfNearestAncestor` (walk up to the nearest EXISTING ancestor,
- * same as `packages/git/src/scope.ts`'s `checkWriteScope`), which still
- * catches case (1). A leaf that EXISTS as a symlink but whose target does
- * NOT (a dangling symlink) is a third shape `classifyManifestFile`'s
- * read-only path doesn't need to worry about but a write does: `fs.realpath`
- * throws for it same as a missing leaf, and naively falling back to
- * ancestor-only resolution there would miss it too (the ancestor walk never
- * follows the symlink itself) — the exact "same bug again" this ticket was
- * reopened over. `realpathOfTarget` distinguishes the two via `fs.lstat`
- * before falling back, and manually follows a dangling symlink's own target
- * (`fs.readlink`, recursively, bounded by `MAX_SYMLINK_HOPS`) rather than
- * treating it as an absent leaf.
+ * This is the barrel for the two chapters the containment/search logic
+ * split into once this file passed the 400-line cap (CODE_BOOK_PROTOCOL.md):
+ * `fs-containment.ts` (worktree containment, `assertRealWithinWorktree`,
+ * the symlink-escape hardening) and `fs-search.ts` (the ReDoS-bounded
+ * `search` handler). Callers keep importing `./fs-tools.js` unchanged.
  */
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { HARD_EXCLUSIONS, matchesAnyGlob } from '@dokima/git';
 import { classifyManifestFile } from '../scope.js';
+import {
+  ToolPathEscapeError,
+  assertRealWithinWorktree,
+  normalizeRelPath,
+  resolveOrRefusal,
+  resolveWithinWorktree,
+} from './fs-containment.js';
+import { isUnsafeSearchPattern, searchTool } from './fs-search.js';
 
-const MAX_SEARCH_MATCHES = 200;
-const SEARCH_SKIP_DIRS = new Set(['.git', 'node_modules']);
-
-/**
- * SECURITY (ReDoS, SC-18): `search`'s `pattern` is model-supplied and the
- * schema documents regex support, so a catastrophic-backtracking pattern
- * is trivially reachable by design. JS regex execution is synchronous on
- * the single harbormaster event loop and nothing upstream
- * (`requestToolCall` in packages/mcp) wraps a tool call in a timeout, so
- * one pathological `search` call can hang the whole process — including
- * past T-27's own iteration cap, since a hung call never returns to let
- * the loop count the turn. This isn't only the classic *nested*-quantifier
- * exponential case (`(a+)+$`) — measured on this machine, even
- * `/.*.*=/ ` (two adjacent, non-nested, unbounded quantifiers — no groups
- * at all) takes ~11s against a single 4000-char line with no match, and a
- * three-quantifier pattern (`/.*.*.*=/ `) is already multi-second by ~250
- * chars. Adjacent unbounded quantifiers over an overlapping atom are
- * polynomial in the match length even with zero nesting, so a check that
- * only walks parenthesized groups (as an earlier revision of this file
- * did) misses this entire class. Four bounds, matching the timeout
- * discipline `reRunVerify` gives `verify`:
- * (1) `isUnsafeSearchPattern` statically refuses both shapes — a
- * quantified group whose body itself contains a quantifier/alternation
- * (nested, exponential), AND more than `MAX_QUANTIFIER_COUNT` unbounded
- * quantifiers anywhere in the pattern outside a character class (adjacent,
- * polynomial but still dangerous at line-length inputs) — before a regex
- * is ever constructed. `toMatcher` falls back to literal-substring
- * matching for anything refused, same as it already does for a
- * syntactically invalid pattern; (2) `MAX_MATCH_LINE_LENGTH` caps the
- * input handed to any one `.test()` call — applied ONLY when the matcher
- * is a real regex (literal-substring `.includes()` is always linear, so
- * capping it would only cost precision for nothing); (3)
- * `SEARCH_TIME_BUDGET_MS`, checked every `TIME_CHECK_INTERVAL_LINES`
- * lines, bounds a call's *total* time across many files/lines (it cannot
- * interrupt a single hung `.test()` call already in progress — bound (1)
- * is what prevents that).
- */
-const MAX_PATTERN_LENGTH = 200;
-const MAX_QUANTIFIER_COUNT = 2;
-const MAX_MATCH_LINE_LENGTH = 300;
-const SEARCH_TIME_BUDGET_MS = 3000;
-const TIME_CHECK_INTERVAL_LINES = 50;
-
-/** Bounds `realpathOfTarget`'s manual symlink-chain following (dangling symlinks only — a chain whose target ultimately exists is resolved by a single `fs.realpath` call instead). Refusing past this is a fail-closed default, not a realistic legitimate depth. */
-const MAX_SYMLINK_HOPS = 40;
-
-export class ToolPathEscapeError extends Error {
-  constructor(relPath: string) {
-    super(`path "${relPath}" escapes the ticket worktree`);
-    this.name = 'ToolPathEscapeError';
-  }
-}
-
-/** Model-supplied paths are untrusted text, not `git`-normalized input — a leading `./` or a backslash separator would otherwise round-trip inconsistently into a manifest's `files[]` and read like a close-gate bug rather than an unnormalized path (see gateway-session.ts's header). */
-export function normalizeRelPath(relPath: string): string {
-  const posix = relPath.split(path.sep).join('/');
-  return posix.startsWith('./') ? posix.slice(2) : posix;
-}
-
-/** Cheap containment check: no absolute path, no `..` escape out of `cwd`. */
-export function resolveWithinWorktree(cwd: string, relPath: string): string {
-  const root = path.resolve(cwd);
-  const resolved = path.resolve(root, relPath);
-  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
-    throw new ToolPathEscapeError(relPath);
-  }
-  return resolved;
-}
-
-/** Fallback for a leaf with NO filesystem entry at all (the write-new-file case) — walks up to the nearest EXISTING ancestor, resolves it via `fs.realpath`, and rejoins the unresolved tail. Never called on a leaf that exists as a symlink (see `realpathOfTarget`, its only caller). */
-async function realpathOfNearestAncestor(absPath: string): Promise<string> {
-  let dir = path.dirname(absPath);
-  const tail = [path.basename(absPath)];
-  for (;;) {
-    try {
-      const realDir = await fs.realpath(dir);
-      return path.join(realDir, ...tail);
-    } catch {
-      const parent = path.dirname(dir);
-      if (parent === dir) return absPath;
-      tail.unshift(path.basename(dir));
-      dir = parent;
-    }
-  }
-}
-
-/**
- * Resolves `absPath` to its real location, covering all three shapes a
- * write-time containment check must (module header): an ordinary existing
- * file (`fs.realpath` resolves it directly); a symlink leaf whose ultimate
- * target exists (`fs.realpath` already follows the whole chain); and a
- * dangling symlink leaf, which `fs.realpath` throws on same as a genuinely
- * absent leaf — distinguished here via `fs.lstat` and resolved by manually
- * following the link (`fs.readlink`) rather than falling back to
- * ancestor-only resolution, which would silently ignore the symlink and
- * miss the escape.
- */
-async function realpathOfTarget(absPath: string, hops = 0): Promise<string> {
-  try {
-    return await fs.realpath(absPath);
-  } catch (err) {
-    const isSymlink = await fs
-      .lstat(absPath)
-      .then((stat) => stat.isSymbolicLink())
-      .catch(() => null);
-
-    if (isSymlink === null) {
-      // The leaf has no filesystem entry at all — the genuine
-      // write-new-file case. Safe to resolve via the nearest existing
-      // ancestor instead.
-      return realpathOfNearestAncestor(absPath);
-    }
-    if (!isSymlink) {
-      // Exists, is not a symlink, yet `fs.realpath` still failed (e.g. a
-      // permissions error) — fail closed by surfacing the original error
-      // rather than mislabeling it as a path escape.
-      throw err;
-    }
-    if (hops >= MAX_SYMLINK_HOPS) {
-      throw new ToolPathEscapeError(absPath);
-    }
-    const link = await fs.readlink(absPath);
-    const target = path.isAbsolute(link)
-      ? link
-      : path.resolve(path.dirname(absPath), link);
-    return realpathOfTarget(target, hops + 1);
-  }
-}
-
-function isWithinRoot(root: string, real: string): boolean {
-  return real === root || real.startsWith(root + path.sep);
-}
-
-/** The authoritative pre-write check: `resolveWithinWorktree`'s string arithmetic PLUS full-target-realpath containment (see module header). Used by `write`/`edit`/`list`/`search` — every tool that touches the real filesystem before a `commit` ever runs. */
-export async function assertRealWithinWorktree(
-  cwd: string,
-  relPath: string,
-): Promise<string> {
-  const resolved = resolveWithinWorktree(cwd, relPath);
-  const realRoot = await fs.realpath(path.resolve(cwd));
-  const real = await realpathOfTarget(resolved);
-  if (!isWithinRoot(realRoot, real)) {
-    throw new ToolPathEscapeError(relPath);
-  }
-  return resolved;
-}
+export {
+  ToolPathEscapeError,
+  assertRealWithinWorktree,
+  normalizeRelPath,
+  resolveWithinWorktree,
+  isUnsafeSearchPattern,
+  searchTool,
+};
+export type { SearchToolArgs } from './fs-search.js';
 
 function refuseIfHardExcluded(relPath: string): { ok: false; reason: string } | null {
   if (matchesAnyGlob(relPath, HARD_EXCLUSIONS)) {
@@ -238,178 +83,9 @@ export async function listTool(cwd: string, args: ListToolArgs): Promise<unknown
   };
 }
 
-export interface SearchToolArgs {
-  readonly pattern: string;
-  readonly path?: string;
-}
-
-/**
- * Conservative static heuristic combining two independent checks, either
- * of which alone misses a real catastrophic-backtracking class (see the
- * module header): (1) a quantified group — `(...)+`, `(...)*`,
- * `(...){n,}` — whose body itself contains another quantifier or an
- * alternation (`*`, `+`, `{`, `|`), the shape behind the classic
- * *exponential* examples (`(a+)+$`, `(a|a)+$`); (2) more than
- * `MAX_QUANTIFIER_COUNT` quantifier operators anywhere in the pattern
- * (nested or not), which catches adjacent, ungrouped quantifiers
- * (`.*.*.*.*.*=`) that are *polynomial* in match length but still
- * measurably dangerous well within `MAX_MATCH_LINE_LENGTH` (see module
- * header for measurements). Deliberately errs toward over-rejecting an
- * unusual-but-safe pattern over under-rejecting a dangerous one: a false
- * positive costs `toMatcher` precision (it falls back to
- * literal-substring matching), never safety. Content inside a `[...]`
- * character class is exempt from both checks — `[+*|]` is a literal
- * class, not a quantifier.
- */
-export function isUnsafeSearchPattern(pattern: string): boolean {
-  if (pattern.length > MAX_PATTERN_LENGTH) return true;
-  let inClass = false;
-  let quantifierCount = 0;
-  const groupBodyRisky: boolean[] = [];
-  for (let i = 0; i < pattern.length; i += 1) {
-    const ch = pattern[i];
-    if (ch === '\\') {
-      i += 1;
-      continue;
-    }
-    if (inClass) {
-      if (ch === ']') inClass = false;
-      continue;
-    }
-    if (ch === '[') {
-      inClass = true;
-      continue;
-    }
-    if (ch === '(') {
-      groupBodyRisky.push(false);
-      continue;
-    }
-    if (ch === ')') {
-      const bodyRisky = groupBodyRisky.pop() ?? false;
-      const next = pattern[i + 1];
-      const quantified = next === '*' || next === '+' || next === '{';
-      if (quantified && bodyRisky) return true;
-      if (bodyRisky && groupBodyRisky.length > 0) {
-        groupBodyRisky[groupBodyRisky.length - 1] = true;
-      }
-      continue;
-    }
-    if (ch === '*' || ch === '+' || ch === '{') {
-      quantifierCount += 1;
-      if (quantifierCount > MAX_QUANTIFIER_COUNT) return true;
-    }
-    if (ch === '*' || ch === '+' || ch === '{' || ch === '|') {
-      if (groupBodyRisky.length > 0) groupBodyRisky[groupBodyRisky.length - 1] = true;
-    }
-  }
-  return false;
-}
-
-interface LineMatcher {
-  readonly test: (line: string) => boolean;
-  readonly usesRegex: boolean;
-}
-
-function toMatcher(pattern: string): LineMatcher {
-  if (!isUnsafeSearchPattern(pattern)) {
-    try {
-      const re = new RegExp(pattern);
-      return { test: (line) => re.test(line), usesRegex: true };
-    } catch {
-      // Falls through to the literal-substring matcher below.
-    }
-  }
-  return { test: (line) => line.includes(pattern), usesRegex: false };
-}
-
-async function walk(dir: string, out: string[]): Promise<void> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (SEARCH_SKIP_DIRS.has(entry.name)) continue;
-    const abs = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await walk(abs, out);
-    } else if (entry.isFile()) {
-      out.push(abs);
-    }
-  }
-}
-
-export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unknown> {
-  const resolvedRoot = await resolveOrRefusal(cwd, normalizeRelPath(args.path ?? '.'));
-  if ('reason' in resolvedRoot) return resolvedRoot;
-  const root = resolvedRoot.abs;
-  const matches: { file: string; line: number; text: string }[] = [];
-  const files: string[] = [];
-  await walk(root, files);
-  const matcher = toMatcher(args.pattern);
-  const deadline = Date.now() + SEARCH_TIME_BUDGET_MS;
-  let linesSinceTimeCheck = 0;
-  let timedOut = false;
-  let skippedLongLines = 0;
-  outer: for (const file of files) {
-    let content: string;
-    try {
-      content = await fs.readFile(file, 'utf8');
-    } catch {
-      continue;
-    }
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i += 1) {
-      linesSinceTimeCheck += 1;
-      if (linesSinceTimeCheck >= TIME_CHECK_INTERVAL_LINES) {
-        linesSinceTimeCheck = 0;
-        if (Date.now() >= deadline) {
-          timedOut = true;
-          break outer;
-        }
-      }
-      const line = lines[i]!;
-      if (matcher.usesRegex && line.length > MAX_MATCH_LINE_LENGTH) {
-        skippedLongLines += 1;
-        continue;
-      }
-      if (matcher.test(line)) {
-        matches.push({
-          file: normalizeRelPath(path.relative(cwd, file)),
-          line: i + 1,
-          text: line,
-        });
-        if (matches.length >= MAX_SEARCH_MATCHES) break outer;
-      }
-    }
-  }
-  return {
-    ok: true,
-    pattern: args.pattern,
-    matches,
-    truncated: matches.length >= MAX_SEARCH_MATCHES || timedOut,
-    timedOut,
-    // Honest-degrade (never silent): a refused/invalid pattern still
-    // returns `{ok: true, matches: []}` on a real miss, indistinguishable
-    // from "your pattern was too complex, so we searched literally
-    // instead" unless the caller can see which mode actually ran, and how
-    // many candidate lines the regex-only length cap skipped outright.
-    matchMode: matcher.usesRegex ? 'regex' : 'literal',
-    skippedLongLines,
-  };
-}
-
 export interface WriteToolArgs {
   readonly path: string;
   readonly content: string;
-}
-
-async function resolveOrRefusal(
-  cwd: string,
-  relPath: string,
-): Promise<{ abs: string } | { ok: false; reason: string; path: string }> {
-  try {
-    return { abs: await assertRealWithinWorktree(cwd, relPath) };
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason, path: relPath };
-  }
 }
 
 export async function writeTool(cwd: string, args: WriteToolArgs): Promise<unknown> {
