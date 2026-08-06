@@ -51,16 +51,6 @@ export interface RunSessionInput {
   /** Diff base for the write-scope check. Defaults to 'HEAD' (uncommitted changes). */
   readonly baseRef?: string;
   readonly spawn: SpawnSession;
-  /**
-   * Extra secret values to redact from the rendered HANDOFF beyond the
-   * known live-credential shapes (FR-S2, SC-06, W11-04 — closing a LOW
-   * advisory raised on W11-14) — typically `collectSecretValues(vault,
-   * projectDir)` (`@dokima/shared`). Without this, `renderHandoff` below
-   * only gets pattern-based redaction: a vault-registered or `.env` value
-   * that matches no `SECRET_PATTERNS` shape reaches `spawn` unredacted.
-   * Omit for pattern-only redaction (the pre-ticket behaviour).
-   */
-  readonly secretValues?: readonly string[];
 }
 
 export interface SessionResult {
@@ -77,9 +67,17 @@ export interface SessionResult {
  * Runs one agent session for a `Handoff`, inside `input.cwd` (the ticket
  * worktree). Nothing here mutates durable state or trusts the manifest as
  * fact — that's the Harbormaster's job, out-of-session (SC-02).
+ *
+ * `renderHandoff` here gets no `secretValues`, so only pattern-based
+ * redaction applies (FR-S2) — a vault-registered or `.env` exact value
+ * reaches the rendered prompt string. Redacting those before they reach
+ * `spawn` is this function's only caller's job: wrap `input.spawn` to
+ * `redactDeep` the rendered prompt (see `packages/harbormaster/src/
+ * loop-land.ts`'s `attemptOnce`, `@dokima/harbormaster`, out of this
+ * module's scope) rather than threading the values through here.
  */
 export async function runSession(input: RunSessionInput): Promise<SessionResult> {
-  const prompt = renderHandoff(input.handoff, { secretValues: input.secretValues ?? [] });
+  const prompt = renderHandoff(input.handoff);
   const { stdout, stderr, exitCode } = await input.spawn({ prompt, cwd: input.cwd });
 
   const output = stripThinking(`${stdout}\n${stderr}`.trim());
