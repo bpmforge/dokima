@@ -51,6 +51,16 @@ export interface RunSessionInput {
   /** Diff base for the write-scope check. Defaults to 'HEAD' (uncommitted changes). */
   readonly baseRef?: string;
   readonly spawn: SpawnSession;
+  /**
+   * Extra secret values to redact from the rendered HANDOFF beyond the
+   * known live-credential shapes (FR-S2, SC-06, W11-04 — closing a LOW
+   * advisory raised on W11-14) — typically `collectSecretValues(vault,
+   * projectDir)` (`@dokima/shared`). Without this, `renderHandoff` below
+   * only gets pattern-based redaction: a vault-registered or `.env` value
+   * that matches no `SECRET_PATTERNS` shape reaches `spawn` unredacted.
+   * Omit for pattern-only redaction (the pre-ticket behaviour).
+   */
+  readonly secretValues?: readonly string[];
 }
 
 export interface SessionResult {
@@ -69,7 +79,7 @@ export interface SessionResult {
  * fact — that's the Harbormaster's job, out-of-session (SC-02).
  */
 export async function runSession(input: RunSessionInput): Promise<SessionResult> {
-  const prompt = renderHandoff(input.handoff);
+  const prompt = renderHandoff(input.handoff, { secretValues: input.secretValues ?? [] });
   const { stdout, stderr, exitCode } = await input.spawn({ prompt, cwd: input.cwd });
 
   const output = stripThinking(`${stdout}\n${stderr}`.trim());

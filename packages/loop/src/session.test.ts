@@ -23,9 +23,7 @@ interface TempRepo {
 }
 
 async function createTempRepo(): Promise<TempRepo> {
-  const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'dokima-loop-session-test-'),
-  );
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-loop-session-test-'));
   await git(repoRoot, ['init', '-b', 'main']);
   await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
   await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
@@ -78,6 +76,36 @@ describe('runSession', () => {
     expect(seenCwd).toBe(repo.repoRoot);
     expect(seenPrompt).toContain('ROLE: coding-agent — implement the ticket');
     expect(seenPrompt).toContain('TICKET: W1-06 HANDOFF contract + agent session runner');
+  });
+
+  it('pattern-only redacts by default: an exact vault-shaped secret with no SECRET_PATTERNS shape reaches spawn (W11-04 baseline)', async () => {
+    repo = await createTempRepo();
+    let seenPrompt = '';
+    await runSession({
+      handoff: { ...HANDOFF, context: 'uses totally-plain-secret-9f2c for auth' },
+      cwd: repo.repoRoot,
+      spawn: async (input) => {
+        seenPrompt = input.prompt;
+        return { stdout: MANIFEST_JSON, stderr: '', exitCode: 0 };
+      },
+    });
+    expect(seenPrompt).toContain('totally-plain-secret-9f2c');
+  });
+
+  it('RED FIXTURE (FR-S2, SC-06, W11-04): a vault-registered value matching no SECRET_PATTERNS shape does not appear in the prompt handed to spawn when secretValues is supplied', async () => {
+    repo = await createTempRepo();
+    let seenPrompt = '';
+    await runSession({
+      handoff: { ...HANDOFF, context: 'uses totally-plain-secret-9f2c for auth' },
+      cwd: repo.repoRoot,
+      secretValues: ['totally-plain-secret-9f2c'],
+      spawn: async (input) => {
+        seenPrompt = input.prompt;
+        return { stdout: MANIFEST_JSON, stderr: '', exitCode: 0 };
+      },
+    });
+    expect(seenPrompt).not.toContain('totally-plain-secret-9f2c');
+    expect(seenPrompt).toContain('[REDACTED:secret]');
   });
 
   it('parses a Completion Manifest from stdout (tier contract)', async () => {

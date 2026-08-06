@@ -184,3 +184,44 @@ export interface SuppressionRow {
   readonly createdAt: string;
   readonly reopenedAt: string | null;
 }
+
+/**
+ * W11-04 (FR-H6, D-023): which session runner a ticket session actually
+ * uses. No dedicated route — like `mcpServers`/`escalationPolicy` above,
+ * this is a generic settings key (`AGENT_RUNNER_SETTINGS_KEY`) read/written
+ * through `GET/PUT /projects/{id}/settings` and `GET/PUT /settings/global`
+ * (scope-routes.ts), resolved run>project>global by the same
+ * `getEffectiveProjectSettings` every other typed panel here uses.
+ *
+ * `built-in` (the default — D-023: Dokima runs its own agent sessions,
+ * through the gateway) needs no `command`. `external` is the escape hatch
+ * for an agent CLI the operator already trusts (`--agent-command`'s old
+ * CLI-only shape) and MUST be typed in explicitly — there is no default
+ * external command, because picking one spends real tokens somewhere
+ * Dokima cannot meter.
+ */
+export type AgentRunnerKind = 'built-in' | 'external';
+
+export interface AgentRunnerSetting {
+  readonly kind: AgentRunnerKind;
+  /** Required when `kind === 'external'`: `<bin> [args...]`, run once per ticket session with the handoff as its final argument — same shape `--agent-command` always took. */
+  readonly command?: string;
+}
+
+/** The generic settings key this setting lives under (scope-routes.ts's flat key/value store). */
+export const AGENT_RUNNER_SETTINGS_KEY = 'agentRunner';
+
+export const DEFAULT_AGENT_RUNNER_SETTING: AgentRunnerSetting = { kind: 'built-in' };
+
+/**
+ * What picking `external` gives up (acceptance 2): stated where the choice
+ * is made, not just in a code comment — an external CLI's tokens are spent
+ * somewhere Dokima cannot see, so none of the machinery that depends on
+ * seeing them can apply.
+ */
+export const EXTERNAL_AGENT_WARNING =
+  "An external agent CLI runs outside Dokima's gateway, so its tokens are " +
+  'spent somewhere Dokima cannot see. Choosing it gives up: the role→model ' +
+  'matrix (FR-G2), the escalation ladder (D-018), the budget breakers ' +
+  '(FR-G4), and the spend ledger — none of them apply to what an external ' +
+  'CLI does.';
