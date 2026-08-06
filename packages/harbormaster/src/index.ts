@@ -95,3 +95,37 @@ export type {
   ResumeProjectResult,
   ResumeProjectSuccess,
 } from './resume.js';
+
+/**
+ * THE TOOL-USING TICKET SESSION (D-023, W11-02). `SpawnSession` backed by
+ * `@dokima/gateway` instead of a child process — see
+ * `agent-session/gateway-session.ts` for the loop and its one open gap
+ * (no `tool`-role message in `ChatRequest` yet).
+ */
+export {
+  AGENT_SESSION_SERVER_ID,
+  AGENT_SESSION_TOOL_NAMES,
+  AGENT_SESSION_TOOL_SCHEMAS,
+  DEFAULT_AGENT_SESSION_TASK_TYPE,
+  DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS,
+  DEFAULT_MAX_TOOL_ITERATIONS,
+  TOOL_COMMIT,
+  TOOL_EDIT,
+  TOOL_LIST,
+  TOOL_READ,
+  TOOL_SEARCH,
+  TOOL_VERIFY,
+  TOOL_WRITE,
+  agentSessionToolId,
+  createAgentSessionToolExecutor,
+  createGatewaySpawnSession,
+  ensureAgentSessionToolsRegistered,
+  parseHandoffFields,
+} from './agent-session/index.js';
+export type {
+  AgentSessionToolContext,
+  AgentSessionToolName,
+  EnsureRegisteredOptions,
+  GatewaySpawnSessionOptions,
+  HandoffFields,
+} from './agent-session/index.js';
