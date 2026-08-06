@@ -5612,6 +5612,106 @@
       "status": "done",
       "notes": "Filed 2026-08-06 from W11-04's landing advisory \u2014 the ninth ticket this session from a reviewer advisory or maker disclosure rather than a red test, and the second (after W11-10) where a reviewer's finding turned out to point at a behaviour question rather than the cosmetic issue it was raised as. The reviewer flagged the misleading name; reading the body showed the name is stale for a REASON \u2014 the refusal contract really did move in W11-04 \u2014 but that the silent degrade it now documents was never actually decided, only inherited. Worth keeping the distinction visible: W11-04 deliberately replaced the refusal for a project with NO agent configured. It said nothing about a project whose agent is configured wrong.",
       "stories": []
+    },
+    {
+      "id": "W11-19",
+      "title": "SC-01's hard exclusions are matched before the path is resolved \u2014 an ancestor symlink in write_scope reaches .git",
+      "phase": 11,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/fs-tools.ts",
+        "packages/harbormaster/src/agent-session/fs-containment.ts",
+        "packages/harbormaster/src/agent-session/fs-tools.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "(C-2/C-3, SC-01) RAISED AS CRITICAL BY THE WAVE-11 SECURITY PASS and verified by reading the write path before filing. `writeTool` (fs-tools.ts:114-127) runs in this order: `refuseIfHardExcluded(relPath)` on the SURFACE path, then `resolveOrRefusal` (realpath containment), then `refuseIfOutsideScope(relPath, ...)` on the SURFACE path again \u2014 and finally `fs.writeFile(resolved.abs, ...)` on the RESOLVED path. `editTool` (:136-149) is identical. So both gates judge one path and the write lands on another.",
+        "THE ESCAPE THAT MAKES IT CRITICAL: a symlink whose surface path is inside the ticket's write_scope but which resolves into an excluded directory INSIDE the same worktree. `packages/foo/link -> ../../.git` makes `packages/foo/link/hooks/pre-commit` pass the exclusion check (it does not match `.git/**`), pass containment (`.git` IS inside the worktree root), and pass the scope check (the surface path is in scope) \u2014 then writes a git hook, which executes on the next commit. W11-02 closed the leaf-symlink hole in containment; this is the same class one gate to the left, and containment cannot catch it because the target is legitimately inside the worktree.",
+        "DELIVER the check on the path that is actually written: re-run `matchesAnyGlob(..., HARD_EXCLUSIONS)` against the RESOLVED path (relative to the worktree root) after `resolveOrRefusal`, not only against the surface path. Keep the surface check too \u2014 it gives a better refusal message for the ordinary case and costs nothing.",
+        "CONSIDER WHETHER write_scope NEEDS THE SAME TREATMENT and say what you concluded either way: `refuseIfOutsideScope` also matches the surface path, so a symlink inside scope pointing at another in-worktree path outside scope has the same shape. It is a lesser breach than reaching `.git`, but it is the same defect.",
+        "RED FIXTURE per gate: with `link -> ../../.git` planted inside the worktree and `link/**` inside write_scope, `write` and `edit` must both throw rather than create `.git/hooks/pre-commit`. Failing today. Plant the symlink with `fs.symlink`, not by shelling out.",
+        "SCOPE PRE-CHECKED: no open ticket claims these paths; `fs-containment.ts` has no test sibling of its own and is covered by `fs-tools.test.ts`, which is in scope."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). This is the finding that justified running the pass at all: no per-ticket reviewer saw it, because the ordering it depends on is spread across three helpers and only becomes a hole in combination. It also chains with W11-20 \u2014 bypassing HARD_EXCLUSIONS is one of the few routes by which an untrusted session could reach the settings that choose which binary the host spawns.",
+      "stories": []
+    },
+    {
+      "id": "W11-20",
+      "title": "agentRunner.command chooses the binary the host spawns and the settings PUT validates nothing about it",
+      "phase": 11,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/server/src/api/server/scope-routes.ts",
+        "apps/server/src/api/server/settings-routes.test.ts",
+        "apps/server/src/api/server/settings-types.ts",
+        "apps/server/src/api/server/settings-types.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "(C-2/C-3, FR-S2) RAISED AS CRITICAL + HIGH BY THE WAVE-11 SECURITY PASS, verified at the source: `resolveAgentRunner` uses `agentRunner.command` verbatim as the binary spawned on every subsequent build run, and that setting is written through the generic `PUT /projects/{id}/settings` and `PUT /settings/global` handlers, which validate nothing per key except `CONSENT_GATED_KEYS` \u2014 a set containing exactly `['copilotEnabled']` (scope-routes.ts:44). `parseAgentRunnerSetting` checks only that `command` is a string: no allowlist, no length cap, no shape constraint.",
+        "THE ASYMMETRY IS THE ARGUMENT: this codebase already has a mechanism for exactly this problem, and it is applied to a LOWER-stakes key. `refuseConsentGatedKey` exists because, in its own comment, 'a caller could PUT straight through it' \u2014 and it guards whether Copilot is enabled. Choosing which executable the host runs is a strictly larger decision and has no equivalent gate.",
+        "DELIVER a per-key gate on `agentRunner` in the same shape as the consent gate rather than a new mechanism: the PUT path refuses or requires explicit confirmation for a change to the spawned command, and `parseAgentRunnerSetting` constrains it (at minimum a length cap and a refusal of shell metacharacters; an operator allowlist is better if one can be expressed). Say which you chose and why.",
+        "DO NOT BREAK THE FEATURE WHILE SECURING IT: W11-04 makes the external CLI a legitimate, supported choice, and W11-18 makes a misconfigured one refuse. A gate that blocks a deliberate operator choice is wrong; one that lets an unattended writer silently repoint the binary is also wrong. The distinction to encode is who is asking, not whether the value is unusual.",
+        "RED FIXTURE: a PUT that changes `agentRunner.command` without whatever confirmation is chosen is refused with a named error, asserted through the real route rather than the parser alone; and a value carrying shell metacharacters is rejected by `parseAgentRunnerSetting`.",
+        "SCOPE PRE-CHECKED: `scope-routes.ts` has no test sibling of its own; `settings-routes.test.ts` is the suite that drives those PUTs and is in scope, so this cannot self-block for want of a test file."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11f, CRITICAL + a supporting HIGH on the same path). Chains with W11-19: an agent session is untrusted by C-2/C-3 and has a closed tool set with no shell and no network, so it cannot call this API directly \u2014 but W11-19 is a route by which it could write where it should not. Neither finding is comfortable alone and together they are an escalation path from 'untrusted session' to 'chooses what the host executes'. Worth noting the severity depends on a threat-model question the report could not settle and this ticket should: who can reach the settings API in a deployed install.",
+      "stories": []
+    },
+    {
+      "id": "W11-21",
+      "title": "The search ReDoS guard cannot see backreferences \u2014 (a+)\\1+ walks straight past it",
+      "phase": 11,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/fs-search.ts",
+        "packages/harbormaster/src/agent-session/fs-tools.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "(SC-18) RAISED AS HIGH BY THE WAVE-11 SECURITY PASS and verified: `isUnsafeSearchPattern` counts quantifiers that directly follow a closing `)` or appear as raw `*`/`+`/`{` outside a character class. It has no notion of a backreference \u2014 `grep -c backref fs-search.ts` returns 0. `(a+)\\1+` is a textbook catastrophic-backtracking pattern and matches none of the existing shapes: `\\1` is not a raw quantifier and does not follow `)`.",
+        "THIS IS THE THIRD PASS OVER THE SAME GUARD, which is the reason to fix the category rather than the instance. W11-02 bounded the obvious nested quantifier, then immediately shipped a second commit for the adjacent-quantifier gap the first fix missed. A third hand-rolled shape would be the same bet a third time.",
+        "PREFER A CATEGORICAL FIX over another heuristic clause if one is available in-scope: refuse backreferences outright (the search tool has no need of them), or bound execution rather than shape \u2014 a time or step budget on the match, which is immune to whatever the next unanticipated pattern is. If a heuristic is kept, say why the categorical option was rejected.",
+        "RED FIXTURE: `(a+)\\1+` is refused (or bounded and reported) rather than accepted, plus at least one other backreference shape, and the existing accepted-pattern tests still pass \u2014 a guard that starts refusing ordinary searches is a worse outcome than the bug.",
+        "REPORT WHETHER THE SAME GUARD PROTECTS ANY OTHER ENTRY POINT, so the fix is not silently partial: if another tool or route compiles a user-supplied regex, say so; if this is the only one, say that."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). Third finding of the session on this one guard, after W11-02's original bound and its own same-session follow-up for adjacent quantifiers \u2014 which is the argument for changing the approach rather than adding a clause.",
+      "stories": []
+    },
+    {
+      "id": "W11-22",
+      "title": "W11-03 made write_scope authoritative and left VERIFY parsed from the prompt \u2014 the command that executes is the one still spoofable",
+      "phase": 11,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/harbormaster/src/agent-session/handoff-fields.ts",
+        "packages/harbormaster/src/agent-session/handoff-fields.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "(C-2/C-3, SC-17) RAISED AS HIGH BY THE WAVE-11 SECURITY PASS, and the asymmetry is visible in nine lines of one file: `gateway-session.ts:185` reads `writeScope: ticket?.writeScope ?? []` \u2014 authoritative, looked up from the ticket record, which is exactly what W11-03 changed it to after a W11-02 advisory. Ten lines later, `:195` reads `verifyCommand: fields.verifyCommand ?? DEFAULT_VERIFY_COMMAND` \u2014 still `parseHandoffFields(input.prompt)`, i.e. the LAST `VERIFY: ` line in the rendered prompt.",
+        "THE FIELD LEFT BEHIND IS THE ONE THAT EXECUTES. `handoff-fields.ts`'s own docstring documents that the last-match parse is foolable by a ticket CONTEXT ending in a lookalike line, and BLUEPRINT \u00a77 puts session-read file content into that context. write_scope was fixed because enforcing on session-influenced data is the wrong side of the trust boundary; a command string that gets run is not a weaker case than a path glob.",
+        "DELIVER the same treatment W11-03 gave write_scope: `verifyCommand` comes from the authoritative ticket record, not the prompt parse. Keep parsing the prompt for the ticket ID only \u2014 that is the seam `SpawnSession`'s fixed `{prompt, cwd}` signature forces, and it is fine precisely because the ID is then used to look the rest up.",
+        "SAY WHAT ELSE parseHandoffFields STILL FEEDS after this change, and whether any of it reaches a decision rather than a display. A parser kept for one field is easy to re-widen later by someone who assumes it was always safe.",
+        "RED FIXTURE: a prompt whose CONTEXT ends with a lookalike `VERIFY: ` line does not change the command the session runs \u2014 the ticket's real verify command runs instead. Failing today. Mirror the T-26 prompt-injection fixture W11-03 wrote for write_scope rather than inventing a new shape.",
+        "NOTE FOR THE CLOSE GATE, not a scope ask: `runCloseGate` independently re-reads `ticket.verify` and re-runs it (SC-02), so the durable verdict was never taken from the parsed copy. That is why this is HIGH and not CRITICAL \u2014 but the in-session run still executes the spoofable one."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). Same file, same function, and the sibling field of the advisory I filed after W11-02 that became W11-03's provenance fix \u2014 which is the useful part: the fix was applied to the field the advisory named and not to the one beside it. Worth carrying into how advisories get written, not just this ticket.",
+      "stories": []
     }
   ]
 }
