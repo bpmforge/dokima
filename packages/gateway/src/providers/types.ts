@@ -63,24 +63,24 @@ export interface ChatResponse {
 }
 
 /**
- * FR-G9 OpenAI tool-calling wire shapes, and the (de)serialize helpers above
- * (`toRawTool`, `applyToolCallDelta`, `finalizeToolCallDeltas`,
- * `normalizeToolCalls`): shared by any OpenAI-compatible adapter. Precisely
- * what "shared" means differs by call (W11-06, correcting an earlier version
- * of this comment that claimed openai.ts's cloud path delegates to
- * oai-compat.ts across the board — true only for non-streaming Provider
- * methods, via the `OaiCompatProvider` instance openai.ts holds as
- * `this.inner`): openai.ts's own SSE loop (`streamEvents()`, backing both
- * `chat()`'s internal `stream` toggle and the public `chatStream()`) imports
- * these wire-shape functions directly rather than delegating to
- * `this.inner.chatStream()`, because that method awaits a warm-up ping and
- * queues on a second, independent RequestQueue before its SSE loop starts —
- * acceptable for oai-compat.ts's local-server callers, but a concurrency-
- * contract and extra-round-trip change openai.ts's cloud callers did not ask
- * for. oai-compat.ts keeps its own private, pre-existing copies of
- * `toRawTool`/`normalizeToolCalls` (unchanged here, outside W11-06's
- * write_scope) rather than importing these; a future ticket that owns that
- * file can finish the consolidation. Declared here rather than in
+ * FR-G9 OpenAI tool-calling wire shapes, and their (de)serialize helpers
+ * (`toRawTool` above; `applyToolCallDelta`, `finalizeToolCallDeltas`, and
+ * `normalizeToolCalls` below, in the section this comment introduces):
+ * shared by any OpenAI-compatible adapter, including oai-compat.ts, which
+ * imports this pair from here rather than keeping its own copies (W11-07
+ * finished the consolidation W11-06 could not: oai-compat.ts was outside
+ * W11-06's write_scope). Precisely what "shared" means differs by call
+ * (W11-06, correcting an earlier version of this comment that claimed
+ * openai.ts's cloud path delegates to oai-compat.ts across the board — true
+ * only for non-streaming Provider methods, via the `OaiCompatProvider`
+ * instance openai.ts holds as `this.inner`): openai.ts's own SSE loop
+ * (`streamEvents()`, backing both `chat()`'s internal `stream` toggle and
+ * the public `chatStream()`) imports these wire-shape functions directly
+ * rather than delegating to `this.inner.chatStream()`, because that method
+ * awaits a warm-up ping and queues on a second, independent RequestQueue
+ * before its SSE loop starts — acceptable for oai-compat.ts's local-server
+ * callers, but a concurrency-contract and extra-round-trip change
+ * openai.ts's cloud callers did not ask for. Declared here rather than in
  * oai-compat.ts because W11-01's write_scope covered only this file and
  * oai-compat.ts, not the oai-compat-types.ts/oai-compat-helpers.ts chapter
  * siblings, and oai-compat.ts has no room left under the 400-line file-size

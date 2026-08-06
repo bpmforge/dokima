@@ -22,6 +22,8 @@ import { readSseDataLines, runQueuedStream } from './streaming.js';
 import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
+  normalizeToolCalls,
+  toRawTool,
   type ChatRole,
   type ChatRequest,
   type ChatResponse,
@@ -31,9 +33,7 @@ import {
   type ProviderQueueStats,
   type RawToolCall,
   type RawToolCallDelta,
-  type ToolCall,
   type ToolCallAccumulator,
-  type ToolSchema,
 } from './types.js';
 import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
@@ -47,28 +47,6 @@ import {
   type RawModelsResponse,
 } from './oai-compat-types.js';
 export type { OaiCompatConfig } from './oai-compat-types.js';
-/** `ToolSchema` -> the OpenAI wire tool shape; JSON.stringify drops `description` when undefined. */
-function toRawTool(tool: ToolSchema): Record<string, unknown> {
-  const { name, description, parameters } = tool;
-  return { type: 'function', function: { name, description, parameters } };
-}
-/** Raw wire tool_calls -> normalized `ToolCall[]`, arguments parsed once so callers never re-decode a per-provider JSON string. */
-function normalizeToolCalls(providerId: string, raw: RawToolCall[]): ToolCall[] {
-  return raw.map(({ id, function: fn }) => {
-    try {
-      return {
-        id,
-        name: fn.name,
-        arguments: JSON.parse(fn.arguments) as Record<string, unknown>,
-      };
-    } catch {
-      throw new ProviderResponseShapeError(
-        providerId,
-        `tool call "${fn.name}" has unparseable arguments JSON: ${fn.arguments}`,
-      );
-    }
-  });
-}
 
 export class OaiCompatProvider implements Provider {
   readonly id: string;
