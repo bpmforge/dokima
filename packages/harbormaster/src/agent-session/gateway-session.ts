@@ -10,22 +10,16 @@
  * parsed out-of-band by `runSession` itself — this module never parses or
  * trusts it) or the per-session budget stops it (T-27).
  *
- * KNOWN LIMITATION (report, don't silently work around — MASTER_PROMPT
- * §"when stuck"): `ChatRequest.messages` is `ChatMessage[]` with
- * `{role: 'system'|'user'|'assistant', content: string}` (W11-01,
- * `packages/gateway`, out of this ticket's write_scope) — there is no
- * `tool`-role message and no field for an assistant turn to echo the
- * `tool_calls` it made. A real OpenAI-compatible wire round-trip requires
- * both. Tool results are therefore fed back as a synthetic `user` message
- * (`mcp-wiring.ts`'s `runToolCalls`) — this satisfies the fake-provider
- * test harness and this module's own red fixtures, but will not reach a
- * live cloud provider without `packages/gateway` adding a `tool` role and
- * a `toolCalls` echo field to `ChatMessage`/`ChatRequest`. Tracked as its
- * own ticket, W11-12 (`packages/gateway/src/providers/**`) — NOT this
- * ticket's own `notes` field, which covers a different gap (the
- * `runCloseGate` asymmetric-scope-check HANDOFF, filed separately as
- * W11-13). This module still does not itself emit whatever new fields
- * W11-12 adds (its own acceptance criteria name that as a separate claim).
+ * REAL TOOL ROUND TRIP (W11-16, closing the gap W11-12 opened but did not
+ * itself wire): the assistant turn that requested tool calls goes back into
+ * `messages` carrying its `toolCalls` (`ChatMessage.toolCalls`, W11-12), and
+ * each tool result is fed back as its own `'tool'`-role message carrying the
+ * `toolCallId` of the call it answers (`ChatMessage.toolCallId`) — never a
+ * synthetic `user` turn. `runToolCalls` (`mcp-wiring.ts`) is called once per
+ * tool call rather than once per turn so each result can be echoed on its
+ * own `tool`-role message; `mcp-wiring.ts` itself is out of this ticket's
+ * write_scope, so its docstring still describes the old single-block
+ * shape — a stale-comment follow-up, not a behavior gap.
  *
  * `SpawnSession`'s fixed `{prompt, cwd}` signature also carries no
  * `Handoff` object, so the ticket id this loop needs is recovered from the
@@ -251,11 +245,8 @@ export function createGatewaySpawnSession(
         }
       }
 
-      // KNOWN LIMITATION (see module header): `response.message` carries no
-      // `toolCalls` field to echo back — only its (often empty) text.
-      messages.push(response.message);
-
       if (!response.toolCalls || response.toolCalls.length === 0) {
+        messages.push(response.message);
         const scopeRefusal = await refuseIfSessionExceededScope(
           input.cwd,
           toolCtx.writeScope,
@@ -264,14 +255,21 @@ export function createGatewaySpawnSession(
         return { stdout: response.message.content, stderr: '', exitCode: 0 };
       }
 
-      const resultsText = await runToolCalls(response.toolCalls, toolCtx, {
-        log: options.log,
-        role: options.role,
-        actorId: options.actorId,
-        ticketId,
-        runId: options.runId,
-      });
-      messages.push({ role: 'user', content: resultsText });
+      // Echoes the model's own tool_calls back into history (see module
+      // header) — required for a following `tool`-role turn's
+      // `toolCallId` to make sense next to the assistant turn it answers.
+      messages.push({ ...response.message, toolCalls: response.toolCalls });
+
+      for (const call of response.toolCalls) {
+        const resultText = await runToolCalls([call], toolCtx, {
+          log: options.log,
+          role: options.role,
+          actorId: options.actorId,
+          ticketId,
+          runId: options.runId,
+        });
+        messages.push({ role: 'tool', content: resultText, toolCallId: call.id });
+      }
     }
 
     return {

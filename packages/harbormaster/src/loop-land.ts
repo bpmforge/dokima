@@ -14,13 +14,11 @@
  * "claim … -> close -> checkpoint -> repeat" shape this ticket names), so
  * this loop advances to the next claimable ticket without releasing.
  *
- * `mergeLocal` (`@dokima/git`) is deliberately NOT wired into this
- * loop: landing on `main` is D-018/BLUEPRINT §297/§388's NEVER-AUTO path
- * ("the Harbormaster physically cannot self-merge... only the human (or
- * the reviewer identity under explicit policy) holds merge rights on
- * main"). "Land" in this loop's own vocabulary stops at the checkpointed
- * `in_review` state — the same maker/verifier split `runCloseGate` (whose
- * `close` never implies `accept`) already draws.
+ * `mergeLocal` (`@dokima/git`) is deliberately NOT wired in: landing on
+ * `main` is D-018/BLUEPRINT §297/§388's NEVER-AUTO path (only the human,
+ * or the reviewer identity under explicit policy, holds merge rights).
+ * "Land" here stops at checkpointed `in_review` — the same maker/verifier
+ * split `runCloseGate` (`close` never implies `accept`) already draws.
  *
  * "Park" = the ticket exhausts its policy-defined attempts without a
  * close: mirrors `loop-claim.ts`'s auto-block (`commentTicket` evidence +
@@ -40,12 +38,9 @@ import {
   type CreateWorktreeOptions,
   type WorktreeHandle,
 } from '@dokima/git';
-import {
-  policyForLevel,
-  ROLE_CODING_AGENT,
-  type BreakerLevel,
-} from '@dokima/gateway';
+import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
 import { runSession, type SessionResult, type SpawnSession } from '@dokima/loop';
+import { redactDeep } from '@dokima/shared';
 import {
   claimTicket,
   commentTicket,
@@ -136,6 +131,8 @@ export interface LandLoopOptions {
   /** `git remote` names to push a landed ticket branch to (FR-I2, dual-remote sync). Defaults to whatever remotes are actually configured on the repo (`git remote`, read fresh per ticket) — local-first: zero configured remotes is a normal, valid setup and pushes nothing. */
   readonly pushRemotes?: readonly string[];
   readonly now?: () => string;
+  /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
+  readonly secretValues?: readonly string[];
 }
 
 export type LandLoopStopReason = 'idle' | 'stopped' | 'budget';
@@ -211,7 +208,7 @@ async function resolveWorktree(
   });
 }
 
-/** Runs one fresh session, then (only if it returned a manifest) the real out-of-session close gate. */
+/** Runs one fresh session, then (only if it returned a manifest) the real out-of-session close gate. `secretValues` (W11-16) wraps `spawn` to redact the rendered prompt before it leaves the process, since `runSession` has no redaction hook of its own. */
 async function attemptOnce(
   options: LandLoopOptions,
   ticket: Ticket,
@@ -219,7 +216,11 @@ async function attemptOnce(
   baseRef: string,
 ): Promise<{ session: SessionResult; closeGate: CloseGateResult | null }> {
   const handoff = options.buildHandoff(ticket);
-  const session = await runSession({ handoff, cwd: worktree.path, spawn: options.spawn });
+  const secrets = options.secretValues;
+  const spawn: SpawnSession = secrets?.length
+    ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
+    : options.spawn;
+  const session = await runSession({ handoff, cwd: worktree.path, spawn });
   if (!session.manifest) {
     return { session, closeGate: null };
   }
