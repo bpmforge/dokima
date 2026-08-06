@@ -10,18 +10,35 @@
  *
  * SECURITY (symlink-escape, SC-01's fourth enumerated case,
  * docs/SECURITY_CONTROLS.md): a cheap `path.resolve` check alone (no
- * `realpath`) misses an ancestor directory that is itself a symlink
- * pointing outside the worktree — `write {path: 'evil/x.ts'}` where
+ * `realpath`) misses two shapes: (1) an ANCESTOR directory that is itself a
+ * symlink pointing outside the worktree — `write {path: 'evil/x.ts'}` where
  * `evil -> /tmp/outside` resolves to a string starting with the worktree
  * root, passes a pure-string check, and would write outside the worktree
- * entirely. `checkWriteScope` (commit time) can't catch this after the
- * fact either — a write that landed outside the worktree never appears in
- * `git diff` at all. `assertRealWithinWorktree` closes this the same way
- * `../scope.js`'s `classifyManifestFile` and `packages/git/src/scope.ts`'s
- * `checkWriteScope` do: walk up to the nearest EXISTING ancestor (the
- * target file may not exist yet — that's the whole point of `write`),
- * resolve it via `fs.realpath`, and check containment on the resolved
- * path, not the literal string.
+ * entirely; (2) the LEAF component itself being a pre-existing symlink
+ * pointing outside — `write {path: 'evil.txt'}` where `evil.txt ->
+ * /tmp/outside/leak.txt` — which `fs.writeFile`'s default `open()` follows
+ * (Node has no `O_NOFOLLOW` by default). `checkWriteScope` (commit time)
+ * can't catch either after the fact — a write that landed outside the
+ * worktree never appears in `git diff` at all.
+ *
+ * `assertRealWithinWorktree` closes both: `realpathOfTarget` attempts
+ * `fs.realpath` on the FULL target first — this resolves a symlink leaf (or
+ * chain) whose ultimate target exists, catching case (2) directly, same as
+ * `../scope.js`'s `classifyManifestFile` already does for reads. Only when
+ * the leaf has no filesystem entry at all (`fs.lstat` also fails — the
+ * genuine write-new-file case) does it fall back to
+ * `realpathOfNearestAncestor` (walk up to the nearest EXISTING ancestor,
+ * same as `packages/git/src/scope.ts`'s `checkWriteScope`), which still
+ * catches case (1). A leaf that EXISTS as a symlink but whose target does
+ * NOT (a dangling symlink) is a third shape `classifyManifestFile`'s
+ * read-only path doesn't need to worry about but a write does: `fs.realpath`
+ * throws for it same as a missing leaf, and naively falling back to
+ * ancestor-only resolution there would miss it too (the ancestor walk never
+ * follows the symlink itself) — the exact "same bug again" this ticket was
+ * reopened over. `realpathOfTarget` distinguishes the two via `fs.lstat`
+ * before falling back, and manually follows a dangling symlink's own target
+ * (`fs.readlink`, recursively, bounded by `MAX_SYMLINK_HOPS`) rather than
+ * treating it as an absent leaf.
  */
 
 import { promises as fs } from 'node:fs';
@@ -72,6 +89,9 @@ const MAX_MATCH_LINE_LENGTH = 300;
 const SEARCH_TIME_BUDGET_MS = 3000;
 const TIME_CHECK_INTERVAL_LINES = 50;
 
+/** Bounds `realpathOfTarget`'s manual symlink-chain following (dangling symlinks only — a chain whose target ultimately exists is resolved by a single `fs.realpath` call instead). Refusing past this is a fail-closed default, not a realistic legitimate depth. */
+const MAX_SYMLINK_HOPS = 40;
+
 export class ToolPathEscapeError extends Error {
   constructor(relPath: string) {
     super(`path "${relPath}" escapes the ticket worktree`);
@@ -95,6 +115,7 @@ export function resolveWithinWorktree(cwd: string, relPath: string): string {
   return resolved;
 }
 
+/** Fallback for a leaf with NO filesystem entry at all (the write-new-file case) — walks up to the nearest EXISTING ancestor, resolves it via `fs.realpath`, and rejoins the unresolved tail. Never called on a leaf that exists as a symlink (see `realpathOfTarget`, its only caller). */
 async function realpathOfNearestAncestor(absPath: string): Promise<string> {
   let dir = path.dirname(absPath);
   const tail = [path.basename(absPath)];
@@ -111,18 +132,61 @@ async function realpathOfNearestAncestor(absPath: string): Promise<string> {
   }
 }
 
+/**
+ * Resolves `absPath` to its real location, covering all three shapes a
+ * write-time containment check must (module header): an ordinary existing
+ * file (`fs.realpath` resolves it directly); a symlink leaf whose ultimate
+ * target exists (`fs.realpath` already follows the whole chain); and a
+ * dangling symlink leaf, which `fs.realpath` throws on same as a genuinely
+ * absent leaf — distinguished here via `fs.lstat` and resolved by manually
+ * following the link (`fs.readlink`) rather than falling back to
+ * ancestor-only resolution, which would silently ignore the symlink and
+ * miss the escape.
+ */
+async function realpathOfTarget(absPath: string, hops = 0): Promise<string> {
+  try {
+    return await fs.realpath(absPath);
+  } catch (err) {
+    const isSymlink = await fs
+      .lstat(absPath)
+      .then((stat) => stat.isSymbolicLink())
+      .catch(() => null);
+
+    if (isSymlink === null) {
+      // The leaf has no filesystem entry at all — the genuine
+      // write-new-file case. Safe to resolve via the nearest existing
+      // ancestor instead.
+      return realpathOfNearestAncestor(absPath);
+    }
+    if (!isSymlink) {
+      // Exists, is not a symlink, yet `fs.realpath` still failed (e.g. a
+      // permissions error) — fail closed by surfacing the original error
+      // rather than mislabeling it as a path escape.
+      throw err;
+    }
+    if (hops >= MAX_SYMLINK_HOPS) {
+      throw new ToolPathEscapeError(absPath);
+    }
+    const link = await fs.readlink(absPath);
+    const target = path.isAbsolute(link)
+      ? link
+      : path.resolve(path.dirname(absPath), link);
+    return realpathOfTarget(target, hops + 1);
+  }
+}
+
 function isWithinRoot(root: string, real: string): boolean {
   return real === root || real.startsWith(root + path.sep);
 }
 
-/** The authoritative pre-write check: `resolveWithinWorktree`'s string arithmetic PLUS realpath-of-nearest-existing-ancestor containment (see module header). Used by `write`/`edit` — the two tools that create durable bytes on disk before a commit ever runs. */
+/** The authoritative pre-write check: `resolveWithinWorktree`'s string arithmetic PLUS full-target-realpath containment (see module header). Used by `write`/`edit`/`list`/`search` — every tool that touches the real filesystem before a `commit` ever runs. */
 export async function assertRealWithinWorktree(
   cwd: string,
   relPath: string,
 ): Promise<string> {
   const resolved = resolveWithinWorktree(cwd, relPath);
   const realRoot = await fs.realpath(path.resolve(cwd));
-  const real = await realpathOfNearestAncestor(resolved);
+  const real = await realpathOfTarget(resolved);
   if (!isWithinRoot(realRoot, real)) {
     throw new ToolPathEscapeError(relPath);
   }
@@ -159,8 +223,9 @@ export interface ListToolArgs {
 
 export async function listTool(cwd: string, args: ListToolArgs): Promise<unknown> {
   const relPath = normalizeRelPath(args.path ?? '.');
-  const abs = resolveWithinWorktree(cwd, relPath);
-  const entries = await fs.readdir(abs, { withFileTypes: true });
+  const resolved = await resolveOrRefusal(cwd, relPath);
+  if ('reason' in resolved) return resolved;
+  const entries = await fs.readdir(resolved.abs, { withFileTypes: true });
   return {
     ok: true,
     path: relPath,
@@ -271,7 +336,9 @@ async function walk(dir: string, out: string[]): Promise<void> {
 }
 
 export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unknown> {
-  const root = resolveWithinWorktree(cwd, normalizeRelPath(args.path ?? '.'));
+  const resolvedRoot = await resolveOrRefusal(cwd, normalizeRelPath(args.path ?? '.'));
+  if ('reason' in resolvedRoot) return resolvedRoot;
+  const root = resolvedRoot.abs;
   const matches: { file: string; line: number; text: string }[] = [];
   const files: string[] = [];
   await walk(root, files);

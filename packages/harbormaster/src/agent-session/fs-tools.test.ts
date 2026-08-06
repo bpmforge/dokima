@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  assertRealWithinWorktree,
   editTool,
   isUnsafeSearchPattern,
   listTool,
@@ -111,6 +112,140 @@ describe('agent-session fs-tools', () => {
       'original\n',
     );
   });
+
+  it(
+    '(W11-02 acceptance 2, SC-18) assertRealWithinWorktree refuses a pre-existing LEAF ' +
+      'symlink pointing outside the worktree — the leaf itself, not a symlinked ' +
+      'ancestor directory (the case attempt 1 already covered); realpathOfNearestAncestor ' +
+      'only ever resolved the nearest ANCESTOR, never the leaf, so this was ALLOWED before ' +
+      'this fix',
+    async () => {
+      const dir = await tmpWorktree();
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      await fs.writeFile(path.join(outsideDir, 'leak.txt'), 'secret\n');
+      await fs.symlink(path.join(outsideDir, 'leak.txt'), path.join(dir, 'evil.txt'));
+
+      await expect(assertRealWithinWorktree(dir, 'evil.txt')).rejects.toThrow(
+        ToolPathEscapeError,
+      );
+    },
+  );
+
+  it(
+    '(W11-02 acceptance 2) write refuses through a pre-existing leaf symlink pointing ' +
+      "outside the worktree, and never touches the symlink's target",
+    async () => {
+      const dir = await tmpWorktree();
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      await fs.writeFile(path.join(outsideDir, 'leak.txt'), 'secret\n');
+      await fs.symlink(path.join(outsideDir, 'leak.txt'), path.join(dir, 'evil.txt'));
+
+      const result = (await writeTool(dir, {
+        path: 'evil.txt',
+        content: 'exfiltrated',
+      })) as { ok: boolean };
+
+      expect(result.ok).toBe(false);
+      await expect(fs.readFile(path.join(outsideDir, 'leak.txt'), 'utf8')).resolves.toBe(
+        'secret\n',
+      );
+    },
+  );
+
+  it(
+    '(W11-02 acceptance 2) edit refuses through a pre-existing leaf symlink pointing ' +
+      "outside the worktree, and never touches the symlink's target",
+    async () => {
+      const dir = await tmpWorktree();
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      await fs.writeFile(path.join(outsideDir, 'leak.txt'), 'original\n');
+      await fs.symlink(path.join(outsideDir, 'leak.txt'), path.join(dir, 'evil.txt'));
+
+      const result = (await editTool(dir, {
+        path: 'evil.txt',
+        oldString: 'original',
+        newString: 'tampered',
+      })) as { ok: boolean };
+
+      expect(result.ok).toBe(false);
+      await expect(fs.readFile(path.join(outsideDir, 'leak.txt'), 'utf8')).resolves.toBe(
+        'original\n',
+      );
+    },
+  );
+
+  it(
+    '(W11-02 acceptance 2) write refuses through a DANGLING leaf symlink (target does ' +
+      'not exist) pointing outside the worktree — falling back to ancestor-only ' +
+      'resolution here would silently ignore the symlink, since the ancestor walk ' +
+      "never follows it, and `fs.writeFile` still creates a new file at the symlink's " +
+      'target through its default (non-O_NOFOLLOW) open()',
+    async () => {
+      const dir = await tmpWorktree();
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      const outsideTarget = path.join(outsideDir, 'leak.txt');
+      await fs.symlink(outsideTarget, path.join(dir, 'evil.txt'));
+
+      const result = (await writeTool(dir, {
+        path: 'evil.txt',
+        content: 'exfiltrated',
+      })) as { ok: boolean };
+
+      expect(result.ok).toBe(false);
+      await expect(fs.stat(outsideTarget)).rejects.toThrow();
+    },
+  );
+
+  it(
+    '(W11-02 acceptance 2) list refuses a symlinked directory escaping the worktree ' +
+      '(the same containment gap, applied to a read-side tool in the same file)',
+    async () => {
+      const dir = await tmpWorktree();
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      await fs.writeFile(path.join(outsideDir, 'secret.txt'), 'top secret\n');
+      await fs.symlink(outsideDir, path.join(dir, 'evil'));
+
+      const result = (await listTool(dir, { path: 'evil' })) as {
+        ok: boolean;
+        reason?: string;
+      };
+      expect(result.ok).toBe(false);
+    },
+  );
+
+  it(
+    '(W11-02 acceptance 2) search refuses a symlinked directory escaping the worktree ' +
+      '(same containment gap, read-side)',
+    async () => {
+      const dir = await tmpWorktree();
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      await fs.writeFile(path.join(outsideDir, 'secret.txt'), 'NEEDLE\n');
+      await fs.symlink(outsideDir, path.join(dir, 'evil'));
+
+      const result = (await searchTool(dir, { pattern: 'NEEDLE', path: 'evil' })) as {
+        ok: boolean;
+      };
+      expect(result.ok).toBe(false);
+    },
+  );
 
   it('write refuses a direct `.git` write (hard-excluded, SC-01)', async () => {
     const dir = await tmpWorktree();
