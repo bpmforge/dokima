@@ -121,7 +121,7 @@ async function runOneToolCall(
   }
 }
 
-/** Runs every tool call the model requested in one turn, and renders the results as a single block the follow-up chat message carries (see gateway-session.ts's header for why this can't be a real `tool`-role message). */
+/** Runs every tool call passed in and renders each outcome as a `TOOL_RESULT` line, newline-joined. `gateway-session.ts` calls this once per tool call (`runToolCalls([call], ...)`) and pushes the single-line result back as its own `tool`-role message carrying that call's `toolCallId`. */
 export async function runToolCalls(
   toolCalls: readonly ToolCall[],
   ctx: AgentSessionToolContext,

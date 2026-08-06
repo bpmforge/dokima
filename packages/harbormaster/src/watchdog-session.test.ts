@@ -2,12 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createIdentity,
-  listEvents,
-  openEventLog,
-  type EventLog,
-} from '@dokima/events';
+import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 import { git } from '@dokima/git';
 import type { Handoff } from '@dokima/loop';
 import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
@@ -21,9 +16,7 @@ interface Fixture {
 }
 
 async function setupFixture(): Promise<Fixture> {
-  const repoRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'dokima-watchdog-sess-repo-'),
-  );
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-watchdog-sess-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
   await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
   await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
@@ -150,4 +143,53 @@ describe('runWatchdogSession', () => {
     );
     expect(getTicket(log, 'T-2')?.status).toBe('in_progress');
   });
+
+  it(
+    '(W11-17, FR-S2/SC-06 red fixture) a `secretValues` supplied to ' +
+      '`RunWatchdogSessionOptions` reaches the spawn boundary: an exact value with no ' +
+      'known credential shape, embedded in the handoff context that ends up in the ' +
+      'rendered HANDOFF prompt, does not appear in the prompt `spawn` actually receives',
+    async () => {
+      fixture = await setupFixture();
+      const { log, repoRoot } = fixture;
+      createTicket(log, 'worker-1', {
+        id: 'T-3',
+        type: 'task',
+        title: 'Secret ticket',
+        lane: 'core',
+        writeScope: ['packages/example/**'],
+        verify: 'true',
+      });
+      claimTicket(log, { ticketId: 'T-3', actorId: 'worker-1' });
+      startTicket(log, { ticketId: 'T-3', actorId: 'worker-1' });
+
+      const secret = 'correcthorsebatterystaple';
+
+      // `createWatchdogChildProcessSpawn` spawns `command [...args] prompt`
+      // (watchdog-process.ts) — the prompt lands as the trailing argv entry,
+      // which this child echoes back on stdout.
+      const { session } = await runWatchdogSession({
+        log,
+        actorId: 'worker-1',
+        ticketId: 'T-3',
+        runId: 'run-3',
+        handoff: {
+          ...HANDOFF,
+          ticket: { id: 'T-3', title: 'Secret ticket' },
+          context: `token=${secret}`,
+        },
+        cwd: repoRoot,
+        command: 'node',
+        args: ['-e', 'console.log(process.argv[1])'],
+        maxSessionSeconds: 5,
+        heartbeatStallSeconds: 60,
+        pollIntervalMs: 10,
+        secretValues: [secret],
+      });
+
+      expect(session.output).toContain('CONTEXT: token=');
+      expect(session.output).not.toContain(secret);
+      expect(session.output).toContain('[REDACTED:secret]');
+    },
+  );
 });
