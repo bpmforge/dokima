@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -237,4 +238,74 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
       log.close();
     }
   });
+
+  it('SMOKE TEST: the built-in agent actually reaches a real model call, not just past the CLI refusal', async () => {
+    // A local, OpenAI-compatible HTTP fixture standing in for the model
+    // endpoint (Law 9 — never a live third-party network call). This proves
+    // the whole chain actually executes: resolveModelTarget's env fallback,
+    // providerForConfig building a real oai-compat Provider, the minimal
+    // matrix resolving through route() rather than throwing
+    // RoutingUnresolvedError, resolveProvider being called, and
+    // ensureAgentSessionToolsRegistered running — none of which the
+    // empty-board tests above exercise, since runLandLoop goes idle before
+    // attemptOnce ever calls spawn.
+    let chatCompletionsHit = 0;
+    const server = http.createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on('data', (c: Buffer) => chunks.push(c));
+      req.on('end', () => {
+        if (req.url?.endsWith('/models')) {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ data: [] }));
+          return;
+        }
+        chatCompletionsHit += 1;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            id: 'chatcmpl-smoke',
+            model: 'local-model',
+            choices: [
+              {
+                index: 0,
+                message: { role: 'assistant', content: 'no manifest here' },
+                finish_reason: 'stop',
+              },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1 },
+          }),
+        );
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server did not bind');
+    const previousBaseUrl = process.env.DOKIMA_MODEL_BASE_URL;
+    process.env.DOKIMA_MODEL_BASE_URL = `http://127.0.0.1:${address.port}/v1`;
+
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    seedTicket(log);
+    const io = collectIO();
+    try {
+      const code = await withSigningKey(() =>
+        executeBuildRun(log, { projectId: 'p', actorId: 'worker-1' }, 'run-1', {
+          cwd: project.cwd,
+          ...io.io,
+          now: NOW,
+        }),
+      );
+      // Not asserting `landed` — a plain-text reply with no Completion
+      // Manifest parks the ticket, and that's fine (see the block comment
+      // above): what this proves is that the model endpoint was actually
+      // called, not that the built-in agent can finish a ticket unassisted.
+      expect(code).toBe(0);
+      expect(chatCompletionsHit).toBeGreaterThan(0);
+    } finally {
+      if (previousBaseUrl === undefined) delete process.env.DOKIMA_MODEL_BASE_URL;
+      else process.env.DOKIMA_MODEL_BASE_URL = previousBaseUrl;
+      log.close();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }, 30_000);
 });

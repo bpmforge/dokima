@@ -1,16 +1,16 @@
 /**
  * Local type definitions mirroring packages/gateway's routing/escalation/fitness
  * shapes and packages/loop's rule-lifecycle shapes (D-018, D-014, FR-G2, FR-S1).
- * apps/server cannot depend on packages/gateway or packages/loop directly —
- * neither is a declared workspace dependency, and apps/server/package.json
- * sits outside this ticket's write_scope (apps/server/src/api/server.ts,
- * apps/server/src/api/server/** only; see W4-01's gate-fix precedent for why
- * a ticket may not self-authorize widening that boundary). These types are a
- * deliberate, documented duplication of the wire shape those packages
- * already define (packages/gateway/src/routing/types.ts,
- * escalation/policy-types.ts, packages/loop/src/findings-types.ts /
- * findings-rules.ts) — a future ticket able to touch apps/server/package.json
- * should consolidate by importing the real types instead.
+ * STALE CLAIM CORRECTED (W11-04): this docstring used to say apps/server
+ * could not depend on packages/gateway or packages/loop because neither was
+ * a declared workspace dependency — both are, as of `apps/server/package.json`
+ * today (confirmed: `run-build.ts` in this same package imports real types
+ * and functions from both). These types remain a deliberate, DOCUMENTED
+ * duplication of the wire shape those packages already define
+ * (packages/gateway/src/routing/types.ts, escalation/policy-types.ts,
+ * packages/loop/src/findings-types.ts/findings-rules.ts) — nobody has done
+ * the consolidation pass yet, not because the dependency boundary forbids
+ * it. A future ticket should replace these with real imports.
  */
 
 export type AgentRole = string;
