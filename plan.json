@@ -5395,7 +5395,7 @@
         "SCOPE NOTE: `fs-tools.test.ts` is in scope because `fs-search.ts` is covered by that suite rather than a sibling of its own \u2014 checked before filing so this ticket cannot self-block for want of a test file, which cost W10-68 two sessions."
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": "Filed 2026-08-06 from two of W11-02's three landing advisories; the third (the `commit` tool deriving write_scope from a prompt string-parse) went to W11-03's notes instead, because that ticket IS the SC-17 subject and a separate ticket would have duplicated it. Fifth ticket this session filed from a reviewer advisory rather than a red test. Both findings here were verified at the source before filing, and one of them corrected the reviewer in the process \u2014 the 'untruncated' claim is wrong, the 'unredacted' claim is right. Reading advisories is worth it; believing them verbatim is not.",
       "stories": []
     },
