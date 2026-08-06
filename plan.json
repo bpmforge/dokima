@@ -5454,6 +5454,35 @@
       "status": "todo",
       "notes": "Filed 2026-08-06 from W11-03's own HANDOFF note, which named the file, the missing check, the reason it could not do it (write_scope), and which runner is still exposed. Worth recording as the model of a good self-limited disclosure: it did not widen its scope, did not silently absorb the gap, and did not describe it so vaguely that someone would have to re-derive it. Note the shape of the risk \u2014 the exposed path is the ESCAPE HATCH runner (`createChildProcessSpawn`), which is exactly where a project is most likely to point at an external agent CLI it does not control.",
       "stories": []
+    },
+    {
+      "id": "W11-14",
+      "title": "Verify-output redaction is pattern-only \u2014 a secret whose shape SECRET_PATTERNS does not know still reaches the model",
+      "phase": 11,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/git-tools.ts",
+        "packages/harbormaster/src/agent-session/git-tools.test.ts",
+        "packages/harbormaster/src/agent-session/tool-executor.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+      ],
+      "depends_on": [
+        "W11-11"
+      ],
+      "acceptance": [
+        "(FR-S2, SC-06) W11-11 CLOSED THE PATH AND LEFT A RESIDUAL IT NAMED HONESTLY, in a KNOWN LIMITATION block at git-tools.ts:17-23: `redactString` runs there with NO `secretValues`, so only known-shape patterns (SECRET_PATTERNS: gh/AWS/OpenAI-style keys, PEM blocks, DB connection strings) are caught. The exact-value pass that `renderHandoff` gets via `collectSecretValues(vault, projectDir)` is absent, because threading it needs a vault handle on `AgentSessionToolContext` \u2014 out of W11-11's write_scope.",
+        "WHAT THAT LEAVES EXPOSED, stated plainly rather than as a theoretical gap: a credential that does not match a known shape \u2014 a bespoke internal token, a rotated key with a new prefix, a password \u2014 printed by a failing verify command still reaches the routed model's next turn, which may be a cloud provider. Law 8 says secrets never reach prompts, and the session's OTHER path into a prompt already has both passes.",
+        "DELIVER the exact-value pass on this path too: `AgentSessionToolContext` carries the secret values (or the vault handle to collect them), `gateway-session.ts` supplies them where it constructs `toolCtx` (:183), and `verifyTool` passes them to `redactString` alongside the pattern set. Scope pre-checked before filing: `collectSecretValues` is exported from `@dokima/shared`'s secrets barrel and harbormaster already declares `@dokima/shared`, so no dependency or ARCHITECTURE matrix change is needed.",
+        "PRESERVE W11-11'S ORDERING, which is load-bearing and easy to undo by accident: redaction runs over the FULL untruncated text BEFORE the MAX_OUTPUT_CHARS cap, so a secret cannot leak half-matched across the cut point. Any refactor here keeps that order, and the result keeps stating both `redacted` and `truncated`.",
+        "RED FIXTURE: a verify command whose stdout contains a vault-registered value that matches NO pattern in SECRET_PATTERNS (e.g. a plain word registered as a secret) comes back redacted, with `redacted: true`. Failing today \u2014 W11-11's fixture uses a credential-SHAPED string, which the pattern pass already catches, so this ticket's fixture must deliberately not look like a credential.",
+        "SAY WHETHER THE SAME GAP EXISTS ON ANY OTHER TOOL RESULT rather than fixing only the one that was reported: the search, read and git tools all return content the model sees next turn. If they need the same pass, do it here; if they do not, say why."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from W11-11's own KNOWN LIMITATION comment. Seventh ticket this session originating in a maker disclosure or reviewer advisory rather than a red test, and the second where the disclosure lived ONLY in a code comment with no ticket behind it (W11-12 was the first). W11-11 did the right thing by naming the limit precisely and not widening its own scope to fix it; the failure mode to avoid is the comment being the only record. Note the trap for whoever takes it: W11-11's existing red fixture uses a credential-shaped string, which the pattern pass catches, so re-using that fixture shape would prove nothing about the exact-value pass.",
+      "stories": []
     }
   ]
 }
