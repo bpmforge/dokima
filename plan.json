@@ -5197,7 +5197,8 @@
         "apps/server/src/cli/run-build.ts"
       ],
       "depends_on": [
-        "W11-02"
+        "W11-02",
+        "W11-12"
       ],
       "acceptance": [
         "(FR-H6) MEASURED 2026-08-04: `--agent-command` is a CLI flag with no default and no settings surface, so nothing in the product can configure an agent and an installed user cannot run the loop at all. W10-77 shipped it that way deliberately \u2014 picking an agent spends the founder's money \u2014 but a flag is not a decision surface.",
@@ -5206,7 +5207,7 @@
       ],
       "points": 3,
       "status": "todo",
-      "notes": "Depends on W11-02 because defaulting to an agent that does not exist yet would be a lie in the settings surface. The honest-warning clause is the point of the ticket as much as the picker is: an external agent is a legitimate choice and its costs must be stated where the choice is made.",
+      "notes": "Depends on W11-02 because defaulting to an agent that does not exist yet would be a lie in the settings surface. The honest-warning clause is the point of the ticket as much as the picker is: an external agent is a legitimate choice and its costs must be stated where the choice is made. \u2014 DEPENDENCY ADDED 2026-08-06 before this ticket was claimed, on evidence rather than preference: acceptance 2 makes Dokima's OWN agent the DEFAULT, and W11-12 established that agent's tool loop cannot talk to any real provider yet \u2014 `ChatRole` in gateway's providers/types.ts is 'system' | 'user' | 'assistant' with no 'tool', and `ChatMessage` has no toolCalls field, so the multi-turn echo the loop produces cannot be expressed on the wire. That is true of LM STUDIO AND OLLAMA too, not just cloud, so it defeats the local-first path (C-1) as much as any other. Shipping the picker first would make the default selection fail on an installed user's first real run, which is the exact condition acceptance 1 exists to end. WHAT MADE IT INVISIBLE IS WORTH MORE THAN THE DEPENDENCY: W11-02's and W11-03's fixtures are all green and the loop still cannot reach a real provider, because the fake gateway does not enforce the wire format. That is the same law-9 blind spot W11-12 was filed to close, surfacing a second time as a sequencing error rather than a test failure. A future reader should not mistake this for bureaucracy: nothing red would ever have told anyone.",
       "stories": []
     },
     {
