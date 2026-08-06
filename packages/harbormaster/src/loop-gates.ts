@@ -28,6 +28,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
+import { checkWriteScope } from '@dokima/git';
 import { computeChangedPaths } from '@dokima/loop';
 import { loadValidatorPack, runValidatorPack } from '@dokima/validators';
 import { mintReceipt, type ReceiptInputFile } from '@dokima/events';
@@ -78,10 +79,14 @@ export const DEFAULT_MEMORY_ELIGIBLE_ROLES: readonly string[] = ['coding-agent']
  * Runs the full out-of-session close gate for one session's manifest
  * (acceptance 1): stat claimed files, re-run the ticket's own verify, a
  * real commit on the ticket branch, diff-scope subset checks (acceptance
- * 2, R-F4), and the required validator pack including secrets-scan
- * (acceptance 4/5) — then and only then mints a close receipt and calls
- * `closeTicket`. Any failure calls `commentTicket` with every reason and
- * returns without touching ticket state otherwise.
+ * 2, R-F4), the symmetric write-scope check (W11-13: the real diff/commit
+ * set — never the manifest — checked against `ticket.writeScope` via
+ * `checkWriteScope`/`HARD_EXCLUSIONS`, `@dokima/git`, so a session that
+ * changed more than it declared cannot close regardless of which
+ * `SpawnSession` runner produced it), and the required validator pack
+ * including secrets-scan (acceptance 4/5) — then and only then mints a
+ * close receipt and calls `closeTicket`. Any failure calls `commentTicket`
+ * with every reason and returns without touching ticket state otherwise.
  */
 export async function runCloseGate(options: CloseGateOptions): Promise<CloseGateResult> {
   const {
@@ -175,6 +180,42 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
       reasons.push(
         'manifest.files not touched by any commit on the ticket branch (uncommitted, or ' +
           `never real): ${filesNotInCommits.join(', ')}`,
+      );
+    }
+
+    // SYMMETRIC CHECK (W11-13, SC-17): the two checks above only catch a
+    // session UNDER-reporting (claiming less than the real diff/commit
+    // set contains). Neither ever checks the reverse — that the real
+    // diff/commit set stays inside `ticket.writeScope` — so a session
+    // that changed more than it declared, but whose manifest is an
+    // honest subset of that overreach, sailed through. This runs
+    // regardless of which `SpawnSession` implementation produced the
+    // session (D-023's escape-hatch `createChildProcessSpawn` has no
+    // equivalent guard of its own), because the gate is the one place
+    // outside the session that can't be declined (Law 4).
+    //
+    // Checked against `committedFiles`, deliberately NOT `changedPaths`:
+    // by this point `reRunVerify` above (and, further down, the required
+    // validator pack) has already executed arbitrary commands with
+    // cwd=worktree.path, so the raw working-tree diff — untracked files
+    // included — mixes the session's real work with the GATE'S OWN
+    // build/telemetry side effects (e.g. a lint cache or a validator's
+    // telemetry file neither committed nor necessarily gitignored). Only
+    // what actually lands in the ticket branch's real commit history is
+    // what a merge ever delivers, so `committedFiles` (`base..HEAD`) is
+    // both the correct scope boundary and immune to false positives from
+    // the gate's own execution — a check that fails closed forever on a
+    // stray uncommitted artifact would be as broken as one that can be
+    // bypassed.
+    const scopeViolations = await checkWriteScope(
+      committedFiles,
+      ticket.writeScope,
+      worktree.path,
+    );
+    if (scopeViolations.length > 0) {
+      reasons.push(
+        'real commit set contains path(s) outside ticket.writeScope: ' +
+          scopeViolations.map((v) => `${v.path} (${v.reason})`).join(', '),
       );
     }
   }
