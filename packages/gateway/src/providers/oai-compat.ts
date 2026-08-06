@@ -23,6 +23,7 @@ import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
   normalizeToolCalls,
+  toRawMessage,
   toRawTool,
   type ChatRole,
   type ChatRequest,
@@ -133,7 +134,7 @@ export class OaiCompatProvider implements Provider {
     return this.queue.run(async () => {
       const body = {
         model: request.model,
-        messages: request.messages,
+        messages: request.messages.map(toRawMessage),
         ...(request.temperature !== undefined
           ? { temperature: request.temperature }
           : {}),
@@ -193,7 +194,7 @@ export class OaiCompatProvider implements Provider {
   private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const body = {
       model: request.model,
-      messages: request.messages,
+      messages: request.messages.map(toRawMessage),
       stream: true,
       stream_options: { include_usage: true },
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
