@@ -5182,7 +5182,7 @@
       ],
       "points": 5,
       "status": "todo",
-      "notes": "Filed with D-023. This is the ticket that makes the agent safe to point at a real repository, and it should not be collapsed into W11-02 \u2014 the loop working and the loop being contained are different claims with different fixtures. \u2014 write_scope follows W11-02 to harbormaster after the challenge pass.",
+      "notes": "Filed with D-023. This is the ticket that makes the agent safe to point at a real repository, and it should not be collapsed into W11-02 \u2014 the loop working and the loop being contained are different claims with different fixtures. \u2014 write_scope follows W11-02 to harbormaster after the challenge pass. \u2014 PROVENANCE DEFECT TO FIX RATHER THAN BUILD ON, raised as a MEDIUM advisory on W11-02 (2026-08-06) and verified at the source before recording: the `commit` tool's write_scope enforcement that W11-02 shipped is fed from `parseHandoffFields(input.prompt).writeScope` (gateway-session.ts:108), and that parser takes the LAST `WRITE-SCOPE: ` match out of the RENDERED PROMPT TEXT (handoff-fields.ts:56). So the scope this session enforces against is derived by string-matching the prompt, not looked up from the ticket record. That is the wrong side of the trust boundary for SC-17 to stand on: C-2/C-3 say the session is untrusted, and anything reaching the prompt \u2014 including file content the session itself read \u2014 is session-influenced. Acceptance 4's own T-26 prompt-injection fixture is the test that should catch it. DELIVER SC-17 against an authoritative lookup of the ticket's real write_scope, and do not treat W11-02's parse as the existing behaviour to preserve.",
       "stories": []
     },
     {
@@ -5366,6 +5366,34 @@
       "points": 3,
       "status": "todo",
       "notes": "Filed 2026-08-05, the fourth ticket this session originating in a reviewer advisory or a maker's own disclosure rather than a red test \u2014 after W11-06 (FR-G9 tool-drop), W11-07 (the promised consolidation), and W11-09 (the alwaysOk write-gate hole). The pattern is worth stating: on this board the APPROVE line is the least informative part of a review, and every genuinely new defect this session arrived as an advisory that did not block, a self-block that did, or a wave-level pass reading code no per-ticket reviewer sees. Also the third instance in one session of a fix being itself incomplete \u2014 W11-02's first ReDoS bound missed adjacent quantifiers, its first symlink hardening missed the leaf case, and here a migration reshaped to avoid an error introduced silent data loss instead. None of the three were caught by the author; all three were caught by the next layer.",
+      "stories": []
+    },
+    {
+      "id": "W11-11",
+      "title": "The agent session's tool results are neither redacted nor honest about what they dropped",
+      "phase": 11,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/git-tools.ts",
+        "packages/harbormaster/src/agent-session/fs-search.ts",
+        "packages/harbormaster/src/agent-session/fs-tools.test.ts",
+        "packages/harbormaster/src/agent-session/git-tools.test.ts"
+      ],
+      "depends_on": [
+        "W11-02"
+      ],
+      "acceptance": [
+        "(FR-S2, SC-06) VERIFY OUTPUT REACHES THE MODEL WITHOUT PASSING THE REDACTION LAYER THAT EXISTS. `verifyTool` (git-tools.ts) puts the ticket's verify-command stdout/stderr into the tool-result text that is appended to `messages` and sent to the routed model on the next turn \u2014 which may be a cloud provider. `@dokima/shared` already exports `redactString`/`redactDeep` (SC-06, W3-13) and `renderHandoff` already runs `redactDeep` over every handoff, so the session's OTHER path into a prompt is covered and this one is not. CLAUDE.md law 8 says secrets never reach prompts; a failing test run that prints a connection string or a token in its output is the ordinary case, not a contrived one.",
+        "CORRECT THE ADVISORY THAT RAISED IT, because repeating a wrong detail into a ticket is how folklore starts: the reviewer described the output as 'raw, untruncated'. It is NOT untruncated \u2014 git-tools.ts:15-19 caps it at `MAX_OUTPUT_CHARS = 4000` with a `\\u2026(truncated)` marker. Truncation is not redaction and the substantive finding stands, but the fix is to add a redaction pass, not to add a cap that is already there.",
+        "SECOND SUBJECT, SAME PRINCIPLE \u2014 `fs-search.ts`'s `walk()` swallows per-file `fs.readFile` failures with a bare `catch { continue; }` and surfaces no counter. The same function is otherwise deliberate about honest degradation (it reports `matchMode` and `skippedLongLines`), so a directory the session cannot read produces search results that are silently incomplete and indistinguishable from a genuine no-match. An agent that believes it searched the tree and did not is a correctness problem, not a cosmetic one.",
+        "DELIVER BOTH AS THE SAME RULE: a tool result states what it contains and what it dropped. Redact verify output through the shared layer, and give `searchTool`'s response an unreadable-file count alongside the existing degrade fields. Where redaction removes something, say so in the result rather than silently shortening it.",
+        "RED FIXTURE for each: a verify command whose stdout contains a credential-shaped string produces a tool result with the secret replaced and the redaction stated; and a search over a directory containing one unreadable file returns results WITH a non-zero unreadable count rather than a clean empty match. Both failing today.",
+        "SCOPE NOTE: `fs-tools.test.ts` is in scope because `fs-search.ts` is covered by that suite rather than a sibling of its own \u2014 checked before filing so this ticket cannot self-block for want of a test file, which cost W10-68 two sessions."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from two of W11-02's three landing advisories; the third (the `commit` tool deriving write_scope from a prompt string-parse) went to W11-03's notes instead, because that ticket IS the SC-17 subject and a separate ticket would have duplicated it. Fifth ticket this session filed from a reviewer advisory rather than a red test. Both findings here were verified at the source before filing, and one of them corrected the reviewer in the process \u2014 the 'untruncated' claim is wrong, the 'unredacted' claim is right. Reading advisories is worth it; believing them verbatim is not.",
       "stories": []
     }
   ]
