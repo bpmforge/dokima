@@ -5584,6 +5584,34 @@
       "status": "todo",
       "notes": "Filed 2026-08-06 from W11-16's landing advisory plus its own explicitly-deferred follow-up. Eighth ticket this session originating in a reviewer advisory or a maker's own disclosure rather than a red test. W11-16 did two things right that this ticket exists to complete rather than correct: it fixed the ONE call site that is actually live and said so, instead of threading a parameter through three places to look thorough; and it named the other two precisely enough that no archaeology is needed here. The docstring half is the third stale-comment finding of the wave (after W11-05's import-matrix comment and W11-06's types.ts header), which is worth noticing as a pattern: every one of them appeared where a change landed correctly and the prose around it did not move.",
       "stories": []
+    },
+    {
+      "id": "W11-18",
+      "title": "A misconfigured external agent silently becomes the built-in one, and the test that covers it is named for a refusal it does not assert",
+      "phase": 11,
+      "module": "web",
+      "lane": "ui",
+      "write_scope": [
+        "apps/server/src/api/server/settings-types.ts",
+        "apps/server/src/api/server/settings-types.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "depends_on": [
+        "W11-04"
+      ],
+      "acceptance": [
+        "(FR-H6) THE TEST NAME CLAIMS A REFUSAL IT DOES NOT ASSERT, raised as a LOW advisory on W11-04 and read in full before filing: `run-build.test.ts:195` is titled 'an empty external command (misconfigured setting) refuses rather than spawning nothing' and asserts `expect(code).toBe(0)` \u2014 success, the built-in agent ran. Its own inline comment is honest about this ('parseAgentRunnerSetting already degrades an empty `command` to the built-in default'), so only the title lies. A title that names a guarantee the body does not check is how a codebase comes to believe it is covered.",
+        "THE BEHAVIOUR UNDERNEATH IS THE REAL QUESTION, and this ticket exists to settle it rather than to rename a test: `parseAgentRunnerSetting` (settings-types.ts:239) degrades `{kind: 'external', command: ''}` to the built-in agent SILENTLY. A user who chose an external runner and mistyped its command gets a different agent than the one they picked, with no signal \u2014 while W11-04's whole point was that choosing the external runner must state plainly what it gives up. Silent substitution is the inverse of that.",
+        "DECIDE AND SAY WHICH, rather than patching the name: either (a) the degrade is right, in which case it must be VISIBLE \u2014 a warning on the run and a settings-surface indication that the configured runner was not used \u2014 and the test is renamed to what it actually proves; or (b) an empty command is a misconfiguration that should refuse, matching the W10-77 contract W11-04 replaced only for the NOT-CONFIGURED case, not the MISCONFIGURED one. Note that those are different cases and W11-04 only ruled on the first.",
+        "WHICHEVER IS CHOSEN, THE TEST NAME MUST MATCH THE ASSERTION. If (a), the test is 'an empty external command degrades to the built-in agent and says so'; if (b), it keeps its name and finally earns it.",
+        "RED FIXTURE follows the decision: under (a) the run's output/log contains the substitution notice and the settings surface reflects it; under (b) the run exits non-zero with a message naming the empty command. Either way, assert the user-visible signal \u2014 not just the exit code, which is what made the current test's name and body diverge without anything failing.",
+        "SCOPE PRE-CHECKED: no open ticket claims these four paths, and both test siblings exist."
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from W11-04's landing advisory \u2014 the ninth ticket this session from a reviewer advisory or maker disclosure rather than a red test, and the second (after W11-10) where a reviewer's finding turned out to point at a behaviour question rather than the cosmetic issue it was raised as. The reviewer flagged the misleading name; reading the body showed the name is stale for a REASON \u2014 the refusal contract really did move in W11-04 \u2014 but that the silent degrade it now documents was never actually decided, only inherited. Worth keeping the distinction visible: W11-04 deliberately replaced the refusal for a project with NO agent configured. It said nothing about a project whose agent is configured wrong.",
+      "stories": []
     }
   ]
 }
