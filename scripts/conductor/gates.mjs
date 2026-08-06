@@ -8,6 +8,40 @@ import { doneCheckGap, boardUnreadableGap, globToRegex, selectGates } from '../c
 import { CONFIG, DRY, log, sh, git, tryLoadPlan, ALWAYS_OK } from './context.mjs';
 import { runValidators } from './session.mjs';
 
+// Parses one `git diff --name-status` line into `{ status, file }`. A rename
+// or copy line has three tab-separated fields (`R100\told\tnew`) instead of
+// two — `file` always takes the LAST field (the path as it exists on the
+// ticket branch), and `status` collapses to its leading letter (`R100` ->
+// `R`) so callers compare against a plain A/M/D/R/C rather than a similarity
+// score. Renames deliberately do NOT count as an addition: the old numbered
+// filename still stops existing at that path, which is the same shape of
+// problem as a modify for an append-only path (see ADD_ONLY_OK).
+function parseChangedStatus(line) {
+  const parts = line.split('\t');
+  return { status: parts[0][0], file: parts[parts.length - 1] };
+}
+
+// W11-09: alwaysOk (scripts/conductor-lib/config.mjs, scripts/conductor/context.mjs)
+// is pure path matching with no added-vs-modified distinction, so
+// `packages/events/migrations/**` being alwaysOk (2026-07-16, so a ticket
+// adding a table can drop in a new numbered file) also let any ticket EDIT an
+// already-shipped migration in place without tripping the scope gate. An
+// in-place edit to a committed migration does not re-apply to a `state.db`
+// that already ran it (`applyMigrations` keys off `PRAGMA user_version` plus
+// the file's numeric prefix) — it looks applied in a fresh checkout/CI and is
+// silently absent everywhere else.
+//
+// Fixed here as a DEDICATED check, not by changing alwaysOk/globToRegex/
+// ALWAYS_OK themselves: those live in scripts/conductor-lib/config.mjs and
+// scripts/conductor/context.mjs, both outside this ticket's write_scope, and
+// — more importantly — the distinction only belongs to append-only paths.
+// The rest of alwaysOk (the board, the lockfile, tsconfig, ...) is genuinely
+// modify-in-place infra; narrowing alwaysOk itself to additions-only would
+// break every one of those. CONFIG.alwaysOkAddOnly names the subset of
+// alwaysOk-covered globs that get the narrower, status-aware treatment; see
+// conductor.config.json's $alwaysOkAddOnlyNote.
+const ADD_ONLY_OK = (CONFIG.alwaysOkAddOnly ?? []).map(globToRegex);
+
 // ---------- gates (run OUTSIDE the session, in the ticket's worktree) ----------
 export function runGates(t, branch, wt) {
   const gaps = [];
@@ -26,9 +60,20 @@ export function runGates(t, branch, wt) {
   const selfBlocked = row?.status === 'blocked';
   if (!row || row.status !== 'done') gaps.push(doneCheckGap(row?.status, CONFIG.boardPath));
   if (Number(git('rev-list', '--count', `main..${branch}`)) < 1) gaps.push('no commits on ticket branch');
-  const changed = git('diff', '--name-only', `main...${branch}`).split('\n').filter(Boolean);
+  const changed = git('diff', '--name-status', `main...${branch}`).split('\n').filter(Boolean).map(parseChangedStatus);
+  const changedFiles = changed.map(({ file }) => file);
   const scopeRes = t.write_scope.map(globToRegex);
-  const outOfScope = changed.filter((f) => !scopeRes.some((r) => r.test(f)) && !ALWAYS_OK.some((r) => r.test(f)));
+  const outOfScope = changed
+    .filter(({ file, status }) => {
+      if (scopeRes.some((r) => r.test(file))) return false;
+      if (ALWAYS_OK.some((r) => r.test(file))) return false;
+      // Add-only exemption: only a pure addition (status 'A') to an
+      // alwaysOkAddOnly path is exempt — a modify/delete/rename on an
+      // existing numbered file stays out-of-scope unless write_scope names
+      // it explicitly.
+      return !(status === 'A' && ADD_ONLY_OK.some((r) => r.test(file)));
+    })
+    .map(({ file }) => file);
   if (outOfScope.length) gaps.push(`out-of-scope edits: ${outOfScope.join(', ')}`);
   let advisory = [];
   if (existsSync(resolve(wt, CONFIG.toolchainMarker)) && !DRY) {
@@ -44,10 +89,10 @@ export function runGates(t, branch, wt) {
       catch (e) { gaps.push(`${cmd} ${cmdArgs[0]} failed: ${String(e.stdout || e.message).slice(-800)}`); }
     }
     // deterministic validator gates (diff-scoped) — hard gaps
-    const vGaps = runValidators(wt, changed, CONFIG.validators?.gate);
+    const vGaps = runValidators(wt, changedFiles, CONFIG.validators?.gate);
     if (vGaps.length) { log('validators.gate', { ticket: t.id, msg: `${vGaps.length} diff-scoped violation(s)` }); gaps.push(...vGaps); }
     // heuristic validators — anchor the review (verified, not blocking)
-    advisory = runValidators(wt, changed, CONFIG.validators?.advisory);
+    advisory = runValidators(wt, changedFiles, CONFIG.validators?.advisory);
     if (advisory.length) log('validators.advisory', { ticket: t.id, msg: `${advisory.length} finding(s) fed to review` });
   }
   return { gaps, advisory, selfBlocked };
