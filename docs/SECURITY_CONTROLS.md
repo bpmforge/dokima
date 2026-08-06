@@ -161,20 +161,70 @@ ticket. IDs are stable — new controls append, never renumber.
 
 - **SC-17 Tool-boundary write-scope enforcement** (T-3, T-4, T-11, T-23, T-24; D-023).
   SC-01 checks `write_scope` **after** a session, by diffing the worktree. Dokima's own
-  tool-using session (D-023) can and must do better: every `write`/`edit`/`delete` tool
-  call is checked against the ticket's `write_scope[]` globs **before it executes**, with
-  the same hard exclusions SC-01 names (`.git/**`, hooks, `.github/workflows/**`,
-  `.dokima/**`, anything resolving outside the worktree after `realpath`). A refused tool
-  call returns an error to the model as a normal tool result — the session continues and
-  may correct itself — and is recorded on the session trace.
-  **SC-01 STILL RUNS AFTERWARDS AND IS STILL AUTHORITATIVE.** This is defence in depth,
-  never a replacement: the pre-check is inside the session and therefore inside the trust
-  boundary the whole product is built to distrust (C-2/C-3), so a session that finds a way
-  around it is still caught by the out-of-session diff. A pre-check that made SC-01
-  redundant would be the self-attestation Law 4 exists to refuse.
-  *Lands:* the agent-session wave · apps/server `api/agent/**`. *Verify:* red fixtures for
-  a tool call writing `../outside`, `.git/config`, a workflow file, and a symlink escape —
-  each refused at the boundary AND, with the pre-check disabled, still refused by SC-01.
+  tool-using session (D-023) can and must do better: every `write`/`edit` tool call
+  (the closed tool set's only two pre-commit disk-touching tools, SC-18 — there is no
+  `delete`) is checked against the ticket's `write_scope[]` globs **before it executes**,
+  with the same hard exclusions SC-01 names (`.git/**`, hooks, `.github/workflows/**`,
+  `.dokima/**`, anything resolving outside the worktree after `realpath`). `write_scope`
+  itself is read from the ticket record via an authoritative lookup (`getTicket`), never
+  parsed out of the rendered prompt: the prompt is reachable by session-influenced
+  content (CONTEXT can embed a file the session itself read), and C-2/C-3 put that on the
+  wrong side of the boundary this control exists to hold, regardless of whether a given
+  parse heuristic happens to resist it today. An unresolvable ticket id fails CLOSED to an
+  empty write_scope, never to the prompt's claim. A refused tool call returns an error to
+  the model as a normal tool result — the session continues and may correct itself — and
+  is recorded on the session trace.
+  **SC-01 STILL RUNS AFTERWARDS AND IS STILL AUTHORITATIVE — by TWO independent
+  mechanisms, neither gated on a model choice.** The pre-check above is inside the
+  session and therefore inside the trust boundary the whole product is built to
+  distrust (C-2/C-3), so nothing about it may be treated as sufficient on its own:
+  (1) `commit`'s own unmodified `commitWithScopeCheck` (SC-01), which stages and diffs
+  the REAL git state rather than trusting anything the session claims — but only fires
+  if the model chooses to call `commit` at all; and (2), correcting an earlier draft of
+  this paragraph that named only (1) and called it "the out-of-session diff" — a
+  mischaracterization a challenge pass caught, because `commitWithScopeCheck` is
+  reached by a tool call the untrusted model itself chooses to make, not by anything
+  running independently of it — `gateway-session.ts`'s own unconditional re-check
+  (`refuseIfSessionExceededScope`), which runs at the ONE point the tool loop can hand
+  back a Completion Manifest (the natural-completion return; the loop's other two exits
+  already carry no manifest text). It re-diffs the REAL worktree against `HEAD`
+  (`computeChangedPaths`, `@dokima/loop`) and re-checks every touched path through
+  `checkWriteScope` (`@dokima/git` — the exact function `commitWithScopeCheck` itself
+  calls, unmodified) regardless of whether the model ever attempted a write, edit, or
+  commit. A violation discards the session's output entirely (no manifest text, non-zero
+  exit) — `runSession`'s caller sees `manifest === null`, so `runCloseGate` (SC-02) never
+  runs, and the ticket cannot close on that attempt. Neither mechanism is a fully
+  separate out-of-process pass the way SC-01's own canonical definition above describes
+  (both run inside the same spawn call the tool loop runs in) — the guarantee they give
+  is that the check's outcome depends only on real, independently observable git state
+  once the model has no more turns left to influence it, never on anything the model
+  said or chose to do. A pre-check that made either of these redundant would be the
+  self-attestation Law 4 exists to refuse.
+  KNOWN RESIDUAL GAP (filed HANDOFF, out of this ticket's write_scope): `runCloseGate`
+  (`packages/harbormaster/src/loop-gates.ts`) itself still only checks that
+  `manifest.files` is a subset of the real diff/commit set — never the reverse, that the
+  real diff/commit set stays inside `ticket.writeScope`. For THIS session type that gap
+  is closed by mechanism (2) above (a violating session never reaches `runCloseGate` at
+  all), but any other `SpawnSession` implementation that skips an equivalent check — e.g.
+  `packages/loop/src/session.ts`'s `createChildProcessSpawn` escape-hatch runner, which
+  has no analogous gate — would not inherit this protection from `runCloseGate` either.
+  *Lands:* the agent-session wave · `packages/harbormaster/src/agent-session/**` (W11-03;
+  corrects an earlier `apps/server` placement recorded before the challenge pass moved
+  this scope to harbormaster alongside D-023's session loop). *Verify:* red fixtures for a
+  tool call writing `../outside`, `.git/config`, `.github/workflows/ci.yml`,
+  `.dokima/state.db`, and a symlink escape — each refused at the boundary; AND, with the
+  pre-check bypassed (the file placed on disk directly via `node:fs`, as if the pre-check
+  had never run, and no tool call ever attempted or refused), `.github/workflows/ci.yml`,
+  `.dokima/state.db`, and the symlink escape are still refused by mechanism (2) above —
+  `../outside` and `.git/config` are structurally invisible to any diff-based check
+  (git never reports paths outside its own worktree or inside its own `.git` directory),
+  so those two shapes are guarded by containment (`fs-containment.ts`) and by git's own
+  refusal to track its internals instead, never by a diff. One fixture is wired through
+  the full, unmodified `runLandLoop` pipeline end to end, proving the ticket never lands.
+  A T-26 prompt-injection fixture — a file the session reads carries an instruction to
+  write outside the ticket — confirms the session cannot produce an out-of-scope write
+  end to end: refused at the boundary, refused again attempting to commit it, and the
+  close gate refuses the resulting dishonest manifest.
 
 - **SC-18 Tool surface is closed and least-privilege** (T-5, T-24; D-023). The session's
   tool set is an explicit allowlist with no arbitrary-shell escape by default: read, list,

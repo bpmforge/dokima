@@ -88,7 +88,7 @@ export function createAgentSessionToolExecutor(
           path: requireString(args, 'path'),
           content: requireString(args, 'content'),
         };
-        return { result: await writeTool(ctx.cwd, writeArgs), cost: 0 };
+        return { result: await writeTool(ctx.cwd, ctx.writeScope, writeArgs), cost: 0 };
       }
       case TOOL_EDIT: {
         const editArgs: EditToolArgs = {
@@ -96,7 +96,7 @@ export function createAgentSessionToolExecutor(
           oldString: requireString(args, 'oldString'),
           newString: requireString(args, 'newString'),
         };
-        return { result: await editTool(ctx.cwd, editArgs), cost: 0 };
+        return { result: await editTool(ctx.cwd, ctx.writeScope, editArgs), cost: 0 };
       }
       case TOOL_COMMIT: {
         const commitArgs: CommitToolArgs = {

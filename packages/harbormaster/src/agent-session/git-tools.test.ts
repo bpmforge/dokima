@@ -63,6 +63,77 @@ describe('agent-session git-tools', () => {
     expect(staged.trim()).toBe('');
   });
 
+  describe(
+    '(W11-03 acceptance 2, SC-01) files are placed on disk directly via ' +
+      "node:fs — bypassing fs-tools.ts's write/edit pre-check entirely, as " +
+      'if it had a bug or never ran — and commitTool still refuses them, ' +
+      "proving SC-01's own check (packages/git's checkWriteScope, unchanged " +
+      'by this ticket) is independently authoritative, never redundant',
+    () => {
+      it('refuses a hard-excluded path (`.github/workflows/**`) even though the pre-check never touched it', async () => {
+        const dir = await tmpRepo();
+        await fs.mkdir(path.join(dir, '.github', 'workflows'), { recursive: true });
+        await fs.writeFile(
+          path.join(dir, '.github', 'workflows', 'ci.yml'),
+          'evil: true\n',
+        );
+
+        const result = (await commitTool(dir, ['.github/workflows/**'], {
+          files: ['.github/workflows/ci.yml'],
+          message: 'ci: sneak a workflow edit past write_scope',
+        })) as { ok: boolean };
+
+        expect(result.ok).toBe(false);
+        const { stdout: log } = await git(dir, ['log', '--oneline']);
+        expect(log).not.toContain('sneak');
+      });
+
+      it('refuses a hard-excluded path (`.dokima/**`) even though the pre-check never touched it', async () => {
+        const dir = await tmpRepo();
+        await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
+        await fs.writeFile(path.join(dir, '.dokima', 'state.db'), 'tampered');
+
+        const result = (await commitTool(dir, ['.dokima/**'], {
+          files: ['.dokima/state.db'],
+          message: 'chore: sneak a state.db edit past write_scope',
+        })) as { ok: boolean };
+
+        expect(result.ok).toBe(false);
+        const { stdout: log } = await git(dir, ['log', '--oneline']);
+        expect(log).not.toContain('sneak');
+      });
+
+      it(
+        'refuses a symlink escape even when the literal path matches write_scope ' +
+          '(a leaf symlink, not a symlinked ancestor dir — `git add` refuses to stage ' +
+          'a path that traverses a symlinked ancestor at all ("pathspec ... is beyond ' +
+          'a symbolic link"), so the shape that actually reaches checkWriteScope\'s own ' +
+          'realpath check is the leaf itself being a symlink)',
+        async () => {
+          const dir = await tmpRepo();
+          const outsideDir = await fs.mkdtemp(
+            path.join(os.tmpdir(), 'dokima-agent-git-outside-'),
+          );
+          try {
+            await fs.writeFile(path.join(outsideDir, 'leak.ts'), 'secret\n');
+            await fs.symlink(path.join(outsideDir, 'leak.ts'), path.join(dir, 'evil.ts'));
+
+            const result = (await commitTool(dir, ['evil.ts'], {
+              files: ['evil.ts'],
+              message: 'feat: sneak a symlink escape past write_scope',
+            })) as { ok: boolean };
+
+            expect(result.ok).toBe(false);
+            const { stdout: log } = await git(dir, ['log', '--oneline']);
+            expect(log).not.toContain('sneak');
+          } finally {
+            await fs.rm(outsideDir, { recursive: true, force: true });
+          }
+        },
+      );
+    },
+  );
+
   it('refuses a commit call with no explicit files', async () => {
     const dir = await tmpRepo();
     const result = (await commitTool(dir, ['**'], { files: [], message: 'noop' })) as {
