@@ -17,6 +17,7 @@ import {
   type ScopedRoleMatrix,
 } from '@dokima/gateway';
 import { git } from '@dokima/git';
+import { computeChangedPaths } from '@dokima/loop';
 import { createTicket, getTicket, type Ticket } from '@dokima/tickets';
 import { defaultHandoffBuilder } from '../loop-handoff.js';
 import { runLandLoop, type LandLoopOptions, type PushToRemotesFn } from '../loop-land.js';
@@ -150,6 +151,11 @@ describe('createGatewaySpawnSession', () => {
    * REAL ticket 'W9-01' in the log, not just a matching prompt line.
    * Defaults to `['**']` (fully permissive) for tests that aren't about
    * scope enforcement itself.
+   *
+   * `cwd` is a real, committed git repo (acceptance 2, W11-03): the
+   * natural-completion path now runs `computeChangedPaths`/`checkWriteScope`
+   * (SC-01, out-of-session) unconditionally, which shells out to real `git`
+   * and needs a valid `HEAD` to diff against.
    */
   async function setup(
     writeScope: string[] = ['**'],
@@ -166,6 +172,12 @@ describe('createGatewaySpawnSession', () => {
       verify: 'true',
     });
     cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-agent-session-cwd-'));
+    await git(cwd, ['init', '-b', 'main']);
+    await git(cwd, ['config', 'user.name', 'Dokima Test']);
+    await git(cwd, ['config', 'user.email', 'test@dokima.invalid']);
+    await fs.writeFile(path.join(cwd, 'README.md'), '# fixture\n');
+    await git(cwd, ['add', '--', 'README.md']);
+    await git(cwd, ['commit', '-m', 'chore: initial commit']);
     return { log, cwd };
   }
 
@@ -319,6 +331,187 @@ describe('createGatewaySpawnSession', () => {
       const secondTurnMessages = provider.calls[1]!.messages;
       const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
       expect(toolResultMessage.content).toContain('"ok":false');
+    },
+  );
+
+  describe(
+    '(W11-03 acceptance 2, SC-01 out-of-session — "this is the one that matters") a ' +
+      "file is placed on disk directly via node:fs — bypassing fs-tools.ts's write/" +
+      'edit pre-check entirely, as if it had a bug or never ran — and no tool call ' +
+      'ever gets refused (the loop only ever calls `list`, or nothing at all); the ' +
+      'model still cannot walk away with a Completion Manifest, because the real ' +
+      "git diff after the loop ends isn't clean",
+    () => {
+      it('refuses a hard-excluded path (`.github/workflows/ci.yml`) that reached disk some other way', async () => {
+        const { log, cwd } = await setup(['packages/example/**']);
+        await fs.mkdir(path.join(cwd, '.github', 'workflows'), { recursive: true });
+        await fs.writeFile(path.join(cwd, '.github/workflows/ci.yml'), 'evil: true\n');
+        const provider = new ScriptedFakeProvider([
+          finalResponse('done, nothing to see'),
+        ]);
+        const ledger = new CostLedger();
+        const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
+
+        const result = await spawn({
+          prompt:
+            'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: packages/example/**\nVERIFY: true\n',
+          cwd,
+        });
+
+        expect(result).toEqual({
+          stdout: '',
+          stderr: expect.stringContaining('.github/workflows/ci.yml'),
+          exitCode: 1,
+        });
+        expect(result.stderr).toContain('hard-excluded');
+      });
+
+      it('refuses a hard-excluded path (`.dokima/state.db`) that reached disk some other way', async () => {
+        const { log, cwd } = await setup(['packages/example/**']);
+        await fs.mkdir(path.join(cwd, '.dokima'), { recursive: true });
+        await fs.writeFile(path.join(cwd, '.dokima/state.db'), 'tampered');
+        const provider = new ScriptedFakeProvider([
+          finalResponse('done, nothing to see'),
+        ]);
+        const ledger = new CostLedger();
+        const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
+
+        const result = await spawn({
+          prompt:
+            'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: packages/example/**\nVERIFY: true\n',
+          cwd,
+        });
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stdout).toBe('');
+        expect(result.stderr).toContain('.dokima/state.db');
+        expect(result.stderr).toContain('hard-excluded');
+      });
+
+      it('refuses an ordinary path outside write_scope (not hard-excluded, just ungranted) that reached disk some other way', async () => {
+        const { log, cwd } = await setup(['packages/example/**']);
+        await fs.mkdir(path.join(cwd, 'packages', 'other'), { recursive: true });
+        await fs.writeFile(
+          path.join(cwd, 'packages/other/backdoor.ts'),
+          'export const sneaky = true;\n',
+        );
+        const provider = new ScriptedFakeProvider([
+          finalResponse('done, nothing to see'),
+        ]);
+        const ledger = new CostLedger();
+        const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
+
+        const result = await spawn({
+          prompt:
+            'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: packages/example/**\nVERIFY: true\n',
+          cwd,
+        });
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stdout).toBe('');
+        expect(result.stderr).toContain('packages/other/backdoor.ts');
+        expect(result.stderr).toContain('outside-scope');
+      });
+
+      it('refuses a leaf symlink escaping the worktree, even though its literal path matches write_scope, that reached disk some other way', async () => {
+        const { log, cwd } = await setup(['packages/example/**']);
+        await fs.mkdir(path.join(cwd, 'packages', 'example'), { recursive: true });
+        const outsideDir = await fs.mkdtemp(
+          path.join(os.tmpdir(), 'dokima-agent-session-outside-'),
+        );
+        try {
+          await fs.writeFile(path.join(outsideDir, 'leak.ts'), 'secret\n');
+          await fs.symlink(
+            path.join(outsideDir, 'leak.ts'),
+            path.join(cwd, 'packages/example/evil.ts'),
+          );
+          const provider = new ScriptedFakeProvider([
+            finalResponse('done, nothing to see'),
+          ]);
+          const ledger = new CostLedger();
+          const spawn = createGatewaySpawnSession(
+            baseSpawnOptions(log, provider, ledger),
+          );
+
+          const result = await spawn({
+            prompt:
+              'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: packages/example/**\nVERIFY: true\n',
+            cwd,
+          });
+
+          expect(result.exitCode).toBe(1);
+          expect(result.stdout).toBe('');
+          expect(result.stderr).toContain('packages/example/evil.ts');
+          expect(result.stderr).toContain('symlink-escape');
+        } finally {
+          await fs.rm(outsideDir, { recursive: true, force: true });
+        }
+      });
+
+      it(
+        "a clean session (no violation) is unaffected: still returns the model's final " +
+          'message normally, proving this check does not false-positive on ordinary work',
+        async () => {
+          const { log, cwd } = await setup(['packages/example/**']);
+          await fs.mkdir(path.join(cwd, 'packages', 'example'), { recursive: true });
+          const write: ToolCall = {
+            id: 'call_1',
+            name: 'write',
+            arguments: {
+              path: 'packages/example/file.ts',
+              content: 'export const x = 1;\n',
+            },
+          };
+          const provider = new ScriptedFakeProvider([
+            toolCallResponse([write]),
+            finalResponse(manifestJson('W9-01', ['packages/example/file.ts'])),
+          ]);
+          const ledger = new CostLedger();
+          const spawn = createGatewaySpawnSession(
+            baseSpawnOptions(log, provider, ledger),
+          );
+
+          const result = await spawn({
+            prompt:
+              'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: packages/example/**\nVERIFY: true\n',
+            cwd,
+          });
+
+          expect(result.exitCode).toBe(0);
+          expect(result.stdout).toBe(manifestJson('W9-01', ['packages/example/file.ts']));
+        },
+      );
+
+      it(
+        '`../outside` and `.git/config` are structurally invisible to a diff-based ' +
+          'check — git never reports its own internals or paths outside the worktree ' +
+          'it is rooted at, so `computeChangedPaths` cannot see either one. Both shapes ' +
+          'are guarded elsewhere instead: `../outside` by containment ' +
+          '(fs-containment.ts, tested directly in fs-tools.test.ts — no fs write ever ' +
+          'resolves there in the first place) and `.git/config` by the fact that git ' +
+          'itself refuses to track paths inside its own `.git` directory (nothing can ' +
+          'stage, diff, or merge it no matter how it reached disk)',
+        async () => {
+          const { cwd } = await setup(['packages/example/**']);
+          const outsideDir = await fs.mkdtemp(
+            path.join(os.tmpdir(), 'dokima-agent-session-outside-'),
+          );
+          try {
+            await fs.writeFile(path.join(outsideDir, 'outside.ts'), 'leaked\n');
+            await fs.writeFile(
+              path.join(cwd, '.git', 'config'),
+              (await fs.readFile(path.join(cwd, '.git', 'config'), 'utf8')) +
+                '\n# tampered\n',
+            );
+
+            const changedPaths = await computeChangedPaths(cwd, 'HEAD');
+            expect(changedPaths).not.toContain('../outside.ts');
+            expect(changedPaths.some((p) => p.includes('.git/config'))).toBe(false);
+          } finally {
+            await fs.rm(outsideDir, { recursive: true, force: true });
+          }
+        },
+      );
     },
   );
 
@@ -545,6 +738,54 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
       ),
     );
   });
+
+  it(
+    '(W11-03 acceptance 2, SC-01 out-of-session — "this is the one that matters") a ' +
+      "file placed directly on disk — bypassing fs-tools.ts's write/edit pre-check " +
+      'entirely, as if it had a bug or never ran — still cannot land through the FULL ' +
+      'real pipeline (runLandLoop, unchanged): no tool call was ever refused (the ' +
+      'model never even attempted a write), yet the ticket never closes, because the ' +
+      "real diff after the session ended isn't clean",
+    async () => {
+      const fixture = await setupRepo();
+      seedTicket(fixture.log, 'W9-01'); // writeScope: ['packages/example/**']
+
+      const provider = new ScriptedFakeProvider([
+        finalResponse(manifestJson('W9-01', [])),
+      ]);
+      const ledger = new CostLedger();
+      const realSpawn = createGatewaySpawnSession(
+        baseSpawnOptions(fixture.log, provider, ledger),
+      );
+      // Simulates the tool-boundary pre-check having a bug, or never running
+      // at all: the out-of-scope file lands on the REAL ticket worktree
+      // (`input.cwd`, only known once `runLandLoop` creates it) without ever
+      // going through the `write`/`edit` tool — this wrapper is the only way
+      // a test can reach that path, since `runLandLoop` owns worktree
+      // creation and never exposes it ahead of time.
+      const spawn: LandLoopOptions['spawn'] = async (input) => {
+        await fs.mkdir(path.join(input.cwd, '.dokima'), { recursive: true });
+        await fs.writeFile(path.join(input.cwd, '.dokima/state.db'), 'tampered');
+        return realSpawn(input);
+      };
+
+      const result = await runLandLoop({
+        ...baseLandOptions(fixture, spawn),
+        maxLadderAttempts: 1,
+      });
+
+      expect(result.processed[0]!.landed).toBe(false);
+      expect(result.processed[0]!.attempts[0]!.session.manifest).toBeNull();
+      expect(result.processed[0]!.attempts[0]!.closeGate).toBeNull();
+      expect(result.processed[0]!.attempts[0]!.session.output).toContain(
+        '.dokima/state.db',
+      );
+      expect(result.processed[0]!.attempts[0]!.session.output).toContain('hard-excluded');
+
+      const ticket = getTicket(fixture.log, 'W9-01') as Ticket;
+      expect(ticket.status).not.toBe('done');
+    },
+  );
 
   it(
     '(W11-03 acceptance 4, T-26 PROMPT INJECTION) a malicious instruction planted in a ' +

@@ -44,6 +44,26 @@
  * failure, or a ticket the log has no record of) fails CLOSED to an empty
  * write_scope: `matchesAnyGlob` against `[]` never matches, so every
  * write/edit is refused rather than silently trusting the prompt's claim.
+ *
+ * SC-01, OUT-OF-SESSION AND STILL AUTHORITATIVE (acceptance 2, W11-03): the
+ * tool-boundary pre-check above (`fs-tools.ts`'s SC-17) is defence in depth,
+ * never the only line — `refuseIfSessionExceededScope` below runs once,
+ * unconditionally, at the ONE point in this loop that can hand a Completion
+ * Manifest back to `runSession` (the natural-completion return, no more tool
+ * calls left; the other two returns already carry no manifest text and exit
+ * non-zero). It re-derives the truth the same way canonical SC-01 always
+ * has — a real `git diff` of the worktree (`computeChangedPaths`,
+ * `@dokima/loop`, unmodified) checked against `write_scope[]` and the hard
+ * exclusions (`checkWriteScope`, `@dokima/git`, the exact function
+ * `commitTool` already uses, unmodified) — never anything the model claimed
+ * or chose to do. A session that got an out-of-scope path onto real disk by
+ * ANY means the pre-check didn't anticipate (a bug in it, or acceptance 2's
+ * own "pre-check disabled" fixture) still cannot produce a manifest: its
+ * output is discarded, `runSession`'s caller sees `manifest === null`, and
+ * `runCloseGate` (SC-02) never runs — so the ticket cannot close on this
+ * attempt regardless of what `commitTool` did or didn't catch. This is
+ * strictly stronger than `commitTool`'s own SC-01 check, which only fires
+ * if the model chooses to call `commit` at all.
  */
 
 import type { EventLog } from '@dokima/events';
@@ -57,12 +77,45 @@ import {
   type ScopedRoleMatrix,
   type TaskType,
 } from '@dokima/gateway';
-import type { SpawnSession, SpawnSessionInput, SpawnSessionOutput } from '@dokima/loop';
+import { checkWriteScope } from '@dokima/git';
+import {
+  computeChangedPaths,
+  type SpawnSession,
+  type SpawnSessionInput,
+  type SpawnSessionOutput,
+} from '@dokima/loop';
 import { getTicket } from '@dokima/tickets';
 import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS } from './tools.js';
+
+/**
+ * SC-01's own real check (see module header), run once the tool loop has
+ * genuinely ended. `changedPaths` is the REAL worktree diff against `HEAD`
+ * (tracked + untracked, exactly what canonical SC-01 diffs) — never the
+ * model's claims. Returns a refusal `SpawnSessionOutput` (no manifest text,
+ * non-zero exit, same shape the iteration/cost-cap stops already use) when
+ * any changed path fails `checkWriteScope`; `null` when the diff is clean.
+ */
+async function refuseIfSessionExceededScope(
+  cwd: string,
+  writeScope: readonly string[],
+): Promise<SpawnSessionOutput | null> {
+  const changedPaths = await computeChangedPaths(cwd, 'HEAD');
+  const violations = await checkWriteScope([...changedPaths], [...writeScope], cwd);
+  if (violations.length === 0) return null;
+  return {
+    stdout: '',
+    stderr:
+      'agent session refused (SC-01, out-of-session — this runs regardless of the ' +
+      'tool-boundary pre-check): the real worktree diff contains path(s) outside ' +
+      `write_scope after the tool loop ended — ${violations
+        .map((v) => `${v.path} (${v.reason})`)
+        .join(', ')}. Session output discarded; no Completion Manifest was produced.`,
+    exitCode: 1,
+  };
+}
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
 export const DEFAULT_AGENT_SESSION_TASK_TYPE: TaskType = 'code';
@@ -187,6 +240,11 @@ export function createGatewaySpawnSession(
       messages.push(response.message);
 
       if (!response.toolCalls || response.toolCalls.length === 0) {
+        const scopeRefusal = await refuseIfSessionExceededScope(
+          input.cwd,
+          toolCtx.writeScope,
+        );
+        if (scopeRefusal) return scopeRefusal;
         return { stdout: response.message.content, stderr: '', exitCode: 0 };
       }
 
