@@ -1,16 +1,16 @@
 /**
  * Local type definitions mirroring packages/gateway's routing/escalation/fitness
  * shapes and packages/loop's rule-lifecycle shapes (D-018, D-014, FR-G2, FR-S1).
- * apps/server cannot depend on packages/gateway or packages/loop directly —
- * neither is a declared workspace dependency, and apps/server/package.json
- * sits outside this ticket's write_scope (apps/server/src/api/server.ts,
- * apps/server/src/api/server/** only; see W4-01's gate-fix precedent for why
- * a ticket may not self-authorize widening that boundary). These types are a
- * deliberate, documented duplication of the wire shape those packages
- * already define (packages/gateway/src/routing/types.ts,
- * escalation/policy-types.ts, packages/loop/src/findings-types.ts /
- * findings-rules.ts) — a future ticket able to touch apps/server/package.json
- * should consolidate by importing the real types instead.
+ * STALE CLAIM CORRECTED (W11-04): this docstring used to say apps/server
+ * could not depend on packages/gateway or packages/loop because neither was
+ * a declared workspace dependency — both are, as of `apps/server/package.json`
+ * today (confirmed: `run-build.ts` in this same package imports real types
+ * and functions from both). These types remain a deliberate, DOCUMENTED
+ * duplication of the wire shape those packages already define
+ * (packages/gateway/src/routing/types.ts, escalation/policy-types.ts,
+ * packages/loop/src/findings-types.ts/findings-rules.ts) — nobody has done
+ * the consolidation pass yet, not because the dependency boundary forbids
+ * it. A future ticket should replace these with real imports.
  */
 
 export type AgentRole = string;
@@ -183,4 +183,68 @@ export interface SuppressionRow {
   readonly status: 'active' | 'reopened';
   readonly createdAt: string;
   readonly reopenedAt: string | null;
+}
+
+/**
+ * W11-04 (FR-H6, D-023): which session runner a ticket session actually
+ * uses. No dedicated route — like `mcpServers`/`escalationPolicy` above,
+ * this is a generic settings key (`AGENT_RUNNER_SETTINGS_KEY`) read/written
+ * through `GET/PUT /projects/{id}/settings` and `GET/PUT /settings/global`
+ * (scope-routes.ts), resolved run>project>global by the same
+ * `getEffectiveProjectSettings` every other typed panel here uses.
+ *
+ * `built-in` (the default — D-023: Dokima runs its own agent sessions,
+ * through the gateway) needs no `command`. `external` is the escape hatch
+ * for an agent CLI the operator already trusts (`--agent-command`'s old
+ * CLI-only shape) and MUST be typed in explicitly — there is no default
+ * external command, because picking one spends real tokens somewhere
+ * Dokima cannot meter.
+ */
+export type AgentRunnerKind = 'built-in' | 'external';
+
+export interface AgentRunnerSetting {
+  readonly kind: AgentRunnerKind;
+  /** Required when `kind === 'external'`: `<bin> [args...]`, run once per ticket session with the handoff as its final argument — same shape `--agent-command` always took. */
+  readonly command?: string;
+}
+
+/** The generic settings key this setting lives under (scope-routes.ts's flat key/value store). */
+export const AGENT_RUNNER_SETTINGS_KEY = 'agentRunner';
+
+export const DEFAULT_AGENT_RUNNER_SETTING: AgentRunnerSetting = { kind: 'built-in' };
+
+/**
+ * What picking `external` gives up (acceptance 2): stated where the choice
+ * is made, not just in a code comment — an external CLI's tokens are spent
+ * somewhere Dokima cannot see, so none of the machinery that depends on
+ * seeing them can apply.
+ */
+export const EXTERNAL_AGENT_WARNING =
+  "An external agent CLI runs outside Dokima's gateway, so its tokens are " +
+  'spent somewhere Dokima cannot see. Choosing it gives up: the role→model ' +
+  'matrix (FR-G2), the escalation ladder (D-018), the budget breakers ' +
+  '(FR-G4), and the spend ledger — none of them apply to what an external ' +
+  'CLI does.';
+
+/**
+ * Narrows an effective settings value (untyped `JsonValue`) to a valid
+ * `AgentRunnerSetting`, degrading to the built-in default on anything
+ * malformed — same "unreadable setting must not take the surface down"
+ * posture `providers-store.ts`'s `listProviders` uses, rather than
+ * throwing on a hand-edited or stale settings file. `external` additionally
+ * requires a non-empty `command`: a `kind: 'external'` row with none is not
+ * a valid escape-hatch choice (nothing was ever typed in), so it degrades
+ * the same as a missing/malformed value rather than spawning nothing.
+ */
+export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_AGENT_RUNNER_SETTING;
+  }
+  const kind = (value as { kind?: unknown }).kind;
+  if (kind === 'built-in') return { kind: 'built-in' };
+  const command = (value as { command?: unknown }).command;
+  if (kind === 'external' && typeof command === 'string' && command.trim().length > 0) {
+    return { kind: 'external', command };
+  }
+  return DEFAULT_AGENT_RUNNER_SETTING;
 }

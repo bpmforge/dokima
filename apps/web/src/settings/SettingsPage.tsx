@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { readInjectedToken } from '../chat/api.js';
 import { EstimateWorkspace } from '../estimate/EstimateWorkspace.js';
+import { AgentRunnerPanel } from './AgentRunnerPanel.js';
 import { AutonomyBudgetPanel } from './AutonomyBudgetPanel.js';
 import { CopilotConsentPanel } from './CopilotConsentPanel.js';
 import { EffectiveSettingsPanel } from './EffectiveSettingsPanel.js';
@@ -15,6 +16,7 @@ import './settings.css';
 
 type Tab =
   | 'matrix'
+  | 'agent'
   | 'autonomy-budget'
   | 'estimate'
   | 'effective'
@@ -28,6 +30,7 @@ type Tab =
 
 const PROJECT_TABS: { id: Tab; label: string }[] = [
   { id: 'matrix', label: 'Model Matrix' },
+  { id: 'agent', label: 'Agent' },
   { id: 'autonomy-budget', label: 'Autonomy · Budget · Berths' },
   { id: 'estimate', label: 'Cost Estimate' },
   { id: 'effective', label: 'Effective Settings' },
@@ -46,7 +49,7 @@ export interface SettingsPageProps {
   onClose: () => void;
 }
 
-/** FR-S1 project-scope settings surface (W4-06): tabs over the model matrix, autonomy dial, budget panel, berths slider, effective-settings resolution view, MCP registration, validator packs, expert overrides, rule lifecycle, suppression review, escalation policy, and the D-019 Copilot consent gate. */
+/** FR-S1 project-scope settings surface (W4-06): tabs over the model matrix, agent runner picker (D-023), autonomy dial, budget panel, berths slider, effective-settings resolution view, MCP registration, validator packs, expert overrides, rule lifecycle, suppression review, escalation policy, and the D-019 Copilot consent gate. */
 export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageProps) {
   const [tab, setTab] = useState<Tab>('matrix');
   const token = readInjectedToken();
@@ -101,6 +104,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
       </nav>
       <div className="settings__panel">
         {tab === 'matrix' && <ModelMatrixPanel projectId={projectId} />}
+        {tab === 'agent' && <AgentRunnerPanel projectId={projectId} />}
         {tab === 'autonomy-budget' && <AutonomyBudgetPanel projectId={projectId} />}
         {tab === 'estimate' && token && (
           <EstimateWorkspace token={token} projectId={projectId} />
