@@ -16,6 +16,16 @@
  * the session sees why and may correct itself, per acceptance 1's "returns
  * to the model as a normal tool result".
  *
+ * (W11-19) The hard-exclusion and write_scope checks each run TWICE: once
+ * against the SURFACE path (the model-supplied text, before resolution —
+ * gives the friendlier refusal message for the ordinary case) and once
+ * against the RESOLVED path `resolveOrRefusal` produces (worktree-relative,
+ * every ancestor symlink followed). An ancestor symlink whose surface path
+ * is in scope but which resolves into `.git` — legitimately inside the same
+ * worktree, so containment alone can't catch it — passes both surface
+ * checks and only the resolved-path recheck sees where the write actually
+ * lands.
+ *
  * This is the barrel for the two chapters the containment/search logic
  * split into once this file passed the 400-line cap (CODE_BOOK_PROTOCOL.md):
  * `fs-containment.ts` (worktree containment, `assertRealWithinWorktree`,
@@ -120,7 +130,11 @@ export async function writeTool(
   if (excluded) return excluded;
   const resolved = await resolveOrRefusal(cwd, relPath);
   if ('reason' in resolved) return resolved;
-  const outOfScope = refuseIfOutsideScope(relPath, writeScope);
+  const resolvedExcluded = refuseIfHardExcluded(resolved.realRelPath);
+  if (resolvedExcluded) return resolvedExcluded;
+  const outOfScope =
+    refuseIfOutsideScope(relPath, writeScope) ??
+    refuseIfOutsideScope(resolved.realRelPath, writeScope);
   if (outOfScope) return outOfScope;
   await fs.mkdir(path.dirname(resolved.abs), { recursive: true });
   await fs.writeFile(resolved.abs, args.content, 'utf8');
@@ -143,7 +157,11 @@ export async function editTool(
   if (excluded) return excluded;
   const resolved = await resolveOrRefusal(cwd, relPath);
   if ('reason' in resolved) return resolved;
-  const outOfScope = refuseIfOutsideScope(relPath, writeScope);
+  const resolvedExcluded = refuseIfHardExcluded(resolved.realRelPath);
+  if (resolvedExcluded) return resolvedExcluded;
+  const outOfScope =
+    refuseIfOutsideScope(relPath, writeScope) ??
+    refuseIfOutsideScope(resolved.realRelPath, writeScope);
   if (outOfScope) return outOfScope;
   let content: string;
   try {
