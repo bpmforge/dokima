@@ -137,3 +137,31 @@ export interface EscalationPolicySetting {
 
 export const MODEL_MATRIX_PRESETS = ['all-local', 'hybrid', 'all-cloud'] as const;
 export type ModelMatrixPreset = (typeof MODEL_MATRIX_PRESETS)[number];
+
+/**
+ * W11-04 (FR-H6, D-023): which session runner a ticket session actually
+ * uses. Redeclared here rather than imported — apps/web is a browser bundle
+ * and cannot depend on apps/server (same reason `EscalationPolicySetting`/
+ * `McpServerRegistration` above are redeclared, not imported); the
+ * authoritative wire shape and copy live in
+ * apps/server/src/api/server/settings-types.ts and must be kept in sync by
+ * hand.
+ */
+export type AgentRunnerKind = 'built-in' | 'external';
+
+export interface AgentRunnerSetting {
+  kind: AgentRunnerKind;
+  command?: string;
+}
+
+export const AGENT_RUNNER_SETTINGS_KEY = 'agentRunner';
+
+export const DEFAULT_AGENT_RUNNER_SETTING: AgentRunnerSetting = { kind: 'built-in' };
+
+/** What picking `external` gives up (acceptance 2) — same copy as the server's `EXTERNAL_AGENT_WARNING`, shown where the choice is made. */
+export const EXTERNAL_AGENT_WARNING =
+  "An external agent CLI runs outside Dokima's gateway, so its tokens are " +
+  'spent somewhere Dokima cannot see. Choosing it gives up: the role→model ' +
+  'matrix (FR-G2), the escalation ladder (D-018), the budget breakers ' +
+  '(FR-G4), and the spend ledger — none of them apply to what an external ' +
+  'CLI does.';
