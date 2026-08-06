@@ -45,10 +45,18 @@ describe('AgentRunnerSetting (W11-04, FR-H6, D-023)', () => {
       });
     });
 
-    it('external with no command degrades to built-in — nothing was actually typed in', () => {
-      expect(parseAgentRunnerSetting({ kind: 'external' })).toEqual({ kind: 'built-in' });
+    it('RED FIXTURE (W11-18): external with no command is a misconfiguration, preserved rather than silently degraded to built-in', () => {
+      expect(parseAgentRunnerSetting({ kind: 'external' })).toEqual({
+        kind: 'external',
+        command: '',
+      });
+      expect(parseAgentRunnerSetting({ kind: 'external', command: '' })).toEqual({
+        kind: 'external',
+        command: '',
+      });
       expect(parseAgentRunnerSetting({ kind: 'external', command: '   ' })).toEqual({
-        kind: 'built-in',
+        kind: 'external',
+        command: '   ',
       });
     });
 

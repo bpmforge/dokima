@@ -9,9 +9,14 @@
  * `--agent-command` (explicit, run-scoped, unchanged shape) first, then the
  * project/global `agentRunner` setting (Settings UI, same generic key/value
  * surface `mcpServers`/`escalationPolicy` use), defaulting to `built-in`:
- * Dokima's own gateway-backed agent session (D-023), never a refusal. This
- * is that session's first live production caller — `createGatewaySpawnSession`
+ * Dokima's own gateway-backed agent session (D-023) when nothing was
+ * configured at all — never a refusal for that case. This is that
+ * session's first live production caller — `createGatewaySpawnSession`
  * (W11-02/03/11/12/14/16) existed only behind its own tests until now.
+ * W11-18 (FR-H6): an explicitly-chosen `external` runner with an
+ * empty/missing `command` is a different case — a misconfiguration, not an
+ * absence — and `executeBuildRun` below refuses on it rather than silently
+ * substituting the built-in agent.
  */
 
 import type { EventLog } from '@dokima/events';
@@ -59,7 +64,11 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
  * setting — the same "most specific wins" shape `SCOPE_PRECEDENCE` uses one
  * level up. Absent, the effective project/global `agentRunner` setting
  * decides; absent THAT, `parseAgentRunnerSetting(undefined)` is the
- * built-in default. Never refuses.
+ * built-in default. This function only resolves — it never itself refuses,
+ * even when the resolved row is `external` with an empty `command`
+ * (`parseAgentRunnerSetting` preserves that misconfiguration rather than
+ * degrading it, W11-18); `executeBuildRun` below is what turns that row
+ * into a refusal.
  */
 async function resolveAgentRunner(
   io: RunCliIO,
@@ -180,7 +189,10 @@ export async function executeBuildRun(
       .split(' ')
       .filter(Boolean);
     if (!agentBin) {
-      io.stderr(`the external agent command is empty; nothing was claimed`);
+      io.stderr(
+        `the "external" agent runner is misconfigured: its command is empty; ` +
+          `nothing was claimed`,
+      );
       return 2;
     }
     io.stderr(EXTERNAL_AGENT_WARNING);

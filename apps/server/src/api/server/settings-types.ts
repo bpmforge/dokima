@@ -204,7 +204,15 @@ export type AgentRunnerKind = 'built-in' | 'external';
 
 export interface AgentRunnerSetting {
   readonly kind: AgentRunnerKind;
-  /** Required when `kind === 'external'`: `<bin> [args...]`, run once per ticket session with the handoff as its final argument — same shape `--agent-command` always took. */
+  /**
+   * `<bin> [args...]`, run once per ticket session with the handoff as its
+   * final argument — same shape `--agent-command` always took. Required
+   * when `kind === 'external'`; the type doesn't enforce that (an
+   * empty/missing `command` alongside `kind: 'external'` is a valid,
+   * constructible value of this interface), because `parseAgentRunnerSetting`
+   * deliberately preserves that exact shape as a MISCONFIGURED row rather
+   * than degrading it — see that function's docstring (W11-18).
+   */
   readonly command?: string;
 }
 
@@ -228,13 +236,24 @@ export const EXTERNAL_AGENT_WARNING =
 
 /**
  * Narrows an effective settings value (untyped `JsonValue`) to a valid
- * `AgentRunnerSetting`, degrading to the built-in default on anything
- * malformed — same "unreadable setting must not take the surface down"
- * posture `providers-store.ts`'s `listProviders` uses, rather than
- * throwing on a hand-edited or stale settings file. `external` additionally
- * requires a non-empty `command`: a `kind: 'external'` row with none is not
- * a valid escape-hatch choice (nothing was ever typed in), so it degrades
- * the same as a missing/malformed value rather than spawning nothing.
+ * `AgentRunnerSetting`. Two failure shapes get different treatment
+ * (W11-18, FR-H6) — NOT-CONFIGURED vs MISCONFIGURED are different claims
+ * about what the user chose:
+ *
+ * - NOT-CONFIGURED: no stored value, a malformed non-object/array/null, or
+ *   an unrecognized `kind` — nobody made an `external` choice at all, so
+ *   this degrades to the built-in default, same "unreadable setting must
+ *   not take the surface down" posture `providers-store.ts`'s
+ *   `listProviders` uses rather than throwing on a hand-edited or stale
+ *   settings file. This is W11-04's ruling and is unchanged here.
+ * - MISCONFIGURED: `kind === 'external'` was explicitly chosen but
+ *   `command` is empty, whitespace-only, or missing. This is NOT degraded
+ *   to built-in — the row is returned as-is (`command` normalized to `''`
+ *   when absent/non-string) so the caller sees the choice that was made
+ *   and can refuse on it, matching the W10-77 contract for a genuinely
+ *   broken external command. Silently substituting the built-in agent here
+ *   would hand the user a different agent than the one they picked, with
+ *   no signal — the inverse of what `EXTERNAL_AGENT_WARNING` exists for.
  */
 export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -242,9 +261,9 @@ export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
   }
   const kind = (value as { kind?: unknown }).kind;
   if (kind === 'built-in') return { kind: 'built-in' };
-  const command = (value as { command?: unknown }).command;
-  if (kind === 'external' && typeof command === 'string' && command.trim().length > 0) {
-    return { kind: 'external', command };
+  if (kind === 'external') {
+    const command = (value as { command?: unknown }).command;
+    return { kind: 'external', command: typeof command === 'string' ? command : '' };
   }
   return DEFAULT_AGENT_RUNNER_SETTING;
 }

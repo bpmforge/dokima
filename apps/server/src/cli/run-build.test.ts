@@ -192,7 +192,7 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     }
   }, 30_000);
 
-  it('an empty external command (misconfigured setting) refuses rather than spawning nothing', async () => {
+  it('RED FIXTURE (W11-18, FR-H6): an empty external command (misconfigured setting) refuses rather than spawning nothing', async () => {
     project = await gitRepoProject();
     const log = openWritableLog(resolveDbPath(project.cwd));
     await writeProjectSetting(project.cwd, {
@@ -209,10 +209,15 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
           now: NOW,
         }),
       );
-      // parseAgentRunnerSetting already degrades an empty `command` to the
-      // built-in default, so this exercises the same "runs built-in" path —
-      // asserted here from the settings side rather than the CLI-flag side.
-      expect(code).toBe(0);
+      // A `kind: 'external'` row is a choice that was made explicitly —
+      // `parseAgentRunnerSetting` no longer degrades its empty `command` to
+      // the built-in default (that degrade was a silent substitution of a
+      // different agent than the one picked, W11-18). It refuses instead,
+      // matching the W10-77 contract for a genuinely misconfigured runner —
+      // distinct from a project with NO agentRunner setting at all, which
+      // still runs built-in per W11-04 (see the RED FIXTURE above).
+      expect(code).toBe(2);
+      expect(io.stderr.join('\n')).toMatch(/misconfigured.*command is empty/i);
     } finally {
       log.close();
     }
