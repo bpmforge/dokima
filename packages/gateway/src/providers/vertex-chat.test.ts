@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ProviderResponseShapeError, ProviderUnsupportedRoleError } from './errors.js';
+import type { ChatMessage } from './types.js';
 import type { CostTable } from './usage.js';
 import {
   buildCountTokensBody,
@@ -66,13 +67,16 @@ describe('buildGenerateContentBody', () => {
   });
 
   it('RED FIXTURE: refuses a tool-role message with ProviderUnsupportedRoleError instead of mis-serializing it (W11-15, FR-G9)', () => {
+    // `ChatRole` doesn't carry 'tool' yet (W11-12's own write_scope, not this
+    // ticket's) — cast this one fixture message past it rather than widening
+    // the shared type.
     let err: unknown;
     try {
       buildGenerateContentBody({
         model: 'gemini-2.5-pro',
         messages: [
           { role: 'user', content: 'what is the weather in NYC?' },
-          { role: 'tool', content: '72F and sunny' },
+          { role: 'tool', content: '72F and sunny' } as unknown as ChatMessage,
         ],
       });
     } catch (e) {

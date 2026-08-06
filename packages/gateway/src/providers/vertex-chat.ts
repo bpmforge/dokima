@@ -54,6 +54,12 @@ function mapRole(role: 'user' | 'assistant'): 'user' | 'model' {
  * would silently mis-serialize a tool result as plain user text. Real
  * Gemini tool-result wire support is separate, later, design-heavy work;
  * this only refuses rather than mis-serializing.
+ *
+ * `ChatRole` does not carry 'tool' yet (that's W11-12's own write_scope, not
+ * this ticket's), so the loop below allowlists 'user'/'assistant' — the only
+ * roles `mapRole` accepts — and refuses everything else by name instead of
+ * matching on the 'tool' literal, so the refusal keeps working, unwidened,
+ * once 'tool' actually joins the union.
  */
 export function buildGenerateContentBody(request: ChatRequest): Record<string, unknown> {
   const systemParts: string[] = [];
@@ -63,8 +69,8 @@ export function buildGenerateContentBody(request: ChatRequest): Record<string, u
       systemParts.push(message.content);
       continue;
     }
-    if (message.role === 'tool') {
-      throw new ProviderUnsupportedRoleError('vertex', 'tool');
+    if (message.role !== 'user' && message.role !== 'assistant') {
+      throw new ProviderUnsupportedRoleError('vertex', message.role);
     }
     contents.push({ role: mapRole(message.role), parts: [{ text: message.content }] });
   }

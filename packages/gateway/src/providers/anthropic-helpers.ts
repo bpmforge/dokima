@@ -45,6 +45,12 @@ export function parseRetryAfterMs(header: string | null): number | undefined {
  * to put that id — mapping 'tool' onto plain user text here would silently
  * drop it. Real tool-result wire support is separate, later, design-heavy
  * work; this only refuses rather than mis-serializing.
+ *
+ * `ChatRole` does not carry 'tool' yet (that's W11-12's own write_scope, not
+ * this ticket's), so the loop below allowlists 'user'/'assistant' and
+ * refuses everything else by name instead of matching on the 'tool' literal
+ * — the refusal keeps working, unwidened, once 'tool' actually joins the
+ * union.
  */
 export function splitSystem(messages: ChatMessage[]): {
   system?: string;
@@ -55,11 +61,13 @@ export function splitSystem(messages: ChatMessage[]): {
   for (const m of messages) {
     if (m.role === 'system') {
       systemParts.push(m.content);
-    } else if (m.role === 'tool') {
-      throw new ProviderUnsupportedRoleError('anthropic', 'tool');
-    } else {
-      rest.push({ role: m.role, content: m.content });
+      continue;
     }
+    if (m.role === 'user' || m.role === 'assistant') {
+      rest.push({ role: m.role, content: m.content });
+      continue;
+    }
+    throw new ProviderUnsupportedRoleError('anthropic', m.role);
   }
   return {
     ...(systemParts.length ? { system: systemParts.join('\n\n') } : {}),
