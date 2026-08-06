@@ -5550,7 +5550,7 @@
         "RED FIXTURE: a two-turn session against the fake gateway asserts the SECOND request's `messages` contain an assistant turn carrying `toolCalls` and a `'tool'`-role turn carrying the matching `toolCallId` \u2014 not a `'user'` turn \u2014 failing today; plus a `runLandLoop` fixture proving a supplied `secretValues` reaches `runSession`."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-06 from W11-04's self-block, which found three gaps and verified each at the source. This is its third and, in that maker's own words, 'the strongest of the three reasons this ticket is blocked rather than done+HANDOFF'. Worth recording what it means about the dependency I added to W11-04 the day before: making it depend on W11-12 was necessary and NOT sufficient. W11-12 changed the type; nothing changed the consumer. That is the build-then-wire seam this project has hit before, and the tell was in W11-12's own acceptance 6, which I wrote and then did not act on when adding the dependency. The lesson is not 'add more dependencies' \u2014 it is that a type change and its first emitter are two claims, and only the second one is evidence.",
       "stories": []
     }
