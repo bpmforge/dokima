@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   assertRealWithinWorktree,
   editTool,
@@ -464,6 +464,47 @@ describe('agent-session fs-tools', () => {
       };
       expect(result.matches).toHaveLength(0);
       expect(result.skippedLongLines).toBe(1);
+    },
+  );
+
+  it(
+    'search reports unreadableFiles rather than silently producing a clean ' +
+      'empty result indistinguishable from a genuine no-match, when a file ' +
+      'in the walked tree cannot be read (races, permissions). Injects the ' +
+      'failure at fs.readFile via a spy rather than chmod(0o000): root ' +
+      '(a containerized conductor may well run as root) ignores mode bits ' +
+      'entirely, so a chmod fixture would silently pass under root while a ' +
+      'real EACCES from a non-root session would not — the spy hits the ' +
+      "exact same call site `walk`'s per-file read failure reaches, so it " +
+      'is a faithful stand-in regardless of who runs the test. blocked.ts ' +
+      'contains the needle too, so a passing `matches` count of 1 (not 2) ' +
+      'demonstrates the silent-omission claim, not just asserts it.',
+    async () => {
+      const dir = await tmpWorktree();
+      await writeTool(dir, ['**'], { path: 'readable.ts', content: 'NEEDLE\n' });
+      await writeTool(dir, ['**'], { path: 'blocked.ts', content: 'NEEDLE\n' });
+      const blockedAbs = path.join(dir, 'blocked.ts');
+      const originalReadFile = fs.readFile;
+      const spy = vi.spyOn(fs, 'readFile').mockImplementation(((
+        ...args: Parameters<typeof fs.readFile>
+      ) => {
+        if (args[0] === blockedAbs) {
+          return Promise.reject(new Error('EACCES: permission denied'));
+        }
+        return (originalReadFile as (...a: typeof args) => unknown)(...args);
+      }) as typeof fs.readFile);
+
+      try {
+        const result = (await searchTool(dir, { pattern: 'NEEDLE' })) as {
+          matches: { file: string }[];
+          unreadableFiles: number;
+        };
+        expect(result.matches).toHaveLength(1);
+        expect(result.matches[0]!.file).toBe('readable.ts');
+        expect(result.unreadableFiles).toBe(1);
+      } finally {
+        spy.mockRestore();
+      }
     },
   );
 

@@ -150,4 +150,65 @@ describe('agent-session git-tools', () => {
     const failing = (await verifyTool(dir, 'false', 5000)) as { exitCode: number };
     expect(failing.exitCode).not.toBe(0);
   });
+
+  it(
+    '(FR-S2, SC-06) verify redacts a credential-shaped string in stdout before ' +
+      'it reaches the tool result — a failing test run printing a token is the ' +
+      'ordinary case, not a contrived one — and reports that redaction happened',
+    async () => {
+      const dir = await tmpRepo();
+      const token = 'ghp_1234567890abcdef1234567890abcdef1234';
+      const result = (await verifyTool(dir, `echo token=${token}`, 5000)) as {
+        stdout: string;
+        redacted: boolean;
+      };
+      expect(result.stdout).not.toContain(token);
+      expect(result.stdout).toContain('[REDACTED:github-token]');
+      expect(result.redacted).toBe(true);
+    },
+  );
+
+  it(
+    '(FR-S2, SC-06) verify redacts a credential-shaped string in stderr too, ' +
+      'and leaves ordinary output unredacted with `redacted: false`',
+    async () => {
+      const dir = await tmpRepo();
+      const uri = 'postgresql://appuser:hunter2secret@db.internal:5432/app';
+      const withSecret = (await verifyTool(dir, `echo ${uri} 1>&2`, 5000)) as {
+        stderr: string;
+        redacted: boolean;
+      };
+      expect(withSecret.stderr).not.toContain('hunter2secret');
+      expect(withSecret.stderr).toContain('[REDACTED:db-connection-credentials]');
+      expect(withSecret.redacted).toBe(true);
+
+      const clean = (await verifyTool(dir, "echo 'all tests passed'", 5000)) as {
+        stdout: string;
+        redacted: boolean;
+      };
+      expect(clean.stdout).toContain('all tests passed');
+      expect(clean.redacted).toBe(false);
+    },
+  );
+
+  it(
+    'verify reports `truncated` structurally alongside the existing inline ' +
+      "…(truncated) marker, symmetric with searchTool's `truncated` field " +
+      '— stating what was cut, not just cutting it',
+    async () => {
+      const dir = await tmpRepo();
+      const short = (await verifyTool(dir, 'echo short', 5000)) as {
+        truncated: boolean;
+      };
+      expect(short.truncated).toBe(false);
+
+      const longOutput = 'x'.repeat(5000);
+      const long = (await verifyTool(dir, `printf '%s' '${longOutput}'`, 5000)) as {
+        stdout: string;
+        truncated: boolean;
+      };
+      expect(long.stdout).toContain('…(truncated)');
+      expect(long.truncated).toBe(true);
+    },
+  );
 });

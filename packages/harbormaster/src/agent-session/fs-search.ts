@@ -157,11 +157,16 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
   let linesSinceTimeCheck = 0;
   let timedOut = false;
   let skippedLongLines = 0;
+  let unreadableFiles = 0;
   outer: for (const file of files) {
     let content: string;
     try {
       content = await fs.readFile(file, 'utf8');
     } catch {
+      // Honest-degrade, not silent: a file this call could not read (races,
+      // permissions) must not collapse into an indistinguishable genuine
+      // no-match — counted below and surfaced as `unreadableFiles`.
+      unreadableFiles += 1;
       continue;
     }
     const lines = content.split('\n');
@@ -198,9 +203,13 @@ export async function searchTool(cwd: string, args: SearchToolArgs): Promise<unk
     // Honest-degrade (never silent): a refused/invalid pattern still
     // returns `{ok: true, matches: []}` on a real miss, indistinguishable
     // from "your pattern was too complex, so we searched literally
-    // instead" unless the caller can see which mode actually ran, and how
-    // many candidate lines the regex-only length cap skipped outright.
+    // instead" unless the caller can see which mode actually ran, how many
+    // candidate lines the regex-only length cap skipped outright, and how
+    // many files it could not read at all — otherwise a directory the
+    // session cannot fully read produces a clean empty result
+    // indistinguishable from a genuine no-match.
     matchMode: matcher.usesRegex ? 'regex' : 'literal',
     skippedLongLines,
+    unreadableFiles,
   };
 }
