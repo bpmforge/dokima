@@ -5609,7 +5609,7 @@
         "SCOPE PRE-CHECKED: no open ticket claims these four paths, and both test siblings exist."
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-06 from W11-04's landing advisory \u2014 the ninth ticket this session from a reviewer advisory or maker disclosure rather than a red test, and the second (after W11-10) where a reviewer's finding turned out to point at a behaviour question rather than the cosmetic issue it was raised as. The reviewer flagged the misleading name; reading the body showed the name is stale for a REASON \u2014 the refusal contract really did move in W11-04 \u2014 but that the silent degrade it now documents was never actually decided, only inherited. Worth keeping the distinction visible: W11-04 deliberately replaced the refusal for a project with NO agent configured. It said nothing about a project whose agent is configured wrong.",
       "stories": []
     }
