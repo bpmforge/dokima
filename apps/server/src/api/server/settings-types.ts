@@ -225,3 +225,26 @@ export const EXTERNAL_AGENT_WARNING =
   'matrix (FR-G2), the escalation ladder (D-018), the budget breakers ' +
   '(FR-G4), and the spend ledger — none of them apply to what an external ' +
   'CLI does.';
+
+/**
+ * Narrows an effective settings value (untyped `JsonValue`) to a valid
+ * `AgentRunnerSetting`, degrading to the built-in default on anything
+ * malformed — same "unreadable setting must not take the surface down"
+ * posture `providers-store.ts`'s `listProviders` uses, rather than
+ * throwing on a hand-edited or stale settings file. `external` additionally
+ * requires a non-empty `command`: a `kind: 'external'` row with none is not
+ * a valid escape-hatch choice (nothing was ever typed in), so it degrades
+ * the same as a missing/malformed value rather than spawning nothing.
+ */
+export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_AGENT_RUNNER_SETTING;
+  }
+  const kind = (value as { kind?: unknown }).kind;
+  if (kind === 'built-in') return { kind: 'built-in' };
+  const command = (value as { command?: unknown }).command;
+  if (kind === 'external' && typeof command === 'string' && command.trim().length > 0) {
+    return { kind: 'external', command };
+  }
+  return DEFAULT_AGENT_RUNNER_SETTING;
+}

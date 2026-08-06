@@ -1,11 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createIdentity,
-  listEvents,
-  mintReceipt,
-  type EventLog,
-} from '@dokima/events';
+import { createIdentity, listEvents, mintReceipt, type EventLog } from '@dokima/events';
 import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
 import { createWorktree, git } from '@dokima/git';
 import { openWritableLog, resolveDbPath } from './db.js';
@@ -24,6 +19,8 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
   it('start -> pause -> resume -> stop, each printed as "<runId> <verb> -> <status>"', async () => {
     project = await createTempProject();
     const cwd = project.cwd;
+    const previousKey = process.env.DOKIMA_SIGNING_KEY;
+    process.env.DOKIMA_SIGNING_KEY = 'test-signing-key';
 
     const start = collectIO();
     const startCode = await runCli(
@@ -43,16 +40,19 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
       ],
       { cwd, now: NOW, ...start.io },
     );
-    // W10-77 CONTRACT CHANGE: the run RECORD is still minted (pause/resume/stop
-    // below operate on it), but a build mode with no `--agent-command` now
-    // exits 2 rather than 0. Returning success while claiming nothing is the
-    // exact "looks like execution, does nothing" behaviour this ticket exists
-    // to remove — `run start` means "work the board", and it could not.
-    expect(startCode).toBe(2);
+    if (previousKey === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+    else process.env.DOKIMA_SIGNING_KEY = previousKey;
+    // W11-04 CONTRACT CHANGE: a build mode with no agent configured (no
+    // `--agent-command`, no `agentRunner` setting) no longer refuses — it
+    // runs on Dokima's own built-in agent (D-023). With no board seeded,
+    // nothing is claimable, so the run completes idle.
+    expect(startCode).toBe(0);
     expect(start.stdout[0]).toMatch(
       /^run-.* started -> running \(breakpoint=wave berths=2\)$/,
     );
-    expect(start.stderr.join('\n')).toContain('no agent is configured');
+    expect(start.stdout.join('\n')).toContain(
+      'finished: 0 landed, 0 parked (stop: idle)',
+    );
     const runId = start.stdout[0]?.split(' ')[0];
     expect(runId).toBeTruthy();
 
@@ -321,13 +321,20 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     try {
       const code = await runCli(
         [
-          'run', 'start',
-          '--project', 'proj-1',
-          '--mode', 'new_product',
-          '--breakpoint', 'never',
-          '--berths', '1',
-          '--actor', 'worker-1',
-          '--agent-command', agent,
+          'run',
+          'start',
+          '--project',
+          'proj-1',
+          '--mode',
+          'new_product',
+          '--breakpoint',
+          'never',
+          '--berths',
+          '1',
+          '--actor',
+          'worker-1',
+          '--agent-command',
+          agent,
         ],
         { cwd, ...io.io },
       );
@@ -386,27 +393,65 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     expect(evidence).toContain('no commits found on the ticket branch');
   }, 120_000);
 
-  it('refuses a build mode with no agent, and with no signing key, rather than pretending', async () => {
+  it('RED FIXTURE (W11-04, acceptance 3): a build mode with no agent configured runs the built-in agent rather than refusing', async () => {
     project = await gitRepoProject();
-    const noAgent = collectIO();
-    expect(
-      await runCli(
-        ['run', 'start', '--project', 'p', '--mode', 'new_product',
-         '--breakpoint', 'never', '--berths', '1', '--actor', 'worker-1'],
-        { cwd: project.cwd, ...noAgent.io },
-      ),
-    ).toBe(2);
-    expect(noAgent.stderr.join('\n')).toContain('no agent is configured');
+    const previousKey = process.env.DOKIMA_SIGNING_KEY;
+    process.env.DOKIMA_SIGNING_KEY = 'test-signing-key';
+    try {
+      const noAgent = collectIO();
+      expect(
+        await runCli(
+          [
+            'run',
+            'start',
+            '--project',
+            'p',
+            '--mode',
+            'new_product',
+            '--breakpoint',
+            'never',
+            '--berths',
+            '1',
+            '--actor',
+            'worker-1',
+          ],
+          { cwd: project.cwd, ...noAgent.io },
+        ),
+      ).toBe(0);
+      expect(noAgent.stderr.join('\n')).not.toContain('no agent is configured');
+      expect(noAgent.stdout.join('\n')).toContain(
+        'finished: 0 landed, 0 parked (stop: idle)',
+      );
+    } finally {
+      if (previousKey === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+      else process.env.DOKIMA_SIGNING_KEY = previousKey;
+    }
+  });
 
+  it('refuses a build mode with no signing key, rather than pretending', async () => {
+    project = await gitRepoProject();
     const previousKey = process.env.DOKIMA_SIGNING_KEY;
     delete process.env.DOKIMA_SIGNING_KEY;
     try {
       const noKey = collectIO();
       expect(
         await runCli(
-          ['run', 'start', '--project', 'p', '--mode', 'new_product',
-           '--breakpoint', 'never', '--berths', '1', '--actor', 'worker-1',
-           '--agent-command', '/bin/true'],
+          [
+            'run',
+            'start',
+            '--project',
+            'p',
+            '--mode',
+            'new_product',
+            '--breakpoint',
+            'never',
+            '--berths',
+            '1',
+            '--actor',
+            'worker-1',
+            '--agent-command',
+            '/bin/true',
+          ],
           { cwd: project.cwd, ...noKey.io },
         ),
       ).toBe(2);
