@@ -128,27 +128,43 @@ function isWithinRoot(root: string, real: string): boolean {
   return real === root || real.startsWith(root + path.sep);
 }
 
+export interface ResolvedPath {
+  /** The surface-resolved absolute path (`resolveWithinWorktree`'s string arithmetic, symlinks unresolved) — what `write`/`edit` actually operate on; the OS follows any ancestor symlink transparently when the write lands. */
+  abs: string;
+  /**
+   * The fully-resolved (realpath'd) target, worktree-root-relative and
+   * posix-separated — where the write actually lands once every ancestor
+   * symlink is followed (W11-19). `abs`'s literal text can read as an
+   * ordinary in-scope path while `realRelPath` reveals it resolves into
+   * `.git` or another excluded/out-of-scope location via an ancestor
+   * symlink that is itself legitimately inside the worktree (so
+   * containment alone can't catch it — see module header).
+   */
+  realRelPath: string;
+}
+
 /** The authoritative pre-write check: `resolveWithinWorktree`'s string arithmetic PLUS full-target-realpath containment (see module header). Used by `write`/`edit`/`list`/`search` — every tool that touches the real filesystem before a `commit` ever runs. */
 export async function assertRealWithinWorktree(
   cwd: string,
   relPath: string,
-): Promise<string> {
+): Promise<ResolvedPath> {
   const resolved = resolveWithinWorktree(cwd, relPath);
   const realRoot = await fs.realpath(path.resolve(cwd));
   const real = await realpathOfTarget(resolved);
   if (!isWithinRoot(realRoot, real)) {
     throw new ToolPathEscapeError(relPath);
   }
-  return resolved;
+  const realRelPath = path.relative(realRoot, real).split(path.sep).join('/');
+  return { abs: resolved, realRelPath };
 }
 
 /** Shared refusal shape for every tool that must not throw a raw exception back through the mcp executor (see `mcp-wiring.ts`'s `runOneToolCall`) — a refused path is data the model can act on, not a session crash. */
 export async function resolveOrRefusal(
   cwd: string,
   relPath: string,
-): Promise<{ abs: string } | { ok: false; reason: string; path: string }> {
+): Promise<ResolvedPath | { ok: false; reason: string; path: string }> {
   try {
-    return { abs: await assertRealWithinWorktree(cwd, relPath) };
+    return await assertRealWithinWorktree(cwd, relPath);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     return { ok: false, reason, path: relPath };

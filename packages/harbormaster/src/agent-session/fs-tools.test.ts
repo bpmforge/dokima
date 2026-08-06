@@ -346,6 +346,85 @@ describe('agent-session fs-tools', () => {
     );
   });
 
+  describe(
+    '(W11-19, SC-01) HARD_EXCLUSIONS and write_scope are re-checked against the ' +
+      'RESOLVED path, not just the surface path — an ancestor symlink whose surface ' +
+      'path is in scope but resolves elsewhere inside the worktree',
+    () => {
+      it(
+        'write refuses through an ancestor symlink whose surface path is in ' +
+          'write_scope but resolves into `.git` — passes the surface hard-exclusion ' +
+          'check, passes containment (`.git` IS inside the worktree), and passes the ' +
+          'surface scope check; only a recheck against the resolved path catches it',
+        async () => {
+          const dir = await tmpWorktree();
+          await fs.mkdir(path.join(dir, '.git'), { recursive: true });
+          await fs.mkdir(path.join(dir, 'packages', 'foo'), { recursive: true });
+          await fs.symlink('../../.git', path.join(dir, 'packages', 'foo', 'link'));
+
+          const result = (await writeTool(dir, ['packages/foo/link/**'], {
+            path: 'packages/foo/link/hooks/pre-commit',
+            content: '#!/bin/sh\necho pwned\n',
+          })) as { ok: boolean; reason?: string };
+
+          expect(result.ok).toBe(false);
+          await expect(
+            fs.stat(path.join(dir, '.git', 'hooks', 'pre-commit')),
+          ).rejects.toThrow();
+        },
+      );
+
+      it(
+        'edit refuses through an ancestor symlink whose surface path is in ' +
+          'write_scope but resolves into `.git`, and never touches the real file',
+        async () => {
+          const dir = await tmpWorktree();
+          await fs.mkdir(path.join(dir, '.git', 'hooks'), { recursive: true });
+          await fs.writeFile(
+            path.join(dir, '.git', 'hooks', 'pre-commit'),
+            '#!/bin/sh\necho original\n',
+          );
+          await fs.mkdir(path.join(dir, 'packages', 'foo'), { recursive: true });
+          await fs.symlink('../../.git', path.join(dir, 'packages', 'foo', 'link'));
+
+          const result = (await editTool(dir, ['packages/foo/link/**'], {
+            path: 'packages/foo/link/hooks/pre-commit',
+            oldString: 'original',
+            newString: 'pwned',
+          })) as { ok: boolean };
+
+          expect(result.ok).toBe(false);
+          await expect(
+            fs.readFile(path.join(dir, '.git', 'hooks', 'pre-commit'), 'utf8'),
+          ).resolves.toBe('#!/bin/sh\necho original\n');
+        },
+      );
+
+      it(
+        '(acceptance 4) write refuses through an ancestor symlink whose surface path ' +
+          'is in write_scope but resolves to another in-worktree path outside ' +
+          'write_scope — a lesser breach than reaching `.git` but the same defect shape',
+        async () => {
+          const dir = await tmpWorktree();
+          await fs.mkdir(path.join(dir, 'packages', 'secret'), { recursive: true });
+          await fs.mkdir(path.join(dir, 'packages', 'foo'), { recursive: true });
+          await fs.symlink('../secret', path.join(dir, 'packages', 'foo', 'link'));
+
+          const result = (await writeTool(dir, ['packages/foo/link/**'], {
+            path: 'packages/foo/link/file.ts',
+            content: 'sneaky',
+          })) as { ok: boolean; reason?: string };
+
+          expect(result.ok).toBe(false);
+          expect(result.reason).toContain('write_scope');
+          await expect(
+            fs.stat(path.join(dir, 'packages', 'secret', 'file.ts')),
+          ).rejects.toThrow();
+        },
+      );
+    },
+  );
+
   it('edit refuses when oldString is not found', async () => {
     const dir = await tmpWorktree();
     await writeTool(dir, ['**'], { path: 'a.ts', content: 'const x = 1;\n' });
