@@ -5425,8 +5425,11 @@
         "SAY WHAT REMAINS OUT OF SCOPE rather than implying the loop is then production-ready: this ticket makes the wire format expressible. Whether harbormaster's session actually drives a cloud provider end to end is a separate claim needing its own evidence."
       ],
       "points": 5,
-      "status": "todo",
-      "notes": "Filed 2026-08-06 from a comment W11-03's maker left in gateway-session.ts's header. It named the gap precisely and said it was 'filed as a HANDOFF in this ticket's notes' \u2014 but the notes HANDOFF covers the runCloseGate gap (now W11-13) and not this one, so this would have survived only as a code comment. That is exactly the pattern W11-07 was filed for: a comment promising a future ticket with no ticket behind it. Sixth ticket this session originating in a maker disclosure or reviewer advisory rather than a red test.",
+      "status": "blocked",
+      "notes": [
+        "Filed 2026-08-06 from a comment W11-03's maker left in gateway-session.ts's header. It named the gap precisely and said it was 'filed as a HANDOFF in this ticket's notes' \u2014 but the notes HANDOFF covers the runCloseGate gap (now W11-13) and not this one, so this would have survived only as a code comment. That is exactly the pattern W11-07 was filed for: a comment promising a future ticket with no ticket behind it. Sixth ticket this session originating in a maker disclosure or reviewer advisory rather than a red test.",
+        "CONDUCTOR 2026-08-06T15:01:21.829Z: blocked after 2 attempts. Branch sw/w11-12 kept. Gaps: agent set status=blocked deliberately on attempt 1; its reasoning is in the ticket's notes on the evidence branch"
+      ],
       "stories": []
     },
     {
