@@ -5395,6 +5395,62 @@
       "status": "todo",
       "notes": "Filed 2026-08-06 from two of W11-02's three landing advisories; the third (the `commit` tool deriving write_scope from a prompt string-parse) went to W11-03's notes instead, because that ticket IS the SC-17 subject and a separate ticket would have duplicated it. Fifth ticket this session filed from a reviewer advisory rather than a red test. Both findings here were verified at the source before filing, and one of them corrected the reviewer in the process \u2014 the 'untruncated' claim is wrong, the 'unredacted' claim is right. Reading advisories is worth it; believing them verbatim is not.",
       "stories": []
+    },
+    {
+      "id": "W11-12",
+      "title": "The agent session's tool loop cannot talk to a real provider \u2014 ChatMessage has no tool role and no toolCalls echo",
+      "phase": 11,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/providers/types.ts",
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/src/providers/openai.ts",
+        "packages/gateway/src/providers/openai.test.ts"
+      ],
+      "depends_on": [
+        "W11-01",
+        "W11-03"
+      ],
+      "acceptance": [
+        "(FR-G9, C-1) DISCLOSED BY W11-03's MAKER IN A FILE COMMENT rather than by a failing test, and verified at the source before filing: gateway-session.ts's tool loop echoes tool calls and results back through mcp-wiring.ts's runToolCalls, which satisfies the fake-provider harness and W11-03's own red fixtures \u2014 but `ChatRole` in providers/types.ts:9 is `'system' | 'user' | 'assistant'` with no `'tool'`, and `ChatMessage` carries no `toolCalls` field to echo an assistant turn back. `toolCalls` exists only on `ChatResponse` (types.ts:62). So a real OpenAI-compatible provider cannot be given the conversation the loop produces.",
+        "THIS IS THE FAILURE MODE LAW 9 MAKES EASY TO MISS, which is why it is worth its own ticket rather than a line in someone's notes: everything is green against the fake gateway, and the first thing that breaks is the first real run. Dokima's own agent session is currently local-fixture-only for multi-turn tool use, and nothing in the suite says so.",
+        "DELIVER the round trip: `ChatRole` gains `'tool'`; `ChatMessage` gains the fields an assistant tool-call turn and a tool-result turn need (`toolCalls` on the assistant turn, a tool-call id on the tool turn); both OpenAI-compatible adapters serialize and accept them. Follow W11-06's precedent for where shared wire helpers live \u2014 types.ts, not duplicated per adapter.",
+        "COORDINATE WITH W11-07, which is queued against the same file for the opposite reason (it deletes oai-compat.ts's private duplicates of the wire helpers in favour of the exported pair). Same lane, so they cannot run in parallel; whichever lands second should say in its commit body what it had to rebase over. Do not silently re-add a duplicate helper here.",
+        "RED FIXTURE: a two-turn exchange \u2014 assistant returns tool_calls, the caller sends back a tool-role message carrying the result, the provider produces a final answer \u2014 round-trips through oai-compat and openai against a RECORDED fixture (never a live call, C-1). Failing today, where the message shape cannot even be constructed.",
+        "SAY WHAT REMAINS OUT OF SCOPE rather than implying the loop is then production-ready: this ticket makes the wire format expressible. Whether harbormaster's session actually drives a cloud provider end to end is a separate claim needing its own evidence."
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from a comment W11-03's maker left in gateway-session.ts's header. It named the gap precisely and said it was 'filed as a HANDOFF in this ticket's notes' \u2014 but the notes HANDOFF covers the runCloseGate gap (now W11-13) and not this one, so this would have survived only as a code comment. That is exactly the pattern W11-07 was filed for: a comment promising a future ticket with no ticket behind it. Sixth ticket this session originating in a maker disclosure or reviewer advisory rather than a red test.",
+      "stories": []
+    },
+    {
+      "id": "W11-13",
+      "title": "runCloseGate checks the manifest against the diff but never the diff against write_scope \u2014 the escape-hatch runner has no equivalent guard",
+      "phase": 11,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/loop-gates.test.ts"
+      ],
+      "depends_on": [
+        "W11-03"
+      ],
+      "acceptance": [
+        "(SC-17, C-2/C-3) FILED BY W11-03's MAKER AS AN EXPLICIT HANDOFF, because `packages/harbormaster/src/loop-gates.ts` sits outside that ticket's write_scope (`agent-session/**` only). `runCloseGate` checks only that `manifest.files` is a SUBSET of the real diff/commit set \u2014 that the session did not claim work it did not do. It never checks the reverse: that the real diff/commit set stays INSIDE `ticket.writeScope`. A session that changed more than it declared passes.",
+        "IT IS ALREADY CLOSED FOR ONE RUNNER AND OPEN FOR THE OTHER, which is the whole point of filing it: W11-03's `refuseIfSessionExceededScope` means a violating gateway-backed session never produces a manifest and never reaches `runCloseGate` at all. But `createChildProcessSpawn`, the spawner in the loop package \u2014 D-023's escape-hatch runner, the one that shells out to an external CLI \u2014 has no equivalent guard and relies on `runCloseGate`'s asymmetric check alone.",
+        "DELIVER the symmetric check at the gate itself, as defense in depth across EVERY `SpawnSession` implementation rather than per-runner: real `changedPaths`/`committedFiles` checked against `ticket.writeScope` via `checkWriteScope` and `HARD_EXCLUSIONS` (`@dokima/git`, the same functions both existing checks already use \u2014 do not write a third scope matcher), refusing close on any violation.",
+        "THE GATE IS THE RIGHT PLACE PRECISELY BECAUSE IT IS OUTSIDE THE SESSION. W11-03's retry had to fix exactly this confusion once already: its first attempt satisfied 'the out-of-session diff' with `commitTool`'s own check, which the untrusted model reaches only by choosing to call it. A check the session can decline to invoke is not a gate (Law 4).",
+        "RED FIXTURE: a close attempt whose real diff contains a path outside `ticket.writeScope` is refused even when `manifest.files` is a perfect subset of that diff \u2014 i.e. an honest manifest that under-reports nothing but whose underlying work escaped scope. Plus one shape from `HARD_EXCLUSIONS` (`.github/workflows/**`). Both failing today.",
+        "DO NOT REGRESS THE EXISTING ASYMMETRIC CHECK while adding its mirror; the subset test catches a different lie (claiming work not done) and both must hold."
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "Filed 2026-08-06 from W11-03's own HANDOFF note, which named the file, the missing check, the reason it could not do it (write_scope), and which runner is still exposed. Worth recording as the model of a good self-limited disclosure: it did not widen its scope, did not silently absorb the gap, and did not describe it so vaguely that someone would have to re-derive it. Note the shape of the risk \u2014 the exposed path is the ESCAPE HATCH runner (`createChildProcessSpawn`), which is exactly where a project is most likely to point at an external agent CLI it does not control.",
+      "stories": []
     }
   ]
 }
