@@ -5634,7 +5634,7 @@
         "SCOPE PRE-CHECKED: no open ticket claims these paths; `fs-containment.ts` has no test sibling of its own and is covered by `fs-tools.test.ts`, which is in scope."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). This is the finding that justified running the pass at all: no per-ticket reviewer saw it, because the ordering it depends on is spread across three helpers and only becomes a hole in combination. It also chains with W11-20 \u2014 bypassing HARD_EXCLUSIONS is one of the few routes by which an untrusted session could reach the settings that choose which binary the host spawns.",
       "stories": []
     },
