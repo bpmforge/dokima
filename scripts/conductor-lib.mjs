@@ -39,7 +39,6 @@ export { claimableTickets } from './conductor-lib/claim.mjs';
 export {
   testSiblingWarning,
   migrationCollisions,
-  migrationScopeWarning,
   doneCheckGap,
   pageMountWarning,
   boardUnreadableGap,

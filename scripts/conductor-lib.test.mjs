@@ -24,7 +24,6 @@ import {
   serializePlan,
   claimableTickets,
   migrationCollisions,
-  migrationScopeWarning,
   reviewDecision,
   selectGates,
   pageMountWarning,
@@ -35,6 +34,10 @@ import {
   wave,
   writePlan,
 } from './conductor-lib.mjs';
+// migrationScopeWarning imports from its chapter directly rather than the
+// barrel above — see the matching comment in conductor/lint.mjs (W11-08):
+// re-exporting it from conductor-lib.mjs is outside this ticket's write_scope.
+import { migrationScopeWarning } from './conductor-lib/lint-rules.mjs';
 
 describe('conductor-lib: board load / serialize', () => {
   const scratchDirs = [];
