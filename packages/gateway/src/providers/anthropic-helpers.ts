@@ -7,6 +7,7 @@ import {
   ProviderAuthError,
   ProviderHttpError,
   ProviderRateLimitError,
+  ProviderUnsupportedRoleError,
 } from './errors.js';
 import type { ChatMessage, FinishReason } from './types.js';
 
@@ -36,7 +37,15 @@ export function parseRetryAfterMs(header: string | null): number | undefined {
   return Math.max(0, dateMs - Date.now());
 }
 
-/** Anthropic carries the system prompt in a top-level field, never inside the messages array. */
+/**
+ * Anthropic carries the system prompt in a top-level field, never inside the
+ * messages array. Refuses a 'tool'-role message (W11-15, FR-G9): Anthropic
+ * sends tool results as `tool_result` content blocks carrying `tool_use_id`
+ * INSIDE a user-role message, and this function's return shape has nowhere
+ * to put that id — mapping 'tool' onto plain user text here would silently
+ * drop it. Real tool-result wire support is separate, later, design-heavy
+ * work; this only refuses rather than mis-serializing.
+ */
 export function splitSystem(messages: ChatMessage[]): {
   system?: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -46,6 +55,8 @@ export function splitSystem(messages: ChatMessage[]): {
   for (const m of messages) {
     if (m.role === 'system') {
       systemParts.push(m.content);
+    } else if (m.role === 'tool') {
+      throw new ProviderUnsupportedRoleError('anthropic', 'tool');
     } else {
       rest.push({ role: m.role, content: m.content });
     }

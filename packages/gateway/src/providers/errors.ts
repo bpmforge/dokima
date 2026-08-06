@@ -39,6 +39,25 @@ export class ProviderResponseShapeError extends Error {
   }
 }
 
+/**
+ * A `ChatMessage` role this adapter has no wire representation for (FR-G9,
+ * W11-15) — thrown instead of silently mis-serializing the turn (e.g.
+ * mapping a 'tool'-role result onto plain user text and dropping its call
+ * id). Refusal only: real Anthropic/Gemini tool-result wire support is
+ * separate, later, design-heavy work, not delivered by this error existing.
+ */
+export class ProviderUnsupportedRoleError extends Error {
+  constructor(
+    public readonly adapter: string,
+    public readonly role: string,
+  ) {
+    super(
+      `${adapter}: cannot serialize a '${role}'-role message onto its wire format — refusing rather than mis-serializing one (real tool-result wire support is separate, later work)`,
+    );
+    this.name = 'ProviderUnsupportedRoleError';
+  }
+}
+
 export class ProviderTimeoutError extends Error {
   constructor(providerId: string, timeoutMs: number) {
     super(`${providerId}: request timed out after ${timeoutMs}ms`);

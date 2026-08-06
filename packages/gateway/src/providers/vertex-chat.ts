@@ -11,7 +11,7 @@
  * uses `model` (not OpenAI/Anthropic's `assistant`) for the assistant role
  * in `contents`.
  */
-import { ProviderResponseShapeError } from './errors.js';
+import { ProviderResponseShapeError, ProviderUnsupportedRoleError } from './errors.js';
 import type { ChatRequest, ChatResponse, FinishReason } from './types.js';
 import { normalizeUsage, type CostTable } from './usage.js';
 
@@ -47,6 +47,14 @@ function mapRole(role: 'user' | 'assistant'): 'user' | 'model' {
   return role === 'assistant' ? 'model' : 'user';
 }
 
+/**
+ * Refuses a 'tool'-role message (W11-15, FR-G9): Gemini carries tool
+ * results as `functionResponse` parts, not text parts, and this function
+ * only ever builds `{ text }` parts — mapping 'tool' through `mapRole` here
+ * would silently mis-serialize a tool result as plain user text. Real
+ * Gemini tool-result wire support is separate, later, design-heavy work;
+ * this only refuses rather than mis-serializing.
+ */
 export function buildGenerateContentBody(request: ChatRequest): Record<string, unknown> {
   const systemParts: string[] = [];
   const contents: GeminiContent[] = [];
@@ -54,6 +62,9 @@ export function buildGenerateContentBody(request: ChatRequest): Record<string, u
     if (message.role === 'system') {
       systemParts.push(message.content);
       continue;
+    }
+    if (message.role === 'tool') {
+      throw new ProviderUnsupportedRoleError('vertex', 'tool');
     }
     contents.push({ role: mapRole(message.role), parts: [{ text: message.content }] });
   }

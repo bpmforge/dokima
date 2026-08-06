@@ -20,6 +20,7 @@ import {
   ProviderResponseShapeError,
   ProviderTimeoutError,
   ProviderUnreachableError,
+  ProviderUnsupportedRoleError,
 } from './errors.js';
 import { normalizeUsage, type CostTable } from './usage.js';
 
@@ -329,6 +330,35 @@ describe('AnthropicProvider — chat() non-streaming', () => {
     await expect(
       provider.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] }),
     ).rejects.toThrow(ProviderUnreachableError);
+  });
+
+  it('RED FIXTURE: refuses a tool-role message with ProviderUnsupportedRoleError instead of mis-serializing it (W11-15, FR-G9)', async () => {
+    const { fetchImpl, calls } = fakeFetch(() => ({
+      status: 200,
+      body: messageSuccessFixture,
+    }));
+    const provider = createAnthropicProvider({
+      apiKey: 'sk-ant-test',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+
+    const err = await provider
+      .chat({
+        model: 'claude-sonnet-5',
+        messages: [
+          { role: 'user', content: 'what is the weather in NYC?' },
+          { role: 'tool', content: '72F and sunny' },
+        ],
+      })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProviderUnsupportedRoleError);
+    expect((err as InstanceType<typeof ProviderUnsupportedRoleError>).adapter).toBe(
+      'anthropic',
+    );
+    expect((err as InstanceType<typeof ProviderUnsupportedRoleError>).role).toBe('tool');
+    // Refuses before ever building a request — no silent tool_use_id drop reaches the wire.
+    expect(calls).toHaveLength(0);
   });
 });
 
