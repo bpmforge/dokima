@@ -1,12 +1,20 @@
 /**
  * Local filesystem handlers for the closed tool set's read/list/search/
  * write/edit tools (`tools.ts`), bounded to the ticket worktree. `write`
- * and `edit` are a pre-check only — refusing an escape, a symlink-escape,
- * or a `.git`/`.github/workflows`/`.dokima` write before it ever touches
- * disk — not the authoritative scope decision: that is `commit`
- * (`git-tools.ts`'s `commitWithScopeCheck`), which is the only tool that
- * makes anything durable. A file can be drafted here inside write_scope
- * and simply never survive a commit if it strays outside it.
+ * and `edit` are a PRE-check (SC-17, FR-H6, D-023, W11-03) — refusing a
+ * worktree escape, a symlink-escape, a `.git`/`.github/workflows`/`.dokima`
+ * write, OR a path the ticket's `write_scope[]` globs don't grant, before
+ * any of it ever touches disk — never the authoritative scope decision:
+ * that is still `commit` (`git-tools.ts`'s `commitWithScopeCheck`, SC-01),
+ * the only tool that makes anything durable, and it runs this same
+ * three-way check again (hard-excluded / symlink-escape / outside-scope,
+ * `packages/git/src/scope.ts`'s `checkWriteScope`) against the REAL git
+ * diff — unmodified by this ticket, still authoritative, and still the
+ * thing that catches a write that reached disk by some path this pre-check
+ * didn't anticipate. A refusal here returns to the model as ordinary tool
+ * result data (never a thrown exception the session can't recover from) —
+ * the session sees why and may correct itself, per acceptance 1's "returns
+ * to the model as a normal tool result".
  *
  * This is the barrel for the two chapters the containment/search logic
  * split into once this file passed the 400-line cap (CODE_BOOK_PROTOCOL.md):
@@ -43,6 +51,20 @@ function refuseIfHardExcluded(relPath: string): { ok: false; reason: string } | 
     return {
       ok: false,
       reason: `"${relPath}" is hard-excluded (SC-01) and cannot be written directly`,
+    };
+  }
+  return null;
+}
+
+/** SC-17's own check (FR-H6, W11-03): the path itself, not just its containment, must be granted by the ticket's write_scope globs before a write/edit tool call is allowed to touch disk. Checked AFTER containment (mirrors `checkWriteScope`'s hard-excluded → symlink-escape → outside-scope order) so a symlink escape is always reported as a symlink escape, never masked by an incidental scope mismatch. */
+function refuseIfOutsideScope(
+  relPath: string,
+  writeScope: readonly string[],
+): { ok: false; reason: string } | null {
+  if (!matchesAnyGlob(relPath, [...writeScope])) {
+    return {
+      ok: false,
+      reason: `"${relPath}" is outside the ticket's write_scope (SC-17) and was refused before it executed`,
     };
   }
   return null;
@@ -88,12 +110,18 @@ export interface WriteToolArgs {
   readonly content: string;
 }
 
-export async function writeTool(cwd: string, args: WriteToolArgs): Promise<unknown> {
+export async function writeTool(
+  cwd: string,
+  writeScope: readonly string[],
+  args: WriteToolArgs,
+): Promise<unknown> {
   const relPath = normalizeRelPath(args.path);
   const excluded = refuseIfHardExcluded(relPath);
   if (excluded) return excluded;
   const resolved = await resolveOrRefusal(cwd, relPath);
   if ('reason' in resolved) return resolved;
+  const outOfScope = refuseIfOutsideScope(relPath, writeScope);
+  if (outOfScope) return outOfScope;
   await fs.mkdir(path.dirname(resolved.abs), { recursive: true });
   await fs.writeFile(resolved.abs, args.content, 'utf8');
   return { ok: true, path: relPath };
@@ -105,12 +133,18 @@ export interface EditToolArgs {
   readonly newString: string;
 }
 
-export async function editTool(cwd: string, args: EditToolArgs): Promise<unknown> {
+export async function editTool(
+  cwd: string,
+  writeScope: readonly string[],
+  args: EditToolArgs,
+): Promise<unknown> {
   const relPath = normalizeRelPath(args.path);
   const excluded = refuseIfHardExcluded(relPath);
   if (excluded) return excluded;
   const resolved = await resolveOrRefusal(cwd, relPath);
   if ('reason' in resolved) return resolved;
+  const outOfScope = refuseIfOutsideScope(relPath, writeScope);
+  if (outOfScope) return outOfScope;
   let content: string;
   try {
     content = await fs.readFile(resolved.abs, 'utf8');

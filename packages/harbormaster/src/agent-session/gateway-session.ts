@@ -24,11 +24,26 @@
  * HANDOFF in this ticket's `notes`.
  *
  * `SpawnSession`'s fixed `{prompt, cwd}` signature also carries no
- * `Handoff` object, so the ticket id / write_scope / verify command this
- * loop needs are recovered from the rendered prompt itself
- * (`handoff-fields.ts`) — the same reason `role`/`runId`/`berthId` are
- * fixed construction-time options here instead, mirroring how
- * `LandLoopOptions.role` already works one level up.
+ * `Handoff` object, so the ticket id this loop needs is recovered from the
+ * rendered prompt itself (`handoff-fields.ts`'s `parseHandoffFields`) — the
+ * same reason `role`/`runId`/`berthId` are fixed construction-time options
+ * here instead, mirroring how `LandLoopOptions.role` already works one
+ * level up.
+ *
+ * PROVENANCE (SC-17, W11-03, fixing a MEDIUM advisory raised on W11-02):
+ * `write_scope` is NOT taken from that same prompt parse. C-2/C-3 make the
+ * session untrusted, and the rendered prompt — CONTEXT included — is
+ * reachable by session-influenced content (a file the session itself read,
+ * BLUEPRINT §7); enforcing SC-17 against a string pulled from that text
+ * would put the gate on the wrong side of the trust boundary it exists to
+ * defend, self-attestation Law 4 refuses even when the parse happens to be
+ * safe today. `write_scope` is instead looked up once per call via
+ * `getTicket(options.log, ticketId)` — the same event-log-backed ticket
+ * record `runCloseGate` (SC-02) already treats as ground truth — and used
+ * for the whole session's `toolCtx`. An unresolvable `ticketId` (parse
+ * failure, or a ticket the log has no record of) fails CLOSED to an empty
+ * write_scope: `matchesAnyGlob` against `[]` never matches, so every
+ * write/edit is refused rather than silently trusting the prompt's claim.
  */
 
 import type { EventLog } from '@dokima/events';
@@ -43,6 +58,7 @@ import {
   type TaskType,
 } from '@dokima/gateway';
 import type { SpawnSession, SpawnSessionInput, SpawnSessionOutput } from '@dokima/loop';
+import { getTicket } from '@dokima/tickets';
 import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
@@ -107,9 +123,13 @@ export function createGatewaySpawnSession(
 
     const fields = parseHandoffFields(input.prompt);
     const ticketId = fields.ticketId ?? 'unknown';
+    // SC-17 (see module header): write_scope is the ticket record's own
+    // field, never the prompt's WRITE-SCOPE line — an unresolvable ticket
+    // fails closed to [], refusing every write/edit this session attempts.
+    const ticket = getTicket(options.log, ticketId);
     const toolCtx = {
       cwd: input.cwd,
-      writeScope: fields.writeScope,
+      writeScope: ticket?.writeScope ?? [],
       verifyCommand: fields.verifyCommand ?? DEFAULT_VERIFY_COMMAND,
       verifyTimeoutMs,
     };

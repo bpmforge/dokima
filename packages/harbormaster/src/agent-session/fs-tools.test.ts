@@ -45,7 +45,7 @@ describe('agent-session fs-tools', () => {
 
   it('write then read round-trips file content', async () => {
     const dir = await tmpWorktree();
-    const written = (await writeTool(dir, {
+    const written = (await writeTool(dir, ['**'], {
       path: 'src/a.ts',
       content: 'export const x = 1;\n',
     })) as { ok: boolean };
@@ -83,7 +83,7 @@ describe('agent-session fs-tools', () => {
     extraTempDirs.push(outsideDir);
     await fs.symlink(outsideDir, path.join(dir, 'evil'));
 
-    const result = (await writeTool(dir, {
+    const result = (await writeTool(dir, ['**'], {
       path: 'evil/leak.ts',
       content: 'exfiltrated',
     })) as { ok: boolean };
@@ -101,7 +101,7 @@ describe('agent-session fs-tools', () => {
     await fs.writeFile(path.join(outsideDir, 'leak.ts'), 'original\n');
     await fs.symlink(outsideDir, path.join(dir, 'evil'));
 
-    const result = (await editTool(dir, {
+    const result = (await editTool(dir, ['**'], {
       path: 'evil/leak.ts',
       oldString: 'original',
       newString: 'tampered',
@@ -146,7 +146,7 @@ describe('agent-session fs-tools', () => {
       await fs.writeFile(path.join(outsideDir, 'leak.txt'), 'secret\n');
       await fs.symlink(path.join(outsideDir, 'leak.txt'), path.join(dir, 'evil.txt'));
 
-      const result = (await writeTool(dir, {
+      const result = (await writeTool(dir, ['**'], {
         path: 'evil.txt',
         content: 'exfiltrated',
       })) as { ok: boolean };
@@ -170,7 +170,7 @@ describe('agent-session fs-tools', () => {
       await fs.writeFile(path.join(outsideDir, 'leak.txt'), 'original\n');
       await fs.symlink(path.join(outsideDir, 'leak.txt'), path.join(dir, 'evil.txt'));
 
-      const result = (await editTool(dir, {
+      const result = (await editTool(dir, ['**'], {
         path: 'evil.txt',
         oldString: 'original',
         newString: 'tampered',
@@ -198,7 +198,7 @@ describe('agent-session fs-tools', () => {
       const outsideTarget = path.join(outsideDir, 'leak.txt');
       await fs.symlink(outsideTarget, path.join(dir, 'evil.txt'));
 
-      const result = (await writeTool(dir, {
+      const result = (await writeTool(dir, ['**'], {
         path: 'evil.txt',
         content: 'exfiltrated',
       })) as { ok: boolean };
@@ -249,7 +249,7 @@ describe('agent-session fs-tools', () => {
 
   it('write refuses a direct `.git` write (hard-excluded, SC-01)', async () => {
     const dir = await tmpWorktree();
-    const result = (await writeTool(dir, {
+    const result = (await writeTool(dir, ['**'], {
       path: '.git/config',
       content: 'evil',
     })) as { ok: boolean; refused?: boolean };
@@ -257,10 +257,99 @@ describe('agent-session fs-tools', () => {
     await expect(fs.stat(path.join(dir, '.git', 'config'))).rejects.toThrow();
   });
 
+  describe('(W11-03, FR-H6/SC-17) write_scope is matched at the tool boundary, before the tool executes', () => {
+    const AGENT_SESSION_SCOPE = ['packages/harbormaster/src/agent-session/**'];
+
+    it('write refuses an ordinary in-worktree path that simply falls outside write_scope (the new check — not hard-excluded, not a symlink, not a `..` escape)', async () => {
+      const dir = await tmpWorktree();
+      const result = (await writeTool(dir, AGENT_SESSION_SCOPE, {
+        path: 'packages/other-package/file.ts',
+        content: 'sneaky',
+      })) as { ok: boolean; reason?: string };
+      expect(result.ok).toBe(false);
+      expect(result.reason).toContain('write_scope');
+      await expect(
+        fs.stat(path.join(dir, 'packages/other-package/file.ts')),
+      ).rejects.toThrow();
+    });
+
+    it('edit refuses an existing file outside write_scope, and never touches its content', async () => {
+      const dir = await tmpWorktree();
+      await writeTool(dir, ['**'], {
+        path: 'packages/other-package/config.ts',
+        content: 'original\n',
+      });
+      const result = (await editTool(dir, AGENT_SESSION_SCOPE, {
+        path: 'packages/other-package/config.ts',
+        oldString: 'original',
+        newString: 'tampered',
+      })) as { ok: boolean; reason?: string };
+      expect(result.ok).toBe(false);
+      expect(result.reason).toContain('write_scope');
+      await expect(
+        fs.readFile(path.join(dir, 'packages/other-package/config.ts'), 'utf8'),
+      ).resolves.toBe('original\n');
+    });
+
+    it('(escape shape) write refuses `../outside`, before it executes', async () => {
+      const dir = await tmpWorktree();
+      const result = (await writeTool(dir, AGENT_SESSION_SCOPE, {
+        path: '../outside.ts',
+        content: 'exfiltrated',
+      })) as { ok: boolean };
+      expect(result.ok).toBe(false);
+      await expect(fs.stat(path.join(path.dirname(dir), 'outside.ts'))).rejects.toThrow();
+    });
+
+    it('(escape shape) write refuses `.github/workflows/ci.yml` (hard-excluded, SC-01)', async () => {
+      const dir = await tmpWorktree();
+      const result = (await writeTool(dir, AGENT_SESSION_SCOPE, {
+        path: '.github/workflows/ci.yml',
+        content: 'evil: true',
+      })) as { ok: boolean };
+      expect(result.ok).toBe(false);
+      await expect(
+        fs.stat(path.join(dir, '.github', 'workflows', 'ci.yml')),
+      ).rejects.toThrow();
+    });
+
+    it('(escape shape) write refuses `.dokima/state.db` (hard-excluded, SC-01)', async () => {
+      const dir = await tmpWorktree();
+      const result = (await writeTool(dir, AGENT_SESSION_SCOPE, {
+        path: '.dokima/state.db',
+        content: 'tampered',
+      })) as { ok: boolean };
+      expect(result.ok).toBe(false);
+      await expect(fs.stat(path.join(dir, '.dokima', 'state.db'))).rejects.toThrow();
+    });
+
+    it(
+      '(escape shape) write refuses a symlink pointing out of the worktree even when the ' +
+        'literal path DOES match write_scope — containment is checked independently of ' +
+        'the glob match, so a grant can never launder an escape',
+      async () => {
+        const dir = await tmpWorktree();
+        const outsideDir = await fs.mkdtemp(
+          path.join(os.tmpdir(), 'dokima-agent-fs-outside-'),
+        );
+        extraTempDirs.push(outsideDir);
+        await fs.symlink(outsideDir, path.join(dir, 'evil'));
+
+        const result = (await writeTool(dir, ['evil/**'], {
+          path: 'evil/leak.ts',
+          content: 'exfiltrated',
+        })) as { ok: boolean };
+
+        expect(result.ok).toBe(false);
+        await expect(fs.stat(path.join(outsideDir, 'leak.ts'))).rejects.toThrow();
+      },
+    );
+  });
+
   it('edit refuses when oldString is not found', async () => {
     const dir = await tmpWorktree();
-    await writeTool(dir, { path: 'a.ts', content: 'const x = 1;\n' });
-    const result = (await editTool(dir, {
+    await writeTool(dir, ['**'], { path: 'a.ts', content: 'const x = 1;\n' });
+    const result = (await editTool(dir, ['**'], {
       path: 'a.ts',
       oldString: 'const y',
       newString: 'const z',
@@ -275,8 +364,8 @@ describe('agent-session fs-tools', () => {
 
   it('edit refuses an ambiguous (non-unique) oldString', async () => {
     const dir = await tmpWorktree();
-    await writeTool(dir, { path: 'a.ts', content: 'x\nx\n' });
-    const result = (await editTool(dir, {
+    await writeTool(dir, ['**'], { path: 'a.ts', content: 'x\nx\n' });
+    const result = (await editTool(dir, ['**'], {
       path: 'a.ts',
       oldString: 'x',
       newString: 'y',
@@ -288,8 +377,8 @@ describe('agent-session fs-tools', () => {
 
   it('edit replaces a unique occurrence', async () => {
     const dir = await tmpWorktree();
-    await writeTool(dir, { path: 'a.ts', content: 'const x = 1;\n' });
-    const result = (await editTool(dir, {
+    await writeTool(dir, ['**'], { path: 'a.ts', content: 'const x = 1;\n' });
+    const result = (await editTool(dir, ['**'], {
       path: 'a.ts',
       oldString: 'const x = 1;',
       newString: 'const x = 2;',
@@ -301,8 +390,8 @@ describe('agent-session fs-tools', () => {
 
   it('list returns immediate directory entries', async () => {
     const dir = await tmpWorktree();
-    await writeTool(dir, { path: 'src/a.ts', content: '' });
-    await writeTool(dir, { path: 'b.ts', content: '' });
+    await writeTool(dir, ['**'], { path: 'src/a.ts', content: '' });
+    await writeTool(dir, ['**'], { path: 'b.ts', content: '' });
     const result = (await listTool(dir, {})) as {
       ok: boolean;
       entries: { name: string; type: string }[];
@@ -314,8 +403,14 @@ describe('agent-session fs-tools', () => {
 
   it('search finds a literal substring across files', async () => {
     const dir = await tmpWorktree();
-    await writeTool(dir, { path: 'src/a.ts', content: 'export const NEEDLE = 1;\n' });
-    await writeTool(dir, { path: 'src/b.ts', content: 'export const other = 2;\n' });
+    await writeTool(dir, ['**'], {
+      path: 'src/a.ts',
+      content: 'export const NEEDLE = 1;\n',
+    });
+    await writeTool(dir, ['**'], {
+      path: 'src/b.ts',
+      content: 'export const other = 2;\n',
+    });
     const result = (await searchTool(dir, { pattern: 'NEEDLE' })) as {
       ok: boolean;
       matches: { file: string; line: number }[];
@@ -343,7 +438,7 @@ describe('agent-session fs-tools', () => {
       'falling back to literal-substring reports "literal"',
     async () => {
       const dir = await tmpWorktree();
-      await writeTool(dir, { path: 'src/a.ts', content: 'foo123bar\n' });
+      await writeTool(dir, ['**'], { path: 'src/a.ts', content: 'foo123bar\n' });
 
       const real = (await searchTool(dir, { pattern: '\\d+' })) as { matchMode: string };
       expect(real.matchMode).toBe('regex');
@@ -361,7 +456,7 @@ describe('agent-session fs-tools', () => {
     async () => {
       const dir = await tmpWorktree();
       const longLine = `${'x'.repeat(4000)}NEEDLE${'x'.repeat(100)}`;
-      await writeTool(dir, { path: 'src/a.ts', content: `${longLine}\n` });
+      await writeTool(dir, ['**'], { path: 'src/a.ts', content: `${longLine}\n` });
 
       const result = (await searchTool(dir, { pattern: '\\d+' })) as {
         matches: unknown[];
@@ -414,7 +509,7 @@ describe('agent-session fs-tools', () => {
     async () => {
       const dir = await tmpWorktree();
       const adversarialLine = `${'a'.repeat(40)}!`;
-      await writeTool(dir, { path: 'src/a.ts', content: `${adversarialLine}\n` });
+      await writeTool(dir, ['**'], { path: 'src/a.ts', content: `${adversarialLine}\n` });
 
       const start = Date.now();
       const result = (await searchTool(dir, { pattern: '(a+)+$' })) as {
@@ -431,7 +526,7 @@ describe('agent-session fs-tools', () => {
 
   it('search falls back to literal-substring matching for an unsafe pattern', async () => {
     const dir = await tmpWorktree();
-    await writeTool(dir, {
+    await writeTool(dir, ['**'], {
       path: 'src/a.ts',
       content: 'the literal text (a+)+$ appears here\n',
     });
@@ -450,7 +545,7 @@ describe('agent-session fs-tools', () => {
     async () => {
       const dir = await tmpWorktree();
       const adversarialLine = `${'a'.repeat(4000)}!`;
-      await writeTool(dir, { path: 'src/a.ts', content: `${adversarialLine}\n` });
+      await writeTool(dir, ['**'], { path: 'src/a.ts', content: `${adversarialLine}\n` });
 
       const start = Date.now();
       const result = (await searchTool(dir, { pattern: '.*.*=' })) as {
@@ -468,7 +563,7 @@ describe('agent-session fs-tools', () => {
     'search still runs a real (allowed) regex against lines within the ' + 'length cap',
     async () => {
       const dir = await tmpWorktree();
-      await writeTool(dir, { path: 'src/a.ts', content: 'foo123bar\n' });
+      await writeTool(dir, ['**'], { path: 'src/a.ts', content: 'foo123bar\n' });
       const result = (await searchTool(dir, { pattern: '\\d+' })) as {
         matches: { file: string; line: number; text: string }[];
       };
@@ -485,7 +580,7 @@ describe('agent-session fs-tools', () => {
     async () => {
       const dir = await tmpWorktree();
       const longLine = `${'x'.repeat(4000)}(a+)+$${'x'.repeat(100)}`;
-      await writeTool(dir, { path: 'src/a.ts', content: `${longLine}\n` });
+      await writeTool(dir, ['**'], { path: 'src/a.ts', content: `${longLine}\n` });
       const result = (await searchTool(dir, { pattern: '(a+)+$' })) as {
         matches: { file: string; line: number }[];
       };

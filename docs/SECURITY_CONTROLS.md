@@ -161,20 +161,38 @@ ticket. IDs are stable — new controls append, never renumber.
 
 - **SC-17 Tool-boundary write-scope enforcement** (T-3, T-4, T-11, T-23, T-24; D-023).
   SC-01 checks `write_scope` **after** a session, by diffing the worktree. Dokima's own
-  tool-using session (D-023) can and must do better: every `write`/`edit`/`delete` tool
-  call is checked against the ticket's `write_scope[]` globs **before it executes**, with
-  the same hard exclusions SC-01 names (`.git/**`, hooks, `.github/workflows/**`,
-  `.dokima/**`, anything resolving outside the worktree after `realpath`). A refused tool
-  call returns an error to the model as a normal tool result — the session continues and
-  may correct itself — and is recorded on the session trace.
+  tool-using session (D-023) can and must do better: every `write`/`edit` tool call
+  (the closed tool set's only two pre-commit disk-touching tools, SC-18 — there is no
+  `delete`) is checked against the ticket's `write_scope[]` globs **before it executes**,
+  with the same hard exclusions SC-01 names (`.git/**`, hooks, `.github/workflows/**`,
+  `.dokima/**`, anything resolving outside the worktree after `realpath`). `write_scope`
+  itself is read from the ticket record via an authoritative lookup (`getTicket`), never
+  parsed out of the rendered prompt: the prompt is reachable by session-influenced
+  content (CONTEXT can embed a file the session itself read), and C-2/C-3 put that on the
+  wrong side of the boundary this control exists to hold, regardless of whether a given
+  parse heuristic happens to resist it today. An unresolvable ticket id fails CLOSED to an
+  empty write_scope, never to the prompt's claim. A refused tool call returns an error to
+  the model as a normal tool result — the session continues and may correct itself — and
+  is recorded on the session trace.
   **SC-01 STILL RUNS AFTERWARDS AND IS STILL AUTHORITATIVE.** This is defence in depth,
   never a replacement: the pre-check is inside the session and therefore inside the trust
   boundary the whole product is built to distrust (C-2/C-3), so a session that finds a way
-  around it is still caught by the out-of-session diff. A pre-check that made SC-01
-  redundant would be the self-attestation Law 4 exists to refuse.
-  *Lands:* the agent-session wave · apps/server `api/agent/**`. *Verify:* red fixtures for
-  a tool call writing `../outside`, `.git/config`, a workflow file, and a symlink escape —
-  each refused at the boundary AND, with the pre-check disabled, still refused by SC-01.
+  around it is still caught by the out-of-session diff — concretely, `commit`'s own
+  unmodified `commitWithScopeCheck` (SC-01), which stages and diffs the REAL git state
+  rather than trusting anything the session claims, and which this control leaves
+  untouched. A pre-check that made SC-01 redundant would be the self-attestation Law 4
+  exists to refuse.
+  *Lands:* the agent-session wave · `packages/harbormaster/src/agent-session/**` (W11-03;
+  corrects an earlier `apps/server` placement recorded before the challenge pass moved
+  this scope to harbormaster alongside D-023's session loop). *Verify:* red fixtures for a
+  tool call writing `../outside`, `.git/config`, `.github/workflows/ci.yml`,
+  `.dokima/state.db`, and a symlink escape — each refused at the boundary AND, with the
+  pre-check bypassed (the file placed on disk directly, as if the pre-check had never
+  run), still refused by `commit`'s unmodified SC-01 check. A T-26 prompt-injection
+  fixture — a file the session reads carries an instruction to write outside the
+  ticket — confirms the session cannot produce an out-of-scope write end to end: refused
+  at the boundary, refused again attempting to commit it, and the close gate refuses the
+  resulting dishonest manifest.
 
 - **SC-18 Tool surface is closed and least-privilege** (T-5, T-24; D-023). The session's
   tool set is an explicit allowlist with no arbitrary-shell escape by default: read, list,
