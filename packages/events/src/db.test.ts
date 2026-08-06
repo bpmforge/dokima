@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { appendEvent } from './append.js';
 import { openEventLog } from './db.js';
 import { createIdentity } from './identities.js';
+import { applyMigrations } from './migrate.js';
 import { createTempDbPath, type TempDb } from './test-helpers.js';
 
 describe('openEventLog', () => {
@@ -86,6 +87,47 @@ describe('openEventLog', () => {
     expect(() => log.db.exec("DELETE FROM identities WHERE id = 'human-1'")).toThrow(
       /append-only/i,
     );
+    log.close();
+  });
+
+  // W11-10: migration 013 (model_matrix.provider_id) is guarded by
+  // `user_version` alone, not by tolerating its own re-application. A
+  // rewound `user_version` that doesn't also undo 013's schema effect (the
+  // scenario `boot-sequence.test.ts`'s pending-migration fixture creates,
+  // and the one W10-68's reshaped recreate SQL was silently correct for at
+  // the cost of resetting every `provider_id` to NULL) must make
+  // `applyMigrations` refuse loudly, not succeed and discard data.
+  it('refuses to silently re-apply migration 013 over a populated provider_id', async () => {
+    temp = await createTempDbPath();
+    const log = openEventLog(temp.dbPath);
+    log.db
+      .prepare(
+        `INSERT INTO model_matrix (role, task_type, provider_id, model, fallback, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'coder',
+        'default',
+        'lm-studio',
+        'qwen/qwen3-coder-next',
+        '[]',
+        '2026-08-06T00:00:00.000Z',
+      );
+
+    // Simulate `user_version` rewound one step without undoing 013's own
+    // effect — exactly the shape a stale pending-migration fixture (or a
+    // real corrupted `user_version`) produces; a real prior-schema fixture
+    // must also drop the `provider_id` column to be legitimate.
+    log.db.pragma('user_version = 12');
+
+    expect(() => applyMigrations(log.db)).toThrow(/duplicate column name/i);
+
+    const row = log.db
+      .prepare("SELECT provider_id FROM model_matrix WHERE role = 'coder'")
+      .get() as { provider_id: string | null };
+    expect(row.provider_id).toBe('lm-studio');
+    expect(log.db.pragma('user_version', { simple: true })).toBe(12);
+
     log.close();
   });
 });

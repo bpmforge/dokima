@@ -89,11 +89,17 @@ describe('runBootSequence', () => {
     await fs.mkdir(paths.dokimaDir, { recursive: true });
 
     // Roll the db back to a genuinely-valid prior schema version, not just a
-    // rewound pragma: drop what the latest migration (012_field_reports.sql)
-    // added, so `runBootSequence`'s real `openEventLog` call can legitimately
-    // re-apply it (CREATE TABLE would otherwise fail with "already exists").
+    // rewound pragma: undo whatever the LATEST migration file added, so
+    // `runBootSequence`'s real `openEventLog` call can legitimately re-apply
+    // it (re-running a CREATE TABLE would otherwise fail with "already
+    // exists"; re-running an ADD COLUMN would fail with "duplicate column
+    // name"). This must track the actual newest migration, not a hardcoded
+    // one: it broke silently-until-CI (W10-68) the first time a migration
+    // after 012_field_reports.sql (013_model_matrix_provider.sql, an ADD
+    // COLUMN) shipped, because the fixture only knew how to undo a CREATE
+    // TABLE. Whoever adds migration 014 must update this again.
     const seedLog = openEventLog(paths.dbPath);
-    seedLog.db.exec('DROP TABLE field_reports');
+    seedLog.db.exec('ALTER TABLE model_matrix DROP COLUMN provider_id');
     const priorVersion = latestKnownSchemaVersion() - 1;
     seedLog.db.pragma(`user_version = ${priorVersion}`);
     seedLog.close();
@@ -105,6 +111,13 @@ describe('runBootSequence', () => {
     });
     expect(report.backupPath).not.toBeNull();
     await expect(fs.stat(report.backupPath as string)).resolves.toBeDefined();
+    // Guards against this fixture going stale again the way it did for
+    // W10-68: if a future migration isn't undone above, `openEventLog`
+    // inside `runBootSequence` silently no-ops (nothing pending) instead of
+    // exercising the backup-then-migrate path this test exists to cover.
+    expect(log.db.pragma('user_version', { simple: true })).toBe(
+      latestKnownSchemaVersion(),
+    );
     log.close();
   });
 

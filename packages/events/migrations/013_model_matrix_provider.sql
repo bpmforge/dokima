@@ -6,31 +6,24 @@
 -- to the single enabled provider, ambiguous if several -- nothing existing
 -- has to be requalified by hand.
 --
--- Recreate rather than `ALTER TABLE ... ADD COLUMN`: no other table
--- references `model_matrix` (grepped every migrations/*.sql for
--- `REFERENCES model_matrix`), so this carries no FK/index/trigger risk, and
--- it keeps `applyMigrations` (packages/events/src/migrate.ts, out of this
--- ticket's write_scope) able to reapply this file to a db whose
--- `provider_id` column is already present without erroring "duplicate
--- column name" -- exactly what happens when `user_version` is rewound
--- without also undoing this migration's own effect (as boot-sequence.test.ts's
--- "backs up state.db before applying a pending migration" fixture does,
--- out of this ticket's write_scope, by design: DATABASE.md's migrations are
--- forward-only and idempotent-safe by construction, not by every caller
--- remembering to undo them exactly).
-CREATE TABLE model_matrix_new (
-  role TEXT NOT NULL,
-  task_type TEXT NOT NULL,
-  provider_id TEXT,
-  model TEXT NOT NULL,
-  fallback TEXT NOT NULL DEFAULT '[]',
-  updated_at TEXT NOT NULL,
-  PRIMARY KEY (role, task_type)
-);
-
-INSERT INTO model_matrix_new (role, task_type, model, fallback, updated_at)
-SELECT role, task_type, model, fallback, updated_at FROM model_matrix;
-
-DROP TABLE model_matrix;
-
-ALTER TABLE model_matrix_new RENAME TO model_matrix;
+-- Plain `ALTER TABLE ... ADD COLUMN`, not a recreate (W11-10): W10-68's
+-- first attempt used this shape and was reshaped into a `CREATE
+-- model_matrix_new ... SELECT ... DROP ... RENAME` recreate instead,
+-- because the recreate tolerates being re-applied to a db that already has
+-- `provider_id` (harmless CREATE-then-copy) where ADD COLUMN throws
+-- "duplicate column name". That tolerance was the defect, not a feature:
+-- the recreate's `INSERT INTO model_matrix_new (...) SELECT ...` never
+-- named `provider_id`, so a "successful" re-application silently reset
+-- every row's provider binding to NULL. `applyMigrations`
+-- (packages/events/src/migrate.ts) is the sole authority for "has this
+-- file already run" via `PRAGMA user_version`, set inside the same
+-- transaction as this file's SQL (DATABASE.md §8: forward-only, no down
+-- migrations) -- nothing in normal operation re-runs an already-applied
+-- migration. `apps/server/src/bootstrap/boot-sequence.test.ts`'s
+-- rewound-`user_version` fixture that made this file re-apply during
+-- W10-68 was itself the bug: it rolled `user_version` back one version
+-- without undoing this file's own schema effect (it undid 012's instead,
+-- stale since this file shipped), simulating a schema state that
+-- `applyMigrations` never actually produces. That fixture is fixed
+-- alongside this file rather than papering over it here again.
+ALTER TABLE model_matrix ADD COLUMN provider_id TEXT;
