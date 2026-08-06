@@ -5581,7 +5581,7 @@
         "SCOPE PRE-CHECKED before filing: no open ticket claims any of these six paths, and all six files exist (`loop-claim.test.ts`, `watchdog-session.test.ts` and `mcp-wiring.test.ts` are present), so this cannot self-block for want of a test sibling."
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-06 from W11-16's landing advisory plus its own explicitly-deferred follow-up. Eighth ticket this session originating in a reviewer advisory or a maker's own disclosure rather than a red test. W11-16 did two things right that this ticket exists to complete rather than correct: it fixed the ONE call site that is actually live and said so, instead of threading a parameter through three places to look thorough; and it named the other two precisely enough that no archaeology is needed here. The docstring half is the third stale-comment finding of the wave (after W11-05's import-matrix comment and W11-06's types.ts header), which is worth noticing as a pattern: every one of them appeared where a change landed correctly and the prose around it did not move.",
       "stories": []
     },
