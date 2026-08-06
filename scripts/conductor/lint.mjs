@@ -3,6 +3,16 @@
 // CODE_BOOK_PROTOCOL cap (W10-46). Extraction only, no behaviour change.
 
 import { testSiblingWarning, migrationCollisions, pageMountWarning, nonWildPrefix, globToRegex } from '../conductor-lib.mjs';
+// migrationScopeWarning imports straight from its chapter rather than the
+// ../conductor-lib.mjs barrel (W11-08): re-exporting it there needs an edit to
+// scripts/conductor-lib.mjs, which is outside this ticket's write_scope — and
+// self-widening wouldn't even reach it, since runGates() scopes a diff against
+// the ticket as filed on main, not anything edited in the worktree. lint.mjs is
+// itself a same-split chapter (W10-46), not one of the barrel header's "ad-hoc
+// board scripts", so importing a sibling chapter directly here is in scope. A
+// follow-up ticket touching scripts/conductor-lib.mjs can add the re-export and
+// switch this back to the barrel for consistency with the other three rules.
+import { migrationScopeWarning } from '../conductor-lib/lint-rules.mjs';
 import { CONFIG, sh, git, ALWAYS_OK } from './context.mjs';
 
 // ---------- plan linter (preflight; catches bad tickets before a run) ----------
@@ -31,6 +41,7 @@ export function lintPlan(plan) {
     if (t.write_scope && !t.write_scope.length) errors.push(`${t.id}: empty write_scope`);
     { const w = testSiblingWarning(t, CONFIG.testSibling); if (w) warnings.push(w); }
     { const w = pageMountWarning(t, CONFIG.pageMount, existingPages); if (w) warnings.push(w); }
+    { const w = migrationScopeWarning(t, CONFIG.migrationScope); if (w) warnings.push(w); }
     if (t.acceptance && !t.acceptance.length) errors.push(`${t.id}: empty acceptance`);
     for (const d of t.depends_on || []) if (!ids.has(d)) errors.push(`${t.id}: depends_on unknown ticket '${d}'`);
 
