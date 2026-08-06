@@ -515,6 +515,81 @@ describe('createGatewaySpawnSession', () => {
     },
   );
 
+  it(
+    '(FR-S2, SC-06, W11-14) `secretValues` passed to createGatewaySpawnSession ' +
+      "reaches the verify tool's redaction pass: a value with no known " +
+      "credential shape, present in the command's OUTPUT (not its text — " +
+      'the command text itself is redacted upstream by renderHandoff, ' +
+      "handoff-fields.ts's own KNOWN LIMITATION notes that), still comes " +
+      'back redacted before the routed model sees it',
+    async () => {
+      const { log, cwd } = await setup();
+      const secret = 'correcthorsebatterystaple';
+      const provider = new ScriptedFakeProvider([
+        toolCallResponse([{ id: 'call_1', name: 'verify', arguments: {} }]),
+        finalResponse('done'),
+      ]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, ledger, { secretValues: [secret] }),
+      );
+
+      const result = await spawn({
+        prompt: `TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: echo secret=${secret}\n`,
+        cwd,
+      });
+
+      expect(result.exitCode).toBe(0);
+      const secondTurnMessages = provider.calls[1]!.messages;
+      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const jsonStart = toolResultMessage.content.indexOf('{');
+      const outcome = JSON.parse(toolResultMessage.content.slice(jsonStart)) as {
+        stdout: string;
+        redacted: boolean;
+      };
+      expect(outcome.stdout).not.toContain(secret);
+      expect(outcome.stdout).toContain('[REDACTED:secret]');
+      expect(outcome.redacted).toBe(true);
+    },
+  );
+
+  it(
+    "(FR-S2, SC-06, W11-14 acceptance 6) the SAME redaction pass covers `read`'s " +
+      'result too — a vault-registered value sitting in a file the session reads ' +
+      '(an accidental commit, not a live command output) comes back redacted, ' +
+      "proving the choke point in tool-executor.ts isn't verify-only",
+    async () => {
+      const { log, cwd } = await setup();
+      const secret = 'correcthorsebatterystaple';
+      await fs.writeFile(path.join(cwd, 'leaked-config.txt'), `token=${secret}\n`);
+      const provider = new ScriptedFakeProvider([
+        toolCallResponse([
+          { id: 'call_1', name: 'read', arguments: { path: 'leaked-config.txt' } },
+        ]),
+        finalResponse('done'),
+      ]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, ledger, { secretValues: [secret] }),
+      );
+
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(result.exitCode).toBe(0);
+      const secondTurnMessages = provider.calls[1]!.messages;
+      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const jsonStart = toolResultMessage.content.indexOf('{');
+      const outcome = JSON.parse(toolResultMessage.content.slice(jsonStart)) as {
+        content: string;
+      };
+      expect(outcome.content).not.toContain(secret);
+      expect(outcome.content).toContain('[REDACTED:secret]');
+    },
+  );
+
   it('(acceptance 6/T-27) a session that never converges stops at the per-session iteration budget, not an unbounded loop', async () => {
     const { log, cwd } = await setup();
     const alwaysToolCalls = new ScriptedFakeProvider([
