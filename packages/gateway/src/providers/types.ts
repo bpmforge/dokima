@@ -6,7 +6,7 @@
  */
 import { ProviderResponseShapeError } from './errors.js';
 
-export type ChatRole = 'system' | 'user' | 'assistant';
+export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export interface ChatMessage {
   role: ChatRole;
