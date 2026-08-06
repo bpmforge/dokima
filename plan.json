@@ -5454,7 +5454,7 @@
         "DO NOT REGRESS THE EXISTING ASYMMETRIC CHECK while adding its mirror; the subset test catches a different lie (claiming work not done) and both must hold."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "Filed 2026-08-06 from W11-03's own HANDOFF note, which named the file, the missing check, the reason it could not do it (write_scope), and which runner is still exposed. Worth recording as the model of a good self-limited disclosure: it did not widen its scope, did not silently absorb the gap, and did not describe it so vaguely that someone would have to re-derive it. Note the shape of the risk \u2014 the exposed path is the ESCAPE HATCH runner (`createChildProcessSpawn`), which is exactly where a project is most likely to point at an external agent CLI it does not control.",
       "stories": []
     },
