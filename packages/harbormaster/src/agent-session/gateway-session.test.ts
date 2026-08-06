@@ -235,36 +235,48 @@ describe('createGatewaySpawnSession', () => {
     ]);
   });
 
-  it('executes a returned tool call against the worktree and feeds the result back for the next turn', async () => {
-    const { log, cwd } = await setup();
-    const write: ToolCall = {
-      id: 'call_1',
-      name: 'write',
-      arguments: { path: 'a.ts', content: 'export const x = 1;\n' },
-    };
-    const provider = new ScriptedFakeProvider([
-      toolCallResponse([write]),
-      finalResponse('done'),
-    ]);
-    const ledger = new CostLedger();
-    const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
+  it(
+    '(W11-16, FR-G9/C-1 red fixture) executes a returned tool call against the ' +
+      'worktree and feeds the result back as a REAL tool round trip — the assistant ' +
+      "turn echoes its own toolCalls, and the result comes back on a 'tool'-role " +
+      "turn carrying the matching toolCallId, never a synthetic 'user' turn",
+    async () => {
+      const { log, cwd } = await setup();
+      const write: ToolCall = {
+        id: 'call_1',
+        name: 'write',
+        arguments: { path: 'a.ts', content: 'export const x = 1;\n' },
+      };
+      const provider = new ScriptedFakeProvider([
+        toolCallResponse([write]),
+        finalResponse('done'),
+      ]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
 
-    const result = await spawn({
-      prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
-      cwd,
-    });
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
 
-    expect(result.exitCode).toBe(0);
-    await expect(fs.readFile(path.join(cwd, 'a.ts'), 'utf8')).resolves.toBe(
-      'export const x = 1;\n',
-    );
-    expect(provider.calls).toHaveLength(2);
-    const secondTurnMessages = provider.calls[1]!.messages;
-    const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
-    expect(toolResultMessage.role).toBe('user');
-    expect(toolResultMessage.content).toContain('TOOL_RESULT call_1 (write)');
-    expect(toolResultMessage.content).toContain('"ok":true');
-  });
+      expect(result.exitCode).toBe(0);
+      await expect(fs.readFile(path.join(cwd, 'a.ts'), 'utf8')).resolves.toBe(
+        'export const x = 1;\n',
+      );
+      expect(provider.calls).toHaveLength(2);
+      const secondTurnMessages = provider.calls[1]!.messages;
+
+      const assistantTurn = secondTurnMessages[secondTurnMessages.length - 2]!;
+      expect(assistantTurn.role).toBe('assistant');
+      expect(assistantTurn.toolCalls).toEqual([write]);
+
+      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      expect(toolResultMessage.role).toBe('tool');
+      expect(toolResultMessage.toolCallId).toBe('call_1');
+      expect(toolResultMessage.content).toContain('TOOL_RESULT call_1 (write)');
+      expect(toolResultMessage.content).toContain('"ok":true');
+    },
+  );
 
   it(
     '(W11-03, SC-17 provenance fix) write_scope is enforced from the TICKET RECORD, ' +

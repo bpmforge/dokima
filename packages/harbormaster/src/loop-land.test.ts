@@ -3,12 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createIdentity,
-  listEvents,
-  openEventLog,
-  type EventLog,
-} from '@dokima/events';
+import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
 import { branchNameFor, git } from '@dokima/git';
 import type { SpawnSession } from '@dokima/loop';
@@ -396,10 +391,7 @@ describe('runLandLoop', () => {
     await git(repoRoot, ['remote', 'add', 'origin', goodRemote]);
     // Stands in for an unreachable/offline forge remote (e.g. Gitea off-LAN)
     // — no real network, still fully local-first.
-    const badRemotePath = path.join(
-      os.tmpdir(),
-      'dokima-land-remote-missing-so-invalid',
-    );
+    const badRemotePath = path.join(os.tmpdir(), 'dokima-land-remote-missing-so-invalid');
     await git(repoRoot, ['remote', 'add', 'github', badRemotePath]);
 
     const calls: { cwd: string; remotes: readonly string[]; ref: string }[] = [];
@@ -462,4 +454,34 @@ describe('runLandLoop', () => {
     expect(comments).toHaveLength(1);
     expect((comments[0]!.payload as { body: string }).body).toContain('github');
   });
+
+  it(
+    '(W11-16, FR-S2/SC-06 red fixture) a `secretValues` supplied to `LandLoopOptions` ' +
+      'reaches the spawn boundary: an exact value with no known credential shape, ' +
+      'embedded in the ticket context that ends up in the rendered HANDOFF prompt, ' +
+      'does not appear in the prompt `spawn` actually receives',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      const secret = 'correcthorsebatterystaple';
+      seedTicket(log, 'W9-01', { interface: `token=${secret}` });
+
+      const prompts: string[] = [];
+      const capturingSpawn: SpawnSession = async (input) => {
+        prompts.push(input.prompt);
+        return landingSpawn(input);
+      };
+
+      const result = await runLandLoop({
+        ...baseOptions(fixture, capturingSpawn),
+        secretValues: [secret],
+      });
+
+      expect(result.processed[0]!.landed).toBe(true);
+      expect(prompts).toHaveLength(1);
+      expect(prompts[0]).toContain('CONTEXT: token=');
+      expect(prompts[0]).not.toContain(secret);
+      expect(prompts[0]).toContain('[REDACTED:secret]');
+    },
+  );
 });
