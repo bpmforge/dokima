@@ -34,6 +34,13 @@ export const DEFAULT_CONFIG = {
   // ticket still to be built claims one that already exists. Off by default:
   // { pattern: '/(\\d{6})_', dirs: ['internal/db/migrations'] }
   migrationVersions: null,
+  // Warn when a ticket's acceptance text demands a schema change (a new
+  // column or table) but no write_scope glob reaches the project's
+  // migrations directory — the gap that self-blocked W10-68 twice (W11-08).
+  // Off by default so a ported repo with no migrations directory is
+  // unaffected; a project opts in, e.g.
+  // { trigger: '\\bnew\\b.{0,40}\\bcolumn\\b', dir: '^db/migrations/' }
+  migrationScope: null,
   install: ['pnpm', ['install', '--prefer-offline']],
   gates: [
     ['pnpm', ['lint']],

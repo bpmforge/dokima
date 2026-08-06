@@ -39,6 +39,40 @@ export function testSiblingWarning(ticket, cfg) {
 
 
 /**
+ * Lint rule: a ticket whose acceptance text demands a schema change must
+ * scope a path into the project's migrations directory, or the maker
+ * session self-blocks partway through — the exact defect W10-68 hit twice
+ * (2026-08-04, then again 2026-08-05 after the first widening), for a
+ * combined ~17 minutes of maker session plus two human decisions, on a gap
+ * that is visible in the ticket text without running anything. W11-08.
+ *
+ * Deliberately NOT solved by teaching MASTER_PROMPT.md about
+ * conductor.config.json's `alwaysOk` list, even though `alwaysOk` already
+ * lists `packages/events/migrations/**` and so looks like permission the
+ * maker already has. `alwaysOk` is a GATE-SIDE amnesty
+ * (scripts/conductor/gates.mjs) consumed only when checking a landed diff
+ * against write_scope — the maker session never sees it. MASTER_PROMPT.md
+ * step 3 tells the maker to implement inside write_scope and report rather
+ * than widen it, and both of W10-68's self-blocks were the CORRECT response
+ * to that instruction: the same sentence that would have unblocked it
+ * licenses silent scope drift on every other ticket that touches a schema
+ * without meaning to. The fix belongs at filing time, not in the maker's
+ * instructions.
+ */
+export function migrationScopeWarning(ticket, cfg) {
+  if (!cfg || !cfg.trigger || !cfg.dir) return null;
+  // Same guard as testSiblingWarning/pageMountWarning: a done ticket's scope
+  // is settled, so warning about it is noise that buries the actionable ones.
+  if (ticket?.status === 'done') return null;
+  const text = (ticket.acceptance || []).join(' ');
+  if (!new RegExp(cfg.trigger, 'i').test(text)) return null;
+  const dirRe = new RegExp(cfg.dir);
+  const scope = ticket.write_scope || [];
+  if (scope.some((f) => dirRe.test(f))) return null;
+  return `${ticket.id}: acceptance requires a schema change but write_scope has no glob under ${cfg.dir} — the agent will self-block partway through (W10-68 did, twice)`;
+}
+
+/**
  * Lint rule: versioned-migration collisions.
  *
  * A migration runner that keys files by numeric prefix (Kryptkeeper's

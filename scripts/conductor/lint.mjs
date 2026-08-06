@@ -2,7 +2,7 @@
 // Chapter of scripts/conductor.mjs, split under the 400-line
 // CODE_BOOK_PROTOCOL cap (W10-46). Extraction only, no behaviour change.
 
-import { testSiblingWarning, migrationCollisions, pageMountWarning, nonWildPrefix, globToRegex } from '../conductor-lib.mjs';
+import { testSiblingWarning, migrationCollisions, migrationScopeWarning, pageMountWarning, nonWildPrefix, globToRegex } from '../conductor-lib.mjs';
 import { CONFIG, sh, git, ALWAYS_OK } from './context.mjs';
 
 // ---------- plan linter (preflight; catches bad tickets before a run) ----------
@@ -31,6 +31,7 @@ export function lintPlan(plan) {
     if (t.write_scope && !t.write_scope.length) errors.push(`${t.id}: empty write_scope`);
     { const w = testSiblingWarning(t, CONFIG.testSibling); if (w) warnings.push(w); }
     { const w = pageMountWarning(t, CONFIG.pageMount, existingPages); if (w) warnings.push(w); }
+    { const w = migrationScopeWarning(t, CONFIG.migrationScope); if (w) warnings.push(w); }
     if (t.acceptance && !t.acceptance.length) errors.push(`${t.id}: empty acceptance`);
     for (const d of t.depends_on || []) if (!ids.has(d)) errors.push(`${t.id}: depends_on unknown ticket '${d}'`);
 

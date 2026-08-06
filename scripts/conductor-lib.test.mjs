@@ -24,6 +24,7 @@ import {
   serializePlan,
   claimableTickets,
   migrationCollisions,
+  migrationScopeWarning,
   reviewDecision,
   selectGates,
   pageMountWarning,
@@ -704,6 +705,58 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
   it('ignores non-migration paths and is off without config', () => {
     expect(migrationCollisions([T('A-1','todo','internal/x.go')], CFG)).toEqual([]);
     expect(migrationCollisions([T('A-1','todo',M('000030','a')), T('B','todo',M('000030','b'))], null)).toEqual([]);
+  });
+});
+
+describe('conductor-lib: migrationScopeWarning — a schema-change ticket must scope its own migration (W11-08)', () => {
+  const CFG = {
+    trigger: '\\b(new|adds?|adding|added|creates?|creating)\\b[\\s\\S]{0,60}\\b(column|table)\\b|\\b(column|table)\\b[\\s\\S]{0,60}\\b(new|adds?|adding|added|creates?|creating)\\b',
+    dir: '^packages/events/migrations/',
+  };
+  const T = (status, scope, acceptance) => ({ id: 'W10-68', status, write_scope: scope, acceptance });
+
+  // The W10-68 shape: a synthetic ticket whose acceptance demands a new
+  // column, scoped to application files only.
+  it('warns when acceptance demands a schema change but no migrations glob is in scope', () => {
+    const w = migrationScopeWarning(
+      T('todo', ['apps/server/src/api/pipeline/model-resolution.ts'], ['add a `provider_id` column to model_matrix']),
+      CFG,
+    );
+    expect(w).toContain('W10-68');
+    expect(w).toMatch(/migrations/);
+  });
+
+  it('is quiet once a migrations glob is added to the same ticket', () => {
+    expect(migrationScopeWarning(
+      T('todo', [
+        'apps/server/src/api/pipeline/model-resolution.ts',
+        'packages/events/migrations/*model_matrix*',
+      ], ['add a `provider_id` column to model_matrix']),
+      CFG,
+    )).toBeNull();
+  });
+
+  it('is quiet for a done ticket in the first (unscoped) shape', () => {
+    expect(migrationScopeWarning(
+      T('done', ['apps/server/src/api/pipeline/model-resolution.ts'], ['add a `provider_id` column to model_matrix']),
+      CFG,
+    )).toBeNull();
+  });
+
+  it('is quiet when acceptance mentions neither a new column nor a new table', () => {
+    expect(migrationScopeWarning(
+      T('todo', ['apps/server/src/api/foo.ts'], ['fix the retry backoff timer']),
+      CFG,
+    )).toBeNull();
+  });
+
+  it('is off entirely when the project sets no migrationScope config', () => {
+    expect(migrationScopeWarning(T('todo', ['x.ts'], ['add a new column']), null)).toBeNull();
+    expect(migrationScopeWarning(T('todo', ['x.ts'], ['add a new column']), {})).toBeNull();
+  });
+
+  it('handles a ticket with no acceptance or write_scope', () => {
+    expect(migrationScopeWarning({ id: 'X-1' }, CFG)).toBeNull();
   });
 });
 
