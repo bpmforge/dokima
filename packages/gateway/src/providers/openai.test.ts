@@ -698,6 +698,83 @@ describe('OpenAiProvider — chatStream() tool calling (FR-G9, W11-06)', () => {
       { id: 'call_stream_1', name: 'get_weather', arguments: { location: 'NYC' } },
     ]);
   });
+
+  it('RED FIXTURE: a two-turn tool exchange round-trips onto the streaming wire — assistant tool_calls echoed back, a tool-role result answered, the provider parses the final answer', async () => {
+    const calls: Call[] = [];
+    let chatCallCount = 0;
+    const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(typeof input === 'string' ? input : input.toString());
+      calls.push({
+        method: init?.method ?? 'GET',
+        path: url.pathname,
+        headers: Object.fromEntries(new Headers(init?.headers).entries()),
+        body: init?.body ? JSON.parse(init.body as string) : undefined,
+      });
+      if (url.pathname.endsWith('/chat/completions')) {
+        chatCallCount += 1;
+        const sse = chatCallCount === 1 ? toolCallStreamSse : streamSuccessSse;
+        return new Response(sse, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        });
+      }
+      return new Response(JSON.stringify(modelsListFixture), { status: 200 });
+    }) as typeof fetch;
+    const provider = createOpenAiProvider({
+      apiKey: 'sk-test',
+      fetchImpl,
+      costTable: SAMPLE_COST,
+    });
+    const tools = [
+      { name: 'get_weather', parameters: { type: 'object', properties: {} } },
+    ];
+
+    let first: import('./types.js').ChatResponse | undefined;
+    for await (const event of provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools,
+    })) {
+      if (event.type === 'final') first = event.response;
+    }
+    expect(first?.toolCalls).toEqual([
+      { id: 'call_stream_1', name: 'get_weather', arguments: { location: 'NYC' } },
+    ]);
+
+    let second: import('./types.js').ChatResponse | undefined;
+    for await (const event of provider.chatStream!({
+      model: 'gpt-5.1',
+      messages: [
+        { role: 'user', content: 'what is the weather in NYC?' },
+        { ...first!.message, toolCalls: first!.toolCalls },
+        { role: 'tool', toolCallId: 'call_stream_1', content: '72F and sunny' },
+      ],
+      tools,
+    })) {
+      if (event.type === 'final') second = event.response;
+    }
+
+    const chatCalls = calls.filter((c) => c.path.endsWith('/chat/completions'));
+    expect(chatCalls[1]?.body).toMatchObject({
+      messages: [
+        { role: 'user', content: 'what is the weather in NYC?' },
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            {
+              id: 'call_stream_1',
+              type: 'function',
+              function: { name: 'get_weather', arguments: '{"location":"NYC"}' },
+            },
+          ],
+        },
+        { role: 'tool', content: '72F and sunny', tool_call_id: 'call_stream_1' },
+      ],
+    });
+    expect(second?.message.content).toBe('Hello!');
+    expect(second?.toolCalls).toBeUndefined();
+  });
 });
 
 describe('factory', () => {

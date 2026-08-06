@@ -440,6 +440,22 @@ const toolCallCompletionFixture = {
   usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
 };
 
+/** A plain follow-up answer, no tool_calls — the second turn of a tool round trip (W11-12). */
+const toolResultAnsweredFixture = {
+  id: 'chatcmpl-fixture-tools-002',
+  object: 'chat.completion',
+  created: 1_752_000_012,
+  model: 'qwen2.5-coder-7b-instruct',
+  choices: [
+    {
+      index: 0,
+      message: { role: 'assistant', content: 'It is 72F and sunny in NYC.' },
+      finish_reason: 'stop',
+    },
+  ],
+  usage: { prompt_tokens: 40, completion_tokens: 12, total_tokens: 52 },
+};
+
 const sseChunk = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
 
 /** A single tool call whose id/name arrive on the first delta, arguments arrive split across two deltas — exactly how real OpenAI-compatible streams fragment tool_calls. */
@@ -689,6 +705,67 @@ describe('OaiCompatProvider — tool calling (FR-G9, D-023, W11-01)', () => {
     expect(final?.toolCalls).toEqual([
       { id: 'call_stream_1', name: 'get_weather', arguments: { location: 'NYC' } },
     ]);
+  });
+
+  it('RED FIXTURE: a two-turn tool exchange round-trips onto the wire — assistant tool_calls echoed back, a tool-role result answered, the provider parses the final answer', async () => {
+    const calls: Call[] = [];
+    let chatCallCount = 0;
+    const { fetchImpl } = fakeFetch((call) => {
+      if (call.path.endsWith('/models')) return { status: 200, body: modelsListFixture };
+      chatCallCount += 1;
+      return {
+        status: 200,
+        body: chatCallCount === 1 ? toolCallCompletionFixture : toolResultAnsweredFixture,
+      };
+    }, calls);
+    const provider = createOaiCompatProvider({
+      id: 'generic',
+      baseUrl: 'http://x/v1',
+      fetchImpl,
+    });
+    const tools = [
+      { name: 'get_weather', parameters: { type: 'object', properties: {} } },
+    ];
+
+    const first = await provider.chat({
+      model: 'qwen2.5-coder-7b-instruct',
+      messages: [{ role: 'user', content: 'what is the weather in NYC?' }],
+      tools,
+    });
+    expect(first.toolCalls).toEqual([
+      { id: 'call_abc123', name: 'get_weather', arguments: { location: 'NYC' } },
+    ]);
+
+    const second = await provider.chat({
+      model: 'qwen2.5-coder-7b-instruct',
+      messages: [
+        { role: 'user', content: 'what is the weather in NYC?' },
+        { ...first.message, toolCalls: first.toolCalls },
+        { role: 'tool', toolCallId: 'call_abc123', content: '72F and sunny' },
+      ],
+      tools,
+    });
+
+    const chatCalls = calls.filter((c) => c.path.endsWith('/chat/completions'));
+    expect(chatCalls[1]?.body).toMatchObject({
+      messages: [
+        { role: 'user', content: 'what is the weather in NYC?' },
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            {
+              id: 'call_abc123',
+              type: 'function',
+              function: { name: 'get_weather', arguments: '{"location":"NYC"}' },
+            },
+          ],
+        },
+        { role: 'tool', content: '72F and sunny', tool_call_id: 'call_abc123' },
+      ],
+    });
+    expect(second.message.content).toBe('It is 72F and sunny in NYC.');
+    expect(second.toolCalls).toBeUndefined();
   });
 });
 
