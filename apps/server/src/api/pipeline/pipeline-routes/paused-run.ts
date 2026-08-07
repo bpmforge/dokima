@@ -165,7 +165,25 @@ export async function savePausedRun(projectPath: string, run: PausedRun): Promis
   );
 }
 
-/** Absent or unreadable means "no such paused run" — the caller reports a 404, never a 500. */
+/**
+ * Absent, unreadable, or NOT ACTUALLY PAUSED means "no such paused run" — the
+ * caller reports a 404, never a 500.
+ *
+ * The last clause is W10-58's doing and is easy to get wrong. Before it, this
+ * file existed ONLY for a paused run, so "has a blueprintInput" was equivalent
+ * to "is paused" and the predicate below was sound. Now every run writes a
+ * record, and two terminal states satisfy that old test while carrying no
+ * `slateIdsByKey`: a run that FAILED after the blueprint stage (its
+ * blueprintInput was persisted precisely because it had been paid for), and a
+ * COMPLETED one. Either would reach `applyDecisions`, which does
+ * `Object.entries(paused.slateIdsByKey)` — a TypeError, i.e. a 500 on a request
+ * whose honest answer is 404.
+ *
+ * So the check is now structural AND status-based: the record must carry the
+ * slate map `applyDecisions` requires, and must not be a terminal state. A
+ * missing `status` is treated as pausable so pre-W10-58 W10-67 files stay
+ * readable.
+ */
 export async function loadPausedRun(
   projectPath: string,
   runId: string,
@@ -178,8 +196,11 @@ export async function loadPausedRun(
     return undefined;
   }
   try {
-    const parsed = JSON.parse(raw) as PausedRun;
-    return parsed.runId === runId && parsed.blueprintInput ? parsed : undefined;
+    const parsed = JSON.parse(raw) as PausedRun & { status?: RunStatus };
+    const pausable = parsed.status === undefined || parsed.status === 'awaiting-decisions';
+    return parsed.runId === runId && parsed.blueprintInput && parsed.slateIdsByKey && pausable
+      ? parsed
+      : undefined;
   } catch {
     return undefined;
   }

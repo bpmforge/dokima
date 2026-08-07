@@ -309,4 +309,28 @@ describe('the creation run is a job, not a held request (W10-58)', () => {
     expect(record.status).toBe('failed');
     expect(record.blueprintInput).toBeDefined();
   });
+
+  it('a resume against a FAILED run is a 404, not a crash', async () => {
+    // W10-58 regression: `runs/<id>.json` used to exist only for a paused run,
+    // so `loadPausedRun`'s "has a blueprintInput" check was equivalent to "is
+    // paused". Now a failed (or completed) run persists a blueprintInput too and
+    // has no `slateIdsByKey`, so that predicate would hand `applyDecisions` a
+    // record whose `Object.entries(paused.slateIdsByKey)` throws — a 500 where a
+    // 404 belongs, reachable on two of the four terminal statuses.
+    const slow = slowPort({ failAfterBlueprint: true });
+    const { app, projectId } = await harness(slow.port);
+    const { run_id: runId } = (await start(app, projectId)).json() as {
+      run_id: string;
+    };
+    slow.release();
+    await pollUntil(app, projectId, runId, (s) => s === 'failed');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/pipeline/${runId}/resume`,
+      headers: { 'content-type': 'application/json' },
+      payload: '{}',
+    });
+    expect(res.statusCode).toBe(404);
+  });
 });
