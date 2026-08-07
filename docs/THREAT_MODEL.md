@@ -164,3 +164,21 @@ Accepted after mitigation; revisit at each wave gate:
    token file. Interim bar: SC-07's no-network default must cover loopback for agent
    sessions (verify in W6-06's sandbox tests); W4-11 evaluates same-origin-only injection
    or WS-handshake token delivery. Revisit before v1.
+
+   *Wave-11 gate revisit (2026-08-07).* The residual stands as written — the no-network
+   default is still the bar, and the SPA still auto-injects. What changed is that the two
+   concrete mechanisms by which a session could have reached loopback at all were found
+   and closed in one wave, which is worth recording because neither was a network hole:
+   **W11-19** (an ancestor symlink in a path resolved outside the worktree, defeating the
+   containment that keeps the 0600 token file out of reach) and **W11-22** (`verifyCommand`
+   was parsed from the *rendered prompt* rather than the ticket record, so a ticket whose
+   CONTEXT ended in a lookalike `VERIFY: ` line chose a command the host executed — i.e.
+   arbitrary local execution, from which both the token file and `index.html` are trivially
+   reachable). SC-02 always bounded the damage, since the close gate re-runs the
+   authoritative `verify` out of session, so a spoofed command could execute but never
+   close a ticket. **W11-20** separately gated `agentRunner.command`, the setting that
+   chooses the binary the host spawns. Taken together these were an escalation chain from
+   "untrusted session" to "chooses what the host runs", and each link is now closed with a
+   red fixture. The lesson for the next audit is that this residual's exposure is governed
+   less by the network posture than by tool-boundary integrity — containment escapes and
+   prompt-derived command strings are the routes that actually matter here.
