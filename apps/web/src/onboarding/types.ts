@@ -103,7 +103,39 @@ export interface PipelineAwaitingDecisions {
   }[];
 }
 
+/**
+ * W10-58: the POST's IMMEDIATE answer. The run is a background job now, so the
+ * first response says only "accepted, here is the id" — everything else arrives
+ * from the status route.
+ */
+export interface PipelineRunAccepted {
+  readonly status: 'running';
+  readonly run_id: string;
+}
+
+/** One completed stage of a run, as `GET .../pipeline/runs/:runId` reports it. */
+export interface PipelineRunPhase {
+  readonly name: string;
+  readonly at: string;
+}
+
+/** `GET /api/v1/projects/:id/pipeline/runs/:runId`. */
+export interface PipelineRunStatus {
+  readonly run_id: string;
+  readonly status: 'running' | 'awaiting-decisions' | 'completed' | 'failed';
+  readonly started_at: string;
+  readonly updated_at: string;
+  readonly phases: readonly PipelineRunPhase[];
+  readonly result?: PipelineRunResult;
+  readonly awaiting?: PipelineAwaitingDecisions;
+  readonly error?: { readonly status: number; readonly body?: { readonly detail?: string } };
+}
+
 export type PipelineRunOutcome = PipelineRunResult | PipelineAwaitingDecisions;
+
+export function isRunAccepted(value: unknown): value is PipelineRunAccepted {
+  return (value as PipelineRunAccepted)?.status === 'running';
+}
 
 export function isAwaitingDecisions(
   outcome: PipelineRunOutcome,
