@@ -5648,7 +5648,11 @@
         "apps/server/src/api/server/scope-routes.ts",
         "apps/server/src/api/server/settings-routes.test.ts",
         "apps/server/src/api/server/settings-types.ts",
-        "apps/server/src/api/server/settings-types.test.ts"
+        "apps/server/src/api/server/settings-types.test.ts",
+        "apps/web/src/settings/AgentRunnerPanel.tsx",
+        "apps/web/src/settings/AgentRunnerPanel.test.tsx",
+        "apps/web/src/settings/api.ts",
+        "apps/web/src/settings/api.test.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -5660,10 +5664,11 @@
         "SCOPE PRE-CHECKED: `scope-routes.ts` has no test sibling of its own; `settings-routes.test.ts` is the suite that drives those PUTs and is in scope, so this cannot self-block for want of a test file."
       ],
       "points": 5,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11f, CRITICAL + a supporting HIGH on the same path). Chains with W11-19: an agent session is untrusted by C-2/C-3 and has a closed tool set with no shell and no network, so it cannot call this API directly \u2014 but W11-19 is a route by which it could write where it should not. Neither finding is comfortable alone and together they are an escalation path from 'untrusted session' to 'chooses what the host executes'. Worth noting the severity depends on a threat-model question the report could not settle and this ticket should: who can reach the settings API in a deployed install.",
-        "CONDUCTOR 2026-08-07T01:32:55.095Z: blocked after 2 attempts. Branch sw/w11-20 kept. Gaps: out-of-scope edits: apps/web/src/settings/AgentRunnerPanel.test.tsx, apps/web/src/settings/AgentRunnerPanel.tsx, apps/web/src/settings/api.test.ts, apps/web/src/settings/api.ts | pnpm test failed: s) 79ms\n \u2713 |@dokima/web| src/settings/ProvidersPanel.test.tsx (19 tests) 484ms\n \u2713 |@dokima/web| src/App/paneNodes.test.ts (5 tests) 16ms\n \u2713 |@dokima/web| src/shortcuts/ShortcutsOverlay.test.tsx (5 tests) 23ms\n \u2713 |@dokima/web| src/board/Lane.test.tsx (2 tests) 28ms\n \u2713 |@dokima/web| src/chat/ThreadPanel.test.tsx (3 tests) 19ms\n \u2713 |scripts| conductor-lib.test.mjs (115 tests) 198664ms\n   \u2713 repo-wide vali"
+        "CONDUCTOR 2026-08-07T01:32:55.095Z: blocked after 2 attempts. Branch sw/w11-20 kept. Gaps: out-of-scope edits: apps/web/src/settings/AgentRunnerPanel.test.tsx, apps/web/src/settings/AgentRunnerPanel.tsx, apps/web/src/settings/api.test.ts, apps/web/src/settings/api.ts | pnpm test failed: s) 79ms\n \u2713 |@dokima/web| src/settings/ProvidersPanel.test.tsx (19 tests) 484ms\n \u2713 |@dokima/web| src/App/paneNodes.test.ts (5 tests) 16ms\n \u2713 |@dokima/web| src/shortcuts/ShortcutsOverlay.test.tsx (5 tests) 23ms\n \u2713 |@dokima/web| src/board/Lane.test.tsx (2 tests) 28ms\n \u2713 |@dokima/web| src/chat/ThreadPanel.test.tsx (3 tests) 19ms\n \u2713 |scripts| conductor-lib.test.mjs (115 tests) 198664ms\n   \u2713 repo-wide vali",
+        "WRITE_SCOPE GAP, MINE, FIXED 2026-08-07 \u2014 and unlike the other two blocks in this batch this one was a real filing defect, not the host. The gate reported `out-of-scope edits: apps/web/src/settings/AgentRunnerPanel.tsx, AgentRunnerPanel.test.tsx, api.ts, api.test.ts`. I scoped the server side (scope-routes, settings-types and their suites) and forgot that a per-key gate on `agentRunner` has a UI half \u2014 the panel that writes the setting and the client that PUTs it. Those four files are now in write_scope. Fifth scope-filing miss of this run (W10-68 twice, W11-08's barrel, W11-19's siblings were fine, this one), every one caught by a gate rather than by me."
       ],
       "stories": []
     },
@@ -5686,10 +5691,11 @@
         "REPORT WHETHER THE SAME GUARD PROTECTS ANY OTHER ENTRY POINT, so the fix is not silently partial: if another tool or route compiles a user-supplied regex, say so; if this is the only one, say that."
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). Third finding of the session on this one guard, after W11-02's original bound and its own same-session follow-up for adjacent quantifiers \u2014 which is the argument for changing the approach rather than adding a clause.",
-        "CONDUCTOR 2026-08-07T06:46:39.072Z: blocked after 2 attempts. Branch sw/w11-21 kept. Gaps: pnpm test failed: eout\".\n   \u2713 repo-wide validator scoping (W10-49) > the real config opts in file-size and ONLY file-size, and records why 0ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > agrees on every hand-picked pattern shape 2ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > RED FIXTURE: `**/` spans ZERO segments \u2014 the bug this differential test found 0ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > agrees on every write_scope glob actually on the board 19ms\n\n Test Files  2 failed | 435 passed (437)\n      Tests  2 failed | 3435 passed | 1 skipped (3438)\n    "
+        "CONDUCTOR 2026-08-07T06:46:39.072Z: blocked after 2 attempts. Branch sw/w11-21 kept. Gaps: pnpm test failed: eout\".\n   \u2713 repo-wide validator scoping (W10-49) > the real config opts in file-size and ONLY file-size, and records why 0ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > agrees on every hand-picked pattern shape 2ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > RED FIXTURE: `**/` spans ZERO segments \u2014 the bug this differential test found 0ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > agrees on every write_scope glob actually on the board 19ms\n\n Test Files  2 failed | 435 passed (437)\n      Tests  2 failed | 3435 passed | 1 skipped (3438)\n    ",
+        "BLOCK WAS ENVIRONMENTAL, NOT A DEFECT \u2014 diagnosed 2026-08-07 before touching any code, and the evidence is machine state rather than repo state. Overnight the host began a macOS system-asset download/install: `mobileassetd` 77% CPU, `duetexpertd` 69%, `frauddefensed` 64%, `cloudd` 47%, `triald` 44%, plus `StreamingZip` and `appplaceholdersyncd` \u2014 load average peaked over 21 and was 38.99 when re-measured. Under that, `scripts/conductor-lib.test.mjs` took 66,963 ms in the ticket's own gate run; the same suite runs in 3.53 s on a quiet machine (measured on main, same commit). The workspace suite then exceeded the conductor's gate timeout, which is what the truncated 'pnpm test failed: ...eout\"' gap line records. Main itself is unaffected as CODE: re-running the full suite under the same load produced 3 failures, all of them 'Test timed out in 5000ms' in git-spawning fixtures, not assertion failures. RE-RUN WHEN THE HOST IS QUIET rather than changing anything. The branch is kept and carries real work. RECOVER `blocked/w11-21` (9c1d411) as the first commit rather than rebuilding \u2014 the conductor's pre-clean only deletes `sw/w11-21`, and that branch already carries the implementation and its fixtures."
       ],
       "stories": []
     },
@@ -5715,10 +5721,11 @@
         "NOTE FOR THE CLOSE GATE, not a scope ask: `runCloseGate` independently re-reads `ticket.verify` and re-runs it (SC-02), so the durable verdict was never taken from the parsed copy. That is why this is HIGH and not CRITICAL \u2014 but the in-session run still executes the spoofable one."
       ],
       "points": 3,
-      "status": "blocked",
+      "status": "todo",
       "notes": [
         "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). Same file, same function, and the sibling field of the advisory I filed after W11-02 that became W11-03's provenance fix \u2014 which is the useful part: the fix was applied to the field the advisory named and not to the one beside it. Worth carrying into how advisories get written, not just this ticket.",
-        "CONDUCTOR 2026-08-07T10:09:34.096Z: blocked after 2 attempts. Branch sw/w11-22 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: est.tsx (2 tests) 28ms\n \u2713 |@dokima/web| src/chat/ThreadPanel.test.tsx (3 tests) 19ms\n \u2713 |scripts| conductor-lib.test.mjs (115 tests) 66963ms\n   \u2713 repo-wide validator scoping (W10-49) > RED FIXTURE: an over-cap file OUTSIDE the ticket diff now reaches the gate  514ms\n   \u2713 repo-wide validator scoping (W10-49) > a validator NOT in repoWide still discards the same out-of-diff finding  689ms\n   \u2713 repo-wide validator scoping (W10-49) > this repo is at the zero count the opt-in depends on  65509ms (retry x1)\n\n Test Files  2 failed"
+        "CONDUCTOR 2026-08-07T10:09:34.096Z: blocked after 2 attempts. Branch sw/w11-22 kept. Gaps: plan.json status is 'in_progress', expected 'done' | pnpm test failed: est.tsx (2 tests) 28ms\n \u2713 |@dokima/web| src/chat/ThreadPanel.test.tsx (3 tests) 19ms\n \u2713 |scripts| conductor-lib.test.mjs (115 tests) 66963ms\n   \u2713 repo-wide validator scoping (W10-49) > RED FIXTURE: an over-cap file OUTSIDE the ticket diff now reaches the gate  514ms\n   \u2713 repo-wide validator scoping (W10-49) > a validator NOT in repoWide still discards the same out-of-diff finding  689ms\n   \u2713 repo-wide validator scoping (W10-49) > this repo is at the zero count the opt-in depends on  65509ms (retry x1)\n\n Test Files  2 failed",
+        "BLOCK WAS ENVIRONMENTAL, NOT A DEFECT \u2014 diagnosed 2026-08-07 before touching any code, and the evidence is machine state rather than repo state. Overnight the host began a macOS system-asset download/install: `mobileassetd` 77% CPU, `duetexpertd` 69%, `frauddefensed` 64%, `cloudd` 47%, `triald` 44%, plus `StreamingZip` and `appplaceholdersyncd` \u2014 load average peaked over 21 and was 38.99 when re-measured. Under that, `scripts/conductor-lib.test.mjs` took 66,963 ms in the ticket's own gate run; the same suite runs in 3.53 s on a quiet machine (measured on main, same commit). The workspace suite then exceeded the conductor's gate timeout, which is what the truncated 'pnpm test failed: ...eout\"' gap line records. Main itself is unaffected as CODE: re-running the full suite under the same load produced 3 failures, all of them 'Test timed out in 5000ms' in git-spawning fixtures, not assertion failures. RE-RUN WHEN THE HOST IS QUIET rather than changing anything. The branch is kept and carries real work. RECOVER `blocked/w11-22` (b8a865e) as the first commit rather than rebuilding \u2014 the conductor's pre-clean only deletes `sw/w11-22`, and that branch already carries the implementation and its fixtures."
       ],
       "stories": []
     }
