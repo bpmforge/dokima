@@ -40,6 +40,106 @@ export interface PausedRun {
   readonly pausedAt: string;
 }
 
+/**
+ * W10-58 generalises the above from "a run paused on a decision" to "a run",
+ * because a pause is not the only way a run stops with work already paid for.
+ *
+ * `PausedRun` persisted `blueprintInput` for one reason — it is the expensive,
+ * model-authored half, and synthesis from it is pure and therefore free to
+ * replay. That reasoning was never specific to pausing: a run that dies in the
+ * technical-slate phase has also already paid for `blueprintInput`, and one
+ * that dies in decompose has paid for the slate input too. Today all of it is
+ * discarded, so a founder who waited three minutes for a phase-3 failure gets
+ * nothing back.
+ *
+ * `RunRecord` is a strict SUPERSET of `PausedRun` — same file, same
+ * `runs/<id>.json` location, same `isValidRunId` guard — so `resume.ts` keeps
+ * reading exactly the fields it always read and needs no change. The added
+ * fields are all optional: a record is written the moment a run starts (before
+ * any model call has landed) and patched forward as each stage completes, so
+ * the file is the run's durable progress, not just its epitaph.
+ *
+ * WHY STILL A FILE, restated because the reason changed: W10-67 chose a file
+ * because `packages/events` was out of its write_scope. That is no longer true
+ * here. It stays a file anyway because the event log is append-only and
+ * hash-chained (C-6) and run progress is MUTABLE state — the current stage
+ * overwrites the previous one. Append-only storage models "what happened"; this
+ * models "where we are". The phase EVENTS still go to the log, and they are the
+ * audited half.
+ */
+export type RunStatus = 'running' | 'awaiting-decisions' | 'completed' | 'failed';
+
+export interface RunRecord {
+  readonly runId: string;
+  readonly blueprintTitle: string;
+  readonly status: RunStatus;
+  readonly startedAt: string;
+  readonly updatedAt: string;
+  /** Completed stages, in order, each with the instant it landed. */
+  readonly phases: readonly { readonly name: string; readonly at: string }[];
+  /** Model-authored inputs, persisted AS THEY LAND — the whole point (acceptance 5). */
+  readonly blueprintInput?: SynthesizeBlueprintInput;
+  readonly technicalSlateInput?: unknown;
+  readonly ticketDrafts?: unknown;
+  /** Present only once the run pauses — keeps `PausedRun` readable by `resume.ts`. */
+  readonly slateIdsByKey?: Readonly<Record<string, string>>;
+  readonly pausedAt?: string;
+  /** Terminal payloads: exactly what the synchronous route used to return. */
+  readonly awaiting?: unknown;
+  readonly result?: unknown;
+  readonly error?: { readonly status: number; readonly body: unknown };
+}
+
+export async function saveRunRecord(
+  projectPath: string,
+  record: RunRecord,
+): Promise<void> {
+  await fs.mkdir(runsDir(projectPath), { recursive: true });
+  await fs.writeFile(
+    runFile(projectPath, record.runId),
+    `${JSON.stringify(record, null, 2)}\n`,
+  );
+}
+
+/** Absent/unreadable means "no such run" — the status route reports 404, never a 500. */
+export async function loadRunRecord(
+  projectPath: string,
+  runId: string,
+): Promise<RunRecord | undefined> {
+  if (!isValidRunId(runId)) return undefined;
+  let raw: string;
+  try {
+    raw = await fs.readFile(runFile(projectPath, runId), 'utf8');
+  } catch {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(raw) as RunRecord;
+    return parsed.runId === runId && parsed.status ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Read-modify-write of one run's record. Safe without a lock because a single
+ * run is driven by exactly one in-process job (`index.ts` refuses a second
+ * concurrent run per project), so this file has one writer at a time — the same
+ * single-writer discipline C-6 requires of the event log, applied to the same
+ * unit of work.
+ */
+export async function patchRunRecord(
+  projectPath: string,
+  runId: string,
+  patch: (current: RunRecord) => RunRecord,
+): Promise<RunRecord | undefined> {
+  const current = await loadRunRecord(projectPath, runId);
+  if (!current) return undefined;
+  const next = patch(current);
+  await saveRunRecord(projectPath, next);
+  return next;
+}
+
 function runsDir(projectPath: string): string {
   return path.join(projectPath, '.dokima', 'runs');
 }

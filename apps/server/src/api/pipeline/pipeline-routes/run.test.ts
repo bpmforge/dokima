@@ -30,6 +30,7 @@ import { putProviders } from '../../server/providers-store.js';
 import { putModelMatrix } from '../../server/model-matrix-store.js';
 import { registerPipelineRoutes } from './index.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from '../test-fake-gateway.js';
+import { postAndAwaitRun } from './run-await.js';
 
 const dirs: string[] = [];
 const apps: FastifyInstance[] = [];
@@ -136,11 +137,13 @@ async function harness(
   return { app, projectId: record.id, server };
 }
 
+// W10-58: the run is a background job now. `postAndAwaitRun` POSTs, polls the
+// status route to a terminal state, and presents the old synchronous shape, so
+// every assertion below still asserts what it was written to assert.
 async function run(app: FastifyInstance, projectId: string) {
-  return app.inject({
-    method: 'POST',
-    url: `/api/v1/projects/${projectId}/pipeline/run`,
-    payload: { interviewSession: completeSession(), blueprintTitle: 'Demo' },
+  return postAndAwaitRun(app, projectId, {
+    interviewSession: completeSession(),
+    blueprintTitle: 'Demo',
   });
 }
 

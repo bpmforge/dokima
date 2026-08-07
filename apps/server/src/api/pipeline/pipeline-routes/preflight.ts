@@ -51,6 +51,23 @@ export interface PreflightAwaitingDecisions {
 export type PreflightResult = PreflightReady | PreflightAwaitingDecisions;
 
 /**
+ * The three model-authored stages, named. W10-58: these are exactly the three
+ * gateway calls a run pays for, and they are what a founder is waiting on — so
+ * they are also the unit of progress reported and the unit of work persisted.
+ */
+export type PreflightStage = 'blueprint' | 'technical-slate' | 'ticket-drafts';
+
+export interface PreflightHooks {
+  /**
+   * Called after each gateway call resolves, BEFORE the pure phase function
+   * that consumes it runs. Awaited so a caller that persists the value cannot
+   * be raced by the next (minutes-long) call — if the process dies mid-run, the
+   * work already paid for is on disk rather than in a pending write.
+   */
+  readonly onStage?: (stage: PreflightStage, value: unknown) => Promise<void> | void;
+}
+
+/**
  * W10-67 swapped `assertDecisionComplete` for `decideBlueprintUnlock`. Both
  * exist in `blueprint/gate.ts` for exactly this reason — its own comment says
  * the throwing form is "for call sites that want a hard stop", and this one
@@ -61,12 +78,14 @@ export async function runPreflight(
   modelPort: RealGatewayPort,
   body: RunPipelineRequestBody,
   ledgerMarkdown: string,
+  hooks: PreflightHooks = {},
 ): Promise<PreflightResult> {
   const drafts = collectDrafts(body.interviewSession);
   const blueprintInput = await modelPort.resolveBlueprintInput(
     drafts,
     body.blueprintTitle,
   );
+  await hooks.onStage?.('blueprint', blueprintInput);
   const blueprint = synthesizeBlueprint(blueprintInput);
 
   const gate = decideBlueprintUnlock(
@@ -105,9 +124,11 @@ export async function runPreflight(
   }
 
   const technicalSlateInput = await modelPort.resolveTechnicalSlateInput(blueprint);
+  await hooks.onStage?.('technical-slate', technicalSlateInput);
   const technicalSlate = buildTechnicalSlate(technicalSlateInput);
 
   const ticketDrafts = await modelPort.resolveTicketDrafts(blueprint, technicalSlate);
+  await hooks.onStage?.('ticket-drafts', ticketDrafts);
 
   return {
     status: 'ready',

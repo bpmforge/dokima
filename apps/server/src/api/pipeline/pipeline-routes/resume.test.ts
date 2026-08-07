@@ -27,6 +27,7 @@ import { stateDbPath } from '../../server/board-project.js';
 import { OPERATOR_ACTOR_ID } from '../../server/board-actor.js';
 import { registerPipelineRoutes } from './index.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from '../test-fake-gateway.js';
+import { postAndAwaitRun } from './run-await.js';
 
 const dirs: string[] = [];
 const apps: FastifyInstance[] = [];
@@ -146,11 +147,12 @@ async function harness(): Promise<{
   return { app, projectId: record.id, projectDir, server };
 }
 
+// W10-58: POST now returns 202 + a run id; this awaits the job to a terminal
+// state and presents the shape these W10-67 assertions were written against.
 async function startRun(app: FastifyInstance, projectId: string) {
-  return app.inject({
-    method: 'POST',
-    url: `/api/v1/projects/${projectId}/pipeline/run`,
-    payload: { interviewSession: completeSession(), blueprintTitle: 'Demo' },
+  return postAndAwaitRun(app, projectId, {
+    interviewSession: completeSession(),
+    blueprintTitle: 'Demo',
   });
 }
 
