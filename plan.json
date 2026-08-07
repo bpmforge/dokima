@@ -5754,7 +5754,7 @@
         "SCOPE PRE-CHECKED: all three files exist and are owned only by done tickets (W11-20), so P8 tolerates the overlap; `scope-routes.ts` and `api.ts` are deliberately NOT in scope \u2014 this ticket adds the missing check, it does not re-shape the constant."
       ],
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "notes": [
         "Filed 2026-08-07 straight from the conductor s own review output rather than from a fresh audit. W11-20/21/22 landed in one clean run after the previous night s blocks turned out to be host load; this advisory arrived inside that run s APPROVE and would otherwise have lived only in docs/work/conductor.out, which nothing re-reads. Same silent-rot shape as the e2e assertion that sat red from W5-16 until an audit days later \u2014 a real gap parked where no gate looks."
