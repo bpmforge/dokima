@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  AGENT_RUNNER_CONFIRM_FIELD,
   fetchAutonomy,
   fetchBudget,
   fetchEffectiveSettings,
@@ -135,5 +136,26 @@ describe('settings api (part 1)', () => {
     );
     const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({ berths: 3 });
+  });
+
+  it('AGENT_RUNNER_CONFIRM_FIELD matches the field name scope-routes.ts gates on (W11-20)', () => {
+    expect(AGENT_RUNNER_CONFIRM_FIELD).toBe('agentRunnerConfirmed');
+  });
+
+  it('putProjectSettings still PUTs the raw patch object when it carries the agentRunner confirmation flag', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}));
+    await putProjectSettings(
+      'proj-1',
+      {
+        agentRunner: { kind: 'external', command: 'opencode -p' },
+        [AGENT_RUNNER_CONFIRM_FIELD]: true,
+      },
+      { fetchImpl, getToken: () => 'tok' },
+    );
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      agentRunner: { kind: 'external', command: 'opencode -p' },
+      agentRunnerConfirmed: true,
+    });
   });
 });

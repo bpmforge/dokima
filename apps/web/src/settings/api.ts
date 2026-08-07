@@ -52,6 +52,20 @@ export async function fetchProjectSettings(
   )) as SettingsMap;
 }
 
+/**
+ * W11-20 (C-2/C-3, FR-S2): the generic settings PUT refuses to set
+ * `agentRunner` to an external command unless this flag rides along in the
+ * SAME request body (scope-routes.ts's `refuseUnconfirmedAgentRunner`) —
+ * the "who is asking" signal that distinguishes `AgentRunnerPanel.tsx`'s
+ * deliberate operator flow (which always shows the risk warning before the
+ * command can be typed in) from a bare, unattended write to the key.
+ * Declared here rather than in `types.ts`: that file is outside this
+ * ticket's write_scope and, like `ModelMatrixWithScope` above, this is
+ * wire-protocol shape, not a domain type. Never sent back by the server —
+ * the route strips it before persisting.
+ */
+export const AGENT_RUNNER_CONFIRM_FIELD = 'agentRunnerConfirmed';
+
 export async function putProjectSettings(
   projectId: string,
   patch: SettingsMap,

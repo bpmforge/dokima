@@ -353,6 +353,127 @@ describe('settings routes', () => {
   });
 
   /**
+   * RED FIXTURE (W11-20, C-2/C-3, FR-S2): `agentRunner.command` is the
+   * executable `resolveAgentRunner` spawns verbatim on every subsequent
+   * build run — a strictly bigger decision than `copilotEnabled` above, and
+   * unlike it had no gate at all. The chosen gate (scope-routes.ts's
+   * `refuseUnconfirmedAgentRunner`) is a same-request confirmation flag
+   * rather than a block, so acceptance 4 (don't break the W11-04 feature
+   * while securing it) is checked here too: `kind: 'built-in'` needs no
+   * confirmation, and a confirmed `external` write still succeeds.
+   */
+  it('SECURITY (red fixture): a PUT setting agentRunner to an external command without confirmation is refused, through the real route', async () => {
+    const { app, projectId } = await boot();
+
+    const bypassAttempt = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { agentRunner: { kind: 'external', command: 'opencode -p' } },
+    });
+    expect(bypassAttempt.statusCode).toBe(403);
+    expect(bypassAttempt.json().rule).toBe('agent-runner-confirmation-required');
+
+    const afterBypass = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+    });
+    expect(afterBypass.json().agentRunner).toBeUndefined();
+
+    // A mixed body (the gated key alongside a legitimate one) is refused wholesale —
+    // never silently applies the safe key while dropping the gated one.
+    const mixedAttempt = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: {
+        autonomy: 'auto',
+        agentRunner: { kind: 'external', command: 'opencode -p' },
+      },
+    });
+    expect(mixedAttempt.statusCode).toBe(403);
+    const settingsAfterMixed = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+    });
+    expect(settingsAfterMixed.json().autonomy).toBeUndefined();
+
+    // Same gate on the global-scope generic PUT — defense in depth, same reasoning as
+    // `refuseConsentGatedKey` above.
+    const globalBypassAttempt = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/settings/global',
+      headers: authHeaders(),
+      payload: { agentRunner: { kind: 'external', command: 'opencode -p' } },
+    });
+    expect(globalBypassAttempt.statusCode).toBe(403);
+    expect(globalBypassAttempt.json().rule).toBe('agent-runner-confirmation-required');
+
+    // Acceptance 4: a deliberate operator choice, confirmed in the same request, is
+    // not blocked — this is the feature W11-04 shipped, not a new refusal on it.
+    const confirmed = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: {
+        agentRunner: { kind: 'external', command: 'opencode -p' },
+        agentRunnerConfirmed: true,
+      },
+    });
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json().agentRunner).toEqual({
+      kind: 'external',
+      command: 'opencode -p',
+    });
+    // The confirmation flag is a same-request signal, never a stored setting.
+    expect(confirmed.json().agentRunnerConfirmed).toBeUndefined();
+
+    const afterConfirmed = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+    });
+    expect(afterConfirmed.json().agentRunnerConfirmed).toBeUndefined();
+
+    // The gate keys off an actual CHANGE, not bare presence of `kind: "external"` — a
+    // caller that re-PUTs the exact value already stored (e.g. a panel that fetches the
+    // full settings map and spreads it back while saving some OTHER key) is not making a
+    // new choice about what the host spawns, so it is not asked to reconfirm one.
+    const resendSameValue = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { agentRunner: { kind: 'external', command: 'opencode -p' } },
+    });
+    expect(resendSameValue.statusCode).toBe(200);
+
+    // But a DIFFERENT external command with no flag is still refused, even though a
+    // (different) external command was already confirmed once before.
+    const changedCommandNoConfirm = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { agentRunner: { kind: 'external', command: 'claude --agent' } },
+    });
+    expect(changedCommandNoConfirm.statusCode).toBe(403);
+    expect(changedCommandNoConfirm.json().rule).toBe(
+      'agent-runner-confirmation-required',
+    );
+
+    // Reverting to the built-in default is never gated — only choosing `external` is.
+    const revertToBuiltIn = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/settings`,
+      headers: authHeaders(),
+      payload: { agentRunner: { kind: 'built-in' } },
+    });
+    expect(revertToBuiltIn.statusCode).toBe(200);
+    expect(revertToBuiltIn.json().agentRunner).toEqual({ kind: 'built-in' });
+  });
+
+  /**
    * RED FIXTURE (W10-42 AC5): `defaultModelMatrixPreset` is written today
    * only through the global PUT (FirstRunWizard's `savePresetAndProvider`),
    * but `getEffectiveProjectSettings` resolves run > project > project >

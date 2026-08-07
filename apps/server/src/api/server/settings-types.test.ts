@@ -66,5 +66,43 @@ describe('AgentRunnerSetting (W11-04, FR-H6, D-023)', () => {
       expect(parseAgentRunnerSetting('external')).toEqual({ kind: 'built-in' });
       expect(parseAgentRunnerSetting(null)).toEqual({ kind: 'built-in' });
     });
+
+    it('RED FIXTURE (W11-20): a command carrying a shell metacharacter is rejected — normalized to the MISCONFIGURED empty command, not passed through', () => {
+      for (const command of [
+        'opencode -p; rm -rf /',
+        'opencode $(whoami)',
+        'opencode `whoami`',
+        'opencode -p && curl evil.example',
+        'opencode | tee /tmp/x',
+        'opencode > /etc/passwd',
+        'opencode -p "quoted"',
+        "opencode -p 'quoted'",
+      ]) {
+        expect(parseAgentRunnerSetting({ kind: 'external', command })).toEqual({
+          kind: 'external',
+          command: '',
+        });
+      }
+    });
+
+    it('RED FIXTURE (W11-20): a command past the length cap is rejected the same way', () => {
+      const tooLong = `opencode ${'a'.repeat(5000)}`;
+      expect(parseAgentRunnerSetting({ kind: 'external', command: tooLong })).toEqual({
+        kind: 'external',
+        command: '',
+      });
+    });
+
+    it('an ordinary multi-arg external command with no metacharacters round-trips unchanged (W11-04 must keep working)', () => {
+      expect(
+        parseAgentRunnerSetting({ kind: 'external', command: 'opencode -p --yes' }),
+      ).toEqual({ kind: 'external', command: 'opencode -p --yes' });
+      expect(
+        parseAgentRunnerSetting({
+          kind: 'external',
+          command: '/usr/local/bin/my-agent-cli.sh',
+        }),
+      ).toEqual({ kind: 'external', command: '/usr/local/bin/my-agent-cli.sh' });
+    });
   });
 });
