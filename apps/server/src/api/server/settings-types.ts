@@ -235,6 +235,43 @@ export const EXTERNAL_AGENT_WARNING =
   'CLI does.';
 
 /**
+ * Longest `command` this parser treats as a legitimate `<bin> [args...]`
+ * invocation (W11-20, C-2/C-3, FR-S2). `resolveAgentRunner` (run-build.ts)
+ * spawns this string verbatim as the host process on every subsequent
+ * build run — picking the binary is a strictly bigger decision than
+ * `copilotEnabled` (scope-routes.ts's `CONSENT_GATED_KEYS`), which already
+ * gets a gate, and this had none. Comfortably above any real CLI
+ * invocation; exists only to cap how much a caller can push into this
+ * setting, same spirit as the shell-metacharacter check below.
+ */
+const AGENT_RUNNER_COMMAND_MAX_LENGTH = 4096;
+
+/**
+ * `run-build.ts` builds argv by `command.split(' ').filter(Boolean)` and
+ * passes the result to `child_process.spawn` with no shell (`createChild
+ * ProcessSpawn`, packages/loop/src/session.ts) — so none of these chars are
+ * exploitable *today*. The check exists anyway (acceptance 3/5): a value
+ * containing one can never be a legitimate short CLI invocation, and
+ * refusing it is cheap insurance against a future caller that does invoke
+ * a shell. Backslash is deliberately excluded — it is load-bearing in a
+ * Windows path (`C:\bin\opencode.exe`) and spawn never hands argv to a
+ * shell that would treat it specially.
+ *
+ * Chose this blocklist over an operator allowlist (acceptance 3 offers
+ * either): `external` is explicitly the escape hatch for "an agent CLI the
+ * operator already trusts" (this file's `AgentRunnerKind` doc) — there is
+ * no fixed set of trusted binaries to enumerate, so an allowlist here would
+ * either be unusably narrow or fake.
+ */
+const SHELL_METACHARACTERS = /[;&|`$()<>\r\n*?~#!'"]/;
+
+function isMisconfiguredExternalCommand(command: string): boolean {
+  return (
+    command.length > AGENT_RUNNER_COMMAND_MAX_LENGTH || SHELL_METACHARACTERS.test(command)
+  );
+}
+
+/**
  * Narrows an effective settings value (untyped `JsonValue`) to a valid
  * `AgentRunnerSetting`. Two failure shapes get different treatment
  * (W11-18, FR-H6) — NOT-CONFIGURED vs MISCONFIGURED are different claims
@@ -247,13 +284,17 @@ export const EXTERNAL_AGENT_WARNING =
  *   `listProviders` uses rather than throwing on a hand-edited or stale
  *   settings file. This is W11-04's ruling and is unchanged here.
  * - MISCONFIGURED: `kind === 'external'` was explicitly chosen but
- *   `command` is empty, whitespace-only, or missing. This is NOT degraded
- *   to built-in — the row is returned as-is (`command` normalized to `''`
- *   when absent/non-string) so the caller sees the choice that was made
- *   and can refuse on it, matching the W10-77 contract for a genuinely
- *   broken external command. Silently substituting the built-in agent here
- *   would hand the user a different agent than the one they picked, with
- *   no signal — the inverse of what `EXTERNAL_AGENT_WARNING` exists for.
+ *   `command` is empty, whitespace-only, missing, too long, or carries a
+ *   shell metacharacter (W11-20). This is NOT degraded to built-in — the
+ *   row is returned as-is (`command` normalized to `''` for any of those
+ *   cases) so the caller sees the choice that was made and can refuse on
+ *   it, matching the W10-77 contract for a genuinely broken external
+ *   command (`executeBuildRun` already refuses on an empty `agentBin`, so
+ *   normalizing an oversized/unsafe command to `''` reuses that same
+ *   refusal rather than a new one). Silently substituting the built-in
+ *   agent here would hand the user a different agent than the one they
+ *   picked, with no signal — the inverse of what `EXTERNAL_AGENT_WARNING`
+ *   exists for.
  */
 export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -263,7 +304,11 @@ export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
   if (kind === 'built-in') return { kind: 'built-in' };
   if (kind === 'external') {
     const command = (value as { command?: unknown }).command;
-    return { kind: 'external', command: typeof command === 'string' ? command : '' };
+    const normalized = typeof command === 'string' ? command : '';
+    return {
+      kind: 'external',
+      command: isMisconfiguredExternalCommand(normalized) ? '' : normalized,
+    };
   }
   return DEFAULT_AGENT_RUNNER_SETTING;
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  AGENT_RUNNER_CONFIRM_FIELD,
   fetchEffectiveSettings,
   fetchGlobalSettings,
   fetchProjectSettings,
@@ -76,15 +77,25 @@ export function AgentRunnerPanel({ projectId }: AgentRunnerPanelProps) {
     }
     const next: AgentRunnerSetting =
       kind === 'external' ? { kind, command: command.trim() } : { kind: 'built-in' };
+    // W11-20: picking `external` here, with the warning already on screen, is
+    // exactly the deliberate-operator signal the confirmation gate wants — so
+    // the flag rides along in the same PUT. `built-in` is never gated.
+    const confirmation =
+      kind === 'external' ? { [AGENT_RUNNER_CONFIRM_FIELD]: true } : {};
     try {
       if (applyGlobally) {
         const current = await fetchGlobalSettings();
-        await putGlobalSettings({ ...current, [AGENT_RUNNER_SETTINGS_KEY]: next });
+        await putGlobalSettings({
+          ...current,
+          [AGENT_RUNNER_SETTINGS_KEY]: next,
+          ...confirmation,
+        });
       } else {
         const current = await fetchProjectSettings(projectId);
         await putProjectSettings(projectId, {
           ...current,
           [AGENT_RUNNER_SETTINGS_KEY]: next,
+          ...confirmation,
         });
       }
       await refresh();

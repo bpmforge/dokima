@@ -24,6 +24,7 @@ import {
   putGlobalSetting,
   putProjectSetting,
 } from './settings-scope.js';
+import { AGENT_RUNNER_SETTINGS_KEY } from './settings-types.js';
 
 function isPlainSettingsBody(value: unknown): value is Record<string, JsonValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -110,6 +111,121 @@ function refuseUnknownPreset(
   return true;
 }
 
+/**
+ * W11-20 (C-2/C-3, FR-S2): `agentRunner.command` is the executable
+ * `resolveAgentRunner` (run-build.ts) spawns verbatim on every subsequent
+ * build run — a strictly bigger decision than `copilotEnabled` above, which
+ * already had a gate (`CONSENT_GATED_KEYS`) while this key had none.
+ *
+ * Threat model this gate is sized for (the question the note filing this
+ * ticket left open): this whole surface is bearer-token-gated and typically
+ * reachable only on loopback — the realistic "unattended writer" is a local
+ * process, a stale/replayed request, or a script that knows the settings
+ * wire shape, not a remote attacker who already has the token. That is why
+ * a same-request confirmation flag is proportionate here, rather than a
+ * ledgered consent event guarding against a hostile-remote-caller model.
+ *
+ * Chose "require an explicit confirmation flag in the same PUT" over
+ * blocking the key outright (acceptance 3/4): unlike `copilotEnabled`,
+ * `external` is a legitimate, supported choice (W11-04) with its own
+ * dedicated route to reach settings through — there isn't one for
+ * `agentRunner`, and building one (a consent ledger event, its own
+ * endpoint) would be the "new mechanism" acceptance 3 says not to reach
+ * for. A flat block would also make a deliberate operator choice
+ * indistinguishable from an unattended write, which acceptance 4 calls out
+ * as the wrong axis (value-unusualness) to gate on.
+ *
+ * The flag is the "who is asking" signal instead: `AgentRunnerPanel.tsx`
+ * always shows `EXTERNAL_AGENT_WARNING` before an external command can be
+ * typed in, and sends this flag alongside the value once the operator
+ * saves — same request, so there is no window where the value is stored
+ * unconfirmed. A caller that only knows the generic settings wire shape
+ * (replaying a captured request, or writing straight to the key) will not
+ * know to set it. The flag never becomes a stored setting — stripped
+ * before the write, see `withoutAgentRunnerConfirmField` below — so it
+ * can't leak into `GET`/effective-settings responses or be mistaken for a
+ * real key.
+ *
+ * Only `kind: 'external'` requires it, and only when it actually CHANGES
+ * what would be spawned (acceptance 5's wording: "a PUT that changes
+ * `agentRunner.command`"): reverting to `built-in` (D-023's safe default)
+ * is never gated, and re-PUTting the exact `kind`/`command` that is already
+ * stored is not "choosing what the host executes" — it's a no-op. This
+ * matters beyond convenience: `AgentRunnerPanel.tsx` itself fetches the
+ * full settings map and spreads it back on every save, so any future save
+ * path that follows the same read-modify-write shape and happens to carry
+ * an already-stored `agentRunner` forward — because some OTHER key in the
+ * same map is what's actually changing — must not require re-confirming a
+ * choice nobody is making in this request. Gating on bare presence of
+ * `kind: 'external'` would 403 that unrelated save; gating on an actual
+ * change does not, and still refuses on the one case that matters (a
+ * different `kind`/`command` written with no flag).
+ */
+const AGENT_RUNNER_CONFIRM_FIELD = 'agentRunnerConfirmed';
+
+function isExternalAgentRunnerValue(
+  value: JsonValue | undefined,
+): value is Record<string, JsonValue> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as Record<string, JsonValue>).kind === 'external'
+  );
+}
+
+/** Whether `next` (already known external) names the same kind/command `current` already has stored — the only two fields `AgentRunnerSetting` carries, so field-equality is value-equality here. */
+function sameAgentRunnerValue(next: JsonValue, current: JsonValue | undefined): boolean {
+  if (typeof current !== 'object' || current === null || Array.isArray(current)) {
+    return false;
+  }
+  const a = next as Record<string, JsonValue>;
+  const b = current as Record<string, JsonValue>;
+  return a.kind === b.kind && a.command === b.command;
+}
+
+/**
+ * Sends the 403 refusal and returns true if `body` CHANGES `agentRunner` to
+ * an external command without the confirmation flag — call before any
+ * write, on both the global and project generic PUTs. `readCurrent` is a
+ * thunk (not the settings map itself) so the extra read it costs only
+ * happens on the rare path that already needs one: a body naming an
+ * external `agentRunner` with no confirmation flag set.
+ */
+async function refuseUnconfirmedAgentRunner(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  body: unknown,
+  readCurrent: () => Promise<SettingsMap>,
+): Promise<boolean> {
+  if (!isPlainSettingsBody(body)) return false;
+  const next = body[AGENT_RUNNER_SETTINGS_KEY];
+  if (!isExternalAgentRunnerValue(next)) return false;
+  if (body[AGENT_RUNNER_CONFIRM_FIELD] === true) return false;
+  const current = await readCurrent();
+  if (sameAgentRunnerValue(next, current[AGENT_RUNNER_SETTINGS_KEY])) return false;
+  reply
+    .code(403)
+    .type('application/problem+json')
+    .send(
+      forbidden(
+        request,
+        `setting "${AGENT_RUNNER_SETTINGS_KEY}" to kind "external" chooses the binary the host spawns on every subsequent build run — this PUT must also carry "${AGENT_RUNNER_CONFIRM_FIELD}": true in the same request`,
+        'agent-runner-confirmation-required',
+      ),
+    );
+  return true;
+}
+
+/** Drops `AGENT_RUNNER_CONFIRM_FIELD` from `body` before it reaches `applyEachKey` — it is a same-request confirmation signal, never a real settings key, and must not get persisted as one. */
+function withoutAgentRunnerConfirmField(body: unknown): unknown {
+  if (!isPlainSettingsBody(body)) return body;
+  if (!(AGENT_RUNNER_CONFIRM_FIELD in body)) return body;
+  const rest: Record<string, JsonValue> = { ...body };
+  delete rest[AGENT_RUNNER_CONFIRM_FIELD];
+  return rest;
+}
+
 async function applyEachKey(
   body: unknown,
   write: (key: string, value: JsonValue | undefined) => Promise<SettingsMap>,
@@ -142,14 +258,25 @@ export function registerScopeRoutes(
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (refuseConsentGatedKey(request, reply, request.body)) return;
       if (refuseUnknownPreset(request, reply, request.body)) return;
+      if (
+        await refuseUnconfirmedAgentRunner(
+          request,
+          reply,
+          request.body,
+          getGlobalSettings,
+        )
+      ) {
+        return;
+      }
       const query = request.query as Record<string, unknown>;
       const loggingProjectPath =
         typeof query.project === 'string'
           ? await resolveProjectOrProblem(request, reply, query.project, opts.home)
           : undefined;
       if (typeof query.project === 'string' && !loggingProjectPath) return;
-      const next = await applyEachKey(request.body, (key, value) =>
-        putGlobalSetting(key, value, loggingProjectPath),
+      const next = await applyEachKey(
+        withoutAgentRunnerConfirmField(request.body),
+        (key, value) => putGlobalSetting(key, value, loggingProjectPath),
       );
       if (!next) {
         return reply
@@ -184,8 +311,16 @@ export function registerScopeRoutes(
       if (!projectPath) return;
       if (refuseConsentGatedKey(request, reply, request.body)) return;
       if (refuseUnknownPreset(request, reply, request.body)) return;
-      const next = await applyEachKey(request.body, (key, value) =>
-        putProjectSetting(projectPath, key, value),
+      if (
+        await refuseUnconfirmedAgentRunner(request, reply, request.body, () =>
+          getProjectSettings(projectPath),
+        )
+      ) {
+        return;
+      }
+      const next = await applyEachKey(
+        withoutAgentRunnerConfirmField(request.body),
+        (key, value) => putProjectSetting(projectPath, key, value),
       );
       if (!next) {
         return reply

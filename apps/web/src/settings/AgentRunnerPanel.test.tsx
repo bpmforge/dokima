@@ -160,6 +160,9 @@ describe('AgentRunnerPanel (acceptance 2/3, RED FIXTURE)', () => {
 
     await vi.waitFor(() => expect(putBody).toBeDefined());
     expect(putBody?.agentRunner).toEqual({ kind: 'external', command: 'opencode -p' });
+    // W11-20: the server refuses an unconfirmed external write (settings-routes.test.ts's
+    // red fixture) — the panel must send the confirmation flag in the same request.
+    expect(putBody?.agentRunnerConfirmed).toBe(true);
   });
 
   it('saves to global scope when "Use for every project" is checked', async () => {
@@ -182,5 +185,8 @@ describe('AgentRunnerPanel (acceptance 2/3, RED FIXTURE)', () => {
 
     await vi.waitFor(() => expect(putBody).toBeDefined());
     expect(putBody?.agentRunner).toEqual({ kind: 'built-in' });
+    // W11-20: the confirmation gate only applies to `external` — `built-in` is never
+    // gated, so the panel does not need to (and does not) send the flag for it.
+    expect(putBody?.agentRunnerConfirmed).toBeUndefined();
   });
 });
