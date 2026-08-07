@@ -5691,7 +5691,7 @@
         "REPORT WHETHER THE SAME GUARD PROTECTS ANY OTHER ENTRY POINT, so the fix is not silently partial: if another tool or route compiles a user-supplied regex, say so; if this is the only one, say that."
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11b). Third finding of the session on this one guard, after W11-02's original bound and its own same-session follow-up for adjacent quantifiers \u2014 which is the argument for changing the approach rather than adding a clause.",
         "CONDUCTOR 2026-08-07T06:46:39.072Z: blocked after 2 attempts. Branch sw/w11-21 kept. Gaps: pnpm test failed: eout\".\n   \u2713 repo-wide validator scoping (W10-49) > the real config opts in file-size and ONLY file-size, and records why 0ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > agrees on every hand-picked pattern shape 2ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > RED FIXTURE: `**/` spans ZERO segments \u2014 the bug this differential test found 0ms\n   \u2713 the two write_scope glob dialects agree (W10-53) > agrees on every write_scope glob actually on the board 19ms\n\n Test Files  2 failed | 435 passed (437)\n      Tests  2 failed | 3435 passed | 1 skipped (3438)\n    ",
