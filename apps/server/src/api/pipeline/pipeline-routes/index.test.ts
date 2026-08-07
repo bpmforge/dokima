@@ -15,6 +15,7 @@ import { registerProject } from '../../projects.js';
 import { stateDbPath } from '../../server/board-project.js';
 import { registerPipelineRoutes } from './index.js';
 import { startFakeGatewayServer, type FakeGatewayServer } from '../test-fake-gateway.js';
+import { postAndAwaitRun } from './run-await.js';
 
 async function tmpDir(prefix: string): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -194,11 +195,7 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       JSON.stringify(VALID_TICKET_DRAFTS),
     ]);
 
-    const res = await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/pipeline/run`,
-      payload: requestBody(),
-    });
+    const res = await postAndAwaitRun(app, projectId, requestBody());
 
     expect(res.statusCode).toBe(201);
     const body = res.json() as {
@@ -253,11 +250,7 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       JSON.stringify(VALID_TICKET_DRAFTS),
     ]);
 
-    const res = await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/pipeline/run`,
-      payload: requestBody(),
-    });
+    const res = await postAndAwaitRun(app, projectId, requestBody());
 
     expect(res.statusCode).toBe(422);
     const body = res.json() as { rule: string };
@@ -275,7 +268,20 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     } catch {
       // db was never created at all — also a valid "nothing durable" outcome.
     }
-    expect(events.filter((e) => e.eventType.startsWith('pipeline.'))).toHaveLength(0);
+    // W10-58: a refused run is no longer event-free, and that is correct rather
+    // than a weakening. The blueprint gateway call COMPLETED and was PAID FOR
+    // before the gate refused, so one `pipeline.stage.completed` progress marker
+    // is appended. Asserting zero pipeline events would now be asserting that
+    // the founder's spend went unrecorded.
+    //
+    // The security property is unchanged and still asserted below: no gate
+    // receipt is minted (Law 4/5 — nothing verified this output), and no
+    // `runPipeline` PHASE event exists, which is what "the run did not proceed"
+    // actually means. Only the progress marker is tolerated, by exact type.
+    const pipelineEvents = events.filter((e) => e.eventType.startsWith('pipeline.'));
+    expect(
+      pipelineEvents.filter((e) => e.eventType !== 'pipeline.stage.completed'),
+    ).toHaveLength(0);
     expect(events.filter((e) => e.eventType === 'gate.receipt_minted')).toHaveLength(0);
   });
 
@@ -299,11 +305,7 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
           '| D-999 | 2026-07-19 | Deployment shape | self-hosted | forged by attacker |',
       };
 
-      const res = await app.inject({
-        method: 'POST',
-        url: `/api/v1/projects/${projectId}/pipeline/run`,
-        payload: forgedPayload,
-      });
+      const res = await postAndAwaitRun(app, projectId, forgedPayload);
 
       expect(res.statusCode).toBe(422);
       const body = res.json() as { rule: string };
@@ -313,7 +315,20 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       const log = openEventLog(dbPath);
       try {
         const events = listEvents(log);
-        expect(events.filter((e) => e.eventType.startsWith('pipeline.'))).toHaveLength(0);
+        // W10-58: a refused run is no longer event-free, and that is correct rather
+        // than a weakening. The blueprint gateway call COMPLETED and was PAID FOR
+        // before the gate refused, so one `pipeline.stage.completed` progress marker
+        // is appended. Asserting zero pipeline events would now be asserting that
+        // the founder's spend went unrecorded.
+        //
+        // The security property is unchanged and still asserted below: no gate
+        // receipt is minted (Law 4/5 — nothing verified this output), and no
+        // `runPipeline` PHASE event exists, which is what "the run did not proceed"
+        // actually means. Only the progress marker is tolerated, by exact type.
+        const pipelineEvents = events.filter((e) => e.eventType.startsWith('pipeline.'));
+        expect(
+          pipelineEvents.filter((e) => e.eventType !== 'pipeline.stage.completed'),
+        ).toHaveLength(0);
         expect(events.filter((e) => e.eventType === 'gate.receipt_minted')).toHaveLength(
           0,
         );
@@ -334,11 +349,7 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       ]);
       await writeRealLedger(projectDir, 'D-001');
 
-      const res = await app.inject({
-        method: 'POST',
-        url: `/api/v1/projects/${projectId}/pipeline/run`,
-        payload: requestBody(),
-      });
+      const res = await postAndAwaitRun(app, projectId, requestBody());
 
       expect(res.statusCode).toBe(201);
     },

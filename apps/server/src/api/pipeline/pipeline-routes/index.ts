@@ -56,23 +56,14 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { openEventLog } from '@dokima/events';
 import {
   IncompleteInterviewSessionError,
   isInterviewComplete,
-  runPipeline,
-  type DecomposedPlan,
-  type PipelinePort,
 } from '@dokima/pipeline';
 import { computeFleetRegistryPath } from '../../projects.js';
 import { badRequest, notFound } from '../../server/artifacts-helpers.js';
 import { PROBLEM_CONTENT_TYPE } from '../../problem.js';
-import { resolveProjectRecord, stateDbPath } from '../../server/board-project.js';
-import { ensureOperatorIdentity } from '../../server/board-actor.js';
-import {
-  persistDecomposedPlan,
-  type AcceptedDecomposedPlanItem,
-} from '../board-lifecycle.js';
+import { resolveProjectRecord } from '../../server/board-project.js';
 import { InvalidPipelineRunRequestError } from '../errors.js';
 import {
   createRealGatewayPort,
@@ -81,12 +72,10 @@ import {
   type RealGatewayPort,
 } from '../gateway-model-port.js';
 import { registerAdvanceRoute } from './advance.js';
-import { emitPhaseEvent } from './events.js';
-import { readLedgerMarkdown } from './ledger.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
-import { runPreflight } from './preflight.js';
-import { replyAwaitingDecisions } from './awaiting-decisions.js';
+import { isValidRunId, loadRunRecord, saveRunRecord } from './paused-run.js';
+import { executeRun, wireRunRecord } from './run-job.js';
 import { registerResumeRoute } from './resume.js';
 import { parseRequestBody, type RunPipelineRequestBody } from './request-body.js';
 
@@ -151,6 +140,18 @@ export function registerPipelineRoutes(
   registerAdvanceRoute(app, { home: opts.home, signingKey: opts.signingKey });
   registerResumeRoute(app, { registryPath, now, resolvePort });
 
+  /**
+   * W10-58: one in-flight run per project, keyed by project id.
+   *
+   * Not a nicety — C-6 is single-writer-per-project-DB, and a background run
+   * appends events for minutes. Two concurrent runs on one project would be two
+   * writers by construction. Refusing the second is also the honest product
+   * answer: the founder has one board being built, and a second "Build" click
+   * should tell them so rather than silently starting a rival run whose plan
+   * will overwrite the first one's.
+   */
+  const inFlight = new Map<string, string>();
+
   app.post(
     '/api/v1/projects/:id/pipeline/run',
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -181,78 +182,99 @@ export function registerPipelineRoutes(
         return reply.code(problem!.status).type(PROBLEM_CONTENT_TYPE).send(problem!.body);
       }
 
-      let plan: DecomposedPlan;
-      try {
-        const ledgerMarkdown = await readLedgerMarkdown(record.path);
-        const modelPort = await resolvePort(record.path);
-        const preflight = await runPreflight(modelPort, body, ledgerMarkdown);
-
-        // W10-67: the gate refused, correctly (FR-P7). Keep the slates the
-        // founder is being asked to answer instead of discarding them with the
-        // model call that produced them, and report a PAUSED run rather than a
-        // failed one — this used to render as "The run failed:" with nothing
-        // kept and nowhere to answer.
-        if (preflight.status === 'awaiting-decisions') {
-          return replyAwaitingDecisions(reply, {
-            projectPath: record.path,
-            preflight,
-            blueprintTitle: body.blueprintTitle,
-            now,
-          });
-        }
-
-        const runId = randomUUID();
-        const dbPath = stateDbPath(record.path);
-        const log = openEventLog(dbPath);
-        try {
-          ensureOperatorIdentity(log, now);
-          const port: PipelinePort = {
-            model: {
-              blueprintInputFrom: () => preflight.blueprintInput,
-              technicalSlateInputFrom: () => preflight.technicalSlateInput,
-              ticketDraftsFrom: () => preflight.ticketDrafts,
-            },
-            emit: (event) => emitPhaseEvent(log, { runId, now }, event),
-          };
-          plan = runPipeline(
-            {
-              interviewSession: body.interviewSession,
-              blueprintTitle: body.blueprintTitle,
-              ledgerMarkdown,
-            },
-            port,
+      const running = inFlight.get(projectId);
+      if (running) {
+        return reply
+          .code(409)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(
+            badRequest(
+              request,
+              `run ${running} is already building this project's board — wait for it or read its progress at /api/v1/projects/${projectId}/pipeline/runs/${running}`,
+            ),
           );
-        } finally {
-          log.close();
-        }
-
-        const accepted = await persistDecomposedPlan(record.path, plan, { runId, now });
-        return reply.code(201).send({
-          run_id: runId,
-          plan: {
-            tickets: plan.tickets,
-            violations: plan.violations,
-            mermaid: plan.mermaid,
-          },
-          plan_items: accepted.map(wireAcceptedItem),
-        });
-      } catch (err) {
-        const problem = problemForError(err, request);
-        if (problem) {
-          return reply.code(problem.status).type(PROBLEM_CONTENT_TYPE).send(problem.body);
-        }
-        throw err;
       }
+
+      // EVERYTHING ABOVE IS CHEAP AND STAYS SYNCHRONOUS. Validation failures are
+      // still 400/404/422 on this response, exactly as before — only the part
+      // that costs gateway calls moves off the request.
+      const runId = randomUUID();
+      const startedAt = now();
+      await saveRunRecord(record.path, {
+        runId,
+        blueprintTitle: body.blueprintTitle,
+        status: 'running',
+        startedAt,
+        updatedAt: startedAt,
+        phases: [],
+      });
+      inFlight.set(projectId, runId);
+
+      // Deliberately not awaited: this is the ticket. `void` plus a `.finally`
+      // that always clears the in-flight slot, so a throw inside the job can
+      // never wedge the project into "a run is already going" forever.
+      void executeRun({
+        projectPath: record.path,
+        runId,
+        body,
+        now,
+        resolvePort,
+        request,
+      }).finally(() => inFlight.delete(projectId));
+
+      return reply.code(202).send({ status: 'running', run_id: runId });
+    },
+  );
+
+  /**
+   * The other half of the job contract: the run's own progress, readable at any
+   * time. Polled by `apps/web/src/onboarding/api.ts`.
+   *
+   * HANDOFF (MASTER_PROMPT step 3) — this is polling because the push wire does
+   * not exist and could not be built here. `WsHub.publish(sub, type, data)` is
+   * already generic and `events-sse.ts` already reuses it, but `server.ts`
+   * passes `wsHub` to `registerBoardRoutes`/`registerHealthz`/
+   * `registerEventsSseRoute` and NOT to `registerPipelineRoutes`, and
+   * `apps/server/src/api/server.ts` is outside this ticket's write_scope. The
+   * one-line change that would upgrade this to real per-phase push is:
+   *
+   *     registerPipelineRoutes(app, { ..., wsHub });
+   *
+   * plus threading `wsHub` into `PipelineRoutesOptions` and calling
+   * `wsHub.publish(`pipeline:${projectId}`, 'pipeline.stage.completed', ...)`
+   * beside the `emitStageEvent` call in `executeRun`. Deliberately NOT done by
+   * widening write_scope from inside the ticket (W8-06: a maker cannot grant
+   * itself permission and then bless the grant with a validator it controls).
+   */
+  app.get(
+    '/api/v1/projects/:id/pipeline/runs/:runId',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id: projectId, runId } = request.params as {
+        id: string;
+        runId: string;
+      };
+      const record = await resolveProjectRecord(registryPath, projectId);
+      if (!record) {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(notFound(request, `no project registered with id ${projectId}`));
+      }
+      if (!isValidRunId(runId)) {
+        return reply
+          .code(400)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(badRequest(request, `malformed run id ${runId}`));
+      }
+      const run = await loadRunRecord(record.path, runId);
+      if (!run) {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(notFound(request, `no run ${runId} for project ${projectId}`));
+      }
+      return reply.code(200).send(wireRunRecord(run));
     },
   );
 }
 
-function wireAcceptedItem(accepted: AcceptedDecomposedPlanItem) {
-  return {
-    id: accepted.item.id,
-    catalog_id: accepted.item.catalogId,
-    state: accepted.item.state,
-    ticket_id: accepted.item.ticketId,
-    ticket_created: accepted.ticketCreated,
-  };
-}

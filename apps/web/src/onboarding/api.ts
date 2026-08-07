@@ -13,11 +13,14 @@
  * a misconfigured/older server that hasn't mounted the route (404).
  */
 import { readInjectedToken } from '../fleet/api.js';
-import type {
-  GateReceipt,
-  PipelineRunOutcome,
-  PipelineRunRequest,
-  PipelineRunResult,
+import {
+  isRunAccepted,
+  type GateReceipt,
+  type PipelineRunOutcome,
+  type PipelineRunPhase,
+  type PipelineRunRequest,
+  type PipelineRunResult,
+  type PipelineRunStatus,
 } from './types.js';
 
 export class OnboardingApiError extends Error {
@@ -34,6 +37,13 @@ export interface OnboardingApiOptions {
   fetchImpl?: typeof fetch;
   getToken?: () => string | undefined;
   baseUrl?: string;
+  /** W10-58: called each time the run's status is read, so a caller can render per-phase progress. */
+  onProgress?: (progress: {
+    readonly status: PipelineRunStatus['status'];
+    readonly phases: readonly PipelineRunPhase[];
+  }) => void;
+  /** Poll spacing. 0 in tests so they neither sleep nor race. */
+  pollIntervalMs?: number;
 }
 
 async function request(
@@ -62,12 +72,36 @@ async function request(
   return res.json();
 }
 
+export async function fetchRunStatus(
+  projectId: string,
+  runId: string,
+  opts: OnboardingApiOptions = {},
+): Promise<PipelineRunStatus> {
+  return (await request(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/runs/${encodeURIComponent(runId)}`,
+    { method: 'GET' },
+    opts,
+  )) as PipelineRunStatus;
+}
+
+/**
+ * W10-58: the run is a background job, and this function hides that from its
+ * existing callers ON PURPOSE.
+ *
+ * `GuidedSample` and `InterviewPanel` both await a single outcome, and the
+ * first-run wizard's e2e drives exactly that path. Changing the contract here
+ * would have meant changing them and the specs that cover them, for no gain:
+ * what the founder needs is not a different call shape but PROGRESS during the
+ * wait, which `onProgress` now supplies. The awaited result is unchanged —
+ * still a completed plan or an awaiting-decisions pause, still an
+ * `OnboardingApiError` on failure carrying the server's own status and detail.
+ */
 export async function runGuidedPipeline(
   projectId: string,
   body: PipelineRunRequest,
   opts: OnboardingApiOptions = {},
 ): Promise<PipelineRunOutcome> {
-  return (await request(
+  const started = (await request(
     `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/run`,
     {
       method: 'POST',
@@ -75,7 +109,28 @@ export async function runGuidedPipeline(
       body: JSON.stringify(body),
     },
     opts,
-  )) as PipelineRunOutcome;
+  )) as PipelineRunOutcome | { status: 'running'; run_id: string };
+
+  // A server that still answers synchronously (or pauses immediately) is
+  // returned as-is rather than polled for — the client does not require the
+  // job behaviour to exist, it just uses it when it does.
+  if (!isRunAccepted(started)) return started as PipelineRunOutcome;
+
+  const runId = started.run_id;
+  const interval = opts.pollIntervalMs ?? 400;
+  for (;;) {
+    const status = await fetchRunStatus(projectId, runId, opts);
+    opts.onProgress?.({ status: status.status, phases: status.phases });
+    if (status.status === 'completed' && status.result) return status.result;
+    if (status.status === 'awaiting-decisions' && status.awaiting) return status.awaiting;
+    if (status.status === 'failed') {
+      throw new OnboardingApiError(
+        status.error?.status ?? 500,
+        status.error?.body?.detail ?? 'the run failed',
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
 }
 
 /**

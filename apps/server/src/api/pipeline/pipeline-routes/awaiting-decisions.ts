@@ -10,21 +10,21 @@
  * back up without paying for that model call twice.
  */
 
-import { randomUUID } from 'node:crypto';
-import type { FastifyReply } from 'fastify';
 import { openEventLog } from '@dokima/events';
 import { resolveOpenQuestion, type BlueprintDocument } from '@dokima/pipeline';
 import { createSlate, listSlates } from '../../decisions/store.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../../server/board-actor.js';
 import { stateDbPath } from '../../server/board-project.js';
 import type { PreflightAwaitingDecisions } from './preflight.js';
-import { savePausedRun, type PausedRun } from './paused-run.js';
+import { patchRunRecord, type PausedRun } from './paused-run.js';
 
 export interface AwaitingDecisionsInput {
   readonly projectPath: string;
   readonly preflight: PreflightAwaitingDecisions;
   readonly blueprintTitle: string;
   readonly now: () => string;
+  /** Minted by the run's POST handler, not here — W10-58 hands the id to the client before this stage can be reached. */
+  readonly runId: string;
 }
 
 /**
@@ -33,12 +33,10 @@ export interface AwaitingDecisionsInput {
  * client error and not a crash. A 422 here is what made a working gate read as
  * a failure.
  */
-export async function replyAwaitingDecisions(
-  reply: FastifyReply,
+export async function recordAwaitingDecisions(
   input: AwaitingDecisionsInput,
-): Promise<FastifyReply> {
-  const { projectPath, preflight, blueprintTitle, now } = input;
-  const runId = randomUUID();
+): Promise<AwaitingDecisionsPayload> {
+  const { projectPath, preflight, blueprintTitle, now, runId } = input;
   const slateIdsByKey: Record<string, string> = {};
 
   const log = openEventLog(stateDbPath(projectPath));
@@ -61,25 +59,44 @@ export async function replyAwaitingDecisions(
     log.close();
   }
 
-  const paused: PausedRun = {
-    runId,
-    blueprintTitle,
-    blueprintInput: preflight.blueprintInput,
-    slateIdsByKey,
-    pausedAt: now(),
-  };
-  await savePausedRun(projectPath, paused);
-
-  return reply.code(202).send({
+  // W10-58: patch the record the run already owns rather than writing a fresh
+  // one, so `startedAt` and the phases already completed survive the pause.
+  // The written shape is still a strict superset of `PausedRun`, which is what
+  // keeps `resume.ts` reading it unchanged.
+  const pausedAt = now();
+  const payload: AwaitingDecisionsPayload = {
     status: 'awaiting_decisions',
     run_id: runId,
     reasons: [...preflight.reasons],
     decisions: preflight.blueprintInput.openQuestions.map((q) => ({
       key: q.key,
-      slate_id: slateIdsByKey[q.key],
+      slate_id: slateIdsByKey[q.key]!,
       title: q.slate.title,
     })),
-  });
+  };
+  await patchRunRecord(projectPath, runId, (current) => ({
+    ...current,
+    status: 'awaiting-decisions',
+    updatedAt: pausedAt,
+    blueprintTitle,
+    blueprintInput: preflight.blueprintInput,
+    slateIdsByKey,
+    pausedAt,
+    awaiting: payload,
+  }));
+
+  return payload;
+}
+
+export interface AwaitingDecisionsPayload {
+  readonly status: 'awaiting_decisions';
+  readonly run_id: string;
+  readonly reasons: readonly string[];
+  readonly decisions: readonly {
+    readonly key: string;
+    readonly slate_id: string;
+    readonly title: string;
+  }[];
 }
 
 export class UndecidedSlateError extends Error {

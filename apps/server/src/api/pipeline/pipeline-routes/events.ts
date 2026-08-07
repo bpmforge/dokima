@@ -27,6 +27,35 @@ export interface EmitContext {
   readonly now: () => string;
 }
 
+/**
+ * W10-58: one audit event per completed model-authored STAGE, appended while
+ * the run is still in flight.
+ *
+ * Distinct from `emitPhaseEvent` on purpose. That one reports `runPipeline`'s
+ * internal phases, all of which happen in a single fast, synchronous burst
+ * AFTER every gateway call has already been paid for — so it emits three events
+ * in milliseconds, minutes after the founder started waiting. These are the
+ * three gateway calls themselves, which are the entire wait, and until now
+ * nothing observable happened during them at all.
+ *
+ * Same self-attestation rule as its neighbour: a plain hash-chained audit
+ * event, never a `gate` receipt. Nothing has verified this output — it is a
+ * progress marker, and minting a passing receipt for it would be exactly the
+ * Law 4/5 violation the SECURITY_W5 fix above removed.
+ */
+export function emitStageEvent(log: EventLog, ctx: EmitContext, stage: string): void {
+  appendEvent(
+    log,
+    {
+      eventType: 'pipeline.stage.completed',
+      actorId: OPERATOR_ACTOR_ID,
+      runId: ctx.runId,
+      payload: { stage, at: ctx.now() },
+    },
+    { now: ctx.now },
+  );
+}
+
 export function emitPhaseEvent(
   log: EventLog,
   ctx: EmitContext,

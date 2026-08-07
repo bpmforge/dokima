@@ -20,6 +20,7 @@ import { buildInterviewSession, hasAnyAnswer } from './buildInterviewSession.js'
 import {
   isAwaitingDecisions,
   type PipelineAwaitingDecisions,
+  type PipelineRunPhase,
   type PipelineRunResult,
 } from './types.js';
 
@@ -37,6 +38,19 @@ export interface InterviewPanelProps {
 }
 
 type Stage = 'asking' | 'running' | 'awaiting' | 'done' | 'failed';
+
+/**
+ * W10-58: the four stages a run reports, in the order they complete, with the
+ * names the server actually emits. Rendered as a checklist rather than a
+ * spinner — "Building the board…" for three minutes is indistinguishable from a
+ * hang, which is the defect this ticket was filed for.
+ */
+const RUN_PHASES: readonly { name: string; label: string }[] = [
+  { name: 'blueprint', label: 'Blueprint drafted' },
+  { name: 'technical-slate', label: 'Technical slate built' },
+  { name: 'ticket-drafts', label: 'Tickets drafted' },
+  { name: 'board', label: 'Board created' },
+];
 
 export function InterviewPanel({
   projectId,
@@ -60,6 +74,8 @@ export function InterviewPanel({
   const [resuming, setResuming] = useState(false);
   const [stillWaiting, setStillWaiting] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  // W10-58: the stages the run has actually finished, as the job reports them.
+  const [phases, setPhases] = useState<readonly PipelineRunPhase[]>([]);
 
   const ready = useMemo(
     () => hasAnyAnswer(answers) && title.trim() !== '',
@@ -70,11 +86,16 @@ export function InterviewPanel({
     setStage('running');
     setError(null);
     setAwaiting(null);
+    setPhases([]);
     try {
-      const runResult = await runGuidedPipeline(projectId, {
-        interviewSession: buildInterviewSession(`interview-${projectId}`, answers),
-        blueprintTitle: title.trim(),
-      });
+      const runResult = await runGuidedPipeline(
+        projectId,
+        {
+          interviewSession: buildInterviewSession(`interview-${projectId}`, answers),
+          blueprintTitle: title.trim(),
+        },
+        { onProgress: (progress) => setPhases(progress.phases) },
+      );
       if (isAwaitingDecisions(runResult)) {
         setAwaiting(runResult);
         setStage('awaiting');
@@ -255,6 +276,22 @@ export function InterviewPanel({
       >
         {stage === 'running' ? 'Building the board…' : 'Build the board'}
       </button>
+      {stage === 'running' && (
+        <ol className="interview__phases" data-testid="interview-phases">
+          {RUN_PHASES.map((phase) => {
+            const done = phases.some((p) => p.name === phase.name);
+            return (
+              <li
+                key={phase.name}
+                data-phase={phase.name}
+                data-done={done ? 'true' : 'false'}
+              >
+                {done ? '✓' : '…'} {phase.label}
+              </li>
+            );
+          })}
+        </ol>
+      )}
       {!ready && (
         <small className="interview__hint">
           Answer at least one question and give it a title.
