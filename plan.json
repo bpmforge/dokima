@@ -5664,7 +5664,7 @@
         "SCOPE PRE-CHECKED: `scope-routes.ts` has no test sibling of its own; `settings-routes.test.ts` is the suite that drives those PUTs and is in scope, so this cannot self-block for want of a test file."
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "Filed 2026-08-06 from the windowed wave-11 security pass (segment W11f, CRITICAL + a supporting HIGH on the same path). Chains with W11-19: an agent session is untrusted by C-2/C-3 and has a closed tool set with no shell and no network, so it cannot call this API directly \u2014 but W11-19 is a route by which it could write where it should not. Neither finding is comfortable alone and together they are an escalation path from 'untrusted session' to 'chooses what the host executes'. Worth noting the severity depends on a threat-model question the report could not settle and this ticket should: who can reach the settings API in a deployed install.",
         "CONDUCTOR 2026-08-07T01:32:55.095Z: blocked after 2 attempts. Branch sw/w11-20 kept. Gaps: out-of-scope edits: apps/web/src/settings/AgentRunnerPanel.test.tsx, apps/web/src/settings/AgentRunnerPanel.tsx, apps/web/src/settings/api.test.ts, apps/web/src/settings/api.ts | pnpm test failed: s) 79ms\n \u2713 |@dokima/web| src/settings/ProvidersPanel.test.tsx (19 tests) 484ms\n \u2713 |@dokima/web| src/App/paneNodes.test.ts (5 tests) 16ms\n \u2713 |@dokima/web| src/shortcuts/ShortcutsOverlay.test.tsx (5 tests) 23ms\n \u2713 |@dokima/web| src/board/Lane.test.tsx (2 tests) 28ms\n \u2713 |@dokima/web| src/chat/ThreadPanel.test.tsx (3 tests) 19ms\n \u2713 |scripts| conductor-lib.test.mjs (115 tests) 198664ms\n   \u2713 repo-wide vali",
