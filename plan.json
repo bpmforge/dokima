@@ -4503,7 +4503,7 @@
       "depends_on": [
         "W10-57"
       ],
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "acceptance": [
         "RE-MEASURED 2026-08-04 (the previous wording was taken on qwen3.5-9b and overstated the case; this replaces it, and the ticket survives the correction). The timeout argument is now WRONG and must not be used to justify this: W10-57 raised the local default to 300s and made it per-entry configurable, and no run measured today came close to it \u2014 one blueprint call on qwen3.6-35b-a3b took 42s, a resume spending two calls took 73s, and a full three-phase run took ~91s. THE CONTRACT ARGUMENT IS UNTOUCHED AND IS THE REAL ONE: that is still one-and-a-half to three minutes of a synchronous HTTP request the founder must hold a browser tab open for, with no progress, no cancel and no resume.",
