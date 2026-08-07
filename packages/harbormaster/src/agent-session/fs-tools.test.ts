@@ -620,6 +620,33 @@ describe('agent-session fs-tools', () => {
       expect(isUnsafeSearchPattern('\\(a\\+\\)\\+')).toBe(false);
       expect(isUnsafeSearchPattern('[a-z]+\\d+')).toBe(false);
     });
+
+    it(
+      '(W11-21, SC-18) flags a backreference as unsafe categorically — a ' +
+        'quantified backreference is the shape the nested-group and ' +
+        'quantifier-count checks both miss, since the quantifier follows ' +
+        '`\\1`, not `)` or a raw atom',
+      () => {
+        expect(isUnsafeSearchPattern('(a+)\\1+')).toBe(true);
+      },
+    );
+
+    it(
+      'flags a backreference even when nothing about it is separately ' +
+        'quantifier-shaped — refusal is unconditional, not another ' +
+        'heuristic clause looking for a dangerous combination',
+      () => {
+        expect(isUnsafeSearchPattern('(ab)\\1')).toBe(true);
+      },
+    );
+
+    it('flags a named backreference (\\k<name>) as unsafe', () => {
+      expect(isUnsafeSearchPattern('(?<g>a+)\\k<g>+')).toBe(true);
+    });
+
+    it('does not flag a backreference-shaped literal inside a character class', () => {
+      expect(isUnsafeSearchPattern('[\\1-\\9]')).toBe(false);
+    });
   });
 
   it(
@@ -641,6 +668,25 @@ describe('agent-session fs-tools', () => {
       expect(elapsedMs).toBeLessThan(1000);
       expect(result.ok).toBe(true);
       expect(result.matches).toHaveLength(0);
+    },
+  );
+
+  it(
+    '(W11-21, SC-18) search falls back to literal-substring matching for a ' +
+      'backreference pattern instead of compiling and running it',
+    async () => {
+      const dir = await tmpWorktree();
+      await writeTool(dir, ['**'], {
+        path: 'src/a.ts',
+        content: 'the literal text (a+)\\1+ appears here\n',
+      });
+      const result = (await searchTool(dir, { pattern: '(a+)\\1+' })) as {
+        matches: { file: string; line: number }[];
+        matchMode: string;
+      };
+      expect(result.matches).toHaveLength(1);
+      expect(result.matches[0]!.file).toBe('src/a.ts');
+      expect(result.matchMode).toBe('literal');
     },
   );
 
