@@ -180,6 +180,68 @@ test('rule lifecycle: register, promote twice, then a data-gated promotion is re
   await expect(page.getByRole('alert')).toContainText('needs >= 20');
 });
 
+test('agent runner: switching to an external CLI persists through the real confirm gate (W11-23)', async ({
+  page,
+}) => {
+  // W11-23: the ONLY check that sees both halves of the W11-20 confirmation
+  // contract. `AGENT_RUNNER_CONFIRM_FIELD` is declared twice and
+  // independently — `apps/web/src/settings/api.ts` exports it, and
+  // `scope-routes.ts` keeps its own module-private const — and Law 6 forbids
+  // either app importing the other, so no unit test can compare them. The
+  // existing `api.test.ts` case asserts the web constant against its own
+  // adjacent literal, which re-checks the web copy against itself.
+  //
+  // Rename the server side (const + the three literals in its own suite) and
+  // every unit test stays green while the panel's PUT is 403'd by the gate
+  // W11-20 built — i.e. the operator can no longer choose an external runner
+  // at all. Verified as the ticket's red fixture: that rename turns THIS test
+  // red and leaves `pnpm test` fully green.
+  //
+  // Asserting after a reload is what makes it a contract test rather than a
+  // UI test: `agent-runner-current` renders component state, which reads
+  // 'external' even when the save was refused, so only re-reading from the
+  // server distinguishes persisted from merely typed.
+  const command = 'echo dokima-e2e-runner';
+  await openProjectSettings(page);
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  await expect(page.getByTestId('agent-runner-panel')).toBeVisible();
+
+  // Role locators, not getByLabel: these <label>s WRAP their control, so the
+  // label's text content includes the option text and an exact getByLabel can
+  // never match, while a substring one matches three elements. The computed
+  // accessible name is just 'Runner'/'Command'.
+  const runnerForm = page.getByRole('form', { name: 'Set agent runner' });
+  await runnerForm.getByRole('combobox', { name: 'Runner' }).selectOption('external');
+  await runnerForm.getByRole('textbox', { name: 'Command' }).fill(command);
+  await expect(page.getByTestId('external-agent-warning')).toBeVisible();
+  // Assert the gate's own verdict, not just the end state: a 403 here is
+  // precisely the drift this test exists to catch, and waiting for the
+  // response also stops the reload below racing the in-flight PUT.
+  const savePut = page.waitForResponse(
+    (r) => r.request().method() === 'PUT' && r.url().includes('/settings'),
+  );
+  await runnerForm.getByRole('button', { name: 'Save agent runner' }).click();
+  expect((await savePut).status()).toBe(200);
+
+  await openProjectSettings(page);
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  await expect(page.getByTestId('agent-runner-current')).toContainText('external');
+  await expect(page.getByTestId('agent-runner-current')).toContainText(command);
+
+  // Revert, which also exercises the other half of the gate: returning to the
+  // built-in default is never confirmation-gated, so this save needs no flag.
+  const revertForm = page.getByRole('form', { name: 'Set agent runner' });
+  await revertForm.getByRole('combobox', { name: 'Runner' }).selectOption('built-in');
+  const revertPut = page.waitForResponse(
+    (r) => r.request().method() === 'PUT' && r.url().includes('/settings'),
+  );
+  await revertForm.getByRole('button', { name: 'Save agent runner' }).click();
+  expect((await revertPut).status()).toBe(200);
+  await openProjectSettings(page);
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  await expect(page.getByTestId('agent-runner-current')).toContainText('built-in');
+});
+
 test('Copilot consent: default-off with the account-risk warning, enabling requires the checkbox', async ({
   page,
 }) => {
