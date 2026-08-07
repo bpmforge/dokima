@@ -43,6 +43,24 @@
  * write_scope: `matchesAnyGlob` against `[]` never matches, so every
  * write/edit is refused rather than silently trusting the prompt's claim.
  *
+ * PROVENANCE, VERIFY COMMAND TOO (W11-22, the sibling asymmetry the SC-17
+ * fix above left standing): `verifyCommand` gets the identical treatment.
+ * `parseHandoffFields` no longer extracts a VERIFY field at all —
+ * `handoff-fields.ts` used to hand back the LAST `VERIFY: ` line in the
+ * rendered prompt, the same last-match heuristic its own docstring
+ * documented as foolable by a CONTEXT ending in a lookalike line, and a
+ * command string that gets run is not a weaker case than a path glob.
+ * `verifyCommand` is instead `ticket?.verify ?? DEFAULT_VERIFY_COMMAND` —
+ * the same `getTicket` lookup `write_scope` above already uses, mirroring
+ * `loop-gates.ts`'s own `ticket.verify ?? DEFAULT_VERIFY_COMMAND` for
+ * `runCloseGate` (SC-02). `parseHandoffFields` now feeds exactly one thing
+ * — the ticket id used for that lookup, safe for the reason
+ * `handoff-fields.ts`'s own docstring gives. `runCloseGate` was never
+ * reading this parsed copy (SC-02 independently re-reads `ticket.verify`
+ * and re-runs it, so the durable verdict was never at risk) — which is why
+ * this was HIGH and not CRITICAL — but the in-session `verify` tool call
+ * ran the spoofable one until this fix.
+ *
  * SC-01, OUT-OF-SESSION AND STILL AUTHORITATIVE (acceptance 2, W11-03): the
  * tool-boundary pre-check above (`fs-tools.ts`'s SC-17) is defence in depth,
  * never the only line — `refuseIfSessionExceededScope` below runs once,
@@ -185,14 +203,15 @@ export function createGatewaySpawnSession(
 
     const fields = parseHandoffFields(input.prompt);
     const ticketId = fields.ticketId ?? 'unknown';
-    // SC-17 (see module header): write_scope is the ticket record's own
-    // field, never the prompt's WRITE-SCOPE line — an unresolvable ticket
-    // fails closed to [], refusing every write/edit this session attempts.
+    // SC-17 (see module header): write_scope AND verifyCommand are the
+    // ticket record's own fields, never anything parsed from the prompt —
+    // an unresolvable ticket fails closed to an empty write_scope (every
+    // write/edit refused) and the default verify command.
     const ticket = getTicket(options.log, ticketId);
     const toolCtx = {
       cwd: input.cwd,
       writeScope: ticket?.writeScope ?? [],
-      verifyCommand: fields.verifyCommand ?? DEFAULT_VERIFY_COMMAND,
+      verifyCommand: ticket?.verify ?? DEFAULT_VERIFY_COMMAND,
       verifyTimeoutMs,
       secretValues: options.secretValues ?? [],
     };
