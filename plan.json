@@ -5847,7 +5847,7 @@
       "module": "cli",
       "lane": "core",
       "points": 8,
-      "status": "in_progress",
+      "status": "blocked",
       "write_scope": [
         "packages/memory/src/index.ts",
         "apps/server/src/cli/handoff-context.ts",
@@ -5855,7 +5855,9 @@
         "apps/server/src/cli/run-build.ts",
         "apps/server/src/cli/run-build.test.ts"
       ],
-      "depends_on": [],
+      "depends_on": [
+        "W12-08"
+      ],
       "stories": [],
       "acceptance": [
         "FOUND 2026-08-13 BY A STEP-BACK REVIEW OF THE PRODUCT THESIS, not by a failing test \u2014 nothing in the gate can see it. `packages/harbormaster/src/loop-handoff.ts`'s `defaultHandoffBuilder` sets `context: ticket.interface ?? ticket.title`, and `apps/server/src/cli/run-build.ts` passes `defaultHandoffBuilder()` with no override. Every ticket session the built-in agent has ever run received one line of context. FR-L5 (BLUEPRINT \u00a77.2) describes a Context Packer; `loop-handoff.ts`'s own doc comment says packing 'is FR-L5's own concern, not the claim loop's' and nothing ever supplied it.",
@@ -5867,7 +5869,8 @@
       ],
       "notes": [
         "Filed 2026-08-13 from a step-back architectural review asking whether Dokima actually implements its own product thesis ('the product manages the context'). It does not, on the build path. This is the single largest gap between what the product claims and what the ticket loop does, and it ranks ABOVE the attest content-parity gap (W12-07) that the same review found first. Sized 8 rather than 13 because the packer is built and tested \u2014 this is an export plus a call site plus honest degradation, which is exactly the build-then-wire seam shape that has recurred on this board (W11-04's `RunSessionInput.secretValues`, W11-16's wrap-`spawn`): a mechanism lands with no production caller and stays green forever because nothing tests for a caller.",
-        "Same-lane (`core`) as W12-03 deliberately: both edit `apps/server/src/cli/run-build.ts`, and P8 permits same-lane write_scope overlap while forbidding it cross-lane. They must never run in parallel; whichever claims second rebases."
+        "Same-lane (`core`) as W12-03 deliberately: both edit `apps/server/src/cli/run-build.ts`, and P8 permits same-lane write_scope overlap while forbidding it cross-lane. They must never run in parallel; whichever claims second rebases.",
+        "HANDOFF 2026-08-13, BLOCKED mid-implementation on a defect in this ticket's own premise, found by doing the work. Acceptance criterion 3 says to compose `assemblePacket` into a `HandoffBuilder` and hand it to the existing `buildHandoff:` seam, on the strength of `loop-handoff.ts`'s claim that the builder is 'fully overridable'. It is not overridable by anything asynchronous: `HandoffBuilder` is `(ticket: Ticket) => Handoff` and `loop-land.ts:218` calls it synchronously, while `assemblePacket` is `async`. So the seam cannot accept a real packer, and that \u2014 not neglect \u2014 is why FR-L5 never had a caller. WHAT WAS VERIFIED BEFORE BLOCKING, so this is not a guess: the call site is `const handoff = options.buildHandoff(ticket)` with no `await`, and `loop-claim.ts:63` declares a second `buildHandoff: HandoffBuilder` that may need the same treatment. WHY NOT JUST WIDEN THIS TICKET'S SCOPE: `loop-handoff.ts` belongs to W12-06 (`orchestrator`) and this ticket is `core`, so adding it would trip P8 cross-lane overlap and fail the board \u2014 exactly the schema-bug case law 1 says to report rather than work around. UNBLOCKED BY W12-08 (filed with this note, `orchestrator`, 2pts), which widens the type to `Handoff | Promise<Handoff>` and awaits it. Nothing was written to `packages/memory/src/index.ts` or `handoff-context.ts` \u2014 this ticket starts clean once W12-08 lands, and its acceptance needs no change beyond the seam now actually existing."
       ]
     },
     {
@@ -5944,6 +5947,34 @@
       ],
       "notes": [
         "Filed 2026-08-13 from the same step-back review as W12-04/05/06, and deliberately ranked BELOW them. The first pass of that review called this the launch blocker; the evidence overturned that \u2014 a stale expert library matters less than a build loop whose entire context is `ticket.interface ?? ticket.title`. Recording the re-rank rather than quietly reordering, for the same reason W12-03 records its severity re-derivation."
+      ]
+    },
+    {
+      "id": "W12-08",
+      "title": "HandoffBuilder is synchronous, so the \"fully overridable\" context seam can never accept the async Context Packer",
+      "phase": 12,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "points": 2,
+      "status": "todo",
+      "write_scope": [
+        "packages/harbormaster/src/loop-handoff.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-13 BY W12-04 SELF-BLOCKING ON IT, which is the only way it could have been found \u2014 no gate can see it. `HandoffBuilder` is typed `(ticket: Ticket) => Handoff` (`loop-handoff.ts`) and `loop-land.ts:218` calls it synchronously: `const handoff = options.buildHandoff(ticket);`. FR-L5's Context Packer (`assemblePacket`) is `async`. A custom builder that packs real context therefore returns `Promise<Handoff>`, which does not satisfy `HandoffBuilder` and cannot be awaited at the call site.",
+        "THIS REWRITES WHY THE PACKER WAS NEVER WIRED. `loop-handoff.ts`'s doc comment says context assembly is 'fully overridable by passing a custom builder' \u2014 that claim is false for any real packer, and the seam has been structurally incapable of accepting one since it was written. The explanation is not that nobody got to it; it is that the only documented way in does not fit. Fix the comment along with the type so the next reader is not told the same wrong thing.",
+        "CHANGE: widen `HandoffBuilder` to `(ticket: Ticket) => Handoff | Promise<Handoff>` and `await` it at `loop-land.ts:218`. `defaultHandoffBuilder` stays synchronous and every existing caller keeps compiling \u2014 a sync function already satisfies the widened type, so this is additive, not a breaking change to the built-in path.",
+        "Check `loop-claim.ts`, which declares its own `buildHandoff: HandoffBuilder` (line 63) \u2014 if it calls the builder too, that call site needs the same `await`, and the ticket is not done until both are found and fixed. Grep for every invocation rather than assuming there are two.",
+        "RED FIXTURE: an async `HandoffBuilder` returning a packet after a resolved microtask reaches the session with its `context` intact \u2014 proven to fail (a `Promise` arriving where a `Handoff` is expected) against the current synchronous type first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 mid-W12-04 rather than worked around, per CLAUDE.md law 1 and MASTER_PROMPT's scope rule. W12-04 could not simply widen its own `write_scope` to cover this: `loop-handoff.ts` is owned by W12-06 (lane `orchestrator`) and W12-04 is lane `core`, so adding it would have produced a P8 cross-lane overlap \u2014 a hard board failure. Filing a same-lane (`orchestrator`) predecessor is the only shape that is legal on this board, and same-lane overlap with the HELD W12-06 is permitted precisely because the two can never be `in_progress` at once. Sized 2: a type widening, an `await`, and a corrected doc comment."
       ]
     }
   ]
