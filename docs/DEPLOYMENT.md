@@ -120,6 +120,30 @@ is available and the project opts in (`sandbox: container` in project settings):
   each); a second `dokima` invocation detects the running core (port + healthz) and
   opens the Canvas against it instead of double-binding.
 
+**Reserved local ports.** Dokima deliberately owns a block well clear of the
+3000/3001/5173/8080 range every other Node dev stack squats on. Nothing here
+binds anything but `127.0.0.1` (SC-08). Add new local listeners inside this
+block; do not reach for a "default" port.
+
+| Port | Owner | Pinned in |
+|---|---|---|
+| 4317 | the core (Fastify + Canvas), overridable by `DOKIMA_PORT` | `apps/server/src/bootstrap/cli.ts`, `apps/server/src/api/main.ts` |
+| 4318 | `pnpm --filter @dokima/web dev` (Vite HMR) | `apps/web/vite.config.ts` (`strictPort: true`) |
+| 4402 | Playwright e2e server | `apps/web/e2e/env-paths.ts` |
+| 4407 / 4408 | capture-tour light / dark pass | `apps/web/scripts/capture-tour/index.mjs` |
+| 4409 | capture-acceptance | `apps/web/scripts/capture-acceptance.mjs` |
+
+Two traps this block avoids: macOS AirPlay Receiver holds **5000** and **7000**
+whenever it is enabled, and Vite's default **5173** silently slides to the next
+free port rather than failing — which is why 4318 sets `strictPort`.
+
+One trap it does not avoid: `playwright.config.ts` sets
+`reuseExistingServer: !process.env.CI`, so if anything else is already bound to
+4402 locally, the e2e run **attaches to it** instead of booting a fresh server
+against the throwaway `DOKIMA_HOME` that `e2e/global-setup.ts` just cleared. That
+failure is silent and the whole suite runs against the wrong state (the W9-14
+shape). Check 4402 is free before blaming a red e2e run.
+
 Environment variables (all optional — config file is primary):
 
 | Var | Effect |
