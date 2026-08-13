@@ -133,6 +133,13 @@ block; do not reach for a "default" port.
 | 4407 / 4408 | capture-tour light / dark pass | `apps/web/scripts/capture-tour/index.mjs` |
 | 4409 | capture-acceptance | `apps/web/scripts/capture-acceptance.mjs` |
 
+Ad-hoc cores (a packaged-install smoke test, a second core for a browser
+check) take `DOKIMA_PORT` and belong in **4380–4399**. Sessions have picked
+outside it before — four orphaned cores from 2026-08-03 were still holding
+4792–4795 ten days later, from a `DOKIMA_PORT` chosen freehand — and an
+orphan is only findable if you know which range to sweep. `lsof -nP
+-iTCP:4300-4499 -sTCP:LISTEN` should show everything Dokima has running.
+
 Two traps this block avoids: macOS AirPlay Receiver holds **5000** and **7000**
 whenever it is enabled, and Vite's default **5173** silently slides to the next
 free port rather than failing — which is why 4318 sets `strictPort`.
