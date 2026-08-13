@@ -59,3 +59,14 @@ export {
 } from './copilot.js';
 
 export { VertexProvider, createVertexProvider, type VertexConfig } from './vertex.js';
+
+/**
+ * W12-11: openai.ts shipped complete — OpenAiProvider, createOpenAiProvider,
+ * OpenAiConfig — and was the ONLY provider missing from this barrel, so the
+ * adapter was unreachable from outside the package since it was written.
+ * Found by trying to construct it. W12-10's no-callers validator could not
+ * have caught this: it reports EXPORTED symbols nothing calls, and an
+ * unexported module is invisible to it — the exact limitation recorded in
+ * that ticket's own STATUS entry, confirmed one ticket later.
+ */
+export { OpenAiProvider, createOpenAiProvider, type OpenAiConfig } from './openai.js';

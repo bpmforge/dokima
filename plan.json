@@ -5942,7 +5942,11 @@
       "points": 3,
       "status": "todo",
       "write_scope": [
-        "content/**"
+        "content/experts/**",
+        "content/validators/**",
+        "content/protocols/**",
+        "content/index.json",
+        "content/manifest.json"
       ],
       "depends_on": [],
       "stories": [],
@@ -5955,7 +5959,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 from the same step-back review as W12-04/05/06, and deliberately ranked BELOW them. The first pass of that review called this the launch blocker; the evidence overturned that \u2014 a stale expert library matters less than a build loop whose entire context is `ticket.interface ?? ticket.title`. Recording the re-rank rather than quietly reordering, for the same reason W12-03 records its severity re-derivation."
+        "Filed 2026-08-13 from the same step-back review as W12-04/05/06, and deliberately ranked BELOW them. The first pass of that review called this the launch blocker; the evidence overturned that \u2014 a stale expert library matters less than a build loop whose entire context is `ticket.interface ?? ticket.title`. Recording the re-rank rather than quietly reordering, for the same reason W12-03 records its severity re-derivation.",
+        "WRITE_SCOPE NARROWED 2026-08-13 from a blanket `content/**`, which claimed territory this ticket never touches. `scripts/import-content.mjs` writes exactly `content/experts/<cluster>`, `content/validators` and `content/protocols` (its `contentDirs` list), plus the `index.json`/`manifest.json` it regenerates \u2014 NOT `model-catalog`, `plan-catalog`, `guide`, `references` or `keys`, which are Dokima-owned and confirmed absent from both the import script and the signed manifest. Found because the over-broad scope produced a real P8 cross-lane failure against W12-11 (`gateway`), which needs to add `content/model-catalog/pricing.v1.json`. The board was right and the ticket was wrong: a scope that overstates what a ticket writes blocks unrelated work and, worse, would have let this ticket silently overwrite files the import never produces."
       ]
     },
     {
@@ -6051,7 +6056,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "content/model-catalog/pricing.v1.json",
         "apps/server/src/api/pipeline/gateway-model-port/pricing.ts",
@@ -6063,7 +6068,7 @@
         "apps/server/src/api/pipeline/gateway-model-port.test.ts",
         "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
         "apps/server/src/cli/run-build.ts",
-        "apps/server/src/api/server/providers-routes.test.ts"
+        "packages/gateway/src/providers/index.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -6078,7 +6083,9 @@
       "notes": [
         "Filed 2026-08-13 from the D-024 contract correction, found while answering whether the OpenAI plan could drive a supervised run. It can, through the oai-compat env path \u2014 but the spend ledger reads $0 and the budget breakers cannot fire, which is precisely the fabrication the cloud-kind refusal was written to prevent. The refusal was good engineering; what was missing was a ticket to remove the reason for it.",
         "RELEASED 2026-08-13 before any code, on a sequencing conflict found while mapping the work rather than while writing it. Making a cloud kind constructible requires resolving `ProviderEntry.credentialRef` \u2014 a NAME, never resolved anywhere today \u2014 and `resolveCredentialRef` is async, so an async step lands upstream of provider construction and every production entry point adopts it. One of those is `apps/server/src/cli/run-build.ts:171`, which **W12-03 owns and is lane `core` against this ticket's `gateway`** \u2014 a cross-lane write_scope overlap is a hard P8 failure, the schema-bug case law 1 says to report rather than work around. Rejected the two workarounds explicitly: re-laning this ticket to `core` would hide a real file conflict behind a taxonomy edit, and adding a NEW async constructor beside the sync one would ship an exported function with no caller \u2014 the exact defect class W12-10 now gates. Correct order is W12-03 first (2pts), which releases run-build.ts at `done` under D-015; this ticket then widens cleanly.",
-        "WRITE_SCOPE SET AT CLAIM 2026-08-13, wider than filed and named rather than discovered later. `providerForConfig` must become async to resolve a credentialRef, so its three production callers come with it (`gateway-model-port.ts:151`, `onboard-dispatch-port.ts:205`, `run-build.ts:171`), plus the two tests that assert the refusal this ticket removes (`gateway-model-port.test.ts:276`, `providers-routes.test.ts:347`). `run-build.ts` was released by W12-03 at `done` (D-015), which is why this ticket waited for it. PRICING LOCATION VERIFIED BEFORE WRITING: `content/model-catalog/` is Dokima-owned, not listed in `scripts/import-content.mjs`, and ZERO of its files appear in the signed `content/manifest.json` \u2014 so W12-07's attest re-import cannot clobber it and no re-signing is required. Had it been part of the imported pack, this file would have belonged elsewhere entirely."
+        "WRITE_SCOPE SET AT CLAIM 2026-08-13, wider than filed and named rather than discovered later. `providerForConfig` must become async to resolve a credentialRef, so its three production callers come with it (`gateway-model-port.ts:151`, `onboard-dispatch-port.ts:205`, `run-build.ts:171`), plus the two tests that assert the refusal this ticket removes (`gateway-model-port.test.ts:276`, `providers-routes.test.ts:347`). `run-build.ts` was released by W12-03 at `done` (D-015), which is why this ticket waited for it. PRICING LOCATION VERIFIED BEFORE WRITING: `content/model-catalog/` is Dokima-owned, not listed in `scripts/import-content.mjs`, and ZERO of its files appear in the signed `content/manifest.json` \u2014 so W12-07's attest re-import cannot clobber it and no re-signing is required. Had it been part of the imported pack, this file would have belonged elsewhere entirely.",
+        "WRITE_SCOPE WIDENED again 2026-08-13, named: `createOpenAiProvider` could not be imported because `packages/gateway/src/providers/index.ts` never re-exported `openai.js` \u2014 it was the ONLY provider missing from that barrel while anthropic, copilot and vertex were all present, so a complete, tested OpenAI adapter has been unreachable from outside the package since it was written. Same shape as W12-04's `packer/index.ts`. Owned by no open ticket and same-lane-irrelevant (no overlap), so no P8 issue. NOTE FOR THE RECORD: W12-10's validator could not have caught this \u2014 it reports EXPORTED symbols with no callers, and an unexported module is invisible to it, which is precisely the limitation W12-10's STATUS entry named as its deliberate boundary. Confirmed real one ticket after it was written down.",
+        "write_scope CORRECTED at close: `providers-routes.test.ts` was claimed at clue-in time on the assumption this ticket would have to update the refusal assertion there, and it never did \u2014 that assertion passes unchanged because it tests a DUPLICATE copy of the message on the model-listing path (`providers-routes.ts:105`), which this ticket never touched. Dropping it keeps the scope honest and hands the file to W12-15, which actually edits it."
       ]
     },
     {
@@ -6131,6 +6138,65 @@
       ],
       "notes": [
         "Filed 2026-08-13 from D-024, founder-chosen ('Ask in the setup wizard \u2014 no silent default'). The first-run wizard already exists (acceptance check A-18), so this is a step inside a built flow rather than a new surface. Note the interaction with W12-11: until cloud kinds construct, the 'one model I pick' and 'start cheap and escalate' options can only offer local models honestly \u2014 decide whether the wizard hides them or shows them as requiring provider setup, and say which in the close notes."
+      ]
+    },
+    {
+      "id": "W12-14",
+      "title": "the provider registry has no field for a GCP project or location, so Vertex still cannot be constructed",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "packages/gateway/src/registry/types.ts",
+        "packages/gateway/src/registry/types.test.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.test.ts"
+      ],
+      "depends_on": [
+        "W12-11"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DISCLOSED BY W12-11 AT CLOSE, and referenced by name in the refusal message that ships in `provider.ts` \u2014 so this ticket must exist or that message points at nothing. W12-11 made `anthropic`, `openai` and `copilot` constructible by solving credentials and pricing. Vertex is NOT blocked on either: `createVertexProvider` requires `project` and `location`, and `ProviderEntry` (`packages/gateway/src/registry/types.ts`) carries only `id`/`kind`/`baseUrl`/`credentialRef`/`requestTimeoutMs`/`enabled`. There is nowhere to put them.",
+        "DO NOT DERIVE THEM FROM `baseUrl` \u2014 that is the guess this refusal exists to avoid. A GCP project id decides WHICH ACCOUNT GETS BILLED; inferring it from a URL fragment would be the same class of fabrication as metering a paid call at $0. Add explicit optional registry fields and validate them for the `vertex` kind specifically.",
+        "`VertexConfig` also accepts `serviceAccountJson` (a pre-resolved service-account JSON) which takes precedence over ADC. Decide and state which auth path Dokima supports: a `credentialRef` resolving to service-account JSON through the keychain (consistent with W12-11's credential handling), ambient ADC (works on a GCP box, invisible elsewhere), or both with a documented precedence.",
+        "PRICING IS ALREADY DONE: `content/model-catalog/pricing.v1.json` ships `vertex` entries for gemini-2.5-pro and gemini-2.5-flash, and `costTableFor` already refuses an unpriced Vertex model. This ticket adds no pricing work.",
+        "RED FIXTURE: a registry entry with kind `vertex` plus project and location constructs; one missing either refuses BY NAME saying which field is absent \u2014 proven against the current schema, which cannot express them at all.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 at W12-11's close, in the same commit that ships a refusal message naming it \u2014 a code comment pointing at an unfiled ticket is exactly the \"prose intent is not a control\" failure this wave keeps finding. Vertex is the one cloud kind D-024 option (b) still cannot serve."
+      ]
+    },
+    {
+      "id": "W12-15",
+      "title": "the Providers panel still tells users cloud kinds are \"not yet constructible\" \u2014 a second copy of a message that is now false",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/web/src/settings/ProvidersPanel.test.tsx"
+      ],
+      "depends_on": [
+        "W12-11"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND BY W12-11 AND DELIBERATELY NOT ABSORBED INTO IT. `providers-routes.ts:105`'s `buildCatalogProvider` carries an INDEPENDENT HARDCODED COPY of the refusal W12-11 removed: \"provider kind X is registered but not yet constructible from the pipeline\". The pipeline now constructs anthropic, openai and copilot \u2014 so the Providers panel tells a user a feature does not work while it does. A contract held in two places where the copy nobody edited keeps being served: the same defect class as W12-01's duplicated `DEFAULT_PORT`.",
+        "THIS IS THE MODEL-LISTING SURFACE, NOT INFERENCE \u2014 which is why it is its own ticket rather than a W12-11 scope widening (that ticket already widened twice, deliberately and on the record). `buildCatalogProvider` exists to populate the model picker via `listModels()`, a different call path from the chat path W12-11 fixed. It needs the same async credential resolution before a cloud kind can list anything.",
+        "REUSE `providerForConfig`, DO NOT REIMPLEMENT IT. A third independent copy of \"which adapter does this kind mean\" is how the second one happened. `buildCatalogProvider` should delegate, or the shared construction should move somewhere both call. The route returns `Pick<Provider, 'listModels'>` today, so check whether the narrowed type is load-bearing before widening it.",
+        "DEGRADE HONESTLY WHEN THERE IS NO CREDENTIAL: a registered cloud provider with no resolvable credential cannot list models, and the panel must say THAT rather than \"not yet constructible\". The picker degrading to free-text entry is acceptable and should say why; silently showing an empty model list is not.",
+        "RED FIXTURE: a registered `openai` entry with a resolvable credential lists models through a recorded fixture (never a live call, CLAUDE.md law 9a); one with no credential produces a named, accurate refusal that does NOT claim the kind is unconstructible. `apps/web/src/settings/ProvidersPanel.test.tsx` asserts the old string and must be updated with it.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 at W12-11's close. W12-11's full test suite passed WITH this stale message still asserted, because the assertion lives against a duplicate string on a path that ticket never touched \u2014 a green suite proving nothing about a claim the UI makes. That is the argument for W12-01's fix generalising: two copies of a contract, and the gate can only see the one under test."
       ]
     }
   ]

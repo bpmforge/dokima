@@ -256,25 +256,110 @@ describe('gateway-model-port — real gateway wiring (workspace dependency)', ()
  * adapters were never constructed outside their own tests. The dispatch is
  * what makes them reachable.
  */
-describe('providerForConfig — adapter dispatch (W10-03)', () => {
-  it('constructs the adapter the resolved KIND names, not always oai-compat', () => {
+describe('providerForConfig — adapter dispatch (W10-03, W12-11)', () => {
+  it('constructs the adapter the resolved KIND names, not always oai-compat', async () => {
     const base = { baseUrl: 'http://127.0.0.1:11434/v1', model: 'm' };
-    expect(providerForConfig({ ...base, kind: 'ollama' }).id).toContain('ollama');
-    expect(providerForConfig({ ...base, kind: 'lm-studio' }).id).toContain('lm-studio');
+    expect((await providerForConfig({ ...base, kind: 'ollama' })).id).toContain('ollama');
+    expect((await providerForConfig({ ...base, kind: 'lm-studio' })).id).toContain(
+      'lm-studio',
+    );
     // Absent kind keeps the pre-registry behaviour, so nothing regresses.
-    expect(providerForConfig({ ...base }).id).toBeTruthy();
+    expect((await providerForConfig({ ...base })).id).toBeTruthy();
   });
 
-  it('REFUSES a cloud kind by name instead of silently falling back to localhost', () => {
-    // AnthropicConfig requires a real costTable ("no $0 default for a paid
-    // API", its own header) and a RESOLVED secret, not the credentialRef the
-    // registry stores. Fabricating either would be a lie about cost or a
-    // credential leak, so the port refuses and says why.
-    for (const kind of ['anthropic', 'openai', 'vertex', 'copilot'] as const) {
-      expect(() =>
-        providerForConfig({ baseUrl: 'https://x/v1', model: 'm', kind }),
-      ).toThrowError(/not yet constructible/);
+  it(
+    'W12-11: anthropic and openai now CONSTRUCT with a resolved credential and a ' +
+      'real price table — the refusal this test used to assert was removed by ' +
+      'fixing its two stated causes, not by waiving it',
+    async () => {
+      const prev = process.env.DOKIMA_MODEL_API_KEY;
+      process.env.DOKIMA_MODEL_API_KEY = 'test-key';
+      try {
+        const anthropic = await providerForConfig({
+          baseUrl: 'https://api.anthropic.com',
+          model: 'claude-sonnet-4-5',
+          kind: 'anthropic',
+        });
+        expect(anthropic.id).toBeTruthy();
+        const openai = await providerForConfig({
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-5',
+          kind: 'openai',
+        });
+        expect(openai.id).toBeTruthy();
+      } finally {
+        if (prev === undefined) delete process.env.DOKIMA_MODEL_API_KEY;
+        else process.env.DOKIMA_MODEL_API_KEY = prev;
+      }
+    },
+  );
+
+  it('W12-11 RED FIXTURE: an UNPRICED model refuses rather than metering a paid API at $0', async () => {
+    const prev = process.env.DOKIMA_MODEL_API_KEY;
+    process.env.DOKIMA_MODEL_API_KEY = 'test-key';
+    try {
+      await expect(
+        providerForConfig({
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-not-in-the-price-map',
+          kind: 'openai',
+        }),
+      ).rejects.toThrowError(/no price is on record/);
+    } finally {
+      if (prev === undefined) delete process.env.DOKIMA_MODEL_API_KEY;
+      else process.env.DOKIMA_MODEL_API_KEY = prev;
     }
+  });
+
+  it('W12-11 RED FIXTURE: a paid kind with NO credential refuses rather than calling unauthenticated', async () => {
+    const prev = process.env.DOKIMA_MODEL_API_KEY;
+    delete process.env.DOKIMA_MODEL_API_KEY;
+    try {
+      await expect(
+        providerForConfig({
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-5',
+          kind: 'openai',
+        }),
+      ).rejects.toThrowError(/needs a credential/);
+    } finally {
+      if (prev !== undefined) process.env.DOKIMA_MODEL_API_KEY = prev;
+    }
+  });
+
+  it(
+    'W12-11 RED FIXTURE (the $0 loophole): a PAID host reached through the generic ' +
+      'oai-compat path gets a real price table — pointing DOKIMA_MODEL_BASE_URL at ' +
+      'api.openai.com used to meter every call at $0 and leave the breakers unable to fire',
+    async () => {
+      const prev = process.env.DOKIMA_MODEL_API_KEY;
+      process.env.DOKIMA_MODEL_API_KEY = 'test-key';
+      try {
+        // No `kind` at all — the env path's shape, which is how the loophole
+        // was reached. An unpriced model on a paid host must now refuse.
+        await expect(
+          providerForConfig({
+            baseUrl: 'https://api.openai.com/v1',
+            model: 'gpt-not-in-the-price-map',
+          }),
+        ).rejects.toThrowError(/no price is on record/);
+        // A local endpoint stays free, because it genuinely is.
+        const local = await providerForConfig({
+          baseUrl: 'http://127.0.0.1:1234/v1',
+          model: 'anything-local',
+        });
+        expect(local.id).toBeTruthy();
+      } finally {
+        if (prev === undefined) delete process.env.DOKIMA_MODEL_API_KEY;
+        else process.env.DOKIMA_MODEL_API_KEY = prev;
+      }
+    },
+  );
+
+  it('vertex still refuses, but for a NAMED registry-schema gap rather than the old blanket reason', async () => {
+    await expect(
+      providerForConfig({ baseUrl: 'https://x/v1', model: 'gemini-2.5-pro', kind: 'vertex' }),
+    ).rejects.toThrowError(/needs a GCP project and location/);
   });
 });
 
