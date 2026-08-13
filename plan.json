@@ -5784,6 +5784,58 @@
       "notes": [
         "Filed 2026-08-13 while reserving Dokima's local port block (docs/DEPLOYMENT.md \u00a76) so a launch never collides with the 3000/3001/5173 ports other dev stacks hold. Found by grepping for every 4317 reference, not by a reviewer or a failing test \u2014 which is the point: nothing in the gate can see it. Same shape as W11-23 (AGENT_RUNNER_CONFIRM_FIELD) and W11-22 (verifyCommand parsed from the prompt): a contract held in two places, where the copy that is not edited keeps working and stays green."
       ]
+    },
+    {
+      "id": "W12-02",
+      "title": "resolveVault degrades to an EMPTY_VAULT on every non-macOS host, so the redaction layer four tickets built runs with nothing to redact while a cloud provider is live",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "RAISED [MEDIUM] BY THE WAVE-11 SECURITY PASS (docs/work/SECURITY_W11f.md) AND NEVER CARRIED ONTO THE BOARD \u2014 re-verified live 2026-08-13 and the severity is wrong. `resolveAgentRunner`'s sibling `resolveVault` (apps/server/src/cli/run-build.ts:96-107) catches `NoKeychainAdapterError` and returns `EMPTY_VAULT` (line 83), whose `listValues()` is `async () => []`. `collectSecretValues(resolveVault(io.cwd), io.cwd)` at line 183 therefore hands the redaction layer an EMPTY list, and every downstream redaction pass runs correctly against nothing.",
+        "THE COEXISTENCE THAT MAKES IT HIGH, MEASURED NOT ASSUMED: `NoKeychainAdapterError` (packages/shared/src/config/credential-store.ts:223-229) is thrown for any platform with no adapter \u2014 its own message says 'no OS keychain adapter for platform X yet', and the file's header comment says the adapter set is macOS-only today. So this fires on EVERY Linux and Windows host that has not set `DOKIMA_NO_KEYCHAIN`. Meanwhile a cloud provider does NOT need the vault to work: Vertex resolves credentials through `GOOGLE_APPLICATION_CREDENTIALS` ADC discovery (packages/gateway/src/providers/vertex.ts:83, and docs/DEPLOYMENT.md lists it as an environment variable). Linux host + Vertex configured by env = a fully live cloud provider with redaction silently inert. That is the exact reach-a-cloud-provider-unredacted failure W11-11, W11-14, W11-16 and W11-17 were four consecutive tickets spent closing, defeated by a fallback rather than by any of the paths they hardened.",
+        "IT IS A SILENT DEGRADATION, WHICH IS THE DEFECT: `return EMPTY_VAULT` emits nothing \u2014 no stderr line, no receipt, no event. An operator on Linux gets a run that looks identical to a redacted one. Compare the sibling failure two dozen lines above at line 175-180, where an unset `DOKIMA_SIGNING_KEY` REFUSES TO START with a named reason and `return 2` rather than minting unverifiable receipts. That is the precedent this path should follow, and the same file already contains it.",
+        "FIX (Law 8 / FR-S2): the degraded path must refuse or announce, never proceed quietly. Preferred shape, matching the signing-key precedent: refuse the run with a named error naming `DOKIMA_NO_KEYCHAIN`/`DOKIMA_VAULT_KEY` as the supported fallback (`credential-store.ts:191` already writes that exact guidance for the half-configured case). If a refusal is judged too strict for a project with no registered secrets at all, then distinguish the two cases \u2014 an empty vault because nothing was ever registered is fine; an empty vault because the platform HAS NO ADAPTER while entries may exist is not \u2014 and say which was chosen in the ticket notes with the reasoning. DO NOT \"fix\" this by widening the redaction layer or adding a second secret source: the redaction layer is correct and tested, it was handed an empty list. The defect is the fallback, and it lives in eleven lines of one file.",
+        "RED FIXTURE: a run on a simulated no-adapter platform (inject the throwing store, do not depend on the host OS) must be refused or must emit the named warning \u2014 proven failing against the current `return EMPTY_VAULT` before the fix, captured verbatim. A second fixture pins the benign case (macOS adapter present, vault genuinely empty) still starting normally, so the fix does not turn a fresh project into a refusal.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 during a board audit, not by a security run. Source: docs/work/SECURITY_W11f.md's `medium[]` array, whose CRITICAL became W11-20 and whose HIGH became part of the same ticket \u2014 the two mediums were never ticketed and no process step would have caught that, since the security docs are written per-wave and nothing re-reads them. Re-severitied from MEDIUM to HIGH on the coexistence evidence in acceptance 2; the original finding did not establish that a cloud provider stays live while the vault is empty, which is what makes it more than a hygiene issue. Worth noting as a process gap in its own right: a wave's security findings need a filing step, or the ones below the fold expire quietly."
+      ]
+    },
+    {
+      "id": "W12-03",
+      "title": "the external agent command is tokenized with .split(' '), so any agent binary on a path containing a space is silently mis-spawned",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 2,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "RAISED [MEDIUM] BY THE WAVE-11 SECURITY PASS (docs/work/SECURITY_W11f.md), never carried onto the board; re-verified live 2026-08-13 at apps/server/src/cli/run-build.ts:188-189. `resolveAgentRunner`'s external branch does `(agentRunner.command ?? '').split(' ').filter(Boolean)` and feeds `[agentBin, ...agentArgs]` straight to `createChildProcessSpawn`. A command like `/Applications/My Agent/bin/agent --flag` tokenizes to `/Applications/My` plus four bogus args.",
+        "THE FAILURE MODE IS A CONFUSING REFUSAL, NOT AN INJECTION \u2014 state this correctly rather than inheriting the security framing. W11-20 already constrained `parseAgentRunnerSetting` to reject shell metacharacters (`;&|$()<>` and friends) and cap length at 4096, and `createChildProcessSpawn` does not go through a shell, so a split token cannot become a second command. What actually happens is a spawn of a path that does not exist, on macOS where `/Applications` paths with spaces are ordinary \u2014 the operator sees a failure that names a truncated path and nothing explains why.",
+        "FIX: store the runner as structured `command` + `args[]` rather than re-deriving argv from a string, OR tokenize with a real argv splitter that honours quoting. Prefer the structured shape \u2014 it removes the parse entirely \u2014 but that touches the settings type and its persisted value, so check the migration cost before choosing, and if the structured shape is taken, an existing string-valued setting must keep working (read-time compatibility, not a breaking change to a stored setting).",
+        "The W11-20 metacharacter constraint in `parseAgentRunnerSetting` stays regardless of which shape is chosen \u2014 do not treat quoting support as license to relax it.",
+        "RED FIXTURE: an external runner whose command is a quoted or space-containing path spawns the intended binary with the intended args \u2014 proven failing against the current `.split(' ')` first. Plus the W11-04 regression guard: an ordinary multi-arg command with no spaces in the path still round-trips unchanged.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 alongside W12-02 from the same unfiled SECURITY_W11f.md `medium[]` array. Kept at MEDIUM after re-checking: the security pass's own fix note suggested an argv-splitting library, but the exploitability it implies is not there post-W11-20 \u2014 this is a correctness and operator-experience defect on a path an operator deliberately configured, so it is filed as one. Recording that re-assessment rather than inheriting the label is the point; a finding carried forward at a severity nobody re-derived is how a backlog stops meaning anything."
+      ]
     }
   ]
 }
