@@ -5905,27 +5905,32 @@
     },
     {
       "id": "W12-06",
-      "title": "the build loop dispatches exactly one expert \u2014 decide how a ticket selects its role from the 93-expert library",
+      "title": "wire per-ticket expert selection: add an explicit `role` field, set at decomposition (D-025)",
       "phase": 12,
       "module": "harbormaster",
       "lane": "orchestrator",
-      "points": 5,
+      "points": 8,
       "status": "todo",
       "write_scope": [
         "packages/harbormaster/src/loop-handoff.ts",
-        "packages/harbormaster/src/loop-handoff.test.ts"
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "scripts/validate-plan.mjs",
+        "scripts/validate-plan.test.mjs",
+        "plan.json"
       ],
       "depends_on": [],
       "stories": [],
       "acceptance": [
-        "HELD ON A FOUNDER DECISION \u2014 DO NOT CLAIM THIS UNATTENDED. Added to `conductor.config.json` holdTickets at filing time, same shape as W12-01 and the $holdNote4 W11-02 precedent: structurally claimable, actually waiting on a human.",
-        "THE FINDING (2026-08-13): `defaultHandoffBuilder(role: string = ROLE_CODING_AGENT)` and `run-build.ts` calls it with no argument, so every ticket the built-in agent has ever run was dispatched as `coding-agent`. `content/` ships 93 experts; the ONBOARD/pipeline path does dispatch per-role specialists with distinct `specialist:<role>` signing identities (`apps/server/src/api/pipeline/onboard-executor.ts`), so the expert library is genuinely used \u2014 just never by the ticket build loop. `/api/v1/roster` is observability, not routing.",
-        "THE MECHANISM HALF ALREADY EXISTS: `apps/server/src/api/roster-resolve.ts` documents that an expert file's stem doubles as its `AgentRole`, and the gateway's role matrix already routes per role. What is missing is the MAPPING \u2014 which of 93 experts should own a given ticket \u2014 and that is a routing-policy design call, not a wiring task.",
-        "THE QUESTION FOR THE FOUNDER, stated so it can be answered without re-deriving it: does a ticket's role come from (a) an explicit new `role` field on the ticket, set at decomposition time by the planner that already knows the work; (b) inference from `lane`/`module`, which exist today and need no schema change but collapse 93 experts onto ~11 lanes; or (c) a model-side selection step that reads the roster and picks, which is the most capable and the least deterministic and needs its own receipt to stay inside Law 4? Do not design this into acceptance criteria \u2014 record the answer, then re-scope.",
-        "Once decided: full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+        "UN-HELD 2026-08-13 \u2014 FOUNDER DECISION D-025 (Brad, presented with three options): a ticket names its expert in an explicit `role` field, set at DECOMPOSITION time by the planner that already knows what kind of work it is. Rejected: inferring from lane/module (collapses 93 experts onto ~11 lanes, so security-auditor and db-architect could never both serve `core`), and a model reading the roster to pick (a model decision inside the trust boundary, needing its own receipt under Law 4 and a call per ticket before work starts).",
+        "THE DEFECT THIS FIXES: `defaultHandoffBuilder(role = ROLE_CODING_AGENT)` is called with no argument at every production call site, so every ticket the built-in agent has ever run was dispatched as `coding-agent` while `content/` ships 93 experts. The mechanism half already exists \u2014 `apps/server/src/api/roster-resolve.ts` documents that an expert file stem doubles as its `AgentRole`, and the gateway matrix already routes per role.",
+        "SCHEMA: add `role` to `plan.json`'s ticket contract as an OPTIONAL key (`OPTIONAL_KEYS` in scripts/validate-plan.mjs, beside `scaffold`), validated against the roster when present. Optional, not required: 208 existing tickets are `done` and must not be rewritten, and a ticket with no `role` keeps resolving to `coding-agent` exactly as today. Adding a REQUIRED field would fail the board on every historical row.",
+        "VALIDATE THE VALUE, or the field is decoration: an unknown role must fail `validate-plan.mjs` by name, not silently route to the default \u2014 an expert typo that quietly falls back to coding-agent is the same silent-degradation class this wave keeps finding. Read the valid set from `content/` rather than hardcoding a list that drifts from the pack.",
+        "C-4 STILL BINDS: naming a maker role must never let the maker also verify. The reviewer identity/model separation is mechanical (CLAUDE.md law 5) and this field does not get to soften it \u2014 prove it with a red fixture where a ticket names a role and the verifier still resolves to a distinct identity.",
+        "RED FIXTURE: a ticket carrying `role` produces a HANDOFF dispatched as THAT expert (proven to dispatch as `coding-agent` against the current builder first); a ticket with no `role` still dispatches as `coding-agent`; an unknown role fails the board validator."
       ],
       "notes": [
-        "Filed HELD 2026-08-13. The board has no field for 'waiting on a human', which $holdNote4 already records as a recurring gap \u2014 holdTickets in conductor.config.json is the only place it can be said, so it is said there and here. Related open design question from the same review, NOT ticketed and belonging in docs/DECISIONS.md rather than on the board: attest v3.5.0's gauntlet loop (builders never grade their own work; a critic that saw a prior draft never grades the retry) may be the missing quality layer for this same loop, and C-4 already supplies the identity separation it needs. That may be one design with this ticket rather than two."
+        "Filed HELD 2026-08-13. The board has no field for 'waiting on a human', which $holdNote4 already records as a recurring gap \u2014 holdTickets in conductor.config.json is the only place it can be said, so it is said there and here. Related open design question from the same review, NOT ticketed and belonging in docs/DECISIONS.md rather than on the board: attest v3.5.0's gauntlet loop (builders never grade their own work; a critic that saw a prior draft never grades the retry) may be the missing quality layer for this same loop, and C-4 already supplies the identity separation it needs. That may be one design with this ticket rather than two.",
+        "UN-HELD 2026-08-13 by founder decision D-025 (explicit `role` field at decomposition). Repointed and resized 5 -> 8: the original ticket was scoped only to `loop-handoff.ts` on the assumption the answer would be a code-local one, but the chosen direction adds a board-schema field, so `scripts/validate-plan.mjs` and its test come into scope too. Removed from conductor.config.json holdTickets in the same commit. NOTE the decomposer half (making the planner actually SET the field) is deliberately NOT in this ticket's scope \u2014 this ticket makes the field exist, be validated, and be honoured; a follow-up teaches decomposition to emit it, and until then a human sets it by hand."
       ]
     },
     {
