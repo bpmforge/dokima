@@ -94,17 +94,23 @@ import {
   type TaskType,
 } from '@dokima/gateway';
 import { checkWriteScope } from '@dokima/git';
+import { redactDeep } from '@dokima/shared';
 import {
+  anchorIsPresent,
   computeChangedPaths,
+  createToolAnchor,
+  formatAnchorFactsForPrompt,
+  gatherAnchorFacts,
   type SpawnSession,
   type SpawnSessionInput,
   type SpawnSessionOutput,
+  type ValidatorResult,
 } from '@dokima/loop';
 import { getTicket } from '@dokima/tickets';
 import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
-import { AGENT_SESSION_TOOL_SCHEMAS } from './tools.js';
+import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
 
 /**
  * SC-01's own real check (see module header), run once the tool loop has
@@ -181,6 +187,38 @@ export interface GatewaySpawnSessionOptions {
   readonly secretValues?: readonly string[];
 }
 
+/**
+ * Turns a `verify` tool result into the `ValidatorResult` the FR-L2 tool
+ * anchor consumes. `runToolCalls` renders each outcome as
+ * `TOOL_RESULT <id> (<name>): <json>`, so the JSON is recovered from the
+ * first `: ` after the header. Returns null for anything unparseable — an
+ * anchor that invented a fact would be worse than one that stays silent,
+ * which is the rule `anchors.ts` states for its own stub anchors.
+ */
+export function parseVerifyResult(
+  resultText: string,
+  verifyCommand: string,
+): ValidatorResult | null {
+  const start = resultText.indexOf('{');
+  if (start === -1) return null;
+  try {
+    const parsed: unknown = JSON.parse(resultText.slice(start));
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const exitCode = (parsed as { exitCode?: unknown }).exitCode;
+    if (typeof exitCode !== 'number') return null;
+    return {
+      name: verifyCommand,
+      exitCode,
+      // The verify tool reports a command result, not a gap-counting
+      // validator, so a non-zero exit IS the single gap. Inventing a
+      // finer count from stdout would be fabrication.
+      gapCount: exitCode === 0 ? 0 : 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Delivers the `@dokima/loop` `SpawnSession` contract `runSession` already takes (FR-H6), backed by the gateway rather than a child process. */
 export function createGatewaySpawnSession(
   options: GatewaySpawnSessionOptions,
@@ -218,7 +256,52 @@ export function createGatewaySpawnSession(
 
     const messages: ChatMessage[] = [{ role: 'user', content: input.prompt }];
 
+    /**
+     * FR-L2 tool anchor (W12-05). Validator/verify output is external ground
+     * truth the model must reconcile with rather than reason past. Without
+     * this the only record of a failed verify is one `tool` message that
+     * scrolls away as the session grows, leaving the model's own later
+     * turns as the most recent thing it sees — the exact "lost in a long
+     * context window" failure the anchor framework was built for and never
+     * wired into.
+     */
+    const validatorResults: ValidatorResult[] = [];
+    let anchorMessage: ChatMessage | null = null;
+
+    /**
+     * Re-stated at the END of history on every round, not appended once.
+     * The previous copy is removed first so the transcript carries exactly
+     * one anchor block — always adjacent to the current turn, never growing
+     * without bound.
+     */
+    const refreshAnchor = async (): Promise<void> => {
+      if (validatorResults.length === 0) return;
+      if (anchorMessage) {
+        const previous = messages.indexOf(anchorMessage);
+        if (previous !== -1) messages.splice(previous, 1);
+      }
+      const facts = await gatherAnchorFacts([createToolAnchor(validatorResults)], {
+        item: { id: ticketId, description: input.prompt.slice(0, 200) },
+        criterion: toolCtx.verifyCommand,
+      });
+      if (!anchorIsPresent(facts)) return;
+      // REDACTED HERE, and not merely inherited (FR-S2/SC-06). `verifyTool`
+      // redacts its own stdout/stderr, but an anchor fact also embeds the
+      // verify COMMAND TEXT as its source label — read straight off the
+      // ticket record, so it never passed through `renderHandoff`'s
+      // `redactDeep` pass the way the prompt's copy did. A secret-bearing
+      // verify command would otherwise be reintroduced to the model by the
+      // very mechanism meant to state ground truth. Caught by W11-14's
+      // existing red fixture when this ticket first wired the anchor.
+      anchorMessage = {
+        role: 'user',
+        content: redactDeep(formatAnchorFactsForPrompt(facts), options.secretValues ?? []),
+      };
+      messages.push(anchorMessage);
+    };
+
     for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+      await refreshAnchor();
       const routed = await route({
         matrix: options.matrix,
         role: options.role,
@@ -288,6 +371,15 @@ export function createGatewaySpawnSession(
           runId: options.runId,
         });
         messages.push({ role: 'tool', content: resultText, toolCallId: call.id });
+        if (call.name === TOOL_VERIFY) {
+          const result = parseVerifyResult(resultText, toolCtx.verifyCommand);
+          // Latest verdict only: an anchor asserting both "passed" and
+          // "failed" for the same command is not ground truth.
+          if (result) {
+            validatorResults.length = 0;
+            validatorResults.push(result);
+          }
+        }
       }
     }
 

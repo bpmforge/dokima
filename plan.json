@@ -5881,10 +5881,12 @@
       "module": "harbormaster",
       "lane": "orchestrator",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "packages/harbormaster/src/agent-session/gateway-session.ts",
-        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
       ],
       "depends_on": [],
       "stories": [],
@@ -5897,7 +5899,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13. This is the mechanical half of 'the system prompt does not get lost in a long context window' \u2014 the other half is W12-04's stable-prefix packet ordering. Same build-then-wire shape: the framework landed in W1 with a documented contract and no consumer, and no gate can see an interface with no callers."
+        "Filed 2026-08-13. This is the mechanical half of 'the system prompt does not get lost in a long context window' \u2014 the other half is W12-04's stable-prefix packet ordering. Same build-then-wire shape: the framework landed in W1 with a documented contract and no consumer, and no gate can see an interface with no callers.",
+        "WRITE_SCOPE WIDENED 2026-08-13 mid-work, named rather than silently taken. Wiring the anchor gave `createToolAnchor` its first caller, which (a) made W12-10's own red fixture go red for the best possible reason \u2014 it pinned that symbol as dead and someone fixed it \u2014 and (b) dropped the validate-exports count 48 -> 46, so the ratchet baseline in `conductor.config.json` had to follow or it would permit two new dead exports. Both files belong to W12-10, which is `done`, so D-015 has released the territory and P8 raises nothing. The fixture was rewritten to pin no specific symbol: a test that goes RED when the defect it describes is REPAIRED is backwards, and pinning one guarantees that."
       ]
     },
     {

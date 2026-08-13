@@ -8,6 +8,7 @@ import {
   FitnessCardStore,
   route,
   ROLE_CODING_AGENT,
+  type ChatMessage,
   type ChatRequest,
   type ChatResponse,
   type ModelInfo,
@@ -74,6 +75,18 @@ class ScriptedFakeProvider implements Provider {
   queueStats(): ProviderQueueStats {
     return { active: 0, queued: 0, concurrency: 1 };
   }
+}
+
+/**
+ * The last `tool`-role message of a turn. Located by ROLE, never by
+ * position: since W12-05 the FR-L2 anchor block is re-stated as the final
+ * message of every turn that follows a verify, so `messages[length - 1]`
+ * is no longer the tool result it used to be. Asserting on position rather
+ * than role is what broke here, not the assertions themselves.
+ */
+function lastToolMessage(messages: readonly ChatMessage[]) {
+  const toolMessages = messages.filter((m) => m.role === 'tool');
+  return toolMessages[toolMessages.length - 1]!;
 }
 
 function usage(costUsd: number) {
@@ -276,7 +289,7 @@ describe('createGatewaySpawnSession', () => {
       expect(assistantTurn.role).toBe('assistant');
       expect(assistantTurn.toolCalls).toEqual([write]);
 
-      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const toolResultMessage = lastToolMessage(secondTurnMessages);
       expect(toolResultMessage.role).toBe('tool');
       expect(toolResultMessage.toolCallId).toBe('call_1');
       expect(toolResultMessage.content).toContain('TOOL_RESULT call_1 (write)');
@@ -315,7 +328,7 @@ describe('createGatewaySpawnSession', () => {
         fs.stat(path.join(cwd, 'packages/other/backdoor.ts')),
       ).rejects.toThrow();
       const secondTurnMessages = provider.calls[1]!.messages;
-      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const toolResultMessage = lastToolMessage(secondTurnMessages);
       expect(toolResultMessage.content).toContain('"ok":false');
       expect(toolResultMessage.content).toContain('write_scope');
     },
@@ -352,7 +365,7 @@ describe('createGatewaySpawnSession', () => {
 
       expect(result.exitCode).toBe(0);
       const secondTurnMessages = provider.calls[1]!.messages;
-      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const toolResultMessage = lastToolMessage(secondTurnMessages);
       const jsonStart = toolResultMessage.content.indexOf('{');
       const outcome = JSON.parse(toolResultMessage.content.slice(jsonStart)) as {
         command: string;
@@ -361,6 +374,73 @@ describe('createGatewaySpawnSession', () => {
       expect(outcome.command).toBe('echo REAL_VERIFY_MARKER');
       expect(outcome.stdout).toContain('REAL_VERIFY_MARKER');
       expect(outcome.stdout).not.toContain('INJECTED_VERIFY_MARKER');
+    },
+  );
+
+  it(
+    '(W12-05 RED FIXTURE, FR-L2) a FAILED verify stays in front of the model on ' +
+      'every later turn as an anchor fact — without this its only record is one ' +
+      'tool message that scrolls away while the model’s own turns stay',
+    async () => {
+      // Exit 1 = the verify the session runs actually fails.
+      const { log, cwd } = await setup(['**'], 'sh -c "exit 1"');
+      const provider = new ScriptedFakeProvider([
+        toolCallResponse([{ id: 'call_1', name: 'verify', arguments: {} }]),
+        toolCallResponse([{ id: 'call_2', name: 'list', arguments: { path: '.' } }]),
+        toolCallResponse([{ id: 'call_3', name: 'list', arguments: { path: '.' } }]),
+        finalResponse('done'),
+      ]);
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, new CostLedger()),
+      );
+
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nCONTEXT: notes\n',
+        cwd,
+      });
+      expect(result.exitCode).toBe(0);
+
+      const anchorIn = (turn: number) =>
+        provider.calls[turn]!.messages.filter((m) =>
+          m.content.includes('External anchor facts'),
+        );
+
+      // Turn 0 ran before any verify, so there is nothing to anchor yet.
+      expect(anchorIn(0)).toHaveLength(0);
+      // Every turn after the failing verify carries the fact...
+      for (const turn of [1, 2, 3]) {
+        expect(anchorIn(turn)).toHaveLength(1);
+        expect(anchorIn(turn)[0]!.content).toContain('[tool:sh -c "exit 1"]');
+        expect(anchorIn(turn)[0]!.content).toContain('failed: exit 1');
+      }
+      // ...exactly once, re-stated at the END rather than accumulating —
+      // the whole point is that it sits next to the current turn.
+      const last = provider.calls[3]!.messages;
+      expect(last[last.length - 1]!.content).toContain('External anchor facts');
+    },
+  );
+
+  it(
+    '(W12-05) a PASSING verify anchors as passed, and the anchor never asserts both ' +
+      'verdicts for one command — the later run replaces the earlier fact',
+    async () => {
+      const { log, cwd } = await setup(['**'], 'true');
+      const provider = new ScriptedFakeProvider([
+        toolCallResponse([{ id: 'call_1', name: 'verify', arguments: {} }]),
+        finalResponse('done'),
+      ]);
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, new CostLedger()),
+      );
+
+      await spawn({ prompt: 'TICKET: W9-01 Ticket W9-01\nCONTEXT: notes\n', cwd });
+
+      const anchors = provider.calls[1]!.messages.filter((m) =>
+        m.content.includes('External anchor facts'),
+      );
+      expect(anchors).toHaveLength(1);
+      expect(anchors[0]!.content).toContain('passed (exit 0, 0 gaps)');
+      expect(anchors[0]!.content).not.toContain('failed');
     },
   );
 
@@ -390,7 +470,7 @@ describe('createGatewaySpawnSession', () => {
       expect(result.exitCode).toBe(0);
       await expect(fs.stat(path.join(cwd, 'anything.ts'))).rejects.toThrow();
       const secondTurnMessages = provider.calls[1]!.messages;
-      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const toolResultMessage = lastToolMessage(secondTurnMessages);
       expect(toolResultMessage.content).toContain('"ok":false');
     },
   );
@@ -604,7 +684,7 @@ describe('createGatewaySpawnSession', () => {
 
       expect(result.exitCode).toBe(0);
       const secondTurnMessages = provider.calls[1]!.messages;
-      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const toolResultMessage = lastToolMessage(secondTurnMessages);
       const jsonStart = toolResultMessage.content.indexOf('{');
       const outcome = JSON.parse(toolResultMessage.content.slice(jsonStart)) as {
         stdout: string;
@@ -643,7 +723,7 @@ describe('createGatewaySpawnSession', () => {
 
       expect(result.exitCode).toBe(0);
       const secondTurnMessages = provider.calls[1]!.messages;
-      const toolResultMessage = secondTurnMessages[secondTurnMessages.length - 1]!;
+      const toolResultMessage = lastToolMessage(secondTurnMessages);
       const jsonStart = toolResultMessage.content.indexOf('{');
       const outcome = JSON.parse(toolResultMessage.content.slice(jsonStart)) as {
         content: string;
