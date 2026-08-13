@@ -4,11 +4,29 @@ Traces to: `docs/BLUEPRINT.md` (§0 honesty invariants, §2.2, §6.2, §11) and 
 decisions D-003–D-010. C-1–C-8 are hard constraints: violations block phase gates,
 and no ticket may contradict one without a founder decision in the DECISIONS ledger.
 
-## C-1 — Local-first, offline-capable (hard)
+## C-1 — Local-only is a guaranteed-supported configuration (hard)
 
-- Full functionality with no network: local models (LM Studio/Ollama/OpenAI-compatible),
-  no forge, no cloud APIs (D-003, NFR-1). Cloud providers and forges are
-  integrations, never prerequisites.
+**AMENDED 2026-08-13 by D-024.** This constraint used to read "local-first,
+offline-capable" and was enforced as a mandate: local was what the product
+*did*, and cloud was an integration it tolerated. That was wrong as a product
+contract — which model does the work is the **user's choice**, not a law
+(D-024: local-only · a specific chosen model · cheapest-first with escalation ·
+approval-gated escalation). What survives as hard is the guarantee, not the
+default:
+
+- **A user who chooses local-only gets a product where everything works.**
+  Full functionality with no network: local models (LM Studio/Ollama/
+  OpenAI-compatible), no forge, no cloud APIs (D-003, NFR-1). A feature that
+  silently requires a cloud model is a bug; a feature that cannot run on a
+  small model degrades honestly and says so (FR-G5 WAIVED, never silent).
+- **Cloud providers and forges are never PREREQUISITES** — but they are
+  first-class choices, not merely tolerated integrations, and a user who
+  configures one is entitled to have it work.
+- **Nothing is chosen silently.** A fresh install asks (setup wizard); no
+  network call and no spend happens before the user has picked a policy.
+- Note the separate, untouched rule this used to be conflated with: TESTS and
+  CI never make live API calls regardless of any user policy (CLAUDE.md law 9,
+  docs/TESTING.md). That is a development discipline, not a product default.
 - One-command install (`npx dokima`); state = one SQLite file per project
   (`.dokima/`) + user config (`~/.dokima/`). No external services required.
 - Offline-tolerant integrations: forge-mirror verbs queue locally and flush on

@@ -40,8 +40,16 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    the log is not.
 8. **Secrets never in code, settings files, prompts, or the event log**
    (FR-S2, W8-03): credential refs only; keychain resolves them.
-9. **Local-first honesty** (C-1): everything must work with a fake/local
-   model and no network. Recorded fixtures in CI — never live API calls.
+9. **Two rules that were one, and must not be re-merged** (C-1, D-024):
+   (a) **Testing discipline, hard and unconditional:** tests and CI use
+   recorded fixtures and the fake-model gateway — **never live API calls**,
+   whatever a user's model policy says.
+   (b) **Product guarantee, not a default:** a user who *chooses* local-only
+   gets a fully working product (a feature silently needing a cloud model is
+   a bug; FR-G5 degrades honestly, never silently). But which model does the
+   work is the **user's choice** — local-only, one pinned model, cheapest-
+   first escalation, or approval-gated escalation — asked at setup, never
+   defaulted silently. Do not write "local-first" as though it were a law.
 10. Push `main` to both remotes after merged work: `git push origin main &&
     git push github main` (origin = Gitea, may be offline off-LAN — GitHub
     always; note unsynced state in docs/STATUS.md when it happens).
