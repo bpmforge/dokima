@@ -190,7 +190,10 @@ async function processTicket(
     attempt <= maxSessions && current.status === 'in_progress';
     attempt++
   ) {
-    const handoff = options.buildHandoff(current);
+    // Awaited per attempt (W12-08): a builder may be async, and this loop
+    // re-renders the HANDOFF on every retry — an unawaited promise would
+    // reach `runSession` on each one, not just the first.
+    const handoff = await options.buildHandoff(current);
     const session = await runSession({ handoff, cwd: worktree.path, spawn });
     attempts.push({ attempt, session });
     current = requireTicket(options.log, ticket.id);

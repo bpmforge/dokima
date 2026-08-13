@@ -484,4 +484,41 @@ describe('runLandLoop', () => {
       expect(prompts[0]).toContain('[REDACTED:secret]');
     },
   );
+
+  it(
+    '(W12-08 red fixture) an ASYNC HandoffBuilder reaches the session with its context ' +
+      "intact — FR-L5's Context Packer is async, so a synchronous-only seam could " +
+      'never accept one, which is why it never had a caller',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      seedTicket(log, 'W9-01', { interface: 'ignored-by-the-custom-builder' });
+
+      const prompts: string[] = [];
+      const capturingSpawn: SpawnSession = async (input) => {
+        prompts.push(input.prompt);
+        return landingSpawn(input);
+      };
+
+      // Resolves after a real microtask turn, the way `assemblePacket` does
+      // once it has queried a code index / facts store. Against the
+      // pre-W12-08 synchronous `HandoffBuilder` this does not type-check,
+      // and a forced call hands `runSession` a Promise instead of a Handoff.
+      const packedContext = 'PACKED CONTEXT BLOCK: core + repo map + ticket';
+      const asyncBuilder = async (ticket: Ticket) => {
+        await Promise.resolve();
+        return { ...defaultHandoffBuilder()(ticket), context: packedContext };
+      };
+
+      const result = await runLandLoop({
+        ...baseOptions(fixture, capturingSpawn),
+        buildHandoff: asyncBuilder,
+      });
+
+      expect(result.processed[0]!.landed).toBe(true);
+      expect(prompts).toHaveLength(1);
+      expect(prompts[0]).toContain(packedContext);
+      expect(prompts[0]).not.toContain('[object Promise]');
+    },
+  );
 });
