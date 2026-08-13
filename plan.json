@@ -6046,7 +6046,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 8,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
         "apps/server/src/api/pipeline/gateway-model-port/config.ts",
