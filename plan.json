@@ -5839,6 +5839,112 @@
       "notes": [
         "Filed 2026-08-13 alongside W12-02 from the same unfiled SECURITY_W11f.md `medium[]` array. Kept at MEDIUM after re-checking: the security pass's own fix note suggested an argv-splitting library, but the exploitability it implies is not there post-W11-20 \u2014 this is a correctness and operator-experience defect on a path an operator deliberately configured, so it is filed as one. Recording that re-assessment rather than inheriting the label is the point; a finding carried forward at a severity nobody re-derived is how a backlog stops meaning anything."
       ]
+    },
+    {
+      "id": "W12-04",
+      "title": "the ticket HANDOFF carries only the ticket title as context \u2014 the Context Packer exists, is unexported, and has never had a caller",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "write_scope": [
+        "packages/memory/src/index.ts",
+        "apps/server/src/cli/handoff-context.ts",
+        "apps/server/src/cli/handoff-context.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-13 BY A STEP-BACK REVIEW OF THE PRODUCT THESIS, not by a failing test \u2014 nothing in the gate can see it. `packages/harbormaster/src/loop-handoff.ts`'s `defaultHandoffBuilder` sets `context: ticket.interface ?? ticket.title`, and `apps/server/src/cli/run-build.ts` passes `defaultHandoffBuilder()` with no override. Every ticket session the built-in agent has ever run received one line of context. FR-L5 (BLUEPRINT \u00a77.2) describes a Context Packer; `loop-handoff.ts`'s own doc comment says packing 'is FR-L5's own concern, not the claim loop's' and nothing ever supplied it.",
+        "ROOT CAUSE IS AN UNEXPORTED MODULE, NOT MISSING CODE. `packages/memory/src/packer/pack.ts#assemblePacket` is fully built and tested (core block + repo-map skeleton + ticket block + relevance-ranked slices + prior findings, stable-prefix ordered, whole-slice trimming, never naive truncation). It has zero non-test callers because `packages/memory/src/index.ts` exports ONLY `lessons/*` \u2014 the packer is unreachable across the package boundary, and TECH_STACK repository conventions forbid deep imports. Export `assemblePacket` and its types from the package's public surface as part of this ticket.",
+        "BUILD THE PACKED CONTEXT IN `apps/server`, NOT IN HARBORMASTER \u2014 this is the load-bearing design decision and it is already settled, do not re-open it. The \u00a74 declared-dependency matrix has a BLANK in the harbormaster x memory cell and harbormaster's package.json does not declare `@dokima/memory`; `apps/server` declares BOTH `@dokima/memory` and harbormaster. `HandoffBuilder` is already a fully overridable seam (`loop-handoff.ts`: 'fully overridable by passing a custom builder'). So the fix is a new `apps/server/src/cli/handoff-context.ts` that composes `assemblePacket` into a `HandoffBuilder`, passed at `run-build.ts`'s existing `buildHandoff:` call site. NO architecture amendment and NO founder decision is required \u2014 adding a harbormaster -> memory edge would be the W11-02 shape (matrix \u2705 + declaration as one deliberate chore) and is explicitly NOT what this ticket does.",
+        "DEGRADE HONESTLY WHEN THERE IS NOTHING TO PACK (C-1, FR-G5). `assemblePacket` takes `codeIndexHandle` and `factsHandle` as OPTIONAL \u2014 verified 2026-08-13 by reading the body: with neither handle it still returns core block + repo map + ticket block under the resolved token envelope, and the slice/findings sections render empty rather than throwing. A project with no code index and no memory store must therefore get a real packet that is strictly better than today's one-line context, never a refusal and never a fabricated slice. `modelWindowTokens` must come from the resolved model target, not a hardcoded constant. Relatedly, `assemblePacket` throws `PackerError` when the core block exceeds its 1k-token ceiling \u2014 that must surface as a named refusal at run start, not an unhandled rejection mid-session.",
+        "RED FIXTURE, PROVEN RED FIRST: a ticket whose `interface` field is absent produces a HANDOFF whose `context` is exactly its title today \u2014 assert that against the CURRENT `defaultHandoffBuilder()` path before changing anything, then assert the wired builder produces a packet containing the core block and the ticket's acceptance criteria. A second fixture covers the degraded path (no handles) and asserts the packet is still well-formed and the slice section is absent rather than empty-but-labelled.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 from a step-back architectural review asking whether Dokima actually implements its own product thesis ('the product manages the context'). It does not, on the build path. This is the single largest gap between what the product claims and what the ticket loop does, and it ranks ABOVE the attest content-parity gap (W12-07) that the same review found first. Sized 8 rather than 13 because the packer is built and tested \u2014 this is an export plus a call site plus honest degradation, which is exactly the build-then-wire seam shape that has recurred on this board (W11-04's `RunSessionInput.secretValues`, W11-16's wrap-`spawn`): a mechanism lands with no production caller and stays green forever because nothing tests for a caller.",
+        "Same-lane (`core`) as W12-03 deliberately: both edit `apps/server/src/cli/run-build.ts`, and P8 permits same-lane write_scope overlap while forbidding it cross-lane. They must never run in parallel; whichever claims second rebases."
+      ]
+    },
+    {
+      "id": "W12-05",
+      "title": "validator output is never re-injected into the agent session \u2014 the tool anchor exists and fires nowhere",
+      "phase": 12,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-13 alongside W12-04. `packages/loop/src/anchors.ts` implements the Anchor framework (BLUEPRINT \u00a73.5, FR-L2) \u2014 'external ground truth composed onto the micro-loop as facts the model must reconcile with, rather than raw self-confidence' \u2014 and exports `gatherAnchorFacts` / `formatAnchorFactsForPrompt`. Neither has a caller in the agent-session path. `gateway-session.ts` pushes each tool result back as a plain `'tool'`-role message and never re-states ground truth, so in a long session the governing facts scroll out of the window while the model's own prior turns stay.",
+        "SCOPE IS THE TOOL ANCHOR ONLY. `anchors.ts`'s own header states the memory and challenger anchors are stubs that 'never fabricate a fact', pending W5 (challenger) and W7 (memory). Wire the TOOL anchor \u2014 validator/scanner output turned into facts via `toolFact` \u2014 and leave the other two unwired. Do NOT attempt to make three anchors real; that is a separate ticket and blocks on the same recall-population question W12-04 documents.",
+        "The import edge is already legal: harbormaster -> loop carries its \u2705 in the \u00a74 matrix and `@dokima/loop` is declared in harbormaster/package.json. No matrix change.",
+        "RED FIXTURE: a session whose validator run reports a failure, driven past enough turns that the failure would otherwise have left the window, still carries the failing fact in the prompt on the later turn \u2014 proven absent against the current `gateway-session.ts` first.",
+        "Anchor facts must be redacted on the same path everything else in the prompt is (`renderHandoff` already redacts `context` unconditionally) \u2014 a validator that echoes a secret value must not reintroduce it.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13. This is the mechanical half of 'the system prompt does not get lost in a long context window' \u2014 the other half is W12-04's stable-prefix packet ordering. Same build-then-wire shape: the framework landed in W1 with a documented contract and no consumer, and no gate can see an interface with no callers."
+      ]
+    },
+    {
+      "id": "W12-06",
+      "title": "the build loop dispatches exactly one expert \u2014 decide how a ticket selects its role from the 93-expert library",
+      "phase": 12,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "packages/harbormaster/src/loop-handoff.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "HELD ON A FOUNDER DECISION \u2014 DO NOT CLAIM THIS UNATTENDED. Added to `conductor.config.json` holdTickets at filing time, same shape as W12-01 and the $holdNote4 W11-02 precedent: structurally claimable, actually waiting on a human.",
+        "THE FINDING (2026-08-13): `defaultHandoffBuilder(role: string = ROLE_CODING_AGENT)` and `run-build.ts` calls it with no argument, so every ticket the built-in agent has ever run was dispatched as `coding-agent`. `content/` ships 93 experts; the ONBOARD/pipeline path does dispatch per-role specialists with distinct `specialist:<role>` signing identities (`apps/server/src/api/pipeline/onboard-executor.ts`), so the expert library is genuinely used \u2014 just never by the ticket build loop. `/api/v1/roster` is observability, not routing.",
+        "THE MECHANISM HALF ALREADY EXISTS: `apps/server/src/api/roster-resolve.ts` documents that an expert file's stem doubles as its `AgentRole`, and the gateway's role matrix already routes per role. What is missing is the MAPPING \u2014 which of 93 experts should own a given ticket \u2014 and that is a routing-policy design call, not a wiring task.",
+        "THE QUESTION FOR THE FOUNDER, stated so it can be answered without re-deriving it: does a ticket's role come from (a) an explicit new `role` field on the ticket, set at decomposition time by the planner that already knows the work; (b) inference from `lane`/`module`, which exist today and need no schema change but collapse 93 experts onto ~11 lanes; or (c) a model-side selection step that reads the roster and picks, which is the most capable and the least deterministic and needs its own receipt to stay inside Law 4? Do not design this into acceptance criteria \u2014 record the answer, then re-scope.",
+        "Once decided: full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed HELD 2026-08-13. The board has no field for 'waiting on a human', which $holdNote4 already records as a recurring gap \u2014 holdTickets in conductor.config.json is the only place it can be said, so it is said there and here. Related open design question from the same review, NOT ticketed and belonging in docs/DECISIONS.md rather than on the board: attest v3.5.0's gauntlet loop (builders never grade their own work; a critic that saw a prior draft never grades the retry) may be the missing quality layer for this same loop, and C-4 already supplies the identity separation it needs. That may be one design with this ticket rather than two."
+      ]
+    },
+    {
+      "id": "W12-07",
+      "title": "the imported expert library is four minor versions stale \u2014 content/ is attest 3.1.24, upstream is 3.5.1",
+      "phase": 12,
+      "module": "content",
+      "lane": "content",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "content/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-13. `content/index.json` records `upstreamVersion: 3.1.24`, imported 2026-07-12 (W10-51, last touched by W10-52). Upstream `attest` is at 3.5.1. Re-import via `node scripts/import-content.mjs` per the W10-51 precedent, preserving the W10-50 local-override registry, and update `index.json`'s recorded version.",
+        "WHAT ARRIVES, so the diff can be checked rather than skimmed: v3.5.0 the gauntlet loop (a new orchestration protocol); v3.5.1 the file-size cap moved into the write path, with the cap on the FILE (`current + delta`) rather than the diff, and the gate scoped `--changed-since`; v3.4.0 the visual design loop plus the previously-orphaned Phase-3.5 design chain wiring; plus v3.2.x/v3.3.x not yet enumerated at filing time.",
+        "RE-SIGNING IS A HARD PRECONDITION, AND THE KEY IS NOT IN THE REPO. `content/manifest.json` carries a signature over all 83 files; `doctor`'s pack-signatures check goes red on any unsigned edit. Confirm the signing key is reachable BEFORE starting (it has been recorded at a stale path once already) and re-sign with `scripts/sign-content.mjs`. If the key cannot be found, set this ticket `blocked` with that as the reason rather than landing unsigned content.",
+        "IMPORTING IS NOT WIRING \u2014 state this in the close notes rather than implying more than was done. `content/` is DATA (CLAUDE.md law 6: loaders parse it, code never imports it). Re-importing ships the gauntlet protocol's TEXT and any new validator executables; it does NOT make the gauntlet loop run, because Dokima has its own loop engine. Any new `validate-*.sh` that arrives must be checked against `packages/validators/src/contract.ts`'s NDJSON output contract before it is added to `conductor.config.json`'s `gate[]` \u2014 W10-52 shipped a validator pack that could not run at all, and the file-size validator specifically is already in `repoWide[]`, where a newly-red count fails EVERY ticket for debt it did not create.",
+        "`doctor` reports pack-signatures OK, and the phase gate still runs the pack green, after the re-import.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 from the same step-back review as W12-04/05/06, and deliberately ranked BELOW them. The first pass of that review called this the launch blocker; the evidence overturned that \u2014 a stale expert library matters less than a build loop whose entire context is `ticket.interface ?? ticket.title`. Recording the re-rank rather than quietly reordering, for the same reason W12-03 records its severity re-derivation."
+      ]
     }
   ]
 }
