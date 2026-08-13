@@ -5821,7 +5821,7 @@
       "module": "cli",
       "lane": "core",
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/server/src/cli/run-build.ts",
         "apps/server/src/cli/run-build.test.ts"

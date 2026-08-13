@@ -12,7 +12,7 @@ import {
   writeProjectSetting,
 } from '@dokima/shared';
 import { openWritableLog, resolveDbPath } from './db.js';
-import { executeBuildRun } from './run-build.js';
+import { executeBuildRun, tokenizeAgentCommand } from './run-build.js';
 import { AGENT_RUNNER_SETTINGS_KEY } from '../api/server/settings-types.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
 
@@ -232,6 +232,37 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     30_000,
   );
 
+  it(
+    'W12-03 RED FIXTURE (the CALL SITE, not just the helper): an external agent ' +
+      'whose PATH CONTAINS A SPACE actually spawns and lands the ticket. The unit ' +
+      'tests below pass against the old whitespace split too, because they call ' +
+      'the tokenizer directly — only this one proves executeBuildRun USES it.',
+    async () => {
+      project = await gitRepoProject();
+      const spacedDir = `${project.cwd}/My Agent Dir`;
+      await fs.mkdir(spacedDir, { recursive: true });
+      const log = openWritableLog(resolveDbPath(project.cwd));
+      seedTicket(log);
+      const agent = await writeCapturingAgent(spacedDir, `${project.cwd}/captured.txt`);
+      const io = collectIO();
+      try {
+        const code = await withSigningKey(() =>
+          executeBuildRun(
+            log,
+            { projectId: 'p', actorId: 'worker-1', agentCommand: `"${agent}"` },
+            'run-1',
+            { cwd: project.cwd, ...io.io, now: NOW },
+          ),
+        );
+        expect(code).toBe(0);
+        expect(io.stdout.join('\n')).toContain('T-1: landed');
+      } finally {
+        log.close();
+      }
+    },
+    30_000,
+  );
+
   it('RED FIXTURE (W11-18, FR-H6): an empty external command (misconfigured setting) refuses rather than spawning nothing', async () => {
     project = await gitRepoProject();
     const log = openWritableLog(resolveDbPath(project.cwd));
@@ -434,4 +465,52 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   }, 30_000);
+});
+
+describe('tokenizeAgentCommand (W12-03)', () => {
+  it(
+    'RED FIXTURE: a quoted path containing spaces spawns the intended binary — ' +
+      "`.split(' ')` truncated it to `/Applications/My` plus bogus args, and the " +
+      'operator saw a failure naming a path that was never configured',
+    () => {
+      expect(tokenizeAgentCommand('"/Applications/My Agent/bin/agent" --flag')).toEqual([
+        '/Applications/My Agent/bin/agent',
+        '--flag',
+      ]);
+      expect(tokenizeAgentCommand("'/opt/my agent/run' --mode fast")).toEqual([
+        '/opt/my agent/run',
+        '--mode',
+        'fast',
+      ]);
+    },
+  );
+
+  it('an argument needing internal spaces survives as ONE argument', () => {
+    expect(tokenizeAgentCommand('agent --prompt "do the thing" -v')).toEqual([
+      'agent',
+      '--prompt',
+      'do the thing',
+      '-v',
+    ]);
+  });
+
+  it(
+    'W11-04 REGRESSION GUARD: an ordinary multi-arg command with no spaces in the ' +
+      'path still round-trips exactly as it did under the old split',
+    () => {
+      expect(tokenizeAgentCommand('claude -p --dangerously-skip-permissions')).toEqual([
+        'claude',
+        '-p',
+        '--dangerously-skip-permissions',
+      ]);
+      expect(tokenizeAgentCommand('  agent   --flag  ')).toEqual(['agent', '--flag']);
+      // Still empty, so `executeBuildRun`'s named misconfiguration refusal
+      // (W11-18) fires exactly as before rather than spawning nothing.
+      expect(tokenizeAgentCommand('   ')).toEqual([]);
+    },
+  );
+
+  it('an unterminated quote yields the token as typed rather than throwing', () => {
+    expect(tokenizeAgentCommand('agent "unclosed')).toEqual(['agent', 'unclosed']);
+  });
 });
