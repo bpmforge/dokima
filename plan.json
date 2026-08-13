@@ -6038,6 +6038,86 @@
       "notes": [
         "Filed 2026-08-13 after the third instance in a single dependency chain landed in one session (W12-08, W12-04, W12-05). Claimed immediately rather than left on the board: every prior instance of this class was recorded in prose somewhere and none of that prose stopped the next one."
       ]
+    },
+    {
+      "id": "W12-11",
+      "title": "no cloud provider kind is constructible \u2014 half of \"local or your cloud provider\" refuses by design",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 8,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/config.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.test.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/config.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "D-024 MAKES THIS A RELEASE BLOCKER, not an enhancement. `providerForConfig` throws `ModelResolutionError('kind-not-constructible')` for `anthropic`, `openai`, `vertex` and `copilot`. Its own comment gives the two honest reasons and they are still true: the registry stores a `credentialRef` (a NAME) where the adapter needs a resolved secret, and `AnthropicConfig.costTable` is REQUIRED with no $0 default ('no $0 default for a paid API'). Only `ollama`, `lm-studio` and bare oai-compat construct today, so a user who registers a cloud provider in the Providers panel gets a named refusal \u2014 which under D-024 option (b) is now a broken promise rather than honest caution.",
+        "RESOLVE THE CREDENTIAL AT CALL TIME THROUGH THE KEYCHAIN (Law 8, FR-S2). `targetToConfig` currently sets `apiKey: env.DOKIMA_MODEL_API_KEY` unconditionally with a comment saying the keychain 'resolves it at call time' \u2014 nothing does. The plumbing already exists and is proven: `resolveCredentialRef`/`resolveCredentialStore` (`packages/shared/src/secrets/`) and `collectSecretValues`, which `run-build.ts` already calls. The env key stays as the documented CI path, second in line behind a real ref.",
+        "SHIP REAL PRICE TABLES, and treat a missing one as a REFUSAL rather than $0. This is the load-bearing half: metering a paid API at $0 does not merely mis-report \u2014 it disables W2-07's budget breakers entirely, because a breaker that reads $0 can never trip. A provider whose model has no price entry must refuse by name, exactly as the current code refuses the whole kind.",
+        "THE oai-compat LOOPHOLE MUST CLOSE WITH IT, and it is how this was found: pointing `DOKIMA_MODEL_BASE_URL` at `https://api.openai.com/v1` with `DOKIMA_MODEL_API_KEY` routes a real paid OpenAI account through `createOaiCompatProvider`, which defaults to `LOCAL_COST_TABLE` \u2014 literally `{}`, so every priced call meters $0. That path bypasses the very guard the cloud-kind refusal exists to enforce. Detect a known cloud host on an oai-compat endpoint and require a price table for it too, or state explicitly why that is out of scope and file it.",
+        "RED FIXTURES: a registered cloud provider with a resolvable credentialRef and a price table CONSTRUCTS and reports non-zero cost for a fixture response (recorded fixture, never a live call \u2014 CLAUDE.md law 9a is untouched by D-024); the same provider with an unresolvable credentialRef refuses by name; a priced model missing from the table refuses rather than reporting $0.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 from the D-024 contract correction, found while answering whether the OpenAI plan could drive a supervised run. It can, through the oai-compat env path \u2014 but the spend ledger reads $0 and the budget breakers cannot fire, which is precisely the fabrication the cloud-kind refusal was written to prevent. The refusal was good engineering; what was missing was a ticket to remove the reason for it."
+      ]
+    },
+    {
+      "id": "W12-12",
+      "title": "a user cannot pin ONE model \u2014 `locked` pins a rung, so D-024 option (b) has no implementation",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "packages/gateway/src/escalation/policy-types.ts",
+        "packages/gateway/src/escalation/policy.ts",
+        "packages/gateway/src/escalation/policy.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "D-024 OPTION (b): 'a specific model of their choosing, local or cloud, pinned, no escalation'. `EscalationPolicyMode = 'ladder' | 'locked' | 'token-gated'` and `locked` pins a RUNG of the R0\u2013R4 ladder, then loops under a convergence budget. That is not the same promise: a user who says 'use gpt-5 and nothing else' is choosing a MODEL, and a rung can resolve to a different model as the matrix changes underneath them.",
+        "ADD THE MODE RATHER THAN OVERLOADING `locked` \u2014 `locked`'s D-018 semantics (pin a tier, loop until pass, park, never silently escalate) are real, tested and still wanted. The new mode pins an exact `(providerId, model)` and never escalates for any reason, including a failure that would normally trigger the ladder. Name it in `policy-types.ts` and resolve it through the SAME three-scope (run > project > global) per-role path D-018 already built; do not add a second resolution mechanism.",
+        "PARK HONESTLY WHEN THE PINNED MODEL CANNOT DO THE WORK. The whole point of pinning is that nothing quietly substitutes a different model \u2014 so exhaustion parks the ticket with a named reason (the shape `locked` already uses), never a silent fallback to the ladder and never a swap to a neighbouring model in the same tier.",
+        "MAKER\u2260VERIFIER SURVIVES PINNING (C-4, and this is the trap): if a user pins one model for every role, maker and verifier would resolve to the same model, which C-4 forbids BY CONSTRUCTION. Decide and state the behaviour \u2014 refuse the configuration by name, or require a distinct verifier pin \u2014 and prove it with a red fixture. Do not let a convenience setting quietly dissolve a hard constraint.",
+        "RED FIXTURE: a pinned policy runs the named model and, on a failure that would advance the ladder, parks with a named reason instead of escalating \u2014 proven to escalate against the current `ladder`/`locked` modes first. Plus the C-4 fixture above.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 from D-024. Deliberately separate from W12-11: this is the POLICY half (can a user express 'this model only'), that is the CAPABILITY half (can a cloud model be constructed at all). Both are needed before option (b) works end to end, and neither is sufficient alone."
+      ]
+    },
+    {
+      "id": "W12-13",
+      "title": "the setup wizard never asks how work should be modelled, so the policy is chosen silently",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/onboarding/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "D-024: 'There is no silent default. A fresh install asks in the setup wizard and nothing spends money, or contacts a network, until the user has chosen.' Today `resolveLandEscalationPolicy` returns `ladder` when nothing is set, so a fresh install silently adopts cheapest-first escalation across whatever is configured \u2014 a policy the user never picked.",
+        "THE WIZARD PRESENTS THE FOUR D-024 OPTIONS IN THE USER'S OWN TERMS, not the internal mode names: local-only (never contacts a cloud provider) \u00b7 one model I pick \u00b7 start cheap and escalate when it has to \u00b7 escalate only when I approve it. Map each to the resolved policy (`ladder`/`token-gated`/the W12-12 pinned mode) and write it at the scope the user chose, reusing the existing three-scope settings path \u2014 no new persistence mechanism.",
+        "LOCAL-ONLY MUST BE HONESTLY SELECTABLE WITH NO PROVIDER CONFIGURED AND NO NETWORK (C-1 as amended): choosing it completes the wizard, and the product then works. This is the guarantee D-024 kept as hard, so it gets a fixture, not just a menu entry.",
+        "NOTHING SPENDS OR CONNECTS BEFORE THE CHOICE. State plainly what the wizard itself does before a policy exists \u2014 a model list fetched from a cloud provider to populate a picker is itself a network call, so either it happens only after the user picks a cloud option, or the picker degrades to free text and says why.",
+        "RED FIXTURE: a fresh project with no settings does NOT resolve to `ladder` by default \u2014 a run started before a policy is chosen refuses by name, or the wizard blocks completion, whichever the implementation chooses; proven against the current silent-`ladder` behaviour first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 from D-024, founder-chosen ('Ask in the setup wizard \u2014 no silent default'). The first-run wizard already exists (acceptance check A-18), so this is a step inside a built flow rather than a new surface. Note the interaction with W12-11: until cloud kinds construct, the 'one model I pick' and 'start cheap and escalate' options can only offer local models honestly \u2014 decide whether the wizard hides them or shows them as requiring provider setup, and say which in the close notes."
+      ]
     }
   ]
 }
