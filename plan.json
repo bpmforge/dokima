@@ -5847,7 +5847,7 @@
       "module": "cli",
       "lane": "core",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "packages/memory/src/index.ts",
         "apps/server/src/cli/handoff-context.ts",

@@ -34,11 +34,11 @@ import {
 import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
 import {
   createGatewaySpawnSession,
-  defaultHandoffBuilder,
   runLandLoop,
   DEFAULT_AGENT_SESSION_TASK_TYPE,
   type PushToRemotesFn,
 } from '@dokima/harbormaster';
+import { createPackedHandoffBuilder } from './handoff-context.js';
 import {
   CostLedger,
   FitnessCardStore,
@@ -144,13 +144,24 @@ function resolveVaultOrRefusal(
  * copilot); the caller turns that into a named CLI refusal rather than an
  * uncaught rejection mid-session.
  */
+/**
+ * The built-in agent's session plus the one fact about its model the packer
+ * needs (W12-04). `contextWindowTokens` is `undefined` when the provider
+ * cannot report a window — the packer treats that as its documented 32k
+ * floor rather than guessing.
+ */
+interface BuiltInSpawn {
+  readonly spawn: SpawnSession;
+  readonly contextWindowTokens: number | undefined;
+}
+
 async function buildBuiltInSpawn(
   log: EventLog,
   command: BuildRunCommand,
   runId: string,
   io: RunCliIO,
   secretValues: readonly string[],
-): Promise<SpawnSession> {
+): Promise<BuiltInSpawn> {
   const target = await resolveModelTarget({
     projectPath: io.cwd,
     role: ROLE_CODING_AGENT,
@@ -158,7 +169,15 @@ async function buildBuiltInSpawn(
     actorId: command.actorId,
   });
   const provider: Provider = providerForConfig(targetToConfig(target, process.env));
-  return createGatewaySpawnSession({
+  // W12-04: the context window comes from the Provider, not from
+  // `ResolvedModelTarget` (which carries no window field) — so it is read
+  // here, where the provider is already built, rather than resolving the
+  // model a second time in the packer's call path. `undefined` (a provider
+  // that cannot report one) becomes the packer's documented 32k floor.
+  const contextWindowTokens = await provider
+    .getContextLength(target.model)
+    .catch(() => undefined);
+  const spawn = createGatewaySpawnSession({
     log,
     role: ROLE_CODING_AGENT,
     matrix: {
@@ -175,6 +194,7 @@ async function buildBuiltInSpawn(
     secretValues,
     now: io.now,
   });
+  return { spawn, contextWindowTokens };
 }
 
 /**
@@ -223,6 +243,12 @@ export async function executeBuildRun(
 
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
+  /**
+   * Undefined on the external-agent path: there is no `Provider` to ask, so
+   * the packer gets its documented conservative floor rather than a number
+   * invented here (W12-04).
+   */
+  let contextWindowTokens: number | undefined;
   if (agentRunner.kind === 'external') {
     const [agentBin, ...agentArgs] = (agentRunner.command ?? '')
       .split(' ')
@@ -238,7 +264,9 @@ export async function executeBuildRun(
     spawn = createChildProcessSpawn({ command: agentBin, args: agentArgs });
   } else {
     try {
-      spawn = await buildBuiltInSpawn(log, command, runId, io, secretValues);
+      const builtIn = await buildBuiltInSpawn(log, command, runId, io, secretValues);
+      spawn = builtIn.spawn;
+      contextWindowTokens = builtIn.contextWindowTokens;
     } catch (err) {
       if (err instanceof ModelResolutionError) {
         io.stderr(`${runId} started, but the built-in agent refused: ${err.message}`);
@@ -256,7 +284,13 @@ export async function executeBuildRun(
     contentDir: resolveAsset('content', 'validators'),
     signingKey,
     spawn,
-    buildHandoff: defaultHandoffBuilder(),
+    // W12-04: the packed builder, not `defaultHandoffBuilder()`. Until this
+    // ticket every ticket session received `ticket.interface ?? ticket.title`
+    // as its entire context while FR-L5's Context Packer sat unreachable.
+    buildHandoff: await createPackedHandoffBuilder({
+      repoRoot: io.cwd,
+      modelWindowTokens: contextWindowTokens ?? 0,
+    }),
     pushToRemotes: localFirstPushToRemotes,
     secretValues,
     now: io.now,

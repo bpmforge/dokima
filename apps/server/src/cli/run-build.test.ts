@@ -192,6 +192,46 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     }
   }, 30_000);
 
+  it(
+    'W12-04 RED FIXTURE: the packed context reaches the prompt a real run hands to ' +
+      'the agent — proving executeBuildRun installs the packed builder, not that ' +
+      'constructing one fails to throw (the W11-04 lesson)',
+    async () => {
+      project = await gitRepoProject();
+      const log = openWritableLog(resolveDbPath(project.cwd));
+      seedTicket(log);
+      const capturePath = `${project.cwd}/captured.txt`;
+      const agent = await writeCapturingAgent(project.cwd, capturePath);
+      const io = collectIO();
+      try {
+        const code = await withSigningKey(() =>
+          executeBuildRun(
+            log,
+            { projectId: 'p', actorId: 'worker-1', agentCommand: agent },
+            'run-1',
+            { cwd: project.cwd, ...io.io, now: NOW },
+          ),
+        );
+        expect(code).toBe(0);
+        const captured = await fs.readFile(capturePath, 'utf8');
+
+        // The pinned invariants and a real repo map — neither of which the
+        // pre-W12-04 `defaultHandoffBuilder()` path could ever have produced.
+        expect(captured).toContain('PROJECT INVARIANTS');
+        expect(captured).toContain('Stay inside WRITE-SCOPE');
+        expect(captured).toContain('REPO MAP');
+        expect(captured).toContain('src/app.ts');
+        expect(captured).toContain('TICKET: T-1');
+        // The ticket seeded here has no `interface`, so before this ticket the
+        // whole CONTEXT was the bare title.
+        expect(captured).not.toMatch(/CONTEXT: Set the answer to 42\n/);
+      } finally {
+        log.close();
+      }
+    },
+    30_000,
+  );
+
   it('RED FIXTURE (W11-18, FR-H6): an empty external command (misconfigured setting) refuses rather than spawning nothing', async () => {
     project = await gitRepoProject();
     const log = openWritableLog(resolveDbPath(project.cwd));
@@ -265,12 +305,11 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     const io = collectIO();
     try {
       const code = await withSigningKey(() =>
-        executeBuildRun(
-          log,
-          { projectId: 'p', actorId: 'worker-1' },
-          'run-1',
-          { cwd: project.cwd, ...io.io, now: NOW },
-        ),
+        executeBuildRun(log, { projectId: 'p', actorId: 'worker-1' }, 'run-1', {
+          cwd: project.cwd,
+          ...io.io,
+          now: NOW,
+        }),
       );
       expect(code).toBe(2);
       const err = io.stderr.join('\n');
@@ -306,12 +345,11 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     const io = collectIO();
     try {
       await withSigningKey(() =>
-        executeBuildRun(
-          log,
-          { projectId: 'p', actorId: 'worker-1' },
-          'run-1',
-          { cwd: project.cwd, ...io.io, now: NOW },
-        ),
+        executeBuildRun(log, { projectId: 'p', actorId: 'worker-1' }, 'run-1', {
+          cwd: project.cwd,
+          ...io.io,
+          now: NOW,
+        }),
       );
       expect(io.stderr.join('\n')).not.toMatch(/unredacted/i);
     } finally {
