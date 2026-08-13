@@ -5881,7 +5881,7 @@
       "module": "harbormaster",
       "lane": "orchestrator",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "packages/harbormaster/src/agent-session/gateway-session.ts",
         "packages/harbormaster/src/agent-session/gateway-session.test.ts"
