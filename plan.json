@@ -6008,6 +6008,33 @@
       "notes": [
         "Filed 2026-08-13 at W12-04's close, in the same session that disclosed it, because this wave's founding lesson is that a finding recorded only in prose expires \u2014 W12-02/03 sat in SECURITY_W11f.md for six days for exactly that reason. depends_on W12-04 (done), and it inherits the `handoff-context.ts` territory W12-04 released."
       ]
+    },
+    {
+      "id": "W12-10",
+      "title": "no gate can see an exported interface that nothing calls \u2014 six instances have shipped, three in one chain",
+      "phase": 12,
+      "module": "quality",
+      "lane": "quality",
+      "points": 5,
+      "status": "done",
+      "write_scope": [
+        "scripts/validate-exports.mjs",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "THE DEFECT CLASS, with its instance list, because the count is the argument: a mechanism lands complete, tested, with a documented contract and NO production caller, and stays green forever. Known instances \u2014 W11-04 `RunSessionInput.secretValues` (removed at review rather than left dead), W11-16 wrap-`spawn` (no caller until W11-04 supplied one), W12-08 `HandoffBuilder`'s override (advertised as \"fully overridable\", structurally unusable), W12-04 `packer/index.ts` (a complete barrel never re-exported), W12-05 `anchors.ts` (framework, no caller), and the roster (93 experts, one dispatched). TWO OF THESE WERE SELF-DOCUMENTED \u2014 the source said a future ticket would wire it up and no such ticket existed, which is why prose intent is not a control.",
+        "BUILD `scripts/validate-exports.mjs`, NOT a `content/validators/*.sh`. `content/` is imported upstream data (CLAUDE.md law 6, provenance-headed, re-imported wholesale by W12-07) \u2014 a Dokima-specific check added there would be destroyed by the next import and does not belong to upstream. Repo-local validators live in `scripts/` beside `validate-plan.mjs`/`validate-traceability.mjs`, which `conductor.config.json`'s `gates` array already runs.",
+        "MEASURE BEFORE GATING \u2014 this is the acceptance criterion most likely to be skipped, and the one that decides whether the validator is worth anything. Enumerate exports from each package public barrel, count references outside the declaring package excluding tests, and REPORT THE REAL NUMBER before choosing where it lands. attest v3.5.1's file-size pass is the precedent: an honest denominator took its violation count from 71 to 8 by excluding worktrees, benchmark output and generated samples. A validator that fires on 200 legitimate public-API exports is noise and will be waived into irrelevance.",
+        "PLACE IT HONESTLY BY WHAT THE NUMBER SHOWS: `gate[]` only if the repo-wide count is at or near zero after calibration (the same rule `conductor.config.json`'s `` already states for `repoWide`: only honest while it reports ZERO, because otherwise every ticket fails for debt it did not create). Otherwise `advisory[]`, where findings anchor the review instead of blocking. Record which was chosen and the count that justified it.",
+        "RED FIXTURE: an export with zero non-test references is reported, and one referenced only from a `.test.ts` is ALSO reported (test-only usage is the exact disguise `RunSessionInput.secretValues` wore \u2014 it had tests and no callers). A guard proves a genuinely-referenced export is not reported.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 after the third instance in a single dependency chain landed in one session (W12-08, W12-04, W12-05). Claimed immediately rather than left on the board: every prior instance of this class was recorded in prose somewhere and none of that prose stopped the next one."
+      ]
     }
   ]
 }
