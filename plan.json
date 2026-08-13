@@ -6016,7 +6016,7 @@
       "module": "quality",
       "lane": "quality",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "scripts/validate-exports.mjs",
         "scripts/validate-exports.test.mjs",
