@@ -244,6 +244,89 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     }
   });
 
+  it('W12-02 RED FIXTURE: refuses when the secrets vault is unreadable, instead of running with a redaction layer that has nothing to redact', async () => {
+    // The reachable path is NOT "a machine that never had a store" — on such
+    // a machine nothing could have been registered, which is the argument the
+    // old `EMPTY_VAULT` degradation rested on. It is: an operator registers
+    // secrets on Linux via DOKIMA_NO_KEYCHAIN + DOKIMA_VAULT_KEY (P-003), so
+    // ~/.dokima/vault.json and the project's name index persist on disk, and
+    // a LATER run carries neither variable — a service unit, a cron entry, a
+    // different shell. That run used to degrade silently and hand
+    // collectSecretValues an empty list while the secrets were still
+    // registered. Simulated by taking the platform off the one adapter that
+    // exists with DOKIMA_NO_KEYCHAIN unset, which is exactly the state such a
+    // run is in.
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    const realPlatform = process.platform;
+    const previousNoKeychain = process.env.DOKIMA_NO_KEYCHAIN;
+    delete process.env.DOKIMA_NO_KEYCHAIN;
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    const io = collectIO();
+    try {
+      const code = await withSigningKey(() =>
+        executeBuildRun(
+          log,
+          { projectId: 'p', actorId: 'worker-1' },
+          'run-1',
+          { cwd: project.cwd, ...io.io, now: NOW },
+        ),
+      );
+      expect(code).toBe(2);
+      const err = io.stderr.join('\n');
+      // The refusal must say what was at risk and how to fix it, not just fail.
+      expect(err).toMatch(/unredacted/i);
+      expect(err).toContain('DOKIMA_NO_KEYCHAIN');
+      expect(err).toContain('DOKIMA_VAULT_KEY');
+      expect(err).toMatch(/nothing was claimed/i);
+    } finally {
+      Object.defineProperty(process, 'platform', {
+        value: realPlatform,
+        configurable: true,
+      });
+      if (previousNoKeychain !== undefined)
+        process.env.DOKIMA_NO_KEYCHAIN = previousNoKeychain;
+      log.close();
+    }
+  });
+
+  it('W12-02: the encrypted-file fallback is a working store, not a refusal — the supported non-macOS path still runs', async () => {
+    // Guards the refusal from becoming "Linux cannot run builds at all". With
+    // both P-003 variables set, resolveCredentialStore returns a real store,
+    // so the run proceeds past the vault check and fails later (or not) for
+    // its own reasons — never with the W12-02 message.
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    const realPlatform = process.platform;
+    const prevNo = process.env.DOKIMA_NO_KEYCHAIN;
+    const prevKey = process.env.DOKIMA_VAULT_KEY;
+    process.env.DOKIMA_NO_KEYCHAIN = '1';
+    process.env.DOKIMA_VAULT_KEY = 'test-vault-key';
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    const io = collectIO();
+    try {
+      await withSigningKey(() =>
+        executeBuildRun(
+          log,
+          { projectId: 'p', actorId: 'worker-1' },
+          'run-1',
+          { cwd: project.cwd, ...io.io, now: NOW },
+        ),
+      );
+      expect(io.stderr.join('\n')).not.toMatch(/unredacted/i);
+    } finally {
+      Object.defineProperty(process, 'platform', {
+        value: realPlatform,
+        configurable: true,
+      });
+      if (prevNo === undefined) delete process.env.DOKIMA_NO_KEYCHAIN;
+      else process.env.DOKIMA_NO_KEYCHAIN = prevNo;
+      if (prevKey === undefined) delete process.env.DOKIMA_VAULT_KEY;
+      else process.env.DOKIMA_VAULT_KEY = prevKey;
+      log.close();
+    }
+  });
+
   it('SMOKE TEST: the built-in agent actually reaches a real model call, not just past the CLI refusal', async () => {
     // A local, OpenAI-compatible HTTP fixture standing in for the model
     // endpoint (Law 9 — never a live third-party network call). This proves
