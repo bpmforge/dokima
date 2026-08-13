@@ -215,7 +215,7 @@ async function attemptOnce(
   worktree: WorktreeHandle,
   baseRef: string,
 ): Promise<{ session: SessionResult; closeGate: CloseGateResult | null }> {
-  const handoff = options.buildHandoff(ticket);
+  const handoff = await options.buildHandoff(ticket);
   const secrets = options.secretValues;
   const spawn: SpawnSession = secrets?.length
     ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
