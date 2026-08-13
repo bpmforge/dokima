@@ -5956,7 +5956,7 @@
       "module": "harbormaster",
       "lane": "orchestrator",
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "packages/harbormaster/src/loop-handoff.ts",
         "packages/harbormaster/src/loop-land.ts",
