@@ -5960,8 +5960,10 @@
       "write_scope": [
         "packages/harbormaster/src/loop-handoff.ts",
         "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-claim.ts",
         "packages/harbormaster/src/loop-handoff.test.ts",
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-claim.test.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -5974,7 +5976,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 mid-W12-04 rather than worked around, per CLAUDE.md law 1 and MASTER_PROMPT's scope rule. W12-04 could not simply widen its own `write_scope` to cover this: `loop-handoff.ts` is owned by W12-06 (lane `orchestrator`) and W12-04 is lane `core`, so adding it would have produced a P8 cross-lane overlap \u2014 a hard board failure. Filing a same-lane (`orchestrator`) predecessor is the only shape that is legal on this board, and same-lane overlap with the HELD W12-06 is permitted precisely because the two can never be `in_progress` at once. Sized 2: a type widening, an `await`, and a corrected doc comment."
+        "Filed 2026-08-13 mid-W12-04 rather than worked around, per CLAUDE.md law 1 and MASTER_PROMPT's scope rule. W12-04 could not simply widen its own `write_scope` to cover this: `loop-handoff.ts` is owned by W12-06 (lane `orchestrator`) and W12-04 is lane `core`, so adding it would have produced a P8 cross-lane overlap \u2014 a hard board failure. Filing a same-lane (`orchestrator`) predecessor is the only shape that is legal on this board, and same-lane overlap with the HELD W12-06 is permitted precisely because the two can never be `in_progress` at once. Sized 2: a type widening, an `await`, and a corrected doc comment.",
+        "WRITE_SCOPE WIDENED 2026-08-13 mid-work, named rather than silently taken (the W10-77 precedent). Acceptance criterion 4 told this ticket to grep for every invocation instead of assuming two; doing so found the second at `loop-claim.ts:193`, inside the retry loop that re-renders a HANDOFF per attempt \u2014 a path where an unawaited Promise would reach `runSession` on EVERY attempt, not just the first. `loop-claim.ts`/`loop-claim.test.ts` are owned by no open ticket and are the same `orchestrator` lane, so this widening creates no P8 overlap and needed no board restructuring \u2014 unlike W12-04, which correctly self-blocked rather than widen across lanes."
       ]
     }
   ]
