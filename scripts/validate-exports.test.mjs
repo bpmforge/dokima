@@ -22,12 +22,33 @@ describe('validate-exports (W12-10) — the defect class, against this repo', ()
   const reported = new Set(result.findings.map((f) => `${f.package}:${f.symbol}`));
 
   it(
-    'RED FIXTURE: reports a mechanism that is exported and tested but called from ' +
-      'no production code — `createToolAnchor` is FR-L2 ground truth with a full ' +
-      'test suite and no caller anywhere, which is W12-05',
+    'RED FIXTURE: reports mechanisms that are exported and tested but called from no ' +
+      'production code, and every finding carries the test references that prove it ' +
+      'was built and verified rather than merely unused',
     () => {
-      expect(reported.has('loop:createToolAnchor')).toBe(true);
-      expect(reported.has('loop:formatAnchorFactsForPrompt')).toBe(true);
+      // DELIBERATELY PINS NO SPECIFIC SYMBOL. The first version of this test
+      // asserted `loop:createToolAnchor` was reported — true when W12-10
+      // landed, false one ticket later when W12-05 wired it up, and the test
+      // failed for the best possible reason: someone fixed the thing it was
+      // complaining about. A test that goes red when the defect is REPAIRED
+      // is backwards. The durable assertions are the shape of a finding and
+      // the guards below that the validator goes quiet once code is wired.
+      expect(result.findings.length).toBeGreaterThan(0);
+      for (const finding of result.findings) {
+        expect(typeof finding.package).toBe('string');
+        expect(typeof finding.symbol).toBe('string');
+        expect(finding.tests).toBeGreaterThan(0);
+        expect(finding.testFiles.length).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it(
+    'GUARD: `createToolAnchor` is NO LONGER reported — W12-05 gave FR-L2 a caller, ' +
+      'and this is the validator demonstrating the property it exists for',
+    () => {
+      expect(reported.has('loop:createToolAnchor')).toBe(false);
+      expect(reported.has('loop:formatAnchorFactsForPrompt')).toBe(false);
     },
   );
 
