@@ -6051,12 +6051,19 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 8,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
+        "content/model-catalog/pricing.v1.json",
+        "apps/server/src/api/pipeline/gateway-model-port/pricing.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/pricing.test.ts",
         "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
-        "apps/server/src/api/pipeline/gateway-model-port/config.ts",
         "apps/server/src/api/pipeline/gateway-model-port/provider.test.ts",
-        "apps/server/src/api/pipeline/gateway-model-port/config.test.ts"
+        "apps/server/src/api/pipeline/gateway-model-port/config.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/api/server/providers-routes.test.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -6070,7 +6077,8 @@
       ],
       "notes": [
         "Filed 2026-08-13 from the D-024 contract correction, found while answering whether the OpenAI plan could drive a supervised run. It can, through the oai-compat env path \u2014 but the spend ledger reads $0 and the budget breakers cannot fire, which is precisely the fabrication the cloud-kind refusal was written to prevent. The refusal was good engineering; what was missing was a ticket to remove the reason for it.",
-        "RELEASED 2026-08-13 before any code, on a sequencing conflict found while mapping the work rather than while writing it. Making a cloud kind constructible requires resolving `ProviderEntry.credentialRef` \u2014 a NAME, never resolved anywhere today \u2014 and `resolveCredentialRef` is async, so an async step lands upstream of provider construction and every production entry point adopts it. One of those is `apps/server/src/cli/run-build.ts:171`, which **W12-03 owns and is lane `core` against this ticket's `gateway`** \u2014 a cross-lane write_scope overlap is a hard P8 failure, the schema-bug case law 1 says to report rather than work around. Rejected the two workarounds explicitly: re-laning this ticket to `core` would hide a real file conflict behind a taxonomy edit, and adding a NEW async constructor beside the sync one would ship an exported function with no caller \u2014 the exact defect class W12-10 now gates. Correct order is W12-03 first (2pts), which releases run-build.ts at `done` under D-015; this ticket then widens cleanly."
+        "RELEASED 2026-08-13 before any code, on a sequencing conflict found while mapping the work rather than while writing it. Making a cloud kind constructible requires resolving `ProviderEntry.credentialRef` \u2014 a NAME, never resolved anywhere today \u2014 and `resolveCredentialRef` is async, so an async step lands upstream of provider construction and every production entry point adopts it. One of those is `apps/server/src/cli/run-build.ts:171`, which **W12-03 owns and is lane `core` against this ticket's `gateway`** \u2014 a cross-lane write_scope overlap is a hard P8 failure, the schema-bug case law 1 says to report rather than work around. Rejected the two workarounds explicitly: re-laning this ticket to `core` would hide a real file conflict behind a taxonomy edit, and adding a NEW async constructor beside the sync one would ship an exported function with no caller \u2014 the exact defect class W12-10 now gates. Correct order is W12-03 first (2pts), which releases run-build.ts at `done` under D-015; this ticket then widens cleanly.",
+        "WRITE_SCOPE SET AT CLAIM 2026-08-13, wider than filed and named rather than discovered later. `providerForConfig` must become async to resolve a credentialRef, so its three production callers come with it (`gateway-model-port.ts:151`, `onboard-dispatch-port.ts:205`, `run-build.ts:171`), plus the two tests that assert the refusal this ticket removes (`gateway-model-port.test.ts:276`, `providers-routes.test.ts:347`). `run-build.ts` was released by W12-03 at `done` (D-015), which is why this ticket waited for it. PRICING LOCATION VERIFIED BEFORE WRITING: `content/model-catalog/` is Dokima-owned, not listed in `scripts/import-content.mjs`, and ZERO of its files appear in the signed `content/manifest.json` \u2014 so W12-07's attest re-import cannot clobber it and no re-signing is required. Had it been part of the imported pack, this file would have belonged elsewhere entirely."
       ]
     },
     {
