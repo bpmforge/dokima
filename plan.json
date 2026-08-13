@@ -5980,6 +5980,34 @@
         "Filed 2026-08-13 mid-W12-04 rather than worked around, per CLAUDE.md law 1 and MASTER_PROMPT's scope rule. W12-04 could not simply widen its own `write_scope` to cover this: `loop-handoff.ts` is owned by W12-06 (lane `orchestrator`) and W12-04 is lane `core`, so adding it would have produced a P8 cross-lane overlap \u2014 a hard board failure. Filing a same-lane (`orchestrator`) predecessor is the only shape that is legal on this board, and same-lane overlap with the HELD W12-06 is permitted precisely because the two can never be `in_progress` at once. Sized 2: a type widening, an `await`, and a corrected doc comment.",
         "WRITE_SCOPE WIDENED 2026-08-13 mid-work, named rather than silently taken (the W10-77 precedent). Acceptance criterion 4 told this ticket to grep for every invocation instead of assuming two; doing so found the second at `loop-claim.ts:193`, inside the retry loop that re-renders a HANDOFF per attempt \u2014 a path where an unawaited Promise would reach `runSession` on EVERY attempt, not just the first. `loop-claim.ts`/`loop-claim.test.ts` are owned by no open ticket and are the same `orchestrator` lane, so this widening creates no P8 overlap and needed no board restructuring \u2014 unlike W12-04, which correctly self-blocked rather than widen across lanes."
       ]
+    },
+    {
+      "id": "W12-09",
+      "title": "the packed context has no ranked code slices \u2014 nothing in apps/server ever opens a W7-06 code-index handle",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/cli/handoff-context.ts",
+        "apps/server/src/cli/handoff-context.test.ts"
+      ],
+      "depends_on": [
+        "W12-04"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DISCLOSED BY W12-04 AT CLOSE, not found later. `assemblePacket` takes optional `codeIndexHandle` and `factsHandle`; W12-04 omits both, so the packet it ships carries the pinned core block, the repo-map skeleton and the ticket block, but NO relevance-ranked file slices (BLUEPRINT \u00a77.2 item 1, FR-M4) and NO prior confirmed findings. That is the packer's documented degraded path and it is honest, but it is not the whole feature.",
+        "ROOT CAUSE, verified by grep rather than assumed: no caller anywhere in `apps/server/src` references `codeSearch`, `indexProject`, `code-index` or `codeIndexHandle`. `packages/memory`'s own `store/handle.ts` documents that the package never opens a writable connection \u2014 a caller must supply an already-open handle, and the sanctioned opener is `@dokima/events`' `openEventLog(...).db`, which `apps/server` already calls extensively. So the handle is reachable; nothing hands it over.",
+        "ALSO STILL UNEXPORTED: `packages/memory/src/code-index/` has its own local barrel that `packages/memory/src/index.ts` does not re-export \u2014 the identical defect W12-04 fixed for `packer/`, left in place there deliberately because nothing needed it yet. This ticket needs it, so it closes that too, and should be the ticket that finally makes the pattern impossible rather than fixing a third instance by hand.",
+        "DECIDE AND RECORD WHEN THE INDEX IS BUILT: `indexProject` has to run before `codeSearch` returns anything, and a build-run that indexes the whole repo on every ticket would be a large per-ticket cost against Law 9's local-model reality. State the chosen trigger (once per run / mtime-gated / explicit command) and why, in the code, rather than leaving it implicit.",
+        "RED FIXTURE: a ticket whose `write_scope` names a file containing a distinctive symbol produces a packet whose RELEVANT CODE section contains that file \u2014 proven absent against the current handle-less path first. Plus a guard that the degraded path still works unchanged when no index exists, so this never becomes \"Dokima requires an index to run\".",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 at W12-04's close, in the same session that disclosed it, because this wave's founding lesson is that a finding recorded only in prose expires \u2014 W12-02/03 sat in SECURITY_W11f.md for six days for exactly that reason. depends_on W12-04 (done), and it inherits the `handoff-context.ts` territory W12-04 released."
+      ]
     }
   ]
 }
