@@ -10,6 +10,8 @@ import { envTarget, resolveModelTarget, type ResolvedModelTarget } from '../mode
 export interface GatewayConfig {
   readonly baseUrl: string;
   readonly apiKey?: string;
+  /** W12-11: the NAME of a keychain entry (Law 8), resolved at construction time — never the secret. */
+  readonly credentialRef?: string;
   readonly model: string;
   /** Which adapter to construct (W10-03). Absent => oai-compat, the pre-registry behaviour. */
   readonly kind?: import('@dokima/gateway').ProviderKind;
@@ -70,6 +72,10 @@ export function targetToConfig(
     // A credentialRef NAMES a keychain entry; the keychain resolves it at call
     // time (Law 8). The env key remains the CI path only.
     apiKey: env.DOKIMA_MODEL_API_KEY,
+    // W12-11: carried through so providerForConfig can resolve it via the
+    // keychain. Previously dropped here, which is why the comment below
+    // described a resolution that nothing performed.
+    ...(target.credentialRef ? { credentialRef: target.credentialRef } : {}),
     model: target.model,
     kind: target.kind,
     providerId: target.providerId,

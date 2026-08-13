@@ -221,7 +221,7 @@ async function buildBuiltInSpawn(
     taskType: DEFAULT_AGENT_SESSION_TASK_TYPE,
     actorId: command.actorId,
   });
-  const provider: Provider = providerForConfig(targetToConfig(target, process.env));
+  const provider: Provider = await providerForConfig(targetToConfig(target, process.env));
   // W12-04: the context window comes from the Provider, not from
   // `ResolvedModelTarget` (which carries no window field) — so it is read
   // here, where the provider is already built, rather than resolving the

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "asOf": "2026-08-13",
+  "provenance": "Hand-authored from each vendor's published list pricing on the asOf date. NOT fetched from any live registry and NOT machine-verified — a model reading a pricing page cannot be trusted with numbers that gate spend. Prices are USD per 1,000,000 tokens, matching gateway's ModelPrice shape exactly so no unit conversion happens anywhere. ROUND TOWARD OVER-CHARGING when a rate is ambiguous: a price that is slightly high makes a budget breaker fire early, which is safe; a price that is low or missing makes it never fire, which is the defect W12-11 exists to remove. Enterprise and negotiated rates differ from list — those users override per provider rather than editing this file. Staleness is surfaced, never silent: see STALE_AFTER_DAYS in gateway-model-port/pricing.ts.",
+  "notes": {
+    "copilot": "Deliberately absent. GitHub Copilot is a flat-fee subscription with no public per-token price, so copilot.ts defaults to LOCAL_COST_TABLE and metering it at $0 is HONEST rather than a gap — the user already paid a fixed amount. Do not add invented per-token rates here to make it look complete.",
+    "local": "ollama / lm-studio / any self-hosted oai-compat endpoint are genuinely $0 per token — the user owns the hardware. They are absent for the same reason copilot is, and LOCAL_COST_TABLE remains correct for them.",
+    "cacheAndBatch": "Cache-read, cache-write and batch tiers are NOT modelled. Every such tier is CHEAPER than the standard rate, so charging the standard rate over-reports, which is the safe direction. Recorded here so the omission is a known simplification rather than an oversight."
+  },
+  "providers": {
+    "anthropic": {
+      "claude-opus-4-5": { "inputPerMillion": 5.0, "outputPerMillion": 25.0 },
+      "claude-sonnet-4-5": { "inputPerMillion": 3.0, "outputPerMillion": 15.0 },
+      "claude-haiku-4-5": { "inputPerMillion": 1.0, "outputPerMillion": 5.0 },
+      "claude-3-7-sonnet-latest": { "inputPerMillion": 3.0, "outputPerMillion": 15.0 },
+      "claude-3-5-haiku-latest": { "inputPerMillion": 0.8, "outputPerMillion": 4.0 }
+    },
+    "openai": {
+      "gpt-5": { "inputPerMillion": 1.25, "outputPerMillion": 10.0 },
+      "gpt-5-mini": { "inputPerMillion": 0.25, "outputPerMillion": 2.0 },
+      "gpt-4.1": { "inputPerMillion": 2.0, "outputPerMillion": 8.0 },
+      "gpt-4.1-mini": { "inputPerMillion": 0.4, "outputPerMillion": 1.6 },
+      "o3": { "inputPerMillion": 2.0, "outputPerMillion": 8.0 }
+    },
+    "vertex": {
+      "gemini-2.5-pro": { "inputPerMillion": 1.25, "outputPerMillion": 10.0 },
+      "gemini-2.5-flash": { "inputPerMillion": 0.3, "outputPerMillion": 2.5 }
+    }
+  }
+}

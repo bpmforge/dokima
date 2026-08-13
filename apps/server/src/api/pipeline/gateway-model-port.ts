@@ -107,7 +107,7 @@ export interface RealGatewayPort {
  * hang, not a fix.
  */
 async function withGapFeedback<T>(
-  provider: ReturnType<typeof providerForConfig>,
+  provider: Awaited<ReturnType<typeof providerForConfig>>,
   model: string,
   phase: string,
   systemPrompt: string,
@@ -148,7 +148,7 @@ async function withGapFeedback<T>(
 export async function createRealGatewayPort(
   config: GatewayConfig = resolveGatewayConfigFromEnv(),
 ): Promise<RealGatewayPort> {
-  const provider = providerForConfig(config);
+  const provider = await providerForConfig(config);
 
   return {
     async resolveBlueprintInput(drafts, title) {

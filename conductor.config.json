@@ -48,7 +48,7 @@
       [
         "scripts/validate-exports.mjs",
         "--max",
-        "46"
+        "43"
       ]
     ],
     [

@@ -199,10 +199,12 @@ export function createRealOnboardDispatch(
 
     // `providerForConfig` (gateway-model-port.ts), not an unconditional
     // `createOaiCompatProvider`: it constructs the adapter the resolved KIND
-    // names, and refuses cloud kinds by name rather than falling back to
+    // names. W12-11 made it async (a credentialRef is resolved through the
+    // keychain at construction time) and made anthropic/openai/copilot real;
+    // it still refuses by name rather than falling back to
     // localhost. Imported rather than reimplemented — local reimplementation
     // is the documented cause of this seam being unwired in the first place.
-    const provider: Provider = providerForConfig({
+    const provider: Provider = await providerForConfig({
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
       model: config.model,
