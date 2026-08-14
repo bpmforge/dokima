@@ -6244,7 +6244,7 @@
       "module": "cli",
       "lane": "gateway",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/cli/ops/providers-core.ts",
         "apps/server/src/cli/ops/providers-core.test.ts"
