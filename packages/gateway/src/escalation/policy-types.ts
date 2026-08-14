@@ -12,7 +12,7 @@
 import type { ThreeScopeMap } from '../routing/types.js';
 import type { Rung } from './types.js';
 
-export type EscalationPolicyMode = 'ladder' | 'locked' | 'token-gated';
+export type EscalationPolicyMode = 'ladder' | 'locked' | 'token-gated' | 'pinned';
 
 /** The tiers a policy can meaningfully pin or gate on — R0 is free (memory) and R4 is already ladder.ts's terminal park, so neither is a pinnable/gateable rung. */
 export type PolicyRung = Extract<Rung, 'R1' | 'R2' | 'R3'>;
@@ -52,7 +52,61 @@ export interface TokenGatedPolicy {
   readonly namedTier: PolicyRung;
 }
 
-export type EscalationPolicy = LadderPolicy | LockedPolicy | TokenGatedPolicy;
+/**
+ * `pinned` (D-024 option b, W12-12): run EXACTLY this model and nothing else.
+ *
+ * NOT the same promise as `locked`, which is why it is a separate mode rather
+ * than a widening of it. `locked` pins a ladder RUNG and resolves the model
+ * through the matrix at attempt time — so the model it runs can change as the
+ * matrix changes underneath the user. A user who says "use gpt-5 and nothing
+ * else" is choosing a MODEL, and a rung cannot express that. Both modes retry
+ * in place under the same FR-L7 convergence ceiling and both park rather than
+ * climb; the difference is entirely about what is being held fixed.
+ */
+export interface PinnedModelPolicy {
+  readonly mode: 'pinned';
+  /** The exact model id. Never resolved through the matrix — that is the point. */
+  readonly model: string;
+  /**
+   * Which registered provider serves it. A bare model id is ambiguous once
+   * the same name is reachable through more than one provider (an
+   * oai-compat endpoint and a first-party adapter, say), and silently
+   * picking one would be the substitution this mode exists to prevent.
+   */
+  readonly providerId?: string;
+  /** Selects the FR-L7 convergence ceiling, exactly as `locked` does. */
+  readonly tierKind: TierKind;
+}
+
+export type EscalationPolicy =
+  | LadderPolicy
+  | LockedPolicy
+  | TokenGatedPolicy
+  | PinnedModelPolicy;
+
+/**
+ * C-4 is mechanical: reviewer identities and MODELS are distinct by
+ * construction, and a convenience setting does not get to dissolve a hard
+ * constraint. Pinning one model for every role would make maker and verifier
+ * the same model — so that configuration is refused BY NAME rather than
+ * quietly permitted, which is the trap this mode would otherwise walk into.
+ */
+export class PinnedPolicyMakerVerifierError extends Error {
+  constructor(
+    readonly model: string,
+    readonly makerRole: string,
+    readonly verifierRole: string,
+  ) {
+    super(
+      `escalation policy pins model "${model}" for BOTH the maker role ` +
+        `"${makerRole}" and the verifier role "${verifierRole}". C-4 requires ` +
+        `maker and verifier to differ by construction, so this configuration is ` +
+        `refused rather than run: pin a different model for "${verifierRole}", or ` +
+        `leave that role on the ladder.`,
+    );
+    this.name = 'PinnedPolicyMakerVerifierError';
+  }
+}
 
 /** Three-scope map of policy by role (run > project > global, FR-S1) — same shape routing/types.ts's `ScopedRoleMatrix` uses for the model matrix, reused generically rather than reproduced. */
 export type ScopedEscalationPolicy = ThreeScopeMap<EscalationPolicy>;

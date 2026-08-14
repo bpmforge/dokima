@@ -6095,11 +6095,12 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "packages/gateway/src/escalation/policy-types.ts",
         "packages/gateway/src/escalation/policy.ts",
-        "packages/gateway/src/escalation/policy.test.ts"
+        "packages/gateway/src/escalation/policy.test.ts",
+        "packages/gateway/src/escalation/policy-pinned.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -6112,7 +6113,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 from D-024. Deliberately separate from W12-11: this is the POLICY half (can a user express 'this model only'), that is the CAPABILITY half (can a cloud model be constructed at all). Both are needed before option (b) works end to end, and neither is sufficient alone."
+        "Filed 2026-08-13 from D-024. Deliberately separate from W12-11: this is the POLICY half (can a user express 'this model only'), that is the CAPABILITY half (can a cloud model be constructed at all). Both are needed before option (b) works end to end, and neither is sufficient alone.",
+        "write_scope gained `policy-pinned.ts` mid-work, named: appending the pinned mode took `policy.ts` to 461 lines and the repo-wide file-size gate went red \u2014 the FIRST time that gate has caught this session, and it caught accretion exactly as designed (the cap is on the FILE, not the diff, because several individually-reasonable appends become a monolith and no single one looks wrong). Split per CODE_BOOK_PROTOCOL into a chapter module; policy.ts is 383. The chapter deliberately does NOT import policy.ts \u2014 the C-4 guard needs to resolve other roles' policies, so the resolver is INJECTED as a parameter rather than imported back, which would have made the two modules mutually dependent and tripped validate-circular-deps."
       ]
     },
     {
@@ -6202,6 +6204,34 @@
       ],
       "notes": [
         "Filed 2026-08-13 at W12-11's close. W12-11's full test suite passed WITH this stale message still asserted, because the assertion lives against a duplicate string on a path that ticket never touched \u2014 a green suite proving nothing about a claim the UI makes. That is the argument for W12-01's fix generalising: two copies of a contract, and the gate can only see the one under test."
+      ]
+    },
+    {
+      "id": "W12-16",
+      "title": "the wizard offers four model-policy choices, not five \u2014 D-024 option (b) has an implementation now but no way to pick it",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx"
+      ],
+      "depends_on": [
+        "W12-12"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W12-13 shipped the wizard with FOUR choices and stated in its own close notes that D-024 option (b) \u2014 \"one model I pick\" \u2014 would arrive with W12-12. W12-12 has landed: `EscalationPolicyMode` now includes `pinned`, which names an exact model and never substitutes. The wizard still offers four. This ticket is that promise, filed rather than left in prose.",
+        "ADD THE FIFTH CHOICE with the input it actually needs: a pinned policy carries a `model` and an optional `providerId`, so the wizard needs a model identifier from the user \u2014 unlike the other four, which map to fixed presets. Decide honestly whether that is free text (works with no provider configured and no network, but typo-prone) or a list fetched from the chosen provider (better UX, but a network call, and W12-15 must land first because model LISTING for cloud kinds is still broken).",
+        "DO NOT OFFER IT WHERE IT CANNOT WORK. Pinning a cloud model requires a constructible provider: anthropic/openai/copilot construct as of W12-11, vertex does not (W12-14). Either constrain the choice to what is reachable or say plainly what setup it needs \u2014 an option that silently fails at first run is worse than one that is absent.",
+        "C-4 IS ENFORCED AT RUN TIME AND MUST BE SURFACED AT PICK TIME: `PinnedPolicyMakerVerifierError` refuses a configuration that pins one model for both maker and verifier. A user who picks a single model in the wizard must not discover that at their first run \u2014 either the wizard pins only the maker role and leaves verifiers on the ladder (stating so), or it asks for a second, distinct model.",
+        "RED FIXTURE: choosing the pinned option persists `escalationPolicy: { mode: 'pinned', model: <chosen> }` at the scope the user selected, proven against the current four-choice wizard first; and the C-4 collision above is prevented or explained before the wizard completes.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 at W12-12's close. W12-13's STATUS entry says option (b) \"arrives with W12-12\" \u2014 that was true of the ENGINE and not of the UI, and the distinction is exactly the kind that evaporates if it lives only in a close note. The engine half is done and tested; this is the pick-time half."
       ]
     }
   ]

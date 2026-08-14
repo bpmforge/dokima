@@ -455,3 +455,110 @@ describe('property: gates, maker!=verifier, and NEVER-AUTO hold across all three
 function RUNG_INDEX(rung: Rung): number {
   return ['R0', 'R1', 'R2', 'R3', 'R4'].indexOf(rung);
 }
+
+describe('runEscalationPolicy: pinned mode (W12-12, D-024 option b)', () => {
+  const pinnedScope = (model: string, extra: Record<string, unknown> = {}) => ({
+    global: {
+      'coding-agent': { mode: 'pinned' as const, model, tierKind: 'metered' as const },
+      ...extra,
+    },
+  });
+
+  it(
+    'RED FIXTURE: runs the NAMED MODEL and never substitutes. `locked` pins a ' +
+      'ladder RUNG and resolves the model through the matrix, so it can run a ' +
+      'different model as the matrix changes; pinning names the model itself',
+    async () => {
+      const seen: string[][] = [];
+      const outcome = await runEscalationPolicy(
+        baseInput({
+          policyScope: pinnedScope('gpt-5'),
+          runAttempt: ({ modelChain }) => {
+            seen.push([...modelChain]);
+            return Promise.resolve({ passed: true, receipts: [] });
+          },
+        }),
+      );
+      expect(outcome.mode).toBe('pinned');
+      expect(outcome.status).toBe('resolved');
+      expect(outcome.model).toBe('gpt-5');
+      // Exactly one model was ever offered, and it is the pinned one — no
+      // fallback chain, no matrix-resolved neighbour.
+      expect(seen).toEqual([['gpt-5']]);
+    },
+  );
+
+  it(
+    'PARKS when the pinned model is exhausted rather than escalating — a silent ' +
+      'climb to a stronger model is precisely what pinning promises will not happen',
+    async () => {
+      const offered: string[] = [];
+      const outcome = await runEscalationPolicy(
+        baseInput({
+          policyScope: pinnedScope('gpt-5'),
+          runAttempt: ({ modelChain }) => {
+            offered.push(modelChain[0]!);
+            return Promise.resolve({
+              passed: false,
+              receipts: [{ name: 'test', exitCode: 1, gapCount: 1 }],
+            });
+          },
+        }),
+      );
+      expect(outcome.status).toBe('blocked');
+      expect(outcome.parkedReason).toBe('pinned_model_exhausted');
+      // Every attempt used the pinned model; nothing else was ever tried.
+      expect(new Set(offered)).toEqual(new Set(['gpt-5']));
+      expect(outcome.events).toEqual([]);
+    },
+  );
+
+  it(
+    'C-4 RED FIXTURE: pinning ONE model for maker AND verifier is refused by name. ' +
+      'A convenience setting does not get to dissolve a hard constraint — maker and ' +
+      'verifier are distinct by construction (CLAUDE.md law 5)',
+    async () => {
+      await expect(
+        runEscalationPolicy(
+          baseInput({
+            policyScope: pinnedScope('gpt-5', {
+              challenger: { mode: 'pinned' as const, model: 'gpt-5', tierKind: 'metered' as const },
+            }),
+            runAttempt: () => Promise.resolve({ passed: true, receipts: [] }),
+          }),
+        ),
+      ).rejects.toThrowError(/C-4 requires maker and verifier to differ/);
+    },
+  );
+
+  it('a DIFFERENT verifier pin is allowed — the constraint is distinctness, not a ban on pinning', async () => {
+    const outcome = await runEscalationPolicy(
+      baseInput({
+        policyScope: pinnedScope('gpt-5', {
+          challenger: {
+            mode: 'pinned' as const,
+            model: 'claude-opus-4-5',
+            tierKind: 'metered' as const,
+          },
+        }),
+        runAttempt: () => Promise.resolve({ passed: true, receipts: [] }),
+      }),
+    );
+    expect(outcome.status).toBe('resolved');
+    expect(outcome.model).toBe('gpt-5');
+  });
+
+  it('resolves through the SAME three-scope per-role path D-018 already built', () => {
+    const scope: ScopedEscalationPolicy = {
+      global: { 'coding-agent': { mode: 'locked', pinnedTier: 'R1', tierKind: 'metered' } },
+      run: { 'coding-agent': { mode: 'pinned', model: 'gpt-5', tierKind: 'metered' } },
+    };
+    expect(resolveEscalationPolicy(scope, 'coding-agent')).toEqual({
+      mode: 'pinned',
+      model: 'gpt-5',
+      tierKind: 'metered',
+    });
+    // An unconfigured role still falls back to ladder, unchanged.
+    expect(resolveEscalationPolicy(scope, 'challenger')).toEqual({ mode: 'ladder' });
+  });
+});
