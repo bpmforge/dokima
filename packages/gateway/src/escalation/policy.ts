@@ -39,6 +39,7 @@ import {
   type RungAttemptRecord,
 } from './ladder.js';
 import { noopMemoryConsultHook, type MemoryConsultHook } from './memory-hook.js';
+import { runPinnedPolicy } from './policy-pinned.js';
 import { RUNG_ORDER, type FailureReceipt, type GateOutcome, type Rung } from './types.js';
 import {
   CONVERGENCE_CEILING,
@@ -61,6 +62,7 @@ export type {
   EscalationTokenRequest,
   LadderPolicy,
   LockedPolicy,
+  PinnedModelPolicy,
   PolicyRung,
   ScopedEscalationPolicy,
   TierKind,
@@ -70,6 +72,7 @@ export {
   CONVERGENCE_CEILING,
   LADDER_POLICY,
   noopEscalationTokenHook,
+  PinnedPolicyMakerVerifierError,
 } from './policy-types.js';
 
 /** Resolves the role's escalation policy across run > project > global scopes (D-018: three-scope, per role); 'ladder' when nothing is set for the role — ladder stays the default per D-018. */
@@ -80,7 +83,10 @@ export function resolveEscalationPolicy(
   return resolveScopedValue(scope, role)?.value ?? LADDER_POLICY;
 }
 
-export type PolicyParkedReason = 'locked_ceiling_reached' | 'awaiting_escalation_token';
+export type PolicyParkedReason =
+  | 'locked_ceiling_reached'
+  | 'awaiting_escalation_token'
+  | 'pinned_model_exhausted';
 
 export type EscalationPolicyOutcome = EscalationLadderOutcome & {
   readonly mode: EscalationPolicy['mode'];
@@ -164,6 +170,12 @@ export async function runEscalationPolicy(
       return runLockedPolicy(input, policy, role);
     case 'token-gated':
       return runTokenGatedPolicy(input, policy, role);
+    case 'pinned':
+      // The resolver is INJECTED rather than imported by the chapter: the C-4
+      // guard needs to resolve other roles' policies, and importing
+      // `resolveEscalationPolicy` back from this file would make the two
+      // modules mutually dependent — which `validate-circular-deps` gates.
+      return runPinnedPolicy(input, policy, role, resolveEscalationPolicy);
   }
 }
 
