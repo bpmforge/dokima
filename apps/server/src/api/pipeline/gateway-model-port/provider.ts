@@ -103,7 +103,14 @@ async function resolveApiKey(config: GatewayConfig, kind: string): Promise<strin
 }
 
 /** Prices for a paid kind, refusing on unpriced; the stale warning is surfaced, never swallowed. */
-function pricedTableFor(kind: string, model: string, warn: (msg: string) => void) {
+function pricedTableFor(
+  kind: string,
+  model: string,
+  warn: (msg: string) => void,
+  purpose: 'inference' | 'listing',
+) {
+  // Listing carries no prices by design — see ProviderForConfigOptions.purpose.
+  if (purpose === 'listing') return {};
   const lookup = costTableFor(kind, model);
   if (lookup.stale) warn(stalePricingWarning(lookup));
   return lookup.costTable;
@@ -112,6 +119,23 @@ function pricedTableFor(kind: string, model: string, warn: (msg: string) => void
 export interface ProviderForConfigOptions {
   /** Where a stale-pricing warning goes. Defaults to stderr — it must never be silent. */
   readonly warn?: (message: string) => void;
+  /**
+   * What the provider is FOR (W12-15). `'inference'` (the default) requires a
+   * real price table, because an unpriced paid call meters $0 and W2-07's
+   * breakers can never trip on it.
+   *
+   * `'listing'` exists for one genuinely circular case: `listModels()` is how
+   * a user DISCOVERS which models a provider offers, so demanding a per-model
+   * price before listing would require knowing the model in order to ask what
+   * the models are. A listing provider resolves the credential exactly as
+   * normal and simply carries no cost table.
+   *
+   * **NEVER CHAT THROUGH A LISTING PROVIDER.** It cannot meter, so it would
+   * reintroduce the exact $0 hole W12-11 closed. The only caller is the
+   * provider-catalog route; if a second one ever appears, that is the moment
+   * to make this a distinct return type rather than a flag.
+   */
+  readonly purpose?: 'inference' | 'listing';
 }
 
 export async function providerForConfig(
@@ -120,6 +144,7 @@ export async function providerForConfig(
 ): Promise<Provider> {
   const id = config.providerId ?? 'pipeline-run';
   const warn = options.warn ?? ((m: string) => process.stderr.write(`[pricing] ${m}\n`));
+  const purpose = options.purpose ?? 'inference';
 
   switch (config.kind) {
     case 'ollama':
@@ -131,7 +156,7 @@ export async function providerForConfig(
       return createAnthropicProvider({
         id,
         apiKey: await resolveApiKey(config, 'anthropic'),
-        costTable: pricedTableFor('anthropic', config.model, warn),
+        costTable: pricedTableFor('anthropic', config.model, warn, purpose),
         ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
         ...(config.requestTimeoutMs === undefined
           ? {}
@@ -143,7 +168,7 @@ export async function providerForConfig(
       return createOpenAiProvider({
         id,
         apiKey: await resolveApiKey(config, 'openai'),
-        costTable: pricedTableFor('openai', config.model, warn),
+        costTable: pricedTableFor('openai', config.model, warn, purpose),
         ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
         ...(config.requestTimeoutMs === undefined
           ? {}
@@ -187,7 +212,7 @@ export async function providerForConfig(
       const paid = paidHostKind(config.baseUrl);
       const costTable =
         paid && !UNPRICED_BY_DESIGN.has(paid)
-          ? pricedTableFor(paid, config.model, warn)
+          ? pricedTableFor(paid, config.model, warn, purpose)
           : undefined;
       return createOaiCompatProvider({
         id,

@@ -6182,13 +6182,15 @@
       "title": "the Providers panel still tells users cloud kinds are \"not yet constructible\" \u2014 a second copy of a message that is now false",
       "phase": 12,
       "module": "cli",
-      "lane": "core",
+      "lane": "gateway",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/server/src/api/server/providers-routes.ts",
         "apps/server/src/api/server/providers-routes.test.ts",
-        "apps/web/src/settings/ProvidersPanel.test.tsx"
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts"
       ],
       "depends_on": [
         "W12-11"
@@ -6203,7 +6205,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 at W12-11's close. W12-11's full test suite passed WITH this stale message still asserted, because the assertion lives against a duplicate string on a path that ticket never touched \u2014 a green suite proving nothing about a claim the UI makes. That is the argument for W12-01's fix generalising: two copies of a contract, and the gate can only see the one under test."
+        "Filed 2026-08-13 at W12-11's close. W12-11's full test suite passed WITH this stale message still asserted, because the assertion lives against a duplicate string on a path that ticket never touched \u2014 a green suite proving nothing about a claim the UI makes. That is the argument for W12-01's fix generalising: two copies of a contract, and the gate can only see the one under test.",
+        "RE-LANED core -> gateway and write_scope widened at claim, named. Listing models needs a CREDENTIAL but not a PRICE TABLE, and `providerForConfig` demands a model id to look a price up \u2014 which is circular, because listing is what tells you the models. So the catalog path needs a listing mode in `provider.ts`, and that file is owned by W12-14 (lane `gateway`); a `core`-laned ticket touching it is a P8 cross-lane failure. Re-laning is the correct fix rather than a workaround: the lane is a PARALLELISM CONTRACT, and two tickets that genuinely share a file should share a lane so they can never run at once. Same reasoning W12-04 used to sit in `core` beside W12-03."
       ]
     },
     {
@@ -6232,6 +6235,33 @@
       ],
       "notes": [
         "Filed 2026-08-13 at W12-12's close. W12-13's STATUS entry says option (b) \"arrives with W12-12\" \u2014 that was true of the ENGINE and not of the UI, and the distinction is exactly the kind that evaporates if it lives only in a close note. The engine half is done and tested; this is the pick-time half."
+      ]
+    },
+    {
+      "id": "W12-17",
+      "title": "a THIRD copy of the adapter dispatch lives in cli/ops/providers-core.ts and nothing has updated it since W12-11",
+      "phase": 12,
+      "module": "cli",
+      "lane": "gateway",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/cli/ops/providers-core.ts",
+        "apps/server/src/cli/ops/providers-core.test.ts"
+      ],
+      "depends_on": [
+        "W12-15"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND BY W12-15, WHICH REMOVED THE SECOND COPY. `buildProvider` (`apps/server/src/cli/ops/providers-core.ts:54`) switches on `entry.kind` and constructs adapters itself \u2014 the ORIGINAL of the duplicate W12-15 just deleted, and the one whose existence that duplicate's own comment cited as the reason it was copied ('duplicated here rather than imported, since that module lives under cli/ops and this ticket's write_scope doesn't cover it'). Verify what it does with cloud kinds before assuming: if it still refuses them, the CLI and the API now disagree about whether a registered OpenAI provider works.",
+        "DELEGATE TO `providerForConfig`, do not re-fix in place. Three independent copies of 'which adapter does this kind mean' is how the second one happened and the third survived; the point of this ticket is that ONE dispatch exists afterwards, not that all three are individually correct.",
+        "CHECK THE PURPOSE FLAG CAREFULLY. `providerForConfig` takes `purpose: 'inference' | 'listing'` (W12-15); a listing provider carries NO cost table and must never serve a chat. Decide per call site in `providers-core.ts` which one it is, and say so \u2014 defaulting to 'inference' is the safe direction because it refuses on an unpriced model rather than metering at /bin/zsh.",
+        "RED FIXTURE: a registered cloud provider behaves the SAME through the CLI path as through the API path \u2014 proven divergent first, if it is. If it turns out the CLI path already delegates or is dead, say so plainly and close the ticket as a no-op rather than inventing work.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-13 at W12-15's close. The count matters: W12-11 fixed copy 1, W12-15 deleted copy 2, and copy 3 was never touched by either \u2014 each ticket saw only the copy in its own write_scope. A contract held in three places where two were out of scope is the strongest version of the W12-01 lesson this wave has produced."
       ]
     }
   ]

@@ -343,10 +343,48 @@ describe('GET providers/:providerId/models (W10-42 AC2)', () => {
     const body = res.json();
     expect(body.status).toBe('unreachable');
     expect(body.source).toBeNull();
-    expect(body.reason).toBe(
-      'provider kind "openai" is registered but not yet constructible from the pipeline: it needs a resolved credential and a real price table (W10 follow-up). Local kinds (ollama, lm-studio, oai-compat) work today.',
-    );
+    // W12-15 RED FIXTURE: this used to assert "not yet constructible from the
+    // pipeline". W12-11 made openai constructible, so that sentence became
+    // FALSE while this test stayed green — because it was asserting a
+    // DUPLICATE copy of the message living on the model-listing path, which
+    // W12-11 never touched. The panel told users a working feature did not
+    // work. The reason is now the accurate one: an `openai` entry registered
+    // with no credentialRef cannot list models because there is no credential,
+    // and it says exactly that.
+    expect(body.reason).toContain('needs a credential');
+    expect(body.reason).not.toContain('not yet constructible');
   });
+
+  it(
+    'W12-15: a cloud entry WITH a resolvable credential is no longer refused for ' +
+      'being a cloud kind — it gets as far as a real listing attempt, which is ' +
+      'what "or your cloud provider" has to mean',
+    async () => {
+      const { app, id } = await boot();
+      const prev = process.env.DOKIMA_MODEL_API_KEY;
+      process.env.DOKIMA_MODEL_API_KEY = 'test-key';
+      try {
+        await app.inject({
+          method: 'PUT',
+          url: `/api/v1/projects/${id}/providers`,
+          headers,
+          payload: { providers: [{ id: 'oa2', kind: 'openai', enabled: true }] },
+        });
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/v1/projects/${id}/providers/oa2/models`,
+          headers,
+        });
+        expect(res.statusCode).toBe(200);
+        // No network in tests (law 9a), so the attempt fails at the FETCH —
+        // never at "this kind cannot be built". That distinction is the ticket.
+        expect(res.json().reason ?? '').not.toContain('not yet constructible');
+      } finally {
+        if (prev === undefined) delete process.env.DOKIMA_MODEL_API_KEY;
+        else process.env.DOKIMA_MODEL_API_KEY = prev;
+      }
+    },
+  );
 });
 
 describe('POST providers/credentials (W10-42 AC3)', () => {
