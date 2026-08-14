@@ -6184,7 +6184,7 @@
       "module": "cli",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/api/server/providers-routes.ts",
         "apps/server/src/api/server/providers-routes.test.ts",
