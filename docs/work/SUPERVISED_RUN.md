@@ -20,6 +20,9 @@ What this run tests, in one sitting:
 ## 1. Seed a scratch project
 
 ```sh
+cd ~/Code/shipwright
+pnpm build          # REQUIRED — cli-entry.mjs prefers apps/server/dist/main.js,
+                    # so a stale bundle silently runs old code
 pnpm exec tsx scripts/supervised-run/seed.ts /tmp/dokima-run
 ```
 
@@ -30,36 +33,53 @@ It is **genuinely red before the run** — `node src/check.mjs` prints
 agent doing real work, and the close gate re-runs that same command
 out-of-session (SC-02) rather than trusting what the agent says.
 
-## 2. Point it at a model
+## 2. Configure the model IN THE GUI (not env vars)
 
-**OpenAI** (recommended for the first run — it removes model capability as a
-variable, so a failure is Dokima's fault, not a small model's):
-
-```sh
-export DOKIMA_MODEL_BASE_URL=https://api.openai.com/v1
-export DOKIMA_MODEL_API_KEY=sk-...
-export DOKIMA_MODEL_ID=gpt-5
-export DOKIMA_SIGNING_KEY=supervised-run-key
-```
-
-**Local (LM Studio)** — the configuration C-1 guarantees, and the one W11-2 is
-actually written against. Worth doing second, once the loop is known to work:
-
-```sh
-export DOKIMA_MODEL_BASE_URL=http://127.0.0.1:1234/v1
-export DOKIMA_MODEL_ID=<whatever LM Studio is serving>
-export DOKIMA_SIGNING_KEY=supervised-run-key
-```
-
-`DOKIMA_SIGNING_KEY` is not optional: `executeBuildRun` refuses (exit 2) rather
-than let the close gate mint receipts that verify against nothing.
-
-## 3. Run it
+**Use the product's own surfaces.** `resolveModelTarget` prefers the registry
+over environment variables, so a GUI-registered provider is what a real user
+gets — and it is the only path that exercises what W12-11 built: the
+first-party `openai`/`anthropic` adapters, `credentialRef` → keychain
+resolution, and real per-model pricing. The env vars go through generic
+`oai-compat` instead and skip all three.
 
 ```sh
 cd /tmp/dokima-run
-node /Users/bmatthews/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs \
-  run start --mode new_product
+node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs
+```
+
+That boots the core and opens the Canvas at <http://127.0.0.1:4317>. Then:
+
+1. **Settings → Providers → Add.** Choose kind **OpenAI** (or Anthropic).
+   Paste the API key — it is exchanged for a keychain ref through
+   `POST /providers/credentials` and the secret itself never touches
+   `settings.json` or the event log (Law 8, FR-S2).
+2. **Settings → Run Setup Wizard** to pick how work is modelled — local only ·
+   start cheap and escalate · escalate only when I approve · always use my best
+   cloud model (D-024). Since W12-18 this choice actually governs the run.
+3. Set only the signing key, which has no GUI surface yet:
+
+```sh
+export DOKIMA_SIGNING_KEY=supervised-run-key
+```
+
+> **Do not set `DOKIMA_MODEL_*`.** They are the documented CI path and they
+> lose to the registry anyway; setting them would mean testing the wrong path
+> and getting a falsely reassuring result.
+
+**Known gap (W12-19):** the wizard's own provider step offers only LM Studio /
+OpenAI-compatible / Vertex, so register OpenAI in the **Providers panel**, not
+in the wizard.
+
+## 3. Start the run
+
+**Known gap (W12-20): there is no UI or API way to start a build run.** Every
+configuration surface is a GUI and the one action that matters is a terminal
+command. That is a real product gap, filed, and not something to work around
+today — so start it from the CLI, against the provider you just registered:
+
+```sh
+cd /tmp/dokima-run
+node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs run start --mode new_product
 ```
 
 Watch it. Do not walk away — that is the point of the word *supervised*.

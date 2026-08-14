@@ -6300,6 +6300,59 @@
         "WRITE_SCOPE WIDENED, named: LandEscalationPolicy and ScopedLandEscalationPolicy were never re-exported from harbormaster barrel, so run-build.ts could not NAME the policyScope it needs to pass. That is part of the causal story, not an incidental blocker \u2014 a type you cannot name is a parameter you do not pass, and this is the same unexported-mechanism shape as W12-04 packer barrel and W12-11 openai adapter. Owned by no open ticket; no P8 issue.",
         "write_scope gained run-build-policy.ts: adding the resolver took run-build.ts to 468 lines and the repo-wide file-size gate went red. Second accretion catch of the session (policy.ts was the first) \u2014 both were several reasonable appends, neither was one oversized write, which is exactly the case a per-FILE cap exists for and a per-diff cap cannot see."
       ]
+    },
+    {
+      "id": "W12-19",
+      "title": "the setup wizard offers three provider kinds while the Providers panel offers seven \u2014 you cannot finish first-run setup on a cloud provider",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-14 while writing supervised-run instructions, after the founder asked why the instructions used env vars instead of the GUI. The wizard step 2 select offers exactly three options \u2014 LM Studio, OpenAI-compatible endpoint, Vertex AI \u2014 while PROVIDER_KINDS (providers-api.ts) carries seven, and the Providers panel renders all of them with a credential field. So a user whose plan is OpenAI or Anthropic cannot complete FIRST-RUN setup on it; they finish the wizard on something else and then go find Settings.",
+        "THE WIZARD IS THE FIRST THING A NEW USER SEES, which is why this is not cosmetic: it is the surface that decides whether the product feels like it supports cloud providers at all. W12-11 made anthropic/openai/copilot constructible and W12-15 made them listable; the wizard never learned.",
+        "REUSE `PROVIDER_KINDS` AND `KIND_LABEL` from providers-api.ts rather than hand-listing options a fourth time \u2014 the option list here IS a fourth copy of the kind table, and this wave has now fixed three copies of the adapter dispatch for exactly that reason (W12-11/15/17).",
+        "RESPECT THE ENDPOINT/CREDENTIAL SHAPE PER KIND: `hasFixedEndpoint` already says which kinds take a base URL and which take a credential only. A fixed-endpoint kind must not show a base-URL box, and a cloud kind must take the API key through the same POST credentials route the panel uses (Law 8 \u2014 the secret is exchanged for a ref, never stored in settings).",
+        "RED FIXTURE: the wizard renders an option for every kind in `PROVIDER_KINDS` (proven to render only three first), and selecting `openai` submits a credentialRef rather than a raw key.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-14. Sibling of W12-20: together they are the difference between \"configure connectivity in a GUI and go\" being true and being half-true."
+      ]
+    },
+    {
+      "id": "W12-20",
+      "title": "no UI or API path starts a build run \u2014 the GUI can configure everything and then cannot run anything",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "apps/web/src/board/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-14, same trigger as W12-19. Grep for a route driving `runLandLoop`/`executeBuildRun` across `apps/server/src/api` returns NOTHING: `runs-routes.ts` serves `GET /tickets/:id/runs` and `GET /runs/:id/trace`, both read-only. A user can register providers, choose a model policy in the wizard, watch the board and replay a trace \u2014 and has no way to START the work from the product. `dokima run start` is the only entry point.",
+        "THIS IS THE GAP BETWEEN THE PRODUCT AND ITS OWN PITCH: the README says you describe what you want and Dokima works the board. Every configuration surface is a GUI and the one action that matters is a terminal command.",
+        "START A RUN AS A BACKGROUND JOB, not a held HTTP request \u2014 W10-58 already moved the creation pipeline off a held request onto a background job for exactly this reason, and a build run is far longer. Reuse that machinery rather than inventing a second job mechanism.",
+        "THE REFUSALS MUST REACH THE UI, not just a server log. `executeBuildRun` refuses by name for an unset signing key, an unreadable vault, an unconstructible provider kind and (since W12-18) a pinned policy the land loop cannot honour. Each of those is something a user can act on, and each currently only reaches stderr.",
+        "RED FIXTURE: starting a run from the API moves a claimable ticket off `ready` and the trace becomes visible \u2014 proven impossible against the current read-only routes first. Plus: a run started with no signing key surfaces the named refusal in the response rather than failing silently.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-14 after the founder asked why supervised-run instructions used env vars and a CLI rather than the GUI. The instructions were correct about what works TODAY, and that is the finding: the product configures in a GUI and runs from a terminal. Note the supervised run itself does NOT need this \u2014 it can be started from the CLI against GUI-registered providers, which is the path docs/work/SUPERVISED_RUN.md now documents."
+      ]
     }
   ]
 }
