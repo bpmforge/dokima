@@ -6222,7 +6222,8 @@
         "apps/web/src/onboarding/FirstRunWizard.test.tsx"
       ],
       "depends_on": [
-        "W12-12"
+        "W12-12",
+        "W12-18"
       ],
       "stories": [],
       "acceptance": [
@@ -6234,7 +6235,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 at W12-12's close. W12-13's STATUS entry says option (b) \"arrives with W12-12\" \u2014 that was true of the ENGINE and not of the UI, and the distinction is exactly the kind that evaporates if it lives only in a close note. The engine half is done and tested; this is the pick-time half."
+        "Filed 2026-08-13 at W12-12's close. W12-13's STATUS entry says option (b) \"arrives with W12-12\" \u2014 that was true of the ENGINE and not of the UI, and the distinction is exactly the kind that evaporates if it lives only in a close note. The engine half is done and tested; this is the pick-time half.",
+        "RELEASED 2026-08-13 before any code, on a discovery that changes what this ticket MEANS. The escalation policy the wizard writes is READ BY NOTHING: `run-build.ts` never passes `policyScope` to `runLandLoop`, so `loop-land.ts:299` resolves `options.policyScope ?? {}` and every run gets `ladder` regardless of what the user chose. Grep confirms no reader of the `escalationPolicy` settings key exists anywhere in non-test code. Adding a FIFTH inert control to a wizard whose other four are already inert would be worse than leaving it at four. Now depends on W12-18 (wire the setting into the run) and W12-12 (which shipped `pinned` in the GATEWAY policy type \u2014 `LandEscalationPolicy` in harbormaster is a separate union of ladder/locked/token-gated and does not model it, so honouring a pinned choice end to end is its own step)."
       ]
     },
     {
@@ -6267,6 +6269,36 @@
       "notes": [
         "Filed 2026-08-13 at W12-15's close. The count matters: W12-11 fixed copy 1, W12-15 deleted copy 2, and copy 3 was never touched by either \u2014 each ticket saw only the copy in its own write_scope. A contract held in three places where two were out of scope is the strongest version of the W12-01 lesson this wave has produced.",
         "WRITE_SCOPE WIDENED at claim, named: `buildProvider` becomes async (it now delegates to the async `providerForConfig`), so its two callers \u2014 `doctor.ts` and `providers-refresh.ts` \u2014 come with it. NOT A NO-OP, which the acceptance explicitly allowed for: `isProviderConfigEntry` accepted only ollama/lm-studio/oai-compat and `loadConfiguredProviders` SILENTLY SKIPS anything else, so a registered anthropic/openai/copilot entry was invisible to both callers. The user-visible consequence is that `doctor` \u2014 the command the README tells you to run before trusting anything \u2014 reported a clean bill of health while saying nothing about the provider the user had actually configured."
+      ]
+    },
+    {
+      "id": "W12-18",
+      "title": "the escalation policy setting is written by two UI surfaces and read by nothing \u2014 every run silently gets ",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "write_scope": [
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/run-build-policy.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-13 BY W12-16, WHICH RELEASED ITSELF RATHER THAN ADD A FIFTH INERT CONTROL. `EscalationPolicyPanel` and (since W12-13) the first-run wizard both persist an `escalationPolicy` setting. `run-build.ts` never passes `policyScope` to `runLandLoop`, so `loop-land.ts:299` evaluates `resolveLandEscalationPolicy(options.policyScope ?? {}, role)` against an empty scope and returns `LADDER_LAND_POLICY` every time. Verified by grep: NO reader of that settings key exists in non-test code.",
+        "THIS INVALIDATES A CLAIM ALREADY IN STATUS.md, corrected in the same commit rather than left standing: W12-13's entry says the policy is \"now CHOSEN, not inherited from `resolveLandEscalationPolicy's fallback\". True of what is PERSISTED, false of what RUNS. D-024's promise is inert until this ticket lands.",
+        "READ THE EFFECTIVE SETTING and map it to `ScopedLandEscalationPolicy`, which is keyed by ROLE across run > project > global. The stored setting is a single flat object, so decide and state which role it applies to \u2014 **the maker role only** is the right answer: it makes the setting mean what a user thinks it means, and it keeps verifiers on the ladder, which satisfies C-4 by construction rather than by a later refusal.",
+        "`pinned` HAS NO LAND-POLICY EQUIVALENT and must not be silently dropped. W12-12 added `pinned` to the GATEWAY policy union; `LandEscalationPolicy` (harbormaster) is a separate union of ladder/locked/token-gated. A stored `pinned` policy must refuse BY NAME at run start \u2014 naming that the land loop does not yet honour it \u2014 rather than falling through to `ladder`, which would be the same silent substitution W12-12 exists to prevent.",
+        "RED FIXTURE: a project with a stored `token-gated` policy produces a run whose resolved policy is token-gated, not ladder \u2014 proven to resolve as ladder against the current code first. Plus: a stored `pinned` policy refuses by name rather than running as ladder.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed and claimed 2026-08-13, mid-W12-16. This is the EIGHTH instance of the wave's recurring class \u2014 a complete, tested mechanism with no production caller \u2014 and the most consequential, because the thing left unwired is the product promise D-024 was written to make. The four choices the wizard offers are all currently decorative.",
+        "WRITE_SCOPE WIDENED, named: LandEscalationPolicy and ScopedLandEscalationPolicy were never re-exported from harbormaster barrel, so run-build.ts could not NAME the policyScope it needs to pass. That is part of the causal story, not an incidental blocker \u2014 a type you cannot name is a parameter you do not pass, and this is the same unexported-mechanism shape as W12-04 packer barrel and W12-11 openai adapter. Owned by no open ticket; no P8 issue.",
+        "write_scope gained run-build-policy.ts: adding the resolver took run-build.ts to 468 lines and the repo-wide file-size gate went red. Second accretion catch of the session (policy.ts was the first) \u2014 both were several reasonable appends, neither was one oversized write, which is exactly the case a per-FILE cap exists for and a per-diff cap cannot see."
       ]
     }
   ]

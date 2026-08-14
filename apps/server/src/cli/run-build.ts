@@ -40,6 +40,11 @@ import {
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import {
+  ESCALATION_POLICY_SETTINGS_KEY,
+  resolvePolicyScope,
+} from './run-build-policy.js';
+
+import {
   CostLedger,
   FitnessCardStore,
   ROLE_CODING_AGENT,
@@ -294,6 +299,16 @@ export async function executeBuildRun(
 
   const secretValues = await collectSecretValues(vault.vault, io.cwd);
 
+  // W12-18: the policy the user chose, read for the first time.
+  const policyScoped = await getEffectiveSettings({ projectDir: io.cwd });
+  const policyRaw = resolveEffectiveValue(ESCALATION_POLICY_SETTINGS_KEY, policyScoped)
+    ?.value as JsonValue | undefined;
+  const policyResult = resolvePolicyScope(policyRaw, ROLE_CODING_AGENT);
+  if ('refusal' in policyResult) {
+    io.stderr(`${runId} did not start: ${policyResult.refusal}`);
+    return 2;
+  }
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   /**
@@ -338,6 +353,7 @@ export async function executeBuildRun(
     // W12-04: the packed builder, not `defaultHandoffBuilder()`. Until this
     // ticket every ticket session received `ticket.interface ?? ticket.title`
     // as its entire context while FR-L5's Context Packer sat unreachable.
+    policyScope: policyResult.scope,
     buildHandoff: await createPackedHandoffBuilder({
       repoRoot: io.cwd,
       modelWindowTokens: contextWindowTokens ?? 0,

@@ -61,6 +61,15 @@ export type {
 } from './loop-claim.js';
 
 export { runLandLoop } from './loop-land.js';
+/**
+ * W12-18: the land-loop policy types were never re-exported, so `run-build.ts`
+ * could not name the `policyScope` it needs to pass — which is part of why
+ * nothing ever passed one and the user's escalation choice went unread.
+ */
+export type {
+  LandEscalationPolicy,
+  ScopedLandEscalationPolicy,
+} from './loop-land-policy.js';
 export type {
   LandAttempt,
   LandLoopOptions,

@@ -13,6 +13,7 @@ import {
 } from '@dokima/shared';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { executeBuildRun, tokenizeAgentCommand } from './run-build.js';
+import { resolvePolicyScope } from './run-build-policy.js';
 import { AGENT_RUNNER_SETTINGS_KEY } from '../api/server/settings-types.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
 
@@ -512,5 +513,108 @@ describe('tokenizeAgentCommand (W12-03)', () => {
 
   it('an unterminated quote yields the token as typed rather than throwing', () => {
     expect(tokenizeAgentCommand('agent "unclosed')).toEqual(['agent', 'unclosed']);
+  });
+});
+
+describe('executeBuildRun policy wiring (W12-18)', () => {
+  let project: TempProject;
+  afterEach(async () => { await project?.cleanup(); });
+
+  it(
+    'W12-18 CALL-SITE FIXTURE: a stored PINNED policy refuses the real run with exit 2. ' +
+      'The unit tests above only prove the resolver exists — reverting the call site ' +
+      'leaves them green, so this is the one that proves executeBuildRun READS the setting.',
+    async () => {
+      project = await gitRepoProject();
+      const log = openWritableLog(resolveDbPath(project.cwd));
+      seedTicket(log);
+      await writeProjectSetting(project.cwd, {
+        key: 'escalationPolicy',
+        value: { mode: 'pinned', model: 'gpt-5', tierKind: 'metered' },
+        actorId: 'test',
+      });
+      const io = collectIO();
+      try {
+        const code = await withSigningKey(() =>
+          executeBuildRun(log, { projectId: 'p', actorId: 'worker-1' }, 'run-1', {
+            cwd: project.cwd,
+            ...io.io,
+            now: NOW,
+          }),
+        );
+        expect(code).toBe(2);
+        expect(io.stderr.join('\n')).toContain('does not yet honour');
+      } finally {
+        log.close();
+      }
+    },
+    30_000,
+  );
+});
+
+describe('resolvePolicyScope (W12-18)', () => {
+  it(
+    'RED FIXTURE: a stored token-gated policy REACHES the run. Two UI surfaces ' +
+      'have been persisting escalationPolicy and nothing read it — run-build.ts ' +
+      'never passed policyScope, so loop-land resolved {} and every run took the ' +
+      'ladder no matter what the user chose',
+    () => {
+      const result = resolvePolicyScope({ mode: 'token-gated', namedTier: 'R2' }, 'coding-agent');
+      expect('refusal' in result).toBe(false);
+      if ('refusal' in result) return;
+      expect(result.scope.global?.['coding-agent']).toEqual({
+        mode: 'token-gated',
+        namedTier: 'R2',
+      });
+    },
+  );
+
+  it('locked carries its pinned tier and tier kind through', () => {
+    const result = resolvePolicyScope(
+      { mode: 'locked', pinnedTier: 'R1', tierKind: 'local' },
+      'coding-agent',
+    );
+    expect('refusal' in result).toBe(false);
+    if ('refusal' in result) return;
+    expect(result.scope.global?.['coding-agent']).toEqual({
+      mode: 'locked',
+      pinnedTier: 'R1',
+      tierKind: 'local',
+    });
+  });
+
+  it(
+    'applies to the MAKER ROLE ONLY, which keeps maker != verifier (C-4) true by ' +
+      'construction rather than by a refusal discovered mid-run',
+    () => {
+      const result = resolvePolicyScope({ mode: 'token-gated', namedTier: 'R2' }, 'coding-agent');
+      if ('refusal' in result) throw new Error('unexpected refusal');
+      expect(Object.keys(result.scope.global ?? {})).toEqual(['coding-agent']);
+      expect(result.scope.global?.['challenger']).toBeUndefined();
+    },
+  );
+
+  it(
+    'RED FIXTURE: a stored PINNED policy refuses by name rather than running as ' +
+      'the ladder — silently substituting a different model is the one thing ' +
+      'pinning promises will not happen',
+    () => {
+      const result = resolvePolicyScope(
+        { mode: 'pinned', model: 'gpt-5', tierKind: 'metered' },
+        'coding-agent',
+      );
+      expect('refusal' in result).toBe(true);
+      if (!('refusal' in result)) return;
+      expect(result.refusal).toContain('does not yet honour');
+    },
+  );
+
+  it('an absent or unreadable setting takes the documented ladder default without throwing', () => {
+    for (const raw of [undefined, null, 'nonsense', [], { mode: 'invented' }]) {
+      const result = resolvePolicyScope(raw as never, 'coding-agent');
+      expect('refusal' in result).toBe(false);
+      if ('refusal' in result) continue;
+      expect(result.scope).toEqual({});
+    }
   });
 });
