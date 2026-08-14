@@ -242,7 +242,14 @@ describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written
             source: null,
             models: [],
             reason:
-              'provider kind "openai" is registered but not yet constructible from the pipeline: it needs a resolved credential and a real price table (W10 follow-up). Local kinds (ollama, lm-studio, oai-compat) work today.',
+              // W12-15: the sample reason was the pre-W12-11 "not yet
+              // constructible" copy, which stopped being a thing the server
+              // can say once cloud kinds became constructible. This test is
+              // about the panel rendering WHATEVER reason the server sends,
+              // so it keeps working — but a stale sample reads as current
+              // product copy to anyone skimming, which is how the duplicate
+              // survived in the first place.
+              'provider kind "openai" needs a credential: register one (its ref is stored, never the secret) or set DOKIMA_MODEL_API_KEY. Refusing rather than calling a paid API unauthenticated.',
           }),
         ),
       ]),
@@ -251,7 +258,7 @@ describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written
     await screen.findByText('oa1');
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
 
-    await screen.findByText(/not yet constructible from the pipeline/);
+    await screen.findByText(/needs a credential/);
   });
 
   it('"Provider disabled": the row stays visible, greyed, alongside an enabled one', async () => {

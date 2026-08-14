@@ -15,9 +15,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   ProviderRegistryError,
-  createLmStudioProvider,
-  createOaiCompatProvider,
-  createOllamaProvider,
   resolveProviderCatalog,
   validateProviderRegistry,
   type CatalogModel,
@@ -31,6 +28,7 @@ import {
   resolveCredentialStore,
   type CredentialStore,
 } from '@dokima/shared';
+import { providerForConfig } from '../pipeline/gateway-model-port/provider.js';
 import { PROBLEM_CONTENT_TYPE, problem } from '../problem.js';
 import {
   listProjectProviders,
@@ -82,31 +80,45 @@ function toWireModel(model: CatalogModel): WireCatalogModel {
 }
 
 /**
- * `buildProvider`'s kinds (`apps/server/src/cli/ops/providers-core.ts`) —
- * duplicated here rather than imported, since that module lives under
- * `cli/ops` and this ticket's write_scope doesn't cover it. Any kind that
- * adapter doesn't build either (`anthropic`, `openai`, `vertex`, `copilot`)
- * degrades honestly through `resolveProviderCatalog`'s catch path instead
- * of being fabricated: the `reason` is the exact UX_SPEC §6a "Cloud kind
- * selected" copy so the panel renders it verbatim.
+ * The model-listing provider for the catalog route (W12-15).
+ *
+ * DELEGATES to `providerForConfig` rather than switching on `entry.kind`
+ * itself. This function used to be a hand-rolled copy of that dispatch — the
+ * SECOND copy, duplicated because `cli/ops/providers-core.ts` was outside an
+ * earlier ticket's write_scope — and it went stale the moment W12-11 made
+ * cloud kinds constructible: it kept telling users `anthropic`/`openai`/
+ * `copilot` were "not yet constructible from the pipeline" while the pipeline
+ * constructed them. The whole test suite stayed green, because the assertion
+ * covering that string tested the copy. A third copy is how a second one
+ * happens, so there is now one dispatch and this calls it.
+ *
+ * Construction is LAZY, inside `listModels`, so a credential or configuration
+ * refusal surfaces through `resolveProviderCatalog`'s existing catch path and
+ * reaches the panel as an honest `reason` — rather than throwing before the
+ * catalog resolver is even entered.
  */
 function buildCatalogProvider(entry: ProviderEntry): Pick<Provider, 'listModels'> {
-  switch (entry.kind) {
-    case 'ollama':
-      return createOllamaProvider(entry.baseUrl ? { baseUrl: entry.baseUrl } : {});
-    case 'lm-studio':
-      return createLmStudioProvider(entry.baseUrl ? { baseUrl: entry.baseUrl } : {});
-    case 'oai-compat':
-      return createOaiCompatProvider({ id: entry.id, baseUrl: entry.baseUrl ?? '' });
-    default:
-      return {
-        async listModels() {
-          throw new Error(
-            `provider kind "${entry.kind}" is registered but not yet constructible from the pipeline: it needs a resolved credential and a real price table (W10 follow-up). Local kinds (ollama, lm-studio, oai-compat) work today.`,
-          );
+  return {
+    async listModels() {
+      const provider = await providerForConfig(
+        {
+          kind: entry.kind,
+          baseUrl: entry.baseUrl ?? '',
+          // Listing is what tells the user which models exist, so there is no
+          // model to price yet. `purpose: 'listing'` resolves the credential
+          // and carries no cost table; this provider must never serve a chat.
+          model: '',
+          providerId: entry.id,
+          ...(entry.credentialRef ? { credentialRef: entry.credentialRef } : {}),
+          ...(entry.requestTimeoutMs === undefined
+            ? {}
+            : { requestTimeoutMs: entry.requestTimeoutMs }),
         },
-      };
-  }
+        { purpose: 'listing' },
+      );
+      return provider.listModels();
+    },
+  };
 }
 
 function fromWire(raw: unknown): unknown {
