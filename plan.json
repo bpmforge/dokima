@@ -6122,9 +6122,12 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
-        "apps/web/src/onboarding/**"
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/e2e/guided-sample.spec.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -6137,7 +6140,9 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 from D-024, founder-chosen ('Ask in the setup wizard \u2014 no silent default'). The first-run wizard already exists (acceptance check A-18), so this is a step inside a built flow rather than a new surface. Note the interaction with W12-11: until cloud kinds construct, the 'one model I pick' and 'start cheap and escalate' options can only offer local models honestly \u2014 decide whether the wizard hides them or shows them as requiring provider setup, and say which in the close notes."
+        "Filed 2026-08-13 from D-024, founder-chosen ('Ask in the setup wizard \u2014 no silent default'). The first-run wizard already exists (acceptance check A-18), so this is a step inside a built flow rather than a new surface. Note the interaction with W12-11: until cloud kinds construct, the 'one model I pick' and 'start cheap and escalate' options can only offer local models honestly \u2014 decide whether the wizard hides them or shows them as requiring provider setup, and say which in the close notes.",
+        "WRITE_SCOPE CORRECTED at claim: the filed scope said `apps/web/src/onboarding/**`, but the wizard COMPONENT lives at `apps/web/src/settings/FirstRunWizard.tsx` \u2014 only its test sits under onboarding/, and that test's own header explains why (a prior ticket's write_scope covered the settings component but not a sibling test file there). Owned by no open ticket, no P8 issue. ALSO FOUND AT CLAIM: the wizard's existing step 1 picks a MODEL MATRIX preset (which models serve which roles, FR-S3) and never touches the ESCALATION POLICY, which is the thing that silently defaults to `ladder` at policy.ts:80. Two different dimensions; the wizard asked about one. D-024 needs both.",
+        "WRITE_SCOPE WIDENED to two e2e specs, named: both drove the wizard via `getByLabel(/Hybrid/)`, a label this ticket removes. CONFIRMED MINE RATHER THAN ASSUMED \u2014 stashing the change and re-running gave 69 passed, so both failures are caused by this ticket and neither is pre-existing flake. Updated to `/Start cheap, escalate/`, which maps to the same `hybrid` matrix preset the old label selected, so the flows test what they always tested. This is the value of e2e being in the Law 3 gate: the unit tests were green while two real user flows were broken."
       ]
     },
     {

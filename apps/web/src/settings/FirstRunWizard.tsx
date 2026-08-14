@@ -19,15 +19,75 @@ const REGISTRY_KIND: Record<'lmstudio' | 'openai_compat' | 'vertex', ProviderKin
   vertex: 'vertex',
 };
 import { HelpAffordance } from './HelpAffordance.js';
-import { MODEL_MATRIX_PRESETS, type ModelMatrixPreset } from './types.js';
+import {
+  type EscalationPolicyMode,
+  type ModelMatrixPreset,
+} from './types.js';
 
 type Step = 'preset' | 'provider' | 'forge' | 'sample' | 'done';
 
-const PRESET_LABEL: Record<ModelMatrixPreset, string> = {
-  'all-local': 'All-local — point at LM Studio/Ollama, nothing leaves your machine',
-  hybrid: 'Hybrid — local for volume, one frontier provider for review/escalation',
-  'all-cloud': 'All-cloud — every role on a frontier provider',
-};
+/**
+ * The D-024 choices, in the USER'S terms rather than the internal mode names.
+ * Each maps onto machinery that already exists: a model-matrix preset (which
+ * models serve which roles, FR-S3) and an escalation policy (whether and how
+ * work climbs the R0-R4 ladder, D-018). Those are two different dimensions and
+ * the wizard used to ask about only the first, which is why a fresh install
+ * silently adopted `ladder` — `resolveLandEscalationPolicy` returns
+ * LADDER_POLICY when nothing is set (policy.ts:80).
+ *
+ * D-024's option (b), "one model I pick", is DELIBERATELY ABSENT: `locked`
+ * pins a ladder RUNG, not a model, so there is nothing honest to map it to
+ * until W12-12 adds a pinned-model mode. Showing a choice that silently does
+ * something else would be worse than showing three.
+ */
+interface ModelPolicyChoice {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+  readonly preset: ModelMatrixPreset;
+  readonly policy: EscalationPolicyMode;
+  /** True when the choice can be completed with no provider and no network (C-1). */
+  readonly offlineCapable: boolean;
+}
+
+export const MODEL_POLICY_CHOICES: readonly ModelPolicyChoice[] = [
+  {
+    id: 'local-only',
+    label: 'Local only — never contact a cloud provider',
+    detail:
+      'Everything runs on models on this machine. No account, no network, no spend. Fully supported: if something needs a cloud model to work, that is a bug.',
+    preset: 'all-local',
+    policy: 'ladder',
+    offlineCapable: true,
+  },
+  {
+    id: 'cheapest-first',
+    label: 'Start cheap, escalate when it has to',
+    detail:
+      'Local or small models do the work; a stronger model is used only when the cheaper one cannot finish. Needs at least one cloud provider configured.',
+    preset: 'hybrid',
+    policy: 'ladder',
+    offlineCapable: false,
+  },
+  {
+    id: 'approval-gated',
+    label: 'Escalate only when I approve it',
+    detail:
+      'Same as above, but moving to a more expensive model waits for you to say yes. Nothing costly happens unattended.',
+    preset: 'hybrid',
+    policy: 'token-gated',
+    offlineCapable: false,
+  },
+  {
+    id: 'always-best',
+    label: 'Always use my best cloud model',
+    detail:
+      'Skip the cheap tiers entirely. Fastest to a good answer, most expensive. Needs a cloud provider configured.',
+    preset: 'all-cloud',
+    policy: 'ladder',
+    offlineCapable: false,
+  },
+];
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof SettingsApiError || err instanceof FleetApiError
@@ -56,7 +116,9 @@ export interface FirstRunWizardProps {
  */
 export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   const [step, setStep] = useState<Step>('preset');
-  const [preset, setPreset] = useState<ModelMatrixPreset>('hybrid');
+  // D-024: NO SILENT DEFAULT. This was `useState('hybrid')`, so a user who
+  // clicked straight through opted into cloud spend without ever choosing.
+  const [choiceId, setChoiceId] = useState<string | null>(null);
   const [providerKind, setProviderKind] = useState<
     'lmstudio' | 'openai_compat' | 'vertex'
   >('lmstudio');
@@ -69,8 +131,16 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
 
   const savePresetAndProvider = async () => {
     try {
+      const chosen = MODEL_POLICY_CHOICES.find((c) => c.id === choiceId);
+      if (!chosen) {
+        setError('Pick how your work should be modelled before continuing.');
+        return;
+      }
       await putGlobalSettings({
-        defaultModelMatrixPreset: preset,
+        defaultModelMatrixPreset: chosen.preset,
+        // D-024: the escalation policy is now CHOSEN, not inherited from
+        // `resolveLandEscalationPolicy`'s fallback.
+        escalationPolicy: { mode: chosen.policy },
         providers: [
           {
             kind: providerKind,
@@ -145,20 +215,35 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
       )}
 
       {step === 'preset' && (
-        <section aria-label="Pick a preset" data-testid="wizard-step-preset">
-          <h2>1. Pick a preset</h2>
-          {MODEL_MATRIX_PRESETS.map((p) => (
-            <label key={p} className="settings__radio">
+        <section
+          aria-label="How should your work be modelled?"
+          data-testid="wizard-step-preset"
+        >
+          <h2>1. How should your work be modelled?</h2>
+          <p className="settings__hint">
+            Nothing spends money or contacts a network until you choose.
+          </p>
+          {MODEL_POLICY_CHOICES.map((c) => (
+            <label key={c.id} className="settings__radio">
               <input
                 type="radio"
-                name="preset"
-                checked={preset === p}
-                onChange={() => setPreset(p)}
+                name="model-policy"
+                checked={choiceId === c.id}
+                onChange={() => setChoiceId(c.id)}
               />
-              {PRESET_LABEL[p]}
+              <span>
+                {c.label}
+                {c.offlineCapable ? ' (works offline)' : ''}
+                <br />
+                <small>{c.detail}</small>
+              </span>
             </label>
           ))}
-          <button type="button" onClick={() => setStep('provider')}>
+          <button
+            type="button"
+            disabled={choiceId === null}
+            onClick={() => setStep('provider')}
+          >
             Next
           </button>
         </section>
