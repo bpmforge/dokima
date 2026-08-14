@@ -143,7 +143,7 @@ async function checkProviders(io: CliIO, deps: DoctorDeps): Promise<DoctorCheck>
   const results = await Promise.all(
     entries.map(async (entry) => {
       try {
-        const health = await buildProviderImpl(entry).health();
+        const health = await (await buildProviderImpl(entry)).health();
         return { entry, ok: health.status === 'ok' };
       } catch {
         return { entry, ok: false };
