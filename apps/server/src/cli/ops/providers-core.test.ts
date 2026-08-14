@@ -61,11 +61,65 @@ describe('loadConfiguredProviders', () => {
 });
 
 describe('buildProvider', () => {
-  it('constructs the matching adapter per kind', () => {
-    expect(buildProvider({ id: 'x', kind: 'ollama' }).id).toBe('ollama');
-    expect(buildProvider({ id: 'x', kind: 'lm-studio' }).id).toBe('lm-studio');
+  it('constructs the matching adapter per kind', async () => {
+    expect((await buildProvider({ id: 'x', kind: 'ollama' })).id).toBe('ollama');
+    expect((await buildProvider({ id: 'x', kind: 'lm-studio' })).id).toBe('lm-studio');
     expect(
-      buildProvider({ id: 'my-endpoint', kind: 'oai-compat', baseUrl: 'http://x' }).id,
+      (await buildProvider({ id: 'my-endpoint', kind: 'oai-compat', baseUrl: 'http://x' }))
+        .id,
     ).toBe('my-endpoint');
+  });
+});
+
+describe('cloud provider entries (W12-17)', () => {
+  it(
+    'RED FIXTURE: a registered cloud kind is no longer SILENTLY SKIPPED. ' +
+      '`isProviderConfigEntry` accepted only ollama/lm-studio/oai-compat, and ' +
+      '`loadConfiguredProviders` drops what it does not accept — so `doctor` ' +
+      'reported a clean bill of health while ignoring the provider the user ' +
+      'had actually configured',
+    async () => {
+      for (const kind of ['anthropic', 'openai', 'copilot'] as const) {
+        const prev = process.env.DOKIMA_MODEL_API_KEY;
+        process.env.DOKIMA_MODEL_API_KEY = 'test-key';
+        try {
+          const provider = await buildProvider({ id: `p-${kind}`, kind });
+          expect(provider.id).toBeTruthy();
+        } finally {
+          if (prev === undefined) delete process.env.DOKIMA_MODEL_API_KEY;
+          else process.env.DOKIMA_MODEL_API_KEY = prev;
+        }
+      }
+    },
+  );
+
+  it(
+    'a cloud kind with no credential REFUSES BY NAME rather than being skipped — ' +
+      'the caller reports it against its own entry instead of the entry vanishing',
+    async () => {
+      const prev = process.env.DOKIMA_MODEL_API_KEY;
+      delete process.env.DOKIMA_MODEL_API_KEY;
+      try {
+        await expect(buildProvider({ id: 'oa', kind: 'openai' })).rejects.toThrowError(
+          /needs a credential/,
+        );
+      } finally {
+        if (prev !== undefined) process.env.DOKIMA_MODEL_API_KEY = prev;
+      }
+    },
+  );
+
+  it('listing purpose carries no price table, so an unpriced model is not a refusal here', async () => {
+    const prev = process.env.DOKIMA_MODEL_API_KEY;
+    process.env.DOKIMA_MODEL_API_KEY = 'test-key';
+    try {
+      // `model: ''` is what buildProvider passes — under 'inference' that
+      // would refuse as unpriced, which is exactly why this path is 'listing'.
+      const provider = await buildProvider({ id: 'oa', kind: 'openai' });
+      expect(provider.id).toBeTruthy();
+    } finally {
+      if (prev === undefined) delete process.env.DOKIMA_MODEL_API_KEY;
+      else process.env.DOKIMA_MODEL_API_KEY = prev;
+    }
   });
 });

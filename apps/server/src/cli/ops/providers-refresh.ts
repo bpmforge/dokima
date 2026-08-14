@@ -89,7 +89,24 @@ export async function runProvidersRefreshCommand(
   }
 
   const outcomes = await Promise.all(
-    entries.map((entry) => refreshOne(entry, buildProviderImpl(entry))),
+    entries.map(async (entry) => {
+      try {
+        return await refreshOne(entry, await buildProviderImpl(entry));
+      } catch (err) {
+        // W12-17: construction can now REFUSE by name (an unresolvable
+        // credential, a kind that needs registry fields we lack). One
+        // misconfigured cloud provider must not take the whole refresh down
+        // with it — report it against its own entry and keep going, the same
+        // per-entry isolation `refreshOne` already gives listing failures.
+        return {
+          entry,
+          models: [],
+          source: null,
+          warmUpOk: false,
+          error: err instanceof Error ? err.message : String(err),
+        } satisfies RefreshOutcome;
+      }
+    }),
   );
 
   let anyFailed = false;

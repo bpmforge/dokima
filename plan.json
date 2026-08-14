@@ -6244,10 +6244,14 @@
       "module": "cli",
       "lane": "gateway",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/server/src/cli/ops/providers-core.ts",
-        "apps/server/src/cli/ops/providers-core.test.ts"
+        "apps/server/src/cli/ops/providers-core.test.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "apps/server/src/cli/ops/doctor.test.ts",
+        "apps/server/src/cli/ops/providers-refresh.ts",
+        "apps/server/src/cli/ops/providers-refresh.test.ts"
       ],
       "depends_on": [
         "W12-15"
@@ -6261,7 +6265,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 at W12-15's close. The count matters: W12-11 fixed copy 1, W12-15 deleted copy 2, and copy 3 was never touched by either \u2014 each ticket saw only the copy in its own write_scope. A contract held in three places where two were out of scope is the strongest version of the W12-01 lesson this wave has produced."
+        "Filed 2026-08-13 at W12-15's close. The count matters: W12-11 fixed copy 1, W12-15 deleted copy 2, and copy 3 was never touched by either \u2014 each ticket saw only the copy in its own write_scope. A contract held in three places where two were out of scope is the strongest version of the W12-01 lesson this wave has produced.",
+        "WRITE_SCOPE WIDENED at claim, named: `buildProvider` becomes async (it now delegates to the async `providerForConfig`), so its two callers \u2014 `doctor.ts` and `providers-refresh.ts` \u2014 come with it. NOT A NO-OP, which the acceptance explicitly allowed for: `isProviderConfigEntry` accepted only ollama/lm-studio/oai-compat and `loadConfiguredProviders` SILENTLY SKIPS anything else, so a registered anthropic/openai/copilot entry was invisible to both callers. The user-visible consequence is that `doctor` \u2014 the command the README tells you to run before trusting anything \u2014 reported a clean bill of health while saying nothing about the provider the user had actually configured."
       ]
     }
   ]
