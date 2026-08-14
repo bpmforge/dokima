@@ -64,7 +64,11 @@ test('first-run wizard: preset -> provider -> forge (skip) -> sample creates a r
   await expect(page.getByTestId('first-run-wizard')).toBeVisible();
 
   await expect(page.getByTestId('wizard-step-preset')).toBeVisible();
-  await page.getByLabel(/Hybrid/).check();
+  // W12-13/D-024: step 1 no longer preselects anything and Next stays
+  // disabled until a choice is made, so this click is now load-bearing
+  // rather than cosmetic. 'Start cheap, escalate' maps to the same
+  // `hybrid` matrix preset the old /Hybrid/ label selected.
+  await page.getByLabel(/Start cheap, escalate/).check();
   await page
     .getByTestId('wizard-step-preset')
     .getByRole('button', { name: 'Next' })

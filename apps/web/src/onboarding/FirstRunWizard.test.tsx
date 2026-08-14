@@ -59,6 +59,11 @@ afterEach(() => {
 
 async function advanceToSampleStep() {
   render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+  // W12-13/D-024: step 1 no longer advances on its own. Every caller must
+  // choose how work is modelled, which is exactly the silent default this
+  // ticket removed — these two lines ARE the behaviour change, in the helper
+  // every other test shares.
+  fireEvent.click(screen.getByRole('radio', { name: /Local only/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   mockedSettingsApi.putGlobalSettings.mockResolvedValue({});
   fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
@@ -113,5 +118,62 @@ describe('FirstRunWizard sample step -> done (guided sample embedded)', () => {
     // The tomorrow card and Done button stay put after the walkthrough dismisses.
     expect(screen.getByTestId('what-to-do-tomorrow')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy();
+  });
+});
+
+describe('FirstRunWizard — model policy (W12-13, D-024)', () => {
+  it(
+    'RED FIXTURE: NOTHING is preselected and Next is disabled until the user ' +
+      'chooses — the wizard used to default to `hybrid`, so clicking straight ' +
+      'through opted a fresh install into cloud spend nobody picked',
+    () => {
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      for (const radio of screen.getAllByRole('radio')) {
+        expect((radio as HTMLInputElement).checked).toBe(false);
+      }
+      expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true);
+    },
+  );
+
+  it('offers local-only as a first-class choice, marked as working offline (C-1)', () => {
+    render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+    const localOnly = screen.getByRole('radio', { name: /Local only/ });
+    expect(localOnly).toBeTruthy();
+    expect(screen.getByText(/works offline/)).toBeTruthy();
+    // Selecting it is enough to proceed: no provider, no network, no spend.
+    fireEvent.click(localOnly);
+    expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it(
+    'persists BOTH dimensions — the matrix preset AND the escalation policy. The ' +
+      'wizard only ever wrote the preset, so the policy fell through to ' +
+      "`resolveLandEscalationPolicy`'s `ladder` fallback: the silent default itself",
+    async () => {
+      mockedSettingsApi.putGlobalSettings.mockResolvedValue({});
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      fireEvent.click(screen.getByRole('radio', { name: /Escalate only when I approve/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
+
+      const patch = mockedSettingsApi.putGlobalSettings.mock.calls[0]?.[0] as
+        | Record<string, unknown>
+        | undefined;
+      expect(patch?.defaultModelMatrixPreset).toBe('hybrid');
+      expect(patch?.escalationPolicy).toEqual({ mode: 'token-gated' });
+    },
+  );
+
+  it('maps local-only to the all-local matrix, not merely to a policy', async () => {
+    mockedSettingsApi.putGlobalSettings.mockResolvedValue({});
+    render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('radio', { name: /Local only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
+
+    const patch = mockedSettingsApi.putGlobalSettings.mock.calls[0]?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(patch?.defaultModelMatrixPreset).toBe('all-local');
   });
 });

@@ -144,7 +144,11 @@ test('RED FIXTURE: the guided sample really runs, and the sample project has rea
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Run Setup Wizard' }).click();
 
-  await page.getByLabel(/Hybrid/).check();
+  // W12-13/D-024: step 1 no longer preselects anything and Next stays
+  // disabled until a choice is made, so this click is now load-bearing
+  // rather than cosmetic. 'Start cheap, escalate' maps to the same
+  // `hybrid` matrix preset the old /Hybrid/ label selected.
+  await page.getByLabel(/Start cheap, escalate/).check();
   await page
     .getByTestId('wizard-step-preset')
     .getByRole('button', { name: 'Next' })
