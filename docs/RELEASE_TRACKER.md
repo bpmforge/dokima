@@ -1,9 +1,18 @@
 # Release tracker — Dokima
 
-**State 2026-08-03:** board **147 / 147 done — nothing claimable, nothing
-blocked.** The v1.0 dogfood gate passed. **Not tagged**, and two things still
-stand between here and a public tag (§Pre-public checklist): formal trademark
-clearance, and the npm publish itself.
+**State 2026-08-13:** board **208 / 216 done — 8 open, 35 points.** Every
+milestone gate through v1.0.0 is met. **Still not tagged**, and what stands
+between here and a public tag is now mostly *not code*: the registry
+publication itself (needs an authenticated operator), formal trademark
+clearance (needs a lawyer), and one supervised run against a real model that
+nobody has yet performed (W11 exit 2/3 — see §Unproven). The open board is
+quality work and D-024 implementation, not tag blockers.
+
+**Refreshed 2026-08-13 — third refresh, each claim re-verified against the
+code rather than assumed.** That check earned its keep again: it caught the
+LICENSE row below still naming Apache-2.0 under a decision (D-017) that D-022
+had superseded, while the shipped `LICENSE` file is FSL-1.1-ALv2 — a release
+document misstating the product's own license.
 
 Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal =
 `docs/work/W10_PLAN.md`.
@@ -37,7 +46,7 @@ pre-public checklist below was never finished.
 
 | Item | Status |
 |---|---|
-| LICENSE file | ✅ **done 2026-08-02** — Apache-2.0 per D-017 (decided 2026-07-14; the file had simply never been written) |
+| LICENSE file | ✅ **done 2026-08-02, CORRECTED 2026-08-13** — **FSL-1.1-ALv2** (Functional Source License, ALv2 future license) per **D-022**, verified against the shipped `LICENSE` file. This row read "Apache-2.0 per D-017" until 2026-08-13; D-017 is marked superseded in DECISIONS.md and the license changed before any public release. `package.json` carries `"license": "SEE LICENSE IN LICENSE"`. |
 | README quickstart | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified |
 | History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below. **No longer a manual item as of 2026-08-03 (W10-27)**: `node scripts/validate-history-secrets.mjs` runs on every push as CI's `history-secrets` job. Re-running it by hand before a tag is now a confirmation, not the control. |
 | npm name `@bpmforge/dokima` | 🟡 **prepared 2026-08-03, not yet published** — name confirmed free; root `package.json` now carries the scoped name, `0.1.0`, `publishConfig.access: public`, license/repo/description metadata, and a `prepublishOnly` build so a tarball can never ship without `apps/server/dist/main.js` or `apps/web/dist`. Packing and installing the tarball into a clean project surfaced a **release blocker** (W10-43) — `distributionRoot()` identified the distribution by the literal package name `dokima`, so scoping it made every asset unreachable and the CLI died on startup. Fixed and re-verified end to end: the installed binary boots, serves the built web dist, materializes `packs/` in `DOKIMA_HOME`, and answers `GET /api/v1/projects` → `200 {"projects":[]}` with a real bearer token. **The publish step itself needs an authenticated operator** — log in to npm, then run the publish command from the repo root. |
@@ -97,13 +106,48 @@ Not release blockers by themselves, but a reader deserves them stated:
   2026-08-03 (W10-44).** `--help`/`-h`/`--version`/`-V` print and exit 0; an
   unknown command prints usage to stderr and exits 2; an incomplete `packs` or
   `providers` no longer falls through to a boot. Bare `dokima` is unchanged.
-- **Cloud provider kinds are still non-constructible.** `anthropic`, `openai`,
-  `vertex` and `copilot` throw a *named* refusal (`kind-not-constructible`)
-  rather than falling back to localhost or faking a $0 cost:
-  `AnthropicConfig.costTable` is required with no default and the adapter needs
-  a resolved secret, not the `credentialRef` the registry stores. W10-42 built
-  the credential-write route, so half the prerequisite exists; a real price
-  table is what remains. Local kinds (ollama, lm-studio, oai-compat) work today.
+- ~~Cloud provider kinds are still non-constructible~~ — **fixed 2026-08-13
+  (W12-11).** `anthropic`, `openai` and `copilot` construct: the
+  `credentialRef` is resolved through the keychain at construction time (it was
+  being dropped in `targetToConfig`, so the comment beside it described a
+  resolution that nothing performed), and prices come from
+  `content/model-catalog/pricing.v1.json` — dated, stale-after-90-days, and an
+  **unpriced model refuses rather than metering at $0**, because W2-07's
+  breakers read the spend ledger and one that always sees $0 can never trip.
+  The same pass closed a live hole: pointing `DOKIMA_MODEL_BASE_URL` at
+  `api.openai.com` had been routing a real paid account through the generic
+  oai-compat adapter with `LOCAL_COST_TABLE` (literally `{}`).
+  **`vertex` still refuses**, now for a different and named reason — it needs a
+  GCP project and location and `ProviderEntry` has no field for either
+  (W12-14); deriving them from a `baseUrl` would be guessing which account
+  gets billed.
+- **The Providers panel still says cloud kinds are unusable** (W12-15).
+  `providers-routes.ts` holds an independent hardcoded copy of the refusal
+  W12-11 removed, on the model-*listing* path, so the UI now contradicts the
+  product. Stated because a reader deserves it: the full suite passes with that
+  message asserted, since the assertion tests the duplicate.
+- **D-024 is recorded but not fully implemented.** Model policy is the user's
+  choice (local-only · one pinned model · cheapest-first · approval-gated), and
+  local-only remains a hard guarantee. Two halves are missing: a user cannot
+  pin a single MODEL (`locked` pins a rung — W12-12), and the setup wizard does
+  not ask, so a fresh install silently adopts `ladder` (W12-13) — the exact
+  silent default D-024 forbids.
+- **The bundled expert library is four minor versions behind** (W12-07):
+  `content/index.json` records upstream `attest` **3.1.24**, imported
+  2026-07-12; upstream is **3.5.1**. Re-signing is a hard precondition and the
+  signing key lives outside the repo.
+
+## Unproven at time of writing
+
+**W11 exit criterion 2 has never been demonstrated**, and it is the claim the
+product rests on: a native `SpawnSession` completing a real ticket end to end
+on a real model, producing a Completion Manifest the close gate accepts. What
+has been proven is a `node:http` fake endpoint (W11-04) and a fake shell agent
+(W10-77) — both deliberate under law 9, and neither is the thing. Exit 3 (every
+call metered, ledger non-zero and attributable per role) became genuinely
+testable only with W12-11, which made cloud cost real rather than $0. Both need
+one supervised run, and that run is the highest-value remaining act — larger
+than any open ticket on the board.
 
 ## Test truth
 
@@ -113,10 +157,14 @@ planted-defect harness — every gate must FAIL when attacked (`docs/TESTING.md`
 · toy-project E2E incl. symlink-escape regression · fitness bench fixtures ·
 dogfood receipts at W8.
 
-Last full gate (2026-08-03): lint 0 errors / 1 pre-existing warning ·
-typecheck clean across 14 workspace projects · **3131 passed | 3 skipped across
-416 files** · **61 e2e passed** · `validate-file-size` clean (0 gaps) ·
-history-secrets scan clean.
+Last full gate (2026-08-13, W12-11): lint 0 errors / 1 pre-existing warning ·
+typecheck clean across 14 workspace projects · **3479 passed | 1 skipped across
+440 files** · **69 e2e passed** · `validate-plan` + `validate-traceability` OK ·
+`validate-file-size` clean (0 gaps) · **`validate-exports` at baseline 43** —
+new this wave (W12-10): it reports exported symbols that tests reference and
+production code never does, as a ratchet rather than a clean-zero gate, because
+the measured debt was 48 and failing every ticket for debt it did not create is
+the mistake `conductor.config.json`'s own `repoWide` note warns about.
 
 Two gates joined the release surface on 2026-08-03. **History secrets**
 (W10-27): the tree scanner passes `--exclude-dir=.git` and so could never see a
