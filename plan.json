@@ -6154,7 +6154,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "packages/gateway/src/registry/types.ts",
         "packages/gateway/src/registry/types.test.ts",
