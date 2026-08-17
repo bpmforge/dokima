@@ -116,3 +116,89 @@ export async function fireTicketVerb(
   if (!res.ok) return { ok: false, problem: asProblem(res.status, body, instance) };
   return { ok: true, data: body as Ticket };
 }
+
+
+/**
+ * Starting a build run from the product (W12-28, server side W12-20).
+ *
+ * Until W12-20 there was no route to call at all: `runs-routes.ts` served only
+ * reads, so every configuration surface was a GUI and the one action that
+ * mattered was `dokima run start` in a terminal.
+ */
+export interface BuildRunStarted {
+  runId: string;
+  status: 'running';
+}
+
+export interface BuildRunOutcome {
+  runId: string;
+  status: 'running' | 'finished' | 'refused';
+  exitCode?: number;
+  stdout?: string[];
+  stderr?: string[];
+}
+
+export async function startBuildRun(
+  opts: BoardApiOptions,
+  projectId: string,
+  actorId = 'operator',
+): Promise<BoardResult<BuildRunStarted>> {
+  const instance = `/projects/${projectId}/build-runs`;
+  const doFetch = opts.fetchImpl ?? fetch;
+  const res = await doFetch(`${opts.baseUrl}${instance}`, {
+    method: 'POST',
+    headers: { ...authHeaders(opts), 'content-type': 'application/json' },
+    body: JSON.stringify({ actor_id: actorId }),
+  });
+  const body = await parseJson(res);
+  if (!res.ok) return { ok: false, problem: asProblem(res.status, body, instance) };
+  const wire = body as { run_id: string };
+  return { ok: true, data: { runId: wire.run_id, status: 'running' } };
+}
+
+export async function fetchBuildRun(
+  opts: BoardApiOptions,
+  projectId: string,
+  runId: string,
+): Promise<BoardResult<BuildRunOutcome>> {
+  const instance = `/projects/${projectId}/build-runs/${runId}`;
+  const doFetch = opts.fetchImpl ?? fetch;
+  const res = await doFetch(`${opts.baseUrl}${instance}`, {
+    method: 'GET',
+    headers: authHeaders(opts),
+  });
+  const body = await parseJson(res);
+  if (!res.ok) return { ok: false, problem: asProblem(res.status, body, instance) };
+  const wire = body as {
+    run_id: string;
+    status: BuildRunOutcome['status'];
+    exit_code?: number;
+    stdout?: string[];
+    stderr?: string[];
+  };
+  return {
+    ok: true,
+    data: {
+      runId: wire.run_id,
+      status: wire.status,
+      ...(wire.exit_code === undefined ? {} : { exitCode: wire.exit_code }),
+      ...(wire.stdout === undefined ? {} : { stdout: wire.stdout }),
+      ...(wire.stderr === undefined ? {} : { stderr: wire.stderr }),
+    },
+  };
+}
+
+/**
+ * The line to show a person when a run refuses.
+ *
+ * `executeBuildRun` refuses BY NAME for things a user can actually fix — an
+ * unset signing key, an unreadable secrets vault, a provider kind that cannot
+ * be constructed, a pinned model policy the land loop does not honour
+ * (W12-18). Collapsing those into "run failed" would throw away the only part
+ * that helps, so the last non-empty stderr line is surfaced verbatim.
+ */
+export function buildRunRefusalLine(outcome: BuildRunOutcome): string | null {
+  if (outcome.status !== 'refused') return null;
+  const lines = (outcome.stderr ?? []).filter((l) => l.trim() !== '');
+  return lines.length > 0 ? lines[lines.length - 1]! : 'the run refused without saying why';
+}

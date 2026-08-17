@@ -113,3 +113,40 @@ describe('BoardView empty state "Describe your product" action (UX_SPEC §2b)', 
     expect(screen.queryByRole('button', { name: 'Describe your product' })).toBeNull();
   });
 });
+
+describe('BoardView start-run affordance (W12-28)', () => {
+  it(
+    'RED FIXTURE: the board offers a way to START the work. Every configuration ' +
+      'surface was a GUI and the one action that mattered was a terminal command; ' +
+      'W12-20 built the route and nothing called it',
+    () => {
+      mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({})] }));
+      render(
+        <BoardView
+          baseUrl="/api/v1"
+          token="t"
+          projectId="p1"
+          wsUrl="ws://x"
+          onSelectTicket={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId('board-runbar')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Start a run' })).toBeTruthy();
+    },
+  );
+
+  it('starts from where the work is visible — the runbar sits inside the board, not in Settings', () => {
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({})] }));
+    render(
+      <BoardView
+        baseUrl="/api/v1"
+        token="t"
+        projectId="p1"
+        wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
+      />,
+    );
+    const board = screen.getByTestId('board-view');
+    expect(board.contains(screen.getByTestId('board-runbar'))).toBe(true);
+  });
+});

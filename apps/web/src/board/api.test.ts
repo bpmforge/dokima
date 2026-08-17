@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchBoardTickets, fireTicketVerb } from './api.js';
+import { fetchBoardTickets, fireTicketVerb ,
+  buildRunRefusalLine,
+  startBuildRun,
+} from './api.js';
 import { makeBoardTicket } from './test-helpers.js';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -113,5 +116,54 @@ describe('fireTicketVerb', () => {
       'PROJ1',
     );
     expect(result).toEqual({ ok: false, problem });
+  });
+});
+
+describe('build runs from the board (W12-28)', () => {
+  const opts = { baseUrl: 'http://x/api/v1', token: 't' };
+
+  it(
+    'RED FIXTURE: the board can START a run. W12-20 built the route and nothing ' +
+      'called it, so the GUI could configure everything and start nothing',
+    async () => {
+      const fetchImpl = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 202,
+        text: async () => JSON.stringify({ run_id: 'run-1', status: 'running' }),
+      });
+      const res = await startBuildRun({ ...opts, fetchImpl } as never, 'p1');
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.data.runId).toBe('run-1');
+      const [url, init] = fetchImpl.mock.calls[0]!;
+      expect(String(url)).toContain('/projects/p1/build-runs');
+      expect((init as RequestInit).method).toBe('POST');
+    },
+  );
+
+  it(
+    'a refusal keeps the NAMED reason rather than collapsing to "run failed" — ' +
+      'an unset signing key is something a person can act on',
+    () => {
+      const line = buildRunRefusalLine({
+        runId: 'r',
+        status: 'refused',
+        stderr: [
+          'run-1 started',
+          'run-1 did not start: DOKIMA_SIGNING_KEY is unset, so the close gate would mint receipts that verify against nothing',
+        ],
+      });
+      expect(line).toContain('DOKIMA_SIGNING_KEY');
+    },
+  );
+
+  it('says so honestly when a run refuses with an empty stderr, rather than showing nothing', () => {
+    const line = buildRunRefusalLine({ runId: 'r', status: 'refused', stderr: [] });
+    expect(line).toBe('the run refused without saying why');
+  });
+
+  it('a finished or running outcome has no refusal line', () => {
+    expect(buildRunRefusalLine({ runId: 'r', status: 'running' })).toBeNull();
+    expect(buildRunRefusalLine({ runId: 'r', status: 'finished', exitCode: 0 })).toBeNull();
   });
 });
