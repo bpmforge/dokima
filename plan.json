@@ -6338,11 +6338,10 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/server/src/api/server/runs-routes.ts",
-        "apps/server/src/api/server/runs-routes.test.ts",
-        "apps/web/src/board/**"
+        "apps/server/src/api/server/runs-routes.test.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -6355,7 +6354,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-14 after the founder asked why supervised-run instructions used env vars and a CLI rather than the GUI. The instructions were correct about what works TODAY, and that is the finding: the product configures in a GUI and runs from a terminal. Note the supervised run itself does NOT need this \u2014 it can be started from the CLI against GUI-registered providers, which is the path docs/work/SUPERVISED_RUN.md now documents."
+        "Filed 2026-08-14 after the founder asked why supervised-run instructions used env vars and a CLI rather than the GUI. The instructions were correct about what works TODAY, and that is the finding: the product configures in a GUI and runs from a terminal. Note the supervised run itself does NOT need this \u2014 it can be started from the CLI against GUI-registered providers, which is the path docs/work/SUPERVISED_RUN.md now documents.",
+        "write_scope NARROWED at close, named rather than left overstated: the filed scope included `apps/web/src/board/**` and this pass never touched it. The server gap was the hard half \u2014 there was no route at all \u2014 and the button is a small follow-up filed as W12-28. A scope that claims territory the ticket did not write is the same overstatement W12-07 was corrected for."
       ]
     },
     {
@@ -6566,6 +6566,34 @@
       ],
       "notes": [
         "Filed 2026-08-17 from D-026. The founder asked twice for Claude Max / ChatGPT Plus sign-in \"like opencode does\"; verifying how opencode actually does it is what produced this design \u2014 core ships an `AuthHook` + `loader` seam and the subscription flows live in separate plugin packages, which is precisely why opencode is structurally fine and a core implementation would not be. Sized 8 and deliberately design-heavy: the trust question is the hard part, and it is the part that cannot be retrofitted once a plugin API is public."
+      ]
+    },
+    {
+      "id": "W12-28",
+      "title": "the board has no Start-run affordance \u2014 W12-20 built the route and nothing calls it",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/board/**",
+        "apps/web/src/fleet/**"
+      ],
+      "depends_on": [
+        "W12-20"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DISCLOSED BY W12-20 AT CLOSE. `POST /api/v1/projects/:id/build-runs` exists and returns 202 with a run id; nothing in `apps/web` calls it. Until something does, the GUI still cannot start work and the pitch is still only half true.",
+        "START FROM WHERE THE WORK IS VISIBLE \u2014 the board, next to the tickets a run would claim \u2014 rather than burying it in Settings. A user who can see a `ready` column should be able to act on it.",
+        "POLL THE STATUS ROUTE, THEN FALL BACK TO THE TRACE. W12-20's outcome map is IN-MEMORY and deliberately so: it is a convenience for the immediate poll, not a second source of truth, and a server restart forgets a finished run's stdout. Anything displayed after a reload must come from the event log the trace route already serves.",
+        "SURFACE THE REFUSALS AS TEXT A PERSON CAN ACT ON: unset signing key, unreadable vault, unconstructible provider kind, a pinned policy the land loop cannot honour. Each names its own fix; do not collapse them into \"run failed\".",
+        "RED FIXTURE: clicking Start moves a claimable ticket off `ready` and surfaces the run id; a refused run shows its named reason rather than a generic failure. Proven impossible against the current board first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17 at W12-20's close rather than folded into it. The server half was the hard half and is done; pretending the UI came with it would be the same overstatement this wave keeps catching in other people's tickets."
       ]
     }
   ]
