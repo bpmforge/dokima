@@ -6154,12 +6154,15 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "packages/gateway/src/registry/types.ts",
-        "packages/gateway/src/registry/types.test.ts",
+        "packages/gateway/src/registry/validate.ts",
+        "packages/gateway/src/registry/validate.test.ts",
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/config.ts",
         "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
-        "apps/server/src/api/pipeline/gateway-model-port/provider.test.ts"
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts"
       ],
       "depends_on": [
         "W12-11"
@@ -6174,7 +6177,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-13 at W12-11's close, in the same commit that ships a refusal message naming it \u2014 a code comment pointing at an unfiled ticket is exactly the \"prose intent is not a control\" failure this wave keeps finding. Vertex is the one cloud kind D-024 option (b) still cannot serve."
+        "Filed 2026-08-13 at W12-11's close, in the same commit that ships a refusal message naming it \u2014 a code comment pointing at an unfiled ticket is exactly the \"prose intent is not a control\" failure this wave keeps finding. Vertex is the one cloud kind D-024 option (b) still cannot serve.",
+        "WRITE_SCOPE CORRECTED at claim, named: the filed scope named `registry/types.ts` and a nonexistent `registry/types.test.ts`, but the VALIDATOR lives in `registry/validate.ts` (tested by `validate.test.ts`), and the fields have to survive three more hops to reach the adapter \u2014 `ProviderEntry` -> `ResolvedModelTarget` (model-resolution.ts) -> `GatewayConfig` (config.ts) -> `createVertexProvider`. A field that validates and then dies at any hop is the \"settable and inert\" defect W10-57 documented in this very file; `validate.ts`'s own construction is an explicit ALLOWLIST with a comment saying so."
       ]
     },
     {

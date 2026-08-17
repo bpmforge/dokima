@@ -10,6 +10,7 @@
 import {
   CONSENT_GATED_KINDS,
   ENDPOINT_KINDS,
+  PROJECT_SCOPED_KINDS,
   PROVIDER_KINDS,
   ProviderRegistryError,
   type ProviderEntry,
@@ -99,6 +100,27 @@ export function validateProviderEntry(
     }
   }
 
+  // W12-14: a project-scoped kind must SAY which project and region it bills.
+  // Required rather than optional-with-a-default, because every default here
+  // would be a guess about someone's cloud bill.
+  const isProjectScoped = (PROJECT_SCOPED_KINDS as readonly string[]).includes(v.kind);
+  if (isProjectScoped) {
+    for (const field of ['project', 'location'] as const) {
+      if (typeof v[field] !== 'string' || (v[field] as string).trim() === '') {
+        throw new ProviderRegistryError(
+          `kind "${v.kind}" bills a specific cloud project and requires ${field}; ` +
+            `it cannot be derived from anything else on the entry`,
+          `missing-${field}`,
+        );
+      }
+    }
+  }
+  for (const field of ['project', 'location'] as const) {
+    if (v[field] !== undefined && typeof v[field] !== 'string') {
+      throw new ProviderRegistryError(`${field} must be a string`, `invalid-${field}`);
+    }
+  }
+
   if (v.credentialRef !== undefined && typeof v.credentialRef !== 'string') {
     throw new ProviderRegistryError(
       'credentialRef must be a string naming a keychain entry',
@@ -135,6 +157,13 @@ export function validateProviderEntry(
     ...(typeof v.requestTimeoutMs === 'number'
       ? { requestTimeoutMs: v.requestTimeoutMs }
       : {}),
+    // W12-14, and the allowlist comment above is why this is not optional:
+    // validating project/location and then omitting them here would ship the
+    // exact "settable and inert" field the W10-57 note warns about — the user
+    // would type a GCP project, the registry would accept it, and the adapter
+    // would never see it.
+    ...(typeof v.project === 'string' ? { project: v.project } : {}),
+    ...(typeof v.location === 'string' ? { location: v.location } : {}),
   };
   return entry;
 }

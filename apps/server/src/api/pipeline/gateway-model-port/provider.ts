@@ -25,6 +25,7 @@ import {
   createOaiCompatProvider,
   createOllamaProvider,
   createOpenAiProvider,
+  createVertexProvider,
   type Provider,
 } from '@dokima/gateway';
 import { resolveCredentialRef, resolveCredentialStore } from '@dokima/shared';
@@ -192,19 +193,57 @@ export async function providerForConfig(
         ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
       });
 
-    case 'vertex':
-      // STILL REFUSED, and for a different reason than before — stated so it
-      // is not mistaken for the old blanket refusal. `createVertexProvider`
-      // requires `project` and `location`, and `ProviderEntry` has nowhere to
-      // put them (id/kind/baseUrl/credentialRef/requestTimeoutMs/enabled).
-      // Inventing them from a baseUrl would be a guess about which GCP project
-      // to bill. The registry needs the fields first: filed as W12-14.
-      throw new ModelResolutionError(
-        `provider kind "vertex" needs a GCP project and location, and the provider registry ` +
-          `has no field for either (W12-14). Credentials and pricing are solved (W12-11); ` +
-          `this is a registry-schema gap. Anthropic, OpenAI, Copilot and local kinds work today.`,
-        'kind-not-constructible',
-      );
+    case 'vertex': {
+      // W12-14: the registry can now say which project and region get billed,
+      // so this constructs instead of refusing. It still refuses when either
+      // is absent — a default here would be a guess about someone's cloud bill.
+      if (!config.project || !config.location) {
+        const missing = !config.project ? 'project' : 'location';
+        throw new ModelResolutionError(
+          `provider kind "vertex" bills a specific GCP project and requires ${missing}. ` +
+            `Set it on the provider entry — it cannot be derived from a base URL, and ` +
+            `guessing it would be a guess about which account gets charged.`,
+          'missing-vertex-scope',
+        );
+      }
+      /**
+       * AUTH PRECEDENCE, matching `VertexConfig`'s own (D-007,
+       * TECH_STACK.md "Vertex auth = ADC, not API keys"):
+       *  1. A `credentialRef` resolving to service-account JSON through the
+       *     keychain — explicit, portable, works on a box with no gcloud.
+       *  2. Ambient Application Default Credentials — what
+       *     `gcloud auth application-default login` leaves behind, and what a
+       *     GCP instance supplies from its metadata server.
+       * Absent both, `google-auth-library` raises its own ADC error at call
+       * time; W12-25 surfaces that in the panel with the gcloud command
+       * rather than leaving it a raw stack trace.
+       */
+      const serviceAccountJson = config.credentialRef
+        ? await resolveCredentialRef(
+            resolveCredentialStore(process.env),
+            config.credentialRef,
+          ).catch((err: unknown) => {
+            throw new ModelResolutionError(
+              `provider kind "vertex" is registered with credential ref ` +
+                `"${config.credentialRef}", but it could not be resolved: ` +
+                `${err instanceof Error ? err.message : String(err)}. Register the ` +
+                `service-account JSON, or clear the ref to fall back to ambient ADC.`,
+              'credential-unresolvable',
+            );
+          })
+        : undefined;
+      return createVertexProvider({
+        id,
+        project: config.project,
+        location: config.location,
+        costTable: pricedTableFor('vertex', config.model, warn, purpose),
+        ...(serviceAccountJson ? { serviceAccountJson } : {}),
+        ...(config.requestTimeoutMs === undefined
+          ? {}
+          : { requestTimeoutMs: config.requestTimeoutMs }),
+        ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
+      });
+    }
 
     default: {
       // The generic oai-compat adapter — genuinely $0 for a local endpoint,
