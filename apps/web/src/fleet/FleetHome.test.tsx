@@ -77,3 +77,29 @@ describe('Fleet empty state "New Product" dead-click (W10-33)', () => {
     expect(screen.getAllByRole('button', { name: 'New Product' })).toHaveLength(1);
   });
 });
+
+describe('visual hierarchy (W12-29)', () => {
+  it(
+    'RED FIXTURE: exactly ONE primary action on the screen. A captured Fleet frame ' +
+      'showed six identical outlined pills — nothing primary, nothing receding — so ' +
+      'a new user had nowhere to land and read every control left-to-right',
+    async () => {
+      await renderEmptyFleet();
+      // Document-wide, which is the stronger claim: the captured frame caught
+      // TWO New Product buttons at different weights when this only checked
+      // the header.
+      const primaries = document.querySelectorAll('.btn-primary');
+      expect(primaries.length).toBe(1);
+      expect((primaries[0] as HTMLElement).textContent).toContain('New Product');
+    },
+  );
+
+  it('the empty state says what the product is FOR before offering buttons', async () => {
+    await renderEmptyFleet();
+    const empty = screen.getByTestId('fleet-empty');
+    expect(empty.textContent).toMatch(/Describe what you want built/);
+    // One primary here too — the ranked choice, not four equals.
+    expect(empty.querySelectorAll('.btn-primary').length).toBe(0);
+    expect(empty.querySelectorAll('.btn-quiet').length).toBeGreaterThan(0);
+  });
+});

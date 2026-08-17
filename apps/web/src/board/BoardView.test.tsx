@@ -120,7 +120,7 @@ describe('BoardView start-run affordance (W12-28)', () => {
       'surface was a GUI and the one action that mattered was a terminal command; ' +
       'W12-20 built the route and nothing called it',
     () => {
-      mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({})] }));
+      mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
       render(
         <BoardView
           baseUrl="/api/v1"
@@ -136,7 +136,7 @@ describe('BoardView start-run affordance (W12-28)', () => {
   );
 
   it('starts from where the work is visible — the runbar sits inside the board, not in Settings', () => {
-    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({})] }));
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
     render(
       <BoardView
         baseUrl="/api/v1"

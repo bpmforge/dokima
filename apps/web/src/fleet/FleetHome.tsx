@@ -107,13 +107,28 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
       <header className="fleet__header">
         <h1>Fleet</h1>
         <div className="fleet__actions">
-          <button type="button" onClick={() => setFormMode('new')}>
+          {/* W12-29: one primary per screen. New Product is what a person
+              came to Fleet to do; the rest are real actions that should not
+              compete with it. */}
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setFormMode('new')}
+          >
             New Product
           </button>
-          <button type="button" onClick={() => setFormMode('onboard')}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setFormMode('onboard')}
+          >
             Onboard existing repo
           </button>
-          <button type="button" onClick={() => setFormMode('import')}>
+          <button
+            type="button"
+            className="btn-quiet"
+            onClick={() => setFormMode('import')}
+          >
             Import
           </button>
           <label className="fleet__archived-toggle">
@@ -243,16 +258,30 @@ function EmptyState({
     return <p className="fleet__empty">No archived programs.</p>;
   }
   return (
-    <div className="fleet__empty" data-testid="fleet-empty">
-      <p>No programs yet.</p>
-      <div className="fleet__actions">
-        <button type="button" onClick={onNewProduct}>
+    <div className="fleet__empty empty-state" data-testid="fleet-empty">
+      {/* W12-29: an empty state is a first impression, not a fallback. The
+          captured frame showed "No programs yet." over four identical pills
+          and 85% white space — nothing said what this product is for.
+          LABELS ARE DELIBERATELY UNCHANGED HERE: renaming them is a
+          vocabulary decision (W12-32, which has to pick one word for the
+          Fleet/programs/Product/project tangle), and doing it inside a
+          hierarchy ticket broke a test that asserts one of those labels. */}
+      <p className="empty-state__lead">
+        Describe what you want built. Dokima interviews you, writes the plan,
+        and works the board with expert agents — on your machine, on your
+        models.
+      </p>
+      <div className="empty-state__actions">
+        {/* Secondary, not primary: the header's New Product is the persistent
+            action and owns the single primary slot. Two blue buttons labelled
+            the same thing is worse than none. */}
+        <button type="button" className="btn-secondary" onClick={onNewProduct}>
           New Product
         </button>
-        <button type="button" onClick={onOnboard}>
+        <button type="button" className="btn-secondary" onClick={onOnboard}>
           Onboard existing repo
         </button>
-        <button type="button" onClick={onOpenGuidedSample}>
+        <button type="button" className="btn-quiet" onClick={onOpenGuidedSample}>
           Try the guided sample
         </button>
       </div>

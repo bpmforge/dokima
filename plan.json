@@ -6603,7 +6603,7 @@
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/styles.css",
         "apps/web/src/App/**",
