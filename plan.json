@@ -6625,12 +6625,12 @@
     },
     {
       "id": "W12-30",
-      "title": "the board wraps its columns 3x2, so a kanban board does not read as a pipeline",
+      "title": "the board gets a third of the window by default, so six lifecycle states cannot fit and the grid has to wrap them",
       "phase": 12,
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/board/**"
       ],
@@ -6640,14 +6640,15 @@
       "stories": [],
       "acceptance": [
         "THE WORST SINGLE VISUAL DEFECT, visible in docs/acceptance/runs/2026-08-17T20-11-14-317Z/06-A-06.png: each lane renders Ready / Claimed / In Progress on one row and In Review / Blocked / Done beneath it. Kanban's entire value is ONE left-to-right pipeline; wrapping it into a grid destroys the metaphor, and a user cannot see flow at all.",
-        "ONE HORIZONTAL PIPELINE PER LANE, scrolling horizontally when it does not fit rather than wrapping. Note the existing constraint this must not reintroduce: W9-05 was a known finding that board columns CLIPPED with no scroll affordance, and the fix was a CSS grid \u2014 so the answer is a scrollable single row with a visible affordance, not a return to clipping.",
-        "EMPTY COLUMNS MUST NOT COST WHAT FULL ONES COST. Most of the board today is empty boxes at full height. Collapse or shrink an empty column so the eye goes to where work actually is.",
-        "REPLACE THE IN-CARD `Move to\u2026` SELECT. A native dropdown inside a card is not how anyone expects to move work; the board already has drag handling (`dragOptimistic.ts`) and a refusal path (`RefusalPopover.tsx`). Use them, and keep the select only as an accessible fallback \u2014 the drag refusals are a real feature (UX_SPEC \"drag-refusals explained\") and must survive.",
-        "LANES NEED TO BE VISIBLE. `GATEWAY` and `UI` render as small grey uppercase text with no separation, so a two-lane board reads as one confusing grid.",
-        "RE-CAPTURE the board frame and put the before/after pair in the close notes. Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+        "ACCEPTANCE CORRECTED AT CLAIM \u2014 THE ORIGINAL WAS WRONG AND THE CODE SAID SO. It demanded \"one horizontal pipeline per lane, scrolling rather than wrapping\". `board.css` carries a long measured rationale for the opposite: the Board is the CENTRE OF THREE PANES and gets ~470px at a 1440px window, six 12rem columns need ~1200px, `flex-wrap` was tried and rejected (grow stretched the final row into double-width columns that read as a rendering bug), and `auto-fit`+`minmax` was chosen and re-measured by screenshot at 1440x900 and 1280x800 in both themes. W9-05's edge-fade scroll affordance already exists and is load-bearing down to a 120px pane. Unwrapping the grid would re-break what W10-06/W10-32 measured. THE ROOT CAUSE IS UPSTREAM: `defaultLayout()` allocates chat 34% / board 33% / artifacts 33%, so the pane the layout itself marks as `activeView: board` gets the smallest-equal share of the window.",
+        "GIVE THE BOARD THE ROOM ITS CONTENT NEEDS BY DEFAULT, rather than shrinking the content to fit a share nobody chose. The grid then fits more states per row on its own, with no change to the measured column minimum and no risk to the drop targets both e2e specs depend on. Any new split must stay inside MIN_PANE_PCT/MAX_PANE_PCT and remain user-draggable \u2014 this changes a DEFAULT, not a constraint.",
+        "EMPTY COLUMNS MUST NOT COST WHAT FULL ONES COST. Most of the captured board is empty boxes at full height, which is independent of the wrap and true at any pane width.",
+        "LANES NEED TO BE VISIBLE: `GATEWAY` and `UI` render as small grey uppercase with no separation, so a two-lane board reads as one grid.",
+        "LEAVE THE IN-CARD `Move to\u2026` SELECT ALONE IN THIS TICKET, and say why rather than silently skipping it: it is part of the visible content the column minimum was MEASURED against (board.css W10-32), and the drag path it would be replaced by carries the refusal behaviour UX_SPEC requires (\"drag-refusals explained\", `RefusalPopover.tsx`). Swapping it is a real change to both, and bundling it here would put a measured layout and a refusal path at risk inside a ticket about pane allocation. File it separately if still wanted."
       ],
       "notes": [
-        "Filed 2026-08-17. Depends on W12-29 so the card and column chrome lands on a real hierarchy rather than being restyled twice."
+        "Filed 2026-08-17. Depends on W12-29 so the card and column chrome lands on a real hierarchy rather than being restyled twice.",
+        "ACCEPTANCE CORRECTED 2026-08-17 at claim. The original was written from a screenshot reaction \u2014 \"the board wraps 3x2, that is the worst single defect\" \u2014 without reading the rationale beside the code. `board.css` documents that the wrap is a deliberate, screenshot-measured response to a 470px pane, that flex-wrap was tried and rejected, and that the scroll affordance already exists. The critique was right that the board is hard to read and wrong about why: the board is not laid out badly, it is allocated a third of the window while being the active view. Recording the correction because a ticket that tells a maker to undo measured work is worse than no ticket."
       ]
     },
     {
@@ -6728,6 +6729,33 @@
       ],
       "notes": [
         "Filed 2026-08-17. Depends on W12-29 so chrome is restyled once, against a real hierarchy, rather than twice."
+      ]
+    },
+    {
+      "id": "W12-34",
+      "title": "board work has no focus mode \u2014 the pipeline still wraps because three panes share one window",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/layout/**",
+        "apps/web/src/App/**"
+      ],
+      "depends_on": [
+        "W12-30"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DISCLOSED BY W12-30 AT CLOSE. Widening the board default to 58% got 5 of 6 lifecycle states onto one row, up from 3. The sixth needs either a narrower `--sw-board-column-min` (measured at 8.5rem; W10-32's history is a warning against reducing it on a hunch) or a wider board still, which starves Chat \u2014 at 58% it is already ~300px. Neither is right: the real constraint is that three panes share one window.",
+        "THE MACHINERY EXISTS ALREADY. Panes collapse (`\u00ab` affordances, `collapsed` in `PaneLayout`) and the layout persists per project. What is missing is a one-click way to say \"I am working the board now\" rather than collapsing two panes by hand every session.",
+        "RESTORE, DO NOT DESTROY: entering and leaving focus must return the user to the layout they had, not to the default. The layout is already persisted, so the previous sizes are recoverable \u2014 do not overwrite them with the focused ones.",
+        "RED FIXTURE: focusing the board collapses the side panes and fits all six lifecycle states on one row at 1440px; leaving focus restores the exact prior sizes, including a layout the user had dragged themselves.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+      ],
+      "notes": [
+        "Filed 2026-08-17 at W12-30's close instead of shrinking a measured constant to make a screenshot look better. W12-30 got the default allocation right; this is the affordance that makes the constraint stop mattering."
       ]
     }
   ]
