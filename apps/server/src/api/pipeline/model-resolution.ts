@@ -63,6 +63,9 @@ export interface ResolvedModelTarget {
   readonly requestTimeoutMs?: number;
   /** The bare model id sent on the wire — prefix stripped. */
   readonly model: string;
+  /** GCP project/region for `vertex` (W12-14) — absent for every other kind. */
+  readonly project?: string;
+  readonly location?: string;
   /** How this was decided, so a run can explain itself. */
   readonly source: 'registry' | 'env';
 }
@@ -215,6 +218,8 @@ function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'so
     kind: entry.kind,
     ...(entry.baseUrl === undefined ? {} : { baseUrl: entry.baseUrl }),
     ...(entry.credentialRef === undefined ? {} : { credentialRef: entry.credentialRef }),
+    ...(entry.project === undefined ? {} : { project: entry.project }),
+    ...(entry.location === undefined ? {} : { location: entry.location }),
     ...(entry.requestTimeoutMs === undefined
       ? {}
       : { requestTimeoutMs: entry.requestTimeoutMs }),

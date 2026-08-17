@@ -12,6 +12,9 @@ export interface GatewayConfig {
   readonly apiKey?: string;
   /** W12-11: the NAME of a keychain entry (Law 8), resolved at construction time — never the secret. */
   readonly credentialRef?: string;
+  /** W12-14: GCP project/region, required for `vertex` and absent elsewhere. */
+  readonly project?: string;
+  readonly location?: string;
   readonly model: string;
   /** Which adapter to construct (W10-03). Absent => oai-compat, the pre-registry behaviour. */
   readonly kind?: import('@dokima/gateway').ProviderKind;
@@ -76,6 +79,8 @@ export function targetToConfig(
     // keychain. Previously dropped here, which is why the comment below
     // described a resolution that nothing performed.
     ...(target.credentialRef ? { credentialRef: target.credentialRef } : {}),
+    ...(target.project ? { project: target.project } : {}),
+    ...(target.location ? { location: target.location } : {}),
     model: target.model,
     kind: target.kind,
     providerId: target.providerId,

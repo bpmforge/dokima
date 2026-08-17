@@ -356,10 +356,52 @@ describe('providerForConfig — adapter dispatch (W10-03, W12-11)', () => {
     },
   );
 
-  it('vertex still refuses, but for a NAMED registry-schema gap rather than the old blanket reason', async () => {
+  it(
+    'W12-14 RED FIXTURE: vertex CONSTRUCTS once the entry says which project and ' +
+      'region get billed — it was the one cloud kind still refusing after W12-11 ' +
+      'solved credentials and pricing, purely because the registry could not ' +
+      'express those two fields',
+    async () => {
+      const provider = await providerForConfig({
+        model: 'gemini-2.5-pro',
+        kind: 'vertex',
+        baseUrl: '',
+        project: 'my-gcp-project',
+        location: 'us-central1',
+      });
+      expect(provider.id).toBeTruthy();
+    },
+  );
+
+  it(
+    'W12-14 RED FIXTURE: a vertex entry missing project or location refuses BY NAME, ' +
+      'naming which field — a default here would be a guess about whose cloud bill ' +
+      'this lands on',
+    async () => {
+      await expect(
+        providerForConfig({ model: 'gemini-2.5-pro', kind: 'vertex', baseUrl: '' }),
+      ).rejects.toThrowError(/requires project/);
+      await expect(
+        providerForConfig({
+          model: 'gemini-2.5-pro',
+          kind: 'vertex',
+          baseUrl: '',
+          project: 'my-gcp-project',
+        }),
+      ).rejects.toThrowError(/requires location/);
+    },
+  );
+
+  it('an unpriced vertex model still refuses rather than metering a paid API at $0', async () => {
     await expect(
-      providerForConfig({ baseUrl: 'https://x/v1', model: 'gemini-2.5-pro', kind: 'vertex' }),
-    ).rejects.toThrowError(/needs a GCP project and location/);
+      providerForConfig({
+        model: 'gemini-not-in-the-price-map',
+        kind: 'vertex',
+        baseUrl: '',
+        project: 'p',
+        location: 'us-central1',
+      }),
+    ).rejects.toThrowError(/no price is on record/);
   });
 });
 

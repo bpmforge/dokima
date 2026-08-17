@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateProviderRegistry } from './validate.js';
+import { validateProviderEntry, validateProviderRegistry } from './validate.js';
 
 
 /**
@@ -31,4 +31,50 @@ describe('per-entry request timeout (W10-57)', () => {
       ).toThrow(/requestTimeoutMs/);
     },
   );
+});
+
+describe('project-scoped kinds (W12-14)', () => {
+  const base = { id: 'v1', kind: 'vertex' as const, enabled: true };
+
+  it(
+    'RED FIXTURE: a vertex entry REQUIRES project and location by name. Neither is ' +
+      'derivable from anything else on the entry, and a default would be a guess ' +
+      'about which cloud account gets billed',
+    () => {
+      expect(() => validateProviderEntry({ ...base, location: 'us-central1' })).toThrowError(
+        /requires project/,
+      );
+      expect(() => validateProviderEntry({ ...base, project: 'my-gcp-project' })).toThrowError(
+        /requires location/,
+      );
+    },
+  );
+
+  it(
+    'RED FIXTURE (settable-and-inert): the accepted fields SURVIVE onto the entry. ' +
+      "validate.ts's construction is an allowlist — a field validated above and " +
+      'omitted there is silently dropped, which is exactly the defect W10-57 ' +
+      'documented in this same function',
+    () => {
+      const entry = validateProviderEntry({
+        ...base,
+        project: 'my-gcp-project',
+        location: 'us-central1',
+      });
+      expect(entry.project).toBe('my-gcp-project');
+      expect(entry.location).toBe('us-central1');
+    },
+  );
+
+  it('a non-project kind is unaffected — the requirement is per-kind, not global', () => {
+    const entry = validateProviderEntry({ id: 'oa', kind: 'openai', enabled: true });
+    expect(entry.project).toBeUndefined();
+    expect(entry.location).toBeUndefined();
+  });
+
+  it('rejects a non-string project or location rather than coercing it', () => {
+    expect(() =>
+      validateProviderEntry({ ...base, project: 42, location: 'us-central1' }),
+    ).toThrowError(/project must be a string|requires project/);
+  });
 });

@@ -35,6 +35,15 @@ export const PROVIDER_KINDS: readonly ProviderKind[] = [
 export const ENDPOINT_KINDS: readonly ProviderKind[] = ['oai-compat'];
 
 /**
+ * Kinds addressed by a cloud PROJECT rather than a URL (W12-14). Vertex bills
+ * a specific GCP project in a specific region, and neither is derivable from
+ * anything else on the entry — inferring them from a `baseUrl` fragment would
+ * be a guess about WHICH ACCOUNT GETS BILLED, the same class of fabrication as
+ * metering a paid call at $0.
+ */
+export const PROJECT_SCOPED_KINDS: readonly ProviderKind[] = ['vertex'];
+
+/**
  * Kinds gated behind an explicit, ledgered consent acknowledgement (D-019).
  * Copilot's `copilot_internal` flow is undocumented API and GitHub enforcement
  * can permanently ban the user's account, so it is never enabled by a plain
@@ -61,6 +70,14 @@ export interface ProviderEntry {
    * want surfaced in 30. Absent means the provider kind's own default.
    */
   readonly requestTimeoutMs?: number;
+  /**
+   * GCP project id — required for `vertex`, meaningless elsewhere (W12-14).
+   * This is the field whose absence made Vertex the one cloud kind that still
+   * refused at construction after W12-11 solved credentials and pricing.
+   */
+  readonly project?: string;
+  /** GCP region (e.g. `us-central1`) — required for `vertex`, meaningless elsewhere. */
+  readonly location?: string;
   readonly enabled: boolean;
 }
 
