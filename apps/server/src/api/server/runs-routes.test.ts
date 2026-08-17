@@ -174,3 +174,108 @@ describe('runs routes — session trace (UX_SPEC §4, API_DESIGN "runs/:id/trace
     expect(traceRes.statusCode).toBe(404);
   });
 });
+
+describe('build runs (W12-20)', () => {
+  const PORT2 = 4319;
+  const TOKEN2 = 'test-token-0123456789abcdef';
+  const dirs2: string[] = [];
+  let active2: ApiServer | undefined;
+
+  afterEach(async () => {
+    await active2?.app.close();
+    active2 = undefined;
+    for (const d of dirs2.splice(0)) await fs.rm(d, { recursive: true, force: true });
+  });
+
+  async function boot2() {
+    const fleetHome = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-buildrun-'));
+    dirs2.push(fleetHome);
+    const server = await buildApiServer({
+      token: TOKEN2,
+      port: PORT2,
+      isDbOpen: () => true,
+      logger: false,
+      fleetHome,
+    });
+    active2 = server;
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-buildrun-proj-'));
+    dirs2.push(projectDir);
+    const record = await registerProject(path.join(fleetHome, 'fleet.json'), {
+      path: projectDir,
+      mode: 'new',
+      name: 'br',
+    });
+    await fs.mkdir(path.join(projectDir, '.dokima'), { recursive: true });
+    return {
+      app: server.app,
+      id: record.id,
+      h: { host: `127.0.0.1:${PORT2}`, authorization: `Bearer ${TOKEN2}` },
+    };
+  }
+
+  it(
+    'RED FIXTURE: a build run can be STARTED from the API. runs-routes served only ' +
+      'GET .../runs and GET /runs/:id/trace — both read-only — so every ' +
+      'configuration surface was a GUI and the one action that matters was a ' +
+      'terminal command',
+    async () => {
+      const { app, id, h } = await boot2();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${id}/build-runs`,
+        headers: h,
+        payload: { actor_id: 'operator', run_id: 'run-w1220' },
+      });
+      // 202, not 200: the work happens off the request.
+      expect(res.statusCode).toBe(202);
+      expect(res.json().run_id).toBe('run-w1220');
+      expect(res.json().status).toBe('running');
+    },
+  );
+
+  it(
+    'the refusals executeBuildRun produces REACH THE USER. An unset signing key is ' +
+      'something a person can fix, and before this it only ever reached a stderr ' +
+      'nobody was watching',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      delete process.env.DOKIMA_SIGNING_KEY;
+      try {
+        const { app, id, h } = await boot2();
+        await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-nokey' },
+        });
+        // The job runs off the request, so poll the status route for the outcome.
+        let body: Record<string, unknown> = {};
+        for (let i = 0; i < 40; i++) {
+          const res = await app.inject({
+            method: 'GET',
+            url: `/api/v1/projects/${id}/build-runs/run-nokey`,
+            headers: h,
+          });
+          body = res.json() as Record<string, unknown>;
+          if (body.status !== 'running') break;
+          await new Promise((r) => setTimeout(r, 25));
+        }
+        expect(body.status).toBe('refused');
+        expect(String((body.stderr as string[]).join('\n'))).toMatch(/DOKIMA_SIGNING_KEY/);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+      }
+    },
+    30_000,
+  );
+
+  it('an unknown run id is a 404 rather than a fabricated "running"', async () => {
+    const { app, id, h } = await boot2();
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/build-runs/never-started`,
+      headers: h,
+    });
+    expect(res.statusCode).toBe(404);
+  });
+});
