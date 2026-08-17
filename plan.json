@@ -6658,10 +6658,12 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/web/src/settings/SettingsPage.tsx",
-        "apps/web/src/settings/SettingsPage.test.tsx"
+        "apps/web/src/settings/SettingsPage.test.tsx",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/e2e/a11y/settings.spec.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -6674,7 +6676,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
       ],
       "notes": [
-        "Filed 2026-08-17. Independent of W12-29 \u2014 it is information architecture and copy, not visual hierarchy \u2014 so it can run in parallel with the board work."
+        "Filed 2026-08-17. Independent of W12-29 \u2014 it is information architecture and copy, not visual hierarchy \u2014 so it can run in parallel with the board work.",
+        "WRITE_SCOPE WIDENED to two e2e specs, named. Four e2e tests failed the moment Settings opened on Providers instead of Model Matrix \u2014 three matrix flows timed out waiting for a form that is now a tab away, and the no-project spec asserted the old copy verbatim. All four are consequences of a deliberate change, not flake, and they are the SAME shape as W12-13/W12-19: change a default, break the callers that assumed the old one. The unit suite was green throughout; only e2e saw it."
       ]
     },
     {
@@ -6756,6 +6759,35 @@
       ],
       "notes": [
         "Filed 2026-08-17 at W12-30's close instead of shrinking a measured constant to make a screenshot look better. W12-30 got the default allocation right; this is the affordance that makes the constraint stop mattering."
+      ]
+    },
+    {
+      "id": "W12-35",
+      "title": "ProvidersPanel is mounted twice \u2014 the model catalog lives in one instance and the other cannot see it",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/settings/ModelMatrixPanel.tsx",
+        "apps/web/src/settings/SettingsPage.tsx",
+        "apps/web/src/settings/ModelMatrixPanel.test.tsx"
+      ],
+      "depends_on": [
+        "W12-31"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND BY W12-31 AND IT BLOCKED THAT TICKET'S LAST STEP. `ModelMatrixPanel` composes its own `ProvidersPanel` to build the model catalog (`onCatalogsChange`), and W12-31 added a second mount on the new Providers tab. The discovered catalog lives in whichever instance did the discovering, so landing on the Providers tab and switching to Model Matrix leaves the Model picker empty \u2014 four e2e flows failed on exactly this.",
+        "LIFT THE CATALOG so one fetch serves both surfaces, rather than adding a third mount or duplicating the fetch. Where it lifts to is the design question: a shared hook, context, or the SettingsPage itself. Say which was chosen and why.",
+        "THE TWO SURFACES WANT DIFFERENT THINGS and the lift must serve both: the Providers tab is where entries are ADDED and tested; the matrix needs the resulting per-provider model lists plus `enabled` per entry (it distinguishes missing from unroutable, UX_SPEC \u00a76a).",
+        "THEN MOVE THE LANDING TAB. W12-31 deliberately left Settings landing on Model Matrix because doing otherwise broke the picker. Once the catalog is shared, Settings should open on Providers \u2014 the reason most people open Settings \u2014 and the e2e flows should not need reordering to survive it.",
+        "RED FIXTURE: register a provider on the Providers tab, switch to Model Matrix, and the Model picker is populated \u2014 proven empty against the current double mount first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+      ],
+      "notes": [
+        "Filed 2026-08-17 at W12-31's close. W12-31 could have shipped the nicer landing by patching four e2e specs to work around the empty picker; it reverted instead, because a spec edited to tolerate a broken picker is worse than a landing tab that is merely not ideal."
       ]
     }
   ]

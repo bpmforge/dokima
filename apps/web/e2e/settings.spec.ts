@@ -51,7 +51,11 @@ test('Settings with no project open shows the no-project state and a wizard entr
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByTestId('settings-page')).toBeVisible();
-  await expect(page.getByText('Open a project to configure')).toBeVisible();
+  // W12-31: this page was one line of internal vocabulary ("model matrix,
+  // autonomy dial, budgets, and scopes") over a lone wizard button, with no
+  // route to a project from here — so it read as "you must run the wizard".
+  await expect(page.getByText(/which providers it can reach/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose a project' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Run Setup Wizard' })).toBeVisible();
 });
 
