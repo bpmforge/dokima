@@ -5,6 +5,8 @@ import {
   deserializePaneLayout,
   paneLayoutStorageKey,
   serializePaneLayout,
+  MIN_PANE_PCT,
+  MAX_PANE_PCT,
 } from './paneLayout.js';
 
 describe('clampPaneSize', () => {
@@ -49,5 +51,36 @@ describe('serializePaneLayout / deserializePaneLayout', () => {
     expect(
       deserializePaneLayout(JSON.stringify({ activeView: 'nope', panes: {} })),
     ).toBeUndefined();
+  });
+});
+
+describe('default pane allocation (W12-30)', () => {
+  it(
+    'RED FIXTURE: the board gets the largest share. It was an even 34/33/33, so ' +
+      'the pane this same function marks as activeView received the smallest-equal ' +
+      'share — ~470px at 1440px, where six lifecycle states cannot fit and the ' +
+      'grid correctly wrapped them 3x2',
+    () => {
+      const layout = defaultLayout();
+      expect(layout.activeView).toBe('board');
+      expect(layout.panes.board.sizePct).toBeGreaterThan(layout.panes.chat.sizePct);
+      expect(layout.panes.board.sizePct).toBeGreaterThan(layout.panes.artifacts.sizePct);
+    },
+  );
+
+  it('still sums to 100 and every pane stays inside the draggable range', () => {
+    const layout = defaultLayout();
+    const total =
+      layout.panes.chat.sizePct + layout.panes.board.sizePct + layout.panes.artifacts.sizePct;
+    expect(total).toBe(100);
+    for (const pane of Object.values(layout.panes)) {
+      expect(pane.sizePct).toBeGreaterThanOrEqual(MIN_PANE_PCT);
+      expect(pane.sizePct).toBeLessThanOrEqual(MAX_PANE_PCT);
+    }
+  });
+
+  it('changes a DEFAULT, not a constraint — an even split is still reachable by dragging', () => {
+    expect(clampPaneSize(33)).toBe(33);
+    expect(clampPaneSize(34)).toBe(34);
   });
 });

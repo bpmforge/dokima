@@ -33,7 +33,10 @@ export function Column({ column, heartbeats, onDrop, onFireVerb }: ColumnProps) 
 
   return (
     <div
-      className="board-column"
+      /* W12-30: an empty column is still a drop target and must stay one —
+         it just should not cost the same vertical space as a full one. Most
+         of the captured board was empty boxes at full height. */
+      className={`board-column${column.tickets.length === 0 ? ' board-column--empty' : ''}`}
       data-testid={`column-${column.status}`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}

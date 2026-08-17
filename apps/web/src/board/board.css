@@ -62,6 +62,18 @@
   gap: var(--sw-space-3);
 }
 
+.board-lane {
+  /* W12-30: a two-lane board read as one undifferentiated grid because the
+     only lane signal was small grey uppercase text. */
+  padding-top: var(--sw-space-3);
+  border-top: var(--sw-border-width) solid var(--sw-border);
+}
+
+.board-lane:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
 .board-lane__title {
   margin: 0 0 var(--sw-space-1);
   font-size: var(--sw-text-md);
@@ -162,6 +174,17 @@
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-md);
   padding: var(--sw-space-2);
+}
+
+.board-column--empty {
+  /* Recedes, never disappears: it is still a drop target, and a lane where
+     empty columns vanished would move the remaining ones under the cursor
+     mid-drag. Muted rather than removed. */
+  opacity: 0.55;
+}
+
+.board-column--empty .board-column__cards {
+  min-height: var(--sw-space-6);
 }
 
 .board-column__header {
