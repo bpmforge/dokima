@@ -6713,10 +6713,11 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/web/src/App/**",
-        "apps/web/src/styles.css"
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts"
       ],
       "depends_on": [
         "W12-29"
@@ -6731,7 +6732,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
       ],
       "notes": [
-        "Filed 2026-08-17. Depends on W12-29 so chrome is restyled once, against a real hierarchy, rather than twice."
+        "Filed 2026-08-17. Depends on W12-29 so chrome is restyled once, against a real hierarchy, rather than twice.",
+        "write_scope gained styles.test.ts: styling the form controls needs a focus ring, and the W10-06 raw-px guard refused `outline: 2px`. Exempting it is the honest fix rather than dodging into `box-shadow` (already exempt) purely to avoid touching the guard \u2014 a focus ring is geometry, and WCAG 2.2 treats its thickness as an accessibility property, so it should not be snapped to a spacing token that a later layout change could quietly thin. The allowlist entry carries that reason and is deliberately narrow: `outline-color` still has to come from a token. The file's own note warns that an exemption nothing needs is the first crack in an allowlist, which is why this one is justified in place."
       ]
     },
     {

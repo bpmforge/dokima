@@ -271,6 +271,79 @@ button:disabled {
   color: var(--sw-fg);
 }
 
+/* W12-33: icons inherit the text colour and the theme, which is the whole
+   reason they replaced emoji. Sized in `em` so they scale with their label. */
+.icon {
+  width: 1.05em;
+  height: 1.05em;
+  flex: none;
+}
+
+/* Buttons that pair an icon with a word need to say so, or the two collide. */
+.theme-toggle,
+.app-shell__notifications-bell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sw-space-2);
+}
+
+/* W12-33: the form controls were left as raw browser chrome while the buttons
+   were styled, so any form read as a different application than the page
+   around it. Same tokens, same radius, same border as everything else. */
+input[type='text'],
+input[type='password'],
+input[type='search'],
+input[type='url'],
+input:not([type]),
+select,
+textarea {
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-md);
+  padding: var(--sw-space-2) var(--sw-space-3);
+  background: var(--sw-bg);
+  color: var(--sw-fg);
+  font: inherit;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--sw-accent);
+  outline-offset: 1px;
+}
+
+/* A label wrapping its control should stack, not run them together. */
+label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+}
+
+/* Checkboxes and radios are the exception: label beside control, not above. */
+label:has(> input[type='checkbox']),
+label:has(> input[type='radio']) {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sw-space-2);
+}
+
+/* W12-33: the back link had NO rule of its own, so it inherited the global
+   button treatment and stretched to the full window width — a whole row of
+   chrome spent on one link, above every workspace. It is navigation: quiet,
+   inline, and sized to its text. */
+.app-shell__back-to-fleet {
+  align-self: flex-start;
+  border-color: transparent;
+  color: var(--sw-fg-muted);
+  margin: var(--sw-space-2) var(--sw-space-3) 0;
+}
+
+.app-shell__back-to-fleet:hover,
+.app-shell__back-to-fleet:focus-visible {
+  border-color: var(--sw-border);
+  color: var(--sw-fg);
+}
+
 /* A page needs a spine. Content pinned to the top-left of a 1440px viewport
    reads as unfinished regardless of how the controls look. */
 .page-shell {

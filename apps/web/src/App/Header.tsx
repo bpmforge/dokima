@@ -10,7 +10,31 @@ function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
     >
-      {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+      {/* W12-33: an inline SVG, not an emoji. Emoji render differently per
+          platform and font — next to text buttons they read as a placeholder
+          nobody replaced — and their colour is outside our control, so they
+          ignore the theme they are supposed to be toggling. `aria-hidden`
+          because the button already carries a descriptive `aria-label`. */}
+      <svg
+        className="icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      >
+        {theme === 'dark' ? (
+          <path d="M20 13.5A8 8 0 0 1 10.5 4a7 7 0 1 0 9.5 9.5Z" />
+        ) : (
+          <>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+          </>
+        )}
+      </svg>
+      <span>{theme === 'dark' ? 'Dark' : 'Light'}</span>
     </button>
   );
 }
@@ -71,7 +95,20 @@ export function AppHeader({
                 onClick={() => openView('notifications')}
                 aria-label={`Notifications, ${decideBadgeCount} awaiting a decision`}
               >
-                🔔
+                <svg
+                  className="icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
+                  <path d="M10.5 19a2 2 0 0 0 3 0" />
+                </svg>
                 {decideBadgeCount > 0 && (
                   <span className="app-shell__decide-badge" data-testid="decide-badge">
                     {decideBadgeCount}

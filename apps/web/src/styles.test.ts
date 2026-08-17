@@ -107,6 +107,14 @@ const PX_EXEMPT_PROPERTIES: Record<string, string> = {
   // board/Lane.test.tsx. Tokenising these would break that contract for
   // no design benefit — they are the size of a fade, not a gap.
   'background-size': 'scroll-shadow gradient geometry (W9-05)',
+  // W12-33: a focus ring is geometry, not a spacing step, and its THICKNESS
+  // is an accessibility property — WCAG 2.2's focus-appearance criterion is
+  // about how visible the indicator is, so snapping it to a spacing token
+  // would let a layout scale change quietly thin the only affordance a
+  // keyboard user has. Exempt for the same reason box-shadow is, and no
+  // wider: `outline-color` still has to come from a token.
+  outline: 'focus-ring geometry (WCAG 2.2 focus appearance)',
+  'outline-offset': 'focus-ring geometry (WCAG 2.2 focus appearance)',
   // NOTE: `background-position` is deliberately NOT exempt. It sits beside
   // background-size in the same rule and looks like it belongs here, but
   // its value is `0 0, 100% 0, ...` — no px at all. An exemption nothing
