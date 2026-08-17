@@ -703,3 +703,46 @@ describe('auth method rendering (W12-21)', () => {
     expect(screen.getByLabelText(/API key/)).toBeTruthy();
   });
 });
+
+describe('Vertex project scope (W12-25)', () => {
+  async function openForm() {
+    fetchSpy.mockImplementation(
+      router([getProviders(() => jsonResponse({ providers: [] }))]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText(/No providers yet/);
+    return screen.getByLabelText('Kind');
+  }
+
+  it(
+    'RED FIXTURE: choosing Vertex asks for the GCP project and region. Without ' +
+      'them the registry refuses the entry (W12-14), so a panel that never asked ' +
+      'meant Vertex was configurable only by hand-editing settings',
+    async () => {
+      const kind = await openForm();
+      fireEvent.change(kind, { target: { value: 'vertex' } });
+      expect(screen.getByLabelText('GCP project')).toBeTruthy();
+      expect(screen.getByLabelText('Region')).toBeTruthy();
+    },
+  );
+
+  it('offers the service-account JSON as an OPTIONAL credential, and says it wins over ambient ADC', async () => {
+    const kind = await openForm();
+    fireEvent.change(kind, { target: { value: 'vertex' } });
+    expect(screen.getByLabelText(/Service-account JSON/)).toBeTruthy();
+    expect(screen.getByText(/takes precedence over ambient credentials/)).toBeTruthy();
+  });
+
+  it('names the gcloud command rather than leaving ambient credentials a mystery', async () => {
+    const kind = await openForm();
+    fireEvent.change(kind, { target: { value: 'vertex' } });
+    expect(screen.getByText(/gcloud auth application-default login/)).toBeTruthy();
+  });
+
+  it('does NOT ask a non-project kind for a project — the fields are per-kind, not global', async () => {
+    const kind = await openForm();
+    fireEvent.change(kind, { target: { value: 'openai' } });
+    expect(screen.queryByLabelText('GCP project')).toBeNull();
+    expect(screen.queryByLabelText('Region')).toBeNull();
+  });
+});

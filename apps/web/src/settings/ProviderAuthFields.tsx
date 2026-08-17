@@ -28,6 +28,9 @@ export interface AuthDraft {
   authMethod: AuthMethod;
   apiKey: string;
   previousCredentialRef?: string;
+  /** W12-25: which GCP project and region get billed. Required for `vertex`. */
+  project?: string;
+  location?: string;
 }
 
 export interface ProviderAuthFieldsProps<D extends AuthDraft> {
@@ -89,12 +92,45 @@ export function ProviderAuthFields<D extends AuthDraft>({
             </p>
           )}
           {draft.authMethod === 'gcp-adc' && (
-            <p className="settings__hint" data-testid="auth-gcp-adc">
-              Vertex uses Google Application Default Credentials, not an API key.
-              Register a service-account JSON as a credential, or run{' '}
-              <code>gcloud auth application-default login</code> on this machine.
-              Project and region are set on the entry (W12-25 adds the fields here).
-            </p>
+            <>
+              {/* W12-25: REQUIRED, not optional — the registry refuses a vertex
+                  entry without both (W12-14), because a default would be a guess
+                  about which cloud account gets billed. */}
+              <label>
+                GCP project
+                <input
+                  value={draft.project ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, project: e.target.value }))}
+                  placeholder="my-gcp-project"
+                />
+              </label>
+              <label>
+                Region
+                <input
+                  value={draft.location ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))}
+                  placeholder="us-central1"
+                />
+              </label>
+              <p className="settings__hint" data-testid="auth-gcp-adc">
+                Vertex uses Google Application Default Credentials, not an API key.
+                Either register a service-account JSON below, or run{' '}
+                <code>gcloud auth application-default login</code> on this machine and
+                leave it blank. Use <strong>Test</strong> to check which one is in
+                play — it acquires a real ADC token and reports what happened.
+              </p>
+              <label>
+                Service-account JSON (optional — takes precedence over ambient credentials)
+                <input
+                  type="password"
+                  value={draft.apiKey}
+                  onChange={(e) => setDraft((d) => ({ ...d, apiKey: e.target.value }))}
+                  placeholder={
+                    draft.previousCredentialRef ? 'unchanged — leave blank to keep' : ''
+                  }
+                />
+              </label>
+            </>
           )}
     </>
   );

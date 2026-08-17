@@ -54,6 +54,9 @@ interface WireProvider {
   kind: ProviderKind;
   base_url?: string;
   credential_ref?: string;
+  /** W12-25: required for `vertex` — which GCP project and region get billed. */
+  project?: string;
+  location?: string;
   enabled: boolean;
 }
 
@@ -63,6 +66,8 @@ function toWire(entry: ProviderEntry): WireProvider {
     kind: entry.kind,
     ...(entry.baseUrl === undefined ? {} : { base_url: entry.baseUrl }),
     ...(entry.credentialRef === undefined ? {} : { credential_ref: entry.credentialRef }),
+    ...(entry.project === undefined ? {} : { project: entry.project }),
+    ...(entry.location === undefined ? {} : { location: entry.location }),
     enabled: entry.enabled,
   };
 }
@@ -129,6 +134,11 @@ function fromWire(raw: unknown): unknown {
     kind: v.kind,
     baseUrl: v.base_url ?? v.baseUrl,
     credentialRef: v.credential_ref ?? v.credentialRef,
+    // W12-25: another allowlist. Without these the browser could send a GCP
+    // project, this mapper would drop it, and the registry would refuse the
+    // entry for a field the user demonstrably filled in.
+    project: v.project,
+    location: v.location,
     enabled: v.enabled,
   };
 }
