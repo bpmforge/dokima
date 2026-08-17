@@ -6447,10 +6447,11 @@
       "module": "cli",
       "lane": "core",
       "points": 2,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/server/src/bootstrap/cli-entry.mjs",
-        "apps/server/src/bootstrap/cli.test.ts"
+        "apps/server/src/bootstrap/node-abi-guard.mjs",
+        "apps/server/src/bootstrap/node-abi-guard.test.mjs"
       ],
       "depends_on": [],
       "stories": [],
@@ -6463,7 +6464,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-17. Highest leverage-per-point item on the board: it is the FIRST thing a new user can hit, it is already documented as a known trap, and the current behaviour is a C++ error message that mentions neither the product nor the fix."
+        "Filed 2026-08-17. Highest leverage-per-point item on the board: it is the FIRST thing a new user can hit, it is already documented as a known trap, and the current behaviour is a C++ error message that mentions neither the product nor the fix.",
+        "write_scope: the pure translation lives in its own module rather than inside cli-entry.mjs, because importing that file to test it would EXECUTE it \u2014 it boots the CLI at module scope. `cli.test.ts` was dropped from scope and never edited; the guard is tested directly."
       ]
     },
     {
