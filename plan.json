@@ -6447,7 +6447,7 @@
       "module": "cli",
       "lane": "core",
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/bootstrap/cli-entry.mjs",
         "apps/server/src/bootstrap/cli.test.ts"
