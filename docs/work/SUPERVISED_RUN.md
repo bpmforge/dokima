@@ -42,7 +42,14 @@ first-party `openai`/`anthropic` adapters, `credentialRef` → keychain
 resolution, and real per-model pricing. The env vars go through generic
 `oai-compat` instead and skip all three.
 
+> **Node 22 is required in every terminal you use.** `fnm`'s default is 24 and
+> the `better-sqlite3` binary is built for 22, so a fresh tab fails with a raw
+> `NODE_MODULE_VERSION 127 ... requires 137` error that names neither Dokima
+> nor the fix. Run `fnm use 22` first; `node -v` must print v22.x. (W12-24
+> turns that into a named refusal.)
+
 ```sh
+fnm use 22
 cd /tmp/dokima-run
 node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs
 ```
@@ -53,9 +60,14 @@ That boots the core and opens the Canvas at <http://127.0.0.1:4317>. Then:
    Paste the API key — it is exchanged for a keychain ref through
    `POST /providers/credentials` and the secret itself never touches
    `settings.json` or the event log (Law 8, FR-S2).
-2. **Settings → Run Setup Wizard** to pick how work is modelled — local only ·
-   start cheap and escalate · escalate only when I approve · always use my best
-   cloud model (D-024). Since W12-18 this choice actually governs the run.
+2. **Optionally** — Settings → Run Setup Wizard, to pick how work is modelled:
+   local only · start cheap and escalate · escalate only when I approve ·
+   always use my best cloud model (D-024). Since W12-18 this choice actually
+   governs the run. **The wizard is not required and never has been** — it
+   only opens when you ask for it, and it has a Cancel. Skip it and the run
+   takes the documented `ladder` default. (An earlier draft of this document
+   framed it as a mandatory step; that was this document's error, not the
+   product's.)
 3. Set only the signing key, which has no GUI surface yet:
 
 ```sh

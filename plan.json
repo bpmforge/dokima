@@ -6353,6 +6353,113 @@
       "notes": [
         "Filed 2026-08-14 after the founder asked why supervised-run instructions used env vars and a CLI rather than the GUI. The instructions were correct about what works TODAY, and that is the finding: the product configures in a GUI and runs from a terminal. Note the supervised run itself does NOT need this \u2014 it can be started from the CLI against GUI-registered providers, which is the path docs/work/SUPERVISED_RUN.md now documents."
       ]
+    },
+    {
+      "id": "W12-21",
+      "title": "the Providers panel offers one auth method (an API key box) \u2014 \"use my subscription\" has nowhere to live",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/settings/ProvidersPanel.tsx",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "apps/web/src/settings/providers-api.ts",
+        "apps/web/src/settings/providers-api.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUNDER DIRECTION 2026-08-17: settings should present every way a person can connect \u2014 an API key, or a subscription they already pay for \u2014 the way opencode does, and the wizard must never be the only road. The panel today has exactly one input: `draft.apiKey`, POSTed to the credentials route and exchanged for a keychain ref. There is no concept of an auth METHOD, so a subscription sign-in has nowhere to appear.",
+        "THE WIZARD IS ALREADY SKIPPABLE \u2014 verified, do not 'fix' it. `MainView.tsx` only enters the wizard on explicit action (`onOpenWizard` from Settings, or the guided-sample link) and it has a Cancel. Nothing auto-opens it. The complaint that prompted this ticket came from INSTRUCTIONS that framed it as a required step, not from the product. This ticket is about the Settings surface only.",
+        "MODEL AUTH AS AN EXPLICIT PER-KIND CHOICE: each provider kind declares which methods it supports (api-key \u00b7 subscription/OAuth \u00b7 none-needed for local), and the panel renders the fields that method requires \u2014 not a single always-visible API key box. `hasFixedEndpoint`/`needsBaseUrl` already establish the per-kind-shape pattern in `providers-api.ts`; extend that rather than adding a parallel one.",
+        "WIRE THE COPILOT DEVICE FLOW, WHICH IS ALREADY BUILT AND HAS NEVER HAD A UI: `requestDeviceCode` and `pollDeviceAuthorization` (`packages/gateway/src/providers/copilot-device-auth.ts`) are complete and tested, `createCopilotProvider` takes a credential STORE rather than an api key, and `DEFAULT_COPILOT_CREDENTIAL_REF` names where the token lands. This is the ninth instance of the wave's unwired-mechanism class and the cheapest genuine 'use my subscription' win. Copilot stays default-off behind its explicit consent gate (D-019) \u2014 this ticket gives that gate a real sign-in, it does not remove it.",
+        "SUBSCRIPTION AUTH MEANS FLAT FEE, WHICH THE PRICING LAYER ALREADY MODELS HONESTLY: `pricing.v1.json`'s `notes.copilot` says a flat-fee subscription has no public per-token price, so it meters $0 and that is TRUE rather than a gap. Any subscription-authed provider added here inherits that reasoning; do not invent per-token rates to make a spend ledger look populated.",
+        "RED FIXTURE: a kind whose only method is subscription renders NO api-key field and completes through the device flow to a stored credential ref; a kind supporting both lets the user pick and submits only the fields that method needs. Proven against the current single-box panel first."
+      ],
+      "notes": [
+        "Filed 2026-08-17 from founder direction. Split from the two subscription integrations (W12-22, W12-23) deliberately: this ticket is the SURFACE \u2014 auth method as a first-class per-kind concept plus the one flow that is already built \u2014 and it delivers value without depending on any external API being verified first."
+      ]
+    },
+    {
+      "id": "W12-22",
+      "title": "Anthropic subscription sign-in (Claude Pro/Max) \u2014 verify the flow against live docs, then build it",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "packages/gateway/src/providers/anthropic-oauth.ts",
+        "packages/gateway/src/providers/anthropic-oauth.test.ts",
+        "packages/gateway/src/providers/index.ts"
+      ],
+      "depends_on": [
+        "W12-21"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUNDER DIRECTION 2026-08-17: a user paying for Claude Pro/Max should be able to sign in with it rather than register a separate API key.",
+        "VERIFY THE FLOW AGAINST REAL DOCS BEFORE WRITING A LINE (CLAUDE.md Law 2, non-negotiable and the reason this is its own ticket). Do NOT reconstruct an OAuth flow from memory or from how another tool appears to behave: confirm the authorization endpoint, client registration requirements, scopes, token refresh and \u2014 critically \u2014 whether subscription credentials are PERMITTED to serve API traffic under Anthropic's current terms. Record what was checked and when, the way `docs/TECH_STACK.md` records other verified API traps.",
+        "MODEL IT ON THE COPILOT ADAPTER, which is this repo's proven subscription shape: a credential STORE rather than an api key, a device/browser flow that mints a token, refresh handled inside the adapter, and `LOCAL_COST_TABLE` because a flat-fee subscription has no public per-token price.",
+        "IF VERIFICATION SHOWS THERE IS NO SUPPORTED PATH, CLOSE THIS TICKET WITH THAT FINDING rather than building something that works by accident. A sign-in button that depends on undocumented behaviour is worse than an API key field, because it breaks silently for users who trusted it.",
+        "RED FIXTURE: the flow mints and stores a credential ref against a RECORDED fixture (law 9a \u2014 never a live call in tests), and an expired token refreshes rather than failing the run.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Depends on W12-21 because the panel needs the auth-method concept before a second subscription flow has anywhere to render."
+      ]
+    },
+    {
+      "id": "W12-23",
+      "title": "SPIKE: determine whether an OpenAI ChatGPT subscription can authenticate API calls at all",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 2,
+      "status": "todo",
+      "write_scope": [
+        "docs/TECH_STACK.md"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUNDER ASKED FOR IT; I FLAGGED A DOUBT AND THE FOUNDER CHOSE TO INCLUDE IT ANYWAY \u2014 so this is filed as a SPIKE rather than an implementation, which is the honest shape for 'build it if it exists'. The doubt, stated so it can be checked rather than trusted: OpenAI has historically billed API usage SEPARATELY from ChatGPT Plus/Pro subscriptions, and a ChatGPT subscription has not been a supported way to authenticate API requests.",
+        "ANSWER ONE QUESTION AGAINST CURRENT OFFICIAL DOCS: can a ChatGPT Plus/Pro/Team subscription authenticate calls to an API endpoint Dokima could drive? Cite what was read and the date. This is a documentation question, not a reverse-engineering exercise: a path that works by imitating a first-party client is not a path this product can ship on, because it breaks silently and may violate terms.",
+        "IF YES: close this spike and file the implementation ticket, modelled on the Copilot adapter (credential store, no api key, LOCAL_COST_TABLE for a flat fee).",
+        "IF NO: record the finding in `docs/TECH_STACK.md` beside the other verified API traps, and make the Providers panel SAY SO where a user would look for it \u2014 \"OpenAI API keys are billed separately from ChatGPT subscriptions\" is a one-line label that prevents a support question and a wrong assumption. Then close.",
+        "DO NOT SHIP A SIGN-IN BUTTON THAT CANNOT WORK. That is the whole point of spiking this before W12-21 renders a method list."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Sized 2 because the deliverable is an answer plus a documented finding, not code. Deliberately has no depends_on \u2014 it should be answered EARLY, since its result decides whether W12-21's method list shows an OpenAI subscription option at all."
+      ]
+    },
+    {
+      "id": "W12-24",
+      "title": "a Node-version mismatch kills the CLI with a raw C++ stack trace before doctor can say anything useful",
+      "phase": 12,
+      "module": "cli",
+      "lane": "core",
+      "points": 2,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/bootstrap/cli-entry.mjs",
+        "apps/server/src/bootstrap/cli.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "HIT LIVE BY THE FOUNDER 2026-08-17 on the first command of the supervised run: `NODE_MODULE_VERSION 127 ... requires 137`, a raw `better-sqlite3` load error with no mention of Dokima, Node 22, or `.nvmrc`. CLAUDE.md Law 3 documents this exact trap and `fnm`'s default is Node 24 \u2014 so the single most likely first-run failure on a developer machine produces the least actionable message the product can emit.",
+        "`doctor` CANNOT HELP HERE, which is the crux: it dies on the same native import before any check runs. The guard therefore belongs in `cli-entry.mjs` BEFORE anything native is imported \u2014 a version check is the one thing that must not depend on the thing it is checking.",
+        "REFUSE BY NAME: compare `process.versions.modules` against what the bundled binary needs and print a message naming the product, the required Node line (`.nvmrc` says 22), the version actually running, and the fix (`fnm use 22` / `nvm use 22`). Exit non-zero. Same posture as every other named refusal this wave added \u2014 a control that fails unreadably is barely a control.",
+        "DO NOT HARDCODE 137-VERSUS-127. Read the expectation from `.nvmrc`/`engines.node` and the ABI from `process.versions.modules`, so the guard survives the next Node major rather than becoming a second constant that drifts from the first (W12-01 is on this board for exactly that failure).",
+        "RED FIXTURE: a simulated ABI mismatch produces the named refusal and a non-zero exit, proven to produce the raw `better_sqlite3.node` stack trace first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Highest leverage-per-point item on the board: it is the FIRST thing a new user can hit, it is already documented as a known trap, and the current behaviour is a C++ error message that mentions neither the product nor the fix."
+      ]
     }
   ]
 }
