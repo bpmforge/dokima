@@ -81,7 +81,13 @@ export function AppHeader({
             </>
           )}
         </nav>
-        <button type="button" onClick={() => openView('settings')}>
+        {/* W12-29: header chrome recedes. Navigation is reachable, not
+            competing with the page's actual action. */}
+        <button
+          type="button"
+          className="btn-quiet"
+          onClick={() => openView('settings')}
+        >
           Settings
         </button>
         <ThemeToggle />

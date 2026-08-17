@@ -263,6 +263,7 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
           ))}
           <button
             type="button"
+            className="btn-primary"
             disabled={choiceId === null}
             onClick={() => setStep('provider')}
           >

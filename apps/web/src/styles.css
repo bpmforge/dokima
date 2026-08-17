@@ -227,6 +227,79 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* W12-29: the layer ABOVE tokens.
+   W9-04 (immediately above) gave every plain <button> one pill treatment so
+   nothing rendered raw browser chrome. That was right, and its side effect is
+   the defect this fixes: with every control identical, no screen has a primary
+   action and a new user's eye has nowhere to land. A captured Fleet frame
+   showed six identical pills; the workspace showed eight, including "Start a
+   run" looking exactly like the theme toggle.
+   Tokens are not design — a palette without a hierarchy still renders a flat
+   page. These are the three roles every screen needs. */
+
+/* ONE per screen. The thing you came to this page to do. */
+.btn-primary {
+  background: var(--sw-accent);
+  color: var(--sw-on-accent);
+  border-color: var(--sw-accent);
+  font-weight: 600;
+  padding: var(--sw-space-2) var(--sw-space-5);
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Real actions that are not THE action. This is the current default look,
+   named explicitly so a surface can opt in rather than inherit by accident. */
+.btn-secondary {
+  background: transparent;
+  border-color: var(--sw-border);
+}
+
+/* Navigation and chrome — present, reachable, not competing. Keeps a visible
+   border only on focus/hover so the header stops reading as a row of equals. */
+.btn-quiet {
+  border-color: transparent;
+  color: var(--sw-fg-muted);
+  padding: var(--sw-space-2) var(--sw-space-3);
+}
+
+.btn-quiet:hover:not(:disabled),
+.btn-quiet:focus-visible {
+  border-color: var(--sw-border);
+  color: var(--sw-fg);
+}
+
+/* A page needs a spine. Content pinned to the top-left of a 1440px viewport
+   reads as unfinished regardless of how the controls look. */
+.page-shell {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--sw-space-8) var(--sw-space-6);
+}
+
+/* An empty state is a first impression, not a fallback. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sw-space-4);
+  padding: var(--sw-space-10) 0;
+  max-width: 44rem;
+}
+
+.empty-state__lead {
+  font-size: var(--sw-text-xl);
+  color: var(--sw-fg-muted);
+}
+
+.empty-state__actions {
+  display: flex;
+  gap: var(--sw-space-3);
+  flex-wrap: wrap;
+}
+
 .theme-toggle {
   border: var(--sw-border-width) solid var(--sw-border);
   background: transparent;

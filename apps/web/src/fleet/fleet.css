@@ -26,11 +26,13 @@
 }
 
 .fleet__actions button {
-  border: var(--sw-border-width) solid var(--sw-border);
-  background: transparent;
-  color: var(--sw-fg);
-  border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-2) var(--sw-space-3);
+  /* W12-29: border/background/colour/radius/padding DELIBERATELY REMOVED.
+     They duplicated the global `button` rule verbatim, and at specificity
+     (0,1,1) they silently defeated the (0,1,0) `.btn-primary` variant — the
+     captured frame showed the header's New Product rendering as an ordinary
+     outline while the empty state's rendered blue, i.e. two primaries styled
+     differently on one screen. A local element rule that restates the base
+     rule is invisible until a variant needs to win. */
   cursor: pointer;
 }
 

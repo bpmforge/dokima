@@ -90,6 +90,7 @@ export function BoardView({
       <div className="board-view__runbar" data-testid="board-runbar">
         <button
           type="button"
+          className="btn-primary"
           disabled={buildRun?.status === 'running'}
           onClick={() => void handleStartRun()}
         >
