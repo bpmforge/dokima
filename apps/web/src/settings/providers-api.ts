@@ -11,6 +11,15 @@
  */
 
 import { jsonInit, request, type SettingsApiOptions } from './api-client.js';
+// W12-25: the auth-method model moved to its own chapter when this file hit
+// 421 lines. Re-exported so every existing consumer keeps its import path —
+// the split is about file size, not about changing anyone's call sites.
+export {
+  AUTH_METHOD_LABEL,
+  authMethodsFor,
+  defaultAuthMethod,
+  type AuthMethod,
+} from './providers-auth-methods.js';
 
 export {
   readInjectedToken,
@@ -55,67 +64,6 @@ export function hasFixedEndpoint(kind: ProviderKind): boolean {
   return kind !== 'ollama' && kind !== 'lm-studio' && kind !== 'oai-compat';
 }
 
-/**
- * How a person proves they may use a provider (W12-21).
- *
- * NOT A BOOLEAN, and that is the point. The panel used to show one always-on
- * API-key box, so "use the subscription I already pay for" had nowhere to
- * live. There are at least four shapes and they are genuinely different:
- *
- *  - `none`         local kinds — nothing to prove, nothing to store.
- *  - `api-key`      a secret the user pastes once; exchanged for a keychain
- *                   ref through POST /providers/credentials (Law 8).
- *  - `subscription` an OAuth/device flow against something already paid for.
- *                   Copilot is the built example: `createCopilotProvider`
- *                   takes a credential STORE, not a key, and meters $0
- *                   because a flat fee has no public per-token price
- *                   (pricing.v1.json `notes.copilot`).
- *  - `gcp-adc`      Google Application Default Credentials — a service-account
- *                   JSON ref, or ambient credentials from
- *                   `gcloud auth application-default login`. Vertex only, and
- *                   the shape that proved this could not be api-key-vs-oauth
- *                   (TECH_STACK.md: "Vertex auth = ADC, not API keys", D-007).
- */
-export type AuthMethod = 'none' | 'api-key' | 'subscription' | 'gcp-adc';
-
-export const AUTH_METHOD_LABEL: Record<AuthMethod, string> = {
-  none: 'No credentials needed (runs on this machine)',
-  'api-key': 'API key',
-  subscription: 'Sign in to a subscription I already pay for',
-  'gcp-adc': 'Google Cloud credentials',
-};
-
-const AUTH_METHODS_BY_KIND: Record<ProviderKind, readonly AuthMethod[]> = {
-  ollama: ['none'],
-  'lm-studio': ['none'],
-  // A self-hosted endpoint may or may not want a key — genuinely both, and
-  // `api-key` leads because that field has ALWAYS been optional here ("API key
-  // (optional)"). Leading with `none` would hide it and change behaviour for
-  // every existing oai-compat user pointing at a paid host; leaving it first
-  // preserves what they had while making the choice explicit for the first
-  // time. Blank still means no credential, exactly as before.
-  'oai-compat': ['api-key', 'none'],
-  anthropic: ['api-key'],
-  openai: ['api-key'],
-  vertex: ['gcp-adc'],
-  copilot: ['subscription'],
-};
-
-/**
- * The methods a kind supports. Anthropic gains `subscription` when W12-22
- * lands its Claude Pro/Max flow, and OpenAI only if W12-23's spike finds a
- * supported path — neither is listed on a guess, because an auth option that
- * cannot work is worse than one that is absent.
- */
-export function authMethodsFor(kind: ProviderKind): readonly AuthMethod[] {
-  return AUTH_METHODS_BY_KIND[kind] ?? ['api-key'];
-}
-
-/** The method to preselect: the only one, or the first, never a hidden default. */
-export function defaultAuthMethod(kind: ProviderKind): AuthMethod {
-  return authMethodsFor(kind)[0] ?? 'api-key';
-}
-
 export function needsBaseUrl(kind: ProviderKind): boolean {
   return (ENDPOINT_KINDS as readonly string[]).includes(kind);
 }
@@ -139,7 +87,15 @@ export interface ProviderEntry {
   kind: ProviderKind;
   baseUrl?: string;
   credentialRef?: string;
+  /** W12-25: GCP project/region, required for `vertex` — the registry rejects it without them (W12-14). */
+  project?: string;
+  location?: string;
   enabled: boolean;
+}
+
+/** Kinds addressed by a cloud project rather than a URL — mirrors gateway's `PROJECT_SCOPED_KINDS`. */
+export function needsProjectScope(kind: ProviderKind): boolean {
+  return kind === 'vertex';
 }
 
 interface WireProvider {
@@ -147,6 +103,9 @@ interface WireProvider {
   kind: ProviderKind;
   base_url?: string;
   credential_ref?: string;
+  /** W12-25: snake_case on the wire, same convention as `base_url`. */
+  project?: string;
+  location?: string;
   enabled: boolean;
 }
 
@@ -156,6 +115,11 @@ function fromWireEntry(wire: WireProvider): ProviderEntry {
     kind: wire.kind,
     ...(wire.base_url === undefined ? {} : { baseUrl: wire.base_url }),
     ...(wire.credential_ref === undefined ? {} : { credentialRef: wire.credential_ref }),
+    // W12-25: both mappers are ALLOWLISTS, so a field omitted here is silently
+    // dropped — the same "settable and inert" defect W10-57 documented in the
+    // registry validator and W12-14 nearly repeated.
+    ...(wire.project === undefined ? {} : { project: wire.project }),
+    ...(wire.location === undefined ? {} : { location: wire.location }),
     enabled: wire.enabled,
   };
 }
@@ -166,6 +130,8 @@ function toWireEntry(entry: ProviderEntry): WireProvider {
     kind: entry.kind,
     ...(entry.baseUrl === undefined ? {} : { base_url: entry.baseUrl }),
     ...(entry.credentialRef === undefined ? {} : { credential_ref: entry.credentialRef }),
+    ...(entry.project === undefined ? {} : { project: entry.project }),
+    ...(entry.location === undefined ? {} : { location: entry.location }),
     enabled: entry.enabled,
   };
 }
@@ -366,6 +332,9 @@ export interface ProviderDraftInput {
   previousCredentialRef?: string;
   /** The name `registerCredential` returned for a freshly-typed API key — NEVER the raw key (Law 8). */
   registeredCredentialRef?: string;
+  /** W12-25: only meaningful for a project-scoped kind. */
+  project?: string;
+  location?: string;
 }
 
 /**
@@ -386,5 +355,15 @@ export function buildProviderEntry(input: ProviderDraftInput): ProviderEntry {
       ? { baseUrl: input.baseUrl.trim() }
       : {}),
     ...(credentialRef ? { credentialRef } : {}),
+    // W12-25: sent only for the kinds that bill a cloud project. The registry
+    // REQUIRES both for `vertex` and rejects the entry without them (W12-14),
+    // so an empty box here surfaces as a named refusal rather than an entry
+    // that saves and then cannot construct.
+    ...(needsProjectScope(input.kind) && input.project?.trim()
+      ? { project: input.project.trim() }
+      : {}),
+    ...(needsProjectScope(input.kind) && input.location?.trim()
+      ? { location: input.location.trim() }
+      : {}),
   };
 }

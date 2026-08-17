@@ -31,6 +31,8 @@ function errorMessage(err: unknown, fallback: string): string {
 interface Draft {
   id: string;
   kind: ProviderKind;
+  project: string;
+  location: string;
   /** W12-21: HOW this provider is authenticated — chosen, never assumed. */
   authMethod: AuthMethod;
   baseUrl: string;
@@ -42,6 +44,8 @@ interface Draft {
 const EMPTY_DRAFT: Draft = {
   id: '',
   kind: 'ollama',
+  project: '',
+  location: '',
   authMethod: defaultAuthMethod('ollama'),
   baseUrl: LOCAL_DEFAULT_BASE_URL.ollama,
   apiKey: '',
@@ -122,6 +126,10 @@ export function ProvidersPanel({
       // kind's default is the honest reconstruction rather than a guess from
       // whether a credentialRef happens to be set.
       authMethod: defaultAuthMethod(entry.kind),
+      // W12-25: an existing vertex entry must show what it was saved with,
+      // or editing anything else would silently blank the billed project.
+      project: entry.project ?? '',
+      location: entry.location ?? '',
       id: entry.id,
       kind: entry.kind,
       baseUrl: entry.baseUrl ?? '',
@@ -174,6 +182,8 @@ export function ProvidersPanel({
       enabled: draft.enabled,
       previousCredentialRef: draft.previousCredentialRef,
       registeredCredentialRef,
+      project: draft.project,
+      location: draft.location,
     });
     try {
       const saved = await putProviders(

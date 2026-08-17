@@ -6481,12 +6481,16 @@
       "module": "gateway",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/web/src/settings/ProvidersPanel.tsx",
         "apps/web/src/settings/ProvidersPanel.test.tsx",
         "apps/server/src/api/server/providers-routes.ts",
-        "apps/server/src/api/server/providers-routes.test.ts"
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/web/src/settings/ProviderAuthFields.tsx",
+        "apps/web/src/settings/providers-api.ts",
+        "apps/web/src/settings/providers-api.test.ts",
+        "apps/web/src/settings/providers-auth-methods.ts"
       ],
       "depends_on": [
         "W12-14",
@@ -6503,7 +6507,8 @@
       ],
       "notes": [
         "Filed 2026-08-17. Depends on W12-14 because the provider registry still has no field for a GCP project or location, so Vertex is the ONE cloud kind that refuses at construction even after W12-11 \u2014 no auth work matters until an entry can express which project gets billed. Depends on W12-21 because the panel needs the auth-method concept (and W12-21 was amended in the same commit to stop treating that concept as api-key-vs-oauth, precisely because Vertex is a third shape).",
-        "Lane set to `ui` rather than `gateway`: the bulk of this ticket is the Providers panel, which W12-21 also owns, and P8 rejected the cross-lane overlap on filing. Two tickets that genuinely share a file share a lane so they can never run at once \u2014 the same correction W12-15 and W12-04 each made."
+        "Lane set to `ui` rather than `gateway`: the bulk of this ticket is the Providers panel, which W12-21 also owns, and P8 rejected the cross-lane overlap on filing. Two tickets that genuinely share a file share a lane so they can never run at once \u2014 the same correction W12-15 and W12-04 each made.",
+        "write_scope widened at work: the project/location fields had to cross FOUR allowlist mappers (browser WireProvider/toWireEntry/fromWireEntry, server fromWire/toWire), every one of which drops an unlisted field silently. Plus providers-auth-methods.ts, extracted when providers-api.ts hit 421 lines \u2014 fourth accretion catch of the wave."
       ]
     },
     {
