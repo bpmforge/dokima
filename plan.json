@@ -6396,7 +6396,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 5,
-      "status": "blocked",
+      "status": "done",
       "write_scope": [
         "packages/gateway/src/providers/anthropic-oauth.ts",
         "packages/gateway/src/providers/anthropic-oauth.test.ts",
@@ -6416,7 +6416,8 @@
       ],
       "notes": [
         "Filed 2026-08-17. Depends on W12-21 because the panel needs the auth-method concept before a second subscription flow has anywhere to render.",
-        "VERIFIED AGAINST LIVE SOURCES 2026-08-17 (Law 2), and the answer inverts this ticket. Anthropic updated its Legal-and-compliance guidance in FEBRUARY 2026 to prohibit OAuth tokens from Claude Free/Pro/Max in ANY third-party product, tool or service outside Claude Code and Claude.ai. Routing user requests through subscription credentials is banned outright, and OPENCODE IS NAMED as a tool no longer permitted to do it \u2014 which matters, because \"like opencode does\" was the premise of this request. Developers must use API-key auth issued through Claude Console or a supported cloud provider. This is not a technical gap that a better OAuth flow would close; it is a permission that has been withdrawn. Building it would put a DISTRIBUTED product in direct violation of Anthropic terms and expose users to the account-suspension risk D-019 already gates Copilot for. Recommendation: close as WILL-NOT-BUILD and keep API keys as the Anthropic path. Left blocked rather than closed because that is a founder call."
+        "VERIFIED AGAINST LIVE SOURCES 2026-08-17 (Law 2), and the answer inverts this ticket. Anthropic updated its Legal-and-compliance guidance in FEBRUARY 2026 to prohibit OAuth tokens from Claude Free/Pro/Max in ANY third-party product, tool or service outside Claude Code and Claude.ai. Routing user requests through subscription credentials is banned outright, and OPENCODE IS NAMED as a tool no longer permitted to do it \u2014 which matters, because \"like opencode does\" was the premise of this request. Developers must use API-key auth issued through Claude Console or a supported cloud provider. This is not a technical gap that a better OAuth flow would close; it is a permission that has been withdrawn. Building it would put a DISTRIBUTED product in direct violation of Anthropic terms and expose users to the account-suspension risk D-019 already gates Copilot for. Recommendation: close as WILL-NOT-BUILD and keep API keys as the Anthropic path. Left blocked rather than closed because that is a founder call.",
+        "CLOSED AS WILL-NOT-BUILD-IN-CORE 2026-08-17 under D-026, with the finding rather than the feature as the deliverable \u2014 which is what a spike is for and, for Anthropic, what the evidence supports. Core ships auth only where the vendor documents a third-party integration path; subscription sign-in moves behind the plugin seam (W12-27), so a user who wants it installs it deliberately and carries the exposure themselves. Nothing here is blocked on a better OAuth implementation: the endpoints work and the permission is the missing part. Recorded in docs/TECH_STACK.md so the next person asking \"why not just add a login button\" gets the answer without re-deriving it."
       ]
     },
     {
@@ -6426,7 +6427,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 2,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "docs/TECH_STACK.md"
       ],
@@ -6441,7 +6442,8 @@
       ],
       "notes": [
         "Filed 2026-08-17. Sized 2 because the deliverable is an answer plus a documented finding, not code. Deliberately has no depends_on \u2014 it should be answered EARLY, since its result decides whether W12-21's method list shows an OpenAI subscription option at all.",
-        "SPIKE PARTIALLY ANSWERED 2026-08-17 against live sources, ahead of anyone claiming it. The technical answer is YES-BUT: OpenAI genuinely ships \"Sign in with ChatGPT\" for Plus/Pro/Team, but it is for OPENAI'S OWN Codex CLI, using OpenAI's own client. There is NO explicit statement permitting a third-party product to use that flow \u2014 unlike Copilot, where the device flow is a documented integration path. OpenAI's Terms prohibit using the Services \"automatically or programmatically\", an open question on the openai/codex repo asks whether even FORKING Codex CLI affects ToS under ChatGPT sign-in, and the community plugins that do this self-describe as personal-use-only, explicitly not for powering a product. So my original doubt was right about OpenAI for a subtly different reason than I gave: the endpoint exists, the PERMISSION does not. For a product intended for distribution that is the same answer as no. Recommendation: record the finding in TECH_STACK.md, label it in the panel where a user would look, and keep API keys as the OpenAI path."
+        "SPIKE PARTIALLY ANSWERED 2026-08-17 against live sources, ahead of anyone claiming it. The technical answer is YES-BUT: OpenAI genuinely ships \"Sign in with ChatGPT\" for Plus/Pro/Team, but it is for OPENAI'S OWN Codex CLI, using OpenAI's own client. There is NO explicit statement permitting a third-party product to use that flow \u2014 unlike Copilot, where the device flow is a documented integration path. OpenAI's Terms prohibit using the Services \"automatically or programmatically\", an open question on the openai/codex repo asks whether even FORKING Codex CLI affects ToS under ChatGPT sign-in, and the community plugins that do this self-describe as personal-use-only, explicitly not for powering a product. So my original doubt was right about OpenAI for a subtly different reason than I gave: the endpoint exists, the PERMISSION does not. For a product intended for distribution that is the same answer as no. Recommendation: record the finding in TECH_STACK.md, label it in the panel where a user would look, and keep API keys as the OpenAI path.",
+        "CLOSED AS WILL-NOT-BUILD-IN-CORE 2026-08-17 under D-026, with the finding rather than the feature as the deliverable \u2014 which is what a spike is for and, for OpenAI, what the evidence supports. Core ships auth only where the vendor documents a third-party integration path; subscription sign-in moves behind the plugin seam (W12-27), so a user who wants it installs it deliberately and carries the exposure themselves. Nothing here is blocked on a better OAuth implementation: the endpoints work and the permission is the missing part. Recorded in docs/TECH_STACK.md so the next person asking \"why not just add a login button\" gets the answer without re-deriving it."
       ]
     },
     {
@@ -6531,6 +6533,34 @@
       "notes": [
         "Filed 2026-08-17 at W12-21's close. Recording the estimate error rather than hiding it: W12-21 assumed \"already built, just needs a UI\" and the missing middle was a whole HTTP surface. The panel now says so where a user would look, rather than showing a button that does nothing.",
         "Lane `ui`, not `core`: it shares `providers-routes.ts` with W12-25, and P8 rejected the cross-lane overlap on filing. Fourth time this wave that two tickets sharing a file had to share a lane \u2014 the rule is doing real work."
+      ]
+    },
+    {
+      "id": "W12-27",
+      "title": "a provider/auth plugin seam \u2014 so subscription sign-in is possible without core shipping it",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 8,
+      "status": "todo",
+      "write_scope": [
+        "docs/design/PLUGIN_SEAM.md",
+        "packages/gateway/src/plugins/types.ts",
+        "packages/gateway/src/plugins/types.test.ts",
+        "packages/gateway/src/plugins/index.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "D-026: core ships auth only where the vendor documents a third-party path. Everything else \u2014 Claude Pro/Max, ChatGPT Plus/Pro, any provider Dokima does not bundle \u2014 becomes reachable through a seam a user opts into, so the ToS exposure sits with whoever installed the plugin rather than with this product and every person handed it.",
+        "MOST OF THE INJECTION POINTS ALREADY EXIST, so this is a registry rather than a rewrite: every provider config takes `fetchImpl` (the same hook opencode's `loader` uses to swap an API key for an OAuth bearer), `CredentialStore` already abstracts secret storage behind keychain refs (stronger than opencode's 0600 JSON file), and Vertex already exposes an `authClientFactory`. What is missing is a way to REGISTER an auth provider Dokima does not ship.",
+        "DECIDE AND RECORD HOW A PLUGIN IS TRUSTED \u2014 this is the acceptance criterion most likely to be skipped and the one that decides whether the seam is worth having. A plugin is third-party code running in-process with access to credentials, inside a product whose thesis is C-2/C-3: sessions are untrusted and the platform holds the gates. \"We hold the gates, except for plugins\" is not a position this product can take silently. Choose among explicit install-time consent (the D-019 shape, ledgered), signature verification (the `content/` pack shape, already built and already verified by `doctor`), capability limits on what a plugin may reach, or a combination \u2014 and write down what was rejected and why. **Shipping the seam without this answer trades a legal risk for a security one.**",
+        "A PLUGIN MUST NOT BE ABLE TO EXFILTRATE CREDENTIALS IT WAS NOT GIVEN. Scope a plugin to the provider id it registers: it receives the credentials for that entry and no others, and it never sees the vault wholesale. `collectSecretValues` and the redaction path exist and should be checked against this, not assumed to cover it.",
+        "DESIGN FIRST, IMPLEMENTATION SECOND. The deliverable here is `docs/design/PLUGIN_SEAM.md` plus the type surface \u2014 the interface, the trust decision, the capability boundary, and the failure modes when a plugin throws, hangs, or returns a malformed credential. A loader that hangs must not hang a run. Do NOT ship a working Anthropic or OpenAI plugin from this ticket: that would put the thing D-026 declined back in the repo by another door.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17 from D-026. The founder asked twice for Claude Max / ChatGPT Plus sign-in \"like opencode does\"; verifying how opencode actually does it is what produced this design \u2014 core ships an `AuthHook` + `loader` seam and the subscription flows live in separate plugin packages, which is precisely why opencode is structurally fine and a core implementation would not be. Sized 8 and deliberately design-heavy: the trust question is the hard part, and it is the part that cannot be retrofitted once a plugin API is public."
       ]
     }
   ]
