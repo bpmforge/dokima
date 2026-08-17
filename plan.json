@@ -6312,7 +6312,7 @@
       "module": "web",
       "lane": "ui",
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/web/src/settings/FirstRunWizard.tsx",
         "apps/web/src/onboarding/FirstRunWizard.test.tsx"
