@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ProviderAuthFields } from './ProviderAuthFields.js';
 import {
   buildProviderEntry,
   deleteProvider,
@@ -7,6 +8,8 @@ import {
   hasFixedEndpoint,
   isHttpUrl,
   isValidProviderId,
+  defaultAuthMethod,
+  type AuthMethod,
   KIND_LABEL,
   LOCAL_DEFAULT_BASE_URL,
   needsBaseUrl,
@@ -28,6 +31,8 @@ function errorMessage(err: unknown, fallback: string): string {
 interface Draft {
   id: string;
   kind: ProviderKind;
+  /** W12-21: HOW this provider is authenticated — chosen, never assumed. */
+  authMethod: AuthMethod;
   baseUrl: string;
   apiKey: string;
   enabled: boolean;
@@ -37,6 +42,7 @@ interface Draft {
 const EMPTY_DRAFT: Draft = {
   id: '',
   kind: 'ollama',
+  authMethod: defaultAuthMethod('ollama'),
   baseUrl: LOCAL_DEFAULT_BASE_URL.ollama,
   apiKey: '',
   enabled: true,
@@ -103,13 +109,19 @@ export function ProvidersPanel({
   const handleKindChange = (kind: ProviderKind) => {
     const baseUrl =
       kind === 'ollama' || kind === 'lm-studio' ? LOCAL_DEFAULT_BASE_URL[kind] : '';
-    setDraft((d) => ({ ...d, kind, baseUrl }));
+    // W12-21: the method follows the kind. Leaving a stale method selected
+    // would let a user submit an API key for a kind that takes none.
+    setDraft((d) => ({ ...d, kind, baseUrl, authMethod: defaultAuthMethod(kind) }));
   };
 
   const handleEdit = (entry: ProviderEntry) => {
     setEditingId(entry.id);
     setDraftError(null);
     setDraft({
+      // An existing entry does not record HOW it was authenticated, so the
+      // kind's default is the honest reconstruction rather than a guess from
+      // whether a credentialRef happens to be set.
+      authMethod: defaultAuthMethod(entry.kind),
       id: entry.id,
       kind: entry.kind,
       baseUrl: entry.baseUrl ?? '',
@@ -335,17 +347,7 @@ export function ProvidersPanel({
             />
           </label>
         )}
-        <label>
-          API key {hasFixedEndpoint(draft.kind) ? '' : '(optional)'}
-          <input
-            type="password"
-            value={draft.apiKey}
-            onChange={(e) => setDraft((d) => ({ ...d, apiKey: e.target.value }))}
-            placeholder={
-              draft.previousCredentialRef ? 'unchanged — leave blank to keep' : ''
-            }
-          />
-        </label>
+        <ProviderAuthFields draft={draft} setDraft={setDraft} />
         <label className="settings__checkbox">
           <input
             type="checkbox"

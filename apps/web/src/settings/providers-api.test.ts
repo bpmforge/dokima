@@ -19,6 +19,10 @@ import {
   removalCopy,
   type ProviderCatalog,
   type ProviderEntry,
+  AUTH_METHOD_LABEL,
+  authMethodsFor,
+  defaultAuthMethod,
+  PROVIDER_KINDS,
 } from './providers-api.js';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -405,5 +409,52 @@ describe('AC4: settings/types.ts MODEL_MATRIX_PRESETS stays pinned to gateway PR
       PRESET_NAMES: readonly string[];
     };
     expect(MODEL_MATRIX_PRESETS).toEqual(PRESET_NAMES);
+  });
+});
+
+describe('auth methods (W12-21)', () => {
+  it(
+    'RED FIXTURE: auth is NOT a boolean. The panel showed one always-on API-key ' +
+      'box, so a subscription sign-in had nowhere to live and a local provider ' +
+      'was asked for a key it never needs',
+    () => {
+      expect(authMethodsFor('ollama')).toEqual(['none']);
+      expect(authMethodsFor('lm-studio')).toEqual(['none']);
+      expect(authMethodsFor('copilot')).toEqual(['subscription']);
+      expect(authMethodsFor('vertex')).toEqual(['gcp-adc']);
+      expect(authMethodsFor('openai')).toEqual(['api-key']);
+    },
+  );
+
+  it('a self-hosted endpoint genuinely supports both, so it gets a choice', () => {
+    // `api-key` leads deliberately: that field has always been optional for
+    // this kind, so leading with `none` would hide it and change behaviour for
+    // every existing user pointing an oai-compat entry at a paid host.
+    expect(authMethodsFor('oai-compat')).toEqual(['api-key', 'none']);
+    expect(authMethodsFor('oai-compat').length).toBeGreaterThan(1);
+  });
+
+  it(
+    'GUARD: no kind is listed with a method that has no implementation. Anthropic ' +
+      'gains `subscription` when W12-22 lands and OpenAI only if W12-23 finds a ' +
+      'supported path — an auth option that cannot work is worse than one absent',
+    () => {
+      expect(authMethodsFor('anthropic')).not.toContain('subscription');
+      expect(authMethodsFor('openai')).not.toContain('subscription');
+    },
+  );
+
+  it('every kind has a default method, and it is one the kind actually supports', () => {
+    for (const kind of PROVIDER_KINDS) {
+      expect(authMethodsFor(kind)).toContain(defaultAuthMethod(kind));
+    }
+  });
+
+  it('every method has a label a person can read — no raw enum reaches the UI', () => {
+    for (const kind of PROVIDER_KINDS) {
+      for (const method of authMethodsFor(kind)) {
+        expect(AUTH_METHOD_LABEL[method]).toBeTruthy();
+      }
+    }
   });
 });
