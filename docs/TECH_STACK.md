@@ -195,3 +195,41 @@ but never bundle its content; red-flag adoption into shipped validator packs = f
    `pnpm lint && pnpm typecheck && pnpm test` green. New-stack additions are NEVER-AUTO.
 3. Minors/patches via scheduled dependency tickets only; security advisories override —
    patch immediately, backfill paperwork.
+
+
+## Subscription auth for cloud providers — verified 2026-08-17
+
+A recurring product request is "let people log in with their Claude Max /
+ChatGPT Plus plan, like opencode does". Verified against live sources rather
+than assumed, because it is a PERMISSION question and not a technical one.
+
+**Anthropic — prohibited.** Anthropic updated its legal/compliance guidance in
+**February 2026** to ban OAuth tokens from Claude Free, Pro and Max in any
+third-party product, tool or service outside Claude Code and Claude.ai.
+Routing user requests through subscription credentials is banned outright, and
+opencode is named among the tools no longer permitted to do it. Third parties
+must use API-key auth issued through Claude Console or a supported cloud
+provider. **Do not build subscription sign-in for Anthropic** — the endpoint
+would work and the permission has been withdrawn. Board: W12-22 (blocked).
+
+**OpenAI — no permission, endpoint notwithstanding.** OpenAI genuinely ships
+"Sign in with ChatGPT" for Plus/Pro/Team, but it is for **OpenAI's own Codex
+CLI**, using OpenAI's own client. Nothing states that a third-party product
+may use that flow; the Terms prohibit using the Services "automatically or
+programmatically"; an open discussion on `openai/codex` asks whether even
+FORKING Codex CLI affects ToS under ChatGPT sign-in; and the community plugins
+that implement it self-describe as personal-use-only and explicitly not for
+powering a product. For something we intend to distribute, that is the same
+answer as no. Board: W12-23.
+
+**GitHub Copilot — permitted, and already built.** The device-code flow is a
+documented integration path, which is why `copilot-device-auth.ts` exists and
+why Copilot is the one subscription this product can honestly offer. It stays
+default-off behind D-019's explicit consent gate, because using it against a
+personal account still carries account risk.
+
+**The rule this leaves us with:** cloud providers authenticate with API keys.
+Subscriptions are supported only where the vendor documents a third-party
+integration path. An auth button that works by imitating a vendor's own client
+is not a feature — it is a support burden and an account-ban risk we would be
+handing to users.
