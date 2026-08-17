@@ -6481,7 +6481,7 @@
       "module": "gateway",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/web/src/settings/ProvidersPanel.tsx",
         "apps/web/src/settings/ProvidersPanel.test.tsx",
