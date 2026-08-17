@@ -6630,7 +6630,7 @@
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/web/src/board/**"
       ],
