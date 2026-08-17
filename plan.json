@@ -6391,12 +6391,12 @@
     },
     {
       "id": "W12-22",
-      "title": "Anthropic subscription sign-in (Claude Pro/Max) \u2014 verify the flow against live docs, then build it",
+      "title": "Anthropic subscription sign-in \u2014 BLOCKED: Anthropic banned third-party subscription OAuth in Feb 2026",
       "phase": 12,
       "module": "gateway",
       "lane": "gateway",
       "points": 5,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "packages/gateway/src/providers/anthropic-oauth.ts",
         "packages/gateway/src/providers/anthropic-oauth.test.ts",
@@ -6415,7 +6415,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-17. Depends on W12-21 because the panel needs the auth-method concept before a second subscription flow has anywhere to render."
+        "Filed 2026-08-17. Depends on W12-21 because the panel needs the auth-method concept before a second subscription flow has anywhere to render.",
+        "VERIFIED AGAINST LIVE SOURCES 2026-08-17 (Law 2), and the answer inverts this ticket. Anthropic updated its Legal-and-compliance guidance in FEBRUARY 2026 to prohibit OAuth tokens from Claude Free/Pro/Max in ANY third-party product, tool or service outside Claude Code and Claude.ai. Routing user requests through subscription credentials is banned outright, and OPENCODE IS NAMED as a tool no longer permitted to do it \u2014 which matters, because \"like opencode does\" was the premise of this request. Developers must use API-key auth issued through Claude Console or a supported cloud provider. This is not a technical gap that a better OAuth flow would close; it is a permission that has been withdrawn. Building it would put a DISTRIBUTED product in direct violation of Anthropic terms and expose users to the account-suspension risk D-019 already gates Copilot for. Recommendation: close as WILL-NOT-BUILD and keep API keys as the Anthropic path. Left blocked rather than closed because that is a founder call."
       ]
     },
     {
@@ -6439,7 +6440,8 @@
         "DO NOT SHIP A SIGN-IN BUTTON THAT CANNOT WORK. That is the whole point of spiking this before W12-21 renders a method list."
       ],
       "notes": [
-        "Filed 2026-08-17. Sized 2 because the deliverable is an answer plus a documented finding, not code. Deliberately has no depends_on \u2014 it should be answered EARLY, since its result decides whether W12-21's method list shows an OpenAI subscription option at all."
+        "Filed 2026-08-17. Sized 2 because the deliverable is an answer plus a documented finding, not code. Deliberately has no depends_on \u2014 it should be answered EARLY, since its result decides whether W12-21's method list shows an OpenAI subscription option at all.",
+        "SPIKE PARTIALLY ANSWERED 2026-08-17 against live sources, ahead of anyone claiming it. The technical answer is YES-BUT: OpenAI genuinely ships \"Sign in with ChatGPT\" for Plus/Pro/Team, but it is for OPENAI'S OWN Codex CLI, using OpenAI's own client. There is NO explicit statement permitting a third-party product to use that flow \u2014 unlike Copilot, where the device flow is a documented integration path. OpenAI's Terms prohibit using the Services \"automatically or programmatically\", an open question on the openai/codex repo asks whether even FORKING Codex CLI affects ToS under ChatGPT sign-in, and the community plugins that do this self-describe as personal-use-only, explicitly not for powering a product. So my original doubt was right about OpenAI for a subtly different reason than I gave: the endpoint exists, the PERMISSION does not. For a product intended for distribution that is the same answer as no. Recommendation: record the finding in TECH_STACK.md, label it in the panel where a user would look, and keep API keys as the OpenAI path."
       ]
     },
     {
