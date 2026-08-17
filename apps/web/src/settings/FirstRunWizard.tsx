@@ -2,7 +2,16 @@ import { useState } from 'react';
 import { createProject, FleetApiError } from '../fleet/api.js';
 import { GuidedSample } from '../onboarding/GuidedSample.js';
 import { putGlobalSettings, SettingsApiError } from './api.js';
-import { putProviders, type ProviderEntry, type ProviderKind } from './providers-api.js';
+import {
+  authMethodsFor,
+  KIND_LABEL,
+  hasFixedEndpoint,
+  needsProjectScope,
+  PROVIDER_KINDS,
+  putProviders,
+  type ProviderEntry,
+  type ProviderKind,
+} from './providers-api.js';
 
 /**
  * W10-55: this wizard and the provider REGISTRY have always spelled the same
@@ -13,12 +22,15 @@ import { putProviders, type ProviderEntry, type ProviderKind } from './providers
  * rather than renaming the local union, which is what the radio values and
  * their labels are keyed on.
  */
-const REGISTRY_KIND: Record<'lmstudio' | 'openai_compat' | 'vertex', ProviderKind> = {
-  lmstudio: 'lm-studio',
-  openai_compat: 'oai-compat',
-  vertex: 'vertex',
-};
-import { HelpAffordance } from './HelpAffordance.js';
+/**
+ * W12-19: the kind list and its labels come from `providers-api.ts`, not from
+ * a hand-written table here. This file used to carry a `REGISTRY_KIND` map
+ * translating three wizard-only names (`lmstudio`, `openai_compat`) into
+ * registry kinds — a FOURTH copy of "which provider kinds exist", after the
+ * three copies of the adapter dispatch this wave already consolidated
+ * (W12-11/15/17). A copy nobody edits is a copy that goes stale, and this one
+ * had: it offered three kinds while the Providers panel offered seven.
+ */import { HelpAffordance } from './HelpAffordance.js';
 import {
   type EscalationPolicyMode,
   type ModelMatrixPreset,
@@ -119,9 +131,9 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   // D-024: NO SILENT DEFAULT. This was `useState('hybrid')`, so a user who
   // clicked straight through opted into cloud spend without ever choosing.
   const [choiceId, setChoiceId] = useState<string | null>(null);
-  const [providerKind, setProviderKind] = useState<
-    'lmstudio' | 'openai_compat' | 'vertex'
-  >('lmstudio');
+  const [providerKind, setProviderKind] = useState<ProviderKind>('lm-studio');
+  const [project, setProject] = useState('');
+  const [location, setLocation] = useState('');
   const [baseUrl, setBaseUrl] = useState('http://localhost:1234/v1');
   const [credentialRef, setCredentialRef] = useState('');
   const [forgeRef, setForgeRef] = useState('');
@@ -144,8 +156,11 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
         providers: [
           {
             kind: providerKind,
-            baseUrl: providerKind !== 'vertex' ? baseUrl : undefined,
-            credentialRef: providerKind === 'vertex' ? credentialRef : undefined,
+            baseUrl: hasFixedEndpoint(providerKind) ? undefined : baseUrl,
+            credentialRef: credentialRef.trim() === '' ? undefined : credentialRef.trim(),
+            ...(needsProjectScope(providerKind)
+              ? { project: project.trim(), location: location.trim() }
+              : {}),
           },
         ],
       });
@@ -182,10 +197,17 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
         [
           {
             id: 'first-run',
-            kind: REGISTRY_KIND[providerKind],
+            kind: providerKind,
             enabled: true,
-            ...(providerKind !== 'vertex' ? { baseUrl } : {}),
-            ...(providerKind === 'vertex' ? { credentialRef } : {}),
+            ...(hasFixedEndpoint(providerKind) ? {} : { baseUrl }),
+            ...(credentialRef.trim() === '' ? {} : { credentialRef: credentialRef.trim() }),
+            // W12-19: REQUIRED for vertex since W12-14, and the wizard never
+            // collected them — so choosing Vertex here produced a registry
+            // refusal ("bills a specific cloud project and requires project")
+            // at the one moment a new user is least equipped to debug it.
+            ...(needsProjectScope(providerKind)
+              ? { project: project.trim(), location: location.trim() }
+              : {}),
           } as ProviderEntry,
         ],
         { scope: 'global' },
@@ -256,26 +278,57 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
             Provider kind
             <select
               value={providerKind}
-              onChange={(e) => setProviderKind(e.target.value as typeof providerKind)}
+              onChange={(e) => setProviderKind(e.target.value as ProviderKind)}
             >
-              <option value="lmstudio">LM Studio (local)</option>
-              <option value="openai_compat">OpenAI-compatible endpoint</option>
-              <option value="vertex">Vertex AI</option>
+              {PROVIDER_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {KIND_LABEL[k]}
+                </option>
+              ))}
             </select>
           </label>
-          {providerKind !== 'vertex' ? (
+          {!hasFixedEndpoint(providerKind) && (
             <label>
               Base URL
               <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
             </label>
+          )}
+          {needsProjectScope(providerKind) && (
+            <>
+              <label>
+                GCP project
+                <input
+                  value={project}
+                  onChange={(e) => setProject(e.target.value)}
+                  placeholder="my-gcp-project"
+                />
+              </label>
+              <label>
+                Region
+                <input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="us-central1"
+                />
+              </label>
+            </>
+          )}
+          {authMethodsFor(providerKind).includes('subscription') ? (
+            <p className="settings__hint" data-testid="wizard-subscription-kind">
+              {KIND_LABEL[providerKind]} signs in to a subscription rather than
+              taking a key. That flow is not wired yet (W12-26) — finish this one
+              in Settings → Providers, or pick another kind to get started.
+            </p>
           ) : (
-            <label>
-              Credential ref (keychain name — never a raw secret, FR-S2)
-              <input
-                value={credentialRef}
-                onChange={(e) => setCredentialRef(e.target.value)}
-              />
-            </label>
+            authMethodsFor(providerKind).includes('none') === false && (
+              <label>
+                Credential ref (keychain name — never a raw secret, FR-S2)
+                <input
+                  value={credentialRef}
+                  onChange={(e) => setCredentialRef(e.target.value)}
+                />
+              </label>
+            )
           )}
           <button type="button" onClick={() => void savePresetAndProvider()}>
             Next
