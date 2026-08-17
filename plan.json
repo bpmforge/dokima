@@ -6595,6 +6595,140 @@
       "notes": [
         "Filed 2026-08-17 at W12-20's close rather than folded into it. The server half was the hard half and is done; pretending the UI came with it would be the same overstatement this wave keeps catching in other people's tickets."
       ]
+    },
+    {
+      "id": "W12-29",
+      "title": "every control is the same outlined pill \u2014 there is no primary action anywhere in the product",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "in_progress",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/App/**",
+        "apps/web/src/fleet/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUNDER UX REVIEW 2026-08-17, judged against REAL CAPTURED FRAMES (docs/acceptance/runs/2026-08-17T20-11-14-317Z/) rather than from reading code. Fleet shows six identical outlined pills; the workspace shows eight. Nothing is primary, nothing recedes, so a new user's eye has nowhere to land and they read every control left-to-right and guess. \"Start a run\" \u2014 the most important action in the product \u2014 is visually identical to the theme toggle.",
+        "TOKENS ARE NOT DESIGN, and this is the precise gap. W10-06/28/30/32 landed 96 `--sw-*` tokens with zero raw hexes in feature stylesheets, and that work is real and stays. What is missing is the layer ABOVE tokens: button VARIANTS (primary \u00b7 secondary \u00b7 quiet/icon), a spacing rhythm, and a type scale. A palette without a hierarchy still renders a flat page.",
+        "ONE PRIMARY PER SCREEN, and name which one it is per surface: Fleet \u2192 New Product; workspace \u2192 Start a run; wizard \u2192 Next; Settings \u2192 the tab action. Everything else is secondary or quiet. A screen with two primaries has none.",
+        "APPLY IT WHERE IT IS MOST FELT FIRST rather than everywhere at once: the header, Fleet, the board run bar, and the wizard. A partial application that is CONSISTENT within those surfaces beats a complete one that drifts.",
+        "RE-CAPTURE AND COMPARE, do not assert improvement: `node apps/web/scripts/capture-acceptance.mjs` produces a frame per checklist item against a real build, and the pre-change run is at the path above. Put the before/after pair in the close notes so the judgement is visual and checkable rather than a claim.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17 from a founder-requested UX review done against captured frames. This is first in the wave because every other visual fix looks better on top of it and worse without it \u2014 a board layout fix over flat chrome still reads flat."
+      ]
+    },
+    {
+      "id": "W12-30",
+      "title": "the board wraps its columns 3x2, so a kanban board does not read as a pipeline",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/board/**"
+      ],
+      "depends_on": [
+        "W12-29"
+      ],
+      "stories": [],
+      "acceptance": [
+        "THE WORST SINGLE VISUAL DEFECT, visible in docs/acceptance/runs/2026-08-17T20-11-14-317Z/06-A-06.png: each lane renders Ready / Claimed / In Progress on one row and In Review / Blocked / Done beneath it. Kanban's entire value is ONE left-to-right pipeline; wrapping it into a grid destroys the metaphor, and a user cannot see flow at all.",
+        "ONE HORIZONTAL PIPELINE PER LANE, scrolling horizontally when it does not fit rather than wrapping. Note the existing constraint this must not reintroduce: W9-05 was a known finding that board columns CLIPPED with no scroll affordance, and the fix was a CSS grid \u2014 so the answer is a scrollable single row with a visible affordance, not a return to clipping.",
+        "EMPTY COLUMNS MUST NOT COST WHAT FULL ONES COST. Most of the board today is empty boxes at full height. Collapse or shrink an empty column so the eye goes to where work actually is.",
+        "REPLACE THE IN-CARD `Move to\u2026` SELECT. A native dropdown inside a card is not how anyone expects to move work; the board already has drag handling (`dragOptimistic.ts`) and a refusal path (`RefusalPopover.tsx`). Use them, and keep the select only as an accessible fallback \u2014 the drag refusals are a real feature (UX_SPEC \"drag-refusals explained\") and must survive.",
+        "LANES NEED TO BE VISIBLE. `GATEWAY` and `UI` render as small grey uppercase text with no separation, so a two-lane board reads as one confusing grid.",
+        "RE-CAPTURE the board frame and put the before/after pair in the close notes. Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Depends on W12-29 so the card and column chrome lands on a real hierarchy rather than being restyled twice."
+      ]
+    },
+    {
+      "id": "W12-31",
+      "title": "a user who comes to connect a provider finds a dead end \u2014 Settings without a project offers only the wizard",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/settings/SettingsPage.tsx",
+        "apps/web/src/settings/SettingsPage.test.tsx"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "THE QUESTION THAT PROMPTED THIS WAVE was \"is there a way to configure without running the wizard\". There is \u2014 Settings is always one click from the header \u2014 but docs/acceptance/runs/2026-08-17T20-11-14-317Z/17-A-17.png shows why it did not feel that way: with no project open, Settings renders one jargon sentence (\"Open a project to configure its model matrix, autonomy dial, budgets, and scopes\") and exactly one button, Run Setup Wizard. It does not link to CREATING a project, and says nothing about providers.",
+        "PROVIDERS GETS ITS OWN TAB, named \"Providers\". Today the panel is nested inside \"Model Matrix\" \u2014 the tab list reads Model Matrix \u00b7 Agent \u00b7 Autonomy\u00b7Budget\u00b7Berths \u00b7 Cost Estimate \u00b7 Effective Settings \u00b7 MCP Servers \u00b7 Validator Packs \u00b7 Expert Overrides \u00b7 Rule Lifecycle, and nothing in it says \"this is where you connect an account\". `ModelMatrixPanel` may keep composing the panel for its catalog; this is about the NAV, not about moving the component.",
+        "THE NO-PROJECT PAGE OFFERS REAL CHOICES rather than a single funnel: create or open a project, and connect a provider, with the wizard presented as ONE option among them instead of the only affordance on the page.",
+        "WRITE IT FOR A PERSON. \"model matrix, autonomy dial, budgets, and scopes\" is internal vocabulary. The first-run wizard's own copy (\"Nothing spends money or contacts a network until you choose\") is the standard \u2014 plain, specific, reassuring \u2014 and it is in this same codebase to copy from.",
+        "RED FIXTURE: Settings with no project renders an affordance that leads somewhere other than the wizard, and a project-scoped Settings renders a tab literally labelled Providers. Proven against the current single-button page first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Independent of W12-29 \u2014 it is information architecture and copy, not visual hierarchy \u2014 so it can run in parallel with the board work."
+      ]
+    },
+    {
+      "id": "W12-32",
+      "title": "the product uses four words for one concept \u2014 Fleet, programs, Product, project",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "docs/design/VOCABULARY.md",
+        "apps/web/src/fleet/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "On ONE screen (docs/acceptance/runs/2026-08-17T20-11-14-317Z/01-A-01.png) a user sees the heading \"Fleet\", the empty state \"No programs yet.\", and a button \"New Product\" \u2014 for a thing the code calls a project. Elsewhere the nav offers \"Describe \u00b7 Plan \u00b7 Decisions\", and Settings mentions a \"model matrix\" and an \"autonomy dial\".",
+        "PICK ONE WORD PER CONCEPT AND WRITE THEM DOWN in `docs/design/VOCABULARY.md`, so the next surface built does not invent a fifth. This is a decision to record, not a preference to hold in someone's head \u2014 the same reason DECISIONS.md exists.",
+        "THE WIZARD IS THE STANDARD. Its copy is the best-written text in the product; whatever vocabulary is chosen should read the way that does.",
+        "INTERNAL TERMS THAT SURVIVE MUST EARN IT. \"Lane\", \"receipt\" and \"manifest\" are load-bearing product concepts with real meaning \u2014 keep them and define them. \"Model matrix\" and \"autonomy dial\" are internal names for user-facing settings and should be said plainly.",
+        "RENAME IN THE UI ONLY, not in the event log or the API. Wire shapes, event types and stored settings keep their names \u2014 a vocabulary pass that rewrites a durable contract is a migration, and that is not this ticket.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+      ],
+      "notes": [
+        "Filed 2026-08-17 from the same review."
+      ]
+    },
+    {
+      "id": "W12-33",
+      "title": "chrome reads as unfinished \u2014 emoji buttons, a full-width back bar, raw form controls",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/App/**",
+        "apps/web/src/styles.css"
+      ],
+      "depends_on": [
+        "W12-29"
+      ],
+      "stories": [],
+      "acceptance": [
+        "Captured frames show \ud83d\udd14 and \u2600\ufe0f emoji sitting among text buttons in the header; `\u2190 Fleet` consuming a full-width bar for one link; native unstyled radios, selects and inputs throughout; and roughly 80% of every screen empty with content pinned to the top-left.",
+        "ICONS, NOT EMOJI. Emoji render differently per platform and font, and next to text buttons they read as a placeholder nobody replaced.",
+        "GIVE THE FORM CONTROLS THE SAME TREATMENT AS THE BUTTONS \u2014 inputs, selects and radios styled from the same tokens, so a form does not look like a different application than the page around it.",
+        "THE EMPTY SPACE IS A LAYOUT PROBLEM, not a content problem: give the page a max width and a vertical rhythm so content is composed rather than pinned to a corner.",
+        "ACCESSIBILITY IS NOT OPTIONAL HERE: whatever replaces an emoji button keeps an accessible name, and focus states survive the restyle. `docs/acceptance/CHECKLIST.md` A-19/A-20/A-21 already judge overlay and dark-theme behaviour \u2014 do not regress them.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Depends on W12-29 so chrome is restyled once, against a real hierarchy, rather than twice."
+      ]
     }
   ]
 }
