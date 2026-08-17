@@ -6373,13 +6373,14 @@
       "acceptance": [
         "FOUNDER DIRECTION 2026-08-17: settings should present every way a person can connect \u2014 an API key, or a subscription they already pay for \u2014 the way opencode does, and the wizard must never be the only road. The panel today has exactly one input: `draft.apiKey`, POSTed to the credentials route and exchanged for a keychain ref. There is no concept of an auth METHOD, so a subscription sign-in has nowhere to appear.",
         "THE WIZARD IS ALREADY SKIPPABLE \u2014 verified, do not 'fix' it. `MainView.tsx` only enters the wizard on explicit action (`onOpenWizard` from Settings, or the guided-sample link) and it has a Cancel. Nothing auto-opens it. The complaint that prompted this ticket came from INSTRUCTIONS that framed it as a required step, not from the product. This ticket is about the Settings surface only.",
-        "MODEL AUTH AS AN EXPLICIT PER-KIND CHOICE: each provider kind declares which methods it supports (api-key \u00b7 subscription/OAuth \u00b7 none-needed for local), and the panel renders the fields that method requires \u2014 not a single always-visible API key box. `hasFixedEndpoint`/`needsBaseUrl` already establish the per-kind-shape pattern in `providers-api.ts`; extend that rather than adding a parallel one.",
+        "MODEL AUTH AS AN EXPLICIT PER-KIND CHOICE, AND DO NOT MAKE IT BINARY. There are at least THREE shapes, not two: an api key (openai/anthropic), a subscription OAuth flow (copilot device code), and GOOGLE ADC (vertex \u2014 `TECH_STACK.md`: \"Vertex auth = ADC, not API keys (D-007)\"), whose inputs are a service-account JSON credential ref, a credentials file path, or ambient credentials the user established with `gcloud auth application-default login`. Local kinds need none at all. Each kind declares which methods it supports and the panel renders only that method's fields \u2014 `hasFixedEndpoint`/`needsBaseUrl` already establish the per-kind-shape pattern in `providers-api.ts`; extend that rather than adding a parallel one. An api-key-vs-oauth toggle would have to be torn up the moment Vertex is added, which is why this says so now.",
         "WIRE THE COPILOT DEVICE FLOW, WHICH IS ALREADY BUILT AND HAS NEVER HAD A UI: `requestDeviceCode` and `pollDeviceAuthorization` (`packages/gateway/src/providers/copilot-device-auth.ts`) are complete and tested, `createCopilotProvider` takes a credential STORE rather than an api key, and `DEFAULT_COPILOT_CREDENTIAL_REF` names where the token lands. This is the ninth instance of the wave's unwired-mechanism class and the cheapest genuine 'use my subscription' win. Copilot stays default-off behind its explicit consent gate (D-019) \u2014 this ticket gives that gate a real sign-in, it does not remove it.",
         "SUBSCRIPTION AUTH MEANS FLAT FEE, WHICH THE PRICING LAYER ALREADY MODELS HONESTLY: `pricing.v1.json`'s `notes.copilot` says a flat-fee subscription has no public per-token price, so it meters $0 and that is TRUE rather than a gap. Any subscription-authed provider added here inherits that reasoning; do not invent per-token rates to make a spend ledger look populated.",
         "RED FIXTURE: a kind whose only method is subscription renders NO api-key field and completes through the device flow to a stored credential ref; a kind supporting both lets the user pick and submits only the fields that method needs. Proven against the current single-box panel first."
       ],
       "notes": [
-        "Filed 2026-08-17 from founder direction. Split from the two subscription integrations (W12-22, W12-23) deliberately: this ticket is the SURFACE \u2014 auth method as a first-class per-kind concept plus the one flow that is already built \u2014 and it delivers value without depending on any external API being verified first."
+        "Filed 2026-08-17 from founder direction. Split from the two subscription integrations (W12-22, W12-23) deliberately: this ticket is the SURFACE \u2014 auth method as a first-class per-kind concept plus the one flow that is already built \u2014 and it delivers value without depending on any external API being verified first.",
+        "AMENDED 2026-08-17 after the founder asked about Vertex: the first draft of criterion 3 implied a two-option model. Vertex is a third shape (ADC), so the method concept has to be extensible from the start rather than a boolean that gets rewritten. Vertex's own wiring is W12-25 and depends on W12-14 (the registry cannot express project/location yet, so Vertex is the one cloud kind that still refuses at construction)."
       ]
     },
     {
@@ -6459,6 +6460,38 @@
       ],
       "notes": [
         "Filed 2026-08-17. Highest leverage-per-point item on the board: it is the FIRST thing a new user can hit, it is already documented as a known trap, and the current behaviour is a C++ error message that mentions neither the product nor the fix."
+      ]
+    },
+    {
+      "id": "W12-25",
+      "title": "Vertex sign-in: detect ambient ADC, accept a service-account ref, and say which one is in play",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/settings/ProvidersPanel.tsx",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts"
+      ],
+      "depends_on": [
+        "W12-14",
+        "W12-21"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUNDER ASKED FOR A \"login with Vertex\" OPTION 2026-08-17. State the shape honestly before building it: Vertex does not take an API key and has no device flow. `packages/gateway/src/providers/vertex.ts` authenticates through google-auth-library's ADC chain (`vertex-auth.ts`), and `VertexConfig` accepts `serviceAccountJson` (a pre-resolved key JSON, FR-S2 credential ref, which TAKES PRECEDENCE), `credentialsFilePath`, or nothing at all \u2014 in which case ambient ADC is used.",
+        "DOKIMA CANNOT OWN THE GOOGLE LOGIN ITSELF, and pretending otherwise is the trap. The browser flow that produces ambient credentials is `gcloud auth application-default login`, run by the user against Google's own client. Implementing a lookalike OAuth flow to make a \"Sign in with Google\" button appear in-app would be reimplementing a first-party client \u2014 the same class of mistake W12-23 spikes for ChatGPT. What Dokima CAN do is the useful part: DETECT, GUIDE, and offer the service-account alternative.",
+        "DETECT AND REPORT: the panel shows whether ADC is currently resolvable and, when it is, which account/project it resolves to \u2014 `health()`/`warmUp()` already verify ADC token acquisition, so the check exists and needs surfacing rather than inventing. When ADC is absent, show the exact command (`gcloud auth application-default login`) instead of a generic failure.",
+        "OFFER THE SERVICE-ACCOUNT PATH as a stored credential ref through the same POST credentials route every other secret uses (Law 8 \u2014 the JSON is exchanged for a keychain ref and never lands in settings.json or the event log). This is the path that works on a machine with no gcloud installed, and it must be selectable rather than implied.",
+        "RED FIXTURE: a Vertex entry with a service-account ref constructs and reports which auth path it used; one with neither a ref nor resolvable ADC refuses BY NAME and names the gcloud command, proven against the current behaviour first. No live Google calls in tests (law 9a) \u2014 use the `authClientFactory` seam `vertex.ts` already exposes for exactly this.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17. Depends on W12-14 because the provider registry still has no field for a GCP project or location, so Vertex is the ONE cloud kind that refuses at construction even after W12-11 \u2014 no auth work matters until an entry can express which project gets billed. Depends on W12-21 because the panel needs the auth-method concept (and W12-21 was amended in the same commit to stop treating that concept as api-key-vs-oauth, precisely because Vertex is a third shape).",
+        "Lane set to `ui` rather than `gateway`: the bulk of this ticket is the Providers panel, which W12-21 also owns, and P8 rejected the cross-lane overlap on filing. Two tickets that genuinely share a file share a lane so they can never run at once \u2014 the same correction W12-15 and W12-04 each made."
       ]
     }
   ]
