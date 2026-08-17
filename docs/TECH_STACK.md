@@ -228,6 +228,14 @@ why Copilot is the one subscription this product can honestly offer. It stays
 default-off behind D-019's explicit consent gate, because using it against a
 personal account still carries account risk.
 
+**RESOLVED 2026-08-17 as D-026:** subscription sign-in lives behind a PLUGIN
+SEAM, never in core (W12-27). This is the architecture opencode actually has —
+its core ships an `AuthHook` plus a `loader` returning a custom `fetch()`, and
+the subscription flows live in separate plugin packages — which is exactly why
+opencode is structurally fine and a core implementation here would not be. The
+exposure sits with whoever installed a plugin. W12-22 and W12-23 are closed as
+will-not-build-in-core, with the finding as the deliverable.
+
 **The rule this leaves us with:** cloud providers authenticate with API keys.
 Subscriptions are supported only where the vendor documents a third-party
 integration path. An auth button that works by imitating a vendor's own client
