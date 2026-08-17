@@ -643,3 +643,63 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     expect(copilotRow.textContent).toContain('Copilot-backed');
   });
 });
+
+describe('auth method rendering (W12-21)', () => {
+  async function openForm() {
+    fetchSpy.mockImplementation(
+      router([getProviders(() => jsonResponse({ providers: [] }))]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText(/No providers yet/);
+    return screen.getByLabelText('Kind');
+  }
+
+  it(
+    'RED FIXTURE: a local kind is NOT asked for an API key. The panel used to show ' +
+      'one always-on key box regardless of kind, which is how "no credentials ' +
+      'needed" and "sign in to a subscription" both had nowhere to appear',
+    async () => {
+      await openForm();
+      expect(screen.queryByLabelText(/API key/)).toBeNull();
+      expect(screen.getByText(/No credentials needed/)).toBeTruthy();
+    },
+  );
+
+  it('choosing a cloud kind shows the API key field, and only then', async () => {
+    const kind = await openForm();
+    fireEvent.change(kind, { target: { value: 'openai' } });
+    expect(screen.getByLabelText(/API key/)).toBeTruthy();
+    expect(screen.queryByText(/No credentials needed/)).toBeNull();
+  });
+
+  it(
+    'a subscription-only kind shows a sign-in affordance and NO key box — Copilot ' +
+      'takes a credential store, not a key',
+    async () => {
+      const kind = await openForm();
+      fireEvent.change(kind, { target: { value: 'copilot' } });
+      expect(screen.queryByLabelText(/API key/)).toBeNull();
+      expect(screen.getByTestId('auth-subscription-pending')).toBeTruthy();
+    },
+  );
+
+  it(
+    'vertex shows the ADC path rather than an API key — the shape that proved auth ' +
+      'could not be modelled as api-key-vs-oauth (D-007)',
+    async () => {
+      const kind = await openForm();
+      fireEvent.change(kind, { target: { value: 'vertex' } });
+      expect(screen.queryByLabelText(/API key/)).toBeNull();
+      expect(screen.getByTestId('auth-gcp-adc')).toBeTruthy();
+    },
+  );
+
+  it('an endpoint kind supporting both methods offers the choice', async () => {
+    const kind = await openForm();
+    fireEvent.change(kind, { target: { value: 'oai-compat' } });
+    fireEvent.change(screen.getByLabelText('Authentication'), {
+      target: { value: 'api-key' },
+    });
+    expect(screen.getByLabelText(/API key/)).toBeTruthy();
+  });
+});

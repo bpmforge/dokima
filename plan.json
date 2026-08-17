@@ -6365,12 +6365,13 @@
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/settings/ProvidersPanel.tsx",
         "apps/web/src/settings/ProvidersPanel.test.tsx",
         "apps/web/src/settings/providers-api.ts",
-        "apps/web/src/settings/providers-api.test.ts"
+        "apps/web/src/settings/providers-api.test.ts",
+        "apps/web/src/settings/ProviderAuthFields.tsx"
       ],
       "depends_on": [],
       "stories": [],
@@ -6384,7 +6385,8 @@
       ],
       "notes": [
         "Filed 2026-08-17 from founder direction. Split from the two subscription integrations (W12-22, W12-23) deliberately: this ticket is the SURFACE \u2014 auth method as a first-class per-kind concept plus the one flow that is already built \u2014 and it delivers value without depending on any external API being verified first.",
-        "AMENDED 2026-08-17 after the founder asked about Vertex: the first draft of criterion 3 implied a two-option model. Vertex is a third shape (ADC), so the method concept has to be extensible from the start rather than a boolean that gets rewritten. Vertex's own wiring is W12-25 and depends on W12-14 (the registry cannot express project/location yet, so Vertex is the one cloud kind that still refuses at construction)."
+        "AMENDED 2026-08-17 after the founder asked about Vertex: the first draft of criterion 3 implied a two-option model. Vertex is a third shape (ADC), so the method concept has to be extensible from the start rather than a boolean that gets rewritten. Vertex's own wiring is W12-25 and depends on W12-14 (the registry cannot express project/location yet, so Vertex is the one cloud kind that still refuses at construction).",
+        "write_scope gained ProviderAuthFields.tsx: the auth-method fields took ProvidersPanel.tsx to 439 lines and the file-size gate went red \u2014 third accretion catch of the wave (policy.ts, run-build.ts were the others), all three several reasonable appends rather than one oversized write."
       ]
     },
     {
@@ -6498,6 +6500,35 @@
       "notes": [
         "Filed 2026-08-17. Depends on W12-14 because the provider registry still has no field for a GCP project or location, so Vertex is the ONE cloud kind that refuses at construction even after W12-11 \u2014 no auth work matters until an entry can express which project gets billed. Depends on W12-21 because the panel needs the auth-method concept (and W12-21 was amended in the same commit to stop treating that concept as api-key-vs-oauth, precisely because Vertex is a third shape).",
         "Lane set to `ui` rather than `gateway`: the bulk of this ticket is the Providers panel, which W12-21 also owns, and P8 rejected the cross-lane overlap on filing. Two tickets that genuinely share a file share a lane so they can never run at once \u2014 the same correction W12-15 and W12-04 each made."
+      ]
+    },
+    {
+      "id": "W12-26",
+      "title": "the Copilot device flow has no server route \u2014 the adapter and the UI both exist, nothing connects them",
+      "phase": 12,
+      "module": "cli",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "write_scope": [
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts"
+      ],
+      "depends_on": [
+        "W12-21"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DISCLOSED BY W12-21 AT CLAIM, and it resized that ticket's assumption. W12-21 was filed saying the Copilot device flow \"is already built and has never had a UI\" \u2014 half right. `requestDeviceCode` and `pollDeviceAuthorization` (`copilot-device-auth.ts`) ARE complete and tested, and W12-21 added the panel affordance. What does not exist is anything in between: grep `apps/server/src/api` for a device-auth route and it returns nothing. The UI has a button-shaped hole and the gateway has a function nobody can call over HTTP.",
+        "TWO ROUTES, because a device flow is inherently two-step: one to REQUEST a device code (returns the user code and verification URL for display), one to POLL for authorization. Poll on the SERVER against the gateway function rather than proxying a loop from the browser \u2014 the token must land in the keychain via the credential path (Law 8) and never transit the web client.",
+        "THE POLL MUST TERMINATE HONESTLY: device codes expire and users abandon flows. Respect the interval and expiry the device-code response carries, and surface `authorization_pending`, `slow_down`, `expired_token` and `access_denied` as distinct, named outcomes rather than one generic failure \u2014 `CopilotDeviceAuthError` already exists for this.",
+        "D-019 CONSENT IS NOT WEAKENED BY THIS. Copilot ships default-off behind an explicit ledgered consent acknowledgement because using it against a personal account can get that account banned. This ticket gives the consent gate a working sign-in; it does not remove or bypass the gate, and a red fixture must prove an unconsented kind still refuses to enable.",
+        "RED FIXTURE: the two routes complete a device flow against a RECORDED fixture (law 9a \u2014 never a live GitHub call) and leave a credential ref the provider entry can carry; an expired code produces the named expiry outcome, not a hang.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17 at W12-21's close. Recording the estimate error rather than hiding it: W12-21 assumed \"already built, just needs a UI\" and the missing middle was a whole HTTP surface. The panel now says so where a user would look, rather than showing a button that does nothing.",
+        "Lane `ui`, not `core`: it shares `providers-routes.ts` with W12-25, and P8 rejected the cross-lane overlap on filing. Fourth time this wave that two tickets sharing a file had to share a lane \u2014 the rule is doing real work."
       ]
     }
   ]
