@@ -15,6 +15,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import * as fleetApi from '../fleet/api.js';
 import * as settingsApi from '../settings/api.js';
 import { FirstRunWizard } from '../settings/FirstRunWizard.js';
+import { PROVIDER_KINDS } from '../settings/providers-api.js';
 
 vi.mock('../fleet/api.js', async () => {
   const actual =
@@ -175,5 +176,56 @@ describe('FirstRunWizard — model policy (W12-13, D-024)', () => {
       | Record<string, unknown>
       | undefined;
     expect(patch?.defaultModelMatrixPreset).toBe('all-local');
+  });
+});
+
+describe('FirstRunWizard provider kinds (W12-19)', () => {
+  async function reachProviderStep() {
+    render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('radio', { name: /Local only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    return screen.findByLabelText('Provider kind');
+  }
+
+  it(
+    'RED FIXTURE: offers EVERY registered kind, not three. The wizard carried its ' +
+      'own hand-written list — a fourth copy of the kind table after the three ' +
+      'adapter-dispatch copies this wave consolidated — and it had gone stale: ' +
+      'three options against the panel’s seven',
+    async () => {
+      const select = await reachProviderStep();
+      const values = Array.from(select.querySelectorAll('option')).map(
+        (o) => (o as HTMLOptionElement).value,
+      );
+      for (const kind of PROVIDER_KINDS) expect(values).toContain(kind);
+      expect(values.length).toBe(PROVIDER_KINDS.length);
+    },
+  );
+
+  it(
+    'RED FIXTURE: Vertex asks for project and region. W12-14 made the registry ' +
+      'REQUIRE them, and this wizard never collected them — so choosing Vertex ' +
+      'produced "bills a specific cloud project and requires project" at the one ' +
+      'moment a new user is least equipped to debug it',
+    async () => {
+      const select = await reachProviderStep();
+      fireEvent.change(select, { target: { value: 'vertex' } });
+      expect(screen.getByLabelText('GCP project')).toBeTruthy();
+      expect(screen.getByLabelText('Region')).toBeTruthy();
+    },
+  );
+
+  it('a local kind asks for a base URL and no credential', async () => {
+    const select = await reachProviderStep();
+    fireEvent.change(select, { target: { value: 'lm-studio' } });
+    expect(screen.getByLabelText('Base URL')).toBeTruthy();
+    expect(screen.queryByLabelText(/Credential ref/)).toBeNull();
+  });
+
+  it('a subscription kind says so rather than asking for a key it cannot use', async () => {
+    const select = await reachProviderStep();
+    fireEvent.change(select, { target: { value: 'copilot' } });
+    expect(screen.getByTestId('wizard-subscription-kind')).toBeTruthy();
+    expect(screen.queryByLabelText(/Credential ref/)).toBeNull();
   });
 });
