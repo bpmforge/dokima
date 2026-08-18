@@ -5767,9 +5767,11 @@
       "module": "cli",
       "lane": "core",
       "points": 1,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/server/src/api/main.ts",
+        "apps/server/src/api/index.ts",
+        "apps/server/src/bootstrap/cli.ts",
         "apps/server/src/bootstrap/cli.test.ts"
       ],
       "depends_on": [],

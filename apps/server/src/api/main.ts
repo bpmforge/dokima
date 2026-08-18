@@ -23,7 +23,19 @@ import {
   type ApiServer,
 } from './index.js';
 
-const DEFAULT_PORT = 4317;
+/**
+ * W12-01: the ONE declaration. `bootstrap/cli.ts` used to declare its own
+ * `4317` as well, so changing the port was a two-file edit and the copy nobody
+ * edited kept working and stayed green — no test could see the disagreement.
+ *
+ * It lives HERE, in `api/`, because the dependency runs bootstrap -> api:
+ * `cli.ts` imports from `../api/index.js` and `api/` imports nothing from
+ * `bootstrap/`. Putting the shared constant in `bootstrap/` and importing it
+ * from `api/` would have inverted that and created a cycle — which is the
+ * question this ticket was held on, answered by the import graph rather than
+ * by preference.
+ */
+export const DEFAULT_PORT = 4317;
 
 export interface BuildServerOptions {
   port?: number;

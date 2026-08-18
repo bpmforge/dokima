@@ -2,6 +2,9 @@ export { buildAllowlist, isAllowedHost, isAllowedOrigin } from './allowlist.js';
 export type { Allowlist } from './allowlist.js';
 export { checkAuth, registerAuthHook } from './auth-plugin.js';
 export type { AuthCheckInput, AuthPluginOptions, AuthResult } from './auth-plugin.js';
+// W12-01: the port default is exported from the barrel so `bootstrap/cli.ts`
+// can re-export it without reaching past the public surface of `api/`.
+export { DEFAULT_PORT } from './main.js';
 export { registerHealthz } from './healthz.js';
 export type { HealthzDeps } from './healthz.js';
 export { problem, PROBLEM_CONTENT_TYPE } from './problem.js';
