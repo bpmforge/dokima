@@ -59,6 +59,17 @@ export interface Ticket {
   ownerId: string | null;
   status: TicketStatus;
   interface: string | null;
+  /**
+   * The expert that does this ticket (D-025, W12-06). Absent => `coding-agent`,
+   * which is what every ticket resolved to before this field existed.
+   *
+   * OPTIONAL, not `string | null` like its neighbours: the board carries 208
+   * done tickets with no role and the decomposer does not emit one yet, so the
+   * absent case is the common case rather than an unset value someone forgot.
+   * `?` makes "this ticket says nothing about its expert" the shape of the
+   * type instead of a null everyone has to remember to write.
+   */
+  role?: string;
   writeScope: string[];
   dependsOn: string[];
   acceptance: AcceptanceCriterion[];
@@ -77,6 +88,8 @@ export interface CreateTicketInput {
   title: string;
   lane: string;
   interface?: string | null;
+  /** The expert that does this ticket (D-025). Absent => `coding-agent`. */
+  role?: string;
   writeScope: string[];
   dependsOn?: string[];
   acceptance?: AcceptanceCriterion[];

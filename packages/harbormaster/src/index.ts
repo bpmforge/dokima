@@ -88,7 +88,11 @@ export type {
   CloseGateSuccess,
 } from './loop-gates.js';
 
-export { defaultHandoffBuilder, DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
+export {
+  defaultHandoffBuilder,
+  DEFAULT_VERIFY_COMMAND,
+  TicketRoleRefusedError,
+} from './loop-handoff.js';
 export type { HandoffBuilder } from './loop-handoff.js';
 
 export { createFileStopSwitch } from './loop-killswitch.js';
