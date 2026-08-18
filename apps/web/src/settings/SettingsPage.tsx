@@ -10,6 +10,7 @@ import { ExpertOverridesPanel } from './ExpertOverridesPanel.js';
 import { McpServersPanel } from './McpServersPanel.js';
 import { ModelMatrixPanel } from './ModelMatrixPanel.js';
 import { ProvidersPanel } from './ProvidersPanel.js';
+import type { ProviderCatalog, ProviderEntry } from './providers-api.js';
 import { RuleLifecyclePanel } from './RuleLifecyclePanel.js';
 import { SuppressionsPanel } from './SuppressionsPanel.js';
 import { ValidatorPacksPanel } from './ValidatorPacksPanel.js';
@@ -70,7 +71,18 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
    * discoverability win for a broken picker. Providers being NAMED in the nav
    * is what this ticket was actually for, and that part stands.
    */
-  const [tab, setTab] = useState<Tab>('matrix');
+  /**
+   * W12-35: Settings owns the provider catalog so ONE `ProvidersPanel` serves
+   * both tabs. It used to be state inside `ModelMatrixPanel`, which mounted
+   * its own panel — so once Providers became its own tab there were two
+   * instances and the catalog lived in whichever did the discovering.
+   */
+  const [catalogs, setCatalogs] = useState<Record<string, ProviderCatalog>>({});
+  const [providerEntries, setProviderEntries] = useState<ProviderEntry[]>([]);
+  // W12-31 deliberately landed on Model Matrix because the picker arrived
+  // empty otherwise. With the catalog lifted, that reason is gone: Settings
+  // opens where people actually come to it.
+  const [tab, setTab] = useState<Tab>('providers');
   const token = readInjectedToken();
 
   if (!projectId) {
@@ -140,8 +152,23 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
         ))}
       </nav>
       <div className="settings__panel">
-        {tab === 'providers' && <ProvidersPanel projectId={projectId} />}
-        {tab === 'matrix' && <ModelMatrixPanel projectId={projectId} />}
+        {/* Mounted once, always — `hidden` rather than unmounted, so the
+            catalog it discovered survives a tab switch instead of being
+            re-fetched (or lost) each time. */}
+        <div hidden={tab !== 'providers'}>
+          <ProvidersPanel
+            projectId={projectId}
+            onCatalogsChange={setCatalogs}
+            onEntriesChange={setProviderEntries}
+          />
+        </div>
+        {tab === 'matrix' && (
+          <ModelMatrixPanel
+            projectId={projectId}
+            catalogs={catalogs}
+            providerEntries={providerEntries}
+          />
+        )}
         {tab === 'agent' && <AgentRunnerPanel projectId={projectId} />}
         {tab === 'autonomy-budget' && <AutonomyBudgetPanel projectId={projectId} />}
         {tab === 'estimate' && token && (

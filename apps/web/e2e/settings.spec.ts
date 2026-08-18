@@ -119,10 +119,6 @@ test('model matrix: pick a model from the provider-discovered list, and a copilo
   await api.dispose();
 
   await openProjectSettings(page);
-  await expect(page.getByTestId('model-matrix-panel')).toBeVisible();
-  const copilotRow = page.getByRole('row', { name: /challenger/ });
-  await expect(copilotRow.getByText('Copilot-backed')).toBeVisible();
-
   // Register a provider so the Model field has a real, list-backed catalog
   // to pick from (AC1: no free text). A closed port (9, "discard") fails
   // fast and deterministically, falling back to the bundled offline catalog
@@ -136,6 +132,14 @@ test('model matrix: pick a model from the provider-discovered list, and a copilo
 
   const providerRow = page.getByRole('row', { name: /ollama-e2e/ });
   await expect(providerRow.getByText('Bundled')).toBeVisible();
+
+  // W12-35: Settings lands on Providers now that the catalog is lifted, so
+  // the matrix panel is one tab away rather than the opening view.
+  await page.getByRole('button', { name: 'Model Matrix' }).click();
+  await expect(page.getByTestId('model-matrix-panel')).toBeVisible();
+  const copilotRow = page.getByRole('row', { name: /challenger/ });
+  await expect(copilotRow.getByText('Copilot-backed')).toBeVisible();
+
 
   const matrixForm = page.getByRole('form', { name: 'Add matrix row' });
   await matrixForm.getByLabel('Role').fill('coding-agent');

@@ -11,7 +11,6 @@ import {
   type ModelMatrixRow,
   type TaskType,
 } from './types.js';
-import { ProvidersPanel } from './ProvidersPanel.js';
 import {
   combinedModelOptions,
   findServingProviderId,
@@ -31,6 +30,10 @@ const PRESET_LABEL: Record<(typeof MODEL_MATRIX_PRESETS)[number], string> = {
 
 export interface ModelMatrixPanelProps {
   projectId: string;
+  /** W12-35: discovered per-provider model lists, owned by SettingsPage so one fetch serves both tabs. */
+  catalogs: Record<string, ProviderCatalog>;
+  /** The matrix needs `enabled` per entry to tell "missing" apart from "unroutable" (UX_SPEC §6a). */
+  providerEntries: ProviderEntry[];
 }
 
 function rowKey(role: string, taskType: TaskType): string {
@@ -45,15 +48,23 @@ function rowKey(role: string, taskType: TaskType): string {
  * Model field is a `<select>` backed by the catalog `ProvidersPanel`
  * discovers, rather than an unvalidated bare string (W10-04).
  */
-export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
+export function ModelMatrixPanel({
+  projectId,
+  catalogs,
+  providerEntries,
+}: ModelMatrixPanelProps) {
   const [matrix, setMatrix] = useState<ModelMatrixWithScope | null>(null);
   // W10-64: write the preset every project inherits, rather than only this
   // one. Off by default — a global write is the wider blast radius, so it is
   // never the thing an unread click does.
   const [applyGlobally, setApplyGlobally] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [catalogs, setCatalogs] = useState<Record<string, ProviderCatalog>>({});
-  const [providerEntries, setProviderEntries] = useState<ProviderEntry[]>([]);
+  // W12-35: catalogs and entries arrive as PROPS now. They used to be state
+  // here, fed by a `ProvidersPanel` this component mounted itself — which was
+  // fine while that was the only mount, and became a defect the moment W12-31
+  // gave Providers its own tab: the discovered catalog lived in whichever
+  // instance did the discovering, so the Model picker arrived empty for a user
+  // who registered a provider on the other one.
   const [rowError, setRowError] = useState<{ key: string; message: string } | null>(null);
   const [draft, setDraft] = useState<{ role: string; taskType: TaskType; model: string }>(
     {
@@ -125,11 +136,6 @@ export function ModelMatrixPanel({ projectId }: ModelMatrixPanelProps) {
 
   return (
     <section aria-label="Model Matrix" data-testid="model-matrix-panel">
-      <ProvidersPanel
-        projectId={projectId}
-        onCatalogsChange={setCatalogs}
-        onEntriesChange={setProviderEntries}
-      />
       <h2>Models</h2>
       <p className="settings__hint">
         Presets: {MODEL_MATRIX_PRESETS.map((p) => PRESET_LABEL[p]).join(' · ')} (applying

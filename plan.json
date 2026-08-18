@@ -6770,11 +6770,14 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/settings/ModelMatrixPanel.tsx",
         "apps/web/src/settings/SettingsPage.tsx",
-        "apps/web/src/settings/ModelMatrixPanel.test.tsx"
+        "apps/web/src/settings/ModelMatrixPanel.test.tsx",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/e2e/a11y/settings.spec.ts"
       ],
       "depends_on": [
         "W12-31"
