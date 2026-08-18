@@ -103,6 +103,18 @@
      text; 8.5rem is the value under test here, confirmed by screenshot. */
   --sw-board-column-min: 8.5rem;
 
+  /* W13-06: an EMPTY lane column needs only enough width for its own name
+     ("In Progress" is the longest). It stays present because it is a drop
+     target; it just stops claiming an equal share of the row. Separate from
+     the constant above on purpose — that one is measured for a column holding
+     a card, and two tickets have already had to correct a change to it.
+
+     6.25rem, not the 5.5rem this first shipped with: at 5.5 the longest label
+     wrapped to two lines, which made the empty columns taller than the thing
+     they were receding behind. Measured on screen, in the same spirit as the
+     note above — the label is ~4.9rem at this size, plus 1rem of padding. */
+  --sw-board-column-empty-min: 6.25rem;
+
   --sw-transition-duration: 150ms;
 }
 

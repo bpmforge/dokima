@@ -34,7 +34,7 @@ export function Card({ ticket, heartbeat, onDragStart, onFireVerb }: CardProps) 
   const verbs = availableVerbsFrom(ticket.status);
   return (
     <div
-      className="board-card"
+      className="board-card surface"
       data-testid={`card-${ticket.id}`}
       draggable
       onDragStart={(event) => onDragStart(event, ticket.id)}

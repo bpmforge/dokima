@@ -114,8 +114,15 @@
      down to --sw-space-10, far under one column's minimum, so the
      W9-05 edge-fade still has a width range where it does its job
      (verified: at a 120px pane the strip scrolls 128px of content). */
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--sw-board-column-min), 1fr));
+  /* W13-06: FLEX, NOT GRID. `auto-fit` + `1fr` splits the row evenly no matter
+     what is in it, so on a one-ticket board five empty lanes took the same
+     room as the lane with the card — about 85% of the pane spent on empty
+     boxes, and the ticket squeezed into ~130px with its title over three
+     lines. Flex is the tool that sizes to content: occupied columns grow,
+     empty ones take only their header. `--sw-board-column-min` is untouched;
+     W10-32 raised it on a hunch and W12-30 had to correct that, so the empty
+     case gets its own value instead of re-litigating a measured constant. */
+  display: flex;
   gap: var(--sw-space-2);
   overflow-x: auto;
   /* Six fixed-width columns routinely overflow a narrower Board pane
@@ -168,18 +175,26 @@
   border-radius: var(--sw-radius-sm);
 }
 
-.board-column {
-  /* Width comes from the grid track above (--sw-board-column-min). */
+ .board-column {
+  /* Grows into whatever the empty columns do not need, never below the
+     measured minimum. */
+  flex: 1 1 var(--sw-board-column-min);
   min-width: 0;
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-md);
   padding: var(--sw-space-2);
 }
 
-.board-column--empty {
+ .board-column--empty {
   /* Recedes, never disappears: it is still a drop target, and a lane where
      empty columns vanished would move the remaining ones under the cursor
-     mid-drag. Muted rather than removed. */
+     mid-drag. Muted rather than removed — W13-06 changes its WIDTH, never its
+     presence, for exactly that reason.
+
+     `0 1` rather than `1 1`: it does not grow, so the space goes to the lane
+     that has something. It still shrinks, and still shows its own name, so the
+     six lifecycle states remain readable as a pipeline. */
+  flex: 0 1 var(--sw-board-column-empty-min);
   opacity: 0.55;
 }
 
@@ -198,11 +213,18 @@
   gap: var(--sw-space-2);
 }
 
+ /* W13-06: border/radius/padding come from `.surface` (W13-04) — one of the
+   local re-declarations the ratchet counts. */
 .board-card {
-  border: var(--sw-border-width) solid var(--sw-border);
-  border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-2);
   cursor: grab;
+}
+
+/* W13-06: the select had NO width constraint, so it inherited the browser's
+   default intrinsic width and hung over the bottom edge of a card narrower
+   than itself. A control inside a card is bounded by that card. */
+.board-card__verb-menu select {
+  width: 100%;
+  max-width: 100%;
 }
 
 .board-card__header {
