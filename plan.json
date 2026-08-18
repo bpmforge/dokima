@@ -6850,7 +6850,7 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "packages/harbormaster/src/loop-land-policy.ts",
         "packages/harbormaster/src/loop-land-policy.test.ts",
@@ -6871,7 +6871,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-18 from W12-16. Eleventh instance of the defect class the W12-10 ratchet was built for, and the worst-shaped one so far: the engine is not merely uncalled, it is not exported from the gateway barrel at all \u2014 which is exactly why harbormaster reproduced its shape structurally instead of importing it. See W12-38 for the ratchet hole that let it through."
+        "Filed 2026-08-18 from W12-16. Eleventh instance of the defect class the W12-10 ratchet was built for, and the worst-shaped one so far: the engine is not merely uncalled, it is not exported from the gateway barrel at all \u2014 which is exactly why harbormaster reproduced its shape structurally instead of importing it. See W12-38 for the ratchet hole that let it through.",
+        "BLOCKED 2026-08-18 on a FOUNDER ARCHITECTURE DECISION, before writing code, and the ticket says why in its own third criterion: the hard half is making the pinned model be what the spawned session actually runs. Verified rather than assumed \u2014 resolveModelTarget (apps/server/src/api/pipeline/model-resolution.ts:260) takes ResolveModelTargetInput and has NO parameter through which a policy can pin anything, and it resolves through route(), whose module doc says route() is used deliberately BECAUSE it makes maker != verifier structural (C-4 / Law 5): routing a verifier role auto-resolves the maker role for the same task type and refuses a collision. So \"the policy forces the model\" is one of three things, and each is a contract change, not an implementation detail: (a) the land loop stops being model-agnostic, which its own module doc calls deliberate; (b) resolveModelTarget takes a policy override, which collides with the per-role matrix routing W12-06 just made meaningful \u2014 a ticket now names its expert, and the matrix routes that expert to a model, so a pinned model has to beat the expert the board chose, and someone has to decide that ordering; or (c) pinning bypasses route(), which trades D-024 option (b) for the structural C-4 guard and is the one option that should not be taken quietly. Deciding this in a commit body is exactly the move D-026 refuses to let W12-27 make, which is also why this ticket carries role architecture-designer. Needs a DECISIONS.md row first: WHICH LAYER OWNS MODEL SELECTION WHEN A POLICY PINS A MODEL."
       ],
       "role": "architecture-designer"
     },
