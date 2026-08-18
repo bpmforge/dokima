@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { findUnreferencedExports, isBarrel, isTestFile } from './validate-exports.mjs';
+import {
+  findUnreferencedExports,
+  isBarrel,
+  isTestFile,
+  isTestSupportFile,
+  moduleExports,
+  stripComments,
+} from './validate-exports.mjs';
 
 describe('validate-exports (W12-10) — file classification', () => {
   it('treats every test-shaped file as non-evidence of use', () => {
@@ -68,5 +75,70 @@ describe('validate-exports (W12-10) — the defect class, against this repo', ()
   it('scans a real denominator rather than a token sample', () => {
     expect(result.packages).toBeGreaterThanOrEqual(12);
     expect(result.scanned).toBeGreaterThan(1_000);
+  });
+});
+
+describe('the buried-export pass (W12-38)', () => {
+  it(
+    'RED FIXTURE: names runEscalationPolicy. The W12-10 pass reported 43 gaps ' +
+      'and never mentioned it — a complete, tested escalation state machine ' +
+      '(D-024 option b) with no production caller anywhere, invisible because ' +
+      'it is not in a barrel at all. The ratchet was blind to the worst shape ' +
+      'of the defect it exists to catch',
+    () => {
+      const { buried } = findUnreferencedExports();
+      expect(buried.map((b) => b.symbol)).toContain('runEscalationPolicy');
+    },
+  );
+
+  it(
+    'counts references in CODE, not in prose. runEscalationPolicy survived the ' +
+      'first draft of this pass because loop-land-policy.ts names it twice in a ' +
+      'comment explaining why that loop deliberately does not call it — counting ' +
+      'an explanation of why nothing calls a function as a call',
+    () => {
+      const stripped = stripComments(
+        'const a = 1; // runEscalationPolicy\n/* runEscalationPolicy */ const b = 2;',
+      );
+      expect(stripped).not.toContain('runEscalationPolicy');
+      // Blanked, not deleted: removing a comment between two identifiers would
+      // glue them into a third word that never existed in the file.
+      expect(stripped).toContain('const a = 1;');
+      expect(stripped).toContain('const b = 2;');
+      expect(stripped.split('\n')).toHaveLength(2);
+    },
+  );
+
+  it(
+    'does not report recorded fixtures as dead. They are exported for tests and ' +
+      'called by nothing else BY DESIGN — law 9a is why they exist — so reporting ' +
+      'them reports the testing discipline as a defect (30 of the first 90)',
+    () => {
+      expect(isTestSupportFile('packages/gateway/src/providers/copilot-fixtures.ts')).toBe(true);
+      expect(isTestSupportFile('packages/forge/src/mirror/mirror-test-helpers.ts')).toBe(true);
+      expect(isTestSupportFile('packages/gateway/src/escalation/policy.ts')).toBe(false);
+    },
+  );
+
+  it('reads the names a module exports, and only the value ones', () => {
+    const names = moduleExports(
+      'x.ts',
+      [
+        'export function used() {}',
+        'export const value = 1;',
+        'export class Thing {}',
+        'export interface Shape { a: string }',
+        'export type Alias = string;',
+        'function notExported() {}',
+        "export { rexported } from './other.js';",
+      ].join('\n'),
+    );
+    expect(names).toEqual(['used', 'value', 'Thing']);
+  });
+
+  it('never double-reports a symbol the barrel pass already judged', () => {
+    const { findings, buried } = findUnreferencedExports();
+    const barrelNames = new Set(findings.map((f) => f.symbol));
+    for (const b of buried) expect(barrelNames.has(b.symbol)).toBe(false);
   });
 });

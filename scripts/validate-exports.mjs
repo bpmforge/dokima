@@ -159,6 +159,86 @@ function countReferences(name, files, contentsByFile, declFile) {
   return { production, tests, testFiles };
 }
 
+/**
+ * Value symbols a MODULE exports that its package barrel does not (W12-38).
+ *
+ * THE BLIND SPOT THIS CLOSES, in the shape of the check's own defect class:
+ * `exportsOfBarrel` can only see what a barrel publishes, so a complete,
+ * tested engine that was never added to the barrel is invisible to it. The
+ * instance that exposed this is `runEscalationPolicy` — the whole D-024
+ * option (b) escalation state machine, tested, with no production caller
+ * anywhere, absent from every report while the validator confidently printed
+ * 43 gaps. That is not a lesser case than an uncalled barrel export, it is a
+ * WORSE one: an uncalled export is reachable and unused, while an unexported
+ * implementation cannot be adopted at all without a separate barrel change —
+ * which is precisely why W12-04's packer, W12-09's code index and W12-37's
+ * pinned policy each sat dormant for waves.
+ *
+ * Parsed, not type-checked: this needs the names a file declares with
+ * `export`, which `ts.createSourceFile` gives for the price of a parse. There
+ * is no `export *` to resolve here — that is the barrel pass's job.
+ */
+/**
+ * The same text with comments blanked out (W12-38).
+ *
+ * The reference count is a word-boundary text match, and the module doc-block
+ * this validator lives beside says plainly that it OVER-counts: "a comment
+ * mentioning a name reads as a use". That was an acceptable bias for the
+ * barrel pass, and it is fatal for the buried one — `runEscalationPolicy`, the
+ * instance that motivated this whole check, is named twice in a prose comment
+ * in `loop-land-policy.ts` explaining why that loop deliberately does NOT call
+ * it. Counting an explanation of why nothing calls a function as a call is the
+ * exact inversion of what is being measured.
+ *
+ * Blanked rather than removed, so two identifiers either side of a stripped
+ * comment cannot glue into a third word that never existed.
+ */
+export function stripComments(text) {
+  return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) =>
+    match.replace(/[^\n]/g, ' '),
+  );
+}
+
+/**
+ * Test SUPPORT in a production-shaped file. Recorded fixtures and fake
+ * adapters are exported for tests and called by nothing else BY DESIGN (law
+ * 9a is why they exist), so reporting them reports the testing discipline as
+ * a defect — 30 of the first 90 findings. Matched on the path, not the symbol
+ * name: the file's location is the author's own statement of intent.
+ */
+export function isTestSupportFile(file) {
+  const base = path.basename(file.replace(/\\/g, '/'));
+  // Named on the file (`copilot-fixtures.ts`), or under a `fixtures/` dir.
+  return (
+    /(^|[-.])(fixtures?|test-helpers?|test-support)\.[cm]?tsx?$/.test(base) ||
+    /(^|\/)(fixtures?|__fixtures__)\//.test(file.replace(/\\/g, '/'))
+  );
+}
+
+export function moduleExports(file, text) {
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
+  const names = [];
+  for (const statement of source.statements) {
+    const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
+    const exported = modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+    if (!exported) continue;
+    // `export default` has no name to search for, and re-export statements
+    // (`export { x } from ...`) are plumbing, same as a barrel.
+    if (modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)) continue;
+    if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
+      if (statement.name) names.push(statement.name.text);
+    } else if (ts.isVariableStatement(statement)) {
+      for (const decl of statement.declarationList.declarations) {
+        // VALUE exports only, matching the barrel pass's calibration: a type
+        // nobody names costs nothing at runtime; a function nobody calls is
+        // dead code.
+        if (ts.isIdentifier(decl.name)) names.push(decl.name.text);
+      }
+    }
+  }
+  return names;
+}
+
 export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'packages') } = {}) {
   const files = SCAN_ROOTS.flatMap((root) => walkSourceFiles(path.join(REPO_ROOT, root)));
   const contentsByFile = new Map();
@@ -171,6 +251,8 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
   }
 
   const findings = [];
+  /** Names the barrel pass already judged — the buried pass must not re-report them. */
+  const published = new Set();
   const packages = readdirSync(packagesDir).filter((entry) => {
     try {
       return statSync(path.join(packagesDir, entry, 'src', 'index.ts')).isFile();
@@ -198,9 +280,38 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
       if (production === 0 && tests > 0) {
         findings.push({ package: pkg, symbol: name, tests, testFiles });
       }
+      published.add(name);
     }
   }
-  return { findings, scanned: files.length, packages: packages.length };
+
+  // W12-38: the same test, one layer deeper — module exports the barrel never
+  // published. Reported SEPARATELY rather than folded into `findings`, because
+  // the two have different remedies (wire it up vs. wire it up AND export it)
+  // and because merging them would silently move the calibrated 43 baseline.
+  const buried = [];
+  // Comment-stripped copies, for this pass only. The barrel pass keeps its
+  // original counting: its 43 is a CALIBRATED baseline, and silently sharpening
+  // the measurement under it would move that number for reasons unrelated to
+  // any ticket's work. Measured rather than assumed — see this ticket's notes
+  // for what the barrel pass reports under stripped counting, and W12-39.
+  const codeByFile = new Map();
+  for (const [file, text] of contentsByFile) codeByFile.set(file, stripComments(text));
+
+  for (const file of files) {
+    if (isTestFile(file) || isBarrel(file) || isTestSupportFile(file)) continue;
+    const rel = path.relative(REPO_ROOT, file);
+    if (!rel.startsWith(`packages${path.sep}`)) continue;
+    const pkg = rel.split(path.sep)[1];
+    for (const name of moduleExports(file, contentsByFile.get(file))) {
+      // Already judged by the barrel pass; reporting it twice would double-count
+      // the debt and make the two numbers impossible to read against each other.
+      if (published.has(name)) continue;
+      const { production, tests } = countReferences(name, files, codeByFile, file);
+      if (production === 0 && tests > 0) buried.push({ package: pkg, symbol: name, file: rel });
+    }
+  }
+
+  return { findings, buried, scanned: files.length, packages: packages.length };
 }
 
 /**
@@ -214,12 +325,16 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
  * Lower it whenever the count drops; never raise it to make a ticket pass.
  */
 export const BASELINE_FLAG = '--max';
+/** W12-38's own baseline. Separate flag, separate number: the two passes have different remedies and merging them would silently move the calibrated 43. */
+export const BURIED_BASELINE_FLAG = '--max-buried';
 
 function main() {
   const jsonOnly = process.argv.includes('--json');
   const maxIndex = process.argv.indexOf(BASELINE_FLAG);
   const max = maxIndex === -1 ? null : Number(process.argv[maxIndex + 1]);
-  const { findings, scanned, packages } = findUnreferencedExports();
+  const buriedIndex = process.argv.indexOf(BURIED_BASELINE_FLAG);
+  const maxBuried = buriedIndex === -1 ? null : Number(process.argv[buriedIndex + 1]);
+  const { findings, buried, scanned, packages } = findUnreferencedExports();
 
   if (!jsonOnly) {
     const byPackage = new Map();
@@ -231,20 +346,45 @@ function main() {
       console.log(`  ${pkg}: ${symbols.length} unreferenced export(s)`);
       for (const symbol of symbols.sort()) console.log(`    - ${symbol}`);
     }
+    const buriedByPackage = new Map();
+    for (const finding of buried) {
+      if (!buriedByPackage.has(finding.package)) buriedByPackage.set(finding.package, []);
+      buriedByPackage.get(finding.package).push(`${finding.symbol}  (${finding.file})`);
+    }
+    for (const [pkg, symbols] of [...buriedByPackage].sort()) {
+      console.log(`  ${pkg}: ${symbols.length} module export(s) the barrel never published`);
+      for (const symbol of symbols.sort()) console.log(`    - ${symbol}`);
+    }
     console.log(
       `Inventory: ${packages} package barrels - ${scanned} source files scanned - ` +
-        `${findings.length} export(s) with no non-test caller outside their own package`,
+        `${findings.length} export(s) with no non-test caller outside their own package - ` +
+        `${buried.length} tested module export(s) with no caller AND no barrel entry`,
     );
   }
   const over = max !== null && Number.isFinite(max) && findings.length > max;
+  const overBuried =
+    maxBuried !== null && Number.isFinite(maxBuried) && buried.length > maxBuried;
   console.log(
     JSON.stringify({
       validator: 'validate-exports',
       gaps: findings.length,
-      exit: over ? 1 : 0,
+      buried: buried.length,
+      exit: over || overBuried ? 1 : 0,
       items: findings.map((f) => `${f.package}: ${f.symbol}`),
+      buriedItems: buried.map((f) => `${f.package}: ${f.symbol}`),
     }),
   );
+  if (overBuried) {
+    console.error(
+      `FAIL: ${buried.length} module export(s) are tested, called by no production ` +
+        `code, and absent from their package barrel, over the baseline of ` +
+        `${maxBuried}. That is the WORSE shape of the defect: not merely unused, ` +
+        `but unreachable without a separate barrel change — how W12-04's packer ` +
+        `and W12-09's code index each stayed dormant for waves. Wire it up, or ` +
+        `stop exporting it; do not raise the baseline.`,
+    );
+    process.exit(1);
+  }
   if (over) {
     console.error(
       `FAIL: ${findings.length} exported symbol(s) are tested but called from no ` +
