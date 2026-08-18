@@ -587,3 +587,78 @@ label:has(> input[type='radio']) {
   font-family: var(--sw-font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+
+/* ==========================================================================
+   SHARED PRIMITIVES (W13-04). See docs/design/components.md for the inventory
+   and the measured duplication these replace.
+
+   Not applied to any existing surface in this ticket — W13-05 and W13-06 adopt
+   them. Landing the primitives and the re-skin together would mean reviewing a
+   system and its first three interpretations in one diff.
+   ========================================================================== */
+
+/* THE SURFACE. Measured: 49 places declare this same border themselves, across
+   15 stylesheets, which is why a card in fleet.css and a card in board.css are
+   subtly different objects. One definition, and --sw-surface finally gives it
+   something to sit on. */
+.surface {
+  background: var(--sw-surface);
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-md);
+  padding: var(--sw-space-4);
+}
+
+/* STATE, DECIDED ONCE — the direction's rule is that state is carried in FORM,
+   not only in a digit or a word. Each token keeps exactly one meaning:
+     accent  = this needs a person
+     success = healthy activity
+     warning = stuck, but not wrong
+     danger  = refused
+     muted   = nothing happening, and should recede
+   A Fleet card and a board lane therefore say the same thing the same way. */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sw-space-2);
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+}
+
+.state::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--sw-radius-pill);
+  background: currentColor;
+  flex: none;
+}
+
+.state--attention {
+  color: var(--sw-accent);
+}
+.state--running {
+  color: var(--sw-success);
+}
+.state--blocked {
+  color: var(--sw-warning);
+}
+.state--refused {
+  color: var(--sw-danger);
+}
+.state--idle {
+  color: var(--sw-fg-muted);
+}
+
+/* The form half: a surface that needs a person is a different SHAPE, not the
+   same shape with a different number. This is what UX_SPEC §2 has asked for
+   since before any of it was built, and what six identical Fleet cards could
+   not do. */
+.surface--attention {
+  border-color: var(--sw-accent);
+  box-shadow: inset 3px 0 0 var(--sw-accent);
+}
+
+.surface--idle {
+  color: var(--sw-fg-muted);
+}

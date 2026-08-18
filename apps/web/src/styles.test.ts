@@ -898,3 +898,59 @@ describe('the design system (W13-03)', () => {
     },
   );
 });
+
+/**
+ * W13-04. The primitives are only worth having if surfaces stop reinventing
+ * them. `.empty-state` proves that existing is not enough — it shipped, seven
+ * surfaces ignored it and wrote their own.
+ */
+describe('the component system (W13-04)', () => {
+  const surfaceCss = readdirSync(path.join(testDir), { recursive: true, encoding: 'utf-8' })
+    .filter((f) => typeof f === 'string' && f.endsWith('.css') && f !== 'styles.css')
+    .map((f) => readFileSync(path.join(testDir, f as string), 'utf-8'));
+
+  it(
+    'RATCHET: no MORE surfaces re-declare the shared card border. Measured at ' +
+      '51 across 14 stylesheets, which is why a card in fleet.css and a card in ' +
+      'board.css are subtly different objects. W13-05/06 drive it down; it may ' +
+      'not rise',
+    () => {
+      const declarations = surfaceCss
+        .flatMap((c) => [...c.matchAll(/border:[^;]*--sw-border[^;]*;/g)])
+        .length;
+      // Lower this whenever the number drops. Never raise it to make a change
+      // pass — the same rule the export ratchet carries.
+      expect(declarations).toBeLessThanOrEqual(51);
+    },
+  );
+
+  it('the shared primitives are token-only — no literal colour survives in them', () => {
+    for (const selector of ['.surface', '.state', '.surface--attention']) {
+      const body = ruleBody(selector);
+      expect(body).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+      expect(body).not.toMatch(/\brgba?\(/);
+    }
+  });
+
+  it(
+    'each state token keeps ONE meaning, so a Fleet card and a board lane say ' +
+      'the same thing the same way. The accent never means "good" — if it did, ' +
+      'a gate result would stop being readable at a glance',
+    () => {
+      expect(ruleBody('.state--attention')).toContain('var(--sw-accent)');
+      expect(ruleBody('.state--running')).toContain('var(--sw-success)');
+      expect(ruleBody('.state--blocked')).toContain('var(--sw-warning)');
+      expect(ruleBody('.state--refused')).toContain('var(--sw-danger)');
+      expect(ruleBody('.state--idle')).toContain('var(--sw-fg-muted)');
+    },
+  );
+
+  it(
+    'state is carried in FORM, not only in a value — a surface needing a person ' +
+      'is a different shape, which is what six identical Fleet cards could not be',
+    () => {
+      const body = ruleBody('.surface--attention');
+      expect(body).toMatch(/box-shadow|border-color/);
+    },
+  );
+});

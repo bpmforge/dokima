@@ -7144,12 +7144,14 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [
         "W13-03"
       ],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18. THE INVENTORY IS THE DELIVERABLE AND IT WAS MEASURED, NOT ESTIMATED: 51 places re-declare the same card border across 14 stylesheets, 8 competing empty-state classes across 7 files, and all 15 files reach for semantic state tokens with no shared component (53 usages). MY FIRST COUNT WAS WRONG AND THE GUARD CAUGHT IT \u2014 a shell glob of `apps/web/src/*/*.css` returned 49 because it never reaches board/drawer/drawer.css two levels down; the test walks the tree and found 51. The baseline is the true number and the doc records why the first one differed, since the measurement IS the point of this ticket. THE SHARPEST FINDING is `.empty-state`: it already existed in styles.css and seven surfaces ignored it and wrote their own. That is the whole problem in miniature \u2014 a shared thing existing is not enough, it has to be the path of least resistance \u2014 and it is why the doc's rule says a primitive with three surviving competitors is not shared, it is a fourth option. Nothing is applied to any surface, deliberately: reviewing a system and its first three interpretations in one diff is how both get waved through. The 51 is now a ratchet that W13-05/06 must drive down and may not raise."
+      ],
       "id": "W13-04",
       "title": "every card, pane, chip and empty state is bespoke CSS \u2014 there is no component inventory",
       "points": 5,
@@ -7157,7 +7159,8 @@
       "write_scope": [
         "docs/design/components.md",
         "apps/web/src/components/**",
-        "apps/web/src/styles.css"
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts"
       ],
       "acceptance": [
         "W13-03 gives the system its tokens; this gives it its parts. The same objects are re-implemented per surface today \u2014 a card is written one way in fleet.css and another in board.css, panes carry their own chrome, chips and empty states are improvised per screen.",
