@@ -6004,7 +6004,7 @@
       "module": "cli",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "apps/server/src/cli/handoff-context.ts",
         "apps/server/src/cli/handoff-context.test.ts"
