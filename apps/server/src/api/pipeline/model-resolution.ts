@@ -139,6 +139,30 @@ export function splitModelRef(
  * (`DEFAULT_ROLE` when `route()` reports `usedDefaultRole`), matching
  * whichever role's rows `matrixFromRows` actually used.
  */
+/**
+ * Overlays the pin onto the run scope. `fallbackChain: []` is the load-bearing
+ * detail: `resolveModelChain` returns `[model, ...fallbackChain]`, so a pinned
+ * chain has exactly one rung and there is nothing for an escalation to climb
+ * to — the "never substitutes" half of the mode, enforced by the shape of the
+ * data rather than by a check somewhere downstream.
+ */
+export function withPin(matrix: ScopedRoleMatrix, pin: PinnedModel | undefined): ScopedRoleMatrix {
+  if (!pin) return matrix;
+  return {
+    ...matrix,
+    run: { ...matrix.run, [pin.role]: { default: { model: pin.model, fallbackChain: [] } } },
+  };
+}
+
+function pinUnhonoured(pin: PinnedModel, why: string): ModelResolutionError {
+  return new ModelResolutionError(
+    `the pinned model "${pin.model}" for role "${pin.role}" cannot be used: ${why}. ` +
+      `Refusing rather than running a different model — pinning means nothing ` +
+      `else runs. Configure that provider, or choose another model policy.`,
+    'pinned-model-unavailable',
+  );
+}
+
 function findRowProviderId(
   rows: readonly ModelMatrixRow[],
   role: AgentRole,
@@ -244,9 +268,31 @@ export interface ResolveModelTargetInput {
   readonly taskType: TaskType;
   readonly actorId?: string;
   readonly env?: NodeJS.ProcessEnv;
+  /**
+   * D-024 option (b) / D-027: run EXACTLY this model for this role.
+   *
+   * Expressed as a RUN-SCOPED matrix entry rather than an override beside the
+   * matrix, so it goes THROUGH `route()` and inherits three things instead of
+   * re-deriving them: FR-S1's run > project > global precedence (a pin needs
+   * no new ordering rule to beat the project row), `guardMakerVerifierDistinct`
+   * (the verifier resolves the maker from this same matrix, so a pin cannot
+   * silently collapse C-4), and the fitness guard (a model unfit for the role
+   * still needs its ack). `ScopedRoleMatrix.run` has existed unused since
+   * W2-05 — `matrixFromRows` builds `{ project }` only — and this is the first
+   * thing that needed it.
+   */
+  readonly pin?: PinnedModel;
   /** Test seams — real callers use the stores. */
   readonly loadProviders?: (projectPath: string) => Promise<ProviderEntry[]>;
   readonly loadMatrixRows?: (projectPath: string) => Promise<ModelMatrixRow[]>;
+}
+
+export interface PinnedModel {
+  readonly role: AgentRole;
+  /** `<providerId>/<model>` or a bare model id, same shape the matrix rows use. */
+  readonly model: string;
+  /** Explicit binding; otherwise taken from the model ref, then the role's row. */
+  readonly providerId?: string;
 }
 
 /**
@@ -260,8 +306,11 @@ export interface ResolveModelTargetInput {
 export async function resolveModelTarget(
   input: ResolveModelTargetInput,
 ): Promise<ResolvedModelTarget> {
-  const { projectPath } = input;
-  if (projectPath === undefined) return envTarget(input.env);
+  const { projectPath, pin } = input;
+  if (projectPath === undefined) {
+    if (pin) throw pinUnhonoured(pin, 'no project is in view, so no provider registry to bind it to');
+    return envTarget(input.env);
+  }
 
   const loadProviders = input.loadProviders ?? listProviders;
   const loadMatrixRows = input.loadMatrixRows ?? listModelMatrix;
@@ -271,11 +320,17 @@ export async function resolveModelTarget(
     loadMatrixRows(projectPath),
   ]);
 
-  // Nothing configured is a normal first-run state, not an error (C-1).
-  if (rows.length === 0 || providers.length === 0) return envTarget(input.env);
+  // Nothing configured is a normal first-run state, not an error (C-1) — but
+  // NOT when a model was pinned. Falling through to the env default here would
+  // serve a different model than the one the user named, silently, which is
+  // the substitution the whole mode exists to prevent.
+  if (rows.length === 0 || providers.length === 0) {
+    if (pin) throw pinUnhonoured(pin, 'no providers or matrix rows are configured');
+    return envTarget(input.env);
+  }
 
   const routed = await route({
-    matrix: matrixFromRows(rows),
+    matrix: withPin(matrixFromRows(rows), pin),
     role: input.role,
     taskType: input.taskType,
     actorId: input.actorId ?? 'pipeline',
@@ -288,7 +343,21 @@ export async function resolveModelTarget(
   // building the matrix `route()` read. Looking the provider up under the
   // wrong role would silently find a different row's binding, or none.
   const effectiveRole = routed.usedDefaultRole ? DEFAULT_ROLE : input.role;
-  const providerId = findRowProviderId(rows, effectiveRole, input.taskType);
+  const pinApplies = pin !== undefined && pin.role === input.role;
+  // A pinned role has no row, so `findRowProviderId` would hand back the
+  // binding of whatever row the project happens to hold for it — a different
+  // provider than the one pinned. The pin carries its own binding.
+  const providerId = pinApplies
+    ? pin.providerId
+    : findRowProviderId(rows, effectiveRole, input.taskType);
 
-  return bindProvider({ modelRef: routed.chain[0]!, providerId }, providers);
+  try {
+    return bindProvider({ modelRef: routed.chain[0]!, providerId }, providers);
+  } catch (err) {
+    // Same reason as the short-circuits above: an unbindable pin is a refusal
+    // that names the pin, not a generic binding error the caller has to guess
+    // the cause of.
+    if (pinApplies) throw pinUnhonoured(pin, err instanceof Error ? err.message : String(err));
+    throw err;
+  }
 }

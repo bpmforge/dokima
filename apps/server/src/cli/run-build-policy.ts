@@ -32,6 +32,38 @@ export const ESCALATION_POLICY_SETTINGS_KEY = 'escalationPolicy';
  * means, and leaves verifiers on the ladder — which keeps maker != verifier
  * (C-4) true BY CONSTRUCTION rather than by a refusal discovered at run time.
  */
+/**
+ * The routing half of a pinned policy (D-027), for `resolveModelTarget`'s
+ * `pin`. Returns undefined for every other mode, so a caller can pass this
+ * unconditionally.
+ */
+export function resolvePinnedModel(
+  raw: JsonValue | undefined,
+  role: string,
+): { readonly role: string; readonly model: string; readonly providerId?: string } | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const value = raw as Record<string, unknown>;
+  if (value.mode !== 'pinned') return undefined;
+  if (typeof value.model !== 'string' || value.model === '') return undefined;
+  return {
+    role,
+    model: value.model,
+    ...(typeof value.providerId === 'string' ? { providerId: value.providerId } : {}),
+  };
+}
+
+/**
+ * FR-L7's ceiling depends on whether the tier costs money per token: 8 attempts
+ * on metered, 12 on owned hardware. A model string cannot tell you which, so
+ * D-027 infers it from the PROVIDER kind the user already chose rather than
+ * asking a fifth wizard question to set a retry ceiling. Unknown or absent
+ * reads as metered, which is the conservative direction: over-spending
+ * someone's money is the failure that matters here.
+ */
+export function tierKindFor(providerKind: unknown): 'local' | 'metered' {
+  return providerKind === 'lm-studio' || providerKind === 'ollama' ? 'local' : 'metered';
+}
+
 export function resolvePolicyScope(
   raw: JsonValue | undefined,
   role: string,
@@ -41,17 +73,35 @@ export function resolvePolicyScope(
   const mode = value.mode;
 
   if (mode === 'pinned') {
-    // W12-12 added `pinned` to the GATEWAY policy union; harbormaster's
-    // `LandEscalationPolicy` is a separate union that does not model it.
-    // Falling through to `ladder` would be exactly the silent substitution
-    // pinning exists to prevent, so this refuses and says so.
+    // D-027: a pin is TWO facts in two layers, and this function only owns the
+    // second. WHICH MODEL is a routing fact (`resolvePinnedModel` below, fed to
+    // `resolveModelTarget` as a run-scoped matrix entry); HOW MANY RETRIES
+    // BEFORE PARKING is this layer's, and `locked` already means exactly that
+    // — retry the same thing under the convergence ceiling, park, never
+    // escalate. Nothing new is added to the land policy union, which is what
+    // keeps the loop model-agnostic: it still never learns what a model is.
+    const model = value.model;
+    if (typeof model !== 'string' || model === '') {
+      return {
+        refusal:
+          `the stored escalation policy pins a model but names none. Refusing ` +
+          `rather than falling back to the ladder — a pin that resolves to ` +
+          `"whatever was next" is the silent substitution the mode exists to ` +
+          `prevent. Re-pick the model, or choose another policy.`,
+      };
+    }
     return {
-      refusal:
-        `the stored escalation policy pins a single model, which the land loop ` +
-        `does not yet honour (its policy union covers ladder/locked/token-gated). ` +
-        `Refusing rather than silently running the ladder instead — the whole ` +
-        `point of pinning is that nothing else quietly runs. Choose another ` +
-        `policy, or clear the setting to take the ladder deliberately.`,
+      scope: {
+        global: {
+          [role]: {
+            mode: 'locked',
+            // The land loop's rungs are attempt counts, not models, so the
+            // pinned "tier" is R1: the first and only attempt tier there is.
+            pinnedTier: 'R1',
+            tierKind: tierKindFor(value.providerKind),
+          } as LandEscalationPolicy,
+        },
+      },
     };
   }
 

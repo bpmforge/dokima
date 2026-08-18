@@ -418,3 +418,131 @@ describe('the structured provider_id pair (W10-68)', () => {
     }
   });
 });
+
+/**
+ * D-027 / W12-37. A pinned model is a ROUTING fact, expressed in the run scope
+ * of the matrix — the slot that has existed since W2-05 and had never been
+ * written to, because `matrixFromRows` builds `{ project: … }` only.
+ */
+describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
+  it(
+    'RED FIXTURE: the pin BEATS the project row. Run > project > global is the ' +
+      'FR-S1 precedence the matrix already implements, so pinning needs no new ' +
+      'ordering rule — which is the whole reason D-027 put the pin here instead ' +
+      'of inventing an override beside the matrix',
+    async () => {
+      const target = await resolveModelTarget({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        pin: { role: 'coding-agent', model: 'box-b/pinned-70b' },
+        ...stores(
+          [provider('box-a'), provider('box-b')],
+          [row('coding-agent', 'box-a/qwen-32b')],
+        ),
+      });
+      expect(target.model).toBe('pinned-70b');
+      expect(target.providerId).toBe('box-b');
+    },
+  );
+
+  it('pins ONE role and leaves every other role on its own row (C-4 by construction)', async () => {
+    const stored = stores(
+      [provider('box-a'), provider('box-b')],
+      [row('coding-agent', 'box-a/qwen-32b'), row('code-reviewer', 'box-a/reviewer-8b')],
+    );
+    const pin = { role: 'coding-agent', model: 'box-b/pinned-70b' } as const;
+
+    const maker = await resolveModelTarget({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      pin,
+      ...stored,
+    });
+    const verifier = await resolveModelTarget({
+      projectPath: PROJECT,
+      role: 'code-reviewer',
+      taskType: 'reasoning',
+      pin,
+      ...stored,
+    });
+    expect(maker.model).toBe('pinned-70b');
+    // The verifier is NOT dragged onto the pinned model. If it were, the pin
+    // would have collapsed maker != verifier silently — the exact failure
+    // `guardMakerVerifierDistinct` exists to make impossible.
+    expect(verifier.model).toBe('reviewer-8b');
+  });
+
+  it(
+    'REFUSES BY NAME when the pin cannot be honoured, rather than quietly ' +
+      'serving something else. Pinning means nothing else runs; falling back to ' +
+      'the env default or the project row would be the silent substitution the ' +
+      'whole mode exists to prevent',
+    async () => {
+      await expect(
+        resolveModelTarget({
+          projectPath: PROJECT,
+          role: 'coding-agent',
+          taskType: 'reasoning',
+          // An EXPLICIT binding to a provider that is not registered. A bare
+          // `no-such-box/pinned-70b` is deliberately NOT a refusal: W10-60
+          // established that a slash can belong to the model id itself
+          // (`qwen/…`, `mlx-community/…`), so guessing it is a dead provider
+          // prefix would refuse eight of the 23 models a real LM Studio serves.
+          pin: {
+            role: 'coding-agent',
+            model: 'pinned-70b',
+            providerId: 'no-such-box',
+          },
+          ...stores([provider('box-a')], [row('coding-agent', 'box-a/qwen-32b')]),
+        }),
+      ).rejects.toThrow(/pin/i);
+    },
+  );
+
+  it(
+    'a vendor-namespaced pin still binds, because a slash is not proof of a ' +
+      'provider prefix (W10-60). Refusing these would refuse 8 of the 23 models ' +
+      'a real LM Studio serves',
+    async () => {
+      const target = await resolveModelTarget({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        pin: { role: 'coding-agent', model: 'qwen/qwen3-32b' },
+        ...stores([provider('box-a')], [row('coding-agent', 'box-a/qwen-32b')]),
+      });
+      expect(target.model).toBe('qwen/qwen3-32b');
+      expect(target.providerId).toBe('box-a');
+    },
+  );
+
+  it(
+    'a pin survives an EMPTY registry as a refusal, not as the env default. ' +
+      'resolveModelTarget short-circuits to envTarget when nothing is ' +
+      'configured — correct for a first run (C-1), and silently wrong for a ' +
+      'user who asked for one specific model',
+    async () => {
+      await expect(
+        resolveModelTarget({
+          projectPath: PROJECT,
+          role: 'coding-agent',
+          taskType: 'reasoning',
+          pin: { role: 'coding-agent', model: 'pinned-70b' },
+          ...stores([], []),
+        }),
+      ).rejects.toThrow(/pin/i);
+    },
+  );
+
+  it('no pin is exactly today\'s behaviour — 236 done tickets depend on it', async () => {
+    const target = await resolveModelTarget({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      ...stores([provider('box-a')], [row('coding-agent', 'box-a/qwen-32b')]),
+    });
+    expect(target.model).toBe('qwen-32b');
+  });
+});

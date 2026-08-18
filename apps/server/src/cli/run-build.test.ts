@@ -523,14 +523,20 @@ describe('executeBuildRun policy wiring (W12-18)', () => {
   it(
     'W12-18 CALL-SITE FIXTURE: a stored PINNED policy refuses the real run with exit 2. ' +
       'The unit tests above only prove the resolver exists — reverting the call site ' +
-      'leaves them green, so this is the one that proves executeBuildRun READS the setting.',
+      'leaves them green, so this is the one that proves executeBuildRun READS the ' +
+      'setting and carries the pin into model resolution (D-027).',
     async () => {
       project = await gitRepoProject();
       const log = openWritableLog(resolveDbPath(project.cwd));
       seedTicket(log);
       await writeProjectSetting(project.cwd, {
         key: 'escalationPolicy',
-        value: { mode: 'pinned', model: 'gpt-5', tierKind: 'metered' },
+        // No provider registry in this fixture, so the pin cannot be bound —
+        // and D-027 says that is a REFUSAL, never a quiet fall-through to the
+        // env default. That is the call-site behaviour worth pinning: the
+        // setting is read, the pin is attempted, and an unhonourable pin stops
+        // the run by name instead of running something else.
+        value: { mode: 'pinned', model: 'gpt-5', providerKind: 'openai' },
         actorId: 'test',
       });
       const io = collectIO();
@@ -542,8 +548,8 @@ describe('executeBuildRun policy wiring (W12-18)', () => {
             now: NOW,
           }),
         );
-        expect(code).toBe(2);
-        expect(io.stderr.join('\n')).toContain('does not yet honour');
+        expect(code).not.toBe(0);
+        expect(io.stderr.join('\n')).toMatch(/pinned model "gpt-5"/);
       } finally {
         log.close();
       }
@@ -595,17 +601,42 @@ describe('resolvePolicyScope (W12-18)', () => {
   );
 
   it(
-    'RED FIXTURE: a stored PINNED policy refuses by name rather than running as ' +
-      'the ladder — silently substituting a different model is the one thing ' +
-      'pinning promises will not happen',
+    'a stored PINNED policy resolves to the LOCKED ceiling (D-027). W12-18 ' +
+      'refused it here, correctly, while the model half did not exist; the pin ' +
+      'is now a routing fact and this layer only owns how many retries happen ' +
+      'before parking — which is exactly what locked already meant',
     () => {
       const result = resolvePolicyScope(
-        { mode: 'pinned', model: 'gpt-5', tierKind: 'metered' },
+        { mode: 'pinned', model: 'gpt-5', providerKind: 'openai' },
         'coding-agent',
       );
+      expect('refusal' in result).toBe(false);
+      if ('refusal' in result) return;
+      const policy = result.scope.global?.['coding-agent'];
+      expect(policy?.mode).toBe('locked');
+      // metered: 8 attempts, not the 12 an owned-hardware model gets.
+      expect(policy).toMatchObject({ tierKind: 'metered' });
+    },
+  );
+
+  it('a local provider kind earns the 12-attempt ceiling, inferred not asked (D-027)', () => {
+    for (const providerKind of ['lm-studio', 'ollama']) {
+      const result = resolvePolicyScope({ mode: 'pinned', model: 'qwen', providerKind }, 'coding-agent');
+      expect('refusal' in result).toBe(false);
+      if ('refusal' in result) return;
+      expect(result.scope.global?.['coding-agent']).toMatchObject({ tierKind: 'local' });
+    }
+  });
+
+  it(
+    'a pin that names NO model still refuses. The mode promises one specific ' +
+      'model runs; resolving to "whatever was next" is the substitution it exists ' +
+      'to prevent, and an empty field is the easiest way to get there',
+    () => {
+      const result = resolvePolicyScope({ mode: 'pinned' }, 'coding-agent');
       expect('refusal' in result).toBe(true);
       if (!('refusal' in result)) return;
-      expect(result.refusal).toContain('does not yet honour');
+      expect(result.refusal).toContain('names none');
     },
   );
 
