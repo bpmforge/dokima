@@ -6687,7 +6687,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "docs/design/VOCABULARY.md",
         "apps/web/src/fleet/**"
@@ -6796,6 +6796,35 @@
       ],
       "notes": [
         "Filed 2026-08-17 at W12-31's close. W12-31 could have shipped the nicer landing by patching four e2e specs to work around the empty picker; it reverted instead, because a spec edited to tolerate a broken picker is worse than a landing tab that is merely not ideal."
+      ]
+    },
+    {
+      "id": "W12-36",
+      "title": "the New Product -> New project rename \u2014 41 occurrences across components, the palette and six e2e specs",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/src/palette/**",
+        "apps/web/e2e/**"
+      ],
+      "depends_on": [
+        "W12-32"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W12-32 decided the word (docs/design/VOCABULARY.md: \"project\", because the code, API, event log and registry already say it) and fixed the one term defined nowhere (\"programs\"). This is the mechanical sweep it deliberately did not start.",
+        "MEASURED, NOT ESTIMATED: 41 occurrences of \"New Product\" across `fleet/`, `palette/types.ts` and six e2e specs at filing time. Re-count before starting rather than trusting this number \u2014 the point of recording it is that the sweep is wide, not that 41 is still exact.",
+        "UI STRINGS AND TEST EXPECTATIONS ONLY. Wire shapes, event types, settings keys, API paths and the `mode: 'new'` request field keep their names \u2014 VOCABULARY.md says a rename that rewrites a durable contract is a migration and this is not one.",
+        "DO IT IN ONE PASS. A half-applied rename is worse than a consistently-old one, because then the product really does use two words for the thing this decision exists to give one name.",
+        "THE COMMAND PALETTE IS THE EASY MISS: `palette/types.ts` carries its own label, and a palette entry that still says \"New Product\" while the button says \"New project\" is exactly the drift VOCABULARY.md was written to stop.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-17 at W12-32's close. Split deliberately: the decision is durable and belongs in a doc, the sweep is mechanical and belongs in its own change where a broken spec is obviously attributable to it."
       ]
     }
   ]
