@@ -16,6 +16,13 @@ import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
 import './onboarding.css';
 import { OnboardingApiError, resumePipeline, runGuidedPipeline } from './api.js';
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
+
+/**
+ * The name a project carries when it has none of its own. Named here rather
+ * than compared as a bare literal so the title field and the placeholder can
+ * never drift apart (W13-02).
+ */
+const UNNAMED = 'Untitled';
 import { buildInterviewSession, hasAnyAnswer } from './buildInterviewSession.js';
 import {
   isAwaitingDecisions,
@@ -59,7 +66,15 @@ export function InterviewPanel({
   token,
 }: InterviewPanelProps): React.JSX.Element {
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [title, setTitle] = useState(projectName);
+  /**
+   * W13-02: THE TITLE TRAP. This was `useState(projectName)`, and a project
+   * with no name of its own arrives here as the literal string "Untitled" —
+   * seeded as the field's VALUE. The field then read as answered, while the
+   * primary stayed disabled telling you to give it a title. A placeholder
+   * pretending to be a value is a trap, not a default. A real name is still
+   * offered, because that one IS an answer.
+   */
+  const [title, setTitle] = useState(projectName === UNNAMED ? '' : projectName);
   const [stage, setStage] = useState<Stage>('asking');
   const [error, setError] = useState<string | null>(null);
   // W10-67: the run paused on a founder decision. Not an error — the gate is
@@ -77,10 +92,29 @@ export function InterviewPanel({
   // W10-58: the stages the run has actually finished, as the job reports them.
   const [phases, setPhases] = useState<readonly PipelineRunPhase[]>([]);
 
+  const answered = useMemo(
+    () => INTERVIEW_QUESTIONS.filter((q) => (answers[q.topic.deliverableId] ?? '').trim() !== '').length,
+    [answers],
+  );
   const ready = useMemo(
     () => hasAnyAnswer(answers) && title.trim() !== '',
     [answers, title],
   );
+  /**
+   * W13-02: the disabled primary names the precondition that is ACTUALLY
+   * unmet. The old copy said "Answer at least one question and give it a
+   * title" regardless of which half was missing — and because the title was
+   * pre-filled, the title half was usually already satisfied, so it blamed the
+   * user for something they had done.
+   */
+  const blockedBecause = useMemo(() => {
+    if (ready || stage === 'running') return null;
+    const needsAnswer = !hasAnyAnswer(answers);
+    const needsTitle = title.trim() === '';
+    if (needsAnswer && needsTitle) return 'Add a title and answer any one question.';
+    if (needsAnswer) return 'Answer any one question below.';
+    return 'Give this a title.';
+  }, [answers, ready, stage, title]);
 
   const run = useCallback(async () => {
     setStage('running');
@@ -230,8 +264,15 @@ export function InterviewPanel({
     <div className="interview" data-testid="interview-panel">
       <h3>Describe your product</h3>
       <p className="interview__hint">
-        Answer what you can — anything you leave blank is skipped, not guessed at. Your
-        answers become the phase 0–2 deliverables the blueprint is built from.
+        Answer what you can. Anything you leave blank is skipped, not guessed at —
+        one answer is enough to start, and you can come back.
+      </p>
+      {/* W13-02: how long this is, and how far in you are. Nine questions with
+          no count and no progress meant the only signal you had finished was a
+          disabled button at the bottom. */}
+      <p className="interview__progress" data-testid="interview-progress">
+        {INTERVIEW_QUESTIONS.length} questions, all optional
+        {answered > 0 && ` · ${answered} of ${INTERVIEW_QUESTIONS.length} answered`}
       </p>
 
       <label className="interview__field">
@@ -239,6 +280,7 @@ export function InterviewPanel({
         <input
           type="text"
           value={title}
+          placeholder={UNNAMED}
           data-testid="interview-title"
           onChange={(e) => setTitle(e.target.value)}
         />
@@ -258,7 +300,6 @@ export function InterviewPanel({
               }))
             }
           />
-          <small>Drafts: {entry.drafts}</small>
         </label>
       ))}
 
@@ -268,8 +309,15 @@ export function InterviewPanel({
         </p>
       )}
 
+      {/* W13-02: this is THE action of the screen and had no class at all, so
+          it inherited the plain-button pill and never read as the primary —
+          not even when enabled. `btn-primary` dimmed to 0.55 still reads as
+          the accent-coloured main action waiting on something, rather than as
+          a disabled input, which is what "a disabled primary must still read
+          as the primary" means in practice. */}
       <button
         type="button"
+        className="btn-primary"
         disabled={!ready || stage === 'running'}
         data-testid="interview-run"
         onClick={() => void run()}
@@ -292,9 +340,9 @@ export function InterviewPanel({
           })}
         </ol>
       )}
-      {!ready && (
-        <small className="interview__hint">
-          Answer at least one question and give it a title.
+      {blockedBecause !== null && (
+        <small className="interview__blocked" data-testid="interview-blocked">
+          {blockedBecause}
         </small>
       )}
     </div>

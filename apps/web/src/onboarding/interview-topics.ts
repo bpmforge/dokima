@@ -21,7 +21,14 @@ import type { InterviewTopic } from './types.js';
 export interface InterviewQuestion {
   readonly topic: InterviewTopic;
   readonly question: string;
-  /** Shown under the field — what this answer becomes. */
+  /**
+   * The section heading this answer becomes in the generated document
+   * (`buildInterviewSession`). INTERNAL — W13-02 stopped rendering it under
+   * the field, where it appeared as `Drafts: Vision` / `Drafts: User personas`
+   * and asked the person answering a question to interpret an artifact name.
+   * VOCABULARY.md's rule: internal terms are for wire shapes, not for the
+   * reader. It is still exactly right as a heading in the file it produces.
+   */
   readonly drafts: string;
 }
 
