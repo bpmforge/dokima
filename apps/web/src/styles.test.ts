@@ -918,9 +918,10 @@ describe('the component system (W13-04)', () => {
       const declarations = surfaceCss
         .flatMap((c) => [...c.matchAll(/border:[^;]*--sw-border[^;]*;/g)])
         .length;
-      // Lower this whenever the number drops. Never raise it to make a change
+      // 51 at W13-04; 50 once the Fleet card adopted `.surface` (W13-05).
+      // Lower it whenever the number drops. Never raise it to make a change
       // pass — the same rule the export ratchet carries.
-      expect(declarations).toBeLessThanOrEqual(51);
+      expect(declarations).toBeLessThanOrEqual(50);
     },
   );
 
