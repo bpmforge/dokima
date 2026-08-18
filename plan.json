@@ -7047,6 +7047,202 @@
       "notes": [
         "Filed 2026-08-18 alongside W12-41, split deliberately rather than filed as one ticket: W12-41 is small, self-contained and unblocks a real user today, while this one carries a THREAT_MODEL decision and a new HTTP surface. Bundling them would have held the quick fix behind the security question."
       ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "notes": [],
+      "id": "W13-01",
+      "title": "the header scrolls away and the nav changes between views \u2014 you lose the way out mid-form",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/App/Header.tsx",
+        "apps/web/src/App/Header.test.tsx",
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts"
+      ],
+      "acceptance": [
+        "FOUND IN A LIVE WALKTHROUGH 2026-08-18, and proven by accident: driving the browser, a click at the header coordinates landed in a textarea instead, because the header had scrolled off. On the Describe form \u2014 nine questions, well past one viewport \u2014 every navigation control disappears once you scroll. There is no way back to the board, to Settings, or anywhere, without scrolling to the top first.",
+        "THE NAV ALSO CHANGES SHAPE BETWEEN VIEWS. The workspace header offers Roster \u00b7 Describe \u00b7 Plan \u00b7 Decisions; the Describe view offers only Back \u00b7 Settings \u00b7 theme. The map a user just learned disappears when they act on it, which is a large part of why the founder reported \"stopping every second because it does not make sense\".",
+        "STICK THE HEADER and keep the destination set STABLE across views: the same places are reachable from everywhere, with the current one marked rather than removed. Removing a destination to indicate you are in it is the thing that disorients.",
+        "THE HEADER IS ALSO UNGROUPED: seven controls at identical weight, so Describe (the primary action of a new project) looks exactly like the theme toggle. Group by kind \u2014 where you can go, what needs you, what you can set \u2014 and let weight say which is which.",
+        "RED FIXTURE: the header is reachable after scrolling a long view, and the destination set is identical in the workspace and in Describe, with the current view marked as current.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "notes": [],
+      "id": "W13-02",
+      "title": "the Describe form has a title trap, an invisible primary, leaked internal names and no sense of length",
+      "points": 5,
+      "role": "content-designer",
+      "write_scope": [
+        "apps/web/src/onboarding/InterviewView.tsx",
+        "apps/web/src/onboarding/InterviewView.test.tsx",
+        "apps/web/src/onboarding/buildInterviewSession.ts",
+        "apps/web/src/styles.css"
+      ],
+      "acceptance": [
+        "FOUR DEFECTS ON ONE SCREEN, all found live. (1) THE TITLE TRAP: \"Working title\" is pre-filled with the literal value \"Untitled\", so the field LOOKS answered while \"Build the board\" stays disabled telling you to \"give it a title\". A placeholder pretending to be a value is a trap, not a default.",
+        "(2) THE PRIMARY IS INVISIBLE WHEN DISABLED: \"Build the board\" renders grey-on-grey, indistinguishable from a disabled textarea, with the reason in 11px grey BELOW it. A disabled primary must still read as the primary, and must say what would enable it, next to itself.",
+        "(3) INTERNAL NAMES LEAK INTO THE FORM: every field is captioned `Drafts: Vision`, `Drafts: Scope`, `Drafts: User personas`. These are artifact filenames. VOCABULARY.md already forbids exactly this \u2014 internal terms are for wire shapes, not for the person answering the question. Either say what the answer is used for in the user's words, or say nothing.",
+        "(4) NO SENSE OF LENGTH OR PROGRESS: nine questions, no count, no grouping, no indication that everything is optional until you hit the disabled button at the bottom. Say up front how long this is and that blanks are skipped rather than guessed.",
+        "RED FIXTURE: the title field starts genuinely empty with \"Untitled\" as a placeholder; the disabled primary states its own precondition; no `Drafts:` string reaches the DOM; and the form declares its length before the first question.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "notes": [],
+      "id": "W13-03",
+      "title": "no design system exists \u2014 styles.css is a guardrail, not a token set, and Phase 3.5 never ran",
+      "points": 8,
+      "role": "design-system-lead",
+      "write_scope": [
+        "docs/design/tokens.json",
+        "docs/design/VISUAL_DIRECTION.md",
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts"
+      ],
+      "acceptance": [
+        "THE ROOT CAUSE OF \"IT LOOKS HORRIBLE\", AND IT IS STRUCTURAL. apps/web has 42 passing style guards \u2014 no hex outside the token block, no raw px, no off-scale font-size, documented contrast per token. That system enforces CONSISTENCY and cannot express QUALITY: it can say \"you used the correct grey\", never \"this screen has no composition\". 42 green tests coexist with an unusable UI, and that is why nobody caught it.",
+        "PHASE 3.5 NEVER RAN. The SDLC this repo ships defines a Design Loop \u2014 ux-researcher flows, design-system-lead tokens and component inventory, ux-engineer mockups \u2014 and `docs/design/` contains UX_SPEC, VOCABULARY, contracts and policies but NO tokens.json and NO components.md. Those are exactly the design-system-lead outputs. The product went from architecture to implementation and skipped its own design phase.",
+        "DIRECTION CHOSEN BY THE FOUNDER 2026-08-18: INSTRUMENT PANEL. Dense, precise, high-signal \u2014 a tool for professionals. Deep slate ground, ONE signal accent, monospace for every number, and state encoded in FORM (a stripe, a chip, a bar) not only in text. Record it in VISUAL_DIRECTION.md with what was rejected (assay-office warmth; quiet-workshop calm) so the next surface does not re-litigate it.",
+        "A REAL TYPE SCALE IS THE FIRST DELIVERABLE. Today every text on the Fleet card lives inside a 4px range (11\u201315px), which is why nothing reads as more important than anything else. The scale must have enough range to carry hierarchy, and numbers get a tabular monospace face because this product is mostly numbers.",
+        "DO NOT RE-SKIN ANY SCREEN IN THIS TICKET. Tokens and direction only, so the surfaces that follow inherit one system rather than three interpretations. The guards stay and get extended to the new scale.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [
+        "W13-03"
+      ],
+      "notes": [],
+      "id": "W13-04",
+      "title": "every card, pane, chip and empty state is bespoke CSS \u2014 there is no component inventory",
+      "points": 5,
+      "role": "design-system-lead",
+      "write_scope": [
+        "docs/design/components.md",
+        "apps/web/src/components/**",
+        "apps/web/src/styles.css"
+      ],
+      "acceptance": [
+        "W13-03 gives the system its tokens; this gives it its parts. The same objects are re-implemented per surface today \u2014 a card is written one way in fleet.css and another in board.css, panes carry their own chrome, chips and empty states are improvised per screen.",
+        "INVENTORY WHAT ACTUALLY EXISTS FIRST, from the captured frames and the live app, rather than designing an idealised set: card, pane, lane column, ticket, chip/badge, stat, empty state, form field, primary/secondary/quiet button, tab. Name each one and say which surfaces use it.",
+        "EMPTY STATES ARE A COMPONENT, not an afterthought \u2014 UX_SPEC \u00a72b already has a table of them and they are currently improvised per screen. A screen with nothing in it is the one most likely to be someone's first.",
+        "STATE IS A COMPONENT CONCERN: the direction says state is encoded in form. Decide once how \"needs you\", \"running\", \"blocked\" and \"idle\" look, so a Fleet card and a board lane say the same thing the same way.",
+        "RED FIXTURE: the shared components render from tokens only, and the guards prove no surface re-declares a component's colours locally.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [
+        "W13-04"
+      ],
+      "notes": [],
+      "id": "W13-05",
+      "title": "a Fleet card with work waiting looks identical to one with nothing to do",
+      "points": 5,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/ProjectCard.tsx",
+        "apps/web/src/fleet/FleetHome.tsx",
+        "apps/web/src/fleet/fleet.css",
+        "apps/web/src/fleet/FleetHome.test.tsx"
+      ],
+      "acceptance": [
+        "SEEN LIVE: six project cards, every one reading \"Not started \u00b7 Ready 0 \u00b7 Blocked 0 \u00b7 Done 0 \u00b7 No berths running \u00b7 $0.00 today\". The one project with Ready 1 was visually indistinguishable from five with nothing to do.",
+        "UX_SPEC \u00a72 ALREADY SPECIFIES THE BEHAVIOUR AND IT WAS NOT BUILT: cards sort \"needs you first\" (pending Decide desc, then stalest heartbeat), and the pending-Decide count is \"the only number rendered in the attention color\". Implement the spec that exists before inventing new rules.",
+        "ENCODE STATE IN FORM, per the chosen direction \u2014 a card that needs you is a different SHAPE, not the same shape with a different digit. Labels shrink, numbers carry, and a project with nothing happening should recede rather than compete.",
+        "THE TWO ACTIONS ARE NOT EQUAL: Open is what you do every time and Archive is rare and semi-destructive, yet they render at identical weight. Fix the weighting.",
+        "RED FIXTURE: a card with pending work is distinguishable from an idle card by something other than the digit \u2014 asserted on a class or attribute, not a screenshot \u2014 and the sort puts it first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [
+        "W13-04"
+      ],
+      "notes": [],
+      "id": "W13-06",
+      "title": "the board is six equal empty columns and the ticket card is narrower than its own title",
+      "points": 5,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/board/board.css",
+        "apps/web/src/board/BoardView.test.tsx"
+      ],
+      "acceptance": [
+        "SEEN LIVE on a one-ticket board: six lane columns at equal width, five of them empty, filling ~85% of the pane; the single ticket in a ~130px box with its title wrapped over three lines; and a raw `Move to\u2026` <select> overflowing the card's bottom edge.",
+        "LANE WIDTH SHOULD FOLLOW CONTENT, not a fixed six-way split. W10-32 and W12-30 both warn against shrinking `--sw-board-column-min` on a hunch \u2014 so measure, and do not re-litigate that constant without evidence.",
+        "AN EMPTY LANE IS NOT A BOX: five empty bordered columns are noise that outweighs the one real card. Decide how an empty lane reads at rest (collapsed, ghosted, or a single line) and let occupied lanes have the room.",
+        "THE TICKET CARD IS THE PRODUCT'S ATOM and currently cannot hold a normal-length title. Give it a real minimum, and replace the in-card raw select with something that fits the card it lives in.",
+        "RED FIXTURE: a board with one ticket in one lane does not render five equal empty columns, and the ticket card holds a realistic title without overflow.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ]
+    },
+    {
+      "phase": 13,
+      "lane": "ui",
+      "module": "web",
+      "status": "todo",
+      "stories": [],
+      "depends_on": [
+        "W13-05",
+        "W13-06"
+      ],
+      "notes": [],
+      "id": "W13-07",
+      "title": "nothing compares the captured frames \u2014 the UI can rot silently between waves",
+      "points": 3,
+      "role": "test-engineer",
+      "write_scope": [
+        "apps/web/scripts/capture-acceptance.mjs",
+        "scripts/validate-visual.mjs",
+        "scripts/validate-visual.test.mjs",
+        "conductor.config.json"
+      ],
+      "acceptance": [
+        "THE ACCEPTANCE WALKER ALREADY CAPTURES 21 FRAMES EVERY RUN AND NOTHING EVER LOOKS AT THEM. That is how a UI reaches \"it looks horrible\" with 42 style guards green: the guards check declarations, the frames check nothing, and no gate closes the loop between them.",
+        "COMPARE FRAMES ACROSS RUNS and fail on a material change that no ticket claimed. The point is not pixel equality \u2014 anti-aliasing and fonts drift \u2014 so pick a tolerance and justify it, the same way W12-38 and W12-39 calibrated their counts rather than assuming.",
+        "A DIFF IS NOT AUTOMATICALLY A DEFECT: a ticket that intends to change a screen must be able to accept the new baseline, and that acceptance must be explicit and recorded rather than a silent overwrite. Decide the shape of that and write it down.",
+        "DO NOT GATE ON THIS UNTIL W13-05 AND W13-06 HAVE LANDED \u2014 baselining a UI mid-redesign bakes in the thing being fixed.",
+        "RED FIXTURE: a deliberately altered frame fails the check by name, and an accepted baseline passes.",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ]
     }
   ]
 }
