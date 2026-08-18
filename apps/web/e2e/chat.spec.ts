@@ -57,7 +57,12 @@ test('the chat pane is independently collapsible like the other panes', async ({
   page,
 }) => {
   await page.goto('/?project=chat-e2e-collapse');
-  const chatHeader = page.getByTestId('pane-chat').getByRole('button');
+  // W12-34: the pane header now carries a Focus button as well as the
+  // collapse toggle, so an unnamed getByRole('button') is ambiguous. Target
+  // the collapse control by its accessible name — more precise regardless.
+  const chatHeader = page
+    .getByTestId('pane-chat')
+    .getByRole('button', { name: /Collapse Chat|Expand Chat/ });
   await chatHeader.click();
   await expect(page.getByTestId('pane-chat')).toHaveAttribute('data-collapsed', 'true');
 });

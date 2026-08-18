@@ -6743,10 +6743,12 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/web/src/layout/**",
-        "apps/web/src/App/**"
+        "apps/web/src/App/**",
+        "apps/web/e2e/chat.spec.ts",
+        "apps/web/e2e/split-pane.spec.ts"
       ],
       "depends_on": [
         "W12-30"
@@ -6760,7 +6762,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including e2e."
       ],
       "notes": [
-        "Filed 2026-08-17 at W12-30's close instead of shrinking a measured constant to make a screenshot look better. W12-30 got the default allocation right; this is the affordance that makes the constraint stop mattering."
+        "Filed 2026-08-17 at W12-30's close instead of shrinking a measured constant to make a screenshot look better. W12-30 got the default allocation right; this is the affordance that makes the constraint stop mattering.",
+        "write_scope gained two e2e specs: both addressed the pane-header collapse toggle as `getByTestId(pane-x).getByRole(button)` \u2014 unnamed, and therefore unique only while the header had exactly ONE button. Adding Focus made it two and Playwright refused in strict mode, which is the right failure. Both now target the collapse control by accessible name, which is more precise regardless of how many buttons the header carries."
       ]
     },
     {

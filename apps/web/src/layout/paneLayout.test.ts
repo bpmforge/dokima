@@ -5,6 +5,10 @@ import {
   deserializePaneLayout,
   paneLayoutStorageKey,
   serializePaneLayout,
+  focusPane,
+  unfocusPanes,
+  isFocused,
+  type PaneLayout,
   MIN_PANE_PCT,
   MAX_PANE_PCT,
 } from './paneLayout.js';
@@ -82,5 +86,65 @@ describe('default pane allocation (W12-30)', () => {
   it('changes a DEFAULT, not a constraint — an even split is still reachable by dragging', () => {
     expect(clampPaneSize(33)).toBe(33);
     expect(clampPaneSize(34)).toBe(34);
+  });
+});
+
+describe('focus mode (W12-34)', () => {
+  it(
+    'RED FIXTURE: focusing the board collapses the other panes so the full ' +
+      'lifecycle fits. W12-30 got 5 of 6 states on one row and stopped there, ' +
+      'because the sixth needed either a measured constant shrunk on a hunch or ' +
+      'a board wide enough to starve Chat',
+    () => {
+      const focused = focusPane(defaultLayout(), 'board');
+      expect(focused.panes.board.collapsed).toBe(false);
+      expect(focused.panes.chat.collapsed).toBe(true);
+      expect(focused.panes.artifacts.collapsed).toBe(true);
+      expect(focused.activeView).toBe('board');
+    },
+  );
+
+  it('RESTORES the layout the user had, not the default', () => {
+    const dragged: PaneLayout = {
+      panes: {
+        chat: { sizePct: 50, collapsed: false },
+        board: { sizePct: 30, collapsed: false },
+        artifacts: { sizePct: 20, collapsed: false },
+      },
+      activeView: 'chat',
+    };
+    const restored = unfocusPanes(focusPane(dragged, 'board'));
+    expect(restored.panes).toEqual(dragged.panes);
+    expect(restored.panes.chat.sizePct).toBe(50);
+  });
+
+  it(
+    'focusing twice does not overwrite the saved layout with the focused one — ' +
+      'that is how a restore silently becomes a no-op',
+    () => {
+      const start = defaultLayout();
+      const twice = focusPane(focusPane(start, 'board'), 'board');
+      expect(unfocusPanes(twice).panes).toEqual(start.panes);
+    },
+  );
+
+  it('leaving focus without ever entering it expands everything rather than stranding a user', () => {
+    const stuck: PaneLayout = {
+      panes: {
+        chat: { sizePct: 34, collapsed: true },
+        board: { sizePct: 33, collapsed: true },
+        artifacts: { sizePct: 33, collapsed: true },
+      },
+      activeView: 'board',
+    };
+    const out = unfocusPanes(stuck);
+    expect(Object.values(out.panes).every((p) => !p.collapsed)).toBe(true);
+  });
+
+  it('isFocused toggles, so the affordance does not stack', () => {
+    const start = defaultLayout();
+    expect(isFocused(start)).toBe(false);
+    expect(isFocused(focusPane(start, 'board'))).toBe(true);
+    expect(isFocused(unfocusPanes(focusPane(start, 'board')))).toBe(false);
   });
 });

@@ -4,7 +4,11 @@ import { expect, test } from '@playwright/test';
 
 test('collapsing a pane persists across reload', async ({ page }) => {
   await page.goto('/?project=proj-collapse');
-  const boardHeader = page.getByTestId('pane-board').getByRole('button');
+  // W12-34: see chat.spec.ts — the header gained a Focus button, so the
+  // collapse toggle is addressed by accessible name now.
+  const boardHeader = page
+    .getByTestId('pane-board')
+    .getByRole('button', { name: /Collapse Board|Expand Board/ });
   await boardHeader.click(); // collapse
   await expect(page.getByTestId('pane-board')).toHaveAttribute('data-collapsed', 'true');
 
