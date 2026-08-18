@@ -28,7 +28,14 @@ export interface ProjectCard {
 }
 
 export interface CreateProjectInput {
-  path: string;
+  /**
+   * Optional for `new` (W12-41): the server creates that directory itself and
+   * resolves it from the name under the configured workspace root. A browser
+   * cannot know the home directory, so requiring a path here required the
+   * client to supply something it had no way to compute. `onboard`/`import`
+   * still need one — those directories exist and only the user knows where.
+   */
+  path?: string;
   name?: string;
   mode: ProjectMode;
 }

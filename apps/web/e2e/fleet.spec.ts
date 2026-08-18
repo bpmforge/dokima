@@ -37,8 +37,12 @@ test('create (New project), open, archive, and reopen a project', async ({ page 
   const header = page.locator('.fleet__header');
 
   await header.getByRole('button', { name: 'New project', exact: true }).click();
-  await page.getByLabel('Directory path').fill(dir);
-  await page.getByLabel('Name (optional)').fill(name);
+  // W12-41: New project asks only for a name now — the server creates
+  // the folder. These specs need a controlled tmpdir, so they take the
+  // explicit-location escape, which also keeps that path covered.
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(dir);
+  await page.getByLabel('Project name').fill(name);
   // See project-registry-lock.ts's header: fleet.json's read-modify-write
   // has no locking server-side, so concurrent creates from other e2e worker
   // processes can clobber this one — serialized here across every worker.
@@ -117,8 +121,12 @@ test('W9-15: a project whose directory vanished shows as unavailable, and Remove
   // Two real projects through the real UI, so the registry is genuine.
   for (const p of [gone, kept]) {
     await header.getByRole('button', { name: 'New project', exact: true }).click();
-    await page.getByLabel('Directory path').fill(p.dir);
-    await page.getByLabel('Name (optional)').fill(p.name);
+    // W12-41: New project asks only for a name now — the server creates
+    // the folder. These specs need a controlled tmpdir, so they take the
+    // explicit-location escape, which also keeps that path covered.
+    await page.getByRole('button', { name: 'choose the location' }).click();
+    await page.getByLabel('Folder').fill(p.dir);
+    await page.getByLabel('Project name').fill(p.name);
     await withProjectRegistryLock(async () => {
       await page
         .locator('.fleet__form')

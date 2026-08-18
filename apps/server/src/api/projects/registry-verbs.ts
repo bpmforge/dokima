@@ -38,6 +38,13 @@ export async function registerProject(
   const absPath = path.resolve(input.path);
 
   if (input.mode === 'new') {
+    // NOTE (W12-41): an existing directory is NOT refused here. Pointing
+    // "New project" at an empty folder you just made is legitimate, and
+    // reactivating an archived project by POSTing its path again is the
+    // documented un-archive path (UX_SPEC §2). The collision that matters is
+    // narrower and belongs where it can be detected — see `routes.ts`, which
+    // refuses only when the path was DERIVED from the name and the user never
+    // chose that location.
     await fs.mkdir(absPath, { recursive: true });
     // W10-79: a product must be a git repository, because every ticket the
     // loop claims runs in its own worktree branched from here.

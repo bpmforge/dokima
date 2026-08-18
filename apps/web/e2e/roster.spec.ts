@@ -62,8 +62,12 @@ test('per-agent history loads (zero counts, honest empty) when a project is open
   await page.goto('/');
   const header = page.locator('.fleet__header');
   await header.getByRole('button', { name: 'New project', exact: true }).click();
-  await page.getByLabel('Directory path').fill(dir);
-  await page.getByLabel('Name (optional)').fill(name);
+  // W12-41: New project asks only for a name now — the server creates
+  // the folder. These specs need a controlled tmpdir, so they take the
+  // explicit-location escape, which also keeps that path covered.
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(dir);
+  await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   const card = page.locator('.project-card', { hasText: name });
   await expect(card).toBeVisible();
