@@ -129,7 +129,16 @@ export function exportsOfBarrel(barrelPath) {
  * exercising an otherwise-uncalled mechanism is precisely the disguise this
  * defect class wears — W11-04's `secretValues` had tests and no callers).
  */
-function countReferences(name, files, contentsByFile, declFile) {
+export function countReferences(name, files, contentsByFile, declFile, cache = new Map()) {
+  // STRIPPING LIVES HERE, not in the caller (W12-39). It was in
+  // `findUnreferencedExports` first, which meant the guarantee "a comment is
+  // not a caller" held only as long as every future caller remembered to
+  // pre-strip — and a fixture written against this function passed while
+  // proving nothing. Cached so the work is still done once per file per run.
+  const code = (file) => {
+    if (!cache.has(file)) cache.set(file, stripComments(contentsByFile.get(file) ?? ''));
+    return cache.get(file);
+  };
   const pattern = new RegExp(`\\b${name}\\b`);
   let production = 0;
   let tests = 0;
@@ -143,12 +152,12 @@ function countReferences(name, files, contentsByFile, declFile) {
       // `resolveCredentialStore` beside it) is used, not dead. The
       // declaration itself accounts for exactly one occurrence, so more than
       // one means something in the file actually calls it.
-      const occurrences = (contentsByFile.get(file).match(globalPattern) ?? []).length;
+      const occurrences = (code(file).match(globalPattern) ?? []).length;
       if (occurrences > 1) production++;
       continue;
     }
     if (isBarrel(file)) continue;
-    if (!pattern.test(contentsByFile.get(file))) continue;
+    if (!pattern.test(code(file))) continue;
     if (isTestFile(file)) {
       tests++;
       testFiles.push(path.relative(REPO_ROOT, file));
@@ -163,16 +172,13 @@ function countReferences(name, files, contentsByFile, declFile) {
  * Value symbols a MODULE exports that its package barrel does not (W12-38).
  *
  * THE BLIND SPOT THIS CLOSES, in the shape of the check's own defect class:
- * `exportsOfBarrel` can only see what a barrel publishes, so a complete,
- * tested engine that was never added to the barrel is invisible to it. The
- * instance that exposed this is `runEscalationPolicy` — the whole D-024
- * option (b) escalation state machine, tested, with no production caller
- * anywhere, absent from every report while the validator confidently printed
- * 43 gaps. That is not a lesser case than an uncalled barrel export, it is a
- * WORSE one: an uncalled export is reachable and unused, while an unexported
- * implementation cannot be adopted at all without a separate barrel change —
- * which is precisely why W12-04's packer, W12-09's code index and W12-37's
- * pinned policy each sat dormant for waves.
+ * `exportsOfBarrel` sees only what a barrel publishes, so a complete, tested
+ * engine never added to the barrel is invisible. The instance that exposed it
+ * is `runEscalationPolicy` — the D-024 option (b) state machine, tested, with
+ * no caller anywhere, absent from every report while the validator printed 43
+ * gaps. That is the WORSE case, not a lesser one: an uncalled export is
+ * reachable and unused, while an unexported implementation cannot be adopted
+ * without a separate barrel change — how W12-04's packer sat dormant.
  *
  * Parsed, not type-checked: this needs the names a file declares with
  * `export`, which `ts.createSourceFile` gives for the price of a parse. There
@@ -190,9 +196,8 @@ function countReferences(name, files, contentsByFile, declFile) {
  * it. Counting an explanation of why nothing calls a function as a call is the
  * exact inversion of what is being measured.
  *
- * Blanked rather than removed, so two identifiers either side of a stripped
- * comment cannot glue into a third word that never existed.
- */
+ * Blanked, not removed: two identifiers either side of a stripped comment
+ * must not glue into a third word that never existed. */
 export function stripComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) =>
     match.replace(/[^\n]/g, ' '),
@@ -250,6 +255,8 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
     }
   }
 
+  /** One strip per file for the whole run, shared by both passes. */
+  const stripCache = new Map();
   const findings = [];
   /** Names the barrel pass already judged — the buried pass must not re-report them. */
   const published = new Set();
@@ -269,6 +276,7 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
         files,
         contentsByFile,
         declFile,
+        stripCache,
       );
       // TESTED BUT NEVER CALLED — the signal, and the reason this is narrower
       // than "referenced nowhere" (135 symbols, with visible false positives
@@ -289,14 +297,6 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
   // the two have different remedies (wire it up vs. wire it up AND export it)
   // and because merging them would silently move the calibrated 43 baseline.
   const buried = [];
-  // Comment-stripped copies, for this pass only. The barrel pass keeps its
-  // original counting: its 43 is a CALIBRATED baseline, and silently sharpening
-  // the measurement under it would move that number for reasons unrelated to
-  // any ticket's work. Measured rather than assumed — see this ticket's notes
-  // for what the barrel pass reports under stripped counting, and W12-39.
-  const codeByFile = new Map();
-  for (const [file, text] of contentsByFile) codeByFile.set(file, stripComments(text));
-
   for (const file of files) {
     if (isTestFile(file) || isBarrel(file) || isTestSupportFile(file)) continue;
     const rel = path.relative(REPO_ROOT, file);
@@ -306,7 +306,7 @@ export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'pa
       // Already judged by the barrel pass; reporting it twice would double-count
       // the debt and make the two numbers impossible to read against each other.
       if (published.has(name)) continue;
-      const { production, tests } = countReferences(name, files, codeByFile, file);
+      const { production, tests } = countReferences(name, files, contentsByFile, file, stripCache);
       if (production === 0 && tests > 0) buried.push({ package: pkg, symbol: name, file: rel });
     }
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  countReferences,
   findUnreferencedExports,
   isBarrel,
   isTestFile,
@@ -141,4 +142,60 @@ describe('the buried-export pass (W12-38)', () => {
     const barrelNames = new Set(findings.map((f) => f.symbol));
     for (const b of buried) expect(barrelNames.has(b.symbol)).toBe(false);
   });
+});
+
+describe('a comment is not a caller (W12-39)', () => {
+  const files = ['/repo/pkg/src/thing.ts', '/repo/pkg/src/other.ts', '/repo/pkg/src/thing.test.ts'];
+
+  /** Constructed, not hunted for: this must still hold after today's real instances get wired up. */
+  function contents(otherFile) {
+    return new Map([
+      [files[0], 'export function widget() {}'],
+      [files[1], otherFile],
+      [files[2], "import { widget } from './thing.js';\nwidget();"],
+    ]);
+  }
+
+  it(
+    'RED FIXTURE: a symbol whose only non-test mention is inside a comment is ' +
+      'reported. Under W12-10 counting it read as used, which is how runClaimLoop ' +
+      'hid — behind a docstring that literally says its only callers are its own ' +
+      'tests. The comment admitting the defect was what concealed it',
+    () => {
+      const { production, tests } = countReferences(
+        'widget',
+        files,
+        contents('// widget is deliberately not called here\nconst x = 1;'),
+        files[0],
+      );
+      expect(production).toBe(0);
+      expect(tests).toBe(1);
+    },
+  );
+
+  it('a block comment and a JSDoc mention are equally not calls', () => {
+    for (const text of ['/* widget */ const x = 1;', '/**\n * See widget.\n */\nconst x = 1;']) {
+      expect(countReferences('widget', files, contents(text), files[0]).production).toBe(0);
+    }
+  });
+
+  it('a REAL call still counts — the sharpening must not blind the check', () => {
+    const { production } = countReferences(
+      'widget',
+      files,
+      contents("import { widget } from './thing.js';\nwidget();"),
+      files[0],
+    );
+    expect(production).toBe(1);
+  });
+
+  it(
+    'and the real repo proves the composition, not just the helper: runClaimLoop ' +
+      'is reported now. Its own docstring says its only callers are its own ' +
+      'tests, and that sentence is what used to count as the caller',
+    () => {
+      const names = findUnreferencedExports().findings.map((f) => f.symbol);
+      expect(names).toContain('runClaimLoop');
+    },
+  );
 });
