@@ -6004,10 +6004,12 @@
       "module": "cli",
       "lane": "core",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "apps/server/src/cli/handoff-context.ts",
-        "apps/server/src/cli/handoff-context.test.ts"
+        "apps/server/src/cli/handoff-context.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "packages/memory/src/index.ts"
       ],
       "depends_on": [
         "W12-04"

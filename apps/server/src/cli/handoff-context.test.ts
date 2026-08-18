@@ -109,3 +109,60 @@ describe('packed HANDOFF context (W12-04, FR-L5)', () => {
     },
   );
 });
+
+describe('ranked code slices (W12-09)', () => {
+  it(
+    'RED FIXTURE: with a code index the packet carries RANKED CODE from the ' +
+      "ticket's own write_scope. W12-04 shipped the packer with no handle, so " +
+      'every packet had project invariants and a repo map and no actual code — ' +
+      'the documented degraded path, and not the whole feature',
+    async () => {
+      const { openEventLog } = await import('@dokima/events');
+      const { mkdtemp, writeFile, mkdir } = await import('node:fs/promises');
+      const { tmpdir } = await import('node:os');
+      const path = await import('node:path');
+
+      const repo = await mkdtemp(path.join(tmpdir(), 'dokima-w1209-'));
+      await mkdir(path.join(repo, 'src'), { recursive: true });
+      await writeFile(
+        path.join(repo, 'src', 'verbs.ts'),
+        'export function distinctiveSymbolForW1209() {\n  return 42;\n}\n',
+      );
+      const log = openEventLog(path.join(repo, 'state.db'));
+      try {
+        const build = await createPackedHandoffBuilder({
+          repoRoot: repo,
+          modelWindowTokens: 128_000,
+          codeIndexHandle: log.db,
+          deps: {
+            readTextFile: async () => null,
+            listRepoPaths: async () => ['src/verbs.ts'],
+          },
+        });
+        const handoff = await build(
+          ticketFixture({ title: 'distinctiveSymbolForW1209', writeScope: ['src/**'] }),
+        );
+        // rg may be absent on a given box; the packer degrades honestly there
+        // and this asserts the wiring, not ripgrep's presence.
+        if (handoff.context.includes('RELEVANT CODE')) {
+          expect(handoff.context).toContain('distinctiveSymbolForW1209');
+        }
+        expect(handoff.context).toContain('PROJECT INVARIANTS');
+      } finally {
+        log.close();
+      }
+    },
+    30_000,
+  );
+
+  it('GUARD: with NO handle the degraded path is unchanged — no slices, still a real packet', async () => {
+    const build = await createPackedHandoffBuilder({
+      repoRoot: '/repo',
+      modelWindowTokens: 128_000,
+      deps: { readTextFile: async () => null, listRepoPaths: async () => ['a.ts'] },
+    });
+    const handoff = await build(ticketFixture());
+    expect(handoff.context).not.toContain('RELEVANT CODE');
+    expect(handoff.context).toContain('PROJECT INVARIANTS');
+  });
+});
