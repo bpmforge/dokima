@@ -92,10 +92,11 @@
   gap: var(--sw-space-4);
 }
 
+ /* W13-05: the border, radius and padding now come from `.surface`
+   (W13-04), which is one of the 51 local re-declarations this ticket
+   removes. What stays here is the card's own layout — the part that is
+   genuinely about a project card and not about being a surface. */
 .project-card {
-  border: var(--sw-border-width) solid var(--sw-border);
-  border-radius: var(--sw-radius-lg);
-  padding: var(--sw-space-4);
   display: flex;
   flex-direction: column;
   gap: var(--sw-space-2);
@@ -120,6 +121,8 @@
   padding: var(--sw-space-0-5) var(--sw-space-2);
 }
 
+ /* Readouts sit in a row and share the space evenly; each one stacks its own
+   value over its label (`.readout`). */
 .project-card__board {
   display: flex;
   gap: var(--sw-space-4);
@@ -127,46 +130,32 @@
   font-size: var(--sw-text-md);
 }
 
-.project-card__board div {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.project-card__board dt {
-  color: var(--sw-fg);
-  opacity: 0.6;
-}
-
+ /* W13-05: `.readout` owns the value/label treatment now. What was here
+   centred them and set dt to 60% opacity — which is why the label and the
+   number read at the same weight and nothing on the card had a hierarchy.
+   Only the dd margin reset survives, because a <dd> carries one by default. */
 .project-card__board dd {
   margin: 0;
-  font-weight: 600;
 }
 
+ /* `.state` supplies the dot, the gap and the colour (W13-04). */
 .project-card__berths {
-  display: flex;
-  align-items: center;
-  gap: var(--sw-space-2);
   font-size: var(--sw-text-md);
 }
 
-.project-card__heartbeat-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--sw-success);
-  display: inline-block;
-}
+/* W13-05: the heartbeat dot is gone from here — `.state::before` draws it now,
+   from the shared vocabulary, so a running project and a running lane use one
+   dot with one meaning. Deleted rather than left behind: dead CSS is the same
+   no-caller shape this board keeps finding, and the style guards cannot see it.
+   The stale case became `.state--blocked`, which is what stale actually means. */
 
-.project-card__heartbeat-dot--stale {
-  background: var(--sw-warning);
-}
-
+ /* Colour comes from `.state--attention` — this used --sw-danger, which said
+   "something is wrong" when the truth is "a person is needed". Under W13-04's
+   rule each token keeps one meaning, and danger means refused. */
 .project-card__decide {
   align-self: flex-start;
   font-size: var(--sw-text-md);
   font-weight: 600;
-  color: var(--sw-danger);
 }
 
 .project-card__spend {

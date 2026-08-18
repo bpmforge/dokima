@@ -7175,12 +7175,14 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [
         "W13-04"
       ],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18, verified live: the one project with Ready 1 is now the thing the eye finds, and six idle cards recede to grey zeros. THREE LEVELS, NOT TWO, and that was a design decision the acceptance did not anticipate: 'a decision is waiting' and 'there is work to do' are different claims on a person, so only the first takes the attention stripe. A card with Ready 1 stops reading as idle without shouting. THE SORT WAS ALREADY BUILT AND ALREADY WIRED \u2014 sortByAttention exists, matches UX_SPEC \u00a72 exactly, and FleetHome calls it. Checked because this board has found eleven mechanisms with no caller; this was not one. The gap was purely that nothing VISUAL expressed what the sort already knew. TWO FIXES THE INVENTORY MADE OBVIOUS: the decide count used --sw-danger, which says 'something is wrong' when the truth is 'a person is needed' \u2014 under W13-04's one-meaning-per-token rule that is now --sw-attention; and .project-card__board dt was set to 60% opacity against a dd at the same size, which is precisely why label and number read at equal weight and the card had no hierarchy. Dead CSS deleted rather than left: the heartbeat dot is drawn by .state::before now, and an orphaned rule is the same no-caller shape the style guards cannot see. Duplication ratchet 51 -> 50."
+      ],
       "id": "W13-05",
       "title": "a Fleet card with work waiting looks identical to one with nothing to do",
       "points": 5,
@@ -7189,7 +7191,9 @@
         "apps/web/src/fleet/ProjectCard.tsx",
         "apps/web/src/fleet/FleetHome.tsx",
         "apps/web/src/fleet/fleet.css",
-        "apps/web/src/fleet/FleetHome.test.tsx"
+        "apps/web/src/fleet/FleetHome.test.tsx",
+        "apps/web/src/fleet/ProjectCard.test.tsx",
+        "apps/web/src/styles.test.ts"
       ],
       "acceptance": [
         "SEEN LIVE: six project cards, every one reading \"Not started \u00b7 Ready 0 \u00b7 Blocked 0 \u00b7 Done 0 \u00b7 No berths running \u00b7 $0.00 today\". The one project with Ready 1 was visually indistinguishable from five with nothing to do.",
