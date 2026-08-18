@@ -6225,14 +6225,15 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "blocked",
       "write_scope": [
         "apps/web/src/settings/FirstRunWizard.tsx",
         "apps/web/src/onboarding/FirstRunWizard.test.tsx"
       ],
       "depends_on": [
         "W12-12",
-        "W12-18"
+        "W12-18",
+        "W12-37"
       ],
       "stories": [],
       "acceptance": [
@@ -6245,7 +6246,8 @@
       ],
       "notes": [
         "Filed 2026-08-13 at W12-12's close. W12-13's STATUS entry says option (b) \"arrives with W12-12\" \u2014 that was true of the ENGINE and not of the UI, and the distinction is exactly the kind that evaporates if it lives only in a close note. The engine half is done and tested; this is the pick-time half.",
-        "RELEASED 2026-08-13 before any code, on a discovery that changes what this ticket MEANS. The escalation policy the wizard writes is READ BY NOTHING: `run-build.ts` never passes `policyScope` to `runLandLoop`, so `loop-land.ts:299` resolves `options.policyScope ?? {}` and every run gets `ladder` regardless of what the user chose. Grep confirms no reader of the `escalationPolicy` settings key exists anywhere in non-test code. Adding a FIFTH inert control to a wizard whose other four are already inert would be worse than leaving it at four. Now depends on W12-18 (wire the setting into the run) and W12-12 (which shipped `pinned` in the GATEWAY policy type \u2014 `LandEscalationPolicy` in harbormaster is a separate union of ladder/locked/token-gated and does not model it, so honouring a pinned choice end to end is its own step)."
+        "RELEASED 2026-08-13 before any code, on a discovery that changes what this ticket MEANS. The escalation policy the wizard writes is READ BY NOTHING: `run-build.ts` never passes `policyScope` to `runLandLoop`, so `loop-land.ts:299` resolves `options.policyScope ?? {}` and every run gets `ladder` regardless of what the user chose. Grep confirms no reader of the `escalationPolicy` settings key exists anywhere in non-test code. Adding a FIFTH inert control to a wizard whose other four are already inert would be worse than leaving it at four. Now depends on W12-18 (wire the setting into the run) and W12-12 (which shipped `pinned` in the GATEWAY policy type \u2014 `LandEscalationPolicy` in harbormaster is a separate union of ladder/locked/token-gated and does not model it, so honouring a pinned choice end to end is its own step).",
+        "BLOCKED 2026-08-18 at claim, on its own acceptance. The ticket assumes W12-12 made `pinned` runnable; it did not. W12-12 added the mode to packages/gateway/src/escalation, whose runEscalationPolicy has NO production caller \u2014 the live path is runLandLoop, whose LandEscalationMode is ladder|locked|token-gated, and resolvePolicyScope refuses `pinned` by name. Adding the fifth choice now would offer an option that refuses at first run, which this ticket's third acceptance criterion forbids in capitals. Also ruled out: mapping option (b) onto `locked` plus a one-entry matrix \u2014 D-024's cost note and the wizard's own doc comment already considered and rejected it, because `locked` pins a RUNG, not a model. The fix is core-lane and outside this ticket's apps/web write_scope, which under Law 1 is reported rather than worked around: filed as W12-37, now a dependency. Second thing to carry into the eventual claim: FirstRunWizard.tsx sits at EXACTLY 400 lines, so the fifth choice needs a file split planned at claim, not discovered mid-ticket."
       ]
     },
     {
@@ -6832,6 +6834,63 @@
       ],
       "notes": [
         "Filed 2026-08-17 at W12-32's close. Split deliberately: the decision is durable and belongs in a doc, the sweep is mechanical and belongs in its own change where a broken spec is obviously attributable to it."
+      ]
+    },
+    {
+      "id": "W12-37",
+      "title": "the land loop cannot honour a pinned model \u2014 D-024 option (b) is implemented in an engine with no production caller",
+      "phase": 12,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-policy.ts",
+        "packages/harbormaster/src/loop-land-policy.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "apps/server/src/cli/run-build-policy.ts",
+        "apps/server/src/cli/run-build-policy.test.ts"
+      ],
+      "depends_on": [
+        "W12-12"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DISCOVERED BY W12-16 AT CLAIM, and it blocks that ticket. W12-16 was filed to add the wizard's fifth model-policy choice on the premise that W12-12 had made `pinned` real. W12-12 did add `mode: 'pinned'` \u2014 to `packages/gateway/src/escalation`, whose `runEscalationPolicy` HAS NO PRODUCTION CALLER. The live path for a ticket is `runLandLoop`, and harbormaster's `LandEscalationMode` is `'ladder' | 'locked' | 'token-gated'`. `resolvePolicyScope` therefore refuses `pinned` by name at run time. Offering the wizard choice today hands a user a first-run refusal, which W12-16's own acceptance forbids in capitals.",
+        "THE TWIN IS DELIBERATE \u2014 DO NOT \"FIX\" IT BY DELEGATING. `loop-land-policy.ts`'s module doc gives two real reasons the land loop does not call the gateway engine: (1) that engine drives model-chain selection through a `ScopedRoleMatrix`, and this loop is deliberately model-agnostic \u2014 `spawn` is an opaque injected session runner; (2) its `ladder` R0 memory-hit resolves WITHOUT running an attempt or the close gate, so a ticket would sit `in_progress` and unclosed while the ladder reported \"resolved\". Adding a fourth mode to the twin is the cheaper and safer change; if you conclude otherwise, say why against those two reasons specifically.",
+        "PINNING HAS TWO HALVES AND ONLY ONE IS POLICY. Half one: a `PinnedLandPolicy` in the twin, a `ceilingFor` case (a pinned run has no rungs to climb, so it retries under a convergence ceiling and then PARKS \u2014 reuse the `pinned_model_exhausted` park reason the gateway engine already names, do not invent a second vocabulary), and `resolvePolicyScope` mapping the stored setting instead of refusing it. Half two, WHICH IS THE HARDER HALF: the pinned model must actually be the model that runs. Today `buildBuiltInSpawn` resolves its target through `resolveModelTarget` against the role matrix, and nothing in the policy makes that return the pinned model. A policy that permits pinning while the matrix still routes is worse than the current honest refusal, so acceptance is a fixture that proves the SPAWNED SESSION used the pinned model, not merely that the policy resolved.",
+        "C-4 STAYS MECHANICAL. `PinnedPolicyMakerVerifierError` exists because pinning one model for both maker and verifier collapses the distinction. `resolvePolicyScope` already applies the flat setting to the MAKER ROLE ONLY and leaves verifiers on the ladder, which keeps C-4 true by construction; preserve that and prove it with a fixture rather than relying on a run-time refusal.",
+        "RED FIXTURE: a stored `{ mode: 'pinned', model }` runs a land loop end to end on exactly that model, parks with the named exhaustion reason rather than escalating, and the verifier role is demonstrably not the pinned model. Proven against today's refusal first.",
+        "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
+      ],
+      "notes": [
+        "Filed 2026-08-18 from W12-16. Eleventh instance of the defect class the W12-10 ratchet was built for, and the worst-shaped one so far: the engine is not merely uncalled, it is not exported from the gateway barrel at all \u2014 which is exactly why harbormaster reproduced its shape structurally instead of importing it. See W12-38 for the ratchet hole that let it through."
+      ]
+    },
+    {
+      "id": "W12-38",
+      "title": "validate-exports cannot see an unexported dead engine \u2014 the ratchet has a blind spot in the shape of its own defect class",
+      "phase": 12,
+      "module": "quality",
+      "lane": "core",
+      "points": 3,
+      "status": "todo",
+      "write_scope": [
+        "scripts/validate-exports.mjs",
+        "scripts/validate-exports.test.mjs"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "W12-10 built `validate-exports.mjs` to catch \"a mechanism lands complete, tested, with no production caller\" \u2014 the defect found nine times and now eleven. It works by walking each package BARREL and flagging exports no non-test file outside the package calls. `runEscalationPolicy` is a complete, tested escalation engine with no production caller anywhere, and the ratchet reports 43 gaps and does not name it, because it is not in a barrel at all.",
+        "THAT IS THE WORSE CASE, NOT AN EXCLUDED ONE. An export with no caller is reachable and unused; a non-exported implementation with no caller is unreachable \u2014 it cannot be adopted without a separate barrel change, which is precisely how W12-04 (packer), W12-09 (code index) and W12-37 (pinned policy) each stayed dormant. The ratchet is blind to its own worst instance.",
+        "DECIDE THE SCOPE HONESTLY AND STATE IT. Flagging every unexported symbol with no in-package caller will surface enormous noise (private helpers are supposed to look like this). A defensible narrowing is exported-from-a-MODULE-but-not-the-barrel-and-uncalled-outside-its-file, or module-level `export`s in files nothing imports. Calibrate against this repo the way W12-10 did (529 -> 43) and record the number, including what the chosen rule still cannot see.",
+        "DO NOT RAISE THE 43 BASELINE TO MAKE THIS PASS. That rule is the ratchet's own; a new check gets its own calibrated count.",
+        "RED FIXTURE: the validator names `runEscalationPolicy` (or, if the scope decision excludes it, the fixture states which rule excludes it and why that is defensible \u2014 a documented blind spot is acceptable, an undocumented one is what this ticket is about).",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ],
+      "notes": [
+        "Filed 2026-08-18 alongside W12-37, which is the instance that exposed it."
       ]
     }
   ]
