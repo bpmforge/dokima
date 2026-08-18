@@ -918,10 +918,10 @@ describe('the component system (W13-04)', () => {
       const declarations = surfaceCss
         .flatMap((c) => [...c.matchAll(/border:[^;]*--sw-border[^;]*;/g)])
         .length;
-      // 51 at W13-04; 50 once the Fleet card adopted `.surface` (W13-05).
+      // 51 at W13-04; 50 with the Fleet card (W13-05); 49 with the ticket card (W13-06).
       // Lower it whenever the number drops. Never raise it to make a change
       // pass — the same rule the export ratchet carries.
-      expect(declarations).toBeLessThanOrEqual(50);
+      expect(declarations).toBeLessThanOrEqual(49);
     },
   );
 
@@ -952,6 +952,69 @@ describe('the component system (W13-04)', () => {
     () => {
       const body = ruleBody('.surface--attention');
       expect(body).toMatch(/box-shadow|border-color/);
+    },
+  );
+});
+
+/**
+ * W13-06. Seen live on a one-ticket board: six lane columns at equal width,
+ * five empty, filling ~85% of the pane; the single ticket in a ~130px box with
+ * its title wrapped over three lines; and a raw `Move to…` select overflowing
+ * the card's bottom edge.
+ */
+describe('the board gives its space to the lane that has something (W13-06)', () => {
+  const boardCss = readFileSync(path.join(testDir, 'board', 'board.css'), 'utf-8');
+
+  function boardRule(selector: string): string {
+    const start = boardCss.indexOf(`${selector} {`);
+    expect(start, `expected a "${selector}" rule in board.css`).toBeGreaterThan(-1);
+    return boardCss.slice(start, boardCss.indexOf('}', start));
+  }
+
+  it(
+    'RED FIXTURE: column width follows CONTENT, not a fixed six-way split. ' +
+      'auto-fit + 1fr gave five empty lanes the same room as the one with a ' +
+      'card in it',
+    () => {
+      const columns = boardRule('.board-lane__columns');
+      expect(columns).toMatch(/display:\s*flex/);
+      expect(columns).not.toMatch(/grid-template-columns/);
+    },
+  );
+
+  it('an occupied column grows; an empty one takes only what its header needs', () => {
+    expect(boardRule('.board-column')).toMatch(/flex:\s*1 1/);
+    expect(boardRule('.board-column--empty')).toMatch(/flex:\s*0 1/);
+  });
+
+  it(
+    'empty columns are STILL RENDERED, because they are drop targets. board.css ' +
+      'records why: a lane whose empty columns vanished would move the remaining ' +
+      'ones under the cursor mid-drag. This ticket changes their width, never ' +
+      'their presence',
+    () => {
+      expect(boardRule('.board-column--empty')).not.toMatch(/display:\s*none/);
+      expect(boardCss).toContain('drop target');
+    },
+  );
+
+  it(
+    '--sw-board-column-min is UNCHANGED. W10-32 raised it on a hunch and W12-30 ' +
+      'had to correct that; the empty case gets its own value rather than ' +
+      're-litigating a constant two tickets already measured',
+    () => {
+      expect(ruleBody(':root')).toMatch(/--sw-board-column-min:\s*8\.5rem/);
+    },
+  );
+
+  it(
+    'the in-card control fits the card it lives in. The select had no width ' +
+      'constraint at all, so it inherited the browser default and hung over the ' +
+      "card's bottom edge",
+    () => {
+      const menu = boardRule('.board-card__verb-menu select');
+      expect(menu).toMatch(/width:\s*100%/);
+      expect(menu).toMatch(/max-width:\s*100%/);
     },
   );
 });

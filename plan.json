@@ -7208,12 +7208,14 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [
         "W13-04"
       ],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18, verified live at each step. THE FIX WAS THE LAYOUT MODEL, NOT THE CONSTANT: `auto-fit` + `1fr` splits a row evenly regardless of content, so five empty lanes took the same width as the one holding a card. Flex sizes to content \u2014 occupied columns grow, empty ones take only their header \u2014 and `--sw-board-column-min` is UNTOUCHED, which matters because W10-32 raised it on a hunch and W12-30 had to correct that. The empty case got its own separate value rather than re-litigating a constant two tickets already measured. board.css RECORDED A CONSTRAINT I HAD TO RESPECT and nearly broke: empty columns deliberately recede rather than vanish, because they are still drop targets and disappearing ones would move the remaining columns under the cursor mid-drag. This ticket changes their WIDTH, never their presence, and there is a fixture asserting that so a later 'tidy-up' cannot remove them. THE FIRST VALUE WAS HALF A REM SHORT: at 5.5rem 'In Progress' wrapped to two lines, making the empty columns taller than the thing they were receding behind; measured on screen and corrected to 6.25rem, with the reasoning recorded beside the constant in the same spirit as the note above it. The select had NO width constraint at all \u2014 it inherited the browser's intrinsic width and hung over the bottom edge of a card narrower than itself. Duplication ratchet 50 -> 49."
+      ],
       "id": "W13-06",
       "title": "the board is six equal empty columns and the ticket card is narrower than its own title",
       "points": 5,
@@ -7221,7 +7223,10 @@
       "write_scope": [
         "apps/web/src/board/BoardView.tsx",
         "apps/web/src/board/board.css",
-        "apps/web/src/board/BoardView.test.tsx"
+        "apps/web/src/board/BoardView.test.tsx",
+        "apps/web/src/board/Card.tsx",
+        "apps/web/src/styles.css",
+        "apps/web/src/styles.test.ts"
       ],
       "acceptance": [
         "SEEN LIVE on a one-ticket board: six lane columns at equal width, five of them empty, filling ~85% of the pane; the single ticket in a ~130px box with its title wrapped over three lines; and a raw `Move to\u2026` <select> overflowing the card's bottom edge.",
