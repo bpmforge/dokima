@@ -5942,7 +5942,7 @@
       "module": "content",
       "lane": "content",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "content/experts/**",
         "content/validators/**",
