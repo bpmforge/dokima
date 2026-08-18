@@ -6977,6 +6977,71 @@
       "notes": [
         "Found by preparing the supervised run rather than by a test: the core had to be restarted with DOKIMA_SIGNING_KEY exported so the founder could use either path, and that is not something a first-time user would deduce. Filed rather than fixed in place because the supervised run itself is the higher-value act and this does not block it \u2014 the CLI path takes the env var from the invoking shell and works normally."
       ]
+    },
+    {
+      "id": "W12-41",
+      "title": "creating a new project asks for the absolute path of a directory the server is about to create anyway",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "in_progress",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/FleetHome.tsx",
+        "apps/web/src/fleet/FleetHome.test.tsx",
+        "apps/web/src/fleet/types.ts",
+        "apps/server/src/api/projects/registry-verbs.ts",
+        "apps/server/src/api/projects/routes.ts",
+        "apps/server/src/api/projects/types.ts",
+        "apps/server/src/api/projects/workspace-root.ts",
+        "apps/server/src/api/projects/workspace-root.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND BY THE FOUNDER 2026-08-18, on the FIRST SCREEN of the first supervised run, which it blocked outright: \"How do you know what folder directory it needs to be in? There should be a browse function... having them try to remember or type in what they need to do.\" The New project form is a bare required <input> labelled \"Directory path\" with no placeholder, no default, no example and no validation until the server rejects it.",
+        "THE SERVER ALREADY CREATES THE DIRECTORY, which makes this sharper than a missing picker. `registry-verbs.ts:41`: `if (input.mode === 'new') { await fs.mkdir(absPath, { recursive: true }); await ensureGitRepo(absPath); }`. The form asks the user to dictate the absolute path of a directory that does not exist yet and that the server is about to create. Line 66 completes the inversion: `name: input.name?.trim() || path.basename(absPath)` derives the NAME FROM THE PATH, when for a new project the name is the thing the user knows and the path is the thing they do not care about.",
+        "FOR `new`, REMOVE THE PATH INPUT ENTIRELY. Name (required) -> slug -> `<workspaceRoot>/<slug>`, with the resolved path shown read-only before the user commits so nothing happens at a location they cannot see. RESOLUTION BELONGS ON THE SERVER, not the client: the workspace root is server-side knowledge (the browser cannot know the home directory), and an API that requires a path its caller cannot compute is the same defect one layer down. `path` becomes optional on `mode: 'new'`.",
+        "A `workspaceRoot` SETTING WITH A REAL DEFAULT, and an escape. There is no concept today of where projects go \u2014 `DOKIMA_HOME` (~/.dokima) holds config, token and packs only, which is precisely why the form falls back to asking. Default it (e.g. `~/Dokima`), show the resolved path, and offer a quiet \"change location\" for people who keep everything under `~/Code`. A default nobody can override just relocates the annoyance.",
+        "TWO THINGS THAT WILL BITE: slug COLLISIONS (creating \"My App\" twice must not silently adopt the existing directory \u2014 `mkdir --recursive` succeeds on an existing dir and `registerProject` then REACTIVATES the existing record, so today the second create would quietly reopen the first project), and the `basename` name fallback, which inverts once the path is derived from the name.",
+        "RED FIXTURE: creating a project with a name and NO path succeeds, lands under the workspace root, and is refused by name rather than silently reopening when the slug already exists. Proven against the current required-path form first."
+      ],
+      "notes": [
+        "Filed 2026-08-18 from the supervised run. The UX_SPEC is complicit and that is the finding worth keeping: \u00a72 specifies the Fleet ACTIONS (\"New Product / Onboard existing repo / Import\") and never designs the step where the user says WHERE, so the implementation filled the hole with the laziest control that compiles and no review could catch it. Sibling ticket W12-42 covers onboard/import, which genuinely do need a path the system cannot guess."
+      ]
+    },
+    {
+      "id": "W12-42",
+      "title": "onboard and import need a directory picker \u2014 the one case where the path is information only the user has",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/DirectoryPicker.tsx",
+        "apps/web/src/fleet/DirectoryPicker.test.tsx",
+        "apps/server/src/api/server/browse-routes.ts",
+        "apps/server/src/api/server/browse-routes.test.ts",
+        "docs/THREAT_MODEL.md"
+      ],
+      "depends_on": [
+        "W12-41"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W12-41 removes the path input from `new`, where the server creates the directory anyway. `onboard` and `import` are the opposite case: the directory already exists and its location is information ONLY the user has, so those two still need a way to say where \u2014 and typing an absolute path from memory is not it.",
+        "A BROWSER CANNOT DO THIS AND THE LOCAL ARCHITECTURE CAN. `<input type=\"file\">` yields contents and a fake path; `webkitdirectory` yields relative paths. On a hosted web app \"just add browse\" is impossible. Dokima is not that: the core is a local, already-authenticated server on the same machine that already opens arbitrary project directories, so it can `readdir`. That is the local-first architecture paying for itself, and it should be stated in the design rather than discovered.",
+        "THE SECURITY QUESTION GETS AN ANSWER, NOT A WAVE-THROUGH. A listing endpoint is a filesystem-enumeration surface reachable by anything holding the bearer token. It is inside the trust boundary and the core already opens arbitrary paths, so the marginal exposure is real but bounded \u2014 say so explicitly in THREAT_MODEL.md, and decide whether roots are bounded (home + explicit additions) or unbounded. Record what was rejected.",
+        "DESIGN FOR THE COMMON CASE IN TWO CLICKS: start at sensible roots (home, the workspace root, the parents of already-registered projects) rather than at `/`. A picker that opens at the filesystem root and makes someone walk down is a worse version of typing.",
+        "FAILURE MODES ARE PART OF THIS: a path that does not exist, one that exists but is not readable, one that is a file rather than a directory, and one that is already registered. Each names what happened; `onboard`/`import` already refuse a missing directory server-side (`ProjectDirectoryError`) and that refusal should be reachable before the user commits, not after.",
+        "RED FIXTURE: onboard completes without the user typing a path, and an unreadable or non-existent selection is refused by name."
+      ],
+      "notes": [
+        "Filed 2026-08-18 alongside W12-41, split deliberately rather than filed as one ticket: W12-41 is small, self-contained and unblocks a real user today, while this one carries a THREAT_MODEL decision and a new HTTP surface. Bundling them would have held the quick fix behind the security question."
+      ]
     }
   ]
 }
