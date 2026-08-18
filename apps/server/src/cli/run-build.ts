@@ -32,36 +32,23 @@ import {
   type ProjectSecretsVault,
 } from '@dokima/shared';
 import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
-import {
-  createGatewaySpawnSession,
-  runLandLoop,
-  DEFAULT_AGENT_SESSION_TASK_TYPE,
-  type PushToRemotesFn,
-} from '@dokima/harbormaster';
+import { runLandLoop, type PushToRemotesFn } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
+import { buildBuiltInSpawn } from './run-build-spawn.js';
 import {
   ESCALATION_POLICY_SETTINGS_KEY,
+  resolvePinnedModel,
   resolvePolicyScope,
 } from './run-build-policy.js';
 
-import {
-  CostLedger,
-  FitnessCardStore,
-  ROLE_CODING_AGENT,
-  type Provider,
-} from '@dokima/gateway';
+import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import {
   AGENT_RUNNER_SETTINGS_KEY,
   EXTERNAL_AGENT_WARNING,
   parseAgentRunnerSetting,
   type AgentRunnerSetting,
 } from '../api/server/settings-types.js';
-import {
-  ModelResolutionError,
-  resolveModelTarget,
-} from '../api/pipeline/model-resolution.js';
-import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
-import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
+import { ModelResolutionError } from '../api/pipeline/model-resolution.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
 
 /**
@@ -189,71 +176,6 @@ function resolveVaultOrRefusal(
   }
 }
 
-/**
- * Builds the built-in agent's `SpawnSession` (D-023): resolves the
- * `coding-agent`/`code` model target the same way the pipeline's own
- * production model-call path does (`resolveModelTarget` — degrades to the
- * local-first env default when nothing is configured, C-1, never throws),
- * binds ONE real `Provider` to it, and gives `createGatewaySpawnSession` a
- * minimal one-entry matrix that always resolves to that same target — the
- * per-model `resolveProvider` callback ignores its argument because exactly
- * one target was ever resolved. Throws `ModelResolutionError` for a
- * registered-but-not-yet-constructible cloud kind (anthropic/openai/vertex/
- * copilot); the caller turns that into a named CLI refusal rather than an
- * uncaught rejection mid-session.
- */
-/**
- * The built-in agent's session plus the one fact about its model the packer
- * needs (W12-04). `contextWindowTokens` is `undefined` when the provider
- * cannot report a window — the packer treats that as its documented 32k
- * floor rather than guessing.
- */
-interface BuiltInSpawn {
-  readonly spawn: SpawnSession;
-  readonly contextWindowTokens: number | undefined;
-}
-
-async function buildBuiltInSpawn(
-  log: EventLog,
-  command: BuildRunCommand,
-  runId: string,
-  io: RunCliIO,
-  secretValues: readonly string[],
-): Promise<BuiltInSpawn> {
-  const target = await resolveModelTarget({
-    projectPath: io.cwd,
-    role: ROLE_CODING_AGENT,
-    taskType: DEFAULT_AGENT_SESSION_TASK_TYPE,
-    actorId: command.actorId,
-  });
-  const provider: Provider = await providerForConfig(targetToConfig(target, process.env));
-  // W12-04: the context window comes from the Provider, not from
-  // `ResolvedModelTarget` (which carries no window field) — so it is read
-  // here, where the provider is already built, rather than resolving the
-  // model a second time in the packer's call path. `undefined` (a provider
-  // that cannot report one) becomes the packer's documented 32k floor.
-  const contextWindowTokens = await provider
-    .getContextLength(target.model)
-    .catch(() => undefined);
-  const spawn = createGatewaySpawnSession({
-    log,
-    role: ROLE_CODING_AGENT,
-    matrix: {
-      project: {
-        [ROLE_CODING_AGENT]: { default: { model: target.model, fallbackChain: [] } },
-      },
-    },
-    actorId: command.actorId,
-    projectId: command.projectId,
-    runId,
-    fitnessStore: new FitnessCardStore(),
-    resolveProvider: () => provider,
-    ledger: new CostLedger(),
-    secretValues,
-    now: io.now,
-  });
-  return { spawn, contextWindowTokens };
-}
 
 /**
  * The build-mode run (W10-77): claim work off the board and actually do it.
@@ -309,6 +231,8 @@ export async function executeBuildRun(
     return 2;
   }
 
+  const pin = resolvePinnedModel(policyRaw, ROLE_CODING_AGENT);
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   /**
@@ -330,7 +254,7 @@ export async function executeBuildRun(
     spawn = createChildProcessSpawn({ command: agentBin, args: agentArgs });
   } else {
     try {
-      const builtIn = await buildBuiltInSpawn(log, command, runId, io, secretValues);
+      const builtIn = await buildBuiltInSpawn(log, command, runId, io, secretValues, pin);
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;
     } catch (err) {
