@@ -489,3 +489,32 @@ describe('runPackagedCli', () => {
     expect(stderr.join('\n')).toContain('open the Fleet');
   });
 });
+
+describe('DEFAULT_PORT is declared once (W12-01)', () => {
+  it(
+    'RED FIXTURE: the port literal appears in exactly ONE source file. It was ' +
+      'declared independently in bootstrap/cli.ts and api/main.ts, so changing ' +
+      'the port was a two-file edit and the copy nobody edited kept working and ' +
+      'stayed green — no test could see the disagreement',
+    async () => {
+      const { readFileSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const path = await import('node:path');
+      const here = path.dirname(fileURLToPath(import.meta.url));
+      const files = [
+        path.join(here, 'cli.ts'),
+        path.join(here, '..', 'api', 'main.ts'),
+      ];
+      const declaring = files.filter((f) => /\b4317\b/.test(readFileSync(f, 'utf8')));
+      expect(declaring).toHaveLength(1);
+      expect(declaring[0]).toContain('main.ts');
+    },
+  );
+
+  it('the two modules agree, because there is only one value to agree about', async () => {
+    const cli = await import('./cli.js');
+    const api = await import('../api/index.js');
+    expect(cli.DEFAULT_PORT).toBe(api.DEFAULT_PORT);
+    expect(cli.DEFAULT_PORT).toBe(4317);
+  });
+});

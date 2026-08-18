@@ -17,6 +17,7 @@ import {
   ensureAuthToken,
   listenLocalhost,
   type ApiServer,
+  DEFAULT_PORT,
 } from '../api/index.js';
 import { openEventLog } from '@dokima/events';
 import { computeDokimaHome, resolveAsset } from '@dokima/shared';
@@ -33,7 +34,10 @@ import { resolveLogLevel } from './config.js';
 import { detectRunningCore, openBrowser } from './launch.js';
 import { packsUpdate, type PacksUpdateResult } from './packs-update.js';
 
-export const DEFAULT_PORT = 4317;
+// W12-01: imported and re-exported, not redeclared, so `resolvePort()` below
+// keeps using it locally AND every existing importer of `bootstrap/cli.js`'s
+// DEFAULT_PORT keeps working — against one source of truth in `api/main.ts`.
+export { DEFAULT_PORT };
 
 export interface CliIO {
   stdout: (line: string) => void;
