@@ -6913,7 +6913,7 @@
       "module": "quality",
       "lane": "core",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "role": "test-engineer",
       "write_scope": [
         "scripts/validate-exports.mjs",
@@ -6932,7 +6932,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22."
       ],
       "notes": [
-        "Filed 2026-08-18 by W12-38, which found the bias and scoped it out on purpose rather than moving a calibrated baseline as a side effect."
+        "Filed 2026-08-18 by W12-38, which found the bias and scoped it out on purpose rather than moving a calibrated baseline as a side effect.",
+        "Closed 2026-08-18. Measured before changing anything, as the acceptance demanded: 43 -> 62 under comment-stripped counting, so 19 already-dead symbols had been reading as used because a comment named them. Two hand-verified rather than trusted \u2014 every non-test reference to runClaimLoop and gateDecision is a comment, and loop-claim.ts:223 says in its own docstring that runClaimLoop's only callers are its own tests: the sentence admitting the defect was what concealed it. One design change the ticket did not ask for and the fixture forced: the strip now lives inside countReferences rather than in its caller. As a caller-side step the guarantee held only while every future caller remembered to pre-strip, and the constructed fixture passed against raw input while proving nothing \u2014 the exact weak-fixture shape this wave keeps finding. Cached so it is still one strip per file per run."
       ]
     }
   ]
