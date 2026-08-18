@@ -15,9 +15,29 @@
  * the widened type, so nothing that already passes a builder changed.
  */
 
-import { ROLE_CODING_AGENT } from '@dokima/gateway';
+import { isVerifierRole, ROLE_CODING_AGENT } from '@dokima/gateway';
 import type { Handoff, HandoffTicket } from '@dokima/loop';
 import type { Ticket } from '@dokima/tickets';
+
+/**
+ * A ticket named a verifier role as the expert that DOES the work (C-4,
+ * CLAUDE.md law 5). Its own name, not a generic build failure, because the
+ * board is fixable and the fix is to name a maker expert.
+ */
+export class TicketRoleRefusedError extends Error {
+  constructor(
+    public readonly ticketId: string,
+    public readonly role: string,
+  ) {
+    super(
+      `ticket ${ticketId} names "${role}" as the expert that does the work, but ` +
+        `that is a verifier role — a maker may not be its own verifier (C-4). ` +
+        `Name the expert that should DO the ticket; the reviewer is resolved ` +
+        `separately and must be a distinct identity.`,
+    );
+    this.name = 'TicketRoleRefusedError';
+  }
+}
 
 /** Falls back to the project's own full gate (CLAUDE.md law 3) when a ticket declares no `verify` command. */
 export const DEFAULT_VERIFY_COMMAND = 'pnpm lint && pnpm typecheck && pnpm test';
@@ -32,14 +52,40 @@ export type HandoffBuilder = (ticket: Ticket) => Handoff | Promise<Handoff>;
  */
 export type SyncHandoffBuilder = (ticket: Ticket) => Handoff;
 
-/** Builds a `HandoffBuilder` bound to a fixed role (default: `coding-agent`). */
+/**
+ * Builds a `HandoffBuilder` whose role is the RUN-WIDE FALLBACK (default:
+ * `coding-agent`) for tickets that do not name an expert of their own.
+ *
+ * D-025/W12-06: the role used to be bound here and here only, so every ticket
+ * in a run was dispatched to the same expert no matter what kind of work it
+ * was — `content/` ships 93 experts and exactly one was ever used, because
+ * every production call site takes the default. A ticket that names a `role`
+ * now wins over this argument. That direction is the load-bearing half: the
+ * only production path is `createPackedHandoffBuilder`, which ALWAYS passes a
+ * role, so a builder-wins rule would leave the ticket field permanently
+ * unreachable — the field would validate on the board and never reach a maker.
+ *
+ * C-4 IS KEPT MECHANICAL, NOT PROMISED. Because the ticket now wins, a ticket
+ * could otherwise name `code-reviewer` or `challenger` as its own maker — the
+ * maker declaring itself the verifier, which is precisely what C-4 forbids and
+ * exactly the kind of thing a board field makes easy to do by accident.
+ * `guardMakerVerifierDistinct` cannot catch it: that guard fires on the
+ * VERIFIER side and compares models, and here the collapse has already
+ * happened by the time a verifier is resolved. So this refuses, by name, at the
+ * point the field is read. The board validator refuses the same thing earlier
+ * (`scripts/validate-plan.mjs`); this is the backstop for tickets that reach a
+ * run some other way.
+ */
 export function defaultHandoffBuilder(
   role: string = ROLE_CODING_AGENT,
 ): SyncHandoffBuilder {
   return (ticket: Ticket): Handoff => {
+    if (ticket.role !== undefined && isVerifierRole(ticket.role)) {
+      throw new TicketRoleRefusedError(ticket.id, ticket.role);
+    }
     const handoffTicket: HandoffTicket = { id: ticket.id, title: ticket.title };
     return {
-      role,
+      role: ticket.role ?? role,
       mission: ticket.title,
       ticket: handoffTicket,
       context: ticket.interface ?? ticket.title,

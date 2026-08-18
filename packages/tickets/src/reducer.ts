@@ -47,6 +47,10 @@ export function reduceTicketEvent(
         ownerId: null,
         status: 'ready',
         interface: payload.interface ?? null,
+        // Events created before D-025 carry no `role`, and folding them must
+        // keep meaning what it meant: no role => the coding-agent default,
+        // decided at dispatch rather than backfilled here.
+        ...(payload.role === undefined ? {} : { role: payload.role }),
         writeScope: payload.writeScope,
         dependsOn: payload.dependsOn ?? [],
         acceptance: payload.acceptance ?? [],

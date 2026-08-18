@@ -17,6 +17,10 @@
 //       still write (status !== 'done'), unless a ticket declares "scaffold": true;
 //       same-lane overlap is an error only among concurrently-active (in_progress) tickets
 //   P9  wave gating report: per-wave counts + claimable set (informational)
+//   P11 optional `role` names an expert that exists in content/experts (D-025),
+//       is not a verifier role (C-4), and fails BY NAME rather than falling
+//       back to coding-agent — a typo that silently routes to the default is
+//       the whole defect this field was added to fix
 //   P10 ARCHITECTURE.md §4 dependency matrix must agree, row for row, with each
 //       row-package's declared `@dokima/*` dependencies (dependencies field only) —
 //       exact-set match, not just "no forbidden import": the matrix is a live
@@ -25,7 +29,7 @@
 //       this matrix in the same change, or P10 fails.
 // Exit 1 on any violation; prints the violation list. Exit 0 prints OK + report.
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -37,7 +41,54 @@ const LANES = ['infra', 'core', 'engine', 'gateway', 'orchestrator', 'ui', 'pipe
 const STATUSES = ['todo', 'in_progress', 'blocked', 'done'];
 const POINTS = [1, 2, 3, 5, 8];
 const TICKET_KEYS = ['id', 'title', 'phase', 'module', 'lane', 'write_scope', 'depends_on', 'acceptance', 'points', 'status', 'notes', 'stories'];
-const OPTIONAL_KEYS = ['scaffold'];
+const OPTIONAL_KEYS = ['scaffold', 'role'];
+
+/**
+ * P11 (D-025, W12-06): the expert a ticket names must be one that exists.
+ *
+ * Read from `content/experts/**` rather than hardcoded, because a hardcoded
+ * list drifts from the pack the moment it is re-imported — and a role that
+ * quietly falls back to `coding-agent` is the silent-degradation class this
+ * wave keeps finding. The file STEM is the role: that is not a convention
+ * invented here, it is what `apps/server/src/api/roster-resolve.ts` documents
+ * and what the gateway matrix routes on.
+ *
+ * ALL-CAPS stems are excluded. `content/experts/` also holds methodology and
+ * schema documents (METHODOLOGY, FINDINGS_SCHEMA, PARALLEL_WAVE_PROTOCOL) that
+ * are reference material for experts, not experts — without this the validator
+ * would happily accept `role: "METHODOLOGY"`. The pack's own naming convention
+ * is the discriminator, so this narrows on the convention rather than on a
+ * hand-kept exception list that would drift at the next import.
+ */
+function expertRoles(dir) {
+  const roles = new Set();
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      for (const r of expertRoles(join(dir, entry.name))) roles.add(r);
+    } else if (entry.name.endsWith('.md')) {
+      const stem = entry.name.slice(0, -3);
+      if (stem !== stem.toUpperCase()) roles.add(stem);
+    }
+  }
+  return roles;
+}
+
+let EXPERT_ROLES;
+try {
+  EXPERT_ROLES = expertRoles(join(root, 'content', 'experts'));
+} catch {
+  // No pack on disk (a checkout without `content/`): the field cannot be
+  // validated, and inventing a whitelist would be worse than saying so.
+  EXPERT_ROLES = null;
+}
+
+/**
+ * A maker may not be its own verifier (C-4, CLAUDE.md law 5). `code-reviewer`
+ * and `challenger` are real experts in the pack, so the roster check alone
+ * would accept them here — this is the reason the board refuses them as a
+ * ticket's `role`, and `defaultHandoffBuilder` refuses them again at dispatch.
+ */
+const VERIFIER_ROLES = ['code-reviewer', 'challenger'];
 const FORWARD_DEP_EXCEPTIONS = new Set([]);
 
 const errors = [];
@@ -106,6 +157,11 @@ for (const t of T) {
   if (!Array.isArray(t.write_scope) || t.write_scope.length === 0 || t.write_scope.some((g) => !g)) err(`P5 ${t.id}: write_scope`);
   if (!Array.isArray(t.acceptance) || t.acceptance.length < 1 || t.acceptance.length > 6 || t.acceptance.some((a) => !a)) err(`P5 ${t.id}: acceptance (need 1-6 non-empty)`);
   if (!Array.isArray(t.stories) || t.stories.some((s) => !/^US-\d{3}$/.test(s))) err(`P6 ${t.id}: stories`);
+  if ('role' in t) {
+    if (typeof t.role !== 'string' || t.role === '') err(`P11 ${t.id}: role must be a non-empty string`);
+    else if (VERIFIER_ROLES.includes(t.role)) err(`P11 ${t.id}: role ${t.role} is a verifier role — a maker may not be its own verifier (C-4)`);
+    else if (EXPERT_ROLES && !EXPERT_ROLES.has(t.role)) err(`P11 ${t.id}: role ${t.role} is not an expert in content/experts`);
+  }
 }
 
 // ---- P7 deps

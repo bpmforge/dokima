@@ -5912,7 +5912,7 @@
       "module": "harbormaster",
       "lane": "orchestrator",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "write_scope": [
         "packages/harbormaster/src/loop-handoff.ts",
         "packages/harbormaster/src/loop-handoff.test.ts",
@@ -5936,7 +5936,8 @@
       "notes": [
         "Filed HELD 2026-08-13. The board has no field for 'waiting on a human', which $holdNote4 already records as a recurring gap \u2014 holdTickets in conductor.config.json is the only place it can be said, so it is said there and here. Related open design question from the same review, NOT ticketed and belonging in docs/DECISIONS.md rather than on the board: attest v3.5.0's gauntlet loop (builders never grade their own work; a critic that saw a prior draft never grades the retry) may be the missing quality layer for this same loop, and C-4 already supplies the identity separation it needs. That may be one design with this ticket rather than two.",
         "UN-HELD 2026-08-13 by founder decision D-025 (explicit `role` field at decomposition). Repointed and resized 5 -> 8: the original ticket was scoped only to `loop-handoff.ts` on the assumption the answer would be a code-local one, but the chosen direction adds a board-schema field, so `scripts/validate-plan.mjs` and its test come into scope too. Removed from conductor.config.json holdTickets in the same commit. NOTE the decomposer half (making the planner actually SET the field) is deliberately NOT in this ticket's scope \u2014 this ticket makes the field exist, be validated, and be honoured; a follow-up teaches decomposition to emit it, and until then a human sets it by hand.",
-        "write_scope widened at claim, deliberately and before writing anything \u2014 the same build-then-wire seam this wave keeps finding, caught at claim this time instead of at close. The filed scope was loop-handoff.ts + validate-plan.mjs, but `Ticket` (packages/tickets/src/types.ts) has NO `role` field, so a builder reading `ticket.role` would compile against a widened local type and read undefined forever: the field would be validated on the board and never reach the maker. Tickets are event-sourced, not columnar, so there is no migration \u2014 the change is three small files (type, create, reducer) carrying one optional string through the projection. Same lane (orchestrator), no P8 overlap: the only other open tickets are W12-37 (harbormaster+cli) and W12-27 (gateway). The one call-site fact that keeps this inside scope: createPackedHandoffBuilder composes defaultHandoffBuilder(options.role) at handoff-context.ts:185, so fixing the default builder fixes BOTH production paths without touching apps/server."
+        "write_scope widened at claim, deliberately and before writing anything \u2014 the same build-then-wire seam this wave keeps finding, caught at claim this time instead of at close. The filed scope was loop-handoff.ts + validate-plan.mjs, but `Ticket` (packages/tickets/src/types.ts) has NO `role` field, so a builder reading `ticket.role` would compile against a widened local type and read undefined forever: the field would be validated on the board and never reach the maker. Tickets are event-sourced, not columnar, so there is no migration \u2014 the change is three small files (type, create, reducer) carrying one optional string through the projection. Same lane (orchestrator), no P8 overlap: the only other open tickets are W12-37 (harbormaster+cli) and W12-27 (gateway). The one call-site fact that keeps this inside scope: createPackedHandoffBuilder composes defaultHandoffBuilder(options.role) at handoff-context.ts:185, so fixing the default builder fixes BOTH production paths without touching apps/server.",
+        "Closed 2026-08-18. One design question the acceptance did not anticipate, found by its own C-4 fixture: making the TICKET win over the builder argument is required for the field to be reachable at all (the only production path, createPackedHandoffBuilder, always passes a role), but ticket-wins is exactly what lets a board row name code-reviewer or challenger as the expert that DOES the work \u2014 the maker declaring itself the verifier. guardMakerVerifierDistinct cannot catch that: it fires on the verifier side and compares MODELS, by which point the collapse has already happened. So both layers refuse a verifier role by name \u2014 validate-plan P11 on the board, TicketRoleRefusedError at dispatch \u2014 rather than the ticket relying on a promise in a doc comment. Roster read from content/experts/** stems (84 roles) with ALL-CAPS stems excluded, because the pack also holds METHODOLOGY/FINDINGS_SCHEMA/PARALLEL_WAVE_PROTOCOL reference docs that are not experts and would otherwise validate as roles. The four still-open tickets each carry a real role now, so the field is exercised on the real board rather than only in fixtures."
       ]
     },
     {
@@ -6252,7 +6253,8 @@
         "Filed 2026-08-13 at W12-12's close. W12-13's STATUS entry says option (b) \"arrives with W12-12\" \u2014 that was true of the ENGINE and not of the UI, and the distinction is exactly the kind that evaporates if it lives only in a close note. The engine half is done and tested; this is the pick-time half.",
         "RELEASED 2026-08-13 before any code, on a discovery that changes what this ticket MEANS. The escalation policy the wizard writes is READ BY NOTHING: `run-build.ts` never passes `policyScope` to `runLandLoop`, so `loop-land.ts:299` resolves `options.policyScope ?? {}` and every run gets `ladder` regardless of what the user chose. Grep confirms no reader of the `escalationPolicy` settings key exists anywhere in non-test code. Adding a FIFTH inert control to a wizard whose other four are already inert would be worse than leaving it at four. Now depends on W12-18 (wire the setting into the run) and W12-12 (which shipped `pinned` in the GATEWAY policy type \u2014 `LandEscalationPolicy` in harbormaster is a separate union of ladder/locked/token-gated and does not model it, so honouring a pinned choice end to end is its own step).",
         "BLOCKED 2026-08-18 at claim, on its own acceptance. The ticket assumes W12-12 made `pinned` runnable; it did not. W12-12 added the mode to packages/gateway/src/escalation, whose runEscalationPolicy has NO production caller \u2014 the live path is runLandLoop, whose LandEscalationMode is ladder|locked|token-gated, and resolvePolicyScope refuses `pinned` by name. Adding the fifth choice now would offer an option that refuses at first run, which this ticket's third acceptance criterion forbids in capitals. Also ruled out: mapping option (b) onto `locked` plus a one-entry matrix \u2014 D-024's cost note and the wizard's own doc comment already considered and rejected it, because `locked` pins a RUNG, not a model. The fix is core-lane and outside this ticket's apps/web write_scope, which under Law 1 is reported rather than worked around: filed as W12-37, now a dependency. Second thing to carry into the eventual claim: FirstRunWizard.tsx sits at EXACTLY 400 lines, so the fifth choice needs a file split planned at claim, not discovered mid-ticket."
-      ]
+      ],
+      "role": "ux-engineer"
     },
     {
       "id": "W12-17",
@@ -6579,7 +6581,8 @@
       ],
       "notes": [
         "Filed 2026-08-17 from D-026. The founder asked twice for Claude Max / ChatGPT Plus sign-in \"like opencode does\"; verifying how opencode actually does it is what produced this design \u2014 core ships an `AuthHook` + `loader` seam and the subscription flows live in separate plugin packages, which is precisely why opencode is structurally fine and a core implementation would not be. Sized 8 and deliberately design-heavy: the trust question is the hard part, and it is the part that cannot be retrofitted once a plugin API is public."
-      ]
+      ],
+      "role": "security-auditor"
     },
     {
       "id": "W12-28",
@@ -6869,7 +6872,8 @@
       ],
       "notes": [
         "Filed 2026-08-18 from W12-16. Eleventh instance of the defect class the W12-10 ratchet was built for, and the worst-shaped one so far: the engine is not merely uncalled, it is not exported from the gateway barrel at all \u2014 which is exactly why harbormaster reproduced its shape structurally instead of importing it. See W12-38 for the ratchet hole that let it through."
-      ]
+      ],
+      "role": "architecture-designer"
     },
     {
       "id": "W12-38",
@@ -6895,7 +6899,8 @@
       ],
       "notes": [
         "Filed 2026-08-18 alongside W12-37, which is the instance that exposed it."
-      ]
+      ],
+      "role": "test-engineer"
     }
   ]
 }

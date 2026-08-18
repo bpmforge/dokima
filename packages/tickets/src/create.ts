@@ -29,6 +29,10 @@ export function createTicket(
       title: input.title,
       lane: input.lane,
       interface: input.interface ?? null,
+      // Omitted rather than written as undefined when absent: this payload is
+      // hashed into an append-only event (C-6), so a key that means nothing
+      // should not be in it.
+      ...(input.role === undefined ? {} : { role: input.role }),
       writeScope: input.writeScope,
       dependsOn: input.dependsOn ?? [],
       acceptance: input.acceptance ?? [],
