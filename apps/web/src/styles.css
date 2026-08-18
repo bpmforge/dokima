@@ -204,6 +204,41 @@ a {
   justify-content: space-between;
   padding: var(--sw-space-3) var(--sw-space-4);
   border-bottom: var(--sw-border-width) solid var(--sw-border);
+  /* W13-01: the way out has to stay reachable. The Describe form is nine
+     questions long, and the header scrolling off it left no route to the
+     board, to Settings, or anywhere — you had to scroll back to the top to
+     navigate at all. Found by driving the real browser: a click aimed at the
+     header landed in a textarea. An opaque background is part of the fix, not
+     decoration — a translucent sticky bar lets the form scroll through it. */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--sw-bg);
+}
+
+/* The current destination is MARKED, not removed — removing the thing you are
+   standing on is what makes a nav feel like it moved.
+
+   An accent rule under the label rather than a tinted ground: this needs no
+   new token (the real token set is W13-03's job, and inventing half of one
+   here would mean doing it twice), and an underline carries no text-contrast
+   requirement of its own, so it holds in both themes as-is. */
+.app-shell__nav-item[aria-current='page'] {
+  border-color: var(--sw-accent);
+  font-weight: 600;
+}
+
+/* Groups, so a destination does not read the same as a preference. */
+.app-shell__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sw-space-3);
+}
+
+.app-shell__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--sw-space-1);
 }
 
 /* W9-04: one styled control everywhere — every plain <button> gets the

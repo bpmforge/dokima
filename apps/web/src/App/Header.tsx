@@ -39,6 +39,30 @@ function ThemeToggle() {
   );
 }
 
+/**
+ * Where you can go, in one list, rendered the same everywhere (W13-01).
+ *
+ * `view: null` is the workspace itself — a real destination, which is what
+ * lets "← Back" disappear: you return to the board by choosing the board,
+ * the same way you reach anywhere else, rather than by a control whose
+ * meaning depends on where you happen to be.
+ */
+const DESTINATIONS: ReadonlyArray<{
+  readonly label: string;
+  readonly view: View;
+  readonly needsProject: boolean;
+}> = [
+  // `view: null` is "the main surface", which is the Fleet with no project
+  // open and the project's board with one. It is always offered, and the label
+  // says which it currently is — the first draft of this list made it
+  // project-only, which left someone standing on the Roster with no project
+  // open and NO destination back to the Fleet. Three e2e specs caught it.
+  { label: 'Describe', view: 'interview', needsProject: true },
+  { label: 'Plan', view: 'plans', needsProject: true },
+  { label: 'Decisions', view: 'decisions', needsProject: true },
+  { label: 'Roster', view: 'roster', needsProject: false },
+];
+
 interface AppHeaderProps {
   appName: string;
   view: View;
@@ -60,64 +84,72 @@ export function AppHeader({
     <header className="app-shell__header">
       <span>{appName}</span>
       <div className="app-shell__header-actions">
-        <nav className="app-shell__nav">
-          {view && view !== 'settings' && view !== 'wizard' ? (
-            <button type="button" onClick={closeView}>
-              ← Back
-            </button>
-          ) : (
-            <>
-              <button type="button" onClick={() => openView('roster')}>
-                Roster
-              </button>
-              {projectId && (
-                <>
-                  {/* W10-54: the entry point to describing your own idea. Sits
-                      beside Plan because that is where a user looks for "what
-                      is this product going to be". */}
-                  <button type="button" onClick={() => openView('interview')}>
-                    Describe
-                  </button>
-                  <button type="button" onClick={() => openView('plans')}>
-                    Plan
-                  </button>
-                  {/* W10-72: the Decisions board was unreachable from anywhere
-                      in the app, so a run paused on a founder decision had no
-                      surface to answer it. */}
-                  <button type="button" onClick={() => openView('decisions')}>
-                    Decisions
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                className="app-shell__notifications-bell"
-                onClick={() => openView('notifications')}
-                aria-label={`Notifications, ${decideBadgeCount} awaiting a decision`}
-              >
-                <svg
-                  className="icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  focusable="false"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+        {/*
+          W13-01: THE DESTINATION SET IS STABLE. This used to collapse to a
+          single "← Back" the moment any view opened, so the map a user had
+          just learned disappeared exactly when they acted on it — and on the
+          Describe form, which is nine questions long, the header also scrolled
+          away entirely, leaving no way out at all without scrolling back up.
+          Both halves of that are why the founder reported "stopping every
+          second because it doesn't make sense".
+
+          The current destination is MARKED, never removed. Removing the thing
+          you are standing on is what makes a nav feel like it moved.
+        */}
+        <nav className="app-shell__nav" aria-label="Views">
+          <button
+            type="button"
+            className="app-shell__nav-item"
+            aria-current={view === null ? 'page' : undefined}
+            onClick={closeView}
+          >
+            {projectId === null ? 'Fleet' : 'Board'}
+          </button>
+          {DESTINATIONS.filter((d) => d.needsProject === false || projectId !== null).map(
+            (d) => {
+              const current = view === d.view;
+              return (
+                <button
+                  key={d.label}
+                  type="button"
+                  className="app-shell__nav-item"
+                  aria-current={current ? 'page' : undefined}
+                  onClick={() => (d.view === null ? closeView() : openView(d.view))}
                 >
-                  <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
-                  <path d="M10.5 19a2 2 0 0 0 3 0" />
-                </svg>
-                {decideBadgeCount > 0 && (
-                  <span className="app-shell__decide-badge" data-testid="decide-badge">
-                    {decideBadgeCount}
-                  </span>
-                )}
-              </button>
-            </>
+                  {d.label}
+                </button>
+              );
+            },
           )}
         </nav>
+        {/* What needs you — its own group, because a count is not a place. */}
+        <button
+          type="button"
+          className="app-shell__notifications-bell"
+          onClick={() => openView('notifications')}
+          aria-current={view === 'notifications' ? 'page' : undefined}
+          aria-label={`Notifications, ${decideBadgeCount} awaiting a decision`}
+        >
+          <svg
+            className="icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
+            <path d="M10.5 19a2 2 0 0 0 3 0" />
+          </svg>
+          {decideBadgeCount > 0 && (
+            <span className="app-shell__decide-badge" data-testid="decide-badge">
+              {decideBadgeCount}
+            </span>
+          )}
+        </button>
         {/* W12-29: header chrome recedes. Navigation is reachable, not
             competing with the page's actual action. */}
         <button

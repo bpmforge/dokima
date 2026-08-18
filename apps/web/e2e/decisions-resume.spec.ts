@@ -252,10 +252,15 @@ test.describe('a paused run has a path through it (W10-72)', () => {
   }) => {
     await runUntilPaused(page);
 
-    // Leaving the run and opening Decisions from the header finds the same two
-    // open slates. This is the half that did not exist at all: the component
-    // shipped in W5-14 and was mounted nowhere.
-    await page.getByRole('button', { name: '← Back' }).click();
+    // Opening Decisions from the header finds the same two open slates. This
+    // is the half that did not exist at all: the component shipped in W5-14
+    // and was mounted nowhere.
+    //
+    // W13-01 made this stronger rather than just different: it used to require
+    // clicking "← Back" FIRST, because opening any view replaced the whole nav
+    // with that one control. The destination set is stable now, so Decisions is
+    // reachable from wherever you are — which is the behaviour this test is
+    // really about, and the detour was evidence of the defect.
     await page.getByRole('button', { name: 'Decisions' }).click();
 
     const board = page.getByTestId('decisions-board');
