@@ -7052,10 +7052,12 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18, verified in the live browser rather than only in fixtures: scrolled to the bottom of the nine-question Describe form and the header is still there with every destination, Describe marked current. THE FIRST DRAFT INTRODUCED A NEW HOLE AND THE E2E SUITE CAUGHT IT: I made the main surface a project-only destination, which stranded anyone who opened the Roster with no project \u2014 the nav offered Roster, they were standing on Roster, and nothing led home. Three specs failed, all named 'toggles X and back to Fleet'. The fix is that `view: null` is ALWAYS offered and the label says which surface it currently is (Fleet with no project, Board with one). Three e2e call sites used '\u2190 Back', which no longer exists; two became a 'Fleet' click, and the third got SIMPLER \u2014 decisions-resume.spec.ts had to click Back before opening Decisions, purely because opening any view replaced the whole nav, and that detour was itself evidence of the defect. Deliberately did NOT invent tokens for the current-destination treatment: --sw-bg-subtle and --sw-border-strong do not exist, the real token set is W13-03's job, and half a system now means doing it twice \u2014 an accent border needs no new token and carries no text-contrast requirement."
+      ],
       "id": "W13-01",
       "title": "the header scrolls away and the nav changes between views \u2014 you lose the way out mid-form",
       "points": 3,
@@ -7064,7 +7066,8 @@
         "apps/web/src/App/Header.tsx",
         "apps/web/src/App/Header.test.tsx",
         "apps/web/src/styles.css",
-        "apps/web/src/styles.test.ts"
+        "apps/web/src/styles.test.ts",
+        "apps/web/e2e/**"
       ],
       "acceptance": [
         "FOUND IN A LIVE WALKTHROUGH 2026-08-18, and proven by accident: driving the browser, a click at the header coordinates landed in a textarea instead, because the header had scrolled off. On the Describe form \u2014 nine questions, well past one viewport \u2014 every navigation control disappears once you scroll. There is no way back to the board, to Settings, or anywhere, without scrolling to the top first.",

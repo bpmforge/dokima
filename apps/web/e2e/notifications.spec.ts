@@ -74,7 +74,10 @@ test('bell nav toggles the notification center and back to Fleet', async ({ page
   await expect(page.getByTestId('notifications-view')).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Morning queue' })).toBeVisible();
 
-  await page.getByRole('button', { name: '← Back', exact: true }).click();
+  // W13-01: no more "← Back" — the main surface is a destination like any
+  // other, so you return to it by choosing it. Label is Fleet with no
+  // project open, Board with one.
+  await page.getByRole('button', { name: 'Fleet', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
 });
 
