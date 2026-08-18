@@ -18,6 +18,7 @@ import {
   type ScopedRoleMatrix,
 } from '@dokima/gateway';
 import { git } from '@dokima/git';
+import { parseCompletionManifest } from '@dokima/loop';
 import { computeChangedPaths } from '@dokima/loop';
 import { createTicket, getTicket, type Ticket } from '@dokima/tickets';
 import { defaultHandoffBuilder } from '../loop-handoff.js';
@@ -222,6 +223,67 @@ describe('createGatewaySpawnSession', () => {
       ['commit', 'edit', 'list', 'read', 'search', 'verify', 'write'].sort(),
     );
   });
+
+  /**
+   * W13-09. The first supervised run: the agent wrote the function, verified
+   * it to exit 0 and committed it — then the loop auto-blocked twice with "no
+   * completion manifest returned" and released the ticket back to ready.
+   */
+  it(
+    'RED FIXTURE: the model is TOLD how a session ends. There was no system ' +
+      'message at all — every instruction it received was the rendered handoff, ' +
+      'and that did not state the contract either',
+    async () => {
+      const { log, cwd } = await setup();
+      const provider = new ScriptedFakeProvider([finalResponse('done', 0)]);
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, new CostLedger()),
+      );
+
+      await spawn({ prompt: 'TICKET: W9-01 Ticket W9-01\n', cwd });
+
+      const system = provider.calls[0]!.messages.filter((m) => m.role === 'system');
+      expect(system).toHaveLength(1);
+      // The two facts a system message is the right home for.
+      expect(system[0]!.content).toMatch(/Completion Manifest/);
+      expect(system[0]!.content).toMatch(/only.*tools|tools.*only/is);
+    },
+  );
+
+  it(
+    'a session returning the DOCUMENTED shape produces a manifest; the same ' +
+      'session answering in prose does not. This is the difference the ' +
+      'supervised run actually hit — correct work, unparseable reply',
+    async () => {
+      const documented = JSON.stringify({
+        ticket: 'W9-01',
+        files: ['src/math.mjs'],
+        commits: ['abc1234'],
+        verify: { command: 'true', exit: 0 },
+        evidence: ['node src/check.mjs printed OK'],
+      });
+
+      // One setup, two providers: `setup()` assigns the suite-level log/cwd
+      // that afterEach cleans, so calling it twice would leak the first.
+      const { log, cwd } = await setup();
+      const run = async (reply: string) => {
+        const spawn = createGatewaySpawnSession(
+          baseSpawnOptions(
+            log,
+            new ScriptedFakeProvider([finalResponse(reply, 0)]),
+            new CostLedger(),
+          ),
+        );
+        return spawn({ prompt: 'TICKET: W9-01 Ticket W9-01\n', cwd });
+      };
+
+      const ok = await run(documented);
+      expect(parseCompletionManifest(ok.stdout).manifest).not.toBeNull();
+
+      const bad = await run('I implemented subtract and the check passed.');
+      expect(parseCompletionManifest(bad.stdout).manifest).toBeNull();
+    },
+  );
 
   it('(acceptance 3) every model call records ledger spend attributable to the routed role/model', async () => {
     const { log, cwd } = await setup();
