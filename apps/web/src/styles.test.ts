@@ -830,3 +830,71 @@ describe('shortcuts overlay dt/dd column (W10-34)', () => {
     expect(css).not.toMatch(/\.shortcuts-overlay__row\s*\{/);
   });
 });
+
+/**
+ * W13-03. The direction is instrument panel: dense, one accent, tabular
+ * numerics, state encoded in form. These guard the parts of it that a later
+ * change could silently undo.
+ */
+describe('the design system (W13-03)', () => {
+  it(
+    'docs/design/tokens.json has not drifted from the stylesheet. It is ' +
+      'GENERATED from styles.css, which stays the source of truth — and a ' +
+      'generated file nothing re-checks is exactly how a second copy starts ' +
+      'lying',
+    () => {
+      const tokens = JSON.parse(
+        readFileSync(path.join(testDir, '..', '..', '..', 'docs', 'design', 'tokens.json'), 'utf-8'),
+      ) as { color: { dark: Record<string, string>; light: Record<string, string> } };
+      for (const [name, value] of Object.entries(tokens.color.dark)) {
+        expect(css, `${name} in tokens.json is not in styles.css`).toContain(
+          `${name}: ${value};`,
+        );
+      }
+    },
+  );
+
+  it(
+    'the dark accent does NOT take white text. Measured at 2.46:1, it fails — ' +
+      'and the previous dark accent had the identical trap, so this is the ' +
+      'second time. --sw-on-accent is the ground',
+    () => {
+      const dark = ruleBody(":root[data-theme='dark']");
+      expect(dark).toMatch(/--sw-on-accent:\s*#0e1417/);
+      expect(dark).not.toMatch(/--sw-on-accent:\s*#fff/i);
+    },
+  );
+
+  it(
+    'the type scale has enough range to carry hierarchy. It ran 0.65-1.25rem, ' +
+      'so every text on a Fleet card sat inside about four pixels and nothing ' +
+      'could read as more important than anything else',
+    () => {
+      const root = ruleBody(':root');
+      const sizes = [...root.matchAll(/--sw-text-[a-z0-9]+:\s*([\d.]+)rem/g)].map((m) =>
+        Number(m[1]),
+      );
+      expect(sizes.length).toBeGreaterThanOrEqual(8);
+      expect(Math.max(...sizes) / Math.min(...sizes)).toBeGreaterThan(3);
+    },
+  );
+
+  it('numbers get the tabular mono face — this product is mostly numbers', () => {
+    expect(ruleBody(':root')).toMatch(/--sw-font-mono:/);
+    for (const selector of ['.readout__value', '.tabular']) {
+      const body = ruleBody(selector);
+      expect(body).toMatch(/font-family:\s*var\(--sw-font-mono\)/);
+      expect(body).toMatch(/font-variant-numeric:\s*tabular-nums/);
+    }
+  });
+
+  it(
+    'a raised surface exists in BOTH themes. There was none at all, so cards ' +
+      'and panes had nothing to sit on and the app was one flat sheet with ' +
+      'lines drawn on it',
+    () => {
+      expect(ruleBody(':root')).toMatch(/--sw-surface:/);
+      expect(ruleBody(":root[data-theme='dark']")).toMatch(/--sw-surface:/);
+    },
+  );
+});

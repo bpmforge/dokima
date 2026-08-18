@@ -7115,10 +7115,12 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18. EVERY RATIO WAS COMPUTED, NOT ASSERTED, and doing so caught a real defect before it shipped: white on the new dark accent measures 2.46:1 and fails \u2014 so --sw-on-accent is the GROUND (7.56:1), which is the identical trap the previous dark accent had and a previous ticket fixed the same way. It now has its own guard so it cannot be reintroduced a third time. A second measurement changed a value: the hairline sits at 1.34:1 on the ground, fine as decoration and too weak for a divider that carries structure, so --sw-border-strong was added at 3.23:1 for WCAG 1.4.11 while --sw-border stays decorative. TWO THINGS THE OLD SYSTEM SIMPLY LACKED: a raised surface (there was no --sw-surface at all, so cards and panes had nothing to sit on and the app was one flat sheet with lines on it), and range in the type scale (0.65-1.25rem, so every text on a Fleet card lived inside four pixels). tokens.json is GENERATED from styles.css rather than hand-maintained, with a guard asserting it has not drifted \u2014 a generated file nothing re-checks is how a second copy starts lying. HONEST LIMIT, STATED RATHER THAN IMPLIED: the palette landed and the screens are NOT re-skinned, exactly as the acceptance required. `.readout` currently has no consumer, which is the no-caller shape this board has caught eleven times \u2014 deliberate here (W13-05/06 consume it) but worth naming, because the exports ratchet reads TypeScript and cannot see an unused CSS class at all."
+      ],
       "id": "W13-03",
       "title": "no design system exists \u2014 styles.css is a guardrail, not a token set, and Phase 3.5 never ran",
       "points": 8,

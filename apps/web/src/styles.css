@@ -24,12 +24,19 @@
   accent-color: var(--sw-accent);
 
   /* Surfaces and text */
-  --sw-bg: #ffffff;
-  --sw-fg: #10151a;
-  --sw-fg-muted: #586069; /* 6.38:1 on --sw-bg */
-  --sw-border: #d7dce1;
-  --sw-accent: #2e6bff;
-  --sw-on-accent: #ffffff; /* 4.50:1 on --sw-accent */
+  --sw-bg: #fbfcfc;
+  /* W13-03: a raised surface, which did not exist. Cards, panes and readouts
+     had nothing to sit ON, so the app was one flat sheet with lines drawn on
+     it — the single biggest reason it read as undesigned. */
+  --sw-surface: #ffffff;
+  --sw-fg: #0e1417; /* 18.06:1 on --sw-bg */
+  --sw-fg-muted: #5a6a6d; /* 5.50:1 on --sw-bg */
+  --sw-border: #d5dddd;
+  /* Structural dividers (pane edges, lane boundaries) carry meaning, so they
+     meet WCAG 1.4.11's 3:1 for non-text UI. --sw-border stays decorative. */
+  --sw-border-strong: #7e9093; /* 3.24:1 on --sw-bg */
+  --sw-accent: #0e7c93; /* 4.73:1 on --sw-bg */
+  --sw-on-accent: #ffffff; /* 4.86:1 on --sw-accent */
 
   /* Semantic state roles. Before W10-06 each of these was improvised
      per file: six different reds, five ambers, five greens, all with
@@ -56,14 +63,25 @@
   --sw-space-10: 2.5rem;
   --sw-space-12: 3rem;
 
-  /* Type scale */
-  --sw-text-2xs: 0.65rem;
-  --sw-text-xs: 0.7rem;
-  --sw-text-sm: 0.75rem;
-  --sw-text-md: 0.8rem;
-  --sw-text-base: 0.85rem;
-  --sw-text-lg: 1rem;
-  --sw-text-xl: 1.25rem;
+  /* Type scale. W13-03 widened this: the old range was 0.65-1.25rem, so every
+     text on a Fleet card lived inside about four pixels and nothing could read
+     as more important than anything else. Hierarchy needs range to exist in. */
+  --sw-text-2xs: 0.6875rem; /* 11px — micro label under a readout, nothing else */
+  --sw-text-xs: 0.75rem; /* 12px */
+  --sw-text-sm: 0.8125rem; /* 13px */
+  --sw-text-md: 0.875rem; /* 14px — body */
+  --sw-text-base: 0.875rem; /* alias; existing rules keep meaning what they meant */
+  --sw-text-lg: 1rem; /* 16px */
+  --sw-text-xl: 1.25rem; /* 20px */
+  --sw-text-2xl: 1.75rem; /* 28px */
+  --sw-text-3xl: 2.5rem; /* 40px — the readout */
+
+  /* THE PAIRING DECISION, and the one that matters here: this product's
+     screens are mostly numbers — counts, money, durations, rung labels. Those
+     get a tabular monospace, so columns line up and a changing digit does not
+     reflow its neighbours. No webfont: that is a TECH_STACK decision and a
+     bundle cost, and the system mono stacks are genuinely good. */
+  --sw-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Radius */
   --sw-radius-sm: 4px;
@@ -94,12 +112,20 @@
    two shows up as a colour flash. `styles.test.ts` asserts they match. */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --sw-bg: #10151a;
-  --sw-fg: #e8ecf1;
-  --sw-fg-muted: #9aa4b0; /* 7.26:1 — was #666 at 3.20:1, an AA failure */
-  --sw-border: #2a333c;
-  --sw-accent: #6ea0ff;
-  --sw-on-accent: #10151a; /* 7.11:1 — was #fff at 2.58:1, an AA failure */
+  /* Cyan-shifted charcoal, deliberately not a neutral near-black: the
+     generic dark-dashboard answer is #0a0a0a plus one acid accent, and
+     this product should not look like that. */
+  --sw-bg: #0e1417;
+  --sw-surface: #151d21;
+  --sw-fg: #e3ebea; /* 15.33:1 on --sw-bg */
+  --sw-fg-muted: #8fa0a3; /* 6.83:1 on --sw-bg */
+  --sw-border: #232e33;
+  --sw-border-strong: #526a71; /* 3.23:1 on --sw-bg (WCAG 1.4.11) */
+  --sw-accent: #46b3c9; /* 7.56:1 on --sw-bg */
+  /* The ground, NOT white: white on this accent measures 2.46:1 and
+     fails. The previous dark accent had the same trap; recorded so it
+     stays fixed. */
+  --sw-on-accent: #0e1417; /* 7.56:1 on --sw-accent */
   --sw-danger: #ff8a80; /* 8.04:1 */
   --sw-warning: #e0a800; /* 8.54:1 */
   --sw-success: #3fb950; /* 7.22:1 */
@@ -109,12 +135,20 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --sw-bg: #10151a;
-    --sw-fg: #e8ecf1;
-    --sw-fg-muted: #9aa4b0; /* 7.26:1 — was #666 at 3.20:1, an AA failure */
-    --sw-border: #2a333c;
-    --sw-accent: #6ea0ff;
-    --sw-on-accent: #10151a; /* 7.11:1 — was #fff at 2.58:1, an AA failure */
+    /* Cyan-shifted charcoal, deliberately not a neutral near-black: the
+       generic dark-dashboard answer is #0a0a0a plus one acid accent, and
+       this product should not look like that. */
+    --sw-bg: #0e1417;
+    --sw-surface: #151d21;
+    --sw-fg: #e3ebea; /* 15.33:1 on --sw-bg */
+    --sw-fg-muted: #8fa0a3; /* 6.83:1 on --sw-bg */
+    --sw-border: #232e33;
+    --sw-border-strong: #526a71; /* 3.23:1 on --sw-bg (WCAG 1.4.11) */
+    --sw-accent: #46b3c9; /* 7.56:1 on --sw-bg */
+    /* The ground, NOT white: white on this accent measures 2.46:1 and
+       fails. The previous dark accent had the same trap; recorded so it
+       stays fixed. */
+    --sw-on-accent: #0e1417; /* 7.56:1 on --sw-accent */
     --sw-danger: #ff8a80; /* 8.04:1 */
     --sw-warning: #e0a800; /* 8.54:1 */
     --sw-success: #3fb950; /* 7.22:1 */
@@ -492,4 +526,64 @@ label:has(> input[type='radio']) {
   width: var(--sw-divider-width);
   cursor: col-resize;
   background: var(--sw-border);
+}
+
+
+/* ==========================================================================
+   THE READOUT — the signature of the instrument-panel direction (W13-03).
+
+   This product's screens are counts, money, durations and rung labels, and
+   every one of them was rendered as ordinary prose at the same size as its own
+   label: "Ready 0 Blocked 0 Done 0", six cards deep, nothing scannable. A
+   readout is a number that reads as an instrument reading — tabular monospace
+   so a changing digit does not shift its neighbours, its own quiet ground, and
+   the label demoted to a micro cap beneath it. The number carries; the label
+   identifies.
+
+   Deliberately NOT applied to any screen in this ticket — W13-03 is tokens and
+   direction only, so the surfaces that follow inherit one system instead of
+   three interpretations. W13-05 and W13-06 are where these get used.
+   ========================================================================== */
+
+.readout {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--sw-space-0-5);
+  min-width: 0;
+}
+
+.readout__value {
+  font-family: var(--sw-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--sw-text-xl);
+  line-height: 1.1;
+  color: var(--sw-fg);
+}
+
+.readout__label {
+  font-size: var(--sw-text-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sw-fg-muted);
+}
+
+/* A reading of zero is not news. Recede it, so a board with work waiting is
+   the thing the eye finds — the Fleet's whole job (UX_SPEC §2, "needs you
+   first") and precisely what six identical cards could not do. */
+.readout--idle .readout__value {
+  color: var(--sw-fg-muted);
+}
+
+/* The one reading that may take the accent: something is waiting on a person.
+   Held to one meaning so it never has to compete with pass/fail, which keep
+   their own semantic hues. */
+.readout--attention .readout__value {
+  color: var(--sw-accent);
+}
+
+/* Any number outside a readout still lines up. Cheap, and it stops a column of
+   figures from jittering as values change. */
+.tabular {
+  font-family: var(--sw-font-mono);
+  font-variant-numeric: tabular-nums;
 }
