@@ -30,11 +30,11 @@ export interface PaletteReceiptResult {
 
 export type PaletteResult = PaletteTicketResult | PaletteDocResult | PaletteReceiptResult;
 
-/** UX_SPEC §2a: "'What are we doing today?' mode picker (New Product / Onboard / Feature / Improve)". */
+/** UX_SPEC §2a: "'What are we doing today?' mode picker (New project / Onboard / Feature / Improve)". */
 export type PaletteMode = 'new' | 'onboard' | 'feature' | 'improve';
 
 export const PALETTE_MODES: readonly { mode: PaletteMode; label: string }[] = [
-  { mode: 'new', label: 'New Product' },
+  { mode: 'new', label: 'New project' },
   { mode: 'onboard', label: 'Onboard existing repo' },
   { mode: 'feature', label: 'Feature' },
   { mode: 'improve', label: 'Improve' },

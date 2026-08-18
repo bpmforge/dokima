@@ -19,10 +19,10 @@ async function openFreshProject(page: Page, name: string, dir: string): Promise<
   await fs.mkdir(dir, { recursive: true });
   await page.goto('/');
   const header = page.locator('.fleet__header');
-  await header.getByRole('button', { name: 'New Product', exact: true }).click();
+  await header.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Directory path').fill(dir);
   await page.getByLabel('Name (optional)').fill(name);
-  await page.locator('.fleet__form').getByRole('button', { name: 'New Product' }).click();
+  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   const card = page.locator('.project-card', { hasText: name });
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Open' }).click();
