@@ -6687,7 +6687,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "docs/design/VOCABULARY.md",
         "apps/web/src/fleet/**"
