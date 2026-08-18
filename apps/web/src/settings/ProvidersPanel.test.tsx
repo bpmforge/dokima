@@ -16,6 +16,8 @@ import type { MockInstance } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ProvidersPanel } from './ProvidersPanel.js';
 import { ModelMatrixPanel } from './ModelMatrixPanel.js';
+import { useState } from 'react';
+import type { ProviderCatalog, ProviderEntry } from './providers-api.js';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return {
@@ -81,6 +83,34 @@ afterEach(() => {
   fetchSpy.mockRestore();
   vi.restoreAllMocks();
 });
+
+
+/**
+ * W12-35: mirrors how `SettingsPage` now owns the catalog — one
+ * `ProvidersPanel`, its discoveries handed to `ModelMatrixPanel` as props.
+ * These tests verify the integration (register/test a provider, the matrix
+ * picker populates), and that integration is exactly what the lift had to
+ * preserve; rendering `ModelMatrixPanel` alone no longer expresses it because
+ * the panel no longer mounts its own providers list.
+ */
+function MatrixWithProviders({ projectId = 'p1' }: { projectId?: string }) {
+  const [catalogs, setCatalogs] = useState<Record<string, ProviderCatalog>>({});
+  const [entries, setEntries] = useState<ProviderEntry[]>([]);
+  return (
+    <>
+      <ProvidersPanel
+        projectId={projectId}
+        onCatalogsChange={setCatalogs}
+        onEntriesChange={setEntries}
+      />
+      <ModelMatrixPanel
+        projectId={projectId}
+        catalogs={catalogs}
+        providerEntries={entries}
+      />
+    </>
+  );
+}
 
 describe('ProvidersPanel empty + registration states (AC1, AC2 states table)', () => {
   it('shows the exact UX_SPEC §6a empty state when no providers are registered', async () => {
@@ -418,7 +448,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
         getMatrix(() => matrixWire([])),
       ]),
     );
-    render(<ModelMatrixPanel projectId="p1" />);
+    render(<MatrixWithProviders />);
 
     const modelSelect = (await screen.findByLabelText('Model')) as HTMLSelectElement;
     expect(modelSelect.tagName).toBe('SELECT');
@@ -454,7 +484,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
         getMatrix(() => matrixWire([])),
       ]),
     );
-    render(<ModelMatrixPanel projectId="p1" />);
+    render(<MatrixWithProviders />);
     await screen.findByText('off1');
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
 
@@ -508,7 +538,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
         ),
       ]),
     );
-    render(<ModelMatrixPanel projectId="p1" />);
+    render(<MatrixWithProviders />);
     await screen.findByText('ollama1');
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
 
@@ -555,7 +585,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
         ),
       ]),
     );
-    render(<ModelMatrixPanel projectId="p1" />);
+    render(<MatrixWithProviders />);
     await screen.findByText('ollama1');
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
 
@@ -606,7 +636,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
         ),
       ]),
     );
-    render(<ModelMatrixPanel projectId="p1" />);
+    render(<MatrixWithProviders />);
     await screen.findByText('off1');
     await screen.findByText('on1');
     for (const button of screen.getAllByRole('button', { name: 'Test' })) {
@@ -638,7 +668,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
         ),
       ]),
     );
-    render(<ModelMatrixPanel projectId="p1" />);
+    render(<MatrixWithProviders />);
     const copilotRow = await screen.findByRole('row', { name: /challenger/ });
     expect(copilotRow.textContent).toContain('Copilot-backed');
   });

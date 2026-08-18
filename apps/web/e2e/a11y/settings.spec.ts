@@ -83,6 +83,12 @@ test('settings page has no WCAG 2.2 AA violations with a provider registered and
     page.getByRole('row', { name: /ollama-a11y/ }).getByText('Bundled'),
   ).toBeVisible();
 
+  // W12-35: register on the Providers tab, then switch. This is the flow that
+  // was IMPOSSIBLE before the catalog was lifted — ModelMatrixPanel mounted
+  // its own ProvidersPanel, so the discovered models lived in that instance
+  // and switching tabs produced an empty picker. That it works now is the
+  // point of the ticket.
+  await page.getByRole('button', { name: 'Model Matrix' }).click();
   const matrixForm = page.getByRole('form', { name: 'Add matrix row' });
   await matrixForm.getByLabel('Role').fill('coding-agent');
   await expect(matrixForm.getByLabel('Model')).toBeEnabled();
@@ -151,6 +157,7 @@ test('the Providers row action and the Model matrix picker are reachable and ope
   // proven by real Tab presses — the same reasoning keyboard-only.spec.ts's
   // verb-menu test already records for why raw arrow-key simulation on a
   // closed native <select> isn't what WCAG 2.1.1 actually requires.
+  await page.getByRole('button', { name: 'Model Matrix' }).click();
   const matrixForm2 = page.getByRole('form', { name: 'Add matrix row' });
   await matrixForm2.getByLabel('Role').fill('coding-agent');
   const modelSelect = matrixForm2.getByLabel('Model');
