@@ -6882,10 +6882,11 @@
       "module": "quality",
       "lane": "core",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "scripts/validate-exports.mjs",
-        "scripts/validate-exports.test.mjs"
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
       ],
       "depends_on": [],
       "stories": [],
@@ -6898,9 +6899,40 @@
         "Full gate per CLAUDE.md Law 3 on Node 22."
       ],
       "notes": [
-        "Filed 2026-08-18 alongside W12-37, which is the instance that exposed it."
+        "Filed 2026-08-18 alongside W12-37, which is the instance that exposed it.",
+        "write_scope gained conductor.config.json at claim: a new count that nothing enforces is a report, not a ratchet, and the existing --max baseline is passed from there. If the calibrated number turns out not to be worth gating on, that decision gets recorded rather than silently skipped.",
+        "Closed 2026-08-18 at --max-buried 73. The number is the finding: the blind spot was LARGER than the debt the ratchet could see (73 buried vs 43 exported). Calibration was measured, not assumed \u2014 90 raw, 108 once comment text stopped counting as a call, 73 once recorded fixtures and test-helper modules were excluded. The comment-stripping step is the one that mattered: runEscalationPolicy was hidden by exactly two prose mentions in loop-land-policy.ts explaining why that loop deliberately does NOT call it, so the first draft of this pass scored an explanation of why nothing calls a function as a call. Spot-checked three findings by hand before baselining rather than trusting the count \u2014 verifyBundleChain, runInContainerSandbox and codeSearchTool each have tests and zero production references. The barrel pass was left on its old counting on purpose and filed as W12-39: its 43 is a calibrated gate number, and sharpening the measurement underneath it is its own change with its own recalibration, not a side effect of this one."
       ],
       "role": "test-engineer"
+    },
+    {
+      "id": "W12-39",
+      "title": "the barrel export pass still counts prose as a call \u2014 its 43 is a floor, not a measurement",
+      "phase": 12,
+      "module": "quality",
+      "lane": "core",
+      "points": 3,
+      "status": "todo",
+      "role": "test-engineer",
+      "write_scope": [
+        "scripts/validate-exports.mjs",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
+      ],
+      "depends_on": [
+        "W12-38"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W12-10's reference count is a word-boundary text match over raw file contents, and its own module doc says so plainly: it OVER-counts, because \"a comment mentioning a name reads as a use\". W12-38 proved that is not a theoretical bias \u2014 `runEscalationPolicy` was hidden from the new pass by exactly two prose mentions in a comment explaining why nothing calls it, until comment-stripping was added. The barrel pass still counts that way.",
+        "W12-38 DELIBERATELY DID NOT FIX IT, and that is the reason this ticket exists rather than a wider diff: the barrel pass's 43 is a calibrated baseline wired into the per-ticket gate, and sharpening the measurement underneath it would move that number for reasons unrelated to whatever ticket happened to be open. Changing a ratchet's meaning is its own change, with its own recalibration.",
+        "MEASURE FIRST, THEN DECIDE. Run the barrel pass with `stripComments` (already exported by the validator) and report the new count against 43 before changing anything. If it rises, the increase is pre-existing debt the old counting concealed and the baseline is re-set to the measured number WITH the delta recorded \u2014 which is not the forbidden \"raise the baseline to make a ticket pass\", and the note must say why it is not, in those terms.",
+        "RED FIXTURE: a symbol whose only non-test mention is inside a comment is reported by the barrel pass. Construct it, do not hunt for one \u2014 the fixture should still hold after whatever real instance exists today gets wired up.",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ],
+      "notes": [
+        "Filed 2026-08-18 by W12-38, which found the bias and scoped it out on purpose rather than moving a calibrated baseline as a side effect."
+      ]
     }
   ]
 }
