@@ -38,6 +38,7 @@
     "lint": "eslint .",
     "lint:boundary-fixtures": "node e2e/boundary-fixtures/check-fixtures.mjs",
     "typecheck": "pnpm -r run typecheck",
+    "pretest": "node scripts/check-node.mjs",
     "test": "vitest run --retry=2",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

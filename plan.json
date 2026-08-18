@@ -7252,6 +7252,35 @@
         "RED FIXTURE: a deliberately altered frame fails the check by name, and an accepted baseline passes.",
         "Full gate per CLAUDE.md Law 3 on Node 22."
       ]
+    },
+    {
+      "id": "W13-08",
+      "title": "the Node-version guard covers the CLI and not the test runner, which is where it actually bites",
+      "phase": 13,
+      "module": "infra",
+      "lane": "infra",
+      "points": 2,
+      "status": "done",
+      "role": "sre-engineer",
+      "write_scope": [
+        "scripts/check-node.mjs",
+        "scripts/check-node.test.mjs",
+        "package.json"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "REPORTED AS \"tests failed\" 2026-08-18 BY A STOP HOOK, and they had not. The full gate is green on Node 22 \u2014 3633 tests, 69 e2e, lint and typecheck clean, all exit 0. The hook runs in its own shell, which does not inherit this session's `fnm use 22`: fnm's default here is v24.14.0 and a shell without fnm at all gets Homebrew's v26.7.0. Reproduced directly: `NODE_MODULE_VERSION 127 ... requires 147`, 17 of 27 failures in one file.",
+        "THE GUARD ALREADY EXISTS AND IS UNREACHABLE FROM HERE. W12-24 built `checkNodeSupported` in apps/server/src/bootstrap/node-abi-guard.mjs, and its message is exactly right \u2014 it names the product, the versions, and the fix. It runs on the CLI bootstrap path only. Tests, CI and hooks never touch that path, so the place the trap is actually sprung is the one place with no guard.",
+        "REUSE IT, DO NOT COPY IT. A second implementation of the same check is the duplication class this board has now caught four times (three copies of the adapter dispatch, four of the provider-kind table). `pretest` runs automatically before `test` under npm and pnpm, which makes it the natural seam.",
+        "REFUSE, DO NOT AUTO-SWITCH. Silently re-execing under a different Node would hide which version the suite actually ran on, and a test suite lying about its own runtime is worse than one that stops. Say what is wrong and what to type.",
+        "RED FIXTURE: the check refuses a mismatched version by name and passes the supported one, proven against `engines.node` rather than a hardcoded literal so it cannot drift when the engine moves.",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ],
+      "notes": [
+        "Filed 2026-08-18 from a stop-hook report of failing tests. The tests were fine; the report was accurate about the exit code and wrong about the cause, which is exactly the confusion the guard exists to prevent.",
+        "Closed 2026-08-18. Verified both directions on real interpreters rather than by mocking: silent exit 0 on Node 22, and on Homebrew's Node 26 the named refusal naming the product, both versions and the exact command to type. ONE FIXTURE OF MINE FAILED ON MY OWN PROSE: the assertion that this file does not reimplement the ABI table tripped on the doc comment, which QUOTES the NODE_MODULE_VERSION error it exists to explain. Fixed by asserting against the comment-stripped source using W12-39's own stripComments \u2014 the same lesson that ticket learned, that prose about a thing is not the thing, and the third time this session a comment has been mistaken for code by a check."
+      ]
     }
   ]
 }
