@@ -22,6 +22,8 @@ export interface GatewayConfig {
   readonly providerId?: string;
   /** W10-57: the registry entry's own request timeout, when it set one. */
   readonly requestTimeoutMs?: number;
+  /** W13-10: extra body fields for this endpoint (e.g. `reasoning_effort`). */
+  readonly requestExtras?: Record<string, unknown>;
   /** Test-only override — real callers always get the real `fetch`. */
   readonly fetchImpl?: typeof fetch;
 }
@@ -89,6 +91,9 @@ export function targetToConfig(
     ...(target.requestTimeoutMs === undefined
       ? {}
       : { requestTimeoutMs: target.requestTimeoutMs }),
+    ...(target.requestExtras === undefined
+      ? {}
+      : { requestExtras: target.requestExtras }),
     ...(fetchImpl ? { fetchImpl } : {}),
   };
 }

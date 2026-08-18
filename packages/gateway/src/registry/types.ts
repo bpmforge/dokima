@@ -78,6 +78,17 @@ export interface ProviderEntry {
   readonly project?: string;
   /** GCP region (e.g. `us-central1`) — required for `vertex`, meaningless elsewhere. */
   readonly location?: string;
+  /**
+   * Extra fields merged into every chat request to this endpoint (W13-10),
+   * e.g. `{ "reasoning_effort": "none" }` to stop a local reasoning model
+   * thinking before every answer. Describes the ENDPOINT, which is why it
+   * lives beside `baseUrl` rather than being a per-call argument.
+   *
+   * Cannot override `model`, `messages` or `tools` — the adapter merges it
+   * first and lets the derived fields win, so a provider entry can never
+   * silently defeat the model matrix.
+   */
+  readonly requestExtras?: Record<string, unknown>;
   readonly enabled: boolean;
 }
 

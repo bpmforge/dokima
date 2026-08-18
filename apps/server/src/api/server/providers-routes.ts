@@ -38,6 +38,7 @@ import {
   removeProvider,
 } from './providers-store.js';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
+import { fromWire, toWire, type WireProvider } from './providers-wire.js';
 import { getProjectSettings } from './settings-scope.js';
 import { registerCopilotDeviceAuthRoutes } from './providers-copilot-routes.js';
 
@@ -48,29 +49,6 @@ export interface ProvidersRoutesOptions {
   credentialStore?: CredentialStore;
   /** Scopes the vault's on-disk name index (DOKIMA_HOME) — tests only; production uses process.env. */
   env?: NodeJS.ProcessEnv;
-}
-
-interface WireProvider {
-  id: string;
-  kind: ProviderKind;
-  base_url?: string;
-  credential_ref?: string;
-  /** W12-25: required for `vertex` — which GCP project and region get billed. */
-  project?: string;
-  location?: string;
-  enabled: boolean;
-}
-
-function toWire(entry: ProviderEntry): WireProvider {
-  return {
-    id: entry.id,
-    kind: entry.kind,
-    ...(entry.baseUrl === undefined ? {} : { base_url: entry.baseUrl }),
-    ...(entry.credentialRef === undefined ? {} : { credential_ref: entry.credentialRef }),
-    ...(entry.project === undefined ? {} : { project: entry.project }),
-    ...(entry.location === undefined ? {} : { location: entry.location }),
-    enabled: entry.enabled,
-  };
 }
 
 interface WireCatalogModel {
@@ -124,23 +102,6 @@ function buildCatalogProvider(entry: ProviderEntry): Pick<Provider, 'listModels'
       );
       return provider.listModels();
     },
-  };
-}
-
-function fromWire(raw: unknown): unknown {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
-  const v = raw as Record<string, unknown>;
-  return {
-    id: v.id,
-    kind: v.kind,
-    baseUrl: v.base_url ?? v.baseUrl,
-    credentialRef: v.credential_ref ?? v.credentialRef,
-    // W12-25: another allowlist. Without these the browser could send a GCP
-    // project, this mapper would drop it, and the registry would refuse the
-    // entry for a field the user demonstrably filled in.
-    project: v.project,
-    location: v.location,
-    enabled: v.enabled,
   };
 }
 

@@ -7341,14 +7341,20 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/gateway/src/providers/oai-compat.ts",
         "packages/gateway/src/providers/oai-compat-types.ts",
         "packages/gateway/src/providers/oai-compat.test.ts",
         "packages/gateway/src/registry/types.ts",
-        "packages/gateway/src/registry/validate.ts"
+        "packages/gateway/src/registry/validate.ts",
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-wire.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/config.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "packages/gateway/src/registry/validate.test.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -7361,7 +7367,9 @@
         "Full gate per CLAUDE.md Law 3 on Node 22."
       ],
       "notes": [
-        "Filed 2026-08-18 from live testing. The founder asked what happens if thinking is disabled on bonsai-27b, and answering it honestly required the product to be able to send the field at all."
+        "Filed 2026-08-18 from live testing. The founder asked what happens if thinking is disabled on bonsai-27b, and answering it honestly required the product to be able to send the field at all.",
+        "write_scope widened along the whole chain, and the widening IS the point: a provider field is only real if it survives every hop from the HTTP body to the adapter. validate.ts\u2019s own comment names this \u2014 \"validating project/location and then omitting them here would ship the exact settable-and-inert field the W10-57 note warns about\" \u2014 so the same five hops were followed deliberately: wire (snake_case) -> registry entry -> ResolvedModelTarget -> GatewayConfig -> adapter constructor. Also gained providers-wire.ts: the field took providers-routes.ts from 397 to 405 lines, and the wire mapping is a real seam (published snake_case contract vs the registry\u2019s internal shape) rather than a convenient one.",
+        "Closed 2026-08-18, and the feature was verified by USING it rather than only by fixtures: configured `{reasoning_effort: none}` on the live remote endpoint through the real HTTP route, then re-ran the same ticket on the same model. THE RESULT IS THE INTERESTING PART. With thinking ON, bonsai-27b used `write` and clobbered `add()` out of math.mjs \u2014 verify failed with 'add is not a function' and it burned nine verify calls flailing. With thinking OFF it produced CORRECT code (both functions present, `node src/check.mjs` prints OK) in 88s instead of 136s. It still parked, but for a completely different and much better reason: it used all twelve tool turns (DEFAULT_MAX_TOOL_ITERATIONS) before emitting a manifest, so the work is right and unclosed rather than wrong. SECOND FINDING, RECORDED NOT FIXED: `maxIterations` is a session option that nothing in apps/server ever sets, so the cap is effectively hard-coded at 12 \u2014 less severe than a no-caller mechanism because the default is sensible, but a chatty local model cannot be given more room without editing source. The merge order carries the real safety property and has its own fixture: extras are spread FIRST so `model`/`messages` always win, because a provider entry able to rewrite the routed model would silently defeat the model matrix and the maker!=verifier separation routing enforces."
       ]
     }
   ]

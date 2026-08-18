@@ -58,6 +58,7 @@ export class OaiCompatProvider implements Provider {
   private readonly requestTimeoutMs: number;
   private readonly healthTimeoutMs: number;
   private readonly fetchImpl: typeof fetch;
+  private readonly requestExtras: Record<string, unknown> | undefined;
   private readonly queue: RequestQueue;
   private warmedAt: number | undefined;
   private warmupPromise: Promise<void> | undefined;
@@ -70,6 +71,7 @@ export class OaiCompatProvider implements Provider {
     this.requestTimeoutMs = config.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     this.healthTimeoutMs = config.healthTimeoutMs ?? DEFAULT_HEALTH_TIMEOUT_MS;
     this.fetchImpl = config.fetchImpl ?? fetch;
+    this.requestExtras = config.requestExtras;
     this.queue = new RequestQueue(config.concurrency ?? 1);
     this.headers = {
       'content-type': 'application/json',
@@ -133,6 +135,11 @@ export class OaiCompatProvider implements Provider {
     await this.ensureWarm();
     return this.queue.run(async () => {
       const body = {
+        // W13-10: extras FIRST, so everything derived below wins. A provider
+        // entry that could overwrite `model` or `messages` would silently
+        // defeat the model matrix, and with it the maker != verifier
+        // separation routing enforces.
+        ...this.requestExtras,
         model: request.model,
         messages: request.messages.map(toRawMessage),
         ...(request.temperature !== undefined
