@@ -109,3 +109,22 @@
 .interview__phases li[data-done='true'] {
   font-weight: 600;
 }
+
+
+/* W13-02: how long this is and how far in you are. Eight questions with no
+   count meant the only completion signal was a disabled button at the bottom. */
+.interview__progress {
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
+  margin: 0 0 var(--sw-space-3);
+}
+
+/* The disabled primary's reason, beside the primary rather than orphaned below
+   it, and carrying enough weight to be read. It names the ONE precondition
+   that is actually unmet — the old copy listed both regardless, and since the
+   title was pre-filled it usually blamed something the user had already done. */
+.interview__blocked {
+  display: block;
+  margin-top: var(--sw-space-2);
+  color: var(--sw-fg-muted);
+}

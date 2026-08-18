@@ -7082,10 +7082,12 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18, each fix verified in the live browser. THE TITLE TRAP WAS WORSE THAN FILED, and reading the code is what showed it: `title` seeded from `projectName`, which is the literal string \"Untitled\" for an unnamed project, and `ready` only required `title.trim() !== ''` \u2014 which \"Untitled\" SATISFIES. So the button was disabled purely for want of an answer while the message said \"Answer at least one question and give it a title\", blaming a title the user had never been asked for and which the form had silently supplied. The message now names the ONE precondition actually unmet, proven by three fixtures across the three states. THE PRIMARY HAD NO CLASS AT ALL \u2014 a bare <button> inheriting the plain pill, so \"Build the board\" never read as the screen's action even when ENABLED; `btn-primary` at the existing 0.55 disabled opacity reads as the accent action waiting on something rather than as a disabled input. `Drafts:` captions removed from all eight fields, but the `drafts` FIELD stays: it is the section heading `buildInterviewSession` writes into the generated document, so it was always internal and correctly used there \u2014 only its doc comment ('Shown under the field') was stale, and it is now corrected in place. ONE FIXTURE OF MINE WAS WRONG: I asserted nine questions from counting a screenshot and there are eight; it now asserts against INTERVIEW_QUESTIONS.length so it cannot go stale when a question is added."
+      ],
       "id": "W13-02",
       "title": "the Describe form has a title trap, an invisible primary, leaked internal names and no sense of length",
       "points": 5,
@@ -7094,7 +7096,11 @@
         "apps/web/src/onboarding/InterviewView.tsx",
         "apps/web/src/onboarding/InterviewView.test.tsx",
         "apps/web/src/onboarding/buildInterviewSession.ts",
-        "apps/web/src/styles.css"
+        "apps/web/src/styles.css",
+        "apps/web/src/onboarding/InterviewPanel.tsx",
+        "apps/web/src/onboarding/InterviewPanel.test.tsx",
+        "apps/web/src/onboarding/interview-topics.ts",
+        "apps/web/src/onboarding/onboarding.css"
       ],
       "acceptance": [
         "FOUR DEFECTS ON ONE SCREEN, all found live. (1) THE TITLE TRAP: \"Working title\" is pre-filled with the literal value \"Untitled\", so the field LOOKS answered while \"Build the board\" stays disabled telling you to \"give it a title\". A placeholder pretending to be a value is a trap, not a default.",
