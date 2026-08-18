@@ -6985,7 +6985,7 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/fleet/FleetHome.tsx",
@@ -6995,7 +6995,10 @@
         "apps/server/src/api/projects/routes.ts",
         "apps/server/src/api/projects/types.ts",
         "apps/server/src/api/projects/workspace-root.ts",
-        "apps/server/src/api/projects/workspace-root.test.ts"
+        "apps/server/src/api/projects/workspace-root.test.ts",
+        "apps/server/src/api/projects.test.ts",
+        "apps/web/src/fleet/fleet.css",
+        "apps/web/e2e/**"
       ],
       "depends_on": [],
       "stories": [],
@@ -7008,7 +7011,9 @@
         "RED FIXTURE: creating a project with a name and NO path succeeds, lands under the workspace root, and is refused by name rather than silently reopening when the slug already exists. Proven against the current required-path form first."
       ],
       "notes": [
-        "Filed 2026-08-18 from the supervised run. The UX_SPEC is complicit and that is the finding worth keeping: \u00a72 specifies the Fleet ACTIONS (\"New Product / Onboard existing repo / Import\") and never designs the step where the user says WHERE, so the implementation filled the hole with the laziest control that compiles and no review could catch it. Sibling ticket W12-42 covers onboard/import, which genuinely do need a path the system cannot guess."
+        "Filed 2026-08-18 from the supervised run. The UX_SPEC is complicit and that is the finding worth keeping: \u00a72 specifies the Fleet ACTIONS (\"New Product / Onboard existing repo / Import\") and never designs the step where the user says WHERE, so the implementation filled the hole with the laziest control that compiles and no review could catch it. Sibling ticket W12-42 covers onboard/import, which genuinely do need a path the system cannot guess.",
+        "write_scope widened twice mid-ticket, both for reasons visible only once the change existed. (1) apps/server/src/api/projects.test.ts: the route lives in projects/routes.ts but its tests live one directory up, and the route behaviour is the half worth proving \u2014 the workspace-root unit tests pass against a resolver nothing calls. (2) apps/web/e2e/**: nine specs opened New project and filled \"Directory path\", which is the field this ticket removes. They were rewritten to take the explicit-location escape rather than to Onboard, because they each seed state in a controlled tmpdir and genuinely need that path \u2014 which also leaves the escape hatch covered by real tests instead of only a unit fixture. Scripted in one pass rather than nine hand-edits; the Onboard call sites in the same files were left alone, verified individually.",
+        "Closed 2026-08-18. ONE ACCEPTANCE CRITERION WAS WRONG AS WRITTEN and the test suite proved it within a minute: I filed the collision guard against ANY existing directory, put it in registerProject, and it immediately reddened three unrelated tests that legitimately point `new` at a tmpdir they already created. Pointing New project at an empty folder you just made is fine, and reactivating an archived project by POSTing its path again is the DOCUMENTED un-archive route (UX_SPEC \u00a72) \u2014 breaking either would have been a worse defect than the one being fixed. The guard moved to routes.ts and fires only on the DERIVED path, which is the case that actually matters: the user named a project, never chose a location, and would otherwise have silently adopted someone else's directory. The narrower rule is also the truer one \u2014 an explicitly chosen path that exists is the caller taking responsibility. Nine e2e specs drove the removed field and were rewritten in one scripted pass to take the explicit-location escape rather than switching to Onboard, because each seeds state in a controlled tmpdir and genuinely needs that path; the Onboard call sites in the same files were verified individually and left alone. The design-token guard also caught a raw `font-size: 0.875rem` in the new hint style \u2014 W10-06 doing its job on a two-line CSS addition."
       ]
     },
     {

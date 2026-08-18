@@ -524,3 +524,148 @@ describe('project routes — buildApiServer integration', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+/**
+ * W12-41. The founder hit this on the FIRST SCREEN of the first supervised
+ * run and it stopped them: "How do you know what folder directory it needs to
+ * be in? ... having them try to remember or type in what they need to do."
+ */
+describe('creating a new project needs no path (W12-41)', () => {
+  const TOKEN2 = 'fleet-test-token';
+  const dirs2: string[] = [];
+  let active2: Awaited<ReturnType<typeof buildApiServer>> | null = null;
+
+  afterEach(async () => {
+    if (active2) await active2.app.close();
+    active2 = null;
+    for (const d of dirs2.splice(0)) await fs.rm(d, { recursive: true, force: true });
+  });
+
+  async function boot2() {
+    const fleetHome = await tmpDir('dokima-w1241-');
+    dirs2.push(fleetHome);
+    const server = await buildApiServer({
+      token: TOKEN2,
+      port: 4401,
+      isDbOpen: () => true,
+      logger: false,
+      fleetHome,
+    });
+    active2 = server;
+    return { app: server.app, fleetHome };
+  }
+
+  const h = { host: '127.0.0.1:4401', authorization: `Bearer ${TOKEN2}` };
+
+  async function setWorkspaceRoot(app: ApiServer['app'], root: string) {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/settings/global',
+      headers: h,
+      payload: { workspaceRoot: root },
+    });
+    expect(res.statusCode).toBeLessThan(300);
+  }
+
+  it(
+    'RED FIXTURE: a NAME alone creates the project. The server already ran ' +
+      'fs.mkdir + ensureGitRepo for mode "new", so the form was asking the user ' +
+      'to dictate the path of a directory it was about to create anyway',
+    async () => {
+      const { app } = await boot2();
+      const root = await tmpDir('dokima-ws-');
+      dirs2.push(root);
+      await setWorkspaceRoot(app, root);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: h,
+        payload: { name: 'My App', mode: 'new' },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const card = res.json();
+      expect(card.path).toBe(path.join(root, 'my-app'));
+      expect(card.name).toBe('My App');
+      // The directory really exists — this is not a registry-only record.
+      expect(await fs.stat(card.path).then(() => true)).toBe(true);
+    },
+  );
+
+  it(
+    'creating the SAME NAME twice refuses instead of silently reopening the ' +
+      'first project. fs.mkdir(recursive) succeeds on an existing directory and ' +
+      'registerProject then reactivates the existing record — so before this ' +
+      'guard the second "New project" quietly adopted the first and said nothing',
+    async () => {
+      const { app } = await boot2();
+      const root = await tmpDir('dokima-ws-');
+      dirs2.push(root);
+      await setWorkspaceRoot(app, root);
+
+      const first = await app.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: h,
+        payload: { name: 'My App', mode: 'new' },
+      });
+      expect(first.statusCode).toBe(201);
+
+      const second = await app.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: h,
+        payload: { name: 'My App', mode: 'new' },
+      });
+      expect(second.statusCode).toBe(400);
+      expect(JSON.stringify(second.json())).toMatch(/already exists/);
+    },
+  );
+
+  it('an explicit path still wins — the escape hatch for people who keep everything under ~/Code', async () => {
+    const { app } = await boot2();
+    const root = await tmpDir('dokima-ws-');
+    const elsewhere = path.join(root, 'somewhere', 'custom-spot');
+    dirs2.push(root);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: h,
+      payload: { name: 'My App', path: elsewhere, mode: 'new' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().path).toBe(elsewhere);
+  });
+
+  it('onboard and import still REQUIRE a path — that directory exists and only the user knows where', async () => {
+    const { app } = await boot2();
+    for (const mode of ['onboard', 'import']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: h,
+        payload: { name: 'My App', mode },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.stringify(res.json())).toMatch(/path.{0,4} is required/);
+    }
+  });
+
+  it('a name with no usable characters is refused by name, not turned into a mystery folder', async () => {
+    const { app } = await boot2();
+    const root = await tmpDir('dokima-ws-');
+    dirs2.push(root);
+    await setWorkspaceRoot(app, root);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: h,
+      payload: { name: '🎉🎉', mode: 'new' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.stringify(res.json())).toMatch(/usable in a folder name/);
+  });
+});

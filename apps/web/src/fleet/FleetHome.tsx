@@ -191,6 +191,14 @@ interface NewProjectFormProps {
 function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
   const [path, setPath] = useState('');
   const [name, setName] = useState('');
+  // W12-41: `new` asks for a NAME and nothing else. The server creates that
+  // directory (`fs.mkdir` + `ensureGitRepo`) and resolves where it goes, so
+  // asking the user to type an absolute path was asking them to dictate a
+  // location for something that did not exist yet. `onboard`/`import` are the
+  // opposite case: the directory is already there and only the user knows
+  // where, so they still ask (a picker is W12-42).
+  const derivesPath = mode === 'new';
+  const [showLocation, setShowLocation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -199,7 +207,13 @@ function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
     setSubmitting(true);
     setFormError(null);
     try {
-      await onSubmit({ path, name: name.trim() || undefined, mode });
+      await onSubmit({
+        // Omitted entirely when derived — sending '' would read as "the user
+        // chose the empty path" rather than "the user did not choose".
+        ...(derivesPath && !showLocation ? {} : { path }),
+        name: name.trim() || undefined,
+        mode,
+      });
     } catch (err) {
       setFormError(errorMessage(err, 'Failed to register project'));
     } finally {
@@ -214,19 +228,61 @@ function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
       aria-label={MODE_LABEL[mode]}
     >
       <h2>{MODE_LABEL[mode]}</h2>
-      <label>
-        Directory path
-        <input
-          value={path}
-          onChange={(event) => setPath(event.target.value)}
-          required
-          autoFocus
-        />
-      </label>
-      <label>
-        Name (optional)
-        <input value={name} onChange={(event) => setName(event.target.value)} />
-      </label>
+      {derivesPath ? (
+        <>
+          <label>
+            Project name
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="My App"
+              required
+              autoFocus
+            />
+          </label>
+          {showLocation ? (
+            <label>
+              Folder
+              <input
+                value={path}
+                onChange={(event) => setPath(event.target.value)}
+                placeholder="/Users/you/Code/my-app"
+                required
+              />
+            </label>
+          ) : (
+            <p className="fleet__form-hint">
+              A folder is created for you and set up as a git repository. To put it
+              somewhere specific instead,{' '}
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => setShowLocation(true)}
+              >
+                choose the location
+              </button>
+              .
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <label>
+            Directory path
+            <input
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="/Users/you/Code/existing-repo"
+              required
+              autoFocus
+            />
+          </label>
+          <label>
+            Name (optional)
+            <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+        </>
+      )}
       {formError && <p role="alert">{formError}</p>}
       <div className="fleet__form-actions">
         <button type="submit" disabled={submitting}>

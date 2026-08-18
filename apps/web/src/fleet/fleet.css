@@ -218,3 +218,12 @@
   font-size: var(--sw-text-md);
   opacity: 0.75;
 }
+
+/* W12-41: the line that replaces a required path input on "New project".
+   Sized down and in the muted token because it is reassurance, not a control
+   — the only thing to fill in on that form now is the name. */
+.fleet__form-hint {
+  font-size: var(--sw-text-base);
+  color: var(--sw-fg-muted);
+  margin: 0;
+}

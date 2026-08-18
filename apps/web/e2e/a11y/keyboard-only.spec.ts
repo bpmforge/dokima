@@ -102,8 +102,12 @@ test('the morning queue Decide Approve action is reachable and operable keyboard
     .locator('.fleet__header')
     .getByRole('button', { name: 'New project', exact: true })
     .click();
-  await page.getByLabel('Directory path').fill(dir);
-  await page.getByLabel('Name (optional)').fill(name);
+  // W12-41: New project asks only for a name now — the server creates
+  // the folder. These specs need a controlled tmpdir, so they take the
+  // explicit-location escape, which also keeps that path covered.
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(dir);
+  await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   const projectCard = page.locator('.project-card', { hasText: name });
   await expect(projectCard).toBeVisible();
