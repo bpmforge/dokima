@@ -32,8 +32,51 @@ export interface Handoff {
 }
 
 const BLOCK_RULE = '═'.repeat(40);
-const RETURN_LINE =
-  'RETURN: Completion Manifest (files produced, verify result, evidence)';
+/**
+ * THE MANIFEST CONTRACT, STATED (W13-09).
+ *
+ * Found by the first supervised run. On a local model the agent did the work
+ * correctly — wrote the function, ran verify to exit 0, committed it on its own
+ * branch — and the loop then auto-blocked twice with "no completion manifest
+ * returned" and released the ticket back to ready.
+ *
+ * The cause was not the model. `parseCompletionManifest` requires strict JSON
+ * with `ticket`, `files[]`, `commits[]`, `evidence[]` and `verify{command,exit}`,
+ * and the ONLY thing the model was ever told was one line of prose: "RETURN:
+ * Completion Manifest (files produced, verify result, evidence)". Never that it
+ * must be JSON, never the field names, never an example. The system asked in
+ * words and validated against a schema, and a model writing prose in reply was
+ * behaving reasonably.
+ *
+ * The parser is deliberately NOT loosened. It already tries three tiers and
+ * strips thinking blocks; making it accept prose would mean accepting an
+ * unverifiable claim, which is the opposite of what a manifest is for.
+ *
+ * THE EXAMPLE IS FILLED IN WITH THIS TICKET'S OWN VALUES, not a placeholder. A
+ * schema a model has to infer is a schema it will get wrong, and that matters
+ * most for a smaller local model — which is the configuration this product
+ * guarantees works (C-1, D-024 option a).
+ */
+function returnBlock(ticketId: string, verify: string): string {
+  return [
+    'RETURN: when the work is done, reply with ONLY this JSON object and no',
+    'other text. Every field is required.',
+    '',
+    '```json',
+    JSON.stringify(
+      {
+        ticket: ticketId,
+        files: ['path/you/changed.ts'],
+        commits: ['the commit sha you made'],
+        verify: { command: verify, exit: 0 },
+        evidence: ['what you checked, and what it showed'],
+      },
+      null,
+      2,
+    ),
+    '```',
+  ].join('\n');
+}
 
 export interface RenderHandoffOptions {
   /**
@@ -79,7 +122,7 @@ export function renderHandoff(handoff: Handoff, opts: RenderHandoffOptions = {})
     `WRITE-SCOPE: ${handoff.writeScope.join(', ')}`,
     `PRODUCE: ${produce.join('; ')}`,
     `VERIFY: ${verify}`,
-    RETURN_LINE,
+    returnBlock(handoff.ticket.id, verify),
     BLOCK_RULE,
   ];
   return lines.join('\n');

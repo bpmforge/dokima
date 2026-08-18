@@ -111,6 +111,7 @@ import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
+import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 
 /**
  * SC-01's own real check (see module header), run once the tool loop has
@@ -254,7 +255,11 @@ export function createGatewaySpawnSession(
       secretValues: options.secretValues ?? [],
     };
 
-    const messages: ChatMessage[] = [{ role: 'user', content: input.prompt }];
+    // W13-09: a system message, where there was none — see session-prompt.ts.
+    const messages: ChatMessage[] = [
+      { role: 'system', content: SESSION_SYSTEM_PROMPT },
+      { role: 'user', content: input.prompt },
+    ];
 
     /**
      * FR-L2 tool anchor (W12-05). Validator/verify output is external ground

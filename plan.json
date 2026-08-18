@@ -7299,6 +7299,40 @@
         "Filed 2026-08-18 from a stop-hook report of failing tests. The tests were fine; the report was accurate about the exit code and wrong about the cause, which is exactly the confusion the guard exists to prevent.",
         "Closed 2026-08-18. Verified both directions on real interpreters rather than by mocking: silent exit 0 on Node 22, and on Homebrew's Node 26 the named refusal naming the product, both versions and the exact command to type. ONE FIXTURE OF MINE FAILED ON MY OWN PROSE: the assertion that this file does not reimplement the ABI table tripped on the doc comment, which QUOTES the NODE_MODULE_VERSION error it exists to explain. Fixed by asserting against the comment-stripped source using W12-39's own stripComments \u2014 the same lesson that ticket learned, that prose about a thing is not the thing, and the third time this session a comment has been mistaken for code by a check."
       ]
+    },
+    {
+      "id": "W13-09",
+      "title": "the model is never told the Completion Manifest contract \u2014 asked in prose, validated as a schema",
+      "phase": 13,
+      "module": "loop",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/loop/src/handoff.ts",
+        "packages/loop/src/handoff.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/loop/src/index.ts",
+        "packages/harbormaster/src/agent-session/session-prompt.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND BY THE FIRST SUPERVISED RUN, 2026-08-18 \u2014 the exact class of defect that run exists to catch, and one no fixture could have found. On a local model the agent did the work CORRECTLY: wrote subtract(a,b), ran verify to exit 0, and committed it on its own branch in its own worktree. The loop then auto-blocked with \"ladder attempt cap (2) reached without a close \u00b7 exitCode=0 no completion manifest returned\" on both attempts, and released the ticket back to ready.",
+        "THE CONTRACT IS NEVER STATED. `parseCompletionManifest` requires strict JSON with `ticket: string`, `files: string[]`, `commits: string[]`, `evidence: string[]` and `verify: {command, exit}`. The only thing the model is ever told is one line of prose: \"RETURN: Completion Manifest (files produced, verify result, evidence)\". It is never told the output must be JSON, never given the field names, and never shown an example. The system asks in words and validates against a schema.",
+        "THERE IS ALSO NO SYSTEM MESSAGE AT ALL: `gateway-session.ts` builds `messages` as `[{ role: user, content: input.prompt }]`. Every instruction the model will ever receive is the rendered HANDOFF, which makes that render the ONLY place a contract can live \u2014 and it does not carry one.",
+        "THE PARSER IS NOT THE PROBLEM AND MUST NOT BE LOOSENED. It already tries three tiers (whole text, embedded balanced object, fenced block) and strips thinking blocks. Making it accept prose would mean accepting an unverifiable claim, which is the opposite of what a manifest is for. Fix the instruction, not the check.",
+        "STATE THE SHAPE AND SHOW ONE FILLED EXAMPLE. A schema a model has to infer is a schema it will get wrong; the example is what makes the difference for a smaller local model, which is precisely the configuration this product guarantees (D-024 option a, C-1). Keep the block compact \u2014 it is prepended to every session prompt and competes with the packed context for the window.",
+        "RED FIXTURE: the rendered handoff names every required field and carries a parseable example, proven by feeding that example straight into `parseCompletionManifest`; and a fake-model session that returns the documented shape closes, where the same session returning prose does not. Fixtures only, never a live call (law 9a)."
+      ],
+      "notes": [
+        "Filed 2026-08-18 from the first supervised run. Everything fixture-tested worked \u2014 worktree isolation, the MCP allowlist, the tool loop, SC-17/SC-01, the commit path \u2014 and the one thing no fixture could catch (that the model is never told the output contract) is what broke. The work from that run is still on branch sw/T-1-implement-subtract-a-b-in-src-math-mjs in /tmp/dokima-run, correct and verified.",
+        "write_scope gained packages/loop/src/index.ts: `parseCompletionManifest` \u2014 the function that decides whether a session closed a ticket \u2014 was not exported from the barrel, so nothing outside @dokima/loop could assert a session against the REAL contract without a deep import, which law 6 forbids across package boundaries. The harbormaster fixture that proves 'documented shape closes, prose does not' needs exactly that function; asserting against a re-implementation of it would prove nothing.",
+        "write_scope gained session-prompt.ts: adding the system message took gateway-session.ts from 394 to 429 lines, past the 400-line cap, caught by the repo-wide validator in the full gate. The seam is real rather than convenient \u2014 this is the standing instruction every session receives, while gateway-session.ts is the loop that runs one. Fourth time this wave the cap has caught accretion rather than a single oversized write.",
+        "Closed 2026-08-18. THE STRONGEST FIXTURE IS THAT THE EXAMPLE IN THE PROMPT IS FED TO THE REAL PARSER \u2014 a documented shape the parser rejects would be worse than no documentation, because it would look right and fail identically. Building it surfaced a second gap: `parseCompletionManifest`, the function that decides whether a session closed a ticket, was NOT exported from @dokima/loop's barrel, so nothing outside that package could assert a session against the real contract without a deep import (law 6). Asserting against a re-implementation would have proved nothing. TWO LEGACY FIXTURES CORRECTLY BROKE: they pinned the handoff byte-for-byte, which makes improving a prompt look like a regression \u2014 the field lines are still asserted exactly, and the RETURN section is now asserted by its CONTRACT (names every required field, carries a parseable example) rather than its literal text. The parser was deliberately not loosened: it already tries three tiers and strips thinking blocks, and making it accept prose would mean accepting an unverifiable claim, which is the opposite of what a manifest is for. The cap caught accretion a fourth time this wave (394 -> 429), so the system prompt became its own chapter."
+      ]
     }
   ]
 }
