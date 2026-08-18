@@ -78,3 +78,24 @@ describe('project-scoped kinds (W12-14)', () => {
     ).toThrowError(/project must be a string|requires project/);
   });
 });
+
+describe('requestExtras on a provider entry (W13-10)', () => {
+  const base = { id: 'studio', kind: 'oai-compat', baseUrl: 'http://x.invalid/v1', enabled: true };
+
+  it('survives validation and reaches the entry — a field the adapter never sees is settable and inert', () => {
+    const entry = validateProviderEntry({ ...base, requestExtras: { reasoning_effort: 'none' } });
+    expect(entry.requestExtras).toEqual({ reasoning_effort: 'none' });
+  });
+
+  it('refuses a non-object rather than silently dropping it', () => {
+    for (const bad of ['none', 42, ['a'], null]) {
+      expect(() => validateProviderEntry({ ...base, requestExtras: bad })).toThrow(
+        /requestExtras must be a JSON object/,
+      );
+    }
+  });
+
+  it('stays absent when not set — 12 existing entries must be unchanged', () => {
+    expect(validateProviderEntry(base).requestExtras).toBeUndefined();
+  });
+});

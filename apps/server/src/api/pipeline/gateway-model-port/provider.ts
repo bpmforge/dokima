@@ -266,6 +266,12 @@ export async function providerForConfig(
         ...(config.requestTimeoutMs === undefined
           ? {}
           : { requestTimeoutMs: config.requestTimeoutMs }),
+        // W13-10, same reason as the timeout above: a registry field the
+        // adapter never receives is settable and inert. This is what lets a
+        // local reasoning model be told to stop thinking.
+        ...(config.requestExtras === undefined
+          ? {}
+          : { requestExtras: config.requestExtras }),
       });
     }
   }

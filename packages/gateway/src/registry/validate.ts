@@ -128,6 +128,13 @@ export function validateProviderEntry(
     );
   }
 
+  if (v.requestExtras !== undefined && !isPlainObject(v.requestExtras)) {
+    throw new ProviderRegistryError(
+      'requestExtras must be a JSON object of fields to merge into each request',
+      'invalid-request-extras',
+    );
+  }
+
   if (typeof v.enabled !== 'boolean') {
     throw new ProviderRegistryError('enabled must be a boolean', 'invalid-enabled');
   }
@@ -164,8 +171,17 @@ export function validateProviderEntry(
     // would never see it.
     ...(typeof v.project === 'string' ? { project: v.project } : {}),
     ...(typeof v.location === 'string' ? { location: v.location } : {}),
+    // W13-10, same rule as the two above: carried through explicitly, because
+    // a field the registry accepts and the adapter never receives is the
+    // "settable and inert" defect this allowlist exists to prevent.
+    ...(isPlainObject(v.requestExtras) ? { requestExtras: v.requestExtras } : {}),
   };
   return entry;
+}
+
+/** A JSON object, not an array and not null — the only shape `requestExtras` may take. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** Validates a whole registry, additionally refusing duplicate ids. */

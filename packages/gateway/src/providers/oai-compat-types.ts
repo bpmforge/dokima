@@ -19,6 +19,23 @@ export interface OaiCompatConfig {
   requestTimeoutMs?: number;
   healthTimeoutMs?: number;
   fetchImpl?: typeof fetch;
+  /**
+   * Extra fields merged into every chat request body (W13-10).
+   *
+   * OpenAI-compatible endpoints are a family, not a standard, and the
+   * differences land exactly where local models live. Found in live testing:
+   * `prism-ml/bonsai-27b` is a reasoning model that spends ~200 tokens
+   * thinking before answering, and the only thing that stops it is
+   * `reasoning_effort` — measured, with `chat_template_kwargs.enable_thinking`
+   * and a `/no_think` suffix both doing nothing. Without this the product
+   * cannot configure such a model at all, which cuts against D-024 option (a):
+   * local-only is a guaranteed-supported configuration.
+   *
+   * MERGED FIRST, so the derived fields always win. A config value that could
+   * overwrite `model` would let a provider entry silently defeat the model
+   * matrix — and with it the maker != verifier separation routing enforces.
+   */
+  requestExtras?: Record<string, unknown>;
 }
 
 export interface RawChatChoice {

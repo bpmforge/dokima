@@ -61,6 +61,8 @@ export interface ResolvedModelTarget {
   readonly credentialRef?: string;
   /** W10-57: the entry's own timeout, when it set one. Absent = the kind's default. */
   readonly requestTimeoutMs?: number;
+  /** W13-10: extra request-body fields for this endpoint (e.g. `reasoning_effort`). */
+  readonly requestExtras?: Record<string, unknown>;
   /** The bare model id sent on the wire — prefix stripped. */
   readonly model: string;
   /** GCP project/region for `vertex` (W12-14) — absent for every other kind. */
@@ -247,6 +249,7 @@ function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'so
     ...(entry.requestTimeoutMs === undefined
       ? {}
       : { requestTimeoutMs: entry.requestTimeoutMs }),
+    ...(entry.requestExtras === undefined ? {} : { requestExtras: entry.requestExtras }),
   };
 }
 

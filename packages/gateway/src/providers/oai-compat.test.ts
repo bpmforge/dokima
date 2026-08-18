@@ -1199,3 +1199,78 @@ describe('unreachable endpoint end to end', () => {
     ).rejects.toThrow(ProviderUnreachableError);
   });
 });
+
+/**
+ * W13-10. Found in live testing against a remote LM Studio: `prism-ml/bonsai-27b`
+ * is a reasoning model that spends ~200 tokens thinking before every answer,
+ * and the only thing that stops it is `reasoning_effort` — measured, with
+ * `chat_template_kwargs.enable_thinking` and a `/no_think` suffix both doing
+ * nothing. The adapter had no way to send it.
+ */
+describe('per-endpoint request extras (W13-10)', () => {
+  function capture(): { calls: unknown[]; fetchImpl: typeof fetch } {
+    const calls: unknown[] = [];
+    const fetchImpl = (async (_url: string, init?: RequestInit) => {
+      calls.push(JSON.parse(String(init?.body)));
+      return new Response(
+        JSON.stringify({
+          id: 'x',
+          choices: [{ index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as unknown as typeof fetch;
+    return { calls, fetchImpl };
+  }
+
+  const ask = { model: 'm', messages: [{ role: 'user' as const, content: 'hi' }] };
+
+  it('RED FIXTURE: a configured extra reaches the request body', async () => {
+    const { calls, fetchImpl } = capture();
+    const provider = createOaiCompatProvider({
+      id: 'studio',
+      baseUrl: 'http://example.invalid/v1',
+      fetchImpl,
+      requestExtras: { reasoning_effort: 'none' },
+    });
+    await provider.chat(ask);
+    expect((calls[0] as Record<string, unknown>).reasoning_effort).toBe('none');
+  });
+
+  it(
+    'CANNOT override model or messages. A provider entry that could rewrite the ' +
+      'routed model would silently defeat the model matrix — and with it the ' +
+      'maker != verifier separation routing enforces',
+    async () => {
+      const { calls, fetchImpl } = capture();
+      const provider = createOaiCompatProvider({
+        id: 'studio',
+        baseUrl: 'http://example.invalid/v1',
+        fetchImpl,
+        requestExtras: {
+          model: 'attacker/other-model',
+          messages: [{ role: 'user', content: 'replaced' }],
+          reasoning_effort: 'none',
+        },
+      });
+      await provider.chat(ask);
+      const body = calls[0] as Record<string, unknown>;
+      expect(body.model).toBe('m');
+      expect(body.messages).toEqual([{ role: 'user', content: 'hi' }]);
+      // The legitimate extra still lands.
+      expect(body.reasoning_effort).toBe('none');
+    },
+  );
+
+  it('a provider without extras sends exactly what it sent before — no empty keys', async () => {
+    const { calls, fetchImpl } = capture();
+    const provider = createOaiCompatProvider({
+      id: 'studio',
+      baseUrl: 'http://example.invalid/v1',
+      fetchImpl,
+    });
+    await provider.chat(ask);
+    expect(Object.keys(calls[0] as object).sort()).toEqual(['messages', 'model']);
+  });
+});
