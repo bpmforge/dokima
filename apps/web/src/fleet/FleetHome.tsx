@@ -19,14 +19,14 @@ import './fleet.css';
 const POLL_INTERVAL_MS = 5_000;
 
 const MODE_LABEL: Record<ProjectMode, string> = {
-  new: 'New Product',
+  new: 'New project',
   onboard: 'Onboard existing repo',
   import: 'Import',
 };
 
 /** The commit action needs its own verb — MODE_LABEL alone reads as a noun-phrase mode name, not something a button press does. */
 const SUBMIT_LABEL: Record<ProjectMode, string> = {
-  new: 'Create New Product',
+  new: 'Create project',
   onboard: 'Onboard existing repo',
   import: 'Import',
 };
@@ -107,7 +107,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
       <header className="fleet__header">
         <h1>Fleet</h1>
         <div className="fleet__actions">
-          {/* W12-29: one primary per screen. New Product is what a person
+          {/* W12-29: one primary per screen. New project is what a person
               came to Fleet to do; the rest are real actions that should not
               compete with it. */}
           <button
@@ -115,7 +115,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
             className="btn-primary"
             onClick={() => setFormMode('new')}
           >
-            New Product
+            New project
           </button>
           <button
             type="button"
@@ -272,11 +272,11 @@ function EmptyState({
         models.
       </p>
       <div className="empty-state__actions">
-        {/* Secondary, not primary: the header's New Product is the persistent
+        {/* Secondary, not primary: the header's New project is the persistent
             action and owns the single primary slot. Two blue buttons labelled
             the same thing is worse than none. */}
         <button type="button" className="btn-secondary" onClick={onNewProduct}>
-          New Product
+          New project
         </button>
         <button type="button" className="btn-secondary" onClick={onOnboard}>
           Onboard existing repo

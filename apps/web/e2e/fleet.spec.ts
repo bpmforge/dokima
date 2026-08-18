@@ -22,7 +22,7 @@ test('Fleet home renders the header actions (empty-state affordances, UX_SPEC §
   const header = page.locator('.fleet__header');
   await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
   await expect(
-    header.getByRole('button', { name: 'New Product', exact: true }),
+    header.getByRole('button', { name: 'New project', exact: true }),
   ).toBeVisible();
   await expect(
     header.getByRole('button', { name: 'Onboard existing repo', exact: true }),
@@ -31,12 +31,12 @@ test('Fleet home renders the header actions (empty-state affordances, UX_SPEC §
   await expect(page.getByLabel('Show archived')).toBeVisible();
 });
 
-test('create (New Product), open, archive, and reopen a project', async ({ page }) => {
+test('create (New project), open, archive, and reopen a project', async ({ page }) => {
   const { dir, name } = freshProjectPath();
   await page.goto('/');
   const header = page.locator('.fleet__header');
 
-  await header.getByRole('button', { name: 'New Product', exact: true }).click();
+  await header.getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByLabel('Directory path').fill(dir);
   await page.getByLabel('Name (optional)').fill(name);
   // See project-registry-lock.ts's header: fleet.json's read-modify-write
@@ -45,7 +45,7 @@ test('create (New Product), open, archive, and reopen a project', async ({ page 
   await withProjectRegistryLock(async () => {
     await page
       .locator('.fleet__form')
-      .getByRole('button', { name: 'New Product' })
+      .getByRole('button', { name: 'Create project' })
       .click();
     await expect(page.locator('.project-card', { hasText: name })).toBeVisible();
   });
@@ -116,13 +116,13 @@ test('W9-15: a project whose directory vanished shows as unavailable, and Remove
 
   // Two real projects through the real UI, so the registry is genuine.
   for (const p of [gone, kept]) {
-    await header.getByRole('button', { name: 'New Product', exact: true }).click();
+    await header.getByRole('button', { name: 'New project', exact: true }).click();
     await page.getByLabel('Directory path').fill(p.dir);
     await page.getByLabel('Name (optional)').fill(p.name);
     await withProjectRegistryLock(async () => {
       await page
         .locator('.fleet__form')
-        .getByRole('button', { name: 'New Product' })
+        .getByRole('button', { name: 'Create project' })
         .click();
       await expect(page.locator('.project-card', { hasText: p.name })).toBeVisible();
     });

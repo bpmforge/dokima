@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 /**
- * W10-33: the Fleet empty state has a dead control (its own "New Product"
+ * W10-33: the Fleet empty state has a dead control (its own "New project"
  * button still calls `setFormMode('new')` once the mode is already 'new',
  * a no-op that only manifests once the redundant empty state renders
  * alongside the open form) and a withheld action (UX_SPEC §2b requires a
- * link to the guided sample; only New Product/Onboard were offered).
+ * link to the guided sample; only New project/Onboard were offered).
  * Mocks `./api.js` so the component is exercised without a real server.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -57,8 +57,8 @@ describe('Fleet empty state guided-sample link (UX_SPEC §2b, FR-C6)', () => {
   });
 });
 
-describe('Fleet empty state "New Product" dead-click (W10-33)', () => {
-  it('stops rendering the redundant empty-state actions once the New Product form is open, so there is no dead-mode-already-set button left to click', async () => {
+describe('Fleet empty state "New project" dead-click (W10-33)', () => {
+  it('stops rendering the redundant empty-state actions once the New project form is open, so there is no dead-mode-already-set button left to click', async () => {
     const { container } = await renderEmptyFleet();
 
     // The bug: this exact button, while formMode is already 'new', calls
@@ -66,15 +66,15 @@ describe('Fleet empty state "New Product" dead-click (W10-33)', () => {
     // instance (the real entry point) to open the form the honest way.
     const header = container.querySelector<HTMLElement>('.fleet__header');
     if (!header) throw new Error('fleet__header not found');
-    fireEvent.click(within(header).getByRole('button', { name: 'New Product' }));
+    fireEvent.click(within(header).getByRole('button', { name: 'New project' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'New Product' })).toBeTruthy(),
+      expect(screen.getByRole('heading', { name: 'New project' })).toBeTruthy(),
     );
-    // The empty state (and its now-inert "New Product" control) must be gone —
-    // otherwise it sits there as a second, dead "New Product" button.
+    // The empty state (and its now-inert "New project" control) must be gone —
+    // otherwise it sits there as a second, dead "New project" button.
     expect(screen.queryByTestId('fleet-empty')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'New Product' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'New project' })).toHaveLength(1);
   });
 });
 
@@ -86,11 +86,11 @@ describe('visual hierarchy (W12-29)', () => {
     async () => {
       await renderEmptyFleet();
       // Document-wide, which is the stronger claim: the captured frame caught
-      // TWO New Product buttons at different weights when this only checked
+      // TWO New project buttons at different weights when this only checked
       // the header.
       const primaries = document.querySelectorAll('.btn-primary');
       expect(primaries.length).toBe(1);
-      expect((primaries[0] as HTMLElement).textContent).toContain('New Product');
+      expect((primaries[0] as HTMLElement).textContent).toContain('New project');
     },
   );
 

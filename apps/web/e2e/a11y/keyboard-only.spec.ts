@@ -100,11 +100,11 @@ test('the morning queue Decide Approve action is reachable and operable keyboard
   await page.goto('/');
   await page
     .locator('.fleet__header')
-    .getByRole('button', { name: 'New Product', exact: true })
+    .getByRole('button', { name: 'New project', exact: true })
     .click();
   await page.getByLabel('Directory path').fill(dir);
   await page.getByLabel('Name (optional)').fill(name);
-  await page.locator('.fleet__form').getByRole('button', { name: 'New Product' }).click();
+  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   const projectCard = page.locator('.project-card', { hasText: name });
   await expect(projectCard).toBeVisible();
   await projectCard.getByRole('button', { name: 'Open' }).click();
