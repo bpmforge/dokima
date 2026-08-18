@@ -6948,6 +6948,35 @@
         "Filed 2026-08-18 by W12-38, which found the bias and scoped it out on purpose rather than moving a calibrated baseline as a side effect.",
         "Closed 2026-08-18. Measured before changing anything, as the acceptance demanded: 43 -> 62 under comment-stripped counting, so 19 already-dead symbols had been reading as used because a comment named them. Two hand-verified rather than trusted \u2014 every non-test reference to runClaimLoop and gateDecision is a comment, and loop-claim.ts:223 says in its own docstring that runClaimLoop's only callers are its own tests: the sentence admitting the defect was what concealed it. One design change the ticket did not ask for and the fixture forced: the strip now lives inside countReferences rather than in its caller. As a caller-side step the guarantee held only while every future caller remembered to pre-strip, and the constructed fixture passed against raw input while proving nothing \u2014 the exact weak-fixture shape this wave keeps finding. Cached so it is still one strip per file per run."
       ]
+    },
+    {
+      "id": "W12-40",
+      "title": "the Canvas can start a run only if the core was booted with a signing key it has no surface to set",
+      "phase": 12,
+      "module": "cli",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts"
+      ],
+      "depends_on": [
+        "W12-20"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-18 preparing the supervised run. W12-20 gave the Canvas a Start-run control, which posts to POST /build-runs, which calls executeBuildRunJob IN THE CORE PROCESS. That job reads process.env.DOKIMA_SIGNING_KEY and refuses without it. The signing key has no GUI surface \u2014 SUPERVISED_RUN.md says so in as many words \u2014 so the one action a user can now take from the Canvas works only if whoever started the server happened to export a variable first, in a terminal, before boot.",
+        "THIS IS THE W12-20 GAP HALF-CLOSED, NOT CLOSED. Before W12-20 the complaint was \"every configuration surface is a GUI and the one action that matters is a terminal command\". Today the action has a button, and the button silently depends on a terminal step taken before the process started \u2014 which is a worse failure than the old one, because it looks like it should work.",
+        "THE REFUSAL MUST REACH THE USER, AT MINIMUM. The route returns 202 and runs the job off-request, so a missing-signing-key refusal lands in the run status rather than the response. Check what the Canvas actually shows: a run that flips to `refused` with the reason visible is acceptable; a spinner that ends in silence is not. GET .../build-runs/:runId already exists to carry exactly this.",
+        "BETTER: REFUSE AT 202 TIME. The key is readable before any work starts, so the POST can decline with a named problem instead of accepting a run it knows cannot proceed. Decide between the two and record why \u2014 an honest 4xx at request time is cheaper for the caller than a status poll that reports a failure the server could have predicted.",
+        "DO NOT ADD A KEY-ENTRY UI IN THIS TICKET. Minting or storing a signing key is a credential path (Law 8) and belongs with the vault work, not with a route fix. Name the follow-up rather than growing this one.",
+        "RED FIXTURE: a POST to /build-runs with no signing key in the core environment produces an outcome the caller can read and act on, proven against the current silent-202 behaviour."
+      ],
+      "notes": [
+        "Found by preparing the supervised run rather than by a test: the core had to be restarted with DOKIMA_SIGNING_KEY exported so the founder could use either path, and that is not something a first-time user would deduce. Filed rather than fixed in place because the supervised run itself is the higher-value act and this does not block it \u2014 the CLI path takes the env var from the invoking shell and works normally."
+      ]
     }
   ]
 }
