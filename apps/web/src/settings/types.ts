@@ -124,7 +124,10 @@ export type ExpertOverride = {
   overrides: boolean;
 };
 
-export type EscalationPolicyMode = 'ladder' | 'locked' | 'token-gated';
+// `pinned` mirrors the gateway union (W12-12) and is what D-024 option (b)
+// stores. Redeclared, not imported, for the same reason the rest of this
+// block is: apps/web is a browser bundle and cannot depend on apps/server.
+export type EscalationPolicyMode = 'ladder' | 'locked' | 'token-gated' | 'pinned';
 export type PolicyRung = 'R1' | 'R2' | 'R3';
 export type TierKind = 'metered' | 'local';
 
@@ -133,6 +136,9 @@ export interface EscalationPolicySetting {
   pinnedTier?: PolicyRung;
   tierKind?: TierKind;
   namedTier?: PolicyRung;
+  /** `pinned` only: the model that runs, and the kind whose ceiling applies (D-027). */
+  model?: string;
+  providerKind?: string;
 }
 
 export const MODEL_MATRIX_PRESETS = ['all-local', 'hybrid', 'all-cloud'] as const;

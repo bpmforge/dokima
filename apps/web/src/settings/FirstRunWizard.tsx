@@ -30,76 +30,11 @@ import {
  * three copies of the adapter dispatch this wave already consolidated
  * (W12-11/15/17). A copy nobody edits is a copy that goes stale, and this one
  * had: it offered three kinds while the Providers panel offered seven.
- */import { HelpAffordance } from './HelpAffordance.js';
-import {
-  type EscalationPolicyMode,
-  type ModelMatrixPreset,
-} from './types.js';
+ */
+import { HelpAffordance } from './HelpAffordance.js';
+import { MODEL_POLICY_CHOICES } from './modelPolicyChoices.js';
 
 type Step = 'preset' | 'provider' | 'forge' | 'sample' | 'done';
-
-/**
- * The D-024 choices, in the USER'S terms rather than the internal mode names.
- * Each maps onto machinery that already exists: a model-matrix preset (which
- * models serve which roles, FR-S3) and an escalation policy (whether and how
- * work climbs the R0-R4 ladder, D-018). Those are two different dimensions and
- * the wizard used to ask about only the first, which is why a fresh install
- * silently adopted `ladder` — `resolveLandEscalationPolicy` returns
- * LADDER_POLICY when nothing is set (policy.ts:80).
- *
- * D-024's option (b), "one model I pick", is DELIBERATELY ABSENT: `locked`
- * pins a ladder RUNG, not a model, so there is nothing honest to map it to
- * until W12-12 adds a pinned-model mode. Showing a choice that silently does
- * something else would be worse than showing three.
- */
-interface ModelPolicyChoice {
-  readonly id: string;
-  readonly label: string;
-  readonly detail: string;
-  readonly preset: ModelMatrixPreset;
-  readonly policy: EscalationPolicyMode;
-  /** True when the choice can be completed with no provider and no network (C-1). */
-  readonly offlineCapable: boolean;
-}
-
-export const MODEL_POLICY_CHOICES: readonly ModelPolicyChoice[] = [
-  {
-    id: 'local-only',
-    label: 'Local only — never contact a cloud provider',
-    detail:
-      'Everything runs on models on this machine. No account, no network, no spend. Fully supported: if something needs a cloud model to work, that is a bug.',
-    preset: 'all-local',
-    policy: 'ladder',
-    offlineCapable: true,
-  },
-  {
-    id: 'cheapest-first',
-    label: 'Start cheap, escalate when it has to',
-    detail:
-      'Local or small models do the work; a stronger model is used only when the cheaper one cannot finish. Needs at least one cloud provider configured.',
-    preset: 'hybrid',
-    policy: 'ladder',
-    offlineCapable: false,
-  },
-  {
-    id: 'approval-gated',
-    label: 'Escalate only when I approve it',
-    detail:
-      'Same as above, but moving to a more expensive model waits for you to say yes. Nothing costly happens unattended.',
-    preset: 'hybrid',
-    policy: 'token-gated',
-    offlineCapable: false,
-  },
-  {
-    id: 'always-best',
-    label: 'Always use my best cloud model',
-    detail:
-      'Skip the cheap tiers entirely. Fastest to a good answer, most expensive. Needs a cloud provider configured.',
-    preset: 'all-cloud',
-    policy: 'ladder',
-    offlineCapable: false,
-  },
-];
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof SettingsApiError || err instanceof FleetApiError
@@ -136,6 +71,9 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   const [location, setLocation] = useState('');
   const [baseUrl, setBaseUrl] = useState('http://localhost:1234/v1');
   const [credentialRef, setCredentialRef] = useState('');
+  // D-024 option (b): only the pinned choice needs this, and only on the
+  // provider step where the kind is already known.
+  const [pinnedModel, setPinnedModel] = useState('');
   const [forgeRef, setForgeRef] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
@@ -148,11 +86,28 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
         setError('Pick how your work should be modelled before continuing.');
         return;
       }
+      // Refused HERE rather than at the first run. A pin with no model is
+      // refused by `resolvePolicyScope`, and finding that out when the first
+      // build stops is precisely the "option that silently fails" this choice
+      // was held back to avoid.
+      if (chosen.needsModel && pinnedModel.trim() === '') {
+        setError('Name the model to use, exactly as your provider lists it.');
+        return;
+      }
       await putGlobalSettings({
         defaultModelMatrixPreset: chosen.preset,
         // D-024: the escalation policy is now CHOSEN, not inherited from
         // `resolveLandEscalationPolicy`'s fallback.
-        escalationPolicy: { mode: chosen.policy },
+        escalationPolicy: chosen.needsModel
+          ? {
+              mode: chosen.policy,
+              model: pinnedModel.trim(),
+              // W12-37 infers the convergence ceiling from this (local kinds
+              // get 12 attempts, metered 8) and nothing else writes it — omit
+              // it and every pin conservatively reads as metered.
+              providerKind,
+            }
+          : { mode: chosen.policy },
         providers: [
           {
             kind: providerKind,
@@ -243,7 +198,9 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
         >
           <h2>1. How should your work be modelled?</h2>
           <p className="settings__hint">
-            Nothing spends money or contacts a network until you choose.
+            Nothing spends money or contacts a network until you choose. Whichever
+            you pick, reviews still use a different model from the one that did
+            the work — nothing here checks its own output.
           </p>
           {MODEL_POLICY_CHOICES.map((c) => (
             <label key={c.id} className="settings__radio">
@@ -292,6 +249,21 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
             <label>
               Base URL
               <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+            </label>
+          )}
+          {MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.needsModel === true && (
+            <label>
+              Model to use
+              <input
+                value={pinnedModel}
+                onChange={(e) => setPinnedModel(e.target.value)}
+                placeholder="qwen3-32b"
+              />
+              <small className="settings__hint">
+                Typed, not chosen from a list: the model catalog is read from a
+                provider that is already registered, and at first run there is
+                not one yet. Use the id exactly as your provider lists it.
+              </small>
             </label>
           )}
           {needsProjectScope(providerKind) && (

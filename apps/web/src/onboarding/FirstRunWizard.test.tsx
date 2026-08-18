@@ -229,3 +229,96 @@ describe('FirstRunWizard provider kinds (W12-19)', () => {
     expect(screen.queryByLabelText(/Credential ref/)).toBeNull();
   });
 });
+
+/**
+ * W12-16 / D-024 option (b), unblocked by W12-37 landing D-027. The wizard
+ * shipped with four choices and said in its own doc comment why the fifth was
+ * absent: `locked` pins a RUNG, not a model, so there was nothing honest to
+ * map it to. There is now.
+ */
+describe('the fifth choice: one model I pick (W12-16)', () => {
+  it(
+    'RED FIXTURE: the wizard offers FIVE ways to model work. D-024 names four ' +
+      'user choices and one of them — "a specific model of my choosing" — had no ' +
+      'way to be picked, which made the decision partly aspirational',
+    () => {
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      expect(screen.getAllByRole('radio')).toHaveLength(5);
+      expect(screen.getByRole('radio', { name: /one model I pick/i })).toBeTruthy();
+    },
+  );
+
+  it(
+    'asks for the model on the PROVIDER step, where the kind is already chosen. ' +
+      'The pin needs a providerKind for its retry ceiling (W12-37 infers 8 vs 12 ' +
+      'from it), and asking on step 1 would ask before there is an answer',
+    async () => {
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      fireEvent.click(screen.getByRole('radio', { name: /one model I pick/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      await screen.findByTestId('wizard-step-provider');
+      expect(screen.getByLabelText(/Model to use/i)).toBeTruthy();
+    },
+  );
+
+  it('the model field appears ONLY for the pinned choice — the other four route by matrix', async () => {
+    render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('radio', { name: /Local only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByTestId('wizard-step-provider');
+    expect(screen.queryByLabelText(/Model to use/i)).toBeNull();
+  });
+
+  it(
+    'persists { mode: pinned, model, providerKind } — providerKind included ' +
+      'because W12-37 reads it to infer the convergence ceiling, and nothing else ' +
+      'writes it, so an omission here means every pin silently reads as metered',
+    async () => {
+      mockedSettingsApi.putGlobalSettings.mockResolvedValue({});
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      fireEvent.click(screen.getByRole('radio', { name: /one model I pick/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      await screen.findByTestId('wizard-step-provider');
+      fireEvent.change(screen.getByLabelText(/Model to use/i), {
+        target: { value: 'qwen3-32b' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+      await vi.waitFor(() => expect(mockedSettingsApi.putGlobalSettings).toHaveBeenCalled());
+      const body = mockedSettingsApi.putGlobalSettings.mock.calls[0]![0] as {
+        escalationPolicy: { mode: string; model: string; providerKind: string };
+      };
+      expect(body.escalationPolicy).toMatchObject({
+        mode: 'pinned',
+        model: 'qwen3-32b',
+        providerKind: 'lm-studio',
+      });
+    },
+  );
+
+  it(
+    'will not continue with the choice made and no model named. W12-37 refuses ' +
+      'an unnamed pin at run time; discovering that at the first run is exactly ' +
+      'the "option that silently fails" this ticket was filed to avoid',
+    async () => {
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      fireEvent.click(screen.getByRole('radio', { name: /one model I pick/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      await screen.findByTestId('wizard-step-provider');
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      expect(await screen.findByText(/name the model/i)).toBeTruthy();
+      expect(mockedSettingsApi.putGlobalSettings).not.toHaveBeenCalled();
+    },
+  );
+
+  it(
+    'says plainly that the pin applies to the work, not to the review (C-4). A ' +
+      'user picking ONE model must not be left to discover at their first run ' +
+      'that a reviewer is a different one — W12-37 makes that true by ' +
+      'construction, so the wizard states it rather than asking for a second model',
+    () => {
+      render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+      expect(screen.getByText(/reviews still use a different model/i)).toBeTruthy();
+    },
+  );
+});
