@@ -21,7 +21,18 @@ import { PLAN_SNAPSHOT, repoRoot, seedDemoBoard, startApp } from './lib/app-harn
 
 const PORT = 4409;
 const runId = process.argv[2] ?? new Date().toISOString().replace(/[:.]/g, '-');
-const RUN_DIR = path.join(repoRoot, 'docs', 'acceptance', 'runs', runId);
+/**
+ * W13-07: `--out <dir>` writes the frames somewhere other than the repo. The
+ * per-ticket gate captures on every run, and at ~1MB per capture, writing into
+ * `docs/acceptance/runs/` would have grown this repo by a megabyte per ticket
+ * for images nobody reads after the comparison. A named run under docs/ is
+ * still the default, because a capture you want to KEEP belongs there.
+ */
+const outFlag = process.argv.indexOf('--out');
+const RUN_DIR =
+  outFlag === -1
+    ? path.join(repoRoot, 'docs', 'acceptance', 'runs', runId)
+    : path.resolve(process.argv[outFlag + 1]);
 mkdirSync(RUN_DIR, { recursive: true });
 
 const frames = [];
@@ -52,13 +63,19 @@ try {
 
   await page
     .locator('.fleet__header')
-    .getByRole('button', { name: 'New Product', exact: true })
+    .getByRole('button', { name: 'New project', exact: true })
     .click();
-  await page.getByLabel('Directory path').fill(app.projectDir);
-  await page.getByLabel('Name (optional)').fill('Demo Voyage');
-  await shoot(page, 'A-02', 'Opened New Product form, filled path + name');
+  // W13-07: these three lines were stale and the walker had not run since.
+  // W12-36 renamed "New Product" to "New project", and W12-41 replaced the
+  // required "Directory path" input with a name plus an explicit-location
+  // escape. Nothing caught either, because nothing in the gate runs this
+  // script — which is the defect this ticket exists to close.
+  await page.getByLabel('Project name').fill('Demo Voyage');
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(app.projectDir);
+  await shoot(page, 'A-02', 'Opened New project form, filled name + location');
 
-  await page.locator('.fleet__form').getByRole('button', { name: 'New Product' }).click();
+  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   await page.locator('.project-card', { hasText: 'Demo Voyage' }).waitFor();
   await shoot(page, 'A-03', 'Submitted form — project card on Fleet');
 

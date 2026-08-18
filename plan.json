@@ -7241,13 +7241,15 @@
       "phase": 13,
       "lane": "ui",
       "module": "web",
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [
         "W13-05",
         "W13-06"
       ],
-      "notes": [],
+      "notes": [
+        "Closed 2026-08-18. THE WALKER WAS ALREADY BROKEN AND NOBODY KNEW \u2014 the sharpest finding, and the ticket's own premise one layer deeper. It had not run since W12-36 renamed 'New Product', and W12-41's form change broke it again; a capture script nothing runs stops working and says nothing. Repairing it was the first act of this ticket. NO NEW DEPENDENCY, verified before deciding: Playwright emits 8-bit truecolour non-interlaced PNG (read from a real capture's IHDR), which node:zlib plus the five PNG filters decodes in ~60 lines. The decoder was checked against a known pixel before anything was built on it \u2014 the New Product button read [46,107,255], exactly the old #2e6bff accent token. pixelmatch + pngjs would have been a TECH_STACK decision for a repo that ships five runtime dependencies on purpose. THE THRESHOLD IS MEASURED: my first attempt used two existing runs and got 1-3.8% drift, which was real UI change, not noise \u2014 they were captured 16 minutes apart during active W12 work. Capturing twice on identical code gave the true floor: 16 of 21 frames pixel-identical, worst 0.21% (timestamps and generated ids). 0.5% is ~2.4x that and still fails on anything structural. The per-channel tolerance is deliberately small because measurement showed it barely matters (2.85% -> 2.70%); the ratio does the work. --out was added to the capture script because gating on every ticket would otherwise have added ~1MB of unread PNGs to the repo per ticket."
+      ],
       "id": "W13-07",
       "title": "nothing compares the captured frames \u2014 the UI can rot silently between waves",
       "points": 3,
@@ -7256,7 +7258,9 @@
         "apps/web/scripts/capture-acceptance.mjs",
         "scripts/validate-visual.mjs",
         "scripts/validate-visual.test.mjs",
-        "conductor.config.json"
+        "conductor.config.json",
+        "docs/acceptance/baseline/**",
+        "docs/acceptance/runs/w13-noise-b/**"
       ],
       "acceptance": [
         "THE ACCEPTANCE WALKER ALREADY CAPTURES 21 FRAMES EVERY RUN AND NOTHING EVER LOOKS AT THEM. That is how a UI reaches \"it looks horrible\" with 42 style guards green: the guards check declarations, the frames check nothing, and no gate closes the loop between them.",
