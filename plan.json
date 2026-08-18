@@ -7333,6 +7333,36 @@
         "write_scope gained session-prompt.ts: adding the system message took gateway-session.ts from 394 to 429 lines, past the 400-line cap, caught by the repo-wide validator in the full gate. The seam is real rather than convenient \u2014 this is the standing instruction every session receives, while gateway-session.ts is the loop that runs one. Fourth time this wave the cap has caught accretion rather than a single oversized write.",
         "Closed 2026-08-18. THE STRONGEST FIXTURE IS THAT THE EXAMPLE IN THE PROMPT IS FED TO THE REAL PARSER \u2014 a documented shape the parser rejects would be worse than no documentation, because it would look right and fail identically. Building it surfaced a second gap: `parseCompletionManifest`, the function that decides whether a session closed a ticket, was NOT exported from @dokima/loop's barrel, so nothing outside that package could assert a session against the real contract without a deep import (law 6). Asserting against a re-implementation would have proved nothing. TWO LEGACY FIXTURES CORRECTLY BROKE: they pinned the handoff byte-for-byte, which makes improving a prompt look like a regression \u2014 the field lines are still asserted exactly, and the RETURN section is now asserted by its CONTRACT (names every required field, carries a parseable example) rather than its literal text. The parser was deliberately not loosened: it already tries three tiers and strips thinking blocks, and making it accept prose would mean accepting an unverifiable claim, which is the opposite of what a manifest is for. The cap caught accretion a fourth time this wave (394 -> 429), so the system prompt became its own chapter."
       ]
+    },
+    {
+      "id": "W13-10",
+      "title": "a local endpoint cannot be sent the one option it needs \u2014 no per-provider request fields",
+      "phase": 13,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 3,
+      "status": "in_progress",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat-types.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/src/registry/types.ts",
+        "packages/gateway/src/registry/validate.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND IN LIVE TESTING 2026-08-18 against a remote LM Studio. `prism-ml/bonsai-27b` is a REASONING model: it spends ~200 tokens thinking before answering, and the only thing that turns that off is the OpenAI-compatible `reasoning_effort` field \u2014 measured across four candidates, where `chat_template_kwargs.enable_thinking` and a `/no_think` suffix both did nothing and `reasoning_effort: \"none\"` took reasoning_tokens to 0.",
+        "THE ADAPTER CANNOT SEND IT. `OaiCompatProvider.chat` builds a fixed body \u2014 model, messages, temperature, max_tokens, stop, tools \u2014 with no passthrough. So a user who configures a local reasoning model through the GUI has no way to configure the one option that model needs, which cuts against D-024 option (a): local-only is a guaranteed-supported configuration, and local endpoints are exactly where per-model quirks live.",
+        "MERGE, NEVER CLOBBER. The passthrough must not be able to overwrite `model`, `messages` or `tools` \u2014 a config field that can rewrite the routed model would let a provider entry silently defeat the model matrix and, with it, the maker!=verifier separation that routing enforces. Spread the extras FIRST and let the derived fields win, and prove that with a fixture rather than a comment.",
+        "IT IS A PROVIDER-ENTRY FIELD, not a per-call one: it describes the endpoint, so it belongs beside baseUrl and headers in the registry, and it must survive validation the same way the other provider fields do.",
+        "RED FIXTURE: a configured extra reaches the request body; an extra that tries to override `model` or `messages` does NOT; and a provider without one sends exactly the body it sends today (no empty keys, no behaviour change for the 12 existing entries).",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ],
+      "notes": [
+        "Filed 2026-08-18 from live testing. The founder asked what happens if thinking is disabled on bonsai-27b, and answering it honestly required the product to be able to send the field at all."
+      ]
     }
   ]
 }
