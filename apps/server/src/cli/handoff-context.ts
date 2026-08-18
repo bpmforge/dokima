@@ -19,7 +19,13 @@
  */
 import { git } from '@dokima/git';
 import { defaultHandoffBuilder, type HandoffBuilder } from '@dokima/harbormaster';
-import { assemblePacket, buildCoreBlock, CORE_BLOCK_TOKEN_CEILING } from '@dokima/memory';
+import {
+  assemblePacket,
+  buildCoreBlock,
+  CORE_BLOCK_TOKEN_CEILING,
+  indexProject,
+  type SqliteHandle,
+} from '@dokima/memory';
 import type { Ticket } from '@dokima/tickets';
 
 /**
@@ -63,6 +69,15 @@ export interface PackedHandoffOptions {
    */
   readonly modelWindowTokens: number;
   readonly role?: string;
+  /**
+   * W12-09: the SQLite handle the W7-06 code index lives in. `packages/memory`
+   * never opens a writable connection itself (`store/handle.ts`) — a caller
+   * supplies one, and the sanctioned opener is `@dokima/events`'
+   * `openEventLog(...).db`, which `run-build.ts` already holds. Absent, the
+   * packet keeps the documented degraded path: core block + repo map + ticket
+   * block, no ranked slices.
+   */
+  readonly codeIndexHandle?: SqliteHandle;
   readonly deps?: Partial<PackedHandoffDeps>;
 }
 
@@ -144,6 +159,28 @@ export async function createPackedHandoffBuilder(
    * the packer's documented degraded path (C-1/FR-G5), and it is still
    * strictly more than the title this seam carried before.
    */
+  /**
+   * INDEXED ONCE PER RUN, and the trigger is a decision worth stating:
+   * `indexProject` re-indexes every matching file rather than being
+   * mtime-gated, so doing it per TICKET would pay the whole cost on every
+   * claim. Once at builder construction is bounded and predictable, and a run
+   * that claims ten tickets pays it once.
+   *
+   * Degrades honestly and loudly enough to debug: with no handle there are no
+   * slices, and `ripgrepUnavailable` means `rg` is missing so nothing was
+   * indexed at all — said once, rather than silently producing an empty index
+   * that looks like a repo with no code in it.
+   */
+  if (options.codeIndexHandle) {
+    const result = await indexProject(options.codeIndexHandle, options.repoRoot);
+    if (result.ripgrepUnavailable) {
+      process.stderr.write(
+        '[context] ripgrep is unavailable, so no code index was built — the ' +
+          'handoff keeps its project invariants and repo map but carries no ' +
+          'ranked code slices.\n',
+      );
+    }
+  }
   const indexedPaths = await listRepoPaths(options.repoRoot);
   const base = defaultHandoffBuilder(options.role);
 
@@ -159,6 +196,7 @@ export async function createPackedHandoffBuilder(
         acceptance: ticket.acceptance.map((criterion) => criterion.text),
       },
       query: [ticket.title, ...ticket.writeScope].join(' '),
+      ...(options.codeIndexHandle ? { codeIndexHandle: options.codeIndexHandle } : {}),
     });
     return { ...base(ticket), context: packet.text };
   };

@@ -357,6 +357,11 @@ export async function executeBuildRun(
     buildHandoff: await createPackedHandoffBuilder({
       repoRoot: io.cwd,
       modelWindowTokens: contextWindowTokens ?? 0,
+      // W12-09: the run already holds the event log, and its `db` is the
+      // sanctioned handle `packages/memory` expects a caller to supply — so
+      // the code index lives in the project's own SQLite file rather than a
+      // second store nobody backs up.
+      codeIndexHandle: log.db,
     }),
     pushToRemotes: localFirstPushToRemotes,
     secretValues,

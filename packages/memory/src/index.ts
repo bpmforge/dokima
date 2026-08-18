@@ -11,6 +11,23 @@ export const PACKAGE_NAME = 'memory';
  */
 export * from './packer/index.js';
 
+/**
+ * W12-09: the W7-06 code index, exported for the first time. Same shape as the
+ * packer barrel W12-04 fixed: `code-index/index.ts` existed and complete, was
+ * never re-exported here, and so had no reachable caller — which is why the
+ * packed context shipped with no ranked code slices.
+ */
+// NARROW, not `export *`: re-exporting the whole code-index barrel exposed
+// four more value symbols with no caller and pushed validate-exports 43 -> 47.
+// The ratchet's own rule is not to raise the baseline to make a change pass,
+// so this exports exactly what a consumer needs to build and use the index.
+export { indexProject } from './code-index/indexer.js';
+export type { IndexProjectOptions, IndexProjectResult } from './code-index/indexer.js';
+// The handle type a caller must supply: `packages/memory` never opens a
+// writable connection itself (store/handle.ts), so the type has to be
+// nameable from outside or no caller can satisfy the contract.
+export type { SqliteHandle } from './store/handle.js';
+
 export * from './lessons/report.js';
 export * from './lessons/triage.js';
 export * from './lessons/types.js';
