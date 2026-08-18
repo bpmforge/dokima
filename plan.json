@@ -5912,13 +5912,16 @@
       "module": "harbormaster",
       "lane": "orchestrator",
       "points": 8,
-      "status": "todo",
+      "status": "in_progress",
       "write_scope": [
         "packages/harbormaster/src/loop-handoff.ts",
         "packages/harbormaster/src/loop-handoff.test.ts",
         "scripts/validate-plan.mjs",
         "scripts/validate-plan.test.mjs",
-        "plan.json"
+        "plan.json",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/create.ts",
+        "packages/tickets/src/reducer.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -5932,7 +5935,8 @@
       ],
       "notes": [
         "Filed HELD 2026-08-13. The board has no field for 'waiting on a human', which $holdNote4 already records as a recurring gap \u2014 holdTickets in conductor.config.json is the only place it can be said, so it is said there and here. Related open design question from the same review, NOT ticketed and belonging in docs/DECISIONS.md rather than on the board: attest v3.5.0's gauntlet loop (builders never grade their own work; a critic that saw a prior draft never grades the retry) may be the missing quality layer for this same loop, and C-4 already supplies the identity separation it needs. That may be one design with this ticket rather than two.",
-        "UN-HELD 2026-08-13 by founder decision D-025 (explicit `role` field at decomposition). Repointed and resized 5 -> 8: the original ticket was scoped only to `loop-handoff.ts` on the assumption the answer would be a code-local one, but the chosen direction adds a board-schema field, so `scripts/validate-plan.mjs` and its test come into scope too. Removed from conductor.config.json holdTickets in the same commit. NOTE the decomposer half (making the planner actually SET the field) is deliberately NOT in this ticket's scope \u2014 this ticket makes the field exist, be validated, and be honoured; a follow-up teaches decomposition to emit it, and until then a human sets it by hand."
+        "UN-HELD 2026-08-13 by founder decision D-025 (explicit `role` field at decomposition). Repointed and resized 5 -> 8: the original ticket was scoped only to `loop-handoff.ts` on the assumption the answer would be a code-local one, but the chosen direction adds a board-schema field, so `scripts/validate-plan.mjs` and its test come into scope too. Removed from conductor.config.json holdTickets in the same commit. NOTE the decomposer half (making the planner actually SET the field) is deliberately NOT in this ticket's scope \u2014 this ticket makes the field exist, be validated, and be honoured; a follow-up teaches decomposition to emit it, and until then a human sets it by hand.",
+        "write_scope widened at claim, deliberately and before writing anything \u2014 the same build-then-wire seam this wave keeps finding, caught at claim this time instead of at close. The filed scope was loop-handoff.ts + validate-plan.mjs, but `Ticket` (packages/tickets/src/types.ts) has NO `role` field, so a builder reading `ticket.role` would compile against a widened local type and read undefined forever: the field would be validated on the board and never reach the maker. Tickets are event-sourced, not columnar, so there is no migration \u2014 the change is three small files (type, create, reducer) carrying one optional string through the projection. Same lane (orchestrator), no P8 overlap: the only other open tickets are W12-37 (harbormaster+cli) and W12-27 (gateway). The one call-site fact that keeps this inside scope: createPackedHandoffBuilder composes defaultHandoffBuilder(options.role) at handoff-context.ts:185, so fixing the default builder fixes BOTH production paths without touching apps/server."
       ]
     },
     {
