@@ -255,7 +255,7 @@ function EmptyState({
   onOpenGuidedSample,
 }: EmptyStateProps) {
   if (archived) {
-    return <p className="fleet__empty">No archived programs.</p>;
+    return <p className="fleet__empty">No archived projects.</p>;
   }
   return (
     <div className="fleet__empty empty-state" data-testid="fleet-empty">
