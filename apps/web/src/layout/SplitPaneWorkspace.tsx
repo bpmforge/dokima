@@ -15,6 +15,9 @@ import {
   serializePaneLayout,
   type PaneId,
   type PaneLayout,
+  focusPane,
+  isFocused,
+  unfocusPanes,
 } from './paneLayout.js';
 
 const PANE_LABELS: Record<PaneId, string> = {
@@ -57,6 +60,15 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
         [id]: { ...current.panes[id], collapsed: !current.panes[id].collapsed },
       },
     }));
+  }, []);
+
+  /**
+   * W12-34: focus this pane, or leave focus if it is already focused. The
+   * layout in force beforehand is saved and restored, so a user who dragged
+   * their own split gets it back rather than the default.
+   */
+  const toggleFocus = useCallback((id: PaneId) => {
+    setLayout((current) => (isFocused(current) ? unfocusPanes(current) : focusPane(current, id)));
   }, []);
 
   const startResize = useCallback(
@@ -109,6 +121,20 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
                 <span>{PANE_LABELS[id]}</span>
                 <button
                   type="button"
+                  className="btn-quiet"
+                  onClick={() => toggleFocus(id)}
+                  aria-label={
+                    isFocused(layout)
+                      ? 'Leave focus and restore the previous layout'
+                      : `Focus ${PANE_LABELS[id]} and collapse the other panes`
+                  }
+                  data-testid={`focus-${id}`}
+                >
+                  {isFocused(layout) ? 'Unfocus' : 'Focus'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-quiet"
                   onClick={() => toggleCollapsed(id)}
                   aria-label={`${pane.collapsed ? 'Expand' : 'Collapse'} ${PANE_LABELS[id]}`}
                 >
