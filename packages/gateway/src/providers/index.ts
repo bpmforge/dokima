@@ -58,6 +58,21 @@ export {
   type DevicePollResult,
 } from './copilot.js';
 
+/**
+ * W12-26: the device flow, exported so an HTTP surface can drive it.
+ * `copilot-device-auth.ts` has been complete and tested since the adapter
+ * landed and had no reachable caller — the same unexported-mechanism shape as
+ * W12-04's packer barrel and W12-11's OpenAI adapter. Its own doc comment even
+ * names the route that was meant to call it and says the poll cadence belongs
+ * to that caller, which is exactly what the server now owns.
+ */
+export {
+  requestDeviceCode,
+  pollDeviceAuthorization,
+} from './copilot-device-auth.js';
+export { createHttpFns } from './copilot-http.js';
+export type { CopilotRuntime } from './copilot-types.js';
+
 export { VertexProvider, createVertexProvider, type VertexConfig } from './vertex.js';
 
 /**
