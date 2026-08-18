@@ -39,6 +39,7 @@ import {
 } from './providers-store.js';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
 import { getProjectSettings } from './settings-scope.js';
+import { registerCopilotDeviceAuthRoutes } from './providers-copilot-routes.js';
 
 export interface ProvidersRoutesOptions {
   /** Overrides the fleet home — tests only. */
@@ -250,6 +251,8 @@ export function registerProvidersRoutes(
       });
     },
   );
+
+  registerCopilotDeviceAuthRoutes(app);
 
   /**
    * POST .../providers/credentials (W10-04 self-block AC3, UX_SPEC §6a, Law

@@ -567,3 +567,165 @@ describe('providers scope (W10-70)', () => {
     expect(put.json().rule).toBe('literal-credential-refused');
   });
 });
+
+describe('Copilot device flow (W12-26)', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it(
+    'RED FIXTURE: the device flow has an HTTP surface. requestDeviceCode and ' +
+      'pollDeviceAuthorization have been complete and tested since the adapter ' +
+      'landed with NO caller — copilot-device-auth.ts even names this route in ' +
+      'its own doc comment. The adapter, the panel affordance and the docs all ' +
+      'existed; the HTTP middle did not',
+    async () => {
+      const { app } = await boot();
+      // Recorded, never live (law 9a).
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            device_code: 'dev-code-123',
+            user_code: 'ABCD-1234',
+            verification_uri: 'https://github.com/login/device',
+            expires_in: 900,
+            interval: 5,
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )) as typeof fetch;
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/providers/copilot/device-auth',
+        headers,
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // The user code and verification URL are meant to be SHOWN — that is the
+      // whole point of a device flow.
+      expect(body.user_code).toBe('ABCD-1234');
+      expect(body.verification_uri).toContain('github.com/login/device');
+      expect(body.interval_ms).toBe(5000);
+    },
+  );
+
+  it(
+    'a pending poll returns the interval to wait, so the caller owns the cadence — ' +
+      'pollDeviceAuthorization never sleeps by design, which is what keeps a hung ' +
+      'sign-in from holding a server request open for the life of a device code',
+    async () => {
+      const { app } = await boot();
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ error: 'authorization_pending' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        })) as typeof fetch;
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/providers/copilot/device-auth?device_code=dev-code-123&interval_ms=5000',
+        headers,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().status).toBe('pending');
+      expect(res.json().interval_ms).toBeGreaterThan(0);
+    },
+  );
+
+  it(
+    'signing in does NOT enable Copilot. D-019 gates the kind behind a ledgered ' +
+      'acknowledgement, and a sign-in route is exactly the shape of change that ' +
+      'quietly turns a consent gate into a formality — holding a token is not ' +
+      'consent to use it',
+    async () => {
+      const { app, id } = await boot();
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            device_code: 'dev-code-123',
+            user_code: 'ABCD-1234',
+            verification_uri: 'https://github.com/login/device',
+            expires_in: 900,
+            interval: 5,
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )) as typeof fetch;
+      await app.inject({
+        method: 'POST',
+        url: '/api/v1/providers/copilot/device-auth',
+        headers,
+      });
+
+      const put = await app.inject({
+        method: 'PUT',
+        url: `/api/v1/projects/${id}/providers`,
+        headers,
+        payload: {
+          providers: [{ id: 'gh', kind: 'copilot', enabled: true }],
+        },
+      });
+      expect(put.statusCode).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(put.json())).toContain('D-019');
+    },
+  );
+
+  it(
+    'an EXPIRED device code is a NAMED outcome, not a generic failure. A sign-in ' +
+      'UI that cannot tell "start again" from "retry the same code" spins forever ' +
+      'on a flow that is already over',
+    async () => {
+      const { app } = await boot();
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ error: 'expired_token' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        })) as typeof fetch;
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/providers/copilot/device-auth?device_code=dev-code-123',
+        headers,
+      });
+      // 4xx, not 502: GitHub answered, and the answer was "that code is dead".
+      expect(res.statusCode).toBe(400);
+      expect(res.json().evidence.code).toBe('expired_token');
+    },
+  );
+
+  it('a user who declines is distinguishable from an expiry and from a network fault', async () => {
+    const { app } = await boot();
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: 'access_denied' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch;
+    const denied = await app.inject({
+      method: 'GET',
+      url: '/api/v1/providers/copilot/device-auth?device_code=dev-code-123',
+      headers,
+    });
+    expect(denied.json().evidence.code).toBe('access_denied');
+
+    globalThis.fetch = (async () => {
+      throw new Error('connect ECONNREFUSED');
+    }) as typeof fetch;
+    const offline = await app.inject({
+      method: 'GET',
+      url: '/api/v1/providers/copilot/device-auth?device_code=dev-code-123',
+      headers,
+    });
+    // A transport fault is the one case where retrying the SAME code is right.
+    expect(offline.statusCode).toBe(502);
+  });
+
+  it('polling without a device_code is a named 400, not a hang', async () => {
+    const { app } = await boot();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/providers/copilot/device-auth',
+      headers,
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});

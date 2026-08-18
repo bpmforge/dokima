@@ -6523,10 +6523,11 @@
       "module": "cli",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "apps/server/src/api/server/providers-routes.ts",
-        "apps/server/src/api/server/providers-routes.test.ts"
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/server/src/api/server/providers-copilot-routes.ts"
       ],
       "depends_on": [
         "W12-21"
@@ -6542,7 +6543,8 @@
       ],
       "notes": [
         "Filed 2026-08-17 at W12-21's close. Recording the estimate error rather than hiding it: W12-21 assumed \"already built, just needs a UI\" and the missing middle was a whole HTTP surface. The panel now says so where a user would look, rather than showing a button that does nothing.",
-        "Lane `ui`, not `core`: it shares `providers-routes.ts` with W12-25, and P8 rejected the cross-lane overlap on filing. Fourth time this wave that two tickets sharing a file had to share a lane \u2014 the rule is doing real work."
+        "Lane `ui`, not `core`: it shares `providers-routes.ts` with W12-25, and P8 rejected the cross-lane overlap on filing. Fourth time this wave that two tickets sharing a file had to share a lane \u2014 the rule is doing real work.",
+        "write_scope gained providers-copilot-routes.ts. Adding the two routes took providers-routes.ts from 394 to 499 lines and the 400-line CODE_BOOK_PROTOCOL cap failed the repo-wide validator \u2014 caught by the full gate, not by the ticket-level tests. Extracting is the fix the cap was asking for rather than a workaround: the device flow is a self-contained protocol against one external endpoint, so it is a real seam. Also corrected on the way: the first implementation collapsed expired_token / access_denied / transport faults into one 502, which the ticket explicitly forbids \u2014 CopilotDeviceAuthError.code now surfaces as a 400 with the code in evidence, and only a genuine transport failure is a 502."
       ]
     },
     {
