@@ -3,6 +3,12 @@
 **Status: never performed.** This is the one claim the product rests on and the
 only thing on the list that cannot be done unattended.
 
+*Document refreshed 2026-08-18. Three things it previously told you were wrong:
+two "known gaps" (W12-19's provider list, W12-20's missing run trigger) have
+since closed, and the wizard now offers five model-policy choices, not four.
+Both gaps are rewritten below rather than deleted, because knowing they were
+recently true tells you which paths are newest and therefore least exercised.*
+
 Everything the agent loop is built from has been proven against recorded
 fixtures, a fake shell agent and a `node:http` stub. All of that is correct
 under CLAUDE.md law 9(a) — tests never make live API calls — and **none of it
@@ -60,14 +66,16 @@ That boots the core and opens the Canvas at <http://127.0.0.1:4317>. Then:
    Paste the API key — it is exchanged for a keychain ref through
    `POST /providers/credentials` and the secret itself never touches
    `settings.json` or the event log (Law 8, FR-S2).
-2. **Optionally** — Settings → Run Setup Wizard, to pick how work is modelled:
-   local only · start cheap and escalate · escalate only when I approve ·
-   always use my best cloud model (D-024). Since W12-18 this choice actually
-   governs the run. **The wizard is not required and never has been** — it
-   only opens when you ask for it, and it has a Cancel. Skip it and the run
-   takes the documented `ladder` default. (An earlier draft of this document
-   framed it as a mandatory step; that was this document's error, not the
-   product's.)
+2. **Optionally** — Settings → Run Setup Wizard, to pick how work is modelled.
+   Five choices (D-024): local only · start cheap and escalate · escalate only
+   when I approve · always use my best cloud model · **use one model I pick**.
+   Since W12-18 this choice actually governs the run. The fifth arrived with
+   W12-16/W12-37 and is the one to use if you want this run pinned to exactly
+   one model with no escalation — it also asks for the model id on the provider
+   step. **The wizard is not required and never has been** — it only opens when
+   you ask for it, and it has a Cancel. Skip it and the run takes the documented
+   `ladder` default. (An earlier draft of this document framed it as a mandatory
+   step; that was this document's error, not the product's.)
 3. Set only the signing key, which has no GUI surface yet:
 
 ```sh
@@ -78,21 +86,32 @@ export DOKIMA_SIGNING_KEY=supervised-run-key
 > lose to the registry anyway; setting them would mean testing the wrong path
 > and getting a falsely reassuring result.
 
-**Known gap (W12-19):** the wizard's own provider step offers only LM Studio /
-OpenAI-compatible / Vertex, so register OpenAI in the **Providers panel**, not
-in the wizard.
+Either surface works: **W12-19 closed the gap** that used to make this a
+caveat. The wizard's provider step now reads the same `PROVIDER_KINDS` list the
+Providers panel does — all seven kinds, Ollama through Copilot — so registering
+OpenAI in the wizard and registering it in the panel are the same operation.
 
 ## 3. Start the run
 
-**Known gap (W12-20): there is no UI or API way to start a build run.** Every
-configuration surface is a GUI and the one action that matters is a terminal
-command. That is a real product gap, filed, and not something to work around
-today — so start it from the CLI, against the provider you just registered:
+**W12-20 closed the gap** this section used to warn about. There are now two
+ways in, and the GUI one is what a real user gets:
+
+**From the Canvas (preferred).** Open the project's board and use its
+**Start run** control. It posts to `POST /api/v1/projects/:id/build-runs`,
+returns a run id, and then polls status so you watch progress in the surface
+you configured everything else in. Prefer this path — it is the one that
+exercises what a user actually touches.
+
+**From the CLI**, if you want the raw stderr stream in front of you:
 
 ```sh
 cd /tmp/dokima-run
 node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs run start --mode new_product
 ```
+
+The CLI is better for capturing a failure verbatim; the Canvas is better for
+testing what ships. On a first supervised run, the CLI's unfiltered output is
+worth more — take that one, and check the board afterwards.
 
 Watch it. Do not walk away — that is the point of the word *supervised*.
 
