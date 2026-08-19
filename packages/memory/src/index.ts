@@ -32,3 +32,17 @@ export * from './lessons/report.js';
 export * from './lessons/triage.js';
 export * from './lessons/types.js';
 export * from './lessons/events.js';
+
+/**
+ * W13-23: the memory anchor, exported for the first time. Third instance of
+ * the same seam W12-04 (packer) and W12-09 (code index) each hit — the
+ * implementation was complete and tested, and simply could not be reached
+ * from outside the package, so it had no caller because nothing COULD call it.
+ *
+ * NARROW, not `export *`: the store barrel carries a dozen more symbols with
+ * no consumer, and re-exporting them wholesale would raise the export ratchet
+ * to make one addition pass.
+ */
+export { createMemoryAnchor } from './store/anchor.js';
+export type { CreateMemoryAnchorOptions, MemoryAnchor } from './store/anchor.js';
+

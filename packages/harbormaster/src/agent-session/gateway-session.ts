@@ -94,13 +94,9 @@ import {
   type TaskType,
 } from '@dokima/gateway';
 import { checkWriteScope } from '@dokima/git';
-import { redactDeep } from '@dokima/shared';
 import {
-  anchorIsPresent,
   computeChangedPaths,
-  createToolAnchor,
-  formatAnchorFactsForPrompt,
-  gatherAnchorFacts,
+  type Anchor,
   type SpawnSession,
   type SpawnSessionInput,
   type SpawnSessionOutput,
@@ -112,6 +108,7 @@ import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
 import { takeMeteredTurn } from './session-stream.js';
+import { buildAnchorBlock } from './session-anchors.js';
 import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 
 /**
@@ -147,6 +144,13 @@ export const DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface GatewaySpawnSessionOptions {
   readonly log: EventLog;
+  /**
+   * W13-23: prior VERIFIED findings for this ticket, recalled from the
+   * project's fact store. Injected rather than constructed — harbormaster may
+   * not import `memory` (ARCHITECTURE §4) — and optional, because a project
+   * with no memory store must still run.
+   */
+  readonly memoryAnchor?: Anchor;
   /** W13-16 live model output, delta by delta. Not durable — see `session-stream.ts`. */
   readonly onDelta?: (chunk: string, cumulative: number) => void;
   /** The role this session runs as — governs BOTH the gateway routing decision below and the mcp allowlist (mcp-wiring.ts). */
@@ -277,34 +281,26 @@ export function createGatewaySpawnSession(
     let anchorMessage: ChatMessage | null = null;
 
     /**
-     * Re-stated at the END of history on every round, not appended once.
-     * The previous copy is removed first so the transcript carries exactly
-     * one anchor block — always adjacent to the current turn, never growing
-     * without bound.
+     * Re-stated at the END of history on every round, not appended once. The
+     * previous copy is removed first so the transcript carries exactly one
+     * anchor block — always adjacent to the current turn, never growing
+     * without bound. Composition lives in `session-anchors.ts` (W13-23).
      */
     const refreshAnchor = async (): Promise<void> => {
-      if (validatorResults.length === 0) return;
+      const content = await buildAnchorBlock({
+        validatorResults,
+        memoryAnchor: options.memoryAnchor,
+        ticketId,
+        itemDescription: input.prompt.slice(0, 200),
+        criterion: toolCtx.verifyCommand,
+        secretValues: options.secretValues,
+      });
+      if (content === null) return;
       if (anchorMessage) {
         const previous = messages.indexOf(anchorMessage);
         if (previous !== -1) messages.splice(previous, 1);
       }
-      const facts = await gatherAnchorFacts([createToolAnchor(validatorResults)], {
-        item: { id: ticketId, description: input.prompt.slice(0, 200) },
-        criterion: toolCtx.verifyCommand,
-      });
-      if (!anchorIsPresent(facts)) return;
-      // REDACTED HERE, and not merely inherited (FR-S2/SC-06). `verifyTool`
-      // redacts its own stdout/stderr, but an anchor fact also embeds the
-      // verify COMMAND TEXT as its source label — read straight off the
-      // ticket record, so it never passed through `renderHandoff`'s
-      // `redactDeep` pass the way the prompt's copy did. A secret-bearing
-      // verify command would otherwise be reintroduced to the model by the
-      // very mechanism meant to state ground truth. Caught by W11-14's
-      // existing red fixture when this ticket first wired the anchor.
-      anchorMessage = {
-        role: 'user',
-        content: redactDeep(formatAnchorFactsForPrompt(facts), options.secretValues ?? []),
-      };
+      anchorMessage = { role: 'user', content };
       messages.push(anchorMessage);
     };
 

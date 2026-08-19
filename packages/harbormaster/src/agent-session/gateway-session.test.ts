@@ -887,6 +887,47 @@ describe('createGatewaySpawnSession', () => {
     expect(secondResult.exitCode).toBe(1);
     expect(secondAttemptProvider.calls).toHaveLength(1);
   });
+  describe('memory recall reaches the model (W13-23)', () => {
+    it(
+      'RED FIXTURE: a prior finding is in the FIRST prompt. The real anchor has ' +
+        'existed and been tested since W7 with no production caller, so every ' +
+        'session ran with no prior findings — in a module whose own header ' +
+        'cites "an unwired memory engine recalls nothing and is worth nothing"',
+      async () => {
+        const { log, cwd } = await setup();
+        const provider = new ScriptedFakeProvider([finalResponse('done')]);
+        await createGatewaySpawnSession({
+          ...baseSpawnOptions(log, provider, new CostLedger()),
+          memoryAnchor: {
+            kind: 'memory',
+            gather: async () => [
+              {
+                kind: 'memory' as const,
+                source: 'fact-7',
+                statement: 'the previous attempt broke on an empty write_scope',
+              },
+            ],
+          } as never,
+        })({ prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n', cwd });
+
+        // First call, not a later one: recall is worth most before the model
+        // has done anything.
+        const first = provider.calls[0]!;
+        const text = first.messages.map((m) => m.content).join('\n');
+        expect(text).toContain('the previous attempt broke on an empty write_scope');
+      },
+    );
+
+    it('and a session with no memory anchor still runs — a project may have no store', async () => {
+      const { log, cwd } = await setup();
+      const provider = new ScriptedFakeProvider([finalResponse('done')]);
+      const result = await createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, new CostLedger()),
+      )({ prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n', cwd });
+      expect(result.exitCode).toBe(0);
+    });
+  });
+
   describe('streaming the turn (W13-16)', () => {
     it(
       'RED FIXTURE: a streamed session drives the same tool loop, returns the ' +
