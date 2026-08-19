@@ -7930,6 +7930,40 @@
       ]
     },
     {
+      "id": "W13-29",
+      "title": "attempt 2 gets the same handoff as attempt 1 \u2014 the gaps are never fed back, so a retry is a re-roll",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/loop-handoff.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-land-infra.ts",
+        "packages/harbormaster/src/loop-land-report.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "BLUEPRINT section 3.5 step 5 requires it in as many words: REVISE \u2014 re-ground, then fix, WITH THE SPECIFIC GAPS FED BACK; no-progress kill. The land loop does neither. attemptOnce calls buildHandoff(ticket) with the ticket alone, and HandoffBuilder has no parameter through which a prior failure could arrive, so every attempt renders an identical prompt. A retry is a re-roll of the same dice, not a correction.",
+        "THE DATA ALREADY EXISTS AND IS DISCARDED. CloseGateFailure carries reasons[]; SessionResult carries scopeViolations and output; a missing manifest is known. All of it is available at the moment the next handoff is built, and none of it is passed. The failure summary IS eventually written \u2014 by parkComment, after the ladder is exhausted, where only a human will read it.",
+        "WIDEN THE BUILDER, do not special-case the default one. A custom builder (the packed context builder, W12-04) must be able to see the same feedback, or the product's own context layer stays blind to why the last pass failed.",
+        "ADD THE NO-PROGRESS KILL the same step names. Two consecutive attempts that produce the identical gap set are not converging; burning the rest of the ladder on them costs tokens and delays the park. Stop early and park with that stated as the reason.",
+        "REDACTION IS NOT OPTIONAL HERE: gate reasons quote verify stdout/stderr, which can carry a secret. Feedback must go through the same redactDeep path the rendered handoff already applies (SC-06/FR-S2), and there must be a fixture planting a secret in a gate reason and asserting it does not reach the prompt.",
+        "RED FIXTURE: a ticket whose first attempt fails the close gate for a NAMED reason produces a second-attempt prompt containing that reason, proven against today's byte-identical prompts; and two identical failures stop the ladder early rather than running it out."
+      ],
+      "notes": [
+        "Filed 2026-08-19 from a field report about a comparable multi-agent setup where work is lost between the orchestrator and its specialists and a human has to re-state what went wrong. Dokima has the same shape for a different reason: the feedback is computed, then dropped on the floor between attempts.",
+        "Closed 2026-08-19. The no-progress kill is LADDER MODE ONLY and only while an attempt remains: locked mode is defined as looping in place to its FR-L7 convergence ceiling and token-gated maps attempts onto rungs, so an early kill defeats those modes rather than serving them \u2014 three existing tests caught that and were right. Park reporting split into loop-land-report.ts because loop-land.ts was at the 400-line cap."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,

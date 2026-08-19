@@ -608,4 +608,87 @@ describe('runLandLoop', () => {
       },
     );
   });
+
+  describe('the gaps are fed back (W13-29)', () => {
+    /** Fails the close gate on the first attempt, then writes real work. */
+    function failThenFixSpawn(seen: { prompts: string[] }): SpawnSession {
+      let n = 0;
+      return async (input) => {
+        seen.prompts.push(input.prompt);
+        if (n++ === 0) {
+          // A manifest claiming a file it never wrote: the close gate refuses
+          // with a NAMED reason, which is the thing that must reach attempt 2.
+          const manifest = buildManifest({ files: ['packages/example/never-written.ts'] });
+          return { stdout: JSON.stringify(manifest), stderr: '', exitCode: 0 };
+        }
+        return landingSpawn(input);
+      };
+    }
+
+    it(
+      'RED FIXTURE: attempt 2 is told what attempt 1 got wrong. Every attempt ' +
+        'used to render a byte-identical prompt, so a retry was a re-roll of ' +
+        'the same dice — BLUEPRINT section 3.5 step 5 asks for the specific ' +
+        'gaps fed back',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        seedTicket(log, 'W9-01');
+
+        const seen = { prompts: [] as string[] };
+        const options = baseOptions(fixture, failThenFixSpawn(seen));
+        await runLandLoop({ ...options, maxLadderAttempts: 2 });
+
+        expect(seen.prompts).toHaveLength(2);
+        // The heart of it: the prompts DIFFER, and the second names the failure.
+        expect(seen.prompts[1]).not.toBe(seen.prompts[0]);
+        expect(seen.prompts[1]).toContain('PREVIOUS ATTEMPT (1) DID NOT CLOSE');
+        expect(seen.prompts[0]).not.toContain('PREVIOUS ATTEMPT');
+      },
+    );
+
+    it(
+      'REDACTS the fed-back gaps. Gate reasons quote verify output, which can ' +
+        'carry a secret — feeding them forward must not reintroduce one to the ' +
+        'model (SC-06/FR-S2)',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        seedTicket(log, 'W9-01');
+
+        const seen = { prompts: [] as string[] };
+        const options = baseOptions(fixture, failThenFixSpawn(seen));
+        await runLandLoop({
+          ...options,
+          maxLadderAttempts: 2,
+          // The manifest names this path, so it appears in the gate's reason.
+          secretValues: ['never-written'],
+        });
+
+        expect(seen.prompts).toHaveLength(2);
+        expect(seen.prompts[1]).toContain('PREVIOUS ATTEMPT (1) DID NOT CLOSE');
+        expect(seen.prompts[1]).not.toContain('never-written');
+      },
+    );
+
+    it(
+      'a ladder that is not converging stops early rather than spending the ' +
+        'rest of its attempts — BLUEPRINT section 3.5 no-progress kill',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        seedTicket(log, 'W9-01');
+
+        // Identical failure every time, with room in the ladder to notice.
+        const options = baseOptions(fixture, neverResolvingSpawn);
+        const result = await runLandLoop({ ...options, maxLadderAttempts: 4 });
+
+        const outcome = result.processed[0]!;
+        expect(outcome.parked).toBe(true);
+        expect(outcome.parkedReason).toBe('no_progress');
+        // Stopped at 2 of 4: the second attempt proved the first taught nothing.
+        expect(outcome.attempts).toHaveLength(2);
+      },
+    );
+  });
 });

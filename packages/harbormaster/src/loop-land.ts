@@ -40,6 +40,8 @@ import {
 } from '@dokima/git';
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
+import { parkComment } from './loop-land-report.js';
+import { nextFeedback } from './loop-land-session.js';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
 import { attemptOnce } from './loop-land-session.js';
 import {
@@ -59,7 +61,7 @@ import {
   STALE_CLAIM_MS,
 } from './loop-claim.js';
 
-import type { HandoffBuilder } from './loop-handoff.js';
+import type { AttemptFeedback, HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
 import type { CloseGateResult } from './loop-gates.js';
 import {
@@ -70,7 +72,6 @@ import {
 import {
   attemptNumberForRung,
   noopLandEscalationTokenHook,
-  renderDecideCard,
   resolveLandEscalationPolicy,
   tokenBoundaryDecideCard,
   type LandEscalationMode,
@@ -146,8 +147,12 @@ export interface LandAttempt {
   /** `null` when the session returned no completion manifest — the close gate was never even attempted. */
   readonly closeGate: CloseGateResult | null;
 }
+/** `no_progress` is W13-29 / BLUEPRINT §3.5: two attempts, identical gaps. */
 export type LandParkedReason =
-  'ladder_exhausted' | 'locked_ceiling_reached' | 'awaiting_escalation_token';
+  | 'ladder_exhausted'
+  | 'locked_ceiling_reached'
+  | 'awaiting_escalation_token'
+  | 'no_progress';
 export interface LandLoopTicketOutcome {
   readonly ticketId: string;
   readonly mode: LandEscalationMode;
@@ -212,36 +217,6 @@ async function resolveWorktree(
   });
 }
 
-function attemptSummaryLine(attempt: LandAttempt, ceiling: number): string {
-  const gateSummary =
-    attempt.closeGate === null
-      ? 'no completion manifest returned'
-      : attempt.closeGate.ok
-        ? 'close gate passed'
-        : `close gate refused: ${attempt.closeGate.reasons.join('; ')}`;
-  return `attempt ${attempt.attempt}/${ceiling}: exitCode=${attempt.session.exitCode} ${gateSummary}`;
-}
-
-function parkComment(
-  reason: LandParkedReason,
-  ceiling: number,
-  attempts: readonly LandAttempt[],
-  decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined,
-): string {
-  const header =
-    reason === 'locked_ceiling_reached'
-      ? `auto-blocked with evidence: locked-mode convergence ceiling (${ceiling}) reached without a close (D-018).`
-      : reason === 'awaiting_escalation_token'
-        ? 'auto-blocked with evidence: token-gated escalation boundary reached without an approval token (D-018, FR-N2).'
-        : `auto-blocked with evidence: ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2).`;
-  const lines = [
-    header,
-    ...attempts.map((attempt) => attemptSummaryLine(attempt, ceiling)),
-  ];
-  if (decideCard) lines.push('', renderDecideCard(decideCard));
-  return lines.join('\n');
-}
-
 async function processTicket(
   options: LandLoopOptions,
   ticket: Ticket,
@@ -260,6 +235,8 @@ async function processTicket(
   );
 
   const attempts: LandAttempt[] = [];
+  // W13-29: the previous attempt's gaps — see `loop-land-session.ts`.
+  let feedback: AttemptFeedback | undefined;
   // W13-27: infra failures retry free — see `loop-land-infra.ts`.
   const freeRetry = createFreeRetryGate(options, ticket.id, ceiling);
   let current = requireTicket(options.log, ticket.id);
@@ -278,10 +255,22 @@ async function processTicket(
       current,
       worktree,
       baseRef,
+      feedback,
     );
     if (freeRetry.take(infraFailure, attempt)) continue;
     attempts.push({ attempt, session, closeGate });
     current = requireTicket(options.log, ticket.id);
+
+    // W13-29: feed the gaps forward, or stop if nothing changed.
+    const step = nextFeedback(feedback, attempt, session, closeGate, {
+      mode: policy.mode,
+      limit: freeRetry.limit(),
+    });
+    if (step.kind === 'no_progress') {
+      parkedReason = 'no_progress';
+      break;
+    }
+    feedback = step.feedback;
 
     if (closeGate?.ok) {
       landed = true;
