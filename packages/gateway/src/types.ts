@@ -15,13 +15,35 @@ export interface ChatStreamDelta {
   content: string;
 }
 
+/**
+ * The model has decided to call a tool (W13-20).
+ *
+ * Emitted ONCE PER TOOL CALL, when the function NAME first arrives — not on
+ * every argument fragment. Arguments stream in many chunks and say nothing a
+ * watcher can read; the name arrives once and answers the actual question,
+ * which is "what is it doing?" rather than only "is it alive?".
+ *
+ * This exists because W13-16 made the session observable and then measured
+ * that it was not: 41% of one model's turns produced no signal at all,
+ * because a turn that only calls tools emits no `content` and `ChatStreamDelta`
+ * carries nothing else. The adapter had these deltas in hand and discarded
+ * them into an accumulator.
+ */
+export interface ChatStreamToolCall {
+  type: 'tool_call';
+  /** Position within this turn's tool_calls array — stable across fragments. */
+  index: number;
+  /** The function the model chose. Never empty: the event fires when it lands. */
+  name: string;
+}
+
 /** Terminal event: the same normalized ChatResponse chat() would have returned, usage included. */
 export interface ChatStreamFinal {
   type: 'final';
   response: ChatResponse;
 }
 
-export type ChatStreamEvent = ChatStreamDelta | ChatStreamFinal;
+export type ChatStreamEvent = ChatStreamDelta | ChatStreamToolCall | ChatStreamFinal;
 
 declare module './providers/types.js' {
   interface Provider {
