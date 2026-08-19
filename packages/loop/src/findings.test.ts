@@ -207,14 +207,35 @@ describe('recordFindingInfraFailure — per-finding free retries (R-D2)', () => 
 });
 
 describe('createInfraFailureTracker — whole-review infra taxonomy (R-D2)', () => {
-  it('exposes the explicit taxonomy: unparseable review, limit pause, watchdog kill, output-buffer overflow', () => {
-    expect(INFRA_FAILURE_KINDS).toEqual([
-      'unparseable_review',
-      'limit_pause',
-      'watchdog_kill',
-      'output_buffer_overflow',
-    ]);
-  });
+  it(
+    'exposes the explicit taxonomy: unparseable review, limit pause, watchdog ' +
+      'kill, output-buffer overflow, endpoint failure',
+    () => {
+      // Pinned as a LIST on purpose: adding a kind is a decision about what
+      // retries for free, and this assertion is what forces it to be made
+      // deliberately. It caught W13-27's addition, which is the point.
+      expect(INFRA_FAILURE_KINDS).toEqual([
+        'unparseable_review',
+        'limit_pause',
+        'watchdog_kill',
+        'output_buffer_overflow',
+        'endpoint_failure',
+      ]);
+    },
+  );
+
+  it(
+    'W13-27: an endpoint failure is infrastructure — it says nothing about ' +
+      'whether the work was right, so it must not cost an attempt',
+    () => {
+      const tracker = createInfraFailureTracker();
+      tracker.record('endpoint_failure');
+      expect(tracker.total).toBe(1);
+      expect(tracker.counts.endpoint_failure).toBe(1);
+      // And it stays out of every other counter.
+      expect(tracker.counts.unparseable_review).toBe(0);
+    },
+  );
 
   it('a truncated review triggers a free retry with zero ledger writes', () => {
     const ledger = createFindingLedger('W3-08');

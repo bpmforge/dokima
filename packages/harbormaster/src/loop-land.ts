@@ -39,6 +39,7 @@ import {
   type WorktreeHandle,
 } from '@dokima/git';
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
+import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
 import { attemptOnce } from './loop-land-session.js';
 import {
@@ -57,6 +58,7 @@ import {
   findAbandonedTickets,
   STALE_CLAIM_MS,
 } from './loop-claim.js';
+
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
 import type { CloseGateResult } from './loop-gates.js';
@@ -71,9 +73,7 @@ import {
   renderDecideCard,
   resolveLandEscalationPolicy,
   tokenBoundaryDecideCard,
-  LAND_CONVERGENCE_CEILING,
   type LandEscalationMode,
-  type LandEscalationPolicy,
   type LandEscalationTokenHook,
   type ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
@@ -212,18 +212,6 @@ async function resolveWorktree(
   });
 }
 
-/** The attempt ceiling for `policy`'s mode (D-018: ladder's fixed cap, locked's FR-L7 convergence ceiling, token-gated's climbable R1-R3 range). */
-function ceilingFor(policy: LandEscalationPolicy, maxLadderAttempts: number): number {
-  switch (policy.mode) {
-    case 'ladder':
-      return maxLadderAttempts;
-    case 'locked':
-      return LAND_CONVERGENCE_CEILING[policy.tierKind];
-    case 'token-gated':
-      return 3; // R1-R3, this loop's full climbable range before R4's terminal park.
-  }
-}
-
 function attemptSummaryLine(attempt: LandAttempt, ceiling: number): string {
   const gateSummary =
     attempt.closeGate === null
@@ -272,6 +260,8 @@ async function processTicket(
   );
 
   const attempts: LandAttempt[] = [];
+  // W13-27: infra failures retry free — see `loop-land-infra.ts`.
+  const freeRetry = createFreeRetryGate(options, ticket.id, ceiling);
   let current = requireTicket(options.log, ticket.id);
   let landed = false;
   let pushResults: LandPushResults | undefined;
@@ -280,10 +270,16 @@ async function processTicket(
 
   for (
     let attempt = 1;
-    attempt <= ceiling && current.status === 'in_progress';
+    attempt <= freeRetry.limit() && current.status === 'in_progress';
     attempt++
   ) {
-    const { session, closeGate } = await attemptOnce(options, current, worktree, baseRef);
+    const { session, closeGate, infraFailure } = await attemptOnce(
+      options,
+      current,
+      worktree,
+      baseRef,
+    );
+    if (freeRetry.take(infraFailure, attempt)) continue;
     attempts.push({ attempt, session, closeGate });
     current = requireTicket(options.log, ticket.id);
 

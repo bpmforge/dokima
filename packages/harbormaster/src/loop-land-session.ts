@@ -7,6 +7,7 @@
  * decides what to do about it.
  */
 import { isProviderError } from '@dokima/gateway';
+import type { InfraFailureKind } from '@dokima/loop';
 import type { WorktreeHandle } from '@dokima/git';
 import { redactDeep } from '@dokima/shared';
 import type { Ticket } from '@dokima/tickets';
@@ -47,21 +48,30 @@ export interface RunSessionInput {
  */
 export async function runSessionAbsorbingProviderFailure(
   input: RunSessionInput,
-): Promise<SessionResult> {
+): Promise<{ result: SessionResult; infraFailure: InfraFailureKind | null }> {
   try {
-    return await runSession(input);
+    return { result: await runSession(input), infraFailure: null };
   } catch (err) {
     if (!isProviderError(err)) throw err;
+    /**
+     * W13-27: reported as INFRASTRUCTURE, so the ladder does not pay for it.
+     * W13-13 stopped this crashing the run; it still cost an attempt, and with
+     * a ceiling of 2 that meant two endpoint hiccups parked a ticket whose work
+     * had never been judged — a park that then needs a person.
+     */
     return {
-      exitCode: null,
-      // Named distinctly from "no completion manifest returned": someone
-      // choosing a smaller model needs to tell "it did not answer in time"
-      // apart from "it answered without a manifest". Those point at different
-      // fixes — a bigger timeout versus a different model.
-      output: `provider failure: ${err instanceof Error ? err.message : String(err)}`,
-      manifest: null,
-      manifestParseTier: null,
-      scopeViolations: [],
+      infraFailure: 'endpoint_failure',
+      result: {
+        exitCode: null,
+        // Named distinctly from "no completion manifest returned": someone
+        // choosing a smaller model needs to tell "it did not answer in time"
+        // apart from "it answered without a manifest". Those point at
+        // different fixes — a bigger timeout versus a different model.
+        output: `provider failure: ${err instanceof Error ? err.message : String(err)}`,
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+      },
     };
   }
 }
@@ -72,7 +82,11 @@ export async function attemptOnce(
   ticket: Ticket,
   worktree: WorktreeHandle,
   baseRef: string,
-): Promise<{ session: SessionResult; closeGate: CloseGateResult | null }> {
+): Promise<{
+  session: SessionResult;
+  closeGate: CloseGateResult | null;
+  infraFailure: InfraFailureKind | null;
+}> {
   const handoff = await options.buildHandoff(ticket);
   const secrets = options.secretValues;
   const spawn: SpawnSession = secrets?.length
@@ -80,13 +94,16 @@ export async function attemptOnce(
     : options.spawn;
   // W13-13: a provider failure ends the attempt, not the process — see
   // loop-land-session.ts.
-  const session = await runSessionAbsorbingProviderFailure({
+  const { result: session, infraFailure } = await runSessionAbsorbingProviderFailure({
     handoff,
     cwd: worktree.path,
     spawn,
   });
   if (!session.manifest) {
-    return { session, closeGate: null };
+    // NOT infra when `infraFailure` is null: a session that answered without a
+    // Completion Manifest failed the contract, and that must keep costing an
+    // attempt or a real defect retries forever.
+    return { session, closeGate: null, infraFailure };
   }
   const closeGate = await runCloseGate({
     log: options.log,
@@ -105,5 +122,5 @@ export async function attemptOnce(
     memoryEligibleRoles: options.memoryEligibleRoles,
     now: options.now,
   });
-  return { session, closeGate };
+  return { session, closeGate, infraFailure };
 }

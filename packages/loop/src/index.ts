@@ -23,3 +23,16 @@ export {
   type ManifestParseResult,
   type ManifestParseTier,
 } from './session-manifest.js';
+
+/**
+ * W13-27: the infra-failure taxonomy, exported for the first time. It was
+ * complete and tested since the findings work and could not be reached across
+ * the package boundary, which is exactly why it had no caller — the same seam
+ * as the packer (W12-04), the code index (W12-09) and the memory anchor
+ * (W13-23). NARROW, not `export *`: the findings modules carry other symbols
+ * with no consumer, and re-exporting them wholesale would raise the ratchet to
+ * make one addition pass.
+ */
+export { createInfraFailureTracker, INFRA_FAILURE_KINDS } from './findings-infra.js';
+export type { InfraFailureKind, InfraFailureTracker } from './findings-infra.js';
+
