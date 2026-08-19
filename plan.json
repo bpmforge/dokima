@@ -7667,6 +7667,34 @@
       ]
     },
     {
+      "id": "W13-21",
+      "title": "the challenger never fires in an agent session \u2014 the anchor is still the stub W5 was meant to replace",
+      "phase": 13,
+      "module": "loop",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/loop/src/anchors.ts",
+        "packages/loop/src/anchors.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 by a live three-ticket run, not by a test. The build-run loop works end to end against a real local model \u2014 claim, tool loop, close gate, receipt, in_review, dependency release on accept, park on an unsatisfiable gate \u2014 and the CHALLENGER never fires anywhere in it. createStubChallengerAnchor has no caller in source at all; it appears only in the bundled dist because the barrel exports it. Its own doc says it never invokes a second model and returns no facts.",
+        "THE COMMENT IS STALE AND THAT IS THE ROOT CAUSE. anchors.ts says real wiring lands in W5 for the challenger and W7 for memory. W5-05 and W5-06 are both done \u2014 but W5-06's write_scope was packages/pipeline/src/challenger/**, the RESEARCH challenger (claim citability, report verdicts, revision handoffs), which IS wired and works. The SESSION anchor was never inside any ticket's scope, so it was nobody's job, and the comment kept promising that someone else would do it.",
+        "createStubMemoryAnchor is in the same position for W7. Check both and fix or re-date both comments. A stub naming a wave that has already shipped is worse than a TODO, because it reads as scheduled work rather than as a gap.",
+        "DECIDE WHETHER THE SESSION CHALLENGER SHOULD FIRE AT ALL BEFORE BUILDING IT. BLUEPRINT section 3.5 says borderline confidence only (0.5-0.85) for cost reasons, and the session already has a close gate that re-runs verify out of process (SC-02) \u2014 a stronger check than a second opinion on the same output. If the close gate supersedes it, DELETE the stub and the comment rather than wiring a mechanism the product outgrew.",
+        "RED FIXTURE: either a session at borderline confidence produces a challenger verdict on the event log, or the stub and its interface are gone and no comment promises them."
+      ],
+      "notes": [
+        "Filed from a live supervised run on 2026-08-19. Same build-then-wire seam this repo keeps hitting: the decomposition gave the challenger a package to live in and never gave anyone the call site."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,
