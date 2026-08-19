@@ -50,6 +50,8 @@ export interface StreamTurnOptions {
   readonly runId?: string | null;
   /** Live progress for a pane or a supervised run. Never durable. */
   readonly onDelta?: (chunk: string, cumulative: number) => void;
+  /** W13-20: the model chose a tool. Live only, same as `onDelta`. */
+  readonly onToolCall?: (name: string, index: number) => void;
   readonly now?: () => string;
 }
 
@@ -59,6 +61,8 @@ export interface StreamTurnResult {
   readonly streamed: boolean;
   /** Characters seen before the final event — 0 on the fallback path. */
   readonly deltaChars: number;
+  /** Tool names the model chose, in the order it chose them (W13-20). */
+  readonly toolCalls: readonly string[];
 }
 
 export class StreamEndedWithoutFinalError extends Error {
@@ -82,7 +86,12 @@ export async function runStreamedTurn(
   // back is the documented shape of the optional method, and it keeps the
   // ledger identical rather than trading it for progress.
   if (typeof provider.chatStream !== 'function') {
-    return { response: await provider.chat(request), streamed: false, deltaChars: 0 };
+    return {
+      response: await provider.chat(request),
+      streamed: false,
+      deltaChars: 0,
+      toolCalls: [],
+    };
   }
 
   const now = options.now ?? (() => new Date().toISOString());
@@ -117,26 +126,41 @@ export async function runStreamedTurn(
 
   let deltaChars = 0;
   let announced = false;
+  const toolCalls: string[] = [];
   let final: ChatResponse | undefined;
 
+  /**
+   * W13-20: `session.producing` means the model has begun EMITTING, whatever
+   * it is emitting. It used to fire only on text, so a turn that emitted only
+   * tool calls looked identical to a hung one — which measured as 41% of one
+   * model's turns. The first output of either kind now announces the turn.
+   */
+  const announce = (what: { tool?: string }): void => {
+    if (announced) return;
+    announced = true;
+    if (!options.log) return;
+    appendEvent(options.log, {
+      eventType: 'session.producing',
+      actorId: options.actorId,
+      ticketId: options.ticketId ?? null,
+      runId: options.runId ?? null,
+      // The tool name when there is one: "what is it doing?" beats "is it
+      // alive?", and it costs nothing to say on an event already being written.
+      payload: { model: request.model, at: now(), ...(what.tool ? { tool: what.tool } : {}) },
+    });
+  };
+
   for await (const event of provider.chatStream(request)) {
+    if (event.type === 'tool_call') {
+      toolCalls.push(event.name);
+      announce({ tool: event.name });
+      options.onToolCall?.(event.name, event.index);
+      continue;
+    }
     if (event.type === 'delta') {
       deltaChars += event.content.length;
       if (!announced) {
-        announced = true;
-        // ONE event, on the first delta. "The model started producing at this
-        // time" is the fact a person watching a run actually needs, and the
-        // one a later reader of the log still needs. Everything finer goes to
-        // `onDelta` and stays in memory.
-        if (options.log) {
-          appendEvent(options.log, {
-            eventType: 'session.producing',
-            actorId: options.actorId,
-            ticketId: options.ticketId ?? null,
-            runId: options.runId ?? null,
-            payload: { model: request.model, at: now() },
-          });
-        }
+        announce({});
       }
       options.onDelta?.(event.content, deltaChars);
       continue;
@@ -145,7 +169,7 @@ export async function runStreamedTurn(
   }
 
   if (!final) throw new StreamEndedWithoutFinalError(request.model);
-  return { response: final, streamed: true, deltaChars };
+  return { response: final, streamed: true, deltaChars, toolCalls };
 }
 
 /**

@@ -244,4 +244,85 @@ describe('runStreamedTurn (W13-16)', () => {
       }
     });
   });
+
+  describe('a tool-only turn is observable (W13-20)', () => {
+    const dirs2: string[] = [];
+    let log2: EventLog | undefined;
+
+    afterEach(async () => {
+      log2?.close();
+      log2 = undefined;
+      await Promise.all(dirs2.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
+    });
+
+    async function openLog2(): Promise<EventLog> {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-toolturn-'));
+      dirs2.push(dir);
+      const opened = openEventLog(path.join(dir, 'state.db'));
+      createIdentity(opened, { id: 'agent', name: 'Agent', kind: 'machine' });
+      log2 = opened;
+      return opened;
+    }
+
+    it(
+      'RED FIXTURE: a turn that emits ONLY tool calls announces itself. This ' +
+        'was 41% of one model’s turns, and it looked exactly like a hang — ' +
+        'session.producing fired on text alone, and a tool-calling turn has none',
+      async () => {
+        const opened = await openLog2();
+        const seen: string[] = [];
+        const result = await runStreamedTurn({
+          provider: streamingProvider([
+            { type: 'tool_call', index: 0, name: 'read' },
+            { type: 'tool_call', index: 1, name: 'verify' },
+            { type: 'final', response: RESPONSE },
+          ]),
+          request: REQUEST as never,
+          log: opened,
+          actorId: 'agent',
+          ticketId: 'T-1',
+          onToolCall: (name) => seen.push(name),
+        });
+
+        const producing = listEvents(opened).filter((e) => e.eventType === 'session.producing');
+        expect(producing).toHaveLength(1);
+        // Names WHAT it is doing, not merely that it is alive.
+        expect((producing[0]?.payload as { tool?: string }).tool).toBe('read');
+        expect(seen).toEqual(['read', 'verify']);
+        expect(result.toolCalls).toEqual(['read', 'verify']);
+      },
+    );
+
+    it(
+      'still ONE producing event per turn when tools and text both arrive — the ' +
+        'log is append-only and hash-chained, not a place for a keystroke stream',
+      async () => {
+        const opened = await openLog2();
+        await runStreamedTurn({
+          provider: streamingProvider([
+            { type: 'tool_call', index: 0, name: 'read' },
+            { type: 'delta', content: 'thinking' },
+            { type: 'tool_call', index: 1, name: 'write' },
+            { type: 'delta', content: ' more' },
+            { type: 'final', response: RESPONSE },
+          ]),
+          request: REQUEST as never,
+          log: opened,
+          actorId: 'agent',
+        });
+        expect(
+          listEvents(opened).filter((e) => e.eventType === 'session.producing'),
+        ).toHaveLength(1);
+      },
+    );
+
+    it('the non-streaming fallback reports no tool calls rather than guessing', async () => {
+      const result = await runStreamedTurn({
+        provider: { chat: async () => RESPONSE } as never,
+        request: REQUEST as never,
+        actorId: 'agent',
+      });
+      expect(result.toolCalls).toEqual([]);
+    });
+  });
 });

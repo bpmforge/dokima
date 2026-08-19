@@ -255,8 +255,15 @@ export class OaiCompatProvider implements Provider {
           const deltaCalls = choice.delta as unknown as {
             tool_calls?: RawToolCallDelta[];
           };
-          for (const d of deltaCalls.tool_calls ?? [])
+          for (const d of deltaCalls.tool_calls ?? []) {
+            // W13-20: one event when the NAME first lands, not per argument
+            // fragment. These deltas were parsed and discarded, which is why a
+            // tool-calling turn streamed nothing observable.
+            const named = toolCallDeltas.get(d.index)?.name ?? '';
             applyToolCallDelta(toolCallDeltas, d);
+            const now = toolCallDeltas.get(d.index)?.name ?? '';
+            if (!named && now) yield { type: 'tool_call', index: d.index, name: now };
+          }
           if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
         }
         if (event.usage) {

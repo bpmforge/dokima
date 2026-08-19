@@ -7642,7 +7642,7 @@
       "module": "gateway",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/gateway/src/types.ts",
@@ -7663,7 +7663,8 @@
         "RED FIXTURE: a turn that emits ONLY tool calls produces an observable signal before the turn completes, measured against the W13-16 run where it produced none."
       ],
       "notes": [
-        "Filed by W13-16 from its own supervised run, which is why that run was mandatory: every fixture passed and the feature still did not solve the stated problem for the dominant case. session-stream.ts names this ticket in a comment."
+        "Filed by W13-16 from its own supervised run, which is why that run was mandatory: every fixture passed and the feature still did not solve the stated problem for the dominant case. session-stream.ts names this ticket in a comment.",
+        "Closed 2026-08-19. Measured live on both models: coder-next went from 26/64 producing turns (41%) to 6/6 (100%), with 5 of them naming the tool \u2014 read, edit, commit, verify, verify. qwen3.6-35b-a3b was already 100% because it narrates on every turn; its producing events carry no tool name because text arrives before the tool call, which is correct rather than a gap."
       ]
     },
     {

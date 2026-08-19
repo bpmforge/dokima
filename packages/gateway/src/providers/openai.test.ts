@@ -340,7 +340,7 @@ describe('OpenAiProvider — chatStream()', () => {
     let final: import('./types.js').ChatResponse | undefined;
     for await (const event of stream) {
       if (event.type === 'delta') deltas.push(event.content);
-      else final = event.response;
+      else if (event.type === 'final') final = event.response;
     }
     return { deltas, final };
   }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ChatResponse } from './types.js';
 import {
   isProviderError,
   ProviderAuthError,
@@ -780,7 +781,7 @@ describe('OaiCompatProvider — chatStream()', () => {
     let final: import('./types.js').ChatResponse | undefined;
     for await (const event of stream) {
       if (event.type === 'delta') deltas.push(event.content);
-      else final = event.response;
+      else if (event.type === 'final') final = event.response;
     }
     return { deltas, final };
   }
@@ -1442,6 +1443,65 @@ describe('streaming carries requestExtras too (W13-15)', () => {
         expect(err).toBeInstanceOf(ProviderTimeoutError);
         // The property that makes it absorbable rather than fatal.
         expect(isProviderError(err)).toBe(true);
+      },
+    );
+  });
+
+  describe('tool-call deltas are surfaced (W13-20)', () => {
+    function toolStream(): ReadableStream<Uint8Array> {
+      const enc = new TextEncoder();
+      const lines = [
+        // The name lands on the first fragment; arguments dribble after it.
+        'data: {"model":"m","choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"read","arguments":"{\\"pa"}}]}}]}',
+        'data: {"model":"m","choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"th\\":\\"a.ts\\"}"}}]}}]}',
+        'data: {"model":"m","choices":[{"delta":{"tool_calls":[{"index":1,"id":"c2","function":{"name":"verify","arguments":"{}"}}]}}]}',
+        'data: {"model":"m","choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":1,"completion_tokens":1}}',
+        'data: [DONE]',
+      ];
+      return new ReadableStream({
+        start(c) {
+          for (const l of lines) c.enqueue(enc.encode(l + '\n\n'));
+          c.close();
+        },
+      });
+    }
+
+    it(
+      'RED FIXTURE: a turn that emits ONLY tool calls produces observable ' +
+        'events. W13-16 made the session streamable and then measured that 41% ' +
+        'of one model’s turns still produced nothing, because these deltas were ' +
+        'parsed into an accumulator and discarded',
+      async () => {
+        const provider = createOaiCompatProvider({
+          id: 'studio',
+          baseUrl: 'http://example.invalid/v1',
+          fetchImpl: (async () =>
+            new Response(toolStream(), {
+              status: 200,
+              headers: { 'content-type': 'text/event-stream' },
+            })) as unknown as typeof fetch,
+        });
+
+        const announced: Array<{ index: number; name: string }> = [];
+        let final: ChatResponse | undefined;
+        for await (const event of provider.chatStream!({
+          model: 'm',
+          messages: [{ role: 'user', content: 'hi' }],
+        })) {
+          if (event.type === 'tool_call') announced.push({ index: event.index, name: event.name });
+          else if (event.type === 'final') final = event.response;
+        }
+
+        // ONE per tool call, when the NAME lands — not one per argument
+        // fragment, which would say nothing and flood anything downstream.
+        expect(announced).toEqual([
+          { index: 0, name: 'read' },
+          { index: 1, name: 'verify' },
+        ]);
+        // And the assembled call is unchanged: this surfaces what was already
+        // being parsed, it does not re-parse it.
+        expect(final?.toolCalls?.map((t: { name: string }) => t.name)).toEqual(['read', 'verify']);
+        expect(final?.toolCalls?.[0]?.arguments).toEqual({ path: 'a.ts' });
       },
     );
   });
