@@ -99,5 +99,14 @@ export interface OaiCompatStreamChunk {
  * generous, but it is still bounded, and `OaiCompatConfig.requestTimeoutMs`
  * overrides it per provider.
  */
+/**
+ * 300s, five times the 60s every hosted kind uses — deliberate, not drift.
+ *
+ * This is the LOCAL adapter, and a 27B model on a laptop genuinely takes
+ * minutes for one call: measured at over 300s in live testing, which is what
+ * W13-13 was filed for. A hosted endpoint that has not answered in 60s is not
+ * slow, it is broken. See docs/design/RUN_LIMITS.md for every limit that can
+ * stop a run and why each is the value it is.
+ */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
 export const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;
