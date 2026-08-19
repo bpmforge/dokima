@@ -224,6 +224,56 @@ async function processTicket(
  * `secretValues` redaction wired in here therefore has no live caller
  * either, exactly like `watchdog-session.ts`'s `runWatchdogSession`.
  */
+/**
+ * How long a ticket may show NO activity before its claim is treated as
+ * abandoned (W13-12).
+ *
+ * Derived from the longest silence a healthy session can legitimately produce,
+ * not picked round: one `verify` (10 minutes, DEFAULT_VERIFY_TIMEOUT_MS) plus
+ * one model call (5 minutes on a local endpoint, RUN_LIMITS.md) is about
+ * fifteen, so thirty gives a full factor of two before anything is reclaimed.
+ * Reaping a live session would be far worse than reclaiming a dead one late.
+ */
+export const STALE_CLAIM_MS = 30 * 60 * 1000;
+
+/**
+ * Tickets held by an owner that is gone (W13-12).
+ *
+ * THE EVENT LOG IS THE HEARTBEAT, which is why this needs no new bookkeeping:
+ * a live session emits an `mcp.tool_call.completed` per tool call, so any
+ * ticket with recent events is being worked on by definition. `claimedAt`
+ * alone could not do this — a legitimately long session looks identical to an
+ * abandoned one by that measure.
+ *
+ * Found in live testing: a run killed at an external timeout, and later a run
+ * crashed by an uncaught provider timeout (W13-13), each left a ticket in
+ * `in_progress` with its owner gone. The next run reported "0 landed, 0
+ * parked" in zero seconds and explained nothing.
+ */
+export function findAbandonedTickets(
+  tickets: readonly Ticket[],
+  events: readonly { ticketId: string | null; createdAt: string }[],
+  nowIso: string,
+  staleMs: number = STALE_CLAIM_MS,
+): Ticket[] {
+  const lastSeen = new Map<string, number>();
+  for (const event of events) {
+    if (!event.ticketId) continue;
+    const at = Date.parse(event.createdAt);
+    if (Number.isNaN(at)) continue;
+    const prev = lastSeen.get(event.ticketId);
+    if (prev === undefined || at > prev) lastSeen.set(event.ticketId, at);
+  }
+  const now = Date.parse(nowIso);
+  return tickets.filter((ticket) => {
+    if (ticket.status !== 'claimed' && ticket.status !== 'in_progress') return false;
+    const seen = lastSeen.get(ticket.id);
+    // No events at all for a held ticket cannot happen (claiming emits one),
+    // so treat it as abandoned rather than immortal.
+    return seen === undefined || now - seen > staleMs;
+  });
+}
+
 export async function runClaimLoop(options: ClaimLoopOptions): Promise<ClaimLoopResult> {
   const maxSessions = options.maxSessionsPerTicket ?? DEFAULT_MAX_SESSIONS_PER_TICKET;
   const skip = new Set<string>();

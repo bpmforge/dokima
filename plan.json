@@ -7412,12 +7412,13 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "reliability-engineer",
       "write_scope": [
         "packages/harbormaster/src/loop-claim.ts",
         "packages/harbormaster/src/loop-claim.test.ts",
-        "apps/server/src/cli/run-build.ts"
+        "apps/server/src/cli/run-build.ts",
+        "packages/harbormaster/src/loop-claim.test.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -7430,7 +7431,8 @@
         "RED FIXTURE: a ticket claimed by an actor that never finished is recoverable on the next run, by name and with an event explaining it; and a ticket whose session is still active is NOT."
       ],
       "notes": [
-        "Filed 2026-08-19 from live testing of qwen3.8-27b. The immediate cause was an external ten-minute kill, but the exposure is general: nothing in the product recovers a claim whose owner vanished. Worth noting the two mechanisms that would fix it were both already written \u2014 this is a wiring ticket, not a design one."
+        "Filed 2026-08-19 from live testing of qwen3.8-27b. The immediate cause was an external ten-minute kill, but the exposure is general: nothing in the product recovers a claim whose owner vanished. Worth noting the two mechanisms that would fix it were both already written \u2014 this is a wiring ticket, not a design one.",
+        "Closed 2026-08-19, verified against GENUINELY STRANDED STATE rather than a fixture: the ticket that had been stuck in in_progress since the qwen3.8 crash was reclaimed, explained in the log, and landed in six seconds on coder-next. THE EVENT LOG IS THE HEARTBEAT, and that is what makes this need no new bookkeeping: a live session emits an mcp.tool_call.completed per tool call, so recent events ARE proof of life. `claimedAt` alone could not do it \u2014 a legitimately long session and an abandoned one look identical by that measure, which is the trap the acceptance warned about ('do not auto-kill a live session'). There is a fixture for exactly that case: claimed an hour ago, active ten seconds ago, not reclaimed. THE BOUND IS DERIVED, NOT PICKED ROUND: the longest silence a healthy session can produce is one verify (10 min) plus one local model call (5 min), so 30 minutes clears it by a factor of two, and a fixture asserts the relationship rather than the number. I did NOT wire runWatchdogSession as the ticket speculated \u2014 it is a watchdog for a session that is still running, a different problem from a session that is gone, and adopting it here would have been reaching for a mechanism because it existed rather than because it fit."
       ]
     },
     {
