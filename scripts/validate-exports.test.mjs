@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   countReferences,
   findUnreferencedExports,
@@ -8,6 +8,24 @@ import {
   moduleExports,
   stripComments,
 } from './validate-exports.mjs';
+
+/**
+ * `findUnreferencedExports()` walks 1249 source files and runs the TypeScript
+ * checker over every package barrel — measured at ~20s. Four tests called it
+ * separately under vitest's default 5s timeout, and only ever passed because
+ * `--retry=2` hid the cost on an idle machine. Under real load all four went
+ * red at once and read as a regression in the validator rather than a flake in
+ * its tests.
+ *
+ * ONE scan, and a timeout that reflects what it actually costs.
+ */
+vi.setConfig({ testTimeout: 90_000 });
+
+let scanned;
+function scan() {
+  scanned ??= findUnreferencedExports();
+  return scanned;
+}
 
 describe('validate-exports (W12-10) — file classification', () => {
   it('treats every test-shaped file as non-evidence of use', () => {
@@ -26,7 +44,7 @@ describe('validate-exports (W12-10) — file classification', () => {
 });
 
 describe('validate-exports (W12-10) — the defect class, against this repo', () => {
-  const result = findUnreferencedExports();
+  const result = scan();
   const reported = new Set(result.findings.map((f) => `${f.package}:${f.symbol}`));
 
   it(
@@ -87,7 +105,7 @@ describe('the buried-export pass (W12-38)', () => {
       'it is not in a barrel at all. The ratchet was blind to the worst shape ' +
       'of the defect it exists to catch',
     () => {
-      const { buried } = findUnreferencedExports();
+      const { buried } = scan();
       expect(buried.map((b) => b.symbol)).toContain('runEscalationPolicy');
     },
   );
@@ -138,7 +156,7 @@ describe('the buried-export pass (W12-38)', () => {
   });
 
   it('never double-reports a symbol the barrel pass already judged', () => {
-    const { findings, buried } = findUnreferencedExports();
+    const { findings, buried } = scan();
     const barrelNames = new Set(findings.map((f) => f.symbol));
     for (const b of buried) expect(barrelNames.has(b.symbol)).toBe(false);
   });
@@ -194,7 +212,7 @@ describe('a comment is not a caller (W12-39)', () => {
       'is reported now. Its own docstring says its only callers are its own ' +
       'tests, and that sentence is what used to count as the caller',
     () => {
-      const names = findUnreferencedExports().findings.map((f) => f.symbol);
+      const names = scan().findings.map((f) => f.symbol);
       expect(names).toContain('runClaimLoop');
     },
   );
