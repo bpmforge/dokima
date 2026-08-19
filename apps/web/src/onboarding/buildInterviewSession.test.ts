@@ -70,3 +70,59 @@ describe('buildInterviewSession (W10-54)', () => {
     expect(drafted?.answers[0]?.actor.kind).toBe('human');
   });
 });
+
+/**
+ * W13-18. When follow-ups were first wired, `buildInterviewSession` still read
+ * `answers[deliverableId]` and nothing else — so a person could answer three
+ * adaptive questions and none of them reached the draft. The feature would
+ * have looked like it worked and changed nothing.
+ */
+describe('adaptive follow-ups reach the deliverable (W13-18)', () => {
+  const opening = 'docs/VISION.md';
+
+  it('RED FIXTURE: a follow-up answer is in the draft, not silently dropped', () => {
+    const session = buildInterviewSession(
+      's1',
+      { [opening]: 'A tool that proves its work.', [`${opening}#0`]: 'Developers.' },
+      { [opening]: ['Who is it for?'] },
+    );
+    const topic = session.topics.find((t) => t.topic.deliverableId === opening)!;
+    expect(topic.draft?.content).toContain('Developers.');
+    // The QUESTION travels with the answer — "Developers." alone is not
+    // meaningful without what was asked.
+    expect(topic.draft?.content).toContain('Who is it for?');
+  });
+
+  it('records follow-ups as real questions at increasing depth, which is what the engine counts', () => {
+    const session = buildInterviewSession(
+      's1',
+      {
+        [opening]: 'A tool.',
+        [`${opening}#0`]: 'Developers.',
+        [`${opening}#1`]: 'Solo ones.',
+      },
+      { [opening]: ['Who is it for?', 'How many of them?'] },
+    );
+    const topic = session.topics.find((t) => t.topic.deliverableId === opening)!;
+    expect(topic.questionsAsked.map((q) => q.depth)).toEqual([1, 2, 3]);
+    expect(topic.answers).toHaveLength(3);
+    expect(topic.draft?.basedOnQuestionIds).toHaveLength(3);
+  });
+
+  it('an unanswered follow-up is left out rather than emitting an empty section', () => {
+    const session = buildInterviewSession(
+      's1',
+      { [opening]: 'A tool.', [`${opening}#0`]: '   ' },
+      { [opening]: ['Who is it for?'] },
+    );
+    const topic = session.topics.find((t) => t.topic.deliverableId === opening)!;
+    expect(topic.questionsAsked).toHaveLength(1);
+    expect(topic.draft?.content).not.toContain('Who is it for?');
+  });
+
+  it('no follow-ups at all is exactly the old behaviour — every existing caller passes none', () => {
+    const before = buildInterviewSession('s1', { [opening]: 'A tool.' });
+    const after = buildInterviewSession('s1', { [opening]: 'A tool.' }, {});
+    expect(after).toEqual(before);
+  });
+});

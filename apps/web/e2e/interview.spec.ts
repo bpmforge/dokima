@@ -156,10 +156,15 @@ test.describe('interview -> board, in one pass (W10-61, inherited W10-54 AC5)', 
 
     await page.getByRole('button', { name: 'Describe' }).click();
     await page.getByLabel('Working title').fill('Interval timer');
-    const answers = page.locator('textarea');
-    const count = await answers.count();
-    for (let i = 0; i < count; i += 1) {
-      await answers.nth(i).fill(`Answer ${i + 1} for the interval timer.`);
+    // W13-18: address the OPENING questions by their own test id, never by
+    // positional index. Answering a question can now add an adaptive follow-up
+    // textarea beneath it (AC-1), so a snapshot of `textarea` count taken once
+    // and indexed into is stale the moment the first answer lands. Same lesson
+    // as W12-36's selectors: a locator that depends on the DOM not growing is
+    // a latent break, not a passing test.
+    const openings = page.locator('[data-testid^="interview-answer-"]');
+    for (const opening of await openings.all()) {
+      await opening.fill('Answer for the interval timer.');
     }
 
     await page.getByRole('button', { name: 'Build the board' }).click();

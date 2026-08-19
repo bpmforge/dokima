@@ -6,7 +6,13 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import * as onboardingApi from './api.js';
 import { InterviewPanel } from './InterviewPanel.js';
+
+vi.mock('./api.js', async () => {
+  const actual = await vi.importActual<typeof import('./api.js')>('./api.js');
+  return { ...actual, fetchFollowUpQuestion: vi.fn().mockResolvedValue(null) };
+});
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
 
 afterEach(cleanup);
@@ -122,4 +128,63 @@ describe('the form declares its length before you start (W13-02)', () => {
       `1 of ${INTERVIEW_QUESTIONS.length}`,
     );
   });
+});
+
+/**
+ * W13-18 (AC-1: "Interview adapts question depth to my answers"). The engine
+ * that does this shipped in W5-02 and had no production caller; users got a
+ * second, static interview instead.
+ */
+describe('adaptive follow-ups (W13-18)', () => {
+  it(
+    'RED FIXTURE: answering a question can produce a follow-up. The panel asked ' +
+      'eight fixed questions and never one more, whatever the answer said',
+    async () => {
+      vi.mocked(onboardingApi).fetchFollowUpQuestion.mockResolvedValue(
+        'Who is it for, specifically?',
+      );
+      renderPanel();
+      fireEvent.change(screen.getByTestId('interview-answer-docs/VISION.md'), {
+        target: { value: 'A tool that proves its work.' },
+      });
+      fireEvent.click(screen.getByTestId('interview-more-docs/VISION.md'));
+
+      expect(await screen.findByText('Who is it for, specifically?')).toBeTruthy();
+    },
+  );
+
+  it(
+    'offers nothing to ask until the question is answered — and never asks on ' +
+      'its own. The first version fetched on blur, which spent a model call ' +
+      'every time the cursor left a field',
+    () => {
+      vi.mocked(onboardingApi).fetchFollowUpQuestion.mockClear();
+      renderPanel();
+      expect(screen.queryByTestId('interview-more-docs/VISION.md')).toBeNull();
+      fireEvent.change(screen.getByTestId('interview-answer-docs/VISION.md'), {
+        target: { value: 'A tool.' },
+      });
+      // Now offered — but still not called until asked for.
+      expect(screen.getByTestId('interview-more-docs/VISION.md')).toBeTruthy();
+      expect(vi.mocked(onboardingApi).fetchFollowUpQuestion).not.toHaveBeenCalled();
+    },
+  );
+
+  it(
+    'no follow-up is a working interview, not a broken one. A local-only user ' +
+      'with no model reachable still answers every opening question (C-1)',
+    async () => {
+      vi.mocked(onboardingApi).fetchFollowUpQuestion.mockResolvedValue(null);
+      renderPanel();
+      fireEvent.change(screen.getByTestId('interview-answer-docs/VISION.md'), {
+        target: { value: 'A thing.' },
+      });
+      fireEvent.click(screen.getByTestId('interview-more-docs/VISION.md'));
+      await vi.waitFor(() =>
+        expect(vi.mocked(onboardingApi).fetchFollowUpQuestion).toHaveBeenCalled(),
+      );
+      // Still the full opening set, still submittable.
+      expect(screen.getByTestId('interview-run')).toBeTruthy();
+    },
+  );
 });

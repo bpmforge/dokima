@@ -7601,7 +7601,7 @@
       "module": "cli",
       "lane": "pipeline",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "apps/server/src/api/server/interview-routes.ts",
@@ -7609,7 +7609,12 @@
         "apps/server/src/api/server.ts",
         "apps/web/src/onboarding/InterviewPanel.tsx",
         "apps/web/src/onboarding/InterviewPanel.test.tsx",
-        "apps/web/src/onboarding/api.ts"
+        "apps/web/src/onboarding/api.ts",
+        "apps/web/src/onboarding/useFollowUps.ts",
+        "apps/web/src/onboarding/buildInterviewSession.ts",
+        "apps/web/src/onboarding/buildInterviewSession.test.ts",
+        "apps/web/e2e/**",
+        "packages/pipeline/src/index.ts"
       ],
       "depends_on": [],
       "stories": [
@@ -7624,7 +7629,8 @@
         "NEEDS A SUPERVISED RUN, NOT GREEN TESTS. This is the front door: the first thing a new user touches. The last built-but-unused mechanism wired into the session path passed every fixture and failed on what no fixture covered (W13-09)."
       ],
       "notes": [
-        "Filed 2026-08-19 after the founder asked how to close the gap between pm-interviewer.md and the implementation. The doc is NOT overclaiming \u2014 it accurately describes the engine that was built. Fourteenth instance of the built-but-unwired class and the largest: an entire subsystem shadowed by a simpler reimplementation of itself."
+        "Filed 2026-08-19 after the founder asked how to close the gap between pm-interviewer.md and the implementation. The doc is NOT overclaiming \u2014 it accurately describes the engine that was built. Fourteenth instance of the built-but-unwired class and the largest: an entire subsystem shadowed by a simpler reimplementation of itself.",
+        "Closed 2026-08-19, VERIFIED AGAINST THE LOCAL MODEL, not only fixtures: the live endpoint returned 'Who are the primary users of this tool\u2014developers, businesses, researchers, or another group?' in one second. That is AC-1 delivered for the first time since it was written. THE FIRST LIVE TEST FAILED AND MY OWN CATCH-ALL HID WHY \u2014 it returned reason 'unavailable' in 0.017s for what was actually a ROUTING failure: a real project's matrix carries coding-agent rows only (that is what the wizard writes), so asking for role 'pm-interviewer' was unresolvable. Fixed twice over: fall back to the configured role, and report 'no-model-configured' distinctly from 'unavailable' with the underlying message, because a single catch-all hiding four different causes is the silence this product exists to refuse. I HAD INTRODUCED A SECOND SILENT FAILURE IN THE SAME TICKET: buildInterviewSession read answers[deliverableId] only, so every follow-up answer was dropped \u2014 a person could answer three adaptive questions and none would reach the draft, and the feature would have looked like it worked. Follow-ups are now real questionsAsked at increasing depth, which is what the engine's ceiling counts. THE ON-BLUR DESIGN WAS WRONG AND THE E2E SUITE PROVED IT: fetching a follow-up whenever the cursor left a field meant a model call per tab, surprise layout shifts, and three failing specs plus a run that went from 30s to 1.2m. Made explicit ('Ask me more about this'); e2e returned to 69 passing at 29.7s. Two e2e specs also had to stop addressing textareas by positional index, which was a latent break the moment any form grew."
       ]
     }
   ]
