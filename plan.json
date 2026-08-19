@@ -7736,13 +7736,18 @@
       "module": "memory",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/harbormaster/src/agent-session/gateway-session.ts",
         "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/harbormaster/src/agent-session/session-anchors.ts",
+        "packages/harbormaster/src/agent-session/session-anchors.test.ts",
         "packages/memory/src/store/anchor.ts",
-        "packages/memory/src/store/anchor.test.ts"
+        "packages/memory/src/store/anchor.test.ts",
+        "apps/server/src/cli/run-build-spawn.ts",
+        "packages/memory/src/index.ts",
+        "conductor.config.json"
       ],
       "depends_on": [],
       "stories": [],
@@ -7754,7 +7759,9 @@
         "RED FIXTURE: a session whose project has a confirmed prior finding relevant to its ticket receives it as an anchor fact, proven against the current behaviour where it receives nothing."
       ],
       "notes": [
-        "Filed by W13-21. The loop-side stub is deliberately KEPT as anti-jarvis-gap.test.ts's control condition \u2014 this ticket is about constructing the real one in a session, not about replacing the stub."
+        "Filed by W13-21. The loop-side stub is deliberately KEPT as anti-jarvis-gap.test.ts's control condition \u2014 this ticket is about constructing the real one in a session, not about replacing the stub.",
+        "write_scope widened at claim: run-build.ts is the composition root (harbormaster may not import memory, ARCHITECTURE section 4 \u2014 same constraint W12-04 solved by composing in apps/server), and session-anchors.ts is a new chapter module because gateway-session.ts was at 399 of the 400-line cap with the anchor block inline.",
+        "Closed 2026-08-19. Proven live, not by fixture alone: a planted VERIFIED fact reached the model 16 times in one run (use_count 0 -> 16) while a planted UNVERIFIED one stayed at 0. Also checked that wiring memory does not make runs worse \u2014 4 controlled runs, 2 with memory and 2 without, all landed in 1 attempt. Buried ratchet 73 -> 72."
       ]
     },
     {

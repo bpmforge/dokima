@@ -11,6 +11,7 @@ import type { EventLog } from '@dokima/events';
 import { CostLedger, FitnessCardStore, ROLE_CODING_AGENT, type Provider } from '@dokima/gateway';
 import type { SpawnSession } from '@dokima/loop';
 import { createGatewaySpawnSession, DEFAULT_AGENT_SESSION_TASK_TYPE } from '@dokima/harbormaster';
+import { createMemoryAnchor } from '@dokima/memory';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
 import { resolveModelTarget, type PinnedModel } from '../api/pipeline/model-resolution.js';
@@ -82,6 +83,23 @@ export async function buildBuiltInSpawn(
     fitnessStore: new FitnessCardStore(),
     resolveProvider: () => provider,
     ledger: new CostLedger(),
+    /**
+     * W13-23: prior VERIFIED findings, recalled into the session's anchor
+     * block. Composed HERE and not in `harbormaster`, which may not import
+     * `memory` (ARCHITECTURE §4) — the same constraint W12-04 solved by
+     * composing the packed handoff in `apps/server`.
+     *
+     * `log.db` is the handle, exactly as W12-09 chose for the code index: the
+     * run already holds the event log, so recall lives in the project's own
+     * SQLite file rather than a second store nobody backs up.
+     *
+     * No embedding provider is passed, and that is a decision rather than an
+     * omission. `assembleContext` degrades to pure BM25 over verified facts
+     * when there is none (`retrieval.ts` AC-1), so a local-only user gets real
+     * keyword recall instead of a feature that quietly needs a cloud model
+     * (FR-G5, law 9b).
+     */
+    memoryAnchor: createMemoryAnchor(log.db),
     // W13-11: the user's tool-turn cap, when they set one. Absent = the
     // documented default; this field was previously never set at all.
     ...(maxIterations === undefined ? {} : { maxIterations }),
