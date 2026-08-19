@@ -38,7 +38,7 @@ import {
   removeProvider,
 } from './providers-store.js';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
-import { fromWire, toWire, type WireProvider } from './providers-wire.js';
+import { fromWire, toWire } from './providers-wire.js';
 import { getProjectSettings } from './settings-scope.js';
 import { registerCopilotDeviceAuthRoutes } from './providers-copilot-routes.js';
 

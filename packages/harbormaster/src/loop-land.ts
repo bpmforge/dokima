@@ -41,7 +41,6 @@ import {
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
 import { attemptOnce } from './loop-land-session.js';
-import { redactDeep } from '@dokima/shared';
 import {
   claimTicket,
   commentTicket,
@@ -60,7 +59,7 @@ import {
 } from './loop-claim.js';
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
-import { runCloseGate, type CloseGateResult } from './loop-gates.js';
+import type { CloseGateResult } from './loop-gates.js';
 import {
   pushLandedBranch,
   recordFailedPushes,

@@ -128,7 +128,6 @@ async function retryingDispatch(role, context) {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     currentAttempt = attempt;
     try {
-      // eslint-disable-next-line no-await-in-loop -- sequential retries by design
       return await baseDispatch(role, context);
     } catch (err) {
       lastErr = err;

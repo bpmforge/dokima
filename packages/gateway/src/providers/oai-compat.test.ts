@@ -1298,12 +1298,18 @@ describe('streaming carries requestExtras too (W13-15)', () => {
         fetchImpl,
         requestExtras: { reasoning_effort: 'none' },
       });
-      for await (const _ of provider.chatStream!({
+      // Collected, not discarded: a drain loop that binds nothing proves the
+      // request was SENT but not that the stream was READABLE, and every
+      // assertion below is about the request only.
+      const chunks = [];
+      for await (const chunk of provider.chatStream!({
         model: 'm',
         messages: [{ role: 'user', content: 'hi' }],
       })) {
-        // drain
+        chunks.push(chunk);
       }
+      expect(chunks.length).toBeGreaterThan(0);
+
       const body = bodies[0] as Record<string, unknown>;
       expect(body.reasoning_effort).toBe('none');
       expect(body.stream).toBe(true);
