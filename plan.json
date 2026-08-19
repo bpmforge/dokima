@@ -7806,6 +7806,38 @@
       ]
     },
     {
+      "id": "W13-25",
+      "title": "SC-07 is documented as landed and is not in force \u2014 the execution sandbox has no caller",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "security-auditor",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates-verify.ts",
+        "packages/harbormaster/src/loop-gates-verify.test.ts",
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/validators/src/run.ts",
+        "packages/validators/src/run.test.ts",
+        "docs/SECURITY_CONTROLS.md",
+        "docs/THREAT_MODEL.md"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 auditing the unwired-export list. packages/harbormaster/src/sandbox/ implements process and container isolation, complete and tested, and has ZERO production callers. Both verify paths \u2014 the in-session verify tool (git-tools.ts verifyTool) and the out-of-session close gate (SC-02) \u2014 go through reRunVerify, which is node:child_process exec with cwd and timeout ONLY: the parent environment is inherited whole and the network is open. runValidatorPack spawns the same way; RunValidatorOptions has no sandbox field at all.",
+        "SC-07 CLAIMS OTHERWISE AND NAMES THIS AS SHIPPED: verify commands, test suites and tool anchors run under a restricted child process, cleaned env (no vault handles, no tokens), network disabled by default, validator-pack executables under the same sandbox \u2014 Lands: W6-06. W6-06 is done. Its write_scope was packages/harbormaster/src/sandbox/** \u2014 the module and nothing else \u2014 so no ticket ever owned a call site. The same build-then-wire seam as the packer (W12-04), the code index (W12-09), the anchors (W12-05) and the memory anchor (W13-23), but this time on a security control.",
+        "TWO THREATS LOSE THEIR STATED MITIGATION: T-4 and T-21 (poisoned content pack executes with gate authority, rated M x H = H) both cite SC-07. A validator pack or a ticket verify command currently runs with the operator's full environment and unrestricted network.",
+        "THE DECISION THIS TICKET MUST TAKE AND RECORD: what happens when the host cannot isolate (SandboxUnavailableError). FR-G5 says degrade honestly, but a security control that degrades silently is worth nothing. Recommendation to weigh: refuse by default and require an explicit, ledgered acknowledgement to run unsandboxed \u2014 the D-019 consent shape \u2014 rather than a silent fallback.",
+        "DO NOT WEAKEN SC-02 WHILE WIRING THIS. The close gate re-runs the ticket's own verify out of session precisely so a manifest cannot substitute a no-op; the sandbox must wrap that execution, not replace or relax it.",
+        "RED FIXTURE: a verify command attempting an outbound connection and a read of a secret-bearing env var fails on both counts \u2014 which is W6-06's own acceptance criterion 2, never exercised against the real path."
+      ],
+      "notes": [
+        "Filed 2026-08-19 from an unwired-export audit, not a failing test. Deliberately NOT fixed in place: wiring a sandbox into every verify changes execution semantics for every run and needs the unavailable-host decision made first. The docs are corrected in the same commit that files this, because a security document asserting a mitigation that is absent is worse than the gap."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,

@@ -65,7 +65,20 @@ ticket. IDs are stable — new controls append, never renumber.
   the autonomous W3 runs; the W8-01 dogfood re-verifies end-to-end). *Verify:* planted
   fixture secrets pushed through packets/logs/events ⇒ zero plaintext; close-gate test
   with a committed fake key ⇒ blocked.
-- **SC-07 Sandboxed verify execution, no network by default** (T-4, T-21). Verify
+- **SC-07 Sandboxed verify execution, no network by default** (T-4, T-21).
+  > **NOT IN FORCE as of 2026-08-19 — W13-25.** The sandbox module
+  > (`packages/harbormaster/src/sandbox/`) is complete and tested and has **zero
+  > production callers**. Both verify paths — the in-session `verify` tool and
+  > the out-of-session close gate — run `node:child_process` `exec` with `cwd`
+  > and `timeout` only: **the parent environment is inherited whole and the
+  > network is open**. `runValidatorPack` spawns the same way.
+  > W6-06 is marked done and its `write_scope` was
+  > `packages/harbormaster/src/sandbox/**` — the module and nothing else — so no
+  > ticket ever owned a call site. The description below states the INTENT and
+  > the target, not the current state; T-4 and T-21 have no effective mitigation
+  > from this control today.
+
+  Verify
   commands, test suites, and tool anchors run in the project worktree under a restricted
   child process: cleaned env (no vault handles, no tokens), network disabled by default
   (opt-in per project; container profile via Podman/Docker when configured —
