@@ -13,7 +13,10 @@ import {
 } from '@dokima/shared';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { executeBuildRun, tokenizeAgentCommand } from './run-build.js';
-import { resolvePolicyScope } from './run-build-policy.js';
+import { resolvePolicyScope,
+  MAX_TOOL_ITERATIONS_CEILING,
+  resolveMaxToolIterations,
+} from './run-build-policy.js';
 import { AGENT_RUNNER_SETTINGS_KEY } from '../api/server/settings-types.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
 
@@ -646,6 +649,48 @@ describe('resolvePolicyScope (W12-18)', () => {
       expect('refusal' in result).toBe(false);
       if ('refusal' in result) continue;
       expect(result.scope).toEqual({});
+    }
+  });
+});
+
+/**
+ * W13-11. Live testing: with thinking disabled a local 27b produced CORRECT
+ * work and still parked, because it used all twelve tool turns before emitting
+ * a manifest. `maxIterations` was a session option nothing in apps/server set.
+ */
+describe('resolveMaxToolIterations (W13-11)', () => {
+  it('RED FIXTURE: a configured value is carried, so the cap can be raised for a chatty model', () => {
+    expect(resolveMaxToolIterations(20)).toEqual({ maxIterations: 20 });
+  });
+
+  it('an absent setting changes nothing — 12 stays the default for everyone else', () => {
+    expect(resolveMaxToolIterations(undefined)).toEqual({});
+    expect(resolveMaxToolIterations(null as never)).toEqual({});
+  });
+
+  it(
+    'REFUSES above the ceiling rather than clamping. A setting that accepts any ' +
+      'value re-opens T-27 by configuration, and silently running a different ' +
+      'number than the one configured is the defect class this board keeps finding',
+    () => {
+      const result = resolveMaxToolIterations(MAX_TOOL_ITERATIONS_CEILING + 1);
+      expect('refusal' in result).toBe(true);
+      if (!('refusal' in result)) return;
+      expect(result.refusal).toContain(String(MAX_TOOL_ITERATIONS_CEILING));
+      expect(result.refusal).toContain('T-27');
+    },
+  );
+
+  it('the ceiling itself is allowed — an off-by-one here would be its own puzzle', () => {
+    expect(resolveMaxToolIterations(MAX_TOOL_ITERATIONS_CEILING)).toEqual({
+      maxIterations: MAX_TOOL_ITERATIONS_CEILING,
+    });
+  });
+
+  it('refuses a nonsense value by name instead of coercing it', () => {
+    for (const bad of ['20', 0, -3, 2.5]) {
+      const result = resolveMaxToolIterations(bad as never);
+      expect('refusal' in result, `${JSON.stringify(bad)} should be refused`).toBe(true);
     }
   });
 });

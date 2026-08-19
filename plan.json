@@ -7371,6 +7371,39 @@
         "write_scope widened along the whole chain, and the widening IS the point: a provider field is only real if it survives every hop from the HTTP body to the adapter. validate.ts\u2019s own comment names this \u2014 \"validating project/location and then omitting them here would ship the exact settable-and-inert field the W10-57 note warns about\" \u2014 so the same five hops were followed deliberately: wire (snake_case) -> registry entry -> ResolvedModelTarget -> GatewayConfig -> adapter constructor. Also gained providers-wire.ts: the field took providers-routes.ts from 397 to 405 lines, and the wire mapping is a real seam (published snake_case contract vs the registry\u2019s internal shape) rather than a convenient one.",
         "Closed 2026-08-18, and the feature was verified by USING it rather than only by fixtures: configured `{reasoning_effort: none}` on the live remote endpoint through the real HTTP route, then re-ran the same ticket on the same model. THE RESULT IS THE INTERESTING PART. With thinking ON, bonsai-27b used `write` and clobbered `add()` out of math.mjs \u2014 verify failed with 'add is not a function' and it burned nine verify calls flailing. With thinking OFF it produced CORRECT code (both functions present, `node src/check.mjs` prints OK) in 88s instead of 136s. It still parked, but for a completely different and much better reason: it used all twelve tool turns (DEFAULT_MAX_TOOL_ITERATIONS) before emitting a manifest, so the work is right and unclosed rather than wrong. SECOND FINDING, RECORDED NOT FIXED: `maxIterations` is a session option that nothing in apps/server ever sets, so the cap is effectively hard-coded at 12 \u2014 less severe than a no-caller mechanism because the default is sensible, but a chatty local model cannot be given more room without editing source. The merge order carries the real safety property and has its own fixture: extras are spread FIRST so `model`/`messages` always win, because a provider entry able to rewrite the routed model would silently defeat the model matrix and the maker!=verifier separation routing enforces."
       ]
+    },
+    {
+      "id": "W13-11",
+      "title": "the tool-turn cap is a session option nothing ever sets \u2014 hard-coded at 12 for every model",
+      "phase": 13,
+      "module": "cli",
+      "lane": "core",
+      "points": 3,
+      "status": "done",
+      "role": "sre-engineer",
+      "write_scope": [
+        "apps/server/src/cli/run-build-spawn.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build-policy.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "depends_on": [
+        "W13-10"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND IN LIVE TESTING 2026-08-18, immediately after W13-10. With thinking disabled, `prism-ml/bonsai-27b` produced CORRECT work \u2014 both functions present, `node src/check.mjs` printing OK \u2014 and still parked, because it used all twelve tool turns before emitting a manifest. The work was right and unclosed. `maxIterations` is a `GatewaySpawnSessionOptions` field and NOTHING in apps/server sets it, so `DEFAULT_MAX_TOOL_ITERATIONS = 12` is the value every model gets.",
+        "THE CAP MUST STAY. It exists for T-27 (\"a session iterates tool calls indefinitely without producing a manifest\") and this run is exactly why: an unbounded session on a chatty model would spend a budget going nowhere. This makes the cap CONFIGURABLE, never optional.",
+        "A CEILING, NOT A FREE NUMBER: a setting that accepts any value re-opens T-27 by configuration. Pick a maximum, refuse above it by name the way `resolvePolicyScope` refuses a malformed policy, and say in the refusal what the ceiling is.",
+        "THE DEFAULT DOES NOT MOVE. 12 is right for a capable model \u2014 the qwen run landed in four calls \u2014 and raising it for everyone would spend other people's budget to accommodate one weak model. This is a knob for the person who chose a chatty local model, which is precisely D-024 option (a) territory.",
+        "RED FIXTURE: a configured value reaches the session; an absent one still yields 12; a value over the ceiling is refused BY NAME rather than clamped silently, because silently running a different number than the one configured is the class of defect this board keeps finding.",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ],
+      "notes": [
+        "Filed 2026-08-18 from the bonsai no-think run. Second finding of that experiment; the first was W13-10.",
+        "write_scope corrected: I filed run-build-policy.test.ts and it does not exist \u2014 the policy resolver's tests live in run-build.test.ts beside the call-site fixture that proves executeBuildRun actually reads the setting, which is the more valuable place for them anyway. Creating the file I had assumed produced a test suite vitest silently reported as 'no tests'.",
+        "Closed 2026-08-18, and THE EXPERIMENT THAT MOTIVATED IT FAILED \u2014 recorded because a negative result that changes the conclusion is worth more than a fix that looks good. The hypothesis was that bonsai-27b parked because twelve tool turns were too few: with thinking off it produced correct work and used exactly twelve. Given thirty it used twenty across two attempts, produced correct work again, and STILL returned no manifest. The cap was never the binding constraint; the model simply cannot emit the manifest, whatever budget it has. VERIFIED THE SETTING ACTUALLY TAKES EFFECT rather than assuming it from a null result \u2014 set it to 2 and the same run went from 226s to 15s. Without that check I could not have told 'the cap is not the problem' apart from 'my setting never reached the session', which are opposite conclusions with the same symptom. The fix stands on its own merits: maxIterations was a GatewaySpawnSessionOptions field nothing in apps/server ever set, so 12 was every model's value and unreachable without editing source. It refuses above a ceiling rather than clamping, because a setting that accepts any value re-opens T-27 by configuration, and silently running a different number than the one configured is the defect class this board keeps finding. One correction on the way: I filed run-build-policy.test.ts, which does not exist \u2014 the policy tests live in run-build.test.ts, and creating the file I had assumed produced a suite vitest reported as 'no tests'."
+      ]
     }
   ]
 }

@@ -15,6 +15,60 @@ import type {
 /** The generic settings key both the Settings panel and the first-run wizard write. */
 export const ESCALATION_POLICY_SETTINGS_KEY = 'escalationPolicy';
 
+/** How many tool turns one session may take before the cap stops it (W13-11). */
+export const MAX_TOOL_ITERATIONS_SETTINGS_KEY = 'maxToolIterations';
+
+/**
+ * The most a session may be given, however it is configured.
+ *
+ * A setting that accepts any number re-opens T-27 ("a session iterates tool
+ * calls indefinitely without producing a manifest") by configuration, which is
+ * the failure the cap exists to prevent. 40 is roughly three times the default
+ * and comfortably past what a chatty local model needed in testing, while
+ * still bounding a runaway session's spend.
+ */
+export const MAX_TOOL_ITERATIONS_CEILING = 40;
+
+/**
+ * The tool-turn cap the user chose (W13-11).
+ *
+ * Found in live testing: with thinking disabled, a local 27b produced CORRECT
+ * work and still parked, because it used all twelve turns before emitting a
+ * manifest. `maxIterations` was a session option NOTHING in apps/server set,
+ * so `DEFAULT_MAX_TOOL_ITERATIONS = 12` was the value every model got.
+ *
+ * The default does not move: 12 is right for a capable model — the qwen run
+ * landed in four calls — and raising it for everyone would spend other
+ * people's budget to accommodate one weak one. This is a knob for whoever
+ * chose a chatty local model, which is D-024 option (a) territory.
+ *
+ * REFUSES rather than clamps. Silently running a different number than the one
+ * configured is the defect class this board keeps finding.
+ */
+export function resolveMaxToolIterations(
+  raw: JsonValue | undefined,
+): { readonly maxIterations?: number } | { readonly refusal: string } {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1) {
+    return {
+      refusal:
+        `${MAX_TOOL_ITERATIONS_SETTINGS_KEY} must be a whole number of tool turns ` +
+        `(at least 1); got ${JSON.stringify(raw)}.`,
+    };
+  }
+  if (raw > MAX_TOOL_ITERATIONS_CEILING) {
+    return {
+      refusal:
+        `${MAX_TOOL_ITERATIONS_SETTINGS_KEY} is ${raw}, over the ceiling of ` +
+        `${MAX_TOOL_ITERATIONS_CEILING}. The cap exists so a session cannot ` +
+        `iterate forever without producing a manifest (T-27); a setting that ` +
+        `accepts any value would re-open that by configuration. Lower it, or ` +
+        `use a model that finishes.`,
+    };
+  }
+  return { maxIterations: raw };
+}
+
 /**
  * The escalation policy the user actually chose, as a scope `runLandLoop` can
  * resolve (W12-18).
