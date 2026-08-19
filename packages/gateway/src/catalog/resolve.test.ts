@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { modelsListFixture } from '../providers/fixtures.js';
-import { createLmStudioProvider, createOllamaProvider } from '../providers/oai-compat.js';
+import { createLmStudioProvider, createOllamaProvider } from '../providers/oai-compat-presets.js';
 import type { ModelInfo } from '../providers/types.js';
 import { resolveProviderCatalog } from './resolve.js';
 

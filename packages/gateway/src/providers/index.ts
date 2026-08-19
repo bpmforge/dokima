@@ -34,9 +34,7 @@ export {
 
 export {
   OaiCompatProvider,
-  createLmStudioProvider,
   createOaiCompatProvider,
-  createOllamaProvider,
   type OaiCompatConfig,
 } from './oai-compat.js';
 
@@ -86,3 +84,5 @@ export { VertexProvider, createVertexProvider, type VertexConfig } from './verte
  * that ticket's own STATUS entry, confirmed one ticket later.
  */
 export { OpenAiProvider, createOpenAiProvider, type OpenAiConfig } from './openai.js';
+// W13-22: split out of oai-compat.ts, which was at the 400-line cap.
+export { createLmStudioProvider, createOllamaProvider } from './oai-compat-presets.js';

@@ -7695,6 +7695,37 @@
       ]
     },
     {
+      "id": "W13-22",
+      "title": "the stream idle-abort was never attached to the fetch \u2014 a 300s wall clock still governs, and a slower model hits it",
+      "phase": 13,
+      "module": "gateway",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/src/providers/streaming.ts",
+        "packages/gateway/src/providers/oai-compat-presets.ts",
+        "packages/gateway/src/providers/index.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 by running the same three-ticket loop on a SECOND model. qwen/qwen3-coder-next passes everything; qwen3.6-35b-a3b died after 5m10s with a raw DOMException TimeoutError, leaving T-2 stuck at in_progress. The product claims to be model-agnostic and was agnostic only up to a speed threshold nobody had crossed.",
+        "DEFECT 1 \u2014 the idle signal is discarded. streamEvents builds createIdleAbort and passes idle.signal in the RequestInit, then fetchRaw spreads that init and writes `signal: AbortSignal.timeout(timeoutMs)` AFTER the spread, overwriting it. The idle abort is constructed and bumped on every SSE line and never reaches fetch. W13-15 replaced a duration cap with an idle cap and the duration cap never actually left: streams are still governed by DEFAULT_REQUEST_TIMEOUT_MS = 300_000.",
+        "DEFECT 2 \u2014 a mid-stream abort is not a provider error. fetchRaw translates TimeoutError into ProviderTimeoutError, but only around the initial fetch; once headers arrive fetchRaw has returned, and an abort during the body read escapes as a raw DOMException. isProviderError does not recognise it, so runSessionAbsorbingProviderFailure never absorbs it into a failed attempt: the run dies and the ticket is left claimed at in_progress rather than released or parked.",
+        "RED FIXTURE 1: a stream that keeps producing PAST requestTimeoutMs is not aborted. This is W13-15's stated intent and the assertion that would have caught this on the day it landed.",
+        "RED FIXTURE 2: a stream aborted mid-body surfaces as a ProviderTimeoutError, so a session absorbs it as a failed attempt and the ticket is released rather than stranded.",
+        "VERIFY ON BOTH MODELS, not one: the three-ticket loop must reach the same end state on qwen/qwen3-coder-next and qwen3.6-35b-a3b."
+      ],
+      "notes": [
+        "Filed and fixed 2026-08-19 in response to Brad asking whether the loop works on both local models. It did not. The single-model testing that preceded it could not have found this: coder-next never runs a turn long enough to reach 300s.",
+        "write_scope widened: oai-compat.ts sat at 398 of the 400-line cap, so the fix could not carry its own explanation. The abort translation went to streaming.ts beside createIdleAbort it partners, and the two local-daemon presets were split into oai-compat-presets.ts. Shaving comments to fit is how a file stops saying why."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,
