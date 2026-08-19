@@ -2,6 +2,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    setupFiles: ['../../vitest.network-guard.ts'],
     environment: 'node',
     // *.spec.ts under e2e/ are Playwright specs, not vitest — vitest's
     // default include pattern matches both *.test.ts and *.spec.ts, so

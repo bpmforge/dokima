@@ -15,7 +15,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
 import './onboarding.css';
 import {
-  fetchFollowUpQuestion,
   OnboardingApiError,
   resumePipeline,
   runGuidedPipeline,
