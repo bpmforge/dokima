@@ -298,26 +298,36 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     }
   });
 
-  it('refuses when DOKIMA_SIGNING_KEY is unset, before any agent is resolved', async () => {
-    project = await gitRepoProject();
-    const log = openWritableLog(resolveDbPath(project.cwd));
-    const previous = process.env.DOKIMA_SIGNING_KEY;
-    delete process.env.DOKIMA_SIGNING_KEY;
-    const io = collectIO();
-    try {
-      const code = await executeBuildRun(
-        log,
-        { projectId: 'p', actorId: 'worker-1' },
-        'run-1',
-        { cwd: project.cwd, ...io.io, now: NOW },
-      );
-      expect(code).toBe(2);
-      expect(io.stderr.join('\n')).toContain('DOKIMA_SIGNING_KEY');
-    } finally {
-      if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
-      log.close();
-    }
-  });
+  it(
+    'W12-43: MINTS a signing key when there is none and nothing to invalidate, ' +
+      'where it used to refuse. The old refusal was honest but unsatisfiable ' +
+      'from inside the product — it asked for a secret only randomBytes can ' +
+      'sensibly produce, via a terminal, before boot',
+    async () => {
+      project = await gitRepoProject();
+      const log = openWritableLog(resolveDbPath(project.cwd));
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      delete process.env.DOKIMA_SIGNING_KEY;
+      const io = collectIO();
+      try {
+        const code = await executeBuildRun(
+          log,
+          { projectId: 'p', actorId: 'worker-1' },
+          'run-1',
+          { cwd: project.cwd, ...io.io, now: NOW },
+        );
+        // Not 2: it got past the key and on with the run.
+        expect(code).not.toBe(2);
+        // Said once, on the run that creates it — a backup now has something
+        // to carry, and nothing else will ever mention it.
+        expect(io.stderr.join('\n')).toContain('minted a receipt signing key');
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+        log.close();
+      }
+    },
+    30_000,
+  );
 
   it('W12-02 RED FIXTURE: refuses when the secrets vault is unreadable, instead of running with a redaction layer that has nothing to redact', async () => {
     // The reachable path is NOT "a machine that never had a store" — on such

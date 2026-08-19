@@ -428,7 +428,7 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     }
   });
 
-  it('refuses a build mode with no signing key, rather than pretending', async () => {
+  it('W12-43: mints a signing key for a build mode that has none, rather than refusing', async () => {
     project = await gitRepoProject();
     const previousKey = process.env.DOKIMA_SIGNING_KEY;
     delete process.env.DOKIMA_SIGNING_KEY;
@@ -454,10 +454,17 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
           ],
           { cwd: project.cwd, ...noKey.io },
         ),
-      ).toBe(2);
-      // A close gate that minted receipts against a placeholder key would
-      // produce receipts verifying against nothing — worse than refusing.
-      expect(noKey.stderr.join('\n')).toContain('DOKIMA_SIGNING_KEY');
+      ).not.toBe(2);
+      // The refusal this replaces was right about the danger — a receipt
+      // signed with a placeholder verifies against nothing — and wrong about
+      // the remedy: the product can generate a real key, so it does.
+      //
+      // Asserted as the ABSENCE of the refusal rather than the presence of the
+      // mint notice: the vault is shared across this suite's pinned
+      // DOKIMA_HOME, so by the time this test runs an earlier one has usually
+      // minted already — which is the never-mint-twice rule working, not a
+      // failure.
+      expect(noKey.stderr.join('\n')).not.toContain('DOKIMA_SIGNING_KEY is unset');
     } finally {
       if (previousKey !== undefined) process.env.DOKIMA_SIGNING_KEY = previousKey;
     }

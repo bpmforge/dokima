@@ -34,6 +34,17 @@ import {
 import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
 import { runLandLoop, type PushToRemotesFn } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
+import {
+  resolveSigningKey,
+  SigningKeyMissingError,
+  SIGNING_KEY_REF,
+} from './signing-key.js';
+
+/** Receipts already minted for this project — 0 means a new key invalidates nothing. */
+function countReceipts(log: { db: { prepare(q: string): { get(): unknown } } }): number {
+  const row = log.db.prepare('SELECT COUNT(*) AS n FROM receipts').get() as { n: number };
+  return row?.n ?? 0;
+}
 import { buildBuiltInSpawn } from './run-build-spawn.js';
 import {
   ESCALATION_POLICY_SETTINGS_KEY,
@@ -195,14 +206,36 @@ export async function executeBuildRun(
   runId: string,
   io: RunCliIO,
 ): Promise<number> {
-  const signingKey = process.env.DOKIMA_SIGNING_KEY;
-  if (!signingKey) {
-    // The close gate MINTS a receipt (C-5). Minting with a placeholder would
-    // produce receipts that verify against nothing, which is worse than
-    // refusing to start.
+  /**
+   * W12-43: resolved, and MINTED on a fresh install rather than demanded.
+   * This used to read `process.env.DOKIMA_SIGNING_KEY` and refuse — an honest
+   * refusal that a user could only satisfy from a terminal, for a secret only
+   * `randomBytes` can sensibly produce. The env var still wins when set (the
+   * CI seam), and the one case that still refuses is the dangerous one: a
+   * project that already HAS receipts whose key has gone missing.
+   */
+  let signingKey: string;
+  try {
+    const receiptCount = countReceipts(log);
+    const resolved = await resolveSigningKey({ receiptCount });
+    signingKey = resolved.key;
+    if (resolved.source === 'minted') {
+      // Said once, on the run that creates it: a key now exists that backups
+      // should carry, and nothing else will ever mention it.
+      io.stderr(
+        `${runId}: minted a receipt signing key and stored it in your keychain ` +
+          `(ref ${SIGNING_KEY_REF}). Receipts signed with it verify only while ` +
+          `it exists — include it when you back this machine up.`,
+      );
+    }
+  } catch (err) {
+    if (err instanceof SigningKeyMissingError) {
+      io.stderr(`${runId} refused: ${err.message}`);
+      return 2;
+    }
     io.stderr(
-      `${runId} started, but DOKIMA_SIGNING_KEY is unset — the close gate mints ` +
-        `signed receipts and will not mint unverifiable ones. Nothing was claimed.`,
+      `${runId} refused: no signing key could be resolved — ` +
+        `${err instanceof Error ? err.message : String(err)}`,
     );
     return 2;
   }

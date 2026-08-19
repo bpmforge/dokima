@@ -6,7 +6,6 @@ import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import { registerProject } from '../projects.js';
 import { buildApiServer, type ApiServer } from '../server.js';
-import { buildRunStatus, executeBuildRunJob } from './runs-routes.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const PORT = 4403;
@@ -244,9 +243,29 @@ describe('build runs (W12-20)', () => {
     },
   );
 
+  /** Gives a project one receipt, so a replacement key would invalidate something. */
+  function plantReceipt(projectDir: string): void {
+    const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
+    try {
+      createIdentity(log, { id: 'mac', name: 'mac', kind: 'machine' });
+      log.db
+        .prepare(
+          `INSERT INTO receipts
+             (id, kind, project_id, phase, ticket_id, validators, input_tree_hash,
+              verify_command, verify_exit, signed_by, payload, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run('r-1', 'close', 'p', null, null, '[]', 'hash', 'true', 0, 'mac', '{}', '2026-08-19T00:00:00.000Z');
+    } finally {
+      log.close();
+    }
+  }
+
   it(
-    'RED FIXTURE (W12-40): an unset signing key is refused AT REQUEST TIME, not ' +
-      'accepted as a 202 and reported through a poll the caller may never make',
+    'W12-43: an unset key on a project with NO receipts MINTS one and proceeds. ' +
+      'W12-40 refused here, correctly for its time — but the refusal told a ' +
+      'user to restart the core with an env var, for a secret only randomBytes ' +
+      'can sensibly produce',
     async () => {
       const previous = process.env.DOKIMA_SIGNING_KEY;
       delete process.env.DOKIMA_SIGNING_KEY;
@@ -256,54 +275,52 @@ describe('build runs (W12-20)', () => {
           method: 'POST',
           url: `/api/v1/projects/${id}/build-runs`,
           headers: h,
-          payload: { actor_id: 'operator', run_id: 'run-nokey' },
+          payload: { actor_id: 'operator', run_id: 'run-mint' },
+        });
+        expect(res.statusCode).toBe(202);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+      }
+    },
+    30_000,
+  );
+
+  it(
+    'RED FIXTURE (W12-43): but a project that ALREADY HAS receipts is refused. ' +
+      'A replacement key does not fail loudly — it makes every existing receipt ' +
+      'fail its MAC, so the project would quietly report itself unverifiable ' +
+      'and every completed phase would look stale',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      const previousHome = process.env.DOKIMA_HOME;
+      delete process.env.DOKIMA_SIGNING_KEY;
+      // A FRESH home, so the vault file does not exist at all: the key is
+      // genuinely ABSENT, not merely unreadable. Those are different failures
+      // and the resolver distinguishes them.
+      process.env.DOKIMA_HOME = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-nokey-'));
+      dirs2.push(process.env.DOKIMA_HOME);
+      try {
+        const { app, id, h, dir } = await boot2();
+        plantReceipt(dir);
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-haskey' },
         });
         expect(res.statusCode).toBe(409);
-        const body = res.json() as Record<string, unknown>;
-        // Named, not generic: the caller can act on this one.
-        expect(body.rule).toBe('signing-key-unset');
-        expect(String(body.detail)).toMatch(/DOKIMA_SIGNING_KEY/);
-        // And it says what to do, since there is no surface to do it from.
-        expect(String(body.detail)).toMatch(/restart/i);
-
-        // Nothing was started: a refused request must not leave a run id
-        // behind that a poller would find sitting at "running" forever.
+        expect(res.json().rule).toBe('signing-key-unset');
+        expect(String(res.json().detail)).toMatch(/will NOT mint a replacement/);
+        // And nothing was started.
         const after = await app.inject({
           method: 'GET',
-          url: `/api/v1/projects/${id}/build-runs/run-nokey`,
+          url: `/api/v1/projects/${id}/build-runs/run-haskey`,
           headers: h,
         });
         expect(after.statusCode).toBe(404);
       } finally {
         if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
-      }
-    },
-  );
-
-  it(
-    'the job STILL refuses on its own — this route is not the only caller, and a ' +
-      'precondition only one entrance enforces is not a precondition (the CLI ' +
-      'path calls executeBuildRun directly)',
-    async () => {
-      const previous = process.env.DOKIMA_SIGNING_KEY;
-      delete process.env.DOKIMA_SIGNING_KEY;
-      try {
-        const { id, dir } = await boot2();
-        await executeBuildRunJob({
-          projectPath: dir,
-          projectId: id,
-          actorId: 'operator',
-          runId: 'run-direct-nokey',
-          now: () => new Date().toISOString(),
-        });
-        const outcome = buildRunStatus('run-direct-nokey');
-        expect(outcome).toBeDefined();
-        expect(outcome).not.toBe('running');
-        const done = outcome as unknown as { exitCode: number; stderr: string[] };
-        expect(done.exitCode).not.toBe(0);
-        expect(done.stderr.join('\n')).toMatch(/DOKIMA_SIGNING_KEY/);
-      } finally {
-        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+        if (previousHome !== undefined) process.env.DOKIMA_HOME = previousHome;
       }
     },
     30_000,

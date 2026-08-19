@@ -18,6 +18,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { badRequest, notFound } from './artifacts-helpers.js';
 import { conflict } from './settings-route-helpers.js';
+import { resolveSigningKey } from '../../cli/signing-key.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
 import { executeBuildRun } from '../../cli/run-build.js';
@@ -174,17 +175,30 @@ export function registerRunsRoutes(
        * NOT a key-entry UI — minting or storing a signing key is a credential
        * path (Law 8) and belongs with the vault work. Filed as W12-43.
        */
-      if (!process.env.DOKIMA_SIGNING_KEY) {
+      try {
+        // W12-43: this used to refuse whenever the env var was unset, and tell
+        // the user to restart the core with it — a terminal step for a secret
+        // only `randomBytes` can sensibly produce. It now MINTS one on a fresh
+        // install. What still refuses is the dangerous case, and only that
+        // one: a project holding receipts whose key has gone missing, where a
+        // replacement would silently invalidate every receipt it already has.
+        const db = openEventLogReader(stateDbPath(projectPath));
+        try {
+          const row = db.prepare('SELECT COUNT(*) AS n FROM receipts').get() as {
+            n: number;
+          };
+          await resolveSigningKey({ receiptCount: row?.n ?? 0 });
+        } finally {
+          db.close();
+        }
+      } catch (err) {
         return reply
           .code(409)
           .type(PROBLEM_CONTENT_TYPE)
           .send(
             conflict(
               request,
-              'DOKIMA_SIGNING_KEY is unset in the core process, so the close gate ' +
-                'cannot mint the signed receipt that ends a run. Nothing was claimed. ' +
-                'Set it in the environment the core is started from and restart it — ' +
-                'there is no surface to set it from here yet (W12-43).',
+              err instanceof Error ? err.message : String(err),
               'signing-key-unset',
             ),
           );

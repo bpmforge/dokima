@@ -7066,13 +7066,17 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
-        "apps/web/src/settings/SigningKeyPanel.tsx",
-        "apps/web/src/settings/SigningKeyPanel.test.tsx",
-        "apps/server/src/api/server/signing-key-routes.ts",
-        "apps/server/src/api/server/signing-key-routes.test.ts"
+        "apps/server/src/cli/signing-key.ts",
+        "apps/server/src/cli/signing-key.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "docs/SECURITY_CONTROLS.md",
+        "apps/server/vitest.setup.ts",
+        "apps/web/playwright.config.ts"
       ],
       "depends_on": [
         "W12-40"
@@ -7087,7 +7091,10 @@
       ],
       "notes": [
         "Filed by W12-40, whose route comment names this ticket \u2014 an unfiled follow-up referenced from code is a comment that lies.",
-        "write_scope is PROVISIONAL \u2014 the storage seam (W12-43 acceptance) decides the real files, and whoever claims this should correct it before starting rather than force the work into a guess made before the decision."
+        "write_scope is PROVISIONAL \u2014 the storage seam (W12-43 acceptance) decides the real files, and whoever claims this should correct it before starting rather than force the work into a guess made before the decision.",
+        "write_scope replaced at claim: the provisional scope guessed at a SigningKeyPanel and a signing-key route, and the storage-seam decision made both unnecessary. resolveCredentialStore already exists for both platforms and the key is an HMAC secret, so the product can mint one and never has to ask \u2014 there is no panel to build.",
+        "write_scope widened for the two test-environment files. Minting means the code path now WRITES a credential, and DOKIMA_NO_KEYCHAIN was not pinned anywhere \u2014 so on darwin the suite would have written a real signing key into the developer login keychain. plan.json already records W10-04 declining to do exactly that from an automated test. The change creates the hazard, so the change owns the isolation.",
+        "Closed 2026-08-19. Proven live on a fresh DOKIMA_HOME with no key anywhere: run 1 minted, announced once and landed the ticket; run 2 minted nothing; a project holding a receipt with the key gone refused by name. No key-entry UI was built and none is needed \u2014 the provisional write_scope guessed at a SigningKeyPanel before the storage-seam decision made it unnecessary."
       ]
     },
     {
