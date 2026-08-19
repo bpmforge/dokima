@@ -8,6 +8,12 @@
  * (ARCHITECTURE §4 / law 6). `POST .../interview/next-question` is the missing
  * piece, and this is what asks it.
  *
+ * ASKED FOR, NEVER AUTOMATIC. The first version fetched a follow-up on blur,
+ * which meant a model call every time the cursor left a field — surprise
+ * layout shifts, latency on every tab, money spent on a keystroke's worth of
+ * intent, and an e2e suite that went from 30s to 1.2m with three failures. An
+ * interview should ask when you want to say more, not because you tabbed.
+ *
  * Split out of `InterviewPanel.tsx` at the 400-line CODE_BOOK_PROTOCOL cap.
  * The seam is real: the panel renders an interview, this decides whether there
  * is another question worth asking.

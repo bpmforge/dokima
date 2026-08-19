@@ -313,11 +313,7 @@ export function InterviewPanel({
               }))
             }
           />
-          {/* W13-18: ASKED FOR, NEVER AUTOMATIC. The first version fetched a
-              follow-up on blur, which meant a model call every time you left a
-              field — surprise layout shifts, latency on every tab, and money
-              spent on a keystroke's worth of intent. An interview should ask
-              when you want to say more, not because your cursor moved. */}
+          {/* W13-18: asked for, never automatic — see useFollowUps.ts. */}
           {(answers[entry.topic.deliverableId] ?? '').trim() !== '' &&
             (followUps.byTopic[entry.topic.deliverableId] ?? []).length <
               MAX_FOLLOWUP_DEPTH - 1 && (
