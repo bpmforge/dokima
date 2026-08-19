@@ -7910,10 +7910,11 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "test-engineer",
       "write_scope": [
-        "docs/design/INTEGRATION_EVIDENCE.md"
+        "docs/design/INTEGRATION_EVIDENCE.md",
+        "docs/STATUS.md"
       ],
       "depends_on": [],
       "stories": [],
@@ -7926,7 +7927,8 @@
         "RED FIXTURE: a ticket whose verify passes against an isolated harness while the integrated path is broken does NOT close, and the run emits a readable difference between the two environments."
       ],
       "notes": [
-        "Filed 2026-08-19 from a field report about a different multi-agent system. Written entirely in terms of Dokima's own gate mechanisms; no third-party project, ticket, path or library detail is carried onto this board. write_scope intentionally EMPTY: the first deliverable is the diagnosis design, and guessing files before that decision is how a provisional scope becomes a wrong one."
+        "Filed 2026-08-19 from a field report about a different multi-agent system. Written entirely in terms of Dokima's own gate mechanisms; no third-party project, ticket, path or library detail is carried onto this board. write_scope intentionally EMPTY: the first deliverable is the diagnosis design, and guessing files before that decision is how a provisional scope becomes a wrong one.",
+        "Closed 2026-08-19 as the DESIGN ticket it was scoped as: docs/design/INTEGRATION_EVIDENCE.md, no gate change. It found the same defect in Dokima itself \u2014 TICKET_KEYS has no verify field, so 0 of 274 tickets carry one and every ticket falls through to a default that omits e2e, making the agent gate strictly weaker than law 3. Section 6 lists what must be decided before a gate can change."
       ]
     },
     {
