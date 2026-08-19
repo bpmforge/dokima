@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
+import { ProviderTimeoutError } from '@dokima/gateway';
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
 import { branchNameFor, git } from '@dokima/git';
 import type { SpawnSession } from '@dokima/loop';
@@ -12,6 +13,7 @@ import type { PushToRemotesFn } from './land-push.js';
 import type { CompletionManifest } from './loop-gates.js';
 import { defaultHandoffBuilder } from './loop-handoff.js';
 import { runLandLoop, type LandLoopOptions } from './loop-land.js';
+import { MAX_FREE_INFRA_RETRIES } from './loop-land-infra.js';
 import type { LandEscalationTokenHook } from './loop-land-policy.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -521,4 +523,89 @@ describe('runLandLoop', () => {
       expect(prompts[0]).not.toContain('[object Promise]');
     },
   );
+
+  describe('infrastructure failures retry for free (W13-27)', () => {
+    /**
+     * Fails the first N sessions the way an unreachable endpoint does, then
+     * behaves. `ProviderTimeoutError` is what `runSessionAbsorbingProviderFailure`
+     * absorbs, so this is the real path rather than a simulated flag.
+     */
+    function flakyEndpointSpawn(failures: number): SpawnSession {
+      let seen = 0;
+      return async (input) => {
+        if (seen++ < failures) throw new ProviderTimeoutError('studio', 1000);
+        return landingSpawn(input);
+      };
+    }
+
+    it(
+      'RED FIXTURE: two endpoint failures then a success LANDS. Before this ' +
+        'every failure cost an attempt equally, so with the default ceiling of ' +
+        '2 a ticket whose work was never judged parked — and a park needs a ' +
+        'person to restart it, which is the whole complaint',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        seedTicket(log, 'W9-01');
+
+        const options = baseOptions(fixture, flakyEndpointSpawn(2));
+        const result = await runLandLoop({ ...options, maxLadderAttempts: 2 });
+
+        const outcome = result.processed[0]!;
+        expect(outcome.landed).toBe(true);
+        expect(outcome.parked).toBe(false);
+        // The two infra failures cost nothing: one real attempt is recorded.
+        expect(outcome.attempts).toHaveLength(1);
+
+        // And the run explains itself rather than looking like a model that
+        // needed three tries.
+        const retries = listEvents(log).filter(
+          (e) => e.eventType === 'session.infra_retry',
+        );
+        expect(retries).toHaveLength(2);
+        expect((retries[0]?.payload as { kind: string }).kind).toBe('endpoint_failure');
+      },
+    );
+
+    it(
+      'but the free retry is BOUNDED — an endpoint that is genuinely down still ' +
+        'parks with evidence rather than spinning forever',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        seedTicket(log, 'W9-01');
+
+        const options = baseOptions(fixture, flakyEndpointSpawn(Number.MAX_SAFE_INTEGER));
+        const result = await runLandLoop({ ...options, maxLadderAttempts: 2 });
+
+        const outcome = result.processed[0]!;
+        expect(outcome.landed).toBe(false);
+        expect(outcome.parked).toBe(true);
+        expect(outcome.parkedReason).toBe('ladder_exhausted');
+        expect(
+          listEvents(log).filter((e) => e.eventType === 'session.infra_retry'),
+        ).toHaveLength(MAX_FREE_INFRA_RETRIES);
+      },
+    );
+
+    it(
+      'a session that answers WITHOUT a manifest is not infrastructure and keeps ' +
+        'costing an attempt — a real defect must not retry forever',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        seedTicket(log, 'W9-01');
+
+        const options = baseOptions(fixture, neverResolvingSpawn);
+        const result = await runLandLoop({ ...options, maxLadderAttempts: 2 });
+
+        const outcome = result.processed[0]!;
+        expect(outcome.parked).toBe(true);
+        expect(outcome.attempts).toHaveLength(2);
+        expect(
+          listEvents(log).filter((e) => e.eventType === 'session.infra_retry'),
+        ).toHaveLength(0);
+      },
+    );
+  });
 });

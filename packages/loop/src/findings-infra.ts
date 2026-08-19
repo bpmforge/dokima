@@ -7,13 +7,26 @@
  */
 
 export type InfraFailureKind =
-  'unparseable_review' | 'limit_pause' | 'watchdog_kill' | 'output_buffer_overflow';
+  | 'unparseable_review'
+  | 'limit_pause'
+  | 'watchdog_kill'
+  | 'output_buffer_overflow'
+  /**
+   * W13-27: the model endpoint failed — unreachable, or it stopped producing
+   * and the stream was aborted. Added when this taxonomy got its first caller.
+   *
+   * It belongs here for the same reason as the four above: none of them is
+   * evidence the WORK is wrong, so none should cost an attempt. An endpoint
+   * that stalls says nothing about the code a session did or did not write.
+   */
+  | 'endpoint_failure';
 
 export const INFRA_FAILURE_KINDS: readonly InfraFailureKind[] = [
   'unparseable_review',
   'limit_pause',
   'watchdog_kill',
   'output_buffer_overflow',
+  'endpoint_failure',
 ];
 
 export interface InfraFailureTracker {
@@ -29,6 +42,7 @@ export function createInfraFailureTracker(): InfraFailureTracker {
     limit_pause: 0,
     watchdog_kill: 0,
     output_buffer_overflow: 0,
+    endpoint_failure: 0,
   };
   let total = 0;
   return {

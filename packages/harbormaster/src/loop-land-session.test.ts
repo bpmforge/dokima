@@ -35,7 +35,7 @@ describe('a provider failure ends the attempt, not the process (W13-13)', () => 
       'It used to propagate out of runLandLoop and kill the run, stranding the ' +
       'ticket in in_progress with correct work already committed',
     async () => {
-      const result = await runSessionAbsorbingProviderFailure({
+      const { result, infraFailure } = await runSessionAbsorbingProviderFailure({
         handoff,
         cwd: await cwd(),
         spawn: () => {
@@ -43,6 +43,8 @@ describe('a provider failure ends the attempt, not the process (W13-13)', () => 
         },
       });
       expect(result.manifest).toBeNull();
+      // W13-27: classified as infrastructure, so the ladder does not pay for it.
+      expect(infraFailure).toBe('endpoint_failure');
       expect(result.exitCode).not.toBe(0);
     },
   );
@@ -52,13 +54,14 @@ describe('a provider failure ends the attempt, not the process (W13-13)', () => 
       'a manifest" point at different fixes — a longer timeout versus a ' +
       'different model — and someone choosing a smaller model needs to tell them apart',
     async () => {
-      const result = await runSessionAbsorbingProviderFailure({
+      const { result, infraFailure } = await runSessionAbsorbingProviderFailure({
         handoff,
         cwd: await cwd(),
         spawn: () => {
           throw new ProviderTimeoutError('lm-studio', 300_000);
         },
       });
+      expect(infraFailure).toBe('endpoint_failure');
       expect(result.output).toContain('provider failure');
       expect(result.output).toContain('timed out');
       expect(result.output).not.toContain('completion manifest');
@@ -70,7 +73,7 @@ describe('a provider failure ends the attempt, not the process (W13-13)', () => 
       new ProviderUnreachableError('lm-studio', 'ECONNREFUSED'),
       new ProviderHttpError('lm-studio', 503, 'Service Unavailable', 'upstream unavailable'),
     ]) {
-      const result = await runSessionAbsorbingProviderFailure({
+      const { result, infraFailure } = await runSessionAbsorbingProviderFailure({
         handoff,
         cwd: await cwd(),
         spawn: () => {
@@ -79,6 +82,9 @@ describe('a provider failure ends the attempt, not the process (W13-13)', () => 
       });
       expect(result.manifest).toBeNull();
       expect(result.output).toContain('provider failure');
+      // Every endpoint shape classifies the same way: none of them is
+      // evidence about the work, so none costs an attempt (W13-27).
+      expect(infraFailure).toBe('endpoint_failure');
     }
   });
 

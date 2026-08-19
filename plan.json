@@ -7868,6 +7868,68 @@
       ]
     },
     {
+      "id": "W13-27",
+      "title": "an infrastructure failure consumes a ladder attempt, so two of them park a ticket a human then has to restart",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/loop/src/findings-infra.ts",
+        "packages/loop/src/findings-infra.test.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/loop/src/index.ts",
+        "packages/loop/src/findings.test.ts",
+        "packages/harbormaster/src/loop-land-infra.ts",
+        "conductor.config.json"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "REPORTED FROM FIELD USE of a comparable multi-agent setup: a delegated session ends without a conforming terminal result \u2014 it degenerates into repeated malformed tool calls and never emits a final answer, or an endpoint stalls, or an acceptance gate times out on a large tree. The orchestrator records a blocked state and STOPS, and a human has to notice and tell it to continue. The automation should absorb this class without a person in the loop.",
+        "THE MECHANISM ALREADY EXISTS AND HAS NO CALLER. packages/loop/src/findings-infra.ts defines InfraFailureKind and createInfraFailureTracker, and its own header states the rule: a truncated review, an unparseable verdict, a limit pause, a watchdog kill or an output-buffer overflow RETRIES FOR FREE. Nothing constructs it. Eighth instance of the build-then-wire seam.",
+        "TODAY EVERY FAILURE COSTS AN ATTEMPT EQUALLY. loop-land.ts increments `attempt` per pass; runSessionAbsorbingProviderFailure (W13-13) correctly converts an endpoint failure into a failed attempt rather than a crash, but that attempt still burns the ladder. With the default cap of 2, two infrastructure hiccups park a ticket whose work was never judged \u2014 the park then needs a human, which is the reported symptom.",
+        "FREE RETRY MUST BE BOUNDED, and the bound is the point: a permanently unreachable endpoint must still park honestly rather than loop forever. Pick a separate free-retry ceiling, record every free retry on the event log so the run explains itself, and fall back to consuming an attempt once the ceiling is hit.",
+        "CLASSIFY DELIBERATELY, NOT BY CATCH-ALL. An endpoint failure, a watchdog kill and a verify/validator TIMEOUT are infrastructure \u2014 none is evidence the work is wrong. A session that returns without a Completion Manifest is NOT infrastructure: that is the model failing the contract, and it must keep costing an attempt. A catch-all here would turn a real defect into an infinite free retry, which is the silence this product exists to refuse.",
+        "RED FIXTURE: a ticket whose first two sessions fail for an infrastructure reason and whose third succeeds LANDS, where today it parks after two; and a ticket that returns no manifest three times still parks."
+      ],
+      "notes": [
+        "Filed 2026-08-19 from a field report about a different multi-agent system exhibiting this class. Deliberately described in terms of Dokima's own mechanisms only \u2014 no third-party project detail is carried into this board.",
+        "Closed 2026-08-19. Scope covers only endpoint failures, which are the cleanly classifiable case today: a verify TIMEOUT is indistinguishable from a genuine non-zero exit in reRunVerify, so treating it as infrastructure needs that function to report a timeout first \u2014 deliberately left to a follow-up rather than guessed at. ceilingFor moved into the new chapter module because loop-land.ts was at 397 of the 400 cap."
+      ]
+    },
+    {
+      "id": "W13-28",
+      "title": "a gate can pass on evidence from a scratch harness while the integrated product stays broken",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "test-engineer",
+      "write_scope": [
+        "docs/design/INTEGRATION_EVIDENCE.md"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "REPORTED FROM FIELD USE of a comparable multi-agent setup. A UI feature was rebuilt in an isolated harness, where it worked; inside the existing application it did not. Smaller models repeatedly reported the work finished while the user could still see it failing, and each round produced evidence from the isolated path rather than the integrated one. Nobody could say what differed between the two builds, so the loop had nothing to converge on and a larger model was eventually used instead.",
+        "THIS IS A GATE-SHAPE PROBLEM, NOT A MODEL-QUALITY PROBLEM, and that is the part worth fixing. Dokima re-runs a ticket's own verify command out of session (SC-02) so a manifest cannot substitute a no-op \u2014 but if the verify command exercises a harness rather than the product, the gate is satisfied while the user-visible behaviour is untouched. The oracle is only as good as what it drives.",
+        "FIRST DELIVERABLE IS A DIAGNOSIS STEP, not more retries. When a criterion passes in isolation and fails in the product, the loop should produce a structured DIFFERENCE between the two environments \u2014 dependency versions actually installed, initialisation order, configuration and feature flags, mount/container context, and styling or layering that only exists in the application shell \u2014 rather than letting a session guess. A repeated report of done against unchanged symptoms is the signal to run this, and it should be automatic.",
+        "SECOND: DECIDE WHETHER A TICKET CAN DECLARE THAT ITS VERIFY MUST DRIVE THE INTEGRATED PATH, and record the decision. A per-ticket flag is cheap and honest; inferring it is not. Whatever is chosen, a ticket whose acceptance is user-visible must not be closable on harness-only evidence.",
+        "DO NOT SOLVE THIS BY DISTRUSTING SMALL MODELS. Escalating to a larger model hides the defect at cost and leaves the gate wrong for every model, including the large one. The fitness bench (W2-08) already exists for model choice; this ticket is about what the gate demands.",
+        "RED FIXTURE: a ticket whose verify passes against an isolated harness while the integrated path is broken does NOT close, and the run emits a readable difference between the two environments."
+      ],
+      "notes": [
+        "Filed 2026-08-19 from a field report about a different multi-agent system. Written entirely in terms of Dokima's own gate mechanisms; no third-party project, ticket, path or library detail is carried onto this board. write_scope intentionally EMPTY: the first deliverable is the diagnosis design, and guessing files before that decision is how a provisional scope becomes a wrong one."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,
