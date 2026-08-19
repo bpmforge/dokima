@@ -39,7 +39,8 @@ import {
   type WorktreeHandle,
 } from '@dokima/git';
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
-import { runSession, type SessionResult, type SpawnSession } from '@dokima/loop';
+import type { SessionResult, SpawnSession } from '@dokima/loop';
+import { attemptOnce } from './loop-land-session.js';
 import { redactDeep } from '@dokima/shared';
 import {
   claimTicket,
@@ -206,42 +207,6 @@ async function resolveWorktree(
     slug: ticket.title,
     baseRef: baseRef as CreateWorktreeOptions['baseRef'],
   });
-}
-
-/** Runs one fresh session, then (only if it returned a manifest) the real out-of-session close gate. `secretValues` (W11-16) wraps `spawn` to redact the rendered prompt before it leaves the process, since `runSession` has no redaction hook of its own. */
-async function attemptOnce(
-  options: LandLoopOptions,
-  ticket: Ticket,
-  worktree: WorktreeHandle,
-  baseRef: string,
-): Promise<{ session: SessionResult; closeGate: CloseGateResult | null }> {
-  const handoff = await options.buildHandoff(ticket);
-  const secrets = options.secretValues;
-  const spawn: SpawnSession = secrets?.length
-    ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
-    : options.spawn;
-  const session = await runSession({ handoff, cwd: worktree.path, spawn });
-  if (!session.manifest) {
-    return { session, closeGate: null };
-  }
-  const closeGate = await runCloseGate({
-    log: options.log,
-    actorId: options.actorId,
-    projectId: options.projectId,
-    ticket,
-    worktree,
-    manifest: session.manifest,
-    baseRef,
-    contentDir: options.contentDir,
-    signingKey: options.signingKey,
-    requiredValidators: options.requiredValidators,
-    verifyTimeoutMs: options.verifyTimeoutMs,
-    validatorTimeoutMs: options.validatorTimeoutMs,
-    role: options.role,
-    memoryEligibleRoles: options.memoryEligibleRoles,
-    now: options.now,
-  });
-  return { session, closeGate };
 }
 
 /** The attempt ceiling for `policy`'s mode (D-018: ladder's fixed cap, locked's FR-L7 convergence ceiling, token-gated's climbable R1-R3 range). */
