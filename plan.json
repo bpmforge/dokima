@@ -7561,6 +7561,36 @@
       "notes": [
         "Filed 2026-08-19. Pairs with W13-15: that made silence the only thing that ends a stream, this gives the session something to be silent OR noisy about. Sized 8 and explicitly gated on a supervised run rather than fixtures, because gateway-session.ts is the single component every ticket in the product passes through."
       ]
+    },
+    {
+      "id": "W13-17",
+      "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
+      "phase": 13,
+      "module": "content",
+      "lane": "content",
+      "points": 3,
+      "status": "done",
+      "role": "data-steward",
+      "write_scope": [
+        "scripts/content-import/upstream.mjs",
+        "scripts/content-import/dry-run.mjs",
+        "scripts/import-content.test.mjs",
+        "scripts/import-content.mjs"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 CHASING A FALSE ALARM. The v3.5.4 dry run reported \"1 REMOVED: pm-interviewer.md\", which blocked W12-07 as a founder decision about diverging from the pack. It was not a removal: `pm-interviewer` HAS NEVER EXISTED IN attest \u2014 `git log --diff-filter=D --all` finds nothing and the name appears nowhere in that repo. Our copy carries a header saying so, written when it was created: \"Provenance: Dokima-native (authored for ticket W5-02)... per BLUEPRINT's Dokima-is-canonical-for-itself decision\".",
+        "THE DEFECT IS THE COMPARISON MODEL. `dry-run.mjs` computes `removed` as \"local agents upstream does not have\", which is exactly right for a file that came FROM upstream and exactly wrong for one that never did. `LOCAL_OVERRIDES` does not cover this \u2014 it is for locally PATCHED upstream files (validate-mermaid.sh: \"upstream version renders differently\"). There is no way to say \"upstream never had this and never will\".",
+        "THIS WOULD HAVE COST THE PRODUCT THE FILE. Every future import reports it as a removal; eventually someone accepts one and deletes a load-bearing expert. It nearly happened here \u2014 the standing W12-07 note recommended keeping it as an override and \"recording the permanent divergence\", which frames a deliberate native file as drift. The tool's output was believable and wrong.",
+        "A NATIVE REGISTRY BESIDE LOCAL_OVERRIDES, keyed the same way and carrying the same kind of reason string. TWO FILES QUALIFY, not one \u2014 `content/samples/link-shortener.md` is also Dokima-native \u2014 so find them by their own provenance headers rather than hand-listing what this ticket happened to notice.",
+        "THE REPORT MUST SAY WHICH IS WHICH. A native file should not appear under \"removed\" at all; if a genuine upstream deletion ever happens it must still be reported, because that IS a decision someone has to make.",
+        "RED FIXTURE: a native file is not reported as removed and is not deleted by an import; a genuinely-removed upstream file still IS reported. Fixtures against a temp source tree, never the real upstream checkout."
+      ],
+      "notes": [
+        "Filed 2026-08-19. Unblocks W12-07, which was blocked on a founder decision that turns out not to exist \u2014 nothing was lost upstream, so there is nothing to decide and nothing to fix in attest.",
+        "Closed 2026-08-19. The v3.5.4 dry run now reports `experts removed 0` and `Dokima-native 1 pm-interviewer.md (upstream never had these \u2014 not a removal)`. DETECTED FROM THE FILE'S OWN HEADER rather than a registry entry, because a second hand-kept list would drift from the files the first time someone added a native one \u2014 and the marker has been sitting in pm-interviewer.md since W5-02 wrote it, unread by anything. There is a fixture asserting the REAL file still carries it, so an innocent header edit cannot silently restore the false alarm. WHAT MAKES THIS WORTH THE TICKET: the false alarm had already done damage. It blocked W12-07 as a founder decision about diverging from the pack, and my own note on that ticket recommended keeping the file as a LOCAL_OVERRIDE and 'recording the permanent divergence' \u2014 framing a deliberately native file as drift, on the strength of one line of tool output that was believable and wrong."
+      ]
     }
   ]
 }

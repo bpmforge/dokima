@@ -5,7 +5,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
-import { LOCAL_OVERRIDES, rewriteHostPaths } from './upstream.mjs'
+import { isNativeContent, LOCAL_OVERRIDES, rewriteHostPaths } from './upstream.mjs'
 
 
 /** Body-compare two files ignoring the provenance header the importer adds. */
@@ -78,7 +78,26 @@ export function dryRunReport({ sourceRoot, contentRoot, expertClusters, upstream
   const added = [...upstreamAgents.keys()].filter(
     (k) => !localAgents.has(k) && !elsewhereInContent.has(k),
   )
-  const removed = [...localAgents.keys()].filter((k) => !upstreamAgents.has(k))
+  /**
+   * W13-17: a file upstream never had is not a removal.
+   *
+   * This computed "local agents upstream does not have", which is right for a
+   * file that CAME from upstream and wrong for one that never did. The v3.5.4
+   * run reported "1 REMOVED: pm-interviewer.md" and blocked a ticket as a
+   * founder decision about diverging from the pack — but `pm-interviewer` has
+   * never existed in attest, and our copy has carried "Provenance:
+   * Dokima-native" in its header since W5-02 wrote it. Every future import
+   * would have raised the same false alarm until someone accepted one and
+   * deleted a load-bearing expert.
+   *
+   * A genuine upstream deletion IS still reported, because that one is a real
+   * decision someone has to make.
+   */
+  const missingUpstream = [...localAgents.keys()].filter((k) => !upstreamAgents.has(k))
+  const native = missingUpstream.filter((k) =>
+    isNativeContent(readFileSync(localAgents.get(k), 'utf8')),
+  )
+  const removed = missingUpstream.filter((k) => !native.includes(k))
   let drifted = 0
   let identical = 0
   // Counted BOTH ways on purpose. docs/work/W10_PLAN.md §0 measured drift
@@ -116,6 +135,10 @@ export function dryRunReport({ sourceRoot, contentRoot, expertClusters, upstream
   console.log(`  experts identical ${identical}`)
   console.log(`  experts added     ${added.length}${added.length ? '  ' + added.join(', ') : ''}`)
   console.log(`  experts removed   ${removed.length}${removed.length ? '  ' + removed.join(', ') : ''}`)
+  console.log(
+    `  Dokima-native     ${native.length}${native.length ? '  ' + native.join(', ') : ''}` +
+      ` (upstream never had these — not a removal)`,
+  )
   console.log(`  upstream files carrying a ~/.config/opencode path: ${hostPathFiles} (rewritten on import)`)
   console.log(`  local overrides that would be overwritten: ${overrides.length ? overrides.join(', ') : 'none'}`)
   if (overrides.length) {
