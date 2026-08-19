@@ -7528,6 +7528,37 @@
         "Filed 2026-08-19. `chatStream` is fully built \u2014 SSE parsing, usage metering, queue integration \u2014 and has no production caller outside anthropic's internal use. Thirteenth instance of the built-but-unwired class, and the first where wiring it fixes a defect a user actually hit.",
         "Closed 2026-08-19. THE FOUNDER WAS RIGHT ON THE MECHANISM, not just the principle: `fetchRaw` used `AbortSignal.timeout(timeoutMs)`, which bounds the WHOLE request, so a model streaming healthily for six minutes was killed at exactly the same moment as one that had hung. The streaming path now bounds time since the last chunk (`streamIdleMs`, 60s), reset per chunk by `readSseDataLines`. Duration still bounds the non-streaming path, correctly \u2014 there a single response is the only signal that exists. FEASIBILITY WAS MEASURED FIRST: LM Studio streams `tool_calls` deltas AND emits the `include_usage` chunk, so a streamed session can still drive the tool loop and still meter spend; without the usage chunk this would have meant trading the ledger for responsiveness, which is not a trade this product can make. FOUND AND FIXED MY OWN W13-10 BUG ON THE WAY: `requestExtras` reached `chat()` and not `chatStream()`, so a provider configured to stop a model thinking would have started thinking again the moment the session streamed \u2014 the exact five-hop 'settable and inert' failure I had cited W12-14's comment about while writing it. It has its own fixture now. THE SESSION STILL DOES NOT STREAM, deliberately: moving the tool loop onto chatStream changes the one component every ticket runs through, and it needs its own fixtures and its own supervised run rather than riding along here."
       ]
+    },
+    {
+      "id": "W13-16",
+      "title": "the session is a black box while it runs \u2014 it does not stream, so there is nothing to monitor",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/harbormaster/src/agent-session/session-stream.ts",
+        "packages/harbormaster/src/agent-session/session-stream.test.ts"
+      ],
+      "depends_on": [
+        "W13-15"
+      ],
+      "stories": [],
+      "acceptance": [
+        "RAISED BY THE FOUNDER 2026-08-19 alongside W13-15: \"shouldn't we be monitoring?\" W13-15 made a producing stream un-interruptible; this is the other half \u2014 `gateway-session.ts` calls `chat()`, so a session produces NOTHING observable until the whole model call returns. On a local model that is minutes of silence with no way to tell work from a hang, which is exactly what made the first supervised runs so hard to read.",
+        "MOVE THE TOOL LOOP ONTO `chatStream`, which is fully built (SSE parsing, tool-call deltas, usage metering, queue integration) and has had no session caller since W2-09. Measured feasible during W13-15: LM Studio streams tool_calls deltas AND the include_usage chunk, so the loop still drives and the ledger still meters.",
+        "THE LEDGER IS NOT NEGOTIABLE. A streamed call must record the same spend a non-streamed one does; a session that runs faster and meters nothing is worse than the black box. If a provider cannot supply usage on a stream, that provider must fall back to `chat()` rather than lose the ledger \u2014 anthropic already models this with its `streamEnabled` switch.",
+        "EMIT PROGRESS AS EVENTS, not as console output. The event log is how this product explains itself and the Chat pane already renders agent activity, so a token or tool-call delta should arrive the same way everything else does. Decide the granularity deliberately: per-token events would flood an append-only hash-chained log, which is the wrong place for a keystroke stream.",
+        "THIS IS THE COMPONENT EVERY TICKET RUNS THROUGH. It needs its own supervised run before it is trusted, not just fixtures \u2014 the first supervised run passed every fixture and still failed on the one thing no fixture covered (W13-09). Do not close this on green tests alone.",
+        "RED FIXTURE: a streamed session drives the same tool loop, produces the same manifest, and records the same ledger spend as the non-streamed one against identical scripted input; and progress is observable before the call completes."
+      ],
+      "notes": [
+        "Filed 2026-08-19. Pairs with W13-15: that made silence the only thing that ends a stream, this gives the session something to be silent OR noisy about. Sized 8 and explicitly gated on a supervised run rather than fixtures, because gateway-session.ts is the single component every ticket in the product passes through."
+      ]
     }
   ]
 }
