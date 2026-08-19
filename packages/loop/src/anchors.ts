@@ -5,18 +5,39 @@ import type { MicroLoopItem } from './micro-loop.js';
  * composed onto the micro-loop as facts the model must reconcile with,
  * rather than raw self-confidence. Every anchor kind implements the same
  * `gather` contract so the loop can compose an arbitrary anchor set into one
- * fact list for the prompt. The tool anchor is fully wired here (it turns
- * validator/scanner output into facts); the challenger and memory anchors
- * are stub implementations that satisfy the interface and the
- * borderline-confidence firing contract but never fabricate a fact — real
- * wiring lands in W5 (challenger) and W7 (memory).
+ * fact list for the prompt.
+ *
+ * WHAT IS ACTUALLY HERE, corrected 2026-08-19 (W13-21). This header used to
+ * promise that "real wiring lands in W5 (challenger) and W7 (memory)". Both
+ * waves shipped and neither wiring landed here, because neither ticket's
+ * write_scope included this file — so the comment kept assigning the work to
+ * someone who was never going to arrive. A stub naming a wave that has already
+ * passed reads as scheduled rather than as a gap, which is worse than a TODO.
+ *
+ *  - TOOL anchor: fully wired, and the one that matters. `gateway-session.ts`
+ *    composes it from validator output on every iteration, which is what
+ *    satisfies calibration's "applies only when an external anchor is present".
+ *  - CHALLENGER anchor: REMOVED, not deferred. BLUEPRINT §3.5 step 4 asks for
+ *    an independent verifier model "only where no oracle exists" — and a
+ *    build-run session always has one, the ticket's own `verify`, re-run out of
+ *    process by the close gate (SC-02). Where there genuinely is no oracle —
+ *    research claims and report citability — the challenger IS wired, in
+ *    `packages/pipeline/src/challenger`. It was already in the right place.
+ *  - MEMORY anchor: the stub below is deliberately kept. A REAL implementation
+ *    exists (`packages/memory/src/store/anchor.ts`) and cannot live here,
+ *    because `memory` may not import `loop` (ARCHITECTURE §4). The stub is the
+ *    control condition in `anti-jarvis-gap.test.ts`, which proves the real
+ *    anchor recalls something where an inert one recalls nothing. Wiring the
+ *    real one into a session needs a store handle it does not have: W13-23.
  */
 
-export type AnchorKind = 'tool' | 'memory' | 'challenger';
+// 'challenger' removed with the stub (W13-21): the loop has no challenger
+// anchor, and the pipeline's challenger is not an Anchor.
+export type AnchorKind = 'tool' | 'memory';
 
 export interface AnchorFact {
   readonly kind: AnchorKind;
-  /** e.g. validator name, memory finding id, challenger model. */
+  /** e.g. validator name, or memory finding id. */
   readonly source: string;
   /** Human-readable fact the model must reconcile with. */
   readonly statement: string;
@@ -94,50 +115,6 @@ export function createToolAnchor(results: readonly ValidatorResult[]): Anchor {
   };
 }
 
-// --- Challenger anchor: interface + borderline-confidence firing contract, stub gather ---
-
-export interface ChallengerVerdict {
-  readonly model: string;
-  readonly agrees: boolean;
-  readonly rationale: string;
-}
-
-export interface ChallengerFireInput extends AnchorGatherInput {
-  /** The primary model's self-reported confidence in [0, 1]. */
-  readonly rawConfidence: number;
-}
-
-export interface ChallengerAnchor extends Anchor {
-  readonly kind: 'challenger';
-  /** BLUEPRINT §3.5: fires only on borderline confidence — cost-efficient. */
-  shouldFire(input: ChallengerFireInput): boolean;
-}
-
-/** Below this, the model already knows it's unsure; above this, tool-backed confidence is trusted without a second opinion. */
-export const CHALLENGER_BORDERLINE_LOW = 0.5;
-export const CHALLENGER_BORDERLINE_HIGH = 0.85;
-
-/**
- * Stub challenger anchor (full wiring W5): defines the borderline-firing
- * contract but never invokes a second model — `gather` always returns no
- * facts, honestly reflecting "not wired yet" rather than fabricating a
- * verdict.
- */
-export function createStubChallengerAnchor(): ChallengerAnchor {
-  return {
-    kind: 'challenger',
-    shouldFire(input) {
-      return (
-        input.rawConfidence >= CHALLENGER_BORDERLINE_LOW &&
-        input.rawConfidence <= CHALLENGER_BORDERLINE_HIGH
-      );
-    },
-    gather() {
-      return [];
-    },
-  };
-}
-
 // --- Memory anchor: interface for prior confirmed findings, stub gather ---
 
 export interface MemoryFinding {
@@ -150,9 +127,13 @@ export interface MemoryFinding {
 export type MemoryAnchor = Anchor & { readonly kind: 'memory' };
 
 /**
- * Stub memory anchor (full wiring W7): satisfies the `gather` contract but
- * returns no facts until the memory service (packages/memory) exists to
- * back it.
+ * The INERT memory anchor — kept on purpose (W13-21).
+ *
+ * Not "not wired yet": the real one exists in `packages/memory` and is
+ * duck-typed against this contract because `memory` may not import `loop`.
+ * This is the control condition `anti-jarvis-gap.test.ts` contrasts it with,
+ * which is the whole demonstration that an unwired memory engine recalls
+ * nothing. Deleting it would delete the proof.
  */
 export function createStubMemoryAnchor(): MemoryAnchor {
   return {
