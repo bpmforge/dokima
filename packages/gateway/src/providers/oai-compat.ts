@@ -18,7 +18,7 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
-import { createIdleAbort, readSseDataLines, runQueuedStream } from './streaming.js';
+import { createIdleAbort, mapAbortsToTimeout, readSseDataLines, runQueuedStream } from './streaming.js';
 import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
@@ -96,7 +96,10 @@ export class OaiCompatProvider implements Provider {
           ...this.headers,
           ...(init.headers as Record<string, string> | undefined),
         },
-        signal: AbortSignal.timeout(timeoutMs),
+        // W13-22: a caller-supplied signal WINS. An unconditional
+        // `AbortSignal.timeout` here silently overwrote the idle signal
+        // `streamEvents` builds, so streams stayed on a 300s clock.
+        signal: init.signal ?? AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
@@ -198,7 +201,10 @@ export class OaiCompatProvider implements Provider {
   /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */
   async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     await this.ensureWarm();
-    yield* runQueuedStream(this.queue, () => this.streamEvents(request));
+    // W13-22: mapAbortsToTimeout names a mid-body stall so a session absorbs it.
+    yield* runQueuedStream(this.queue, () =>
+      mapAbortsToTimeout(this.streamEvents(request), this.id, this.streamIdleMs),
+    );
   }
 
   private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
@@ -372,27 +378,4 @@ export class OaiCompatProvider implements Provider {
 
 export function createOaiCompatProvider(config: OaiCompatConfig): Provider {
   return new OaiCompatProvider(config);
-}
-
-const LM_STUDIO_DEFAULT_BASE_URL = 'http://localhost:1234/v1';
-const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434/v1';
-
-/** LM Studio local server — defaults to its documented default port (docs/TECH_STACK.md). */
-export function createLmStudioProvider(config: Partial<OaiCompatConfig> = {}): Provider {
-  return new OaiCompatProvider({
-    id: 'lm-studio',
-    baseUrl: LM_STUDIO_DEFAULT_BASE_URL,
-    concurrency: 1,
-    ...config,
-  });
-}
-
-/** Ollama's OpenAI-compatibility layer — defaults to its documented default port. */
-export function createOllamaProvider(config: Partial<OaiCompatConfig> = {}): Provider {
-  return new OaiCompatProvider({
-    id: 'ollama',
-    baseUrl: OLLAMA_DEFAULT_BASE_URL,
-    concurrency: 1,
-    ...config,
-  });
 }

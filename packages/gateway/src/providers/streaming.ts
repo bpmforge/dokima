@@ -10,6 +10,7 @@
  */
 
 import type { RequestQueue } from './request-queue.js';
+import { ProviderTimeoutError } from './errors.js';
 
 /**
  * Splits a fetch Response body into individual SSE `data:` payload strings,
@@ -126,3 +127,32 @@ export function createIdleAbort(idleMs: number): IdleAbort {
     },
   };
 }
+
+/**
+ * Translates an aborted BODY into a `ProviderTimeoutError` (W13-22).
+ *
+ * The other half of `createIdleAbort`: that arms the abort, this gives its
+ * arrival a name the rest of the system already understands. Adapters
+ * translate aborts around the initial fetch, but once headers arrive that
+ * translation has returned — so a stall mid-stream escaped as a raw
+ * `DOMException`, `isProviderError` rejected it, and nothing absorbed it into
+ * a failed attempt. The run died with its ticket stranded at `in_progress`.
+ *
+ * A wrapper rather than a predicate because the adapter that needs it is
+ * already at the 400-line cap: this way the call site changes by one line.
+ */
+export async function* mapAbortsToTimeout<T>(
+  inner: AsyncIterable<T>,
+  providerId: string,
+  idleMs: number,
+): AsyncGenerator<T> {
+  try {
+    yield* inner;
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new ProviderTimeoutError(providerId, idleMs);
+    }
+    throw err;
+  }
+}
+

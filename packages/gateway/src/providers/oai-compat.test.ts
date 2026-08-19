@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  isProviderError,
   ProviderAuthError,
   ProviderHttpError,
   ProviderRateLimitError,
@@ -17,10 +18,12 @@ import {
 } from './fixtures.js';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from './oai-compat-types.js';
 import {
-  createLmStudioProvider,
   createOaiCompatProvider,
-  createOllamaProvider,
 } from './oai-compat.js';
+import {
+  createLmStudioProvider,
+  createOllamaProvider,
+} from './oai-compat-presets.js';
 import {
   streamNoUsageSse,
   streamSuccessSse,
@@ -1317,4 +1320,129 @@ describe('streaming carries requestExtras too (W13-15)', () => {
       expect(body.model).toBe('m');
     },
   );
+
+  describe('a producing stream is not on a clock (W13-22)', () => {
+    /**
+     * An SSE body that keeps sending, slowly, and HONOURS the signal it was
+     * given — which is the whole point. A fake fetch that ignores `init.signal`
+     * enforces no cap at all, so the test passes whichever signal was handed
+     * over and proves nothing. (My first version did exactly that: it stayed
+     * green with the fix reverted.)
+     */
+    function slowHonouringStream(
+      signal: AbortSignal | null | undefined,
+      chunks: number,
+      gapMs: number,
+    ): ReadableStream<Uint8Array> {
+      const enc = new TextEncoder();
+      let i = 0;
+      return new ReadableStream({
+        async pull(controller) {
+          if (signal?.aborted) {
+            controller.error(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+            return;
+          }
+          if (i < chunks) {
+            await new Promise((r) => setTimeout(r, gapMs));
+            if (signal?.aborted) {
+              controller.error(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+              return;
+            }
+            controller.enqueue(
+              enc.encode(`data: {"model":"m","choices":[{"delta":{"content":"${i}"}}]}\n\n`),
+            );
+            i += 1;
+            return;
+          }
+          controller.enqueue(
+            enc.encode(
+              'data: {"model":"m","choices":[{"delta":{},"finish_reason":"stop"}],' +
+                '"usage":{"prompt_tokens":1,"completion_tokens":1}}\n\n',
+            ),
+          );
+          controller.enqueue(enc.encode('data: [DONE]\n\n'));
+          controller.close();
+        },
+      });
+    }
+
+    it(
+      'RED FIXTURE: a stream still producing PAST requestTimeoutMs is not ' +
+        'aborted. The idle signal used to be overwritten by ' +
+        'AbortSignal.timeout after the ...init spread, so W13-15 replaced a ' +
+        'duration cap with an idle cap and the duration cap never left — ' +
+        'invisible on any model fast enough never to run a long turn',
+      async () => {
+        const provider = createOaiCompatProvider({
+          id: 'studio',
+          baseUrl: 'http://example.invalid/v1',
+          // Total cap far shorter than the stream takes; idle cap generous.
+          // With the bug the fetch gets the 40ms total signal and dies; with
+          // the fix it gets the idle signal, bumped on every chunk.
+          requestTimeoutMs: 40,
+          streamIdleMs: 5_000,
+          fetchImpl: (async (_url: string, init: RequestInit) =>
+            new Response(slowHonouringStream(init.signal, 6, 25), {
+              status: 200,
+              headers: { 'content-type': 'text/event-stream' },
+            })) as unknown as typeof fetch,
+        });
+
+        const seen: string[] = [];
+        for await (const event of provider.chatStream!({
+          model: 'm',
+          messages: [{ role: 'user', content: 'hi' }],
+        })) {
+          if (event.type === 'delta') seen.push(event.content);
+        }
+        expect(seen.join('')).toBe('012345');
+      },
+    );
+
+    it(
+      'RED FIXTURE: an abort mid-body is a ProviderTimeoutError, not a raw ' +
+        'DOMException. fetchRaw translates TimeoutError only around the INITIAL ' +
+        'fetch — once headers arrive it has returned, so a stall escaped ' +
+        'unclassified, isProviderError said false, and the session could not ' +
+        'absorb it: the run died with the ticket stranded at in_progress',
+      async () => {
+        const provider = createOaiCompatProvider({
+          id: 'studio',
+          baseUrl: 'http://example.invalid/v1',
+          streamIdleMs: 50,
+          fetchImpl: (async () =>
+            new Response(
+              new ReadableStream({
+                pull(controller) {
+                  // Exactly what a real body does when its signal aborts.
+                  controller.error(
+                    Object.assign(new Error('aborted'), { name: 'AbortError' }),
+                  );
+                },
+              }),
+              { status: 200, headers: { 'content-type': 'text/event-stream' } },
+            )) as unknown as typeof fetch,
+        });
+
+        const err = await (async () => {
+          try {
+            const drained: string[] = [];
+            for await (const event of provider.chatStream!({
+              model: 'm',
+              messages: [{ role: 'user', content: 'hi' }],
+            })) {
+              if (event.type === 'delta') drained.push(event.content);
+            }
+            return undefined;
+          } catch (e) {
+            return e;
+          }
+        })();
+
+        expect(err).toBeInstanceOf(ProviderTimeoutError);
+        // The property that makes it absorbable rather than fatal.
+        expect(isProviderError(err)).toBe(true);
+      },
+    );
+  });
 });
