@@ -28,6 +28,12 @@ export default defineConfig({
       'pnpm --filter @dokima/web run build && pnpm --filter @dokima/server exec tsx src/api/main.ts',
     env: {
       DOKIMA_HOME: HOME,
+      // W12-43: the served core can now MINT a signing key. Without these it
+      // would resolve the real macOS Keychain and write into it from an
+      // automated run — the hazard W10-04 declined to introduce. No e2e spec
+      // starts a build run today; this keeps that true if one ever does.
+      DOKIMA_NO_KEYCHAIN: '1',
+      DOKIMA_VAULT_KEY: 'e2e-vault-key-w1243',
       DOKIMA_PORT: String(PORT),
       DOKIMA_STATE_DB: STATE_DB,
     },

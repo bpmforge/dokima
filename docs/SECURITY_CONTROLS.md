@@ -251,3 +251,25 @@ ticket. IDs are stable — new controls append, never renumber.
   request for a path outside every root is a 409 carrying rule
   `outside-allowed-roots`; a planted symlink out of an allowed root is refused
   by the same rule rather than followed (`browse-routes.test.ts`).
+
+- **SC-20 The receipt signing key is minted, never requested, and never
+  replaced** (C-5, FR-S2; W12-43). The key is an HMAC-SHA256 secret
+  (`receipts/mac.ts`) — symmetric, local, with no public half and nothing
+  outside the machine that verifies against it — so the product generates one
+  with `randomBytes(32)` on first use and stores it as a credential ref
+  (`dokima.signing-key`) through `resolveCredentialStore`, the same seam
+  provider secrets use (SC-06). It is never held in a settings file, a prompt
+  or the event log. Asking a user to supply one would be a field with exactly
+  one correct answer, and the env var it replaced was a terminal step for a
+  GUI product (W12-20/W12-40). `DOKIMA_SIGNING_KEY` still wins when set: it is
+  the CI seam, and it is read before the store so an automated run never
+  triggers a keychain prompt. **The control that matters is the refusal**: a
+  project that already holds receipts and whose key is absent is refused by
+  name rather than re-keyed, because a replacement does not fail loudly — it
+  makes every existing receipt fail its MAC, so the project would quietly
+  report itself unverifiable and every completed phase would look stale. An
+  *unreadable* store (wrong `DOKIMA_VAULT_KEY`, unlockable keychain entry) is
+  a third, separately named refusal, never treated as "no key yet". *Verify:*
+  a fresh install mints and proceeds; a project with receipts and no key is
+  refused with nothing written to the store (`signing-key.test.ts`,
+  `runs-routes.test.ts`).

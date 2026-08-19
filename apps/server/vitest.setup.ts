@@ -38,3 +38,24 @@ process.on('exit', () => {
     /* ignore */
   }
 });
+
+/**
+ * Pins the FILE-BACKED credential store for the whole suite (W12-43).
+ *
+ * W12-43 made the signing key mintable, which means a code path under test now
+ * WRITES a credential. `resolveCredentialStore` picks the real macOS Keychain
+ * on darwin unless `DOKIMA_NO_KEYCHAIN` is set, and nothing set it — so the
+ * suite would have written a real signing key into the developer's login
+ * keychain, silently, on every run.
+ *
+ * That is not a hypothetical objection: plan.json records W10-04 declining to
+ * add a live credential e2e for precisely this reason rather than "silently
+ * writing a real secret into a dev/CI keychain from an automated test".
+ *
+ * The encrypted-file backend is the one `credential-store.ts`'s own header
+ * names as the suite's backend: fully local, deterministic, and written under
+ * the `DOKIMA_HOME` pinned above — so it is discarded with the temp dir.
+ */
+process.env.DOKIMA_NO_KEYCHAIN = '1';
+process.env.DOKIMA_VAULT_KEY ??= 'test-vault-key-w1243';
+
