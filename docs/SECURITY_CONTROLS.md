@@ -156,7 +156,7 @@ ticket. IDs are stable — new controls append, never renumber.
 | T-9..T-12 (core → forge) | SC-03, SC-06, SC-14, SC-15, SC-01 |
 | T-13..T-15 (MCP) | SC-12, SC-10 |
 | T-16..T-18 (providers) | SC-06, SC-02, SC-13, SC-09* (all-local profile visibility) |
-| T-19..T-22 (local surface) | SC-08, SC-06, SC-09, SC-07, SC-16 |
+| T-19..T-22, T-28 (local surface) | SC-08, SC-06, SC-09, SC-07, SC-16, SC-19 |
 | T-23..T-25 (log integrity) | SC-11, SC-05, SC-01, SC-15 |
 
 - **SC-17 Tool-boundary write-scope enforcement** (T-3, T-4, T-11, T-23, T-24; D-023).
@@ -236,3 +236,18 @@ ticket. IDs are stable — new controls append, never renumber.
   granted, is a per-role capability with `requiresApproval` there, never an ambient tool. The model chooses tool CALLS; it never chooses the
   tool SET. *Verify:* a session whose model emits a call to an unlisted tool gets a refusal
   result, not an execution, and the attempt lands on the trace.
+
+- **SC-19 Directory browsing is bounded to declared roots** (T-28; W12-42). `GET
+  /api/v1/browse` exists because `onboard` and `import` need a directory only the
+  user knows, and typing an absolute path from memory is not a way to say which.
+  It lists only under the home directory, the configured workspace root, or the
+  parent of an already-registered project — never from `/`. Enumeration is a
+  different capability from access: naming a path requires already knowing it,
+  while listing DISCOVERS paths, so a leaked token (T-19) would otherwise gain
+  the ability to map the disk rather than only to act on known projects.
+  Containment is evaluated on `realpath` for both root and target, because a
+  symlink inside an allowed root defeats a string-prefix check and reaches the
+  whole filesystem. Directories only, dot-directories omitted. *Verify:* a
+  request for a path outside every root is a 409 carrying rule
+  `outside-allowed-roots`; a planted symlink out of an allowed root is refused
+  by the same rule rather than followed (`browse-routes.test.ts`).

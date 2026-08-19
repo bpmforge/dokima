@@ -7025,14 +7025,20 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/fleet/DirectoryPicker.tsx",
         "apps/web/src/fleet/DirectoryPicker.test.tsx",
+        "apps/web/src/fleet/FleetHome.tsx",
+        "apps/web/src/fleet/FleetHome.test.tsx",
+        "apps/web/src/fleet/api.ts",
+        "apps/web/src/fleet/fleet.css",
         "apps/server/src/api/server/browse-routes.ts",
         "apps/server/src/api/server/browse-routes.test.ts",
-        "docs/THREAT_MODEL.md"
+        "apps/server/src/api/server.ts",
+        "docs/THREAT_MODEL.md",
+        "docs/SECURITY_CONTROLS.md"
       ],
       "depends_on": [
         "W12-41"
@@ -7047,7 +7053,9 @@
         "RED FIXTURE: onboard completes without the user typing a path, and an unreadable or non-existent selection is refused by name."
       ],
       "notes": [
-        "Filed 2026-08-18 alongside W12-41, split deliberately rather than filed as one ticket: W12-41 is small, self-contained and unblocks a real user today, while this one carries a THREAT_MODEL decision and a new HTTP surface. Bundling them would have held the quick fix behind the security question."
+        "Filed 2026-08-18 alongside W12-41, split deliberately rather than filed as one ticket: W12-41 is small, self-contained and unblocks a real user today, while this one carries a THREAT_MODEL decision and a new HTTP surface. Bundling them would have held the quick fix behind the security question.",
+        "write_scope WIDENED at claim time 2026-08-19. As filed it held the new picker and route but neither the call-site that renders the picker (FleetHome.tsx, where the path input actually lives) nor the registration that makes the route reachable (server.ts). Building only the listed files would have produced a route no client can call and a component nothing renders \u2014 the fourteenth instance of that defect class in this repo. The added files belong to W12-41 and W2-era tickets, all done, so nothing is claimed away from an open ticket.",
+        "write_scope widened a second time for docs/SECURITY_CONTROLS.md: the THREAT_MODEL entry this ticket requires cites a mitigating control, and SC-18 was the highest that existed. Citing SC-19 without writing it would have made the threat model reference a control that does not exist \u2014 the documentation form of the same defect as a code comment naming an unfiled ticket."
       ]
     },
     {
@@ -7649,7 +7657,7 @@
       ],
       "depends_on": [],
       "stories": [
-        "US-001"
+        "US-101"
       ],
       "acceptance": [
         "AC-1 IS A COMMITTED ACCEPTANCE CRITERION, NOT A DOC'S ASPIRATION: docs/USER_STORIES.md says \"Interview adapts question depth to my answers; I can skip and return\". Neither half is delivered. The engine that does exactly this is BUILT and TESTED in packages/pipeline/src/interview \u2014 depth ceiling (MAX_FOLLOWUP_DEPTH = 4), skip, resume, NA-1 human-only enforcement \u2014 and all four verbs (beginTopic, submitAnswer, skipTopic, resumeTopic) sit in the W12-38 buried-exports list with no production caller.",
@@ -7661,7 +7669,8 @@
       ],
       "notes": [
         "Filed 2026-08-19 after the founder asked how to close the gap between pm-interviewer.md and the implementation. The doc is NOT overclaiming \u2014 it accurately describes the engine that was built. Fourteenth instance of the built-but-unwired class and the largest: an entire subsystem shadowed by a simpler reimplementation of itself.",
-        "Closed 2026-08-19, VERIFIED AGAINST THE LOCAL MODEL, not only fixtures: the live endpoint returned 'Who are the primary users of this tool\u2014developers, businesses, researchers, or another group?' in one second. That is AC-1 delivered for the first time since it was written. THE FIRST LIVE TEST FAILED AND MY OWN CATCH-ALL HID WHY \u2014 it returned reason 'unavailable' in 0.017s for what was actually a ROUTING failure: a real project's matrix carries coding-agent rows only (that is what the wizard writes), so asking for role 'pm-interviewer' was unresolvable. Fixed twice over: fall back to the configured role, and report 'no-model-configured' distinctly from 'unavailable' with the underlying message, because a single catch-all hiding four different causes is the silence this product exists to refuse. I HAD INTRODUCED A SECOND SILENT FAILURE IN THE SAME TICKET: buildInterviewSession read answers[deliverableId] only, so every follow-up answer was dropped \u2014 a person could answer three adaptive questions and none would reach the draft, and the feature would have looked like it worked. Follow-ups are now real questionsAsked at increasing depth, which is what the engine's ceiling counts. THE ON-BLUR DESIGN WAS WRONG AND THE E2E SUITE PROVED IT: fetching a follow-up whenever the cursor left a field meant a model call per tab, surprise layout shifts, and three failing specs plus a run that went from 30s to 1.2m. Made explicit ('Ask me more about this'); e2e returned to 69 passing at 29.7s. Two e2e specs also had to stop addressing textareas by positional index, which was a latent break the moment any form grew."
+        "Closed 2026-08-19, VERIFIED AGAINST THE LOCAL MODEL, not only fixtures: the live endpoint returned 'Who are the primary users of this tool\u2014developers, businesses, researchers, or another group?' in one second. That is AC-1 delivered for the first time since it was written. THE FIRST LIVE TEST FAILED AND MY OWN CATCH-ALL HID WHY \u2014 it returned reason 'unavailable' in 0.017s for what was actually a ROUTING failure: a real project's matrix carries coding-agent rows only (that is what the wizard writes), so asking for role 'pm-interviewer' was unresolvable. Fixed twice over: fall back to the configured role, and report 'no-model-configured' distinctly from 'unavailable' with the underlying message, because a single catch-all hiding four different causes is the silence this product exists to refuse. I HAD INTRODUCED A SECOND SILENT FAILURE IN THE SAME TICKET: buildInterviewSession read answers[deliverableId] only, so every follow-up answer was dropped \u2014 a person could answer three adaptive questions and none would reach the draft, and the feature would have looked like it worked. Follow-ups are now real questionsAsked at increasing depth, which is what the engine's ceiling counts. THE ON-BLUR DESIGN WAS WRONG AND THE E2E SUITE PROVED IT: fetching a follow-up whenever the cursor left a field meant a model call per tab, surprise layout shifts, and three failing specs plus a run that went from 30s to 1.2m. Made explicit ('Ask me more about this'); e2e returned to 69 passing at 29.7s. Two e2e specs also had to stop addressing textareas by positional index, which was a latent break the moment any form grew.",
+        "Story ref corrected 2026-08-19: filed as US-001, which does not exist. The adaptive-depth interview is US-101. validate-traceability caught it and had been failing on main since W13-18 merged, because it is not in the law 3 gate."
       ]
     },
     {
