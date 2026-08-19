@@ -1,10 +1,10 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { openEventLog, createIdentity } from '@dokima/events';
+import { appendEvent, openEventLog, createIdentity } from '@dokima/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createSlate, decideSlate } from '../decisions/store.js';
-import { computeProjectStats } from './stats.js';
+import { computeProjectStats, sumSpendToday } from './stats.js';
 
 /**
  * W10-73. `pendingDecideCount` was a literal `0` in `EMPTY_STATS` and computed
@@ -103,5 +103,94 @@ describe('computeProjectStats counts what needs a human (W10-73)', () => {
     expect(stats.berthsRunning).toBe(0);
     expect(stats.heartbeatAgeMs).toBeNull();
     expect(stats.spendTodayUsd).toBe(0);
+  });
+
+  describe("the Fleet's spend column (W13-24)", () => {
+    const spendDirs: string[] = [];
+
+    afterEach(async () => {
+      await Promise.all(
+        spendDirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+      );
+    });
+
+    /** A REAL log, not a fake: this is the `listEvents` path production uses. */
+    async function logWith(
+      entries: Array<{ createdAt: string; payload: unknown; eventType?: string }>,
+    ) {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-spend-stats-'));
+      spendDirs.push(dir);
+      const log = openEventLog(path.join(dir, 'state.db'));
+      createIdentity(log, { id: 'agent', name: 'Agent', kind: 'machine' });
+      for (const e of entries) {
+        appendEvent(
+          log,
+          {
+            eventType: e.eventType ?? 'spend.recorded',
+            actorId: 'agent',
+            payload: e.payload,
+          },
+          { now: () => e.createdAt },
+        );
+      }
+      return log;
+    }
+
+    const NOON = () => new Date('2026-08-19T15:00:00.000Z');
+
+    it(
+      "RED FIXTURE: sums today's spend.recorded events instead of reporting a " +
+        'constant. It was a hardcoded 0 the Fleet rendered as though measured — ' +
+        'the same defect W10-73 found in pendingDecideCount, on the field beside it',
+      async () => {
+        const log = await logWith([
+          { createdAt: '2026-08-19T09:00:00.000Z', payload: { costUsd: 0.25 } },
+          { createdAt: '2026-08-19T14:00:00.000Z', payload: { costUsd: 0.5 } },
+        ]);
+        try {
+          expect(sumSpendToday(log, NOON)).toBeCloseTo(0.75);
+        } finally {
+          log.close();
+        }
+      },
+    );
+
+    it('ignores yesterday — the column answers "today", not a rolling window', async () => {
+      const log = await logWith([
+        { createdAt: '2026-08-18T23:00:00.000Z', payload: { costUsd: 9.99 } },
+        { createdAt: '2026-08-19T10:00:00.000Z', payload: { costUsd: 1 } },
+      ]);
+      try {
+        expect(sumSpendToday(log, NOON)).toBeCloseTo(1);
+      } finally {
+        log.close();
+      }
+    });
+
+    it('a local-only run is $0, and that is CORRECT rather than a missing number', async () => {
+      // Tokens non-zero, cost zero: metering happened, a local model is free.
+      // Law 9b — local-only is a full product, not one with a broken column.
+      const log = await logWith([
+        { createdAt: '2026-08-19T10:00:00.000Z', payload: { costUsd: 0, promptTokens: 900 } },
+      ]);
+      try {
+        expect(sumSpendToday(log, NOON)).toBe(0);
+      } finally {
+        log.close();
+      }
+    });
+
+    it('ignores other event types and malformed payloads rather than throwing', async () => {
+      const log = await logWith([
+        { eventType: 'run.created', createdAt: '2026-08-19T10:00:00.000Z', payload: { costUsd: 5 } },
+        { createdAt: '2026-08-19T10:00:00.000Z', payload: { costUsd: 'lots' } },
+        { createdAt: '2026-08-19T10:00:00.000Z', payload: {} },
+      ]);
+      try {
+        expect(sumSpendToday(log, NOON)).toBe(0);
+      } finally {
+        log.close();
+      }
+    });
   });
 });

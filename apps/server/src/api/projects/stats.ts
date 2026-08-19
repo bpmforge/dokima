@@ -6,7 +6,7 @@
  */
 
 import path from 'node:path';
-import { openEventLogReader, type EventLog } from '@dokima/events';
+import { listEvents, openEventLogReader, type EventLog } from '@dokima/events';
 import { computeBoard, listTickets } from '@dokima/tickets';
 import { listSlates } from '../decisions/store.js';
 import { STATE_DB_RELATIVE, type ProjectCard, type ProjectRecord } from './types.js';
@@ -58,6 +58,31 @@ function countOpenSlates(log: EventLog): number {
   }
 }
 
+/**
+ * Today's spend, summed from the durable `spend.recorded` events (W13-24).
+ *
+ * Before this the column was a hardcoded 0 that the Fleet rendered as though
+ * it were measured — the same shape of defect W10-73 found in
+ * `pendingDecideCount`, on the field right beside it.
+ *
+ * "Today" is the LOCAL calendar day, not a rolling 24h: the column is read by
+ * a person asking "what has this cost me today", and a rolling window answers
+ * a question nobody asked.
+ */
+export function sumSpendToday(log: EventLog, now: () => Date = () => new Date()): number {
+  const startOfDay = new Date(now());
+  startOfDay.setHours(0, 0, 0, 0);
+  const since = startOfDay.toISOString();
+  let total = 0;
+  for (const event of listEvents(log)) {
+    if (event.eventType !== 'spend.recorded') continue;
+    if (event.createdAt < since) continue;
+    const cost = (event.payload as { costUsd?: unknown }).costUsd;
+    if (typeof cost === 'number' && Number.isFinite(cost)) total += cost;
+  }
+  return total;
+}
+
 /** Reads live stats straight from the project's own `state.db` — never cached (DATABASE.md §7). */
 export async function computeProjectStats(projectPath: string): Promise<ProjectStats> {
   const dbPath = path.join(projectPath, STATE_DB_RELATIVE);
@@ -89,10 +114,15 @@ export async function computeProjectStats(projectPath: string): Promise<ProjectS
     // Fleet SORTS by this field, so the project that most needed attention
     // sank to the bottom of the list instead of rising to the top.
     //
-    // `berthsRunning`, `heartbeatAgeMs` and `spendTodayUsd` are still the
-    // constants they always were, on the line below. Naming that here rather
-    // than leaving three fields looking computed because one of them now is.
-    return { ...EMPTY_STATS, board: stats, pendingDecideCount: countOpenSlates(log) };
+    // `berthsRunning` and `heartbeatAgeMs` are still the constants they always
+    // were. `spendTodayUsd` no longer is (W13-24) — it had the same defect
+    // W10-73 fixed above, a hardcoded 0 the Fleet displays as though measured.
+    return {
+      ...EMPTY_STATS,
+      board: stats,
+      pendingDecideCount: countOpenSlates(log),
+      spendTodayUsd: sumSpendToday(log),
+    };
   } catch (err) {
     if (!isUnmigratedSchemaError(err)) {
       console.error(`[fleet] computeProjectStats failed for ${dbPath}:`, err);

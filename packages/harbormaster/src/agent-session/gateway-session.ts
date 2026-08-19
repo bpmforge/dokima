@@ -317,6 +317,7 @@ export function createGatewaySpawnSession(
             fitnessStore,
           }),
         resolveProvider: options.resolveProvider,
+        role: options.role,
         messages,
         tools: [...AGENT_SESSION_TOOL_SCHEMAS],
         ledger: options.ledger,
