@@ -17,6 +17,8 @@ export interface OaiCompatConfig {
   contextLengths?: Record<string, number>;
   headers?: Record<string, string>;
   requestTimeoutMs?: number;
+  /** Max quiet between stream chunks before the stream is treated as hung (W13-15). */
+  streamIdleMs?: number;
   healthTimeoutMs?: number;
   fetchImpl?: typeof fetch;
   /**
@@ -109,4 +111,15 @@ export interface OaiCompatStreamChunk {
  * stop a run and why each is the value it is.
  */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
+
+/**
+ * How long a STREAM may go quiet before it is treated as hung (W13-15).
+ *
+ * The bound that matters for a generation is time since the last token, not
+ * total duration: a model producing steadily for six minutes is working, and a
+ * model silent for sixty seconds is not, whatever its elapsed total. 60s is
+ * generous for a token gap even on loaded local hardware, and short enough
+ * that a genuinely hung endpoint is noticed while someone is still watching.
+ */
+export const DEFAULT_STREAM_IDLE_MS = 60_000;
 export const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;

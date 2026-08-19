@@ -18,7 +18,7 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
-import { readSseDataLines, runQueuedStream } from './streaming.js';
+import { createIdleAbort, readSseDataLines, runQueuedStream } from './streaming.js';
 import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
@@ -42,6 +42,7 @@ import { normalizeFinishReason, parseRetryAfterMs } from './oai-compat-helpers.j
 import {
   DEFAULT_HEALTH_TIMEOUT_MS,
   DEFAULT_REQUEST_TIMEOUT_MS,
+  DEFAULT_STREAM_IDLE_MS,
   type OaiCompatConfig,
   type OaiCompatStreamChunk,
   type RawChatCompletionResponse,
@@ -59,6 +60,7 @@ export class OaiCompatProvider implements Provider {
   private readonly healthTimeoutMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly requestExtras: Record<string, unknown> | undefined;
+  private readonly streamIdleMs: number;
   private readonly queue: RequestQueue;
   private warmedAt: number | undefined;
   private warmupPromise: Promise<void> | undefined;
@@ -72,6 +74,7 @@ export class OaiCompatProvider implements Provider {
     this.healthTimeoutMs = config.healthTimeoutMs ?? DEFAULT_HEALTH_TIMEOUT_MS;
     this.fetchImpl = config.fetchImpl ?? fetch;
     this.requestExtras = config.requestExtras;
+    this.streamIdleMs = config.streamIdleMs ?? DEFAULT_STREAM_IDLE_MS;
     this.queue = new RequestQueue(config.concurrency ?? 1);
     this.headers = {
       'content-type': 'application/json',
@@ -200,6 +203,8 @@ export class OaiCompatProvider implements Provider {
 
   private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const body = {
+      // W13-15: extras reached chat() in W13-10 and not this path — my own miss.
+      ...this.requestExtras,
       model: request.model,
       messages: request.messages.map(toRawMessage),
       stream: true,
@@ -210,16 +215,14 @@ export class OaiCompatProvider implements Provider {
       ...(request.tools !== undefined ? { tools: request.tools.map(toRawTool) } : {}),
     };
 
+    // W13-15: idle, not duration — a stream that is producing is alive by
+    // definition. See DEFAULT_STREAM_IDLE_MS and docs/design/RUN_LIMITS.md.
+    const idle = createIdleAbort(this.streamIdleMs);
     const response = await this.fetchRaw(
       '/chat/completions',
-      { method: 'POST', body: JSON.stringify(body) },
+      { method: 'POST', body: JSON.stringify(body), signal: idle.signal },
       this.requestTimeoutMs,
     );
-    if (!response.ok) await this.throwForStatus(response);
-    if (!response.body) {
-      throw new ProviderResponseShapeError(this.id, 'streaming response has no body');
-    }
-
     let content = '';
     let role: ChatRole = 'assistant';
     let modelId = request.model;
@@ -227,28 +230,39 @@ export class OaiCompatProvider implements Provider {
     let usage: { promptTokens: number; completionTokens: number } | undefined;
     const toolCallDeltas: ToolCallAccumulator = new Map();
 
-    for await (const payload of readSseDataLines(response.body)) {
-      if (payload === '[DONE]') continue;
-      const event = JSON.parse(payload) as OaiCompatStreamChunk;
-      modelId = event.model ?? modelId;
-      const choice = event.choices[0];
-      if (choice) {
-        if (choice.delta.role) role = choice.delta.role as ChatRole;
-        if (choice.delta.content) {
-          content += choice.delta.content;
-          yield { type: 'delta', content: choice.delta.content };
+    try {
+      if (!response.ok) await this.throwForStatus(response);
+      if (!response.body) {
+        throw new ProviderResponseShapeError(this.id, 'streaming response has no body');
+      }
+      for await (const payload of readSseDataLines(response.body, idle.bump)) {
+        if (payload === '[DONE]') continue;
+        const event = JSON.parse(payload) as OaiCompatStreamChunk;
+        modelId = event.model ?? modelId;
+        const choice = event.choices[0];
+        if (choice) {
+          if (choice.delta.role) role = choice.delta.role as ChatRole;
+          if (choice.delta.content) {
+            content += choice.delta.content;
+            yield { type: 'delta', content: choice.delta.content };
+          }
+          const deltaCalls = choice.delta as unknown as {
+            tool_calls?: RawToolCallDelta[];
+          };
+          for (const d of deltaCalls.tool_calls ?? [])
+            applyToolCallDelta(toolCallDeltas, d);
+          if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
         }
-        const deltaCalls = choice.delta as unknown as { tool_calls?: RawToolCallDelta[] };
-        for (const d of deltaCalls.tool_calls ?? [])
-          applyToolCallDelta(toolCallDeltas, d);
-        if (choice.finish_reason) finishReasonRaw = choice.finish_reason;
+        if (event.usage) {
+          usage = {
+            promptTokens: event.usage.prompt_tokens,
+            completionTokens: event.usage.completion_tokens,
+          };
+        }
       }
-      if (event.usage) {
-        usage = {
-          promptTokens: event.usage.prompt_tokens,
-          completionTokens: event.usage.completion_tokens,
-        };
-      }
+    } finally {
+      // Always: the idle timer must not outlive the stream it guards.
+      idle.done();
     }
 
     if (!usage) {

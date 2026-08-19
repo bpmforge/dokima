@@ -7501,14 +7501,15 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/gateway/src/providers/oai-compat.ts",
         "packages/gateway/src/providers/oai-compat.test.ts",
         "packages/gateway/src/providers/streaming.ts",
         "packages/gateway/src/providers/streaming.test.ts",
-        "docs/design/RUN_LIMITS.md"
+        "docs/design/RUN_LIMITS.md",
+        "packages/gateway/src/providers/oai-compat-types.ts"
       ],
       "depends_on": [
         "W13-13",
@@ -7524,7 +7525,8 @@
         "RED FIXTURE: a stream that keeps producing past the old duration bound is NOT aborted; a stream that goes silent longer than the idle bound IS, and says which. Fake SSE source, never a live call (law 9a)."
       ],
       "notes": [
-        "Filed 2026-08-19. `chatStream` is fully built \u2014 SSE parsing, usage metering, queue integration \u2014 and has no production caller outside anthropic's internal use. Thirteenth instance of the built-but-unwired class, and the first where wiring it fixes a defect a user actually hit."
+        "Filed 2026-08-19. `chatStream` is fully built \u2014 SSE parsing, usage metering, queue integration \u2014 and has no production caller outside anthropic's internal use. Thirteenth instance of the built-but-unwired class, and the first where wiring it fixes a defect a user actually hit.",
+        "Closed 2026-08-19. THE FOUNDER WAS RIGHT ON THE MECHANISM, not just the principle: `fetchRaw` used `AbortSignal.timeout(timeoutMs)`, which bounds the WHOLE request, so a model streaming healthily for six minutes was killed at exactly the same moment as one that had hung. The streaming path now bounds time since the last chunk (`streamIdleMs`, 60s), reset per chunk by `readSseDataLines`. Duration still bounds the non-streaming path, correctly \u2014 there a single response is the only signal that exists. FEASIBILITY WAS MEASURED FIRST: LM Studio streams `tool_calls` deltas AND emits the `include_usage` chunk, so a streamed session can still drive the tool loop and still meter spend; without the usage chunk this would have meant trading the ledger for responsiveness, which is not a trade this product can make. FOUND AND FIXED MY OWN W13-10 BUG ON THE WAY: `requestExtras` reached `chat()` and not `chatStream()`, so a provider configured to stop a model thinking would have started thinking again the moment the session streamed \u2014 the exact five-hop 'settable and inert' failure I had cited W12-14's comment about while writing it. It has its own fixture now. THE SESSION STILL DOES NOT STREAM, deliberately: moving the tool loop onto chatStream changes the one component every ticket runs through, and it needs its own fixtures and its own supervised run rather than riding along here."
       ]
     }
   ]

@@ -1274,3 +1274,41 @@ describe('per-endpoint request extras (W13-10)', () => {
     expect(Object.keys(calls[0] as object).sort()).toEqual(['messages', 'model']);
   });
 });
+
+describe('streaming carries requestExtras too (W13-15)', () => {
+  it(
+    'RED FIXTURE: my own W13-10 miss — extras reached chat() and not chatStream(). ' +
+      'A provider configured to stop a model thinking would have started thinking ' +
+      'again the moment the session streamed',
+    async () => {
+      const bodies: unknown[] = [];
+      const fetchImpl = (async (_url: string, init?: RequestInit) => {
+        bodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          'data: {"model":"m","choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]}\n\n' +
+            'data: {"model":"m","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1}}\n\n' +
+            'data: [DONE]\n\n',
+          { status: 200, headers: { 'content-type': 'text/event-stream' } },
+        );
+      }) as unknown as typeof fetch;
+
+      const provider = createOaiCompatProvider({
+        id: 'studio',
+        baseUrl: 'http://example.invalid/v1',
+        fetchImpl,
+        requestExtras: { reasoning_effort: 'none' },
+      });
+      for await (const _ of provider.chatStream!({
+        model: 'm',
+        messages: [{ role: 'user', content: 'hi' }],
+      })) {
+        // drain
+      }
+      const body = bodies[0] as Record<string, unknown>;
+      expect(body.reasoning_effort).toBe('none');
+      expect(body.stream).toBe(true);
+      // Still cannot clobber the routed model.
+      expect(body.model).toBe('m');
+    },
+  );
+});
