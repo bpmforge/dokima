@@ -5,6 +5,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   LOCAL_OVERRIDES,
@@ -13,7 +14,14 @@ import {
   readUpstreamVersion,
   resolveSourceRoot,
   rewriteHostPaths,
+  isNativeContent,
+  NATIVE_MARKER,
 } from './import-content.mjs';
+
+const REPO_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
 
 const scratch = [];
 afterEach(async () => {
@@ -102,5 +110,44 @@ describe('local-override registry (W10-50)', () => {
       expect(rel, 'override keys are content-relative paths').not.toMatch(/^\/|^content\//);
       expect(why.length, `${rel} must say WHY it is overridden`).toBeGreaterThan(30);
     }
+  });
+});
+
+/**
+ * W13-17. The v3.5.4 dry run reported "1 REMOVED: pm-interviewer.md" and
+ * blocked a ticket as a founder decision about diverging from the pack. It was
+ * never a removal: `pm-interviewer` has never existed in attest, and our copy
+ * has carried "Provenance: Dokima-native" in its header since W5-02 wrote it.
+ */
+describe('Dokima-native content is not a removal (W13-17)', () => {
+  it('RED FIXTURE: a file declaring itself native is recognised as such', () => {
+    expect(
+      isNativeContent('<!--\n  Provenance: Dokima-native (authored for W5-02)\n-->'),
+    ).toBe(true);
+  });
+
+  it('an ordinary imported file is not native — the marker has to be present', () => {
+    expect(isNativeContent('---\ndescription: an upstream expert\n---\n')).toBe(false);
+    expect(isNativeContent('')).toBe(false);
+  });
+
+  it(
+    'the real pm-interviewer.md carries the marker. If this ever fails, the ' +
+      'header was edited and the next import will report the file as removed ' +
+      'again — which is how it would eventually get deleted',
+    async () => {
+      const text = await fs.readFile(
+        path.join(REPO_ROOT, 'content', 'experts', 'pm-interviewer.md'),
+        'utf8',
+      );
+      expect(isNativeContent(text)).toBe(true);
+    },
+  );
+
+  it('the marker is a single source of truth, not a second hand-kept list', () => {
+    // A list would drift from the files the first time someone adds one; the
+    // detector reads the file's own claim about itself.
+    expect(NATIVE_MARKER).toBe('Dokima-native');
+    expect(Object.keys(LOCAL_OVERRIDES)).not.toContain('experts/pm-interviewer.md');
   });
 });

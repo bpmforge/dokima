@@ -67,6 +67,24 @@ export const LOCAL_OVERRIDES = {
 }
 
 /**
+ * The marker a Dokima-native file carries in its own header (W13-17).
+ *
+ * Native files are NOT `LOCAL_OVERRIDES`. That registry is for upstream files
+ * Dokima has patched — the question there is "which copy wins". These are
+ * files upstream never had and never will, where the question does not arise.
+ *
+ * DETECTED FROM THE FILE, NOT A HAND-KEPT LIST: `pm-interviewer.md` has said
+ * "Provenance: Dokima-native" in its header since it was written for W5-02,
+ * and a second list would drift from that the first time someone adds one.
+ */
+export const NATIVE_MARKER = 'Dokima-native'
+
+/** True when a file declares itself Dokima-native in its own header. */
+export function isNativeContent(text) {
+  return text.includes(NATIVE_MARKER)
+}
+
+/**
  * Rewrite host-install paths to Dokima's content-relative form.
  *
  * 72 already-imported files hardcode `~/.config/opencode/…`, a path that does

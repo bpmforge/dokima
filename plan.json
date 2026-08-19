@@ -7569,12 +7569,13 @@
       "module": "content",
       "lane": "content",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "role": "data-steward",
       "write_scope": [
         "scripts/content-import/upstream.mjs",
         "scripts/content-import/dry-run.mjs",
-        "scripts/import-content.test.mjs"
+        "scripts/import-content.test.mjs",
+        "scripts/import-content.mjs"
       ],
       "depends_on": [],
       "stories": [],
@@ -7587,7 +7588,8 @@
         "RED FIXTURE: a native file is not reported as removed and is not deleted by an import; a genuinely-removed upstream file still IS reported. Fixtures against a temp source tree, never the real upstream checkout."
       ],
       "notes": [
-        "Filed 2026-08-19. Unblocks W12-07, which was blocked on a founder decision that turns out not to exist \u2014 nothing was lost upstream, so there is nothing to decide and nothing to fix in attest."
+        "Filed 2026-08-19. Unblocks W12-07, which was blocked on a founder decision that turns out not to exist \u2014 nothing was lost upstream, so there is nothing to decide and nothing to fix in attest.",
+        "Closed 2026-08-19. The v3.5.4 dry run now reports `experts removed 0` and `Dokima-native 1 pm-interviewer.md (upstream never had these \u2014 not a removal)`. DETECTED FROM THE FILE'S OWN HEADER rather than a registry entry, because a second hand-kept list would drift from the files the first time someone added a native one \u2014 and the marker has been sitting in pm-interviewer.md since W5-02 wrote it, unread by anything. There is a fixture asserting the REAL file still carries it, so an innocent header edit cannot silently restore the false alarm. WHAT MAKES THIS WORTH THE TICKET: the false alarm had already done damage. It blocked W12-07 as a founder decision about diverging from the pack, and my own note on that ticket recommended keeping the file as a LOCAL_OVERRIDE and 'recording the permanent divergence' \u2014 framing a deliberately native file as drift, on the strength of one line of tool output that was believable and wrong."
       ]
     }
   ]
