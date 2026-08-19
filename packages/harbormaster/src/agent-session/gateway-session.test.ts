@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 import {
   CostLedger,
   FitnessCardStore,
@@ -141,6 +141,25 @@ function baseSpawnOptions(
     now: () => '2026-08-05T00:00:00.000Z',
     ...overrides,
   };
+}
+
+/**
+ * W13-16. Same script as ScriptedFakeProvider, delivered as a stream: each
+ * response's content arrives as deltas first, then the identical ChatResponse
+ * as the `final` event. Everything the session computes — manifest, ledger,
+ * tool loop — must come out the same.
+ */
+class StreamingFakeProvider extends ScriptedFakeProvider {
+  streamedTurns = 0;
+
+  async *chatStream(request: ChatRequest) {
+    this.streamedTurns += 1;
+    const response = await this.chat(request);
+    for (const chunk of (response.message.content ?? '').match(/.{1,8}/gs) ?? []) {
+      yield { type: 'delta' as const, content: chunk };
+    }
+    yield { type: 'final' as const, response };
+  }
 }
 
 describe('createGatewaySpawnSession', () => {
@@ -868,6 +887,59 @@ describe('createGatewaySpawnSession', () => {
     expect(secondResult.exitCode).toBe(1);
     expect(secondAttemptProvider.calls).toHaveLength(1);
   });
+  describe('streaming the turn (W13-16)', () => {
+    it(
+      'RED FIXTURE: a streamed session drives the same tool loop, returns the ' +
+        'same output and meters the SAME ledger spend as the non-streamed one ' +
+        'against identical scripted input',
+      async () => {
+        const script = [finalResponse('plain text, no manifest')];
+
+        const plainSetup = await setup();
+        const plainLedger = new CostLedger();
+        const plainProvider = new ScriptedFakeProvider(script);
+        const plainResult = await createGatewaySpawnSession(
+          baseSpawnOptions(plainSetup.log, plainProvider, plainLedger),
+        )({ prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n', cwd: plainSetup.cwd });
+
+        const streamSetup = await setup();
+        const streamLedger = new CostLedger();
+        const streamProvider = new StreamingFakeProvider(script);
+        const streamResult = await createGatewaySpawnSession(
+          baseSpawnOptions(streamSetup.log, streamProvider, streamLedger),
+        )({ prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n', cwd: streamSetup.cwd });
+
+        expect(streamResult).toEqual(plainResult);
+        expect(streamProvider.streamedTurns).toBeGreaterThan(0);
+        // The line this ticket is not allowed to move.
+        expect(
+          streamLedger.totalForTicket({ projectId: PROJECT_ID, runId: RUN_ID, ticketId: 'W9-01' }),
+        ).toBe(
+          plainLedger.totalForTicket({ projectId: PROJECT_ID, runId: RUN_ID, ticketId: 'W9-01' }),
+        );
+      },
+    );
+
+    it(
+      'and the SESSION is what streams, not merely the driver — progress reaches ' +
+        'the caller, and session.producing reaches the log',
+      async () => {
+        const { log, cwd } = await setup();
+        const provider = new StreamingFakeProvider([finalResponse('plain text, no manifest')]);
+        const chunks: string[] = [];
+        await createGatewaySpawnSession({
+          ...baseSpawnOptions(log, provider, new CostLedger()),
+          onDelta: (chunk: string) => chunks.push(chunk),
+        })({ prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n', cwd });
+
+        expect(chunks.length).toBeGreaterThan(1);
+        expect(chunks.join('')).toBe('plain text, no manifest');
+        expect(
+          listEvents(log).filter((e) => e.eventType === 'session.producing'),
+        ).toHaveLength(1);
+      },
+    );
+  });
 });
 
 describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unchanged)', () => {
@@ -1216,4 +1288,5 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     const comment = ticket.history.find((h) => h.verb === 'comment');
     expect(comment?.body).toContain('auto-blocked with evidence');
   });
+
 });

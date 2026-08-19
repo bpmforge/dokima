@@ -7579,7 +7579,7 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/harbormaster/src/agent-session/gateway-session.ts",
@@ -7600,7 +7600,39 @@
         "RED FIXTURE: a streamed session drives the same tool loop, produces the same manifest, and records the same ledger spend as the non-streamed one against identical scripted input; and progress is observable before the call completes."
       ],
       "notes": [
-        "Filed 2026-08-19. Pairs with W13-15: that made silence the only thing that ends a stream, this gives the session something to be silent OR noisy about. Sized 8 and explicitly gated on a supervised run rather than fixtures, because gateway-session.ts is the single component every ticket in the product passes through."
+        "Filed 2026-08-19. Pairs with W13-15: that made silence the only thing that ends a stream, this gives the session something to be silent OR noisy about. Sized 8 and explicitly gated on a supervised run rather than fixtures, because gateway-session.ts is the single component every ticket in the product passes through.",
+        "Closed 2026-08-19 after three supervised runs against a real local model (qwen/qwen3-coder-next via LM Studio). The mandatory run earned its place: every fixture passed while the FIRST run still spent 15 of 18.7 seconds with no observable signal, because the opening turn emitted only tool_calls and ChatStreamDelta carries only content. Fixed in scope by emitting session.turn_started before the first byte (longest dark gap 15s -> 1.5s, measured); the rest needs the gateway stream contract and is filed as W13-20."
+      ]
+    },
+    {
+      "id": "W13-20",
+      "title": "a tool-calling turn streams nothing \u2014 ChatStreamEvent carries only content",
+      "phase": 13,
+      "module": "gateway",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/gateway/src/types.ts",
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/harbormaster/src/agent-session/session-stream.ts",
+        "packages/harbormaster/src/agent-session/session-stream.test.ts"
+      ],
+      "depends_on": [
+        "W13-16"
+      ],
+      "stories": [],
+      "acceptance": [
+        "MEASURED, not theorised. W13-16 moved the session onto chatStream and its supervised run still spent 15 of 18.7 seconds with no observable signal: the model first turn emitted tool_calls and no text, and ChatStreamDelta carries only { content }, so a tool-calling turn streams nothing. That is the COMMON turn, and on a 27B reasoning model it is minutes rather than seconds.",
+        "ADD A TOOL-CALL DELTA to ChatStreamEvent and emit it from the adapters that already parse those deltas off the wire. W13-15 measured that LM Studio does send them; oai-compat already reads them to assemble the final response, so this surfaces something the adapter has in hand and currently discards.",
+        "THE LEDGER STAYS WHERE IT IS. The final event remains the only metering point; a tool-call delta is progress, never spend.",
+        "GRANULARITY, SAME RULE AS W13-16: the durable log gets at most one event per turn per kind. The firehose goes to the onDelta-style callback and stays in memory.",
+        "RED FIXTURE: a turn that emits ONLY tool calls produces an observable signal before the turn completes, measured against the W13-16 run where it produced none."
+      ],
+      "notes": [
+        "Filed by W13-16 from its own supervised run, which is why that run was mandatory: every fixture passed and the feature still did not solve the stated problem for the dominant case. session-stream.ts names this ticket in a comment."
       ]
     },
     {

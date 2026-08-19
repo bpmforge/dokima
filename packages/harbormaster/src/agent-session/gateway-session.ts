@@ -111,6 +111,7 @@ import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
+import { takeMeteredTurn } from './session-stream.js';
 import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 
 /**
@@ -146,6 +147,8 @@ export const DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface GatewaySpawnSessionOptions {
   readonly log: EventLog;
+  /** W13-16 live model output, delta by delta. Not durable — see `session-stream.ts`. */
+  readonly onDelta?: (chunk: string, cumulative: number) => void;
   /** The role this session runs as — governs BOTH the gateway routing decision below and the mcp allowlist (mcp-wiring.ts). */
   readonly role: AgentRole;
   readonly matrix: ScopedRoleMatrix;
@@ -307,31 +310,28 @@ export function createGatewaySpawnSession(
 
     for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
       await refreshAnchor();
-      const routed = await route({
-        matrix: options.matrix,
-        role: options.role,
-        taskType,
-        actorId: options.actorId,
-        fitnessStore,
-      });
-      const model = routed.chain[0]!;
-      const provider = options.resolveProvider(model);
-      const response = await provider.chat({
-        model,
+      // W13-16: route, stream and meter are one act — see `session-stream.ts`.
+      const { response } = await takeMeteredTurn({
+        route: () =>
+          route({
+            matrix: options.matrix,
+            role: options.role,
+            taskType,
+            actorId: options.actorId,
+            fitnessStore,
+          }),
+        resolveProvider: options.resolveProvider,
         messages,
         tools: [...AGENT_SESSION_TOOL_SCHEMAS],
-      });
-
-      options.ledger.record({
+        ledger: options.ledger,
         projectId: options.projectId,
         runId: options.runId,
         ticketId,
         berthId,
-        costUsd: response.usage.costUsd,
-        promptTokens: response.usage.promptTokens,
-        completionTokens: response.usage.completionTokens,
-        model,
-        recordedAt: now(),
+        log: options.log,
+        actorId: options.actorId,
+        onDelta: options.onDelta,
+        now,
       });
 
       if (options.maxTicketCostUsd !== undefined) {
