@@ -108,6 +108,7 @@ private (other local processes, browser tabs — SC-08).
 | T-20 | I | Token/config file readable by other users on shared machine | L×M=M | SC-08 (0600 perms), SC-06 (secrets in keychain, not files) |
 | T-21 | E | **Poisoned content pack**: community expert/validator pack executes with gate authority | M×H=H | SC-09 (signed packs, D-006), SC-07 (validator runs sandboxed) |
 | T-22 | T | Supply chain: malicious npm dep in Dokima itself | M×H=M | SC-16 (lockfile, ignore-scripts, audit gate) |
+| T-28 | I | **Filesystem enumeration via the directory picker** (W12-42): `GET /api/v1/browse` lists directories, so anything holding the bearer token can map the disk rather than only act on projects it already knows | M×M=M | SC-19 (bounded roots — home, workspace root, parents of registered projects; containment checked on `realpath`, not on the string) |
 
 ### 3.6 Event log & ledgers (A3, A6)
 
@@ -118,6 +119,42 @@ private (other local processes, browser tabs — SC-08).
 | T-26 | T | **Prompt injection reaches a tool call** (D-023): repo content a session reads — a README, a dependency's source, a ticket comment — carries instructions the model follows, turning a read into a write outside the ticket's intent | M×H=H | SC-17 (every write checked against `write_scope` BEFORE it executes, and SC-01 again after), SC-18 (closed tool set: no shell, no network, no installs), SC-02 (the close gate re-runs verify and re-checks the diff out of session, so a session that talks its way past the pre-check still cannot close) |
 | T-27 | E | **Tool loop escapes its own budget** (D-023): a session iterates tool calls indefinitely, or a model loops on a failing edit, spending the ladder's budget without producing a manifest | M×M=M | W2-07 budget breakers metered per call through `gateway` — the reason D-023 keeps inference in-product rather than in a foreign CLI the ledger cannot see; harbormaster session cap (`maxSessionsPerTicket`) and watchdog (W3-02) bound the outer loop |
 | T-25 | T | Log truncation/rollback to a consistent prefix (chain intact but shorter) | L×M=M | SC-11 (forge mirror as external anchor when connected; seq high-water in `~/.dokima/`) |
+
+### 3.5.1 Decision: browsing is bounded (T-28, W12-42)
+
+`onboard` and `import` need a directory the user already has, and typing an
+absolute path from memory is not a way to say which. A hosted web app could not
+offer a browse button at all — `<input type="file">` yields contents and a fake
+path, `webkitdirectory` yields relative ones — but Dokima's core is a local,
+already-authenticated process on the same machine that already opens arbitrary
+project directories on request. It can `readdir`. This is the local-first
+architecture paying for itself, and the reason it is safe here is not a reason
+it would be safe anywhere.
+
+**Decided: bounded roots.** A listing must resolve under the home directory,
+the configured workspace root, or the parent of an already-registered project.
+
+**Rejected: unbounded listing from `/`.** The argument for it is that the core
+already opens any path the user names, so enumeration adds no new capability.
+That is wrong in one specific way: naming a path requires already knowing it,
+while enumeration *discovers* paths. Under T-19 (DNS-rebinding or CSRF onto
+localhost) a leaked token would turn from "can act on this user's projects"
+into "can map the home directory, locate `~/.ssh`, and read the shape of
+everything on the disk". Bounded roots hold the marginal exposure at
+directories the user has already pointed Dokima at — which is exposure the
+product already carries — instead of adding a general-purpose reader.
+
+**Rejected: bounding by string prefix.** `~/Dokima/x`, where `x` is a symlink
+to `/`, passes a `startsWith` check and then enumerates the whole disk.
+Containment is checked on `realpath` for both root and target, and there is a
+test that plants exactly that symlink.
+
+**Residual.** A token holder can still enumerate the user's home directory,
+which is a real loss against a scenario where the token leaks. It is accepted
+rather than mitigated further because the alternative — an allowlist the user
+maintains by hand before they can onboard anything — reintroduces the typing
+this ticket removed. SC-08 (localhost bind, Origin/Host allowlist, 0600 token)
+remains the control that keeps the token from leaking in the first place.
 
 ## 4. Abuse cases
 

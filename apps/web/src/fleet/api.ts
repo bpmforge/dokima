@@ -143,3 +143,44 @@ export async function removeProject(
     opts,
   );
 }
+
+export interface BrowseRoot {
+  path: string;
+  label: string;
+}
+
+export interface BrowseEntry {
+  name: string;
+  path: string;
+  registered: boolean;
+}
+
+export interface BrowseListing {
+  path: string;
+  parent: string | null;
+  entries: BrowseEntry[];
+}
+
+/**
+ * Where the picker OPENS (W12-42). The browser cannot compute these — it does
+ * not know the home directory, the configured workspace root, or where existing
+ * projects live — which is the same reason W12-41 moved new-project path
+ * derivation server-side.
+ */
+export async function fetchBrowseRoots(opts: FleetApiOptions = {}): Promise<BrowseRoot[]> {
+  const body = (await request('/api/v1/browse/roots', { method: 'GET' }, opts)) as {
+    roots: BrowseRoot[];
+  };
+  return body.roots;
+}
+
+export async function browseDirectory(
+  target: string,
+  opts: FleetApiOptions = {},
+): Promise<BrowseListing> {
+  return (await request(
+    `/api/v1/browse?path=${encodeURIComponent(target)}`,
+    { method: 'GET' },
+    opts,
+  )) as BrowseListing;
+}

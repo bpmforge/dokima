@@ -216,3 +216,91 @@
   color: var(--sw-fg-muted);
   margin: 0;
 }
+
+/* W12-42 — the directory picker.
+   Deliberately quiet: this sits inside a form and is a way to fill one field,
+   not a surface of its own. Paths are mono because they are literals a person
+   compares character by character, which is the same reason the board sets
+   numerics in mono. */
+/* Uses the shared `.surface` primitive rather than re-declaring its border —
+   the W13-04 ratchet exists because 51 surfaces had each written their own,
+   and a new one added on a ticket about something else is exactly how that
+   number got there. */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-2);
+}
+
+.picker__roots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-2);
+}
+
+.picker__here {
+  display: flex;
+  align-items: center;
+  gap: var(--sw-space-2);
+  margin: 0;
+  font-family: var(--sw-font-mono);
+  font-size: var(--sw-text-base);
+  /* A long path must not push the form wider than the viewport. */
+  overflow-x: auto;
+}
+
+.picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+  /* Bounded, so a folder with 400 children does not turn the form into a
+     scroll of its own. */
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.picker__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sw-space-2);
+}
+
+.picker__entry {
+  font-family: var(--sw-font-mono);
+  text-align: left;
+  flex: 1;
+}
+
+/* Registered directories stay VISIBLE but unofferable: hiding them would make
+   a user hunt for a folder they can see in their own file manager. */
+.picker__taken {
+  font-size: var(--sw-text-base);
+  color: var(--sw-fg-muted);
+}
+
+.picker__error {
+  margin: 0;
+  color: var(--sw-danger);
+  font-size: var(--sw-text-base);
+}
+
+.picker__empty,
+.picker__loading,
+.picker__chosen {
+  margin: 0;
+  font-size: var(--sw-text-base);
+  color: var(--sw-fg-muted);
+}
+
+.picker__chosen {
+  font-family: var(--sw-font-mono);
+}
+
+.picker__actions {
+  display: flex;
+  gap: var(--sw-space-2);
+}

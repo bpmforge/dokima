@@ -6,6 +6,7 @@ import {
   FleetApiError,
   removeProject as removeProjectRequest,
 } from './api.js';
+import { DirectoryPicker } from './DirectoryPicker.js';
 import { ProjectCard } from './ProjectCard.js';
 import { sortByAttention } from './sort.js';
 import type {
@@ -277,6 +278,10 @@ function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
               autoFocus
             />
           </label>
+          {/* W12-42: the input above asks a person to recall an absolute path
+              exactly. The picker is the answer for the common case; the input
+              stays for the case where the path is already on the clipboard. */}
+          <DirectoryPicker value={path} onChange={setPath} />
           <label>
             Name (optional)
             <input value={name} onChange={(event) => setName(event.target.value)} />

@@ -178,4 +178,30 @@ describe('New project asks for a name, not a path (W12-41)', () => {
       expect(screen.queryByLabelText('Project name')).toBeNull();
     },
   );
+
+  it(
+    'W12-42: and the picker is actually RENDERED beside it. A picker that is ' +
+      'built, tested and never mounted is the defect class this repo keeps ' +
+      'producing — the component tests pass either way, so this asserts the ' +
+      'call-site rather than the component',
+    async () => {
+      const { container } = await renderEmptyFleet();
+      const header = container.querySelector<HTMLElement>('.fleet__header');
+      if (!header) throw new Error('fleet__header not found');
+      fireEvent.click(
+        within(header).getByRole('button', { name: 'Onboard existing repo' }),
+      );
+      await waitFor(() => expect(screen.getByLabelText('Directory path')).toBeTruthy());
+      expect(screen.getByRole('button', { name: 'Browse…' })).toBeTruthy();
+    },
+  );
+
+  it('and NOT on "New project", where the server picks the location (W12-41)', async () => {
+    const { container } = await renderEmptyFleet();
+    const header = container.querySelector<HTMLElement>('.fleet__header');
+    if (!header) throw new Error('fleet__header not found');
+    fireEvent.click(within(header).getByRole('button', { name: 'New project' }));
+    await waitFor(() => expect(screen.getByLabelText('Project name')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Browse…' })).toBeNull();
+  });
 });

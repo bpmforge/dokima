@@ -25,6 +25,7 @@ import { registerPipelineRoutes } from './pipeline/index.js';
 import { registerPlansRoutes } from './plans-routes.js';
 import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
+import { registerBrowseRoutes } from './server/browse-routes.js';
 import { registerInterviewRoutes } from './server/interview-routes.js';
 import { registerArtifactRoutes, registerBoardRoutes, registerEstimateRoutes, registerNotificationRoutes, registerReceiptRoutes, registerRunsRoutes, registerTicketEditRoutes } from './server/index.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
@@ -108,6 +109,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerArtifactRoutes(app, { home: opts.fleetHome });
   registerReceiptRoutes(app, { home: opts.fleetHome });
   registerRunsRoutes(app, { home: opts.fleetHome });
+  registerBrowseRoutes(app, { home: opts.fleetHome });
   // W13-18: the adaptive follow-up AC-1 promised and nothing supplied.
   registerInterviewRoutes(app, { home: opts.fleetHome });
   registerTicketEditRoutes(app, { home: opts.fleetHome });
