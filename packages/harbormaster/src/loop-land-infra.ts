@@ -100,3 +100,16 @@ function takeFreeInfraRetry(
   });
   return true;
 }
+
+/**
+ * True when two attempts produced the same gaps — order-insensitive, because
+ * a gate that lists the same two reasons in the other order has still told the
+ * maker nothing new (W13-29).
+ */
+export function sameGaps(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = [...a].sort();
+  const right = [...b].sort();
+  return left.every((value, i) => value === right[i]);
+}
+

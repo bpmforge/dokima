@@ -13,6 +13,8 @@ import { redactDeep } from '@dokima/shared';
 import type { Ticket } from '@dokima/tickets';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
 import type { LandLoopOptions } from './loop-land.js';
+import type { AttemptFeedback } from './loop-handoff.js';
+import { sameGaps } from './loop-land-infra.js';
 import {
   runSession,
   type Handoff,
@@ -82,12 +84,14 @@ export async function attemptOnce(
   ticket: Ticket,
   worktree: WorktreeHandle,
   baseRef: string,
+  /** W13-29: what the last attempt got wrong, so this one can correct rather than re-roll. */
+  feedback?: AttemptFeedback,
 ): Promise<{
   session: SessionResult;
   closeGate: CloseGateResult | null;
   infraFailure: InfraFailureKind | null;
 }> {
-  const handoff = await options.buildHandoff(ticket);
+  const handoff = await options.buildHandoff(ticket, feedback);
   const secrets = options.secretValues;
   const spawn: SpawnSession = secrets?.length
     ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
@@ -124,3 +128,57 @@ export async function attemptOnce(
   });
   return { session, closeGate, infraFailure };
 }
+
+/**
+ * The gaps a failed attempt produced, in the order a maker should read them.
+ *
+ * A missing manifest comes FIRST when it happened, because nothing else the
+ * session did matters if it never reported: telling a model its scope was
+ * wrong when it never returned a manifest points at the wrong fix.
+ */
+export function gapsFrom(session: SessionResult, closeGate: CloseGateResult | null): string[] {
+  const gaps: string[] = [];
+  if (!session.manifest) {
+    gaps.push(
+      'no Completion Manifest was returned — reply with ONLY the JSON object described above',
+    );
+  }
+  for (const violation of session.scopeViolations ?? []) {
+    gaps.push(`wrote outside write_scope: ${violation}`);
+  }
+  if (closeGate && !closeGate.ok) gaps.push(...closeGate.reasons);
+  return gaps;
+}
+
+/**
+ * What this attempt taught us, or that it taught us nothing (W13-29).
+ *
+ * Returns the feedback the NEXT attempt should carry, or `no_progress` when
+ * the gaps are identical to the previous attempt's — BLUEPRINT §3.5 step 5's
+ * no-progress kill. Two attempts producing the same gap set are not
+ * converging, and spending the rest of the ladder on them costs tokens and
+ * delays a park a person has to read.
+ */
+export function nextFeedback(
+  previous: AttemptFeedback | undefined,
+  attempt: number,
+  session: SessionResult,
+  closeGate: CloseGateResult | null,
+  /**
+   * LADDER MODE ONLY, and only while an attempt remains to be saved.
+   * `locked` is DEFINED as looping in place to its FR-L7 convergence ceiling
+   * and `token-gated` maps attempts onto rungs, so an early kill would defeat
+   * the mode rather than serve it. At the ceiling the ladder's own reason is
+   * the true one — relabelling an exhausted ladder would change FR-H1/H2's
+   * documented outcome for the commonest failure there is.
+   */
+  bounds: { readonly mode: string; readonly limit: number },
+): { kind: 'continue'; feedback: AttemptFeedback } | { kind: 'no_progress' } {
+  const gaps = gapsFrom(session, closeGate);
+  const stalled = previous !== undefined && gaps.length > 0 && sameGaps(previous.gaps, gaps);
+  if (stalled && bounds.mode === 'ladder' && attempt < bounds.limit) {
+    return { kind: 'no_progress' };
+  }
+  return { kind: 'continue', feedback: { attempt, gaps } };
+}
+
