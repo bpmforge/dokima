@@ -1,7 +1,22 @@
 # Supervised run — W11 exit criteria 2 and 3
 
-**Status: never performed.** This is the one claim the product rests on and the
-only thing on the list that cannot be done unattended.
+**Status: PERFORMED 2026-08-18. Exit 2 is demonstrated; exit 3 is not.**
+
+A native `SpawnSession` completed a real ticket end to end on a real model:
+manifest returned and parsed, close gate accepted it, receipt minted
+(`secrets-scan` and `validate-remote-parity` both exit 0), the work committed on
+its own branch with `node src/check.mjs` printing OK, and the ticket stopped at
+**`in_review`** — not `done`, which is the maker≠verifier construction holding.
+
+**Exit 3 is still open** and needs a paid provider: both models tested were
+local, so a `$0` ledger is correct rather than the pre-W12-11 defect.
+
+*It took two attempts to get there, and the first failure is the reason this
+document exists.* Everything that had been fixture-tested worked — worktree
+isolation, the MCP allowlist, the tool loop, SC-17/SC-01, the commit path — and
+the run failed on the one thing no fixture could catch: the model was asked for
+a Completion Manifest in a line of prose and judged against a strict JSON
+schema it was never shown (W13-09).
 
 *Document refreshed 2026-08-18. Three things it previously told you were wrong:
 two "known gaps" (W12-19's provider list, W12-20's missing run trigger) have
@@ -106,7 +121,17 @@ exercises what a user actually touches.
 
 ```sh
 cd /tmp/dokima-run
-node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs run start --mode new_product
+node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs \
+  run start --project <project-id> --mode new_product \
+  --breakpoint never --berths 1 --actor worker-1
+```
+
+**`--project` is required and this document omitted it until 2026-08-18** — the
+command as written fails with a usage line. Get the id from the Fleet, or:
+
+```sh
+curl -s -H "Authorization: Bearer $(cat ~/.dokima/token)" \
+  http://127.0.0.1:4317/api/v1/projects | python3 -m json.tool | grep -A1 '"name"'
 ```
 
 The CLI is better for capturing a failure verbatim; the Canvas is better for

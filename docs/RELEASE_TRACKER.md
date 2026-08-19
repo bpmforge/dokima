@@ -137,17 +137,36 @@ Not release blockers by themselves, but a reader deserves them stated:
   2026-07-12; upstream is **3.5.1**. Re-signing is a hard precondition and the
   signing key lives outside the repo.
 
-## Unproven at time of writing
+## Proven, and still unproven, at time of writing
 
-**W11 exit criterion 2 has never been demonstrated**, and it is the claim the
-product rests on: a native `SpawnSession` completing a real ticket end to end
-on a real model, producing a Completion Manifest the close gate accepts. What
-has been proven is a `node:http` fake endpoint (W11-04) and a fake shell agent
-(W10-77) — both deliberate under law 9, and neither is the thing. Exit 3 (every
-call metered, ledger non-zero and attributable per role) became genuinely
-testable only with W12-11, which made cloud cost real rather than $0. Both need
-one supervised run, and that run is the highest-value remaining act — larger
-than any open ticket on the board.
+**W11 exit criterion 2 is DEMONSTRATED (2026-08-18).** A native `SpawnSession`
+completed a real ticket end to end on a real model: manifest returned and
+parsed, close gate accepted it, receipt minted with `secrets-scan` and
+`validate-remote-parity` both at exit 0, the work committed on its own branch
+with the project's own verify command printing OK — and the ticket stopped at
+**`in_review`**, not `done`, which is maker≠verifier holding by construction.
+`main` was untouched, as C-5 requires.
+
+**It failed the first time, and that failure was the point.** Everything
+fixture-tested worked; the run broke on the one thing no fixture could catch —
+the model was asked for a Completion Manifest in a line of prose and judged
+against a strict JSON schema it was never shown (**W13-09**). Two further
+defects came out of the same session: an OpenAI-compatible endpoint could not be
+sent per-model options at all (**W13-10**), and the tool-turn cap was a session
+option nothing ever set (**W13-11**).
+
+**W11 exit criterion 3 is still unproven.** Every call metered, ledger non-zero
+and attributable per role, became genuinely testable only with W12-11 — but both
+models tested so far are local, so a `$0` ledger is *correct* rather than the
+old defect. It needs one ticket on a paid provider: minutes, and cents.
+
+**A first model-fitness result, worth recording:** `qwen/qwen3-coder-next`
+landed the ticket in one attempt and four tool calls. `prism-ml/bonsai-27b`
+could not close it under any configuration tried — with reasoning on it
+overwrote a file and destroyed an unrelated function; with reasoning off it
+produced correct code and still never emitted a manifest, at 12 turns or 30.
+The gates refused all of it: no receipt, nothing merged, the ticket parked with
+evidence.
 
 ## Test truth
 
