@@ -178,10 +178,11 @@ async function runUntilPaused(page: Page): Promise<void> {
   await newProduct(page);
   await page.getByRole('button', { name: 'Describe' }).click();
   await page.getByLabel('Working title').fill('Shared list');
-  const answers = page.locator('textarea');
-  const count = await answers.count();
-  for (let i = 0; i < count; i += 1) {
-    await answers.nth(i).fill(`Answer ${i + 1} for the shared list.`);
+  // W13-18: by test id, not by index — an answer can now grow an adaptive
+  // follow-up textarea beneath it, so a once-taken count is stale.
+  const openings = page.locator('[data-testid^="interview-answer-"]');
+  for (const opening of await openings.all()) {
+    await opening.fill('Answer for the shared list.');
   }
   await page.getByRole('button', { name: 'Build the board' }).click();
   await expect(page.getByTestId('interview-awaiting-decisions')).toBeVisible({

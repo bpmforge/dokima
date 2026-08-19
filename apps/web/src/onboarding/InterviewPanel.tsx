@@ -14,8 +14,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
 import './onboarding.css';
-import { OnboardingApiError, resumePipeline, runGuidedPipeline } from './api.js';
+import {
+  fetchFollowUpQuestion,
+  OnboardingApiError,
+  resumePipeline,
+  runGuidedPipeline,
+} from './api.js';
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
+import { followUpKey, MAX_FOLLOWUP_DEPTH, useFollowUps } from './useFollowUps.js';
+
 
 /**
  * The name a project carries when it has none of its own. Named here rather
@@ -75,6 +82,8 @@ export function InterviewPanel({
    * offered, because that one IS an answer.
    */
   const [title, setTitle] = useState(projectName === UNNAMED ? '' : projectName);
+  // W13-18 (AC-1): the adaptive half — see useFollowUps.ts.
+  const followUps = useFollowUps(projectId);
   const [stage, setStage] = useState<Stage>('asking');
   const [error, setError] = useState<string | null>(null);
   // W10-67: the run paused on a founder decision. Not an error — the gate is
@@ -125,7 +134,11 @@ export function InterviewPanel({
       const runResult = await runGuidedPipeline(
         projectId,
         {
-          interviewSession: buildInterviewSession(`interview-${projectId}`, answers),
+          interviewSession: buildInterviewSession(
+            `interview-${projectId}`,
+            answers,
+            followUps.byTopic,
+          ),
           blueprintTitle: title.trim(),
         },
         { onProgress: (progress) => setPhases(progress.phases) },
@@ -300,6 +313,44 @@ export function InterviewPanel({
               }))
             }
           />
+          {/* W13-18: ASKED FOR, NEVER AUTOMATIC. The first version fetched a
+              follow-up on blur, which meant a model call every time you left a
+              field — surprise layout shifts, latency on every tab, and money
+              spent on a keystroke's worth of intent. An interview should ask
+              when you want to say more, not because your cursor moved. */}
+          {(answers[entry.topic.deliverableId] ?? '').trim() !== '' &&
+            (followUps.byTopic[entry.topic.deliverableId] ?? []).length <
+              MAX_FOLLOWUP_DEPTH - 1 && (
+              <button
+                type="button"
+                className="btn-quiet"
+                data-testid={`interview-more-${entry.topic.deliverableId}`}
+                disabled={followUps.asking === entry.topic.deliverableId}
+                onClick={() =>
+                  void followUps.ask(entry.topic.deliverableId, entry.question, answers)
+                }
+              >
+                {followUps.asking === entry.topic.deliverableId
+                  ? 'Thinking…'
+                  : 'Ask me more about this'}
+              </button>
+            )}
+          {(followUps.byTopic[entry.topic.deliverableId] ?? []).map((q, i) => (
+            <label className="interview__followup" key={`${entry.topic.deliverableId}-${i}`}>
+              <span>{q}</span>
+              <textarea
+                rows={2}
+                value={answers[followUpKey(entry.topic.deliverableId, i)] ?? ''}
+                data-testid={`interview-followup-${entry.topic.deliverableId}-${i}`}
+                onChange={(e) =>
+                  setAnswers((prev) => ({
+                    ...prev,
+                    [followUpKey(entry.topic.deliverableId, i)]: e.target.value,
+                  }))
+                }
+              />
+            </label>
+          ))}
         </label>
       ))}
 

@@ -18,7 +18,11 @@ import { INTERVIEW_QUESTIONS, type InterviewQuestion } from './interview-topics.
 /** The human answering. `submitAnswer` refuses a non-human actor by design. */
 const ACTOR: InterviewAnswer['actor'] = { id: 'interview', kind: 'human' };
 
-function topicStateFor(entry: InterviewQuestion, answer: string): TopicState {
+function topicStateFor(
+  entry: InterviewQuestion,
+  answer: string,
+  followUps: readonly { readonly question: string; readonly answer: string }[] = [],
+): TopicState {
   const trimmed = answer.trim();
   if (trimmed === '') {
     return {
@@ -31,23 +35,60 @@ function topicStateFor(entry: InterviewQuestion, answer: string): TopicState {
   }
 
   const questionId = `${entry.topic.deliverableId}#1`;
+  /**
+   * W13-18: the adaptive follow-ups become REAL questions on the topic, at
+   * increasing depth — which is exactly what `TopicState` models and what the
+   * engine's depth ceiling counts.
+   *
+   * This function read `answers[deliverableId]` and nothing else, so when
+   * follow-ups were first wired their answers were silently dropped: a person
+   * could answer three extra questions and none of them reached the draft. The
+   * feature would have looked like it worked and changed nothing.
+   */
+  const answered = followUps
+    .map((f) => ({ question: f.question, answer: f.answer.trim() }))
+    .filter((f) => f.answer !== '');
+
+  const questionsAsked = [
+    {
+      id: questionId,
+      topic: entry.topic,
+      prompt: entry.question,
+      depth: 1,
+      provenance: { producingRole: 'pm-interviewer' as const },
+    },
+    ...answered.map((f, i) => ({
+      id: `${entry.topic.deliverableId}#${i + 2}`,
+      topic: entry.topic,
+      prompt: f.question,
+      depth: i + 2,
+      provenance: { producingRole: 'pm-interviewer' as const },
+    })),
+  ];
+
   return {
     topic: entry.topic,
     status: 'drafted',
-    questionsAsked: [
-      {
-        id: questionId,
-        topic: entry.topic,
-        prompt: entry.question,
-        depth: 1,
-        provenance: { producingRole: 'pm-interviewer' },
-      },
+    questionsAsked,
+    answers: [
+      { questionId, actor: ACTOR, text: trimmed },
+      ...answered.map((f, i) => ({
+        questionId: `${entry.topic.deliverableId}#${i + 2}`,
+        actor: ACTOR,
+        text: f.answer,
+      })),
     ],
-    answers: [{ questionId, actor: ACTOR, text: trimmed }],
     draft: {
       topic: entry.topic,
-      content: `## ${entry.drafts}\n\n${trimmed}`,
-      basedOnQuestionIds: [questionId],
+      // Follow-ups carry their question, because "who is it for: developers"
+      // is only meaningful next to the question that produced it.
+      content: [
+        `## ${entry.drafts}`,
+        '',
+        trimmed,
+        ...answered.flatMap((f) => ['', `**${f.question}**`, '', f.answer]),
+      ].join('\n'),
+      basedOnQuestionIds: questionsAsked.map((q) => q.id),
     },
   };
 }
@@ -60,12 +101,22 @@ function topicStateFor(entry: InterviewQuestion, answer: string): TopicState {
 export function buildInterviewSession(
   id: string,
   answers: Readonly<Record<string, string>>,
+  /** W13-18: adaptive follow-ups per topic, in the order they were asked. */
+  followUps: Readonly<Record<string, readonly string[]>> = {},
 ): InterviewSession {
   return {
     id,
-    topics: INTERVIEW_QUESTIONS.map((entry) =>
-      topicStateFor(entry, answers[entry.topic.deliverableId] ?? ''),
-    ),
+    topics: INTERVIEW_QUESTIONS.map((entry) => {
+      const id = entry.topic.deliverableId;
+      return topicStateFor(
+        entry,
+        answers[id] ?? '',
+        (followUps[id] ?? []).map((question, i) => ({
+          question,
+          answer: answers[`${id}#${i}`] ?? '',
+        })),
+      );
+    }),
     activeTopicIndex: null,
   };
 }

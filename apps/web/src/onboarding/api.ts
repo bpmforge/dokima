@@ -173,3 +173,40 @@ export async function fetchGateReceipts(
   )) as { items: GateReceipt[] };
   return result.items;
 }
+
+/**
+ * One adaptive follow-up for a topic, or `null` when the model has enough
+ * (W13-18, AC-1: "Interview adapts question depth to my answers").
+ *
+ * Never throws for a model problem. The route already degrades to `null` when
+ * no model is reachable, and this swallows a transport failure the same way:
+ * a local-only user (C-1) must still be able to describe their product, and an
+ * interview that stops working because a follow-up failed is worse than one
+ * that simply stops adapting.
+ */
+export async function fetchFollowUpQuestion(
+  projectId: string,
+  deliverableId: string,
+  question: string,
+  answers: readonly string[],
+  opts: OnboardingApiOptions = {},
+): Promise<string | null> {
+  try {
+    const body = (await request(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/interview/next-question`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          deliverable_id: deliverableId,
+          question,
+          answers,
+        }),
+      },
+      opts,
+    )) as { question: string | null };
+    return body.question ?? null;
+  } catch {
+    return null;
+  }
+}

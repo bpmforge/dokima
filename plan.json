@@ -7593,6 +7593,45 @@
         "Filed 2026-08-19. Unblocks W12-07, which was blocked on a founder decision that turns out not to exist \u2014 nothing was lost upstream, so there is nothing to decide and nothing to fix in attest.",
         "Closed 2026-08-19. The v3.5.4 dry run now reports `experts removed 0` and `Dokima-native 1 pm-interviewer.md (upstream never had these \u2014 not a removal)`. DETECTED FROM THE FILE'S OWN HEADER rather than a registry entry, because a second hand-kept list would drift from the files the first time someone added a native one \u2014 and the marker has been sitting in pm-interviewer.md since W5-02 wrote it, unread by anything. There is a fixture asserting the REAL file still carries it, so an innocent header edit cannot silently restore the false alarm. WHAT MAKES THIS WORTH THE TICKET: the false alarm had already done damage. It blocked W12-07 as a founder decision about diverging from the pack, and my own note on that ticket recommended keeping the file as a LOCAL_OVERRIDE and 'recording the permanent divergence' \u2014 framing a deliberately native file as drift, on the strength of one line of tool output that was believable and wrong."
       ]
+    },
+    {
+      "id": "W13-18",
+      "title": "there are two interviews \u2014 the built adaptive engine, and the static one users actually get",
+      "phase": 13,
+      "module": "cli",
+      "lane": "pipeline",
+      "points": 8,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "apps/server/src/api/server/interview-routes.ts",
+        "apps/server/src/api/server/interview-routes.test.ts",
+        "apps/server/src/api/server.ts",
+        "apps/web/src/onboarding/InterviewPanel.tsx",
+        "apps/web/src/onboarding/InterviewPanel.test.tsx",
+        "apps/web/src/onboarding/api.ts",
+        "apps/web/src/onboarding/useFollowUps.ts",
+        "apps/web/src/onboarding/buildInterviewSession.ts",
+        "apps/web/src/onboarding/buildInterviewSession.test.ts",
+        "apps/web/e2e/**",
+        "packages/pipeline/src/index.ts"
+      ],
+      "depends_on": [],
+      "stories": [
+        "US-001"
+      ],
+      "acceptance": [
+        "AC-1 IS A COMMITTED ACCEPTANCE CRITERION, NOT A DOC'S ASPIRATION: docs/USER_STORIES.md says \"Interview adapts question depth to my answers; I can skip and return\". Neither half is delivered. The engine that does exactly this is BUILT and TESTED in packages/pipeline/src/interview \u2014 depth ceiling (MAX_FOLLOWUP_DEPTH = 4), skip, resume, NA-1 human-only enforcement \u2014 and all four verbs (beginTopic, submitAnswer, skipTopic, resumeTopic) sit in the W12-38 buried-exports list with no production caller.",
+        "THE SHORTCUT SHADOWS THE REAL THING. `apps/web/src/onboarding/InterviewPanel.tsx` is a SECOND interview: eight static questions, its own state, no follow-ups, no per-topic skip, no resume. It exists because a browser bundle cannot call a model directly (ARCHITECTURE \u00a74 / law 6), so adaptive depth needs a server endpoint that was never built. Users get the shortcut.",
+        "THE ENDPOINT CAN BE STATELESS, which is what makes this tractable: the client ALREADY sends a whole `InterviewSession` to `POST .../pipeline/run` (`request-body.ts`), so the same shape can carry a follow-up request. No new persistence, no session store, no second source of truth about where an interview has got to.",
+        "THE CEILING STAYS AND IS THE POINT. MAX_FOLLOWUP_DEPTH is what keeps this an interview rather than an unbounded chatbot, and its own comment ties it to FR-L7 convergence discipline. A model-driven question also costs money per turn, so it needs the same metering and refusals as any other model call \u2014 and a local-only user (C-1, D-024 option a) must still get a working interview, which means the static questions remain the floor when no model is reachable rather than being deleted outright.",
+        "DELETE THE SHORTCUT ONCE THE ENGINE DRIVES THE PANEL, or the two drift and the simpler one keeps winning because it is already wired \u2014 the exact story of `.empty-state` in W13-04, where a shared thing existed and seven surfaces reinvented it anyway.",
+        "NEEDS A SUPERVISED RUN, NOT GREEN TESTS. This is the front door: the first thing a new user touches. The last built-but-unused mechanism wired into the session path passed every fixture and failed on what no fixture covered (W13-09)."
+      ],
+      "notes": [
+        "Filed 2026-08-19 after the founder asked how to close the gap between pm-interviewer.md and the implementation. The doc is NOT overclaiming \u2014 it accurately describes the engine that was built. Fourteenth instance of the built-but-unwired class and the largest: an entire subsystem shadowed by a simpler reimplementation of itself.",
+        "Closed 2026-08-19, VERIFIED AGAINST THE LOCAL MODEL, not only fixtures: the live endpoint returned 'Who are the primary users of this tool\u2014developers, businesses, researchers, or another group?' in one second. That is AC-1 delivered for the first time since it was written. THE FIRST LIVE TEST FAILED AND MY OWN CATCH-ALL HID WHY \u2014 it returned reason 'unavailable' in 0.017s for what was actually a ROUTING failure: a real project's matrix carries coding-agent rows only (that is what the wizard writes), so asking for role 'pm-interviewer' was unresolvable. Fixed twice over: fall back to the configured role, and report 'no-model-configured' distinctly from 'unavailable' with the underlying message, because a single catch-all hiding four different causes is the silence this product exists to refuse. I HAD INTRODUCED A SECOND SILENT FAILURE IN THE SAME TICKET: buildInterviewSession read answers[deliverableId] only, so every follow-up answer was dropped \u2014 a person could answer three adaptive questions and none would reach the draft, and the feature would have looked like it worked. Follow-ups are now real questionsAsked at increasing depth, which is what the engine's ceiling counts. THE ON-BLUR DESIGN WAS WRONG AND THE E2E SUITE PROVED IT: fetching a follow-up whenever the cursor left a field meant a model call per tab, surprise layout shifts, and three failing specs plus a run that went from 30s to 1.2m. Made explicit ('Ask me more about this'); e2e returned to 69 passing at 29.7s. Two e2e specs also had to stop addressing textareas by positional index, which was a latent break the moment any form grew."
+      ]
     }
   ]
 }
