@@ -14,8 +14,45 @@ import { MAX_FOLLOWUP_DEPTH } from '@dokima/pipeline';
 const TOKEN = 'interview-test-token';
 const dirs: string[] = [];
 let active: Awaited<ReturnType<typeof buildApiServer>> | null = null;
+const realFetch = globalThis.fetch;
+
+/**
+ * LAW 9(a): NEVER A LIVE CALL.
+ *
+ * These tests reached a real LM Studio on 127.0.0.1:1234 — `resolveModelTarget`
+ * falls back to `envTarget`, whose documented default is exactly that address —
+ * and passed or failed depending on whether a model happened to be loaded and
+ * how fast it was. They went green on coder-next and timed out at 5s the next
+ * day on a 27B. A test that asks a real model is not a test of this route.
+ *
+ * Every case stubs `fetch`, which is what the oai-compat adapter resolves
+ * (`config.fetchImpl ?? fetch`).
+ */
+function stubModel(reply: unknown, status = 200): void {
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(reply), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    })) as unknown as typeof fetch;
+}
+
+/** An endpoint that is simply not there — the local-only case, without waiting on a socket. */
+function stubUnreachable(): void {
+  globalThis.fetch = (async () => {
+    throw new TypeError('fetch failed');
+  }) as unknown as typeof fetch;
+}
+
+function modelSays(content: string): unknown {
+  return {
+    id: 'x',
+    choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+  };
+}
 
 afterEach(async () => {
+  globalThis.fetch = realFetch;
   if (active) await active.app.close();
   active = null;
   for (const d of dirs.splice(0)) await fs.rm(d, { recursive: true, force: true });
@@ -52,6 +89,7 @@ describe('the adaptive follow-up route (W13-18)', () => {
       'ask a model from',
     async () => {
       const { app, id } = await boot();
+      stubModel(modelSays('{"question":"Who is it for?","done":false}'));
       const res = await app.inject({
         method: 'POST',
         url: `/api/v1/projects/${id}/interview/next-question`,
@@ -59,7 +97,7 @@ describe('the adaptive follow-up route (W13-18)', () => {
         payload: { deliverable_id: 'docs/VISION.md', question: 'What is it?', answers: ['a thing'] },
       });
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toHaveProperty('question');
+      expect(res.json().question).toBe('Who is it for?');
     },
   );
 
@@ -70,8 +108,7 @@ describe('the adaptive follow-up route (W13-18)', () => {
       'that stops adapting',
     async () => {
       const { app, id } = await boot();
-      // No provider registered: resolveModelTarget falls back to an env target
-      // that is not listening.
+      stubUnreachable();
       const res = await app.inject({
         method: 'POST',
         url: `/api/v1/projects/${id}/interview/next-question`,
