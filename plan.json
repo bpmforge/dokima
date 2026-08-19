@@ -7465,6 +7465,34 @@
         "Filed 2026-08-19 from the qwen3.8-27b run. Second orphaning cause found in one session \u2014 W13-12 came from an external kill, this one is the product crashing on its own timeout, which is the more common case since it needs no outside interference.",
         "Closed 2026-08-19. THE PREDICATE IS AN EXPLICIT LIST, NOT A NAME PREFIX OR A CATCH-ALL, and that choice is the ticket: these five provider errors have no common ancestor, so matching on `name.startsWith('Provider')` would silently start swallowing any future class named that way \u2014 including one that means we have a bug \u2014 and a bare catch would turn a crash in the close gate into a quiet 'attempt failed', which is exactly the silence this product exists to refuse. There is a fixture asserting a TypeError still propagates. THE MESSAGE IS DELIBERATELY DISTINCT from 'no completion manifest returned': 'it did not answer in time' and 'it answered without a manifest' point at different fixes \u2014 a longer timeout versus a different model \u2014 and someone choosing a smaller model has to be able to tell them apart. loop-land.ts was sitting EXACTLY on the 400-line cap, so any addition broke it; `attemptOnce` moved out wholesale into loop-land-session.ts rather than shaving comments, which is the honest seam (one attempt, versus the ladder that decides what to do about it). Pairs with W13-12 and does not replace it: this stops the loop crashing, that recovers a claim whose owner vanished anyway \u2014 a closed laptop lid still strands a ticket with this fixed."
       ]
+    },
+    {
+      "id": "W13-14",
+      "title": "seven different limits can stop a run and nothing documents them together",
+      "phase": 13,
+      "module": "infra",
+      "lane": "core",
+      "points": 3,
+      "status": "done",
+      "role": "content-designer",
+      "write_scope": [
+        "docs/design/RUN_LIMITS.md",
+        "packages/gateway/src/providers/oai-compat-types.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "RAISED BY THE FOUNDER 2026-08-19 after three separate limits stopped runs in one session \u2014 a 12-turn tool cap, a 2-attempt ladder cap, and a 300s request timeout. The question \"what is the limit and why\" has no answer anywhere in the docs; grep finds the numbers only in source and in a STATUS entry written the same day.",
+        "THE INCONSISTENCY IS REAL AND UNDOCUMENTED: `oai-compat` carries a 300_000ms request timeout while `anthropic`, `openai`, `copilot` and `vertex` all carry 60_000ms. Five times longer for local endpoints is DEFENSIBLE \u2014 a 27B model on a laptop genuinely takes minutes where a hosted one takes seconds \u2014 but nothing says so, so it reads as an accident. State the reason next to the number.",
+        "ONE TABLE, EVERY LIMIT: request timeout (per provider kind), health timeout, verify timeout, validator timeout, tool-iteration cap, ladder attempt cap, convergence ceiling. For each: the value, WHY that value, what happens when it fires, and whether it is configurable.",
+        "THE TEST IS \"CAN A USER TELL WHICH ONE STOPPED THEM\": the refusals are already specific \u2014 \"ladder attempt cap (2) reached without a close\", \"exceeded the per-session tool-iteration budget\", \"request timed out after 300000ms\" \u2014 so the gap is discovery, not wording. The doc must make each message findable, keyed by the text a user will actually see.",
+        "DO NOT CHANGE ANY VALUE. Every one was chosen for a reason recorded somewhere in the source, and re-tuning them while documenting them would mean shipping an untested behaviour change under cover of a docs ticket.",
+        "Full gate per CLAUDE.md Law 3 on Node 22."
+      ],
+      "notes": [
+        "Filed 2026-08-19. The founder's words: \"we shouldn't have a wall clock that is confusing\" \u2014 raised after I used \"wall clock\" as jargon, which is itself the VOCABULARY.md failure mode.",
+        "Closed 2026-08-19. THE ANSWER TO THE QUESTION AS ASKED IS THAT THERE IS NO CLOCK: nothing in Dokima counts a run's total elapsed time and kills it. What exists is seven specific bounds on specific things \u2014 one request, one command, one session's turns, one ticket's attempts \u2014 and the doc leads with that, because 'we shouldn't have a wall clock that is confusing' is answered better by 'there isn't one, here is what there is' than by a table alone. Indexed BY THE MESSAGE A USER ACTUALLY SEES rather than by internal constant name, since the gap was discovery and not wording \u2014 the refusals were already specific. The one genuine inconsistency is now stated where it lives: oai-compat's 300s request timeout against 60s for every hosted kind, annotated in the source with the measurement behind it (a 27B local model exceeding 300s in live testing, which is what W13-13 was filed for) so it reads as a decision rather than an accident. NO VALUE WAS CHANGED \u2014 re-tuning while documenting would have shipped an untested behaviour change under cover of a docs ticket."
+      ]
     }
   ]
 }
