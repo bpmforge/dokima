@@ -7838,6 +7838,36 @@
       ]
     },
     {
+      "id": "W13-26",
+      "title": "the autonomy dial is written and never read \u2014 a user sets a safety control that does nothing",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "security-auditor",
+      "write_scope": [
+        "packages/harbormaster/src/autonomy.ts",
+        "packages/harbormaster/src/autonomy.test.ts",
+        "packages/harbormaster/src/breakpoints-clarifications.ts",
+        "packages/harbormaster/src/breakpoints-clarifications.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "docs/SECURITY_CONTROLS.md"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19, same audit as W13-25. The FirstRunWizard and Settings let a user choose Autonomy; the server persists it (PUT /projects/{id}/autonomy, project-scope settings key `autonomy`). NO RUN PATH EVER READS IT. `AutonomyMode` appears nowhere in loop-land, berths, loop-claim or apps/server/src/cli. `resolvePauseAction` \u2014 whose own doc calls it THE SINGLE ENFORCEMENT POINT for SC-10 \u2014 has zero production callers, as do `assertLedgerValidForNextClaim` and `assertExecutionAllowed`.",
+        "C-5 IS CURRENTLY VACUOUS, not merely unenforced. CONSTRAINTS C-5 says the dial cannot override a NEVER-AUTO pause site \u2014 but `isNeverAutoPauseSite` is referenced only inside the autonomy module, so nothing consults the dial OR the exemption. The constraint holds today only because the feature does nothing at all.",
+        "THIS IS WORSE THAN AN UNWIRED MECHANISM AND SHOULD BE RATED AS SUCH: a user makes an explicit choice about how much the product may do unattended, the product stores it, and the choice has no effect. `--breakpoint` (breakpoints.ts, wave boundaries) is a DIFFERENT control and is wired; it is not a substitute, and the two must not be conflated while fixing this.",
+        "DECIDE WHAT `auto` MAY ACTUALLY DO before wiring, and record it. `resolvePauseAction` returns take_default at a non-NEVER-AUTO site; confirm the documented default at each pause site is one a user would accept unattended, because wiring this turns those defaults on for the first time.",
+        "RED FIXTURE: a project set to `interactive` asks at a pause site where `auto` would take the default, proven against today's behaviour where the mode changes nothing; and a NEVER-AUTO site asks in BOTH modes (C-5)."
+      ],
+      "notes": [
+        "Filed 2026-08-19 alongside W13-25 from an unwired-export audit. Not fixed in place: wiring the dial turns documented auto-defaults on for the first time, which changes what an unattended run is permitted to do \u2014 a founder-facing decision, not an implementer's."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,
