@@ -37,6 +37,8 @@ import { createPackedHandoffBuilder } from './handoff-context.js';
 import { buildBuiltInSpawn } from './run-build-spawn.js';
 import {
   ESCALATION_POLICY_SETTINGS_KEY,
+  MAX_TOOL_ITERATIONS_SETTINGS_KEY,
+  resolveMaxToolIterations,
   resolvePinnedModel,
   resolvePolicyScope,
 } from './run-build-policy.js';
@@ -233,6 +235,17 @@ export async function executeBuildRun(
 
   const pin = resolvePinnedModel(policyRaw, ROLE_CODING_AGENT);
 
+  // W13-11: the tool-turn cap, refused rather than clamped when out of range.
+  const iterationsResult = resolveMaxToolIterations(
+    resolveEffectiveValue(MAX_TOOL_ITERATIONS_SETTINGS_KEY, policyScoped)?.value as
+      | JsonValue
+      | undefined,
+  );
+  if ('refusal' in iterationsResult) {
+    io.stderr(`${runId} did not start: ${iterationsResult.refusal}`);
+    return 2;
+  }
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   /**
@@ -254,7 +267,15 @@ export async function executeBuildRun(
     spawn = createChildProcessSpawn({ command: agentBin, args: agentArgs });
   } else {
     try {
-      const builtIn = await buildBuiltInSpawn(log, command, runId, io, secretValues, pin);
+      const builtIn = await buildBuiltInSpawn(
+        log,
+        command,
+        runId,
+        io,
+        secretValues,
+        pin,
+        iterationsResult.maxIterations,
+      );
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;
     } catch (err) {

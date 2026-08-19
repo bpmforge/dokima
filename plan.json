@@ -7379,13 +7379,13 @@
       "module": "cli",
       "lane": "core",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "role": "sre-engineer",
       "write_scope": [
         "apps/server/src/cli/run-build-spawn.ts",
         "apps/server/src/cli/run-build.ts",
         "apps/server/src/cli/run-build-policy.ts",
-        "apps/server/src/cli/run-build-policy.test.ts"
+        "apps/server/src/cli/run-build.test.ts"
       ],
       "depends_on": [
         "W13-10"
@@ -7400,7 +7400,9 @@
         "Full gate per CLAUDE.md Law 3 on Node 22."
       ],
       "notes": [
-        "Filed 2026-08-18 from the bonsai no-think run. Second finding of that experiment; the first was W13-10."
+        "Filed 2026-08-18 from the bonsai no-think run. Second finding of that experiment; the first was W13-10.",
+        "write_scope corrected: I filed run-build-policy.test.ts and it does not exist \u2014 the policy resolver's tests live in run-build.test.ts beside the call-site fixture that proves executeBuildRun actually reads the setting, which is the more valuable place for them anyway. Creating the file I had assumed produced a test suite vitest silently reported as 'no tests'.",
+        "Closed 2026-08-18, and THE EXPERIMENT THAT MOTIVATED IT FAILED \u2014 recorded because a negative result that changes the conclusion is worth more than a fix that looks good. The hypothesis was that bonsai-27b parked because twelve tool turns were too few: with thinking off it produced correct work and used exactly twelve. Given thirty it used twenty across two attempts, produced correct work again, and STILL returned no manifest. The cap was never the binding constraint; the model simply cannot emit the manifest, whatever budget it has. VERIFIED THE SETTING ACTUALLY TAKES EFFECT rather than assuming it from a null result \u2014 set it to 2 and the same run went from 226s to 15s. Without that check I could not have told 'the cap is not the problem' apart from 'my setting never reached the session', which are opposite conclusions with the same symptom. The fix stands on its own merits: maxIterations was a GatewaySpawnSessionOptions field nothing in apps/server ever set, so 12 was every model's value and unreachable without editing source. It refuses above a ceiling rather than clamping, because a setting that accepts any value re-opens T-27 by configuration, and silently running a different number than the one configured is the defect class this board keeps finding. One correction on the way: I filed run-build-policy.test.ts, which does not exist \u2014 the policy tests live in run-build.test.ts, and creating the file I had assumed produced a suite vitest reported as 'no tests'."
       ]
     }
   ]
