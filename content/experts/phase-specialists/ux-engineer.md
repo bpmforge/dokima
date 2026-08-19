@@ -5,7 +5,7 @@ mode: "primary"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/ux-engineer.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -227,8 +227,15 @@ verify your work without re-reading everything:
 ## Known issues / deferred
 - [Issue] — [why deferred]
 
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
 ## Memory written
 - memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: [next agent or "SDLC lead resume"]
 ```
 
@@ -459,6 +466,7 @@ At the start of any mode, use `read(filePath="...")` and the built-in `grep` too
 ## Recommend Other Experts When
 
 - UX spec needs API endpoints → `api-designer`
+- `--review` findings are visual token/spec drift a render loop could close → `design-iterator` (screenshot-verified fix loop; your review stays findings-only)
 - Forms handle sensitive data → `security-auditor` for input validation review
 - Data components need query optimization → `db-architect`
 - Components need load-time budget → `performance-engineer`

@@ -5,7 +5,7 @@ mode: "subagent"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/sdlc-feature-mode.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content

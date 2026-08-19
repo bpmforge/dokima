@@ -5,7 +5,7 @@ mode: "subagent"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/sdlc-onboard-mode.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -497,5 +497,5 @@ Also run in parallel:
 content/validators/validate-architecture.sh
 content/validators/validate-erd-coverage.sh
 content/validators/validate-sequence-coverage.sh
-content/validators/validate-phase-gate.sh onboard-deep
+content/validators/run-coverage-loop.sh onboard-deep   # the wrapper — counts iterations; never the bare gate
 ```

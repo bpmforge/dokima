@@ -6,7 +6,7 @@ mode: "subagent"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/game/playtest-evaluator.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -164,11 +164,20 @@ human playtest` and stop. Never "playtest" by reading source code.
 ## Known issues / deferred
 - [mechanics not exercisable via automation + why]
 
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
 ## Memory written
 - memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Model tier: [small|medium|large] — [estimated context used: low|medium|high]
 
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: game-designer / gameplay-engineer / game-balance-designer (per fix routing)
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 ```
 
 ## Pre-Completion Gate

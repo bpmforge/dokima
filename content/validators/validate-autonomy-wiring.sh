@@ -1,6 +1,6 @@
 #!/bin/bash
 # Provenance: attest (formerly bpm-opencode-experts)
-# Upstream version: 3.1.24
+# Upstream version: 3.5.4
 # Source path: scripts/validators/validate-autonomy-wiring.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Provenance: attest (formerly bpm-opencode-experts)
-# Upstream version: 3.1.24
+# Upstream version: 3.5.4
 # Source path: scripts/validators/validate-sequence-coverage.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
@@ -25,7 +25,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 validator_init "validate-sequence-coverage"
 
 ROOT="$(detect_project_root "${1:-}")"
-USECASES="$ROOT/docs/USE_CASES.md"
+USECASES=""
+for _uc in "$ROOT/docs/USE_CASES.md" "$ROOT/docs/testing/USE_CASES.md"; do
+  [[ -f "$_uc" ]] && USECASES="$_uc" && break
+done
+[[ -z "$USECASES" ]] && USECASES="$ROOT/docs/USE_CASES.md"
 ARCH="$ROOT/docs/ARCHITECTURE.md"
 SEQ_DIR="$ROOT/docs/sequences"
 

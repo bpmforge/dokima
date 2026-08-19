@@ -1,6 +1,6 @@
 #!/bin/bash
 # Provenance: attest (formerly bpm-opencode-experts)
-# Upstream version: 3.1.24
+# Upstream version: 3.5.4
 # Source path: scripts/validators/validate-requirements-matrix.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
@@ -75,10 +75,36 @@ for f in "$ROOT/docs/testing/USE_CASES.md" "$ROOT/docs/USE_CASES.md"; do
   [[ -f "$f" ]] && UC_FILE="$f" && break
 done
 
+# -- Scope rows to the requirements-matrix table ONLY -----------------------
+# A matrix document legitimately carries more than one table (e.g. a module
+# traceability table whose own Status vocabulary is "Specified"). Scanning
+# every row in the file that merely CONTAINS a UC-NN made each use case get
+# judged twice: it passed on the real matrix and then failed on the unrelated
+# table, producing a full set of false "Status column is empty" gaps that no
+# edit to the real matrix could ever clear. Only rows under a header carrying
+# BOTH a Test-ish and a Status-ish column are matrix rows.
+MATRIX_TABLE_ROWS=$(awk '
+  {
+    if ($0 ~ /^[[:space:]]*\|[[:space:]]*:?-{2,}/) {
+      hdr = prev
+      in_matrix = (hdr ~ /[Ss]tatus|[Vv]erified/) && (hdr ~ /[Tt]est|[Ss]pec/)
+    } else if (in_matrix && $0 ~ /^[[:space:]]*\|/) {
+      print hdr "\t" $0
+    }
+    prev = $0
+  }
+' "$MATRIX")
+
+# Never validate LESS than before: if no table advertises both columns, fall
+# back to the whole file (the missing-column gap above already explains why).
+if [[ -z "$(printf '%s' "$MATRIX_TABLE_ROWS" | tr -d '[:space:]')" ]]; then
+  MATRIX_TABLE_ROWS=$(cat "$MATRIX")
+fi
+
 # -- Parse rows: look for P0 UC rows and verify test + status cells --------
 # We scan for rows containing UC-NN IDs and check each cell
 MATRIX_UC_IDS=""
-while IFS= read -r row; do
+while IFS=$'\t' read -r hdr row; do
   # Skip header and separator rows
   [[ "$row" =~ ^[[:space:]]*\|[-:] ]] && continue
   [[ "$row" =~ ^[[:space:]]*\|[[:space:]]*[\-:] ]] && continue
@@ -89,57 +115,73 @@ while IFS= read -r row; do
 
   MATRIX_UC_IDS="$MATRIX_UC_IDS $uc_id"
 
-  # Determine if this is P0 (row contains P0 or the UC is flagged P0 in USE_CASES.md)
+  # Determine if this is P0. Read the priority from the use case's OWN row or
+  # OWN section -- never a line window.
+  #
+  # This used to be `grep -A5 "$uc_id" | grep -q P0`, and a 5-line window in a
+  # UC index table reaches the NEXT FOUR use cases' rows. Any P0 neighbour
+  # promoted a P1/P2 case to P0. Against a real 19-case catalog that reported
+  # 18 P0 where the truth is 14 (UC-007/012/013/019 are P1, UC-018 is P2) --
+  # while validate-sequence-coverage.sh, reading the same file, said 14. Two
+  # validators disagreeing about the same set is the tell. The effect is
+  # false strictness: P0-grade Test+Status evidence demanded from cases the
+  # author deliberately ranked lower.
   is_p0=0
   if printf '%s' "$row" | grep -qiE '\bP0\b'; then
     is_p0=1
   elif [[ -n "$UC_FILE" ]]; then
-    if grep -qE "$uc_id" "$UC_FILE" && grep -A5 "$uc_id" "$UC_FILE" 2>/dev/null | grep -qiE '\bP0\b'; then
-      is_p0=1
+    uc_prio=""
+    # 1) the id's own table row
+    own_row="$(grep -m1 -E "^[[:space:]]*\|[[:space:]]*${uc_id}[[:space:]]*\|" "$UC_FILE" 2>/dev/null || true)"
+    [[ -n "$own_row" ]] && uc_prio="$(printf '%s' "$own_row" | grep -oiE '\bP[012]\b' | head -1 || true)"
+    # 2) else the id's own section, stopping at the next heading
+    if [[ -z "$uc_prio" ]]; then
+      uc_prio="$(awk -v id="$uc_id" '
+        $0 ~ "^#+[[:space:]]+" id "([^0-9]|$)" { inSec = 1; next }
+        inSec && /^#+[[:space:]]/ { exit }
+        inSec { print }
+      ' "$UC_FILE" 2>/dev/null | grep -oiE '\bP[012]\b' | head -1 || true)"
     fi
+    [[ "$uc_prio" =~ ^[Pp]0$ ]] && is_p0=1
   fi
 
   [[ "$is_p0" -eq 0 ]] && continue
 
-  # Split row into cells by pipe — field 1=blank, 2=FR, 3=UC, 4=Test, 5=Status (approx)
-  # We look for the Test and Status cells heuristically: non-empty, not just dashes
-  # Extract all cells into an array
+  # Read the Test and Status cells from THEIR NAMED COLUMNS. The previous
+  # version scanned every cell for a status-vocabulary word, so a status the
+  # list did not happen to contain (e.g. "Specified") read as an EMPTY Status
+  # column, and a Test cell containing the word "open" could be mistaken for
+  # the status. Reading the header's own column index removes both.
   IFS='|' read -ra cells <<< "$row"
-
-  # Find Test cell: contains .spec, .test, test/, e2e/, or a hyphen-link
-  test_cell=""
-  status_cell=""
-  for cell in "${cells[@]}"; do
-    trimmed="${cell#"${cell%%[![:space:]]*}"}"  # ltrim
-    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"  # rtrim
-    if printf '%s' "$trimmed" | grep -qiE '(\.spec|\.test|test/|e2e/|spec/|\.py|it\(|describe\()' 2>/dev/null; then
-      test_cell="$trimmed"
+  idx_test=-1; idx_status=-1
+  IFS='|' read -ra HC <<< "$hdr"
+  for i in "${!HC[@]}"; do
+    h=$(printf '%s' "${HC[$i]}" | sed 's/[*_`]//g; s/^ *//; s/ *$//')
+    [[ -z "$h" ]] && continue
+    shopt -s nocasematch
+    if   [[ "$h" =~ (test|spec) ]];        then idx_test=$i
+    elif [[ "$h" =~ (status|verified) ]];  then idx_status=$i
     fi
-    if printf '%s' "$trimmed" | grep -qiE '(PASS|FAIL|VERIFIED|OPEN|TODO|TBD|PENDING|BLOCKED|DONE)' 2>/dev/null; then
-      status_cell="$trimmed"
-    fi
+    shopt -u nocasematch
   done
 
+  mcell() { local n="$1"; [[ "$n" -lt 0 ]] && return 0; printf '%s' "${cells[$n]:-}" | sed 's/^ *//; s/ *$//'; }
+  test_cell=$(mcell "$idx_test")
+  status_cell=$(mcell "$idx_status")
+
   # Check Test cell populated
-  if [[ -z "$test_cell" ]]; then
-    # Fallback: count non-empty non-dash cells — if ≥4, assume test cell exists
-    non_empty=0
-    for cell in "${cells[@]}"; do
-      trimmed="${cell#"${cell%%[![:space:]]*}"}"
-      trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-      [[ -n "$trimmed" && "$trimmed" != "-" && "$trimmed" != "—" ]] && non_empty=$((non_empty + 1))
-    done
-    if [[ "$non_empty" -lt 4 ]]; then
+  if [[ "$idx_test" -ge 0 ]]; then
+    if [[ -z "$test_cell" || "$test_cell" == "-" || "$test_cell" == "—" ]]; then
       gap "p0-missing-test" "$uc_id (P0): Test column is empty — add the test file path or test name that verifies this use case"
     else
-      pass "$uc_id (P0): test cell appears populated"
+      pass "$uc_id (P0): test → $test_cell"
     fi
-  else
-    pass "$uc_id (P0): test → $test_cell"
   fi
 
   # Check Status cell
-  if [[ -z "$status_cell" ]]; then
+  if [[ "$idx_status" -lt 0 ]]; then
+    : # no Status column in this table's header — the missing-column gap covers it
+  elif [[ -z "$status_cell" ]]; then
     gap "p0-missing-status" "$uc_id (P0): Status column is empty or TBD — set to VERIFIED (tests pass), OPEN (not yet tested), or BLOCKED"
   elif printf '%s' "$status_cell" | grep -qiE '(TBD|TODO|PENDING|\?\?\?)'; then
     gap "p0-unresolved-status" "$uc_id (P0): Status is '${status_cell}' — must be resolved before phase gate passes"
@@ -147,7 +189,7 @@ while IFS= read -r row; do
     pass "$uc_id (P0): status → $status_cell"
   fi
 
-done < "$MATRIX"
+done <<< "$MATRIX_TABLE_ROWS"
 
 # -- Cross-reference: matrix UCs exist in USE_CASES.md --------------------
 if [[ -n "$UC_FILE" && -n "$MATRIX_UC_IDS" ]]; then

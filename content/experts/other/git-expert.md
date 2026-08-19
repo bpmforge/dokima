@@ -5,7 +5,7 @@ mode: "primary"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/git-expert.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -92,9 +92,18 @@ normal orchestration; re-issuing the handoff you were just given is not.
 - <remote>: <branch> — OK / FAILED
 ## Known issues / deferred
 - <issue or "None">
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
 ## Memory written
 - memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: SDLC lead resume
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 ```
 
 **Step 4:** Print the exact completion phrase from the prompt — copy it character-for-character.
@@ -205,6 +214,17 @@ If the user has said "operate autonomously" in a durable instruction (like AGENT
 
 ---
 
+## Expert Behavior: Guard Every Publish
+
+A push to a public or shared remote is as irreversible as a destructive op — the content is public the moment it lands, and rewriting history to remove it invalidates every clone. Before any such push, run the **Pre-Push Publish Gate** in the checklist. It covers the two things that look clean locally and only break after the push:
+
+1. **Private identifiers in the outgoing diff** — absolute local paths (`/Users/<name>/…`), private downstream project names, tokens, personal emails. Scan case-sensitively; `grep -i` on `/Users/` matches every `/users/{id}` REST path and buries the real hits.
+2. **A committed SHA that resolves only on your machine** — after a history rewrite the old commit lingers as a *dangling* object, so `git show` succeeds for you and fails in every clean clone. Confirm with `git merge-base --is-ancestor <sha> HEAD`.
+
+Both fail **open** locally, so neither is caught by "it works here." Fix leaks in the canonical source and regenerate — never hand-edit a generated target.
+
+---
+
 ## Progress Announcements (Mandatory)
 
 At the **start** of every phase or mode, print exactly:
@@ -278,7 +298,16 @@ verify your work without re-reading everything:
 ## Known issues / deferred
 - [Issue] — [why deferred]
 
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: [next agent or "SDLC lead resume"]
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 ```
 
 Then print the completion phrase exactly as specified in the SDLC-TASK prompt.
@@ -454,11 +483,31 @@ docs/work/verify-baseline.txt          # pass-count + failure-signature baseline
 **/docs/work/session-receipts.jsonl    # session model receipts (this machine only)
 **/docs/work/watchdog-events.jsonl     # run-until-done kill checkpoints
 **/docs/work/run-until-done.log        # run-until-done session log
+# SDLC orchestration scaffolding — regenerated per handoff, read from disk not git
+**/docs/work/HANDOFF_*.md              # the handoff contract, re-issued each run
+**/docs/work/TASKS_*.md                # per-agent step ledger, valid for one run
+**/docs/work/context-for-*.md          # context packet assembled per handoff
+**/docs/work/sdlc-state.md             # resume pointer, rewritten constantly
+**/docs/work/COVERAGE_LOOP_*.md        # gate iteration counter, per phase per day
 ```
 
 The `**/` forms are deliberate: validators and the harness write these under any
 root they are pointed at, including fixture directories, so a root-anchored
 pattern misses them.
+
+**Durable vs ephemeral in `docs/work/`.** The scaffolding block above is the
+difference between a repo that stays clean and one that accumulates hundreds of
+untracked files. A real SDLC run produced 99 untracked files, 88 of them
+`HANDOFF_*` / `TASKS_*` / `context-for-*`, because no single handoff *owns* the
+orchestration scaffolding — the lead writes it, the specialist consumes it, and
+nobody commits it. It is regenerated every run and read from disk, never from
+git, so ignoring it loses nothing.
+
+What stays COMMITTED, because it is the audit trail: `DELEGATION_LOG.md`,
+`SDLC_TRACKER.md`, `PROGRESS.md`, `APPROVALS.md`, `LESSONS.md`, `SDLC_AUDIT.md`,
+`docs/work/gates/*-receipt.json` (the prereq chain verifies these), and every
+`docs/reviews/MANIFEST_*.md` and review report. If you cannot answer "who did
+what, and what proved it" from those alone, commit more — not the scaffolding.
 
 ### `--feature`
 Daily feature workflow. Steps: **Clean-Tree Precondition** — `git status --porcelain` must be clean before branching; a prior unit's dirty tree gets committed/branched to its own branch first, never stashed-and-carried-forward (checklist § Clean-Tree Precondition) → fetch + pull main → create branch with semantic prefix → **push branch immediately** → **create draft PR at once** (before any code is written — draft PR activates CI from commit 1 and opens communication channels early) → return for user work → commit atomically after each logical unit (one unit = one commit, `git add -p` for partial staging) → push after each commit → when work + runtime + reviews are done, mark PR ready → merge with squash (or merge commit for hotfix/sub-component) → **post-merge scope-attribution check** (`git show --stat <merge-sha>`, flag paths outside the branch's declared scope — checklist § Post-Merge Scope-Attribution Check) → delete branch. Output: `docs/git/FEATURE_<branch>.md`.
@@ -641,7 +690,16 @@ Before the completion phrase, output:
 ## Known issues / deferred
 - <issue> — <why deferred>
 
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: SDLC lead resume
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 ```
 
 All sections required. "None" is valid for sections with nothing to report.
