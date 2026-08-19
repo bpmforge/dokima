@@ -6958,7 +6958,7 @@
       "module": "cli",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/server/src/api/server/runs-routes.ts",
@@ -7048,6 +7048,37 @@
       ],
       "notes": [
         "Filed 2026-08-18 alongside W12-41, split deliberately rather than filed as one ticket: W12-41 is small, self-contained and unblocks a real user today, while this one carries a THREAT_MODEL decision and a new HTTP surface. Bundling them would have held the quick fix behind the security question."
+      ]
+    },
+    {
+      "id": "W12-43",
+      "title": "the signing key has no surface \u2014 a run cannot be started without a terminal",
+      "phase": 12,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/SigningKeyPanel.tsx",
+        "apps/web/src/settings/SigningKeyPanel.test.tsx",
+        "apps/server/src/api/server/signing-key-routes.ts",
+        "apps/server/src/api/server/signing-key-routes.test.ts"
+      ],
+      "depends_on": [
+        "W12-40"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W12-40 made the missing key an honest 409 that the Canvas already renders, so the failure is no longer silent. It is still not FIXABLE from the product: the refusal tells a user to set an environment variable and restart the core, which is the terminal step W12-20 existed to remove.",
+        "This is a CREDENTIAL path (Law 8, FR-S2): the signing key must never land in code, a settings file, a prompt or the event log. A credential REF resolved by the keychain is the shape; the raw key is not.",
+        "Blocked on the vault work rather than scoped here \u2014 W12-40 deliberately did not grow into it. Decide the storage seam first (keychain adapter vs vault), then the surface.",
+        "ALSO DECIDE: whether a first run can MINT a key rather than asking for one. A user who has never heard of receipt signing should not be asked to invent a secret.",
+        "RED FIXTURE: a user who has never opened a terminal can start a build run."
+      ],
+      "notes": [
+        "Filed by W12-40, whose route comment names this ticket \u2014 an unfiled follow-up referenced from code is a comment that lies.",
+        "write_scope is PROVISIONAL \u2014 the storage seam (W12-43 acceptance) decides the real files, and whoever claims this should correct it before starting rather than force the work into a guess made before the decision."
       ]
     },
     {
@@ -7631,6 +7662,32 @@
       "notes": [
         "Filed 2026-08-19 after the founder asked how to close the gap between pm-interviewer.md and the implementation. The doc is NOT overclaiming \u2014 it accurately describes the engine that was built. Fourteenth instance of the built-but-unwired class and the largest: an entire subsystem shadowed by a simpler reimplementation of itself.",
         "Closed 2026-08-19, VERIFIED AGAINST THE LOCAL MODEL, not only fixtures: the live endpoint returned 'Who are the primary users of this tool\u2014developers, businesses, researchers, or another group?' in one second. That is AC-1 delivered for the first time since it was written. THE FIRST LIVE TEST FAILED AND MY OWN CATCH-ALL HID WHY \u2014 it returned reason 'unavailable' in 0.017s for what was actually a ROUTING failure: a real project's matrix carries coding-agent rows only (that is what the wizard writes), so asking for role 'pm-interviewer' was unresolvable. Fixed twice over: fall back to the configured role, and report 'no-model-configured' distinctly from 'unavailable' with the underlying message, because a single catch-all hiding four different causes is the silence this product exists to refuse. I HAD INTRODUCED A SECOND SILENT FAILURE IN THE SAME TICKET: buildInterviewSession read answers[deliverableId] only, so every follow-up answer was dropped \u2014 a person could answer three adaptive questions and none would reach the draft, and the feature would have looked like it worked. Follow-ups are now real questionsAsked at increasing depth, which is what the engine's ceiling counts. THE ON-BLUR DESIGN WAS WRONG AND THE E2E SUITE PROVED IT: fetching a follow-up whenever the cursor left a field meant a model call per tab, surprise layout shifts, and three failing specs plus a run that went from 30s to 1.2m. Made explicit ('Ask me more about this'); e2e returned to 69 passing at 29.7s. Two e2e specs also had to stop addressing textareas by positional index, which was a latent break the moment any form grew."
+      ]
+    },
+    {
+      "id": "W13-19",
+      "title": "law 9(a) is a rule nothing checks \u2014 make it mechanical",
+      "phase": 13,
+      "module": "quality",
+      "lane": "core",
+      "points": 2,
+      "status": "done",
+      "role": "test-engineer",
+      "write_scope": [
+        "vitest.network-guard.ts",
+        "scripts/network-guard.test.mjs"
+      ],
+      "depends_on": [
+        "W13-18"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W13-18 route tests reached a real LM Studio on 127.0.0.1:1234 for a day via envTarget fallback, and passed or failed depending on which model was loaded. Law 9(a) forbids exactly this and nothing checked it.",
+        "Refuse any non-loopback host and loopback on the two local model daemon ports (1234, 11434). Allow loopback on ports a test itself started \u2014 refusing those enforces \"no sockets\", a different and wrong rule.",
+        "RED FIXTURE: disabling W13-18's stub is caught by the guard rather than by an unrelated assertion."
+      ],
+      "notes": [
+        "Filed after the fact: built in response to the stop hook that surfaced the live calls, then back-filled here so the board matches reality. Merged as b949b10."
       ]
     }
   ]

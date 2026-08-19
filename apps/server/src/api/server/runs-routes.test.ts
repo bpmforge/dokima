@@ -6,6 +6,7 @@ import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import { registerProject } from '../projects.js';
 import { buildApiServer, type ApiServer } from '../server.js';
+import { buildRunStatus, executeBuildRunJob } from './runs-routes.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const PORT = 4403;
@@ -209,6 +210,7 @@ describe('build runs (W12-20)', () => {
     return {
       app: server.app,
       id: record.id,
+      dir: projectDir,
       h: { host: `127.0.0.1:${PORT2}`, authorization: `Bearer ${TOKEN2}` },
     };
   }
@@ -219,49 +221,87 @@ describe('build runs (W12-20)', () => {
       'configuration surface was a GUI and the one action that matters was a ' +
       'terminal command',
     async () => {
-      const { app, id, h } = await boot2();
-      const res = await app.inject({
-        method: 'POST',
-        url: `/api/v1/projects/${id}/build-runs`,
-        headers: h,
-        payload: { actor_id: 'operator', run_id: 'run-w1220' },
-      });
-      // 202, not 200: the work happens off the request.
-      expect(res.statusCode).toBe(202);
-      expect(res.json().run_id).toBe('run-w1220');
-      expect(res.json().status).toBe('running');
+      // W12-40 made an unset signing key a 409 at request time, so a test
+      // about ACCEPTING a run has to supply the precondition it is not testing.
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w1220';
+      try {
+        const { app, id, h } = await boot2();
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-w1220' },
+        });
+        // 202, not 200: the work happens off the request.
+        expect(res.statusCode).toBe(202);
+        expect(res.json().run_id).toBe('run-w1220');
+        expect(res.json().status).toBe('running');
+      } finally {
+        if (previous === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+        else process.env.DOKIMA_SIGNING_KEY = previous;
+      }
     },
   );
 
   it(
-    'the refusals executeBuildRun produces REACH THE USER. An unset signing key is ' +
-      'something a person can fix, and before this it only ever reached a stderr ' +
-      'nobody was watching',
+    'RED FIXTURE (W12-40): an unset signing key is refused AT REQUEST TIME, not ' +
+      'accepted as a 202 and reported through a poll the caller may never make',
     async () => {
       const previous = process.env.DOKIMA_SIGNING_KEY;
       delete process.env.DOKIMA_SIGNING_KEY;
       try {
         const { app, id, h } = await boot2();
-        await app.inject({
+        const res = await app.inject({
           method: 'POST',
           url: `/api/v1/projects/${id}/build-runs`,
           headers: h,
           payload: { actor_id: 'operator', run_id: 'run-nokey' },
         });
-        // The job runs off the request, so poll the status route for the outcome.
-        let body: Record<string, unknown> = {};
-        for (let i = 0; i < 40; i++) {
-          const res = await app.inject({
-            method: 'GET',
-            url: `/api/v1/projects/${id}/build-runs/run-nokey`,
-            headers: h,
-          });
-          body = res.json() as Record<string, unknown>;
-          if (body.status !== 'running') break;
-          await new Promise((r) => setTimeout(r, 25));
-        }
-        expect(body.status).toBe('refused');
-        expect(String((body.stderr as string[]).join('\n'))).toMatch(/DOKIMA_SIGNING_KEY/);
+        expect(res.statusCode).toBe(409);
+        const body = res.json() as Record<string, unknown>;
+        // Named, not generic: the caller can act on this one.
+        expect(body.rule).toBe('signing-key-unset');
+        expect(String(body.detail)).toMatch(/DOKIMA_SIGNING_KEY/);
+        // And it says what to do, since there is no surface to do it from.
+        expect(String(body.detail)).toMatch(/restart/i);
+
+        // Nothing was started: a refused request must not leave a run id
+        // behind that a poller would find sitting at "running" forever.
+        const after = await app.inject({
+          method: 'GET',
+          url: `/api/v1/projects/${id}/build-runs/run-nokey`,
+          headers: h,
+        });
+        expect(after.statusCode).toBe(404);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+      }
+    },
+  );
+
+  it(
+    'the job STILL refuses on its own — this route is not the only caller, and a ' +
+      'precondition only one entrance enforces is not a precondition (the CLI ' +
+      'path calls executeBuildRun directly)',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      delete process.env.DOKIMA_SIGNING_KEY;
+      try {
+        const { id, dir } = await boot2();
+        await executeBuildRunJob({
+          projectPath: dir,
+          projectId: id,
+          actorId: 'operator',
+          runId: 'run-direct-nokey',
+          now: () => new Date().toISOString(),
+        });
+        const outcome = buildRunStatus('run-direct-nokey');
+        expect(outcome).toBeDefined();
+        expect(outcome).not.toBe('running');
+        const done = outcome as unknown as { exitCode: number; stderr: string[] };
+        expect(done.exitCode).not.toBe(0);
+        expect(done.stderr.join('\n')).toMatch(/DOKIMA_SIGNING_KEY/);
       } finally {
         if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
       }

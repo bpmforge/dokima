@@ -17,6 +17,7 @@ import { listEvents, openEventLog, openEventLogReader } from '@dokima/events';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { badRequest, notFound } from './artifacts-helpers.js';
+import { conflict } from './settings-route-helpers.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
 import { executeBuildRun } from '../../cli/run-build.js';
@@ -151,6 +152,44 @@ export function registerRunsRoutes(
       const body = (request.body ?? {}) as { actor_id?: string; run_id?: string };
       const actorId = body.actor_id ?? 'operator';
       const runId = body.run_id ?? `run-${Date.now().toString(36)}`;
+
+      /**
+       * REFUSE BEFORE ACCEPTING (W12-40). `executeBuildRun` already declines an
+       * unset `DOKIMA_SIGNING_KEY` — the close gate mints signed receipts and
+       * will not mint unverifiable ones — but it declines INSIDE the job, so
+       * the refusal reached the caller only through a later status poll.
+       *
+       * That made W12-20's Start-run button depend on a terminal step taken
+       * before the process booted, with no surface anywhere to set it, and
+       * fail in a way that looks like it should have worked. A 202 is a
+       * promise to try; issuing one for work the server can already prove
+       * cannot proceed is a spinner that ends in silence for any client that
+       * does not poll.
+       *
+       * The key is readable now, so the answer is available now. Checked here
+       * AND still checked in the job: this route is not the only caller (the
+       * CLI path goes straight to `executeBuildRun`), and a precondition only
+       * one entrance enforces is not a precondition.
+       *
+       * NOT a key-entry UI — minting or storing a signing key is a credential
+       * path (Law 8) and belongs with the vault work. Filed as W12-43.
+       */
+      if (!process.env.DOKIMA_SIGNING_KEY) {
+        return reply
+          .code(409)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(
+            conflict(
+              request,
+              'DOKIMA_SIGNING_KEY is unset in the core process, so the close gate ' +
+                'cannot mint the signed receipt that ends a run. Nothing was claimed. ' +
+                'Set it in the environment the core is started from and restart it — ' +
+                'there is no surface to set it from here yet (W12-43).',
+              'signing-key-unset',
+            ),
+          );
+      }
+
       // Deliberately not awaited: a build run claims tickets, spawns agent
       // sessions and re-runs gates. Holding the request open for that is the
       // shape W10-58 removed from the creation path.
