@@ -7772,6 +7772,40 @@
       ]
     },
     {
+      "id": "W13-24",
+      "title": "spend is metered in memory and thrown away \u2014 W11 exit criterion 3 cannot be shown for any provider",
+      "phase": 13,
+      "module": "events",
+      "lane": "core",
+      "points": 8,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-stream.ts",
+        "packages/harbormaster/src/agent-session/session-stream.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "apps/server/src/api/projects/stats.ts",
+        "apps/server/src/api/projects/stats.test.ts",
+        "docs/STATUS.md"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 verifying the W11 exit criteria. Criterion 3 reads: every call is metered \u2014 the run's spend ledger is non-zero and attributable per role. It cannot be demonstrated on ANY provider, and the reason is not that local models are free: CostLedger keeps a private in-memory array, nothing writes costUsd to the event log or any table, and the ledger dies with the process. There is no durable record to be non-zero or attributable.",
+        "THE FLEET ALREADY ADMITS THIS IN A COMMENT. projects/stats.ts returns spendTodayUsd as a hardcoded 0 and says so in prose, and cards.ts serves it as spend_today. A user reading the Fleet sees a spend column that is a constant.",
+        "ENFORCEMENT IS NOT BROKEN, and the ticket must not pretend otherwise: the budget breakers (W2-07) and the per-ticket cost cap read the live in-memory ledger DURING a run and work. What is missing is the record AFTER it. Fix the record, do not rewrite the enforcement.",
+        "GRANULARITY IS A DECISION, same rule as W13-16 and W13-20: the event log is append-only and hash-chained. One event per metered model call is the natural grain (a 24-turn run writes 24, comparable to session.turn_started) \u2014 but justify it rather than assume it, and carry role, model, ticket, run, prompt/completion tokens and costUsd so FR-S1's why is this role on this model stays answerable from the log alone.",
+        "SECRETS: a spend event carries a model id and numbers, never a prompt, a completion or a credential (law 8, FR-S2).",
+        "RED FIXTURE: after a run ends, its per-call spend is readable from the durable log and attributable per role \u2014 and the Fleet's spend column reflects it instead of a constant."
+      ],
+      "notes": [
+        "Filed 2026-08-19 while verifying W11's exit criteria rather than by a failing test. Criterion 3 was the one still unproven at the W11 gate; this is why, and it is a bigger gap than the criterion suggests \u2014 token counts ARE non-zero on local models, so metering works; only the durability is missing.",
+        "write_scope adjusted at claim: CostLedger itself needs no change \u2014 enforcement already works off the live in-memory array and the ticket says not to rewrite it. The single choke point for a metered session call is takeMeteredTurn, which already holds both the ledger and the event log. gateway-session.ts is added only to thread  through, which LedgerEntry does not carry and FR-S1 needs.",
+        "write_scope adjusted at claim: CostLedger itself needs no change, because enforcement already works off the live in-memory array and the ticket says not to rewrite it. The single choke point for a metered session call is takeMeteredTurn, which already holds both the ledger and the event log. gateway-session.ts is added only to thread the role through, which LedgerEntry does not carry and FR-S1 needs.",
+        "Closed 2026-08-19. Proven live: 20 spend.recorded events survived a real run on qwen/qwen3-coder-next, attributable per role (43,921 prompt / 953 completion tokens, usd=0 because a local model is free). STATUS.md also refreshed for the whole day, and records the one gap this could not close: W11 exit criterion 3 says spend must be non-zero, which is unprovable on a local-only install by construction and sits against law 9b. Flagged for the founder rather than amended."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,

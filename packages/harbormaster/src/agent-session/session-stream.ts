@@ -206,6 +206,8 @@ export async function takeMeteredTurn(args: {
   readonly berthId: string;
   readonly log?: EventLog;
   readonly actorId: string;
+  /** W13-24: FR-S1's "why is this role on this model?" needs the role on the record. */
+  readonly role: string;
   readonly onDelta?: (chunk: string, cumulative: number) => void;
   readonly now: () => string;
 }): Promise<{ response: ChatResponse; model: string; streamed: boolean }> {
@@ -235,6 +237,42 @@ export async function takeMeteredTurn(args: {
     model,
     recordedAt: args.now(),
   });
+
+  /**
+   * W13-24: the DURABLE half of metering. `CostLedger` is a private in-memory
+   * array that dies with the process, so before this every completed run threw
+   * its own spend away — W11's exit criterion 3 ("the run's spend ledger is
+   * non-zero and attributable per role") could not be shown for ANY provider,
+   * and `projects/stats.ts` returned a hardcoded 0 for the Fleet's spend
+   * column while saying so in a comment.
+   *
+   * Enforcement is deliberately untouched: the budget breakers and the
+   * per-ticket cap read the LIVE ledger during a run and work. What was
+   * missing is the record after it.
+   *
+   * ONE EVENT PER METERED CALL is the grain, on the same rule W13-16 and
+   * W13-20 used for this log: a 24-turn run writes 24 of these, comparable to
+   * `session.turn_started`, and anything coarser (per ticket, per run) loses
+   * the per-call attribution the criterion asks for. Numbers and a model id
+   * only — never a prompt, a completion or a credential (law 8, FR-S2).
+   */
+  if (args.log) {
+    appendEvent(args.log, {
+      eventType: 'spend.recorded',
+      actorId: args.actorId,
+      ticketId: args.ticketId,
+      runId: args.runId,
+      payload: {
+        role: args.role,
+        model,
+        costUsd: turn.response.usage.costUsd,
+        promptTokens: turn.response.usage.promptTokens,
+        completionTokens: turn.response.usage.completionTokens,
+        streamed: turn.streamed,
+        at: args.now(),
+      },
+    });
+  }
 
   return { response: turn.response, model, streamed: turn.streamed };
 }

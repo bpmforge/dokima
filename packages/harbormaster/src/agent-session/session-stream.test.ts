@@ -9,7 +9,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 import type { ChatResponse, Provider } from '@dokima/gateway';
-import { runStreamedTurn, StreamEndedWithoutFinalError } from './session-stream.js';
+import {
+  runStreamedTurn,
+  StreamEndedWithoutFinalError,
+  takeMeteredTurn,
+} from './session-stream.js';
 
 const RESPONSE: ChatResponse = {
   message: { role: 'assistant', content: 'done' },
@@ -324,5 +328,90 @@ describe('runStreamedTurn (W13-16)', () => {
       });
       expect(result.toolCalls).toEqual([]);
     });
+  });
+
+  describe('spend survives the run (W13-24)', () => {
+    const dirs3: string[] = [];
+    let log3: EventLog | undefined;
+
+    afterEach(async () => {
+      log3?.close();
+      log3 = undefined;
+      await Promise.all(dirs3.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
+    });
+
+    async function openLog3(): Promise<EventLog> {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-spend-'));
+      dirs3.push(dir);
+      const opened = openEventLog(path.join(dir, 'state.db'));
+      createIdentity(opened, { id: 'agent', name: 'Agent', kind: 'machine' });
+      log3 = opened;
+      return opened;
+    }
+
+    const ledger = () => ({ record: () => undefined });
+
+    it(
+      'RED FIXTURE: a metered call leaves a DURABLE record, attributable per ' +
+        'role. CostLedger is a private in-memory array that dies with the ' +
+        'process, so W11 exit criterion 3 could not be shown for any provider ' +
+        '— not because local models are free, but because nothing persisted it',
+      async () => {
+        const opened = await openLog3();
+        await takeMeteredTurn({
+          route: async () => ({ chain: ['m'] }),
+          resolveProvider: () => streamingProvider([{ type: 'final', response: RESPONSE }]),
+          messages: [{ role: 'user', content: 'hi' }] as never,
+          tools: undefined,
+          ledger: ledger(),
+          projectId: 'p1',
+          runId: 'run-1',
+          ticketId: 'T-1',
+          berthId: 'b1',
+          log: opened,
+          actorId: 'agent',
+          role: 'coding-agent',
+          now: () => '2026-08-19T12:00:00.000Z',
+        });
+
+        const spend = listEvents(opened).filter((e) => e.eventType === 'spend.recorded');
+        expect(spend).toHaveLength(1);
+        const payload = spend[0]?.payload as Record<string, unknown>;
+        expect(payload.role).toBe('coding-agent');
+        expect(payload.model).toBe('m');
+        expect(payload.costUsd).toBe(RESPONSE.usage.costUsd);
+        expect(payload.promptTokens).toBe(RESPONSE.usage.promptTokens);
+        expect(spend[0]?.ticketId).toBe('T-1');
+        expect(spend[0]?.runId).toBe('run-1');
+      },
+    );
+
+    it(
+      'and carries NUMBERS ONLY — never a prompt, a completion or a credential ' +
+        '(law 8, FR-S2). A spend record is the wrong place to leak one',
+      async () => {
+        const opened = await openLog3();
+        await takeMeteredTurn({
+          route: async () => ({ chain: ['m'] }),
+          resolveProvider: () => streamingProvider([{ type: 'final', response: RESPONSE }]),
+          messages: [{ role: 'user', content: 'the token is hunter2-secret' }] as never,
+          tools: undefined,
+          ledger: ledger(),
+          projectId: 'p1',
+          runId: 'run-1',
+          ticketId: 'T-1',
+          berthId: 'b1',
+          log: opened,
+          actorId: 'agent',
+          role: 'coding-agent',
+          now: () => '2026-08-19T12:00:00.000Z',
+        });
+        const blob = JSON.stringify(
+          listEvents(opened).filter((e) => e.eventType === 'spend.recorded'),
+        );
+        expect(blob).not.toContain('hunter2-secret');
+        expect(blob).not.toContain('done'); // the completion text
+      },
+    );
   });
 });
