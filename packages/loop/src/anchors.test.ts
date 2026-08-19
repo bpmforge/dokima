@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CHALLENGER_BORDERLINE_HIGH,
-  CHALLENGER_BORDERLINE_LOW,
   anchorIsPresent,
-  createStubChallengerAnchor,
   createStubMemoryAnchor,
   createToolAnchor,
   formatAnchorFactsForPrompt,
@@ -54,47 +51,19 @@ describe('tool anchor (FR-L2: wired to validator/scanner output)', () => {
   });
 });
 
-describe('challenger anchor (FR-L2: borderline-confidence firing, stub gather)', () => {
-  it('FR-L2: challenger not invoked on high-confidence tool-backed pass (cost assertion)', () => {
-    const challenger = createStubChallengerAnchor();
-    expect(
-      challenger.shouldFire({
-        ...GATHER_INPUT,
-        rawConfidence: CHALLENGER_BORDERLINE_HIGH + 0.01,
-      }),
-    ).toBe(false);
-  });
-
-  it('fires within the borderline confidence band, inclusive', () => {
-    const challenger = createStubChallengerAnchor();
-    expect(
-      challenger.shouldFire({
-        ...GATHER_INPUT,
-        rawConfidence: CHALLENGER_BORDERLINE_LOW,
-      }),
-    ).toBe(true);
-    expect(
-      challenger.shouldFire({
-        ...GATHER_INPUT,
-        rawConfidence: CHALLENGER_BORDERLINE_HIGH,
-      }),
-    ).toBe(true);
-    expect(
-      challenger.shouldFire({
-        ...GATHER_INPUT,
-        rawConfidence: CHALLENGER_BORDERLINE_LOW - 0.01,
-      }),
-    ).toBe(false);
-  });
-
-  it('stub gather never fabricates a verdict fact (real wiring is W5)', async () => {
-    const facts = await createStubChallengerAnchor().gather(GATHER_INPUT);
-    expect(facts).toEqual([]);
-  });
-});
-
-describe('memory anchor (stub interface, real wiring is W7)', () => {
-  it('stub gather never fabricates a finding fact', async () => {
+/**
+ * The challenger anchor's tests are GONE with the stub they tested (W13-21).
+ *
+ * They asserted a borderline-firing band around a `gather` that always
+ * returned nothing, so they proved the band arithmetic and nothing about a
+ * challenger. BLUEPRINT §3.5 step 4 asks for an independent verifier model
+ * "only where no oracle exists"; a build-run session always has one — the
+ * ticket's own `verify`, re-run out of process by the close gate — and where
+ * there is genuinely no oracle, the challenger is wired and tested in
+ * `packages/pipeline/src/challenger`.
+ */
+describe('memory anchor (the inert control condition — W13-21)', () => {
+  it('gathers nothing, which is what anti-jarvis-gap.test.ts contrasts against', async () => {
     const facts = await createStubMemoryAnchor().gather(GATHER_INPUT);
     expect(facts).toEqual([]);
   });
@@ -103,11 +72,7 @@ describe('memory anchor (stub interface, real wiring is W7)', () => {
 describe('gatherAnchorFacts (FR-L2: gather -> facts into prompt)', () => {
   it('composes facts from every anchor in order, empty stubs contribute nothing', async () => {
     const results: ValidatorResult[] = [{ name: 'jscpd', exitCode: 0, gapCount: 0 }];
-    const anchors = [
-      createToolAnchor(results),
-      createStubMemoryAnchor(),
-      createStubChallengerAnchor(),
-    ];
+    const anchors = [createToolAnchor(results), createStubMemoryAnchor()];
     const facts = await gatherAnchorFacts(anchors, GATHER_INPUT);
     expect(facts).toHaveLength(1);
     expect(facts[0]?.kind).toBe('tool');

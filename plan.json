@@ -7674,13 +7674,15 @@
       "module": "loop",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/loop/src/anchors.ts",
         "packages/loop/src/anchors.test.ts",
         "packages/harbormaster/src/agent-session/gateway-session.ts",
-        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/loop/src/anchors.test.ts",
+        "conductor.config.json"
       ],
       "depends_on": [],
       "stories": [],
@@ -7692,7 +7694,8 @@
         "RED FIXTURE: either a session at borderline confidence produces a challenger verdict on the event log, or the stub and its interface are gone and no comment promises them."
       ],
       "notes": [
-        "Filed from a live supervised run on 2026-08-19. Same build-then-wire seam this repo keeps hitting: the decomposition gave the challenger a package to live in and never gave anyone the call site."
+        "Filed from a live supervised run on 2026-08-19. Same build-then-wire seam this repo keeps hitting: the decomposition gave the challenger a package to live in and never gave anyone the call site.",
+        "Closed 2026-08-19 by DELETING the challenger stub, not wiring it \u2014 and the decision was taken from BLUEPRINT section 3.5 step 4 rather than from my first instinct. That step asks for an independent verifier model \"only where no oracle exists\"; a build-run session always has one, the ticket verify re-run out of process by the close gate, and where there genuinely is none \u2014 research claim and report citability \u2014 the challenger IS already wired in packages/pipeline/src/challenger. It was in the right place all along. The MEMORY stub was kept after checking: anti-jarvis-gap.test.ts uses it as the inert control condition proving the real anchor recalls something, so deleting it would delete the proof. Wiring the real memory anchor is W13-23. Ratchet lowered 62 -> 61."
       ]
     },
     {
@@ -7724,6 +7727,34 @@
       "notes": [
         "Filed and fixed 2026-08-19 in response to Brad asking whether the loop works on both local models. It did not. The single-model testing that preceded it could not have found this: coder-next never runs a turn long enough to reach 300s.",
         "write_scope widened: oai-compat.ts sat at 398 of the 400-line cap, so the fix could not carry its own explanation. The abort translation went to streaming.ts beside createIdleAbort it partners, and the two local-daemon presets were split into oai-compat-presets.ts. Shaving comments to fit is how a file stops saying why."
+      ]
+    },
+    {
+      "id": "W13-23",
+      "title": "the real memory anchor exists and no session has ever used it",
+      "phase": 13,
+      "module": "memory",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/memory/src/store/anchor.ts",
+        "packages/memory/src/store/anchor.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 while removing the challenger stub (W13-21). packages/memory/src/store/anchor.ts holds a REAL createMemoryAnchor, backed by assembleContext over the fact store, with its own tests. Nothing in production constructs it. gateway-session.ts composes only createToolAnchor, so every session runs with no prior findings and no calibration seed.",
+        "THIS IS THE CAUTIONARY TALE THE MODULE NAMES. anchor.ts's own header cites source-system-foreman-jarvis.md section 5 \u2014 an unwired memory engine recalls nothing and is worth nothing \u2014 and the engine is, in fact, unwired. anti-jarvis-gap.test.ts already proves the real anchor recalls something where loop's inert stub recalls nothing; that proof has simply never been applied to a running session.",
+        "WHAT IT NEEDS is a store handle the session does not currently have: createMemoryAnchor takes a SqliteHandle and an optional EmbeddingProvider. Decide where the session gets one, and what happens when there is no embedding provider configured (a local-only user may have none) \u2014 FR-G5 says degrade honestly, so a session with no memory must still run, and must not pretend it recalled anything.",
+        "BLUEPRINT section 3.5 makes this load-bearing rather than a nice-to-have: calibration applies ONLY when an external anchor is present, and today the tool anchor is the only one. Memory is the anchor that carries prior confirmed findings and the per-(model, phase) calibration seed.",
+        "RED FIXTURE: a session whose project has a confirmed prior finding relevant to its ticket receives it as an anchor fact, proven against the current behaviour where it receives nothing."
+      ],
+      "notes": [
+        "Filed by W13-21. The loop-side stub is deliberately KEPT as anti-jarvis-gap.test.ts's control condition \u2014 this ticket is about constructing the real one in a session, not about replacing the stub."
       ]
     },
     {
