@@ -7404,6 +7404,34 @@
         "write_scope corrected: I filed run-build-policy.test.ts and it does not exist \u2014 the policy resolver's tests live in run-build.test.ts beside the call-site fixture that proves executeBuildRun actually reads the setting, which is the more valuable place for them anyway. Creating the file I had assumed produced a test suite vitest silently reported as 'no tests'.",
         "Closed 2026-08-18, and THE EXPERIMENT THAT MOTIVATED IT FAILED \u2014 recorded because a negative result that changes the conclusion is worth more than a fix that looks good. The hypothesis was that bonsai-27b parked because twelve tool turns were too few: with thinking off it produced correct work and used exactly twelve. Given thirty it used twenty across two attempts, produced correct work again, and STILL returned no manifest. The cap was never the binding constraint; the model simply cannot emit the manifest, whatever budget it has. VERIFIED THE SETTING ACTUALLY TAKES EFFECT rather than assuming it from a null result \u2014 set it to 2 and the same run went from 226s to 15s. Without that check I could not have told 'the cap is not the problem' apart from 'my setting never reached the session', which are opposite conclusions with the same symptom. The fix stands on its own merits: maxIterations was a GatewaySpawnSessionOptions field nothing in apps/server ever set, so 12 was every model's value and unreachable without editing source. It refuses above a ceiling rather than clamping, because a setting that accepts any value re-opens T-27 by configuration, and silently running a different number than the one configured is the defect class this board keeps finding. One correction on the way: I filed run-build-policy.test.ts, which does not exist \u2014 the policy tests live in run-build.test.ts, and creating the file I had assumed produced a suite vitest reported as 'no tests'."
       ]
+    },
+    {
+      "id": "W13-12",
+      "title": "a killed run strands its ticket in in_progress forever \u2014 the watchdog that would recover it has no caller",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "reliability-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/loop-claim.ts",
+        "packages/harbormaster/src/loop-claim.test.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND IN LIVE TESTING 2026-08-19. A run against a slow local 27b was killed at a ten-minute ceiling mid-session. T-1 was left in `in_progress` with its owner gone, and the NEXT run reported \"0 landed, 0 parked\" in zero seconds \u2014 the ticket was not claimable, not failed, not recoverable, and nothing said why. A crash, a laptop lid, or a Ctrl-C does the same thing.",
+        "THE RECOVERY MECHANISM IS BUILT AND HAS NO CALLER. `runWatchdogSession` (watchdog-session.ts) and `createFileStopSwitch` both sit in the buried-exports list from W12-38 \u2014 complete, tested, reachable from nothing. `watchdog-session.ts`'s own docstring says it: \"`apps/*` or `loop-claim.ts`/`loop-land.ts` calls `runWatchdogSession`\" is listed as what does NOT happen. Twelfth instance of the defect class, and the first one where the missing wire costs a user their work rather than a feature.",
+        "A STALE CLAIM IS A DERIVABLE FACT, NOT A GUESS: the events carry `ticket.claimed`/`ticket.started` with an actor and a timestamp, and the heartbeat freshness the Fleet card already renders is the same signal. Decide what makes a claim stale and say it in one place \u2014 do not spread the rule across the loop and the UI.",
+        "RECLAIM MUST GO THROUGH THE VERBS, NEVER AROUND THEM (Law 4, C-2/C-3). A stranded ticket returns to `ready` by an event with an actor and a reason, so the log explains what happened; a direct status write would be exactly the kind of path this product refuses to have.",
+        "DO NOT AUTO-KILL A LIVE SESSION. A slow model is not a dead one \u2014 the run this was found in was making real progress at five reads a minute when it was killed from outside. Whatever the staleness rule is, it must not reap a session that is still calling tools.",
+        "RED FIXTURE: a ticket claimed by an actor that never finished is recoverable on the next run, by name and with an event explaining it; and a ticket whose session is still active is NOT."
+      ],
+      "notes": [
+        "Filed 2026-08-19 from live testing of qwen3.8-27b. The immediate cause was an external ten-minute kill, but the exposure is general: nothing in the product recovers a claim whose owner vanished. Worth noting the two mechanisms that would fix it were both already written \u2014 this is a wiring ticket, not a design one."
+      ]
     }
   ]
 }
