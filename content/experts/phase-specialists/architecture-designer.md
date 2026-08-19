@@ -5,7 +5,7 @@ mode: "primary"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/architecture-designer.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -408,6 +408,10 @@ Complete:   "challenge done — design"
 ## Known issues / deferred
 - [open architectural question + which agent should resolve it]   (or "None")
 
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
 ## Memory written
 - memory_store: [type] — "[durable architectural decision / pattern choice / boundary rule + citation]"  (or "None — nothing durable")
 
@@ -415,7 +419,12 @@ Complete:   "challenge done — design"
 
 Challenger review required: [YES/NO]
 
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: [db-architect / api-designer / coding-agent, or "sdlc-lead resume"]
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 
 Tracker updated: [SDLC_TRACKER.md row / DELEGATION_LOG.md — where this design step was recorded]
 ```

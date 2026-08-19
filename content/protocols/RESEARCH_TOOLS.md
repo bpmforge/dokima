@@ -6,7 +6,7 @@ mode: "all"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/shared/RESEARCH_TOOLS.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -120,6 +120,8 @@ After completing research, store key findings via the memory MCP registered in t
 
 ## Source files
 
-- playwright-search implementation: `/Users/bmatthews/Code/quarry/src/mcp.ts`
-- playwright-search pipeline: `/Users/bmatthews/Code/quarry/src/pipeline.ts`
-- playwright-search setup: `/Users/bmatthews/Code/quarry/MCP.md`
+Paths are relative to the `quarry` checkout, wherever you cloned it.
+
+- playwright-search implementation: `quarry/src/mcp.ts`
+- playwright-search pipeline: `quarry/src/pipeline.ts`
+- playwright-search setup: `quarry/MCP.md`

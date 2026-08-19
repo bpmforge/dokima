@@ -6,7 +6,7 @@ mode: "all"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/shared/BROWSER_TESTING.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -121,6 +121,17 @@ browser_evaluate("window.__errors || []")
 | Live session inspection | ❌ | ✅ |
 
 Use `playwright-mcp` for all automated testing and CI-compatible verification. Use `claude-in-chrome` when you need to inspect or interact with your already-open browser session interactively.
+
+**Logged-in / real-browser work is not extension-exclusive:** playwright-mcp also offers a
+persistent profile (its default), `--storage-state`, `--cdp-endpoint` attach, and an official
+`--extension` mode into a running Chrome/Edge. The tier-by-tier decision guide (including when a
+custom extension would ever be justified) is `references/real-browser-bridge.md`.
+
+**Tool-name drift warning:** the signatures in this doc track an older @playwright/mcp surface.
+Current versions use `browser_take_screenshot` (not `browser_screenshot`), `browser_fill_form`
+(not `browser_fill`), and snapshot-ref-based clicks. On tool-not-found, list the live server's
+tools and adapt — never retry a stale name. `references/visual-design-loop.md` carries a
+version-verified table.
 
 ---
 

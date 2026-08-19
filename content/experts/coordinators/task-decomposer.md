@@ -5,7 +5,7 @@ mode: "primary"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/task-decomposer.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -169,6 +169,7 @@ racy — fix it, don't write it.
 
 - Every node must complete inside ONE bounded session of the executor tier: instructions + inputs + output ≤ 60% of the tier's context (tier=small: inputs ≤3 files, output ≤300 lines).
 - One node = one artifact. A node producing two files is two nodes.
+- **Route around near-cap files.** A node's ≤300-line output budget bounds the *diff*, not the *file* — which is exactly how monoliths accrete: seven compliant nodes each appending 200 lines to `src/orchestrator.ts` produce a 1,400-line file no node ever violated a rule to create. Before assigning a node's output path, `wc -l` it. If `current + the node's output budget` would exceed 400, the node's `output` is a **new chapter module** in that file's directory (plus an index/barrel re-export), never an append to the existing file. Say so in the task sentence so the executor doesn't "helpfully" append anyway. See `agents/shared/CODE_BOOK_PROTOCOL.md`.
 - `tier_needed` is honest triage: trivial/mechanical → small; standard single-file work → small/medium; cross-file synthesis, security judgment, novel design → large. Don't flatter the small model.
 - Nodes that merge 4+ artifacts get decomposed into pairwise merges when `executor_tier=small`.
 - Verification is a node, not a hope: every artifact-producing node gets a sibling verify node (validator script if one exists, challenger/reviewer otherwise) unless the orchestrator's gates already cover it.
@@ -199,11 +200,20 @@ racy — fix it, don't write it.
 ## Known issues / deferred
 - [nodes marked after_replan and what discovery could change them]
 
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
 ## Memory written
 - memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
 ## Model tier: [small|medium|large] — [estimated context used: low|medium|high]
 
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: sdlc-lead (or the user's runner) — execute nodes in topological order
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 ```
 
 ## Pre-Completion Gate

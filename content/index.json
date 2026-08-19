@@ -3,11 +3,11 @@
   "importDate": "2026-07-12",
   "sourceRepo": "attest",
   "sourceRepoAlias": "bpm-opencode-experts",
-  "upstreamVersion": "3.1.24",
+  "upstreamVersion": "3.5.4",
   "summary": {
-    "experts": 93,
+    "experts": 95,
     "validators": 85,
-    "protocols": 35
+    "protocols": 36
   },
   "experts": {
     "coordinators": {
@@ -310,7 +310,7 @@
     },
     "other": {
       "role": "Cross-cutting and specialized agents",
-      "count": 29,
+      "count": 31,
       "items": {
         "a11y-compliance": {
           "file": "a11y-compliance.md",
@@ -352,6 +352,10 @@
           "file": "db-architect.md",
           "description": "description: 'Senior database architect — schema design, migrations, query optimization, indexing st"
         },
+        "design-iterator": {
+          "file": "design-iterator.md",
+          "description": "name: 'Design Iterator'"
+        },
         "design-system-lead": {
           "file": "design-system-lead.md",
           "description": "name: 'Design System Lead'"
@@ -367,6 +371,10 @@
         "frontend-design": {
           "file": "frontend-design.md",
           "description": "description: 'Senior frontend design engineer — production-grade visual implementation. Typography, "
+        },
+        "gauntlet-lead": {
+          "file": "gauntlet-lead.md",
+          "description": "name: 'Gauntlet Lead'"
         },
         "git-expert": {
           "file": "git-expert.md",
@@ -779,7 +787,7 @@
   },
   "protocols": {
     "overview": "Shared protocol specifications and agent coordination patterns",
-    "count": 35,
+    "count": 36,
     "items": {
       "ANTI_SLOP_RULES": {
         "file": "ANTI_SLOP_RULES.md",
@@ -848,6 +856,10 @@
       "GATE_SCORING_PROTOCOL": {
         "file": "GATE_SCORING_PROTOCOL.md",
         "description": "name: gate-scoring-protocol"
+      },
+      "GAUNTLET_LOOP": {
+        "file": "GAUNTLET_LOOP.md",
+        "description": "description: 'Reference document — read on demand, not an agent.'"
       },
       "GUIDE_CAPTURE": {
         "file": "GUIDE_CAPTURE.md",

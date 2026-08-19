@@ -1,6 +1,6 @@
 #!/bin/bash
 # Provenance: attest (formerly bpm-opencode-experts)
-# Upstream version: 3.1.24
+# Upstream version: 3.5.4
 # Source path: scripts/validators/run-handoff-gates.sh
 # Import date: 2026-07-12
 # DO NOT EDIT — this is imported content
@@ -17,12 +17,17 @@
 #                 disk (T27.2 v2: files exist, verify cites a real artifact,
 #                 maker != verifier)
 #   3. Coverage — domain-specific validator (optional)
-#   4. Tracker  — tracker-worthy work changed a tracker file (T27.2; per-step
-#                 mode against HEAD -- the working tree at resume time is
-#                 exactly the diff validate-tracker-fresh.sh needs, unlike
-#                 the phase-gate's static content checks where a --base ref
-#                 comparison wouldn't have anything meaningful to diff against)
-#   5. Runtime  — build + lint (optional, --runtime flag; coding-agent HANDOFFs)
+#   4. Tracker  — tracker-worthy work changed a tracker file (T27.2). Compared
+#                 against the branch point (--since), NOT the working tree.
+#                 Per-step-against-HEAD was the original design and it was
+#                 wrong: in an SDLC run the tree holds other steps' uncommitted
+#                 deliverables while this step's tracker is already committed,
+#                 so the gate fails on a tracker that WAS updated. See the
+#                 comment at the gate itself.
+#   5. Runtime  — build + lint + file size (optional, --runtime flag;
+#                 coding-agent HANDOFFs). File size is checked per-HANDOFF
+#                 rather than only at the phase-4 gate because monoliths
+#                 accrete across tickets — see the comment at the gate.
 #
 # Usage:
 #   run-handoff-gates.sh \
@@ -192,13 +197,40 @@ else
 fi
 
 # ── Gate 4: tracker (T27.2) ─────────────────────────────────────────────────
-# Per-step mode (no --base): compares the working tree against HEAD, which at
-# resume time IS the uncommitted footprint of the HANDOFF that just returned.
+# Per-step mode was WRONG here and blocked real work for a day. It compares the
+# working tree against HEAD on the assumption that the tree is the returning
+# HANDOFF's own uncommitted footprint. In an SDLC run it is not: handoffs share
+# docs/work/ and docs/reviews/, deliverables from earlier steps sit uncommitted,
+# and a git-expert checkpoint commits the tracker. The tracker then vanishes
+# from `git diff HEAD` while 100+ unrelated dirty files remain, so the gate
+# reports "no tracker updated" about a tracker that was updated and committed
+# minutes earlier -- with nothing this step can edit to clear it. handoff-done.sh
+# requiring a step to COMMIT what it owns is precisely what triggers it.
+#
+# Scoping to --scope does not help: the shared directories ARE the scope.
+# So compare against the branch point instead, where the committed trackers
+# actually are. The per-step question ("did THIS step record itself?") is
+# already answered, correctly scoped, by the manifest gate above --
+# validate-completion-manifest.sh enforces the mandatory `Tracker updated:`
+# line. This gate's distinct job is the physical one: a tracker file really
+# changed somewhere in this run, not merely that a manifest claimed it.
+TRACKER_SINCE=""
+for _cand in main master; do
+  if git -C "$ROOT" rev-parse --verify --quiet "$_cand" >/dev/null 2>&1; then
+    _mb=$(git -C "$ROOT" merge-base HEAD "$_cand" 2>/dev/null || true)
+    if [[ -n "$_mb" && "$_mb" != "$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)" ]]; then
+      TRACKER_SINCE="$_mb"; break
+    fi
+  fi
+done
+_tracker_args=("$ROOT")
+[[ -n "$TRACKER_SINCE" ]] && _tracker_args+=(--since "$TRACKER_SINCE")
+
 printf '\n%s== GATE: TRACKER ==%s\n' "$_BOLD" "$_RESET" >&2
-if bash "$VALIDATORS_DIR/validate-tracker-fresh.sh" "$ROOT" > /dev/null 2>&1; then
+if bash "$VALIDATORS_DIR/validate-tracker-fresh.sh" "${_tracker_args[@]}" > /dev/null 2>&1; then
   pass "tracker gate clean"
 else
-  bash "$VALIDATORS_DIR/validate-tracker-fresh.sh" "$ROOT" 2>&1 | tail -20 >&2 || true
+  bash "$VALIDATORS_DIR/validate-tracker-fresh.sh" "${_tracker_args[@]}" 2>&1 | tail -20 >&2 || true
   gate_fail "tracker" "work changed but no tracker file updated" \
     "record this step in SDLC_TRACKER.md / PROGRESS.md / DELEGATION_LOG.md / CHANGELOG.md"
 fi
@@ -206,17 +238,32 @@ fi
 # ── Gate 5: runtime (only when --runtime passed — coding-agent handoffs) ───
 if [[ "$RUNTIME" == "true" ]]; then
   printf '\n%s== GATE: RUNTIME (build + lint) ==%s\n' "$_BOLD" "$_RESET" >&2
-  for rv in "validate-build.sh" "validate-lint.sh"; do
+  # validate-file-size.sh runs HERE, per returning HANDOFF -- not only at the
+  # end-of-phase-4 gate. Monoliths accrete: task-decomposer caps each node's
+  # output at ~300 lines, so no single ticket writes a 2,000-line file, but
+  # seven tickets each appending 200 lines to the same file do -- and every one
+  # of them passes an end-of-phase gate that runs long after the growth is
+  # cheap to undo. Checking per-HANDOFF fails the FIRST ticket that pushes a
+  # file over the cap, while the split is still a one-file operation.
+  for rv in "validate-build.sh" "validate-lint.sh" "validate-file-size.sh"; do
     rv_script="$VALIDATORS_DIR/$rv"
     if [[ ! -f "$rv_script" ]]; then
       gap "runtime" "$rv not found in $VALIDATORS_DIR"
       validator_exit
     fi
-    if bash "$rv_script" "$ROOT" > /dev/null 2>&1; then
+    # file-size is scoped to what this run touched (branch point computed for
+    # Gate 4 above). Whole-tree here would fail a returning ticket for
+    # pre-existing oversized files it never opened -- unclearable, and it would
+    # take every gate after it down as unrun. Gate the step on what it owns.
+    rv_args=("$ROOT")
+    if [[ "$rv" == "validate-file-size.sh" && -n "$TRACKER_SINCE" ]]; then
+      rv_args+=(--changed-since "$TRACKER_SINCE")
+    fi
+    if bash "$rv_script" "${rv_args[@]}" > /dev/null 2>&1; then
       pass "runtime gate clean ($rv)"
     else
-      bash "$rv_script" "$ROOT" 2>&1 | tail -20 >&2 || true
-      gap "runtime" "$rv failed — code must build and lint-clean before HANDOFF is accepted"
+      bash "$rv_script" "${rv_args[@]}" 2>&1 | tail -20 >&2 || true
+      gap "runtime" "$rv failed — code must build, lint-clean, and stay under the file-size cap before HANDOFF is accepted"
       validator_exit
     fi
   done

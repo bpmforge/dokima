@@ -5,7 +5,7 @@ mode: "primary"
 
 <!--
   Provenance: attest (formerly bpm-opencode-experts)
-  Upstream version: 3.1.24
+  Upstream version: 3.5.4
   Source path: agents/ui-verifier.md
   Import date: 2026-07-12
   DO NOT EDIT — this is imported content
@@ -308,7 +308,16 @@ Then output the Completion Manifest:
 - [any mode/scope decisions]
 ## Known issues / deferred
 - [any BLOCKED flows or incomplete coverage]
+## Verify result
+- PASS — <what you checked> — evidence: `<path/to/artifact that exists>`
+  (a bare "tests pass" is not checkable, and a shell command is not an artifact)
+
 ## Memory written
 - memory_store: [type] — "[durable decision/error/verified-fact + citation]"  (or "None — nothing durable")
+Maker: <this agent>
+Verifier: <who independently checked — never the same identity as Maker>
+
 ## Ready for: [SDLC lead resume | user review]
+
+<your completion phrase — must contain `done --` and be the LAST line of the manifest file>
 ```

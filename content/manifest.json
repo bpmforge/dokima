@@ -4,19 +4,19 @@
   "files": [
     {
       "path": "_lib_sdlc_config.sh",
-      "hash": "sha256:e8a417423d6d84771c88065cfd347feb7dc5542ed6ad65dcee8f38762fa90a95"
+      "hash": "sha256:3fdd9ffd18925cac5530f20ab96b5a13ce9b8d6d981c2fc039ef66f59d51a7ad"
     },
     {
       "path": "_lib.sh",
-      "hash": "sha256:e8b1e1d76f117d0125a0172a0b1c6807c35a4e1dc2569f577398269a1b3fb9e8"
+      "hash": "sha256:4363c206556c212473a2f9317a22aea569bba022c51587850e8551336557c13f"
     },
     {
       "path": "run-coverage-loop.sh",
-      "hash": "sha256:ec48b550a300da7da3f9467d45901aa8098107afb5e538df53fdb4ac9a6af5b5"
+      "hash": "sha256:e6133e65e24ee44aec835a81baffb9ed838b24632c157e34cc0a9ee8d04e3b71"
     },
     {
       "path": "run-handoff-gates.sh",
-      "hash": "sha256:aa5fd91ca280adb54d580b4fc35b61d6fc89416bcc0d1665b0525afcb7fab0de"
+      "hash": "sha256:090679b36853bd19d40db1a11beb4ad46b25fd3d3cb0069d8be464ebb7eef3f6"
     },
     {
       "path": "secrets-scan.sh",
@@ -24,159 +24,159 @@
     },
     {
       "path": "validate-adrs.sh",
-      "hash": "sha256:145bd694c79a6788dfaa3d05ca12150f99a73814fe3604dfbdcd9a5f2f956b5c"
+      "hash": "sha256:143a6ff475747157183cca74c42bea5083b40c46d0dd8678c417814c4891d05a"
     },
     {
       "path": "validate-api-consistency.sh",
-      "hash": "sha256:ad9b84d556486ac2526d5e9cfdc0e4afdfb95abcc3a83f24597b98c3308d2331"
+      "hash": "sha256:bc96b27945167704fdf02bb2afc5b94588c9bf85b60ff65e401f67a5559de90d"
     },
     {
       "path": "validate-api-coverage.sh",
-      "hash": "sha256:a5c882a5d0c875d3649ed3eaced7475c83b3fcc48ec82ebea4630a6295f53b94"
+      "hash": "sha256:344789f20dea923be5a185f36b76e4c930be9172decaf14e3dc230d07bbda253"
     },
     {
       "path": "validate-architecture.sh",
-      "hash": "sha256:75bba7aa23404667aa87945f942cffe4a69932b536c3ce77a02f8ed0a441efbe"
+      "hash": "sha256:aaa400f9126eddf5f0b474440e07db99d25e073813695a6ca7b0106ae937919b"
     },
     {
       "path": "validate-autonomy-ledger.sh",
-      "hash": "sha256:110d848e288c89ffd67a740a2a55c31614f2a21094cdaa1f821bff2ba0ede772"
+      "hash": "sha256:d579091283995ac26a7b9fe72b575b56ce2b94104b076e1ee99c3636cbe4b327"
     },
     {
       "path": "validate-autonomy-wiring.sh",
-      "hash": "sha256:e0b8eb78d4672e6bad6a70039c12ba46898e30d83cadd6771705e4ae5be3f564"
+      "hash": "sha256:ade62dee5180cec64e6d3a6bcdc36a4b5acf4e2221c50228058a94cc916142f2"
     },
     {
       "path": "validate-book-structure.sh",
-      "hash": "sha256:fe9fd8cfac6b5a893af434d012996d816b6532d4e3eafeb7319ae9f6a767b6ef"
+      "hash": "sha256:fa925c9075c93d92ce38220c87e6c2c3f93b4457502b27f6f7c0f4c5eddb5a82"
     },
     {
       "path": "validate-build.sh",
-      "hash": "sha256:2d5367fe6bc15de7d5063f1215c64061d6b6a6e81403a077e1baa6e95d3fc6c1"
+      "hash": "sha256:9806c269b092e70d0d2fc0e16d55e8be9438f15cde3b906cc82d30e8ad655552"
     },
     {
       "path": "validate-c3-coverage.sh",
-      "hash": "sha256:62ff8a6a7ace7456c56235f8006c1b4ba9170a22ccff05096f179ac0cad5177d"
+      "hash": "sha256:4c391bcc19651e0659c53c841688e5a31f11f0ba8cd3f7c703fd1204c08f77d9"
     },
     {
       "path": "validate-challenger-gate.sh",
-      "hash": "sha256:e1d5eb9c85f418672b93318d66c6acd1039e04212056d28e160ec0f1e49862e0"
+      "hash": "sha256:6d511daeea80a50e9ebc4620487549b7a8ae8d01a75ea61818ca4d4cb82dea31"
     },
     {
       "path": "validate-circular-deps.sh",
-      "hash": "sha256:5b47b5e0698b80bb7e6bed6b49f38d37796f6e12d341bb5bb7e32528a128934a"
+      "hash": "sha256:4c7a82eb318ce3b1083f6171d8bf36c8c2baaa9fe81665f2637e07f80232e599"
     },
     {
       "path": "validate-close-receipt.sh",
-      "hash": "sha256:efce685825021011d3f47ddb086f86f43fab41a25998a58727eb4796f9c171a6"
+      "hash": "sha256:26d7dbd44da71568c96f1a8ab5a9284a7068cd34084ab29255083d3f7f6d44a6"
     },
     {
       "path": "validate-code-health.sh",
-      "hash": "sha256:6ba49dcea8f9e457bea04d5cce67387489877442b298721246141d345853f418"
+      "hash": "sha256:8739c2f7673f0c9caed27fe71c7f8f4fa168c56a43fb9e0840ba9a73049a3036"
     },
     {
       "path": "validate-completion-manifest.sh",
-      "hash": "sha256:1626b49d05df99f4811af0cb69f56810972d371f0a98d994fbb933d7e9467395"
+      "hash": "sha256:7a7062e137f2658811fb9fbc5ba5567c853d5d54c4656f01fd4dfc6c67ec5096"
     },
     {
       "path": "validate-contract-conformance.sh",
-      "hash": "sha256:7064c90fb62a11c744f51a30c3bdac1ec30cc6e02634f26a01ed43711fab1a4d"
+      "hash": "sha256:1dbfc958ec4eccc1afd574625c3fc1e43ef1b6c47e197194a6882d0aa2f2791a"
     },
     {
       "path": "validate-data-governance.sh",
-      "hash": "sha256:1f210ec3ecb95ce4a6e14f9d7c82530843e6c08391f29ab865226a76eeaddc97"
+      "hash": "sha256:b07934207490cf99e0d4a5e728250bbc643991f990ea32f3f80f0832e9c9c767"
     },
     {
       "path": "validate-dead-code.sh",
-      "hash": "sha256:6e58139d5e76227e5a55e7955db265696870740d8935f81de2f92055d401e480"
+      "hash": "sha256:7ca453aa8c8dddad02a05bad4c79614dc97b62dbd34b885b5657c5048939ae79"
     },
     {
       "path": "validate-deps.sh",
-      "hash": "sha256:2a643e08325883509ccd5c08d9697f07cb51a4b19f4df1c579c26c7380cc00a1"
+      "hash": "sha256:07180e75d947f2f45ccb62e3a19aa9d0f86c358161dede720d210159ba9e2ae7"
     },
     {
       "path": "validate-design-system.sh",
-      "hash": "sha256:2d240bab989fc8969b506b497a393d265592fee7927bef2f76c1db031f8ac437"
+      "hash": "sha256:8614397be7614ffea2c190c1624b5cbb33dff705f51259f53fad67c75e3d22d7"
     },
     {
       "path": "validate-design-tokens.sh",
-      "hash": "sha256:c12a381951aa47984cf6ea6b38f981f9214a36e2a41d332a53a9a1fda5e2d82c"
+      "hash": "sha256:ad772a9cae0a1ab92c3cc34c700afe1e78e72add4a16c7b4d63aaa5c75385dac"
     },
     {
       "path": "validate-doc-catalog.sh",
-      "hash": "sha256:0f561f283778944067440f2dd7d33f574c620bf68ab2bab3354afb4be5cc399f"
+      "hash": "sha256:6007bdea32f4f00cd926714890a818a9e094812c00d39f39777f88ddbbf3283e"
     },
     {
       "path": "validate-doc-counts.sh",
-      "hash": "sha256:9cd3e75e8260896684accc6d5322303a4379fc909daf3e686ae30240ccd90006"
+      "hash": "sha256:9e983ceba934a31a7d202da2336a911976f281fb448863993a48ac10f43e1414"
     },
     {
       "path": "validate-doc-render-health.sh",
-      "hash": "sha256:d5ebb7f7897adf0f086c54b9372d998e5718d55b4ff33e12d3948b85c71f8b7b"
+      "hash": "sha256:9891f882d1e191dcdf2bde986d57b8ca6c8c6114c7f54f05264162dd0c1a8a11"
     },
     {
       "path": "validate-e2e-setup.sh",
-      "hash": "sha256:2766c416fd9f88937caf6d82ba4ae62912de73fe641e8c42ae40872754fb66ae"
+      "hash": "sha256:e7dcd6d9290aa15e2e661f92ead3a22b3bfd8e4f7a1ad3ae23df4d60052704db"
     },
     {
       "path": "validate-entry-points.sh",
-      "hash": "sha256:55e9b8b11aa6d89f9d89f1cde2d62c429f3cd001df1e18ec500d2306da66a65d"
+      "hash": "sha256:2f05fb34f2ec5ce7010d5ca8cf340bc3b2ee344bf9b51504ed31948ae142b097"
     },
     {
       "path": "validate-erd-coverage.sh",
-      "hash": "sha256:56ece3d90bb82e4b7aebe3a11c012f0a8ffdc57a9cb842d704c00472311680b9"
+      "hash": "sha256:86f57df03dd76694a5b00bd9bd323991951a4dc5633047c33b8b14629430e258"
     },
     {
       "path": "validate-feature-coverage.sh",
-      "hash": "sha256:8a2aadd85fd97a8665c6e6e2ccd6ec522e93013679767cae75d3e6ff56aab73e"
+      "hash": "sha256:f5d0c7e18b4818c93ee751ea6c41c9cd3d4c56a1232daac4c9cf5d0fc94d3638"
     },
     {
       "path": "validate-file-size.sh",
-      "hash": "sha256:34d1c3a3ae0435fb51adb04f2e93dfba65740b5a9cea053559a3768d37d7bcfe"
+      "hash": "sha256:e7f56c13f813e7be3b086799a159bc6bcecdf1c6c1552f08dc4b39d4f6e8a916"
     },
     {
       "path": "validate-fix-backlog-closed.sh",
-      "hash": "sha256:3c9d50684323e692b70a3c9f1fa86fa89b79a25f9c0628aa870c25a8e8d15ef8"
+      "hash": "sha256:531b69b7523557a7814319e929d00431221655ba75896b663f777b43747245a4"
     },
     {
       "path": "validate-flows.sh",
-      "hash": "sha256:180b840d3dac9d4ff75235bb0c9df18472e0e4f8507fb12fc50d0d98cb387b60"
+      "hash": "sha256:46c097779bb4cb007febe7c5d4cd59b11d25762b31a9624a9499a3fdc319a9db"
     },
     {
       "path": "validate-handoff-discipline.sh",
-      "hash": "sha256:b75eca0b58db71cce65098726b87ceec4680784589a496062b203bb6e332bbf6"
+      "hash": "sha256:d2f5e015f3834b59257468b9bc8b4fa82f8acc205f38c1f1c199406549de1195"
     },
     {
       "path": "validate-iac.sh",
-      "hash": "sha256:b2db9f8bcce148b921c908924bdfe11b2442c7fc0540bd503795e229a72ec741"
+      "hash": "sha256:6489de7e51c1fa9ec5f965ced0ffa0fb722722898c31d3d4da8341702e71ac5e"
     },
     {
       "path": "validate-improve-coverage.sh",
-      "hash": "sha256:56bbddd4030fcfda9754c2eff4ffe44a10328a61792ef2f00d0a98282f202bc0"
+      "hash": "sha256:e4328a8ea3fc852fd7e28a0bb1e13a4c64446d226d12781cd5e72adbee70b6ac"
     },
     {
       "path": "validate-infrastructure.sh",
-      "hash": "sha256:f3411f9005ad0219efc27c78cb1146e33f50fc7acd81ec2ed8abbb9d1df372e3"
+      "hash": "sha256:0413323b47bd0c04484fd422bb07ddf15e528836d0d9baabf44e4c84cf95025c"
     },
     {
       "path": "validate-invariants.sh",
-      "hash": "sha256:0b4f63b2bc3cc7b2b345c1082cd04c2906f973847f7398152d2ecb9deb0d58f2"
+      "hash": "sha256:bbcaaf0bd191ecb6f5697f2025eaeaaf42ecf715b73913d479aebbafa9d3d4fb"
     },
     {
       "path": "validate-inventory.sh",
-      "hash": "sha256:a73006d4e5aefec6ed525b27790eb5781efe49c5ef99248c68dd49f75d98cbeb"
+      "hash": "sha256:06acbf98d80852ffc2de72efa0db27c2ce307822e4f2d531f5e108e889d2563d"
     },
     {
       "path": "validate-jira-hygiene.sh",
-      "hash": "sha256:102b0c94d7e3ebf07f0c544cd76d2f7b83d60460686010f3bbd341876eaf4e2b"
+      "hash": "sha256:fce8129bc3a235edde514b3b53ccba934df497bb5696fb6ef1ef95cb5f913a95"
     },
     {
       "path": "validate-lint.sh",
-      "hash": "sha256:85a132016f96c9edb2f853fff336e3ba817e80efbf91edf798b1bd909f2b129c"
+      "hash": "sha256:d3f10e4cf55ef947db7d3de2fa7050e0dffffbd29a23a7631652d81581463c87"
     },
     {
       "path": "validate-loop-readiness.sh",
-      "hash": "sha256:06ab6aec177cc4215726d0dc6d4255f3164ec9a25f62f672c1522e14975fad05"
+      "hash": "sha256:1d158632202ea25f51e4bced5e614d6e1407c61df5cc612da527558a0d4008c6"
     },
     {
       "path": "validate-mermaid.sh",
@@ -184,55 +184,55 @@
     },
     {
       "path": "validate-migrations.sh",
-      "hash": "sha256:069cda5cae41634b08a7e6cd605780e4ad389994d24880410101489643ceab88"
+      "hash": "sha256:54728b95ff48cfdeac81ceb8de61cff49146be2768b123c872e0c5a08584b268"
     },
     {
       "path": "validate-model-pins.sh",
-      "hash": "sha256:3b13f135cc8fc0ef919d252a30b35e2a0c74304ed81dfe64cc7a04f1303a9c9e"
+      "hash": "sha256:445b2bc9a058d4e933cace10ea865acabee508c93ca4991753dba5d92150e18d"
     },
     {
       "path": "validate-module-boundaries-transitive.sh",
-      "hash": "sha256:2b5e6935ec5d3db59b6dd2b553869c41c1b1fc11cf3e622014637f7634aebc2a"
+      "hash": "sha256:4f34859fdf10db6b8ae540ff89a5a077ee9bcc60945bb0dbacabf41836e7ea35"
     },
     {
       "path": "validate-module-boundaries.sh",
-      "hash": "sha256:d1cfafc000c5562f7e5cb65dae37ee05e5f9e0617f9876e4c34da1fc5664dd57"
+      "hash": "sha256:d92af51af0124029dac3467c149831c453196be1095123dda11694c05d1a8022"
     },
     {
       "path": "validate-module-design.sh",
-      "hash": "sha256:40623a99435b93038cf3ec50ce900e9826957c9446df69a05e6b542c5afc5ceb"
+      "hash": "sha256:f8e459272fe2eb563eb96c7f9733ec79002273ec464736fc0f7e6a7c9b0b3420"
     },
     {
       "path": "validate-no-ascii-art.sh",
-      "hash": "sha256:6f539f31a3e91a5fd4c440009d83fd8ac53df746fe3df2281485233ad24c4f66"
+      "hash": "sha256:e295c0310fbf1452de9ded645039c2d3bc0f215be4cd7a253add11a83f727f47"
     },
     {
       "path": "validate-no-reinvent.sh",
-      "hash": "sha256:a546d832ce24426b87f4952b9740fe39291fddebe77b994639892c296b244dbc"
+      "hash": "sha256:dad6e91eb484256365ed5261bf31815015d051af4bc1c4d4c853074341a7201f"
     },
     {
       "path": "validate-observability.sh",
-      "hash": "sha256:43b200af3d986cde854f44ae9c2b8a17bdd63a6087f4356cad4a788624998ce8"
+      "hash": "sha256:f23d8a83e06a627f38e9e14fa0b467861a340b7929214955f9d9745497d4139e"
     },
     {
       "path": "validate-owasp.sh",
-      "hash": "sha256:3d88c179aa743badced0bb798837ea796a422a4d7be95d60af5920cbccbb6468"
+      "hash": "sha256:3e5f68c42c661ba09ec0029658d1e09e4afe443a6c1c216b0d80bf99d82f0dd5"
     },
     {
       "path": "validate-persistence-block.sh",
-      "hash": "sha256:444a074fb9be953e3fff8a8f1c4b9e9cff51d27165ca13808bf4dc4da4209d62"
+      "hash": "sha256:d8b25029376f008939aed671aa724c79a851862dd0d21114ad1e487dec897c93"
     },
     {
       "path": "validate-phase-gate.sh",
-      "hash": "sha256:b0c9cfcbcefbb8a1016131aec5bc4c58450e35f572f3f00e71b9cf4b463e20f0"
+      "hash": "sha256:d70c022535e629b9333c56f3e27177d3574f78ae7be32f529bd0592032456b80"
     },
     {
       "path": "validate-qa-evidence.sh",
-      "hash": "sha256:e9cf7e8df905e38e419657229787564b19ce346c369e466fc4425bdb4166c663"
+      "hash": "sha256:c450c1fca127f3fb5845d1487d926ac09f7006082cc7277ca05daab96b53b78c"
     },
     {
       "path": "validate-release-readiness.sh",
-      "hash": "sha256:be8384997337361d07c6d45e23884369f30dcb7a3df90738f497adb764fb1d20"
+      "hash": "sha256:5771bd60533d268a29987b05cc582de71d091d0dbf1a5da05bf2eeb282aecd6a"
     },
     {
       "path": "validate-remote-parity.sh",
@@ -240,91 +240,91 @@
     },
     {
       "path": "validate-requirement-closure.sh",
-      "hash": "sha256:d2078489f170db73b59ccfbeb5d4aac0fc358ab42eb143445b39f3cbeea0328d"
+      "hash": "sha256:8fe447b5a0553c8202e10705fc9c6a4d4e68a4d1634246e733c18a32a1a7f792"
     },
     {
       "path": "validate-requirements-matrix.sh",
-      "hash": "sha256:f4b48e7e4142360a173e880dc22872a8f9de4085dbefaea509ad1bd661248f8d"
+      "hash": "sha256:2cc72a574fa13f5efd760b74f24958a89cb6a9efe8fdfb8033158271bd059955"
     },
     {
       "path": "validate-resilience-patterns.sh",
-      "hash": "sha256:b6e501b103376d351c11187b0d7bde9e8301d121ca4f046561737e31f7874fbe"
+      "hash": "sha256:25fb808291e3c6f06462a8db90f781b28bdc5b1e53a5176c183e9a9bfc7b4c51"
     },
     {
       "path": "validate-scope.sh",
-      "hash": "sha256:15f8e5bb91ea15c9409207018dd4d5e0f065c9d8b86025cbabc8f3a6d7063738"
+      "hash": "sha256:fa40ea6e08b9b7aaf4b433ffb82b98296d669f9c7f8e38d7cf7533c9a9381dcc"
     },
     {
       "path": "validate-security-controls.sh",
-      "hash": "sha256:349783f06a79a1b412710bd3f4989c447aeb75d80a3a63fc51fc70ffa46d9b94"
+      "hash": "sha256:281c6a7cc53fe5fb465ff2f73383f426c1dd0944efa762de57fb715d51a903e9"
     },
     {
       "path": "validate-sequence-coverage.sh",
-      "hash": "sha256:e051be83001776a0f0ae69aca9491be0ccdd1064ace97e72324778dd39474653"
+      "hash": "sha256:6e6e9db2f837c72ea2bdfa0e507e863d898329fc783c18311a04e8da3bb7143d"
     },
     {
       "path": "validate-smoke.sh",
-      "hash": "sha256:13250ed8eb064ed968b835bfaedc4703bf234ca05c9638631a2f8335c738d215"
+      "hash": "sha256:828801b128dc578ae5c5b26118ac0a856e265f82b43712efbe6f3f0aa90733bc"
     },
     {
       "path": "validate-spec-traceability.sh",
-      "hash": "sha256:c611c29df011633f0845ab2f1b215b651b580e66dfb7df58ad98c58c05b9f1e6"
+      "hash": "sha256:4ba2c5301f7f7ab361ae04bd6010bf5155ac529b02c78eb81a97afd121434243"
     },
     {
       "path": "validate-state-drift.sh",
-      "hash": "sha256:77ebaf5afb994730333415b0ad1f03cff28e18fe932b6be631b54356c113ef63"
+      "hash": "sha256:80625331fa6e000f899e1974e033f835a80d72b79a0903ec629a70615954643d"
     },
     {
       "path": "validate-status-freshness.sh",
-      "hash": "sha256:3047b15a097b1c92cc25358a8c20bb3e4d64c9f9dc978aacd31785fda06b15bd"
+      "hash": "sha256:a16a00a0a06ce962cf254922f9f280724f59d2a712406eb6c567be64677bc696"
     },
     {
       "path": "validate-tech-stack.sh",
-      "hash": "sha256:03ed638aeedaf3bbee99f7263eecdf58e0d90b8111338da0e220f4f0ba9b9c7c"
+      "hash": "sha256:7d7c7958abb3f790cd28d10b8d32e6d8c6b9fec3ef75a9eec30facf45662b67e"
     },
     {
       "path": "validate-test-design.sh",
-      "hash": "sha256:33a771b9334961350b4ec1c89000819c50a9cfc2a0df499be50d483858b15ba6"
+      "hash": "sha256:5c5005fdcf94bfcdd956f9285936f88e1441edae6abe5cc4c83aa28b07e7bff2"
     },
     {
       "path": "validate-tests-mapping.sh",
-      "hash": "sha256:0bafa1833a85c3172554e62311d81e076fcb722cc0762cf9286a07dc81f90098"
+      "hash": "sha256:f959f9ec5894f8380d420c9e22da2aed72f928f7c42a266bff77d55d87f68c0a"
     },
     {
       "path": "validate-tests.sh",
-      "hash": "sha256:4b20ff592fb6b01e0167fee166045bc4cdc87b0a50d27b20d3f00cc3324558f2"
+      "hash": "sha256:b6e52ef14122ae6ae8efd69fde02b672d4b56d36bcf2d6f91bf13f94abec1dab"
     },
     {
       "path": "validate-ticket-hygiene.sh",
-      "hash": "sha256:1c46d44ffbb0c9031ff25fdde0c41553ec1ca25a2d9e5351f3d50e6d0bbe0259"
+      "hash": "sha256:273be5b4d706687e1cc131d3b54139e26af0ed921095f56682ba200b874ce4fc"
     },
     {
       "path": "validate-tickets.sh",
-      "hash": "sha256:6bc6346b9f1649b5eba6508ab1ff5b371c728408f59da09031aa57a12904198d"
+      "hash": "sha256:7d700dc5184f4d146bf99cdcf8cbe58d3b707255d12daf81f8c4e77c09e21e75"
     },
     {
       "path": "validate-tracker-fresh.sh",
-      "hash": "sha256:2fe6e35d5a72bd0f27d3c9d975bf973100b35601978dd8c89bcc16cdbb4af641"
+      "hash": "sha256:b90b5a441209d65697cc4a8db81c46830882cab9450c06f604573a1cd3cda3a9"
     },
     {
       "path": "validate-tracker-integrity.sh",
-      "hash": "sha256:5cdc051960efe7feac41303a553ade630b1a6bd4b3f8196a90751d33f30ac82a"
+      "hash": "sha256:6cec75fa57fcc2173a7e7d897a30f3360b692cfb77f95cb016211819114ffc1f"
     },
     {
       "path": "validate-use-cases.sh",
-      "hash": "sha256:26f100c587b653705fd367accc36aba739d163416b7066f6566d6f1a4cda61ce"
+      "hash": "sha256:aef2c9b83607594389b174e121a09152b5e3002d8665e311f73bdab5b0990e90"
     },
     {
       "path": "validate-user-stories.sh",
-      "hash": "sha256:ff7b9c454da9bb602140981fbf26e187dbb60ff55cdeb65174148ee03c37450b"
+      "hash": "sha256:e7a30850fa44022a8898b31a3931911e19efd92775a24b8bfcfaa1390fa5fa7a"
     },
     {
       "path": "validate-ux-spec.sh",
-      "hash": "sha256:fbd2441e0143464ea4d3977d8a44508dbc71d24e0359bc21b5c7fed2e35b4656"
+      "hash": "sha256:7ce6aa97a1633a27a59022e8430a534db028983f10e8c5e7a709c25dfa3f675a"
     },
     {
       "path": "validate-vendor-provenance.sh",
-      "hash": "sha256:cc0e3e45a9cd57aa27f4ef3539d280ace7e61e5761543b451478e0c816c65721"
+      "hash": "sha256:a57d882a2a9f2c3fff0afa3b1f1c9bca4cf5bc9cfe22285d5dbaba5d36ae894c"
     },
     {
       "path": "validate-verification-integrity.sh",
@@ -332,10 +332,10 @@
     },
     {
       "path": "validate-wcag-coverage.sh",
-      "hash": "sha256:a80e97c267151007025ad939cf271b5f99a8a4c61b934270e00f43868adc5c44"
+      "hash": "sha256:b63836091346a24f6cc45a5196af89cd9292731a6fd3f35fc87e248b41e9616f"
     }
   ],
-  "signature": "7fae1c53c3583e7f6022dccce32380303c626a5741f8328d751f821ae96e2b5754035174fa9ae9ac3d9580ffc9e607bacdee4e8bc73cb8c451a9a883c9538808",
+  "signature": "8da6c4255ad6c1ec101ccda5446f0c16697c20073275eb37aa85b94561115c82322e8cc0936046dd3aabb9e6f93060ae8d614c70a704198cbf1b5047e347fb05",
   "publisher": "dokima",
-  "signedAt": "2026-08-03T18:27:15.563Z"
+  "signedAt": "2026-08-19T01:19:53.732Z"
 }
