@@ -6570,7 +6570,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "write_scope": [
         "docs/design/PLUGIN_SEAM.md",
         "packages/gateway/src/plugins/types.ts",
@@ -6588,7 +6588,8 @@
         "Full gate per CLAUDE.md Law 3 on Node 22, including `pnpm --filter @dokima/web e2e`."
       ],
       "notes": [
-        "Filed 2026-08-17 from D-026. The founder asked twice for Claude Max / ChatGPT Plus sign-in \"like opencode does\"; verifying how opencode actually does it is what produced this design \u2014 core ships an `AuthHook` + `loader` seam and the subscription flows live in separate plugin packages, which is precisely why opencode is structurally fine and a core implementation would not be. Sized 8 and deliberately design-heavy: the trust question is the hard part, and it is the part that cannot be retrofitted once a plugin API is public."
+        "Filed 2026-08-17 from D-026. The founder asked twice for Claude Max / ChatGPT Plus sign-in \"like opencode does\"; verifying how opencode actually does it is what produced this design \u2014 core ships an `AuthHook` + `loader` seam and the subscription flows live in separate plugin packages, which is precisely why opencode is structurally fine and a core implementation would not be. Sized 8 and deliberately design-heavy: the trust question is the hard part, and it is the part that cannot be retrofitted once a plugin API is public.",
+        "Closed 2026-08-19 as the design ticket it was scoped as: PLUGIN_SEAM.md plus the type surface, no loader. Two helpers were written, tested and withheld when validate-exports refused them for having no caller (buried 73->75); their behaviour is specified in the doc and they belong to W12-44."
       ],
       "role": "security-auditor"
     },
@@ -7087,6 +7088,36 @@
       "notes": [
         "Filed by W12-40, whose route comment names this ticket \u2014 an unfiled follow-up referenced from code is a comment that lies.",
         "write_scope is PROVISIONAL \u2014 the storage seam (W12-43 acceptance) decides the real files, and whoever claims this should correct it before starting rather than force the work into a guess made before the decision."
+      ]
+    },
+    {
+      "id": "W12-44",
+      "title": "the plugin loader \u2014 build it only when there is a plugin to load",
+      "phase": 12,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 8,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/gateway/src/plugins/loader.ts",
+        "packages/gateway/src/plugins/loader.test.ts",
+        "packages/gateway/src/plugins/types.ts",
+        "packages/gateway/src/plugins/types.test.ts"
+      ],
+      "depends_on": [
+        "W12-27"
+      ],
+      "stories": [],
+      "acceptance": [
+        "BLOCKED BY DESIGN until a concrete plugin exists to load. W12-27 decided the trust model with zero plugins because that is cheap; the loader is the expensive, hard-to-reverse half (process boundaries, require semantics, a plugin depending on a different version of a package core already loaded) and none of it changes the trust decision.",
+        "Build createPluginContext and authorizeWithPlugin, whose behaviour is specified in docs/design/PLUGIN_SEAM.md \u00a73.1 and \u00a75. They were written and tested during W12-27 and withheld because validate-exports refused two exports with no caller \u2014 construct them from a real call site on the same commit.",
+        "THE CAPABILITY BOUNDARY IS STRUCTURAL, NOT PROMISED: a plugin receives PluginContext scoped to one provider entry, never CredentialStore. A refusal must be identical whether the ref exists or not, and must not consult the store.",
+        "NO FALLBACK TO THE UN-DECORATED FETCH on any plugin failure. An unauthenticated call to a subscription endpoint is the account-suspension risk D-019 gates Copilot for.",
+        "Consent is ledgered in the D-019 shape and default-off. No signature requirement \u2014 PLUGIN_SEAM.md \u00a73.3 records why signing here would be an endorsement of the exact use the vendor prohibits."
+      ],
+      "notes": [
+        "Filed by W12-27, which docs/design/PLUGIN_SEAM.md \u00a77 names. Do not start this without a plugin in hand \u2014 the ticket exists to hold the decision, not to schedule the work."
       ]
     },
     {
