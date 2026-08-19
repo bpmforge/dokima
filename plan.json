@@ -7432,6 +7432,34 @@
       "notes": [
         "Filed 2026-08-19 from live testing of qwen3.8-27b. The immediate cause was an external ten-minute kill, but the exposure is general: nothing in the product recovers a claim whose owner vanished. Worth noting the two mechanisms that would fix it were both already written \u2014 this is a wiring ticket, not a design one."
       ]
+    },
+    {
+      "id": "W13-13",
+      "title": "a provider timeout crashes the whole run \u2014 ProviderTimeoutError is caught nowhere in the loop",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "reliability-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND IN LIVE TESTING 2026-08-19 on `qwen3.8-27b`, a 27B dense model on local hardware. One model call exceeded the 300s provider timeout and `ProviderTimeoutError` propagated out of `runLandLoop` uncaught, killing the run with a stack trace. `grep` confirms it: nothing in packages/loop or packages/harbormaster catches it.",
+        "THE WORK WAS CORRECT AND WAS LOST TO THE OPERATOR. The first four tool calls were read -> edit -> verify -> commit, and the branch holds both functions with `node src/check.mjs` printing OK. The model then wandered for eight more read/list calls and one of them timed out. So a run can produce complete, verified, committed work and end in a stack trace with the ticket stranded in `in_progress` \u2014 the operator sees a crash, not a result.",
+        "A SLOW PROVIDER IS AN EXPECTED CONDITION, NOT AN EXCEPTION. This product guarantees local-only works (D-024 option a, C-1), and local hardware running a 27B model is exactly where a 300s call comes from. A timeout should end the ATTEMPT the way any other failed attempt ends \u2014 evidence, the ladder, a park \u2014 not the process.",
+        "PARK WITH THE TRUTH, and the truth here is specific: \"the model did not respond within Ns\" is a different fact from \"the model produced no manifest\", and a user choosing a smaller model needs to be able to tell them apart. Say which one happened.",
+        "PAIRS WITH W13-12 AND DOES NOT REPLACE IT: this stops the loop crashing, that recovers a claim whose owner vanished anyway. Both are needed \u2014 a laptop lid still strands a ticket even with this fixed.",
+        "RED FIXTURE: a provider that times out ends the attempt with evidence naming the timeout, the ladder continues or parks per policy, and the ticket does NOT remain in in_progress. Fake provider, never a live call (law 9a)."
+      ],
+      "notes": [
+        "Filed 2026-08-19 from the qwen3.8-27b run. Second orphaning cause found in one session \u2014 W13-12 came from an external kill, this one is the product crashing on its own timeout, which is the more common case since it needs no outside interference."
+      ]
     }
   ]
 }
