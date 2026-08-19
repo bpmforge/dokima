@@ -72,3 +72,28 @@ export class ProviderUnreachableError extends Error {
     this.cause = cause;
   }
 }
+
+/**
+ * Is this an endpoint failing, rather than our code being wrong? (W13-13)
+ *
+ * Found in live testing: a 27B model on local hardware exceeded the 300s
+ * request timeout, `ProviderTimeoutError` propagated out of `runLandLoop`
+ * uncaught, and the run died with a stack trace — after the session had
+ * already produced correct, verified, committed work. A slow provider is an
+ * EXPECTED condition for a product that guarantees local-only works (C-1,
+ * D-024 option a); it should end the attempt, not the process.
+ *
+ * An explicit list rather than a name prefix or a shared base class: these
+ * errors have no common ancestor, and matching on `name.startsWith('Provider')`
+ * would silently start swallowing any future class that happens to be named
+ * that way — including one that means we have a bug.
+ */
+export function isProviderError(error: unknown): boolean {
+  return (
+    error instanceof ProviderHttpError ||
+    error instanceof ProviderTimeoutError ||
+    error instanceof ProviderUnreachableError ||
+    error instanceof ProviderResponseShapeError ||
+    error instanceof ProviderUnsupportedRoleError
+  );
+}

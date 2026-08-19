@@ -17,6 +17,7 @@ export {
   ProviderHttpError,
   ProviderRateLimitError,
   ProviderResponseShapeError,
+  isProviderError,
   ProviderTimeoutError,
   ProviderUnreachableError,
 } from './errors.js';

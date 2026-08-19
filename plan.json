@@ -7440,12 +7440,16 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "reliability-engineer",
       "write_scope": [
         "packages/harbormaster/src/loop-land.ts",
         "packages/harbormaster/src/loop-land.test.ts",
-        "packages/harbormaster/src/agent-session/gateway-session.ts"
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/gateway/src/providers/errors.ts",
+        "packages/gateway/src/providers/index.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -7458,7 +7462,8 @@
         "RED FIXTURE: a provider that times out ends the attempt with evidence naming the timeout, the ladder continues or parks per policy, and the ticket does NOT remain in in_progress. Fake provider, never a live call (law 9a)."
       ],
       "notes": [
-        "Filed 2026-08-19 from the qwen3.8-27b run. Second orphaning cause found in one session \u2014 W13-12 came from an external kill, this one is the product crashing on its own timeout, which is the more common case since it needs no outside interference."
+        "Filed 2026-08-19 from the qwen3.8-27b run. Second orphaning cause found in one session \u2014 W13-12 came from an external kill, this one is the product crashing on its own timeout, which is the more common case since it needs no outside interference.",
+        "Closed 2026-08-19. THE PREDICATE IS AN EXPLICIT LIST, NOT A NAME PREFIX OR A CATCH-ALL, and that choice is the ticket: these five provider errors have no common ancestor, so matching on `name.startsWith('Provider')` would silently start swallowing any future class named that way \u2014 including one that means we have a bug \u2014 and a bare catch would turn a crash in the close gate into a quiet 'attempt failed', which is exactly the silence this product exists to refuse. There is a fixture asserting a TypeError still propagates. THE MESSAGE IS DELIBERATELY DISTINCT from 'no completion manifest returned': 'it did not answer in time' and 'it answered without a manifest' point at different fixes \u2014 a longer timeout versus a different model \u2014 and someone choosing a smaller model has to be able to tell them apart. loop-land.ts was sitting EXACTLY on the 400-line cap, so any addition broke it; `attemptOnce` moved out wholesale into loop-land-session.ts rather than shaving comments, which is the honest seam (one attempt, versus the ladder that decides what to do about it). Pairs with W13-12 and does not replace it: this stops the loop crashing, that recovers a claim whose owner vanished anyway \u2014 a closed laptop lid still strands a ticket with this fixed."
       ]
     }
   ]
