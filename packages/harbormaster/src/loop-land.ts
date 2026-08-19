@@ -52,8 +52,12 @@ import {
   startTicket,
   type Ticket,
 } from '@dokima/tickets';
-import type { EventLog } from '@dokima/events';
-import { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
+import { listEvents, type EventLog } from '@dokima/events';
+import {
+  DEFAULT_MAX_SESSIONS_PER_TICKET,
+  findAbandonedTickets,
+  STALE_CLAIM_MS,
+} from './loop-claim.js';
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
@@ -352,6 +356,35 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
     const level = options.breakerLevel ? await options.breakerLevel() : 'ok';
     if (!policyForLevel(level).canClaimNewTicket) {
       return { processed, stopReason: 'budget' };
+    }
+
+    /**
+     * W13-12: reclaim what an owner that is gone left behind, before choosing.
+     *
+     * Two runs in one session of live testing ended with a ticket stuck in
+     * `in_progress` — one killed from outside, one crashed by an uncaught
+     * provider timeout (W13-13) — and the next run then reported "0 landed, 0
+     * parked" in zero seconds, because nothing was claimable and nothing said
+     * why. A closed laptop lid does the same.
+     *
+     * It goes through `releaseTicket`, never a status write, so the log
+     * explains what happened and to whom (Law 4, C-2/C-3).
+     */
+    for (const abandoned of findAbandonedTickets(
+      listTickets(options.log),
+      listEvents(options.log),
+      options.now ? options.now() : new Date().toISOString(),
+    )) {
+      commentTicket(options.log, {
+        ticketId: abandoned.id,
+        actorId: options.actorId,
+        body:
+          `reclaimed: held by ${abandoned.ownerId ?? 'an unknown owner'} with no activity ` +
+          `for over ${Math.round(STALE_CLAIM_MS / 60000)} minutes, so the session that ` +
+          `claimed it is gone (crash, kill, or a closed lid). Returned to ready; any work ` +
+          `it committed is still on its branch.`,
+      });
+      releaseTicket(options.log, { ticketId: abandoned.id, actorId: options.actorId });
     }
 
     const next = pickNextTicket(listTickets(options.log), skip);
