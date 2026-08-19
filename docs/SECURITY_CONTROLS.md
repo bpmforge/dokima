@@ -113,6 +113,16 @@ ticket. IDs are stable — new controls append, never renumber.
 
 ## Governance & audit
 
+- **SC-10 status note (2026-08-19, W13-26): NOT IN FORCE.** The autonomy dial
+  is written and never read. `FirstRunWizard`/Settings let a user choose it and
+  `PUT /projects/{id}/autonomy` persists it, but no run path reads
+  `AutonomyMode`, and `resolvePauseAction` — whose own doc calls it the single
+  enforcement point for this control — has zero production callers, as do
+  `assertLedgerValidForNextClaim` and `assertExecutionAllowed`. CONSTRAINTS C-5
+  ("the dial cannot override a NEVER-AUTO site") holds today only because
+  nothing consults the dial at all. `--breakpoint` is a different, wired
+  control and is not a substitute.
+
 - **SC-10 NEVER-AUTO single enforcement point** (T-4, T-11, T-14). The immutable list
   (destructive ops, main merges/releases/deploys, auth/crypto changes, new stack
   additions, scope-boundary breaks, interviews) is compiled into
