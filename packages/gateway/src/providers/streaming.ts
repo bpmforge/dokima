@@ -20,6 +20,7 @@ import type { RequestQueue } from './request-queue.js';
  */
 export async function* readSseDataLines(
   body: ReadableStream<Uint8Array>,
+  onChunk?: () => void,
 ): AsyncGenerator<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -28,6 +29,10 @@ export async function* readSseDataLines(
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
+      // W13-15: proof of life. A stream that is producing is alive by
+      // definition, so the caller resets its idle bound here rather than
+      // running a clock against the whole request.
+      onChunk?.();
       buffer += decoder.decode(value, { stream: true });
       const records = buffer.split('\n\n');
       buffer = records.pop() ?? '';
@@ -76,4 +81,48 @@ export async function* runQueuedStream<T>(
     signalDone();
     await queued;
   }
+}
+
+
+/**
+ * An abort that fires when a stream goes QUIET, not when it takes a while
+ * (W13-15).
+ *
+ * `AbortSignal.timeout()` bounds total duration, which is the wrong control
+ * for a generation: it kills a model that is healthily producing tokens at
+ * exactly the same moment it kills one that hung, and on local hardware a 27B
+ * model legitimately generates for minutes. The founder put it plainly — as
+ * long as it is streaming, leave it open.
+ *
+ * `bump()` is called for every chunk received; the abort fires only if none
+ * arrives within `idleMs`.
+ */
+export interface IdleAbort {
+  readonly signal: AbortSignal;
+  /** Called per chunk — restarts the idle window. */
+  bump(): void;
+  /** Always call when the stream ends, or the timer keeps the process alive. */
+  done(): void;
+}
+
+export function createIdleAbort(idleMs: number): IdleAbort {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    timer = setTimeout(() => controller.abort(new Error('idle')), idleMs);
+    // Never hold the event loop open for a timer whose only job is to cancel.
+    timer.unref?.();
+  };
+  arm();
+  return {
+    signal: controller.signal,
+    bump() {
+      if (timer) clearTimeout(timer);
+      arm();
+    },
+    done() {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+    },
+  };
 }

@@ -7493,6 +7493,41 @@
         "Filed 2026-08-19. The founder's words: \"we shouldn't have a wall clock that is confusing\" \u2014 raised after I used \"wall clock\" as jargon, which is itself the VOCABULARY.md failure mode.",
         "Closed 2026-08-19. THE ANSWER TO THE QUESTION AS ASKED IS THAT THERE IS NO CLOCK: nothing in Dokima counts a run's total elapsed time and kills it. What exists is seven specific bounds on specific things \u2014 one request, one command, one session's turns, one ticket's attempts \u2014 and the doc leads with that, because 'we shouldn't have a wall clock that is confusing' is answered better by 'there isn't one, here is what there is' than by a table alone. Indexed BY THE MESSAGE A USER ACTUALLY SEES rather than by internal constant name, since the gap was discovery and not wording \u2014 the refusals were already specific. The one genuine inconsistency is now stated where it lives: oai-compat's 300s request timeout against 60s for every hosted kind, annotated in the source with the measurement behind it (a 27B local model exceeding 300s in live testing, which is what W13-13 was filed for) so it reads as a decision rather than an accident. NO VALUE WAS CHANGED \u2014 re-tuning while documenting would have shipped an untested behaviour change under cover of a docs ticket."
       ]
+    },
+    {
+      "id": "W13-15",
+      "title": "the session waits blind and kills healthy generations \u2014 no streaming, and a total-duration timeout",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/src/providers/streaming.ts",
+        "packages/gateway/src/providers/streaming.test.ts",
+        "docs/design/RUN_LIMITS.md",
+        "packages/gateway/src/providers/oai-compat-types.ts"
+      ],
+      "depends_on": [
+        "W13-13",
+        "W13-14"
+      ],
+      "stories": [],
+      "acceptance": [
+        "RAISED BY THE FOUNDER 2026-08-19: \"shouldn't we have streaming with local models and shouldn't we be monitoring? as long as it's streaming responses we should be leaving it open, not having arbitrary timeouts.\" Correct on all three counts, and verified in source.",
+        "THE TIMEOUT IS TOTAL-DURATION, NOT IDLE. `fetchRaw` uses `AbortSignal.timeout(timeoutMs)`, which aborts the whole request at N ms REGARDLESS of whether tokens are arriving. A local 27B generating healthily for five minutes is killed exactly like a hung endpoint, and W13-13 was filed for a case that was very likely this \u2014 the model had produced correct work and was still going.",
+        "THE RIGHT CONTROL IS TIME SINCE THE LAST TOKEN. A stream that is producing is alive by definition; a stream silent for N seconds is hung whatever its total duration. Replace duration with idle on the streaming path, and say so in RUN_LIMITS.md, which currently documents the duration bound as if it were the right one.",
+        "FEASIBILITY WAS MEASURED, NOT ASSUMED: LM Studio streams `tool_calls` deltas AND emits a `stream_options.include_usage` chunk, so a streamed session can still meter spend and still drive the tool loop. Without the usage chunk this would not be possible without giving up the ledger, which is not a trade this product can make.",
+        "THE SESSION STAYS NON-STREAMING IN THIS TICKET. `gateway-session.ts` calls `chat()`, and moving the tool loop onto `chatStream` is a change to the one component every ticket runs through \u2014 it needs its own ticket, its own fixtures and its own supervised run. This ticket makes the idle timeout exist and be correct on the streaming path so that change has something safe to land on. Filed as the follow-up rather than smuggled in.",
+        "RED FIXTURE: a stream that keeps producing past the old duration bound is NOT aborted; a stream that goes silent longer than the idle bound IS, and says which. Fake SSE source, never a live call (law 9a)."
+      ],
+      "notes": [
+        "Filed 2026-08-19. `chatStream` is fully built \u2014 SSE parsing, usage metering, queue integration \u2014 and has no production caller outside anthropic's internal use. Thirteenth instance of the built-but-unwired class, and the first where wiring it fixes a defect a user actually hit.",
+        "Closed 2026-08-19. THE FOUNDER WAS RIGHT ON THE MECHANISM, not just the principle: `fetchRaw` used `AbortSignal.timeout(timeoutMs)`, which bounds the WHOLE request, so a model streaming healthily for six minutes was killed at exactly the same moment as one that had hung. The streaming path now bounds time since the last chunk (`streamIdleMs`, 60s), reset per chunk by `readSseDataLines`. Duration still bounds the non-streaming path, correctly \u2014 there a single response is the only signal that exists. FEASIBILITY WAS MEASURED FIRST: LM Studio streams `tool_calls` deltas AND emits the `include_usage` chunk, so a streamed session can still drive the tool loop and still meter spend; without the usage chunk this would have meant trading the ledger for responsiveness, which is not a trade this product can make. FOUND AND FIXED MY OWN W13-10 BUG ON THE WAY: `requestExtras` reached `chat()` and not `chatStream()`, so a provider configured to stop a model thinking would have started thinking again the moment the session streamed \u2014 the exact five-hop 'settable and inert' failure I had cited W12-14's comment about while writing it. It has its own fixture now. THE SESSION STILL DOES NOT STREAM, deliberately: moving the tool loop onto chatStream changes the one component every ticket runs through, and it needs its own fixtures and its own supervised run rather than riding along here."
+      ]
     }
   ]
 }

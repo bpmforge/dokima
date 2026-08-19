@@ -37,6 +37,13 @@ question it was asked.
 
 Configurable per provider entry (`requestTimeoutMs`).
 
+**On a stream, the bound is different and better (W13-15).** A generation that
+is producing tokens is alive by definition, so the streaming path measures
+**time since the last chunk** — `streamIdleMs`, default **60s** — rather than
+total duration. A local model generating steadily for six minutes is not
+interrupted; one that goes quiet for a minute is. Duration still bounds the
+non-streaming path, because there a single response is the only signal there is.
+
 ### One command
 
 | | Timeout | |
@@ -68,6 +75,10 @@ metered one costs money.
 **Every limit names itself when it fires.** If you ever see a run stop without
 knowing which of these did it, that is a bug — the point of having seven bounds
 instead of one clock is that each failure tells you what to change.
+
+**A stream that is producing is never interrupted** (W13-15). If you are
+watching tokens arrive, nothing will cut them off — the only stream bound is
+silence.
 
 **A provider failure is an attempt, not a crash** (W13-13). A timeout ends the
 attempt the way any other failed attempt ends; it does not kill the run.
