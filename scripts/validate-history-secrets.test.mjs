@@ -295,9 +295,22 @@ describe('history-secrets: fails closed, because unknown is not clean', () => {
 });
 
 describe('history-secrets: this repo', () => {
+  // 60s, not the 5s default — same lesson as conductor-lib.test.mjs:1137. This
+  // walks EVERY object reachable from every ref: 1579 commits over 112 refs and
+  // ~7155 objects as of 2026-08-19, which is 1.9s of CPU on an idle machine and
+  // well over 5s when the other 452 files in the workspace are competing for
+  // cores. It surfaced as a flake that failed 3 runs in 5 and could not be
+  // reproduced alone — the shape of a contention bug, not a code one.
+  //
+  // The budget is generous on purpose. This assertion is about whether an
+  // un-baselined credential shape exists in history, never about how fast the
+  // walk is, and the walk gets slower with every commit ever added. A timeout
+  // tight enough to trip on load tests the machine, not the invariant — and a
+  // secrets gate that goes red for reasons unrelated to secrets is one people
+  // learn to ignore.
   it("passes its own gate — every shape in Dokima's history is baselined and benign", () => {
     const res = run(path.join(here, '..'));
     expect(res.stderr).toBe('');
     expect(res.status).toBe(0);
-  });
+  }, 60_000);
 });
