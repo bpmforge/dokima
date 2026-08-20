@@ -8616,7 +8616,7 @@
       "module": "web",
       "lane": "ui",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "apps/web/src/settings/FirstRunWizard.tsx",
