@@ -45,7 +45,15 @@ import {
   RosterContentModelIdError,
   type RosterExpert,
 } from './roster-content.js';
-import { resolveEffectiveModel } from './roster-resolve.js';
+import {
+  resolveEffectiveModelFromSources,
+  type MatrixRowLike,
+} from './roster-resolve.js';
+import {
+  listGlobalModelMatrix,
+  listModelMatrix,
+  listProjectModelMatrix,
+} from './server/model-matrix-store.js';
 import { loadFitnessCards } from './roster-fitness.js';
 import { buildAgentHistory } from './roster-history.js';
 import { problem, PROBLEM_CONTENT_TYPE } from './problem.js';
@@ -103,13 +111,40 @@ async function resolveScopedSettings(
   return { global, project };
 }
 
+/** The real matrix rows (W13-57): project rows when a project is in view, global otherwise — the same store `route()` reads. */
+async function resolveMatrixRows(
+  registryPath: string,
+  projectId: string | undefined,
+): Promise<{ rows: readonly MatrixRowLike[]; ownRows: readonly MatrixRowLike[] }> {
+  if (projectId) {
+    const record = await resolveProjectRecord(registryPath, projectId);
+    if (record) {
+      const [rows, ownRows] = await Promise.all([
+        listModelMatrix(record.path),
+        listProjectModelMatrix(record.path),
+      ]);
+      return { rows, ownRows };
+    }
+  }
+  return { rows: await listGlobalModelMatrix(), ownRows: [] };
+}
+
 /** Every card recorded for this role, restricted to models actually in the effective chain — "fitness cards per configured model" (SRS FR-E2), not every model this role has ever been benched on. */
 function wireExpert(
   expert: RosterExpert,
   settings: ScopedSettings,
+  matrix: { rows: readonly MatrixRowLike[]; ownRows: readonly MatrixRowLike[] },
   roleFitnessCards: Awaited<ReturnType<typeof loadFitnessCards>>,
 ) {
-  const effective = resolveEffectiveModel(settings, expert.id);
+  // W13-57: resolved against the REAL matrix store beneath the settings
+  // override — the settings-only read predates the store and left every
+  // expert claiming "needs a model" on a configured install.
+  const effective = resolveEffectiveModelFromSources(
+    settings,
+    matrix.rows,
+    matrix.ownRows,
+    expert.id,
+  );
   const configuredCards = roleFitnessCards.filter((card) =>
     effective.chain.includes(card.model),
   );
@@ -168,11 +203,12 @@ function registerListRoute(app: FastifyInstance, opts: RosterRoutesOptions): voi
     }
 
     const settings = await resolveScopedSettings(opts, registryPath, projectId);
+    const matrix = await resolveMatrixRows(registryPath, projectId);
     const globalDbPath = defaultGlobalDbPath(envFor(opts.home));
     const items = await Promise.all(
       experts.map(async (expert) => {
         const fitnessCards = await loadFitnessCards(expert.id, { globalDbPath });
-        return wireExpert(expert, settings, fitnessCards);
+        return wireExpert(expert, settings, matrix, fitnessCards);
       }),
     );
 
