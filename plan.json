@@ -8694,7 +8694,8 @@
         "apps/web/src/settings/SettingsPage.tsx",
         "apps/web/src/notifications/MorningQueue.tsx",
         "apps/server/src/api/pipeline/model-resolution.ts",
-        "apps/web/e2e/settings.spec.ts"
+        "apps/web/e2e/settings.spec.ts",
+        "scripts/ui-copy-baseline.json"
       ],
       "depends_on": [],
       "stories": [],
@@ -8703,7 +8704,8 @@
         "VERIFIED BY GREP (A-3): model-resolution.ts:276 tells users to \"Open Settings \u2192 Models\"; the tab (SettingsPage.tsx:41) is \"Model Matrix\". A user following our own error message finds nothing. VOCABULARY.md already decided the UI word is Models \u2014 rename the LABEL only, ids and wire shapes unchanged, per that doc's rename-in-the-UI-only rule.",
         "MorningQueue.tsx:275 \"Next digest at wave gate.\" \u2014 undefined internal term as the closing word of the positive-quiet state. Say when in words a user has met (e.g. \"when the current run finishes its wave\" or drop the clause).",
         "Sweep the Settings tab row against VOCABULARY.md; rename labels that are internal terms. Adding a grouping row is W13-53's composition job, not this one \u2014 labels only here.",
-        "RED FIXTURE: an e2e assertion that the literal instruction string in the no-model error names a tab that exists."
+        "RED FIXTURE: an e2e assertion that the literal instruction string in the no-model error names a tab that exists.",
+        "SECOND INSTANCE, found by W13-56's validator on its first run and baselined to this ticket: FirstRunWizard's tomorrow card says \"Settings \u2192 Autonomy dial\" \u2014 the tab is \"Autonomy \u00b7 Budget \u00b7 Berths\", and VOCABULARY.md says the UI word is Autonomy. Clear both baseline entries as the strings are fixed; the validator fails on stale entries, so a fix without the baseline edit will not pass."
       ]
     },
     {
@@ -8751,6 +8753,80 @@
         "\"0:02 elapsed (target 10:00)\" gets its label \u2014 it is the ten-minute morning-review budget; say so where it renders.",
         "MOTION IS GATED: VISUAL_DIRECTION says No motion; the founder has now asked for animation. Record the amendment (narrow state-transition policy, 150-200ms, prefers-reduced-motion respected, nothing ambient) in VISUAL_DIRECTION.md as a founder decision BEFORE any transition ships; if not yet decided, ship this ticket without motion.",
         "RED FIXTURE: capture-tour frame diffs for Fleet and notifications; a reduced-motion assertion if motion lands."
+      ]
+    },
+    {
+      "id": "W13-54",
+      "title": "capture-tour emits a text-first evidence pack \u2014 the audit's eyes, serialized for models without vision",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/web/scripts/capture-tour/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Layer 2 of docs/design/DESIGN_REVIEW_LOOP.md. The capture side is deliberately generic Playwright so the same harness can later walk a USER'S product.",
+      "acceptance": [
+        "Beside each captured frame, an evidence.json: every visible text string; every interactive element as role + accessible name; per-element bounding geometry; summary stats (content-area occupancy fraction, per-column card class histograms on the board).",
+        "MODEL-AGNOSTIC IS THE POINT (Law 9b): the pack must be sufficient for a text-only model to reproduce audit findings A-1..A-4 \u2014 the acceptance test is that each of those findings' cited strings appears in the pack for its surface.",
+        "Deterministic and mock-free like the tour it extends: real server, throwaway home, zero model calls during capture.",
+        "The pack is data the trust boundary treats as evidence: stable ordering, so two captures of an unchanged UI byte-diff clean (the W13-07 rot-detection property extends to evidence)."
+      ]
+    },
+    {
+      "id": "W13-55",
+      "title": "the end-user-simulator judges the evidence pack through the gateway, citations re-verified before findings enter the funnel",
+      "phase": 13,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/pipeline/src/modes/**",
+        "apps/server/src/api/pipeline/ux-audit/**"
+      ],
+      "depends_on": [
+        "W13-54"
+      ],
+      "stories": [],
+      "notes": "Layer 3 of DESIGN_REVIEW_LOOP.md. Dispatch shape per the onboard-mode precedent (code reads, model judges); Law 9a: tests use the fake gateway, never live calls. Scope narrowed from apps/server/src/api/pipeline/** after P8 flagged overlap with W13-51's model-resolution.ts \u2014 the dispatch lives in its own ux-audit/ directory; holding the whole tree was speculation, the third time this session P8 has caught exactly that.",
+      "acceptance": [
+        "A ux-audit run: harness hands evidence packs to the end-user-simulator expert via the gateway (matrix-routed \u2014 local qwen must work, C-1), model returns AuditFinding[] in the existing improve-mode shape.",
+        "EVERY finding carries a citation \u2014 an exact string that must appear in the evidence pack. The harness re-greps each citation; a finding whose citation is absent is DROPPED and logged (C-2/C-3: a model's claim is never trusted unverified). The drop is visible in the run, not silent.",
+        "Surviving findings enter the existing findings -> plan -> tickets funnel with receipts, where severity/leverage vocabulary is honest (closes the loop with W13-50).",
+        "C-4 by construction: the judging role is a verifier role, so route() refuses it sharing the maker's model.",
+        "RED FIXTURE (docs/TESTING.md planted-defect discipline): a scripted fake-gateway judge returns one finding with a real citation and one with a fabricated citation; the real one reaches the plan, the fabricated one is dropped and the drop is logged.",
+        "Vision degrades honestly (FR-G5): a vision-capable model may receive frames as enrichment; a text-only model gets the same run with no warning-free silent skip \u2014 the run records which mode judged."
+      ]
+    },
+    {
+      "id": "W13-56",
+      "title": "mechanical comprehension validators: instruction\u2194surface cross-check and the vocabulary law, no model, in the gate",
+      "phase": 13,
+      "module": "quality",
+      "lane": "quality",
+      "points": 5,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "scripts/validate-ui-copy.mjs",
+        "scripts/validate-ui-copy.test.mjs",
+        "scripts/ui-copy-baseline.json"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Layer 1 of DESIGN_REVIEW_LOOP.md. A check that needs no judgment should never spend a model. Claimed immediately as the proof-of-concept.",
+      "acceptance": [
+        "validate-ui-copy.mjs, following the validate-exports.mjs repo-validator precedent (exit 0/1, JSON line, red-fixture tested).",
+        "CHECK 1 \u2014 instruction \u2194 surface: every string literal of the form \"Settings \u2192 X\" in apps/server/src + apps/web/src must name a tab label that exists in SettingsPage.tsx. This catches the A-3 class the day it ships: W13-34's \"Settings \u2192 Models\" vs the \"Model Matrix\" tab.",
+        "CHECK 2 \u2014 vocabulary law: VOCABULARY.md's table is parsed, its \"Not\" column becomes a forbidden lexicon over user-facing string literals in apps/web/src (JSX text and quoted strings rendered to users). \"routing matrix\" etc. cannot reach a user silently again.",
+        "BASELINE, not a red main: the violations W13-51 already owns are recorded in ui-copy-baseline.json with their owning ticket, history-secrets style \u2014 known debt named and gated against growth; W13-51 clears entries as it fixes them, and the validator refuses a baseline entry whose string no longer exists (stale baseline rot).",
+        "RED FIXTURE: a planted \"Settings \u2192 Nowhere\" string and a planted forbidden term each turn the validator red in its own test; the real tree with the baseline passes."
       ]
     }
   ]
