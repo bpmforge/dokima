@@ -29,7 +29,7 @@ test('Roster nav toggles the Agent Roster screen and back to Fleet', async ({ pa
   await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
 });
 
-test('lists real content/experts grouped by cluster with an unconfigured model badge (no matrix seeded)', async ({
+test('lists real content/experts grouped by cluster; a role with no model gets an ACTION, not a diagnosis (W13-49)', async ({
   page,
 }) => {
   await page.goto('/?view=roster');
@@ -38,13 +38,19 @@ test('lists real content/experts grouped by cluster with an unconfigured model b
   await expect(page.getByTestId('roster-cluster-coordinators')).toBeVisible();
   const sdlcLead = page.getByTestId('roster-expert-sdlc-lead');
   await expect(sdlcLead).toBeVisible();
+  // W13-49 (UX_AUDIT A-1): the old row said "unconfigured — no routing
+  // matrix entry" / "not benched" / "instruction cost: —" on every card of a
+  // healthy install — builder diagnostics shipped to the user. Now: one
+  // actionable sentence, pointing at a tab that exists (validate-ui-copy
+  // guards the pointer), and silence where there is nothing to act on.
   await expect(sdlcLead.getByTestId('roster-expert-scope-sdlc-lead')).toHaveText(
-    'unconfigured',
+    'needs a model',
   );
   await expect(
-    sdlcLead.getByText('unconfigured — no routing matrix entry'),
+    sdlcLead.getByText('No model will take this role yet — pick models in Settings → Models.'),
   ).toBeVisible();
-  await expect(sdlcLead.getByText('not benched')).toBeVisible();
+  await expect(sdlcLead.getByText('not benched')).toHaveCount(0);
+  await expect(sdlcLead.getByText(/routing matrix/)).toHaveCount(0);
 });
 
 test('expanding an expert with no open project prompts to open one for history', async ({

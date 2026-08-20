@@ -7,8 +7,34 @@ function errorMessage(err: unknown, fallback: string): string {
   return err instanceof RosterApiError ? err.message : fallback;
 }
 
-function scopeLabel(scope: RosterExpert['effectiveModel']['scope']): string {
-  return scope === null ? 'unconfigured' : scope;
+/**
+ * The one line a user reads about an expert (W13-49, UX_AUDIT A-1).
+ *
+ * The stored `description` is the expert's internal brief — written FOR the
+ * model ("checks all 31 ANTI_SLOP_RULES (R-01 to R-31)…"). Shown raw, the
+ * roster read as a debug dump. This derives the user's line mechanically —
+ * the clause before the first em-dash, first sentence as fallback, capped —
+ * rather than hand-writing summaries that would drift from the briefs they
+ * summarize.
+ */
+export function userFacingSummary(description: string): string {
+  const beforeDash = description.split(/\s+—\s+/)[0] ?? description;
+  const firstSentence = beforeDash.split(/(?<=\.)\s/)[0] ?? beforeDash;
+  const line = firstSentence.trim().replace(/\.$/, '');
+  return line.length > 140 ? `${line.slice(0, 137)}…` : line;
+}
+
+/**
+ * The scope chip appears only when it says something a user can act on or
+ * should notice: a missing model (actionable) or an override (surprising).
+ * The global default is the norm, and the norm is silence — the old chip
+ * said "unconfigured" on every card of a working install, which reads as
+ * "your product is broken" (A-1).
+ */
+function scopeChip(expert: RosterExpert): string | null {
+  if (expert.effectiveModel.chain.length === 0) return 'needs a model';
+  const scope = expert.effectiveModel.scope;
+  return scope === 'project' || scope === 'run' ? `${scope} override` : null;
 }
 
 function groupByCluster(experts: RosterExpert[]): Map<string, RosterExpert[]> {
@@ -91,45 +117,55 @@ interface ExpertRowProps {
 }
 
 function ExpertRow({ expert, projectId, expanded, onToggle }: ExpertRowProps) {
+  const chip = scopeChip(expert);
   return (
     <li className="roster__expert" data-testid={`roster-expert-${expert.id}`}>
       <button type="button" className="roster__expert-summary" onClick={onToggle}>
         <span className="roster__expert-name">{expert.displayName}</span>
         <span className="roster__expert-mode">{expert.mode}</span>
-        <span
-          className="roster__expert-scope"
-          data-testid={`roster-expert-scope-${expert.id}`}
-        >
-          {scopeLabel(expert.effectiveModel.scope)}
-        </span>
-      </button>
-      <p className="roster__expert-description">{expert.description}</p>
-      <div className="roster__expert-model">
-        {expert.effectiveModel.chain.length > 0 ? (
-          <span>{expert.effectiveModel.chain.join(' → ')}</span>
-        ) : (
-          <span className="roster__unconfigured">
-            unconfigured — no routing matrix entry
+        {chip !== null && (
+          <span
+            className="roster__expert-scope"
+            data-testid={`roster-expert-scope-${expert.id}`}
+          >
+            {chip}
           </span>
         )}
-      </div>
-      <div className="roster__expert-fitness">
-        {expert.fitnessCards.length > 0 ? (
-          expert.fitnessCards.map((card) => (
+      </button>
+      <p className="roster__expert-description">{userFacingSummary(expert.description)}</p>
+      {/* W13-49: each line below renders ONLY when it informs or asks for an
+          action. The old row stacked three failure-toned lines on every card
+          of a healthy install — "unconfigured — no routing matrix entry",
+          "not benched", "instruction cost: —" — builder diagnostics shipped
+          to the user (UX_AUDIT A-1). */}
+      {expert.effectiveModel.chain.length > 0 ? (
+        <div className="roster__expert-model">
+          <span>{expert.effectiveModel.chain.join(' → ')}</span>
+        </div>
+      ) : (
+        <div className="roster__expert-model">
+          <span className="roster__unconfigured">
+            No model will take this role yet — pick models in Settings → Models.
+          </span>
+        </div>
+      )}
+      {expert.fitnessCards.length > 0 && (
+        <div className="roster__expert-fitness">
+          {expert.fitnessCards.map((card) => (
             <span
               key={card.model}
               className={`roster__fitness-badge roster__fitness-badge--${card.verdict}`}
             >
               {card.model}: {card.verdict}
             </span>
-          ))
-        ) : (
-          <span className="roster__unconfigured">not benched</span>
-        )}
-      </div>
-      <div className="roster__expert-instruction-cost">
-        instruction cost: {expert.instructionCost === null ? '—' : expert.instructionCost}
-      </div>
+          ))}
+        </div>
+      )}
+      {expert.instructionCost !== null && (
+        <div className="roster__expert-instruction-cost">
+          instruction cost: {expert.instructionCost}
+        </div>
+      )}
       {expanded && projectId && (
         <AgentHistoryPanel agentId={expert.id} projectId={projectId} />
       )}
