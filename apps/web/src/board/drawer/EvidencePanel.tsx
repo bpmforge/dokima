@@ -52,7 +52,14 @@ export function EvidencePanel({ baseUrl, token, projectId, ticket }: EvidencePan
           <dd>{ticket.manifest.closeReceipt.mintedAt}</dd>
         </dl>
       ) : (
-        <p className="ticket-drawer__empty">No manifest yet.</p>
+        <p className="ticket-drawer__empty">
+          {/* W13-61: a novice's first meeting with the product's trust
+              artifacts was two bare jargon lines. Define at first meeting
+              (VOCABULARY.md rule). */}
+          No Completion Manifest yet — that is the summary an agent hands back
+          when it finishes this ticket: which files changed, what verify
+          command proved it, and the receipt that seals it.
+        </p>
       )}
 
       <h3>Receipts</h3>
@@ -68,7 +75,11 @@ export function EvidencePanel({ baseUrl, token, projectId, ticket }: EvidencePan
       ) : receipts === null ? (
         <p>Loading receipts…</p>
       ) : receipts.length === 0 ? (
-        <p className="ticket-drawer__empty">No gates have run yet.</p>
+        <p className="ticket-drawer__empty">
+          No receipts yet. A receipt is minted every time a gate checks work on
+          this ticket — it is the proof a state change really happened, and it
+          appears here the first time a run works this ticket.
+        </p>
       ) : (
         <ul data-testid="drawer-receipts-list">
           {receipts.map((receipt) => (

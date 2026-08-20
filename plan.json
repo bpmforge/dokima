@@ -8955,11 +8955,15 @@
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/notifications/**",
-        "apps/web/src/board/drawer/**"
+        "apps/web/src/board/drawer/**",
+        "apps/web/src/board/drawer/EvidencePanel.tsx",
+        "apps/web/src/board/drawer/EvidencePanel.test.tsx",
+        "apps/web/src/notifications/TicketEvidence.tsx",
+        "apps/web/src/notifications/TicketEvidence.test.tsx"
       ],
       "depends_on": [],
       "stories": [],

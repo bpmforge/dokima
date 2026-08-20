@@ -242,3 +242,22 @@
   padding: var(--sw-space-1) var(--sw-space-2);
   cursor: pointer;
 }
+
+/* W13-61: the work behind a Decide card, on the card. */
+.notification-card__evidence {
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg);
+}
+
+.notification-card__evidence-files {
+  margin: var(--sw-space-1) 0 0;
+  padding-left: var(--sw-space-4);
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+}
+
+.notification-card__consequence {
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+  max-width: 36rem;
+}
