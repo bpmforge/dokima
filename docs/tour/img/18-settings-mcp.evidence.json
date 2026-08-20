@@ -1,0 +1,484 @@
+{
+  "strings": [
+    "Dokima",
+    "Board",
+    "Describe",
+    "Plan",
+    "Decisions",
+    "Roster",
+    "1",
+    "Settings",
+    "Light",
+    "Setup Wizard",
+    "Close",
+    "Providers",
+    "Models",
+    "Agent",
+    "Autonomy · Budget · Berths",
+    "Cost Estimate",
+    "Effective Settings",
+    "MCP Servers",
+    "Validator Packs",
+    "Expert Overrides",
+    "Rule Lifecycle",
+    "Suppressions",
+    "Escalation Policy",
+    "Copilot",
+    "No providers yet. Dokima runs fully local — point it at Ollama or LM Studio and nothing leaves this machine.",
+    "Kind",
+    "Ollama (local)",
+    "LM Studio (local)",
+    "OpenAI-compatible endpoint",
+    "Anthropic",
+    "OpenAI",
+    "Vertex AI",
+    "GitHub Copilot (consent-gated)",
+    "ID",
+    "Base URL",
+    "No credentials needed (runs on this machine)",
+    ". Nothing is stored for this provider.",
+    "Enabled",
+    "Use for every project",
+    "Add provider",
+    "Tools surface only for roles listed in a server's allowlist (FR-I3) — a role absent here cannot see any of this server's tools. Execution is handled by the MCP host (W6-04), outside this settings surface's scope; this registers the config it will read.",
+    "No MCP servers registered yet.",
+    "Name",
+    "Launch command / URL",
+    "Allowed roles (comma-separated)",
+    "Register server"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Board",
+      "disabled": false,
+      "rect": {
+        "x": 778,
+        "y": 12,
+        "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Describe",
+      "disabled": false,
+      "rect": {
+        "x": 851,
+        "y": 12,
+        "w": 91,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Plan",
+      "disabled": false,
+      "rect": {
+        "x": 946,
+        "y": 12,
+        "w": 57,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Decisions",
+      "disabled": false,
+      "rect": {
+        "x": 1007,
+        "y": 12,
+        "w": 96,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1107,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 1 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Setup Wizard",
+      "disabled": false,
+      "rect": {
+        "x": 1218,
+        "y": 85,
+        "w": 124,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Close",
+      "disabled": false,
+      "rect": {
+        "x": 1349,
+        "y": 85,
+        "w": 67,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Providers",
+      "disabled": false,
+      "rect": {
+        "x": 24,
+        "y": 137,
+        "w": 79,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Models",
+      "disabled": false,
+      "rect": {
+        "x": 107,
+        "y": 137,
+        "w": 65,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Agent",
+      "disabled": false,
+      "rect": {
+        "x": 176,
+        "y": 137,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Autonomy · Budget · Berths",
+      "disabled": false,
+      "rect": {
+        "x": 236,
+        "y": 137,
+        "w": 196,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Cost Estimate",
+      "disabled": false,
+      "rect": {
+        "x": 436,
+        "y": 137,
+        "w": 108,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Effective Settings",
+      "disabled": false,
+      "rect": {
+        "x": 547,
+        "y": 137,
+        "w": 132,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "MCP Servers",
+      "disabled": false,
+      "rect": {
+        "x": 683,
+        "y": 137,
+        "w": 102,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Validator Packs",
+      "disabled": false,
+      "rect": {
+        "x": 789,
+        "y": 137,
+        "w": 117,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Expert Overrides",
+      "disabled": false,
+      "rect": {
+        "x": 909,
+        "y": 137,
+        "w": 127,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Rule Lifecycle",
+      "disabled": false,
+      "rect": {
+        "x": 1040,
+        "y": 137,
+        "w": 107,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Suppressions",
+      "disabled": false,
+      "rect": {
+        "x": 1151,
+        "y": 137,
+        "w": 105,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Escalation Policy",
+      "disabled": false,
+      "rect": {
+        "x": 1261,
+        "y": 137,
+        "w": 126,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Copilot",
+      "disabled": false,
+      "rect": {
+        "x": 24,
+        "y": 168,
+        "w": 64,
+        "h": 27
+      }
+    },
+    {
+      "tag": "select",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "lm-studio",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Add provider",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 24,
+        "y": 327,
+        "w": 180,
+        "h": 35
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 216,
+        "y": 327,
+        "w": 180,
+        "h": 35
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "coding-agent, challenger",
+      "disabled": false,
+      "rect": {
+        "x": 408,
+        "y": 327,
+        "w": 219,
+        "h": 35
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Register server",
+      "disabled": false,
+      "rect": {
+        "x": 639,
+        "y": 326,
+        "w": 135,
+        "h": 36
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__decide-badge": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 5,
+    "app-shell__notifications-bell": 1,
+    "btn-quiet": 1,
+    "icon": 2,
+    "settings": 1,
+    "settings__checkbox": 2,
+    "settings__header": 1,
+    "settings__header-actions": 1,
+    "settings__hint": 3,
+    "settings__list": 1,
+    "settings__panel": 1,
+    "settings__row-form": 2,
+    "settings__tab": 13,
+    "settings__tab--active": 1,
+    "settings__tabs": 1,
+    "theme-toggle": 1
+  }
+}

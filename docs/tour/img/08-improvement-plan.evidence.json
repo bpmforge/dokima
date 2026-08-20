@@ -1,0 +1,179 @@
+{
+  "strings": [
+    "Dokima",
+    "Board",
+    "Describe",
+    "Plan",
+    "Decisions",
+    "Roster",
+    "Settings",
+    "Light",
+    "Improvement plan",
+    "1 found → 1 planned → 0 accepted → 0 done · 0 regressed",
+    "PC-001",
+    "Proposed",
+    "Re-verify the 2 stale receipt(s) so downstream phases aren't gating on invalidated evidence",
+    "Verify:",
+    "receipts.staleCount == 0",
+    "Accept",
+    "Dismiss"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Board",
+      "disabled": false,
+      "rect": {
+        "x": 776,
+        "y": 12,
+        "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Describe",
+      "disabled": false,
+      "rect": {
+        "x": 849,
+        "y": 12,
+        "w": 91,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Plan",
+      "disabled": false,
+      "rect": {
+        "x": 944,
+        "y": 12,
+        "w": 59,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Decisions",
+      "disabled": false,
+      "rect": {
+        "x": 1007,
+        "y": 12,
+        "w": 96,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1107,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 0 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Accept",
+      "disabled": false,
+      "rect": {
+        "x": 41,
+        "y": 305,
+        "w": 77,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Dismiss",
+      "disabled": false,
+      "rect": {
+        "x": 126,
+        "y": 305,
+        "w": 82,
+        "h": 36
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 5,
+    "app-shell__notifications-bell": 1,
+    "btn-quiet": 1,
+    "icon": 2,
+    "plan-item": 1,
+    "plan-item__actions": 1,
+    "plan-item__catalog-id": 1,
+    "plan-item__header": 1,
+    "plan-item__recommendation": 1,
+    "plan-item__state": 1,
+    "plan-item__state--proposed": 1,
+    "plan-item__verify": 1,
+    "plan-view": 1,
+    "plan-view__funnel": 1,
+    "plan-view__header": 1,
+    "plan-view__list": 1,
+    "theme-toggle": 1
+  }
+}

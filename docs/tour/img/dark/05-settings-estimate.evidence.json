@@ -1,0 +1,451 @@
+{
+  "strings": [
+    "Dokima",
+    "Board",
+    "Describe",
+    "Plan",
+    "Decisions",
+    "Roster",
+    "Settings",
+    "Dark",
+    "Setup Wizard",
+    "Close",
+    "Providers",
+    "Models",
+    "Agent",
+    "Autonomy · Budget · Berths",
+    "Cost Estimate",
+    "Effective Settings",
+    "MCP Servers",
+    "Validator Packs",
+    "Expert Overrides",
+    "Rule Lifecycle",
+    "Suppressions",
+    "Escalation Policy",
+    "Copilot",
+    "No providers yet. Dokima runs fully local — point it at Ollama or LM Studio and nothing leaves this machine.",
+    "Kind",
+    "Ollama (local)",
+    "LM Studio (local)",
+    "OpenAI-compatible endpoint",
+    "Anthropic",
+    "OpenAI",
+    "Vertex AI",
+    "GitHub Copilot (consent-gated)",
+    "ID",
+    "Base URL",
+    "No credentials needed (runs on this machine)",
+    ". Nothing is stored for this provider.",
+    "Enabled",
+    "Use for every project",
+    "Add provider",
+    "Dry-run estimate",
+    "No tickets to estimate yet.",
+    "every ticket is estimated as the same size right now, so this total cannot yet be broken down by wave or weighted for larger tickets",
+    "rates shown are illustrative defaults, not your configured prices — once real model pricing is set up, the estimate will use those rates instead",
+    "this estimate uses standard list-price rates only; there is no history of past spend yet to make it more accurate",
+    "Escalation ROI",
+    "No escalation spend recorded yet.",
+    "spend totals are blank because this project is not recording actual spend yet — once spend tracking is turned on, real dollar amounts will appear here instead of zero",
+    "Weekly digest —",
+    "2026-08-20",
+    "review",
+    "Total spend: $",
+    "0.00",
+    "No escalation spend this week.",
+    "Suppression volume per rule",
+    "No suppressions recorded this week.",
+    "suppression counts are blank because this project is not recording rule suppressions yet — once that tracking exists, counts per rule will appear here",
+    "the date above is when this digest was generated, in your local time — not the start or end of a calendar week, since there is no weekly spend history yet to bound it to a real week"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Board",
+      "disabled": false,
+      "rect": {
+        "x": 781,
+        "y": 12,
+        "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Describe",
+      "disabled": false,
+      "rect": {
+        "x": 853,
+        "y": 12,
+        "w": 91,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Plan",
+      "disabled": false,
+      "rect": {
+        "x": 948,
+        "y": 12,
+        "w": 57,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Decisions",
+      "disabled": false,
+      "rect": {
+        "x": 1009,
+        "y": 12,
+        "w": 96,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1110,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 0 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1195,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1241,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to light theme",
+      "disabled": false,
+      "rect": {
+        "x": 1339,
+        "y": 12,
+        "w": 85,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Setup Wizard",
+      "disabled": false,
+      "rect": {
+        "x": 1218,
+        "y": 85,
+        "w": 124,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Close",
+      "disabled": false,
+      "rect": {
+        "x": 1349,
+        "y": 85,
+        "w": 67,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Providers",
+      "disabled": false,
+      "rect": {
+        "x": 24,
+        "y": 137,
+        "w": 79,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Models",
+      "disabled": false,
+      "rect": {
+        "x": 107,
+        "y": 137,
+        "w": 65,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Agent",
+      "disabled": false,
+      "rect": {
+        "x": 176,
+        "y": 137,
+        "w": 56,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Autonomy · Budget · Berths",
+      "disabled": false,
+      "rect": {
+        "x": 236,
+        "y": 137,
+        "w": 196,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Cost Estimate",
+      "disabled": false,
+      "rect": {
+        "x": 436,
+        "y": 137,
+        "w": 108,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Effective Settings",
+      "disabled": false,
+      "rect": {
+        "x": 547,
+        "y": 137,
+        "w": 132,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "MCP Servers",
+      "disabled": false,
+      "rect": {
+        "x": 683,
+        "y": 137,
+        "w": 102,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Validator Packs",
+      "disabled": false,
+      "rect": {
+        "x": 789,
+        "y": 137,
+        "w": 117,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Expert Overrides",
+      "disabled": false,
+      "rect": {
+        "x": 909,
+        "y": 137,
+        "w": 127,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Rule Lifecycle",
+      "disabled": false,
+      "rect": {
+        "x": 1040,
+        "y": 137,
+        "w": 107,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Suppressions",
+      "disabled": false,
+      "rect": {
+        "x": 1151,
+        "y": 137,
+        "w": 105,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Escalation Policy",
+      "disabled": false,
+      "rect": {
+        "x": 1261,
+        "y": 137,
+        "w": 126,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Copilot",
+      "disabled": false,
+      "rect": {
+        "x": 24,
+        "y": 168,
+        "w": 64,
+        "h": 27
+      }
+    },
+    {
+      "tag": "select",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "lm-studio",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Add provider",
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 5,
+    "app-shell__notifications-bell": 1,
+    "btn-quiet": 1,
+    "estimate": 1,
+    "estimate__assumptions": 3,
+    "estimate__digest-card": 1,
+    "estimate__empty": 4,
+    "estimate__section": 3,
+    "estimate__tier-badge": 1,
+    "icon": 2,
+    "settings": 1,
+    "settings__checkbox": 2,
+    "settings__header": 1,
+    "settings__header-actions": 1,
+    "settings__hint": 2,
+    "settings__panel": 1,
+    "settings__row-form": 1,
+    "settings__tab": 13,
+    "settings__tab--active": 1,
+    "settings__tabs": 1,
+    "theme-toggle": 1
+  }
+}

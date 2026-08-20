@@ -1,0 +1,208 @@
+{
+  "strings": [
+    "Dokima",
+    "Fleet",
+    "Roster",
+    "Settings",
+    "Light",
+    "New project",
+    "Onboard existing repo",
+    "Import",
+    "Show archived",
+    "Project name",
+    "Folder",
+    "Create project",
+    "Cancel"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Fleet",
+      "disabled": false,
+      "rect": {
+        "x": 1039,
+        "y": 12,
+        "w": 64,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1107,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 0 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "New project",
+      "disabled": false,
+      "rect": {
+        "x": 479,
+        "y": 85,
+        "w": 133,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Onboard existing repo",
+      "disabled": false,
+      "rect": {
+        "x": 621,
+        "y": 85,
+        "w": 186,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Import",
+      "disabled": false,
+      "rect": {
+        "x": 815,
+        "y": 85,
+        "w": 74,
+        "h": 36
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 901,
+        "y": 97,
+        "w": 13,
+        "h": 13
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "My App",
+      "disabled": false,
+      "rect": {
+        "x": 438,
+        "y": 259,
+        "w": 350,
+        "h": 35
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "/Users/you/Code/my-app",
+      "disabled": false,
+      "rect": {
+        "x": 438,
+        "y": 323,
+        "w": 350,
+        "h": 35
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Create project",
+      "disabled": false,
+      "rect": {
+        "x": 438,
+        "y": 366,
+        "w": 129,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Cancel",
+      "disabled": false,
+      "rect": {
+        "x": 575,
+        "y": 366,
+        "w": 76,
+        "h": 36
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 2,
+    "app-shell__notifications-bell": 1,
+    "btn-primary": 1,
+    "btn-quiet": 2,
+    "btn-secondary": 1,
+    "fleet": 1,
+    "fleet__actions": 1,
+    "fleet__archived-toggle": 1,
+    "fleet__form": 1,
+    "fleet__form-actions": 1,
+    "fleet__grid": 1,
+    "fleet__header": 1,
+    "icon": 2,
+    "theme-toggle": 1
+  }
+}

@@ -23,11 +23,15 @@ export async function runDarkPass(browser, app, ctx) {
 
   await page
     .locator('.fleet__header')
-    .getByRole('button', { name: 'New Product', exact: true })
+    .getByRole('button', { name: 'New project', exact: true })
     .click();
-  await page.getByLabel('Directory path').fill(app.projectDir);
-  await page.getByLabel('Name (optional)').fill('Demo Voyage');
-  await page.locator('.fleet__form').getByRole('button', { name: 'New Product' }).click();
+  // W12-41 flow: New project asks only a name; the tour takes the
+  // explicit-location escape (same as roster.spec.ts) so its throwaway
+  // projectDir is used.
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(app.projectDir);
+  await page.getByLabel('Project name').fill('Demo Voyage');
+  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   await page.locator('.project-card', { hasText: 'Demo Voyage' }).waitFor();
   await page
     .locator('.project-card', { hasText: 'Demo Voyage' })

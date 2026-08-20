@@ -54,7 +54,12 @@ export async function startApp(port) {
   const home = mkdtempSync(path.join(os.tmpdir(), 'dokima-capture-home-'));
   const projectDir = mkdtempSync(path.join(os.tmpdir(), 'dokima-capture-project-'));
   const base = `http://127.0.0.1:${port}`;
-  const server = spawn(TSX_BIN, ['src/api/main.ts'], {
+  // W13-54 found this harness still booting `src/api/main.ts` — W13-33 moved
+  // the run-on-import boot to dev-entry.ts (main.ts booting on EVERY import
+  // was the defect) and updated playwright.config.ts, but not this second
+  // consumer. Nothing noticed because nobody ran the tour since: the server
+  // "started", did nothing, and healthz never answered.
+  const server = spawn(TSX_BIN, ['src/api/dev-entry.ts'], {
     cwd: serverRoot,
     env: {
       ...process.env,

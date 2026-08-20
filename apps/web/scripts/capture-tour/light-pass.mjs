@@ -19,27 +19,31 @@ export async function runLightPass(browser, app, ctx) {
     page,
     '01-fleet-empty',
     'Fleet home (first launch)',
-    'The entry screen with no projects yet. The header offers the three ways in: **New Product**, **Onboard existing repo**, and **Import**.',
+    'The entry screen with no projects yet. The header offers the three ways in: **New project**, **Onboard existing repo**, and **Import**.',
     'fleet-empty',
     ctx,
   );
 
   await page
     .locator('.fleet__header')
-    .getByRole('button', { name: 'New Product', exact: true })
+    .getByRole('button', { name: 'New project', exact: true })
     .click();
-  await page.getByLabel('Directory path').fill(app.projectDir);
-  await page.getByLabel('Name (optional)').fill('Demo Voyage');
+  // W12-41 flow: New project asks only a name; the tour takes the
+  // explicit-location escape (same as roster.spec.ts) so its throwaway
+  // projectDir is used.
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(app.projectDir);
+  await page.getByLabel('Project name').fill('Demo Voyage');
   await shoot(
     page,
     '02-new-product-form',
-    'New Product form',
-    'Clicking **New Product** opens the creation form: a directory path and an optional display name.',
+    'New project form',
+    'Clicking **New project** opens the creation form: a project name, with an escape to choose the folder yourself.',
     undefined,
     ctx,
   );
 
-  await page.locator('.fleet__form').getByRole('button', { name: 'New Product' }).click();
+  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
   await page.locator('.project-card', { hasText: 'Demo Voyage' }).waitFor();
   await shoot(
     page,
