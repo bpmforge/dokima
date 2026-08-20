@@ -8457,6 +8457,34 @@
         "RED FIXTURE: a queue whose slot is never released must make the next call FAIL with a timeout naming the queue, not hang. Assert it against a fake clock, not by waiting.",
         "Out of scope: finding the abandonment path that leaks the slot. That is worth its own ticket; this one makes the product recover instead of needing a person to kickstart it."
       ]
+    },
+    {
+      "id": "W13-43",
+      "title": "a runaway generation streams forever \u2014 nothing bounds one turn, so the run never ends",
+      "phase": 13,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/harbormaster/src/agent-session/session-stream.ts"
+      ],
+      "depends_on": [
+        "W13-42"
+      ],
+      "stories": [],
+      "notes": "This is the founder-reported failure (ISSUE12 issue 1) in its final form: the session never ends and a person has to restart it. W13-42 fixed a different cause of the same symptom; this is the remaining one.",
+      "acceptance": [
+        "MEASURED, three separate live runs. The run sits at status running with no events after a single session.turn_started. Proven in flight, not stuck: lsof shows an ESTABLISHED connection to the endpoint, LM Studio sits at 160% CPU, and our node process at 0.7%. The model is generating and will not stop.",
+        "WHY NO GUARD FIRES, and this is by design rather than by omission: W13-15 replaced duration bounds with an IDLE bound on the founder's own instruction \u2014 as long as it is streaming we leave it open. That is right for a 27B generating slowly. It leaves a model that never stops generating completely unbounded, because every token bumps the idle timer.",
+        "The W13-42 queue bound does NOT cover this and was verified not to: the stall outlasted the 5-minute acquire timeout with no error, because the request had a slot and was streaming.",
+        "BOUND ONE TURN by output, not by duration. request.maxTokens already exists on the adapter and the agent session never sets one, so a turn may emit without limit. A ceiling on completion tokens per turn ends a runaway while leaving a slow model alone \u2014 which is the property W13-15 protects and this must not undo.",
+        "The failure must read as INFRASTRUCTURE (W13-27 retries it free), and the park comment must name it \u2014 W13-41 made that visible, so the operator should see the ceiling and its number rather than a bare no-manifest line.",
+        "RED FIXTURE: a fake provider that streams deltas forever must end the turn and the run, not hang the suite. Assert against a token count, never by waiting."
+      ]
     }
   ]
 }
