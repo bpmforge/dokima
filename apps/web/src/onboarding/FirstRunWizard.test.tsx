@@ -26,7 +26,13 @@ vi.mock('../fleet/api.js', async () => {
 vi.mock('../settings/api.js', async () => {
   const actual =
     await vi.importActual<typeof import('../settings/api.js')>('../settings/api.js');
-  return { ...actual, putGlobalSettings: vi.fn() };
+  return {
+    ...actual,
+    putGlobalSettings: vi.fn(),
+    // W13-37: the wizard now writes the matrix from the two models the user
+    // picks, so every walk past step 3 goes through this.
+    putModelMatrixFromPreset: vi.fn(),
+  };
 });
 
 // W10-55: the wizard now registers the configured provider through the real
@@ -36,7 +42,17 @@ vi.mock('../settings/providers-api.js', async () => {
   const actual = await vi.importActual<typeof import('../settings/providers-api.js')>(
     '../settings/providers-api.js',
   );
-  return { ...actual, putProviders: vi.fn().mockResolvedValue([]) };
+  return {
+    ...actual,
+    putProviders: vi.fn().mockResolvedValue([]),
+    fetchProviderModels: vi.fn().mockResolvedValue({
+      status: 'ok',
+      source: 'discovered',
+      // Deliberately arbitrary names: the product must not recognise, rank or
+      // prefer any model id (W13-36).
+      models: [{ id: 'model-alpha' }, { id: 'model-beta' }],
+    }),
+  };
 });
 
 vi.mock('./GuidedSample.js', () => ({
@@ -72,6 +88,28 @@ async function advanceToSampleStep() {
   await screen.findByTestId('wizard-step-sample');
 }
 
+/** Walks the models step: two distinct ids from the user's own catalog. */
+async function chooseModels() {
+  mockedSettingsApi.putModelMatrixFromPreset.mockResolvedValue({
+    rows: [],
+    copilotEnabled: false,
+    scope: 'global',
+  });
+  // Wait for the CATALOG, not just the step: the fields start as free-text
+  // inputs and are replaced by selects once the provider answers, and a
+  // change fired at the detached input silently does nothing.
+  await screen.findAllByRole('option', { name: 'model-alpha' });
+  fireEvent.change(screen.getByTestId('wizard-model-work'), {
+    target: { value: 'model-alpha' },
+  });
+  fireEvent.change(screen.getByTestId('wizard-model-review'), {
+    target: { value: 'model-beta' },
+  });
+  fireEvent.click(
+    screen.getByTestId('wizard-step-models').querySelector('button') as HTMLButtonElement,
+  );
+}
+
 describe('FirstRunWizard help affordances', () => {
   it('renders a "?" help button for the wizard overall', () => {
     render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
@@ -104,6 +142,12 @@ describe('FirstRunWizard sample step -> done (guided sample embedded)', () => {
 
     await advanceToSampleStep();
     fireEvent.click(screen.getByRole('button', { name: 'Create sample project' }));
+
+    // W13-37: on a fresh install the models step happens HERE — it is the
+    // first moment a project exists to read a catalog through or write a
+    // matrix onto. Skipping it is what left a finished wizard unable to
+    // build a board.
+    await chooseModels();
 
     expect(await screen.findByTestId('wizard-step-done')).toBeTruthy();
     expect(mockedFleetApi.createProject).toHaveBeenCalledWith(

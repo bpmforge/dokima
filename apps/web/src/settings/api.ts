@@ -149,16 +149,51 @@ export async function fetchModelMatrix(
     `/api/v1/projects/${encodeURIComponent(projectId)}/model-matrix`,
     jsonInit('GET'),
     opts,
-  )) as {
-    rows: ModelMatrixWireRow[];
-    copilot_enabled: boolean;
-    scope?: 'project' | 'global';
-  };
+  )) as MatrixWire;
+  return matrixFromWire(wire);
+}
+
+interface MatrixWire {
+  rows: ModelMatrixWireRow[];
+  copilot_enabled: boolean;
+  scope?: 'project' | 'global';
+}
+
+function matrixFromWire(wire: MatrixWire): ModelMatrixWithScope {
   return {
     rows: wire.rows.map(matrixRowFromWire),
     copilotEnabled: wire.copilot_enabled,
     scope: wire.scope ?? 'project',
   };
+}
+
+/**
+ * Writes the whole matrix from a preset name and the two models the user
+ * picked from their own provider (W13-37).
+ *
+ * The wizard sends the NAMES, not the rows: which role gets the stronger
+ * model is decided once, server-side, by the gateway's preset shape. Sending
+ * expanded rows from here would put a second copy of that table in the
+ * browser — and this wizard has already shipped one table that drifted from
+ * the registry's (W10-55).
+ */
+export async function putModelMatrixFromPreset(
+  projectId: string,
+  input: { preset: string; strong: string; cheap: string },
+  opts: SettingsApiOptions & { scope?: 'project' | 'global' } = {},
+): Promise<ModelMatrixWithScope> {
+  const { scope, ...requestOpts } = opts;
+  const wire = (await request(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/model-matrix`,
+    jsonInit('PUT', {
+      preset: input.preset,
+      strong: input.strong,
+      cheap: input.cheap,
+      ...(scope === 'global' ? { scope } : {}),
+    }),
+    requestOpts,
+  )) as MatrixWire;
+  return matrixFromWire(wire);
 }
 
 export interface ModelMatrixRowInput {
@@ -191,16 +226,8 @@ export async function putModelMatrix(
       ...(scope === 'global' ? { scope } : {}),
     }),
     requestOpts,
-  )) as {
-    rows: ModelMatrixWireRow[];
-    copilot_enabled: boolean;
-    scope?: 'project' | 'global';
-  };
-  return {
-    rows: wire.rows.map(matrixRowFromWire),
-    copilotEnabled: wire.copilot_enabled,
-    scope: wire.scope ?? 'project',
-  };
+  )) as MatrixWire;
+  return matrixFromWire(wire);
 }
 
 // --- autonomy + budget ---------------------------------------------------

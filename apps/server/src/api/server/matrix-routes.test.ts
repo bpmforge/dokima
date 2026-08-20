@@ -269,3 +269,71 @@ describe('model-matrix scope (W10-64)', () => {
     expect(put.statusCode).toBe(400);
   });
 });
+
+/**
+ * W13-37. The wizard's body shape. These tests exist because the tier
+ * direction is a SILENT inversion: hand `strong` the model the user picked to
+ * write code and every role gets the wrong one, with no error anywhere — the
+ * run just costs more and reviews get worse.
+ */
+describe('model-matrix routes — preset expansion (W13-37)', () => {
+  async function putPreset(
+    app: ApiServer['app'],
+    id: string,
+    payload: Record<string, unknown>,
+  ) {
+    return app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/model-matrix`,
+      headers,
+      payload,
+    });
+  }
+
+  it('expands a preset into rows using the user\'s own two models', async () => {
+    const { app, id } = await boot();
+    const res = await putPreset(app, id, {
+      preset: 'hybrid',
+      strong: 'their-review-model',
+      cheap: 'their-work-model',
+      scope: 'global',
+    });
+    expect(res.statusCode).toBe(200);
+    const rows = res.json().rows as { role: string; model: string; fallback: string[] }[];
+    // Every canonical role gets a row, and no row names a model the caller
+    // did not supply — the presets shipped model ids until W13-36.
+    expect(rows.length).toBeGreaterThanOrEqual(6);
+    for (const row of rows) {
+      expect(['their-review-model', 'their-work-model']).toContain(row.model);
+    }
+    // THE DIRECTION CHECK: the maker runs on the cheaper pick, the reviewer
+    // and challenger on the stronger one.
+    const byRole = new Map(rows.map((r) => [r.role, r.model]));
+    expect(byRole.get('coding-agent')).toBe('their-work-model');
+    expect(byRole.get('code-reviewer')).toBe('their-review-model');
+    expect(byRole.get('challenger')).toBe('their-review-model');
+    // Each role falls back to the other tier, so one unloaded model parks a
+    // role rather than failing the run.
+    const maker = rows.find((r) => r.role === 'coding-agent');
+    expect(maker?.fallback).toEqual(['their-review-model']);
+  });
+
+  it('refuses a preset whose two models are the same (C-4)', async () => {
+    const { app, id } = await boot();
+    const res = await putPreset(app, id, {
+      preset: 'all-local',
+      strong: 'one-model',
+      cheap: 'one-model',
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().detail ?? res.json().title).toMatch(/same|different/i);
+  });
+
+  it('refuses an unknown preset name and a blank model', async () => {
+    const { app, id } = await boot();
+    const bad = await putPreset(app, id, { preset: 'nope', strong: 'a', cheap: 'b' });
+    expect(bad.statusCode).toBe(400);
+    const blank = await putPreset(app, id, { preset: 'hybrid', strong: '  ', cheap: 'b' });
+    expect(blank.statusCode).toBe(400);
+  });
+});

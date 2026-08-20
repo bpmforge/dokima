@@ -1,0 +1,211 @@
+import { useEffect, useState } from 'react';
+import { putModelMatrixFromPreset, SettingsApiError } from './api.js';
+import { fetchProviderModels, type ProviderCatalog } from './providers-api.js';
+
+/**
+ * The setup wizard's model step (W13-37).
+ *
+ * This is the step that was missing, and its absence is why a fresh install
+ * could not build a board: the wizard asked HOW work should be modelled (a
+ * preset name) and WHERE models come from (a provider), and then never asked
+ * WHICH models — so nothing ever wrote a matrix row, `buildPresetMatrix` had
+ * no production caller at all, and the first run failed at the endpoint.
+ *
+ * Two rules this step exists to keep:
+ *
+ * 1. **The models are the user's own.** The list is read from the provider
+ *    they just registered. Nothing here ships a model name, and nothing here
+ *    ranks the list — no parsing ids for parameter counts, no preferring the
+ *    biggest context window. A guess dressed as a heuristic is still the
+ *    silent default D-024 forbids, and on a machine holding 26 arbitrary
+ *    model names it would simply be wrong.
+ * 2. **Two distinct models, said plainly.** C-4 is mechanical: a reviewer may
+ *    not be the model that did the work, and `route()` refuses a collision
+ *    mid-run. So a provider serving only one usable model is told to the user
+ *    HERE, at setup, rather than surfacing as a failed run later.
+ */
+export interface WizardModelsStepProps {
+  projectId: string;
+  providerId: string;
+  /** The preset the user chose on step 1 — the SHAPE the server expands. */
+  preset: string;
+  /** Advances the wizard. Called only after the matrix is actually written. */
+  onSaved: () => void;
+}
+
+function loadFailure(err: unknown): string {
+  return err instanceof SettingsApiError
+    ? err.message
+    : 'Could not read the model list from that provider.';
+}
+
+export function WizardModelsStep({
+  projectId,
+  providerId,
+  preset,
+  onSaved,
+}: WizardModelsStepProps) {
+  const [catalog, setCatalog] = useState<ProviderCatalog | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // No pre-selection, matching the preset step: the user chooses, or the
+  // wizard does not move.
+  const [work, setWork] = useState('');
+  const [review, setReview] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const next = await fetchProviderModels(projectId, providerId);
+        if (!cancelled) setCatalog(next);
+      } catch (err) {
+        if (!cancelled) setLoadError(loadFailure(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, providerId]);
+
+  const ids = (catalog?.models ?? []).map((m) => m.id);
+  const unreachable = catalog?.status === 'unreachable' || loadError !== null;
+  const tooFew = catalog !== null && !unreachable && ids.length < 2;
+  const ready =
+    work.trim() !== '' && review.trim() !== '' && work.trim() !== review.trim();
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      // `strong` is the REVIEW model and `cheap` is the WORK model — the
+      // preset shape gives the maker the cheaper tier and the checkers the
+      // stronger one. Getting this pair backwards inverts every row silently,
+      // which is exactly what the test on this file pins.
+      await putModelMatrixFromPreset(
+        projectId,
+        { preset, strong: review.trim(), cheap: work.trim() },
+        { scope: 'global' },
+      );
+      setSaveError(null);
+      onSaved();
+    } catch (err) {
+      setSaveError(
+        err instanceof SettingsApiError ? err.message : 'Could not save your models.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section aria-label="Choose your models" data-testid="wizard-step-models">
+      <h2>3. Which of your models should do the work?</h2>
+      <p className="settings__hint">
+        Read from the provider you just registered. Reviews use a different model from the
+        one that wrote the code — that is not a preference, it is how Dokima keeps
+        anything from checking its own output.
+      </p>
+
+      {loadError && (
+        <p role="alert" className="settings__error">
+          {loadError}
+        </p>
+      )}
+      {catalog?.status === 'unreachable' && (
+        <p
+          role="alert"
+          className="settings__error"
+          data-testid="wizard-models-unreachable"
+        >
+          That provider did not answer{catalog.reason ? `: ${catalog.reason}` : '.'} Start
+          it and reopen this step, or type the model ids below exactly as it lists them.
+        </p>
+      )}
+      {tooFew && (
+        <p role="alert" className="settings__error" data-testid="wizard-models-too-few">
+          That provider serves {ids.length === 1 ? 'only one model' : 'no models'}. Dokima
+          needs two: reviews never run on the model that did the work. Load a second model
+          and reopen this step, or add another provider in Settings → Providers.
+        </p>
+      )}
+      {saveError && (
+        <p role="alert" className="settings__error">
+          {saveError}
+        </p>
+      )}
+
+      <label>
+        Model that writes the code
+        <ModelField
+          value={work}
+          onChange={setWork}
+          ids={ids}
+          testId="wizard-model-work"
+          freeform={unreachable}
+        />
+      </label>
+      <label>
+        Model that reviews it
+        <ModelField
+          value={review}
+          onChange={setReview}
+          ids={ids}
+          testId="wizard-model-review"
+          freeform={unreachable}
+        />
+      </label>
+      {work.trim() !== '' && work.trim() === review.trim() && (
+        <p className="settings__hint" data-testid="wizard-models-same">
+          Pick a different model for reviews — the same one on both sides is refused at
+          the first run, not here.
+        </p>
+      )}
+
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={!ready || saving}
+        onClick={() => void save()}
+      >
+        {saving ? 'Saving…' : 'Next'}
+      </button>
+    </section>
+  );
+}
+
+interface ModelFieldProps {
+  value: string;
+  onChange: (next: string) => void;
+  ids: readonly string[];
+  testId: string;
+  /**
+   * A provider that did not answer still gets the user a working setup: they
+   * type the id. Wedging the wizard on a daemon being down would make a
+   * restart the only way forward.
+   */
+  freeform: boolean;
+}
+
+function ModelField({ value, onChange, ids, testId, freeform }: ModelFieldProps) {
+  if (freeform || ids.length === 0) {
+    return (
+      <input
+        data-testid={testId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="the id exactly as your provider lists it"
+      />
+    );
+  }
+  return (
+    <select data-testid={testId} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Choose a model</option>
+      {ids.map((id) => (
+        <option key={id} value={id}>
+          {id}
+        </option>
+      ))}
+    </select>
+  );
+}
