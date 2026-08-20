@@ -49,6 +49,7 @@ export async function buildBuiltInSpawn(
   secretValues: readonly string[],
   pin: PinnedModel | undefined,
   maxIterations: number | undefined,
+  maxTurnTokens: number | undefined,
 ): Promise<BuiltInSpawn> {
   const target = await resolveModelTarget({
     projectPath: io.cwd,
@@ -103,6 +104,7 @@ export async function buildBuiltInSpawn(
     // W13-11: the user's tool-turn cap, when they set one. Absent = the
     // documented default; this field was previously never set at all.
     ...(maxIterations === undefined ? {} : { maxIterations }),
+    ...(maxTurnTokens === undefined ? {} : { maxTurnTokens }),
     secretValues,
     now: io.now,
   });

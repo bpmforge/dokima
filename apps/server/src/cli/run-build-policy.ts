@@ -29,6 +29,20 @@ export const MAX_TOOL_ITERATIONS_SETTINGS_KEY = 'maxToolIterations';
  */
 export const MAX_TOOL_ITERATIONS_CEILING = 40;
 
+/** How many tokens one model turn may emit before the ceiling stops it (W13-43). */
+export const MAX_TURN_TOKENS_SETTINGS_KEY = 'maxTurnTokens';
+
+/**
+ * The most one turn may be given, however it is configured.
+ *
+ * Same reasoning as the iteration ceiling above, against a different runaway:
+ * a setting that accepts any number re-opens "a session generates forever"
+ * (T-27) by configuration. 128k is four times the default and past any turn a
+ * real model has produced on this board — the largest measured legitimate turn
+ * was 6,646 tokens.
+ */
+export const MAX_TURN_TOKENS_CEILING = 128_000;
+
 /**
  * The tool-turn cap the user chose (W13-11).
  *
@@ -194,3 +208,43 @@ export function resolvePolicyScope(
   return { scope: {} };
 }
 
+
+/**
+ * The per-turn output ceiling the user chose (W13-43).
+ *
+ * Found by running the product: a local model entered a generation loop and
+ * streamed for as long as the run was left going. `lsof` showed a live
+ * connection, LM Studio 160% CPU, our process 0.7%. No guard fired, and that
+ * was by design — W13-15 replaced duration bounds with an idle bound, which
+ * cannot see a model that never goes idle.
+ *
+ * The default does not move. It is sized off measured turns (median 60, p95
+ * 438, largest legitimate 6,646), so honest work never meets it; this is a
+ * knob for someone whose work genuinely produces enormous single turns.
+ *
+ * REFUSES rather than clamps, exactly like `resolveMaxToolIterations`:
+ * silently running a different number than the one configured is the defect
+ * class this board keeps finding.
+ */
+export function resolveMaxTurnTokens(
+  raw: JsonValue | undefined,
+): { readonly maxTurnTokens?: number } | { readonly refusal: string } {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1) {
+    return {
+      refusal:
+        `${MAX_TURN_TOKENS_SETTINGS_KEY} must be a whole number of tokens ` +
+        `(at least 1); got ${JSON.stringify(raw)}.`,
+    };
+  }
+  if (raw > MAX_TURN_TOKENS_CEILING) {
+    return {
+      refusal:
+        `${MAX_TURN_TOKENS_SETTINGS_KEY} is ${raw}, over the ceiling of ` +
+        `${MAX_TURN_TOKENS_CEILING}. The cap exists so one turn cannot generate ` +
+        `forever (T-27); a setting that accepts any value would re-open that by ` +
+        `configuration. Lower it, or use a model that stops.`,
+    };
+  }
+  return { maxTurnTokens: raw };
+}

@@ -16,6 +16,8 @@ import { executeBuildRun, tokenizeAgentCommand } from './run-build.js';
 import { resolvePolicyScope,
   MAX_TOOL_ITERATIONS_CEILING,
   resolveMaxToolIterations,
+  resolveMaxTurnTokens,
+  MAX_TURN_TOKENS_CEILING,
 } from './run-build-policy.js';
 import { AGENT_RUNNER_SETTINGS_KEY } from '../api/server/settings-types.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
@@ -701,6 +703,27 @@ describe('resolveMaxToolIterations (W13-11)', () => {
     for (const bad of ['20', 0, -3, 2.5]) {
       const result = resolveMaxToolIterations(bad as never);
       expect('refusal' in result, `${JSON.stringify(bad)} should be refused`).toBe(true);
+    }
+  });
+});
+
+describe('resolveMaxTurnTokens (W13-43)', () => {
+  it('takes a whole number of tokens', () => {
+    expect(resolveMaxTurnTokens(64_000)).toEqual({ maxTurnTokens: 64_000 });
+  });
+
+  it('treats absent as "use the default", not as zero', () => {
+    expect(resolveMaxTurnTokens(undefined)).toEqual({});
+    expect(resolveMaxTurnTokens(null as never)).toEqual({});
+  });
+
+  it('REFUSES rather than clamping, so the run never uses a number nobody chose', () => {
+    const over = resolveMaxTurnTokens(MAX_TURN_TOKENS_CEILING + 1);
+    expect(over).toHaveProperty('refusal');
+    expect((over as { refusal: string }).refusal).toContain('generate forever');
+
+    for (const bad of [0, -1, 1.5, 'lots']) {
+      expect(resolveMaxTurnTokens(bad as never)).toHaveProperty('refusal');
     }
   });
 });
