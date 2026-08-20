@@ -73,13 +73,14 @@ export type {
 export { route } from './router.js';
 export type { RouteRequest, RouteResult } from './router.js';
 
+// W13-36: the per-name RoleMatrix literals are gone — they named specific
+// models a customer may not have. A preset is a SHAPE now, built against the
+// user's own two picks.
 export {
-  PRESETS,
-  PRESET_ALL_CLOUD,
-  PRESET_ALL_LOCAL,
-  PRESET_HYBRID,
+  buildPresetMatrix,
   PRESET_NAMES,
   PRESET_ROLES,
+  PRESET_SHAPES,
   presetAsGlobalScope,
 } from './presets.js';
-export type { PresetName } from './presets.js';
+export type { ModelTier, PresetName, PresetShape, TierPicks } from './presets.js';

@@ -9,6 +9,7 @@ import {
   resolveModelTarget,
   splitModelRef,
   envNamesAModel,
+  envTarget,
 } from './model-resolution.js';
 import {
   listModelMatrix,
@@ -606,13 +607,28 @@ describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
       },
     );
 
-    it('either variable alone is enough to count as "the operator said so"', () => {
-      expect(envNamesAModel({ DOKIMA_MODEL_ID: 'm' } as NodeJS.ProcessEnv)).toBe(true);
-      expect(
-        envNamesAModel({ DOKIMA_MODEL_BASE_URL: 'http://x/v1' } as NodeJS.ProcessEnv),
-      ).toBe(true);
-      expect(envNamesAModel({} as NodeJS.ProcessEnv)).toBe(false);
-      void KEYS;
+    it(
+      'W13-36: the MODEL ID is what counts. A base URL names an ENDPOINT, and ' +
+        'an endpoint plus a guessed id is precisely what produced "Invalid ' +
+        'model identifier" — the old default was `?? \'local-model\'`',
+      () => {
+        expect(envNamesAModel({ DOKIMA_MODEL_ID: 'm' } as NodeJS.ProcessEnv)).toBe(true);
+        expect(
+          envNamesAModel({ DOKIMA_MODEL_BASE_URL: 'http://x/v1' } as NodeJS.ProcessEnv),
+        ).toBe(false);
+        expect(envNamesAModel({} as NodeJS.ProcessEnv)).toBe(false);
+        void KEYS;
+      },
+    );
+
+    it('and no code path ever substitutes a model id of its own', () => {
+      const target = envTarget({
+        DOKIMA_MODEL_ID: 'the-users-choice',
+        DOKIMA_MODEL_BASE_URL: 'http://x/v1',
+      } as NodeJS.ProcessEnv);
+      expect(target.model).toBe('the-users-choice');
+      // The removed default. Nothing may reintroduce it.
+      expect(envTarget({} as NodeJS.ProcessEnv).model).not.toBe('local-model');
     });
   });
 });
