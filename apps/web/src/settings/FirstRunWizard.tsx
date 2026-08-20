@@ -218,6 +218,17 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
   };
 
   const matrixProjectId = createdProjectId ?? projectId ?? null;
+  /**
+   * W13-58 (novice audit): the step headings were hardcoded "1..5", and on a
+   * fresh install the real order is preset, provider, forge, sample, models —
+   * so the novice watched the numbers run 1, 2, 4, 5 and then jump BACK to 3,
+   * which reads as the wizard being broken. Numbers now come from the actual
+   * sequence for this entry point.
+   */
+  const stepSequence: Step[] = projectId
+    ? ['preset', 'provider', 'models', 'forge', 'sample']
+    : ['preset', 'provider', 'forge', 'sample', 'models'];
+  const stepNumber = (of: Step): number => stepSequence.indexOf(of) + 1;
   const chosenPreset =
     MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.preset ?? 'hybrid';
 
@@ -239,6 +250,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
 
       {step === 'preset' && (
         <WizardPresetStep
+          number={stepNumber('preset')}
           choiceId={choiceId}
           onChoose={setChoiceId}
           onNext={() => setStep('provider')}
@@ -247,6 +259,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
 
       {step === 'provider' && (
         <WizardProviderStep
+          number={stepNumber('provider')}
           draft={{ providerKind, baseUrl, pinnedModel, project, location, credentialRef }}
           needsModel={
             MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.needsModel === true
@@ -268,6 +281,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
           projectId={matrixProjectId}
           providerId="first-run"
           preset={chosenPreset}
+          number={stepNumber('models')}
           onSaved={() => {
             setMatrixWritten(true);
             setError(null);
@@ -278,7 +292,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
 
       {step === 'forge' && (
         <section aria-label="Connect a forge" data-testid="wizard-step-forge">
-          <h2>4. Connect a forge (optional)</h2>
+          <h2>{stepNumber('forge')}. Connect a forge (optional)</h2>
           <label>
             Forge credential ref (leave blank to skip)
             <input value={forgeRef} onChange={(e) => setForgeRef(e.target.value)} />
@@ -292,7 +306,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
       {step === 'sample' && (
         <section aria-label="Guided sample" data-testid="wizard-step-sample">
           <h2>
-            5. Guided sample project{' '}
+            {stepNumber('sample')}. Guided sample project{' '}
             <HelpAffordance topic="guided-sample" label="Guided sample" />
           </h2>
           <p className="settings__hint">

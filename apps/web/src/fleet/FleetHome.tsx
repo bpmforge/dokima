@@ -15,6 +15,7 @@ import type {
   ProjectMode,
 } from './types.js';
 import './fleet.css';
+import { EmptyState } from './EmptyState.js';
 
 /** Live-update substitute (FR-F1's WS push is deferred — see HANDOFF in plan.json). */
 const POLL_INTERVAL_MS = 5_000;
@@ -103,17 +104,23 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
     [refresh],
   );
 
+  // W13-58: on a FRESH install the one thing to do first is setup, so the
+  // empty state's "Set up Dokima" holds the screen's single primary slot
+  // (W12-29's law) and the header's New project steps down until a project
+  // exists.
+  const setupIsPrimary = !loading && !formMode && sorted.length === 0 && !archivedFilter;
+
   return (
     <div className="fleet" data-testid="fleet-home">
       <header className="fleet__header">
         <h1>Fleet</h1>
         <div className="fleet__actions">
-          {/* W12-29: one primary per screen. New project is what a person
-              came to Fleet to do; the rest are real actions that should not
-              compete with it. */}
+          {/* W12-29: one primary per screen. With projects on the board, New
+              project is what a person came to Fleet to do; on a cold start
+              the empty state's Set up Dokima outranks it (W13-58). */}
           <button
             type="button"
-            className="btn-primary"
+            className={setupIsPrimary ? 'btn-secondary' : 'btn-primary'}
             onClick={() => setFormMode('new')}
           >
             New project
@@ -341,54 +348,5 @@ function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
         </button>
       </div>
     </form>
-  );
-}
-
-interface EmptyStateProps {
-  archived: boolean;
-  onNewProduct: () => void;
-  onOnboard: () => void;
-  onOpenGuidedSample: () => void;
-}
-
-/** UX_SPEC §2b empty-states table. */
-function EmptyState({
-  archived,
-  onNewProduct,
-  onOnboard,
-  onOpenGuidedSample,
-}: EmptyStateProps) {
-  if (archived) {
-    return <p className="fleet__empty">No archived projects.</p>;
-  }
-  return (
-    <div className="fleet__empty empty-state" data-testid="fleet-empty">
-      {/* W12-29: an empty state is a first impression, not a fallback. The
-          captured frame showed "No programs yet." over four identical pills
-          and 85% white space — nothing said what this product is for.
-          LABELS ARE DELIBERATELY UNCHANGED HERE: renaming them is a
-          vocabulary decision (W12-32, which has to pick one word for the
-          Fleet/programs/Product/project tangle), and doing it inside a
-          hierarchy ticket broke a test that asserts one of those labels. */}
-      <p className="empty-state__lead">
-        Describe what you want built. Dokima interviews you, writes the plan,
-        and works the board with expert agents — on your machine, on your
-        models.
-      </p>
-      <div className="empty-state__actions">
-        {/* Secondary, not primary: the header's New project is the persistent
-            action and owns the single primary slot. Two blue buttons labelled
-            the same thing is worse than none. */}
-        <button type="button" className="btn-secondary" onClick={onNewProduct}>
-          New project
-        </button>
-        <button type="button" className="btn-secondary" onClick={onOnboard}>
-          Onboard existing repo
-        </button>
-        <button type="button" className="btn-quiet" onClick={onOpenGuidedSample}>
-          Try the guided sample
-        </button>
-      </div>
-    </div>
   );
 }

@@ -10,18 +10,20 @@ import { MODEL_POLICY_CHOICES } from './modelPolicyChoices.js';
  * disabled until the reader picks.
  */
 export interface WizardPresetStepProps {
+  /** Position in the ACTUAL step sequence for this entry point (W13-58). */
+  number: number;
   choiceId: string | null;
   onChoose: (id: string) => void;
   onNext: () => void;
 }
 
-export function WizardPresetStep({ choiceId, onChoose, onNext }: WizardPresetStepProps) {
+export function WizardPresetStep({ number, choiceId, onChoose, onNext }: WizardPresetStepProps) {
   return (
     <section
       aria-label="How should your work be modelled?"
       data-testid="wizard-step-preset"
     >
-      <h2>1. How should your work be modelled?</h2>
+      <h2>{number}. How should your work be modelled?</h2>
       <p className="settings__hint">
         Nothing spends money or contacts a network until you choose. Whichever you pick,
         reviews still use a different model from the one that did the work — nothing here

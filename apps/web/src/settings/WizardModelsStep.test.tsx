@@ -43,6 +43,7 @@ afterEach(() => {
 function renderStep(onSaved = vi.fn()) {
   render(
     <WizardModelsStep
+      number={3}
       projectId="proj-1"
       providerId="first-run"
       preset="hybrid"

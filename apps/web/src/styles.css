@@ -448,6 +448,12 @@ label:has(> input[type='radio']) {
   color: var(--sw-fg-muted);
 }
 
+.empty-state__hint {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+  max-width: 34rem;
+}
+
 .empty-state__actions {
   display: flex;
   gap: var(--sw-space-3);

@@ -26,6 +26,8 @@ export interface ProviderDraft {
 }
 
 export interface WizardProviderStepProps {
+  /** Position in the ACTUAL step sequence for this entry point (W13-58). */
+  number: number;
   draft: ProviderDraft;
   /** True when step 1's choice pins one model, which is the only case that asks for one. */
   needsModel: boolean;
@@ -34,6 +36,7 @@ export interface WizardProviderStepProps {
 }
 
 export function WizardProviderStep({
+  number,
   draft,
   needsModel,
   onChange,
@@ -42,7 +45,7 @@ export function WizardProviderStep({
   const { providerKind } = draft;
   return (
     <section aria-label="Register a provider" data-testid="wizard-step-provider">
-      <h2>2. Register one provider</h2>
+      <h2>{number}. Register one provider</h2>
       <label>
         Provider kind
         <select
@@ -108,11 +111,22 @@ export function WizardProviderStep({
       ) : (
         authMethodsFor(providerKind).includes('none') === false && (
           <label>
-            Credential ref (keychain name — never a raw secret, FR-S2)
+            API key name
             <input
               value={draft.credentialRef}
               onChange={(e) => onChange({ credentialRef: e.target.value })}
+              placeholder="the keychain entry holding your key"
             />
+            {/* W13-58 (novice audit): this label used to read "Credential ref
+                (keychain name — never a raw secret, FR-S2)" — an internal
+                requirement id in user copy, and no path from "I have a key in
+                hand" to "something I can type here". */}
+            <small className="settings__hint">
+              Dokima never stores keys in files — they live in your OS
+              keychain, and this field takes the entry's NAME. Paste a raw key
+              into Settings → Providers → Add provider and it is stored for
+              you; or create the entry yourself and type its name here.
+            </small>
           </label>
         )
       )}

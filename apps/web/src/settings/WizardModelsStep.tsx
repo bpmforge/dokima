@@ -25,6 +25,8 @@ import { fetchProviderModels, type ProviderCatalog } from './providers-api.js';
  *    HERE, at setup, rather than surfacing as a failed run later.
  */
 export interface WizardModelsStepProps {
+  /** Position in the ACTUAL step sequence for this entry point (W13-58). */
+  number: number;
   projectId: string;
   providerId: string;
   /** The preset the user chose on step 1 — the SHAPE the server expands. */
@@ -40,6 +42,7 @@ function loadFailure(err: unknown): string {
 }
 
 export function WizardModelsStep({
+  number,
   projectId,
   providerId,
   preset,
@@ -100,7 +103,7 @@ export function WizardModelsStep({
 
   return (
     <section aria-label="Choose your models" data-testid="wizard-step-models">
-      <h2>3. Which of your models should do the work?</h2>
+      <h2>{number}. Which of your models should do the work?</h2>
       <p className="settings__hint">
         Read from the provider you just registered. Reviews use a different model from the
         one that wrote the code — that is not a preference, it is how Dokima keeps
