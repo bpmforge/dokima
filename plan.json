@@ -8634,6 +8634,124 @@
         "FR-I2 in docs/SRS.md must agree with whichever is chosen: it currently promises dual-remote push with no note that the CLI path refuses it.",
         "RED FIXTURE: complete the wizard supplying a forge credential and assert by execution what happens to it \u2014 that it is either stored somewhere a later ticket can find, or never asked for. Not that a component renders."
       ]
+    },
+    {
+      "id": "W13-49",
+      "title": "the Roster is a debug dump \u2014 internal prompt text, three failure-toned lines per card, no action",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/roster/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Worst screen in the audit. The roster DATA (agents, models, costs) is right; the presentation is the builder's view shipped to the user.",
+      "acceptance": [
+        "MEASURED (UX_AUDIT_2026-08-20 A-1): every expert card prints its full internal system-prompt description, plus \"unconfigured \u2014 no routing matrix entry\", \"not benched\", \"instruction cost: \u2014\". A user reads a wall of \"unconfigured\" as broken; nothing on the screen is actionable.",
+        "One sentence per expert, written for the user (what it does FOR THEM), not the model. The internal description is not shown; it is not summarized by hand either \u2014 a hand summary drifts, so derive or store a user-facing line where the roster data lives.",
+        "Status lines appear ONLY when actionable. A role that resolves through the default matrix is simply ready; \"unconfigured\" is reserved for a state the user can act on, and says where.",
+        "VOCABULARY.md applies: the word is Models, never \"routing matrix\".",
+        "RED FIXTURE: render the roster and assert no card contains \"ANTI_SLOP\", \"routing matrix\", or a bare em-dash cost line."
+      ]
+    },
+    {
+      "id": "W13-50",
+      "title": "Plan presents the user's own features as \"findings\" with meaningless identical scores and two IDs per card",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/plans/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "The screen was built for the improvement loop (health-scan findings) and reused for creation-plan items without translating the vocabulary.",
+      "acceptance": [
+        "MEASURED (A-2): header reads \"8 raw findings -> 8 plan items -> 8 accepted -> 0 done / 0 regressed\"; every card shows \"severity 3 \u00b7 leverage 3 \u00b7 priority score 9\" (identical, zero information) and two IDs (\"T001 \u00b7 Ticket: PLAN-T001\").",
+        "ONE id per card \u2014 the ticket id the board uses, per VOCABULARY.md one-word-per-concept.",
+        "Scores render only when they DIFFER across visible items; a column of identical numbers is noise wearing authority. Severity/leverage stay available for the improvement-loop case that produced them (real findings from a health scan), which is where that vocabulary is honest.",
+        "The funnel header speaks user vocabulary or goes. \"Regressed\" stays only if the screen can show WHICH item regressed and what to do.",
+        "RED FIXTURE: with all-identical scores, the rendered card list contains no \"severity\" text; with differing scores it does."
+      ]
+    },
+    {
+      "id": "W13-51",
+      "title": "the product contradicts its own instructions \u2014 Settings tab names, error copy, and quiet-state copy disagree with VOCABULARY.md",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/SettingsPage.tsx",
+        "apps/web/src/notifications/MorningQueue.tsx",
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/web/e2e/settings.spec.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "One of these (\"Settings \u2192 Models\") was introduced by W13-34 this week \u2014 the drift is active, not legacy.",
+      "acceptance": [
+        "VERIFIED BY GREP (A-3): model-resolution.ts:276 tells users to \"Open Settings \u2192 Models\"; the tab (SettingsPage.tsx:41) is \"Model Matrix\". A user following our own error message finds nothing. VOCABULARY.md already decided the UI word is Models \u2014 rename the LABEL only, ids and wire shapes unchanged, per that doc's rename-in-the-UI-only rule.",
+        "MorningQueue.tsx:275 \"Next digest at wave gate.\" \u2014 undefined internal term as the closing word of the positive-quiet state. Say when in words a user has met (e.g. \"when the current run finishes its wave\" or drop the clause).",
+        "Sweep the Settings tab row against VOCABULARY.md; rename labels that are internal terms. Adding a grouping row is W13-53's composition job, not this one \u2014 labels only here.",
+        "RED FIXTURE: an e2e assertion that the literal instruction string in the no-model error names a tab that exists."
+      ]
+    },
+    {
+      "id": "W13-52",
+      "title": "board cards carry no state in form \u2014 Blocked and Ready are pixel-identical, plus three unlabeled glyphs",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "components.md warned: \"a primitive with three surviving competitors is not shared, it is a fourth option.\" This is the adoption ticket for the board.",
+      "acceptance": [
+        "MEASURED (A-4): a Blocked card and a Ready card differ only by column. VISUAL_DIRECTION's core rule \u2014 state is a different SHAPE \u2014 and components.md's .surface--attention/.state primitives exist and are unused here.",
+        "Apply the shared primitives: blocked cards get the warning stripe + state chip; a card needing a person gets attention. The duplication ratchet (51) must go DOWN with this, not sideways \u2014 adopting the shared card is the point.",
+        "The unexplained \u25cb on every card gets a meaning a user can discover (label, title, or removal). The lane header shows a NAME, not a bare ticket id. The repeated \"Focus \u00ab\" pane headers become one labeled control.",
+        "RED FIXTURE: render a blocked ticket and assert its card carries the blocked state class; capture-tour frames diff (W13-07 harness) for the board."
+      ]
+    },
+    {
+      "id": "W13-53",
+      "title": "composition: Fleet and the Morning queue are islands in a void, and the review timer is an unlabeled countdown",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/src/notifications/**",
+        "apps/web/src/styles.css"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Blocked on the founder motion decision ONLY for its motion half; composition proceeds regardless.",
+      "acceptance": [
+        "MEASURED (A-5): Fleet renders two cards top-left with ~70% of the viewport empty; the Morning queue centers one card in blackness. Density is the instrument-panel direction's core promise.",
+        "Compose the pages: a content max-width with intentional grid, summary strip where the direction calls for readings (Fleet: totals across projects as readouts), and the queue's quiet state designed rather than defaulted.",
+        "\"0:02 elapsed (target 10:00)\" gets its label \u2014 it is the ten-minute morning-review budget; say so where it renders.",
+        "MOTION IS GATED: VISUAL_DIRECTION says No motion; the founder has now asked for animation. Record the amendment (narrow state-transition policy, 150-200ms, prefers-reduced-motion respected, nothing ambient) in VISUAL_DIRECTION.md as a founder decision BEFORE any transition ships; if not yet decided, ship this ticket without motion.",
+        "RED FIXTURE: capture-tour frame diffs for Fleet and notifications; a reduced-motion assertion if motion lands."
+      ]
     }
   ]
 }
