@@ -7812,14 +7812,14 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "security-auditor",
       "write_scope": [
         "packages/harbormaster/src/loop-gates-verify.ts",
-        "packages/harbormaster/src/loop-gates-verify.test.ts",
-        "packages/harbormaster/src/sandbox/index.ts",
-        "packages/validators/src/run.ts",
-        "packages/validators/src/run.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/sandbox-preflight.ts",
+        "apps/server/src/cli/sandbox-preflight.test.ts",
+        "apps/server/src/cli/run-build.ts",
         "docs/SECURITY_CONTROLS.md",
         "docs/THREAT_MODEL.md"
       ],
@@ -7834,7 +7834,8 @@
         "RED FIXTURE: a verify command attempting an outbound connection and a read of a secret-bearing env var fails on both counts \u2014 which is W6-06's own acceptance criterion 2, never exercised against the real path."
       ],
       "notes": [
-        "Filed 2026-08-19 from an unwired-export audit, not a failing test. Deliberately NOT fixed in place: wiring a sandbox into every verify changes execution semantics for every run and needs the unavailable-host decision made first. The docs are corrected in the same commit that files this, because a security document asserting a mitigation that is absent is worse than the gap."
+        "Filed 2026-08-19 from an unwired-export audit, not a failing test. Deliberately NOT fixed in place: wiring a sandbox into every verify changes execution semantics for every run and needs the unavailable-host decision made first. The docs are corrected in the same commit that files this, because a security document asserting a mitigation that is absent is worse than the gap.",
+        "Closed 2026-08-19 with the founder-chosen answer: fail closed, with an explicit ledgered waiver. Scoped honestly to the VERIFY path \u2014 runValidatorPack still has no sandbox parameter, so pack executables remain outside it and the docs say so rather than claiming the whole control. The refusal was placed AFTER the existing signing-key and vault checks so a new precondition never preempts an older refusal message; a test caught that ordering."
       ]
     },
     {

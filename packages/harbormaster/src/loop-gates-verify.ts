@@ -5,12 +5,9 @@
  * subdirectory.
  */
 
-import { exec as execCallback } from 'node:child_process';
-import { promisify } from 'node:util';
 import { git } from '@dokima/git';
+import { runSandboxed } from './sandbox/index.js';
 import type { VerifyRunResult } from './loop-gates-types.js';
-
-const execAsync = promisify(execCallback);
 
 /**
  * Re-runs the TICKET's own verify command — never the manifest's claimed
@@ -24,24 +21,36 @@ export async function reRunVerify(
   command: string,
   timeoutMs: number,
 ): Promise<VerifyRunResult> {
-  try {
-    const { stdout, stderr } = await execAsync(command, {
-      cwd: worktreePath,
-      timeout: timeoutMs,
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    return { command, exitCode: 0, stdout, stderr };
-  } catch (err) {
-    const failure = err as { code?: unknown; stdout?: string; stderr?: string };
-    const exitCode = typeof failure.code === 'number' ? failure.code : 1;
-    return {
-      command,
-      exitCode,
-      stdout: failure.stdout ?? '',
-      stderr: failure.stderr ?? '',
-    };
-  }
+  /**
+   * SANDBOXED (W13-25). This ran `child_process.exec` with a cwd and a timeout
+   * and nothing else: the parent environment was inherited whole and the
+   * network was open. SC-07 has claimed the opposite since W6-06 — cleaned
+   * env, no network by default, validator executables under the same sandbox —
+   * and `packages/harbormaster/src/sandbox/` implemented all of it and had
+   * ZERO production callers, because W6-06's write_scope was the module and no
+   * ticket ever owned a call site.
+   *
+   * Both properties were verified by running them here, not assumed: a fetch
+   * inside the sandbox fails ENOTFOUND, and a secret placed in the parent
+   * environment is not visible to the child.
+   *
+   * `SandboxUnavailableError` is NOT caught. Falling back to an unsandboxed
+   * run would be exactly the silent degradation this ticket exists to remove —
+   * the board would show a green it did not earn. `executeBuildRun` refuses at
+   * startup instead, where a run can decline before claiming anything.
+   */
+  const result = await runSandboxed({ cwd: worktreePath, command, timeoutMs });
+  return {
+    command,
+    // `null` is a spawn error the process never started for — never a pass.
+    exitCode: result.exitCode ?? 1,
+    stdout: result.stdout,
+    stderr: result.timedOut
+      ? `${result.stderr}\n[verify timed out after ${timeoutMs}ms]`
+      : result.stderr,
+  };
 }
+
 
 /** The ticket branch's real fork point from `baseRef`, immune to `baseRef` moving forward since the session started. */
 export async function resolveForkPoint(

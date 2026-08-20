@@ -142,3 +142,12 @@ export type {
   GatewaySpawnSessionOptions,
   HandoffFields,
 } from './agent-session/index.js';
+
+/**
+ * W13-25: the sandbox, exported for the first time. It was complete and tested
+ * since W6-06 and unreachable from outside the package, which is why SC-07 was
+ * documented as landed and had zero callers.
+ */
+export { isSandboxProfileAvailable, runSandboxed } from './sandbox/index.js';
+export type { SandboxProfile, SandboxRunOptions, SandboxRunResult } from './sandbox/types.js';
+
