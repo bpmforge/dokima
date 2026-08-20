@@ -14,3 +14,19 @@ export * from './phases/index.js';
  * one caller honours is not a limit.
  */
 export { MAX_FOLLOWUP_DEPTH } from './interview/depth-policy.js';
+
+/**
+ * W13-55: the ux-audit judge core — NARROW, exactly what the server dispatch
+ * calls, so the export ratchet gains no uncalled symbols.
+ */
+export {
+  buildUxAuditPrompt,
+  judgmentToPlanFields,
+  parseUxAuditJudgments,
+  verifyCitations,
+} from './modes/ux-audit.js';
+export type {
+  DroppedJudgment,
+  UxAuditJudgment,
+  UxEvidenceState,
+} from './modes/ux-audit.js';

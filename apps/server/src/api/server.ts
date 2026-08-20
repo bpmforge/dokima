@@ -22,6 +22,7 @@ import { registerHealthz } from './healthz.js';
 import { registerLessonsRoutes } from './lessons/index.js';
 import { registerOpenApiRoute } from './openapi.js';
 import { registerPipelineRoutes } from './pipeline/index.js';
+import { registerUxAuditRoutes } from './pipeline/ux-audit/routes.js';
 import { registerPlansRoutes } from './plans-routes.js';
 import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
@@ -116,6 +117,8 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerNotificationRoutes(app, { home: opts.fleetHome });
   registerPlansRoutes(app, { home: opts.fleetHome });
   registerPipelineRoutes(app, { home: opts.fleetHome });
+  // W13-55: the design-review loop's judge — evidence in, verified findings out.
+  registerUxAuditRoutes(app, { home: opts.fleetHome });
   registerDecisionRoutes(app, { home: opts.fleetHome, auth: authOpts });
   // ROADMAP W8 exit criterion ("export/import round-trips with chain
   // verification") — registered only when a signing key is configured, see

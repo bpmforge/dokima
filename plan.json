@@ -8793,17 +8793,19 @@
       "module": "pipeline",
       "lane": "pipeline",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/pipeline/src/modes/**",
-        "apps/server/src/api/pipeline/ux-audit/**"
+        "apps/server/src/api/pipeline/ux-audit/**",
+        "apps/server/src/api/server.ts",
+        "packages/pipeline/src/index.ts"
       ],
       "depends_on": [
         "W13-54"
       ],
       "stories": [],
-      "notes": "Layer 3 of DESIGN_REVIEW_LOOP.md. Dispatch shape per the onboard-mode precedent (code reads, model judges); Law 9a: tests use the fake gateway, never live calls. Scope narrowed from apps/server/src/api/pipeline/** after P8 flagged overlap with W13-51's model-resolution.ts \u2014 the dispatch lives in its own ux-audit/ directory; holding the whole tree was speculation, the third time this session P8 has caught exactly that.",
+      "notes": "Layer 3 of DESIGN_REVIEW_LOOP.md. Dispatch shape per the onboard-mode precedent (code reads, model judges); Law 9a: tests use the fake gateway, never live calls. Scope narrowed from apps/server/src/api/pipeline/** after P8 flagged overlap with W13-51's model-resolution.ts \u2014 the dispatch lives in its own ux-audit/ directory; holding the whole tree was speculation, the third time this session P8 has caught exactly that. Scope widened to the route-registration point in server.ts and the pipeline barrel BEFORE building \u2014 a route module nothing registers and a mode no barrel exports are this board's defining defect, and this ticket exists because of it.",
       "acceptance": [
         "A ux-audit run: harness hands evidence packs to the end-user-simulator expert via the gateway (matrix-routed \u2014 local qwen must work, C-1), model returns AuditFinding[] in the existing improve-mode shape.",
         "EVERY finding carries a citation \u2014 an exact string that must appear in the evidence pack. The harness re-greps each citation; a finding whose citation is absent is DROPPED and logged (C-2/C-3: a model's claim is never trusted unverified). The drop is visible in the run, not silent.",
