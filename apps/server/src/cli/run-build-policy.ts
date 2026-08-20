@@ -43,6 +43,20 @@ export const MAX_TURN_TOKENS_SETTINGS_KEY = 'maxTurnTokens';
  */
 export const MAX_TURN_TOKENS_CEILING = 128_000;
 
+/** Wall-clock ceiling on one agent session, both runners (W13-47). */
+export const MAX_SESSION_SECONDS_SETTINGS_KEY = 'maxSessionSeconds';
+
+/**
+ * The most one session may be given, however it is configured.
+ *
+ * Four hours. Deliberately far above the ceiling's own default: this is the
+ * last backstop in the stack, and someone on genuinely slow hardware may need
+ * real room. What it refuses is a value that means "never" — which is the
+ * state the product was in before W13-44, and the one a session that runs
+ * forever depends on.
+ */
+export const MAX_SESSION_SECONDS_CEILING = 4 * 60 * 60;
+
 /**
  * The tool-turn cap the user chose (W13-11).
  *
@@ -247,4 +261,84 @@ export function resolveMaxTurnTokens(
     };
   }
   return { maxTurnTokens: raw };
+}
+
+/**
+ * The per-session wall-clock ceiling the user chose (W13-47).
+ *
+ * ONE setting for both runners. W13-44 wired the bound into the built-in
+ * agent with a hardcoded default and left the external-CLI runner with no
+ * bound at all; two separate ceilings that could disagree would be worse than
+ * one that is occasionally wrong.
+ *
+ * The default (`DEFAULT_MAX_SESSION_SECONDS`, 30 minutes) does not move — it
+ * is sized off measured sessions of roughly three minutes, and the ladder
+ * multiplies it by attempt count. This is a knob for slow hardware.
+ *
+ * REFUSES rather than clamps, like every other limit on this path.
+ */
+export function resolveMaxSessionSeconds(
+  raw: JsonValue | undefined,
+): { readonly maxSessionSeconds?: number } | { readonly refusal: string } {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1) {
+    return {
+      refusal:
+        `${MAX_SESSION_SECONDS_SETTINGS_KEY} must be a whole number of seconds ` +
+        `(at least 1); got ${JSON.stringify(raw)}. Use a large number for a long ` +
+        `leash — there is no value meaning "never give up".`,
+    };
+  }
+  if (raw > MAX_SESSION_SECONDS_CEILING) {
+    return {
+      refusal:
+        `${MAX_SESSION_SECONDS_SETTINGS_KEY} is ${raw}, over the ceiling of ` +
+        `${MAX_SESSION_SECONDS_CEILING}. A session with no effective time bound is ` +
+        `the state that made runs hang with nothing to explain them. Lower it.`,
+    };
+  }
+  return { maxSessionSeconds: raw };
+}
+
+/** Every numeric bound one run enforces, resolved together (W13-47). */
+export interface RunLimits {
+  readonly maxIterations?: number;
+  readonly maxTurnTokens?: number;
+  readonly maxSessionSeconds: number;
+}
+
+/**
+ * Resolves the run's three limits from settings, or refuses (W13-47).
+ *
+ * Collected into one call because three near-identical read-check-refuse
+ * blocks in `executeBuildRun` were three chances for the next one to be
+ * written slightly differently — and because a fourth limit is likelier than
+ * not, given this phase added three. Each individual resolver still refuses
+ * rather than clamps on its own terms; this only decides the order and returns
+ * the first refusal.
+ *
+ * `maxSessionSeconds` resolves to a NUMBER rather than staying optional: both
+ * runners need one, and a default applied in two places is a default that can
+ * disagree with itself.
+ */
+export function resolveRunLimits(
+  read: (key: string) => JsonValue | undefined,
+  defaultSessionSeconds: number,
+): { readonly limits: RunLimits } | { readonly refusal: string } {
+  const iterations = resolveMaxToolIterations(read(MAX_TOOL_ITERATIONS_SETTINGS_KEY));
+  if ('refusal' in iterations) return iterations;
+
+  const turnTokens = resolveMaxTurnTokens(read(MAX_TURN_TOKENS_SETTINGS_KEY));
+  if ('refusal' in turnTokens) return turnTokens;
+
+  const sessionSeconds = resolveMaxSessionSeconds(read(MAX_SESSION_SECONDS_SETTINGS_KEY));
+  if ('refusal' in sessionSeconds) return sessionSeconds;
+
+  return {
+    limits: {
+      ...iterations,
+      ...turnTokens,
+      maxSessionSeconds: sessionSeconds.maxSessionSeconds ?? defaultSessionSeconds,
+    },
+  };
 }

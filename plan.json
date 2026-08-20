@@ -8523,7 +8523,7 @@
     },
     {
       "id": "W13-45",
-      "title": "review-queue ships a second, unused implementation of the morning queue",
+      "title": "two superseded duplicates: the unused morning queue, and createChildProcessSpawn",
       "phase": 13,
       "module": "harbormaster",
       "lane": "quality",
@@ -8533,7 +8533,9 @@
       "write_scope": [
         "packages/harbormaster/src/review-queue.ts",
         "packages/harbormaster/src/review-queue.test.ts",
-        "packages/harbormaster/src/index.ts"
+        "packages/harbormaster/src/index.ts",
+        "packages/loop/src/session.ts",
+        "packages/loop/src/index.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -8543,7 +8545,7 @@
         "So the product has TWO implementations of one surface, one of them unreachable and unmaintained. This repo has already been bitten by a second copy drifting from the first (W10-55 provider kinds, W12-19 wizard kind list).",
         "DECIDE, and record the decision: either the routes adopt these (one implementation, tested) or these are deleted (one implementation, shipped). Do not leave both.",
         "If adopting: the route behaviour is the contract \u2014 its tests must still pass unchanged, since that is what users have.",
-        "If deleting: the export ratchet baseline drops by two, which is the correct direction and must not be re-raised to accommodate anything else."
+        "SECOND CASE, same class: W13-47 replaced createChildProcessSpawn's only production caller with createWatchedExternalSpawn, so it is now an export with no caller \u2014 it consumed the export ratchet's last slot of headroom (60 -> 61 against a baseline of 61). It is superseded, not merely unused: the watched spawn does the same job with a bound. Remove it and LOWER the ratchet, rather than leaving a second way to spawn an unbounded child process for someone to reach for later."
       ]
     },
     {
@@ -8557,7 +8559,6 @@
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/land-push.ts",
-        "apps/server/src/cli/run-build.ts",
         "docs/STATUS.md"
       ],
       "depends_on": [],
@@ -8567,7 +8568,8 @@
         "createGiteaForgeAdapter, createGitHubForgeAdapter, flushMirrorQueue and checkMirrorPrerequisites all have zero non-test references. run-build.ts passes localFirstPushToRemotes, and land-push.ts says it \"structurally mirrors @dokima/forge's real pushToRemotes\" \u2014 two implementations of one idea, only one reachable.",
         "ESTABLISH WHICH IS INTENDED. FR-I2 promises dual-remote push; the wizard offers a forge credential step. If a user fills that in today, determine by EXECUTION whether anything uses it.",
         "If the forge path is meant to be reachable, wire it and say what selects between local-first and forge. If local-first is the only supported path today, the wizard step and FR-I2 must say so \u2014 an offered field that goes nowhere is the W13-35 defect again.",
-        "RED FIXTURE: complete the wizard with a forge credential and assert, by execution, that landing either reaches the forge or refuses honestly. Not that a function exists."
+        "RED FIXTURE: complete the wizard with a forge credential and assert, by execution, that landing either reaches the forge or refuses honestly. Not that a function exists.",
+        "SCOPE NOTE: run-build.ts is deliberately NOT claimed here. Establish first, by execution, whether the forge path is reachable; if wiring is then required, re-scope this ticket to include it rather than holding a file on speculation \u2014 that speculation is what clashed with W13-44 and W13-47."
       ]
     },
     {
@@ -8577,24 +8579,27 @@
       "module": "cli",
       "lane": "orchestrator",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
+        "apps/server/src/cli/run-build.ts",
         "apps/server/src/cli/run-build-spawn.ts",
         "apps/server/src/cli/run-build-policy.ts",
-        "apps/server/src/cli/run-build.test.ts"
+        "apps/server/src/cli/run-build.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "packages/harbormaster/src/agent-session/index.ts"
       ],
       "depends_on": [
         "W13-44"
       ],
       "stories": [],
-      "notes": "Split out of W13-44 because both wanted run-build.ts and W13-46 already claims it \u2014 validate-plan P8 refused the overlap.",
+      "notes": "Split out of W13-44 because both wanted run-build.ts and W13-46 already claims it \u2014 validate-plan P8 refused the overlap. Scope widened to the harbormaster barrel: it never published the watchdog at all, which is WHY nothing could call it \u2014 the same build-then-wire seam as W12-04 (packer), W12-09 (code index) and W13-23 (memory anchor), now a fourth time.",
       "acceptance": [
         "W13-42 (queue wait), W13-43 (turn output) and W13-44 (session wall-clock) all bound the BUILT-IN agent. The external-CLI runner has none of them: run-build.ts hands it createChildProcessSpawn, which waits on a child process for as long as that process runs.",
-        "createWatchdogChildProcessSpawn is a drop-in SpawnSession with the same shape plus limits and onBreach, and it kills the process TREE with a force-kill grace. That is the right guard here precisely because a child CAN be killed, where an in-process session cannot.",
-        "Swap the spawn and make the limits configurable the way maxToolIterations and maxTurnTokens are \u2014 same settings-key mechanism, a CEILING, refuse rather than clamp.",
-        "Derive the default from measured sessions, not a round number: attempts on this board ran ~3 minutes, so a session is single-digit minutes and the ladder multiplies that by attempt count.",
-        "RED FIXTURE: an external command that never exits must be killed and reported, asserted against a fake clock rather than by waiting."
+        "createWatchdogChildProcessSpawn is a drop-in SpawnSession with the same shape plus limits and onBreach, and it kills the process TREE with a force-kill grace. That is the right guard here precisely because a child CAN be killed, where an in-process session cannot \u2014 which is why W13-44 had to be cooperative instead.",
+        "THE BREACH REASON DOES NOT REACH THE CALLER TODAY: that spawn kills the tree and resolves from child close with whatever the process happened to emit, so onBreach is the only place the reason exists. Wrap it so the explanation lands in stderr, where W13-41 already puts session reasons into the park comment.",
+        "ONE setting for both runners, derived from measured sessions rather than a round number (attempts on this board ran ~3 minutes, and the ladder multiplies that by attempt count). W13-44 hardcoded the built-in default; exposing it here must feed the built-in session too, or the product carries two wall-clock ceilings that can disagree. Same settings-key mechanism as maxToolIterations and maxTurnTokens \u2014 a CEILING, refuse rather than clamp.",
+        "RED FIXTURE: an external command that never exits must be killed AND reported, asserted against a real short ceiling on a real child process rather than by waiting on the default."
       ]
     }
   ]

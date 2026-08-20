@@ -31,8 +31,12 @@ import {
   type JsonValue,
   type ProjectSecretsVault,
 } from '@dokima/shared';
-import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
-import { runLandLoop, type PushToRemotesFn } from '@dokima/harbormaster';
+import { type SpawnSession } from '@dokima/loop';
+import {
+  DEFAULT_MAX_SESSION_SECONDS,
+  runLandLoop,
+  type PushToRemotesFn,
+} from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import { assertSandboxOrWaiver } from './sandbox-preflight.js';
 import {
@@ -46,13 +50,13 @@ function countReceipts(log: { db: { prepare(q: string): { get(): unknown } } }):
   const row = log.db.prepare('SELECT COUNT(*) AS n FROM receipts').get() as { n: number };
   return row?.n ?? 0;
 }
-import { buildBuiltInSpawn } from './run-build-spawn.js';
+import {
+  buildBuiltInSpawn,
+  createWatchedExternalSpawn,
+} from './run-build-spawn.js';
 import {
   ESCALATION_POLICY_SETTINGS_KEY,
-  MAX_TOOL_ITERATIONS_SETTINGS_KEY,
-  MAX_TURN_TOKENS_SETTINGS_KEY,
-  resolveMaxToolIterations,
-  resolveMaxTurnTokens,
+  resolveRunLimits,
   resolvePinnedModel,
   resolvePolicyScope,
 } from './run-build-policy.js';
@@ -274,28 +278,17 @@ export async function executeBuildRun(
 
   const pin = resolvePinnedModel(policyRaw, ROLE_CODING_AGENT);
 
-  // W13-11: the tool-turn cap, refused rather than clamped when out of range.
-  const iterationsResult = resolveMaxToolIterations(
-    resolveEffectiveValue(MAX_TOOL_ITERATIONS_SETTINGS_KEY, policyScoped)?.value as
-      | JsonValue
-      | undefined,
+  // W13-11/43/47: the run's numeric bounds, resolved together and refused
+  // rather than clamped — see `resolveRunLimits`.
+  const limitsResult = resolveRunLimits(
+    (key: string) => resolveEffectiveValue(key, policyScoped)?.value as JsonValue | undefined,
+    DEFAULT_MAX_SESSION_SECONDS,
   );
-  if ('refusal' in iterationsResult) {
-    io.stderr(`${runId} did not start: ${iterationsResult.refusal}`);
+  if ('refusal' in limitsResult) {
+    io.stderr(`${runId} did not start: ${limitsResult.refusal}`);
     return 2;
   }
-
-  // W13-43: the other runaway. Iterations bound how many turns a session may
-  // take; this bounds how much ONE turn may emit.
-  const turnTokensResult = resolveMaxTurnTokens(
-    resolveEffectiveValue(MAX_TURN_TOKENS_SETTINGS_KEY, policyScoped)?.value as
-      | JsonValue
-      | undefined,
-  );
-  if ('refusal' in turnTokensResult) {
-    io.stderr(`${runId} did not start: ${turnTokensResult.refusal}`);
-    return 2;
-  }
+  const limits = limitsResult.limits;
 
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
@@ -315,7 +308,13 @@ export async function executeBuildRun(
       return 2;
     }
     io.stderr(EXTERNAL_AGENT_WARNING);
-    spawn = createChildProcessSpawn({ command: agentBin, args: agentArgs });
+    // W13-47: under the watchdog. This path used to wait on the child for as
+    // long as that child ran — the only runner with no bound of any kind.
+    spawn = createWatchedExternalSpawn({
+      command: agentBin,
+      args: agentArgs,
+      maxSessionSeconds: limits.maxSessionSeconds,
+    });
   } else {
     try {
       const builtIn = await buildBuiltInSpawn(
@@ -325,8 +324,9 @@ export async function executeBuildRun(
         io,
         secretValues,
         pin,
-        iterationsResult.maxIterations,
-        turnTokensResult.maxTurnTokens,
+        limits.maxIterations,
+        limits.maxTurnTokens,
+        limits.maxSessionSeconds,
       );
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;

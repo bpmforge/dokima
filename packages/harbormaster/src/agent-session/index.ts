@@ -2,6 +2,7 @@ export {
   createGatewaySpawnSession,
   DEFAULT_AGENT_SESSION_TASK_TYPE,
   DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS,
+  DEFAULT_MAX_SESSION_SECONDS,
   DEFAULT_MAX_TOOL_ITERATIONS,
 } from './gateway-session.js';
 export type { GatewaySpawnSessionOptions } from './gateway-session.js';
