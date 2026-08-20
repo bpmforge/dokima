@@ -45,7 +45,7 @@ import { WizardProviderStep } from './WizardProviderStep.js';
  * matrix are both addressed through a project, so on a genuinely fresh
  * install the step cannot run until the sample project exists.
  */
-type Step = 'preset' | 'provider' | 'models' | 'forge' | 'sample' | 'done';
+type Step = 'preset' | 'provider' | 'models' | 'sample' | 'done';
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof SettingsApiError || err instanceof FleetApiError
@@ -66,8 +66,13 @@ export interface FirstRunWizardProps {
 }
 
 /**
- * First-run wizard (FR-S4, AC1, R-M1): preset -> provider -> forge -> sample
- * -> done. Skipping the forge step is first-class. The wizard's last
+ * First-run wizard (FR-S4, AC1, R-M1): preset -> provider -> sample ->
+ * done. The forge step was REMOVED (W13-48): W13-46 established that the
+ * forge adapters have no production caller and `@dokima/forge` is not an
+ * `apps/server` dependency, so the "Forge credential ref" field collected a
+ * value nothing could ever read — the same shape W13-35 fixed on step 2.
+ * The step returns when a ticket wires the adapters (FR-I2 carries the
+ * matching status note in docs/SRS.md). The wizard's last
  * (`done`) step carries the guided sample walkthrough (BLUEPRINT §12.3,
  * FR-C6): `GuidedSample` drives the real `POST .../pipeline/run` route
  * (wired into `apps/server/src/api/server.ts` by W5-22) for the project
@@ -92,14 +97,13 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
   // D-024 option (b): only the pinned choice needs this, and only on the
   // provider step where the kind is already known.
   const [pinnedModel, setPinnedModel] = useState('');
-  const [forgeRef, setForgeRef] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
   const [guidedActive, setGuidedActive] = useState(true);
   const [matrixWritten, setMatrixWritten] = useState(false);
   // Where the models step returns to, so the same step serves both entry
   // points without either one guessing.
-  const [afterModels, setAfterModels] = useState<Step>('forge');
+  const [afterModels, setAfterModels] = useState<Step>('sample');
 
   /**
    * The registry entry, built once (W13-35): step 2 and the sample step both
@@ -170,8 +174,8 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
         await putProviders(projectId, [providerEntry()], { scope: 'global' });
       }
       setError(null);
-      setAfterModels('forge');
-      setStep(projectId ? 'models' : 'forge');
+      setAfterModels('sample');
+      setStep(projectId ? 'models' : 'sample');
     } catch (err) {
       setError(errorMessage(err, 'Failed to save preset/provider'));
     }
@@ -240,14 +244,14 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
   const matrixProjectId = createdProjectId ?? projectId ?? null;
   /**
    * W13-58 (novice audit): the step headings were hardcoded "1..5", and on a
-   * fresh install the real order is preset, provider, forge, sample, models —
+   * fresh install the real order was preset, provider, forge, sample, models —
    * so the novice watched the numbers run 1, 2, 4, 5 and then jump BACK to 3,
    * which reads as the wizard being broken. Numbers now come from the actual
    * sequence for this entry point.
    */
   const stepSequence: Step[] = projectId
-    ? ['preset', 'provider', 'models', 'forge', 'sample']
-    : ['preset', 'provider', 'forge', 'sample', 'models'];
+    ? ['preset', 'provider', 'models', 'sample']
+    : ['preset', 'provider', 'sample', 'models'];
   const stepNumber = (of: Step): number => stepSequence.indexOf(of) + 1;
   const chosenPreset =
     MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.preset ?? 'hybrid';
@@ -309,19 +313,6 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
           }}
         />
       ) : null)}
-
-      {step === 'forge' && (
-        <section aria-label="Connect a forge" data-testid="wizard-step-forge">
-          <h2>{stepNumber('forge')}. Connect a forge (optional)</h2>
-          <label>
-            Forge credential ref (leave blank to skip)
-            <input value={forgeRef} onChange={(e) => setForgeRef(e.target.value)} />
-          </label>
-          <button type="button" onClick={() => setStep('sample')}>
-            {forgeRef.trim() ? 'Next' : 'Skip'}
-          </button>
-        </section>
-      )}
 
       {step === 'sample' && (
         <section aria-label="Guided sample" data-testid="wizard-step-sample">
