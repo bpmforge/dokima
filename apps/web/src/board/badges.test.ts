@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cardStateClass,
   isStaleBlocked,
   isWaived,
   STALE_BADGE_LABEL,
@@ -35,5 +36,22 @@ describe('badge copy', () => {
   it('matches UX_SPEC §4 verbatim', () => {
     expect(STALE_BADGE_LABEL).toBe('STALE — claimable?');
     expect(WAIVED_BADGE_LABEL).toBe('⚠ waived');
+  });
+});
+
+describe('cardStateClass (W13-52)', () => {
+  it('RED FIXTURE: blocked is a shape — a blocked card carries the warning stripe class', () => {
+    // UX_AUDIT A-4 measured a Blocked and a Ready card pixel-identical.
+    expect(cardStateClass('blocked')).toBe(' surface--blocked');
+  });
+
+  it('in_review carries attention — accepting someone else\'s work is always a person (C-4)', () => {
+    expect(cardStateClass('in_review')).toBe(' surface--attention');
+  });
+
+  it('the quiet states stay quiet: the norm is silence', () => {
+    for (const status of ['ready', 'claimed', 'in_progress', 'done', 'waived']) {
+      expect(cardStateClass(status)).toBe('');
+    }
   });
 });

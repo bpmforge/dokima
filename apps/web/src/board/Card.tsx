@@ -1,5 +1,6 @@
 import type { DragEvent } from 'react';
 import {
+  cardStateClass,
   isStaleBlocked,
   isWaived,
   STALE_BADGE_LABEL,
@@ -34,7 +35,7 @@ export function Card({ ticket, heartbeat, onDragStart, onFireVerb }: CardProps) 
   const verbs = availableVerbsFrom(ticket.status);
   return (
     <div
-      className="board-card surface"
+      className={`board-card surface${cardStateClass(ticket.status)}`}
       data-testid={`card-${ticket.id}`}
       draggable
       onDragStart={(event) => onDragStart(event, ticket.id)}
@@ -48,12 +49,27 @@ export function Card({ ticket, heartbeat, onDragStart, onFireVerb }: CardProps) 
         <span className="board-card__id">{ticket.id}</span>
       </header>
       <p className="board-card__title">{ticket.title}</p>
+      {/* W13-52: the chip gets its OWN row — both the header (opacity .7) and
+          the meta row (opacity .8) deliberately recede, and axe measured the
+          warning hue blended below WCAG contrast inside each (3.54, then
+          2.94). State must never recede; the stale/waived badges already
+          made the same choice. */}
+      {ticket.status === 'blocked' && (
+        <p className="board-card__state-row">
+          <span className="state state--blocked">blocked</span>
+        </p>
+      )}
       <div className="board-card__meta">
         <span className="board-card__owner">{ticket.ownerId ?? 'unclaimed'}</span>
         <span
           className="board-card__receipt-dot"
           data-state={ticket.manifest?.closeReceipt ? 'green' : 'none'}
           aria-label={
+            ticket.manifest?.closeReceipt ? 'close receipt on file' : 'no receipt yet'
+          }
+          /* W13-52 (UX_AUDIT A-4): the dot was an unexplained glyph to anyone
+             not using a screen reader — the meaning is now hover-discoverable. */
+          title={
             ticket.manifest?.closeReceipt ? 'close receipt on file' : 'no receipt yet'
           }
         >

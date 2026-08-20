@@ -671,6 +671,13 @@ label:has(> input[type='radio']) {
   box-shadow: inset 3px 0 0 var(--sw-accent);
 }
 
+/* W13-52: blocked is a SHAPE, not a column position. Warning hue per
+   components.md's state table — blocked means stuck, not wrong. */
+.surface--blocked {
+  border-color: var(--sw-warning);
+  box-shadow: inset 3px 0 0 var(--sw-warning);
+}
+
 .surface--idle {
   color: var(--sw-fg-muted);
 }

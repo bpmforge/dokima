@@ -19,3 +19,19 @@ export const WAIVED_BADGE_LABEL = '⚠ waived';
 export function isWaived(ticket: BoardTicket): boolean {
   return ticket.status === 'waived';
 }
+
+/**
+ * State carried in FORM (W13-52, VISUAL_DIRECTION's core rule): a card that
+ * needs a person is a different shape, not the same shape in a different
+ * column. UX_AUDIT A-4 measured the gap — a Blocked card and a Ready card
+ * were pixel-identical.
+ *
+ * blocked -> warning stripe (stuck, not wrong); in_review -> attention
+ * stripe (a person is needed to accept someone else's work — C-4 makes that
+ * always-human). Everything else is the quiet default: the norm is silence.
+ */
+export function cardStateClass(status: string): string {
+  if (status === 'blocked') return ' surface--blocked';
+  if (status === 'in_review') return ' surface--attention';
+  return '';
+}

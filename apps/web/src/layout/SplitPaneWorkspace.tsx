@@ -129,6 +129,11 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
                       : `Focus ${PANE_LABELS[id]} and collapse the other panes`
                   }
                   data-testid={`focus-${id}`}
+                  title={
+                    isFocused(layout)
+                      ? 'Leave focus and restore the previous layout'
+                      : `Focus ${PANE_LABELS[id]} and collapse the other panes`
+                  }
                 >
                   {isFocused(layout) ? 'Unfocus' : 'Focus'}
                 </button>
@@ -137,6 +142,7 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
                   className="btn-quiet"
                   onClick={() => toggleCollapsed(id)}
                   aria-label={`${pane.collapsed ? 'Expand' : 'Collapse'} ${PANE_LABELS[id]}`}
+                  title={`${pane.collapsed ? 'Expand' : 'Collapse'} ${PANE_LABELS[id]}`}
                 >
                   {pane.collapsed ? '»' : '«'}
                 </button>

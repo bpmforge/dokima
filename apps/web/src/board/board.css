@@ -238,6 +238,10 @@
   margin: var(--sw-space-1) 0;
 }
 
+.board-card__state-row {
+  margin: 0;
+}
+
 .board-card__meta {
   display: flex;
   justify-content: space-between;

@@ -17,7 +17,10 @@ export function Lane({ lane, heartbeats, onDrop, onFireVerb }: LaneProps) {
       aria-label={`Lane ${lane.lane}`}
       data-testid={`lane-${lane.lane}`}
     >
-      <h3 className="board-lane__title">{lane.lane}</h3>
+      {/* W13-52: "T001" alone as a heading meant nothing to a user (A-4);
+          the vocabulary word makes it parse. Naming lanes meaningfully at
+          decompose time is pipeline work, not a display concern. */}
+      <h3 className="board-lane__title">Lane {lane.lane}</h3>
       <div
         className="board-lane__columns"
         tabIndex={0}
