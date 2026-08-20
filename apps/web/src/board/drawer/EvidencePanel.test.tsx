@@ -67,7 +67,7 @@ describe('EvidencePanel receipts loading state', () => {
     );
 
     expect(screen.getByText('Loading receipts…')).toBeTruthy();
-    await screen.findByText('No gates have run yet.');
+    await screen.findByText(/No receipts yet/);
     expect(screen.queryByText('Loading receipts…')).toBeNull();
   });
 
@@ -97,7 +97,7 @@ describe('EvidencePanel receipts request URL (W10-29)', () => {
       <EvidencePanel baseUrl="/api/v1" token="tok" projectId="proj-1" ticket={TICKET} />,
     );
 
-    await screen.findByText('No gates have run yet.');
+    await screen.findByText(/No receipts yet/);
     expect(fetchSpy).toHaveBeenCalledWith(
       '/api/v1/projects/proj-1/receipts?ticket=E2E-1',
       expect.anything(),

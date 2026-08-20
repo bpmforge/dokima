@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { decideSlate, fetchSlates } from '../decisions/api.js';
 import { SlateCard } from '../decisions/SlateCard.js';
 import type { SlateRecord } from '../decisions/types.js';
-import { decideApproval, fetchMorningQueue, NotificationsApiError } from './api.js';
+import {
+  decideApproval,
+  dismissNotification,
+  fetchMorningQueue,
+  NotificationsApiError,
+} from './api.js';
+import { TicketEvidence } from './TicketEvidence.js';
 import { NotificationCard } from './NotificationCard.js';
 import type { NotificationItem } from './types.js';
 
@@ -164,6 +170,14 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
                   />
                 ) : item.tier === 'decide' ? (
                   <div className="notification-card__actions">
+                    {/* W13-61 (novice audit, CRITICAL): the work, ON the card.
+                        This asked for a merge approval showing a title and a
+                        diff-stat string — no files, no verify result, no
+                        receipt. A review that cannot see the work is not a
+                        review. */}
+                    {item.refType === 'ticket' && item.refId && (
+                      <TicketEvidence projectId={item.projectId} ticketId={item.refId} />
+                    )}
                     <button
                       type="button"
                       disabled={busyId === item.id}
@@ -177,6 +191,36 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
                       onClick={() => void decide(item, 'rejected')}
                     >
                       Reject
+                    </button>
+                    {/* Mechanism-true consequences (the HIGH finding): the
+                        click RECORDS — it does not merge or delete. Saying
+                        more than that would be promising machinery that does
+                        not run on this click. */}
+                    <p className="notification-card__consequence">
+                      Either choice records your decision in the project's
+                      ledger, with your name, and clears this card. Nothing
+                      merges or is discarded by the click itself — the work
+                      stays on its branch, and the run waiting on this answer
+                      reads the ledger.
+                    </p>
+                  </div>
+                ) : item.tier === 'review' ? (
+                  <div className="notification-card__actions">
+                    {/* W13-61 (MEDIUM): review-tier cards had no exit — a
+                        novice could not tell how the card ever left their
+                        queue. It is informational; reading it is the action. */}
+                    <button
+                      type="button"
+                      disabled={busyId === item.id}
+                      data-testid={`mark-read-${item.id}`}
+                      onClick={() => {
+                        setBusyId(item.id);
+                        void dismissNotification(item.id, item.projectId)
+                          .then(() => refresh())
+                          .finally(() => setBusyId(null));
+                      }}
+                    >
+                      Mark as read
                     </button>
                   </div>
                 ) : undefined
