@@ -1,8 +1,10 @@
 import type { DragEvent } from 'react';
 import {
   cardStateClass,
+  isParked,
   isStaleBlocked,
   isWaived,
+  PARKED_BADGE_LABEL,
   STALE_BADGE_LABEL,
   WAIVED_BADGE_LABEL,
 } from './badges.js';
@@ -35,7 +37,9 @@ export function Card({ ticket, heartbeat, onDragStart, onFireVerb }: CardProps) 
   const verbs = availableVerbsFrom(ticket.status);
   return (
     <div
-      className={`board-card surface${cardStateClass(ticket.status)}`}
+      className={`board-card surface${cardStateClass(ticket.status)}${
+        isParked(ticket) ? ' surface--blocked' : ''
+      }`}
       data-testid={`card-${ticket.id}`}
       draggable
       onDragStart={(event) => onDragStart(event, ticket.id)}
@@ -59,6 +63,14 @@ export function Card({ ticket, heartbeat, onDragStart, onFireVerb }: CardProps) 
           <span className="state state--blocked">blocked</span>
         </p>
       )}
+      {/* W13-63: a park RELEASES to Ready on purpose, so without this row the
+          run's outcome was invisible — a novice watched a run finish and saw
+          nothing happen. Warning family: stuck, not wrong. */}
+      {isParked(ticket) && (
+        <p className="board-card__state-row">
+          <span className="state state--blocked">parked</span>
+        </p>
+      )}
       <div className="board-card__meta">
         <span className="board-card__owner">{ticket.ownerId ?? 'unclaimed'}</span>
         <span
@@ -77,6 +89,9 @@ export function Card({ ticket, heartbeat, onDragStart, onFireVerb }: CardProps) 
         </span>
       </div>
       {heartbeat && <p className="board-card__heartbeat">{formatHeartbeat(heartbeat)}</p>}
+      {isParked(ticket) && (
+        <p className="board-card__badge board-card__badge--stale">{PARKED_BADGE_LABEL}</p>
+      )}
       {isStaleBlocked(ticket) && (
         <p className="board-card__badge board-card__badge--stale">{STALE_BADGE_LABEL}</p>
       )}

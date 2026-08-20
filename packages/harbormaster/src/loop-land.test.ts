@@ -270,7 +270,7 @@ describe('runLandLoop', () => {
     const lastHistoryEntry = ticket.history[ticket.history.length - 1]!;
     expect(lastHistoryEntry.verb).toBe('release');
     const comment = ticket.history.find((h) => h.verb === 'comment');
-    expect(comment?.body).toContain('auto-blocked with evidence');
+    expect(comment?.body).toContain('Parked with evidence');
     expect(comment?.body).toContain('attempt 1/2');
     expect(comment?.body).toContain('attempt 2/2');
     expect(comment?.body).toContain('no completion manifest returned');

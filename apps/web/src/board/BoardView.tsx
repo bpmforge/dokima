@@ -3,6 +3,7 @@ import { ActiveBerthsStrip } from './ActiveBerthsStrip.js';
 import {
   buildRunRefusalLine,
   fetchBuildRun,
+  runOutcome,
   startBuildRun,
   type BuildRunOutcome,
 } from './api.js';
@@ -65,6 +66,7 @@ export function BoardView({
   };
 
   const refusalLine = buildRun ? buildRunRefusalLine(buildRun) : null;
+
   const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb, handleDrop } =
     useBoardData({
       baseUrl,
@@ -99,6 +101,10 @@ export function BoardView({
         {buildRun && (
           <span data-testid="board-runbar-status">
             {buildRun.runId} — {buildRun.status}
+            {/* W13-63: "finished" alone read as success-toned nothing when a
+                run parked its only ticket. The CLI already prints the
+                outcome; the banner now carries it. */}
+            {runOutcome(buildRun) !== null && ` · ${runOutcome(buildRun)}`}
           </span>
         )}
         {refusalLine && (

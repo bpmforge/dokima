@@ -156,6 +156,16 @@ export async function startBuildRun(
   return { ok: true, data: { runId: wire.run_id, status: 'running' } };
 }
 
+/** The human outcome line the CLI prints ("0 landed, 1 parked (stop: idle)"), pulled from a finished run's stdout (W13-63). */
+export function runOutcome(run: BuildRunOutcome): string | null {
+  if (run.status !== 'finished') return null;
+  for (const line of run.stdout ?? []) {
+    const match = /finished:\s*(.+)$/.exec(line);
+    if (match) return match[1]!;
+  }
+  return null;
+}
+
 export async function fetchBuildRun(
   opts: BoardApiOptions,
   projectId: string,

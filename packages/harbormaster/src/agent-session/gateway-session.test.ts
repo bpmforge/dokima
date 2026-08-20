@@ -1480,7 +1480,7 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     const ticket = getTicket(fixture.log, 'W9-01') as Ticket;
     expect(ticket.status).toBe('ready');
     const comment = ticket.history.find((h) => h.verb === 'comment');
-    expect(comment?.body).toContain('auto-blocked with evidence');
+    expect(comment?.body).toContain('Parked with evidence');
   });
 
 });

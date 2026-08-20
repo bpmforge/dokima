@@ -86,12 +86,20 @@ export function parkComment(
   attempts: readonly LandAttempt[],
   decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined,
 ): string {
+  /**
+   * W13-63: "Parked", because that is what HAPPENS. This header said
+   * "auto-blocked with evidence" while the park path below it calls
+   * releaseTicket — status ready — so the comment and the board told a
+   * novice two different stories, and the board's was "nothing happened".
+   * The ticket returns to Ready ON PURPOSE (blocked has no exit verb; the
+   * next run retries), and the words now say so.
+   */
   const header =
     reason === 'locked_ceiling_reached'
-      ? `auto-blocked with evidence: locked-mode convergence ceiling (${ceiling}) reached without a close (D-018).`
+      ? `Parked with evidence — locked-mode convergence ceiling (${ceiling}) reached without a close (D-018). The ticket is back in Ready; the next run will retry it.`
       : reason === 'awaiting_escalation_token'
-        ? 'auto-blocked with evidence: token-gated escalation boundary reached without an approval token (D-018, FR-N2).'
-        : `auto-blocked with evidence: ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2).`;
+        ? 'Parked with evidence — token-gated escalation boundary reached without an approval token (D-018, FR-N2). The ticket is back in Ready; approve the escalation to let the next run continue.'
+        : `Parked with evidence — ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2). The ticket is back in Ready; the next run will retry it, and will likely park again unless the evidence below is addressed.`;
   const lines = [
     header,
     ...attempts.map((attempt) => attemptSummaryLine(attempt, ceiling)),
