@@ -10,7 +10,12 @@
 import type { EventLog } from '@dokima/events';
 import { CostLedger, FitnessCardStore, ROLE_CODING_AGENT, type Provider } from '@dokima/gateway';
 import type { SpawnSession } from '@dokima/loop';
-import { createGatewaySpawnSession, DEFAULT_AGENT_SESSION_TASK_TYPE } from '@dokima/harbormaster';
+import {
+  createGatewaySpawnSession,
+  createWatchdogChildProcessSpawn,
+  DEFAULT_AGENT_SESSION_TASK_TYPE,
+  type WatchdogBreach,
+} from '@dokima/harbormaster';
 import { createMemoryAnchor } from '@dokima/memory';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
@@ -50,6 +55,7 @@ export async function buildBuiltInSpawn(
   pin: PinnedModel | undefined,
   maxIterations: number | undefined,
   maxTurnTokens: number | undefined,
+  maxSessionSeconds: number | undefined,
 ): Promise<BuiltInSpawn> {
   const target = await resolveModelTarget({
     projectPath: io.cwd,
@@ -105,8 +111,69 @@ export async function buildBuiltInSpawn(
     // documented default; this field was previously never set at all.
     ...(maxIterations === undefined ? {} : { maxIterations }),
     ...(maxTurnTokens === undefined ? {} : { maxTurnTokens }),
+    ...(maxSessionSeconds === undefined ? {} : { maxSessionSeconds }),
     secretValues,
     now: io.now,
   });
   return { spawn, contextWindowTokens };
+}
+/**
+ * The external-CLI agent, under the watchdog it was always missing (W13-47).
+ *
+ * `createChildProcessSpawn` waits on the child for as long as that child runs.
+ * W13-42, W13-43 and W13-44 all bounded the BUILT-IN agent; this path had
+ * nothing — and it is the one where a real kill is possible, which is exactly
+ * why W13-44 had to settle for a cooperative check instead.
+ *
+ * THE WRAPPER IS THE POINT, not the swap. `createWatchdogChildProcessSpawn`
+ * kills the process tree and then resolves from the child's `close` event with
+ * whatever that process happened to emit before it died — so on breach the
+ * caller gets a truncated session and NO reason. `onBreach` is the only place
+ * the reason exists. Capturing it here and appending it to `stderr` is what
+ * puts it in front of a person, because W13-41 carries session stderr into the
+ * park comment.
+ *
+ * The exit code is forced non-zero on breach: a killed tree can exit 0, and a
+ * session that was killed must never read as one that finished.
+ */
+export function createWatchedExternalSpawn(options: {
+  readonly command: string;
+  readonly args: readonly string[];
+  readonly maxSessionSeconds: number;
+}): SpawnSession {
+  // Collected rather than assigned. Control-flow analysis cannot see the write
+  // inside `onBreach`, so a variable narrows to `never` at the read below and
+  // the compiler "proves" a breach can never happen; an array read is honest
+  // about being possibly-absent.
+  const breaches: WatchdogBreach[] = [];
+  const inner = createWatchdogChildProcessSpawn({
+    command: options.command,
+    args: options.args,
+    maxSessionSeconds: options.maxSessionSeconds,
+    // A turn boundary is invisible from out here, so the only honest heartbeat
+    // is output: `createWatchdogChildProcessSpawn` bumps it on stdout/stderr
+    // data. Set equal to the wall clock so a quiet-but-working process is
+    // judged on the ceiling alone rather than on silence it never promised to
+    // break.
+    heartbeatStallSeconds: options.maxSessionSeconds,
+    onBreach: (detected) => {
+      breaches.push(detected);
+    },
+  });
+
+  return async (input) => {
+    breaches.length = 0;
+    const out = await inner(input);
+    const detected = breaches[0];
+    if (!detected) return out;
+    return {
+      stdout: out.stdout,
+      stderr:
+        `${out.stderr}\nagent session stopped: the watchdog killed the external ` +
+        `agent after ${Math.round(detected.elapsedMs / 1000)}s (ceiling ` +
+        `${options.maxSessionSeconds}s, reason ${detected.reason}). Its process ` +
+        `tree was terminated, so any output above is partial.`,
+      exitCode: out.exitCode === 0 || out.exitCode === null ? 1 : out.exitCode,
+    };
+  };
 }

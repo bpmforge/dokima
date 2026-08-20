@@ -13,10 +13,12 @@ import {
 } from '@dokima/shared';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { executeBuildRun, tokenizeAgentCommand } from './run-build.js';
+import { createWatchedExternalSpawn } from './run-build-spawn.js';
 import { resolvePolicyScope,
   MAX_TOOL_ITERATIONS_CEILING,
   resolveMaxToolIterations,
   resolveMaxTurnTokens,
+  resolveRunLimits,
   MAX_TURN_TOKENS_CEILING,
 } from './run-build-policy.js';
 import { AGENT_RUNNER_SETTINGS_KEY } from '../api/server/settings-types.js';
@@ -725,5 +727,78 @@ describe('resolveMaxTurnTokens (W13-43)', () => {
     for (const bad of [0, -1, 1.5, 'lots']) {
       expect(resolveMaxTurnTokens(bad as never)).toHaveProperty('refusal');
     }
+  });
+});
+
+/**
+ * W13-47. Every other bound this phase added protects the built-in agent. The
+ * external-CLI runner had none: `createChildProcessSpawn` waits on the child
+ * for as long as that child runs.
+ */
+describe('the external agent runs under a watchdog (W13-47)', () => {
+  it('RED FIXTURE: a command that never exits is KILLED and the reason reaches stderr', async () => {
+    const spawn = createWatchedExternalSpawn({
+      // Sleeps far past the ceiling and ignores its prompt argument entirely.
+      command: process.execPath,
+      args: ['-e', 'setTimeout(() => {}, 600000)'],
+      // A real short ceiling on a real child, rather than waiting on the
+      // 30-minute default — this asserts the kill, not the clock.
+      maxSessionSeconds: 1,
+    });
+
+    const started = Date.now();
+    const result = await spawn({ prompt: 'ignored', cwd: process.cwd() });
+
+    // Killed, not waited out: the child was told to sleep ten minutes.
+    expect(Date.now() - started).toBeLessThan(20_000);
+    // A killed tree can exit 0; a killed session must never read as finished.
+    expect(result.exitCode).not.toBe(0);
+    // The reason exists ONLY in onBreach — the spawn itself resolves from the
+    // child's close event with whatever it happened to emit. This assertion is
+    // the wrapper's whole purpose.
+    expect(result.stderr).toContain('the watchdog killed the external agent');
+    expect(result.stderr).toContain('max_session_seconds');
+  }, 30_000);
+
+  it('leaves a command that finishes on its own alone', async () => {
+    const spawn = createWatchedExternalSpawn({
+      command: process.execPath,
+      args: ['-e', 'process.stdout.write("done")'],
+      maxSessionSeconds: 60,
+    });
+
+    const result = await spawn({ prompt: 'ignored', cwd: process.cwd() });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('done');
+    expect(result.stderr).not.toContain('watchdog');
+  }, 30_000);
+});
+
+describe('resolveRunLimits (W13-47)', () => {
+  const none = () => undefined;
+
+  it('applies the session default rather than leaving it optional for two callers to guess', () => {
+    const result = resolveRunLimits(none, 1_800);
+    expect(result).toEqual({ limits: { maxSessionSeconds: 1_800 } });
+  });
+
+  it('returns the FIRST refusal, so a run never starts on a partly-valid config', () => {
+    const bad = (key: string) => (key === 'maxTurnTokens' ? (-5 as never) : undefined);
+    const result = resolveRunLimits(bad, 1_800);
+    expect(result).toHaveProperty('refusal');
+    expect((result as { refusal: string }).refusal).toContain('maxTurnTokens');
+  });
+
+  it('carries every configured bound through together', () => {
+    const configured = (key: string) =>
+      ({
+        maxToolIterations: 20,
+        maxTurnTokens: 64_000,
+        maxSessionSeconds: 600,
+      })[key] as never;
+    expect(resolveRunLimits(configured, 1_800)).toEqual({
+      limits: { maxIterations: 20, maxTurnTokens: 64_000, maxSessionSeconds: 600 },
+    });
   });
 });

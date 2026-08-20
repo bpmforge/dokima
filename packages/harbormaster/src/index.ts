@@ -121,6 +121,7 @@ export {
   AGENT_SESSION_TOOL_SCHEMAS,
   DEFAULT_AGENT_SESSION_TASK_TYPE,
   DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS,
+  DEFAULT_MAX_SESSION_SECONDS,
   DEFAULT_MAX_TOOL_ITERATIONS,
   TOOL_COMMIT,
   TOOL_EDIT,
@@ -151,3 +152,21 @@ export type {
 export { isSandboxProfileAvailable, runSandboxed } from './sandbox/index.js';
 export type { SandboxProfile, SandboxRunOptions, SandboxRunResult } from './sandbox/types.js';
 
+
+/**
+ * W13-47: the watchdog, exported for the first time. Fourth instance of the
+ * seam W12-04 (packer), W12-09 (code index) and W13-23 (memory anchor) each
+ * hit — the implementation was complete and tested, and simply could not be
+ * reached from outside the package, so it had no caller because nothing COULD
+ * call it. Its own header blamed a future ticket; the barrel was the actual
+ * obstacle.
+ *
+ * NARROW, not `export *`: the watchdog modules carry several more symbols with
+ * no consumer, and re-exporting them wholesale would raise the export ratchet
+ * to make one addition pass.
+ */
+export { createWatchdogChildProcessSpawn } from './watchdog-process.js';
+// `WatchdogLimits` is deliberately NOT re-exported: nothing outside this
+// package names it, and publishing it would raise the export ratchet to make
+// this ticket pass — which is the one thing the ratchet's own rule forbids.
+export type { WatchdogBreach } from './watchdog.js';
