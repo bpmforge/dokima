@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { expect, test } from '@playwright/test';
-import { HOME } from './env-paths.js';
+import { WORKSPACE, HOME } from './env-paths.js';
 import {
   startFakeModelGateway,
   type FakeModelGateway,
@@ -121,29 +121,22 @@ test.afterEach(async () => {
   await gateway?.close();
   gateway = undefined;
   await fs.rm(GLOBAL_CONFIG, { force: true });
-  // The wizard hardcodes `/tmp/dokima-sample-<ts>` and nothing cleaned these
-  // up: 179 of them had accumulated by the time this spec was written. That is
-  // W9-14's lesson in a new place (a registry that grew to 1,164 projects took
-  // trace.spec.ts red and the suite from 22s to 3.7m), and it is a latent
-  // FLAKE here too, since `newestSampleProject` picks by sort order.
-  const created = (await fs.readdir('/tmp')).filter((e) =>
-    e.startsWith('dokima-sample-'),
-  );
-  await Promise.all(
-    created.map((e) => fs.rm(path.join('/tmp', e), { recursive: true, force: true })),
-  );
+  // W13-64: this used to glob-delete EVERY /tmp/dokima-sample-* on the
+  // machine — including a real user's walkthrough project, observed lost to
+  // a test run. A suite may only remove what it created: samples now land in
+  // the suite's own WORKSPACE (DOKIMA_WORKSPACE_ROOT, inside the throwaway
+  // HOME), and that is the one directory this cleanup owns.
+  await fs.rm(WORKSPACE, { recursive: true, force: true });
 });
 
-/** Newest `dokima-sample-*` the wizard created, since it names them by timestamp. */
+/** The sample the wizard just created, inside the suite's OWN workspace (W13-64) — never a machine-wide directory listing. */
 async function newestSampleProject(): Promise<string> {
-  // `/tmp` literally, not `os.tmpdir()`: FirstRunWizard hardcodes
-  // `/tmp/dokima-sample-<ts>`, and on macOS os.tmpdir() is /var/folders/...
-  const tmp = '/tmp';
-  const entries = await fs.readdir(tmp);
-  const samples = entries.filter((e) => e.startsWith('dokima-sample-')).sort();
+  const entries = await fs.readdir(WORKSPACE);
+  // The server SLUGS the display name for the directory: 'Dokima Sample' -> dokima-sample.
+  const samples = entries.filter((e) => e.startsWith('dokima-sample')).sort();
   const last = samples[samples.length - 1];
   expect(last, 'the wizard should have created a sample project').toBeTruthy();
-  return path.join(tmp, last!);
+  return path.join(WORKSPACE, last!);
 }
 
 test('RED FIXTURE: the guided sample really runs, and the sample project has real events', async ({

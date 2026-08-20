@@ -11,3 +11,5 @@ import path from 'node:path';
 export const PORT = 4402;
 export const HOME = path.join(os.tmpdir(), 'dokima-web-e2e-home');
 export const STATE_DB = path.join(os.tmpdir(), 'dokima-web-e2e-state.db');
+/** W13-64: where wizard-created projects land. Inside HOME, so the suite can never write into (or delete from) a real ~/Dokima. */
+export const WORKSPACE = path.join(HOME, 'workspace');

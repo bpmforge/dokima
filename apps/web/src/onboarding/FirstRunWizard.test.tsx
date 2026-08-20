@@ -13,6 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import * as fleetApi from '../fleet/api.js';
+import { FleetApiError } from '../fleet/api.js';
 import * as settingsApi from '../settings/api.js';
 import { FirstRunWizard } from '../settings/FirstRunWizard.js';
 import { PROVIDER_KINDS } from '../settings/providers-api.js';
@@ -150,9 +151,13 @@ describe('FirstRunWizard sample step -> done (guided sample embedded)', () => {
     await chooseModels();
 
     expect(await screen.findByTestId('wizard-step-done')).toBeTruthy();
-    expect(mockedFleetApi.createProject).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: 'new' }),
-    );
+    // W13-64: NAME-ONLY — no path, and above all no /tmp. The hardcoded
+    // /tmp/dokima-sample-<ts> is how a real walkthrough's first project got
+    // deleted by a test run's cleanup glob.
+    expect(mockedFleetApi.createProject).toHaveBeenCalledWith({
+      mode: 'new',
+      name: 'Dokima Sample',
+    });
     expect(screen.getByTestId('wizard-guided-sample')).toBeTruthy();
     expect(screen.getByTestId('what-to-do-tomorrow').textContent).toContain(
       'Morning Queue',
@@ -365,4 +370,28 @@ describe('the fifth choice: one model I pick (W12-16)', () => {
       expect(screen.getByText(/reviews still use a different model/i)).toBeTruthy();
     },
   );
+});
+
+
+describe('FirstRunWizard — the returning user gets a numbered sample, not an error (W13-64)', () => {
+  it('retries with "Dokima Sample 2" when the name already exists', async () => {
+    mockedFleetApi.createProject
+      .mockRejectedValueOnce(
+        new FleetApiError(409, '/Users/x/Dokima/Dokima Sample already exists. Open it from the Fleet…'),
+      )
+      .mockResolvedValueOnce({
+        id: 'proj-sample-2', path: '/x', name: 'Dokima Sample 2', archived: false,
+        available: true, createdAt: 'now', lastOpenedAt: 'now', phase: null,
+        board: { ready: 0, blocked: 0, done: 0 }, berthsRunning: 0,
+        heartbeatAgeMs: null, pendingDecideCount: 0, spendTodayUsd: 0,
+      });
+
+    await advanceToSampleStep();
+    fireEvent.click(screen.getByRole('button', { name: 'Create sample project' }));
+    await chooseModels();
+    expect(await screen.findByTestId('wizard-step-done')).toBeTruthy();
+
+    expect(mockedFleetApi.createProject).toHaveBeenNthCalledWith(1, { mode: 'new', name: 'Dokima Sample' });
+    expect(mockedFleetApi.createProject).toHaveBeenNthCalledWith(2, { mode: 'new', name: 'Dokima Sample 2' });
+  });
 });

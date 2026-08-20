@@ -8,7 +8,7 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
-import { HOME, PORT, STATE_DB } from './e2e/env-paths.js';
+import { HOME, PORT, STATE_DB, WORKSPACE } from './e2e/env-paths.js';
 
 export default defineConfig({
   testDir: './e2e',
@@ -30,6 +30,10 @@ export default defineConfig({
       'pnpm --filter @dokima/web run build && pnpm --filter @dokima/server exec tsx src/api/dev-entry.ts',
     env: {
       DOKIMA_HOME: HOME,
+      // W13-64: pin the workspace inside the throwaway HOME. The guided
+      // sample used to hardcode /tmp and this suite glob-deleted every such
+      // folder on the machine — which destroyed a real walkthrough's project.
+      DOKIMA_WORKSPACE_ROOT: WORKSPACE,
       // W12-43: the served core can now MINT a signing key. Without these it
       // would resolve the real macOS Keychain and write into it from an
       // automated run — the hazard W10-04 declined to introduce. No e2e spec

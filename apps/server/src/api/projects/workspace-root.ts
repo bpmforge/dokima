@@ -32,7 +32,22 @@ export function defaultWorkspaceRoot(home: string = os.homedir()): string {
 export function resolveWorkspaceRoot(
   configured: unknown,
   home: string = os.homedir(),
+  env: NodeJS.ProcessEnv = process.env,
 ): string {
+  /**
+   * W13-64: the operator/test override, same mechanism DOKIMA_HOME is. It
+   * exists because the guided sample used to hardcode /tmp — volatile,
+   * shared — and the e2e suite glob-deleted every such folder on the
+   * machine, which destroyed a REAL walkthrough's project during a test
+   * run. With this, every harness pins its own workspace and can never
+   * write into (or delete from) a real home. It beats the configured
+   * setting on purpose: when it is set, an operator is sandboxing the
+   * process, and a stored setting must not escape the sandbox.
+   */
+  const fromEnv = env.DOKIMA_WORKSPACE_ROOT;
+  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
+    return fromEnv.trim();
+  }
   if (typeof configured !== 'string' || configured.trim() === '') {
     return defaultWorkspaceRoot(home);
   }

@@ -179,11 +179,31 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
 
   const handleCreateSample = async () => {
     try {
-      const card = await createProject({
-        path: `/tmp/dokima-sample-${Date.now()}`,
-        mode: 'new',
-        name: 'Dokima Sample',
-      });
+      /**
+       * W13-64: NAME-ONLY, no path. This used to hardcode
+       * `/tmp/dokima-sample-<ts>` — the OS clears /tmp on reboot, and the
+       * e2e suite's cleanup glob deleted every such folder on the machine,
+       * which is how a real walkthrough's first project vanished. The server
+       * chooses the durable location (W12-41: ~/Dokima or the configured
+       * workspace root), exactly as New project does.
+       *
+       * The retry loop is for the returning user: the server refuses a name
+       * whose directory already exists (adopting it would hand them someone
+       * else's work), and a person who runs the wizard twice should get
+       * "Dokima Sample 2", not an error on the happy path.
+       */
+      const card = await (async () => {
+        for (let attempt = 1; ; attempt += 1) {
+          const name = attempt === 1 ? 'Dokima Sample' : `Dokima Sample ${attempt}`;
+          try {
+            return await createProject({ mode: 'new', name });
+          } catch (err) {
+            const exists =
+              err instanceof FleetApiError && /already exists/i.test(err.message);
+            if (!exists || attempt >= 20) throw err;
+          }
+        }
+      })();
 
       // W10-55: THIS is where the provider the user configured in step 2
       // actually gets registered. `savePresetAndProvider` sends it to
