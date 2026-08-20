@@ -180,6 +180,54 @@ describe('runLandLoop', () => {
    * server path supplies `baseRef`, so the loop's default WAS the product's
    * behaviour.
    */
+  /**
+   * W13-46. Found while establishing whether the forge path is reachable at
+   * all — the answer turned out to matter far more than the question.
+   *
+   * `run-build.ts` injects `localFirstPushToRemotes`, which THROWS: dual-remote
+   * push is not wired into the CLI. Its own comment says refusing loudly is
+   * correct, and it is — but the call site here is not wrapped, and the throw
+   * lands AFTER `landed = true` and after the close gate minted its receipt.
+   * So a project with any git remote configured — which is most real ones —
+   * gets a crashed run for a ticket that actually succeeded.
+   */
+  it('a push failure does not destroy a land that already succeeded (W13-46)', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+    // A remote the fixture repos never have — which is exactly why this went
+    // unnoticed: every existing test runs with zero remotes, so the push is
+    // skipped entirely and `unusedPushToRemotes` is never called.
+    await git(repoRoot, ['remote', 'add', 'origin', 'https://example.invalid/x.git']);
+    seedTicket(log, 'W9-01');
+
+    const throwingPush: PushToRemotesFn = () => {
+      throw new Error(
+        'dual-remote push is not wired into the CLI yet (@dokima/forge is not an ' +
+          'apps/server dependency) — the ticket landed locally and was NOT pushed',
+      );
+    };
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, landingSpawn),
+      pushToRemotes: throwingPush,
+    });
+
+    // The run completes rather than throwing out of the loop.
+    expect(result.stopReason).toBe('idle');
+    // And the land is still a land: the ticket reached in_review with its
+    // manifest. Reporting it as failed would be reporting a lie about durable
+    // state that was already written.
+    expect(result.processed[0]!.landed).toBe(true);
+    expect((getTicket(log, 'W9-01') as Ticket).status).toBe('in_review');
+
+    // And the operator is TOLD. A push that silently vanished would be the
+    // same defect one layer down: durable state changed, nobody informed.
+    const comments = listEvents(log)
+      .filter((e) => e.eventType === 'ticket.commented')
+      .map((e) => JSON.stringify(e.payload));
+    expect(comments.some((c) => c.includes('not wired into the CLI'))).toBe(true);
+  });
+
   it('lands a ticket in a repo whose trunk is not called main (W13-40)', async () => {
     fixture = await setupFixture('master');
     const { log } = fixture;

@@ -8554,16 +8554,18 @@
     },
     {
       "id": "W13-46",
-      "title": "the real forge adapters are unreachable \u2014 landing pushes through a local-first mirror instead",
+      "title": "a completed land was destroyed by the push that announces it",
       "phase": 13,
       "module": "forge",
       "lane": "integrations",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/land-push.ts",
-        "docs/STATUS.md"
+        "docs/STATUS.md",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "depends_on": [],
       "stories": [],
