@@ -8720,10 +8720,12 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
-        "apps/web/src/board/**"
+        "apps/web/src/board/**",
+        "apps/web/src/styles.css",
+        "apps/web/src/layout/SplitPaneWorkspace.tsx"
       ],
       "depends_on": [],
       "stories": [],
