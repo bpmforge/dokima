@@ -50,7 +50,9 @@ import { buildBuiltInSpawn } from './run-build-spawn.js';
 import {
   ESCALATION_POLICY_SETTINGS_KEY,
   MAX_TOOL_ITERATIONS_SETTINGS_KEY,
+  MAX_TURN_TOKENS_SETTINGS_KEY,
   resolveMaxToolIterations,
+  resolveMaxTurnTokens,
   resolvePinnedModel,
   resolvePolicyScope,
 } from './run-build-policy.js';
@@ -283,6 +285,18 @@ export async function executeBuildRun(
     return 2;
   }
 
+  // W13-43: the other runaway. Iterations bound how many turns a session may
+  // take; this bounds how much ONE turn may emit.
+  const turnTokensResult = resolveMaxTurnTokens(
+    resolveEffectiveValue(MAX_TURN_TOKENS_SETTINGS_KEY, policyScoped)?.value as
+      | JsonValue
+      | undefined,
+  );
+  if ('refusal' in turnTokensResult) {
+    io.stderr(`${runId} did not start: ${turnTokensResult.refusal}`);
+    return 2;
+  }
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   /**
@@ -312,6 +326,7 @@ export async function executeBuildRun(
         secretValues,
         pin,
         iterationsResult.maxIterations,
+        turnTokensResult.maxTurnTokens,
       );
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;

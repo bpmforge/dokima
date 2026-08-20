@@ -8465,12 +8465,18 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/agent-session/gateway-session.ts",
         "packages/harbormaster/src/agent-session/gateway-session.test.ts",
-        "packages/harbormaster/src/agent-session/session-stream.ts"
+        "apps/server/src/cli/run-build-policy.ts",
+        "apps/server/src/cli/run-build-policy.test.ts",
+        "apps/server/src/cli/run-build-spawn.ts",
+        "packages/harbormaster/src/agent-session/session-stream.ts",
+        "packages/harbormaster/src/agent-session/session-verdicts.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts"
       ],
       "depends_on": [
         "W13-42"

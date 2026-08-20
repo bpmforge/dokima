@@ -209,13 +209,25 @@ export async function takeMeteredTurn(args: {
   /** W13-24: FR-S1's "why is this role on this model?" needs the role on the record. */
   readonly role: string;
   readonly onDelta?: (chunk: string, cumulative: number) => void;
+  /**
+   * W13-43: the ceiling on ONE turn's output. Absent means unbounded, which is
+   * what every turn was until a local model entered a generation loop and
+   * streamed for as long as it was left running — the idle abort never fires
+   * against a model that keeps producing, so nothing ended the run.
+   */
+  readonly maxTokens?: number;
   readonly now: () => string;
 }): Promise<{ response: ChatResponse; model: string; streamed: boolean }> {
   const routed = await args.route();
   const model = routed.chain[0]!;
   const turn = await runStreamedTurn({
     provider: args.resolveProvider(model),
-    request: { model, messages: args.messages, tools: args.tools } as ChatRequest,
+    request: {
+      model,
+      messages: args.messages,
+      tools: args.tools,
+      ...(args.maxTokens === undefined ? {} : { maxTokens: args.maxTokens }),
+    } as ChatRequest,
     log: args.log,
     actorId: args.actorId,
     ticketId: args.ticketId,

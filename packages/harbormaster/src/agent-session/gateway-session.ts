@@ -93,9 +93,7 @@ import {
   type ScopedRoleMatrix,
   type TaskType,
 } from '@dokima/gateway';
-import { checkWriteScope } from '@dokima/git';
 import {
-  computeChangedPaths,
   type Anchor,
   type SpawnSession,
   type SpawnSessionInput,
@@ -108,37 +106,34 @@ import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
 import { takeMeteredTurn } from './session-stream.js';
+import {
+  parseVerifyResult,
+  refuseIfSessionExceededScope,
+} from './session-verdicts.js';
 import { buildAnchorBlock } from './session-anchors.js';
 import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 
-/**
- * SC-01's own real check (see module header), run once the tool loop has
- * genuinely ended. `changedPaths` is the REAL worktree diff against `HEAD`
- * (tracked + untracked, exactly what canonical SC-01 diffs) — never the
- * model's claims. Returns a refusal `SpawnSessionOutput` (no manifest text,
- * non-zero exit, same shape the iteration/cost-cap stops already use) when
- * any changed path fails `checkWriteScope`; `null` when the diff is clean.
- */
-async function refuseIfSessionExceededScope(
-  cwd: string,
-  writeScope: readonly string[],
-): Promise<SpawnSessionOutput | null> {
-  const changedPaths = await computeChangedPaths(cwd, 'HEAD');
-  const violations = await checkWriteScope([...changedPaths], [...writeScope], cwd);
-  if (violations.length === 0) return null;
-  return {
-    stdout: '',
-    stderr:
-      'agent session refused (SC-01, out-of-session — this runs regardless of the ' +
-      'tool-boundary pre-check): the real worktree diff contains path(s) outside ' +
-      `write_scope after the tool loop ended — ${violations
-        .map((v) => `${v.path} (${v.reason})`)
-        .join(', ')}. Session output discarded; no Completion Manifest was produced.`,
-    exitCode: 1,
-  };
-}
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
+
+/**
+ * The ceiling on ONE turn's output (W13-43).
+ *
+ * Every turn was unbounded until a local model entered a generation loop and
+ * streamed for as long as the run was left going: `lsof` showed a live
+ * connection, LM Studio sat at 160% CPU, our process at 0.7%. Nothing could
+ * stop it — W13-15 deliberately replaced duration bounds with an IDLE bound,
+ * which is correct for a model generating slowly and useless against one that
+ * never stops, because every token resets the timer.
+ *
+ * SIZED FROM MEASURED TURNS, not guessed: across 166 real turns on this
+ * board the median was 60 completion tokens, p95 was 438, and the largest
+ * legitimate turn — a model writing a whole file — was 6,646. 32k is roughly
+ * five times that, so honest work never meets it. A ceiling tight enough to
+ * clip a real turn would be worse than the hang: it would truncate the
+ * Completion Manifest every time and read as model incompetence.
+ */
+export const DEFAULT_MAX_TURN_TOKENS = 32_000;
 export const DEFAULT_AGENT_SESSION_TASK_TYPE: TaskType = 'code';
 export const DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -170,6 +165,8 @@ export interface GatewaySpawnSessionOptions {
   readonly ledger: CostLedger;
   /** Per-session tool-call-turn cap (T-27: "a session iterates tool calls indefinitely... without producing a manifest"). */
   readonly maxIterations?: number;
+  /** W13-43: ceiling on one turn's output. 0 disables the bound. */
+  readonly maxTurnTokens?: number;
   /**
    * Optional USD cap, checked between iterations against
    * `ledger.totalForTicket` — the other half of acceptance 1's "or the
@@ -203,29 +200,6 @@ export interface GatewaySpawnSessionOptions {
  * anchor that invented a fact would be worse than one that stays silent,
  * which is the rule `anchors.ts` states for its own stub anchors.
  */
-export function parseVerifyResult(
-  resultText: string,
-  verifyCommand: string,
-): ValidatorResult | null {
-  const start = resultText.indexOf('{');
-  if (start === -1) return null;
-  try {
-    const parsed: unknown = JSON.parse(resultText.slice(start));
-    if (typeof parsed !== 'object' || parsed === null) return null;
-    const exitCode = (parsed as { exitCode?: unknown }).exitCode;
-    if (typeof exitCode !== 'number') return null;
-    return {
-      name: verifyCommand,
-      exitCode,
-      // The verify tool reports a command result, not a gap-counting
-      // validator, so a non-zero exit IS the single gap. Inventing a
-      // finer count from stdout would be fabrication.
-      gapCount: exitCode === 0 ? 0 : 1,
-    };
-  } catch {
-    return null;
-  }
-}
 
 /** Delivers the `@dokima/loop` `SpawnSession` contract `runSession` already takes (FR-H6), backed by the gateway rather than a child process. */
 export function createGatewaySpawnSession(
@@ -236,6 +210,7 @@ export function createGatewaySpawnSession(
   const now = options.now ?? (() => new Date().toISOString());
   const taskType = options.taskType ?? DEFAULT_AGENT_SESSION_TASK_TYPE;
   const maxIterations = options.maxIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
+  const maxTurnTokens = options.maxTurnTokens ?? DEFAULT_MAX_TURN_TOKENS;
   const verifyTimeoutMs =
     options.verifyTimeoutMs ?? DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS;
 
@@ -328,8 +303,31 @@ export function createGatewaySpawnSession(
         log: options.log,
         actorId: options.actorId,
         onDelta: options.onDelta,
+        ...(maxTurnTokens > 0 ? { maxTokens: maxTurnTokens } : {}),
         now,
       });
+
+      /**
+       * W13-43: the ceiling was HIT. `finish_reason: length` means the model
+       * was still going when it ran out of room, so this turn's output is a
+       * fragment — continuing would feed a truncated assistant message back
+       * and burn the rest of the iteration budget on it.
+       *
+       * Ends the session with a reason the operator can act on: W13-41 puts
+       * this sentence in the park comment, so the number and the setting that
+       * changes it are both visible rather than being a bare no-manifest line.
+       */
+      if (response.finishReason === 'length') {
+        return {
+          stdout: '',
+          stderr:
+            `agent session stopped: one turn hit the ${maxTurnTokens}-token output ` +
+            `ceiling and was still generating (T-27). That is a model that will not ` +
+            `stop, not a model that needs more room — raise ${'maxTurnTokens'} only ` +
+            `if a legitimate turn is genuinely this large.`,
+          exitCode: 1,
+        };
+      }
 
       if (options.maxTicketCostUsd !== undefined) {
         const spent = options.ledger.totalForTicket({

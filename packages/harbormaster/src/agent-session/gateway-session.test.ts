@@ -220,6 +220,78 @@ describe('createGatewaySpawnSession', () => {
     return { log, cwd };
   }
 
+  /**
+   * W13-43. Measured across three live runs: a local model entered a
+   * generation loop and streamed for as long as the run was left going —
+   * `lsof` showed a live connection, LM Studio 160% CPU, our process 0.7%.
+   * Nothing stopped it, because W13-15's idle bound cannot see a model that
+   * never goes idle.
+   */
+  describe('one turn is bounded by output (W13-43)', () => {
+    /** What a provider returns when it hit the ceiling and was still going. */
+    function truncatedResponse(): ChatResponse {
+      return {
+        model: FAKE_MODEL,
+        message: { role: 'assistant', content: 'x'.repeat(100) },
+        finishReason: 'length',
+        usage: usage(0),
+      };
+    }
+
+    it('RED FIXTURE: a model still generating at the ceiling ENDS the session', async () => {
+      const { log, cwd } = await setup();
+      // Scripted to keep going forever. Before this ticket the loop would
+      // consume the whole iteration budget on truncated fragments; with no
+      // ceiling at all it never returned to the loop in the first place.
+      const provider = new ScriptedFakeProvider([truncatedResponse()]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
+
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(result.exitCode).toBe(1);
+      // Asserted on the TURN COUNT, never by waiting: one call, then stopped.
+      expect(provider.calls).toHaveLength(1);
+      // The number and the setting both reach the operator (W13-41 puts this
+      // sentence in the park comment).
+      expect(result.stderr).toContain('32000-token output ceiling');
+      expect(result.stderr).toContain('maxTurnTokens');
+    });
+
+    it('sends the ceiling on the request, so the provider can enforce it', async () => {
+      const { log, cwd } = await setup();
+      const provider = new ScriptedFakeProvider([finalResponse('done')]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(baseSpawnOptions(log, provider, ledger));
+
+      await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(provider.calls[0]!.maxTokens).toBe(32_000);
+    });
+
+    it('an explicit 0 disables the bound rather than meaning "no output"', async () => {
+      const { log, cwd } = await setup();
+      const provider = new ScriptedFakeProvider([finalResponse('done')]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, ledger, { maxTurnTokens: 0 }),
+      );
+
+      await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(provider.calls[0]!.maxTokens).toBeUndefined();
+    });
+  });
+
   it('(acceptance 1, FR-H6) sends the tool schema through the routed model and returns the final message with no manifest yet to parse', async () => {
     const { log, cwd } = await setup();
     const provider = new ScriptedFakeProvider([finalResponse('plain text, no manifest')]);
