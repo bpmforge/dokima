@@ -73,7 +73,7 @@ test('RED FIXTURE: the empty-board control goes where a board actually comes fro
 
   // It used to read "View current phase" and navigate to ?view=plans — the
   // Improvement Plan screen, a different feature, which then reported
-  // "0 raw findings → 0 plan items". A button that goes somewhere wrong is
+  // "0 found → 0 planned". A button that goes somewhere wrong is
   // worse than no button.
   await board.getByRole('button', { name: 'Describe your product' }).click();
 
