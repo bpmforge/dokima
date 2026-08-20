@@ -158,15 +158,18 @@ test('autonomy dial always shows the immutable NEVER-AUTO list', async ({ page }
   await expect(page.getByTestId('never-auto-list')).toBeVisible();
   await expect(page.getByTestId('never-auto-list')).toContainText('Merges to main');
 
-  await page.getByLabel('Auto — documented defaults taken and ledgered').click();
-  await expect(
-    page.getByLabel('Auto — documented defaults taken and ledgered'),
-  ).toBeChecked();
-  await page.reload();
-  await page.getByRole('button', { name: 'Autonomy · Budget · Berths' }).click();
-  await expect(
-    page.getByLabel('Auto — documented defaults taken and ledgered'),
-  ).toBeChecked();
+  // W13-26: this used to click Auto and assert it round-tripped a reload.
+  // Auto is now disabled unless a project already selected it, because no run
+  // path reads the mode — a gated pause blocks in either one. The persistence
+  // assertion went with it deliberately: there is nothing for a user to persist
+  // from this surface any more, and the PUT itself is covered server-side.
+  const auto = page.getByLabel(/^Auto — /);
+  await expect(auto).toBeDisabled();
+  await expect(auto).not.toBeChecked();
+  await expect(page.getByText(/Unattended defaults are not enforced yet/)).toBeVisible();
+
+  // Interactive is what actually happens, and stays selectable.
+  await expect(page.getByLabel(/^Interactive — /)).toBeChecked();
 });
 
 test('rule lifecycle: register, promote twice, then a data-gated promotion is refused', async ({

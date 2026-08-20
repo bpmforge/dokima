@@ -7844,15 +7844,13 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "security-auditor",
       "write_scope": [
-        "packages/harbormaster/src/autonomy.ts",
-        "packages/harbormaster/src/autonomy.test.ts",
-        "packages/harbormaster/src/breakpoints-clarifications.ts",
-        "packages/harbormaster/src/breakpoints-clarifications.test.ts",
-        "apps/server/src/cli/run-build.ts",
-        "docs/SECURITY_CONTROLS.md"
+        "apps/web/src/settings/AutonomyBudgetPanel.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.test.tsx",
+        "docs/SECURITY_CONTROLS.md",
+        "apps/web/e2e/settings.spec.ts"
       ],
       "depends_on": [],
       "stories": [],
@@ -7864,7 +7862,9 @@
         "RED FIXTURE: a project set to `interactive` asks at a pause site where `auto` would take the default, proven against today's behaviour where the mode changes nothing; and a NEVER-AUTO site asks in BOTH modes (C-5)."
       ],
       "notes": [
-        "Filed 2026-08-19 alongside W13-25 from an unwired-export audit. Not fixed in place: wiring the dial turns documented auto-defaults on for the first time, which changes what an unattended run is permitted to do \u2014 a founder-facing decision, not an implementer's."
+        "Filed 2026-08-19 alongside W13-25 from an unwired-export audit. Not fixed in place: wiring the dial turns documented auto-defaults on for the first time, which changes what an unattended run is permitted to do \u2014 a founder-facing decision, not an implementer's.",
+        "Scoped down at claim to the HONEST-SURFACE half, on the founder recommendation: do not wire auto yet. Today a pause site opens a clarification that blocks until someone resolves or dismisses it, so nothing auto-takes a default and the dial being inert is conservative rather than dangerous. Wiring auto would turn documented defaults on for the first time on projects whose owners set it believing it already applied. What ships now is the product no longer claiming otherwise. The wiring stays open as W13-32 with the defaults review as its first task.",
+        "e2e settings.spec.ts updated: it clicked the Auto radio and asserted it survived a reload. Auto is now disabled unless already selected, so the persistence assertion went with it \u2014 deliberately, since there is nothing left for a user to persist from that surface and the PUT is covered server-side. The spec catching this is the e2e gate doing its job."
       ]
     },
     {
@@ -8023,6 +8023,35 @@
       "notes": [
         "Found while checking my own W13-28 claim, after I had already got one thing wrong in the same session by reading a truncated config. Confirmed by running the predicate as a shell command rather than by reasoning about it.",
         "Filed with role code-reviewer and validate-plan refused it: a verifier role may not be the maker (C-4, P11). The guard working on my own ticket, which is the point of it being mechanical."
+      ]
+    },
+    {
+      "id": "W13-32",
+      "title": "wire the autonomy dial \u2014 after deciding which defaults are acceptable unattended",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/breakpoints-clarifications.ts",
+        "packages/harbormaster/src/breakpoints-clarifications.test.ts",
+        "packages/harbormaster/src/autonomy.ts",
+        "packages/harbormaster/src/autonomy.test.ts"
+      ],
+      "depends_on": [
+        "W13-26"
+      ],
+      "stories": [],
+      "acceptance": [
+        "DECIDE FIRST, AND RECORD IT: which documented default at each non-NEVER-AUTO pause site is acceptable to take unattended. Wiring the dial turns every one of them on for the first time, on projects whose owners selected auto believing it already applied. This is the whole risk and it is not a coding question.",
+        "askClarification opens a blocking card unconditionally and takes no pause-site kind. It needs one, plus the project mode, before resolvePauseAction can be consulted \u2014 the mode lives in project settings, which harbormaster cannot read, so it must be injected the way every other cross-package dependency in this loop is.",
+        "C-5 IS THE HALF THAT MUST NOT BE LOST: isNeverAutoPauseSite must be consulted on the same path, or wiring auto silently removes a constraint that is currently vacuous but intact.",
+        "RED FIXTURE: a project set to auto takes the documented default at a non-NEVER-AUTO site and ledgers it; the same project still ASKS at a NEVER-AUTO site."
+      ],
+      "notes": [
+        "Filed by W13-26, which shipped the honest surface only. Today nothing reads the dial and every gated pause blocks, so the current state is conservative \u2014 there is no urgency here, and real risk in wiring it without the defaults review."
       ]
     },
     {

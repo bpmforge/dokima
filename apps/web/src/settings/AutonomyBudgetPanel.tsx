@@ -108,15 +108,31 @@ export function AutonomyBudgetPanel({ projectId }: AutonomyBudgetPanelProps) {
           />
           Interactive — every gated pause asks
         </label>
+        {/*
+          W13-26: this said "Auto — documented defaults taken and ledgered",
+          and none of it happened. No run path reads the mode: a gated pause
+          opens a clarification that blocks until a person resolves or
+          dismisses it, in either mode. A stored setting that changes nothing
+          is worse than an absent one, because the user believes they chose.
+
+          Left selectable when already chosen — a project that set it should
+          still see its own state — and otherwise disabled, because offering a
+          choice with no effect is the thing being fixed.
+        */}
         <label className="settings__radio">
           <input
             type="radio"
             name="autonomy-mode"
             checked={autonomy.mode === 'auto'}
+            disabled={autonomy.mode !== 'auto'}
             onChange={() => void handleModeChange('auto')}
           />
-          Auto — documented defaults taken and ledgered
+          Auto — not in effect yet: every gated pause still asks
         </label>
+        <p className="settings__hint">
+          Unattended defaults are not enforced yet. Until they are, this project
+          behaves as Interactive whichever option is selected.
+        </p>
         <h3>NEVER-AUTO (always pauses, not editable)</h3>
         <ul className="settings__never-auto" data-testid="never-auto-list">
           {autonomy.neverAuto.map((item) => (
