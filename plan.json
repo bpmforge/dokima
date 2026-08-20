@@ -8401,6 +8401,32 @@
         "Do NOT change berths.ts: HEAD is already correct there, and this ticket is about the loop agreeing with it.",
         "RED FIXTURE: the land loop runs a ticket to completion in a repo whose trunk is named something other than main. That fixture is red today for exactly the reason above."
       ]
+    },
+    {
+      "id": "W13-41",
+      "title": "the park comment tells the operator THAT a ticket failed and never HOW",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "points": 3,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts"
+      ],
+      "depends_on": [
+        "W13-40"
+      ],
+      "stories": [],
+      "notes": "The human-facing twin of W13-30, which fixed exactly this for the maker. Found by running a real ticket on a local model.",
+      "acceptance": [
+        "MEASURED. A real ticket ran on a local model, exhausted its 12-iteration tool budget twice, and parked. The whole explanation the operator got was: attempt 1/2: exitCode=1 no completion manifest returned. The session had said precisely why \u2014 exceeded the per-session tool-iteration budget (12) without a Completion Manifest (T-27) \u2014 and attemptSummaryLine dropped it.",
+        "CONSEQUENCE: the remedy is a real setting (maxToolIterations) and it is undiscoverable. The operator cannot tell a model that ran out of turns from one that crashed, from one that answered nothing \u2014 all three print the same line. The agent had in fact written correct scaffolding into the worktree; the run read as a flat failure.",
+        "Carry the session's own stderr into the summary when there is no manifest. Bounded and with truncation ANNOUNCED, matching verifyFailureTail (W13-30) rather than inventing a second convention.",
+        "REDACTED, not raw: the park comment is appended to the event log, and Law 8 says secrets never reach it. Use redactString the way W13-29 does for fed-back gaps. A test must plant a secret-shaped string in stderr and assert it does not survive.",
+        "Say nothing extra when stderr is empty: the existing line is already right for a session that simply returned no manifest with no explanation."
+      ]
     }
   ]
 }

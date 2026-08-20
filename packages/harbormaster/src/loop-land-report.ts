@@ -11,20 +11,73 @@
  * human, after the ladder was already spent. The maker never saw any of it,
  * which is why every retry rendered a byte-identical prompt.
  */
+import { redactString } from '@dokima/shared';
 import {
   renderDecideCard,
   tokenBoundaryDecideCard,
 } from './loop-land-policy.js';
 import type { LandAttempt, LandParkedReason } from './loop-land.js';
 
+/** Matches `verifyFailureTail` (W13-30) rather than inventing a second budget. */
+const SESSION_TAIL_CHARS = 2_000;
+
+/**
+ * Why a session ended without a manifest, in the session's own words (W13-41).
+ *
+ * MEASURED: a ticket ran on a local model, spent its whole 12-iteration tool
+ * budget twice, and parked. The entire explanation the operator got was
+ * `exitCode=1 no completion manifest returned`. The session had said exactly
+ * why — "exceeded the per-session tool-iteration budget (12) without a
+ * Completion Manifest (T-27)" — and this function threw it away. The remedy
+ * is a real setting (`maxToolIterations`) that nobody could have known to
+ * reach for, and the agent had in fact written correct scaffolding into the
+ * worktree, so a run that was one setting away from working read as a flat
+ * failure.
+ *
+ * This is W13-30's fix pointed at the human: the maker is now told HOW it
+ * failed, and the operator was still told only THAT it did.
+ *
+ * Reads `session.output` — the thinking-stripped stdout+stderr the loop
+ * already normalises (`packages/loop/src/session.ts`), so no `<think>` content
+ * can reach the log through this path.
+ *
+ * REDACTED (Law 8, SC-06): this string is appended to the event log, which is
+ * append-only — a secret that reaches it cannot be taken back out.
+ *
+ * Truncation is ANNOUNCED, for the same reason it is in `verifyFailureTail`:
+ * a fragment beginning mid-sentence with no sign anything was cut gets read
+ * as the whole failure.
+ */
+function sessionFailureTail(output: string): string | null {
+  const raw = redactString(output).trim();
+  if (!raw) return null;
+  const clipped = raw.length > SESSION_TAIL_CHARS;
+  const tail = clipped ? raw.slice(-SESSION_TAIL_CHARS) : raw;
+  return clipped
+    ? `${tail} (last ${SESSION_TAIL_CHARS} characters — earlier output truncated)`
+    : tail;
+}
+
 export function attemptSummaryLine(attempt: LandAttempt, ceiling: number): string {
   const gateSummary =
     attempt.closeGate === null
-      ? 'no completion manifest returned'
+      ? noManifestSummary(attempt)
       : attempt.closeGate.ok
         ? 'close gate passed'
         : `close gate refused: ${attempt.closeGate.reasons.join('; ')}`;
   return `attempt ${attempt.attempt}/${ceiling}: exitCode=${attempt.session.exitCode} ${gateSummary}`;
+}
+
+/**
+ * A session that returned nothing to judge. When it explained itself, say so;
+ * when it did not, the bare line is already the honest answer and adding
+ * anything would be inventing a reason.
+ */
+function noManifestSummary(attempt: LandAttempt): string {
+  const why = sessionFailureTail(attempt.session.output);
+  return why === null
+    ? 'no completion manifest returned'
+    : `no completion manifest returned — ${why}`;
 }
 
 export function parkComment(
