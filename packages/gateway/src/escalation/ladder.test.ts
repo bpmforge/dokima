@@ -202,7 +202,12 @@ describe('runEscalationLadder', () => {
       "on 'coding-agent' itself falls through to that role's own default in every shipped preset, " +
       "silently repeating R1's model — R3 must read a role that actually carries a frontier model)",
     async (presetName) => {
-      const presetMatrix = presetAsGlobalScope(presetName);
+      // W13-36: presets no longer name models; the picks stand in for the
+      // two a user chose from their own provider.
+      const presetMatrix = presetAsGlobalScope(presetName, {
+        strong: 'users-strong-model',
+        cheap: 'users-cheap-model',
+      });
       const r1Model = resolveModelChain(presetMatrix, 'coding-agent', 'code').chain[0];
       const outcome = await runEscalationLadder({
         ticketId: `t-preset-${presetName}`,

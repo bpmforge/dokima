@@ -129,7 +129,10 @@ export function resolveOnboardGatewayConfigFromEnv(
   return {
     baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
     apiKey: env.DOKIMA_MODEL_API_KEY,
-    model: env.DOKIMA_MODEL_ID ?? 'local-model',
+    // W13-36: never a guessed model id. The placeholder that used to sit here
+    // matched nothing on a real endpoint; an empty id makes the provider say so
+    // plainly instead of Dokima inventing a name.
+    model: env.DOKIMA_MODEL_ID ?? '',
   };
 }
 

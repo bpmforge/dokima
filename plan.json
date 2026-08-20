@@ -8145,15 +8145,22 @@
     },
     {
       "id": "W13-36",
-      "title": "the model-matrix preset is stored and never expanded, and it names models the user may not have",
+      "title": "no shipped model names: a preset says WHICH ROLE gets the better model, never which model",
       "phase": 13,
       "module": "gateway",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "llm-integration-engineer",
       "write_scope": [
-        "docs/design/MODEL_PRESETS.md"
+        "packages/gateway/src/routing/presets.ts",
+        "packages/gateway/src/routing/presets.test.ts",
+        "packages/gateway/src/routing/index.ts",
+        "packages/gateway/src/routing/router.test.ts",
+        "packages/gateway/src/escalation/ladder.test.ts",
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts"
       ],
       "depends_on": [
         "W13-35"
@@ -8167,7 +8174,36 @@
         "RED FIXTURE: a fresh install that completes the wizard against a provider holding arbitrary models can build a board \u2014 the walkthrough this ticket came from, run end to end."
       ],
       "notes": [
-        "Filed rather than fixed on purpose: wiring presetAsGlobalScope alone would move the failure from 'no rows' to 'model not found' and look like progress. write_scope left empty because the first deliverable is the shape-vs-literal decision."
+        "Filed rather than fixed on purpose: wiring presetAsGlobalScope alone would move the failure from 'no rows' to 'model not found' and look like progress. write_scope left empty because the first deliverable is the shape-vs-literal decision.",
+        "Closed 2026-08-19 for the hardcode half on the founder instruction that a customer must use the models they have. Zero model-name literals remain in shipped source (fixtures excepted \u2014 law 9a requires those). The remaining half, asking the user WHICH of their models to use and writing matrix rows from it, is W13-37."
+      ]
+    },
+    {
+      "id": "W13-37",
+      "title": "the setup flow must ask which of the user's models to use, and write the matrix from it",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/settings/FirstRunWizard.test.tsx"
+      ],
+      "depends_on": [
+        "W13-36"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W13-36 removed every shipped model name: a preset is now a SHAPE (which role gets the stronger model) and buildPresetMatrix takes the two ids from its caller. Nothing calls it yet, so a fresh install still has no matrix rows and still cannot build a board.",
+        "THE WIZARD REGISTERS A PROVIDER AND NEVER ASKS WHICH OF ITS MODELS TO USE. fetchProviderModels already lists exactly what that provider reports; putModelMatrix already writes rows. Both exist and the wizard calls neither.",
+        "ASK FOR TWO: a model for the work and a model for review. C-4 requires them to differ, and route() refuses a collision \u2014 so a provider holding only ONE usable model must be told that plainly at setup rather than at the first review.",
+        "NEVER RANK THE MODELS FOR THE USER by parsing names for parameter counts. That is a hardcode wearing a heuristic: the names on a real machine are arbitrary. Offer the list and let them choose.",
+        "RED FIXTURE: a fresh install that completes the wizard against a provider holding arbitrary model names can build a board \u2014 the walkthrough W13-34/35/36 came from, run end to end."
+      ],
+      "notes": [
+        "Filed by W13-36 rather than folded in: removing the hardcodes and adding a picker are separate changes, and shipping the second without the first would have kept the guessed ids alive underneath it."
       ]
     },
     {

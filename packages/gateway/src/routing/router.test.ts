@@ -8,11 +8,18 @@ import {
   SameModelRefusedError,
 } from './maker-verifier.js';
 import { RoutingUnresolvedError } from './matrix.js';
-import { PRESET_HYBRID } from './presets.js';
+import { buildPresetMatrix, PRESET_SHAPES } from './presets.js';
 import { route } from './router.js';
 import type { ScopedRoleMatrix } from './types.js';
 
-const matrix: ScopedRoleMatrix = { global: PRESET_HYBRID };
+// W13-36: built from picks rather than a shipped literal — a preset no
+// longer names a model.
+const matrix: ScopedRoleMatrix = {
+  global: buildPresetMatrix(PRESET_SHAPES.hybrid, {
+    strong: 'users-strong-model',
+    cheap: 'users-cheap-model',
+  }),
+};
 
 function noBenchStore(): FitnessCardStore {
   return new FitnessCardStore();
@@ -20,7 +27,7 @@ function noBenchStore(): FitnessCardStore {
 
 function card(overrides: Partial<FitnessCard> = {}): FitnessCard {
   return {
-    model: 'qwen2.5-coder-7b-instruct',
+    model: 'users-cheap-model',
     role: 'coding-agent',
     verdict: 'unfit',
     harnessVersion: '1.0.0',
@@ -39,7 +46,7 @@ describe('route', () => {
       actorId: 'harbormaster',
       fitnessStore: noBenchStore(),
     });
-    expect(result.chain[0]).toBe('qwen2.5-coder-7b-instruct');
+    expect(result.chain[0]).toBe('users-cheap-model');
     expect(result.overrideEvent).toBeUndefined();
   });
 
@@ -51,7 +58,7 @@ describe('route', () => {
       actorId: 'harbormaster',
       fitnessStore: noBenchStore(),
     });
-    expect(reviewer.chain[0]).toBe('claude-opus-4-8');
+    expect(reviewer.chain[0]).toBe('users-strong-model');
     expect(reviewer.overrideEvent).toBeUndefined();
   });
 
@@ -172,7 +179,7 @@ describe('route', () => {
       const store = noBenchStore();
       store.put(
         card({
-          model: 'qwen2.5-coder-7b-instruct',
+          model: 'users-cheap-model',
           role: 'coding-agent',
           verdict: 'unfit',
         }),
@@ -192,7 +199,7 @@ describe('route', () => {
       const store = noBenchStore();
       store.put(
         card({
-          model: 'qwen2.5-coder-7b-instruct',
+          model: 'users-cheap-model',
           role: 'coding-agent',
           verdict: 'marginal',
         }),
@@ -212,7 +219,7 @@ describe('route', () => {
       const store = noBenchStore();
       store.put(
         card({
-          model: 'qwen2.5-coder-7b-instruct',
+          model: 'users-cheap-model',
           role: 'coding-agent',
           verdict: 'unfit',
         }),
@@ -227,7 +234,7 @@ describe('route', () => {
         fitnessAck: true,
         fitnessSink: sink,
       });
-      expect(result.chain[0]).toBe('qwen2.5-coder-7b-instruct');
+      expect(result.chain[0]).toBe('users-cheap-model');
       expect(result.fitnessAckEvent?.verdict).toBe('unfit');
       expect(sink.events).toHaveLength(1);
     });
@@ -236,7 +243,7 @@ describe('route', () => {
       const store = noBenchStore();
       store.put(
         card({
-          model: 'qwen2.5-coder-7b-instruct',
+          model: 'users-cheap-model',
           role: 'coding-agent',
           verdict: 'fit',
         }),
@@ -267,7 +274,7 @@ describe('route', () => {
       const store = noBenchStore();
       store.put(
         card({
-          model: 'qwen2.5-coder-7b-instruct',
+          model: 'users-cheap-model',
           role: 'coding-agent',
           verdict: 'unfit',
           harnessVersion: '0.9.0',

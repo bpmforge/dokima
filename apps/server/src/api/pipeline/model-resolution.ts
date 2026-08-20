@@ -260,18 +260,16 @@ function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'so
  * a clean install fail.
  */
 export function envNamesAModel(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(env.DOKIMA_MODEL_BASE_URL ?? env.DOKIMA_MODEL_ID);
+  // W13-36: the MODEL ID is what counts — a base URL names an ENDPOINT, and an
+  // endpoint plus a guessed id is what produced "Invalid model identifier".
+  return Boolean(env.DOKIMA_MODEL_ID);
 }
 
 /**
- * Nothing anywhere says which model to use (W13-34).
- *
- * On a fresh install "Build the board" used to fail with `env: request failed
- * with 400 Bad Request (HTTP 500)`: resolution fell through to a placeholder
- * id at a guessed endpoint, and the endpoint's own clear answer was discarded.
- * Law 9(b) — the model is the user's choice, "asked at setup, never defaulted
- * silently". C-1 promises local-only WORKS, not that an unconfigured install
- * guesses.
+ * Nothing anywhere says which model to use (W13-34). A fresh install used to
+ * fail here with `env: request failed with 400 Bad Request (HTTP 500)` — a
+ * placeholder id at a guessed endpoint, with the endpoint's own clear answer
+ * discarded. Law 9(b): the model is the user's choice, never defaulted.
  */
 export function noModelConfigured(): ModelResolutionError {
   return new ModelResolutionError(
@@ -288,7 +286,8 @@ export function envTarget(env: NodeJS.ProcessEnv = process.env): ResolvedModelTa
     providerId: 'env',
     kind: 'oai-compat',
     baseUrl: env.DOKIMA_MODEL_BASE_URL ?? 'http://127.0.0.1:1234/v1',
-    model: env.DOKIMA_MODEL_ID ?? 'local-model',
+    // Never guessed: `envNamesAModel` gates every path here (W13-36).
+    model: env.DOKIMA_MODEL_ID ?? '',
     source: 'env',
   };
 }
