@@ -691,4 +691,48 @@ describe('runLandLoop', () => {
       },
     );
   });
+
+  describe('the maker is told HOW it failed (W13-30)', () => {
+    it(
+      'RED FIXTURE: a failing verify puts its OUTPUT in the next prompt, not ' +
+        'just its exit code. The gate captured stdout/stderr and discarded ' +
+        'them, so once W13-29 fed reasons forward the maker learned THAT it ' +
+        'failed and never HOW — the position a person is in when an agent keeps ' +
+        'reporting done against an unchanged symptom',
+      async () => {
+        fixture = await setupFixture();
+        const { log } = fixture;
+        // A verify that fails with something only its output reveals.
+        seedTicket(log, 'W9-01', {
+          verify: 'echo "GHOST-EDGE-4713: expected 2 received 3" >&2; exit 1',
+        });
+
+        const prompts: string[] = [];
+        // A distinct file per attempt: `landingSpawn` commits the same path
+        // every time, and attempt 2 would fail on "nothing to commit" for a
+        // reason that has nothing to do with what is being tested.
+        const spawn: SpawnSession = async (input) => {
+          prompts.push(input.prompt);
+          const rel = `packages/example/attempt-${prompts.length}.ts`;
+          const filePath = path.join(input.cwd, rel);
+          await fs.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.writeFile(filePath, `export const n = ${prompts.length};\n`);
+          await git(input.cwd, ['add', '--', rel]);
+          await git(input.cwd, ['commit', '-m', `feat: attempt ${prompts.length}`]);
+          return {
+            stdout: JSON.stringify(buildManifest({ files: [rel] })),
+            stderr: '',
+            exitCode: 0,
+          };
+        };
+        const options = baseOptions(fixture, spawn);
+        await runLandLoop({ ...options, maxLadderAttempts: 2 });
+
+        expect(prompts.length).toBeGreaterThan(1);
+        expect(prompts[1]).toContain('GHOST-EDGE-4713: expected 2 received 3');
+        // The exit code alone was never the useful part.
+        expect(prompts[1]).toContain('verify output');
+      },
+    );
+  });
 });

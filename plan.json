@@ -7966,6 +7966,39 @@
       ]
     },
     {
+      "id": "W13-30",
+      "title": "the close gate tells the maker that verify failed and never what it said",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/loop-gates.test.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/harbormaster/src/loop-gates-verify.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "depends_on": [
+        "W13-29"
+      ],
+      "stories": [],
+      "acceptance": [
+        "W13-28's first recommendation, and the cheapest half of it. runCloseGate re-runs verify, captures stdout and stderr in a VerifyRunResult, and then reports only: verify re-run failed, command exited N. The output is discarded at the point of failure. W13-29 now feeds gate reasons to the next attempt, so the maker is told THAT it failed and never HOW \u2014 which is the position a person is in when an agent keeps reporting done against a symptom that has not changed.",
+        "SAME SHAPE AS EVERY OTHER FINDING THIS WAVE: the fact is computed and thrown away. It is not a new capability, it is a value already in scope at the line that builds the reason.",
+        "BOUND IT. Verify output can be a whole test run; a full dump would crowd the prompt it is meant to inform and can exceed a context window. Take a tail, state that it was truncated, and prefer stderr when both are present \u2014 a failing command puts its diagnosis there.",
+        "REDACTION IS ALREADY ON THE PATH and must stay that way: gaps ride the handoff context through renderHandoff's redactDeep (SC-06), so this must not introduce a second, parallel redaction step to keep correct.",
+        "RED FIXTURE: a ticket whose verify fails with a distinctive message produces a second-attempt prompt containing that message, proven against today's prompt which contains only the exit code."
+      ],
+      "notes": [
+        "Filed and built 2026-08-19 as the concrete half of W13-28's diagnosis recommendation. The broader environment-difference packet needs the decisions in that document's section 6; this does not.",
+        "Closed 2026-08-19. The tail helper lives in loop-gates-verify.ts, which already owns running verify and the VerifyRunResult type \u2014 and loop-gates.ts was over the 400-line cap with it inline."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,

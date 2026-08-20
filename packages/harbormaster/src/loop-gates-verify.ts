@@ -75,3 +75,26 @@ export async function filesChangedInRange(
   const { stdout } = await git(worktreePath, ['diff', '--name-only', base, 'HEAD']);
   return splitLines(stdout);
 }
+
+/** Longest verify output fed back to a maker. A tail, not a dump: enough to diagnose, not enough to crowd out the ticket. */
+export const VERIFY_TAIL_CHARS = 2_000;
+
+/**
+ * The tail of a failed verify's output, stderr first.
+ *
+ * Truncation is ANNOUNCED rather than silent: a model shown a fragment that
+ * begins mid-sentence, with no sign anything was cut, will reason about the
+ * fragment as if it were the whole failure.
+ */
+export function verifyFailureTail(verify: VerifyRunResult): string | null {
+  const raw = (verify.stderr.trim() || verify.stdout.trim()).trim();
+  if (!raw) return null;
+  const clipped = raw.length > VERIFY_TAIL_CHARS;
+  const tail = clipped ? raw.slice(-VERIFY_TAIL_CHARS) : raw;
+  return [
+    clipped
+      ? `verify output (last ${VERIFY_TAIL_CHARS} characters — earlier output truncated):`
+      : 'verify output:',
+    tail,
+  ].join('\n');
+}
