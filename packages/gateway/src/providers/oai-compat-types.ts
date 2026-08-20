@@ -123,13 +123,4 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
  */
 export const DEFAULT_STREAM_IDLE_MS = 60_000;
 
-/**
- * How long a streamed call may wait for a request-queue slot (W13-42).
- *
- * Generous on purpose: several berths sharing one endpoint queue legitimately,
- * and a bound that fires on honest contention would turn a working setup into
- * spurious infrastructure failures. Five minutes is far longer than any real
- * queue wait observed and far shorter than the forever a leaked slot produced.
- */
-export const DEFAULT_QUEUE_ACQUIRE_MS = 300_000;
 export const DEFAULT_HEALTH_TIMEOUT_MS = 5_000;

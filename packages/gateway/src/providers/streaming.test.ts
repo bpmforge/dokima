@@ -103,7 +103,7 @@ describe('waiting for a queue slot is bounded (W13-42)', () => {
   it('RED FIXTURE: a slot that is never released FAILS the next call instead of hanging it', async () => {
     vi.useFakeTimers();
     try {
-      const queue = new RequestQueue(1);
+      const queue = new RequestQueue(1, 300_000);
       saturate(queue);
       await vi.advanceTimersByTimeAsync(0);
 
@@ -129,7 +129,7 @@ describe('waiting for a queue slot is bounded (W13-42)', () => {
   it('names the queue and its depth, so the message points somewhere', async () => {
     vi.useFakeTimers();
     try {
-      const queue = new RequestQueue(1);
+      const queue = new RequestQueue(1, 1_000);
       saturate(queue);
       await vi.advanceTimersByTimeAsync(0);
 
@@ -139,7 +139,6 @@ describe('waiting for a queue slot is bounded (W13-42)', () => {
           function* () {
             yield 'x';
           } as unknown as () => AsyncGenerator<string>,
-          1_000,
           'lm-studio',
         )) {
           expect(chunk).toBeUndefined();
@@ -156,7 +155,7 @@ describe('waiting for a queue slot is bounded (W13-42)', () => {
   });
 
   it('honest queueing still succeeds — the bound is a timeout, not a refusal to wait', async () => {
-    const queue = new RequestQueue(1);
+    const queue = new RequestQueue(1, 50);
     let release!: () => void;
     void queue.run(() => new Promise<void>((resolve) => (release = resolve)));
     await Promise.resolve();
@@ -184,7 +183,7 @@ describe('waiting for a queue slot is bounded (W13-42)', () => {
  */
 describe('the queue bound must not wedge the queue it protects (W13-42)', () => {
   it('a timed-out waiter leaves the slot usable once the holder releases', async () => {
-    const queue = new RequestQueue(1);
+    const queue = new RequestQueue(1, 50);
     let release!: () => void;
     void queue.run(() => new Promise<void>((resolve) => (release = resolve)));
     await Promise.resolve();
@@ -196,7 +195,6 @@ describe('the queue bound must not wedge the queue it protects (W13-42)', () => 
           function* () {
             yield 'timed out';
           } as unknown as () => AsyncGenerator<string>,
-          50,
           'p',
         )) {
           expect(chunk).toBeUndefined();
@@ -215,7 +213,6 @@ describe('the queue bound must not wedge the queue it protects (W13-42)', () => 
           function* () {
             yield 'ran';
           } as unknown as () => AsyncGenerator<string>,
-          2_000,
           'p',
         )) {
           got.push(chunk);

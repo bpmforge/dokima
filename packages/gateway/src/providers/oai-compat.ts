@@ -18,7 +18,13 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
-import { createIdleAbort, mapAbortsToTimeout, readSseDataLines, runQueuedStream } from './streaming.js';
+import {
+  asProviderTimeout,
+  createIdleAbort,
+  mapAbortsToTimeout,
+  readSseDataLines,
+  runQueuedStream,
+} from './streaming.js';
 import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
@@ -32,13 +38,16 @@ import {
   type Provider,
   type ProviderHealth,
   type ProviderQueueStats,
-  type RawToolCall,
   type RawToolCallDelta,
   type ToolCallAccumulator,
 } from './types.js';
 import type { ChatStreamEvent } from '../types.js';
 import { normalizeUsage, LOCAL_COST_TABLE, type CostTable } from './usage.js';
-import { normalizeFinishReason, parseRetryAfterMs } from './oai-compat-helpers.js';
+import {
+  normalizeFinishReason,
+  parseRetryAfterMs,
+  toChatResponse,
+} from './oai-compat-helpers.js';
 import {
   DEFAULT_HEALTH_TIMEOUT_MS,
   DEFAULT_REQUEST_TIMEOUT_MS,
@@ -139,63 +148,51 @@ export class OaiCompatProvider implements Provider {
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
     await this.ensureWarm();
-    return this.queue.run(async () => {
-      const body = {
-        // W13-10: extras FIRST, so everything derived below wins. A provider
-        // entry that could overwrite `model` or `messages` would silently
-        // defeat the model matrix, and with it the maker != verifier
-        // separation routing enforces.
-        ...this.requestExtras,
-        model: request.model,
-        messages: request.messages.map(toRawMessage),
-        ...(request.temperature !== undefined
-          ? { temperature: request.temperature }
-          : {}),
-        ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
-        ...(request.stop !== undefined ? { stop: request.stop } : {}),
-        ...(request.tools !== undefined ? { tools: request.tools.map(toRawTool) } : {}),
-      };
+    // W13-42: `run()` waits for a slot, and that wait is bounded inside the
+    // queue. Mapped here so a queue-wait timeout reaches callers under the
+    // name a request timeout already has — the land loop reads that as
+    // infrastructure and retries it for free (W13-27) rather than spending a
+    // ladder rung on it.
+    try {
+      return await this.queue.run(async () => {
+        const body = {
+          // W13-10: extras FIRST, so everything derived below wins. A provider
+          // entry that could overwrite `model` or `messages` would silently
+          // defeat the model matrix, and with it the maker != verifier
+          // separation routing enforces.
+          ...this.requestExtras,
+          model: request.model,
+          messages: request.messages.map(toRawMessage),
+          ...(request.temperature !== undefined
+            ? { temperature: request.temperature }
+            : {}),
+          ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
+          ...(request.stop !== undefined ? { stop: request.stop } : {}),
+          ...(request.tools !== undefined ? { tools: request.tools.map(toRawTool) } : {}),
+        };
 
-      const raw = await this.requestJson<RawChatCompletionResponse>(
-        '/chat/completions',
-        { method: 'POST', body: JSON.stringify(body) },
-        this.requestTimeoutMs,
-      );
-
-      const choice = raw.choices?.[0];
-      if (!choice) {
-        throw new ProviderResponseShapeError(this.id, 'response has no choices[0]');
-      }
-      if (!raw.usage) {
-        throw new ProviderResponseShapeError(
-          this.id,
-          'response is missing usage — cannot meter this call (FR-G1 requires normalized usage)',
+        const raw = await this.requestJson<RawChatCompletionResponse>(
+          '/chat/completions',
+          { method: 'POST', body: JSON.stringify(body) },
+          this.requestTimeoutMs,
         );
-      }
 
-      const modelId = raw.model ?? request.model;
-      const rawToolCalls = (choice.message as unknown as { tool_calls?: RawToolCall[] })
-        .tool_calls;
-      return {
-        model: modelId,
-        message: {
-          role: choice.message.role as ChatRole,
-          content: choice.message.content ?? '',
-        },
-        finishReason: normalizeFinishReason(choice.finish_reason),
-        usage: normalizeUsage(
-          {
-            promptTokens: raw.usage.prompt_tokens,
-            completionTokens: raw.usage.completion_tokens,
-          },
-          modelId,
-          this.costTable,
-        ),
-        ...(rawToolCalls !== undefined
-          ? { toolCalls: normalizeToolCalls(this.id, rawToolCalls) }
-          : {}),
-      };
-    });
+        const choice = raw.choices?.[0];
+        if (!choice) {
+          throw new ProviderResponseShapeError(this.id, 'response has no choices[0]');
+        }
+        if (!raw.usage) {
+          throw new ProviderResponseShapeError(
+            this.id,
+            'response is missing usage — cannot meter this call (FR-G1 requires normalized usage)',
+          );
+        }
+
+        return toChatResponse(this.id, request, raw, choice, this.costTable);
+      });
+    } catch (err) {
+      throw asProviderTimeout(err, this.id);
+    }
   }
 
   /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */

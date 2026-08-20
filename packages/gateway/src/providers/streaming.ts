@@ -9,9 +9,8 @@
  * owns streaming* and can finally de-duplicate the SSE loop too).
  */
 
-import type { RequestQueue } from './request-queue.js';
+import { QueueAcquireTimeoutError, type RequestQueue } from './request-queue.js';
 import { ProviderTimeoutError } from './errors.js';
-import { DEFAULT_QUEUE_ACQUIRE_MS } from './oai-compat-types.js';
 
 /**
  * Splits a fetch Response body into individual SSE `data:` payload strings,
@@ -61,106 +60,40 @@ export async function* readSseDataLines(
 export async function* runQueuedStream<T>(
   queue: RequestQueue,
   source: () => AsyncGenerator<T>,
-  /** W13-42: how long to wait for a slot. Omit for the default; 0 disables the bound. */
-  acquireTimeoutMs: number = DEFAULT_QUEUE_ACQUIRE_MS,
   providerId = 'provider',
 ): AsyncGenerator<T> {
-  let signalAcquired!: () => void;
-  const acquired = new Promise<void>((resolve) => {
-    signalAcquired = resolve;
-  });
-  let signalDone!: () => void;
-  const finished = new Promise<void>((resolve) => {
-    signalDone = resolve;
-  });
-
-  const queued = queue.run(async () => {
-    signalAcquired();
-    await finished;
-  });
-
+  // W13-42: the slot is taken and given back explicitly. This used to hold it
+  // open through a gate promise handed to `queue.run`, which meant the slot was
+  // released only by this generator's `finally` — so a stream abandoned without
+  // being closed held it forever, and every later call to the provider blocked
+  // with no bound. `RequestQueue.acquire` now owns both the wait and its
+  // deadline, so `chat()` and `chatStream()` get the same guarantee instead of
+  // one of them getting it.
   try {
-    await waitForSlot(acquired, acquireTimeoutMs, providerId, queue);
+    await queue.acquire();
   } catch (err) {
-    // ALWAYS let the queued task finish, even though we never got the slot.
-    // `queue.run(...)` above already pushed a waiter; if that waiter later
-    // acquires and finds `finished` unresolved, it holds the slot forever and
-    // `RequestQueue.run`'s finally never releases it. The bound added here to
-    // stop one wedge would then cause the next one: holder releases, the
-    // orphaned waiter takes the slot, and the queue is dead. Caught in review
-    // and pinned by "a timed-out waiter must not wedge the queue".
-    signalDone();
-    // NOT awaited: when the holder never releases, `queued` never settles, and
-    // awaiting it here would hang the very call we are trying to fail fast.
-    // Resolving `finished` is enough — whenever that waiter does acquire, its
-    // task returns immediately and `RequestQueue.run`'s finally releases.
-    void queued.catch(() => undefined);
-    throw err;
+    throw asProviderTimeout(err, providerId);
   }
   try {
     yield* source();
   } finally {
-    signalDone();
-    await queued;
+    queue.releaseSlot();
   }
 }
 
-/**
- * Waits for the queue slot, but not forever (W13-42).
- *
- * MEASURED, and it is the founder-reported failure class: a ticket ran on a
- * local model and the run sat at `running` for 25+ minutes with ZERO events
- * after a single `session.turn_started`. LM Studio was healthy the whole time
- * — `/v1/models` in 1ms, a completion on the same model in 0.36s. The product
- * was hung, not the endpoint, and the only way out was a person restarting it.
- *
- * The 60s idle abort (W13-15) could not help: it is armed INSIDE the stream,
- * and the stream had not started. This `await` came first and had no bound at
- * all, so a slot that was never released stopped every later call to that
- * provider — `RequestQueue` defaults to concurrency 1, and the slot above is
- * released only by the generator's `finally`, so one abandoned stream is
- * enough.
- *
- * The bound does not punish honest queueing: several berths sharing one
- * endpoint legitimately wait, which is why the default is generous and this is
- * a timeout rather than a refusal to queue. Finding the abandonment path that
- * leaks a slot is separate work; this makes the product recover instead of
- * needing a person to kickstart it.
- *
- * Raises `ProviderTimeoutError` — the shape the rest of the system already
- * reads as infrastructure, so W13-27 retries it for free rather than spending
- * a ladder rung on it.
- */
-async function waitForSlot(
-  acquired: Promise<void>,
-  timeoutMs: number,
-  providerId: string,
-  queue: RequestQueue,
-): Promise<void> {
-  if (timeoutMs <= 0) return acquired;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await Promise.race([
-      acquired,
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          reject(
-            new ProviderTimeoutError(
-              `${providerId} (waiting for a request-queue slot; ` +
-                `${queue.activeCount} active, ${queue.queuedCount} queued)`,
-              timeoutMs,
-            ),
-          );
-        }, timeoutMs);
-        // Never hold the event loop open for a timer whose only job is to give up.
-        timer.unref?.();
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+/** Gives a queue-wait timeout the name the rest of the system already reads as infrastructure. */
+export function asProviderTimeout(err: unknown, providerId: string): unknown {
+  // Counts come from the ERROR, not from the queue as it is now: the waiter
+  // leaves the queue the instant it gives up, so re-reading here would report
+  // a depth one short of the one that caused the timeout.
+  return err instanceof QueueAcquireTimeoutError
+    ? new ProviderTimeoutError(
+        `${providerId} (waiting for a request-queue slot; ` +
+          `${err.active} active, ${err.queued} queued)`,
+        err.timeoutMs,
+      )
+    : err;
 }
-
 
 /**
  * An abort that fires when a stream goes QUIET, not when it takes a while
