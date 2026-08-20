@@ -53,6 +53,26 @@ export async function startFakeModelGateway(
   const callCounts: Record<string, number> = {};
 
   const server: Server = createServer((req, res) => {
+    // W13-37: the model catalog. The setup wizard reads it to offer the
+    // user's own models, so a fixture that answers only /chat/completions
+    // sends the wizard down its typed-id fallback and the select path — the
+    // one every real customer sees — is never exercised end to end.
+    if (req.method === 'GET' && req.url === '/v1/models') {
+      res.writeHead(200, { 'content-type': 'application/json' }).end(
+        // The ids it actually SCRIPTS. Advertising anything else would let a
+        // spec route to a model this fixture has no turns for, which reads as
+        // an empty completion — a confusing way to fail.
+        JSON.stringify({
+          object: 'list',
+          data: Object.keys(config.scripts).map((id) => ({
+            id,
+            object: 'model',
+            owned_by: 'fixture',
+          })),
+        }),
+      );
+      return;
+    }
     if (req.method !== 'POST' || req.url !== '/v1/chat/completions') {
       res.writeHead(404).end();
       return;

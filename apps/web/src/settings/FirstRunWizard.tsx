@@ -3,11 +3,8 @@ import { createProject, FleetApiError } from '../fleet/api.js';
 import { GuidedSample } from '../onboarding/GuidedSample.js';
 import { putGlobalSettings, SettingsApiError } from './api.js';
 import {
-  authMethodsFor,
-  KIND_LABEL,
   hasFixedEndpoint,
   needsProjectScope,
-  PROVIDER_KINDS,
   putProviders,
   type ProviderEntry,
   type ProviderKind,
@@ -33,8 +30,22 @@ import {
  */
 import { HelpAffordance } from './HelpAffordance.js';
 import { MODEL_POLICY_CHOICES } from './modelPolicyChoices.js';
+import { WizardModelsStep } from './WizardModelsStep.js';
+import { WizardPresetStep } from './WizardPresetStep.js';
+import { WizardProviderStep } from './WizardProviderStep.js';
 
-type Step = 'preset' | 'provider' | 'forge' | 'sample' | 'done';
+/**
+ * W13-37: `models` is new, and it is the step that made the wizard finish
+ * something. Before it, setup collected a preset and a provider and never
+ * asked which models to use, so no matrix row was ever written and the first
+ * build failed at the endpoint.
+ *
+ * It sits after `provider` when a project is already open, and after `sample`
+ * when there is not one yet — reading the model catalog and writing the
+ * matrix are both addressed through a project, so on a genuinely fresh
+ * install the step cannot run until the sample project exists.
+ */
+type Step = 'preset' | 'provider' | 'models' | 'forge' | 'sample' | 'done';
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof SettingsApiError || err instanceof FleetApiError
@@ -85,6 +96,10 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
   const [guidedActive, setGuidedActive] = useState(true);
+  const [matrixWritten, setMatrixWritten] = useState(false);
+  // Where the models step returns to, so the same step serves both entry
+  // points without either one guessing.
+  const [afterModels, setAfterModels] = useState<Step>('forge');
 
   /**
    * The registry entry, built once (W13-35): step 2 and the sample step both
@@ -155,7 +170,8 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
         await putProviders(projectId, [providerEntry()], { scope: 'global' });
       }
       setError(null);
-      setStep('forge');
+      setAfterModels('forge');
+      setStep(projectId ? 'models' : 'forge');
     } catch (err) {
       setError(errorMessage(err, 'Failed to save preset/provider'));
     }
@@ -191,11 +207,19 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
       );
 
       setCreatedProjectId(card.id);
-      setStep('done');
+      // The fresh-install path: this is the first moment a model catalog can
+      // be read or a matrix written, so the models step happens HERE rather
+      // than being deferred to Settings with a "come back later" note.
+      setAfterModels('done');
+      setStep(matrixWritten ? 'done' : 'models');
     } catch (err) {
       setError(errorMessage(err, 'Failed to create the sample project'));
     }
   };
+
+  const matrixProjectId = createdProjectId ?? projectId ?? null;
+  const chosenPreset =
+    MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.preset ?? 'hybrid';
 
   return (
     <div className="settings settings--wizard" data-testid="first-run-wizard">
@@ -214,126 +238,47 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
       )}
 
       {step === 'preset' && (
-        <section
-          aria-label="How should your work be modelled?"
-          data-testid="wizard-step-preset"
-        >
-          <h2>1. How should your work be modelled?</h2>
-          <p className="settings__hint">
-            Nothing spends money or contacts a network until you choose. Whichever
-            you pick, reviews still use a different model from the one that did
-            the work — nothing here checks its own output.
-          </p>
-          {MODEL_POLICY_CHOICES.map((c) => (
-            <label key={c.id} className="settings__radio">
-              <input
-                type="radio"
-                name="model-policy"
-                checked={choiceId === c.id}
-                onChange={() => setChoiceId(c.id)}
-              />
-              <span>
-                {c.label}
-                {c.offlineCapable ? ' (works offline)' : ''}
-                <br />
-                <small>{c.detail}</small>
-              </span>
-            </label>
-          ))}
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={choiceId === null}
-            onClick={() => setStep('provider')}
-          >
-            Next
-          </button>
-        </section>
+        <WizardPresetStep
+          choiceId={choiceId}
+          onChoose={setChoiceId}
+          onNext={() => setStep('provider')}
+        />
       )}
 
       {step === 'provider' && (
-        <section aria-label="Register a provider" data-testid="wizard-step-provider">
-          <h2>2. Register one provider</h2>
-          <label>
-            Provider kind
-            <select
-              value={providerKind}
-              onChange={(e) => setProviderKind(e.target.value as ProviderKind)}
-            >
-              {PROVIDER_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {KIND_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </label>
-          {!hasFixedEndpoint(providerKind) && (
-            <label>
-              Base URL
-              <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-            </label>
-          )}
-          {MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.needsModel === true && (
-            <label>
-              Model to use
-              <input
-                value={pinnedModel}
-                onChange={(e) => setPinnedModel(e.target.value)}
-                placeholder="qwen3-32b"
-              />
-              <small className="settings__hint">
-                Typed, not chosen from a list: the model catalog is read from a
-                provider that is already registered, and at first run there is
-                not one yet. Use the id exactly as your provider lists it.
-              </small>
-            </label>
-          )}
-          {needsProjectScope(providerKind) && (
-            <>
-              <label>
-                GCP project
-                <input
-                  value={project}
-                  onChange={(e) => setProject(e.target.value)}
-                  placeholder="my-gcp-project"
-                />
-              </label>
-              <label>
-                Region
-                <input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="us-central1"
-                />
-              </label>
-            </>
-          )}
-          {authMethodsFor(providerKind).includes('subscription') ? (
-            <p className="settings__hint" data-testid="wizard-subscription-kind">
-              {KIND_LABEL[providerKind]} signs in to a subscription rather than
-              taking a key. That flow is not wired yet (W12-26) — finish this one
-              in Settings → Providers, or pick another kind to get started.
-            </p>
-          ) : (
-            authMethodsFor(providerKind).includes('none') === false && (
-              <label>
-                Credential ref (keychain name — never a raw secret, FR-S2)
-                <input
-                  value={credentialRef}
-                  onChange={(e) => setCredentialRef(e.target.value)}
-                />
-              </label>
-            )
-          )}
-          <button type="button" onClick={() => void savePresetAndProvider()}>
-            Next
-          </button>
-        </section>
+        <WizardProviderStep
+          draft={{ providerKind, baseUrl, pinnedModel, project, location, credentialRef }}
+          needsModel={
+            MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.needsModel === true
+          }
+          onChange={(patch) => {
+            if (patch.providerKind !== undefined) setProviderKind(patch.providerKind);
+            if (patch.baseUrl !== undefined) setBaseUrl(patch.baseUrl);
+            if (patch.pinnedModel !== undefined) setPinnedModel(patch.pinnedModel);
+            if (patch.project !== undefined) setProject(patch.project);
+            if (patch.location !== undefined) setLocation(patch.location);
+            if (patch.credentialRef !== undefined) setCredentialRef(patch.credentialRef);
+          }}
+          onNext={() => void savePresetAndProvider()}
+        />
       )}
+
+      {step === 'models' && (matrixProjectId ? (
+        <WizardModelsStep
+          projectId={matrixProjectId}
+          providerId="first-run"
+          preset={chosenPreset}
+          onSaved={() => {
+            setMatrixWritten(true);
+            setError(null);
+            setStep(afterModels);
+          }}
+        />
+      ) : null)}
 
       {step === 'forge' && (
         <section aria-label="Connect a forge" data-testid="wizard-step-forge">
-          <h2>3. Connect a forge (optional)</h2>
+          <h2>4. Connect a forge (optional)</h2>
           <label>
             Forge credential ref (leave blank to skip)
             <input value={forgeRef} onChange={(e) => setForgeRef(e.target.value)} />
@@ -347,7 +292,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
       {step === 'sample' && (
         <section aria-label="Guided sample" data-testid="wizard-step-sample">
           <h2>
-            4. Guided sample project{' '}
+            5. Guided sample project{' '}
             <HelpAffordance topic="guided-sample" label="Guided sample" />
           </h2>
           <p className="settings__hint">

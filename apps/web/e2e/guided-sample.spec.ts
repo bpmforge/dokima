@@ -7,6 +7,7 @@ import {
   startFakeModelGateway,
   type FakeModelGateway,
 } from './fixtures/fake-model-gateway.js';
+import { chooseWizardModels } from './fixtures/wizard-models.js';
 
 /**
  * W10-55 acceptance 5, verbatim: "an e2e spec that completes the guided sample
@@ -26,6 +27,8 @@ import {
 
 const GLOBAL_CONFIG = path.join(HOME, 'config.json');
 const MODEL = 'e2e-guided-sample-model';
+/** The second model the setup wizard requires (W13-37) — reviews never run on the maker's model. */
+const REVIEW_MODEL = 'e2e-guided-sample-reviewer';
 
 const BLUEPRINT_INPUT = JSON.stringify({
   sections: [{ heading: 'Overview', body: 'A link shortener with auth.' }],
@@ -74,6 +77,15 @@ test.beforeEach(async () => {
   gateway = await startFakeModelGateway({
     scripts: {
       [MODEL]: [
+        { content: BLUEPRINT_INPUT },
+        { content: TECHNICAL_SLATE_INPUT },
+        { content: TICKET_DRAFTS },
+      ],
+      // W13-37: the wizard asks for TWO models — reviews never run on the
+      // model that did the work (C-4) — so the fixture has to serve two.
+      // Same turns: this spec is about the sample really running, not about
+      // what the reviewer says.
+      [REVIEW_MODEL]: [
         { content: BLUEPRINT_INPUT },
         { content: TECHNICAL_SLATE_INPUT },
         { content: TICKET_DRAFTS },
@@ -172,6 +184,10 @@ test('RED FIXTURE: the guided sample really runs, and the sample project has rea
 
   await expect(page.getByTestId('wizard-step-sample')).toBeVisible();
   await page.getByRole('button', { name: 'Create sample project' }).click();
+
+  // W13-37. The fake gateway serves a two-model catalog, so this is the
+  // select path — the same one a customer with LM Studio up sees.
+  await chooseWizardModels(page);
 
   // Walk every interview beat, then run the idea.
   await expect(page.getByTestId('guided-sample-interview')).toBeVisible();

@@ -4,8 +4,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   guardMakerVerifierDistinct,
   isVerifierRole,
+  PRESET_NAMES,
+  presetAsGlobalScope,
   ROLE_CODING_AGENT,
   SameModelRefusedError,
+  type PresetName,
 } from '@dokima/gateway';
 import {
   listGlobalModelMatrix,
@@ -83,6 +86,50 @@ function parseRows(body: unknown): ModelMatrixInput[] | undefined {
 }
 
 /**
+ * The task type a preset-expanded row is stored under (W13-37).
+ *
+ * All six roles land on ONE task type on purpose. `matrixFromRows` collapses
+ * a role's first row onto its `default`, so a single row per role already
+ * routes that role for every task type — and keeping them on one type is what
+ * lets the maker/verifier guard below actually fire, since that check is
+ * per-task-type. Spread the roles across "natural" types and a maker and a
+ * verifier sharing a model would never be compared at all, only to be refused
+ * later by `route()` mid-run.
+ */
+const PRESET_TASK_TYPE: TaskType = 'code';
+
+/**
+ * The wizard's body shape: a preset NAME plus the two models the user picked
+ * from their own provider (W13-37).
+ *
+ * The shape — which role gets the stronger model — stays in `@dokima/gateway`,
+ * which is the one place that knows it and proves the C-4 property about it.
+ * Before this, `buildPresetMatrix` had no production caller anywhere: the
+ * presets were reachable only from their own tests, so a fresh install
+ * finished the wizard with an empty matrix and could not build a board.
+ */
+function presetRows(
+  body: Record<string, unknown> | undefined,
+): ModelMatrixInput[] | undefined {
+  const { preset, strong, cheap } = (body ?? {}) as Record<string, unknown>;
+  if (typeof preset !== 'string' || !(PRESET_NAMES as readonly string[]).includes(preset)) {
+    return undefined;
+  }
+  if (typeof strong !== 'string' || typeof cheap !== 'string') return undefined;
+  if (strong.trim() === '' || cheap.trim() === '') return undefined;
+  const { global: matrix } = presetAsGlobalScope(preset as PresetName, {
+    strong: strong.trim(),
+    cheap: cheap.trim(),
+  });
+  return Object.entries(matrix).map(([role, routing]) => ({
+    role,
+    taskType: PRESET_TASK_TYPE,
+    model: routing.default.model,
+    fallback: [...routing.default.fallbackChain],
+  }));
+}
+
+/**
  * W10-64. `scope` is optional and defaults to `project`, so every existing
  * caller — the e2e specs, the CLI, the panel before this ticket — keeps its
  * exact behaviour. `global` writes the preset a project with no rows of its
@@ -143,7 +190,12 @@ export function registerMatrixRoutes(
             badRequest(request, '"scope" must be "project" or "global" when present'),
           );
       }
-      const rows = parseRows(body?.rows);
+      // Two body shapes (W13-37): `rows` is the Models panel's explicit
+      // write; `{preset, strong, cheap}` is the first-run wizard's, expanded
+      // here from the gateway's preset shape. Everything downstream — the
+      // C-4 collision guard, the write, the event append — is shared, so the
+      // wizard's matrix is audited and refused on exactly the same terms.
+      const rows = body?.rows === undefined ? presetRows(body) : parseRows(body.rows);
       if (!rows) {
         return reply
           .code(400)
@@ -151,7 +203,9 @@ export function registerMatrixRoutes(
           .send(
             badRequest(
               request,
-              '"rows" must be an array of {role, task_type, model, fallback?} entries',
+              'send either "rows" (an array of {role, task_type, model, fallback?} ' +
+                'entries) or "preset" with the two models to build it from ' +
+                '("strong" and "cheap")',
             ),
           );
       }

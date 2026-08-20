@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, request, test } from '@playwright/test';
 import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
+import { chooseWizardModels } from './fixtures/wizard-models.js';
 
 /**
  * W4-06: settings UI driven end-to-end through the real apps/server. One
@@ -79,6 +80,13 @@ test('first-run wizard: preset -> provider -> forge (skip) -> sample creates a r
     .click();
 
   await expect(page.getByTestId('wizard-step-provider')).toBeVisible();
+  // Law 9(a): the wizard's default Base URL is `localhost:1234`, which on a
+  // developer machine is a REAL model daemon — and W13-37's model step reads
+  // the catalog from it, so leaving the default here would make this spec
+  // call a live endpoint. Pointed at a closed port instead, which also makes
+  // this the spec that covers the typed-id fallback; guided-sample.spec.ts
+  // covers the populated-catalog path against the fake gateway.
+  await page.getByLabel('Base URL').fill('http://127.0.0.1:9/v1');
   await page
     .getByTestId('wizard-step-provider')
     .getByRole('button', { name: 'Next' })
@@ -92,6 +100,11 @@ test('first-run wizard: preset -> provider -> forge (skip) -> sample creates a r
 
   await expect(page.getByTestId('wizard-step-sample')).toBeVisible();
   await page.getByRole('button', { name: 'Create sample project' }).click();
+
+  // W13-37: on a fresh install the models step comes AFTER the sample
+  // project, because reading the catalog and writing the matrix are both
+  // addressed through a project and there is not one before this point.
+  await chooseWizardModels(page);
 
   await expect(page.getByTestId('wizard-step-done')).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
