@@ -122,6 +122,41 @@ export async function loadRunRecord(
 }
 
 /**
+ * Every run this project has a record of, newest first (W13-38).
+ *
+ * The gap this fills: `loadRunRecord` and `loadPausedRun` both need a run id,
+ * and nothing produced one for a caller who did not already have it. A run
+ * that paused on a founder decision was therefore durable on disk and
+ * unreachable from the product the moment its id left component state —
+ * measured as a guided sample that paused, had both its decisions answered,
+ * and then offered no way to continue.
+ *
+ * Ordering is by `startedAt`, DESCENDING and total (the run id breaks a tie),
+ * so "the run waiting on you" is a deterministic pick rather than whatever
+ * order the filesystem happened to return. A record that will not parse is
+ * skipped, not thrown on: one corrupt file must not hide every other run.
+ */
+export async function listRunRecords(projectPath: string): Promise<RunRecord[]> {
+  let names: string[];
+  try {
+    names = await fs.readdir(runsDir(projectPath));
+  } catch {
+    return [];
+  }
+  const records: RunRecord[] = [];
+  for (const name of names) {
+    if (!name.endsWith('.json')) continue;
+    const record = await loadRunRecord(projectPath, name.slice(0, -'.json'.length));
+    if (record) records.push(record);
+  }
+  return records.sort((a, b) =>
+    a.startedAt === b.startedAt
+      ? b.runId.localeCompare(a.runId)
+      : b.startedAt.localeCompare(a.startedAt),
+  );
+}
+
+/**
  * Read-modify-write of one run's record. Safe without a lock because a single
  * run is driven by exactly one in-process job (`index.ts` refuses a second
  * concurrent run per project), so this file has one writer at a time — the same

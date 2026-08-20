@@ -11,10 +11,11 @@
  * into a "degraded" stage, which is why a pipeline run that produced zero
  * events surfaced nowhere (W10-55). Here the real reason is rendered.
  */
-import { useCallback, useMemo, useState } from 'react';
-import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AwaitingDecisions } from './AwaitingDecisions.js';
 import './onboarding.css';
 import {
+  fetchAwaitingRun,
   OnboardingApiError,
   resumePipeline,
   runGuidedPipeline,
@@ -99,6 +100,34 @@ export function InterviewPanel({
   const [resumeError, setResumeError] = useState<string | null>(null);
   // W10-58: the stages the run has actually finished, as the job reports them.
   const [phases, setPhases] = useState<readonly PipelineRunPhase[]>([]);
+
+  /**
+   * W13-38: recover a run that is already waiting on this founder.
+   *
+   * Before this, `awaiting.run_id` reached React state and died there — so
+   * answering the founder decisions anywhere but inline, which is exactly what
+   * the guided sample told a first-run user to do, stranded a run that was on
+   * disk and resumable the whole time. The describe screen then showed a blank
+   * interview form, as though the run had never happened.
+   *
+   * Recovery only DISCOVERS; it never resumes. Continue stays a button a human
+   * presses (Law 4) — a background resume triggered by "the last slate was
+   * decided" would be a durable state change nobody asked for.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const paused = await fetchAwaitingRun(projectId);
+      // Only from the untouched describe form: a founder mid-answer must not
+      // have the screen pulled out from under them by a poll that landed late.
+      if (cancelled || !paused) return;
+      setAwaiting(paused);
+      setStage((current) => (current === 'asking' ? 'awaiting' : current));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   const answered = useMemo(
     () => INTERVIEW_QUESTIONS.filter((q) => (answers[q.topic.deliverableId] ?? '').trim() !== '').length,
@@ -192,71 +221,16 @@ export function InterviewPanel({
 
   if (stage === 'awaiting' && awaiting) {
     return (
-      <div className="interview" data-testid="interview-awaiting-decisions">
-        <h3>Your decision is needed</h3>
-        <p>
-          The blueprint is written and kept. Before the board can be built,{' '}
-          {awaiting.decisions.length === 1
-            ? 'one question needs'
-            : `${String(awaiting.decisions.length)} questions need`}{' '}
-          your answer — these are choices only you can make, so nothing was guessed on
-          your behalf.
-        </p>
-        <ul>
-          {awaiting.decisions.map((d) => (
-            <li key={d.slate_id}>{d.title}</li>
-          ))}
-        </ul>
-        {/*
-          The slates are answered HERE, inline, rather than behind a link to the
-          Decisions view. Navigating away unmounts this panel and takes
-          `awaiting.run_id` with it — there is no route back to a paused run, so
-          "answer over there and come back" would strand the founder on a run
-          they can no longer resume. The same board is reachable on its own
-          (`view=decisions`) for slates raised outside a creation run.
-        */}
-        {token === undefined ? (
-          <p className="interview__error" role="alert">
-            The slates were kept, but this session has no API token to load them — reopen
-            the workspace to answer them.
-          </p>
-        ) : (
-          <DecisionsBoard
-            projectId={projectId}
-            token={token}
-            onDecided={() => setStillWaiting(null)}
-          />
-        )}
-        <p className="interview__hint">
-          Answer each one above, then continue — the blueprint will not be rebuilt.
-        </p>
-        <button
-          type="button"
-          disabled={resuming}
-          data-testid="interview-continue"
-          onClick={() => void resume()}
-        >
-          {resuming ? 'Continuing…' : 'Continue'}
-        </button>
-        {stillWaiting !== null && (
-          <p
-            className="interview__hint"
-            role="status"
-            data-testid="interview-still-waiting"
-          >
-            {stillWaiting}
-          </p>
-        )}
-        {resumeError !== null && (
-          <p
-            className="interview__error"
-            role="alert"
-            data-testid="interview-resume-error"
-          >
-            Could not continue: {resumeError}
-          </p>
-        )}
-      </div>
+      <AwaitingDecisions
+        awaiting={awaiting}
+        projectId={projectId}
+        token={token}
+        resuming={resuming}
+        stillWaiting={stillWaiting}
+        resumeError={resumeError}
+        onDecided={() => setStillWaiting(null)}
+        onContinue={() => void resume()}
+      />
     );
   }
 
