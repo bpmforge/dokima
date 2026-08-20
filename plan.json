@@ -8345,6 +8345,33 @@
         "RED FIXTURE: the walkthrough this came from, end to end \u2014 run the pipeline, pause, answer the slates on the standalone Decisions board, navigate away, come back, Continue, board built. Not a unit test on the new route."
       ],
       "notes": "Resume is proven to work: POSTing /pipeline/<runId>/resume against the live paused run built the board, with decisions that had been answered on the standalone board. This ticket is discovery + navigation only \u2014 do not touch the resume contract."
+    },
+    {
+      "id": "W13-39",
+      "title": "Describe does not recognise a run that is still running \u2014 only one that has paused",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/web/src/onboarding/api.ts",
+        "apps/web/src/onboarding/InterviewPanel.tsx",
+        "apps/web/e2e/decisions-resume.spec.ts"
+      ],
+      "depends_on": [
+        "W13-38"
+      ],
+      "stories": [],
+      "notes": "Found while verifying W13-38, not by W13-38 failing. Same class as the copy W13-38 fixed: a screen that does not know what state its project is in.",
+      "acceptance": [
+        "W13-38 recovers a run whose status is awaiting-decisions. A run that is still RUNNING is discoverable by the same route and is ignored: fetchAwaitingRun filters for awaiting-decisions and returns null.",
+        "CONSEQUENCE: click Build the board, navigate to Board and back to Describe while the run is in flight (~4 minutes on a local model, so the window is wide), and the blank interview form is what you get \u2014 with a live run building. The only control offered is Build the board, and pressing it earns a 409 refusal for doing the one thing the screen suggested. Nothing corrupts; the server refuses a second concurrent run correctly. The screen is what is wrong.",
+        "Make it fetchActiveRun (running OR awaiting-decisions). The running case restores the Building the board... state and resumes the status poll against the recovered run id, rather than showing the form.",
+        "The mid-answer guard stays: recovery must not pull the screen out from under a founder who has started typing (InterviewPanel only recovers from an untouched form).",
+        "RED FIXTURE: start a run, navigate away and back before it finishes, and the describe screen must show the run in progress \u2014 not an empty form."
+      ]
     }
   ]
 }
