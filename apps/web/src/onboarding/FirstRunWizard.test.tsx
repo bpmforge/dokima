@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Wizard step flow (FR-S4, R-M1): preset -> provider -> forge -> sample ->
+ * Wizard step flow (FR-S4, R-M1): preset -> provider -> sample ->
  * done, plus the "?" help affordances and the guided-sample walkthrough +
  * what-to-do-tomorrow card on the final (`done`) step. Mocks `../fleet/api.js`,
  * `../settings/api.js`, and `./GuidedSample.js` (its own behavior is
@@ -85,7 +85,7 @@ async function advanceToSampleStep() {
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   mockedSettingsApi.putGlobalSettings.mockResolvedValue({});
   fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Skip' }));
+  // W13-48: the forge step is gone — provider leads straight to the sample.
   await screen.findByTestId('wizard-step-sample');
 }
 
@@ -393,5 +393,22 @@ describe('FirstRunWizard — the returning user gets a numbered sample, not an e
 
     expect(mockedFleetApi.createProject).toHaveBeenNthCalledWith(1, { mode: 'new', name: 'Dokima Sample' });
     expect(mockedFleetApi.createProject).toHaveBeenNthCalledWith(2, { mode: 'new', name: 'Dokima Sample 2' });
+  });
+});
+
+describe('the wizard collects nothing it cannot deliver (W13-48)', () => {
+  it('RED FIXTURE: no step asks for a forge credential — W13-46 established nothing consumes one, and a field that reaches nothing is the shape W13-35 already fixed once', async () => {
+    render(<FirstRunWizard onFinish={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('radio', { name: /Local only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    mockedSettingsApi.putGlobalSettings.mockResolvedValue({});
+    fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
+
+    // The walk lands on the sample step with no forge step in between…
+    await screen.findByTestId('wizard-step-sample');
+    expect(screen.queryByTestId('wizard-step-forge')).toBeNull();
+    // …and no surface anywhere in the wizard asks for a forge credential.
+    expect(screen.queryByLabelText(/forge/i)).toBeNull();
+    expect(screen.queryByText(/Forge credential/i)).toBeNull();
   });
 });

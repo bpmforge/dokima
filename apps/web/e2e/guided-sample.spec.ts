@@ -170,11 +170,7 @@ test('RED FIXTURE: the guided sample really runs, and the sample project has rea
     .getByTestId('wizard-step-provider')
     .getByRole('button', { name: 'Next' })
     .click();
-  await page
-    .getByTestId('wizard-step-forge')
-    .getByRole('button', { name: 'Skip' })
-    .click();
-
+  // W13-48: no forge step — the wizard goes straight to the sample.
   await expect(page.getByTestId('wizard-step-sample')).toBeVisible();
   await page.getByRole('button', { name: 'Create sample project' }).click();
 

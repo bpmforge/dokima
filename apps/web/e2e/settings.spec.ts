@@ -92,12 +92,7 @@ test('first-run wizard: preset -> provider -> forge (skip) -> sample creates a r
     .getByRole('button', { name: 'Next' })
     .click();
 
-  await expect(page.getByTestId('wizard-step-forge')).toBeVisible();
-  await page
-    .getByTestId('wizard-step-forge')
-    .getByRole('button', { name: 'Skip' })
-    .click();
-
+  // W13-48: the forge step is gone — its credential field reached nothing.
   await expect(page.getByTestId('wizard-step-sample')).toBeVisible();
   await page.getByRole('button', { name: 'Create sample project' }).click();
 
