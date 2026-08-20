@@ -16,7 +16,7 @@ export function SpendByRung({ data }: SpendByRungProps) {
   if (data.items.length === 0) {
     return (
       <p className="ticket-drawer__empty" data-testid="spend-by-rung-empty">
-        No spend recorded yet for this project.
+        No spend recorded yet for this project — costs appear here, grouped by rung, as runs call models.
       </p>
     );
   }

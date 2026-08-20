@@ -36,12 +36,18 @@ in the product and it is already in this codebase to copy from.
 | A configured model endpoint | **provider** | backend, vendor, service |
 | How work is modelled across roles | **Models** (UI) / model matrix (internal) | matrix, routing table |
 | How much Dokima may do unattended | **Autonomy** (UI) / autonomy dial (internal) | dial, slider, trust level |
+| One step on the ladder of models a run may climb | **rung** | tier, level |
+| Flagging a trace event so the improvement loop learns from it | **field report** | feedback, flag |
 
 ## Rules
 
 **Internal terms that survive must earn it.** `lane`, `receipt`, `manifest`,
-`ticket` and `run` are load-bearing product concepts with real, distinct
-meanings — keep them, and define them where a user first meets them. `model
+`ticket`, `run`, `rung` and `field report` are load-bearing product concepts
+with real, distinct meanings — keep them, and define them where a user first
+meets them (W13-60: the trace and the drawer now define `rung` and `field
+report` at first encounter; the drawer's `berth` line was replaced with plain
+language rather than defined — `berth` remains internal vocabulary, with the
+Fleet surface's use tracked under W13-62). `model
 matrix` and `autonomy dial` are internal names for user-facing settings; the
 setting is called what it does.
 

@@ -41,14 +41,24 @@
   padding: var(--sw-space-2) var(--sw-space-3);
 }
 
-.board-refusal__rule {
+.board-refusal__detail {
+  /* W13-60: the human explanation is the headline now. */
   font-weight: 600;
   margin: 0 0 var(--sw-space-1);
 }
 
-.board-refusal__detail {
+.board-refusal__rule--tag {
+  /* Provenance, not headline. Smaller — never lower-contrast: axe measured
+     receding opacity below WCAG twice on this board (W13-52). */
+  font-size: 0.85em;
   margin: 0 0 var(--sw-space-2);
-  opacity: 0.85;
+}
+
+.board-card__blocked-why {
+  /* W13-60: the sentence that turns Blocked from a dead end into an
+     understood wait. Full contrast on purpose (the W13-52 axe lesson). */
+  font-size: 0.85em;
+  margin: var(--sw-space-1) 0 0;
 }
 
 .board-refusal__actions {

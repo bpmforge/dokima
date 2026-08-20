@@ -87,3 +87,18 @@
 .ticket-drawer__dag-result--not-persisted {
   opacity: 0.85;
 }
+
+/* W13-60: first-encounter definitions ('rung') and the wire id demoted to
+   mono detail beside the human label. Muted color, never sub-WCAG opacity
+   (the W13-52 axe lesson). */
+.ticket-drawer__hint {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-base);
+  margin: 0 0 var(--sw-space-2);
+}
+
+.ticket-drawer__wire-id {
+  color: var(--sw-fg-muted);
+  font-family: var(--sw-font-mono);
+  font-size: 0.9em;
+}

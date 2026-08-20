@@ -242,3 +242,74 @@ describe('TraceView', () => {
     expect(draft).toMatchObject({ source: 'trace', sourceRef: 'trace:run-1:1' });
   });
 });
+
+describe('human labels and the field-report explainer (W13-60)', () => {
+  it('RED FIXTURE: a row leads with a human sentence and keeps the wire id as secondary detail', async () => {
+    mockedTraceApi.fetchTicketRuns.mockResolvedValue(['run-1']);
+    mockedTraceApi.fetchRunTrace.mockResolvedValue([GATE_EVENT]);
+
+    render(
+      <TraceView
+        apiOpts={API_OPTS}
+        projectId="proj-1"
+        ticketId="W1-01"
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => screen.getByTestId('trace-view-runs'));
+    fireEvent.click(screen.getByRole('button', { name: /View session trace/ }));
+    await waitFor(() => screen.getByTestId('trace-view-events'));
+
+    const row = screen.getByTestId('trace-view-event-row');
+    // The sentence a novice can read…
+    expect(
+      within(row).getByText('A gate checked the work and minted a receipt'),
+    ).toBeTruthy();
+    // …without losing the wire id (rename-in-the-UI-only, VOCABULARY.md).
+    expect(within(row).getByText('gate.receipt_minted')).toBeTruthy();
+  });
+
+  it("RED FIXTURE: 'File field report' is explained once, above the rows — the trace's only per-event action must not be an unlabeled consequence", async () => {
+    mockedTraceApi.fetchTicketRuns.mockResolvedValue([]);
+
+    render(
+      <TraceView
+        apiOpts={API_OPTS}
+        projectId="proj-1"
+        ticketId="W1-01"
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => screen.getByTestId('trace-view-report-hint'));
+    const hint = screen.getByTestId('trace-view-report-hint');
+    expect(hint.textContent).toContain('improvement loop');
+    expect(hint.textContent).toContain('changes nothing on the board');
+  });
+
+  it("an escalation row says 'rung' where its numbers appear and defines the word on the same element", async () => {
+    mockedTraceApi.fetchTicketRuns.mockResolvedValue(['run-1']);
+    mockedTraceApi.fetchRunTrace.mockResolvedValue([ESCALATION_EVENT]);
+
+    render(
+      <TraceView
+        apiOpts={API_OPTS}
+        projectId="proj-1"
+        ticketId="W1-01"
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => screen.getByTestId('trace-view-runs'));
+    fireEvent.click(screen.getByRole('button', { name: /View session trace/ }));
+    await waitFor(() => screen.getByTestId('trace-view-events'));
+
+    const detail = screen.getByTestId('trace-event-escalation-detail');
+    expect(detail.textContent).toContain('rung R0 → R1');
+    expect(detail.getAttribute('title')).toContain('ladder of models');
+    expect(
+      screen.getByText('Escalated to a stronger model'),
+    ).toBeTruthy();
+  });
+});

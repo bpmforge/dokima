@@ -16,11 +16,13 @@ const COLUMN_LABEL: Record<string, string> = {
 export interface ColumnProps {
   column: BoardColumn;
   heartbeats: ReadonlyMap<string, HeartbeatData>;
+  /** ticket id → unfinished dependency ids, for blocked cards (W13-60). */
+  blockedDeps: ReadonlyMap<string, readonly string[]>;
   onDrop: (ticketId: string, toColumn: BoardColumn['status']) => void;
   onFireVerb: (ticketId: string, verb: LifecycleVerb) => void;
 }
 
-export function Column({ column, heartbeats, onDrop, onFireVerb }: ColumnProps) {
+export function Column({ column, heartbeats, blockedDeps, onDrop, onFireVerb }: ColumnProps) {
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => event.preventDefault();
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -48,6 +50,7 @@ export function Column({ column, heartbeats, onDrop, onFireVerb }: ColumnProps) 
             key={ticket.id}
             ticket={ticket}
             heartbeat={heartbeats.get(ticket.id)}
+            blockers={blockedDeps.get(ticket.id)}
             onDragStart={handleDragStart}
             onFireVerb={onFireVerb}
           />

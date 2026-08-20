@@ -8,7 +8,13 @@ import {
 } from '../lessons/prefill.js';
 import { formatTimestamp } from '../notifications/NotificationCard.js';
 import { fetchRunTrace, fetchTicketRuns, type TraceEvent } from './api.js';
-import { classifyTraceEvent, passNumber, TRACE_EVENT_KIND_LABEL } from './classify.js';
+import {
+  classifyTraceEvent,
+  describeTraceEvent,
+  passNumber,
+  RUNG_DEFINITION,
+  TRACE_EVENT_KIND_LABEL,
+} from './classify.js';
 import './trace.css';
 
 /**
@@ -138,6 +144,15 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
         </button>
       </header>
 
+      {/* W13-60: 'File field report' was the trace's only per-event action
+          and nothing said what filing one does. One sentence, once, above
+          the rows — not a tooltip per row a novice may never hover. */}
+      <p className="trace-view__report-hint" data-testid="trace-view-report-hint">
+        Each event offers <strong>File field report</strong>: flag the event so
+        the improvement loop learns from it. Filing changes nothing on the
+        board — it only records what you saw.
+      </p>
+
       {runs === null ? (
         <p>Loading…</p>
       ) : runs.length === 0 ? (
@@ -168,15 +183,21 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
                   {pass !== null && (
                     <span className="trace-event__pass">Pass {pass}</span>
                   )}
+                  {/* W13-60: the human sentence leads; the wire id stays as
+                      secondary detail (rename-in-the-UI-only, VOCABULARY.md). */}
+                  <span className="trace-event__label">
+                    {describeTraceEvent(event.event_type)}
+                  </span>
                   <span className="trace-event__type">{event.event_type}</span>
                   {kind === 'escalation' &&
                     (escalation.fromRung || escalation.toRung || reason) && (
                       <span
                         className="trace-event__escalation-detail"
                         data-testid="trace-event-escalation-detail"
+                        title={RUNG_DEFINITION}
                       >
                         {escalation.fromRung && escalation.toRung
-                          ? `${escalation.fromRung} → ${escalation.toRung}`
+                          ? `rung ${escalation.fromRung} → ${escalation.toRung}`
                           : null}
                         {escalation.fromRung && escalation.toRung && reason
                           ? ' — '

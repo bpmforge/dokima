@@ -48,12 +48,28 @@
   font-weight: 600;
 }
 
+/* W13-60: the human sentence is the row's primary text; the wire id recedes
+   to mono detail beside it. */
+.trace-event__label {
+  font-weight: 600;
+}
+
+.trace-view__report-hint {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-base);
+  margin: 0 0 var(--sw-space-2);
+}
+
 .trace-event__pass,
 .trace-event__actor,
 .trace-event__time,
 .trace-event__type {
   color: var(--sw-fg-muted);
   font-size: var(--sw-text-base);
+}
+
+.trace-event__type {
+  font-family: var(--sw-font-mono);
 }
 
 .trace-event__escalation-detail {

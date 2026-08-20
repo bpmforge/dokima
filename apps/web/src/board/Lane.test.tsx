@@ -37,7 +37,8 @@ const LANE: BoardLane = {
 describe('Lane horizontal overflow affordance (W9-05)', () => {
   it('marks the columns strip as a scrollable region and renders every column inside it', () => {
     render(
-      <Lane lane={LANE} heartbeats={new Map()} onDrop={vi.fn()} onFireVerb={vi.fn()} />,
+      <Lane lane={LANE} heartbeats={new Map()}
+        blockedDeps={new Map()} onDrop={vi.fn()} onFireVerb={vi.fn()} />,
     );
 
     const strip = screen.getByRole('group', { name: /scrollable/i });

@@ -68,3 +68,23 @@ export function availableVerbsFrom(
 export function verbTargetColumn(verb: Exclude<LifecycleVerb, 'comment'>): TicketStatus {
   return VERB_TARGET[verb].to;
 }
+
+/**
+ * Move-menu labels with actor and consequence (W13-60). The bare
+ * `claim → claimed` left the novice unable to tell whether choosing it
+ * assigned the ticket to themselves or dispatched an agent — i.e. whether
+ * the click spends anything or starts work. Every verb fired from this
+ * menu acts AS THE PERSON at the keyboard (the board posts `actor_id:
+ * 'operator'`, `api.ts`); agents claim tickets only inside a run.
+ */
+const VERB_MENU_LABEL: Record<Exclude<LifecycleVerb, 'comment'>, string> = {
+  claim: 'Claim it yourself → Claimed (starts no agent, spends nothing)',
+  start: 'Start work → In Progress',
+  close: 'Send for review → In Review',
+  accept: 'Accept the work → Done',
+  release: 'Release it → Ready (free for the next run to pick up)',
+};
+
+export function verbMenuLabel(verb: Exclude<LifecycleVerb, 'comment'>): string {
+  return VERB_MENU_LABEL[verb];
+}
