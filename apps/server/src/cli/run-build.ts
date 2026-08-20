@@ -34,6 +34,7 @@ import {
 import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
 import { runLandLoop, type PushToRemotesFn } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
+import { assertSandboxOrWaiver } from './sandbox-preflight.js';
 import {
   resolveSigningKey,
   SigningKeyMissingError,
@@ -255,6 +256,9 @@ export async function executeBuildRun(
   }
 
   const secretValues = await collectSecretValues(vault.vault, io.cwd);
+
+  // W13-25: SC-07 fails closed — see `sandbox-preflight.ts`.
+  if (!assertSandboxOrWaiver(log, command.actorId, runId, io)) return 2;
 
   // W12-18: the policy the user chose, read for the first time.
   const policyScoped = await getEffectiveSettings({ projectDir: io.cwd });

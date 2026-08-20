@@ -106,7 +106,7 @@ private (other local processes, browser tabs — SC-08).
 |---|---|---|---|---|
 | T-19 | S/E | Another local process or website reaches the API: DNS-rebinding / CSRF onto localhost, drive-by verb calls | M×H=H | SC-08 (localhost bind, bearer token, Origin/Host allowlist, no CORS wildcard) |
 | T-20 | I | Token/config file readable by other users on shared machine | L×M=M | SC-08 (0600 perms), SC-06 (secrets in keychain, not files) |
-| T-21 | E | **Poisoned content pack**: community expert/validator pack executes with gate authority | M×H=H | SC-09 (signed packs, D-006); **SC-07 (validator sandbox) is NOT IN FORCE — W13-25**, so signing is currently the only barrier |
+| T-21 | E | **Poisoned content pack**: community expert/validator pack executes with gate authority | M×H=H | SC-09 (signed packs, D-006); SC-07 now sandboxes the VERIFY path (W13-25); validator-pack executables still run outside it, so signing remains the only barrier for pack code itself |
 | T-22 | T | Supply chain: malicious npm dep in Dokima itself | M×H=M | SC-16 (lockfile, ignore-scripts, audit gate) |
 | T-28 | I | **Filesystem enumeration via the directory picker** (W12-42): `GET /api/v1/browse` lists directories, so anything holding the bearer token can map the disk rather than only act on projects it already knows | M×M=M | SC-19 (bounded roots — home, workspace root, parents of registered projects; containment checked on `realpath`, not on the string) |
 

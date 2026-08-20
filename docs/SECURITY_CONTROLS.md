@@ -66,7 +66,18 @@ ticket. IDs are stable — new controls append, never renumber.
   fixture secrets pushed through packets/logs/events ⇒ zero plaintext; close-gate test
   with a committed fake key ⇒ blocked.
 - **SC-07 Sandboxed verify execution, no network by default** (T-4, T-21).
-  > **NOT IN FORCE as of 2026-08-19 — W13-25.** The sandbox module
+  > **IN FORCE as of 2026-08-19 (W13-25).** `reRunVerify` — the one path both
+  > the in-session `verify` tool and the out-of-session close gate use — now
+  > runs under the process sandbox. Both claimed properties were verified by
+  > running them rather than assumed: a `fetch` inside the sandbox fails
+  > `ENOTFOUND`, and a secret placed in the parent environment is invisible to
+  > the child. A host that cannot isolate REFUSES the run at startup before
+  > claiming a ticket; `DOKIMA_ALLOW_UNSANDBOXED_VERIFY=1` is an explicit
+  > waiver that appends `sandbox.waived` to the log. Validator-pack
+  > executables still run outside it — `runValidatorPack` has no sandbox
+  > parameter — so that half of this control remains open.
+  >
+  > **Was NOT IN FORCE until 2026-08-19 — W13-25.** The sandbox module
   > (`packages/harbormaster/src/sandbox/`) is complete and tested and has **zero
   > production callers**. Both verify paths — the in-session `verify` tool and
   > the out-of-session close gate — run `node:child_process` `exec` with `cwd`
