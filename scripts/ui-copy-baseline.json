@@ -1,17 +1,4 @@
 {
-  "note": "Known ui-copy violations, each owned by a ticket — history-secrets style. Adding a line here is how real drift would be silenced, so every change to this file must be read in the diff. W13-51 clears both entries; the validator fails on any entry whose string no longer occurs (stale rot).",
-  "entries": [
-    {
-      "check": "instruction-surface",
-      "value": "Settings → Models",
-      "file": "apps/server/src/api/pipeline/model-resolution.ts",
-      "ticket": "W13-51"
-    },
-    {
-      "check": "instruction-surface",
-      "value": "Settings → Autonomy dial",
-      "file": "apps/web/src/settings/FirstRunWizard.tsx",
-      "ticket": "W13-51"
-    }
-  ]
+  "note": "Known ui-copy violations, each owned by a ticket \u2014 history-secrets style. Adding a line here is how real drift would be silenced, so every change to this file must be read in the diff. Currently EMPTY: W13-51 cleared the two founding entries the day after the validator landed.",
+  "entries": []
 }

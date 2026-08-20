@@ -38,7 +38,12 @@ const PROJECT_TABS: { id: Tab; label: string }[] = [
   // setup wizard was the only way in. `ModelMatrixPanel` still composes the
   // same panel for its model catalog; this is about the nav, not the code.
   { id: 'providers', label: 'Providers' },
-  { id: 'matrix', label: 'Model Matrix' },
+  // W13-51: the LABEL is 'Models' per VOCABULARY.md ('the setting is called
+  // what it does'); the id and every wire shape stay 'matrix' — rename in the
+  // UI only. Our own W13-34 error copy said 'Open Settings → Models' while
+  // this row said 'Model Matrix': the product contradicted its own
+  // instruction, and validate-ui-copy now gates that class.
+  { id: 'matrix', label: 'Models' },
   { id: 'agent', label: 'Agent' },
   { id: 'autonomy-budget', label: 'Autonomy · Budget · Berths' },
   { id: 'estimate', label: 'Cost Estimate' },

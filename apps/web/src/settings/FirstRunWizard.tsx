@@ -323,7 +323,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
             <h3>What to do tomorrow</h3>
             <p>
               Set a role or two to <code>auto</code> and let a ticket run overnight
-              (Settings → Autonomy dial). Tomorrow morning, open the notification bell →
+              (Settings → Autonomy). Tomorrow morning, open the notification bell →
               Morning Queue: it sorts by leverage — merges first, then approvals, then
               clarifications — with receipts and cost inline. Budget about ten minutes to
               review a full night's work.

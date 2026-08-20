@@ -94,8 +94,10 @@ test('empty states per UX_SPEC §2b for a freshly-registered project', async ({
   await expect(page.getByTestId('morning-queue-empty')).toContainText(
     'Nothing needs you',
   );
+  // W13-51: the closing clause speaks user vocabulary now — "wave gate" was
+  // internal jargon as the last words of the calmest screen in the product.
   await expect(page.getByTestId('morning-queue-empty')).toContainText(
-    'Next digest at wave gate',
+    'he next digest arrives when the current run finishes',
   );
 
   await page.getByRole('tab', { name: 'All notifications' }).click();
