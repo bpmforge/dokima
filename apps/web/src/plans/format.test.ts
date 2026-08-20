@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { canAccept, canDismiss, funnelSummary, scoresVary, STATE_LABEL } from './format.js';
+import {
+  canAccept,
+  canDismiss,
+  describeVerifyCriterion,
+  funnelSummary,
+  scoresVary,
+  STATE_LABEL,
+} from './format.js';
 
 describe('funnelSummary', () => {
   it('renders every FR-RL4-style stage, raw first and never hidden', () => {
@@ -53,5 +60,22 @@ describe('scoresVary (W13-50)', () => {
 
   it('a health-scan plan — scores that differ — shows them, because there they rank', () => {
     expect(scoresVary([item(4, 3, 12), item(2, 3, 6)])).toBe(true);
+  });
+});
+
+describe('describeVerifyCriterion (W13-59)', () => {
+  it('RED FIXTURE: the machine expression gets a sentence a novice can decide on', () => {
+    expect(describeVerifyCriterion('receipts.staleCount == 0')).toBe(
+      'Done when every receipt still matches the work it vouches for.',
+    );
+    expect(describeVerifyCriterion('tickets.blockedWithEvidenceMaxAgeDays <= 3')).toContain(
+      'more than 3 days',
+    );
+  });
+
+  it('an unknown expression falls back to an honest generic framing, never an invented meaning', () => {
+    expect(describeVerifyCriterion('custom.metric > 7')).toBe(
+      'Checked automatically against the project’s live state.',
+    );
   });
 });

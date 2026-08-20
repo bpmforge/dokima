@@ -135,6 +135,23 @@ describe('BoardView start-run affordance (W12-28)', () => {
     },
   );
 
+  it("RED FIXTURE (W13-59): 'Start a run' states its consequence — what a run is, what it uses, what it will not touch", () => {
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
+    render(
+      <BoardView
+        baseUrl="/api/v1"
+        token="t"
+        projectId="p1"
+        wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
+      />,
+    );
+    const hint = screen.getByTestId('board-runbar-hint');
+    expect(hint.textContent).toContain('one pass of the agent working the board');
+    expect(hint.textContent).toContain('Settings → Models');
+    expect(hint.textContent).toContain('nothing else is contacted');
+  });
+
   it('starts from where the work is visible — the runbar sits inside the board, not in Settings', () => {
     mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
     render(

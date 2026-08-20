@@ -43,3 +43,41 @@ export function canAccept(state: PlanItemState): boolean {
 export function canDismiss(state: PlanItemState): boolean {
   return state === 'proposed';
 }
+
+/**
+ * Plain-language sentence for a catalog verify criterion (W13-59). The
+ * Improvement Plan asked a novice to Accept or Dismiss on the strength of a
+ * machine expression ('receipts.staleCount == 0') — an undecidable decision.
+ * Each shipped catalog expression gets a human sentence; the expression
+ * itself stays on the card as secondary detail. An unknown expression falls
+ * back to an honest generic framing, never an invented meaning.
+ */
+const VERIFY_SENTENCE: Record<string, string> = {
+  'coverage.requiredSkipped == 0': 'Done when no required coverage topic is being skipped.',
+  'deliverables.orphanedCount == 0': 'Done when no deliverable is left orphaned.',
+  'findings.openCriticalUnwaived == 0':
+    'Done when no critical finding is open without a waiver.',
+  'gates.missingRedFixtureCount == 0':
+    'Done when every gate has a planted failure proving it can actually fail.',
+  'planItems.regressedCount == 0': 'Done when no accepted plan item has slipped back.',
+  'playbook.staleEntryCount == 0': 'Done when no playbook entry is stale.',
+  'providers.unverifiedTosCount == 0':
+    'Done when every model provider’s terms have been verified.',
+  'receipts.staleCount == 0':
+    'Done when every receipt still matches the work it vouches for.',
+  'rules.fpHeavyCount == 0':
+    'Done when no rule is mostly raising false alarms.',
+  'spend.thresholdBreachRepeatCount == 0':
+    'Done when spend stops repeatedly breaking through its threshold.',
+  'tickets.blockedWithEvidenceMaxAgeDays <= 3':
+    'Done when no ticket has sat blocked with evidence for more than 3 days.',
+  'tickets.oscillatingCount == 0':
+    'Done when no ticket keeps bouncing back and forth between states.',
+};
+
+export function describeVerifyCriterion(expression: string): string {
+  return (
+    VERIFY_SENTENCE[expression] ??
+    'Checked automatically against the project’s live state.'
+  );
+}

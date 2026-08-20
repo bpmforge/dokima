@@ -104,6 +104,15 @@ export function BoardView({
         >
           {buildRun?.status === 'running' ? 'Run in progress…' : 'Start a run'}
         </button>
+        {/* W13-59: the novice's single next step was a bare button with an
+            unstated consequence. One line: what a run is (VOCABULARY.md) and
+            the wizard-standard reassurance about what it may use. */}
+        <p className="board-view__run-hint" data-testid="board-runbar-hint">
+          A run is one pass of the agent working the board: it claims Ready
+          tickets, does the work, and hands back receipts. It uses only the
+          models you chose in Settings → Models, within your Autonomy setting
+          — nothing else is contacted.
+        </p>
         {buildRun && (
           <span data-testid="board-runbar-status">
             {buildRun.runId} — {buildRun.status}
