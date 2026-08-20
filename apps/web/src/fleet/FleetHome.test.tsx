@@ -51,7 +51,7 @@ describe('Fleet empty state guided-sample link (UX_SPEC §2b, FR-C6)', () => {
     const { onOpenGuidedSample } = await renderEmptyFleet();
     const empty = screen.getByTestId('fleet-empty');
 
-    fireEvent.click(within(empty).getByRole('button', { name: 'Try the guided sample' }));
+    fireEvent.click(within(empty).getByRole('button', { name: 'Set up Dokima' }));
 
     expect(onOpenGuidedSample).toHaveBeenCalledTimes(1);
   });
@@ -90,7 +90,11 @@ describe('visual hierarchy (W12-29)', () => {
       // the header.
       const primaries = document.querySelectorAll('.btn-primary');
       expect(primaries.length).toBe(1);
-      expect((primaries[0] as HTMLElement).textContent).toContain('New project');
+      // W13-58: on a COLD START the ranked choice is setup — nothing else
+      // works until models exist, and the audit's critical finding was that
+      // nothing on this screen said setup exists. With projects present the
+      // primary goes back to New project (covered by the populated render).
+      expect((primaries[0] as HTMLElement).textContent).toContain('Set up Dokima');
     },
   );
 
@@ -98,8 +102,9 @@ describe('visual hierarchy (W12-29)', () => {
     await renderEmptyFleet();
     const empty = screen.getByTestId('fleet-empty');
     expect(empty.textContent).toMatch(/Describe what you want built/);
-    // One primary here too — the ranked choice, not four equals.
-    expect(empty.querySelectorAll('.btn-primary').length).toBe(0);
+    // One primary here too — the ranked choice, not four equals (W13-58:
+    // that one primary is now setup, the only action that works on day zero).
+    expect(empty.querySelectorAll('.btn-primary').length).toBe(1);
     expect(empty.querySelectorAll('.btn-quiet').length).toBeGreaterThan(0);
   });
 });

@@ -8627,7 +8627,7 @@
         "W13-46"
       ],
       "stories": [],
-      "notes": "Same shape as W13-35, which found step 2 collecting provider details and dropping them. Established by W13-46, not assumed.",
+      "notes": "Same shape as W13-35, which found step 2 collecting provider details and dropping them. Established by W13-46, not assumed. The novice audit added a second data point (forge-step-undefined-jargon, W13-58): the step label uses two undefined terms and has no HelpAffordance. Whichever fix is chosen, the copy is part of it.",
       "acceptance": [
         "ESTABLISHED, not assumed: W13-46 verified that createGiteaForgeAdapter, createGitHubForgeAdapter, flushMirrorQueue and checkMirrorPrerequisites have no production callers, and @dokima/forge is not a declared dependency of apps/server. Nothing consumes a forge credential.",
         "The setup wizard step 3 still asks for one \u2014 \"Forge credential ref (leave blank to skip)\" \u2014 and W13-35 already fixed this exact shape once, where step 2 collected provider details and dropped them on the floor.",
@@ -8865,6 +8865,135 @@
         "Resolve from the SAME store the run reads: model-matrix-store rows (project rows over global, default-role fallback, code-task preference), with the settings-key override kept as the higher-precedence layer it was designed to be.",
         "scope reports where the winning row actually lives (project vs global); usedDefaultRole true on the fallback \u2014 the wire shape already carries both, honestly unused until now.",
         "RED FIXTURE: write rows through the real store (the wizard's path), then GET /api/v1/roster and assert an expert with no row of its own reports the default-role chain \u2014 the exact walkthrough case that renders false today."
+      ]
+    },
+    {
+      "id": "W13-58",
+      "title": "the novice front door: setup is invisible, mislabeled, misnumbered and jargon-gated",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "done",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/settings/WizardProviderStep.tsx",
+        "apps/web/src/App/**",
+        "apps/web/src/fleet/EmptyState.tsx",
+        "apps/web/src/settings/WizardModelsStep.tsx",
+        "apps/web/src/settings/WizardPresetStep.tsx"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Novice-journey audit (orchestrated 2026-08-20, five parallel reviewers, every citation mechanically re-verified \u2014 24/24 held). The persona: a novice with a building idea and no clue what to do, who must be walked through everything. 4 of 5 findings fixed here; forge-step-undefined-jargon deliberately transfers to W13-48, which owns the decide-or-explain call on that field.",
+      "acceptance": [
+        "[CRITICAL] Nothing on the cold-start Fleet screen tells the novice setup exists or is needed \u2014 the primary 'New project' button bypasses the wizard entirely, so a novice creates a project with no provider and no models and their first build fails at the endpoint (the exact failure the W13-37 models step was added to prevent, but only for users who find the wizard). CITATION (evidence) 01-fleet-empty: \"Describe what you want built. Dokima interviews you, writes the plan, and works the board with expert agents \u2014 on your m\" FIX: Auto-open the Setup Wizard on a fresh install (no projects, no providers registered), or add first-run copy to the empty state that names setup as the required first step.",
+        "[HIGH] The only setup entry point on the empty state is labeled 'Try the guided sample', but clicking it lands the novice on Setup Wizard step '1. How should your work be modelled?' \u2014 four steps of policy/provider/model questions before any sample appears, with no explanation of the bait-and-switch. CITATION (source) apps/web/src/App/MainView.tsx: \"onOpenGuidedSample={() => openView('wizard')}\" FIX: Either relabel the button to say it starts guided setup ending in a sample, or open the wizard with a first line stating 'A few setup questions, then the guided sample runs.'",
+        "[HIGH] On a genuinely fresh install (no open project) the wizard's numbered headings render in the order 1, 2, 4, 5, then 3 \u2014 step '3. Which of your models should do the work?' appears only after step 5 creates the sample project, so the novice watches the numbers skip forward and then jump backwards, which reads as the wizard being broken. CITATION (source) apps/web/src/settings/FirstRunWizard.tsx: \"setStep(projectId ? 'models' : 'forge');\" FIX: Derive the displayed step numbers from the actual sequence for the current entry point (or drop the numerals and show 'Step N of M').",
+        "[MEDIUM] Step 4's entire content is a field labeled with two undefined terms \u2014 'forge' (not in the VOCABULARY.md table, never explained on screen, no HelpAffordance unlike steps 1 and 5) and 'credential ref' \u2014 so a novice cannot know what connecting one does, what they would lose by skipping, or where such a ref comes from. CITATION (source) apps/web/src/settings/FirstRunWizard.tsx: \"Forge credential ref (leave blank to skip)\" FIX: Rename the step to name the concrete things ('Connect GitHub or Gitea (optional)'), add one hint sentence saying what it enables and how to create the credential, and give it a HelpAffordance like the other steps.",
+        "[MEDIUM] The provider step's credential field leaks an internal requirement ID ('FR-S2') into user-facing copy and assumes a keychain entry already exists, with no instruction anywhere on how to create one \u2014 a novice who chose any cloud option dead-ends here with a key in hand and nowhere shown to put it. CITATION (source) apps/web/src/settings/WizardProviderStep.tsx: \"Credential ref (keychain name \u2014 never a raw secret, FR-S2)\" FIX: Drop 'FR-S2' from the label and add a hint (or HelpAffordance) with the exact command/steps to store the key in the keychain and what name to type here."
+      ]
+    },
+    {
+      "id": "W13-59",
+      "title": "idea to board: actions with unstated consequences and undefined verbs on the novice\\u2019s critical path",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/plans/**",
+        "apps/web/src/onboarding/AwaitingDecisions.tsx",
+        "apps/web/src/chat/**",
+        "apps/web/src/board/BoardEmptyState.tsx"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Novice-journey audit (orchestrated 2026-08-20, five parallel reviewers, every citation mechanically re-verified \u2014 24/24 held). The persona: a novice with a building idea and no clue what to do, who must be walked through everything.",
+      "acceptance": [
+        "[HIGH] After the board is built, the primary board action is a bare 'Start a run' button with nothing on the screen saying what a run is, what agents will do, or what it may spend \u2014 the novice's single next step is an action whose consequence is never stated. CITATION (evidence) 05-board-seeded: \"Start a run\" FIX: Add one line of copy beside the button (per VOCABULARY: 'One pass of the agent working the board') stating what will happen and the wizard-standard reassurance about spend/network before it starts.",
+        "[HIGH] The Improvement Plan card asks the novice to Accept or Dismiss PC-001 based on a machine expression ('receipts.staleCount == 0') and jargon-dense rationale ('stale receipt(s)', 'downstream phases', 'gating on invalidated evidence'), with no statement of what Accept actually does \u2014 an undecidable decision. CITATION (evidence) 08-improvement-plan: \"receipts.staleCount == 0\" FIX: Render the verify criterion as a plain-language sentence (keep the expression as secondary detail), and add a one-line consequence under Accept ('creates a ticket on the board') and Dismiss.",
+        "[MEDIUM] The Ready ticket card exposes a 'Move to\u2026' select offering 'claim', but nothing tells the novice what claiming means, that agents normally do this, or what happens to the ticket if they pick it \u2014 an invitation to mutate state with undefined verbs. CITATION (evidence) 05-board-seeded: \"Move to\u2026\" FIX: Label the menu with the vocabulary word and consequence (e.g. 'claim \u2014 assign this ticket to be worked next') or hide manual verbs behind the ticket drawer where they can be explained.",
+        "[MEDIUM] The one hard dead end on the decide path \u2014 no token to load the inline decisions \u2014 is explained with 'slates' (defined nowhere a user can see) and 'workspace' (a word VOCABULARY.md explicitly bans in favor of 'project'), so the novice hits a wall described in words they have never met. CITATION (source) apps/web/src/onboarding/AwaitingDecisions.tsx: \"The slates were kept, but this session has no API token to load them \u2014 reopen\" FIX: Rewrite in vocabulary words: 'Your decisions were saved. Reopen this project to answer them.' \u2014 and use 'decisions', not 'slates', everywhere a user reads it.",
+        "[LOW] The very first workspace screen greets the novice with two undefined internal terms \u2014 the Chat empty state promises 'manifests' and the Board empty state promises the idea will be 'decomposed into tickets' \u2014 before they have done anything at all. CITATION (evidence) 04-workspace-empty: \"Messages, questions, findings, and manifests appear here as agents work.\" FIX: Replace 'manifests' with plain language (or define Completion Manifest at first meeting, as VOCABULARY.md requires) and swap 'decomposed into' for 'broken into'."
+      ]
+    },
+    {
+      "id": "W13-60",
+      "title": "run and recover: blocked is a dead end and the trace speaks wire ids to the person it exists to inform",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**",
+        "apps/web/src/trace/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Novice-journey audit (orchestrated 2026-08-20, five parallel reviewers, every citation mechanically re-verified \u2014 24/24 held). The persona: a novice with a building idea and no clue what to do, who must be walked through everything.",
+      "acceptance": [
+        "[HIGH] A blocked ticket offers the novice nothing to do: no verb in the transitions graph lists 'blocked' as a source, so the card renders no Move menu and every drag off the Blocked column is an illegal drop that animates back \u2014 the state announces itself but has no exit affordance and no on-card explanation of how a ticket ever leaves Blocked. CITATION (source) apps/web/src/board/transitions.ts: \"  release: { from: ['claimed', 'in_progress', 'in_review'], to: 'ready' },\" FIX: Give the blocked card an explicit affordance (e.g. 'Blocked on E2E-1 \u2014 opens when E2E-1 is done' with a link to the blocker, or an unblock/park-resolution verb) so the novice knows the wait is automatic and what to watch.",
+        "[HIGH] The session trace \u2014 the screen the novice opens to understand what a run did \u2014 labels its events with raw wire identifiers ('loop.pass', 'gate.receipt_minted', 'escalation.rung_advanced') and an unexplained 'R0 \u2192 R1', none of which are defined in VOCABULARY.md, so the novice cannot tell whether an escalation is progress, a failure, or something that just cost money. CITATION (evidence) 07-session-trace: \"escalation.rung_advanced\" FIX: Render human labels for each event kind (e.g. 'Escalated to a stronger model (rung R0 \u2192 R1)') and keep the wire id as secondary detail, defining 'rung' at first encounter per the VOCABULARY.md rule.",
+        "[HIGH] When a drag is refused, the popover's headline 'rule' line is an SRS/SC requirement id by design (e.g. 'FR-T2'), which is written for the builder \u2014 a novice reads an opaque code where the explanation of why the board said no should be. CITATION (source) apps/web/src/board/refusal.ts: \" * name (SRS FR id or SC id, e.g. `FR-T2`) is shown alongside the human\" FIX: Lead with the human-language rule ('Tickets need a passing gate before review') and demote the FR/SC id to a small provenance tag.",
+        "[MEDIUM] Every trace event carries a 'File field report' button, but nothing on the screen says what a field report is, who reads it, or what happens after filing \u2014 the term appears nowhere in VOCABULARY.md, so the novice has an unlabeled consequence attached to the trace's only per-event action. CITATION (evidence) 07-session-trace: \"File field report\" FIX: Add a tooltip/one-line explainer ('Flag this event so the improvement loop learns from it') and register the term in VOCABULARY.md or rename it to something self-describing.",
+        "[MEDIUM] The ticket drawer greets the novice with six consecutive empty states ('No acceptance criteria recorded.', 'No history yet.', 'No manifest yet.', 'No gates have run yet.', 'No spend recorded yet\u2026') plus undefined jargon ('No active berth on this ticket right now.', 'Spend by rung') \u2014 each is honest but none says what will fill it or what the novice should do next, and 'berth' and 'rung' are absent from the vocabulary law. CITATION (evidence) 06-ticket-drawer: \"No active berth on this ticket right now.\" FIX: Rewrite each empty state to name the trigger that fills it ('Gates run automatically when an agent closes this ticket'), and define or replace 'berth' and 'rung' per VOCABULARY.md.",
+        "[LOW] The card's Move menu offers bare lifecycle verbs like 'claim \u2192 claimed' without saying who claims \u2014 the novice cannot tell whether choosing it assigns the ticket to themselves or dispatches an agent, i.e. whether the action spends anything or starts work. CITATION (evidence) 05-board-seeded: \"claim\" FIX: Label the menu options with actor and consequence (e.g. 'Claim for an agent \u2014 moves to Claimed') at least on first use."
+      ]
+    },
+    {
+      "id": "W13-61",
+      "title": "review and accept: the morning queue asks for merge approval without showing the work",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/notifications/**",
+        "apps/web/src/board/drawer/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Novice-journey audit (orchestrated 2026-08-20, five parallel reviewers, every citation mechanically re-verified \u2014 24/24 held). The persona: a novice with a building idea and no clue what to do, who must be walked through everything.",
+      "acceptance": [
+        "[CRITICAL] The Decide card asks the novice to approve or reject merging a branch, but the only evidence on screen is a diff stat \u2014 there is no control on the card to view the diff, the ticket, or the session trace, so the promised 'review a night's work' cannot actually be performed before clicking Approve. CITATION (evidence) 09-morning-queue: \"Diff: +120 -4\" FIX: Add a 'View changes' link on approval cards that opens the diff or the ticket drawer, so the card's own Approve is an informed act instead of a blind one.",
+        "[HIGH] Neither Approve nor Reject says what it does \u2014 a novice cannot tell whether Reject discards the branch, blocks the ticket, or sends work back, and the click fires immediately with no confirmation or consequence copy. CITATION (source) apps/web/src/notifications/MorningQueue.tsx: \"onClick={() => void decide(item, 'rejected')}\" FIX: State the consequence on or under each button (e.g. 'Reject \u2014 nothing merges; the ticket returns to the agent with your note') and consider a one-line optional reason field.",
+        "[MEDIUM] Review-tier cards (the digest) render with no actions at all, so a novice cannot tell whether they must do anything with 'Review digest / 1 item batched' or how the card ever leaves their queue. CITATION (source) apps/web/src/notifications/MorningQueue.tsx: \") : undefined\" FIX: Give Review cards either an explicit 'Mark reviewed' action or a one-line note that no action is needed and when the card will clear.",
+        "[MEDIUM] The novice's first meeting with the product's core trust artifact \u2014 receipts, in the ticket drawer's Evidence section \u2014 is two undefined-jargon empty states ('No manifest yet.' / 'No gates have run yet.') that never say what a manifest, gate, or receipt is or when one will appear. CITATION (evidence) 06-ticket-drawer: \"No manifest yet.\" FIX: Rewrite both empty states in plain language that defines the term and predicts arrival, e.g. 'No receipts yet \u2014 when a quality gate runs on this ticket, its signed proof appears here.'"
+      ]
+    },
+    {
+      "id": "W13-62",
+      "title": "multiple projects: global inheritance is invisible and the fleet strip is an unlabeled aggregate",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/web/src/fleet/**",
+        "apps/web/src/App/**",
+        "apps/web/src/notifications/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Novice-journey audit (orchestrated 2026-08-20, five parallel reviewers, every citation mechanically re-verified \u2014 24/24 held). The persona: a novice with a building idea and no clue what to do, who must be walked through everything.",
+      "acceptance": [
+        "[HIGH] The no-project Settings screen \u2014 the exact place a novice checks whether project #2 needs its models set up again \u2014 teaches that all model/provider setup belongs to a single project, when the wizard actually registered providers and model defaults at global scope, so the novice reasonably fears (and may redo) a full re-setup for every new project. CITATION (evidence) 11-settings-no-project: \"Settings belong to a project \u2014 which models it uses, which providers it can reach, and what it is allowed to spend. Pick\" FIX: Add one sentence to this copy stating that providers and every-project model defaults registered by the wizard already apply to any project you create (the mechanics exist: FirstRunWizard.tsx writes putProviders(projectId, [providerEntry()], { scope: 'global' }) and ModelMatrixPanel already says 'These rows come from your every-project defaults').",
+        "[MEDIUM] The cross-project morning queue \u2014 the tour's 'signature screen' and the habit the wizard promises for tomorrow \u2014 is reachable only through an icon-only bell whose accessible name says 'Notifications', and the words 'Morning queue' appear nowhere in the UI until the novice has already found the view, so a novice returning to a two-project Fleet has no visible affordance for the morning review. CITATION (source) apps/web/src/App/Header.tsx: \"          aria-label={`Notifications, ${decideBadgeCount} awaiting a decision`}\" FIX: Give the queue a named entry point \u2014 a visible 'Morning queue' label or nav item (or a Fleet-level 'Review the morning queue' affordance when items await), rather than only a bell glyph.",
+        "[MEDIUM] The fleet-wide summary strip renders sums (ready / blocked / needs you / berths running / spend today) with the identical readout styling the per-project cards use and no caption saying it is a total across all projects, so with two projects a novice can read the strip as belonging to the nearest project \u2014 conflating the fleet with one project, exactly what this screen exists to separate. CITATION (evidence) 03-project-created: \"spend today\" FIX: Caption the fleet__summary strip (e.g. 'All projects') in FleetHome.tsx so the aggregate reads as a fleet total, distinct from each card's own readouts.",
+        "[LOW] Every project card and the summary strip lead with 'berths' ('No berths running', 'berths running') but 'berth' is absent from the VOCABULARY.md table and is never defined where a user first meets it, so a novice comparing two project cards cannot tell what the reading means or whether zero is good. CITATION (evidence) 03-project-created: \"No berths running\" FIX: Add 'berth' to the VOCABULARY.md table with a user-facing definition and either define it at first contact (tooltip/first-use gloss on the Fleet card) or rename the reading to plain language such as 'agents running'."
       ]
     }
   ]
