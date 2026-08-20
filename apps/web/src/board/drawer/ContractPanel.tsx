@@ -33,7 +33,7 @@ export function ContractPanel({ ticket }: ContractPanelProps) {
 
       <h3>Acceptance</h3>
       {ticket.acceptance.length === 0 ? (
-        <p className="ticket-drawer__empty">No acceptance criteria recorded.</p>
+        <p className="ticket-drawer__empty">No acceptance criteria yet — planning writes them when the ticket is created, and agents refuse to close a ticket that has none.</p>
       ) : (
         <ul className="ticket-drawer__acceptance">
           {ticket.acceptance.map((criterion) => (
@@ -48,7 +48,7 @@ export function ContractPanel({ ticket }: ContractPanelProps) {
 
       <h3>History</h3>
       {ticket.history.length === 0 ? (
-        <p className="ticket-drawer__empty">No history yet.</p>
+        <p className="ticket-drawer__empty">No history yet — every claim, comment, close, and accept lands here the moment it happens.</p>
       ) : (
         <ol className="ticket-drawer__history" data-testid="drawer-history">
           {ticket.history.map((entry, index) => (

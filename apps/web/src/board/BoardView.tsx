@@ -10,6 +10,7 @@ import {
 import './board.css';
 import { EmptyState } from './BoardEmptyState.js';
 import { ClaimNowStrip } from './ClaimNowStrip.js';
+import { openBlockers } from './badges.js';
 import { groupIntoLanes } from './lanes.js';
 import { Lane } from './Lane.js';
 import { RefusalPopover } from './RefusalPopover.js';
@@ -80,6 +81,11 @@ export function BoardView({
   if (tickets.length === 0) return <EmptyState onViewCurrentPhase={onViewCurrentPhase} />;
 
   const lanes = groupIntoLanes(tickets);
+  const blockedDeps = new Map(
+    tickets
+      .filter((t) => t.status === 'blocked')
+      .map((t) => [t.id, openBlockers(t, tickets)] as const),
+  );
   const refusalTicket = refusal
     ? tickets.find((t) => t.id === refusal.ticketId)
     : undefined;
@@ -138,6 +144,7 @@ export function BoardView({
             key={lane.lane}
             lane={lane}
             heartbeats={heartbeats}
+            blockedDeps={blockedDeps}
             onDrop={handleDrop}
             onFireVerb={(ticketId, verb) => void fireVerb(ticketId, verb)}
           />

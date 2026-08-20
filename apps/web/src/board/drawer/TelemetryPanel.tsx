@@ -6,6 +6,7 @@ import { fetchRunTrace, fetchSpendByRung, fetchTicketRuns } from './api.js';
 import { SpendByRung } from './SpendByRung.js';
 import type { SpendByRung as SpendByRungData, TraceEvent } from './types.js';
 import { FileFieldReportAction } from '../../lessons/FileFieldReportAction.js';
+import { describeTraceEvent } from '../../trace/classify.js';
 import {
   draftFromEscalationEvent,
   draftFromTraceEvent,
@@ -90,10 +91,16 @@ export function TelemetryPanel({
       <p data-testid="drawer-heartbeat">
         {heartbeat
           ? formatHeartbeat(heartbeat)
-          : 'No active berth on this ticket right now.'}
+          : 'No agent is working this ticket right now — this fills in live while a run holds it.'}
       </p>
 
       <h3>Spend by rung</h3>
+      {/* W13-60: 'rung' defined where a person first meets it (VOCABULARY.md
+          rule). A rung is a step on the ladder of models. */}
+      <p className="ticket-drawer__hint" data-testid="spend-rung-hint">
+        A rung is one step on the ladder of models — runs start on the
+        cheapest rung and climb only when work stalls.
+      </p>
       <SpendByRung data={spend} />
 
       <h3>Session trace</h3>
@@ -112,7 +119,9 @@ export function TelemetryPanel({
             {trace.events.map((event) =>
               isEscalationEvent(event) ? (
                 <li key={event.seq} data-testid="escalation-event-card">
-                  {event.event_type} · {event.actor_id} · {event.created_at}
+                  {describeTraceEvent(event.event_type)} ·{' '}
+                  <span className="ticket-drawer__wire-id">{event.event_type}</span> ·{' '}
+                  {event.actor_id} · {event.created_at}
                   <FileFieldReportAction
                     apiOpts={apiOpts}
                     projectId={projectId}
@@ -121,7 +130,9 @@ export function TelemetryPanel({
                 </li>
               ) : (
                 <li key={event.seq} data-testid="trace-event-row">
-                  {event.event_type} · {event.actor_id} · {event.created_at}
+                  {describeTraceEvent(event.event_type)} ·{' '}
+                  <span className="ticket-drawer__wire-id">{event.event_type}</span> ·{' '}
+                  {event.actor_id} · {event.created_at}
                   <FileFieldReportAction
                     apiOpts={apiOpts}
                     projectId={projectId}

@@ -64,3 +64,34 @@ export function isParked(ticket: {
   }
   return false;
 }
+
+/**
+ * The blockers a blocked ticket is still waiting on (W13-60). Blocked has
+ * no exit verb ON PURPOSE — reflow auto-resolves blocked⇄ready the moment
+ * every dependency is done (packages/tickets reflow, FR-T3) — but the card
+ * announced the state without saying so, so the novice-journey audit found
+ * a dead end: no Move menu, every drag animates back, nothing explains how
+ * a ticket ever leaves Blocked. A dangling dependency id counts as open
+ * (absence never satisfies), matching `depsDone`.
+ */
+export function openBlockers(
+  ticket: BoardTicket,
+  all: readonly BoardTicket[],
+): string[] {
+  const byId = new Map(all.map((t) => [t.id, t]));
+  return ticket.dependsOn.filter((depId) => byId.get(depId)?.status !== 'done');
+}
+
+/**
+ * The on-card sentence that turns Blocked from a dead end into a wait the
+ * novice understands: what it waits on, and that opening is automatic —
+ * there is nothing to click and nothing being asked of them.
+ */
+export function blockedExplanation(blockers: readonly string[]): string {
+  if (blockers.length === 0) {
+    return 'Blocked — waiting on work that must finish first. It moves back to Ready on its own.';
+  }
+  const named = blockers.join(', ');
+  const plural = blockers.length > 1;
+  return `Blocked on ${named} — opens on its own when ${plural ? 'they are' : 'it is'} done. Nothing to do here.`;
+}

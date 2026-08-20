@@ -23,8 +23,14 @@ export function RefusalPopover({
   const fix = refusalFixAffordance(problem);
   return (
     <div role="alert" className="board-refusal" data-testid={`refusal-${ticketId}`}>
-      <p className="board-refusal__rule">{explanation.rule}</p>
+      {/* W13-60: the human explanation LEADS. The rule id (an SRS FR/SC
+          requirement name, written for the builder) stays visible as
+          provenance — the e2e contract still asserts on it — but a novice
+          reads why the board said no before they meet the code for it. */}
       <p className="board-refusal__detail">{explanation.message}</p>
+      <p className="board-refusal__rule board-refusal__rule--tag">
+        rule: {explanation.rule}
+      </p>
       <div className="board-refusal__actions">
         {fix && onRunFix && (
           <button type="button" onClick={onRunFix}>

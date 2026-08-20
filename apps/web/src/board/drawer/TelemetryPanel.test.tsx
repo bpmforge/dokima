@@ -156,3 +156,25 @@ describe('TelemetryPanel session-trace entry points', () => {
     });
   });
 });
+
+describe('drawer telemetry speaks user language (W13-60)', () => {
+  it('RED FIXTURE: the idle line is plain language, not undefined berth jargon, and rung is defined where spend first shows it', async () => {
+    await renderWithTrace([TRACE_EVENT]);
+
+    expect(
+      screen.getByText(/No agent is working this ticket right now/),
+    ).toBeTruthy();
+    expect(screen.queryByText(/No active berth/)).toBeNull();
+    expect(screen.getByTestId('spend-rung-hint').textContent).toContain(
+      'ladder of models',
+    );
+  });
+
+  it('a trace row leads with the human sentence and keeps the wire id', async () => {
+    await renderWithTrace([TRACE_EVENT]);
+
+    const row = screen.getByTestId('trace-event-row');
+    expect(row.textContent).toContain('The ticket was claimed');
+    expect(row.textContent).toContain('ticket.claimed');
+  });
+});

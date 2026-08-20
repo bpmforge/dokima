@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  blockedExplanation,
   cardStateClass,
   isParked,
   isStaleBlocked,
   isWaived,
+  openBlockers,
   STALE_BADGE_LABEL,
   WAIVED_BADGE_LABEL,
 } from './badges.js';
@@ -112,5 +114,28 @@ describe('isParked (W13-63)', () => {
         history: history({ verb: 'comment', body: 'Parked with evidence — …' }),
       }),
     ).toBe(false);
+  });
+});
+
+describe('openBlockers / blockedExplanation (W13-60)', () => {
+  it('names only the unfinished dependencies, and a dangling id counts as open', () => {
+    const blocked = makeBoardTicket({
+      id: 'T-3',
+      status: 'blocked',
+      dependsOn: ['T-1', 'T-2', 'GHOST'],
+    });
+    const all = [
+      blocked,
+      makeBoardTicket({ id: 'T-1', status: 'done' }),
+      makeBoardTicket({ id: 'T-2', status: 'in_progress' }),
+    ];
+    expect(openBlockers(blocked, all)).toEqual(['T-2', 'GHOST']);
+  });
+
+  it('RED FIXTURE: the blocked card copy says what it waits on and that opening is automatic — blocked has no exit verb, so without this the state is a dead end', () => {
+    const line = blockedExplanation(['T-2']);
+    expect(line).toContain('Blocked on T-2');
+    expect(line).toContain('on its own');
+    expect(blockedExplanation([])).toContain('on its own');
   });
 });

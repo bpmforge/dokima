@@ -45,3 +45,39 @@ export function passNumber(payload: unknown): number | null {
   const record = payload as Record<string, unknown>;
   return typeof record.pass === 'number' ? record.pass : null;
 }
+
+/**
+ * Human sentence for a known event type (W13-60). The trace is the screen a
+ * novice opens to understand what a run did, and it labelled rows with raw
+ * wire identifiers ('gate.receipt_minted', 'escalation.rung_advanced') that
+ * VOCABULARY.md never defines. The wire id stays on the row as secondary
+ * detail — renaming the wire itself would be a migration, and the rename-in-
+ * the-UI-only rule (VOCABULARY.md) forbids that. Unknown types fall back to
+ * the kind label, never to an invented sentence.
+ */
+const TRACE_EVENT_HUMAN: Record<string, string> = {
+  'loop.pass': 'The run made a pass over the ticket',
+  'gateway.call_completed': 'A model answered a request',
+  'gate.receipt_minted': 'A gate checked the work and minted a receipt',
+  'gate.waived': 'A person waived a gate',
+  'escalation.rung_advanced': 'Escalated to a stronger model',
+  'escalation.blocked': 'Escalation stopped — the ladder has no stronger model to climb to',
+  'ticket.created': 'The ticket was created',
+  'ticket.claimed': 'The ticket was claimed',
+  'ticket.started': 'Work started on the ticket',
+  'ticket.closed': 'The ticket was closed with a Completion Manifest',
+  'ticket.accepted': 'The work was accepted',
+  'ticket.released': 'The ticket was released back to Ready',
+  'ticket.commented': 'A comment was added to the ticket',
+};
+
+export function describeTraceEvent(eventType: string): string {
+  return TRACE_EVENT_HUMAN[eventType] ?? TRACE_EVENT_KIND_LABEL[classifyTraceEvent(eventType)];
+}
+
+/**
+ * 'rung' defined at first encounter (VOCABULARY.md's rule for load-bearing
+ * internal terms): shown as a title/tooltip on the escalation detail.
+ */
+export const RUNG_DEFINITION =
+  'A rung is one step on the ladder of models — runs start on the cheapest rung and climb one step at a time when work stalls.';

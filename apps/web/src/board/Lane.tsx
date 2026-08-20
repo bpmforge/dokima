@@ -6,11 +6,12 @@ import type { HeartbeatData, TicketStatus } from './types.js';
 export interface LaneProps {
   lane: BoardLane;
   heartbeats: ReadonlyMap<string, HeartbeatData>;
+  blockedDeps: ReadonlyMap<string, readonly string[]>;
   onDrop: (ticketId: string, toColumn: TicketStatus) => void;
   onFireVerb: (ticketId: string, verb: LifecycleVerb) => void;
 }
 
-export function Lane({ lane, heartbeats, onDrop, onFireVerb }: LaneProps) {
+export function Lane({ lane, heartbeats, blockedDeps, onDrop, onFireVerb }: LaneProps) {
   return (
     <section
       className="board-lane"
@@ -32,6 +33,7 @@ export function Lane({ lane, heartbeats, onDrop, onFireVerb }: LaneProps) {
             key={column.status}
             column={column}
             heartbeats={heartbeats}
+            blockedDeps={blockedDeps}
             onDrop={onDrop}
             onFireVerb={onFireVerb}
           />
