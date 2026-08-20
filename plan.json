@@ -8903,7 +8903,7 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/board/BoardView.tsx",
