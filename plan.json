@@ -8056,6 +8056,36 @@
       ]
     },
     {
+      "id": "W13-33",
+      "title": "the shipped bundle boots a server on EVERY command \u2014 dokima --help hangs and opens a writable state.db",
+      "phase": 13,
+      "module": "infra",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/main.ts",
+        "apps/server/src/api/dev-entry.ts",
+        "apps/server/src/api/main.test.ts",
+        "apps/web/playwright.config.ts",
+        "apps/server/build.mjs"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 by running the product as a customer would, against the BUILT artifact rather than the source. `node apps/server/dist/main.js --help` prints usage and then never exits: it binds 127.0.0.1:DOKIMA_PORT and opens a WRITABLE connection to ./.dokima/state.db (plus -wal and -shm) in whatever directory it was run from. The same happens for a mistyped command, and for every other subcommand.",
+        "ROOT CAUSE IS THE BUNDLE, NOT THE CODE. api/main.ts ends with the standard run-if-main guard: isMainModule compares pathToFileURL(process.argv[1]).href to import.meta.url. In source those differ, so it stays dormant. esbuild bundles every module into ONE file, so import.meta.url becomes dist/main.js \u2014 which IS process.argv[1] \u2014 and the guard fires on every invocation, before and regardless of what the CLI dispatch decides.",
+        "THIS DEFEATS W10-44 IN THE ONLY PLACE THAT MATTERS. That ticket exists because --help used to boot the core; it fixed the source, and every test in this repo runs against source. The artifact a customer installs was never covered, so the fix was true and the shipped behaviour was not.",
+        "FIX BY REMOVING THE LANDMINE, not by adding a flag: a module that is IMPORTED must not also be an ENTRY POINT. Move the self-boot into its own dev entry that nothing imports, and point playwright.config.ts at it \u2014 it is the only consumer that runs api/main.ts directly.",
+        "RED FIXTURE: an assertion that the built bundle contains no run-if-main self-boot, so this cannot return the next time a module grows one. A source-level test cannot catch this class by construction."
+      ],
+      "notes": [
+        "Found only by executing the built artifact. Every prior verification this session ran source, including my own \u2014 the bundle is a different program and nothing tested it.",
+        "Closed 2026-08-19. Verified against the BUILT artifact: dokima --help exit 0, --version exit 0, a typo exit 2, none of them binding a port or opening a state.db. The red fixture asserts the bundle itself, because a source-level test cannot catch this class by construction \u2014 the bug only exists after bundling."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,
