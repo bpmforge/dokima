@@ -8528,18 +8528,22 @@
       "module": "harbormaster",
       "lane": "quality",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/review-queue.ts",
         "packages/harbormaster/src/review-queue.test.ts",
         "packages/harbormaster/src/index.ts",
         "packages/loop/src/session.ts",
-        "packages/loop/src/index.ts"
+        "packages/loop/src/index.ts",
+        "packages/harbormaster/src/watchdog-process.test.ts",
+        "packages/harbormaster/src/review-queue-types.ts",
+        "packages/loop/src/session.test.ts",
+        "packages/harbormaster/src/loop-claim.test.ts"
       ],
       "depends_on": [],
       "stories": [],
-      "notes": "Not a missing feature \u2014 a duplicate one. The shipped morning queue works; this is the copy that will go stale.",
+      "notes": "Not a missing feature \u2014 a duplicate one. The shipped morning queue works; this is the copy that will go stale. Deleting createChildProcessSpawn would have dropped the ONLY test of SC-03/SC-07 env hardening \u2014 and W13-47 had just moved external agents onto a spawn with no env coverage at all. Ported first.",
       "acceptance": [
         "buildQueueProjection and buildReviewCard have zero non-test references and are absent from the shipped bundle. The morning queue a user actually sees is built by apps/server notifications-routes, which does not call either.",
         "So the product has TWO implementations of one surface, one of them unreachable and unmaintained. This repo has already been bitten by a second copy drifting from the first (W10-55 provider kinds, W12-19 wizard kind list).",

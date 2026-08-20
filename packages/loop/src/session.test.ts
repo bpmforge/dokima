@@ -6,9 +6,7 @@ import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Handoff } from './handoff.js';
 import {
-  createChildProcessSpawn,
   runSession,
-  type SpawnSessionOutput,
 } from './session.js';
 
 const execFileAsync = promisify(execFile);
@@ -183,67 +181,3 @@ describe('runSession', () => {
   });
 });
 
-describe('createChildProcessSpawn', () => {
-  let repo: TempRepo | undefined;
-
-  afterEach(async () => {
-    await repo?.cleanup();
-    repo = undefined;
-  });
-
-  it('actually runs a child process and captures stdout/stderr/exitCode', async () => {
-    repo = await createTempRepo();
-    const spawn = createChildProcessSpawn({ command: 'node', args: ['-e'] });
-    const result: SpawnSessionOutput = await spawn({
-      prompt: "console.log('hello from child'); console.error('err from child');",
-      cwd: repo.repoRoot,
-    });
-    expect(result.stdout).toContain('hello from child');
-    expect(result.stderr).toContain('err from child');
-    expect(result.exitCode).toBe(0);
-  });
-
-  it('reports a non-zero exit code', async () => {
-    repo = await createTempRepo();
-    const spawn = createChildProcessSpawn({ command: 'node', args: ['-e'] });
-    const result = await spawn({ prompt: 'process.exit(3);', cwd: repo.repoRoot });
-    expect(result.exitCode).toBe(3);
-  });
-
-  it('does not leak the parent process env into the session by default (SC-03/SC-07)', async () => {
-    repo = await createTempRepo();
-    process.env.DOKIMA_TEST_PLANTED_SECRET = 'sk-should-not-leak';
-    try {
-      const spawn = createChildProcessSpawn({ command: 'node', args: ['-e'] });
-      const result = await spawn({
-        prompt: 'console.log(JSON.stringify(process.env));',
-        cwd: repo.repoRoot,
-      });
-      const childEnv = JSON.parse(result.stdout) as Record<string, string | undefined>;
-      expect(childEnv.DOKIMA_TEST_PLANTED_SECRET).toBeUndefined();
-      expect(childEnv.PATH).toBe(process.env.PATH);
-      // Only the OS/runtime may inject entries (e.g. macOS's __CF_USER_TEXT_ENCODING);
-      // nothing else from the parent process.env may pass through implicitly.
-      const unexpected = Object.keys(childEnv).filter(
-        (key) => key !== 'PATH' && !key.startsWith('__CF_'),
-      );
-      expect(unexpected).toEqual([]);
-    } finally {
-      delete process.env.DOKIMA_TEST_PLANTED_SECRET;
-    }
-  });
-
-  it('honors an explicitly passed env instead of the minimal default', async () => {
-    repo = await createTempRepo();
-    const spawn = createChildProcessSpawn({
-      command: 'node',
-      args: ['-e'],
-      env: { PATH: process.env.PATH, CUSTOM_VAR: 'present' },
-    });
-    const result = await spawn({
-      prompt: 'console.log(process.env.CUSTOM_VAR ?? "missing");',
-      cwd: repo.repoRoot,
-    });
-    expect(result.stdout).toContain('present');
-  });
-});

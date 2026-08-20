@@ -4,7 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, openEventLog, type EventLog } from '@dokima/events';
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
-import { createChildProcessSpawn, type SpawnSession } from '@dokima/loop';
+import { type SpawnSession } from '@dokima/loop';
+import { createWatchdogChildProcessSpawn } from './watchdog-process.js';
 import {
   closeTicket,
   createTicket,
@@ -317,9 +318,16 @@ describe('runClaimLoop', () => {
 
     process.env.DOKIMA_TEST_PLANTED_SECRET = 'sk-should-not-leak';
     try {
-      const spawn = createChildProcessSpawn({
+      // W13-45: the watched spawn, because it is now the only real child
+      // spawner — `createChildProcessSpawn` was removed as superseded, and an
+      // end-to-end env assertion is only worth anything against the spawner
+      // production actually uses.
+      const spawn = createWatchdogChildProcessSpawn({
         command: 'node',
         args: ['-e', 'console.log(JSON.stringify(process.env));'],
+        maxSessionSeconds: 600,
+        heartbeatStallSeconds: 600,
+        onBreach: () => undefined,
       });
 
       const result = await runClaimLoop({
