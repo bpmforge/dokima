@@ -221,6 +221,87 @@ describe('createGatewaySpawnSession', () => {
   }
 
   /**
+   * W13-44. The watchdog had been built and tested in this package since
+   * FR-H2 and had NEVER RUN: its only non-test mention in the repo was a
+   * comment, and `runWatchdogSession` was absent from the shipped bundle —
+   * while two separate tickets were written because a session ran forever.
+   */
+  describe('the session watchdog actually runs (W13-44)', () => {
+    /** A clock the test moves, so nothing here waits on real time. */
+    function clockFrom(startIso: string, stepSeconds: number) {
+      let calls = 0;
+      return () => new Date(Date.parse(startIso) + calls++ * stepSeconds * 1000).toISOString();
+    }
+
+    it('RED FIXTURE: a session that never finishes is stopped by the wall-clock ceiling', async () => {
+      const { log, cwd } = await setup();
+      // Always asks for another tool call, so the loop would otherwise run to
+      // its iteration cap — a session making steady progress that never ends.
+      const provider = new ScriptedFakeProvider([
+        toolCallResponse([
+          { id: 'c1', name: 'read', arguments: { path: 'README.md' } },
+        ]),
+      ]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, ledger, {
+          maxSessionSeconds: 60,
+          // Each `now()` advances 45s, so the second turn boundary is past it.
+          now: clockFrom('2026-08-20T00:00:00.000Z', 45),
+        }),
+      );
+
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('the watchdog fired');
+      expect(result.stderr).toContain('max_session_seconds');
+      // Stopped COOPERATIVELY: the loop ended at a turn boundary rather than
+      // being abandoned, so no further turn was taken and nothing kept
+      // spending against a ticket the loop had given up on.
+      expect(provider.calls.length).toBeLessThan(12);
+    });
+
+    it('leaves an honest session alone — the ceiling is a backstop, not a schedule', async () => {
+      const { log, cwd } = await setup();
+      const provider = new ScriptedFakeProvider([finalResponse('done')]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, ledger, { maxSessionSeconds: 1_800 }),
+      );
+
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('an explicit 0 disables the backstop rather than meaning "no time"', async () => {
+      const { log, cwd } = await setup();
+      const provider = new ScriptedFakeProvider([finalResponse('done')]);
+      const ledger = new CostLedger();
+      const spawn = createGatewaySpawnSession(
+        baseSpawnOptions(log, provider, ledger, {
+          maxSessionSeconds: 0,
+          now: clockFrom('2026-08-20T00:00:00.000Z', 10_000),
+        }),
+      );
+
+      const result = await spawn({
+        prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+        cwd,
+      });
+
+      expect(result.exitCode).toBe(0);
+    });
+  });
+
+  /**
    * W13-43. Measured across three live runs: a local model entered a
    * generation loop and streamed for as long as the run was left going —
    * `lsof` showed a live connection, LM Studio 160% CPU, our process 0.7%.

@@ -8499,14 +8499,13 @@
       "module": "harbormaster",
       "lane": "orchestrator",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
-        "packages/harbormaster/src/loop-land.ts",
-        "packages/harbormaster/src/loop-land-session.ts",
-        "packages/harbormaster/src/loop-claim.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
         "packages/harbormaster/src/watchdog-session.ts",
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/agent-session/session-limits.ts"
       ],
       "depends_on": [
         "W13-43"
@@ -8517,9 +8516,9 @@
         "runWatchdogSession is defined and tested in watchdog-session.ts and has ZERO non-test references in the repo. Its single mention outside its own test is a COMMENT in loop-claim.ts. It is not present in apps/server/dist/main.js, so it has never executed in the shipped product.",
         "Its own module header says so: \"Not yet wired into those loops \u2014 out of this ticket write-scope \u2014 this is the drop-in unit a future ticket composes into the claim/land loops.\" That future ticket was never filed. This is it.",
         "WHY IT MATTERS NOW: W13-42 and W13-43 both exist because a session hung and nothing stopped it. A watchdog with dead-letter escalation was sitting in the package the whole time. Wiring it is defence in depth behind those two bounds, not a replacement for them.",
-        "Compose it into the land loop where attemptOnce spawns today. The breach path must go through deadLetterAndBlock so the block carries evidence (Law 4) rather than a status write.",
-        "A watchdog breach must read as INFRASTRUCTURE (W13-27 retries free) unless it repeats, and the park comment must name the breach \u2014 W13-41 made session reasons visible, so use that path rather than inventing a second one.",
-        "RED FIXTURE: a spawn that never returns must be killed by the watchdog and reported, asserted against a fake clock rather than by waiting."
+        "DEVIATION, recorded because the ticket as filed is impossible: runWatchdogSession cannot wrap the built-in agent. It requires a  and builds its spawn from createWatchdogChildProcessSpawn; the built-in agent is createGatewaySpawnSession, an in-process async function with no command. Reuse the PURE checkWatchdogBreach inside the session turn loop instead, and give the external-CLI runner the real child-process watchdog it was written for.",
+        "COOPERATIVE, never a Promise.race. An in-process session cannot be cancelled from outside, so a race abandons a session that keeps taking turns, keeps spending against a ticket, and keeps writing into the worktree after the gate ran. Check the breach at a turn boundary and return. Also note deadLetterAndBlock RELEASES the ticket despite its name \u2014 calling it mid-session would fight the land loop that owns the claim, so the breach surfaces through the session result and the loop parks with evidence as it already does.",
+        "SCOPED TO THE BUILT-IN AGENT, which is the default and where every measured hang happened. The external-CLI runner needs the child-process watchdog it was actually written for \u2014 a real kill, not a cooperative check \u2014 and that touches apps/server/src/cli/run-build.ts, which W13-46 already claims. validate-plan refused the overlap (P8), correctly. Filed as W13-47 rather than worked around."
       ]
     },
     {
@@ -8569,6 +8568,33 @@
         "ESTABLISH WHICH IS INTENDED. FR-I2 promises dual-remote push; the wizard offers a forge credential step. If a user fills that in today, determine by EXECUTION whether anything uses it.",
         "If the forge path is meant to be reachable, wire it and say what selects between local-first and forge. If local-first is the only supported path today, the wizard step and FR-I2 must say so \u2014 an offered field that goes nowhere is the W13-35 defect again.",
         "RED FIXTURE: complete the wizard with a forge credential and assert, by execution, that landing either reaches the forge or refuses honestly. Not that a function exists."
+      ]
+    },
+    {
+      "id": "W13-47",
+      "title": "the external-CLI agent runner has no watchdog \u2014 and it is the path with no bounds at all",
+      "phase": 13,
+      "module": "cli",
+      "lane": "orchestrator",
+      "points": 3,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/cli/run-build-spawn.ts",
+        "apps/server/src/cli/run-build-policy.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "depends_on": [
+        "W13-44"
+      ],
+      "stories": [],
+      "notes": "Split out of W13-44 because both wanted run-build.ts and W13-46 already claims it \u2014 validate-plan P8 refused the overlap.",
+      "acceptance": [
+        "W13-42 (queue wait), W13-43 (turn output) and W13-44 (session wall-clock) all bound the BUILT-IN agent. The external-CLI runner has none of them: run-build.ts hands it createChildProcessSpawn, which waits on a child process for as long as that process runs.",
+        "createWatchdogChildProcessSpawn is a drop-in SpawnSession with the same shape plus limits and onBreach, and it kills the process TREE with a force-kill grace. That is the right guard here precisely because a child CAN be killed, where an in-process session cannot.",
+        "Swap the spawn and make the limits configurable the way maxToolIterations and maxTurnTokens are \u2014 same settings-key mechanism, a CEILING, refuse rather than clamp.",
+        "Derive the default from measured sessions, not a round number: attempts on this board ran ~3 minutes, so a session is single-digit minutes and the ladder multiplies that by attempt count.",
+        "RED FIXTURE: an external command that never exits must be killed and reported, asserted against a fake clock rather than by waiting."
       ]
     }
   ]
