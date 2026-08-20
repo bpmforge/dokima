@@ -70,7 +70,7 @@ test('bell nav toggles the notification center and back to Fleet', async ({ page
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
 
-  await page.getByRole('button', { name: /Notifications,/ }).click();
+  await page.getByRole('button', { name: /Morning queue/ }).click();
   await expect(page.getByTestId('notifications-view')).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Morning queue' })).toBeVisible();
 

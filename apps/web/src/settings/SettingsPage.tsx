@@ -109,7 +109,10 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
           <p className="empty-state__lead">
             Settings belong to a project — which models it uses, which providers
             it can reach, and what it is allowed to spend. Pick a project and
-            they will be here.
+            they will be here. The providers and every-project model defaults
+            you registered in the wizard already apply to any project you
+            create — a new project starts from them, so there is nothing to
+            set up again.
           </p>
           <div className="empty-state__actions">
             <button type="button" className="btn-primary" onClick={onClose}>

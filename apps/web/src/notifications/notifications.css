@@ -9,6 +9,12 @@
   line-height: 1;
 }
 
+/* W13-62: the queue's name travels with its bell — an icon-only glyph was
+   the signature screen's only entry point. */
+.app-shell__bell-label {
+  font-size: var(--sw-text-sm);
+}
+
 .app-shell__decide-badge {
   position: absolute;
   top: calc(-1 * var(--sw-space-1));

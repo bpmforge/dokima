@@ -144,3 +144,11 @@ describe('the header stays reachable (W13-01)', () => {
     },
   );
 });
+
+describe('the morning queue has a named entry point (W13-62)', () => {
+  it('RED FIXTURE: the bell carries the visible words "Morning queue", and its accessible name starts with them (WCAG 2.5.3)', () => {
+    renderHeader();
+    const bell = screen.getByRole('button', { name: /^Morning queue/ });
+    expect(bell.textContent).toContain('Morning queue');
+  });
+});
