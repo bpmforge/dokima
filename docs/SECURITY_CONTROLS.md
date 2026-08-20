@@ -123,6 +123,14 @@ ticket. IDs are stable — new controls append, never renumber.
   nothing consults the dial at all. `--breakpoint` is a different, wired
   control and is not a substitute.
 
+  **Partly addressed 2026-08-19 (W13-26):** the enforcement is still absent, but
+  the product no longer claims otherwise. The dial's `Auto` option read
+  "documented defaults taken and ledgered" and is now labelled as not in
+  effect, and disabled unless a project already selected it. The wiring is
+  W13-32, and its first task is deciding which documented defaults are
+  acceptable unattended — turning them on is what changes behaviour, not the
+  reading of the setting.
+
 - **SC-10 NEVER-AUTO single enforcement point** (T-4, T-11, T-14). The immutable list
   (destructive ops, main merges/releases/deploys, auth/crypto changes, new stack
   additions, scope-boundary breaks, interviews) is compiled into
