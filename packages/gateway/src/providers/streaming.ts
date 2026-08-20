@@ -79,7 +79,24 @@ export async function* runQueuedStream<T>(
     await finished;
   });
 
-  await waitForSlot(acquired, acquireTimeoutMs, providerId, queue);
+  try {
+    await waitForSlot(acquired, acquireTimeoutMs, providerId, queue);
+  } catch (err) {
+    // ALWAYS let the queued task finish, even though we never got the slot.
+    // `queue.run(...)` above already pushed a waiter; if that waiter later
+    // acquires and finds `finished` unresolved, it holds the slot forever and
+    // `RequestQueue.run`'s finally never releases it. The bound added here to
+    // stop one wedge would then cause the next one: holder releases, the
+    // orphaned waiter takes the slot, and the queue is dead. Caught in review
+    // and pinned by "a timed-out waiter must not wedge the queue".
+    signalDone();
+    // NOT awaited: when the holder never releases, `queued` never settles, and
+    // awaiting it here would hang the very call we are trying to fail fast.
+    // Resolving `finished` is enough — whenever that waiter does acquire, its
+    // task returns immediately and `RequestQueue.run`'s finally releases.
+    void queued.catch(() => undefined);
+    throw err;
+  }
   try {
     yield* source();
   } finally {

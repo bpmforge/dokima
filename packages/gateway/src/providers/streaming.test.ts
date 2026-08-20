@@ -175,3 +175,56 @@ describe('waiting for a queue slot is bounded (W13-42)', () => {
     expect(collected).toEqual(['queued behind someone else']);
   });
 });
+
+/**
+ * The bound added in W13-42 can cause the wedge it exists to prevent. Kept as
+ * its own test because the three above cannot see it: the timeout cases use a
+ * holder that never releases, and the success case never times out. Only a
+ * holder that times someone out and THEN releases exposes it.
+ */
+describe('the queue bound must not wedge the queue it protects (W13-42)', () => {
+  it('a timed-out waiter leaves the slot usable once the holder releases', async () => {
+    const queue = new RequestQueue(1);
+    let release!: () => void;
+    void queue.run(() => new Promise<void>((resolve) => (release = resolve)));
+    await Promise.resolve();
+
+    await expect(
+      (async () => {
+        for await (const chunk of runQueuedStream(
+          queue,
+          function* () {
+            yield 'timed out';
+          } as unknown as () => AsyncGenerator<string>,
+          50,
+          'p',
+        )) {
+          expect(chunk).toBeUndefined();
+        }
+      })(),
+    ).rejects.toThrow(/timed out/);
+
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const got: string[] = [];
+    await Promise.race([
+      (async () => {
+        for await (const chunk of runQueuedStream(
+          queue,
+          function* () {
+            yield 'ran';
+          } as unknown as () => AsyncGenerator<string>,
+          2_000,
+          'p',
+        )) {
+          got.push(chunk);
+        }
+      })(),
+      new Promise((_resolve, reject) =>
+        setTimeout(() => reject(new Error('the queue is wedged')), 1_500),
+      ),
+    ]);
+    expect(got).toEqual(['ran']);
+  });
+});
