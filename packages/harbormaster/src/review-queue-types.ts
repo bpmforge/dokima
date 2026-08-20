@@ -1,11 +1,18 @@
 /**
- * Shared types for the morning-review queue + risk classifier
- * (BLUEPRINT §3.7/§5.2, FR-H4, FR-N2). Split per CODE_BOOK_PROTOCOL.md so
- * `review-queue-classifier.ts` and `review-queue.ts` share one vocabulary
- * without importing each other in a cycle.
+ * Shared types for the risk classifier and the autonomy dial (BLUEPRINT
+ * §3.7, FR-N2).
+ *
+ * W13-45 removed the card types that lived here — `CardKind`, `DiffStat`,
+ * `ReviewCard` and `CARD_KINDS` — along with `review-queue.ts`, the second
+ * and unreachable implementation of the morning queue. The one users see is
+ * built by apps/server's notification routes, and its `LEVERAGE_BY_KIND`
+ * covers nine kinds against this copy's four. The copies had ALREADY
+ * diverged: the shipped taxonomy calls the top-ranked kind `pr_ready` and
+ * this one called it `merge`, at the same rank of 40.
+ *
+ * What remains is what the autonomy dial genuinely imports: the risk classes
+ * and the action descriptor the rule-first classifier matches on.
  */
-
-import type { ReceiptRecord } from '@dokima/events';
 
 /**
  * The five risk classes an approval card can carry (DATABASE.md §4
@@ -53,29 +60,4 @@ export interface ActionDescriptor {
   readonly spend?: {
     readonly fraction: number;
   };
-}
-
-/** A card's position on the queue (BLUEPRINT §5.2: merges → approvals → clarifications → digests). */
-export const CARD_KINDS = ['merge', 'approval', 'clarification', 'digest'] as const;
-
-export type CardKind = (typeof CARD_KINDS)[number];
-
-/** Derived from the ticket's own verified changed-file list — never self-reported (SC-02). */
-export interface DiffStat {
-  readonly filesChanged: number;
-  readonly files: readonly string[];
-}
-
-/** One card on the morning-review queue (BLUEPRINT §5.2 AC-2: summary, diff-stat, receipts). */
-export interface ReviewCard {
-  readonly id: string;
-  readonly kind: CardKind;
-  readonly riskClass: RiskClass | null;
-  readonly title: string;
-  readonly summary: string;
-  readonly diffStat: DiffStat;
-  readonly receipts: readonly ReceiptRecord[];
-  readonly ticketId: string | null;
-  readonly leverage: number;
-  readonly createdAt: string;
 }

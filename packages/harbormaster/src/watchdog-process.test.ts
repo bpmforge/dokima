@@ -164,3 +164,63 @@ describe('createWatchdogChildProcessSpawn', () => {
     expect(elapsed).toBeLessThan(2_000);
   });
 });
+
+/**
+ * W13-45. Ported from `packages/loop/src/session.test.ts` when
+ * `createChildProcessSpawn` was removed as superseded.
+ *
+ * These are the only tests of a real security control — an untrusted agent
+ * session must not inherit the parent's environment (SC-03/SC-07) — and
+ * W13-47 had just moved every external agent onto THIS spawn, which had no
+ * env coverage whatsoever. Deleting the old home without moving them would
+ * have left the control asserted nowhere while the code that needs it was
+ * newly in charge.
+ */
+describe('the watched spawn does not leak the parent env (SC-03/SC-07)', () => {
+  const NEVER_BREACHES = { maxSessionSeconds: 600, heartbeatStallSeconds: 600 };
+
+  it('defaults to PATH only', async () => {
+    process.env.DOKIMA_TEST_PLANTED_SECRET = 'planted-value-must-not-leak';
+    try {
+      const spawn = createWatchdogChildProcessSpawn({
+        command: process.execPath,
+        args: ['-e'],
+        ...NEVER_BREACHES,
+        onBreach: () => undefined,
+      });
+      const result = await spawn({
+        prompt: 'console.log(JSON.stringify(process.env));',
+        cwd: process.cwd(),
+      });
+
+      const childEnv = JSON.parse(result.stdout) as Record<string, string | undefined>;
+      expect(childEnv.DOKIMA_TEST_PLANTED_SECRET).toBeUndefined();
+      expect(childEnv.PATH).toBe(process.env.PATH);
+      // Only the OS/runtime may inject entries (e.g. macOS's
+      // __CF_USER_TEXT_ENCODING); nothing else from the parent may pass
+      // through implicitly.
+      const unexpected = Object.keys(childEnv).filter(
+        (key) => key !== 'PATH' && !key.startsWith('__CF_'),
+      );
+      expect(unexpected).toEqual([]);
+    } finally {
+      delete process.env.DOKIMA_TEST_PLANTED_SECRET;
+    }
+  }, 20_000);
+
+  it('honors an explicitly passed env instead of the minimal default', async () => {
+    const spawn = createWatchdogChildProcessSpawn({
+      command: process.execPath,
+      args: ['-e'],
+      env: { PATH: process.env.PATH, DOKIMA_TEST_EXPLICIT: 'yes' },
+      ...NEVER_BREACHES,
+      onBreach: () => undefined,
+    });
+    const result = await spawn({
+      prompt: 'console.log(process.env.DOKIMA_TEST_EXPLICIT ?? "missing");',
+      cwd: process.cwd(),
+    });
+
+    expect(result.stdout).toContain('yes');
+  }, 20_000);
+});
