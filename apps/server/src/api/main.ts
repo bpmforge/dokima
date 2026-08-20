@@ -12,14 +12,11 @@
  * boots the real server via `tsx src/api/main.ts` instead of `src/index.ts`.
  */
 
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { resolveAsset } from '@dokima/shared';
 import { openEventLog } from '@dokima/events';
 import {
   buildApiServer,
   ensureAuthToken,
-  listenLocalhost,
   type ApiServer,
 } from './index.js';
 
@@ -75,22 +72,23 @@ function defaultWebDistDir(): string {
   return resolveAsset('apps', 'web', 'dist');
 }
 
-async function main(): Promise<void> {
-  const port = Number(process.env.DOKIMA_PORT ?? DEFAULT_PORT);
-  const dbPath =
-    process.env.DOKIMA_STATE_DB ??
-    path.join(process.cwd(), '.dokima', 'state.db');
-  const { app } = await buildServer({ port, dbPath });
-  await listenLocalhost(app, port);
-  app.log.info(`dokima server listening on http://127.0.0.1:${port}`);
-}
+/*
+ * THE SELF-BOOT THAT USED TO LIVE HERE IS GONE (W13-33), and this note is the
+ * guard against it coming back.
+ *
+ * It was the standard run-if-main block: `pathToFileURL(process.argv[1]).href
+ * === import.meta.url`, then boot a server. Correct in source, where those two
+ * are different files. Catastrophic once bundled: esbuild puts every module in
+ * ONE file, so `import.meta.url` becomes `dist/main.js` — which IS
+ * `process.argv[1]` — and the guard fired on EVERY invocation of the packaged
+ * CLI. `dokima --help` printed usage and then bound a port and opened a
+ * WRITABLE `./.dokima/state.db` in the user's working directory, forever.
+ *
+ * That silently defeated W10-44, whose whole subject was `--help` not booting
+ * the core: it fixed the source, every test in this repo runs the source, and
+ * the artifact a customer installs was never covered.
+ *
+ * A module that is IMPORTED must not also be an ENTRY POINT. The dev boot now
+ * lives in `dev-entry.ts`, which nothing imports.
+ */
 
-const isMainModule =
-  process.argv[1] !== undefined &&
-  pathToFileURL(process.argv[1]).href === import.meta.url;
-if (isMainModule) {
-  main().catch((err: unknown) => {
-    console.error(err);
-    process.exitCode = 1;
-  });
-}

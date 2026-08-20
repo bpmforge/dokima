@@ -25,7 +25,9 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'pnpm --filter @dokima/web run build && pnpm --filter @dokima/server exec tsx src/api/main.ts',
+      // W13-33: `dev-entry.ts`, not `main.ts`. The self-boot moved there because a
+      // run-if-main guard inside an imported module fires on the whole bundle.
+      'pnpm --filter @dokima/web run build && pnpm --filter @dokima/server exec tsx src/api/dev-entry.ts',
     env: {
       DOKIMA_HOME: HOME,
       // W12-43: the served core can now MINT a signing key. Without these it
