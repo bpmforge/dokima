@@ -8185,11 +8185,22 @@
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/settings/FirstRunWizard.tsx",
-        "apps/web/src/settings/FirstRunWizard.test.tsx"
+        "apps/web/src/settings/WizardModelsStep.tsx",
+        "apps/web/src/settings/WizardModelsStep.test.tsx",
+        "apps/web/src/settings/WizardPresetStep.tsx",
+        "apps/web/src/settings/WizardProviderStep.tsx",
+        "apps/web/src/settings/api.ts",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx",
+        "apps/web/e2e/fixtures/wizard-models.ts",
+        "apps/web/e2e/fixtures/fake-model-gateway.ts",
+        "apps/web/e2e/guided-sample.spec.ts",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/server/src/api/server/matrix-routes.ts",
+        "apps/server/src/api/server/matrix-routes.test.ts"
       ],
       "depends_on": [
         "W13-36"
