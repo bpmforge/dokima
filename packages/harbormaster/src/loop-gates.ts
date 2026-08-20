@@ -46,6 +46,7 @@ import {
   filesChangedInRange,
   reRunVerify,
   resolveForkPoint,
+  verifyFailureTail,
 } from './loop-gates-verify.js';
 import {
   checkMemoryWritten,
@@ -140,6 +141,17 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
       `verify re-run failed: \`${verifyCommand}\` exited ${verify.exitCode} (manifest claimed ` +
         `\`${manifest.verify.command}\` exit ${manifest.verify.exit} — never trusted)`,
     );
+    /**
+     * W13-30: and WHAT it said. The output was captured here and discarded at
+     * this line, so once W13-29 began feeding gate reasons forward the maker
+     * was told THAT it failed and never HOW — the position a person is in when
+     * an agent keeps reporting done against a symptom that has not changed.
+     *
+     * Bounded and stderr-first: a failing command puts its diagnosis on stderr,
+     * and a whole test run would crowd the prompt it is meant to inform.
+     */
+    const output = verifyFailureTail(verify);
+    if (output) reasons.push(output);
   }
 
   let base = '';
