@@ -248,6 +248,45 @@ test.describe('a paused run has a path through it (W10-72)', () => {
     expect(gateway?.callCounts[MODEL]).toBe(3);
   });
 
+  /**
+   * W13-38 RED FIXTURE — the walkthrough this came from.
+   *
+   * The previous test answers the slates inline and never leaves the panel.
+   * That is not what a first-run user did: the guided sample told them to
+   * answer in Decisions, they navigated, and `awaiting.run_id` went with the
+   * unmounted panel. Board empty, Describe a blank form, a resumable run
+   * sitting on disk with no way to reach it.
+   */
+  test('answer the slates on the standalone board, navigate away, come back — the run is still there', async ({
+    page,
+  }) => {
+    await runUntilPaused(page);
+
+    // Leave the panel entirely, exactly as the guided sample instructed.
+    await page.getByRole('button', { name: 'Decisions' }).click();
+    await expect(page.getByTestId('decisions-board')).toBeVisible();
+    await answerSlate(page, 'Cloud sync');
+    await answerSlate(page, 'Mobile only');
+
+    // Somewhere else again, so nothing is holding the run in memory.
+    await page.getByRole('button', { name: 'Board' }).click();
+
+    // Back to Describe. Before this ticket: the blank interview form.
+    await page.getByRole('button', { name: 'Describe' }).click();
+    await expect(page.getByTestId('interview-awaiting-decisions')).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByTestId('interview-continue').click();
+
+    const board = page.locator('[data-testid="pane-board"]');
+    await expect(board.getByTestId('card-PLAN-D-1')).toBeVisible({ timeout: 20_000 });
+
+    // Still three model calls: recovery reads a record, it does not re-run a
+    // phase that was already paid for.
+    expect(gateway?.callCounts[MODEL]).toBe(3);
+  });
+
   test('the Decisions board is reachable on its own, not only from a paused run', async ({
     page,
   }) => {

@@ -16,6 +16,7 @@ import { readInjectedToken } from '../fleet/api.js';
 import {
   isRunAccepted,
   type GateReceipt,
+  type PipelineAwaitingDecisions,
   type PipelineRunOutcome,
   type PipelineRunPhase,
   type PipelineRunRequest,
@@ -160,6 +161,41 @@ export async function resumePipeline(
     },
     opts,
   )) as PipelineRunResult;
+}
+
+/**
+ * The run waiting on this founder, if there is one (W13-38).
+ *
+ * `resumePipeline` needs a run id, and until this existed the only source of
+ * one was the POST that started the run — held in component state, discarded
+ * the moment the panel unmounted. A run that paused on a founder decision was
+ * durable on disk and unreachable from the product: measured as a guided
+ * sample that paused, had both decisions answered on the Decisions board, and
+ * then offered no way to continue.
+ *
+ * Newest-first is the SERVER's ordering, not a sort applied here, so "the run
+ * waiting on you" is the same run whichever surface asks.
+ *
+ * Never throws: a project with no runs, an older core without this route, or a
+ * transport failure all mean "nothing to resume". Turning that into an error
+ * banner on the describe screen would make a first-run user think something
+ * broke when nothing did.
+ */
+export async function fetchAwaitingRun(
+  projectId: string,
+  opts: OnboardingApiOptions = {},
+): Promise<PipelineAwaitingDecisions | null> {
+  try {
+    const body = (await request(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/runs`,
+      { method: 'GET' },
+      opts,
+    )) as { runs?: readonly PipelineRunStatus[] };
+    const paused = (body.runs ?? []).find((r) => r.status === 'awaiting-decisions');
+    return paused?.awaiting ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchGateReceipts(

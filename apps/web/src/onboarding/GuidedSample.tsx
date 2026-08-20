@@ -83,8 +83,14 @@ export function GuidedSample({ projectId, onContinue }: GuidedSampleProps) {
       // Reported through the existing degraded path — the honest one — rather
       // than teaching this walkthrough a decision surface it has no room for.
       if (isAwaitingDecisions(runResult)) {
+        // W13-38: this used to say "answer it in Decisions to continue", which
+        // sent a first-run user to the one place that could not continue the
+        // run — the id lived in the interview panel's state and navigating
+        // away discarded it. Describe now recovers a waiting run on open, so
+        // the sentence names the screen that can actually finish the job.
         setDegradeMessage(
-          'The sample paused on a founder decision — answer it in Decisions to continue.',
+          'The sample paused on a founder decision — that is the gate working, not a ' +
+            'failure. Open Describe to answer it and continue the run.',
         );
         setStage('degraded');
         return;

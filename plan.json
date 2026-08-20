@@ -8312,6 +8312,39 @@
       "notes": [
         "Filed after the fact: built in response to the stop hook that surfaced the live calls, then back-filled here so the board matches reality. Merged as b949b10."
       ]
+    },
+    {
+      "id": "W13-38",
+      "title": "a paused creation run must be findable again \u2014 the UI knows no route back to it",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/pipeline/pipeline-routes/paused-run.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/index.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/index.test.ts",
+        "apps/web/src/onboarding/api.ts",
+        "apps/web/src/onboarding/InterviewPanel.tsx",
+        "apps/web/src/onboarding/GuidedSample.tsx",
+        "apps/web/e2e/decisions-resume.spec.ts",
+        "apps/web/src/onboarding/AwaitingDecisions.tsx"
+      ],
+      "depends_on": [
+        "W13-37"
+      ],
+      "stories": [],
+      "acceptance": [
+        "MEASURED, not theorised. Clean DOKIMA_HOME, live LM Studio, guided sample: the run paused on two founder decisions, both were answered on the standalone Decisions board, and the product then had no way to continue. Board: empty. Describe: a blank interview form. The paused run was on disk the whole time (.dokima/runs/<id>.json, status awaiting-decisions) and POSTing its resume route by hand built the whole board \u2014 so resume WORKS and honours decisions answered anywhere. The only missing piece is that nothing can discover the run id.",
+        "InterviewPanel.tsx says so in its own comment: \"there is no route back to a paused run\". awaiting.run_id lives in component state, so navigating away discards it. GuidedSample tells a first-run user to \"answer it in Decisions to continue\" \u2014 which is exactly the navigation that strands them. Two surfaces disagreeing, and the one a new user reads is the wrong one.",
+        "ADD THE DISCOVERY PRIMITIVE: GET /api/v1/projects/:id/pipeline/runs listing the project run records newest-first (wireRunRecord shape, startedAt ordering). loadPausedRun already needs a runId; nothing lists. Pick deterministically when several are awaiting \u2014 silently picking the wrong one is worse than the current honest dead end.",
+        "NO AUTO-RESUME. Do not watch for \"last slate decided\" and resume in the background: that is a durable state change with no human in the loop (Law 4). Continue stays an explicit button.",
+        "Fix the GuidedSample sentence too. Fixing the plumbing and leaving the instruction that walks people off it fixes nothing a user would notice.",
+        "RED FIXTURE: the walkthrough this came from, end to end \u2014 run the pipeline, pause, answer the slates on the standalone Decisions board, navigate away, come back, Continue, board built. Not a unit test on the new route."
+      ],
+      "notes": "Resume is proven to work: POSTing /pipeline/<runId>/resume against the live paused run built the board, with decisions that had been answered on the standalone board. This ticket is discovery + navigation only \u2014 do not touch the resume contract."
     }
   ]
 }

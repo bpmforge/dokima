@@ -74,7 +74,12 @@ import {
 import { registerAdvanceRoute } from './advance.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
-import { isValidRunId, loadRunRecord, saveRunRecord } from './paused-run.js';
+import {
+  isValidRunId,
+  listRunRecords,
+  loadRunRecord,
+  saveRunRecord,
+} from './paused-run.js';
 import { executeRun, wireRunRecord } from './run-job.js';
 import { registerResumeRoute } from './resume.js';
 import { parseRequestBody, type RunPipelineRequestBody } from './request-body.js';
@@ -246,6 +251,33 @@ export function registerPipelineRoutes(
    * widening write_scope from inside the ticket (W8-06: a maker cannot grant
    * itself permission and then bless the grant with a validator it controls).
    */
+  /**
+   * Every run this project has, newest first (W13-38).
+   *
+   * This is the route back to a paused run. Before it, `awaiting.run_id` was
+   * held only in the interview panel's own state, so answering the founder
+   * decisions anywhere else — which is exactly what the guided sample told a
+   * first-run user to do — discarded the id and stranded a run that was
+   * sitting on disk, complete and resumable, the whole time.
+   *
+   * The client picks; this route only guarantees the order is deterministic.
+   */
+  app.get(
+    '/api/v1/projects/:id/pipeline/runs',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id: projectId } = request.params as { id: string };
+      const record = await resolveProjectRecord(registryPath, projectId);
+      if (!record) {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(notFound(request, `no project registered with id ${projectId}`));
+      }
+      const runs = await listRunRecords(record.path);
+      return reply.code(200).send({ runs: runs.map(wireRunRecord) });
+    },
+  );
+
   app.get(
     '/api/v1/projects/:id/pipeline/runs/:runId',
     async (request: FastifyRequest, reply: FastifyReply) => {

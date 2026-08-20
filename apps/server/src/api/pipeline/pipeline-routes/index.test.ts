@@ -188,6 +188,51 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     };
   }
 
+  /**
+   * W13-38. The route back to a run. `loadRunRecord` needs an id and nothing
+   * produced one for a caller who did not already have it — which is how a
+   * paused run ended up durable on disk and unreachable from the product.
+   */
+  it('lists the project runs, newest first, and 404s an unknown project', async () => {
+    const { app, projectId } = await boot([
+      JSON.stringify(VALID_BLUEPRINT_INPUT),
+      JSON.stringify(VALID_TECHNICAL_SLATE_INPUT),
+      JSON.stringify(VALID_TICKET_DRAFTS),
+    ]);
+
+    const empty = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/pipeline/runs`,
+    });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json().runs).toEqual([]);
+
+    const run = await postAndAwaitRun(app, projectId, requestBody());
+    expect(run.statusCode).toBe(201);
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/pipeline/runs`,
+    });
+    expect(listed.statusCode).toBe(200);
+    const runs = listed.json().runs as { run_id: string; status: string }[];
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.status).toBe('completed');
+    // Same wire shape the single-run status route already speaks, so a client
+    // that can read one can read the list without a second parser.
+    const single = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/pipeline/runs/${runs[0]!.run_id}`,
+    });
+    expect(single.json()).toEqual(runs[0]);
+
+    const missing = await app.inject({
+      method: 'GET',
+      url: '/api/v1/projects/no-such-project/pipeline/runs',
+    });
+    expect(missing.statusCode).toBe(404);
+  });
+
   it('happy path: fake-model E2E produces a verifiable hash-chained event trail and a board ticket (AC2c)', async () => {
     const { app, projectId, projectDir } = await boot([
       JSON.stringify(VALID_BLUEPRINT_INPUT),
