@@ -8491,6 +8491,85 @@
         "The failure must read as INFRASTRUCTURE (W13-27 retries it free), and the park comment must name it \u2014 W13-41 made that visible, so the operator should see the ceiling and its number rather than a bare no-manifest line.",
         "RED FIXTURE: a fake provider that streams deltas forever must end the turn and the run, not hang the suite. Assert against a token count, never by waiting."
       ]
+    },
+    {
+      "id": "W13-44",
+      "title": "the watchdog is built, tested, and has never run \u2014 nothing wires it into the claim or land loop",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-claim.ts",
+        "packages/harbormaster/src/watchdog-session.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "depends_on": [
+        "W13-43"
+      ],
+      "stories": [],
+      "notes": "Found by the no-production-caller sweep, ranked first because this session was spent on sessions that hang while the guard for exactly that sat unused.",
+      "acceptance": [
+        "runWatchdogSession is defined and tested in watchdog-session.ts and has ZERO non-test references in the repo. Its single mention outside its own test is a COMMENT in loop-claim.ts. It is not present in apps/server/dist/main.js, so it has never executed in the shipped product.",
+        "Its own module header says so: \"Not yet wired into those loops \u2014 out of this ticket write-scope \u2014 this is the drop-in unit a future ticket composes into the claim/land loops.\" That future ticket was never filed. This is it.",
+        "WHY IT MATTERS NOW: W13-42 and W13-43 both exist because a session hung and nothing stopped it. A watchdog with dead-letter escalation was sitting in the package the whole time. Wiring it is defence in depth behind those two bounds, not a replacement for them.",
+        "Compose it into the land loop where attemptOnce spawns today. The breach path must go through deadLetterAndBlock so the block carries evidence (Law 4) rather than a status write.",
+        "A watchdog breach must read as INFRASTRUCTURE (W13-27 retries free) unless it repeats, and the park comment must name the breach \u2014 W13-41 made session reasons visible, so use that path rather than inventing a second one.",
+        "RED FIXTURE: a spawn that never returns must be killed by the watchdog and reported, asserted against a fake clock rather than by waiting."
+      ]
+    },
+    {
+      "id": "W13-45",
+      "title": "review-queue ships a second, unused implementation of the morning queue",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "quality",
+      "points": 3,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/review-queue.ts",
+        "packages/harbormaster/src/review-queue.test.ts",
+        "packages/harbormaster/src/index.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Not a missing feature \u2014 a duplicate one. The shipped morning queue works; this is the copy that will go stale.",
+      "acceptance": [
+        "buildQueueProjection and buildReviewCard have zero non-test references and are absent from the shipped bundle. The morning queue a user actually sees is built by apps/server notifications-routes, which does not call either.",
+        "So the product has TWO implementations of one surface, one of them unreachable and unmaintained. This repo has already been bitten by a second copy drifting from the first (W10-55 provider kinds, W12-19 wizard kind list).",
+        "DECIDE, and record the decision: either the routes adopt these (one implementation, tested) or these are deleted (one implementation, shipped). Do not leave both.",
+        "If adopting: the route behaviour is the contract \u2014 its tests must still pass unchanged, since that is what users have.",
+        "If deleting: the export ratchet baseline drops by two, which is the correct direction and must not be re-raised to accommodate anything else."
+      ]
+    },
+    {
+      "id": "W13-46",
+      "title": "the real forge adapters are unreachable \u2014 landing pushes through a local-first mirror instead",
+      "phase": 13,
+      "module": "forge",
+      "lane": "integrations",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/land-push.ts",
+        "apps/server/src/cli/run-build.ts",
+        "docs/STATUS.md"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Verify before fixing: this may be a deliberate local-first default rather than a gap. Either way the docs and the code should agree.",
+      "acceptance": [
+        "createGiteaForgeAdapter, createGitHubForgeAdapter, flushMirrorQueue and checkMirrorPrerequisites all have zero non-test references. run-build.ts passes localFirstPushToRemotes, and land-push.ts says it \"structurally mirrors @dokima/forge's real pushToRemotes\" \u2014 two implementations of one idea, only one reachable.",
+        "ESTABLISH WHICH IS INTENDED. FR-I2 promises dual-remote push; the wizard offers a forge credential step. If a user fills that in today, determine by EXECUTION whether anything uses it.",
+        "If the forge path is meant to be reachable, wire it and say what selects between local-first and forge. If local-first is the only supported path today, the wizard step and FR-I2 must say so \u2014 an offered field that goes nowhere is the W13-35 defect again.",
+        "RED FIXTURE: complete the wizard with a forge credential and assert, by execution, that landing either reaches the forge or refuses honestly. Not that a function exists."
+      ]
     }
   ]
 }
