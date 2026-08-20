@@ -65,7 +65,30 @@ export async function pushLandedBranch(
 ): Promise<readonly LandPushRemoteResult[]> {
   const targets = remotes ?? (await configuredRemotes(worktreePath));
   if (targets.length === 0) return [];
-  return pushToRemotes({ cwd: worktreePath, remotes: targets, ref: branch });
+  try {
+    return await pushToRemotes({ cwd: worktreePath, remotes: targets, ref: branch });
+  } catch (err) {
+    /**
+     * W13-46: a push implementation that THROWS is turned into a recorded
+     * failure, because by the time we get here the land has already happened.
+     *
+     * The promise one line up — "a failed remote is recorded, not fatal" — was
+     * only true for an implementation that resolves with per-remote results.
+     * `apps/server` injects `localFirstPushToRemotes`, which throws on purpose
+     * ("refusing loudly is correct: silently returning success would report a
+     * push that never happened") — and that throw escaped the land loop
+     * entirely. Measured: a fixture repo with one remote crashed the run for a
+     * ticket that had reached `in_review` with its manifest and receipt
+     * already written. Every existing test missed it because fixture repos
+     * have zero remotes, so this call is skipped outright.
+     *
+     * Refusing loudly stays right. Losing a completed land because the
+     * announcement failed does not: durable state was written, and reporting
+     * the run as a crash would be reporting a lie about it.
+     */
+    const detail = err instanceof Error ? err.message : String(err);
+    return targets.map((remote) => ({ remote, ok: false, detail }));
+  }
 }
 
 /**
