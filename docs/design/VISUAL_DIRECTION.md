@@ -60,7 +60,15 @@ regardless of subject. Two deliberate departures:
   "good" as a second job.
 
 No webfont (a TECH_STACK decision and a bundle cost, not one to take inside a
-token ticket). No motion. No gradient.
+token ticket). No gradient.
+
+**Motion — amended by the founder, 2026-08-20 (was "No motion").** Motion
+exists and is allowed exactly one job: marking a **state change** — a card
+becoming blocked, a reading crossing into attention. 150–200ms, ease-out,
+never ambient, never on load, and `prefers-reduced-motion` is always
+respected. Implemented as transitions on the properties the state classes
+change, so nothing else CAN animate. Anything beyond this is a new founder
+decision, not an extension.
 
 ## The palette, with measured ratios
 

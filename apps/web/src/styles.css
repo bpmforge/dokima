@@ -681,3 +681,22 @@ label:has(> input[type='radio']) {
 .surface--idle {
   color: var(--sw-fg-muted);
 }
+
+/* ---- Motion (W13-53, VISUAL_DIRECTION amendment 2026-08-20) ----
+   The founder amended "No motion": motion exists, and ONLY on state change —
+   a card becoming blocked, a reading crossing into attention. Nothing
+   ambient, nothing on load, 150–200ms, and none of it for anyone who asked
+   their OS for less. The transition lives on the properties the state
+   classes change, so the ONLY thing that can animate is a state change. */
+@media (prefers-reduced-motion: no-preference) {
+  .surface {
+    transition:
+      border-color 180ms ease-out,
+      box-shadow 180ms ease-out;
+  }
+
+  .readout__value,
+  .state {
+    transition: color 180ms ease-out;
+  }
+}

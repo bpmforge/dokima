@@ -74,6 +74,15 @@
  * uses (settings/roster/fleet), not the section-heading --sw-text-lg
  * `.project-card__header h2` uses one level down from its own page h1.
  */
+/* W13-53 (UX_AUDIT A-5): one composed column. The tabs sat top-left while
+   the queue card floated centered in blackness — nothing anchored them to
+   each other. The view now holds a single measured column that the tabs,
+   the project filter and the card all share. */
+.notifications-view {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
 .morning-queue,
 .notification-center {
   max-width: 40rem;

@@ -134,7 +134,10 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
           data-over-target={overTarget}
           data-testid="morning-queue-elapsed"
         >
-          {formatElapsed(elapsedMs)} elapsed (target 10:00)
+          {/* W13-53: the number gets its name — unlabeled, this read as an
+              inexplicable countdown (A-5). It is the ten-minute morning-
+              review budget the wizard's tomorrow card promises. */}
+          review budget {formatElapsed(elapsedMs)} of 10:00
         </span>
       </header>
 
