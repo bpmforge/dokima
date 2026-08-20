@@ -7,6 +7,7 @@
  */
 import path from 'node:path';
 import { SETTINGS_TABS } from './declared-states.mjs';
+import { collectEvidence, writeEvidence } from './evidence.mjs';
 
 /**
  * Screenshots the current page for declared state `id` — `dark/…` writes
@@ -27,6 +28,9 @@ export async function shoot(page, id, title, caption, requireTestId, ctx) {
   // Let poll-driven fetches and CSS transitions settle before capturing.
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(ctx.imgDir, relPath), fullPage: false });
+  // W13-54: the same state, serialized as TEXT — strings, controls,
+  // geometry — so a model without vision can judge what this frame shows.
+  await writeEvidence(ctx.imgDir, relPath, await collectEvidence(page));
   ctx.tracker.capture(id);
   ctx.steps.push({ id, file: relPath, title, caption });
   console.log(`  [${id}] ${title}`);

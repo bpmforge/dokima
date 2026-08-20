@@ -1,0 +1,195 @@
+{
+  "strings": [
+    "Dokima",
+    "Fleet",
+    "Roster",
+    "Settings",
+    "Dark",
+    "New project",
+    "Onboard existing repo",
+    "Import",
+    "Show archived",
+    "Describe what you want built. Dokima interviews you, writes the plan, and works the board with expert agents — on your machine, on your models.",
+    "Try the guided sample"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Fleet",
+      "disabled": false,
+      "rect": {
+        "x": 1042,
+        "y": 12,
+        "w": 64,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1110,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 0 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1195,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1241,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to light theme",
+      "disabled": false,
+      "rect": {
+        "x": 1339,
+        "y": 12,
+        "w": 85,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "New project",
+      "disabled": false,
+      "rect": {
+        "x": 532,
+        "y": 85,
+        "w": 133,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Onboard existing repo",
+      "disabled": false,
+      "rect": {
+        "x": 674,
+        "y": 85,
+        "w": 186,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Import",
+      "disabled": false,
+      "rect": {
+        "x": 868,
+        "y": 85,
+        "w": 74,
+        "h": 36
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 954,
+        "y": 97,
+        "w": 13,
+        "h": 13
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "New project",
+      "disabled": false,
+      "rect": {
+        "x": 368,
+        "y": 287,
+        "w": 114,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Onboard existing repo",
+      "disabled": false,
+      "rect": {
+        "x": 494,
+        "y": 287,
+        "w": 186,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Try the guided sample",
+      "disabled": false,
+      "rect": {
+        "x": 692,
+        "y": 287,
+        "w": 187,
+        "h": 36
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 2,
+    "app-shell__notifications-bell": 1,
+    "btn-primary": 1,
+    "btn-quiet": 3,
+    "btn-secondary": 3,
+    "empty-state": 1,
+    "empty-state__actions": 1,
+    "empty-state__lead": 1,
+    "fleet": 1,
+    "fleet__actions": 1,
+    "fleet__archived-toggle": 1,
+    "fleet__empty": 1,
+    "fleet__header": 1,
+    "icon": 2,
+    "theme-toggle": 1
+  }
+}

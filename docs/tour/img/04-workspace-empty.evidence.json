@@ -1,0 +1,292 @@
+{
+  "strings": [
+    "Dokima",
+    "Board",
+    "Describe",
+    "Plan",
+    "Decisions",
+    "Roster",
+    "Settings",
+    "Light",
+    "← Fleet",
+    "Chat",
+    "Focus",
+    "«",
+    "No agent activity yet.",
+    "Messages, questions, findings, and manifests appear here as agents work.",
+    "The board fills once you describe your product and it is decomposed into tickets.",
+    "Describe your product",
+    "Artifacts",
+    "Docs",
+    "Receipts",
+    "Deliverables appear as phases produce them."
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Board",
+      "disabled": false,
+      "rect": {
+        "x": 776,
+        "y": 12,
+        "w": 71,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Describe",
+      "disabled": false,
+      "rect": {
+        "x": 851,
+        "y": 12,
+        "w": 91,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Plan",
+      "disabled": false,
+      "rect": {
+        "x": 946,
+        "y": 12,
+        "w": 57,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Decisions",
+      "disabled": false,
+      "rect": {
+        "x": 1007,
+        "y": 12,
+        "w": 96,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1107,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 0 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "← Fleet",
+      "disabled": false,
+      "rect": {
+        "x": 12,
+        "y": 69,
+        "w": 80,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Focus Chat and collapse the other panes",
+      "disabled": false,
+      "rect": {
+        "x": 133,
+        "y": 113,
+        "w": 47,
+        "h": 21
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Collapse Chat",
+      "disabled": false,
+      "rect": {
+        "x": 270,
+        "y": 113,
+        "w": 17,
+        "h": 21
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Focus Board and collapse the other panes",
+      "disabled": false,
+      "rect": {
+        "x": 707,
+        "y": 113,
+        "w": 47,
+        "h": 21
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Collapse Board",
+      "disabled": false,
+      "rect": {
+        "x": 1104,
+        "y": 113,
+        "w": 17,
+        "h": 21
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Describe your product",
+      "disabled": false,
+      "rect": {
+        "x": 626,
+        "y": 233,
+        "w": 188,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Focus Artifacts and collapse the other panes",
+      "disabled": false,
+      "rect": {
+        "x": 1286,
+        "y": 113,
+        "w": 47,
+        "h": 21
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Collapse Artifacts",
+      "disabled": false,
+      "rect": {
+        "x": 1411,
+        "y": 113,
+        "w": 17,
+        "h": 21
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Docs",
+      "disabled": false,
+      "rect": {
+        "x": 1152,
+        "y": 151,
+        "w": 51,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Receipts",
+      "disabled": false,
+      "rect": {
+        "x": 1211,
+        "y": 151,
+        "w": 74,
+        "h": 27
+      }
+    },
+    {
+      "tag": "div",
+      "role": "status",
+      "name": "Deliverables appear as phases produce them.",
+      "disabled": false,
+      "rect": {
+        "x": 1152,
+        "y": 195,
+        "w": 276,
+        "h": 94
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__back-to-fleet": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 5,
+    "app-shell__notifications-bell": 1,
+    "artifact-empty-state": 1,
+    "artifact-viewer": 1,
+    "artifact-viewer__docs": 1,
+    "artifact-viewer__tab--active": 1,
+    "artifact-viewer__tabs": 1,
+    "board-empty": 1,
+    "btn-quiet": 7,
+    "chat": 1,
+    "chat__empty": 1,
+    "chat__empty-hint": 1,
+    "icon": 2,
+    "split-pane": 1,
+    "split-pane__divider": 2,
+    "split-pane__pane": 3,
+    "split-pane__pane-header": 3,
+    "theme-toggle": 1
+  }
+}

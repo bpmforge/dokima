@@ -13,15 +13,15 @@ node apps/web/scripts/capture-tour/index.mjs   # always rebuilds dist/ first
 
 ## Step 1 — Fleet home (first launch)
 
-The entry screen with no projects yet. The header offers the three ways in: **New Product**, **Onboard existing repo**, and **Import**.
+The entry screen with no projects yet. The header offers the three ways in: **New project**, **Onboard existing repo**, and **Import**.
 
 ![Fleet home (first launch)](img/01-fleet-empty.png)
 
-## Step 2 — New Product form
+## Step 2 — New project form
 
-Clicking **New Product** opens the creation form: a directory path and an optional display name.
+Clicking **New project** opens the creation form: a project name, with an escape to choose the folder yourself.
 
-![New Product form](img/02-new-product-form.png)
+![New project form](img/02-new-product-form.png)
 
 ## Step 3 — Project registered on the Fleet
 
@@ -89,11 +89,11 @@ Typing **E2E-1** jumps straight to the exact-id match; every result is keyboard-
 
 ![Command palette — query results](img/13-palette-query.png)
 
-## Step 14 — Settings — Model Matrix
+## Step 14 — Settings — Models
 
-The **Model Matrix** tab of the Settings surface (UX_SPEC §6/§6a).
+The **Models** tab of the Settings surface (UX_SPEC §6/§6a).
 
-![Settings — Model Matrix](img/14-settings-model-matrix.png)
+![Settings — Models](img/14-settings-model-matrix.png)
 
 ## Step 15 — Settings — Autonomy · Budget · Berths
 
@@ -185,11 +185,11 @@ The board pane genuinely empty in dark theme — the state that got mis-slugged 
 
 ![Project workspace, dark theme (unseeded)](img/dark/02-workspace-empty.png)
 
-### Settings — Model Matrix
+### Settings — Models
 
-The **Model Matrix** tab of the Settings surface (UX_SPEC §6/§6a).
+The **Models** tab of the Settings surface (UX_SPEC §6/§6a).
 
-![Settings — Model Matrix](img/dark/03-settings-model-matrix.png)
+![Settings — Models](img/dark/03-settings-model-matrix.png)
 
 ### Settings — Autonomy · Budget · Berths
 

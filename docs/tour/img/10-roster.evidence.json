@@ -1,0 +1,1306 @@
+{
+  "strings": [
+    "Dokima",
+    "Fleet",
+    "Roster",
+    "1",
+    "Settings",
+    "Light",
+    "Agent Roster",
+    "code-review",
+    "Anti-Slop Auditor",
+    "subagent",
+    "needs a model",
+    "AI slop detection specialist",
+    "No model will take this role yet — pick models in Settings → Models.",
+    "Code Health Synthesizer",
+    "Code health master synthesizer",
+    "Complexity Analyzer",
+    "Code complexity specialist",
+    "Dead Code Detector",
+    "Dead and unutilized code specialist",
+    "Duplication Detector",
+    "Duplication and DRY specialist",
+    "Error Handling Auditor",
+    "Error handling and silent failure specialist",
+    "Pattern Consistency Checker",
+    "Pattern and naming consistency specialist",
+    "Type Safety Checker",
+    "Type safety and invariant specialist",
+    "coordinators",
+    "Guide Scribe",
+    "End-user guide specialist",
+    "Guide",
+    "primary",
+    "Expert-system concierge",
+    "Sdlc Lead",
+    "Program manager and lead architect",
+    "Task Decomposer",
+    "Task decomposition specialist",
+    "game",
+    "Game Asset Pipeline",
+    "Game asset pipeline specialist",
+    "Game Audio Designer",
+    "Game audio specialist",
+    "Game Balance Designer",
+    "Game balance and economy specialist",
+    "Game Designer",
+    "Game design specialist",
+    "Game Producer",
+    "Game production specialist",
+    "Gameplay Engineer",
+    "Gameplay engineering specialist",
+    "Level Designer",
+    "Level design specialist",
+    "Narrative Designer",
+    "Narrative design specialist",
+    "Playtest Evaluator",
+    "Playtest specialist",
+    "onboard",
+    "Component Mapper",
+    "all",
+    "Onboard specialist",
+    "Entry Point Tracer",
+    "Health Coordinator",
+    "Landscape Mapper",
+    "other",
+    "A11y Compliance",
+    "Accessibility & compliance auditor",
+    "Analytics Architect",
+    "Analytics architect",
+    "App Cartographer",
+    "Challenger",
+    "Veracity challenger",
+    "Changelog Writer",
+    "Changelog and release notes writer",
+    "Code Reviewer",
+    "Code health audit coordinator",
+    "Coding Agent",
+    "Senior implementation engineer",
+    "Container Ops",
+    "Container operations expert",
+    "Data Steward",
+    "Data steward",
+    "Db Architect",
+    "Senior database architect",
+    "Design Iterator",
+    "Visual design iteration specialist",
+    "Design System Lead",
+    "Design system specialist",
+    "Documentation Gap Finder",
+    "Documentation gap finder",
+    "End User Simulator",
+    "End-user simulation specialist",
+    "Frontend Design",
+    "Senior frontend design engineer",
+    "Gauntlet Lead",
+    "Gauntlet-loop orchestrator",
+    "Git Expert",
+    "Senior git & forge expert",
+    "Manual Writer",
+    "Migration Planner",
+    "Database migration planner",
+    "Release Manager",
+    "Release manager",
+    "Sdlc Feature Mode",
+    "Mode 3",
+    "Sdlc Improve Mode",
+    "Mode 4",
+    "Sdlc Init Mode",
+    "Mode 1",
+    "Sdlc Init Phase 3",
+    "Sdlc Init Phase 4",
+    "Sdlc Init Phase 5",
+    "Mode 1 phase files",
+    "Sdlc Init Phases 0 2",
+    "Sdlc Init Phases 3 4",
+    "SUPERSEDED",
+    "Sdlc Onboard Mode",
+    "Mode 2",
+    "Security Auditor",
+    "Security audit coordinator",
+    "Ui Verifier",
+    "Live browser verification specialist",
+    "performance",
+    "Bundle Analyzer",
+    "Frontend bundle performance specialist",
+    "Concurrency Checker",
+    "Concurrency and async specialist",
+    "DB Query Analyzer",
+    "Database query performance specialist",
+    "Perf Synthesizer",
+    "Performance master synthesizer",
+    "Profiler Agent",
+    "Runtime profiling specialist",
+    "Static Perf Analyzer",
+    "Static performance analysis specialist",
+    "phase-specialists",
+    "Api Designer",
+    "API design expert",
+    "Architecture Designer",
+    "Architecture designer",
+    "Content Designer",
+    "Content design specialist",
+    "Cost Engineer",
+    "Cost engineer",
+    "Llm Integration Engineer",
+    "LLM integration engineer",
+    "Performance Engineer",
+    "Performance audit coordinator",
+    "Qa Vnv Engineer",
+    "QA & V&V (Verification and Validation) specialist",
+    "Reliability Engineer",
+    "Reliability engineer",
+    "Researcher",
+    "Professional research analyst",
+    "Sre Engineer",
+    "Senior SRE",
+    "Test Engineer",
+    "Senior test engineer",
+    "Ux Engineer",
+    "Senior UX engineer",
+    "UX Researcher",
+    "UX research specialist",
+    ".",
+    "Pm Interviewer",
+    "PM interviewer",
+    "security",
+    "Attack Chainer",
+    "Master security synthesizer",
+    "Cloud Security Checker",
+    "Cloud security specialist",
+    "Dependency Auditor",
+    "Dependency and supply chain security specialist",
+    "IaC Security Checker",
+    "Infrastructure-as-Code security specialist",
+    "OWASP LLM Checker",
+    "OWASP LLM Top 10 specialist (2025)",
+    "OWASP Web Checker",
+    "OWASP Web Top 10 specialist (2021)",
+    "Secrets Scanner",
+    "Secrets and credentials specialist",
+    "Semgrep Runner",
+    "SAST specialist",
+    "Threat Modeler",
+    "Threat modeling specialist"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Fleet",
+      "disabled": false,
+      "rect": {
+        "x": 1039,
+        "y": 12,
+        "w": 62,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1104,
+        "y": 12,
+        "w": 76,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 1 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Anti-Slop Auditorsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 172,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Code Health Synthesizersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 262,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Complexity Analyzersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 352,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Dead Code Detectorsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 442,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Duplication Detectorsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 532,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Error Handling Auditorsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 622,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Pattern Consistency Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 712,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Type Safety Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 802,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Guide Scribesubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 940,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Guideprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1030,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Leadprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1120,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Task Decomposerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1210,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Game Asset Pipelinesubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1347,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Game Audio Designersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1437,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Game Balance Designersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1527,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Game Designersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1617,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Game Producersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1707,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Gameplay Engineersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1797,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Level Designersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1887,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Narrative Designersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 1977,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Playtest Evaluatorsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2067,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Component Mapperallneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2204,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Entry Point Tracerallneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2294,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Health Coordinatorallneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2384,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Landscape Mapperallneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2474,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "A11y Complianceprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2611,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Analytics Architectprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2701,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "App Cartographersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2791,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Challengerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2881,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Changelog Writerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 2971,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Code Reviewerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3061,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Coding Agentprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3151,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Container Opsprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3241,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Data Stewardprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3331,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Db Architectprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3421,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Design Iteratorprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3511,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Design System Leadsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3601,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Documentation Gap Finderprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3691,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "End User Simulatorprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3781,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Frontend Designprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3871,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Gauntlet Leadprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 3961,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Git Expertprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4051,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Manual Writersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4141,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Migration Plannerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4231,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Release Managerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4321,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Feature Modesubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4411,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Improve Modesubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4501,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Init Modesubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4591,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Init Phase 3subagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4681,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Init Phase 4subagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4771,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Init Phase 5subagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4861,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Init Phases 0 2subagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 4951,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Init Phases 3 4subagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5041,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sdlc Onboard Modesubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5131,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Security Auditorprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5221,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Ui Verifierprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5311,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Bundle Analyzersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5449,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Concurrency Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5539,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "DB Query Analyzersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5629,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Perf Synthesizersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5719,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Profiler Agentsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5809,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Static Perf Analyzersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 5899,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Api Designerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6036,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Architecture Designerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6126,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Content Designersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6216,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Cost Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6306,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Llm Integration Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6396,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Performance Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6486,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Qa Vnv Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6576,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Reliability Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6666,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Researcherprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6756,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Sre Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6846,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Test Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 6936,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Ux Engineerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7026,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "UX Researchersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7116,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Pm Interviewerprimaryneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7253,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Attack Chainersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7390,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Cloud Security Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7480,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Dependency Auditorsubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7570,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "IaC Security Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7660,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "OWASP LLM Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7750,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "OWASP Web Checkersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7840,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Secrets Scannersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 7930,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Semgrep Runnersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 8020,
+        "w": 1366,
+        "h": 22
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Threat Modelersubagentneeds a model",
+      "disabled": false,
+      "rect": {
+        "x": 37,
+        "y": 8110,
+        "w": 1366,
+        "h": 22
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__decide-badge": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 2,
+    "app-shell__notifications-bell": 1,
+    "btn-quiet": 1,
+    "icon": 2,
+    "roster": 1,
+    "roster__cluster": 9,
+    "roster__expert": 85,
+    "roster__expert-description": 85,
+    "roster__expert-list": 9,
+    "roster__expert-mode": 85,
+    "roster__expert-model": 85,
+    "roster__expert-name": 85,
+    "roster__expert-scope": 85,
+    "roster__expert-summary": 85,
+    "roster__header": 1,
+    "roster__unconfigured": 85,
+    "theme-toggle": 1
+  }
+}

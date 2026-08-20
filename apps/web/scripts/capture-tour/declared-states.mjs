@@ -8,7 +8,7 @@
 
 /** Every Settings tab — walked in both themes. */
 export const SETTINGS_TABS = [
-  { label: 'Model Matrix', testId: 'model-matrix-panel', slug: 'settings-model-matrix' },
+  { label: 'Models', testId: 'model-matrix-panel', slug: 'settings-model-matrix' },
   {
     label: 'Autonomy · Budget · Berths',
     testId: 'autonomy-budget-panel',

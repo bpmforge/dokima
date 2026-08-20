@@ -1,0 +1,146 @@
+{
+  "strings": [
+    "Dokima",
+    "Fleet",
+    "Roster",
+    "1",
+    "Settings",
+    "Light",
+    "Close",
+    "Settings belong to a project — which models it uses, which providers it can reach, and what it is allowed to spend. Pick a project and they will be here.",
+    "Choose a project",
+    "Run Setup Wizard",
+    "The wizard is a guided first run — it is optional, and everything it sets can be changed here afterwards."
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Fleet",
+      "disabled": false,
+      "rect": {
+        "x": 1041,
+        "y": 12,
+        "w": 62,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1107,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 1 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Close",
+      "disabled": false,
+      "rect": {
+        "x": 1349,
+        "y": 85,
+        "w": 67,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Choose a project",
+      "disabled": false,
+      "rect": {
+        "x": 24,
+        "y": 279,
+        "w": 170,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Run Setup Wizard",
+      "disabled": false,
+      "rect": {
+        "x": 206,
+        "y": 279,
+        "w": 156,
+        "h": 36
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__decide-badge": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 2,
+    "app-shell__notifications-bell": 1,
+    "btn-primary": 1,
+    "btn-quiet": 1,
+    "btn-secondary": 1,
+    "empty-state": 1,
+    "empty-state__actions": 1,
+    "empty-state__lead": 1,
+    "icon": 2,
+    "settings": 1,
+    "settings__header": 1,
+    "settings__no-project": 1,
+    "theme-toggle": 1
+  }
+}

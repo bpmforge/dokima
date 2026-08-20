@@ -1,0 +1,213 @@
+{
+  "strings": [
+    "Dokima",
+    "Fleet",
+    "Roster",
+    "Settings",
+    "Light",
+    "New project",
+    "Onboard existing repo",
+    "Import",
+    "Show archived",
+    "0",
+    "ready",
+    "blocked",
+    "needs you",
+    "berths running",
+    "$0.00",
+    "spend today",
+    "Demo Voyage",
+    "Not started",
+    "Ready",
+    "Blocked",
+    "Done",
+    "No berths running",
+    "$",
+    "0.00",
+    "today",
+    "Open",
+    "Archive"
+  ],
+  "interactive": [
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Fleet",
+      "disabled": false,
+      "rect": {
+        "x": 1039,
+        "y": 12,
+        "w": 64,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Roster",
+      "disabled": false,
+      "rect": {
+        "x": 1107,
+        "y": 12,
+        "w": 73,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Notifications, 0 awaiting a decision",
+      "disabled": false,
+      "rect": {
+        "x": 1192,
+        "y": 17,
+        "w": 35,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Settings",
+      "disabled": false,
+      "rect": {
+        "x": 1239,
+        "y": 12,
+        "w": 86,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Switch to dark theme",
+      "disabled": false,
+      "rect": {
+        "x": 1337,
+        "y": 12,
+        "w": 87,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "New project",
+      "disabled": false,
+      "rect": {
+        "x": 479,
+        "y": 85,
+        "w": 133,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Onboard existing repo",
+      "disabled": false,
+      "rect": {
+        "x": 621,
+        "y": 85,
+        "w": 186,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Import",
+      "disabled": false,
+      "rect": {
+        "x": 815,
+        "y": 85,
+        "w": 74,
+        "h": 36
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 901,
+        "y": 97,
+        "w": 13,
+        "h": 13
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Open",
+      "disabled": false,
+      "rect": {
+        "x": 438,
+        "y": 375,
+        "w": 59,
+        "h": 28
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Archive",
+      "disabled": false,
+      "rect": {
+        "x": 504,
+        "y": 375,
+        "w": 72,
+        "h": 28
+      }
+    }
+  ],
+  "geometry": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "contentBox": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    "occupancy": 1
+  },
+  "classHistogram": {
+    "app-shell": 1,
+    "app-shell__header": 1,
+    "app-shell__header-actions": 1,
+    "app-shell__nav": 1,
+    "app-shell__nav-item": 2,
+    "app-shell__notifications-bell": 1,
+    "btn-primary": 2,
+    "btn-quiet": 3,
+    "btn-secondary": 1,
+    "fleet": 1,
+    "fleet__actions": 1,
+    "fleet__archived-toggle": 1,
+    "fleet__grid": 1,
+    "fleet__header": 1,
+    "fleet__summary": 1,
+    "icon": 2,
+    "project-card": 1,
+    "project-card__actions": 1,
+    "project-card__berths": 1,
+    "project-card__board": 1,
+    "project-card__header": 1,
+    "project-card__phase-chip": 1,
+    "project-card__spend": 1,
+    "readout": 8,
+    "readout--idle": 7,
+    "readout__label": 8,
+    "readout__value": 8,
+    "state": 1,
+    "state--idle": 1,
+    "surface": 2,
+    "surface--idle": 1,
+    "tabular": 1,
+    "theme-toggle": 1
+  }
+}
