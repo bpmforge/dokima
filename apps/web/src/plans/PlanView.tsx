@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { acceptPlanItem, dismissPlanItem, fetchPlan, PlansApiError } from './api.js';
-import { canAccept, canDismiss, funnelSummary, STATE_LABEL } from './format.js';
+import { canAccept, canDismiss, funnelSummary, scoresVary, STATE_LABEL } from './format.js';
 import type { PlanItem } from './types.js';
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -81,6 +81,8 @@ function DismissForm({ onSubmit, onCancel, busy }: DismissFormProps) {
 
 interface PlanItemRowProps {
   item: PlanItem;
+  /** W13-50: identical scores on every card are noise wearing authority — rendered only when they rank. */
+  showScores: boolean;
   openForm: 'accept' | 'dismiss' | null;
   busy: boolean;
   onOpenForm: (form: 'accept' | 'dismiss' | null) => void;
@@ -90,6 +92,7 @@ interface PlanItemRowProps {
 
 function PlanItemRow({
   item,
+  showScores,
   openForm,
   busy,
   onOpenForm,
@@ -98,24 +101,28 @@ function PlanItemRow({
 }: PlanItemRowProps) {
   return (
     <li className="plan-item" data-testid={`plan-item-${item.id}`}>
+      {/* W13-50 (UX_AUDIT A-2): ONE id per card. This header used to show
+          both the catalog id AND "Ticket: PLAN-T001" — two names for one
+          thing on one card, the exact defect VOCABULARY.md exists to
+          prevent. The board's word wins once a ticket exists; the catalog id
+          appears only while there is nothing else to call the item. */}
       <header className="plan-item__header">
-        <span className="plan-item__catalog-id">{item.catalogId}</span>
+        <span className="plan-item__catalog-id" data-testid={`plan-item-${item.id}-ticket`}>
+          {item.ticketId ?? item.catalogId}
+        </span>
         <span className={`plan-item__state plan-item__state--${item.state}`}>
           {STATE_LABEL[item.state]}
         </span>
-        {item.ticketId && (
-          <span className="plan-item__ticket" data-testid={`plan-item-${item.id}-ticket`}>
-            Ticket: {item.ticketId}
-          </span>
-        )}
       </header>
       <p className="plan-item__recommendation">{item.recommendation}</p>
       <p className="plan-item__verify">
         Verify: <code>{item.verifyCriterion}</code>
       </p>
-      <p className="plan-item__meta">
-        severity {item.severity} · leverage {item.leverage} · priority score {item.rank}
-      </p>
+      {showScores && (
+        <p className="plan-item__meta">
+          severity {item.severity} · leverage {item.leverage} · priority score {item.rank}
+        </p>
+      )}
       {!openForm && (
         <div className="plan-item__actions">
           {canAccept(item.state) && (
@@ -246,6 +253,7 @@ export function PlanView({ projectId }: PlanViewProps) {
             <PlanItemRow
               key={item.id}
               item={item}
+              showScores={scoresVary(items)}
               openForm={openForm?.itemId === item.id ? openForm.form : null}
               busy={busyId === item.id}
               onOpenForm={(form) => setOpenForm(form ? { itemId: item.id, form } : null)}

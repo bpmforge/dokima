@@ -125,14 +125,18 @@ test('plan view renders catalog provenance, verify criterion, state, and accept/
   await expect(item).toContainText('PC-001');
   await expect(item).toContainText('Proposed');
   await expect(item).toContainText('receipts.staleCount == 0');
-  await expect(item.getByTestId(`plan-item-PC-001-ticket`)).toHaveCount(0);
+  // W13-50: ONE id per card. Before a ticket exists the card is named by its
+  // catalog id…
+  await expect(item.getByTestId(`plan-item-PC-001-ticket`)).toHaveText('PC-001');
 
   await item.getByRole('button', { name: 'Accept' }).click();
   await item.getByTestId('plan-accept-lane-input').fill('pipeline');
   await item.getByRole('button', { name: 'Confirm accept' }).click();
 
   await expect(item).toContainText('Accepted');
-  await expect(item.getByTestId(`plan-item-PC-001-ticket`)).toContainText('PLAN-PC-001');
+  // …and once one does, the board's word REPLACES it — never both at once,
+  // which was the audit's two-names-for-one-thing finding (A-2).
+  await expect(item.getByTestId(`plan-item-PC-001-ticket`)).toHaveText('PLAN-PC-001');
 
   await fs.rm(dir, { recursive: true, force: true });
 });
@@ -162,8 +166,9 @@ test('dismiss removes a proposed item from the list and the funnel keeps raw fin
   await item.getByRole('button', { name: 'Confirm dismiss' }).click();
 
   await expect(page.getByTestId('plan-item-PC-003')).toHaveCount(0);
-  await expect(page.getByTestId('plan-funnel')).toContainText('1 raw');
-  await expect(page.getByTestId('plan-funnel')).toContainText('0 plan items');
+  // W13-50: plain verbs, every stage still visible (FR-RL4 raw never hidden).
+  await expect(page.getByTestId('plan-funnel')).toContainText('1 found');
+  await expect(page.getByTestId('plan-funnel')).toContainText('0 planned');
 
   await fs.rm(dir, { recursive: true, force: true });
 });
