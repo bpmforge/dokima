@@ -135,7 +135,7 @@ export function ModelMatrixPanel({
   }
 
   return (
-    <section aria-label="Model Matrix" data-testid="model-matrix-panel">
+    <section aria-label="Models" data-testid="model-matrix-panel">
       <h2>Models</h2>
       <p className="settings__hint">
         Presets: {MODEL_MATRIX_PRESETS.map((p) => PRESET_LABEL[p]).join(' · ')} (applying

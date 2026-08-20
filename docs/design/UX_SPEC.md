@@ -48,7 +48,7 @@ The app opens on the portfolio, not a project. One card per project:
 |---|---|
 | Fleet home, no projects | "No programs yet." → New Product / Onboard buttons + link to the guided sample (FR-C6) |
 | Board, no tickets (pre-decomposition) | "The board fills when Phase 3 design is decomposed." → link to current phase card |
-| Morning queue, empty | "Nothing needs you. Last review N h ago; next digest at wave gate." (positive-quiet, no CTA) |
+| Morning queue, empty | "Nothing needs you. Last review N h ago; the next digest arrives when the current run finishes." (positive-quiet, no CTA; W13-51 — "wave gate" was an internal term defined nowhere a user can see) |
 | Notifications, empty | activity-feed link only |
 | Artifact viewer, no docs yet | "Deliverables appear as phases produce them." → current phase |
 | Receipts list, none | "No gates have run yet." |

@@ -269,11 +269,14 @@ function SlateAnswer({
   );
 }
 
-/** UX_SPEC §2b: "Nothing needs you. Last review N h ago; next digest at wave gate." (positive-quiet, no CTA). */
+/** UX_SPEC §2b positive-quiet, no CTA. W13-51: the closing clause used to be
+ * "next digest at wave gate" — an internal term defined nowhere a user can
+ * see, as the last words of the calmest screen in the product. The digest
+ * arrives when the current run finishes, so say that. */
 function EmptyQueue({ lastReviewedAt }: { lastReviewedAt: string | null }) {
   const suffix = lastReviewedAt
-    ? `Last review ${hoursAgo(lastReviewedAt, Date.now())} h ago; next digest at wave gate.`
-    : 'Next digest at wave gate.';
+    ? `Last review ${hoursAgo(lastReviewedAt, Date.now())} h ago; the next digest arrives when the current run finishes.`
+    : 'The next digest arrives when the current run finishes.';
   return (
     <p className="morning-queue__empty" data-testid="morning-queue-empty">
       Nothing needs you. {suffix}

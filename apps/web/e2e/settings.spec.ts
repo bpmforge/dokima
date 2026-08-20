@@ -148,7 +148,7 @@ test('model matrix: pick a model from the provider-discovered list, and a copilo
 
   // W12-35: Settings lands on Providers now that the catalog is lifted, so
   // the matrix panel is one tab away rather than the opening view.
-  await page.getByRole('button', { name: 'Model Matrix' }).click();
+  await page.getByRole('button', { name: 'Models', exact: true }).click();
   await expect(page.getByTestId('model-matrix-panel')).toBeVisible();
   const copilotRow = page.getByRole('row', { name: /challenger/ });
   await expect(copilotRow.getByText('Copilot-backed')).toBeVisible();
