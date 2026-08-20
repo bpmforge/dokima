@@ -15,11 +15,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AwaitingDecisions } from './AwaitingDecisions.js';
 import './onboarding.css';
 import {
-  fetchAwaitingRun,
   OnboardingApiError,
   resumePipeline,
   runGuidedPipeline,
 } from './api.js';
+import { recoverActiveRun } from './run-recovery.js';
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
 import { followUpKey, MAX_FOLLOWUP_DEPTH, useFollowUps } from './useFollowUps.js';
 
@@ -116,18 +116,38 @@ export function InterviewPanel({
    */
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const paused = await fetchAwaitingRun(projectId);
-      // Only from the untouched describe form: a founder mid-answer must not
-      // have the screen pulled out from under them by a poll that landed late.
-      if (cancelled || !paused) return;
-      setAwaiting(paused);
-      setStage((current) => (current === 'asking' ? 'awaiting' : current));
-    })();
+    // W13-38/39: rejoin whatever run was already active — but only from the
+    // untouched describe form; a founder mid-answer must not have the screen
+    // pulled out from under them by a poll that landed late. The stage
+    // transitions gate on 'asking' for exactly that reason.
+    void recoverActiveRun(projectId, {
+      cancelled: () => cancelled,
+      onAwaiting: (found) => {
+        setAwaiting(found);
+        // From the untouched form OR from a rejoined run — the extraction's
+        // first cut gated on 'asking' alone, so a recovered RUNNING run could
+        // never reach its pause screen. The e2e mid-run fixture caught it.
+        setStage((current) =>
+          current === 'asking' || current === 'running' ? 'awaiting' : current,
+        );
+      },
+      onRejoinRunning: () =>
+        setStage((current) => (current === 'asking' ? 'running' : current)),
+      onPhases: setPhases,
+      onDone: (result) => {
+        setResult(result);
+        setStage('done');
+        onComplete?.();
+      },
+      onFailed: (message) => {
+        setError(message);
+        setStage('failed');
+      },
+    });
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [onComplete, projectId]);
 
   const answered = useMemo(
     () => INTERVIEW_QUESTIONS.filter((q) => (answers[q.topic.deliverableId] ?? '').trim() !== '').length,

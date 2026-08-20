@@ -117,7 +117,20 @@ export async function runGuidedPipeline(
   // job behaviour to exist, it just uses it when it does.
   if (!isRunAccepted(started)) return started as PipelineRunOutcome;
 
-  const runId = started.run_id;
+  return pollPipelineRun(projectId, started.run_id, opts);
+}
+
+/**
+ * Polls one run to its outcome. Extracted from `runGuidedPipeline` by W13-39
+ * so a RECOVERED run — one discovered on mount rather than started here —
+ * rejoins exactly the same wait, with the same progress callback and the same
+ * failure shape.
+ */
+export async function pollPipelineRun(
+  projectId: string,
+  runId: string,
+  opts: OnboardingApiOptions = {},
+): Promise<PipelineRunOutcome> {
   const interval = opts.pollIntervalMs ?? 400;
   for (;;) {
     const status = await fetchRunStatus(projectId, runId, opts);
@@ -181,18 +194,33 @@ export async function resumePipeline(
  * banner on the describe screen would make a first-run user think something
  * broke when nothing did.
  */
-export async function fetchAwaitingRun(
+export type ActiveRun =
+  | { readonly kind: 'awaiting'; readonly awaiting: PipelineAwaitingDecisions }
+  | { readonly kind: 'running'; readonly runId: string };
+
+export async function fetchActiveRun(
   projectId: string,
   opts: OnboardingApiOptions = {},
-): Promise<PipelineAwaitingDecisions | null> {
+): Promise<ActiveRun | null> {
   try {
     const body = (await request(
       `/api/v1/projects/${encodeURIComponent(projectId)}/pipeline/runs`,
       { method: 'GET' },
       opts,
     )) as { runs?: readonly PipelineRunStatus[] };
-    const paused = (body.runs ?? []).find((r) => r.status === 'awaiting-decisions');
-    return paused?.awaiting ?? null;
+    const runs = body.runs ?? [];
+    const paused = runs.find((r) => r.status === 'awaiting-decisions');
+    if (paused?.awaiting) return { kind: 'awaiting', awaiting: paused.awaiting };
+    /**
+     * W13-39: a run that is still RUNNING is recovered too. W13-38 filtered
+     * for awaiting-decisions only, so navigating away mid-run (a wide window
+     * — minutes on a local model) and back showed a blank interview form with
+     * a live run in flight — and the only button on it earned a correct 409
+     * for doing the one thing the screen suggested.
+     */
+    const running = runs.find((r) => r.status === 'running');
+    if (running) return { kind: 'running', runId: running.run_id };
+    return null;
   } catch {
     return null;
   }

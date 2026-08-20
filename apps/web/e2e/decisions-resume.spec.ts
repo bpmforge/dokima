@@ -108,7 +108,10 @@ test.beforeEach(async () => {
       // ever re-ran the blueprint it would consume four, which is what the
       // call-count assertion below is watching for.
       [MODEL]: [
-        { content: BLUEPRINT_INPUT },
+        // W13-39: the blueprint turn takes 2.5s, holding the run in `running`
+        // long enough for the mid-run recovery test to navigate away and
+        // back. The other specs in this file only see a slower pause.
+        { content: BLUEPRINT_INPUT, latencyMs: 2_500 },
         { content: TECHNICAL_SLATE_INPUT },
         { content: TICKET_DRAFTS },
       ],
@@ -246,6 +249,38 @@ test.describe('a paused run has a path through it (W10-72)', () => {
     // would spend a fourth call and — worse — could produce different slates
     // than the ones the founder just answered.
     expect(gateway?.callCounts[MODEL]).toBe(3);
+  });
+
+  /**
+   * W13-39 RED FIXTURE. W13-38 recovered a run that had PAUSED; a run still
+   * RUNNING was discoverable by the same route and ignored — so navigating
+   * away mid-run (minutes on a local model) and back showed a blank
+   * interview form whose only button earned a correct 409.
+   */
+  test('navigating away MID-RUN and back rejoins the run instead of showing a blank form (W13-39)', async ({
+    page,
+  }) => {
+    await newProduct(page);
+    await page.getByRole('button', { name: 'Describe' }).click();
+    await page.getByLabel('Working title').fill('Shared list');
+    const openings = page.locator('[data-testid^="interview-answer-"]');
+    for (const opening of await openings.all()) {
+      await opening.fill('Answer for the shared list.');
+    }
+    await page.getByRole('button', { name: 'Build the board' }).click();
+    await expect(page.getByRole('button', { name: 'Building the board…' })).toBeVisible();
+
+    // Leave while the model is mid-generation (the scripted turn holds 2.5s)…
+    await page.getByRole('button', { name: 'Board', exact: true }).click();
+    await expect(page.getByTestId('pane-board')).toBeVisible();
+    // …and come back. Before W13-39: the blank form.
+    await page.getByRole('button', { name: 'Describe' }).click();
+    await expect(page.getByRole('button', { name: 'Building the board…' })).toBeVisible();
+
+    // The rejoined poll carries the run to its real outcome — the pause.
+    await expect(page.getByTestId('interview-awaiting-decisions')).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   /**
