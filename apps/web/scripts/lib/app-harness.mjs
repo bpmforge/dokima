@@ -64,6 +64,9 @@ export async function startApp(port) {
     env: {
       ...process.env,
       DOKIMA_HOME: home,
+      // W13-64: same sandbox rule as the e2e suite — anything the captured
+      // app creates lands inside its own throwaway home.
+      DOKIMA_WORKSPACE_ROOT: path.join(home, 'workspace'),
       DOKIMA_PORT: String(port),
       DOKIMA_STATE_DB: path.join(home, 'capture-state.db'),
     },
