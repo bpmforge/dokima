@@ -8995,6 +8995,30 @@
         "[MEDIUM] The fleet-wide summary strip renders sums (ready / blocked / needs you / berths running / spend today) with the identical readout styling the per-project cards use and no caption saying it is a total across all projects, so with two projects a novice can read the strip as belonging to the nearest project \u2014 conflating the fleet with one project, exactly what this screen exists to separate. CITATION (evidence) 03-project-created: \"spend today\" FIX: Caption the fleet__summary strip (e.g. 'All projects') in FleetHome.tsx so the aggregate reads as a fleet total, distinct from each card's own readouts.",
         "[LOW] Every project card and the summary strip lead with 'berths' ('No berths running', 'berths running') but 'berth' is absent from the VOCABULARY.md table and is never defined where a user first meets it, so a novice comparing two project cards cannot tell what the reading means or whether zero is good. CITATION (evidence) 03-project-created: \"No berths running\" FIX: Add 'berth' to the VOCABULARY.md table with a user-facing definition and either define it at first contact (tooltip/first-use gloss on the Fleet card) or rename the reading to plain language such as 'agents running'."
       ]
+    },
+    {
+      "id": "W13-63",
+      "title": "the run outcome is invisible: parked returns to Ready unmarked, the banner says finished, and Chat stays silent",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 8,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**",
+        "apps/web/src/chat/**"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Live novice rerun, 2026-08-20 evening, fresh home, local model. Complements W13-60 (park comment written for the builder) \u2014 this is the layer ABOVE it: the novice never reaches the comment at all.",
+      "acceptance": [
+        "MEASURED live: a run parked PLAN-auth-setup after 2 attempts. The ticket returned to READY with no visible mark, the banner read \"run-mt1zfnvy \u2014 finished\", and the Chat pane still said \"No agent activity yet.\" after a full agent session. From the novice's chair: the run finished and nothing happened.",
+        "TWO SYSTEMS DISAGREE: the park comment's own header says \"auto-blocked with evidence\" while loop-land's park path calls releaseTicket \u2014 status ready. Either the park marks the ticket visibly (a parked state-in-form on the card, with the attempt evidence one click away) or the comment stops claiming blocked. The board must show WHICH ticket parked and WHY without opening a drawer.",
+        "The run banner surfaces the outcome line the CLI already prints (\"0 landed, 1 parked\") instead of the bare status word. \"finished\" with nothing landed reads as success-toned nothing.",
+        "The Chat pane either receives session events (turn started, producing, spend \u2014 they are all in the event log) or stops promising them. A pane that says \"appear here as agents work\" and stays empty through a real session is a broken promise on the novice's most-watched screen.",
+        "RED FIXTURE: drive a run that parks (fake gateway, no manifest) through the real routes and assert the board shows a parked mark on the ticket and the banner carries landed/parked counts."
+      ]
     }
   ]
 }

@@ -375,7 +375,9 @@ export function createGatewaySpawnSession(
       stdout: '',
       stderr:
         `agent session stopped: exceeded the per-session tool-iteration budget ` +
-        `(${maxIterations}) without a Completion Manifest (T-27)`,
+        `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
+        `real but unfinished, raise maxToolIterations — chatty local models often ` +
+        `need more than the default.`,
       exitCode: 1,
     };
   };

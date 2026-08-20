@@ -230,6 +230,9 @@
 .board-card__header {
   display: flex;
   justify-content: space-between;
+  /* W13-63 rerun finding: without a gap, a wrapped header renders
+     "TaskPLAN-auth-setup" — the type label and the id collide. */
+  gap: var(--sw-space-2);
   font-size: var(--sw-text-sm);
   opacity: 0.7;
 }
