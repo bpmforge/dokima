@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ScopedSettings } from '@dokima/shared';
-import { resolveEffectiveModel } from './roster-resolve.js';
+import {
+  resolveEffectiveModel,
+  resolveEffectiveModelFromSources,
+} from './roster-resolve.js';
 
 describe('resolveEffectiveModel', () => {
   it('reports unconfigured (scope: null) when no scope defines the role or default (C-1 honesty)', () => {
@@ -92,5 +95,55 @@ describe('resolveEffectiveModel', () => {
       global: { 'roleMatrix.sdlc-lead': { model: 'flat-model', fallbackChain: [] } },
     };
     expect(resolveEffectiveModel(settings, 'sdlc-lead').scope).toBeNull();
+  });
+});
+
+describe('resolveEffectiveModelFromSources (W13-57)', () => {
+  const row = (role: string, taskType: string, model: string, fallback: string[] = []) => ({
+    role,
+    taskType,
+    model,
+    fallback,
+  });
+  const NO_SETTINGS = { global: {} };
+
+  it('RED FIXTURE: the wizard walkthrough case — a role with no row of its own resolves through the default row', () => {
+    // The store rows the setup wizard actually writes (W13-37): six roles,
+    // task type 'code'. An expert like anti-slop-auditor has no row of its
+    // own — and the shipped roster claimed "needs a model" for it on a fully
+    // configured install, because it read a settings key nothing writes.
+    const rows = [
+      row('coding-agent', 'code', 'qwen/qwen3-coder-next', ['qwen3.6-35b-a3b']),
+      row('default', 'code', 'qwen/qwen3-coder-next', ['qwen3.6-35b-a3b']),
+    ];
+    const result = resolveEffectiveModelFromSources(NO_SETTINGS, rows, [], 'anti-slop-auditor');
+    expect(result.chain).toEqual(['qwen/qwen3-coder-next', 'qwen3.6-35b-a3b']);
+    expect(result.usedDefaultRole).toBe(true);
+    expect(result.scope).toBe('global');
+  });
+
+  it('a role with its own row uses it, and scope says where the row lives', () => {
+    const rows = [row('coding-agent', 'code', 'project-model')];
+    const result = resolveEffectiveModelFromSources(NO_SETTINGS, rows, rows, 'coding-agent');
+    expect(result.chain).toEqual(['project-model']);
+    expect(result.usedDefaultRole).toBe(false);
+    expect(result.scope).toBe('project');
+  });
+
+  it('the settings envelope stays the higher-precedence override it was designed to be', () => {
+    const settings = {
+      global: {
+        'roleMatrix.coding-agent': { default: { model: 'pinned-override', fallbackChain: [] } },
+      },
+    } as never;
+    const rows = [row('coding-agent', 'code', 'store-model')];
+    const result = resolveEffectiveModelFromSources(settings, rows, [], 'coding-agent');
+    expect(result.chain).toEqual(['pinned-override']);
+  });
+
+  it('no rows anywhere still resolves honestly to unconfigured — never a fabricated chain (C-1)', () => {
+    const result = resolveEffectiveModelFromSources(NO_SETTINGS, [], [], 'coding-agent');
+    expect(result.chain).toEqual([]);
+    expect(result.scope).toBeNull();
   });
 });

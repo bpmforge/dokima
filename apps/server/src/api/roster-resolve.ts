@@ -26,11 +26,16 @@
  * W4-06 (settings wizard+UI, currently blocked) or the gateway itself
  * writes here; this file only ever reads `.default`.
  *
- * No project has a matrix configured anywhere yet (W4-06 blocked, and
- * `packages/gateway`'s shipped presets aren't reachable to seed a default)
- * — every expert honestly resolves to "unconfigured" (`scope: null`) until
- * a real matrix is written, per C-1 (never fabricate a plausible-looking
- * chain).
+ * W13-57: the paragraph that used to end this header said "no project has
+ * a matrix configured anywhere yet" — true when written, and the settings
+ * key this file reads was the ONLY store then. The real matrix landed in
+ * `model-matrix-store.ts` (SQLite, the store `route()` and the wizard both
+ * use) and this reader was never rewired, so on a fully configured install
+ * every expert still claimed "needs a model" — a false statement the W13-49
+ * roster cleanup made prominent. `resolveEffectiveModelFromSources` below
+ * layers the two: the settings envelope stays as the higher-precedence
+ * override it was designed to be, and the matrix rows are the ground truth
+ * beneath it.
  */
 
 import {
@@ -117,6 +122,60 @@ export function resolveEffectiveModel(
     role,
     chain: [assignment.model, ...assignment.fallbackChain],
     scope: fallback.scope,
+    usedDefaultRole: true,
+  };
+}
+
+/** The matrix-store row shape this module needs — structural, so `apps/server`'s settings-types row satisfies it unchanged. */
+export interface MatrixRowLike {
+  readonly role: string;
+  readonly taskType: string;
+  readonly model: string;
+  readonly fallback: readonly string[];
+}
+
+/** Prefers the role's 'code' row (the roster is a per-role browse; code is the run's default task type), else its first row. */
+function rowFor(rows: readonly MatrixRowLike[], role: string): MatrixRowLike | undefined {
+  const mine = rows.filter((row) => row.role === role);
+  return mine.find((row) => row.taskType === 'code') ?? mine[0];
+}
+
+/**
+ * Resolution against BOTH sources (W13-57): the `roleMatrix.<role>` settings
+ * override first (unchanged precedence), then the real matrix rows — project
+ * rows shadowing global exactly as `listModelMatrix` already merged them,
+ * with the same default-role fallback `route()` applies. `ownRows` is the
+ * project's own row set, used only to report WHERE the winning row lives.
+ */
+export function resolveEffectiveModelFromSources(
+  settings: ScopedSettings,
+  rows: readonly MatrixRowLike[],
+  ownRows: readonly MatrixRowLike[],
+  role: string,
+): EffectiveModelResolution {
+  const fromSettings = resolveEffectiveModel(settings, role);
+  if (fromSettings.scope !== null) return fromSettings;
+
+  const scopeOf = (row: MatrixRowLike): RosterScope =>
+    ownRows.some((own) => own.role === row.role && own.taskType === row.taskType)
+      ? 'project'
+      : 'global';
+
+  const direct = rowFor(rows, role);
+  if (direct) {
+    return {
+      role,
+      chain: [direct.model, ...direct.fallback],
+      scope: scopeOf(direct),
+      usedDefaultRole: false,
+    };
+  }
+  const fallback = role === DEFAULT_ROSTER_ROLE ? undefined : rowFor(rows, DEFAULT_ROSTER_ROLE);
+  if (!fallback) return { role, ...UNCONFIGURED };
+  return {
+    role,
+    chain: [fallback.model, ...fallback.fallback],
+    scope: scopeOf(fallback),
     usedDefaultRole: true,
   };
 }
