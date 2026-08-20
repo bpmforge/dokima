@@ -11,7 +11,7 @@ export function ChatEmptyState() {
     <div className="chat__empty" data-testid="chat-empty-state">
       <p>No agent activity yet.</p>
       <span className="chat__empty-hint">
-        Messages, questions, findings, and manifests appear here as agents work.
+        Messages, questions, findings, and Completion Manifests — the hand-back an agent writes when it finishes a ticket — appear here as agents work.
       </span>
     </div>
   );

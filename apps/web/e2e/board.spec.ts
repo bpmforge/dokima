@@ -97,7 +97,7 @@ test('board empty state renders when no tickets exist yet (UX_SPEC §2b)', async
   await expect(board.getByTestId('board-empty')).toBeVisible();
   await expect(
     board.getByText(
-      'The board fills once you describe your product and it is decomposed into tickets.',
+      'The board fills once you describe your idea and it is broken into tickets.',
     ),
   ).toBeVisible();
 });

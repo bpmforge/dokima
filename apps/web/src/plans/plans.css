@@ -86,3 +86,18 @@
   gap: var(--sw-space-2);
   margin-top: var(--sw-space-2);
 }
+
+/* W13-59: the plain sentence leads; the expression recedes to mono detail,
+   and the consequence line under Accept/Dismiss stays full-contrast
+   (the W13-52 axe lesson: state and consequence never recede). */
+.plan-item__verify-expr {
+  color: var(--sw-fg-muted);
+  font-size: 0.9em;
+}
+
+.plan-item__consequence {
+  flex-basis: 100%;
+  font-size: 0.85em;
+  margin: var(--sw-space-1) 0 0;
+  max-width: 60ch;
+}

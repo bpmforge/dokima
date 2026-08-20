@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { acceptPlanItem, dismissPlanItem, fetchPlan, PlansApiError } from './api.js';
-import { canAccept, canDismiss, funnelSummary, scoresVary, STATE_LABEL } from './format.js';
+import {
+  canAccept,
+  canDismiss,
+  describeVerifyCriterion,
+  funnelSummary,
+  scoresVary,
+  STATE_LABEL,
+} from './format.js';
 import type { PlanItem } from './types.js';
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -115,8 +122,11 @@ function PlanItemRow({
         </span>
       </header>
       <p className="plan-item__recommendation">{item.recommendation}</p>
+      {/* W13-59: the sentence a person can decide on leads; the machine
+          expression stays as secondary detail. */}
       <p className="plan-item__verify">
-        Verify: <code>{item.verifyCriterion}</code>
+        {describeVerifyCriterion(item.verifyCriterion)}{' '}
+        <code className="plan-item__verify-expr">{item.verifyCriterion}</code>
       </p>
       {showScores && (
         <p className="plan-item__meta">
@@ -134,6 +144,18 @@ function PlanItemRow({
             <button type="button" onClick={() => onOpenForm('dismiss')} disabled={busy}>
               Dismiss
             </button>
+          )}
+          {/* W13-59: what each choice actually does (mechanism-true —
+              acceptItem mints a board ticket; dismiss records the reason). */}
+          {(canAccept(item.state) || canDismiss(item.state)) && (
+            <p
+              className="plan-item__consequence"
+              data-testid={`plan-item-${item.id}-consequence`}
+            >
+              Accept creates a ticket on the board in the lane you choose.
+              Dismiss records your reason and sets the suggestion aside —
+              nothing on the board changes.
+            </p>
           )}
         </div>
       )}

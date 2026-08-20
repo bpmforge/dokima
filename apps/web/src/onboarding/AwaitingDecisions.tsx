@@ -61,8 +61,8 @@ export function AwaitingDecisions({
       </ul>
       {token === undefined ? (
         <p className="interview__error" role="alert">
-          The slates were kept, but this session has no API token to load them — reopen
-          the workspace to answer them.
+          Your decisions were saved, but this session has no API token to load them —
+          reopen this project to answer them.
         </p>
       ) : (
         <DecisionsBoard projectId={projectId} token={token} onDecided={onDecided} />

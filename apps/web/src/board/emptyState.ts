@@ -14,6 +14,6 @@
  * now names that and the control goes there.
  */
 export const BOARD_EMPTY_STATE = {
-  message: 'The board fills once you describe your product and it is decomposed into tickets.',
+  message: 'The board fills once you describe your idea and it is broken into tickets.',
   actionLabel: 'Describe your product',
 } as const;
