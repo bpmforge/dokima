@@ -7999,6 +7999,33 @@
       ]
     },
     {
+      "id": "W13-31",
+      "title": "a plan-derived ticket can never close \u2014 its verify is a predicate and the close gate executes it as a shell command",
+      "phase": 13,
+      "module": "pipeline",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/pipeline/src/plans/lifecycle.ts",
+        "packages/pipeline/src/plans/lifecycle.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19. acceptItem mints a ticket draft with `verify: item.verifyCriterion` verbatim (lifecycle.ts:112). A verifyCriterion is a MACHINE-CHECKABLE PREDICATE over a PlanEvaluationSnapshot \u2014 same grammar as an item's condition, e.g. `receipts.staleCount == 0`. SC-02's reRunVerify EXECUTES ticket.verify as a shell command. Confirmed empirically rather than argued: `bash -c 'receipts.staleCount == 0'` exits 127, command not found.",
+        "CONSEQUENCE: every plan-derived ticket fails its close gate on every attempt, for a reason that has nothing to do with the work, and parks after the ladder. Two subsystems agreed on a field NAME and disagreed on its MEANING \u2014 a predicate to one, a command to the other.",
+        "FR-PLAN2 IS ALREADY SATISFIED WITHOUT THIS. The intent \u2014 the plan and the board never diverge on what done means \u2014 is carried by acceptance[0].text, which acceptItem already sets to the same criterion on the line above. The predicate also already has a proper evaluator: the plan lifecycle re-evaluates it against a fresh snapshot. Nothing is lost by not also handing it to a shell.",
+        "FIX: leave the draft's verify unset so the ticket falls back to the project's own gate, and keep the criterion in acceptance where it is read rather than executed. Do NOT teach reRunVerify to detect and evaluate predicates \u2014 that would couple the land loop to the pipeline's expression grammar and give one field two runtimes.",
+        "RED FIXTURE: a ticket minted from an accepted plan item carries a verify that is either absent or executable, and the criterion still appears in its acceptance."
+      ],
+      "notes": [
+        "Found while checking my own W13-28 claim, after I had already got one thing wrong in the same session by reading a truncated config. Confirmed by running the predicate as a shell command rather than by reasoning about it.",
+        "Filed with role code-reviewer and validate-plan refused it: a verifier role may not be the maker (C-4, P11). The guard working on my own ticket, which is the point of it being mechanical."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,

@@ -142,7 +142,7 @@ describe('plans routes', () => {
     });
   });
 
-  it('accept requires a lane and mints a linked ticket carrying verify verbatim', async () => {
+  it('accept requires a lane and mints a linked ticket whose ACCEPTANCE carries the criterion (W13-31)', async () => {
     const { app, projectId } = await boot();
     await app.inject({
       method: 'POST',
@@ -177,10 +177,11 @@ describe('plans routes', () => {
       headers: authHeaders(),
     });
     const ticket = board.json().items.find((t: { id: string }) => t.id === 'PLAN-PC-001');
-    expect(ticket).toMatchObject({
-      lane: 'pipeline',
-      verify: 'receipts.staleCount == 0',
-    });
+    // W13-31: the criterion is a PREDICATE and `verify` is EXECUTED by the
+    // close gate, so it lands in acceptance — where it is read — and the
+    // ticket falls back to the project's own gate command.
+    expect(ticket).toMatchObject({ lane: 'pipeline', verify: null });
+    expect(ticket.acceptance?.[0]?.text).toBe('receipts.staleCount == 0');
   });
 
   it('accept on an unknown item is 404', async () => {
