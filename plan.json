@@ -8607,6 +8607,33 @@
         "ONE setting for both runners, derived from measured sessions rather than a round number (attempts on this board ran ~3 minutes, and the ladder multiplies that by attempt count). W13-44 hardcoded the built-in default; exposing it here must feed the built-in session too, or the product carries two wall-clock ceilings that can disagree. Same settings-key mechanism as maxToolIterations and maxTurnTokens \u2014 a CEILING, refuse rather than clamp.",
         "RED FIXTURE: an external command that never exits must be killed AND reported, asserted against a real short ceiling on a real child process rather than by waiting on the default."
       ]
+    },
+    {
+      "id": "W13-48",
+      "title": "the wizard offers a forge credential field that reaches nothing",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx",
+        "docs/SRS.md"
+      ],
+      "depends_on": [
+        "W13-46"
+      ],
+      "stories": [],
+      "notes": "Same shape as W13-35, which found step 2 collecting provider details and dropping them. Established by W13-46, not assumed.",
+      "acceptance": [
+        "ESTABLISHED, not assumed: W13-46 verified that createGiteaForgeAdapter, createGitHubForgeAdapter, flushMirrorQueue and checkMirrorPrerequisites have no production callers, and @dokima/forge is not a declared dependency of apps/server. Nothing consumes a forge credential.",
+        "The setup wizard step 3 still asks for one \u2014 \"Forge credential ref (leave blank to skip)\" \u2014 and W13-35 already fixed this exact shape once, where step 2 collected provider details and dropped them on the floor.",
+        "DECIDE which fix this is, and do only that one. Either the field goes away until the adapters are wired, or it stays and says plainly what it does not yet do. An offered field that silently reaches nothing is the option this board keeps rejecting.",
+        "FR-I2 in docs/SRS.md must agree with whichever is chosen: it currently promises dual-remote push with no note that the CLI path refuses it.",
+        "RED FIXTURE: complete the wizard supplying a forge credential and assert by execution what happens to it \u2014 that it is either stored somewhere a later ticket can find, or never asked for. Not that a component renders."
+      ]
     }
   ]
 }
