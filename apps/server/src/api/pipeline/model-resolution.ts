@@ -253,6 +253,35 @@ function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'so
   };
 }
 
+/**
+ * True when the environment EXPLICITLY names a model endpoint (W13-34): an
+ * operator who set these is telling Dokima where to go (the law 9a CI seam);
+ * an empty environment is telling it nothing, and guessing there is what made
+ * a clean install fail.
+ */
+export function envNamesAModel(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(env.DOKIMA_MODEL_BASE_URL ?? env.DOKIMA_MODEL_ID);
+}
+
+/**
+ * Nothing anywhere says which model to use (W13-34).
+ *
+ * On a fresh install "Build the board" used to fail with `env: request failed
+ * with 400 Bad Request (HTTP 500)`: resolution fell through to a placeholder
+ * id at a guessed endpoint, and the endpoint's own clear answer was discarded.
+ * Law 9(b) — the model is the user's choice, "asked at setup, never defaulted
+ * silently". C-1 promises local-only WORKS, not that an unconfigured install
+ * guesses.
+ */
+export function noModelConfigured(): ModelResolutionError {
+  return new ModelResolutionError(
+    'no model is configured for this project yet. Open Settings → Models to ' +
+      'choose one, or register a provider first — Dokima will not guess an ' +
+      'endpoint on your behalf.',
+    'no-model-configured',
+  );
+}
+
 /** The env fallback — unchanged behaviour, now explicitly second in line. */
 export function envTarget(env: NodeJS.ProcessEnv = process.env): ResolvedModelTarget {
   return {
@@ -312,6 +341,7 @@ export async function resolveModelTarget(
   const { projectPath, pin } = input;
   if (projectPath === undefined) {
     if (pin) throw pinUnhonoured(pin, 'no project is in view, so no provider registry to bind it to');
+    if (!envNamesAModel(input.env)) throw noModelConfigured();
     return envTarget(input.env);
   }
 
@@ -329,6 +359,10 @@ export async function resolveModelTarget(
   // the substitution the whole mode exists to prevent.
   if (rows.length === 0 || providers.length === 0) {
     if (pin) throw pinUnhonoured(pin, 'no providers or matrix rows are configured');
+    // W13-34: the env seam still wins when it is explicitly set. What changed
+    // is the empty case: it used to return a placeholder target and fail at the
+    // endpoint, and now it says what is missing and where to fix it.
+    if (!envNamesAModel(input.env)) throw noModelConfigured();
     return envTarget(input.env);
   }
 

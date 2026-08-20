@@ -8086,6 +8086,91 @@
       ]
     },
     {
+      "id": "W13-34",
+      "title": "a fresh install cannot build a board \u2014 it guesses a model that does not exist and reports the failure unreadably",
+      "phase": 13,
+      "module": "pipeline",
+      "lane": "core",
+      "points": 5,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 by using the product as a customer: fresh DOKIMA_HOME, boot, New project, Describe your product, Build the board. It fails with: The run failed: env: request failed with 400 Bad Request (HTTP 500). That is the primary flow of the product, on a clean install, and it does not work.",
+        "THE CHAIN: nothing in the visible path ever asks for a model, so resolveModelTarget falls through to envTarget, whose defaults are baseUrl 127.0.0.1:1234 and model 'local-model'. A real LM Studio answers that with a perfectly clear error \u2014 Invalid model identifier 'local-model'. Please specify a valid downloaded model \u2014 and Dokima discards it, showing an internal provider id and two different status codes instead.",
+        "THIS IS A LAW 9(b) VIOLATION, not merely a UX gap. Which model does the work is the user's choice, asked at setup, NEVER DEFAULTED SILENTLY. A placeholder model id pointed at a guessed endpoint is a silent default, and the code comment calling it 'a normal first-run state, not an error (C-1)' is the assumption to correct: C-1 promises local-only WORKS, not that an unconfigured install guesses.",
+        "REFUSE, NAMED AND ACTIONABLE, when nothing is configured and no env override is set: say that no model is configured and where to choose one. FR-G5 degrades honestly; an unusable 500 is neither.",
+        "DO NOT BREAK THE CI SEAM (law 9a): DOKIMA_MODEL_BASE_URL / DOKIMA_MODEL_ID set explicitly must still resolve exactly as today. The refusal is only for the case where nothing anywhere says which model to use.",
+        "RED FIXTURE: resolving with no providers, no matrix rows and no env override refuses by name rather than returning a placeholder target; and the same call WITH the env vars set still returns them."
+      ],
+      "notes": [
+        "Found by running the product end to end in a browser on a clean install, not by a test. Every existing test either configures a model or asserts the env fallback, so the unconfigured path was covered as a feature rather than as the dead end it is.",
+        "Closed 2026-08-19. Verified in a browser on a fresh install: the failure went from \"env: request failed with 400 Bad Request (HTTP 500)\" to \"no model is configured for this project yet. Open Settings to choose one...\"."
+      ]
+    },
+    {
+      "id": "W13-35",
+      "title": "the setup wizard registers nothing unless you also create the sample project",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "done",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/src/settings/FirstRunWizard.test.tsx",
+        "apps/web/src/App/MainView.tsx"
+      ],
+      "depends_on": [
+        "W13-34"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 by walking a fresh install as a customer. Step 2 is titled Register one provider. It registers nothing: savePresetAndProvider posts the entry inside a `providers` key on PUT /settings/global, which that route has never handled \u2014 the file's own comment says so. The only real putProviders call lives in step 4, inside Create sample project.",
+        "SO A USER WHO SKIPS THE SAMPLE ENDS WITH NOTHING REGISTERED, which is what happened here: complete steps 1 to 3, decline the sample, and the provider list is still empty and the matrix still has no rows. After W13-34 the product then correctly says no model is configured \u2014 honest, and still a dead end reached straight after a setup flow that claimed to configure it.",
+        "THE CONSTRAINT IN THE WAY IS REAL, not an oversight: the global-scope registry write is ADDRESSED THROUGH A PROJECT, and when the wizard is opened with no project in view there is nothing to address it through. That is why it was deferred to the step that creates one.",
+        "FIX: when a project IS in view \u2014 which is every path that reaches the wizard from Settings \u2014 register at step 2 through that project. Keep the deferral only for the genuinely projectless case, and say so in the step's copy rather than leaving the title claiming something it does not do.",
+        "RED FIXTURE: completing steps 1 to 3 with a project in view and declining the sample leaves a registered provider behind, proven against today's empty registry."
+      ],
+      "notes": [
+        "The wizard itself is good \u2014 step 1 is the clearest copy in the product and is exactly what law 9(b) asks for. The defect is that its output does not survive the path most users take.",
+        "Closed 2026-08-19. Verified in a browser: completing steps 1-3 and declining the sample now leaves {\"id\":\"first-run\",\"kind\":\"lm-studio\",...} registered, where the registry was empty before. The board still cannot be built because the preset is never expanded into matrix rows \u2014 filed as W13-36, not folded in here."
+      ]
+    },
+    {
+      "id": "W13-36",
+      "title": "the model-matrix preset is stored and never expanded, and it names models the user may not have",
+      "phase": 13,
+      "module": "gateway",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "docs/design/MODEL_PRESETS.md"
+      ],
+      "depends_on": [
+        "W13-35"
+      ],
+      "stories": [],
+      "acceptance": [
+        "FOUND 2026-08-19 completing the customer walkthrough. After W13-35 the wizard registers a provider, and the board still cannot be built: resolveModelTarget needs providers AND matrix rows, and the rows are empty. The wizard records defaultModelMatrixPreset (all-local) in global settings; scope-routes validates that name against PRESET_NAMES and stores it; NOTHING ever expands it into rows. presetAsGlobalScope exists, is exported from the gateway barrel, and has no caller \u2014 the ninth instance of this seam.",
+        "AND EXPANDING IT AS-IS WOULD NOT FIX THE WALKTHROUGH, which is why this is not a one-line wiring ticket. PRESET_ALL_LOCAL hardcodes qwen2.5-coder-7b-instruct and qwen2.5-coder-32b-instruct. A user whose LM Studio holds different models \u2014 the machine this was found on holds 26, none of them those \u2014 would get the same Invalid model identifier failure, one step later and harder to explain.",
+        "THE REAL FIX IS TO PICK FROM WHAT THE PROVIDER REPORTS. Every adapter already implements listModels(); the wizard registers a provider and then never asks which of its models to use. Decide whether the preset becomes a SHAPE (which role gets the stronger model, which the cheaper) resolved against the live model list, rather than a literal set of model ids that can only be right by luck.",
+        "UNTIL THEN THE REFUSAL IS CORRECT AND SHOULD STAY: W13-34 makes an unconfigured project say so and point at Settings. That is a dead end a user can act on, which is strictly better than a guess that fails at the endpoint.",
+        "RED FIXTURE: a fresh install that completes the wizard against a provider holding arbitrary models can build a board \u2014 the walkthrough this ticket came from, run end to end."
+      ],
+      "notes": [
+        "Filed rather than fixed on purpose: wiring presetAsGlobalScope alone would move the failure from 'no rows' to 'model not found' and look like progress. write_scope left empty because the first deliverable is the shape-vs-literal decision."
+      ]
+    },
+    {
       "id": "W13-17",
       "title": "the importer cannot tell a Dokima-native expert from one upstream deleted",
       "phase": 13,

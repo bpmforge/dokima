@@ -45,6 +45,13 @@ function errorMessage(err: unknown, fallback: string): string {
 export interface FirstRunWizardProps {
   onFinish: (projectId?: string) => void;
   onCancel: () => void;
+  /**
+   * The project already in view, when there is one (W13-35). The global-scope
+   * registry write is ADDRESSED THROUGH a project, which is why registration
+   * used to wait for the sample step — making "Register one provider" register
+   * nothing for anyone who declined it.
+   */
+  projectId?: string | null;
 }
 
 /**
@@ -61,7 +68,7 @@ export interface FirstRunWizardProps {
  * passing unchanged — the guided walkthrough is additional content on the
  * last step, not a new gate before it.
  */
-export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
+export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizardProps) {
   const [step, setStep] = useState<Step>('preset');
   // D-024: NO SILENT DEFAULT. This was `useState('hybrid')`, so a user who
   // clicked straight through opted into cloud spend without ever choosing.
@@ -78,6 +85,24 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
   const [guidedActive, setGuidedActive] = useState(true);
+
+  /**
+   * The registry entry, built once (W13-35): step 2 and the sample step both
+   * register, and two inline copies would drift — this wizard has already been
+   * where a provider shape was spelled differently from the registry's
+   * (W10-55). `project`/`location` are required for vertex (W12-19).
+   */
+  const providerEntry = (): ProviderEntry =>
+    ({
+      id: 'first-run',
+      kind: providerKind,
+      enabled: true,
+      ...(hasFixedEndpoint(providerKind) ? {} : { baseUrl }),
+      ...(credentialRef.trim() === '' ? {} : { credentialRef: credentialRef.trim() }),
+      ...(needsProjectScope(providerKind)
+        ? { project: project.trim(), location: location.trim() }
+        : {}),
+    }) as ProviderEntry;
 
   const savePresetAndProvider = async () => {
     try {
@@ -119,6 +144,16 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
           },
         ],
       });
+      /**
+       * W13-35: register HERE when we can. `savePresetAndProvider` above sends
+       * the entry inside a `providers` key on `PUT /settings/global`, which
+       * that route has never handled — so before this, step 2 collected
+       * provider details and dropped them, and the only real registration
+       * happened inside "Create sample project".
+       */
+      if (projectId) {
+        await putProviders(projectId, [providerEntry()], { scope: 'global' });
+      }
       setError(null);
       setStep('forge');
     } catch (err) {
@@ -150,20 +185,7 @@ export function FirstRunWizard({ onFinish, onCancel }: FirstRunWizardProps) {
       await putProviders(
         card.id,
         [
-          {
-            id: 'first-run',
-            kind: providerKind,
-            enabled: true,
-            ...(hasFixedEndpoint(providerKind) ? {} : { baseUrl }),
-            ...(credentialRef.trim() === '' ? {} : { credentialRef: credentialRef.trim() }),
-            // W12-19: REQUIRED for vertex since W12-14, and the wizard never
-            // collected them — so choosing Vertex here produced a registry
-            // refusal ("bills a specific cloud project and requires project")
-            // at the one moment a new user is least equipped to debug it.
-            ...(needsProjectScope(providerKind)
-              ? { project: project.trim(), location: location.trim() }
-              : {}),
-          } as ProviderEntry,
+          providerEntry(),
         ],
         { scope: 'global' },
       );

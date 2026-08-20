@@ -104,6 +104,9 @@ export function MainView({
   if (view === 'wizard') {
     return (
       <FirstRunWizard
+        // W13-35: lets step 2 actually register, instead of deferring every
+        // registration to the sample-project step a user may decline.
+        projectId={projectId}
         onFinish={(createdProjectId) => {
           if (createdProjectId) {
             openProject(createdProjectId);
