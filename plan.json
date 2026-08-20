@@ -8744,12 +8744,13 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/fleet/**",
         "apps/web/src/notifications/**",
-        "apps/web/src/styles.css"
+        "apps/web/src/styles.css",
+        "docs/design/VISUAL_DIRECTION.md"
       ],
       "depends_on": [],
       "stories": [],
@@ -8834,6 +8835,32 @@
         "CHECK 2 \u2014 vocabulary law: VOCABULARY.md's table is parsed, its \"Not\" column becomes a forbidden lexicon over user-facing string literals in apps/web/src (JSX text and quoted strings rendered to users). \"routing matrix\" etc. cannot reach a user silently again.",
         "BASELINE, not a red main: the violations W13-51 already owns are recorded in ui-copy-baseline.json with their owning ticket, history-secrets style \u2014 known debt named and gated against growth; W13-51 clears entries as it fixes them, and the validator refuses a baseline entry whose string no longer exists (stale baseline rot).",
         "RED FIXTURE: a planted \"Settings \u2192 Nowhere\" string and a planted forbidden term each turn the validator red in its own test; the real tree with the baseline passes."
+      ]
+    },
+    {
+      "id": "W13-57",
+      "title": "the roster reads a matrix store that nothing writes \u2014 every expert claims no model on a fully configured install",
+      "phase": 13,
+      "module": "cli",
+      "lane": "core",
+      "points": 5,
+      "status": "in_progress",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/roster-resolve.ts",
+        "apps/server/src/api/roster-resolve.test.ts",
+        "apps/server/src/api/roster.ts",
+        "apps/server/src/api/roster.test.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Found by W13-49 making the roster honest: once the noise line became an actionable claim, the claim was visibly FALSE. The old presentation hid a real wiring defect.",
+      "acceptance": [
+        "MEASURED in a browser on a configured install (wizard completed, matrix written, runs executed): every roster card says \"needs a model / No model will take this role yet\" while route() serves every role through the default row. The instruction is now false on a working product.",
+        "ROOT CAUSE, from the file's own header: roster-resolve reads roleMatrix.<role> settings keys, written by NOTHING \u2014 the comment dates from \"no project has a matrix configured anywhere yet (W4-06 blocked)\". The real matrix landed in model-matrix-store and the roster was never rewired. The defining defect class, reader-side.",
+        "Resolve from the SAME store the run reads: model-matrix-store rows (project rows over global, default-role fallback, code-task preference), with the settings-key override kept as the higher-precedence layer it was designed to be.",
+        "scope reports where the winning row actually lives (project vs global); usedDefaultRole true on the fallback \u2014 the wire shape already carries both, honestly unused until now.",
+        "RED FIXTURE: write rows through the real store (the wizard's path), then GET /api/v1/roster and assert an expert with no row of its own reports the default-role chain \u2014 the exact walkthrough case that renders false today."
       ]
     }
   ]

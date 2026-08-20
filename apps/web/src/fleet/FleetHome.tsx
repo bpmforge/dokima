@@ -157,6 +157,49 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
         </p>
       )}
 
+      {/* W13-53 (UX_AUDIT A-5): the fleet-wide readings. Fleet's job is
+          "what needs me?" across every project, and the answer was only
+          derivable by scanning N cards. One strip of readouts answers it
+          before the eye reaches the grid — and gives the page the horizontal
+          structure it lacked (two cards floating in a void). */}
+      {!loading && !formMode && sorted.length > 0 && (
+        <dl className="fleet__summary surface" data-testid="fleet-summary">
+          {(() => {
+            const total = (pick: (c: (typeof sorted)[number]) => number) =>
+              sorted.reduce((sum, c) => sum + pick(c), 0);
+            const readings: { label: string; value: number | string; attention?: boolean; idle?: boolean }[] = [
+              { label: 'ready', value: total((c) => c.board.ready) },
+              {
+                label: 'blocked',
+                value: total((c) => c.board.blocked),
+                attention: total((c) => c.board.blocked) > 0,
+              },
+              {
+                label: 'needs you',
+                value: total((c) => c.pendingDecideCount),
+                attention: total((c) => c.pendingDecideCount) > 0,
+              },
+              { label: 'berths running', value: total((c) => c.berthsRunning) },
+              {
+                label: 'spend today',
+                value: `$${total((c) => Math.round(c.spendTodayUsd * 100) / 100).toFixed(2)}`,
+              },
+            ];
+            return readings.map((r) => (
+              <div
+                key={r.label}
+                className={`readout${r.attention ? ' readout--attention' : ''}${
+                  r.value === 0 ? ' readout--idle' : ''
+                }`}
+              >
+                <dd className="readout__value">{r.value}</dd>
+                <dt className="readout__label">{r.label}</dt>
+              </div>
+            ));
+          })()}
+        </dl>
+      )}
+
       {!loading && !formMode && sorted.length === 0 ? (
         <EmptyState
           archived={archivedFilter}
