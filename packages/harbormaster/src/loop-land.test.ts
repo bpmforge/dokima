@@ -35,9 +35,13 @@ interface Fixture {
   cleanup: () => Promise<void>;
 }
 
-async function setupFixture(): Promise<Fixture> {
+async function setupFixture(trunkName = 'main'): Promise<Fixture> {
   const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-land-repo-'));
-  await git(repoRoot, ['init', '-b', 'main']);
+  // W13-40: parameterised, and NOT because a second name is tidier. Every
+  // fixture in this file was born on `main`, which is exactly why the loop's
+  // hardcoded `'main'` base ref stayed green here for three phases while
+  // being unable to run a single ticket on a repo called anything else.
+  await git(repoRoot, ['init', '-b', trunkName]);
   await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
   await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
   await fs.writeFile(path.join(repoRoot, 'README.md'), '# fixture\n');
@@ -167,6 +171,29 @@ describe('runLandLoop', () => {
     expect(ticket1.status).toBe('in_review');
     expect(ticket1.ownerId).toBe('worker-1');
     expect(ticket1.manifest?.closeReceipt).toBeDefined();
+  });
+
+  /**
+   * W13-40 RED FIXTURE. Measured on a customer project, not imagined: a plain
+   * `git init` produced a `master` trunk, the board built fine, and then every
+   * ticket refused with `fatal: invalid reference: main`. Nothing on the
+   * server path supplies `baseRef`, so the loop's default WAS the product's
+   * behaviour.
+   */
+  it('lands a ticket in a repo whose trunk is not called main (W13-40)', async () => {
+    fixture = await setupFixture('master');
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+
+    const options = baseOptions(fixture, landingSpawn);
+    // No `baseRef`: the whole defect is what happens when nobody passes one.
+    const result = await runLandLoop(options);
+
+    expect(result.stopReason).toBe('idle');
+    expect(result.processed).toHaveLength(1);
+    expect(result.processed[0]!.landed).toBe(true);
+    expect(result.processed[0]!.attempts[0]!.closeGate?.ok).toBe(true);
+    expect((getTicket(log, 'W9-01') as Ticket).status).toBe('in_review');
   });
 
   it('ladder mode: parks blocked-with-evidence after the attempt cap with no manifest, then moves on (FR-H1/H2)', async () => {

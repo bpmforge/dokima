@@ -8372,6 +8372,35 @@
         "The mid-answer guard stays: recovery must not pull the screen out from under a founder who has started typing (InterviewPanel only recovers from an untouched form).",
         "RED FIXTURE: start a run, navigate away and back before it finishes, and the describe screen must show the run in progress \u2014 not an empty form."
       ]
+    },
+    {
+      "id": "W13-40",
+      "title": "the land loop branches from a hardcoded main \u2014 a repo on any other branch cannot run a single ticket",
+      "phase": 13,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "points": 5,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/git/src/branch.ts",
+        "packages/git/src/branch.test.ts",
+        "packages/git/src/index.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-land-reclaim.ts"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "Found by running the product, not by a test. Same hardcode class the founder called out for model names in W13-36: a customer uses what they have, not what we assumed.",
+      "acceptance": [
+        "MEASURED: a customer project created with plain git init (default branch master on this machine) built its board, then Start a run refused every ticket with: fatal: invalid reference: main. Zero tickets are workable on any repo whose trunk is not literally named main.",
+        "ROOT CAUSE, verified not guessed: loop-land.ts runLandLoop does options.baseRef ?? 'main', and nothing on the server/CLI path supplies baseRef. berths.ts already defaults the same concept to HEAD, so two defaults for one idea disagree inside one package \u2014 evidence for which one is right, not a tie.",
+        "Resolve the repo's ACTUAL branch instead of guessing a name. An explicit options.baseRef still wins; otherwise read the checkout. Add the helper to @dokima/git (mergeLocal already runs this exact rev-parse inline) rather than a fourth copy.",
+        "A detached HEAD must REFUSE with a message naming the problem, not silently fall back to a guessed branch. Guessing is what produced a failure that reads like a broken product.",
+        "Do NOT change berths.ts: HEAD is already correct there, and this ticket is about the loop agreeing with it.",
+        "RED FIXTURE: the land loop runs a ticket to completion in a repo whose trunk is named something other than main. That fixture is red today for exactly the reason above."
+      ]
     }
   ]
 }

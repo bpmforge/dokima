@@ -24,3 +24,5 @@ export {
   type CommitResult,
 } from './commit.js';
 export { mergeLocal, type MergeLocalOptions } from './merge.js';
+// W13-40: resolve the repo's branch instead of guessing its name.
+export { resolveCurrentBranch } from './branch.js';

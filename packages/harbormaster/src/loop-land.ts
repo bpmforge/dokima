@@ -35,12 +35,14 @@ import {
   branchNameFor,
   createWorktree,
   listWorktrees,
+  resolveCurrentBranch,
   type CreateWorktreeOptions,
   type WorktreeHandle,
 } from '@dokima/git';
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { parkComment } from './loop-land-report.js';
+import { reclaimAbandoned } from './loop-land-reclaim.js';
 import { nextFeedback } from './loop-land-session.js';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
 import { attemptOnce } from './loop-land-session.js';
@@ -54,12 +56,8 @@ import {
   startTicket,
   type Ticket,
 } from '@dokima/tickets';
-import { listEvents, type EventLog } from '@dokima/events';
-import {
-  DEFAULT_MAX_SESSIONS_PER_TICKET,
-  findAbandonedTickets,
-  STALE_CLAIM_MS,
-} from './loop-claim.js';
+import { type EventLog } from '@dokima/events';
+import { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
 import type { AttemptFeedback, HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
@@ -116,7 +114,11 @@ export interface LandLoopOptions {
   /** Dual-remote push primitive (FR-I2). Inject `@dokima/forge`'s `pushToRemotes` in production. */
   readonly pushToRemotes: PushToRemotesFn;
   readonly buildHandoff: HandoffBuilder;
-  /** Commit-ish each ticket's worktree branches from AND the close gate's fork point. Defaults to 'main'. */
+  /**
+   * Commit-ish each ticket's worktree branches from AND the close gate's fork
+   * point. Defaults to the branch `repoRoot` is checked out on (W13-40) — a
+   * detached HEAD refuses rather than guessing.
+   */
   readonly baseRef?: string;
   /** Checked once per outer-loop iteration, before claiming the next ticket. Defaults to never stopping. */
   readonly stopSwitch?: StopSwitch;
@@ -328,7 +330,23 @@ async function processTicket(
 
 /** Runs the land loop until idle (nothing claimable), stopped (kill-file/pause), or budget-stopped (W2-07 hard_stop). */
 export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopResult> {
-  const baseRef = options.baseRef ?? 'main';
+  /**
+   * W13-40: the repo's OWN branch, not a guessed name. This was
+   * `options.baseRef ?? 'main'`, and nothing on the server path supplies
+   * `baseRef` — so on a repository whose trunk is called anything else, every
+   * ticket refused with `fatal: invalid reference: main` and the board was
+   * unworkable. `berths.ts` already resolves the same idea to HEAD; this makes
+   * the loop agree with it instead of contradicting it.
+   *
+   * RESOLVED LAZILY, once, at the first ticket that needs it. Eagerly is the
+   * obvious way to write this and it is wrong: a loop with nothing claimable
+   * does no git work at all, and reading the branch up front made an idle run
+   * in a non-repository fail before it could report that there was nothing to
+   * do. Doing nothing must not require a repository.
+   */
+  let resolvedBaseRef: string | undefined = options.baseRef;
+  const baseRefFor = async (): Promise<string> =>
+    (resolvedBaseRef ??= await resolveCurrentBranch(options.repoRoot));
   const skip = new Set<string>();
   const processed: LandLoopTicketOutcome[] = [];
 
@@ -342,41 +360,14 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
       return { processed, stopReason: 'budget' };
     }
 
-    /**
-     * W13-12: reclaim what an owner that is gone left behind, before choosing.
-     *
-     * Two runs in one session of live testing ended with a ticket stuck in
-     * `in_progress` — one killed from outside, one crashed by an uncaught
-     * provider timeout (W13-13) — and the next run then reported "0 landed, 0
-     * parked" in zero seconds, because nothing was claimable and nothing said
-     * why. A closed laptop lid does the same.
-     *
-     * It goes through `releaseTicket`, never a status write, so the log
-     * explains what happened and to whom (Law 4, C-2/C-3).
-     */
-    for (const abandoned of findAbandonedTickets(
-      listTickets(options.log),
-      listEvents(options.log),
-      options.now ? options.now() : new Date().toISOString(),
-    )) {
-      commentTicket(options.log, {
-        ticketId: abandoned.id,
-        actorId: options.actorId,
-        body:
-          `reclaimed: held by ${abandoned.ownerId ?? 'an unknown owner'} with no activity ` +
-          `for over ${Math.round(STALE_CLAIM_MS / 60000)} minutes, so the session that ` +
-          `claimed it is gone (crash, kill, or a closed lid). Returned to ready; any work ` +
-          `it committed is still on its branch.`,
-      });
-      releaseTicket(options.log, { ticketId: abandoned.id, actorId: options.actorId });
-    }
+    reclaimAbandoned(options);
 
     const next = pickNextTicket(listTickets(options.log), skip);
     if (!next) {
       return { processed, stopReason: 'idle' };
     }
 
-    processed.push(await processTicket(options, next, baseRef));
+    processed.push(await processTicket(options, next, await baseRefFor()));
     skip.add(next.id);
   }
 }
