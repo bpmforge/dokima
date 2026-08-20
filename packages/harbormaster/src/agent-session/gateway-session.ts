@@ -107,6 +107,16 @@ import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
 import { takeMeteredTurn } from './session-stream.js';
 import {
+  DEFAULT_MAX_SESSION_SECONDS,
+  DEFAULT_MAX_TURN_TOKENS,
+  turnTokenStop,
+  watchdogStop,
+} from './session-limits.js';
+
+// Re-exported so callers keep importing the session's limits from the session
+// (W13-44 moved the definitions to the chapter that enforces them).
+export { DEFAULT_MAX_SESSION_SECONDS, DEFAULT_MAX_TURN_TOKENS };
+import {
   parseVerifyResult,
   refuseIfSessionExceededScope,
 } from './session-verdicts.js';
@@ -116,24 +126,7 @@ import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
 
-/**
- * The ceiling on ONE turn's output (W13-43).
- *
- * Every turn was unbounded until a local model entered a generation loop and
- * streamed for as long as the run was left going: `lsof` showed a live
- * connection, LM Studio sat at 160% CPU, our process at 0.7%. Nothing could
- * stop it — W13-15 deliberately replaced duration bounds with an IDLE bound,
- * which is correct for a model generating slowly and useless against one that
- * never stops, because every token resets the timer.
- *
- * SIZED FROM MEASURED TURNS, not guessed: across 166 real turns on this
- * board the median was 60 completion tokens, p95 was 438, and the largest
- * legitimate turn — a model writing a whole file — was 6,646. 32k is roughly
- * five times that, so honest work never meets it. A ceiling tight enough to
- * clip a real turn would be worse than the hang: it would truncate the
- * Completion Manifest every time and read as model incompetence.
- */
-export const DEFAULT_MAX_TURN_TOKENS = 32_000;
+
 export const DEFAULT_AGENT_SESSION_TASK_TYPE: TaskType = 'code';
 export const DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -167,6 +160,8 @@ export interface GatewaySpawnSessionOptions {
   readonly maxIterations?: number;
   /** W13-43: ceiling on one turn's output. 0 disables the bound. */
   readonly maxTurnTokens?: number;
+  /** W13-44: wall-clock ceiling on the whole session. 0 disables the bound. */
+  readonly maxSessionSeconds?: number;
   /**
    * Optional USD cap, checked between iterations against
    * `ledger.totalForTicket` — the other half of acceptance 1's "or the
@@ -211,6 +206,7 @@ export function createGatewaySpawnSession(
   const taskType = options.taskType ?? DEFAULT_AGENT_SESSION_TASK_TYPE;
   const maxIterations = options.maxIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
   const maxTurnTokens = options.maxTurnTokens ?? DEFAULT_MAX_TURN_TOKENS;
+  const maxSessionSeconds = options.maxSessionSeconds ?? DEFAULT_MAX_SESSION_SECONDS;
   const verifyTimeoutMs =
     options.verifyTimeoutMs ?? DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS;
 
@@ -279,7 +275,18 @@ export function createGatewaySpawnSession(
       messages.push(anchorMessage);
     };
 
+    const startedAtMs = Date.parse(now());
+
     for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+      const watchdog = watchdogStop({
+        maxSessionSeconds,
+        startedAtMs,
+        nowMs: Date.parse(now()),
+        iteration,
+        maxIterations,
+      });
+      if (watchdog) return watchdog;
+
       await refreshAnchor();
       // W13-16: route, stream and meter are one act — see `session-stream.ts`.
       const { response } = await takeMeteredTurn({
@@ -307,27 +314,8 @@ export function createGatewaySpawnSession(
         now,
       });
 
-      /**
-       * W13-43: the ceiling was HIT. `finish_reason: length` means the model
-       * was still going when it ran out of room, so this turn's output is a
-       * fragment — continuing would feed a truncated assistant message back
-       * and burn the rest of the iteration budget on it.
-       *
-       * Ends the session with a reason the operator can act on: W13-41 puts
-       * this sentence in the park comment, so the number and the setting that
-       * changes it are both visible rather than being a bare no-manifest line.
-       */
-      if (response.finishReason === 'length') {
-        return {
-          stdout: '',
-          stderr:
-            `agent session stopped: one turn hit the ${maxTurnTokens}-token output ` +
-            `ceiling and was still generating (T-27). That is a model that will not ` +
-            `stop, not a model that needs more room — raise ${'maxTurnTokens'} only ` +
-            `if a legitimate turn is genuinely this large.`,
-          exitCode: 1,
-        };
-      }
+      const truncated = turnTokenStop(response.finishReason, maxTurnTokens);
+      if (truncated) return truncated;
 
       if (options.maxTicketCostUsd !== undefined) {
         const spent = options.ledger.totalForTicket({
