@@ -86,10 +86,25 @@ export interface AcceptItemResult {
 }
 
 /**
- * `proposed|regressed` -> `accepted`. Mints a `BoardTicketDraft` carrying
- * the item's `verifyCriterion` verbatim as the ticket's `verify` (FR-PLAN2:
- * "the plan and the board never diverge on what done means"). Re-accepting
- * a `regressed` item increments `attempt` (design doc §2).
+ * `proposed|regressed` -> `accepted`. Mints a `BoardTicketDraft` carrying the
+ * item's `verifyCriterion` as the ticket's ACCEPTANCE (FR-PLAN2: "the plan and
+ * the board never diverge on what done means"). Re-accepting a `regressed`
+ * item increments `attempt` (design doc §2).
+ *
+ * NOT as the ticket's `verify`, and W13-31 is why. A `verifyCriterion` is a
+ * machine-checkable predicate over a `PlanEvaluationSnapshot` — the same
+ * grammar as an item's `condition`, e.g. `receipts.staleCount == 0`. The close
+ * gate EXECUTES `ticket.verify` as a shell command (SC-02's `reRunVerify`), so
+ * setting it here made every plan-derived ticket fail its gate on every
+ * attempt with `command not found` (exit 127, confirmed by running it) and
+ * park for a reason that had nothing to do with the work.
+ *
+ * Two subsystems agreed on a field NAME and disagreed on its MEANING. FR-PLAN2
+ * is satisfied by the acceptance line below — the board states the same
+ * done-condition — and the predicate keeps its proper evaluator in
+ * `evaluateAcceptedItem`, which re-checks it against a fresh snapshot. Leaving
+ * `verify` unset falls the ticket back to the project's own gate, which is a
+ * command.
  */
 export function acceptItem(
   item: PlanItemRecord,
@@ -109,7 +124,7 @@ export function acceptItem(
     writeScope: opts.writeScope ?? [],
     dependsOn: opts.dependsOn ?? [],
     acceptance: [{ id: 'AC-1', text: item.verifyCriterion, done: false }],
-    verify: item.verifyCriterion,
+    verify: null,
   };
   const nextItem: PlanItemRecord = {
     ...item,

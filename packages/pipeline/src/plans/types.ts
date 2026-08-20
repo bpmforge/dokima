@@ -205,6 +205,11 @@ export interface BoardTicketDraft {
     readonly text: string;
     readonly done: boolean;
   }[];
-  /** The plan item's `verifyCriterion` carried verbatim as the ticket's verify (FR-PLAN2). */
-  readonly verify: string;
+  /**
+   * The ticket's verify COMMAND, or null to fall back to the project's own
+   * gate. W13-31: this used to carry the plan item's `verifyCriterion`
+   * verbatim, which is a machine-checkable predicate, not a command — and the
+   * close gate executes it. FR-PLAN2 is carried by `acceptance` above.
+   */
+  readonly verify: string | null;
 }

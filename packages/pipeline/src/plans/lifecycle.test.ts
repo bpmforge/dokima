@@ -86,15 +86,27 @@ function proposedItem(): PlanItemRecord {
 }
 
 describe('acceptItem', () => {
-  it('proposed -> accepted mints a ticket draft carrying the item verify', () => {
-    const { item, ticketDraft } = acceptItem(proposedItem(), { lane: 'pipeline' });
-    expect(item.state).toBe('accepted');
-    expect(item.ticketId).toBe('PLAN-PC-004');
-    expect(item.attempt).toBe(0);
-    expect(ticketDraft.verify).toBe('coverage.requiredSkipped == 0');
-    expect(ticketDraft.id).toBe('PLAN-PC-004');
-    expect(ticketDraft.acceptance[0]?.text).toBe('coverage.requiredSkipped == 0');
-  });
+  it(
+    'RED FIXTURE (W13-31): the criterion becomes the ticket ACCEPTANCE, never ' +
+      'its verify. A verifyCriterion is a machine-checkable predicate over a ' +
+      'snapshot; the close gate EXECUTES ticket.verify as a shell command, so ' +
+      'carrying it verbatim made every plan-derived ticket fail its gate with ' +
+      'exit 127 and park for a reason unrelated to the work',
+    () => {
+      const { item, ticketDraft } = acceptItem(proposedItem(), { lane: 'pipeline' });
+      expect(item.state).toBe('accepted');
+      expect(item.ticketId).toBe('PLAN-PC-004');
+      expect(item.attempt).toBe(0);
+      expect(ticketDraft.id).toBe('PLAN-PC-004');
+
+      // FR-PLAN2 — "the plan and the board never diverge on what done means" —
+      // is carried here, where it is READ rather than executed.
+      expect(ticketDraft.acceptance[0]?.text).toBe('coverage.requiredSkipped == 0');
+
+      // And the ticket falls back to the project's own gate, which is a command.
+      expect(ticketDraft.verify).toBeNull();
+    },
+  );
 
   it('regressed -> accepted increments the attempt counter', () => {
     const regressed: PlanItemRecord = {
