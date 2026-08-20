@@ -59,3 +59,23 @@ process.on('exit', () => {
 process.env.DOKIMA_NO_KEYCHAIN = '1';
 process.env.DOKIMA_VAULT_KEY ??= 'test-vault-key-w1243';
 
+/**
+ * Declares that a model IS configured, for the whole apps/server suite
+ * (W13-34).
+ *
+ * `resolveModelTarget` used to fall back to a placeholder model id at a
+ * guessed endpoint when nothing was configured. A customer walkthrough on a
+ * clean install showed where that leads: "Build the board" failed with
+ * `env: request failed with 400 Bad Request (HTTP 500)`, because a real
+ * LM Studio has no model called `local-model`. It now refuses by name instead,
+ * which is what law 9(b) asks for — the model is the user's choice, "asked at
+ * setup, never defaulted silently".
+ *
+ * Nearly every test here assumes a model exists; that assumption used to be
+ * satisfied by the guess. Setting the DOCUMENTED CI seam (law 9a) states it
+ * out loud instead. A test that wants the unconfigured path deletes these two
+ * itself — `interview-routes.test.ts` does exactly that.
+ */
+process.env.DOKIMA_MODEL_BASE_URL ??= 'http://127.0.0.1:1234/v1';
+process.env.DOKIMA_MODEL_ID ??= 'test-model';
+

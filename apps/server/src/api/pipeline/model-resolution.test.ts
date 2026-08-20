@@ -8,6 +8,7 @@ import {
   ModelResolutionError,
   resolveModelTarget,
   splitModelRef,
+  envNamesAModel,
 } from './model-resolution.js';
 import {
   listModelMatrix,
@@ -544,5 +545,74 @@ describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
       ...stores([provider('box-a')], [row('coding-agent', 'box-a/qwen-32b')]),
     });
     expect(target.model).toBe('qwen-32b');
+  });
+
+  describe('an unconfigured install refuses instead of guessing (W13-34)', () => {
+    const KEYS = ['DOKIMA_MODEL_BASE_URL', 'DOKIMA_MODEL_ID'] as const;
+
+    it(
+      'RED FIXTURE: nothing configured and no env override refuses BY NAME. It ' +
+        'used to return a placeholder model id at a guessed endpoint, so a ' +
+        'clean install failed with "env: request failed with 400 Bad Request ' +
+        '(HTTP 500)" — the endpoint\'s own clear answer discarded. Law 9(b): ' +
+        'the model is the user\'s choice, asked at setup, never defaulted',
+      async () => {
+        await expect(
+          resolveModelTarget({
+            projectPath: '/tmp/nowhere',
+            role: 'coding-agent',
+            taskType: 'code',
+            env: {} as NodeJS.ProcessEnv,
+            loadProviders: async () => [],
+            loadMatrixRows: async () => [],
+          }),
+        ).rejects.toMatchObject({ rule: 'no-model-configured' });
+      },
+    );
+
+    it('and says where to fix it, not just that it is broken', async () => {
+      const err = await resolveModelTarget({
+        projectPath: '/tmp/nowhere',
+        role: 'coding-agent',
+        taskType: 'code',
+        env: {} as NodeJS.ProcessEnv,
+        loadProviders: async () => [],
+        loadMatrixRows: async () => [],
+      }).then(
+        () => null,
+        (e: unknown) => e as Error,
+      );
+      expect(err?.message).toMatch(/Settings/);
+      expect(err?.message).toMatch(/will not guess/);
+    });
+
+    it(
+      'but the DOCUMENTED CI SEAM still resolves exactly as before (law 9a) — ' +
+        'an operator who set these is telling Dokima where to go',
+      async () => {
+        const target = await resolveModelTarget({
+          projectPath: '/tmp/nowhere',
+          role: 'coding-agent',
+          taskType: 'code',
+          env: {
+            DOKIMA_MODEL_BASE_URL: 'http://127.0.0.1:9/v1',
+            DOKIMA_MODEL_ID: 'pinned-by-env',
+          } as NodeJS.ProcessEnv,
+          loadProviders: async () => [],
+          loadMatrixRows: async () => [],
+        });
+        expect(target.model).toBe('pinned-by-env');
+        expect(target.source).toBe('env');
+      },
+    );
+
+    it('either variable alone is enough to count as "the operator said so"', () => {
+      expect(envNamesAModel({ DOKIMA_MODEL_ID: 'm' } as NodeJS.ProcessEnv)).toBe(true);
+      expect(
+        envNamesAModel({ DOKIMA_MODEL_BASE_URL: 'http://x/v1' } as NodeJS.ProcessEnv),
+      ).toBe(true);
+      expect(envNamesAModel({} as NodeJS.ProcessEnv)).toBe(false);
+      void KEYS;
+    });
   });
 });
