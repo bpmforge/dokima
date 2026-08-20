@@ -128,7 +128,10 @@ export function AppHeader({
           className="app-shell__notifications-bell"
           onClick={() => openView('notifications')}
           aria-current={view === 'notifications' ? 'page' : undefined}
-          aria-label={`Notifications, ${decideBadgeCount} awaiting a decision`}
+          // W13-62: the morning queue is the product's signature habit and its
+          // only entry point was an unnamed bell glyph. The visible word is
+          // the accessible name's prefix (WCAG 2.5.3 label-in-name).
+          aria-label={`Morning queue, ${decideBadgeCount} awaiting a decision`}
         >
           <svg
             className="icon"
@@ -144,6 +147,7 @@ export function AppHeader({
             <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7" />
             <path d="M10.5 19a2 2 0 0 0 3 0" />
           </svg>
+          <span className="app-shell__bell-label">Morning queue</span>
           {decideBadgeCount > 0 && (
             <span className="app-shell__decide-badge" data-testid="decide-badge">
               {decideBadgeCount}

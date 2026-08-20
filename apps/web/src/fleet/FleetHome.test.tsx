@@ -210,3 +210,32 @@ describe('New project asks for a name, not a path (W12-41)', () => {
     expect(screen.queryByRole('button', { name: 'Browse…' })).toBeNull();
   });
 });
+
+describe('the fleet summary strip is a labeled aggregate (W13-62)', () => {
+  it("RED FIXTURE: the strip is captioned 'All projects' so its totals cannot read as one project's readouts", async () => {
+    mockedApi.fetchProjects.mockResolvedValue([
+      {
+        id: 'p1',
+        path: '/x/p1',
+        name: 'One',
+        archived: false,
+        available: true,
+        createdAt: '2026-08-18T00:00:00.000Z',
+        lastOpenedAt: '2026-08-18T00:00:00.000Z',
+        phase: null,
+        board: { ready: 1, blocked: 0, done: 0 },
+        berthsRunning: 0,
+        heartbeatAgeMs: null,
+        pendingDecideCount: 0,
+        spendTodayUsd: 0,
+      },
+    ] as never);
+    render(<FleetHome onOpenProject={vi.fn()} onOpenGuidedSample={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('fleet-summary')).toBeTruthy());
+
+    const strip = screen.getByTestId('fleet-summary');
+    expect(within(strip).getByText('All projects')).toBeTruthy();
+    expect(within(strip).getByText('agents running')).toBeTruthy();
+    expect(strip.textContent).not.toMatch(/berth/i);
+  });
+});

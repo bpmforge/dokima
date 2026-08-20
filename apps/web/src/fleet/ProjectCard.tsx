@@ -4,15 +4,15 @@ import type { ProjectCard as ProjectCardData } from './types.js';
 const STALE_HEARTBEAT_MS = 2 * 60_000;
 
 function formatHeartbeat(ageMs: number | null): string {
-  if (ageMs === null) return 'no active berth';
+  if (ageMs === null) return 'no agent running';
   if (ageMs < 5_000) return 'live';
   return `${Math.round(ageMs / 1000)}s ago`;
 }
 
 /** Berths-running and heartbeat-freshness are the same fact when nothing is running — say it once. */
 function berthsSummary(berthsRunning: number, heartbeatAgeMs: number | null): string {
-  if (berthsRunning === 0) return 'No berths running';
-  return `${berthsRunning} berth${berthsRunning === 1 ? '' : 's'} running · ${formatHeartbeat(heartbeatAgeMs)}`;
+  if (berthsRunning === 0) return 'No agents running';
+  return `${berthsRunning} agent${berthsRunning === 1 ? '' : 's'} running · ${formatHeartbeat(heartbeatAgeMs)}`;
 }
 
 export interface ProjectCardProps {

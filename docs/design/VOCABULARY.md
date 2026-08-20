@@ -38,6 +38,7 @@ in the product and it is already in this codebase to copy from.
 | How much Dokima may do unattended | **Autonomy** (UI) / autonomy dial (internal) | dial, slider, trust level |
 | One step on the ladder of models a run may climb | **rung** | tier, level |
 | Flagging a trace event so the improvement loop learns from it | **field report** | feedback, flag |
+| A live agent working tickets right now | **agents running** (UI) / berth (internal) | berths |
 
 ## Rules
 
@@ -46,8 +47,8 @@ in the product and it is already in this codebase to copy from.
 with real, distinct meanings — keep them, and define them where a user first
 meets them (W13-60: the trace and the drawer now define `rung` and `field
 report` at first encounter; the drawer's `berth` line was replaced with plain
-language rather than defined — `berth` remains internal vocabulary, with the
-Fleet surface's use tracked under W13-62). `model
+language rather than defined — `berth` remains internal vocabulary; W13-62
+renamed the Fleet readings to 'agents running' the same way). `model
 matrix` and `autonomy dial` are internal names for user-facing settings; the
 setting is called what it does.
 

@@ -123,3 +123,15 @@ describe('the berths line uses the shared state vocabulary (W13-05)', () => {
     expect(container.querySelector('.state--idle')).toBeTruthy();
   });
 });
+
+describe('the running reading is plain language (W13-62)', () => {
+  it("RED FIXTURE: says 'agents running', never the undefined internal word 'berth'", () => {
+    const idle = renderCard(card());
+    expect(idle.container.textContent).toContain('No agents running');
+    expect(idle.container.textContent).not.toMatch(/berth/i);
+    cleanup();
+    const busy = renderCard(card({ berthsRunning: 2, heartbeatAgeMs: 1000 }));
+    expect(busy.container.textContent).toContain('2 agents running');
+    expect(busy.container.textContent).not.toMatch(/berth/i);
+  });
+});

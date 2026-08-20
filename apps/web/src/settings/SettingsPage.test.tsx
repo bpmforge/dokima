@@ -73,3 +73,13 @@ describe('SettingsPage with a project (W12-31)', () => {
     },
   );
 });
+
+describe('global inheritance is visible where a second project asks about it (W13-62)', () => {
+  it("RED FIXTURE: says the wizard's providers and every-project defaults already apply to any new project — the novice must not fear a full re-setup per project", () => {
+    render(<SettingsPage onOpenWizard={vi.fn()} onClose={vi.fn()} />);
+    const lead = screen.getByText(/Settings belong to a project/);
+    expect(lead.textContent).toContain('every-project model defaults');
+    expect(lead.textContent).toContain('already apply to any project you create');
+    expect(lead.textContent).toContain('nothing to set up again');
+  });
+});

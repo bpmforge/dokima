@@ -170,7 +170,15 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
           before the eye reaches the grid — and gives the page the horizontal
           structure it lacked (two cards floating in a void). */}
       {!loading && !formMode && sorted.length > 0 && (
-        <dl className="fleet__summary surface" data-testid="fleet-summary">
+        <dl
+          className="fleet__summary surface"
+          data-testid="fleet-summary"
+          aria-label="All projects combined"
+        >
+          {/* W13-62: the strip renders with the same readout styling the
+              per-project cards use — without this caption a novice reads the
+              totals as belonging to the nearest project. */}
+          <div className="fleet__summary-caption">All projects</div>
           {(() => {
             const total = (pick: (c: (typeof sorted)[number]) => number) =>
               sorted.reduce((sum, c) => sum + pick(c), 0);
@@ -186,7 +194,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
                 value: total((c) => c.pendingDecideCount),
                 attention: total((c) => c.pendingDecideCount) > 0,
               },
-              { label: 'berths running', value: total((c) => c.berthsRunning) },
+              { label: 'agents running', value: total((c) => c.berthsRunning) },
               {
                 label: 'spend today',
                 value: `$${total((c) => Math.round(c.spendTodayUsd * 100) / 100).toFixed(2)}`,
