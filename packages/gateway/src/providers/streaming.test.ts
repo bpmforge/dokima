@@ -3,7 +3,8 @@
  * be leaving it open, not having arbitrary timeouts."
  */
 import { describe, expect, it, vi } from 'vitest';
-import { createIdleAbort, readSseDataLines } from './streaming.js';
+import { createIdleAbort, readSseDataLines, runQueuedStream } from './streaming.js';
+import { RequestQueue } from './request-queue.js';
 
 function sse(chunks: readonly string[], gapMs = 0): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
@@ -83,5 +84,94 @@ describe('readSseDataLines reports progress (W13-15)', () => {
     const seen: string[] = [];
     for await (const line of readSseDataLines(sse(['x']))) seen.push(line);
     expect(seen).toEqual(['x']);
+  });
+});
+
+/**
+ * W13-42. The founder-reported failure: a session that never ends and has to
+ * be kickstarted by hand. Reproduced in our own product against a healthy
+ * endpoint — the run sat at `running` for 25+ minutes with no events after a
+ * single `session.turn_started`, while LM Studio answered a completion on the
+ * same model in 0.36s.
+ */
+describe('waiting for a queue slot is bounded (W13-42)', () => {
+  /** Holds the queue's only slot open forever, the way a leaked stream does. */
+  function saturate(queue: RequestQueue): void {
+    void queue.run(() => new Promise<never>(() => {}));
+  }
+
+  it('RED FIXTURE: a slot that is never released FAILS the next call instead of hanging it', async () => {
+    vi.useFakeTimers();
+    try {
+      const queue = new RequestQueue(1);
+      saturate(queue);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const blocked = (async () => {
+        for await (const chunk of runQueuedStream(queue, function* () {
+          yield 'never reached';
+        } as unknown as () => AsyncGenerator<string>)) {
+          // The generator must never start: the slot is gone.
+          expect(chunk).toBeUndefined();
+        }
+      })();
+      const settled = expect(blocked).rejects.toThrow(/timed out/);
+
+      // Asserted against the clock, not by waiting: a test that really waited
+      // five minutes would be skipped by whoever hit it next.
+      await vi.advanceTimersByTimeAsync(300_000);
+      await settled;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('names the queue and its depth, so the message points somewhere', async () => {
+    vi.useFakeTimers();
+    try {
+      const queue = new RequestQueue(1);
+      saturate(queue);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const blocked = (async () => {
+        for await (const chunk of runQueuedStream(
+          queue,
+          function* () {
+            yield 'x';
+          } as unknown as () => AsyncGenerator<string>,
+          1_000,
+          'lm-studio',
+        )) {
+          expect(chunk).toBeUndefined();
+        }
+      })();
+      const settled = expect(blocked).rejects.toThrow(
+        /lm-studio \(waiting for a request-queue slot; 1 active, 1 queued\)/,
+      );
+      await vi.advanceTimersByTimeAsync(1_000);
+      await settled;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('honest queueing still succeeds — the bound is a timeout, not a refusal to wait', async () => {
+    const queue = new RequestQueue(1);
+    let release!: () => void;
+    void queue.run(() => new Promise<void>((resolve) => (release = resolve)));
+    await Promise.resolve();
+
+    const collected: string[] = [];
+    const consuming = (async () => {
+      for await (const chunk of runQueuedStream(queue, function* () {
+        yield 'queued behind someone else';
+      } as unknown as () => AsyncGenerator<string>)) {
+        collected.push(chunk);
+      }
+    })();
+
+    release();
+    await consuming;
+    expect(collected).toEqual(['queued behind someone else']);
   });
 });

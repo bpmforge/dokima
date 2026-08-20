@@ -8427,6 +8427,36 @@
         "REDACTED, not raw: the park comment is appended to the event log, and Law 8 says secrets never reach it. Use redactString the way W13-29 does for fed-back gaps. A test must plant a secret-shaped string in stderr and assert it does not survive.",
         "Say nothing extra when stderr is empty: the existing line is already right for a session that simply returned no manifest with no explanation."
       ]
+    },
+    {
+      "id": "W13-42",
+      "title": "a session can wait forever for a provider queue slot \u2014 the run never ends and nothing says why",
+      "phase": 13,
+      "module": "gateway",
+      "lane": "gateway",
+      "points": 5,
+      "status": "done",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/gateway/src/providers/streaming.ts",
+        "packages/gateway/src/providers/streaming.test.ts",
+        "packages/gateway/src/providers/oai-compat-types.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "scripts/history-secrets-baseline.json"
+      ],
+      "depends_on": [
+        "W13-41"
+      ],
+      "stories": [],
+      "notes": "This is the founder-reported failure class: a session that never ends and has to be kickstarted by hand. Reproduced in our own product on a healthy endpoint.",
+      "acceptance": [
+        "MEASURED. A ticket ran on a local model and the run sat at status running for 25+ minutes with ZERO events after a single session.turn_started. LM Studio was fully healthy throughout \u2014 /v1/models in 1ms, a chat completion on the same model in 0.36s. The product was hung, not the endpoint. This is the founder-reported failure class: a session that never ends and has to be kickstarted by hand.",
+        "WHY THE EXISTING GUARD DID NOT FIRE: the 60s idle abort (W13-15) is armed INSIDE the stream, and the stream had not started. runQueuedStream awaits a queue slot BEFORE calling source(), and that await has no bound at all.",
+        "THE LEAK: RequestQueue defaults to concurrency 1, and runQueuedStream only releases its slot from the generator finally. A consumer that abandons the stream without closing it never releases, so every later call to that provider blocks forever.",
+        "BOUND THE WAIT. Acquiring a slot gets a deadline; exceeding it raises the same ProviderTimeoutError shape the rest of the system already understands, so W13-27 retries it for free as infrastructure rather than spending a ladder rung. The bound must NOT punish honest queueing \u2014 several berths sharing one provider legitimately wait \u2014 so default generously and make it configurable next to streamIdleMs.",
+        "RED FIXTURE: a queue whose slot is never released must make the next call FAIL with a timeout naming the queue, not hang. Assert it against a fake clock, not by waiting.",
+        "Out of scope: finding the abandonment path that leaks the slot. That is worth its own ticket; this one makes the product recover instead of needing a person to kickstart it."
+      ]
     }
   ]
 }

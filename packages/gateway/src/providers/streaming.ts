@@ -11,6 +11,7 @@
 
 import type { RequestQueue } from './request-queue.js';
 import { ProviderTimeoutError } from './errors.js';
+import { DEFAULT_QUEUE_ACQUIRE_MS } from './oai-compat-types.js';
 
 /**
  * Splits a fetch Response body into individual SSE `data:` payload strings,
@@ -60,6 +61,9 @@ export async function* readSseDataLines(
 export async function* runQueuedStream<T>(
   queue: RequestQueue,
   source: () => AsyncGenerator<T>,
+  /** W13-42: how long to wait for a slot. Omit for the default; 0 disables the bound. */
+  acquireTimeoutMs: number = DEFAULT_QUEUE_ACQUIRE_MS,
+  providerId = 'provider',
 ): AsyncGenerator<T> {
   let signalAcquired!: () => void;
   const acquired = new Promise<void>((resolve) => {
@@ -75,12 +79,68 @@ export async function* runQueuedStream<T>(
     await finished;
   });
 
-  await acquired;
+  await waitForSlot(acquired, acquireTimeoutMs, providerId, queue);
   try {
     yield* source();
   } finally {
     signalDone();
     await queued;
+  }
+}
+
+/**
+ * Waits for the queue slot, but not forever (W13-42).
+ *
+ * MEASURED, and it is the founder-reported failure class: a ticket ran on a
+ * local model and the run sat at `running` for 25+ minutes with ZERO events
+ * after a single `session.turn_started`. LM Studio was healthy the whole time
+ * — `/v1/models` in 1ms, a completion on the same model in 0.36s. The product
+ * was hung, not the endpoint, and the only way out was a person restarting it.
+ *
+ * The 60s idle abort (W13-15) could not help: it is armed INSIDE the stream,
+ * and the stream had not started. This `await` came first and had no bound at
+ * all, so a slot that was never released stopped every later call to that
+ * provider — `RequestQueue` defaults to concurrency 1, and the slot above is
+ * released only by the generator's `finally`, so one abandoned stream is
+ * enough.
+ *
+ * The bound does not punish honest queueing: several berths sharing one
+ * endpoint legitimately wait, which is why the default is generous and this is
+ * a timeout rather than a refusal to queue. Finding the abandonment path that
+ * leaks a slot is separate work; this makes the product recover instead of
+ * needing a person to kickstart it.
+ *
+ * Raises `ProviderTimeoutError` — the shape the rest of the system already
+ * reads as infrastructure, so W13-27 retries it for free rather than spending
+ * a ladder rung on it.
+ */
+async function waitForSlot(
+  acquired: Promise<void>,
+  timeoutMs: number,
+  providerId: string,
+  queue: RequestQueue,
+): Promise<void> {
+  if (timeoutMs <= 0) return acquired;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      acquired,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new ProviderTimeoutError(
+              `${providerId} (waiting for a request-queue slot; ` +
+                `${queue.activeCount} active, ${queue.queuedCount} queued)`,
+              timeoutMs,
+            ),
+          );
+        }, timeoutMs);
+        // Never hold the event loop open for a timer whose only job is to give up.
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
