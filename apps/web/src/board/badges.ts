@@ -35,3 +35,32 @@ export function cardStateClass(status: string): string {
   if (status === 'in_review') return ' surface--attention';
   return '';
 }
+
+export const PARKED_BADGE_LABEL = 'Parked last run — evidence in comments';
+
+/** Markers a park comment has carried; the old header survives in existing logs. */
+const PARK_MARKERS = ['Parked with evidence', 'auto-blocked with evidence'];
+
+/**
+ * A ticket the last run gave up on (W13-63). The park path deliberately
+ * releases to Ready (blocked has no exit verb; the next run retries), so the
+ * STATUS carries no trace — a novice watched a run "finish" and saw nothing
+ * happen. The evidence is in the ticket history: a park comment with nothing
+ * but the release after it.
+ */
+export function isParked(ticket: {
+  status: string;
+  history: readonly { verb: string; body?: string }[];
+}): boolean {
+  if (ticket.status !== 'ready') return false;
+  for (let i = ticket.history.length - 1; i >= 0; i -= 1) {
+    const entry = ticket.history[i]!;
+    if (entry.verb === 'release') continue;
+    if (entry.verb === 'comment') {
+      return PARK_MARKERS.some((marker) => (entry.body ?? '').startsWith(marker));
+    }
+    // Any real lifecycle verb after the park means work resumed.
+    return false;
+  }
+  return false;
+}

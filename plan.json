@@ -9003,21 +9003,51 @@
       "module": "web",
       "lane": "ui",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/board/**",
-        "apps/web/src/chat/**"
+        "apps/web/src/chat/**",
+        "apps/server/src/api/server/chat-fixture.ts",
+        "apps/server/src/api/server/chat-projection.ts",
+        "apps/server/src/api/server/chat-projection.test.ts",
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "depends_on": [],
       "stories": [],
-      "notes": "Live novice rerun, 2026-08-20 evening, fresh home, local model. Complements W13-60 (park comment written for the builder) \u2014 this is the layer ABOVE it: the novice never reaches the comment at all.",
+      "notes": "Live novice rerun, 2026-08-20 evening, fresh home, local model. Complements W13-60 (park comment written for the builder) \u2014 this is the layer ABOVE it: the novice never reaches the comment at all. Scope widened before building: the Chat pane is empty because the ROUTE serves a hardcoded empty stream to registered projects (chat-fixture.ts: \"no chat or message producer exists anywhere in this repo yet\" \u2014 stale premise, the producers landed weeks ago). The fix is the real projection that route's own HANDOFF asks for.",
       "acceptance": [
         "MEASURED live: a run parked PLAN-auth-setup after 2 attempts. The ticket returned to READY with no visible mark, the banner read \"run-mt1zfnvy \u2014 finished\", and the Chat pane still said \"No agent activity yet.\" after a full agent session. From the novice's chair: the run finished and nothing happened.",
         "TWO SYSTEMS DISAGREE: the park comment's own header says \"auto-blocked with evidence\" while loop-land's park path calls releaseTicket \u2014 status ready. Either the park marks the ticket visibly (a parked state-in-form on the card, with the attempt evidence one click away) or the comment stops claiming blocked. The board must show WHICH ticket parked and WHY without opening a drawer.",
         "The run banner surfaces the outcome line the CLI already prints (\"0 landed, 1 parked\") instead of the bare status word. \"finished\" with nothing landed reads as success-toned nothing.",
         "The Chat pane either receives session events (turn started, producing, spend \u2014 they are all in the event log) or stops promising them. A pane that says \"appear here as agents work\" and stays empty through a real session is a broken promise on the novice's most-watched screen.",
         "RED FIXTURE: drive a run that parks (fake gateway, no manifest) through the real routes and assert the board shows a parked mark on the ticket and the banner carries landed/parked counts."
+      ]
+    },
+    {
+      "id": "W13-64",
+      "title": "the guided sample writes user data to /tmp \u2014 and the e2e suite deletes every such folder on the machine",
+      "phase": 13,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/web/e2e/guided-sample.spec.ts",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx"
+      ],
+      "depends_on": [],
+      "stories": [],
+      "notes": "DATA LOSS, observed: a real novice walkthrough created its sample at /tmp/dokima-sample-<ts>; a later e2e run on the same machine deleted it (guided-sample.spec.ts afterEach rm -rf globs ALL /tmp/dokima-sample-*). The Fleet then honestly shows \"Unavailable \u2014 folder is gone\", but the work is gone with it.",
+      "acceptance": [
+        "FirstRunWizard.handleCreateSample hardcodes path: /tmp/dokima-sample-<ts> \u2014 volatile (macOS clears /tmp on reboot), shared, and e2e-clobberable. The spec's own comment has flagged the hardcode since it was written. A REAL user's first project must not live somewhere the OS or a test run erases.",
+        "Create the sample the way W12-41 creates New projects: let the SERVER choose a durable location (the same default folder New project uses), or place it under DOKIMA_HOME. No /tmp.",
+        "guided-sample.spec.ts stops deleting folders it did not create: it must track exactly the paths its own run made (resolve them via the API it drove) and remove only those. A machine-wide glob delete of user-shaped folders in a test suite is the defect, independent of where the wizard writes.",
+        "RED FIXTURE: complete the wizard's sample step and assert the created project's path is NOT under /tmp; the spec's cleanup provably touches only paths recorded from its own session."
       ]
     }
   ]

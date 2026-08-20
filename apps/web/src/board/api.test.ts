@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchBoardTickets, fireTicketVerb ,
+import { runOutcome, fetchBoardTickets, fireTicketVerb ,
   buildRunRefusalLine,
   startBuildRun,
 } from './api.js';
@@ -165,5 +165,25 @@ describe('build runs from the board (W12-28)', () => {
   it('a finished or running outcome has no refusal line', () => {
     expect(buildRunRefusalLine({ runId: 'r', status: 'running' })).toBeNull();
     expect(buildRunRefusalLine({ runId: 'r', status: 'finished', exitCode: 0 })).toBeNull();
+  });
+});
+
+describe('runOutcome (W13-63)', () => {
+  it('pulls the landed/parked line from a finished run — "finished" alone read as success-toned nothing', () => {
+    expect(
+      runOutcome({
+        runId: 'run-1',
+        status: 'finished',
+        stdout: [
+          'PLAN-auth-setup: parked (ladder_exhausted) after 2 attempt(s)',
+          'run-1 finished: 0 landed, 1 parked (stop: idle)',
+        ],
+      }),
+    ).toBe('0 landed, 1 parked (stop: idle)');
+  });
+
+  it('running and refused runs carry no outcome line', () => {
+    expect(runOutcome({ runId: 'r', status: 'running' })).toBeNull();
+    expect(runOutcome({ runId: 'r', status: 'refused', stderr: ['nope'] })).toBeNull();
   });
 });

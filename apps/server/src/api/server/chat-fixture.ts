@@ -7,9 +7,11 @@
  * existed, and bootstrap/ would collide with apps/server/src/bootstrap/.
  */
 
+import path from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeDokimaHome } from '@dokima/shared';
 import { computeFleetRegistryPath, loadRegistry } from '../projects/registry-store.js';
+import { chatEnvelopesForProject } from './chat-projection.js';
 
 /**
  * `GET /api/v1/projects/:id/chat` (FR-C2, UX_SPEC §3). No chat/message
@@ -175,8 +177,22 @@ export function registerChatRoute(app: FastifyInstance, opts: ChatRouteOptions =
     '/api/v1/projects/:id/chat',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const registered = (await loadRegistry(registryPath)).some((r) => r.id === id);
-      return reply.send({ items: registered ? [] : CHAT_FIXTURE_ITEMS });
+      const record = (await loadRegistry(registryPath)).find((r) => r.id === id);
+      // W13-63: a registered project gets the REAL projection (parks as
+      // findings, closes as manifests, provenance from the same log). The
+      // fixture stays only for the unregistered preview surface that
+      // documents FR-C2's card types. The empty-stream era — "no producer
+      // exists anywhere in this repo yet" — ended when sessions started
+      // appending to the log; this reader just hadn't been told.
+      if (record) {
+        return reply.send({
+          items: chatEnvelopesForProject(
+            path.join(record.path, '.dokima', 'state.db'),
+            id,
+          ),
+        });
+      }
+      return reply.send({ items: CHAT_FIXTURE_ITEMS });
     },
   );
 }

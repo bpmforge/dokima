@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cardStateClass,
+  isParked,
   isStaleBlocked,
   isWaived,
   STALE_BADGE_LABEL,
@@ -53,5 +54,63 @@ describe('cardStateClass (W13-52)', () => {
     for (const status of ['ready', 'claimed', 'in_progress', 'done', 'waived']) {
       expect(cardStateClass(status)).toBe('');
     }
+  });
+});
+
+describe('isParked (W13-63)', () => {
+  const history = (...entries: { verb: string; body?: string }[]) => entries;
+
+  it('RED FIXTURE: the exact live shape — park comment then release, status ready — reads as parked', () => {
+    // Measured on the novice rerun: the run "finished", the ticket sat in
+    // Ready unmarked, and the only trace was this comment+release pair.
+    expect(
+      isParked({
+        status: 'ready',
+        history: history(
+          { verb: 'claim' },
+          { verb: 'start' },
+          { verb: 'comment', body: 'Parked with evidence — ladder attempt cap (2) reached…' },
+          { verb: 'release' },
+        ),
+      }),
+    ).toBe(true);
+  });
+
+  it('the old header in existing logs still counts', () => {
+    expect(
+      isParked({
+        status: 'ready',
+        history: history(
+          { verb: 'comment', body: 'auto-blocked with evidence: ladder attempt cap (2)…' },
+          { verb: 'release' },
+        ),
+      }),
+    ).toBe(true);
+  });
+
+  it('work resuming after the park clears the mark', () => {
+    expect(
+      isParked({
+        status: 'ready',
+        history: history(
+          { verb: 'comment', body: 'Parked with evidence — …' },
+          { verb: 'release' },
+          { verb: 'claim' },
+          { verb: 'release' },
+        ),
+      }),
+    ).toBe(false);
+  });
+
+  it('an ordinary comment is not a park, and non-ready statuses never carry the mark', () => {
+    expect(
+      isParked({ status: 'ready', history: history({ verb: 'comment', body: 'hello' }) }),
+    ).toBe(false);
+    expect(
+      isParked({
+        status: 'in_progress',
+        history: history({ verb: 'comment', body: 'Parked with evidence — …' }),
+      }),
+    ).toBe(false);
   });
 });
