@@ -22,6 +22,7 @@ import {
 import { openEventLog } from '@dokima/events';
 import { computeDokimaHome, resolveAsset } from '@dokima/shared';
 import { runBackupCommand, type BackupCommandDeps } from '../cli/ops/backup-cmd.js';
+import { runRestoreCommand, type RestoreCommandDeps } from '../cli/ops/restore-cmd.js';
 import { runDoctorCommand, type DoctorDeps } from '../cli/ops/doctor.js';
 import {
   runProvidersRefreshCommand,
@@ -56,6 +57,7 @@ export interface CliDeps {
   listenLocalhost?: typeof listenLocalhost;
   ensureAuthToken?: typeof ensureAuthToken;
   backup?: BackupCommandDeps;
+  restore?: RestoreCommandDeps;
   doctor?: DoctorDeps;
   service?: ServiceDeps;
   providersRefresh?: ProvidersRefreshDeps;
@@ -163,6 +165,7 @@ usage:
   dokima                        boot the core and open the Canvas (or attach to a running one)
   dokima doctor                 check the local install and report what is wrong
   dokima backup                 write a backup of the event log
+  dokima restore <file>         replace the event log from a backup file
   dokima packs update           re-verify and reinstall the first-party content pack
   dokima providers refresh      re-discover models from every configured provider
   dokima service <install|status|stop>
@@ -237,6 +240,7 @@ const LIFECYCLE_COMMANDS = [
 const KNOWN_COMMANDS = [
   'packs',
   'backup',
+  'restore',
   'doctor',
   'service',
   'providers',
@@ -286,6 +290,9 @@ export async function runPackagedCli(
   }
   if (argv[0] === 'backup') {
     return runBackupCommand(io, deps.backup);
+  }
+  if (argv[0] === 'restore') {
+    return runRestoreCommand(argv.slice(1), io, deps.restore);
   }
   if (argv[0] === 'doctor') {
     return runDoctorCommand(io, deps.doctor);

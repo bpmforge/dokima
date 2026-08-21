@@ -23,14 +23,15 @@ export type {
   ModelFitnessVerdict,
 } from './model-fitness.js';
 
-export {
-  getProject,
-  listProjects,
-  registerProject,
-  setProjectArchived,
-  touchProjectLastOpened,
-} from './projects.js';
+// W19-03: getProject/listProjects/setProjectArchived/touchProjectLastOpened
+// deleted — the live fleet registry is apps/server's file-based one
+// (api/projects/registry-store.ts); this parallel per-row registry had no
+// caller. registerProject stays: the single-writer fixture exercises the
+// schema through it.
+export { registerProject } from './projects.js';
 export type { ProjectRecord, RegisterProjectInput } from './projects.js';
 
-export { getProvider, listProviders, registerProvider } from './providers.js';
+// W19-03: getProvider/registerProvider deleted — same superseded-registry
+// class; providers-store.ts (settings file) is the live provider source.
+export { listProviders } from './providers.js';
 export type { ProviderRecord, RegisterProviderInput } from './providers.js';

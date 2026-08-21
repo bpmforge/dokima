@@ -4,14 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openGlobalDb, type GlobalDb } from './db.js';
 import { promoteGlobalPlaybookEntry, listGlobalPlaybook } from './global-playbook.js';
-import {
-  getProject,
-  listProjects,
-  registerProject,
-  setProjectArchived,
-  touchProjectLastOpened,
-} from './projects.js';
-import { getProvider, listProviders, registerProvider } from './providers.js';
+import { registerProject } from './projects.js';
 
 async function openTemp(): Promise<{ global: GlobalDb; cleanup: () => Promise<void> }> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-registry-test-'));
@@ -29,7 +22,12 @@ describe('projects (Fleet index)', () => {
     cleanup = undefined;
   });
 
-  it('registers, lists, and reads back a project — never storing card stats', async () => {
+  // W19-03: the read/mutate half of this registry (getProject, listProjects,
+  // touchProjectLastOpened, setProjectArchived) and the provider register/get
+  // pair were deleted — no production caller ever existed; the live fleet
+  // registry is apps/server's file-based one. registerProject stays as the
+  // schema exerciser the single-writer fixture drives.
+  it('registers a project — never storing card stats', async () => {
     const t = await openTemp();
     cleanup = t.cleanup;
     const record = registerProject(
@@ -38,8 +36,6 @@ describe('projects (Fleet index)', () => {
       () => '2026-07-16T00:00:00.000Z',
     );
     expect(record.archived).toBe(false);
-    expect(getProject(t.global, 'p1')).toEqual(record);
-    expect(listProjects(t.global)).toEqual([record]);
     t.global.close();
   });
 
@@ -53,49 +49,6 @@ describe('projects (Fleet index)', () => {
     t.global.close();
   });
 
-  it('touchProjectLastOpened and setProjectArchived mutate in place', async () => {
-    const t = await openTemp();
-    cleanup = t.cleanup;
-    registerProject(
-      t.global,
-      { id: 'p1', path: '/repos/foo', name: 'foo' },
-      () => '2026-07-16T00:00:00.000Z',
-    );
-    touchProjectLastOpened(t.global, 'p1', () => '2026-07-17T00:00:00.000Z');
-    setProjectArchived(t.global, 'p1', true);
-    const record = getProject(t.global, 'p1');
-    expect(record?.lastOpenedAt).toBe('2026-07-17T00:00:00.000Z');
-    expect(record?.archived).toBe(true);
-    t.global.close();
-  });
-});
-
-describe('providers (non-secret registry)', () => {
-  let cleanup: (() => Promise<void>) | undefined;
-
-  afterEach(async () => {
-    await cleanup?.();
-    cleanup = undefined;
-  });
-
-  it('registers and reads back a provider with a credential ref, never a literal secret column', async () => {
-    const t = await openTemp();
-    cleanup = t.cleanup;
-    const record = registerProvider(
-      t.global,
-      {
-        id: 'copilot-1',
-        kind: 'copilot',
-        credentialRef: 'keychain:copilot-1',
-        status: 'active',
-      },
-      () => '2026-07-16T00:00:00.000Z',
-    );
-    expect(record.credentialRef).toBe('keychain:copilot-1');
-    expect(getProvider(t.global, 'copilot-1')).toEqual(record);
-    expect(listProviders(t.global)).toEqual([record]);
-    t.global.close();
-  });
 });
 
 describe('global_playbook (promoted entries)', () => {

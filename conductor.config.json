@@ -48,9 +48,9 @@
       [
         "scripts/validate-exports.mjs",
         "--max",
-        "61",
+        "49",
         "--max-buried",
-        "72"
+        "47"
       ]
     ],
     [
