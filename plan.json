@@ -9074,7 +9074,7 @@
       "module": "mcp",
       "lane": "core",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/mcp/src/**",
