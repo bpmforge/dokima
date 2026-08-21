@@ -9538,7 +9538,7 @@
       "module": "pipeline",
       "lane": "pipeline",
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "apps/server/src/api/pipeline/phase-gate/**",
@@ -9616,14 +9616,15 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 1,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/**",
         "apps/server/src/cli/**"
       ],
       "notes": [
-        "Iteration-2 audit 2026-08-21: runConflictWatch (harbormaster conflict-watcher) has no non-test caller. FR-T6/US-206 (human edits win) landed its resolution verbs; the WATCH half that notices a human edit mid-run appears unwired. VERIFY FIRST: read conflict-watcher.ts's own header for its intended composition point before wiring \u2014 if its own docs park it on a missing surface, record that on this ticket and close as deferred instead of forcing a wrong seam."
+        "Iteration-2 audit 2026-08-21: runConflictWatch (harbormaster conflict-watcher) has no non-test caller. FR-T6/US-206 (human edits win) landed its resolution verbs; the WATCH half that notices a human edit mid-run appears unwired. VERIFY FIRST: read conflict-watcher.ts's own header for its intended composition point before wiring \u2014 if its own docs park it on a missing surface, record that on this ticket and close as deferred instead of forcing a wrong seam.",
+        "Closed 2026-08-21 as detection-wired: watch pass per attempt boundary (leases are live only while claimed/in_progress \u2014 in_review does not lease, so the originally-drafted outer-loop boundary could never fire in a sequential run). Resolution (resolveHumanEditConflict at the attempt seam) is the recorded follow-up."
       ],
       "acceptance": [
         "Either: the build run composes runConflictWatch so a human edit to a ticket's files during a run is detected and resolved through the existing FR-T6 verbs (test with a planted mid-run edit, fake sessions); OR: the watcher's own documented blocker is quoted on this ticket and the deferral is recorded in STATUS.md \u2014 an honest park, never a silent absence.",
