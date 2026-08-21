@@ -10258,7 +10258,7 @@
       ],
       "depends_on": [],
       "phase": 19,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W19-03",
       "title": "wire-or-delete #1 \u2014 five buried exports become product or deletions",
       "module": "quality",
