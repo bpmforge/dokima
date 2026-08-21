@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@dokima/events": "workspace:*",
+    "@dokima/forge": "workspace:*",
     "@dokima/gateway": "workspace:*",
     "@dokima/git": "workspace:*",
     "@dokima/harbormaster": "workspace:*",

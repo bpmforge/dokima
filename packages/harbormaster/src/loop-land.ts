@@ -73,6 +73,8 @@ import {
   type LandR0Consult,
 } from './loop-land-rungs.js';
 export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
+import { fireVerbMirror, type LandVerbMirror } from './loop-land-verbs.js';
+export type { LandVerbEvent, LandVerbMirror } from './loop-land-verbs.js';
 import { pickNextTicket, requireTicket, resolveWorktree } from './loop-land-board.js';
 
 export type { LandPushRemoteResult, PushToRemotesFn } from './land-push.js';
@@ -154,6 +156,8 @@ export interface LandLoopOptions {
   readonly rungSessions?: LandRungSessions;
   /** W16-03: the rung-ZERO consult ("have we solved this before?") — composed in apps/server; a hit leads the first handoff, the close gate still decides (C-2). */
   readonly r0Consult?: LandR0Consult;
+  /** W16-04: the Forge Mirror's lifecycle-verb seam (FR-T5) — composed in apps/server; failures never block the loop. */
+  readonly verbMirror?: LandVerbMirror;
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
 }
@@ -202,6 +206,11 @@ async function processTicket(
 ): Promise<LandLoopTicketOutcome> {
   claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
   startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
+  await fireVerbMirror(options, {
+    kind: 'claim',
+    ticketId: ticket.id,
+    ticketTitle: ticket.title,
+  });
 
   const worktree = await resolveWorktree(options, ticket, baseRef);
   const role = options.role ?? ROLE_CODING_AGENT;
@@ -269,6 +278,13 @@ async function processTicket(
           attempts,
         }),
       );
+      await fireVerbMirror(options, {
+        kind: 'close',
+        ticketId: ticket.id,
+        ticketTitle: ticket.title,
+        commits: session.manifest?.commits ?? [],
+        receiptId: closeGate.receipt.id,
+      });
       // Isolated per-remote; a failed remote is recorded, not fatal.
       pushResults = await pushLandedBranch(
         options.pushToRemotes,
@@ -300,10 +316,17 @@ async function processTicket(
   if (parked) {
     parkedReason ??=
       policy.mode === 'locked' ? 'locked_ceiling_reached' : 'ladder_exhausted';
+    const parkBody = parkComment(parkedReason, ceiling, attempts, decideCard);
     commentTicket(options.log, {
       ticketId: ticket.id,
       actorId: options.actorId,
-      body: parkComment(parkedReason, ceiling, attempts, decideCard),
+      body: parkBody,
+    });
+    await fireVerbMirror(options, {
+      kind: 'evidence',
+      ticketId: ticket.id,
+      ticketTitle: ticket.title,
+      body: parkBody,
     });
     await runAttemptOutcomeHook(options, () =>
       options.attemptOutcome?.onParked({

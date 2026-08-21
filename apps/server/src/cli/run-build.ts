@@ -33,7 +33,6 @@ import {
   DEFAULT_MAX_SESSION_SECONDS,
   runLandLoop,
   type LandRungSessions,
-  type PushToRemotesFn,
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import { assertSandboxOrWaiver } from './sandbox-preflight.js';
@@ -43,11 +42,6 @@ import {
   SIGNING_KEY_REF,
 } from './signing-key.js';
 
-/** Receipts already minted for this project — 0 means a new key invalidates nothing. */
-function countReceipts(log: { db: { prepare(q: string): { get(): unknown } } }): number {
-  const row = log.db.prepare('SELECT COUNT(*) AS n FROM receipts').get() as { n: number };
-  return row?.n ?? 0;
-}
 import {
   announceRungSessions,
   buildBuiltInSpawn,
@@ -62,12 +56,9 @@ import {
 
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import {
-  AGENT_RUNNER_SETTINGS_KEY,
   EXTERNAL_AGENT_WARNING,
   MCP_SERVERS_SETTINGS_KEY,
-  parseAgentRunnerSetting,
   parseMcpServersSetting,
-  type AgentRunnerSetting,
 } from '../api/server/settings-types.js';
 import { ModelResolutionError } from '../api/pipeline/model-resolution.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
@@ -90,6 +81,7 @@ export { tokenizeAgentCommand };
 import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
 import { composeExternalToolset } from './mcp-session-tools.js';
 import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
+import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
 import { executeReviewPass } from './review-pass.js';
 import {
   MEMORY_CONSOLIDATION_SETTINGS_KEY,
@@ -98,19 +90,15 @@ import {
 } from './consolidation.js';
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
-async function resolveAgentRunner(
-  io: RunCliIO,
-  agentCommand: string | undefined,
-): Promise<AgentRunnerSetting> {
-  if (agentCommand) return { kind: 'external', command: agentCommand };
-  const scoped = await getEffectiveSettings({ projectDir: io.cwd });
-  const resolved = resolveEffectiveValue(AGENT_RUNNER_SETTINGS_KEY, scoped);
-  return parseAgentRunnerSetting(resolved?.value as JsonValue | undefined);
-}
 
 // Chapter (W14-06, CODE_BOOK_PROTOCOL 400-line cap): the vault refusal
 // moved verbatim to run-vault.ts.
 import { resolveVaultOrRefusal } from './run-vault.js';
+import {
+  countReceipts,
+  localFirstPushToRemotes,
+  resolveAgentRunner,
+} from './run-build-support.js';
 
 /**
  * The build-mode run (W10-77): claim work off the board and actually do it.
@@ -235,6 +223,19 @@ export async function executeBuildRun(
   // this run's sessions consult the queue's verdicts.
   syncMcpApprovalNotifications(log, command.actorId);
 
+  // W16-04 (FR-T5): the Forge Mirror — config problems disable with a note.
+  const forgeMirror = await setupForgeMirror({
+    log,
+    actorId: command.actorId,
+    runId,
+    settingRaw: resolveEffectiveValue(FORGE_MIRROR_SETTINGS_KEY, policyScoped)?.value,
+    isSecretShaped: (value) =>
+      SECRET_PATTERNS.some((p) => new RegExp(p.regex.source).test(value)),
+    resolveSecret: (name) => vault.vault.get(name),
+    secretValues,
+    stderr: io.stderr,
+  });
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   // W15-01: the maker model, for the review pass's C-4 comparison. The
@@ -331,6 +332,7 @@ export async function executeBuildRun(
       // consult — composed here; harbormaster may not import memory (§4).
       attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
       r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues }),
+      ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
       now: io.now,
     });
   } finally {
@@ -384,17 +386,3 @@ export async function executeBuildRun(
   return 0;
 }
 
-/**
- * Local-first push (FR-I2 partial). `runLandLoop` defaults `pushRemotes` to
- * whatever `git remote` actually reports, and a project with no remotes — the
- * normal local-first case — never reaches this. Reaching it means remotes ARE
- * configured, and real dual-remote push lives in `@dokima/forge`, which is not
- * a declared dependency of `apps/server`. Refusing loudly is correct: silently
- * returning success would report a push that never happened.
- */
-const localFirstPushToRemotes: PushToRemotesFn = () => {
-  throw new Error(
-    'dual-remote push is not wired into the CLI yet (@dokima/forge is not an ' +
-      'apps/server dependency) — the ticket landed locally and was NOT pushed',
-  );
-};

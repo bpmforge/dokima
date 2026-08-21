@@ -147,7 +147,7 @@ in `package.json` **and** adding the ✅ here in the same change.
 | **loop** | ✅ | | | | | | | | | | |
 | **pipeline** | | | | | | | | | | | |
 | **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | | ✅ | ✅ | |
-| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | ✅ | ✅ (+harbormaster) |
+| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (+harbormaster) |
 | **apps/web** | | | | | | | | | | | |
 
 `memory`, `forge` and `pipeline` each ship real, tested code (BLUEPRINT

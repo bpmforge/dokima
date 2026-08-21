@@ -693,7 +693,9 @@ describe('runLandLoop', () => {
         if (n++ === 0) {
           // A manifest claiming a file it never wrote: the close gate refuses
           // with a NAMED reason, which is the thing that must reach attempt 2.
-          const manifest = buildManifest({ files: ['packages/example/never-written.ts'] });
+          const manifest = buildManifest({
+            files: ['packages/example/never-written.ts'],
+          });
           return { stdout: JSON.stringify(manifest), stderr: '', exitCode: 0 };
         }
         return landingSpawn(input);
@@ -846,7 +848,11 @@ describe('the rung->session seam (W16-01)', () => {
           const label = `model-${rung}`;
           return { spawn: forLabel(label), label };
         },
-        onRungAdvance(advance: { fromRung: string; toRung: string; sessionLabel: string }) {
+        onRungAdvance(advance: {
+          fromRung: string;
+          toRung: string;
+          sessionLabel: string;
+        }) {
           advances.push({
             fromRung: advance.fromRung,
             toRung: advance.toRung,
@@ -859,7 +865,7 @@ describe('the rung->session seam (W16-01)', () => {
 
   it(
     'RED FIXTURE: a planted always-fails ticket under the ladder CLIMBS — a ' +
-      'rung advance is ledgered with the failed attempt\'s evidence. The ' +
+      "rung advance is ledgered with the failed attempt's evidence. The " +
       'fixture fails if every attempt ran the same session with no ' +
       'escalation event (which was the shipped behavior before W16-01)',
     async () => {
@@ -893,11 +899,14 @@ describe('the rung->session seam (W16-01)', () => {
         (e) => e.eventType === 'escalation.rung_advanced',
       );
       expect(events).toHaveLength(2);
-      const payloads = events.map((e) => e.payload as {
-        fromRung: string;
-        toRung: string;
-        receipts: { name: string; exitCode: number; gapCount: number }[];
-      });
+      const payloads = events.map(
+        (e) =>
+          e.payload as {
+            fromRung: string;
+            toRung: string;
+            receipts: { name: string; exitCode: number; gapCount: number }[];
+          },
+      );
       expect(payloads.map((p) => `${p.fromRung}->${p.toRung}`)).toEqual([
         'R1->R2',
         'R2->R3',
@@ -1023,7 +1032,9 @@ describe('the rung-zero playbook consult (W16-03)', () => {
 
       expect(order[0]).toBe('consult');
       expect(order).toContain('spawn');
-      expect(prompts[0]).toContain('A PRIOR VERIFIED SOLUTION exists for this task (fact:42)');
+      expect(prompts[0]).toContain(
+        'A PRIOR VERIFIED SOLUTION exists for this task (fact:42)',
+      );
       expect(prompts[0]).toContain('Pin Node to 22');
       expect(prompts[0]).toContain('the close gate still decides');
       // The gate was NOT skipped: the spoofed session fails it, and the hit
@@ -1081,5 +1092,82 @@ describe('the rung-zero playbook consult (W16-03)', () => {
       (e) => e.eventType === 'memory.hook_failed',
     );
     expect(hookFailures).toHaveLength(1);
+  });
+});
+
+/**
+ * W16-04: the lifecycle-verb mirror seam. The loop fires claim / the park's
+ * evidence / close into an injected mirror (forge-free — apps/server
+ * composes the forge side), and a failing mirror never blocks the loop.
+ */
+describe('the verb mirror seam (W16-04)', () => {
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  it('a landing ticket fires claim then close, with the receipt id and commits attached', async () => {
+    fixture = await setupFixture();
+    seedTicket(fixture.log, 'W9-01');
+    const events: { kind: string; receiptId?: string; commits?: readonly string[] }[] =
+      [];
+    const result = await runLandLoop({
+      ...baseOptions(fixture, landingSpawn),
+      maxLadderAttempts: 1,
+      verbMirror: {
+        onVerb(event) {
+          events.push({
+            kind: event.kind,
+            ...(event.receiptId ? { receiptId: event.receiptId } : {}),
+            ...(event.commits ? { commits: event.commits } : {}),
+          });
+        },
+      },
+    });
+    expect(result.processed[0]!.landed).toBe(true);
+    expect(events.map((e) => e.kind)).toEqual(['claim', 'close']);
+    expect(events[1]!.receiptId).toBeTruthy();
+    // landingSpawn's manifest declares no commits — the seam passes the
+    // manifest's own list through verbatim, empty included.
+    expect(events[1]!.commits).toEqual([]);
+  });
+
+  it('a parked ticket fires claim then evidence carrying the park comment body', async () => {
+    fixture = await setupFixture();
+    seedTicket(fixture.log, 'W9-01');
+    const events: { kind: string; body?: string }[] = [];
+    const result = await runLandLoop({
+      ...baseOptions(fixture, spoofedSpawn),
+      maxLadderAttempts: 1,
+      verbMirror: {
+        onVerb(event) {
+          events.push({ kind: event.kind, ...(event.body ? { body: event.body } : {}) });
+        },
+      },
+    });
+    expect(result.processed[0]!.parked).toBe(true);
+    expect(events.map((e) => e.kind)).toEqual(['claim', 'evidence']);
+    expect(events[1]!.body).toBeTruthy();
+  });
+
+  it('RED FIXTURE (FR-G5): a mirror that throws on every verb is ledgered and the ticket still LANDS — an unreachable forge never blocks a land', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+    const result = await runLandLoop({
+      ...baseOptions(fixture, landingSpawn),
+      maxLadderAttempts: 1,
+      verbMirror: {
+        onVerb() {
+          throw new Error('forge exploded');
+        },
+      },
+    });
+    expect(result.processed[0]!.landed).toBe(true);
+    expect(
+      listEvents(log).filter((e) => e.eventType === 'memory.hook_failed').length,
+    ).toBeGreaterThan(0);
   });
 });

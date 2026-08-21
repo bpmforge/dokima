@@ -68,6 +68,9 @@ importers:
       '@dokima/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@dokima/forge':
+        specifier: workspace:*
+        version: link:../../packages/forge
       '@dokima/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway

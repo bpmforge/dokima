@@ -80,6 +80,8 @@ export type {
 export { rungForAttempt } from './loop-land-policy.js';
 /** W16-03: the rung-ZERO consult seam apps/server composes from the memory playbook. */
 export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
+/** W16-04: the Forge Mirror's lifecycle-verb seam (FR-T5) — apps/server composes the forge side. */
+export type { LandVerbEvent, LandVerbMirror } from './loop-land-verbs.js';
 export type {
   AttemptOutcomeHook,
   LandAttempt,
