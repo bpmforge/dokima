@@ -9449,10 +9449,13 @@
       "write_scope": [
         "packages/forge/src/**",
         "apps/server/src/cli/**",
-        "apps/server/package.json"
+        "apps/server/package.json",
+        "packages/harbormaster/src/**",
+        "docs/ARCHITECTURE.md"
       ],
       "notes": [
-        "Challenger audit 2026-08-21: packages/forge/src/mirror/* (write-through, offline queue, reconciliation) is never re-exported by the package barrel and has zero external callers; apps/server does not even declare @dokima/forge as a dependency, and run-build.ts:373-380 throws unconditionally on any push attempt (\"dual-remote push is not wired into the CLI yet\"). BLUEPRINT 3.4 (Forge Mirror, the Jira-grade guarantee) and 3.9 (dual-remote sync), FR-T5. Offline forge (Gitea off-LAN) must queue and reconcile, never block a land (FR-G5)."
+        "Challenger audit 2026-08-21: packages/forge/src/mirror/* (write-through, offline queue, reconciliation) is never re-exported by the package barrel and has zero external callers; apps/server does not even declare @dokima/forge as a dependency, and run-build.ts:373-380 throws unconditionally on any push attempt (\"dual-remote push is not wired into the CLI yet\"). BLUEPRINT 3.4 (Forge Mirror, the Jira-grade guarantee) and 3.9 (dual-remote sync), FR-T5. Offline forge (Gitea off-LAN) must queue and reconcile, never block a land (FR-G5).",
+        "Scope amended 2026-08-21 pre-implementation: the loop fires the lifecycle verbs, so the write-through needs a generic injected verb seam in harbormaster (same forge-free injection pattern as attemptOutcome/r0Consult -- harbormaster does NOT import forge; apps/server composes). docs/ARCHITECTURE.md added for the P10 dependency-matrix row (apps/server gains forge). Queue durable home: the append-only event log (forge.mirror_queued/flushed events) rather than ticket.history[] -- the tickets package is out of scope and events already ARE the audit substrate; deviation from DATABASE.md section-3 history note recorded here."
       ],
       "acceptance": [
         "apps/server declares @dokima/forge; the mirror subtree (write-through, queue, reconciliation) is exported by the package barrel and each ticket lifecycle verb write-throughs to the configured forge, with an offline queue that flushes on reconnect and a reconciliation pass on run start.",
