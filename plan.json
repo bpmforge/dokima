@@ -9966,6 +9966,211 @@
         "Once every slate is decided the header/lede flips to a decided state (\"Both answered \u2014 continue when ready\"), so the screen stops asking for what it already has.",
         "RED FIXTURE: the resume spec asserts the checklist is visible during Continue; the fixture fails on a bare disabled button."
       ]
+    },
+    {
+      "stories": [
+        "US-301"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-01",
+      "title": "no surface blocks the canvas \u2014 native confirm dialogs become in-app confirmations",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/src/settings/**",
+        "apps/web/src/shared/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live design pass 2026-08-21: clicking Remove-N-unavailable froze the whole tab behind a native window.confirm \u2014 unstyleable, blocks every event, breaks automation. Two sites: FleetHome.handleRemoveUnavailable and ProvidersPanel removal. Replace with a two-click armed confirm rendered inline (first click arms the button with the consequence text; second click within the armed state executes; clicking elsewhere or a timeout disarms)."
+      ],
+      "acceptance": [
+        "No user-reachable code path calls window.confirm/alert/prompt (lint-provable: grep of apps/web/src excluding tests is empty)",
+        "The bulk remove and provider remove each require two clicks with the consequence stated between them; a component test proves one click alone removes nothing",
+        "Existing e2e for both surfaces stays green"
+      ]
+    },
+    {
+      "stories": [
+        "US-101"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-02",
+      "title": "a described project never shows a blank interview \u2014 the describe tab recaps what was already answered",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/onboarding/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live design pass: Recipe Keeper was created through the interview, yet its Describe tab renders the empty form (Untitled placeholder, blank answers) \u2014 reads as \"your description was lost\". InterviewPanel recovers RUNNING/AWAITING runs but has no completed-state: when the project already has a plan, show a recap header (project described, N tickets planned, link to Plan/Board) above or instead of the blank form, and frame the form as describe-again, not first-contact."
+      ],
+      "acceptance": [
+        "Opening Describe on a project whose plan has tickets shows a recap state naming the existing plan instead of a bare empty form",
+        "The blank first-contact form still renders for a genuinely undescribed project",
+        "Component test covers both states; e2e onboarding flows stay green"
+      ]
+    },
+    {
+      "stories": [
+        "US-401"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-03",
+      "title": "deliverables on disk are never invisible \u2014 the docs pane lists uncommitted docs honestly",
+      "module": "cli",
+      "lane": "core",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/server/src/api/server/artifacts-routes/**",
+        "apps/server/src/api/server/artifacts-helpers.ts",
+        "packages/git/src/**",
+        "apps/web/src/artifacts/**"
+      ],
+      "notes": [
+        "Live design pass: recipe-keeper has docs/DECISIONS.md in the working tree (pipeline wrote it, run parked before any commit; git status ?? docs/) but GET /artifacts lists only git-tracked markdown, so the pane says deliverables will appear \u2014 while one already exists. List working-tree docs too, marked uncommitted (honest state, not hidden state). Keep diff/revision routes tracked-only where a revision is required."
+      ],
+      "acceptance": [
+        "GET /api/v1/projects/:id/artifacts lists an untracked docs/*.md with an uncommitted marker; the web pane renders it with that state visible",
+        "A tracked doc renders exactly as before (no regression in title/diff routes)",
+        "Server test with a fixture repo containing one tracked and one untracked doc proves both rows"
+      ]
+    },
+    {
+      "stories": [
+        "US-305"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-04",
+      "title": "digest summaries truncate on a word with an ellipsis, never mid-sentence",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/notifications/**",
+        "packages/pipeline/src/**"
+      ],
+      "notes": [
+        "Live design pass: morning-queue digest ends \"\u2026Completion Manifest (T-27). I\" \u2014 a hard character slice mid-word with no ellipsis reads broken. Truncate at a word boundary and append an ellipsis wherever digest/lead-lesson text is clamped."
+      ],
+      "acceptance": [
+        "Clamped digest text ends on a word boundary with an ellipsis character",
+        "A unit test feeds a long lesson and asserts no dangling partial word"
+      ]
+    },
+    {
+      "stories": [
+        "US-303"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-05",
+      "title": "runs-and-forge panel layout: fields align and headers never collide",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**"
+      ],
+      "notes": [
+        "Live design pass: Starting-turns label/input/button misaligned (input orphaned under the label, button floats beside the label); forge-mirror header row renders \"\u2026(from this project vault)Bot account username\" with zero gap. Fix the flex/grid so labels sit above their inputs and columns keep a gutter."
+      ],
+      "acceptance": [
+        "Labels, inputs, and the save button share one aligned row-or-column rhythm on the Runs & Forge tab",
+        "Column headers in the forge-mirror form never abut (visible gutter at default width)"
+      ]
+    },
+    {
+      "stories": [
+        "US-303"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-06",
+      "title": "models-tab copy points at the real provider step, by name",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**"
+      ],
+      "notes": [
+        "Live design pass: model picker empty-state says \"register and test a provider above\" \u2014 providers live on a different tab now, and a provider (lm-studio) already exists untested. Say which tab, and when an untested provider exists, name it: \"test the lm-studio provider on the Providers tab to discover its models\"."
+      ],
+      "acceptance": [
+        "Empty picker copy names the Providers tab; with an untested provider registered, the copy names that provider",
+        "Component test asserts both variants"
+      ]
+    },
+    {
+      "stories": [
+        "US-308"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-07",
+      "title": "park reason on the card face clamps on a word with an ellipsis and carries the full text",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**"
+      ],
+      "notes": [
+        "Live design pass: card face shows \"\u2026budget (12) without a Completion\" \u2014 clipped mid-phrase, no ellipsis, no way to read the rest without the comments. Clamp at a word boundary with an ellipsis and put the full reason in the title attribute."
+      ],
+      "acceptance": [
+        "Card park reason ends on a word boundary with an ellipsis; element title carries the full reason",
+        "Unit test on the clamp helper"
+      ]
+    },
+    {
+      "stories": [
+        "US-301"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "todo",
+      "id": "W18-08",
+      "title": "unavailable fleet cards compact to one honest line each",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live design pass: 28 unavailable cards each repeat a full paragraph (path + moved/renamed/deleted + removal explainer) \u2014 the fleet becomes a wall of duplicate error prose that buries the one live project. Compact each unavailable card to name + one-line reason + Remove; state the shared removal semantics once (near the bulk action), not 28 times."
+      ],
+      "acceptance": [
+        "An unavailable card renders name, one-line folder-gone reason, and Remove \u2014 no repeated explainer paragraph per card",
+        "The removal-semantics sentence appears exactly once on the fleet page",
+        "Fleet e2e stays green"
+      ]
     }
   ]
 }
