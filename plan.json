@@ -10055,7 +10055,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W18-04",
       "title": "digest summaries truncate on a word with an ellipsis, never mid-sentence",
       "module": "web",
