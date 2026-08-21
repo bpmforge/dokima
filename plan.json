@@ -9542,18 +9542,16 @@
       "role": "coding-agent",
       "write_scope": [
         "apps/server/src/api/pipeline/phase-gate/**",
-        "apps/server/src/api/pipeline/pipeline-routes/**",
-        "apps/web/src/**",
-        "apps/web/e2e/**"
+        "apps/server/src/api/pipeline/pipeline-routes/**"
       ],
       "notes": [
         "Iteration-2 challenger audit 2026-08-21: runPhaseGate (phase-gate/runner.ts) \u2014 the ONLY path that mints a gate receipt \u2014 has exactly 4 callers, all tests. The advance route verifies receipts nothing ever mints, so every real POST /phases/:n/advance refuses forever. Also: runner.ts's long header describes the validate-mermaid zero-byte-stdout defect as CURRENT, but content/validators/validate-mermaid.sh was fixed by W9-08 on 2026-07-28 \u2014 the header is stale documentation of a dead bug."
       ],
       "acceptance": [
         "POST /api/v1/projects/:id/phases/:n/gate runs runPhaseGate for real (declared validators, real deliverables, distinct verifier identity per Law 5) and returns the minted receipt id or the fail-closed refusal reasons \u2014 the missing first half of the advance flow.",
-        "The web phase surface (wherever advance is offered) can request the gate run and then advance with the returned receipt id \u2014 the two-step flow a person can actually complete; e2e drives gate -> advance green against the fake validators fixture pattern advance.test.ts already uses.",
-        "runner.ts's stale mermaid-defect header is replaced by a short note that W9-08 fixed the script (dated), so the next reader does not route around a bug that no longer exists.",
-        "RED FIXTURE: advance with a receipt id the gate route never minted still refuses; gate-then-advance with the real minted receipt passes on clean content (proving the mermaid caveat is truly dead)."
+        "runner.ts stale mermaid-defect header is replaced by a short dated note that W9-08 fixed the script, so the next reader does not route around a dead bug.",
+        "RED FIXTURE (route level): advance with a receipt id the gate route never minted still refuses; gate-then-advance with the real minted receipt passes on clean content \u2014 proving the mermaid caveat is truly dead end-to-end.",
+        "Audit note recorded: NO web surface offers gate/advance today \u2014 the flow is API-first; whether a web phases surface should exist is a UX decision for a future ticket, stated here rather than silently absent."
       ]
     },
     {
