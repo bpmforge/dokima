@@ -72,6 +72,7 @@ import {
   type RealGatewayPort,
 } from '../gateway-model-port.js';
 import { registerAdvanceRoute } from './advance.js';
+import { registerResearchRoutes } from './research.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
 import {
@@ -143,6 +144,8 @@ export function registerPipelineRoutes(
     now: opts.now,
   });
   registerAdvanceRoute(app, { home: opts.home, signingKey: opts.signingKey });
+  // W16-05: the research-templates feed (FR-P8/US-105) — same auth posture.
+  registerResearchRoutes(app, { home: opts.home });
   registerResumeRoute(app, { registryPath, now, resolvePort });
 
   /**

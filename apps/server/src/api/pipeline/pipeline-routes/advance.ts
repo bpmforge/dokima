@@ -78,6 +78,7 @@ import {
   readPhaseInputFiles,
 } from '../phase-gate/input-files.js';
 import { problemForError } from './problems.js';
+import { evaluateResearchGate } from './research-gate.js';
 
 export interface AdvanceRouteOptions {
   /** Fleet registry home dir override — tests only. */
@@ -217,6 +218,23 @@ export function registerAdvanceRoute(
       // file-not-found error.
       let currentInputFiles: readonly ReceiptInputFile[] = [];
       if (body.gateReceiptId) {
+        // W16-05 (FR-P8/FR-P4, US-105 AC-2): the research gate — every report
+        // this phase declared must pass its validator with its RECORDED
+        // Challenger verdicts before any receipt is even looked at. An
+        // unchallenged or CONTRADICTED HIGH claim refuses here, in the same
+        // reasons shape as every other refusal.
+        const researchReasons = await evaluateResearchGate(record.path, phase.id);
+        if (researchReasons.length > 0) {
+          return reply.code(422).send(
+            wireAdvanceResult({
+              allowed: false,
+              fromPhaseId: phase.id,
+              toPhaseId: toPhase.id,
+              waived: false,
+              reasons: researchReasons,
+            }),
+          );
+        }
         try {
           currentInputFiles = await readPhaseInputFiles(phase, record.path);
         } catch (err) {

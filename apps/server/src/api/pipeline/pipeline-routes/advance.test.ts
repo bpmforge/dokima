@@ -625,6 +625,90 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
     expect(body.reasons.some((r) => r.includes('FR-G5'))).toBe(true);
   });
 
+  it(
+    'RED FIXTURE (W16-05, US-105 AC-2): a clean gate receipt does NOT rescue a ' +
+      'phase citing an unchallenged HIGH research claim — the advance refuses ' +
+      'with the claim named, and passes once the recorded verdict is CONFIRMED',
+    async () => {
+      const { app, projectId, projectDir, dbPath } = await boot();
+      await writeDocs(projectDir, {
+        'docs/VISION.md': CLEAN_VISION,
+        'docs/COMPETITIVE_ANALYSIS.md': CLEAN_COMPETITIVE,
+        'docs/research/market.json': JSON.stringify({
+          id: 'r-m1',
+          topic: 'market',
+          phase: 0,
+          depth: 'quick',
+          sources: [{ id: 's-1', url: 'https://example.invalid/a', tier: 1 }],
+          claims: [
+            {
+              id: 'c-1',
+              text: 'the market wants this',
+              impact: 'HIGH',
+              citedSourceIds: ['s-1'],
+            },
+          ],
+          generatedAt: '2026-08-21T00:00:00.000Z',
+        }),
+      });
+      const gateReceiptId = await mintCleanGateReceipt(dbPath, projectDir, projectId, 0);
+
+      const refused = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/phases/0/advance`,
+        payload: { gateReceiptId, waiverReceiptId: null },
+      });
+      expect(refused.statusCode).toBe(422);
+      const refusedBody = refused.json() as { allowed: boolean; reasons: string[] };
+      expect(refusedBody.allowed).toBe(false);
+      expect(refusedBody.reasons.join('\n')).toMatch(/HIGH-impact claim "c-1"/);
+
+      // The challenge runs elsewhere and leaves its recorded artifact; the
+      // gate reads it mechanically (C-2) and the same advance now passes.
+      await writeDocs(projectDir, {
+        'docs/research/market.challenge.json': JSON.stringify({
+          reportId: 'r-m1',
+          generatedAt: '2026-08-21T00:00:00.000Z',
+          claims: [{ claimId: 'c-1', verdict: 'CONFIRMED' }],
+          incomplete: [],
+          contradicted: [],
+        }),
+      });
+      const allowed = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/phases/0/advance`,
+        payload: { gateReceiptId, waiverReceiptId: null },
+      });
+      expect(allowed.statusCode).toBe(200);
+      expect((allowed.json() as { allowed: boolean }).allowed).toBe(true);
+    },
+  );
+
+  it('GET .../research/templates serves the phase templates with the recorded depth policy (W16-05, FR-P8)', async () => {
+    const { app, projectId } = await boot();
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/research/templates?phase=0`,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      phase: number;
+      depth: string;
+      templates: { id: string; title: string; content_path: string }[];
+    };
+    expect(body.phase).toBe(0);
+    // No stored researchDepth setting: the documented default, never a guess.
+    expect(body.depth).toBe('standard');
+    expect(body.templates.length).toBeGreaterThan(0);
+    expect(body.templates[0]).toHaveProperty('content_path');
+
+    const bad = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/research/templates?phase=nope`,
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
   it('returns 404 for an unregistered project', async () => {
     const { app } = await boot();
 
