@@ -9780,7 +9780,7 @@
       ],
       "depends_on": [],
       "phase": 17,
-      "status": "in_progress",
+      "status": "done",
       "id": "W17-06",
       "title": "a run can be stopped from the outside \u2014 pause/stop routes join the runs API",
       "module": "cli",
@@ -9812,7 +9812,7 @@
         "W17-06"
       ],
       "phase": 17,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W17-07",
       "title": "the board during and after a run \u2014 a visible Stop, parked tickets that say so, agents that say they are working, and an end-of-run summary",
       "module": "web",
