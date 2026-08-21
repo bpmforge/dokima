@@ -73,6 +73,7 @@ import {
 } from '../gateway-model-port.js';
 import { registerAdvanceRoute } from './advance.js';
 import { registerResearchRoutes } from './research.js';
+import { registerGateRoute } from './gate.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
 import {
@@ -99,6 +100,8 @@ export interface PipelineRoutesOptions {
    * calls (FR-S2) — see `./advance.js`'s `AdvanceRouteOptions.signingKey` doc for why
    * this defaults to `DOKIMA_SIGNING_KEY` when omitted. */
   signingKey?: string;
+  /** W16-07: validator executables dir for the gate route — tests point at a fixture; production defaults to the imported content pack. */
+  gateContentDir?: string;
 }
 
 export function registerPipelineRoutes(
@@ -144,6 +147,12 @@ export function registerPipelineRoutes(
     now: opts.now,
   });
   registerAdvanceRoute(app, { home: opts.home, signingKey: opts.signingKey });
+  // W16-07: the gate-receipt minter — the missing first half of advance.
+  registerGateRoute(app, {
+    home: opts.home,
+    signingKey: opts.signingKey,
+    contentDir: opts.gateContentDir,
+  });
   // W16-05: the research-templates feed (FR-P8/US-105) — same auth posture.
   registerResearchRoutes(app, { home: opts.home });
   registerResumeRoute(app, { registryPath, now, resolvePort });

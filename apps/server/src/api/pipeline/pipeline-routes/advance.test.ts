@@ -106,7 +106,7 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
     }
   });
 
-  async function boot(): Promise<{
+  async function boot(gateContentDir?: string): Promise<{
     app: FastifyInstance;
     projectId: string;
     projectDir: string;
@@ -120,7 +120,11 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
     const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
 
     const app = Fastify({ logger: false });
-    registerPipelineRoutes(app, { home: fleetHome, signingKey: SIGNING_KEY });
+    registerPipelineRoutes(app, {
+      home: fleetHome,
+      signingKey: SIGNING_KEY,
+      ...(gateContentDir ? { gateContentDir } : {}),
+    });
     await app.ready();
     apps.push(app);
 
@@ -816,5 +820,150 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
     } finally {
       log2.close();
     }
+  });
+});
+
+/**
+ * W16-07: the gate-receipt MINTER route — runPhaseGate's first production
+ * caller. Until this, the advance route verified receipts nothing could
+ * mint, so every real advance refused forever.
+ */
+describe('POST /api/v1/projects/:id/phases/:n/gate (W16-07)', () => {
+  const dirs: string[] = [];
+  const apps: FastifyInstance[] = [];
+  let previousMermaidNoRender: string | undefined;
+  beforeEach(() => {
+    previousMermaidNoRender = process.env.MERMAID_NO_RENDER;
+    process.env.MERMAID_NO_RENDER = '1';
+  });
+  afterEach(async () => {
+    if (previousMermaidNoRender === undefined) {
+      delete process.env.MERMAID_NO_RENDER;
+    } else {
+      process.env.MERMAID_NO_RENDER = previousMermaidNoRender;
+    }
+    await Promise.all(apps.splice(0).map((a) => a.close()));
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  async function bootGate() {
+    const fleetHome = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gate-home-'));
+    dirs.push(fleetHome);
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gate-project-'));
+    dirs.push(projectDir);
+    const contentDir = await mkConformingValidatorContentDir(getPhase(0).validators);
+    dirs.push(contentDir);
+    const registryPath = path.join(fleetHome, 'fleet.json');
+    const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
+    const app = Fastify({ logger: false });
+    registerPipelineRoutes(app, {
+      home: fleetHome,
+      signingKey: SIGNING_KEY,
+      gateContentDir: contentDir,
+    });
+    await app.ready();
+    apps.push(app);
+    await fs.mkdir(path.join(projectDir, 'docs'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'docs/VISION.md'), CLEAN_VISION);
+    await fs.writeFile(path.join(projectDir, 'docs/COMPETITIVE_ANALYSIS.md'), CLEAN_COMPETITIVE);
+    return { app, projectId: record.id, projectDir };
+  }
+
+  it('RED FIXTURE (the whole point): gate mints a real receipt on clean content, and THAT receipt advances the phase — while a receipt id the gate never minted still refuses', async () => {
+    const { app, projectId } = await bootGate();
+
+    const gate = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/phases/0/gate`,
+      payload: { authorActorId: AUTHOR_ACTOR_ID },
+    });
+    expect(gate.statusCode).toBe(200);
+    const gateBody = gate.json() as { ok: boolean; receipt_id: string | null };
+    expect(gateBody.ok).toBe(true);
+    expect(gateBody.receipt_id).toBeTruthy();
+
+    const advance = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/phases/0/advance`,
+      payload: { gateReceiptId: gateBody.receipt_id, waiverReceiptId: null },
+    });
+    expect(advance.statusCode).toBe(200);
+    expect((advance.json() as { allowed: boolean }).allowed).toBe(true);
+
+    const forged = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/phases/0/advance`,
+      payload: { gateReceiptId: 'receipt-that-was-never-minted', waiverReceiptId: null },
+    });
+    expect(forged.statusCode).not.toBe(200);
+  });
+
+  it('Law 5: the author cannot be the verifier — refused before any validator runs', async () => {
+    const { app, projectId } = await bootGate();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/phases/0/gate`,
+      payload: { authorActorId: PHASE_GATE_VERIFIER_ACTOR_ID },
+    });
+    expect(res.statusCode).toBe(422);
+  });
+
+  it('a missing authorActorId is a 400 naming the field, never a guessed identity', async () => {
+    const { app, projectId } = await bootGate();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/phases/0/gate`,
+      payload: {},
+    });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.stringify(res.json())).toContain('authorActorId');
+  });
+
+  it('the W9-08 mermaid fix is truly dead code-history: the REAL content/validators pack mints a clean phase-0 receipt on clean content, and that receipt advances', async () => {
+    const fleetHome = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gate-real-home-'));
+    dirs.push(fleetHome);
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gate-real-project-'));
+    dirs.push(projectDir);
+    const realContentDir = path.resolve(
+      path.dirname(new URL(import.meta.url).pathname),
+      '../../../../../..',
+      'content',
+      'validators',
+    );
+    const registryPath = path.join(fleetHome, 'fleet.json');
+    const record = await registerProject(registryPath, { path: projectDir, mode: 'new' });
+    const app = Fastify({ logger: false });
+    registerPipelineRoutes(app, {
+      home: fleetHome,
+      signingKey: SIGNING_KEY,
+      gateContentDir: realContentDir,
+    });
+    await app.ready();
+    apps.push(app);
+    await fs.mkdir(path.join(projectDir, 'docs'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'docs/VISION.md'), CLEAN_VISION);
+    await fs.writeFile(
+      path.join(projectDir, 'docs/COMPETITIVE_ANALYSIS.md'),
+      CLEAN_COMPETITIVE,
+    );
+
+    const gate = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${record.id}/phases/0/gate`,
+      payload: { authorActorId: AUTHOR_ACTOR_ID },
+    });
+    expect(gate.statusCode).toBe(200);
+    const receiptId = (gate.json() as { receipt_id: string | null }).receipt_id;
+    expect(receiptId).toBeTruthy();
+
+    const advance = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${record.id}/phases/0/advance`,
+      payload: { gateReceiptId: receiptId, waiverReceiptId: null },
+    });
+    expect(advance.statusCode).toBe(200);
+    expect((advance.json() as { allowed: boolean }).allowed).toBe(true);
   });
 });
