@@ -10001,7 +10001,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "in_progress",
+      "status": "done",
       "id": "W18-02",
       "title": "a described project never shows a blank interview \u2014 the describe tab recaps what was already answered",
       "module": "web",

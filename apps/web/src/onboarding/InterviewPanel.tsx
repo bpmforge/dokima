@@ -14,7 +14,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AwaitingDecisions } from './AwaitingDecisions.js';
 import './onboarding.css';
-import { OnboardingApiError, resumePipeline, runGuidedPipeline } from './api.js';
+import {
+  OnboardingApiError,
+  fetchPlannedTicketCount,
+  resumePipeline,
+  runGuidedPipeline,
+} from './api.js';
 import { FailureNotice } from './FailureNotice.js';
 import {
   describeResumeFailure,
@@ -56,7 +61,6 @@ export interface InterviewPanelProps {
 
 type Stage = 'asking' | 'running' | 'awaiting' | 'done' | 'failed';
 
-
 export function InterviewPanel({
   projectId,
   projectName,
@@ -91,6 +95,18 @@ export function InterviewPanel({
   const [resumeError, setResumeError] = useState<FriendlyFailure | null>(null);
   // W10-58: the stages the run has actually finished, as the job reports them.
   const [phases, setPhases] = useState<readonly PipelineRunPhase[]>([]);
+  // W18-02: an already-described project must never greet its founder with a
+  // blank first-contact form — that reads as "your answers were lost".
+  const [plannedCount, setPlannedCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPlannedTicketCount(projectId).then((count) => {
+      if (!cancelled) setPlannedCount(count);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   /**
    * W13-38: recover a run that is already waiting on this founder.
@@ -253,10 +269,20 @@ export function InterviewPanel({
 
   return (
     <div className="interview" data-testid="interview-panel">
-      <h3>Describe your product</h3>
+      {plannedCount > 0 && (
+        <div className="surface interview__recap" data-testid="interview-described-recap">
+          <h3>Already described</h3>
+          <p>
+            This project's description produced the plan on the board —{' '}
+            {plannedCount} ticket{plannedCount === 1 ? '' : 's'}. Nothing was lost.
+            Answering below describes it again; the board stays until a new run changes it.
+          </p>
+        </div>
+      )}
+      <h3>{plannedCount > 0 ? 'Describe it again' : 'Describe your product'}</h3>
       <p className="interview__hint">
-        Answer what you can. Anything you leave blank is skipped, not guessed at — one
-        answer is enough to start, and you can come back.
+        Answer what you can. Anything you leave blank is skipped, not guessed at —
+        one answer is enough to start, and you can come back.
       </p>
       {/* W13-02: how long this is, and how far in you are. Nine questions with
           no count and no progress meant the only signal you had finished was a

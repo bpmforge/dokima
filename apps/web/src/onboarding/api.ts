@@ -274,3 +274,26 @@ export async function fetchFollowUpQuestion(
     return null;
   }
 }
+
+/**
+ * W18-02: how many tickets this project's plan already produced. The Describe
+ * tab uses it to stop rendering a blank first-contact form on a project that
+ * was already described — a founder who answered the interview and came back
+ * saw "Untitled" placeholders, which read as "your answers were lost".
+ * Failure returns 0 (the blank form is the honest fallback, not an error).
+ */
+export async function fetchPlannedTicketCount(
+  projectId: string,
+  opts: OnboardingApiOptions = {},
+): Promise<number> {
+  try {
+    const body = (await request(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/tickets`,
+      { method: 'GET' },
+      opts,
+    )) as { items?: readonly unknown[] };
+    return body.items?.length ?? 0;
+  } catch {
+    return 0;
+  }
+}

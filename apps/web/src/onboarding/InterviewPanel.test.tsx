@@ -18,6 +18,8 @@ vi.mock('./api.js', async () => {
     runGuidedPipeline: vi.fn(),
     // Mount recovery finds nothing active — these tests own what happens next.
     fetchActiveRun: vi.fn().mockResolvedValue(null),
+    // W18-02: undescribed by default; the recap tests override this.
+    fetchPlannedTicketCount: vi.fn().mockResolvedValue(0),
   };
 });
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
@@ -233,5 +235,24 @@ describe('a failed run speaks novice first (W16-06)', () => {
   it('a connection failure blames the server being unreachable, not the person', async () => {
     const alert = await failRun(new TypeError('fetch failed'));
     expect(alert.textContent).toMatch(/couldn't be reached/i);
+  });
+});
+
+describe('the describe tab never pretends the answers were lost (W18-02)', () => {
+  it('RED FIXTURE: a project whose plan has tickets gets the recap, not a bare blank form — the blank form alone read as "your description was lost"', async () => {
+    vi.mocked(onboardingApi).fetchPlannedTicketCount.mockResolvedValueOnce(7);
+    renderPanel();
+    const recap = await screen.findByTestId('interview-described-recap');
+    expect(recap.textContent).toContain('7 tickets');
+    expect(recap.textContent).toContain('Nothing was lost');
+    expect(screen.getByRole('heading', { name: 'Describe it again' })).toBeTruthy();
+  });
+
+  it('a genuinely undescribed project still gets the first-contact form, no recap', async () => {
+    renderPanel();
+    expect(
+      await screen.findByRole('heading', { name: 'Describe your product' }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('interview-described-recap')).toBeNull();
   });
 });
