@@ -36,3 +36,14 @@ export {
 export { createInfraFailureTracker, INFRA_FAILURE_KINDS } from './findings-infra.js';
 export type { InfraFailureKind, InfraFailureTracker } from './findings-infra.js';
 
+
+/**
+ * W15-01: the R-B2 verdict-evidence primitives, exported for the review
+ * pass (harbormaster). Same seam story as W13-27 above: complete, tested,
+ * unreachable across the boundary — which is why no verdict in the product
+ * ever carried its required evidence line. NARROW, not `export *`.
+ */
+export { formatRerunLine, isValidRerun } from './findings-types.js';
+export type { RerunEvidence } from './findings-types.js';
+export { classifySubjectiveScore } from './loop-policy-classify.js';
+export type { ReviewSignalAction } from './loop-policy-classify.js';
