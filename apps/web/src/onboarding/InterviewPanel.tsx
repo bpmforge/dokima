@@ -14,15 +14,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AwaitingDecisions } from './AwaitingDecisions.js';
 import './onboarding.css';
+import { OnboardingApiError, resumePipeline, runGuidedPipeline } from './api.js';
+import { FailureNotice } from './FailureNotice.js';
 import {
-  OnboardingApiError,
-  resumePipeline,
-  runGuidedPipeline,
-} from './api.js';
+  describeResumeFailure,
+  describeRunFailure,
+  describeStillWaiting,
+  type FriendlyFailure,
+} from './friendly-error.js';
 import { recoverActiveRun } from './run-recovery.js';
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
 import { followUpKey, MAX_FOLLOWUP_DEPTH, useFollowUps } from './useFollowUps.js';
-
 
 /**
  * The name a project carries when it has none of its own. Named here rather
@@ -85,7 +87,7 @@ export function InterviewPanel({
   // W13-18 (AC-1): the adaptive half — see useFollowUps.ts.
   const followUps = useFollowUps(projectId);
   const [stage, setStage] = useState<Stage>('asking');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FriendlyFailure | null>(null);
   // W10-67: the run paused on a founder decision. Not an error — the gate is
   // working, and the next step belongs to the founder.
   const [awaiting, setAwaiting] = useState<PipelineAwaitingDecisions | null>(null);
@@ -97,7 +99,7 @@ export function InterviewPanel({
   // screen later.
   const [resuming, setResuming] = useState(false);
   const [stillWaiting, setStillWaiting] = useState<string | null>(null);
-  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<FriendlyFailure | null>(null);
   // W10-58: the stages the run has actually finished, as the job reports them.
   const [phases, setPhases] = useState<readonly PipelineRunPhase[]>([]);
 
@@ -139,8 +141,8 @@ export function InterviewPanel({
         setStage('done');
         onComplete?.();
       },
-      onFailed: (message) => {
-        setError(message);
+      onFailed: (failure) => {
+        setError(failure);
         setStage('failed');
       },
     });
@@ -150,7 +152,10 @@ export function InterviewPanel({
   }, [onComplete, projectId]);
 
   const answered = useMemo(
-    () => INTERVIEW_QUESTIONS.filter((q) => (answers[q.topic.deliverableId] ?? '').trim() !== '').length,
+    () =>
+      INTERVIEW_QUESTIONS.filter(
+        (q) => (answers[q.topic.deliverableId] ?? '').trim() !== '',
+      ).length,
     [answers],
   );
   const ready = useMemo(
@@ -200,14 +205,9 @@ export function InterviewPanel({
       setStage('done');
       onComplete?.();
     } catch (err) {
-      // Shown, not swallowed — see the module header.
-      setError(
-        err instanceof OnboardingApiError
-          ? `${err.message} (HTTP ${String(err.status)})`
-          : err instanceof Error
-            ? err.message
-            : String(err),
-      );
+      // Shown, not swallowed — see the module header. W16-06: plain words
+      // first, the raw string demoted to the disclosure, never the headline.
+      setError(describeRunFailure(err));
       setStage('failed');
     }
   }, [answers, onComplete, projectId, title]);
@@ -224,15 +224,11 @@ export function InterviewPanel({
       onComplete?.();
     } catch (err) {
       if (err instanceof OnboardingApiError && err.status === 409) {
-        setStillWaiting(err.message);
+        // W16-06: 409 here means "decisions still unanswered" — say that in
+        // the screen's own words, not the server's problem+json detail.
+        setStillWaiting(describeStillWaiting());
       } else {
-        setResumeError(
-          err instanceof OnboardingApiError
-            ? `${err.message} (HTTP ${String(err.status)})`
-            : err instanceof Error
-              ? err.message
-              : String(err),
-        );
+        setResumeError(describeResumeFailure(err));
       }
     } finally {
       setResuming(false);
@@ -270,8 +266,8 @@ export function InterviewPanel({
     <div className="interview" data-testid="interview-panel">
       <h3>Describe your product</h3>
       <p className="interview__hint">
-        Answer what you can. Anything you leave blank is skipped, not guessed at —
-        one answer is enough to start, and you can come back.
+        Answer what you can. Anything you leave blank is skipped, not guessed at — one
+        answer is enough to start, and you can come back.
       </p>
       {/* W13-02: how long this is, and how far in you are. Nine questions with
           no count and no progress meant the only signal you had finished was a
@@ -325,7 +321,10 @@ export function InterviewPanel({
               </button>
             )}
           {(followUps.byTopic[entry.topic.deliverableId] ?? []).map((q, i) => (
-            <label className="interview__followup" key={`${entry.topic.deliverableId}-${i}`}>
+            <label
+              className="interview__followup"
+              key={`${entry.topic.deliverableId}-${i}`}
+            >
               <span>{q}</span>
               <textarea
                 rows={2}
@@ -343,11 +342,7 @@ export function InterviewPanel({
         </label>
       ))}
 
-      {error !== null && (
-        <p className="interview__error" role="alert" data-testid="interview-error">
-          The run failed: {error}
-        </p>
-      )}
+      {error !== null && <FailureNotice failure={error} testId="interview-error" />}
 
       {/* W13-02: this is THE action of the screen and had no class at all, so
           it inherited the plain-button pill and never read as the primary —

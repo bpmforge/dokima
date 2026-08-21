@@ -90,6 +90,27 @@
   margin: 0;
 }
 
+/* W16-06: the demoted technical string under a failure summary. Muted and
+   closed by default — present for whoever needs it, never the headline. */
+.interview__failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+}
+
+.interview__failure-detail {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+}
+
+.interview__failure-detail summary {
+  cursor: pointer;
+}
+
+.interview__failure-detail code {
+  overflow-wrap: anywhere;
+}
+
 /* W10-58: per-phase run progress. A checklist, not a spinner — the wait is
    minutes long, and an indeterminate indicator over that span is
    indistinguishable from a hang. */

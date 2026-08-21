@@ -1,4 +1,6 @@
 import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
+import { FailureNotice } from './FailureNotice.js';
+import type { FriendlyFailure } from './friendly-error.js';
 import type { PipelineAwaitingDecisions } from './types.js';
 
 /**
@@ -28,7 +30,7 @@ export interface AwaitingDecisionsProps {
    * the mistake W10-67 fixed one screen earlier.
    */
   readonly stillWaiting: string | null;
-  readonly resumeError: string | null;
+  readonly resumeError: FriendlyFailure | null;
   readonly onDecided: () => void;
   readonly onContinue: () => void;
 }
@@ -88,9 +90,7 @@ export function AwaitingDecisions({
         </p>
       )}
       {resumeError !== null && (
-        <p className="interview__error" role="alert" data-testid="interview-resume-error">
-          Could not continue: {resumeError}
-        </p>
+        <FailureNotice failure={resumeError} testId="interview-resume-error" />
       )}
     </div>
   );

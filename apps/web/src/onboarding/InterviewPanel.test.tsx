@@ -11,7 +11,14 @@ import { InterviewPanel } from './InterviewPanel.js';
 
 vi.mock('./api.js', async () => {
   const actual = await vi.importActual<typeof import('./api.js')>('./api.js');
-  return { ...actual, fetchFollowUpQuestion: vi.fn().mockResolvedValue(null) };
+  return {
+    ...actual,
+    fetchFollowUpQuestion: vi.fn().mockResolvedValue(null),
+    // W16-06: the failure-path tests reject this; everything else never runs it.
+    runGuidedPipeline: vi.fn(),
+    // Mount recovery finds nothing active — these tests own what happens next.
+    fetchActiveRun: vi.fn().mockResolvedValue(null),
+  };
 });
 import { INTERVIEW_QUESTIONS } from './interview-topics.js';
 
@@ -19,11 +26,7 @@ afterEach(cleanup);
 
 function renderPanel(projectName = 'Untitled') {
   return render(
-    <InterviewPanel
-      projectId="p1"
-      projectName={projectName}
-      onComplete={vi.fn()}
-    />,
+    <InterviewPanel projectId="p1" projectName={projectName} onComplete={vi.fn()} />,
   );
 }
 
@@ -72,7 +75,7 @@ describe('the disabled primary says what IT is waiting for (W13-02)', () => {
 
   it(
     'is styled as the primary even while disabled — it had NO class at all, so ' +
-      'it inherited the plain-button pill and never read as the screen\'s action',
+      "it inherited the plain-button pill and never read as the screen's action",
     () => {
       renderPanel();
       expect(screen.getByTestId('interview-run').className).toContain('btn-primary');
@@ -85,7 +88,9 @@ describe('the disabled primary says what IT is waiting for (W13-02)', () => {
       target: { value: 'A thing that does a thing.' },
     });
     expect(screen.queryByTestId('interview-blocked')).toBeNull();
-    expect((screen.getByTestId('interview-run') as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTestId('interview-run') as HTMLButtonElement).disabled).toBe(
+      false,
+    );
   });
 });
 
@@ -187,4 +192,46 @@ describe('adaptive follow-ups (W13-18)', () => {
       expect(screen.getByTestId('interview-run')).toBeTruthy();
     },
   );
+});
+
+/**
+ * W16-06 (novice-journey audit, 2026-08-21). The failed submit rendered
+ * `` `${err.message} (HTTP ${status})` `` as the primary error line — a bare
+ * exception string on the first screen a novice meets after describing their
+ * idea, with no next step.
+ */
+describe('a failed run speaks novice first (W16-06)', () => {
+  async function failRun(err: unknown) {
+    vi.mocked(onboardingApi).runGuidedPipeline.mockRejectedValueOnce(err as Error);
+    renderPanel('Recipe Box');
+    fireEvent.change(screen.getByTestId('interview-answer-docs/VISION.md'), {
+      target: { value: 'A thing that does a thing.' },
+    });
+    fireEvent.click(screen.getByTestId('interview-run'));
+    return screen.findByTestId('interview-error');
+  }
+
+  it(
+    'RED FIXTURE: the primary error line has no "(HTTP" marker and no raw ' +
+      'message — plain words and a next step instead',
+    async () => {
+      const alert = await failRun(new onboardingApi.OnboardingApiError(500, 'boom'));
+      expect(alert.textContent).not.toContain('(HTTP');
+      expect(alert.textContent).not.toContain('boom');
+      expect(alert.textContent).toMatch(/try again/i);
+    },
+  );
+
+  it('the technical string is kept, demoted to the closed disclosure', async () => {
+    await failRun(new onboardingApi.OnboardingApiError(500, 'boom'));
+    const detail = screen.getByTestId('interview-error-detail');
+    expect(detail.textContent).toContain('Technical detail');
+    expect(detail.textContent).toContain('boom (HTTP 500)');
+    expect((detail as HTMLDetailsElement).open).toBe(false);
+  });
+
+  it('a connection failure blames the server being unreachable, not the person', async () => {
+    const alert = await failRun(new TypeError('fetch failed'));
+    expect(alert.textContent).toMatch(/couldn't be reached/i);
+  });
 });

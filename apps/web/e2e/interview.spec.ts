@@ -119,8 +119,22 @@ test.afterEach(async () => {
   // on an unconfigured Settings surface — leaving this behind would make THEM
   // fail, in a different file, for a reason nothing in them mentions.
   await fs.rm(GLOBAL_CONFIG, { force: true });
+  // The server can still be writing .dokima state (WAL checkpoints) when this
+  // runs, and a recursive rm racing a writer throws ENOTEMPTY — observed once
+  // the suite grew a third spec in this file (W16-06). Bounded retry, not
+  // `force`-and-hope: any other error still fails the test.
   await Promise.all(
-    dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    dirs.splice(0).map(async (d) => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await fs.rm(d, { recursive: true, force: true });
+        } catch (err) {
+          const code = (err as NodeJS.ErrnoException).code;
+          if (attempt >= 4 || (code !== 'ENOTEMPTY' && code !== 'EBUSY')) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+      }
+    }),
   );
 });
 
@@ -140,7 +154,10 @@ async function newProduct(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'choose the location' }).click();
   await page.getByLabel('Folder').fill(dir);
   await page.getByLabel('Project name').fill(name);
-  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
+  await page
+    .locator('.fleet__form')
+    .getByRole('button', { name: 'Create project' })
+    .click();
 
   const card = page.locator('.project-card', { hasText: name });
   await expect(card).toBeVisible();
@@ -180,6 +197,43 @@ test.describe('interview -> board, in one pass (W10-61, inherited W10-54 AC5)', 
       'Render the interval timer',
     );
   });
+
+  test(
+    'RED FIXTURE (W16-06): a failed run speaks plain language first — the ' +
+      'primary error line never shows a bare "(HTTP" marker',
+    async ({ page }) => {
+      await newProduct(page);
+
+      await page.getByRole('button', { name: 'Describe' }).click();
+      await page.getByLabel('Working title').fill('Interval timer');
+      const openings = page.locator('[data-testid^="interview-answer-"]');
+      for (const opening of await openings.all()) {
+        await opening.fill('Answer for the interval timer.');
+      }
+
+      // Force the novice's worst first minute: the run POST fails server-side.
+      await page.route('**/pipeline/run', (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ detail: 'planted e2e failure' }),
+        }),
+      );
+      await page.getByRole('button', { name: 'Build the board' }).click();
+
+      const alert = page.getByTestId('interview-error');
+      await expect(alert).toBeVisible();
+      await expect(alert).not.toContainText('(HTTP');
+      await expect(alert).not.toContainText('planted e2e failure');
+      await expect(alert).toContainText(/try again/i);
+      // Kept, demoted: the raw string lives in the closed disclosure.
+      await expect(page.getByTestId('interview-error-detail')).toContainText(
+        'planted e2e failure (HTTP 500)',
+      );
+      // The form survived the failure — nothing typed was lost.
+      await expect(page.getByLabel('Working title')).toHaveValue('Interval timer');
+    },
+  );
 
   test('the other two panes come back too — the stale-portal-target regression', async ({
     page,

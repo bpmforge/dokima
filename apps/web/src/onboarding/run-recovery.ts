@@ -7,11 +7,8 @@
  * mount effect calls this once; every outcome flows back through callbacks so
  * the state stays owned in one place.
  */
-import {
-  fetchActiveRun,
-  OnboardingApiError,
-  pollPipelineRun,
-} from './api.js';
+import { fetchActiveRun, pollPipelineRun } from './api.js';
+import { describeRunFailure, type FriendlyFailure } from './friendly-error.js';
 import {
   isAwaitingDecisions,
   type PipelineAwaitingDecisions,
@@ -27,7 +24,7 @@ export interface RunRecoveryCallbacks {
   readonly onRejoinRunning: () => void;
   readonly onPhases: (phases: readonly PipelineRunPhase[]) => void;
   readonly onDone: (result: PipelineRunResult) => void;
-  readonly onFailed: (message: string) => void;
+  readonly onFailed: (failure: FriendlyFailure) => void;
 }
 
 /**
@@ -65,12 +62,8 @@ export async function recoverActiveRun(
     cb.onDone(outcome);
   } catch (err) {
     if (cb.cancelled()) return;
-    cb.onFailed(
-      err instanceof OnboardingApiError
-        ? `${err.message} (HTTP ${String(err.status)})`
-        : err instanceof Error
-          ? err.message
-          : String(err),
-    );
+    // W16-06: the rejoined run failed — same plain-words-first shape as a
+    // fresh submit failure, raw string demoted to the disclosure.
+    cb.onFailed(describeRunFailure(err));
   }
 }
