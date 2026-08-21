@@ -3,6 +3,7 @@
     "Dokima",
     "Fleet",
     "Roster",
+    "Morning queue",
     "Settings",
     "Light",
     "New project",
@@ -10,7 +11,8 @@
     "Import",
     "Show archived",
     "Describe what you want built. Dokima interviews you, writes the plan, and works the board with expert agents — on your machine, on your models.",
-    "Try the guided sample"
+    "Set up Dokima",
+    "Setup asks a few questions — which of your models does the work — and ends with an optional guided sample project you can watch run."
   ],
   "interactive": [
     {
@@ -19,7 +21,7 @@
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 1039,
+        "x": 940,
         "y": 12,
         "w": 64,
         "h": 36
@@ -31,7 +33,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -40,12 +42,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 0 awaiting a decision",
+      "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -79,9 +81,9 @@
       "name": "New project",
       "disabled": false,
       "rect": {
-        "x": 532,
+        "x": 552,
         "y": 85,
-        "w": 133,
+        "w": 114,
         "h": 36
       }
     },
@@ -124,10 +126,22 @@
     {
       "tag": "button",
       "role": null,
-      "name": "New project",
+      "name": "Set up Dokima",
       "disabled": false,
       "rect": {
         "x": 368,
+        "y": 287,
+        "w": 152,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "New project",
+      "disabled": false,
+      "rect": {
+        "x": 532,
         "y": 287,
         "w": 114,
         "h": 36
@@ -139,21 +153,9 @@
       "name": "Onboard existing repo",
       "disabled": false,
       "rect": {
-        "x": 494,
+        "x": 657,
         "y": 287,
         "w": 186,
-        "h": 36
-      }
-    },
-    {
-      "tag": "button",
-      "role": null,
-      "name": "Try the guided sample",
-      "disabled": false,
-      "rect": {
-        "x": 692,
-        "y": 287,
-        "w": 187,
         "h": 36
       }
     }
@@ -173,6 +175,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
@@ -183,6 +186,7 @@
     "btn-secondary": 3,
     "empty-state": 1,
     "empty-state__actions": 1,
+    "empty-state__hint": 1,
     "empty-state__lead": 1,
     "fleet": 1,
     "fleet__actions": 1,

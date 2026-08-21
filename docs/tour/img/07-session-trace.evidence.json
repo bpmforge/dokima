@@ -6,25 +6,31 @@
     "Plan",
     "Decisions",
     "Roster",
+    "Morning queue",
     "Settings",
     "Light",
     "Session trace —",
     "E2E-1",
     "Close",
+    "Each event offers",
+    "File field report",
+    ": flag the event so the improvement loop learns from it. Filing changes nothing on the board — it only records what you saw.",
     "← Back to runs",
     "Pass",
     "1",
+    "The run made a pass over the ticket",
     "loop.pass",
     "agent-1",
-    "Aug 20, 2026, 3:38 PM",
-    "File field report",
+    "Aug 20, 2026, 10:47 PM",
     "Gate result",
+    "A gate checked the work and minted a receipt",
     "gate.receipt_minted",
-    "Aug 20, 2026, 3:38 PM (+2ms)",
+    "Aug 20, 2026, 10:47 PM (+2ms)",
     "Escalation",
+    "Escalated to a stronger model",
     "escalation.rung_advanced",
-    "R0 → R1",
-    "Aug 20, 2026, 3:38 PM (+0ms)"
+    "rung R0 → R1",
+    "Aug 20, 2026, 10:47 PM (+0ms)"
   ],
   "interactive": [
     {
@@ -33,7 +39,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 778,
+        "x": 679,
         "y": 12,
         "w": 69,
         "h": 36
@@ -45,7 +51,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 851,
+        "x": 752,
         "y": 12,
         "w": 91,
         "h": 36
@@ -57,7 +63,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 946,
+        "x": 847,
         "y": 12,
         "w": 57,
         "h": 36
@@ -69,7 +75,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 1007,
+        "x": 908,
         "y": 12,
         "w": 96,
         "h": 36
@@ -81,7 +87,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -90,12 +96,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 0 awaiting a decision",
+      "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -142,7 +148,7 @@
       "disabled": false,
       "rect": {
         "x": 24,
-        "y": 169,
+        "y": 194,
         "w": 135,
         "h": 36
       }
@@ -153,8 +159,8 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 414,
-        "y": 214,
+        "x": 710,
+        "y": 239,
         "w": 135,
         "h": 36
       }
@@ -165,8 +171,8 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 531,
-        "y": 276,
+        "x": 921,
+        "y": 301,
         "w": 135,
         "h": 36
       }
@@ -177,8 +183,8 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 302,
-        "y": 390,
+        "x": 308,
+        "y": 415,
         "w": 135,
         "h": 36
       }
@@ -199,6 +205,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
@@ -214,11 +221,13 @@
     "trace-event__actor": 3,
     "trace-event__escalation-detail": 1,
     "trace-event__kind": 3,
+    "trace-event__label": 3,
     "trace-event__pass": 1,
     "trace-event__time": 3,
     "trace-event__type": 3,
     "trace-view": 1,
     "trace-view__events": 1,
-    "trace-view__header": 1
+    "trace-view__header": 1,
+    "trace-view__report-hint": 1
   }
 }

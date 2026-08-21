@@ -3,11 +3,12 @@
     "Dokima",
     "Fleet",
     "Roster",
-    "1",
+    "Morning queue",
+    "2",
     "Settings",
     "Light",
     "Close",
-    "Settings belong to a project — which models it uses, which providers it can reach, and what it is allowed to spend. Pick a project and they will be here.",
+    "Settings belong to a project — which models it uses, which providers it can reach, and what it is allowed to spend. Pick a project and they will be here. The providers and every-project model defaults you registered in the wizard already apply to any project you create — a new project starts from them, so there is nothing to set up again.",
     "Choose a project",
     "Run Setup Wizard",
     "The wizard is a guided first run — it is optional, and everything it sets can be changed here afterwards."
@@ -19,7 +20,7 @@
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 1041,
+        "x": 942,
         "y": 12,
         "w": 62,
         "h": 36
@@ -31,7 +32,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -40,12 +41,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 1 awaiting a decision",
+      "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -92,7 +93,7 @@
       "disabled": false,
       "rect": {
         "x": 24,
-        "y": 279,
+        "y": 348,
         "w": 170,
         "h": 36
       }
@@ -104,7 +105,7 @@
       "disabled": false,
       "rect": {
         "x": 206,
-        "y": 279,
+        "y": 348,
         "w": 156,
         "h": 36
       }
@@ -125,6 +126,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,

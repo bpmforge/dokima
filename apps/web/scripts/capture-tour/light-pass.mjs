@@ -74,6 +74,9 @@ export async function runLightPass(browser, app, ctx) {
   seedDemoBoard(app.projectDir);
   await page.reload();
   await page.getByTestId('card-E2E-1').waitFor();
+  // W15-04 coverage assertions: the W13-59/60 surfaces must be in frame.
+  await page.getByTestId('board-runbar-hint').waitFor();
+  await page.locator('[data-testid^="blocked-why-"]').first().waitFor();
   await shoot(
     page,
     '05-board-seeded',
@@ -149,13 +152,50 @@ export async function runLightPass(browser, app, ctx) {
       summary: 'all validators green',
     },
   });
+  // W15-04: the W14 surfaces join the denominator — a tool approval that
+  // SHOWS THE WORK and the consolidation pre-brief. Seeded with the same
+  // body shapes the real emitters write (mcp-approvals.ts, consolidation.ts).
+  await page.request.post(`${app.base}/api/v1/projects/${projectId}/notifications`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      tier: 'decide',
+      kind: 'approval',
+      ref_type: 'mcp_tool_call',
+      ref_id: 'tour-1',
+      title: 'Tool approval: docs-server.search',
+      body: {
+        serverId: 'docs-server',
+        toolId: 'docs-server.search',
+        args: { query: 'auth flow' },
+        argsDigest: 'abcdef0123456789abcdef',
+        requestedBy: 'coding-agent',
+        ticketId: 'E2E-1',
+      },
+    },
+  });
+  await page.request.post(`${app.base}/api/v1/projects/${projectId}/notifications`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      tier: 'review',
+      kind: 'digest',
+      ref_type: 'run',
+      ref_id: 'run-tour-1',
+      title: 'Morning pre-brief — what the fact bank learned',
+      summary: '2 duplicate facts merged, 1 stale fact decayed; 1 overnight landmine leads',
+    },
+  });
   await page.goto(`${app.base}/?view=notifications`);
   await page.getByTestId('morning-queue-list').waitFor();
+  // Coverage is ASSERTED, not assumed (W15-04): the tour FAILS if the new
+  // surfaces are missing from the frame.
+  await page.getByTestId('mcp-approval-evidence').waitFor();
+  await page.getByTestId('mcp-approval-args').waitFor();
+  await page.getByText('Morning pre-brief — what the fact bank learned').waitFor();
   await shoot(
     page,
     '09-morning-queue',
     'Morning queue',
-    'The signature screen (UX_SPEC §7): Decide items get inline **Approve/Reject**; Review items batch into a digest. The elapsed timer nudges toward the ten-minute review.',
+    'The signature screen (UX_SPEC §7): Decide items get inline **Approve/Reject** with the work on the card — a merge shows its verified manifest, a tool approval shows the exact requested arguments — and Review items (gate results, the morning pre-brief) batch below. The elapsed timer nudges toward the ten-minute review.',
     undefined,
     ctx,
   );

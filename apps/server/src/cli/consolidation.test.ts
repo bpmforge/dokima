@@ -53,14 +53,21 @@ describe('post-run sleep consolidation (W14-06)', () => {
     const events = listEvents(log).filter((e) => e.eventType === 'memory.consolidated');
     expect(events).toHaveLength(1);
 
+    // W15-04: the pre-brief COALESCES into the review digest (UX_SPEC §7)
+    // instead of a freeform body that rendered as '0 items batched'.
     const row = log.db
       .prepare<[string], { tier: string; kind: string; body: string }>(
         'SELECT tier, kind, body FROM notifications WHERE id = ?',
       )
       .get('pre-brief-run-1');
     expect(row?.tier).toBe('review');
-    const body = JSON.parse(row!.body) as { leadFacts: { content: string }[] };
-    expect(body.leadFacts[0]!.content).toContain('PARKED (no_progress)');
+    expect(row?.kind).toBe('digest');
+    const body = JSON.parse(row!.body) as {
+      items: { title: string; summary: string }[];
+    };
+    expect(body.items[0]!.title).toContain('Morning pre-brief');
+    expect(body.items[0]!.summary).toContain('the lead lesson: PARKED (no_progress)');
+    expect(body.items[0]!.summary).toMatch(/duplicate fact/);
   });
 
   it('RED FIXTURE: the same flow with the setting off produces neither — no event, no card, no writes', async () => {

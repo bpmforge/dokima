@@ -3,17 +3,19 @@
     "Dokima",
     "Fleet",
     "Roster",
+    "Morning queue",
     "Settings",
     "Light",
     "New project",
     "Onboard existing repo",
     "Import",
     "Show archived",
+    "All projects",
     "0",
     "ready",
     "blocked",
     "needs you",
-    "berths running",
+    "agents running",
     "$0.00",
     "spend today",
     "Demo Voyage",
@@ -21,7 +23,7 @@
     "Ready",
     "Blocked",
     "Done",
-    "No berths running",
+    "No agents running",
     "$",
     "0.00",
     "today",
@@ -35,7 +37,7 @@
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 1039,
+        "x": 940,
         "y": 12,
         "w": 64,
         "h": 36
@@ -47,7 +49,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -56,12 +58,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 0 awaiting a decision",
+      "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -95,7 +97,7 @@
       "name": "New project",
       "disabled": false,
       "rect": {
-        "x": 479,
+        "x": 525,
         "y": 85,
         "w": 133,
         "h": 36
@@ -107,7 +109,7 @@
       "name": "Onboard existing repo",
       "disabled": false,
       "rect": {
-        "x": 621,
+        "x": 666,
         "y": 85,
         "w": 186,
         "h": 36
@@ -119,7 +121,7 @@
       "name": "Import",
       "disabled": false,
       "rect": {
-        "x": 815,
+        "x": 861,
         "y": 85,
         "w": 74,
         "h": 36
@@ -131,7 +133,7 @@
       "name": "",
       "disabled": false,
       "rect": {
-        "x": 901,
+        "x": 946,
         "y": 97,
         "w": 13,
         "h": 13
@@ -143,7 +145,7 @@
       "name": "Open",
       "disabled": false,
       "rect": {
-        "x": 438,
+        "x": 392,
         "y": 375,
         "w": 59,
         "h": 28
@@ -155,7 +157,7 @@
       "name": "Archive",
       "disabled": false,
       "rect": {
-        "x": 504,
+        "x": 459,
         "y": 375,
         "w": 72,
         "h": 28
@@ -177,6 +179,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
@@ -191,6 +194,7 @@
     "fleet__grid": 1,
     "fleet__header": 1,
     "fleet__summary": 1,
+    "fleet__summary-caption": 1,
     "icon": 2,
     "project-card": 1,
     "project-card__actions": 1,

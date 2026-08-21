@@ -6,24 +6,35 @@
     "Plan",
     "Decisions",
     "Roster",
-    "1",
+    "Morning queue",
+    "2",
     "Settings",
     "Light",
     "← Fleet",
     "Chat",
     "Focus",
     "«",
-    "No agent activity yet.",
-    "Messages, questions, findings, and manifests appear here as agents work.",
+    "Program",
+    "Sample",
+    "manifest",
+    "c/x.ts",
+    "verify",
+    "fail",
+    "1 file(s)",
+    "agent-1",
+    "·",
+    "—",
+    "E2E-3",
+    "$",
+    "0.0000",
     "Start a run",
+    "A run is one pass of the agent working the board: it claims Ready tickets, does the work, and hands back receipts. It uses only the models you chose in Settings → Models, within your Autonomy setting — nothing else is contacted.",
     "ui",
     ":",
     "E2E-1",
-    "—",
     "Wire the board",
     "abc1234",
     "→",
-    "E2E-3",
     "Ship the strips",
     "Lane",
     "gateway",
@@ -34,19 +45,18 @@
     "Blocked",
     "Done",
     "Story",
-    "agent-1",
     "●",
     "Task",
     "unclaimed",
     "○",
     "Move ticket",
     "Move to…",
-    "claim",
-    "claimed",
+    "Claim it yourself → Claimed (starts no agent, spends nothing)",
     "Bug",
     "E2E-2",
     "Blocked on E2E-1",
     "blocked",
+    "Blocked on E2E-1 — opens on its own when it is done. Nothing to do here.",
     "Artifacts",
     "Docs",
     "Receipts",
@@ -64,7 +74,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 776,
+        "x": 677,
         "y": 12,
         "w": 71,
         "h": 36
@@ -76,7 +86,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 851,
+        "x": 752,
         "y": 12,
         "w": 91,
         "h": 36
@@ -88,7 +98,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 946,
+        "x": 847,
         "y": 12,
         "w": 57,
         "h": 36
@@ -100,7 +110,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 1007,
+        "x": 908,
         "y": 12,
         "w": 96,
         "h": 36
@@ -112,7 +122,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -121,12 +131,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 1 awaiting a decision",
+      "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -191,6 +201,30 @@
       }
     },
     {
+      "tag": "div",
+      "role": "list",
+      "name": "manifestc/x.tsverify fail1 file(s)agent-1·—·E2E-3·$0.0000",
+      "disabled": false,
+      "rect": {
+        "x": 21,
+        "y": 185,
+        "w": 257,
+        "h": 102
+      }
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": "$0.0000",
+      "disabled": false,
+      "rect": {
+        "x": 160,
+        "y": 262,
+        "w": 54,
+        "h": 16
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Focus Board and collapse the other panes",
@@ -233,7 +267,7 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 203,
+        "y": 254,
         "w": 172,
         "h": 17
       }
@@ -245,7 +279,7 @@
       "disabled": false,
       "rect": {
         "x": 525,
-        "y": 203,
+        "y": 254,
         "w": 213,
         "h": 17
       }
@@ -257,7 +291,7 @@
       "disabled": false,
       "rect": {
         "x": 318,
-        "y": 258,
+        "y": 309,
         "w": 803,
         "h": 130
       }
@@ -269,7 +303,7 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 288,
+        "y": 339,
         "w": 82,
         "h": 24
       }
@@ -281,7 +315,7 @@
       "disabled": false,
       "rect": {
         "x": 435,
-        "y": 288,
+        "y": 339,
         "w": 82,
         "h": 24
       }
@@ -293,7 +327,7 @@
       "disabled": false,
       "rect": {
         "x": 543,
-        "y": 288,
+        "y": 339,
         "w": 82,
         "h": 24
       }
@@ -305,7 +339,7 @@
       "disabled": false,
       "rect": {
         "x": 651,
-        "y": 288,
+        "y": 339,
         "w": 82,
         "h": 24
       }
@@ -317,7 +351,7 @@
       "disabled": false,
       "rect": {
         "x": 759,
-        "y": 288,
+        "y": 339,
         "w": 82,
         "h": 24
       }
@@ -329,7 +363,7 @@
       "disabled": false,
       "rect": {
         "x": 867,
-        "y": 288,
+        "y": 339,
         "w": 245,
         "h": 91
       }
@@ -341,7 +375,7 @@
       "disabled": false,
       "rect": {
         "x": 867,
-        "y": 288,
+        "y": 339,
         "w": 245,
         "h": 91
       }
@@ -353,19 +387,19 @@
       "disabled": false,
       "rect": {
         "x": 318,
-        "y": 434,
+        "y": 485,
         "w": 803,
-        "h": 171
+        "h": 212
       }
     },
     {
       "tag": "div",
       "role": "list",
-      "name": "TaskE2E-1Wire the boardunclaimed○Move ticket E2E-1Move to…claim → claimed",
+      "name": "TaskE2E-1Wire the boardunclaimed○Move ticket E2E-1Move to…Claim it yourself → Claimed (starts no agent, spends nothing)",
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 464,
+        "y": 515,
         "w": 164,
         "h": 132
       }
@@ -377,7 +411,7 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 464,
+        "y": 515,
         "w": 164,
         "h": 132
       }
@@ -389,7 +423,7 @@
       "disabled": false,
       "rect": {
         "x": 344,
-        "y": 542,
+        "y": 593,
         "w": 130,
         "h": 37
       }
@@ -401,7 +435,7 @@
       "disabled": false,
       "rect": {
         "x": 517,
-        "y": 464,
+        "y": 515,
         "w": 82,
         "h": 24
       }
@@ -413,7 +447,7 @@
       "disabled": false,
       "rect": {
         "x": 625,
-        "y": 464,
+        "y": 515,
         "w": 82,
         "h": 24
       }
@@ -425,7 +459,7 @@
       "disabled": false,
       "rect": {
         "x": 733,
-        "y": 464,
+        "y": 515,
         "w": 82,
         "h": 24
       }
@@ -433,13 +467,13 @@
     {
       "tag": "div",
       "role": "list",
-      "name": "BugE2E-2Blocked on E2E-1blockedunclaimed○",
+      "name": "BugE2E-2Blocked on E2E-1blockedBlocked on E2E-1 — opens on its own when it is done. Nothing to do here.unclaimed○",
       "disabled": false,
       "rect": {
         "x": 841,
-        "y": 464,
+        "y": 515,
         "w": 164,
-        "h": 109
+        "h": 173
       }
     },
     {
@@ -449,9 +483,9 @@
       "disabled": false,
       "rect": {
         "x": 841,
-        "y": 464,
+        "y": 515,
         "w": 164,
-        "h": 109
+        "h": 173
       }
     },
     {
@@ -461,7 +495,7 @@
       "disabled": false,
       "rect": {
         "x": 1030,
-        "y": 464,
+        "y": 515,
         "w": 82,
         "h": 24
       }
@@ -627,6 +661,7 @@
   "classHistogram": {
     "app-shell": 1,
     "app-shell__back-to-fleet": 1,
+    "app-shell__bell-label": 1,
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
@@ -639,6 +674,7 @@
     "artifact-viewer__tab--active": 1,
     "artifact-viewer__tabs": 1,
     "board-card": 3,
+    "board-card__blocked-why": 1,
     "board-card__header": 3,
     "board-card__id": 3,
     "board-card__meta": 3,
@@ -661,13 +697,33 @@
     "board-strip__item": 2,
     "board-view": 1,
     "board-view__lanes": 1,
+    "board-view__run-hint": 1,
     "board-view__runbar": 1,
     "board-view__strips": 1,
     "btn-primary": 1,
     "btn-quiet": 7,
     "chat": 1,
-    "chat__empty": 1,
-    "chat__empty-hint": 1,
+    "chat-card": 1,
+    "chat-card--manifest": 1,
+    "chat-card__agent": 1,
+    "chat-card__cost": 1,
+    "chat-card__diffstat": 1,
+    "chat-card__files": 1,
+    "chat-card__kind": 1,
+    "chat-card__model": 1,
+    "chat-card__provenance": 1,
+    "chat-card__sep": 3,
+    "chat-card__ticket": 1,
+    "chat-card__verify": 1,
+    "chat-card__verify--fail": 1,
+    "chat__agent-threads": 1,
+    "chat__thread": 1,
+    "chat__thread--program": 1,
+    "chat__thread-badge": 1,
+    "chat__thread-badge--sample": 1,
+    "chat__thread-cards": 1,
+    "chat__thread-header": 1,
+    "chat__thread-title": 1,
     "command-palette": 1,
     "command-palette__backdrop": 1,
     "command-palette__input": 1,
