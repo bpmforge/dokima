@@ -1322,3 +1322,14 @@ gate/research path never invoked; interview error copy novice-hostile).
   "decisions above still need an answer." Gate: 3,976 tests, 72 e2e
   (RED FIXTURE: forced 500 must never show a bare "(HTTP" primary line),
   ui-copy 0/0. Also fixed the interview e2e rm-vs-server ENOTEMPTY race.
+- W16-01 — **the escalation ladder actually escalates** (BLUEPRINT §3.3,
+  FR-G3): resolveModelTargetChain binds the user's whole matrix chain (one
+  target per rung; head byte-identical to resolveModelTarget, which now
+  delegates); the land loop's new rung->session seam runs each REAL attempt
+  on its rung's session (infra retries never climb), ledgers every climb as
+  a canonical `escalation.rung_advanced` event with the failed attempt's
+  receipts, keys calibration by the model that actually made each claim
+  (FR-L3), and widens review's C-4 refusal set to every model that made
+  work this run. One-rung/pinned/local-only ladders degrade honestly with
+  a run-start note (FR-G5). Chapter splits keep loop-land/run-build/
+  model-resolution under the 400-line cap. Gate: 3,986 tests, 72 e2e.
