@@ -1339,3 +1339,11 @@ gate/research path never invoked; interview error copy novice-hostile).
   verified hit leads the maker's first handoff. Not gate-skipping R0 (C-2:
   the close gate still decides; loop-land-policy's refusal stands); consult
   failures ledger and swallow. Gate: 3,992 tests, 72 e2e.
+- W16-05 — **the research gate holds** (FR-P8/FR-P4, US-105 AC-2): the
+  phase-advance route consults every docs/research report for the phase,
+  reading recorded Challenger verdicts from the .challenge.json artifact —
+  an unchallenged or CONTRADICTED HIGH claim refuses the advance even with
+  a clean gate receipt; malformed artifacts are named refusals. Research
+  templates are served (GET .../research/templates?phase=N) with the
+  recorded depth policy. buildChallengeReport stays unexported until a
+  producer path exists — no new uncalled surface.

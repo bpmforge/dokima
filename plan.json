@@ -9473,7 +9473,7 @@
       "module": "pipeline",
       "lane": "pipeline",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/pipeline/src/**",
@@ -9486,7 +9486,8 @@
       ],
       "notes": [
         "Challenger audit 2026-08-21: buildChallengeReport (packages/pipeline/src/challenger/report.ts:37), isChallengerRequired, and the research template path (packages/pipeline/src/research/*) are called only from their own defining files; research/ is not exported by the pipeline barrel at all. FR-P4 and FR-P8: both fully built and tested, never invoked by phase execution. Same barrel-export-plus-one-call-site seam as the fixed W12-04/09 wirings (build-then-wire pattern).",
-        "Scope narrowed 2026-08-21: apps/server/src/api/pipeline/** shrank to the phase-gate/routes/executor files this wiring actually touches, so W16-01 (core lane) can own model-resolution.ts without a P8 cross-lane overlap. Widen deliberately (with a note) if the wiring needs another file."
+        "Scope narrowed 2026-08-21: apps/server/src/api/pipeline/** shrank to the phase-gate/routes/executor files this wiring actually touches, so W16-01 (core lane) can own model-resolution.ts without a P8 cross-lane overlap. Widen deliberately (with a note) if the wiring needs another file.",
+        "Closed 2026-08-21: acceptance item 1 satisfied via validateResearchReport (which subsumes isChallengerRequired through decideReportCitability + the deep-policy rule) reading RECORDED challenge artifacts at the advance gate; running challenges (the producer of those artifacts) has no live path yet and was deliberately not invented here \u2014 buildChallengeReport stays type-only in the barrel until a producer ticket exists. Audit note for next iteration: runPhaseGate (the receipt MINTER, phase-gate/runner.ts) itself has no production caller \u2014 receipts in production can currently only come from tests/CLI-less paths; candidate W16 follow-up."
       ],
       "acceptance": [
         "Phase execution consults isChallengerRequired at each gate it governs; when required, buildChallengeReport runs and its CONFIRMED/CONTRADICTED/UNVERIFIABLE verdicts are recorded as receipts the gate reads \u2014 a CONTRADICTED deliverable cannot pass on the maker's say-so (C-2, maker != verifier per C-4).",
