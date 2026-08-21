@@ -99,6 +99,7 @@ import { resolveVaultOrRefusal } from './run-vault.js';
 import {
   countReceipts,
   localFirstPushToRemotes,
+  preflightBuiltInModel,
   resolveAgentRunner,
 } from './run-build-support.js';
 
@@ -118,14 +119,8 @@ export async function executeBuildRun(
   runId: string,
   io: RunCliIO,
 ): Promise<number> {
-  /**
-   * W12-43: resolved, and MINTED on a fresh install rather than demanded.
-   * This used to read `process.env.DOKIMA_SIGNING_KEY` and refuse — an honest
-   * refusal that a user could only satisfy from a terminal, for a secret only
-   * `randomBytes` can sensibly produce. The env var still wins when set (the
-   * CI seam), and the one case that still refuses is the dangerous one: a
-   * project that already HAS receipts whose key has gone missing.
-   */
+  // W12-43: minted on a fresh install rather than demanded; env var wins
+  // (CI seam); refuses only when existing receipts' key has gone missing.
   let signingKey: string;
   try {
     const receiptCount = countReceipts(log);
@@ -152,10 +147,8 @@ export async function executeBuildRun(
     return 2;
   }
 
-  // Refuse rather than run with a redaction layer that has nothing to
-  // redact (W12-02) — same shape as the signing-key refusal above, and for
-  // the same reason: a control that silently covers nothing is worse than
-  // one that stops.
+  // W12-02: refuse rather than run with a redaction layer that has nothing
+  // to redact — a control that silently covers nothing is worse than stopping.
   const vault = resolveVaultOrRefusal(io.cwd);
   if (!vault.ok) {
     io.stderr(
@@ -196,13 +189,9 @@ export async function executeBuildRun(
   }
   const limits = limitsResult.limits;
 
-  /**
-   * W14-02: preload configured MCP servers — the `mcpServers` key's first
-   * reader. A malformed setting refuses the run (same posture as the
-   * escalation policy above: a setting the user wrote deserves a named
-   * refusal, not a silent skip); a server that fails to START only costs
-   * itself (FR-G5). env refs resolve through the project vault (Law 8).
-   */
+  // W14-02: preload configured MCP servers. Malformed setting = named
+  // refusal; a server that fails to start only costs itself (FR-G5);
+  // env refs resolve through the vault (Law 8).
   const mcpSetting = parseMcpServersSetting(
     resolveEffectiveValue(MCP_SERVERS_SETTINGS_KEY, policyScoped)?.value,
     (value) => SECRET_PATTERNS.some((p) => new RegExp(p.regex.source).test(value)),
@@ -273,6 +262,17 @@ export async function executeBuildRun(
       maxSessionSeconds: limits.maxSessionSeconds,
     });
   } else {
+    // W17-05: the model answers before any ticket is claimed.
+    const preflight = await preflightBuiltInModel({
+      cwd: io.cwd,
+      actorId: command.actorId,
+      ...(pin ? { pin } : {}),
+    });
+    if (!preflight.ok) {
+      io.stderr(`${runId} refused: ${preflight.refusal}`);
+      return 2;
+    }
+    if (preflight.warning) io.stderr(`${runId}: ${preflight.warning}`);
     try {
       const builtIn = await buildBuiltInSpawn(
         log,

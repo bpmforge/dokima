@@ -74,6 +74,7 @@ import {
 import { registerAdvanceRoute } from './advance.js';
 import { registerResearchRoutes } from './research.js';
 import { registerGateRoute } from './gate.js';
+import { preflightPipelineModel } from './model-preflight.js';
 import { registerOnboardRoute, type OnboardRoutesOptions } from './onboard.js';
 import { problemForError } from './problems.js';
 import {
@@ -210,6 +211,35 @@ export function registerPipelineRoutes(
               `run ${running} is already building this project's board — wait for it or read its progress at /api/v1/projects/${projectId}/pipeline/runs/${running}`,
             ),
           );
+      }
+
+      // W17-05: the model answers before any run state is minted — an
+      // unreachable endpoint is a named 422 at the button. The injected
+      // gatewayConfig seam (tests/CI, law 9a) skips this by design.
+      const preflight = await preflightPipelineModel({
+        projectPath: record.path,
+        // Both injection seams are deliberate test/CI channels (law 9a):
+        // an explicit gatewayConfig OR a modelPortFactory owes no health
+        // contract, so neither is preflighted.
+        injectedConfig: opts.gatewayConfig ?? opts.modelPortFactory,
+      });
+      if (!preflight.ok) {
+        // A resolution failure keeps its canonical problem shape (409
+        // MODEL_RESOLUTION — unchanged wire contract); only a reachability
+        // failure is the new 422.
+        if (preflight.resolutionError !== undefined) {
+          const problem = problemForError(preflight.resolutionError, request);
+          if (problem) {
+            return reply
+              .code(problem.status)
+              .type(PROBLEM_CONTENT_TYPE)
+              .send(problem.body);
+          }
+        }
+        return reply
+          .code(422)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(badRequest(request, preflight.reason));
       }
 
       // EVERYTHING ABOVE IS CHEAP AND STAYS SYNCHRONOUS. Validation failures are

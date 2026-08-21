@@ -337,3 +337,60 @@ export {
   resolveModelTargetChain,
   type ResolvedModelChain,
 } from './model-resolution-chain.js';
+
+/**
+ * W17-05: the model answers before the button does. One cheap, bounded
+ * question to the provider BEFORE any run state is minted — an unreachable
+ * endpoint refuses at the click with the model and the fix location named,
+ * never a mid-run surprise minutes later. `listed` is advisory only: the
+ * 2026-08-21 live UAT proved LM Studio JIT-loads models its /models list
+ * does not show, so an unlisted id WARNS and proceeds (refusing it would
+ * break a working setup), while unreachable refuses hard.
+ */
+export interface ModelPreflightResult {
+  readonly ok: boolean;
+  /** ok=true only: whether the provider's model list names the id (false = warn, not refuse). */
+  readonly listed?: boolean;
+  readonly reason?: string;
+}
+
+export async function preflightModelReachability(
+  provider: {
+    health(): Promise<{ status: string; detail?: string }>;
+    listModels(): Promise<readonly { id: string }[]>;
+  },
+  model: string,
+  timeoutMs = 3000,
+): Promise<ModelPreflightResult> {
+  const bounded = <T>(p: Promise<T>): Promise<T> =>
+    Promise.race([
+      p,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`no answer within ${timeoutMs}ms`)), timeoutMs),
+      ),
+    ]);
+  try {
+    const health = await bounded(provider.health());
+    if (health.status !== 'ok') {
+      return {
+        ok: false,
+        reason:
+          `the model endpoint is ${health.status}` +
+          (health.detail ? ` (${health.detail})` : ''),
+      };
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `the model endpoint did not answer: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+  try {
+    const models = await bounded(provider.listModels());
+    return { ok: true, listed: models.some((m) => m.id === model) };
+  } catch {
+    // A provider that can't enumerate models but is healthy still runs —
+    // the list is advisory, the health check was the decision.
+    return { ok: true, listed: true };
+  }
+}

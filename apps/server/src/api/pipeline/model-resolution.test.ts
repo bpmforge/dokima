@@ -6,6 +6,7 @@ import { SameModelRefusedError, type ProviderEntry } from '@dokima/gateway';
 import {
   matrixFromRows,
   ModelResolutionError,
+  preflightModelReachability,
   resolveModelTarget,
   resolveModelTargetChain,
   splitModelRef,
@@ -714,5 +715,67 @@ describe('resolveModelTargetChain (W16-01)', () => {
         ),
       }),
     ).rejects.toThrow(ModelResolutionError);
+  });
+});
+
+/**
+ * W17-05: one bounded question before the button. Unreachable refuses;
+ * unlisted warns (LM Studio JIT-loads — proven live 2026-08-21); a
+ * healthy-but-unenumerable provider passes on health alone.
+ */
+describe('preflightModelReachability (W17-05)', () => {
+  const healthy = { status: 'ok', checkedAt: 'now' };
+
+  it('RED FIXTURE: an unreachable endpoint refuses with the reason — never a mid-run surprise', async () => {
+    const result = await preflightModelReachability(
+      {
+        health: async () => ({ status: 'unreachable', detail: 'ECONNREFUSED' }),
+        listModels: async () => [],
+      },
+      'some-model',
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('unreachable');
+    expect(result.reason).toContain('ECONNREFUSED');
+  });
+
+  it('a hung endpoint refuses within the bound instead of hanging the button', async () => {
+    const result = await preflightModelReachability(
+      {
+        health: () => new Promise(() => {}),
+        listModels: async () => [],
+      },
+      'some-model',
+      50,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('did not answer');
+  });
+
+  it('healthy + listed passes; healthy + UNLISTED passes with listed:false (warn, not refuse)', async () => {
+    const listed = await preflightModelReachability(
+      { health: async () => healthy, listModels: async () => [{ id: 'served' }] },
+      'served',
+    );
+    expect(listed).toEqual({ ok: true, listed: true });
+
+    const unlisted = await preflightModelReachability(
+      { health: async () => healthy, listModels: async () => [{ id: 'other' }] },
+      'jit-loadable',
+    );
+    expect(unlisted).toEqual({ ok: true, listed: false });
+  });
+
+  it('a provider that cannot enumerate models still passes on health alone', async () => {
+    const result = await preflightModelReachability(
+      {
+        health: async () => healthy,
+        listModels: async () => {
+          throw new Error('no /models route');
+        },
+      },
+      'm',
+    );
+    expect(result).toEqual({ ok: true, listed: true });
   });
 });

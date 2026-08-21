@@ -32,6 +32,14 @@ export function startFakeGatewayServer(
 
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
+      // W17-05: the run route now preflights GET /models before minting run
+      // state — a real oai-compat endpoint always serves it, so the fake
+      // does too (empty list: healthy, models unlisted -> warn, not refuse).
+      if (req.method === 'GET' && req.url?.startsWith('/v1/models')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ data: [] }));
+        return;
+      }
       if (req.method !== 'POST' || !req.url?.startsWith('/v1/chat/completions')) {
         res.writeHead(404).end();
         return;

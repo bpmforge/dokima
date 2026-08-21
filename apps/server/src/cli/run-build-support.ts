@@ -10,7 +10,15 @@ import {
   type JsonValue,
 } from '@dokima/shared';
 import { pushToRemotes as forgePushToRemotes } from '@dokima/forge';
-import type { PushToRemotesFn } from '@dokima/harbormaster';
+import { DEFAULT_AGENT_SESSION_TASK_TYPE, type PushToRemotesFn } from '@dokima/harbormaster';
+import { ROLE_CODING_AGENT } from '@dokima/gateway';
+import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
+import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
+import {
+  preflightModelReachability,
+  resolveModelTarget,
+  type PinnedModel,
+} from '../api/pipeline/model-resolution.js';
 import {
   AGENT_RUNNER_SETTINGS_KEY,
   parseAgentRunnerSetting,
@@ -49,3 +57,61 @@ export async function resolveAgentRunner(
  * ticket comment, never fatal (law 10). */
 export const localFirstPushToRemotes: PushToRemotesFn = (options) =>
   forgePushToRemotes(options);
+
+/**
+ * W17-05: the CLI half of the model preflight — resolve the coding-agent
+ * target the same way the spawn will, ask the provider one bounded
+ * question, and refuse BEFORE any ticket is claimed. An unlisted-but-
+ * healthy model warns and proceeds (LM Studio JIT-loads; proven live
+ * 2026-08-21); unreachable refuses with the fix location named.
+ */
+export async function preflightBuiltInModel(input: {
+  readonly cwd: string;
+  readonly actorId: string;
+  readonly pin?: PinnedModel;
+}): Promise<
+  | { readonly ok: true; readonly model: string; readonly warning?: string }
+  | { readonly ok: false; readonly refusal: string }
+> {
+  let target;
+  try {
+    target = await resolveModelTarget({
+      projectPath: input.cwd,
+      role: ROLE_CODING_AGENT,
+      taskType: DEFAULT_AGENT_SESSION_TASK_TYPE,
+      actorId: input.actorId,
+      ...(input.pin ? { pin: input.pin } : {}),
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      refusal: err instanceof Error ? err.message : String(err),
+    };
+  }
+  // Law 9a seam, mirroring the route's injected-config skip: an env-named
+  // model is the tests/CI channel (the e2e fake gateway) — deliberate, and
+  // owed no health contract.
+  if (target.source === 'env') return { ok: true, model: target.model };
+  const provider = await providerForConfig(targetToConfig(target, process.env));
+  const preflight = await preflightModelReachability(provider, target.model);
+  if (!preflight.ok) {
+    return {
+      ok: false,
+      refusal:
+        `the configured model "${target.model}" (provider ${target.providerId}) ` +
+        `cannot be reached — ${preflight.reason}. Fix it under Settings -> Models; ` +
+        `nothing was claimed.`,
+    };
+  }
+  if (preflight.listed === false) {
+    return {
+      ok: true,
+      model: target.model,
+      warning:
+        `the endpoint is reachable but does not list "${target.model}" — if it ` +
+        `supports loading models on demand this will still work; otherwise pick ` +
+        `a served model under Settings -> Models.`,
+    };
+  }
+  return { ok: true, model: target.model };
+}
