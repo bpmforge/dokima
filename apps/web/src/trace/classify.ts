@@ -61,7 +61,8 @@ const TRACE_EVENT_HUMAN: Record<string, string> = {
   'gate.receipt_minted': 'A gate checked the work and minted a receipt',
   'gate.waived': 'A person waived a gate',
   'escalation.rung_advanced': 'Escalated to a stronger model',
-  'escalation.blocked': 'Escalation stopped — the ladder has no stronger model to climb to',
+  'escalation.blocked':
+    'Escalation stopped — the ladder has no stronger model to climb to',
   'ticket.created': 'The ticket was created',
   'ticket.claimed': 'The ticket was claimed',
   'ticket.started': 'Work started on the ticket',
@@ -69,10 +70,28 @@ const TRACE_EVENT_HUMAN: Record<string, string> = {
   'ticket.accepted': 'The work was accepted',
   'ticket.released': 'The ticket was released back to Ready',
   'ticket.commented': 'A comment was added to the ticket',
+  // W16-08: the W16 loops' own events, in plain words — before this they
+  // fell into the generic "Event" bucket (milder than W13-60's raw wire
+  // ids, but still nothing a person could read). Mechanism-true, wire ids
+  // stay as the secondary detail line.
+  'playbook.r0_hit': 'Memory already held a verified answer for this task',
+  'playbook.r0_miss': 'Memory was checked first and had no answer',
+  'forge.issue_mapped': 'A mirrored issue was created on the forge',
+  'forge.mirror_written': 'A ticket update was mirrored to the forge',
+  'forge.mirror_queued': 'The forge was unreachable — the update is queued to send later',
+  'forge.mirror_flushed': 'A queued update reached the forge',
+  'berths.ticket_admitted': 'A worker picked up the ticket',
+  'memory.consolidated': 'The run’s lessons were consolidated into memory',
+  'memory.hook_failed': 'A memory step failed and was recorded — the run continued',
+  'session.infra_retry':
+    'The model endpoint failed — retried without spending an attempt',
+  'sandbox.waived': 'A person allowed this run to verify without a sandbox',
 };
 
 export function describeTraceEvent(eventType: string): string {
-  return TRACE_EVENT_HUMAN[eventType] ?? TRACE_EVENT_KIND_LABEL[classifyTraceEvent(eventType)];
+  return (
+    TRACE_EVENT_HUMAN[eventType] ?? TRACE_EVENT_KIND_LABEL[classifyTraceEvent(eventType)]
+  );
 }
 
 /**
