@@ -35,6 +35,7 @@ const UNNAMED = 'Untitled';
 import { buildInterviewSession, hasAnyAnswer } from './buildInterviewSession.js';
 import {
   isAwaitingDecisions,
+  RUN_PHASES,
   type PipelineAwaitingDecisions,
   type PipelineRunPhase,
   type PipelineRunResult,
@@ -55,18 +56,6 @@ export interface InterviewPanelProps {
 
 type Stage = 'asking' | 'running' | 'awaiting' | 'done' | 'failed';
 
-/**
- * W10-58: the four stages a run reports, in the order they complete, with the
- * names the server actually emits. Rendered as a checklist rather than a
- * spinner — "Building the board…" for three minutes is indistinguishable from a
- * hang, which is the defect this ticket was filed for.
- */
-const RUN_PHASES: readonly { name: string; label: string }[] = [
-  { name: 'blueprint', label: 'Blueprint drafted' },
-  { name: 'technical-slate', label: 'Technical slate built' },
-  { name: 'ticket-drafts', label: 'Tickets drafted' },
-  { name: 'board', label: 'Board created' },
-];
 
 export function InterviewPanel({
   projectId,

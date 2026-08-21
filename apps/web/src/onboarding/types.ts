@@ -158,3 +158,15 @@ export interface GateReceipt {
   readonly payload: unknown;
   readonly created_at: string;
 }
+
+/**
+ * W10-58: the four stages a run reports, in completion order, with the names
+ * the server actually emits. Shared (W17-12) between the build screen's live
+ * checklist and the resume screen's static one.
+ */
+export const RUN_PHASES: readonly { name: string; label: string }[] = [
+  { name: 'blueprint', label: 'Blueprint drafted' },
+  { name: 'technical-slate', label: 'Technical slate built' },
+  { name: 'ticket-drafts', label: 'Tickets drafted' },
+  { name: 'board', label: 'Board created' },
+];

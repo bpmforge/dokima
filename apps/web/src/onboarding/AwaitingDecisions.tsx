@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
 import { FailureNotice } from './FailureNotice.js';
 import type { FriendlyFailure } from './friendly-error.js';
-import type { PipelineAwaitingDecisions } from './types.js';
+import { RUN_PHASES, type PipelineAwaitingDecisions } from './types.js';
 
 /**
  * The screen a founder sees when a creation run stops on a decision only they
@@ -45,17 +46,33 @@ export function AwaitingDecisions({
   onDecided,
   onContinue,
 }: AwaitingDecisionsProps) {
+  // W17-12: the screen notices when you are done — after the last answer the
+  // ask-header kept asking. Counted from this session's decide clicks; a
+  // reloaded page shows the ask until Continue, which is honest enough.
+  const [decidedCount, setDecidedCount] = useState(0);
+  const allDecided =
+    awaiting.decisions.length > 0 && decidedCount >= awaiting.decisions.length;
+
   return (
     <div className="interview" data-testid="interview-awaiting-decisions">
-      <h3>Your decision is needed</h3>
-      <p>
-        The blueprint is written and kept. Before the board can be built,{' '}
-        {awaiting.decisions.length === 1
-          ? 'one question needs'
-          : `${String(awaiting.decisions.length)} questions need`}{' '}
-        your answer — these are choices only you can make, so nothing was guessed on your
-        behalf.
-      </p>
+      <h3 data-testid="awaiting-header">
+        {allDecided ? 'All answered — continue when ready' : 'Your decision is needed'}
+      </h3>
+      {allDecided ? (
+        <p>
+          Every question has your answer, recorded in the ledger. Continue picks
+          the run back up from the kept blueprint.
+        </p>
+      ) : (
+        <p>
+          The blueprint is written and kept. Before the board can be built,{' '}
+          {awaiting.decisions.length === 1
+            ? 'one question needs'
+            : `${String(awaiting.decisions.length)} questions need`}{' '}
+          your answer — these are choices only you can make, so nothing was guessed on
+          your behalf.
+        </p>
+      )}
       <ul>
         {awaiting.decisions.map((d) => (
           <li key={d.slate_id}>{d.title}</li>
@@ -67,7 +84,14 @@ export function AwaitingDecisions({
           reopen this project to answer them.
         </p>
       ) : (
-        <DecisionsBoard projectId={projectId} token={token} onDecided={onDecided} />
+        <DecisionsBoard
+          projectId={projectId}
+          token={token}
+          onDecided={() => {
+            setDecidedCount((count) => count + 1);
+            onDecided();
+          }}
+        />
       )}
       <p className="interview__hint">
         Answer each one above, then continue — the blueprint will not be rebuilt.
@@ -80,6 +104,19 @@ export function AwaitingDecisions({
       >
         {resuming ? 'Continuing…' : 'Continue'}
       </button>
+      {/* W17-12: minutes of a dead button on local hardware. The blueprint is
+          already done and KEPT (mechanism-true: the resume never rebuilds it);
+          the remaining stages are what the model is working through now. */}
+      {resuming && (
+        <ol className="interview__phases" data-testid="resume-phases">
+          {RUN_PHASES.map((phase) => (
+            <li key={phase.name} data-phase={phase.name}>
+              {phase.name === 'blueprint' ? '✓' : '…'} {phase.label}
+              {phase.name === 'blueprint' ? ' (kept — not rebuilt)' : ''}
+            </li>
+          ))}
+        </ol>
+      )}
       {stillWaiting !== null && (
         <p
           className="interview__hint"
