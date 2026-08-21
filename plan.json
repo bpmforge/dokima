@@ -9064,6 +9064,173 @@
         "guided-sample.spec.ts stops deleting folders it did not create: it must track exactly the paths its own run made (resolve them via the API it drove) and remove only those. A machine-wide glob delete of user-shaped folders in a test suite is the defect, independent of where the wizard writes.",
         "RED FIXTURE: complete the wizard's sample step and assert the created project's path is NOT under /tmp; the spec's cleanup provably touches only paths recorded from its own session."
       ]
+    },
+    {
+      "stories": [],
+      "depends_on": [],
+      "id": "W14-01",
+      "title": "packages/mcp gets a real client: stdio transport implementing the injected ToolExecutor",
+      "phase": 14,
+      "module": "mcp",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/mcp/src/**",
+        "packages/mcp/package.json"
+      ],
+      "notes": [
+        "Filed 2026-08-20 from the integrations audit: the mcpServers settings key is stored and read by nothing; packages/mcp has the full allowlist/approval machinery with no transport, so FR-I3 is a promise with no wire. Transport was deliberately kept out and injected (tool-call.ts) \u2014 this ticket builds the injectable."
+      ],
+      "acceptance": [
+        "ESTABLISHED, not assumed (verified 2026-08-20): requestToolCall takes an injected ToolExecutor and the only production executor is the closed agent-session set \u2014 no code can connect to an external MCP server. CITATION (source) packages/mcp/src/tool-call.ts: \"Transport (stdio/HTTP/SSE spawn) is deliberately kept out of this package and injected instead\".",
+        "Build a stdio JSON-RPC MCP client under packages/mcp/src/client/**: spawn -> initialize -> tools/list -> tools/call, implementing the ToolExecutor contract, with an explicit kill/dispose lifecycle. Every await on the child carries a deadline (the W13-47 lesson: a hung server is killed and reported, never awaited forever).",
+        "Law 9(a) is hard: tests speak to a LOCAL fake MCP server child process (a fixture script in-repo speaking the wire protocol) \u2014 no network, no live servers, in any test or CI path.",
+        "Discovered tools map to McpToolDefinition with ids namespaced <serverId>.<tool> so an external tool can never collide with the closed agent-session set (mcp-wiring.ts AGENT_SESSION_SERVER_ID namespace).",
+        "RED FIXTURE: a fixture server that never answers initialize is killed at the deadline with an error naming the server id; a tools/call that errors surfaces the server\u2019s own message, never a bare exit code (the W13-41 lesson)."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [
+        "W14-01"
+      ],
+      "id": "W14-02",
+      "title": "preload configured MCP servers at run start",
+      "phase": 14,
+      "module": "cli",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/cli/**",
+        "apps/server/src/api/server/settings-types.ts",
+        "apps/server/src/api/server/settings-routes.ts"
+      ],
+      "notes": [
+        "The mcpServers settings key is a passthrough nothing reads (verified 2026-08-20). Preloading = read settings, spawn clients, register servers+tools in the project log, route calls."
+      ],
+      "acceptance": [
+        "Define the mcpServers settings schema (server id, command, args, env as credential REFS only \u2014 Law 8/FR-S2) in settings-types with validation; the untyped passthrough becomes typed. CITATION (source) apps/server/src/api/server/settings-routes.ts: \"keys (`mcpServers`, `validatorPackSelection`\".",
+        "At run start, read merged settings, start each configured server via the W14-01 client, registerServer + discovered tools into the project log (idempotent across runs, same tolerance as ensureAgentSessionToolsRegistered \u2014 CITATION packages/harbormaster/src/agent-session/mcp-wiring.ts), and compose a ToolExecutor routing <serverId>.<tool> to its client. All clients disposed when the run ends, breach or not.",
+        "A server that fails to start degrades honestly (FR-G5): the run continues, the failure is ledgered as an event and printed once \u2014 never a silent absence and never a crashed run.",
+        "Credential refs resolve through the keychain resolver at spawn time; the literal value never lands in settings, the event log, or any spawn record (Law 8) \u2014 asserted by a planted-ref fixture.",
+        "RED FIXTURE: a run configured with one healthy and one broken server registers and can call the healthy one through requestToolCall while the broken one is ledgered, and the run proceeds."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [
+        "W14-02"
+      ],
+      "id": "W14-03",
+      "title": "agent sessions see external MCP tools behind the allowlist, with approval cards",
+      "phase": 14,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/**",
+        "apps/server/src/cli/**",
+        "apps/server/src/api/notifications/**"
+      ],
+      "notes": [
+        "FR-I3: tools surface through a per-role allowlist matrix; side-effectful tools carry requiresApproval; every call is an audited, costed event. The machinery (setRoleAllowlist, requestToolCall, decideToolCall, PendingApproval) is built and tested with no caller \u2014 this wires it."
+      ],
+      "acceptance": [
+        "External tools join the session\u2019s tool schemas ONLY behind the role allowlist (setRoleAllowlist): a role without an entry cannot see the tool at all (FR-I3 acceptance sketch). The closed built-in seven stay exactly as they are. CITATION (source) packages/harbormaster/src/agent-session/tools.ts.",
+        "External tools default requiresApproval: true. A call to one parks a Decide-tier notification (same store the morning queue reads) and returns a structured awaiting-approval tool result to the session \u2014 the session keeps its turn discipline and never blocks a queue slot on a human (the W13-42 lesson).",
+        "decideToolCall is the only path from pending to executed: approval executes through the run\u2019s composed executor and the result reaches the ticket\u2019s next session pass; rejection records and informs. Approver identity is the notification decider, mechanically distinct from the session actor (C-4).",
+        "Every external call \u2014 requested, approved, rejected, executed \u2014 is an audited event replayable from the log (FR-I3), with cost recorded.",
+        "RED FIXTURE: (a) role without allowlist entry cannot see the tool; (b) a requiresApproval call parks a card and does NOT execute; (c) deciding it executes on the injected fake executor and the result lands in the next pass."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [
+        "W14-03"
+      ],
+      "id": "W14-04",
+      "title": "MCP has a face: Settings panel and the approval card shows the work",
+      "phase": 14,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/web/src/notifications/**"
+      ],
+      "notes": [
+        "Novice north star: register a server once, see its tools, and decide approvals from the morning queue with the evidence on the card (the W13-61 discipline)."
+      ],
+      "acceptance": [
+        "Settings gains an MCP servers panel: register a server (name, command, credential ref \u2014 never a raw secret field, Law 8), see its discovered tools, toggle per-role allowlist entries and requiresApproval. Copy obeys VOCABULARY.md and defines any new term at first meeting.",
+        "The morning queue renders a tool-approval Decide card that SHOWS THE WORK: server, tool, and the requested arguments digest, with mechanism-true consequence copy under Approve/Reject (what approving actually executes) \u2014 the W13-61 standard, not a bare \"a tool wants to run\".",
+        "validate-ui-copy green with zero new baseline entries; axe passes on the new panel (the W13-52 contrast lesson).",
+        "RED FIXTURE: the approval card renders the actual requested arguments digest from the pending approval, and a card for a since-resolved approval says so instead of offering dead buttons."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [],
+      "id": "W14-05",
+      "title": "the learning loop writes: parks become error\u2192solution facts, recalled first on retry",
+      "phase": 14,
+      "module": "cli",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/cli/**",
+        "packages/memory/src/**",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-report.ts"
+      ],
+      "notes": [
+        "Verified 2026-08-20: insertFact has no production caller, so createMemoryAnchor recalls from an always-empty bank \u2014 the exact cautionary tale its own header names. Composition lives in apps/server: harbormaster may not import memory (ARCHITECTURE \u00a74, the W13-23 seam)."
+      ],
+      "acceptance": [
+        "ESTABLISHED: nothing writes facts today. CITATION (source) packages/memory/src/store/anchor.ts: \"an unwired memory engine recalls nothing and is worth nothing\".",
+        "A parked/failed attempt inserts an error_solution fact (symptom: park reason + failing-verify head, ticket-scoped), redacted by the same redactor as park comments before insert (Law 8). When a later attempt closes the same ticket, the fact is marked verified with the closing commit.",
+        "Retry handoffs (attempt >= 2) assemble context via assembleErrorFirstContext so the prior failure+fix leads the packet \u2014 order asserted, not incidental (US-602). CITATION (source) packages/memory/src/consolidation/error-first-recall.ts.",
+        "The seam stays in apps/server (harbormaster gets an injected attempt-outcome hook, never a memory import) \u2014 same construction as run-build-spawn.ts\u2019s memoryAnchor (W13-23).",
+        "RED FIXTURE: a park-then-retry run shows the second attempt\u2019s context leading with the first attempt\u2019s failure fact at position 0; a closing attempt marks that fact verified; a Law 8 planted credential in verify output never reaches the fact bank."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [
+        "W14-05"
+      ],
+      "id": "W14-06",
+      "title": "sleep consolidation runs, and the morning queue gets its pre-brief",
+      "phase": 14,
+      "module": "cli",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/cli/**",
+        "apps/server/src/scheduler/**",
+        "apps/server/src/api/notifications/**"
+      ],
+      "notes": [
+        "runSleepConsolidation is the built job body waiting for its scheduler (its own header says so). ON by default per FR-M3; per-project toggle per US-603 AC-1."
+      ],
+      "acceptance": [
+        "After a run completes, consolidation runs for the project unless the per-project setting disables it (ON by default, FR-M3). CITATION (source) packages/memory/src/consolidation/consolidate.ts: \"runSleepConsolidation is what that scheduler calls once it decides\".",
+        "The MorningPreBrief lands as a review-tier notification the morning queue renders, in VOCABULARY words.",
+        "Exactly one memory.consolidated event per real pass; a disabled project emits nothing and touches nothing \u2014 asserted at the wiring level, not only in the package.",
+        "RED FIXTURE: run finishes \u2192 consolidation event in the log and a pre-brief card in the queue; the same flow with the setting off produces neither."
+      ]
     }
   ]
 }
