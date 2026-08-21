@@ -4,7 +4,7 @@ import path from 'node:path';
 import { appendEvent, openEventLog, createIdentity } from '@dokima/events';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createSlate, decideSlate } from '../decisions/store.js';
-import { computeProjectStats, sumSpendToday } from './stats.js';
+import { computeProjectStats, latestAdvancedPhase, sumSpendToday } from './stats.js';
 
 /**
  * W10-73. `pendingDecideCount` was a literal `0` in `EMPTY_STATS` and computed
@@ -192,5 +192,23 @@ describe('computeProjectStats counts what needs a human (W10-73)', () => {
         log.close();
       }
     });
+  });
+});
+
+describe('the phase column comes alive (W19-01)', () => {
+  it('latestAdvancedPhase reads the last receipt-backed advance; none means null (Not started stays honest)', () => {
+    const log = openEventLog(':memory:');
+    try {
+      createIdentity(log, { id: 'phase-gate-runner', name: 'v', kind: 'machine' });
+      expect(latestAdvancedPhase(log)).toBeNull();
+      appendEvent(log, {
+        eventType: 'phase.advanced',
+        actorId: 'phase-gate-runner',
+        payload: { from: 0, to: 1, gate_receipt_id: 'r-1' },
+      });
+      expect(latestAdvancedPhase(log)).toBe(1);
+    } finally {
+      log.close();
+    }
   });
 });

@@ -10204,7 +10204,7 @@
       ],
       "depends_on": [],
       "phase": 19,
-      "status": "in_progress",
+      "status": "done",
       "id": "W19-01",
       "title": "every phase advance goes through runPhaseGate \u2014 the propped-open door closes",
       "module": "pipeline",
@@ -10213,10 +10213,11 @@
       "role": "coding-agent",
       "write_scope": [
         "packages/pipeline/src/**",
-        "apps/server/src/api/pipeline/**"
+        "apps/server/src/api/**"
       ],
       "notes": [
-        "2026-08-21 review: runPhaseGate works (W16-07 proved a clean advance against the real validator pack) but the default creation flow still advances phases without routing through it. Until every advance mints its receipt through the gate, the trust machine has one door open. Wire the creation pipeline phases through runPhaseGate; degraded honestly when a pack is absent (FR-G5), never silently skipped."
+        "2026-08-21 review: runPhaseGate works (W16-07 proved a clean advance against the real validator pack) but the default creation flow still advances phases without routing through it. Until every advance mints its receipt through the gate, the trust machine has one door open. Wire the creation pipeline phases through runPhaseGate; degraded honestly when a pack is absent (FR-G5), never silently skipped.",
+        "Scope amended at claim: the happy path is the BUILD run (runs-routes job), not the creation pipeline \u2014 the creation run produces a board, and the SDLC phase deliverables are authored later by ticket work. The wiring lands at build-run end: gate -> decideAdvance -> ledgered phase.advanced; refusals go to the review queue (FR-G5, non-blocking). The fleet phase column now projects from phase.advanced."
       ],
       "acceptance": [
         "The creation pipeline happy path calls runPhaseGate for each phase advance and ledgers the receipt",

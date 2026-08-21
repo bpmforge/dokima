@@ -69,6 +69,22 @@ function countOpenSlates(log: EventLog): number {
  * a person asking "what has this cost me today", and a rolling window answers
  * a question nobody asked.
  */
+/**
+ * W19-01: the phase column comes alive. `phase.advanced` is appended only by
+ * the auto gate after a verified receipt (run-phase-progress.ts), so this
+ * projection is receipt-backed by construction. No event -> phase 0 has not
+ * been cleared yet -> the card's `null` ("Not started") stays honest.
+ */
+export function latestAdvancedPhase(log: EventLog): number | null {
+  let phase: number | null = null;
+  for (const event of listEvents(log)) {
+    if (event.eventType !== 'phase.advanced') continue;
+    const to = (event.payload as { to?: unknown } | null)?.to;
+    if (typeof to === 'number') phase = to;
+  }
+  return phase;
+}
+
 export function sumSpendToday(log: EventLog, now: () => Date = () => new Date()): number {
   const startOfDay = new Date(now());
   startOfDay.setHours(0, 0, 0, 0);
@@ -119,6 +135,7 @@ export async function computeProjectStats(projectPath: string): Promise<ProjectS
     // W10-73 fixed above, a hardcoded 0 the Fleet displays as though measured.
     return {
       ...EMPTY_STATS,
+      phase: latestAdvancedPhase(log),
       board: stats,
       pendingDecideCount: countOpenSlates(log),
       spendTodayUsd: sumSpendToday(log),
