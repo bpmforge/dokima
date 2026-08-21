@@ -1392,3 +1392,43 @@ landed same day:
 
 Board: 329/331 done — the two remaining are the founder-parked W12-44
 (plugin loader) and W13-32 (autonomy dial).
+
+### 2026-08-21 — W17 (12/12): live-UAT findings become product
+
+Filed from the first live browser UAT against a real LM Studio model (the
+session that proved the novice journey end to end and watched a run park
+on the turn budget). All twelve landed same day through the full gate:
+
+- W17-01 — **progress-earned turn budget**: the hard per-session ceiling
+  (40) never moves, but a session showing mechanical progress signals
+  (unrefused writes/commits, improving verify exit) earns windowed
+  extensions at the wall, and a session repeating the identical call 3×
+  stops early. Calibration only shrinks (C-2: no model self-confidence);
+  a fitness turns-multiplier learns each model's real appetite from
+  session.turns_observed events.
+- W17-02 — **checkpoint continuity**: a budget-stopped session emits
+  SESSION_CHECKPOINT; the next attempt's handoff leads with "CONTINUE —
+  don't restart", claims cross-checked against the worktree diff so an
+  unproven claim is flagged, not trusted.
+- W17-03 — trace honesty: rung_advanced on a one-model chain no longer
+  renders "Escalated to a stronger model".
+- W17-04 — fallback-chain editor in Settings → Models: the ladder has
+  somewhere to climb, with an explainer of what a chain does.
+- W17-05 — model preflight at "Build the board"/run start: unreachable
+  endpoint refuses at the button with the fix named; unlisted model only
+  warns (LM Studio JIT-loads).
+- W17-06 — morning-queue explains a skipped machine review (maker≠verifier
+  with one model) and points at Settings → Models.
+- W17-07/11/12 — board card face says *why* a ticket parked; "an agent is
+  working this" replaces raw actor ids; the decisions screen notices when
+  every question is answered and shows resume phases with the blueprint
+  marked kept.
+- W17-08 — Runs & Forge settings tab: turn budget and forge mirror get a
+  real UI (token as vault-ref name, never the secret).
+- W17-09 — Fleet: live projects sort first, unavailable ones bulk-remove,
+  and create auto-opens the workspace (14 e2e specs re-taught the flow).
+- W17-10 — the park card offers the fix it names: one click writes the
+  raised budget and starts the retry, only on budget parks.
+
+Board: 341/343 done — remaining are the founder-parked W12-44 and W13-32.
+Next: pnpm build + live browser pass with the full UX/UI design review.
