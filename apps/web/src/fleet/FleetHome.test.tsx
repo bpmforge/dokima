@@ -281,9 +281,10 @@ describe('a created project opens itself; the graveyard clears in one action (W1
     // alone must remove nothing, and the consequence copy appears between.
     fireEvent.click(button);
     expect(mockedApi.removeProject).not.toHaveBeenCalled();
-    expect(screen.getByRole('status').textContent).toContain(
-      'nothing on disk is touched',
-    );
+    // W18-08: the semantics live in ONE page-level hint, not per-card prose.
+    const hints = screen.getAllByText(/nothing on disk is touched/i);
+    expect(hints).toHaveLength(1);
+    expect(hints[0]!.getAttribute('data-testid')).toBe('fleet-unavailable-hint');
     fireEvent.click(button);
     await waitFor(() => expect(mockedApi.removeProject).toHaveBeenCalledTimes(2));
     const removed = mockedApi.removeProject.mock.calls.map((c) => c[0]);

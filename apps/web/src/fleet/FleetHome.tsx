@@ -168,13 +168,19 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
               testId="fleet-remove-unavailable"
               label={`Remove ${unavailableCount} unavailable`}
               armedLabel={`Really remove ${unavailableCount}? Click again`}
-              armedDetail="Registry entries only — nothing on disk is touched, and onboarding a folder again restores it."
-              title="Registry entries only — nothing on disk is touched, and onboarding a folder again restores it."
               onConfirm={handleRemoveUnavailable}
             />
           )}
         </div>
       </header>
+      {/* W18-08: the removal semantics, stated once for the whole page —
+          each dead card used to repeat this paragraph. */}
+      {unavailableCount > 0 && (
+        <p className="fleet__unavailable-hint" data-testid="fleet-unavailable-hint">
+          Removing an unavailable entry only forgets it — nothing on disk is touched,
+          and onboarding the folder again restores it.
+        </p>
+      )}
 
       {formMode && (
         <NewProjectForm

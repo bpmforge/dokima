@@ -55,6 +55,10 @@ export function ProjectCard({
   // W9-15: a project whose directory has vanished is NOT rendered as an
   // ordinary card with zeroed stats — zeros there are indistinguishable from a
   // real, empty project. It gets its own state and the one action that can help.
+  // W18-08: compact — with N dead folders the full explainer paragraph per
+  // card made the fleet a wall of duplicate prose that buried the live
+  // projects. One line names the reason; the shared removal semantics are
+  // stated once, on the page near the bulk action, not N times.
   if (!card.available) {
     return (
       <article
@@ -68,21 +72,15 @@ export function ProjectCard({
             Unavailable
           </span>
         </header>
-
-        <p className="project-card__unavailable-note">
-          This folder is gone — nothing at <code>{card.path}</code>. It was moved,
-          renamed, or deleted. Its stats can&rsquo;t be read, so none are shown.
+        <p className="project-card__unavailable-note" title={card.path}>
+          Folder gone — moved, renamed, or deleted. Nothing to read at{' '}
+          <code>{card.path}</code>.
         </p>
-
         <footer className="project-card__actions">
           <button type="button" onClick={onRemove}>
             Remove from Fleet
           </button>
         </footer>
-        <p className="project-card__unavailable-hint">
-          Removing only forgets this entry. Nothing on disk is touched, and onboarding the
-          folder again restores it.
-        </p>
       </article>
     );
   }

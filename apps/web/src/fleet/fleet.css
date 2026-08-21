@@ -327,3 +327,10 @@
   display: flex;
   gap: var(--sw-space-2);
 }
+
+/* W18-08: one shared removal-semantics line for the whole graveyard. */
+.fleet__unavailable-hint {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+  margin: 0 0 var(--sw-space-3);
+}
