@@ -66,6 +66,34 @@ export function ModelMatrixPanel({
   // instance did the discovering, so the Model picker arrived empty for a user
   // who registered a provider on the other one.
   const [rowError, setRowError] = useState<{ key: string; message: string } | null>(null);
+  const [fallbackDraft, setFallbackDraft] = useState<{ key: string; value: string }>({
+    key: '',
+    value: '',
+  });
+
+  // W17-08: the chain is the escalation ladder's whole universe (W16-01
+  // climbs it) — until this editor, fallback[] was render-only and every
+  // ladder had exactly one rung.
+  const saveRowFallback = async (target: ModelMatrixRow, fallback: string[]) => {
+    const key = rowKey(target.role, target.taskType);
+    try {
+      const next = await putModelMatrix(
+        projectId,
+        (matrix?.rows ?? []).map((r) => ({
+          role: r.role,
+          taskType: r.taskType,
+          model: r.model,
+          fallback:
+            rowKey(r.role, r.taskType) === key ? fallback : r.fallback,
+        })),
+        applyGlobally ? { scope: 'global' } : {},
+      );
+      setMatrix(next);
+      setRowError(null);
+    } catch (err) {
+      setRowError({ key, message: errorMessage(err, 'Failed to save the fallback chain') });
+    }
+  };
   const [draft, setDraft] = useState<{ role: string; taskType: TaskType; model: string }>(
     {
       role: '',
@@ -141,6 +169,13 @@ export function ModelMatrixPanel({
         Presets: {MODEL_MATRIX_PRESETS.map((p) => PRESET_LABEL[p]).join(' · ')} (applying
         a preset lands with the first-run wizard).
       </p>
+      {/* W17-08: what a chain MEANS, before the column of them. */}
+      <p className="settings__hint" data-testid="fallback-explainer">
+        The fallback chain is the escalation ladder: the first model does the work,
+        and each later one is tried only after the gate rejects the previous
+        attempt — put the cheap model first. A row with no fallbacks retries on
+        the same model.
+      </p>
       {/* W10-64. An inherited row is indistinguishable from one configured
           here, and editing one silently creates a project override — so say
           where these came from rather than letting the user find out by
@@ -212,7 +247,44 @@ export function ModelMatrixPanel({
                     </p>
                   )}
                 </td>
-                <td>{row.fallback.length > 0 ? row.fallback.join(' → ') : '—'}</td>
+                <td data-testid={`fallback-${key}`}>
+                  {row.fallback.map((model, index) => (
+                    <span key={`${model}-${index}`} className="settings__badge">
+                      {model}{' '}
+                      <button
+                        type="button"
+                        aria-label={`Remove fallback ${model} from ${row.role}`}
+                        onClick={() =>
+                          void saveRowFallback(
+                            row,
+                            row.fallback.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    aria-label={`Add fallback model for ${row.role} (${row.taskType})`}
+                    placeholder="provider/model"
+                    value={fallbackDraft.key === key ? fallbackDraft.value : ''}
+                    onChange={(e) => setFallbackDraft({ key, value: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    disabled={fallbackDraft.key !== key || !fallbackDraft.value.trim()}
+                    onClick={() => {
+                      void saveRowFallback(row, [
+                        ...row.fallback,
+                        fallbackDraft.value.trim(),
+                      ]);
+                      setFallbackDraft({ key: '', value: '' });
+                    }}
+                  >
+                    Add fallback
+                  </button>
+                </td>
                 <td>
                   {/* No fitness-bench producer is wired to apps/server yet (packages/gateway/src/fitness
                       isn't a reachable dependency, see settings-types.ts) — honestly reports "not benched"

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { readInjectedToken } from '../chat/api.js';
 import { EstimateWorkspace } from '../estimate/EstimateWorkspace.js';
 import { AgentRunnerPanel } from './AgentRunnerPanel.js';
+import { RunKnobsPanel } from './RunKnobsPanel.js';
 import { AutonomyBudgetPanel } from './AutonomyBudgetPanel.js';
 import { CopilotConsentPanel } from './CopilotConsentPanel.js';
 import { EffectiveSettingsPanel } from './EffectiveSettingsPanel.js';
@@ -20,6 +21,7 @@ type Tab =
   | 'providers'
   | 'matrix'
   | 'agent'
+  | 'runs'
   | 'autonomy-budget'
   | 'estimate'
   | 'effective'
@@ -45,6 +47,8 @@ const PROJECT_TABS: { id: Tab; label: string }[] = [
   // instruction, and validate-ui-copy now gates that class.
   { id: 'matrix', label: 'Models' },
   { id: 'agent', label: 'Agent' },
+  // W17-08: the knobs the live UAT proved matter, promoted from raw keys.
+  { id: 'runs', label: 'Runs & Forge' },
   { id: 'autonomy-budget', label: 'Autonomy · Budget · Berths' },
   { id: 'estimate', label: 'Cost Estimate' },
   { id: 'effective', label: 'Effective Settings' },
@@ -178,6 +182,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
           />
         )}
         {tab === 'agent' && <AgentRunnerPanel projectId={projectId} />}
+        {tab === 'runs' && <RunKnobsPanel projectId={projectId} />}
         {tab === 'autonomy-budget' && <AutonomyBudgetPanel projectId={projectId} />}
         {tab === 'estimate' && token && (
           <EstimateWorkspace token={token} projectId={projectId} />
