@@ -105,6 +105,7 @@ import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
+import type { ExternalToolset } from './external-tools.js';
 import { takeMeteredTurn } from './session-stream.js';
 import {
   DEFAULT_MAX_SESSION_SECONDS,
@@ -185,6 +186,13 @@ export interface GatewaySpawnSessionOptions {
    * redaction.
    */
   readonly secretValues?: readonly string[];
+  /**
+   * W14-03: external MCP tools for this session — schemas already
+   * allowlist-filtered by the composer (apps/server, which owns both the
+   * live client pool and the notification store the approval verdicts
+   * live in). Absent = the closed seven only, exactly as before.
+   */
+  readonly externalTools?: ExternalToolset;
 }
 
 /**
@@ -301,7 +309,10 @@ export function createGatewaySpawnSession(
         resolveProvider: options.resolveProvider,
         role: options.role,
         messages,
-        tools: [...AGENT_SESSION_TOOL_SCHEMAS],
+        tools: [
+          ...AGENT_SESSION_TOOL_SCHEMAS,
+          ...(options.externalTools?.schemas ?? []),
+        ],
         ledger: options.ledger,
         projectId: options.projectId,
         runId: options.runId,
@@ -351,13 +362,18 @@ export function createGatewaySpawnSession(
       messages.push({ ...response.message, toolCalls: response.toolCalls });
 
       for (const call of response.toolCalls) {
-        const resultText = await runToolCalls([call], toolCtx, {
-          log: options.log,
-          role: options.role,
-          actorId: options.actorId,
-          ticketId,
-          runId: options.runId,
-        });
+        const resultText = await runToolCalls(
+          [call],
+          toolCtx,
+          {
+            log: options.log,
+            role: options.role,
+            actorId: options.actorId,
+            ticketId,
+            runId: options.runId,
+          },
+          options.externalTools,
+        );
         messages.push({ role: 'tool', content: resultText, toolCallId: call.id });
         if (call.name === TOOL_VERIFY) {
           const result = parseVerifyResult(resultText, toolCtx.verifyCommand);

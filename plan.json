@@ -9131,7 +9131,7 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/agent-session/**",

@@ -170,3 +170,9 @@ export { createWatchdogChildProcessSpawn } from './watchdog-process.js';
 // package names it, and publishing it would raise the export ratchet to make
 // this ticket pass — which is the one thing the ratchet's own rule forbids.
 export type { WatchdogBreach } from './watchdog.js';
+
+/** W14-03: external MCP tools in agent sessions — composed by apps/server, injected here. */
+export type {
+  ExternalApprovalDecision,
+  ExternalToolset,
+} from './agent-session/external-tools.js';
