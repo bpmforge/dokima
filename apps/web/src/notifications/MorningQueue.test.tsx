@@ -143,3 +143,48 @@ describe('a slate-backed Decide card is answered, not approved (W10-80)', () => 
     });
   });
 });
+
+describe('a tool-approval card shows the work (W14-04, the W13-61 standard)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    decisions.fetchSlates.mockResolvedValue([]);
+  });
+  afterEach(cleanup);
+
+  const toolCard = () =>
+    card({
+      id: 'mcp-approval-appr-1',
+      kind: 'approval',
+      refType: 'mcp_tool_call',
+      refId: 'appr-1',
+      title: 'Tool approval: srv-x.deploy',
+      body: {
+        serverId: 'srv-x',
+        toolId: 'srv-x.deploy',
+        args: { env: 'prod' },
+        argsDigest: 'abcdef0123456789abcd',
+        requestedBy: 'worker-1',
+        ticketId: 'T-1',
+      },
+    });
+
+  it('RED FIXTURE: the exact requested arguments are on the card, with mechanism-true consequence copy — never a bare "a tool wants to run"', async () => {
+    notifications.fetchMorningQueue.mockResolvedValue([toolCard()]);
+
+    render(<MorningQueue />);
+    await waitFor(() => screen.getByTestId('mcp-approval-evidence'));
+
+    const evidence = screen.getByTestId('mcp-approval-evidence');
+    expect(evidence.textContent).toContain('srv-x.deploy');
+    expect(screen.getByTestId('mcp-approval-args').textContent).toContain('"env": "prod"');
+    expect(evidence.textContent).toContain('exactly these arguments');
+
+    // Mechanism-true (external-tools.ts): the click records; the tool runs
+    // on a later pass, not now.
+    const consequence = screen.getByText(/Approve records your decision/);
+    expect(consequence.textContent).toContain('next time an agent asks');
+    expect(consequence.textContent).toContain('nothing ever runs');
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reject' })).toBeTruthy();
+  });
+});

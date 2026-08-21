@@ -110,11 +110,18 @@ export interface GuideTopic {
   markdown: string | null;
 }
 
-export type McpServerRegistration = {
+/** Mirrors apps/server settings-mcp.ts (W14-04): the shape run preload reads. */
+export type McpServerEntry = {
   id: string;
-  name: string;
+  name?: string;
   command: string;
-  toolAllowlist: Record<string, string[]>;
+  args?: string[];
+  /** env var -> vault secret NAME (a ref) — never a raw key (Law 8). */
+  env?: Record<string, string>;
+  /** Roles whose sessions may see this server's tools (FR-I3). */
+  roles?: string[];
+  /** false = tools run without a morning-queue approval. Default true. */
+  requireApproval?: boolean;
 };
 
 export type ExpertOverride = {
@@ -148,7 +155,7 @@ export type ModelMatrixPreset = (typeof MODEL_MATRIX_PRESETS)[number];
  * W11-04 (FR-H6, D-023): which session runner a ticket session actually
  * uses. Redeclared here rather than imported — apps/web is a browser bundle
  * and cannot depend on apps/server (same reason `EscalationPolicySetting`/
- * `McpServerRegistration` above are redeclared, not imported); the
+ * `McpServerEntry` above are redeclared, not imported); the
  * authoritative wire shape and copy live in
  * apps/server/src/api/server/settings-types.ts and must be kept in sync by
  * hand.

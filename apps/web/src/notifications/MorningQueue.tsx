@@ -8,6 +8,7 @@ import {
   fetchMorningQueue,
   NotificationsApiError,
 } from './api.js';
+import { McpApprovalEvidence, type McpApprovalBody } from './McpApprovalEvidence.js';
 import { TicketEvidence } from './TicketEvidence.js';
 import { NotificationCard } from './NotificationCard.js';
 import type { NotificationItem } from './types.js';
@@ -178,6 +179,13 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
                     {item.refType === 'ticket' && item.refId && (
                       <TicketEvidence projectId={item.projectId} ticketId={item.refId} />
                     )}
+                    {/* W14-04: same standard for tool approvals — the exact
+                        request, on the card. */}
+                    {item.refType === 'mcp_tool_call' && (
+                      <McpApprovalEvidence
+                        body={item.body as McpApprovalBody | null}
+                      />
+                    )}
                     <button
                       type="button"
                       disabled={busyId === item.id}
@@ -196,13 +204,25 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
                         click RECORDS — it does not merge or delete. Saying
                         more than that would be promising machinery that does
                         not run on this click. */}
-                    <p className="notification-card__consequence">
-                      Either choice records your decision in the project's
-                      ledger, with your name, and clears this card. Nothing
-                      merges or is discarded by the click itself — the work
-                      stays on its branch, and the run waiting on this answer
-                      reads the ledger.
-                    </p>
+                    {item.refType === 'mcp_tool_call' ? (
+                      /* W14-04, mechanism-true (external-tools.ts): deciding
+                         records; the tool runs in a later pass, not on this
+                         click. */
+                      <p className="notification-card__consequence">
+                        Approve records your decision, with your name — the
+                        tool then runs the next time an agent asks for it with
+                        exactly these arguments, and nowhere else. Reject
+                        records the refusal and nothing ever runs.
+                      </p>
+                    ) : (
+                      <p className="notification-card__consequence">
+                        Either choice records your decision in the project's
+                        ledger, with your name, and clears this card. Nothing
+                        merges or is discarded by the click itself — the work
+                        stays on its branch, and the run waiting on this answer
+                        reads the ledger.
+                      </p>
+                    )}
                   </div>
                 ) : item.tier === 'review' ? (
                   <div className="notification-card__actions">

@@ -192,3 +192,49 @@ describe('preloadMcpServers (W14-02)', () => {
     expect(second.clients.has('srv-a')).toBe(true);
   });
 });
+
+describe('settings-driven grants and approval mode (W14-04)', () => {
+  it("RED FIXTURE: a server's `roles` list becomes live allowlist grants, and dropping the role revokes exactly this server's tools", async () => {
+    const log = await makeLog();
+    const base = {
+      log,
+      actorId: 'operator',
+      runId: 'run-1',
+      resolveSecret: async () => undefined,
+      stderr: () => {},
+      secretValues: [],
+      spawnClient: fakeClient('srv-a') as never,
+    };
+
+    const granted = await preloadMcpServers({
+      ...base,
+      servers: [{ ...SERVER, roles: ['coding-agent'] }],
+    });
+    expect(granted.failures).toEqual([]);
+    const { listToolsForRole } = await import('@dokima/mcp');
+    expect(listToolsForRole(log, 'coding-agent').map((t) => t.id).sort()).toEqual([
+      'srv-a.deploy',
+      'srv-a.echo',
+    ]);
+
+    granted.dispose();
+    await preloadMcpServers({ ...base, runId: 'run-2', servers: [{ ...SERVER, roles: [] }] });
+    expect(listToolsForRole(log, 'coding-agent')).toEqual([]);
+  });
+
+  it('requireApproval: false registers tools that execute without parking', async () => {
+    const log = await makeLog();
+    await preloadMcpServers({
+      log,
+      actorId: 'operator',
+      runId: 'run-1',
+      servers: [{ ...SERVER, requireApproval: false, roles: ['coding-agent'] }],
+      resolveSecret: async () => undefined,
+      stderr: () => {},
+      secretValues: [],
+      spawnClient: fakeClient('srv-a') as never,
+    });
+    const { loadMcpState } = await import('@dokima/mcp');
+    expect(loadMcpState(log).tools.get('srv-a.echo')?.requiresApproval).toBe(false);
+  });
+});

@@ -267,3 +267,22 @@
   color: var(--sw-fg-muted);
   max-width: 36rem;
 }
+
+/* W14-04: the tool-approval card's evidence block. */
+.notification-card__evidence-args {
+  font-family: var(--sw-font-mono);
+  font-size: 0.85em;
+  margin: var(--sw-space-1) 0;
+  max-height: 12rem;
+  overflow: auto;
+  /* Ground, not border: the shared-card-border ratchet (styles.test W13-04)
+     exists precisely so blocks like this stop re-declaring it. */
+  background: var(--sw-surface);
+  border-radius: var(--sw-radius-md);
+  padding: var(--sw-space-2);
+}
+
+.notification-card__evidence-digest {
+  font-size: 0.85em;
+  margin: 0 0 var(--sw-space-1);
+}

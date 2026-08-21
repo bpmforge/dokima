@@ -18,6 +18,10 @@ export interface McpServerSetting {
   readonly args?: readonly string[];
   /** env var name -> vault secret NAME (a ref), resolved at spawn time. */
   readonly env?: Readonly<Record<string, string>>;
+  /** Roles whose sessions may see this server's tools (FR-I3 allowlist source of truth; W14-04). Absent/empty = no agent sees them. */
+  readonly roles?: readonly string[];
+  /** false = this server's tools execute without a morning-queue approval. Default true (SC-12). */
+  readonly requireApproval?: boolean;
 }
 
 export type McpServersParseResult =
@@ -78,12 +82,26 @@ export function parseMcpServersSetting(
         env[key] = value;
       }
     }
+    let roles: string[] | undefined;
+    if (e.roles !== undefined) {
+      if (!Array.isArray(e.roles) || e.roles.some((r) => typeof r !== 'string')) {
+        return { refusal: `mcpServers entry "${e.id}" roles must be strings` };
+      }
+      roles = e.roles as string[];
+    }
+    if (e.requireApproval !== undefined && typeof e.requireApproval !== 'boolean') {
+      return { refusal: `mcpServers entry "${e.id}" requireApproval must be a boolean` };
+    }
     servers.push({
       id: e.id,
       ...(typeof e.name === 'string' ? { name: e.name } : {}),
       command: e.command,
       args,
       ...(env ? { env } : {}),
+      ...(roles ? { roles } : {}),
+      ...(e.requireApproval !== undefined
+        ? { requireApproval: e.requireApproval }
+        : {}),
     });
   }
   return { servers };
