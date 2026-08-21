@@ -9231,6 +9231,111 @@
         "Exactly one memory.consolidated event per real pass; a disabled project emits nothing and touches nothing \u2014 asserted at the wiring level, not only in the package.",
         "RED FIXTURE: run finishes \u2192 consolidation event in the log and a pre-brief card in the queue; the same flow with the setting off produces neither."
       ]
+    },
+    {
+      "stories": [],
+      "depends_on": [],
+      "id": "W15-01",
+      "title": "the review loop runs: landed work gets a cross-model reviewer verdict with independent re-run evidence",
+      "phase": 15,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 8,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Filed 2026-08-20 vision audit. Every primitive exists and none is wired: tickets land into in_review and no production path ever reviews them \u2014 the human approves from maker-produced evidence. BLUEPRINT: cross-model review is an integrity feature; a verdict without a re-ran-independently line is INCOMPLETE and is bounced, not counted."
+      ],
+      "acceptance": [
+        "ESTABLISHED, not assumed (verified 2026-08-20): no production caller runs a reviewer session over an in_review ticket; evaluateScoreVerdict/classifyReviewSignal/isValidRerun/assertChallengerModelDistinct are tested with no ticket-path consumer. CITATION (source) docs/BLUEPRINT.md: \"Every reviewer/challenger verdict must carry a `re-ran independently: <command, counts, exit code>` evidence line; a verdict without one is INCOMPLETE and is bounced, not counted.\"",
+        "After the land loop, a REVIEW PASS visits each in_review ticket with a close receipt: a code-reviewer role session (its own routing; maker!=verifier enforced mechanically \u2014 same-model collapse REFUSES the machine review and says so rather than laundering it, C-4/Law 9b honest degradation for single-model installs) reads the diff and manifest, independently re-runs the ticket verify command via the verify tool, and returns a verdict.",
+        "The verdict is parsed against the challenger contract: CONFIRMED/CONTRADICTED/UNVERIFIABLE + advisory 1-10 score + the rerun evidence line, validated by isValidRerun/evaluateScoreVerdict; INCOMPLETE verdicts are bounced (one retry), never counted. classifyReviewSignal runs only on a passing deterministic gate (its own refusal).",
+        "The verdict lands as a ticket comment and a review.verdict event (Law 4); NOTHING auto-accepts \u2014 accept stays a human verb until W13-32 decides autonomy defaults. A CONTRADICTED verdict flips the Decide evidence to warning copy.",
+        "Law 9(a): all tests use the fake gateway/injected spawn \u2014 never live calls. RED FIXTURES: a passing ticket gets CONFIRMED with a rerun line; a verdict missing the rerun line is bounced and the bounce is ledgered; a same-model install refuses machine review with the honest sentence; a CONTRADICTED verdict comments the contradiction."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [
+        "W15-01"
+      ],
+      "id": "W15-02",
+      "title": "calibration runs: model self-claims are scored against the gate and bias the borderline calls",
+      "phase": 15,
+      "module": "cli",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/cli/**",
+        "packages/loop/src/calibration.ts",
+        "packages/harbormaster/src/**"
+      ],
+      "notes": [
+        "FR-L3. createCalibrationRecord/updateCalibration/applyCalibrationBias/gateDecision are built+tested with no production caller (validate-exports buried list, verified 2026-08-20)."
+      ],
+      "acceptance": [
+        "ESTABLISHED: nothing records a (model, role) self-claim vs verify outcome; the calibration module has no production caller.",
+        "Each attempt outcome updates a per-(model, role) calibration record in the project DB: manifest claimed done + gate result observed (the W14-05 hook seam \u2014 composition in apps/server, harbormaster stays memory-free).",
+        "The W15-01 review pass consults applyCalibrationBias on borderline scores (5-6): a chronically over-claiming maker biases toward escalate, never toward auto-accept (asymmetric threshold preserved).",
+        "RED FIXTURE: two synthetic histories \u2014 honest maker vs over-claimer \u2014 produce different review signals for the same raw score, and the over-claimer never gains acceptance from bias."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [],
+      "id": "W15-03",
+      "title": "the wiggum coverage loop runs at the phase gate: uncovered deliverables retry to the mode cap with the byte-identical halt",
+      "phase": 15,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/pipeline/src/**",
+        "apps/server/src/api/pipeline/**"
+      ],
+      "notes": [
+        "RALPH_WIGGUM_LOOP (R-B5, W5-08) shipped as static topology; STATUS.md records the residual verbatim: nothing binds CoverageLoopDeps to real dispatch. runCoverageLoopForMode is in the buried no-caller list (verified 2026-08-20)."
+      ],
+      "acceptance": [
+        "ESTABLISHED: runCoverageLoopForMode has no production caller; phase advance is a one-shot decideAdvance. CITATION (source) packages/pipeline/src/modes/coverage-loop.ts: \"Macro coverage loop (RALPH_WIGGUM_LOOP.md, R-B5)\".",
+        "The pipeline run\u2019s deliverable-producing step runs INSIDE the coverage loop: INVENTORY = the phase\u2019s deliverables, DISCOVER = generate the uncovered ones, VERIFY = the same receipt check decideAdvance trusts, capped per mode (3 new-product/onboard, 2 feature/improve) with the byte-identical-gap-set early halt.",
+        "Every iteration is ledgered (coverage.iteration event: attempted, uncovered, checksum, halt reason) so a novice can see WHY a phase stopped short \u2014 no silent cap.",
+        "RED FIXTURE: a deliverable that fails once and succeeds on retry advances the phase in one run; an ever-failing one halts at the cap with the halt reason ledgered; a byte-identical gap set halts EARLY (no_progress) before the cap."
+      ]
+    },
+    {
+      "stories": [],
+      "depends_on": [],
+      "id": "W15-04",
+      "title": "the design-review loop audits its own new surfaces: refreshed evidence packs, any-model judge, verified citations, fixes filed and applied",
+      "phase": 15,
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/**",
+        "apps/web/scripts/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "The W13 design-review loop (capture-tour evidence packs -> routed judge -> verifyCitations re-grep) has never seen the W14 surfaces: MCP servers panel, tool-approval card, pre-brief card, blocked-card copy, run hint. Novice north star applies: every finding judged from the no-clue-user persona."
+      ],
+      "acceptance": [
+        "Refresh the capture-tour evidence packs to cover the new surfaces (MCP panel, morning-queue tool-approval and pre-brief cards, blocked card, runbar hint) \u2014 text-first extraction, jsdom-safe (the W13-54 lessons).",
+        "Run the ux-audit judge (routed as code-reviewer through the fake gateway in tests; any local model live) over the packs; every surviving finding carries a mechanically re-verified citation (fabricated citations dropped and logged \u2014 the Issue-2 discipline).",
+        "Fix what survives at CRITICAL/HIGH within this ticket; file MEDIUM/LOW as tickets with the verified citations. validate-ui-copy stays 0/0; axe passes on every touched surface (the W13-52 contrast lesson).",
+        "RED FIXTURE: the refreshed tour fails if a new surface is missing from the pack inventory \u2014 coverage is asserted, not assumed."
+      ]
     }
   ]
 }
