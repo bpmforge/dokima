@@ -17,6 +17,7 @@ import { Lane } from './Lane.js';
 import { RefusalPopover } from './RefusalPopover.js';
 import { ShippedTicker } from './ShippedTickerStrip.js';
 import { useBoardData } from './useBoardData.js';
+import { putProjectSettings } from '../settings/api.js';
 
 export interface BoardViewProps {
   baseUrl: string;
@@ -44,6 +45,13 @@ export function BoardView({
 
   // W17-07: the way out the live UAT lacked. The loop stops at its next
   // ticket boundary; in-flight work finishes or parks honestly.
+  // W17-10: the budget park's own fix, one click — write the raised project
+  // setting, then start a run. Both effects are stated on the button.
+  const handleRaiseBudgetRetry = async (_ticketId: string, newBudget: number) => {
+    await putProjectSettings(projectId, { maxToolIterations: newBudget });
+    await handleStartRun();
+  };
+
   const handleStopRun = async () => {
     if (!buildRun || buildRun.status !== 'running') return;
     setStopping(true);
@@ -181,6 +189,9 @@ export function BoardView({
             blockedDeps={blockedDeps}
             onDrop={handleDrop}
             onFireVerb={(ticketId, verb) => void fireVerb(ticketId, verb)}
+            onRaiseBudgetRetry={(ticketId, newBudget) =>
+              void handleRaiseBudgetRetry(ticketId, newBudget)
+            }
           />
         ))}
       </div>

@@ -265,3 +265,90 @@ describe('the park is worn on the card face (W17-07)', () => {
     expect(owner.getAttribute('title')).toBe('operator');
   });
 });
+
+describe('the park card offers the fix it names (W17-10)', () => {
+  const BUDGET_PARK_HISTORY = [
+    {
+      verb: 'comment',
+      body:
+        'Parked with evidence — ladder attempt cap (2) reached without a close.\n' +
+        'attempt 1/2: exitCode=1 exceeded the per-session tool-iteration budget (12) without a Completion Manifest',
+    },
+    { verb: 'release' },
+  ] as never;
+
+  it('RED FIXTURE: one click writes the raised setting AND starts a run — fails if either half silently no-ops', async () => {
+    const parked = makeBoardTicket({
+      id: 'P-2',
+      status: 'ready',
+      history: BUDGET_PARK_HISTORY,
+    });
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [parked] }));
+    const calls: { url: string; body?: string }[] = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), body: init?.body as string | undefined });
+      if (String(url).includes('/settings')) {
+        return new Response('{}', { status: 200 });
+      }
+      if (String(url).endsWith('/build-runs')) {
+        return new Response(JSON.stringify({ run_id: 'run-r', status: 'running' }), {
+          status: 202,
+        });
+      }
+      return new Response(JSON.stringify({ run_id: 'run-r', status: 'finished' }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    try {
+      render(
+        <BoardView
+          baseUrl="/api/v1"
+          token="t"
+          projectId="p1"
+          wsUrl="ws://x"
+          onSelectTicket={vi.fn()}
+        />,
+      );
+      const button = screen.getByTestId('raise-retry-P-2');
+      expect(button.textContent).toContain('Raise the budget to 20 and retry');
+      expect(button.getAttribute('title')).toContain('then starts a run');
+      fireEvent.click(button);
+      await vi.waitFor(() => {
+        const settingsCall = calls.find((c) => c.url.includes('/settings'));
+        expect(settingsCall).toBeTruthy();
+        expect(settingsCall!.body).toContain('"maxToolIterations":20');
+        expect(calls.some((c) => c.url.endsWith('/build-runs'))).toBe(true);
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('a NON-budget park gets no retry button — the action never hides other failure classes', () => {
+    const parked = makeBoardTicket({
+      id: 'P-3',
+      status: 'ready',
+      history: [
+        {
+          verb: 'comment',
+          body:
+            'Parked with evidence — ladder attempt cap (2) reached without a close.\n' +
+            'attempt 1/2: exitCode=1 verify failed: 3 tests failing',
+        },
+        { verb: 'release' },
+      ] as never,
+    });
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [parked] }));
+    render(
+      <BoardView
+        baseUrl="/api/v1"
+        token="t"
+        projectId="p1"
+        wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('raise-retry-P-3')).toBeNull();
+  });
+});

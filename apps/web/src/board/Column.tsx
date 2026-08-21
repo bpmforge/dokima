@@ -20,9 +20,17 @@ export interface ColumnProps {
   blockedDeps: ReadonlyMap<string, readonly string[]>;
   onDrop: (ticketId: string, toColumn: BoardColumn['status']) => void;
   onFireVerb: (ticketId: string, verb: LifecycleVerb) => void;
+  onRaiseBudgetRetry?: (ticketId: string, newBudget: number) => void;
 }
 
-export function Column({ column, heartbeats, blockedDeps, onDrop, onFireVerb }: ColumnProps) {
+export function Column({
+  column,
+  heartbeats,
+  blockedDeps,
+  onDrop,
+  onFireVerb,
+  onRaiseBudgetRetry,
+}: ColumnProps) {
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => event.preventDefault();
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -53,6 +61,7 @@ export function Column({ column, heartbeats, blockedDeps, onDrop, onFireVerb }: 
             blockers={blockedDeps.get(ticket.id)}
             onDragStart={handleDragStart}
             onFireVerb={onFireVerb}
+            onRaiseBudgetRetry={onRaiseBudgetRetry}
           />
         ))}
       </div>

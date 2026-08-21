@@ -123,3 +123,25 @@ export function parkSummary(ticket: {
   reason = reason.replace(/^attempt \d+\/\d+:\s*/, '').slice(0, 140);
   return { count, reason };
 }
+
+/**
+ * W17-10: a BUDGET park carries its own fix ("raise maxToolIterations") —
+ * this turns that sentence into an offer. Only budget parks qualify: a
+ * generic retry would hide other failure classes behind one button.
+ * Suggests the next budget from the evidence's own number, clamped to the
+ * server's hard cap (40).
+ */
+export const MAX_TOOL_ITERATIONS_CEILING = 40;
+
+export function budgetParkRetry(ticket: {
+  status: string;
+  history: readonly { verb: string; body?: string }[];
+}): { suggested: number } | null {
+  const park = parkSummary(ticket);
+  if (!park || !park.reason.includes('tool-iteration budget')) return null;
+  const match = /budget \((\d+)/.exec(park.reason);
+  const current = match ? Number(match[1]) : 12;
+  const suggested = Math.min(current + 8, MAX_TOOL_ITERATIONS_CEILING);
+  if (suggested <= current) return null;
+  return { suggested };
+}

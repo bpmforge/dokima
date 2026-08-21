@@ -9896,7 +9896,7 @@
         "W17-07"
       ],
       "phase": 17,
-      "status": "in_progress",
+      "status": "done",
       "id": "W17-10",
       "title": "the park card offers the fix it names \u2014 one click raises the turn budget and retries",
       "module": "web",

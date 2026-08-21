@@ -1,6 +1,7 @@
 import type { DragEvent } from 'react';
 import {
   blockedExplanation,
+  budgetParkRetry,
   cardStateClass,
   isParked,
   parkSummary,
@@ -22,6 +23,8 @@ export interface CardProps {
   blockers?: readonly string[];
   onDragStart: (event: DragEvent<HTMLDivElement>, ticketId: string) => void;
   onFireVerb: (ticketId: string, verb: LifecycleVerb) => void;
+  /** W17-10: offered only on BUDGET parks — writes the raised setting, then starts a run. */
+  onRaiseBudgetRetry?: (ticketId: string, newBudget: number) => void;
 }
 
 const TYPE_LABEL: Record<BoardTicket['type'], string> = {
@@ -37,7 +40,14 @@ const TYPE_LABEL: Record<BoardTicket['type'], string> = {
  * verb a drag could fire is also offered as a menu action (WCAG 2.2 AA —
  * "every drag has a verb equivalent").
  */
-export function Card({ ticket, heartbeat, blockers, onDragStart, onFireVerb }: CardProps) {
+export function Card({
+  ticket,
+  heartbeat,
+  blockers,
+  onDragStart,
+  onFireVerb,
+  onRaiseBudgetRetry,
+}: CardProps) {
   const verbs = availableVerbsFrom(ticket.status);
   return (
     <div
@@ -91,11 +101,30 @@ export function Card({ ticket, heartbeat, blockers, onDragStart, onFireVerb }: C
           the evidence is a glance rather than a dig through comments. */}
       {(() => {
         const park = parkSummary(ticket);
+        const retry = budgetParkRetry(ticket);
         return park ? (
-          <p className="board-card__blocked-why" data-testid={`park-why-${ticket.id}`}>
-            {park.count > 1 ? `Parked ${park.count} times. ` : ''}
-            {park.reason}
-          </p>
+          <>
+            <p
+              className="board-card__blocked-why"
+              data-testid={`park-why-${ticket.id}`}
+            >
+              {park.count > 1 ? `Parked ${park.count} times. ` : ''}
+              {park.reason}
+            </p>
+            {/* W17-10: the evidence names the fix; this is the fix, one
+                click, both effects stated before it (W13-61). */}
+            {retry && onRaiseBudgetRetry && (
+              <button
+                type="button"
+                className="btn-quiet"
+                data-testid={`raise-retry-${ticket.id}`}
+                title={`Writes this project's turn budget to ${retry.suggested}, then starts a run — nothing else changes.`}
+                onClick={() => onRaiseBudgetRetry(ticket.id, retry.suggested)}
+              >
+                Raise the budget to {retry.suggested} and retry
+              </button>
+            )}
+          </>
         ) : null;
       })()}
       <div className="board-card__meta">

@@ -9,9 +9,17 @@ export interface LaneProps {
   blockedDeps: ReadonlyMap<string, readonly string[]>;
   onDrop: (ticketId: string, toColumn: TicketStatus) => void;
   onFireVerb: (ticketId: string, verb: LifecycleVerb) => void;
+  onRaiseBudgetRetry?: (ticketId: string, newBudget: number) => void;
 }
 
-export function Lane({ lane, heartbeats, blockedDeps, onDrop, onFireVerb }: LaneProps) {
+export function Lane({
+  lane,
+  heartbeats,
+  blockedDeps,
+  onDrop,
+  onFireVerb,
+  onRaiseBudgetRetry,
+}: LaneProps) {
   return (
     <section
       className="board-lane"
@@ -36,6 +44,7 @@ export function Lane({ lane, heartbeats, blockedDeps, onDrop, onFireVerb }: Lane
             blockedDeps={blockedDeps}
             onDrop={onDrop}
             onFireVerb={onFireVerb}
+            onRaiseBudgetRetry={onRaiseBudgetRetry}
           />
         ))}
       </div>
