@@ -9320,7 +9320,7 @@
       "module": "web",
       "lane": "ui",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/**",
