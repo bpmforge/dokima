@@ -61,12 +61,15 @@ import {
   type EventLog,
 } from '@dokima/events';
 import {
+  runCoverageLoopForMode,
   runOnboard,
+  type CoverageRow,
   type OnboardDispatchContext,
   type OnboardPort,
   type OnboardRunResult,
   type RunOnboardInput,
 } from '@dokima/pipeline';
+import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../server/board-actor.js';
 import type { RealOnboardDispatch } from './onboard-dispatch-port.js';
 import type { OnboardStepArtifact } from './onboard-types.js';
 
@@ -96,23 +99,81 @@ function discoverSteps(input: RunOnboardInput): readonly DiscoveredStep[] {
   return steps;
 }
 
-/** Pass 2 — see module header. Sequential (never `Promise.all`): each real
- * dispatch call's `priorArtifacts` must see only already-completed steps,
- * exactly like `runOnboard`'s own internal accumulation. */
+/**
+ * Pass 2 — see module header — now INSIDE the RALPH_WIGGUM macro coverage
+ * loop (W15-03, R-B5): a step whose real session failed (non-zero exit) is
+ * an UNCOVERED row that gets re-dispatched, up to the onboard mode's cap
+ * (3), with the byte-identical-gap-set early halt. Until this, the loop
+ * was static topology with no caller and a failed specialist step simply
+ * flowed through as if covered. Sequential within each DISCOVER (never
+ * `Promise.all`): `priorArtifacts` must only ever see completed steps.
+ *
+ * Every iteration is ledgered (`coverage.iteration`) so a person can see
+ * WHY a run stopped short — a bounded loop with a silent cap reads as
+ * "covered everything" when it didn't.
+ */
 async function runRealPreflight(
   input: RunOnboardInput,
   steps: readonly DiscoveredStep[],
   dispatch: RealOnboardDispatch,
+  ledger?: (record: {
+    iteration: number;
+    attempted: readonly string[];
+    uncovered: readonly string[];
+    gapChecksum: string | null;
+  }) => void,
 ): Promise<Record<string, OnboardStepArtifact>> {
   const cache: Record<string, OnboardStepArtifact> = {};
-  for (const step of steps) {
-    const artifact = await dispatch(step.role, {
-      stepId: step.stepId,
-      seedContext: input.seedContext,
-      priorArtifacts: { ...cache },
-      deliverables: step.deliverables,
+  const rowFor = (step: DiscoveredStep): CoverageRow => ({
+    id: step.stepId,
+    category: step.role,
+    description: step.deliverables.join(', '),
+  });
+
+  const covered = (stepId: string): boolean => {
+    const artifact = cache[stepId];
+    return artifact !== undefined && (artifact.session.exitCode ?? 1) === 0;
+  };
+
+  const result = await runCoverageLoopForMode(
+    'onboard',
+    steps.map(rowFor),
+    {
+      async discoverRows(rows) {
+        // Re-dispatch in topology order, so priorArtifacts stays coherent.
+        for (const step of steps) {
+          if (!rows.some((row) => row.id === step.stepId)) continue;
+          cache[step.stepId] = await dispatch(step.role, {
+            stepId: step.stepId,
+            seedContext: input.seedContext,
+            priorArtifacts: { ...cache },
+            deliverables: step.deliverables,
+          });
+        }
+      },
+      verifyCoverage() {
+        return steps.filter((step) => !covered(step.stepId)).map(rowFor);
+      },
+    },
+  );
+  for (const record of result.iterations) {
+    ledger?.({
+      iteration: record.iteration,
+      attempted: record.attempted.map((row) => row.id),
+      uncovered: record.uncovered.map((row) => row.id),
+      gapChecksum: record.gapChecksum,
     });
-    cache[step.stepId] = artifact;
+  }
+  // A step that stayed uncovered still needs SOME artifact for the final
+  // replay — its last real attempt (with its honest non-zero exit) is the
+  // truth the audit event carries; absence would crash the official call.
+  for (const step of steps) {
+    if (!cache[step.stepId]) {
+      throw new Error(
+        `onboard step "${step.stepId}" produced no artifact in ${result.iterations.length} ` +
+          `coverage iteration(s) (${result.status}) — the dispatch never returned`,
+      );
+    }
   }
   return cache;
 }
@@ -148,7 +209,19 @@ export async function runOnboardExecution(
   deps: OnboardExecutorDeps,
 ): Promise<OnboardExecutionResult> {
   const steps = discoverSteps(input);
-  const cache = await runRealPreflight(input, steps, deps.dispatch);
+  ensureOperatorIdentity(deps.log, deps.now);
+  const cache = await runRealPreflight(input, steps, deps.dispatch, (record) => {
+    appendEvent(
+      deps.log,
+      {
+        eventType: 'coverage.iteration',
+        actorId: OPERATOR_ACTOR_ID,
+        runId: deps.runId,
+        payload: { mode: 'onboard', ...record },
+      },
+      { now: deps.now },
+    );
+  });
 
   for (const step of steps) {
     ensureSpecialistIdentity(deps.log, step.role, deps.now);
