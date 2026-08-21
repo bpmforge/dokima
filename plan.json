@@ -9590,7 +9590,7 @@
       "module": "forge",
       "lane": "core",
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/forge/src/**",
@@ -9616,7 +9616,7 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 1,
-      "status": "todo",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/**",
