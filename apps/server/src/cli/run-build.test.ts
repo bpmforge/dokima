@@ -97,6 +97,8 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
   it('RED FIXTURE (acceptance 3): a project with no agent setting runs on the built-in agent rather than refusing', async () => {
     project = await gitRepoProject();
     const log = openWritableLog(resolveDbPath(project.cwd));
+    // W14-06: post-run consolidation appends as the run actor.
+    createIdentity(log, { id: 'worker-1', name: 'worker-1', kind: 'machine' });
     const io = collectIO();
     try {
       const code = await withSigningKey(() =>
@@ -310,6 +312,8 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
     async () => {
       project = await gitRepoProject();
       const log = openWritableLog(resolveDbPath(project.cwd));
+      // W14-06: post-run consolidation appends as the run actor.
+      createIdentity(log, { id: 'worker-1', name: 'worker-1', kind: 'machine' });
       const previous = process.env.DOKIMA_SIGNING_KEY;
       delete process.env.DOKIMA_SIGNING_KEY;
       const io = collectIO();

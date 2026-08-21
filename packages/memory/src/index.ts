@@ -59,3 +59,14 @@ export {
   markFactVerified,
 } from './store/facts.js';
 export type { FactKind, FactRecord, InsertFactInput } from './store/facts.js';
+
+/** W14-06: the sleep-consolidation job body, called by apps/server when a run completes (the local-first product's only real idle moment). */
+export {
+  CONSOLIDATION_ENABLED_BY_DEFAULT,
+  runSleepConsolidation,
+} from './consolidation/consolidate.js';
+export type {
+  ConsolidationReport,
+  RunConsolidationOptions,
+} from './consolidation/consolidate.js';
+export type { MorningPreBrief, MorningPreBriefFact } from './consolidation/pre-brief.js';
