@@ -9630,6 +9630,339 @@
         "Either: the build run composes runConflictWatch so a human edit to a ticket's files during a run is detected and resolved through the existing FR-T6 verbs (test with a planted mid-run edit, fake sessions); OR: the watcher's own documented blocker is quoted on this ticket and the deferral is recorded in STATUS.md \u2014 an honest park, never a silent absence.",
         "Whatever lands, the full gate stays green and no new uncalled export is added."
       ]
+    },
+    {
+      "stories": [
+        "US-308"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-01",
+      "title": "the tool-turn budget earns itself \u2014 mechanical convergence extends it, no-progress stops it early, the T-27 ceiling never moves",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "packages/loop/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Live UAT 2026-08-21: both Recipe Keeper tickets parked at the fixed 12-turn cap mid-honest-work (park evidence: \"chatty local models often need more\"), then a full retry hit the same wall. A fixed count cannot tell slow-but-converging from spinning. packages/loop exports createLoopConvergenceTracker with no caller (buried-exports list) \u2014 evaluate wiring it before building new."
+      ],
+      "acceptance": [
+        "Between the default budget and MAX_TOOL_ITERATIONS_CEILING (which NEVER moves \u2014 T-27), the session earns extra turns only from CODE-OBSERVED progress since the last window: files actually changed in the worktree, an edit->verify cycle whose verify exit improved, no repeated-identical tool call. Model self-report is never a signal (C-2); calibration data may only bias the budget DOWNWARD (FR-L3 asymmetry).",
+        "A window with no observable progress ends the session EARLY with that stated as the reason \u2014 spinning stops before 12, not at it.",
+        "Every extension and early stop is ledgered with the signal that earned/ended it; the park evidence names the final budget and why it stopped.",
+        "Tests: fake sessions prove (1) a progressing session earns turns up to the ceiling and lands, (2) a repeat-identical-call session stops early, (3) a maker with over-claiming calibration gets a smaller starting budget, never a larger one.",
+        "RED FIXTURE: a session that repeats the same tool call 3x must stop early with the no-progress reason; the fixture fails if it runs to the numeric cap."
+      ]
+    },
+    {
+      "stories": [
+        "US-205"
+      ],
+      "depends_on": [
+        "W17-01"
+      ],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-02",
+      "title": "a budget-stopped attempt leaves a checkpoint \u2014 the retry continues the work instead of rediscovering it",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 3,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "packages/loop/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Live UAT: attempt 2 re-derived everything attempt 1 knew \u2014 the worktree persists but the session context is discarded. The session should emit a partial manifest at the budget wall (done: X, remaining: Y, next: Z), and the next attempt's handoff leads with it (same priorSolution-block seam W16-03 built)."
+      ],
+      "acceptance": [
+        "A session ending on budget (not on error) is asked for / parses a PARTIAL manifest: work completed, work remaining, the next concrete step. Stored as attempt evidence \u2014 never trusted as done-claims (C-2: the close gate alone decides done).",
+        "The next attempt's handoff leads with the checkpoint (before the gap feedback), so the model continues rather than restarts; the worktree diff from attempt 1 is named so it knows the work exists.",
+        "Tests: a two-attempt fixture proves attempt 2's prompt carries attempt 1's checkpoint verbatim; a checkpoint claiming completed work the diff does not show is flagged in the evidence, not believed.",
+        "RED FIXTURE: with a planted checkpoint, attempt 2's prompt must contain the remaining-work list; the fixture fails if the handoff is byte-identical to a fresh start."
+      ]
+    },
+    {
+      "stories": [
+        "US-306"
+      ],
+      "depends_on": [
+        "W17-01"
+      ],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-03",
+      "title": "the turn budget knows the model \u2014 fitness cards carry a measured turns multiplier, defaults stop pretending all models are equal",
+      "module": "gateway",
+      "lane": "core",
+      "points": 2,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/gateway/src/fitness/**",
+        "packages/gateway/src/index.ts",
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "One default (12) serves a frontier model and a kitchen-table 27b alike. FitnessCardStore exists; runFitnessBench is in the buried-exports list. The card is the right home for a MEASURED per-model turns multiplier (e.g. observed turns-to-manifest from real landed/parked attempts), applied to the starting budget \u2014 measured, never guessed."
+      ],
+      "acceptance": [
+        "The fitness card gains a turns profile updated from real attempt outcomes (turns used, manifest produced or not); the starting budget for a session = default x that model's multiplier, clamped to the unchanged ceiling.",
+        "No history = multiplier 1 (never a guess); the applied multiplier is ledgered on the session so a park explains \"started at 18 because this model historically needs it\".",
+        "Tests: a model with recorded 2x history starts with a 2x budget; an unknown model starts at default; ceiling clamp proven."
+      ]
+    },
+    {
+      "stories": [
+        "US-309"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-04",
+      "title": "a same-model retry is not an escalation \u2014 the climb event only fires when the session actually changes",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 1,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**"
+      ],
+      "notes": [
+        "Live UAT: with a one-model chain (fallback: []), escalation.rung_advanced fired on tier advance and the trace rendered \"Escalated to a stronger model\" \u2014 same model. Mechanism-true event, false sentence. loop-land-rungs knows BOTH rung session labels; when they are identical no escalation happened."
+      ],
+      "acceptance": [
+        "beginRungAttempt appends escalation.rung_advanced ONLY when the outgoing rung's session label differs from the incoming one; a same-label tier advance is not ledgered as escalation (the attempt itself is already visible via loop/session events).",
+        "The onRungAdvance stderr notice fires under the same condition; the run-start one-rung ladder note (W16-01) is unchanged.",
+        "RED FIXTURE: a one-model chain climbing R1->R2->R3 must produce ZERO escalation.rung_advanced events; a two-model chain still produces them with evidence."
+      ]
+    },
+    {
+      "stories": [
+        "US-303"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-05",
+      "title": "the model answers before the button does \u2014 Build the board and Start a run preflight the configured model and refuse at the click",
+      "module": "cli",
+      "lane": "core",
+      "points": 2,
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/model-resolution-chain.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Live UAT: the stored matrix named a model LM Studio no longer lists; it happened to JIT-load \u2014 had it not, the failure would surface mid-run, minutes in. Provider.health()/listModels() exist. Preflight = resolve target, ask the provider one cheap question, refuse with the model name + where to fix it (Settings -> Models) BEFORE any run state is minted."
+      ],
+      "acceptance": [
+        "The pipeline run route and the CLI build run both preflight the resolved coding-agent target (provider reachable AND the model id is served or loadable) before creating any run record; failure is a named refusal carrying the model id, the provider, and \"Settings -> Models\" \u2014 never a mid-run surprise.",
+        "A reachable-but-slow endpoint is NOT refused (only unreachable/unknown-model is); the check is bounded by a short timeout and its result ledgered.",
+        "Tests use fake providers (law 9a): unreachable refuses at the button; healthy passes through; the refusal sentence names the model and the fix location."
+      ]
+    },
+    {
+      "stories": [
+        "US-205"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-06",
+      "title": "a run can be stopped from the outside \u2014 pause/stop routes join the runs API",
+      "module": "cli",
+      "lane": "integrations",
+      "points": 2,
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts"
+      ],
+      "notes": [
+        "Live UAT: once \"Start a run\" was pressed the only affordance was a disabled button for 20 minutes. pauseRun/stopRun verbs exist (harbormaster breakpoints-runs) and the CLI drives them; the web API has no route to. The land loop already honors a stop switch at ticket boundaries."
+      ],
+      "acceptance": [
+        "POST /api/v1/projects/:id/runs/:runId/stop (and /pause) drive the REAL harbormaster verbs under the authed actor; the running loop observes the stop at its next boundary (the existing StopSwitch contract) \u2014 no process kill, the in-flight attempt finishes or parks honestly.",
+        "Stopping is ledgered with who stopped it; a second stop of a stopped run is a clean 409-style refusal, not a crash.",
+        "Route tests prove verb dispatch, actor attribution, and the double-stop refusal."
+      ]
+    },
+    {
+      "stories": [
+        "US-204",
+        "US-401"
+      ],
+      "depends_on": [
+        "W17-06"
+      ],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-07",
+      "title": "the board during and after a run \u2014 a visible Stop, parked tickets that say so, agents that say they are working, and an end-of-run summary",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live UAT: no stop control while a 20-minute local run grinds; a twice-parked ticket sits in Ready with its evidence buried in a comment; in-progress cards show the raw actor id (\"operator\"); when the run ends the board just... stops, while the CLI prints a summary."
+      ],
+      "acceptance": [
+        "While a run is in progress the runbar shows a working Stop control (W17-06 routes) with mechanism-true copy: the run stops at the next ticket boundary, in-flight work finishes or parks honestly.",
+        "A ticket parked this run wears it on the card face (parked count + one-line reason, evidence one click away) \u2014 not only in a comment.",
+        "An in-progress card says an agent is working it in plain words; the actor id stays as secondary detail (VOCABULARY.md rename-in-UI-only rule).",
+        "When the run ends the board shows the summary the CLI already prints: landed / parked / spend / duration. validate-ui-copy stays 0/0; axe passes on touched surfaces.",
+        "RED FIXTURE (e2e, fake gateway): a run with one parked ticket must show the parked badge and the end-of-run summary; the fixture fails if the board returns to its idle state with no trace the run happened."
+      ]
+    },
+    {
+      "stories": [
+        "US-301",
+        "US-304"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-08",
+      "title": "Settings grows the three knobs the live run proved matter \u2014 fallback chains, the turn budget, and the forge mirror",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live UAT: every matrix row has fallback: [] so the W16-01 ladder has nowhere to climb and no UI can change that; maxToolIterations (the exact knob the park evidence tells users to raise) and forgeMirror exist only as raw key/value settings a novice will never find."
+      ],
+      "acceptance": [
+        "Settings -> Models lets a user build a fallback chain per role row (ordered list, add/remove, provider-qualified refs) writing the matrix fallback[] the resolver already reads; the ladder explainer says what the chain means in plain words.",
+        "A dedicated control for maxToolIterations (with the ceiling and the why, mirroring the server refusal copy) and a forgeMirror panel (kind/owner/repo/token REF \u2014 law 8 wording: the vault name, never the token).",
+        "All three write through the existing settings/matrix APIs; validate-ui-copy 0/0; axe passes.",
+        "RED FIXTURE: the saved fallback chain round-trips through the matrix API and renders back; the fixture fails if fallback[] is dropped on save."
+      ]
+    },
+    {
+      "stories": [
+        "US-107"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-09",
+      "title": "the Fleet leads with the living \u2014 live projects first, dead entries bulk-removable, a new project opens itself",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live UAT: the first screen was ~20 dead \"Unavailable\" cards; the just-created project appeared at the BOTTOM, off-screen \u2014 a novice would conclude creation failed."
+      ],
+      "acceptance": [
+        "Available projects sort above unavailable ones (within each group, most recently opened first); a \"Remove all unavailable\" action with the existing honest removal copy, one confirmation for the batch.",
+        "Creating a project opens it immediately (the workspace, where \"Describe your product\" is the next step) instead of returning to the grid.",
+        "RED FIXTURE (e2e): with a dead entry planted, the created project must be first among available cards and auto-open; the fixture fails if the dead card outranks it."
+      ]
+    },
+    {
+      "stories": [
+        "US-308"
+      ],
+      "depends_on": [
+        "W17-07"
+      ],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-10",
+      "title": "the park card offers the fix it names \u2014 one click raises the turn budget and retries",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**",
+        "apps/web/src/notifications/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "The park evidence already tells the user \"raise maxToolIterations\" \u2014 then leaves them to find a settings key. The parked surface (board card face from W17-07, and the morning-queue card) should carry the action: write the raised project setting via the existing settings API, start a run via the existing run API, say exactly what both clicks did."
+      ],
+      "acceptance": [
+        "A budget-parked ticket's surface offers \"Raise the budget to N and retry\" (N suggested from the evidence, capped at the ceiling); clicking writes the setting and starts a run, and the card states both effects before the click (consequence-stated, the W13-61 discipline).",
+        "The action only appears for budget parks (the evidence kind is checked), never as a generic retry that hides other failure classes.",
+        "RED FIXTURE (e2e, fake gateway): clicking must persist the setting AND start a run; the fixture fails if either half silently no-ops."
+      ]
+    },
+    {
+      "stories": [
+        "US-404"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-11",
+      "title": "the morning queue says why review fell to you \u2014 a one-model install skips machine review out loud",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/notifications/**"
+      ],
+      "notes": [
+        "C-4 correctly refuses machine review when the reviewer would be the maker's model \u2014 so for a one-model install EVERY review lands on the human. The refusal comment exists on the ticket; the queue card should carry the one-sentence why + the fix (add a second model for the code-reviewer role) so it never reads as a broken feature."
+      ],
+      "acceptance": [
+        "A review-tier card whose ticket carries the same-model refusal shows the plain sentence: machine review was skipped because the only model would be reviewing its own work; add a second model under Settings -> Models to enable it.",
+        "validate-ui-copy 0/0; the card test pins the sentence against the refusal marker, not a hardcoded ticket fixture."
+      ]
+    },
+    {
+      "stories": [
+        "US-101"
+      ],
+      "depends_on": [],
+      "phase": 17,
+      "status": "todo",
+      "id": "W17-12",
+      "title": "the interview finishes as strongly as it starts \u2014 progress while Continuing, and a header that notices you are done",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/onboarding/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Live UAT: after answering decisions, \"Continuing...\" sat with no per-phase checklist for minutes (the initial build has one \u2014 W10-58); and the \"Your decision is needed\" header persists after every slate is decided."
+      ],
+      "acceptance": [
+        "The resume path renders the same per-phase checklist the initial build shows, fed from the same progress callback.",
+        "Once every slate is decided the header/lede flips to a decided state (\"Both answered \u2014 continue when ready\"), so the screen stops asking for what it already has.",
+        "RED FIXTURE: the resume spec asserts the checklist is visible during Continue; the fixture fails on a bare disabled button."
+      ]
     }
   ]
 }
