@@ -82,3 +82,82 @@ describe('runOnboardExecution (W8-09 — real-dispatch bridge over runOnboard)',
     expect(listEvents(log)).toHaveLength(0);
   });
 });
+
+describe('the RALPH_WIGGUM coverage loop runs the preflight (W15-03, R-B5)', () => {
+  let log: EventLog | undefined;
+  afterEach(() => {
+    log?.close();
+    log = undefined;
+  });
+
+  function failingArtifact(role: string, stepId: string): OnboardStepArtifact {
+    return {
+      stepId,
+      role,
+      summary: 'session failed',
+      findings: [],
+      session: { exitCode: 1, scopeViolations: [] },
+    };
+  }
+
+  it('RED FIXTURE: a step that fails once and succeeds on retry is re-dispatched and the run completes covered — the failure no longer flows through as if covered', async () => {
+    log = openEventLog(':memory:');
+    const now = () => '2026-08-20T00:00:00.000Z';
+    let landscapeAttempts = 0;
+    const dispatch: RealOnboardDispatch = async (role, context) => {
+      if (context.stepId === 'landscape') {
+        landscapeAttempts += 1;
+        if (landscapeAttempts === 1) return failingArtifact(role, context.stepId);
+      }
+      return fakeArtifact(role, context.stepId);
+    };
+
+    const { stepArtifacts } = await runOnboardExecution(
+      { seedContext: { repo: '/tmp/target' } },
+      { log, runId: 'run-1', now, dispatch },
+    );
+
+    expect(landscapeAttempts).toBe(2);
+    expect(stepArtifacts.landscape!.session.exitCode).toBe(0);
+
+    const iterations = listEvents(log).filter((e) => e.eventType === 'coverage.iteration');
+    expect(iterations.length).toBeGreaterThanOrEqual(2);
+    const first = iterations[0]!.payload as { uncovered: string[] };
+    expect(first.uncovered).toEqual(['landscape']);
+  });
+
+  it('RED FIXTURE: an ever-failing step halts EARLY on the byte-identical gap set (no-progress, before the cap of 3), and the halt is ledgered — no silent cap', async () => {
+    log = openEventLog(':memory:');
+    const now = () => '2026-08-20T00:00:00.000Z';
+    let landscapeAttempts = 0;
+    const dispatch: RealOnboardDispatch = async (role, context) => {
+      if (context.stepId === 'landscape') {
+        landscapeAttempts += 1;
+        return failingArtifact(role, context.stepId);
+      }
+      return fakeArtifact(role, context.stepId);
+    };
+
+    const { stepArtifacts } = await runOnboardExecution(
+      { seedContext: { repo: '/tmp/target' } },
+      { log, runId: 'run-1', now, dispatch },
+    );
+
+    // Iteration 1 discovers all; iterations 2 and 3 both leave exactly
+    // {landscape} uncovered — byte-identical, so the loop halts at 3
+    // dispatches total for the step, never a fourth.
+    expect(landscapeAttempts).toBeLessThanOrEqual(3);
+    // The truth survives: the artifact carries its honest failing exit.
+    expect(stepArtifacts.landscape!.session.exitCode).toBe(1);
+    const iterations = listEvents(log!).filter(
+      (e) => e.eventType === 'coverage.iteration',
+    );
+    expect(iterations.length).toBeGreaterThanOrEqual(2);
+    const last = iterations.at(-1)!.payload as {
+      uncovered: string[];
+      gapChecksum: string | null;
+    };
+    expect(last.uncovered).toEqual(['landscape']);
+    expect(last.gapChecksum).not.toBeNull();
+  });
+});

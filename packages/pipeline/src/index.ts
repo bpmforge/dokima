@@ -30,3 +30,21 @@ export type {
   UxAuditJudgment,
   UxEvidenceState,
 } from './modes/ux-audit.js';
+
+/**
+ * W15-03: the RALPH_WIGGUM macro coverage loop, exported for its first
+ * production caller (apps/server's onboard executor). Narrow: the loop and
+ * its shapes only — the rest of modes/ still has no consumer.
+ */
+export {
+  computeGapChecksum,
+  runCoverageLoop,
+  runCoverageLoopForMode,
+} from './modes/coverage-loop.js';
+export type {
+  CoverageLoopDeps,
+  CoverageLoopIterationRecord,
+  CoverageLoopResult,
+  CoverageLoopStatus,
+  CoverageRow,
+} from './modes/coverage-loop.js';
