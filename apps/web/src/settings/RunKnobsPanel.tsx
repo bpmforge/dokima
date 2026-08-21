@@ -118,20 +118,24 @@ export function RunKnobsPanel({ projectId }: { projectId: string }) {
         cap exists so a session can never loop forever. Raise the start for chatty local
         models; a budget park's evidence names this exact setting.
       </p>
-      <label>
-        Starting turns
-        <input
-          type="number"
-          min={1}
-          max={MAX_TOOL_ITERATIONS_CEILING}
-          value={iterations}
-          data-testid="turn-budget-input"
-          onChange={(e) => setIterations(e.target.value)}
-        />
-      </label>
-      <button type="button" onClick={() => void saveIterations()}>
-        Save turn budget
-      </button>
+      {/* W18-05: the shared row-form aligns label-over-input with the button
+          at the end — the bare markup left the input orphaned under its label. */}
+      <div className="settings__row-form">
+        <label>
+          Starting turns
+          <input
+            type="number"
+            min={1}
+            max={MAX_TOOL_ITERATIONS_CEILING}
+            value={iterations}
+            data-testid="turn-budget-input"
+            onChange={(e) => setIterations(e.target.value)}
+          />
+        </label>
+        <button type="button" onClick={() => void saveIterations()}>
+          Save turn budget
+        </button>
+      </div>
 
       <h3>Forge mirror</h3>
       <p className="settings__hint" data-testid="forge-mirror-hint">
@@ -145,58 +149,60 @@ export function RunKnobsPanel({ projectId }: { projectId: string }) {
           A mirror is configured for this project.
         </p>
       )}
-      <label>
-        Forge
-        <select
-          value={mirror.kind}
-          data-testid="forge-kind"
-          onChange={(e) => set({ kind: e.target.value as ForgeMirrorDraft['kind'] })}
-        >
-          <option value="gitea">Gitea</option>
-          <option value="github">GitHub</option>
-        </select>
-      </label>
-      {mirror.kind === 'gitea' && (
+      <div className="settings__row-form">
         <label>
-          Gitea URL
+          Forge
+          <select
+            value={mirror.kind}
+            data-testid="forge-kind"
+            onChange={(e) => set({ kind: e.target.value as ForgeMirrorDraft['kind'] })}
+          >
+            <option value="gitea">Gitea</option>
+            <option value="github">GitHub</option>
+          </select>
+        </label>
+        {mirror.kind === 'gitea' && (
+          <label>
+            Gitea URL
+            <input
+              value={mirror.baseUrl}
+              placeholder="https://git.example.com"
+              onChange={(e) => set({ baseUrl: e.target.value })}
+            />
+          </label>
+        )}
+        <label>
+          Owner
+          <input value={mirror.owner} onChange={(e) => set({ owner: e.target.value })} />
+        </label>
+        <label>
+          Repository
+          <input value={mirror.repo} onChange={(e) => set({ repo: e.target.value })} />
+        </label>
+        <label>
+          Token secret name (from this project&apos;s vault)
           <input
-            value={mirror.baseUrl}
-            placeholder="https://git.example.com"
-            onChange={(e) => set({ baseUrl: e.target.value })}
+            value={mirror.makerTokenRef}
+            placeholder="FORGE_MAKER_TOKEN"
+            data-testid="forge-token-ref"
+            onChange={(e) => set({ makerTokenRef: e.target.value })}
           />
         </label>
-      )}
-      <label>
-        Owner
-        <input value={mirror.owner} onChange={(e) => set({ owner: e.target.value })} />
-      </label>
-      <label>
-        Repository
-        <input value={mirror.repo} onChange={(e) => set({ repo: e.target.value })} />
-      </label>
-      <label>
-        Token secret name (from this project&apos;s vault)
-        <input
-          value={mirror.makerTokenRef}
-          placeholder="FORGE_MAKER_TOKEN"
-          data-testid="forge-token-ref"
-          onChange={(e) => set({ makerTokenRef: e.target.value })}
-        />
-      </label>
-      <label>
-        Bot account username
-        <input
-          value={mirror.makerLogin}
-          onChange={(e) => set({ makerLogin: e.target.value })}
-        />
-      </label>
-      <button
-        type="button"
-        data-testid="forge-mirror-save"
-        onClick={() => void saveMirror()}
-      >
-        Save forge mirror
-      </button>
+        <label>
+          Bot account username
+          <input
+            value={mirror.makerLogin}
+            onChange={(e) => set({ makerLogin: e.target.value })}
+          />
+        </label>
+        <button
+          type="button"
+          data-testid="forge-mirror-save"
+          onClick={() => void saveMirror()}
+        >
+          Save forge mirror
+        </button>
+      </div>
     </section>
   );
 }
