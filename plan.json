@@ -10055,7 +10055,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "in_progress",
+      "status": "done",
       "id": "W18-04",
       "title": "digest summaries truncate on a word with an ellipsis, never mid-sentence",
       "module": "web",
@@ -10063,11 +10063,11 @@
       "points": 1,
       "role": "ux-engineer",
       "write_scope": [
-        "apps/web/src/notifications/**",
-        "packages/pipeline/src/**"
+        "apps/server/src/cli/**"
       ],
       "notes": [
-        "Live design pass: morning-queue digest ends \"\u2026Completion Manifest (T-27). I\" \u2014 a hard character slice mid-word with no ellipsis reads broken. Truncate at a word boundary and append an ellipsis wherever digest/lead-lesson text is clamped."
+        "Live design pass: morning-queue digest ends \"\u2026Completion Manifest (T-27). I\" \u2014 a hard character slice mid-word with no ellipsis reads broken. Truncate at a word boundary and append an ellipsis wherever digest/lead-lesson text is clamped.",
+        "Scope amended at claim: the clamp lives in apps/server/src/cli/consolidation.ts (digest summary builder), not in pipeline/notifications as filed."
       ],
       "acceptance": [
         "Clamped digest text ends on a word boundary with an ellipsis character",

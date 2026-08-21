@@ -40,6 +40,18 @@ export function parseConsolidationEnabled(
   return true;
 }
 
+/**
+ * W18-04: clamp on a word boundary with an ellipsis. The hard slice ended a
+ * digest mid-word ("…Completion Manifest (T-27). I") — a broken sentence in
+ * the one card a founder reads over coffee.
+ */
+export function truncateAtWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > max / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
 export interface PostRunConsolidationOptions {
   readonly log: EventLog;
   readonly actorId: string;
@@ -88,7 +100,7 @@ export function runPostRunConsolidation(
         summary:
           `${brief.dedupedCount} duplicate fact${brief.dedupedCount === 1 ? '' : 's'} merged, ` +
           `${brief.decayedCount} stale fact${brief.decayedCount === 1 ? '' : 's'} retired` +
-          (lead ? ` — the lead lesson: ${lead.content.slice(0, 160)}` : ''),
+          (lead ? ` — the lead lesson: ${truncateAtWord(lead.content, 160)}` : ''),
       },
       { id: `pre-brief-${options.runId}`, actorId: options.actorId },
     );

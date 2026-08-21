@@ -7,6 +7,7 @@ import { insertFact, markFactVerified } from '@dokima/memory';
 import {
   parseConsolidationEnabled,
   runPostRunConsolidation,
+  truncateAtWord,
 } from './consolidation.js';
 
 const dirs: string[] = [];
@@ -92,5 +93,23 @@ describe('post-run sleep consolidation (W14-06)', () => {
     expect(lines[0]).toContain('memoryConsolidationEnabled');
     expect(parseConsolidationEnabled(false, () => {})).toBe(false);
     expect(parseConsolidationEnabled(undefined, () => {})).toBe(true);
+  });
+});
+
+describe('truncateAtWord (W18-04)', () => {
+  it('RED FIXTURE: a clamped lesson never ends mid-word — the live digest ended "…(T-27). I"', () => {
+    const lesson =
+      'PARKED (ladder_exhausted) after 2 attempt(s): agent session stopped: ' +
+      'exceeded the per-session tool-iteration budget (12) without a ' +
+      'Completion Manifest (T-27). If the work was real but unfinished, raise maxToolIterations.';
+    const out = truncateAtWord(lesson, 160);
+    expect(out.endsWith('…')).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(161);
+    const lastWord = out.slice(0, -1).split(' ').at(-1) ?? '';
+    expect(lesson).toContain(`${lastWord} `);
+  });
+
+  it('short text passes through untouched', () => {
+    expect(truncateAtWord('all done', 160)).toBe('all done');
   });
 });
