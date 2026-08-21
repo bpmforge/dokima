@@ -30,18 +30,13 @@
  * guessed.
  */
 
-import {
-  DEFAULT_ROLE,
-  FitnessCardStore,
-  route,
-  type AgentRole,
-  type ProviderEntry,
-  type ProviderKind,
-  type ScopedRoleMatrix,
-  type TaskType,
+import type {
+  AgentRole,
+  ProviderEntry,
+  ProviderKind,
+  ScopedRoleMatrix,
+  TaskType,
 } from '@dokima/gateway';
-import { listProviders } from '../server/providers-store.js';
-import { listModelMatrix } from '../server/model-matrix-store.js';
 import type { ModelMatrixRow } from '../server/settings-types.js';
 
 export class ModelResolutionError extends Error {
@@ -148,15 +143,21 @@ export function splitModelRef(
  * to — the "never substitutes" half of the mode, enforced by the shape of the
  * data rather than by a check somewhere downstream.
  */
-export function withPin(matrix: ScopedRoleMatrix, pin: PinnedModel | undefined): ScopedRoleMatrix {
+export function withPin(
+  matrix: ScopedRoleMatrix,
+  pin: PinnedModel | undefined,
+): ScopedRoleMatrix {
   if (!pin) return matrix;
   return {
     ...matrix,
-    run: { ...matrix.run, [pin.role]: { default: { model: pin.model, fallbackChain: [] } } },
+    run: {
+      ...matrix.run,
+      [pin.role]: { default: { model: pin.model, fallbackChain: [] } },
+    },
   };
 }
 
-function pinUnhonoured(pin: PinnedModel, why: string): ModelResolutionError {
+export function pinUnhonoured(pin: PinnedModel, why: string): ModelResolutionError {
   return new ModelResolutionError(
     `the pinned model "${pin.model}" for role "${pin.role}" cannot be used: ${why}. ` +
       `Refusing rather than running a different model — pinning means nothing ` +
@@ -165,7 +166,7 @@ function pinUnhonoured(pin: PinnedModel, why: string): ModelResolutionError {
   );
 }
 
-function findRowProviderId(
+export function findRowProviderId(
   rows: readonly ModelMatrixRow[],
   role: AgentRole,
   taskType: TaskType,
@@ -194,7 +195,7 @@ interface BoundModel {
  * ticket does not remove — see "binds an unregistered prefix..." in
  * model-resolution.test.ts.
  */
-function bindProvider(
+export function bindProvider(
   bound: BoundModel,
   providers: readonly ProviderEntry[],
 ): ResolvedModelTarget {
@@ -327,73 +328,12 @@ export interface PinnedModel {
 }
 
 /**
- * THE SEAM. Returns the provider+model a call will actually use.
- *
- * `route()` (not a bare `resolveModelChain`) is used deliberately: it makes
- * the maker != verifier guard STRUCTURAL (C-4 / Law 5) — routing a verifier
- * role auto-resolves the maker role for the same task type and refuses a
- * collision — so wiring the registry in cannot become a way to bypass it.
+ * THE SEAM's resolvers live in the `model-resolution-chain.ts` chapter
+ * (CODE_BOOK_PROTOCOL split, W16-01) — re-exported here so every existing
+ * importer keeps this file as the one import path.
  */
-export async function resolveModelTarget(
-  input: ResolveModelTargetInput,
-): Promise<ResolvedModelTarget> {
-  const { projectPath, pin } = input;
-  if (projectPath === undefined) {
-    if (pin) throw pinUnhonoured(pin, 'no project is in view, so no provider registry to bind it to');
-    if (!envNamesAModel(input.env)) throw noModelConfigured();
-    return envTarget(input.env);
-  }
-
-  const loadProviders = input.loadProviders ?? listProviders;
-  const loadMatrixRows = input.loadMatrixRows ?? listModelMatrix;
-
-  const [providers, rows] = await Promise.all([
-    loadProviders(projectPath),
-    loadMatrixRows(projectPath),
-  ]);
-
-  // Nothing configured is a normal first-run state, not an error (C-1) — but
-  // NOT when a model was pinned. Falling through to the env default here would
-  // serve a different model than the one the user named, silently, which is
-  // the substitution the whole mode exists to prevent.
-  if (rows.length === 0 || providers.length === 0) {
-    if (pin) throw pinUnhonoured(pin, 'no providers or matrix rows are configured');
-    // W13-34: the env seam still wins when it is explicitly set. What changed
-    // is the empty case: it used to return a placeholder target and fail at the
-    // endpoint, and now it says what is missing and where to fix it.
-    if (!envNamesAModel(input.env)) throw noModelConfigured();
-    return envTarget(input.env);
-  }
-
-  const routed = await route({
-    matrix: withPin(matrixFromRows(rows), pin),
-    role: input.role,
-    taskType: input.taskType,
-    actorId: input.actorId ?? 'pipeline',
-    fitnessStore: new FitnessCardStore(),
-  });
-
-  // The row that WON is not necessarily keyed by `input.role`: `route()`
-  // falls back to the `DEFAULT_ROLE` role's rows when `input.role` has none
-  // of its own (`usedDefaultRole`), and `matrixFromRows` did the same thing
-  // building the matrix `route()` read. Looking the provider up under the
-  // wrong role would silently find a different row's binding, or none.
-  const effectiveRole = routed.usedDefaultRole ? DEFAULT_ROLE : input.role;
-  const pinApplies = pin !== undefined && pin.role === input.role;
-  // A pinned role has no row, so `findRowProviderId` would hand back the
-  // binding of whatever row the project happens to hold for it — a different
-  // provider than the one pinned. The pin carries its own binding.
-  const providerId = pinApplies
-    ? pin.providerId
-    : findRowProviderId(rows, effectiveRole, input.taskType);
-
-  try {
-    return bindProvider({ modelRef: routed.chain[0]!, providerId }, providers);
-  } catch (err) {
-    // Same reason as the short-circuits above: an unbindable pin is a refusal
-    // that names the pin, not a generic binding error the caller has to guess
-    // the cause of.
-    if (pinApplies) throw pinUnhonoured(pin, err instanceof Error ? err.message : String(err));
-    throw err;
-  }
-}
+export {
+  resolveModelTarget,
+  resolveModelTargetChain,
+  type ResolvedModelChain,
+} from './model-resolution-chain.js';

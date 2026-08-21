@@ -26,6 +26,8 @@ export interface ExecuteReviewPassOptions {
   readonly runId: string;
   readonly repoRoot: string;
   readonly makerModel: string;
+  /** W16-01: every model that made work this run (rung sessions included) — the C-4 refusal set. Defaults to `[makerModel]`. */
+  readonly makerModels?: readonly string[];
   readonly secretValues: readonly string[];
   readonly stderr: (line: string) => void;
 }
@@ -66,6 +68,7 @@ export async function executeReviewPass(
     runId: options.runId,
     repoRoot: options.repoRoot,
     makerModel: options.makerModel,
+    ...(options.makerModels ? { makerModels: options.makerModels } : {}),
     reviewerModel,
     reviewChat: chat ?? (async () => ''),
     secretValues: options.secretValues,

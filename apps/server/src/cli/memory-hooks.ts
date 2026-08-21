@@ -60,24 +60,40 @@ function recordCalibration(
 ): void {
   if (!options.makerModel) return;
   const phase = 'coding-agent';
-  let record =
-    getCalibration(options.log.db, options.makerModel, phase) ??
-    createCalibrationRecord({ model: options.makerModel, phase }, now);
-  let observed = false;
+  // W16-01: with the ladder live, attempts on one ticket can run DIFFERENT
+  // models (attempt.sessionLabel carries which). Each attempt's observation
+  // folds into the record of the model that actually made the claim —
+  // charging R2's honesty to R1's record is exactly the miscalibration
+  // FR-L3 exists to prevent.
+  const records = new Map<string, ReturnType<typeof createCalibrationRecord>>();
+  const recordFor = (model: string) => {
+    const existing = records.get(model);
+    if (existing) return existing;
+    const loaded =
+      getCalibration(options.log.db, model, phase) ??
+      createCalibrationRecord({ model, phase }, now);
+    records.set(model, loaded);
+    return loaded;
+  };
+  const observed = new Set<string>();
   for (const attempt of attempts) {
     const manifest = attempt.session.manifest;
     if (!manifest) continue;
-    record = updateCalibration(
-      record,
-      {
-        rawConfidence: manifest.verify.exit === 0 ? 1 : 0,
-        verifiedConfidence: attempt.closeGate?.ok ? 1 : 0,
-      },
-      now,
+    const model = attempt.sessionLabel ?? options.makerModel;
+    records.set(
+      model,
+      updateCalibration(
+        recordFor(model),
+        {
+          rawConfidence: manifest.verify.exit === 0 ? 1 : 0,
+          verifiedConfidence: attempt.closeGate?.ok ? 1 : 0,
+        },
+        now,
+      ),
     );
-    observed = true;
+    observed.add(model);
   }
-  if (observed) upsertCalibration(options.log.db, record);
+  for (const model of observed) upsertCalibration(options.log.db, records.get(model)!);
 }
 
 export function createLearningHook(options: LearningHookOptions): AttemptOutcomeHook {

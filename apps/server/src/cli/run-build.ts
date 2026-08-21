@@ -32,6 +32,7 @@ import { type SpawnSession } from '@dokima/loop';
 import {
   DEFAULT_MAX_SESSION_SECONDS,
   runLandLoop,
+  type LandRungSessions,
   type PushToRemotesFn,
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
@@ -48,6 +49,7 @@ function countReceipts(log: { db: { prepare(q: string): { get(): unknown } } }):
   return row?.n ?? 0;
 }
 import {
+  announceRungSessions,
   buildBuiltInSpawn,
   createWatchedExternalSpawn,
 } from './run-build-spawn.js';
@@ -109,7 +111,6 @@ async function resolveAgentRunner(
 // Chapter (W14-06, CODE_BOOK_PROTOCOL 400-line cap): the vault refusal
 // moved verbatim to run-vault.ts.
 import { resolveVaultOrRefusal } from './run-vault.js';
-
 
 /**
  * The build-mode run (W10-77): claim work off the board and actually do it.
@@ -195,7 +196,8 @@ export async function executeBuildRun(
   // W13-11/43/47: the run's numeric bounds, resolved together and refused
   // rather than clamped — see `resolveRunLimits`.
   const limitsResult = resolveRunLimits(
-    (key: string) => resolveEffectiveValue(key, policyScoped)?.value as JsonValue | undefined,
+    (key: string) =>
+      resolveEffectiveValue(key, policyScoped)?.value as JsonValue | undefined,
     DEFAULT_MAX_SESSION_SECONDS,
   );
   if ('refusal' in limitsResult) {
@@ -239,6 +241,11 @@ export async function executeBuildRun(
   // external-agent path cannot know its model — 'external-agent' is honest
   // and never collides with a real reviewer id.
   let makerModel = 'external-agent';
+  // W16-01: the rung->session seam (built-in runner only — an external agent
+  // owns its own model, so its ladder honestly retries the same runner), and
+  // the models any rung actually ran, for review's C-4 refusal set.
+  let rungSessions: LandRungSessions | undefined;
+  let usedModels: () => readonly string[] = () => [];
   /**
    * Undefined on the external-agent path: there is no `Provider` to ask, so
    * the packer gets its documented conservative floor rather than a number
@@ -279,6 +286,10 @@ export async function executeBuildRun(
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;
       makerModel = builtIn.makerModel;
+      usedModels = builtIn.usedModels;
+      // W16-01: the ladder's real shape said once at run start (FR-G5), and
+      // the climb seam with its stderr notice — composed in the spawn chapter.
+      rungSessions = announceRungSessions(builtIn, runId, io.stderr);
     } catch (err) {
       if (err instanceof ModelResolutionError) {
         io.stderr(`${runId} started, but the built-in agent refused: ${err.message}`);
@@ -291,27 +302,30 @@ export async function executeBuildRun(
   let result!: Awaited<ReturnType<typeof runLandLoop>>;
   try {
     result = await runLandLoop({
-    log,
-    actorId: command.actorId,
-    projectId: command.projectId,
-    repoRoot: io.cwd,
-    contentDir: resolveAsset('content', 'validators'),
-    signingKey,
-    spawn,
-    // W12-04: the packed builder, not `defaultHandoffBuilder()`. Until this
-    // ticket every ticket session received `ticket.interface ?? ticket.title`
-    // as its entire context while FR-L5's Context Packer sat unreachable.
-    policyScope: policyResult.scope,
-    buildHandoff: await createPackedHandoffBuilder({
+      log,
+      actorId: command.actorId,
+      projectId: command.projectId,
       repoRoot: io.cwd,
-      modelWindowTokens: contextWindowTokens ?? 0,
-      // W12-09: the run already holds the event log, and its `db` is the
-      // sanctioned handle `packages/memory` expects a caller to supply — so
-      // the code index lives in the project's own SQLite file rather than a
-      // second store nobody backs up.
-      codeIndexHandle: log.db,
-    }),
+      contentDir: resolveAsset('content', 'validators'),
+      signingKey,
+      spawn,
+      // W12-04: the packed builder, not `defaultHandoffBuilder()`. Until this
+      // ticket every ticket session received `ticket.interface ?? ticket.title`
+      // as its entire context while FR-L5's Context Packer sat unreachable.
+      policyScope: policyResult.scope,
+      buildHandoff: await createPackedHandoffBuilder({
+        repoRoot: io.cwd,
+        modelWindowTokens: contextWindowTokens ?? 0,
+        // W12-09: the run already holds the event log, and its `db` is the
+        // sanctioned handle `packages/memory` expects a caller to supply — so
+        // the code index lives in the project's own SQLite file rather than a
+        // second store nobody backs up.
+        codeIndexHandle: log.db,
+      }),
       pushToRemotes: localFirstPushToRemotes,
+      // W16-01: present only on the built-in path — each real attempt runs
+      // the session bound to its rung, and climbs are ledgered (FR-G3).
+      ...(rungSessions ? { rungSessions } : {}),
       secretValues,
       // W14-05: parks become error->solution facts; closes complete the
       // pair. Composed here — harbormaster may not import memory.
@@ -337,6 +351,9 @@ export async function executeBuildRun(
     runId,
     repoRoot: io.cwd,
     makerModel,
+    // W16-01: every model a rung session actually ran this run — the reviewer
+    // must not match ANY of them (C-4 stays true when a ticket landed on R2).
+    makerModels: [makerModel, ...usedModels()],
     secretValues,
     stderr: io.stderr,
   });

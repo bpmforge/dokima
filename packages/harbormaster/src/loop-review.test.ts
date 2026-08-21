@@ -127,7 +127,7 @@ describe('runReviewPass (W15-01)', () => {
     );
     expect(outcomes[0]).toMatchObject({ status: 'skipped', reason: 'same model as maker' });
     const comment = getTicket(log, 'T-1')!.history.filter((h) => h.verb === 'comment').at(-1)!;
-    expect(comment.body).toContain("maker's own model");
+    expect(comment.body).toContain('never reviews its own work');
     expect(comment.body).toContain('review this ticket yourself');
     expect(events(log, 'review.verdict')).toHaveLength(0);
   });
@@ -225,5 +225,20 @@ describe('calibration reaches the verdict (W15-02)', () => {
       options(log, repoRoot, { makerCalibration: () => OVERCLAIMER }),
     );
     expect(outcome[0]).toMatchObject({ score: 8, action: 'ACCEPT' });
+  });
+});
+
+describe('the C-4 refusal set covers every rung (W16-01)', () => {
+  it("a reviewer matching ANY model that made work this run refuses — a ticket that landed on R2 must not be reviewed by R2's model", async () => {
+    const { log, repoRoot } = await fixture('true');
+    const outcomes = await runReviewPass(
+      options(log, repoRoot, {
+        makerModel: 'cheap-local',
+        makerModels: ['cheap-local', 'frontier'],
+        reviewerModel: 'frontier',
+      }),
+    );
+    expect(outcomes[0]).toMatchObject({ status: 'skipped', reason: 'same model as maker' });
+    expect(events(log, 'review.verdict')).toHaveLength(0);
   });
 });

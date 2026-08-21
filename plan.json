@@ -9356,7 +9356,8 @@
         "packages/harbormaster/src/**",
         "apps/server/src/cli/**",
         "apps/server/src/api/pipeline/model-resolution.ts",
-        "apps/server/src/api/pipeline/model-resolution.test.ts"
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/server/src/api/pipeline/model-resolution-chain.ts"
       ],
       "notes": [
         "Challenger audit 2026-08-21: runEscalationPolicy (packages/gateway/src/escalation/policy.ts:147) is not re-exported and has zero callers; the wired loop-land-policy.ts maps R1-R3 to attempt count on ONE model (\"no model-routed rungs of its own\"), and run-build-spawn.ts:88 resolves a single model once with fallbackChain: []. BLUEPRINT 3.3 promises cheapest-first THEN one rung up THEN frontier. Law 9b: which ladder applies is the user's recorded model policy \u2014 local-only users get an honest single-rung ladder (FR-G5 degrades honestly), never a silent cloud call.",

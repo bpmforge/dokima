@@ -30,6 +30,8 @@
  * reused; the loop's own attempt/park logic lives in `loop-land.ts`.
  */
 
+import type { SpawnSession } from '@dokima/loop';
+
 export type LandEscalationMode = 'ladder' | 'locked' | 'token-gated';
 
 /** The tiers a policy can meaningfully pin or gate on (mirrors gateway's `PolicyRung`). */
@@ -89,6 +91,73 @@ export function resolveLandEscalationPolicy(
     scope.global?.[role] ??
     LADDER_LAND_POLICY
   );
+}
+
+/**
+ * W16-01: the rung a given REAL attempt runs at, under the resolved policy.
+ *
+ * This is the mapping that makes the ladder mean what BLUEPRINT §3.3 says —
+ * cheapest first, then one rung up, then frontier — instead of "the same
+ * model, three times". The loop stays model-agnostic exactly as the module
+ * header demands: a rung is an attempt tier here, and WHAT runs at each tier
+ * is the composing seam's business (`LandRungSessions`, wired in apps/server
+ * where models are allowed to exist).
+ *
+ * `attempt` is the count of real attempts (infra-failure retries are free and
+ * MUST NOT climb — FR-G3: escalation is evidence-triggered, and a crashed
+ * sandbox is not evidence about the model).
+ */
+export function rungForAttempt(
+  policy: LandEscalationPolicy,
+  attempt: number,
+): PolicyRung {
+  if (policy.mode === 'locked') return policy.pinnedTier;
+  if (attempt <= 1) return 'R1';
+  if (attempt === 2) return 'R2';
+  return 'R3';
+}
+
+const LAND_RUNG_ORDER: readonly PolicyRung[] = ['R1', 'R2', 'R3'];
+
+export function isHigherRung(from: PolicyRung, to: PolicyRung): boolean {
+  return LAND_RUNG_ORDER.indexOf(to) > LAND_RUNG_ORDER.indexOf(from);
+}
+
+/** Mirrors gateway's `FailureReceipt` (escalation/types.ts) — reproduced, not imported, per this module's header. */
+export interface LandFailureReceipt {
+  readonly name: string;
+  readonly exitCode: number;
+  readonly gapCount: number;
+  readonly gaps?: readonly string[];
+}
+
+export interface LandRungAdvance {
+  readonly ticketId: string;
+  /** The real attempt about to run at `toRung`. */
+  readonly attempt: number;
+  readonly fromRung: PolicyRung;
+  readonly toRung: PolicyRung;
+  /** The composing seam's opaque label for what runs at `toRung` (a model name where the seam knows one). Ledger text, never routing. */
+  readonly sessionLabel: string;
+  /** Evidence from the attempt that failed at `fromRung` — never empty (FR-G3: evidence-triggered, never vibes-triggered). */
+  readonly receipts: readonly LandFailureReceipt[];
+}
+
+/**
+ * W16-01: the seam that lets attempts climb to a stronger session runner
+ * WITHOUT this loop ever learning what a model is. Absent, every attempt
+ * runs `options.spawn` — byte-identical to the pre-W16-01 loop, which is
+ * also the honest shape for the external-agent runner (it owns its model)
+ * and for a local-only/pinned user whose ladder has one real rung (FR-G5:
+ * degrade honestly, never silently).
+ */
+export interface LandRungSessions {
+  sessionForRung(rung: PolicyRung): {
+    readonly spawn: SpawnSession;
+    readonly label: string;
+  };
+  /** Fired BEFORE the first attempt that runs on a higher rung than the previous real attempt used. A hook failure never blocks the attempt (same posture as `AttemptOutcomeHook`). */
+  onRungAdvance?(advance: LandRungAdvance): void | Promise<void>;
 }
 
 export interface LandEscalationTokenRequest {

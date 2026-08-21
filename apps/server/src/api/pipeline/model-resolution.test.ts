@@ -7,6 +7,7 @@ import {
   matrixFromRows,
   ModelResolutionError,
   resolveModelTarget,
+  resolveModelTargetChain,
   splitModelRef,
   envNamesAModel,
   envTarget,
@@ -538,7 +539,7 @@ describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
     },
   );
 
-  it('no pin is exactly today\'s behaviour — 236 done tickets depend on it', async () => {
+  it("no pin is exactly today's behaviour — 236 done tickets depend on it", async () => {
     const target = await resolveModelTarget({
       projectPath: PROJECT,
       role: 'coding-agent',
@@ -556,7 +557,7 @@ describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
         'used to return a placeholder model id at a guessed endpoint, so a ' +
         'clean install failed with "env: request failed with 400 Bad Request ' +
         '(HTTP 500)" — the endpoint\'s own clear answer discarded. Law 9(b): ' +
-        'the model is the user\'s choice, asked at setup, never defaulted',
+        "the model is the user's choice, asked at setup, never defaulted",
       async () => {
         await expect(
           resolveModelTarget({
@@ -610,7 +611,7 @@ describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
     it(
       'W13-36: the MODEL ID is what counts. A base URL names an ENDPOINT, and ' +
         'an endpoint plus a guessed id is precisely what produced "Invalid ' +
-        'model identifier" — the old default was `?? \'local-model\'`',
+        "model identifier\" — the old default was `?? 'local-model'`",
       () => {
         expect(envNamesAModel({ DOKIMA_MODEL_ID: 'm' } as NodeJS.ProcessEnv)).toBe(true);
         expect(
@@ -630,5 +631,88 @@ describe('a pinned model is a run-scoped routing entry (W12-37, D-027)', () => {
       // The removed default. Nothing may reintroduce it.
       expect(envTarget({} as NodeJS.ProcessEnv).model).not.toBe('local-model');
     });
+  });
+});
+
+/**
+ * W16-01: the whole chain, bound — `route()` always returned
+ * `[model, ...fallbackChain]` and `resolveModelTarget` discarded everything
+ * past the head, which is where the BLUEPRINT §3.3 ladder died.
+ */
+describe('resolveModelTargetChain (W16-01)', () => {
+  it('RED FIXTURE: a row with fallbacks yields one bound target per rung, cheapest first — not just the head', async () => {
+    const chain = await resolveModelTargetChain({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      ...stores(
+        [provider('local'), provider('cloud')],
+        [
+          {
+            ...row('coding-agent', 'cheap-local', 'reasoning', 'local'),
+            fallback: ['cloud/mid-model', 'cloud/frontier-model'],
+          },
+        ],
+      ),
+    });
+    expect(chain.targets.map((t) => t.model)).toEqual([
+      'cheap-local',
+      'mid-model',
+      'frontier-model',
+    ]);
+    expect(chain.targets.map((t) => t.providerId)).toEqual(['local', 'cloud', 'cloud']);
+    expect(chain.unbindable).toEqual([]);
+  });
+
+  it('entry 0 is exactly what resolveModelTarget returns — the two can never disagree', async () => {
+    const input = {
+      projectPath: PROJECT,
+      role: 'coding-agent' as const,
+      taskType: 'reasoning' as const,
+      ...stores(
+        [provider('local')],
+        [{ ...row('coding-agent', 'cheap-local', 'reasoning', 'local'), fallback: [] }],
+      ),
+    };
+    const head = await resolveModelTarget(input);
+    const chain = await resolveModelTargetChain(input);
+    expect(chain.targets[0]).toEqual(head);
+    expect(chain.targets).toHaveLength(1);
+  });
+
+  it('a fallback that cannot bind SHORTENS the ladder honestly instead of failing the run', async () => {
+    const chain = await resolveModelTargetChain({
+      projectPath: PROJECT,
+      role: 'coding-agent',
+      taskType: 'reasoning',
+      ...stores(
+        [provider('local'), provider('other')],
+        [
+          {
+            ...row('coding-agent', 'cheap-local', 'reasoning', 'local'),
+            // No provider prefix, two providers enabled: ambiguous, unbindable.
+            fallback: ['mystery-model'],
+          },
+        ],
+      ),
+    });
+    expect(chain.targets.map((t) => t.model)).toEqual(['cheap-local']);
+    expect(chain.unbindable).toHaveLength(1);
+    expect(chain.unbindable[0]!.modelRef).toBe('mystery-model');
+    expect(chain.unbindable[0]!.reason).toMatch(/qualify it/);
+  });
+
+  it('an unbindable HEAD still refuses the run — the primary model is not optional', async () => {
+    await expect(
+      resolveModelTargetChain({
+        projectPath: PROJECT,
+        role: 'coding-agent',
+        taskType: 'reasoning',
+        ...stores(
+          [provider('local'), provider('other')],
+          [{ ...row('coding-agent', 'mystery-model', 'reasoning'), fallback: [] }],
+        ),
+      }),
+    ).rejects.toThrow(ModelResolutionError);
   });
 });

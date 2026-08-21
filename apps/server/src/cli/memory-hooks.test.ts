@@ -201,3 +201,74 @@ describe('calibration observations from attempts (W15-02, FR-L3)', () => {
     expect(getCalibration(log.db, 'local-coder', 'coding-agent')).toBeUndefined();
   });
 });
+
+describe('calibration keys by the model that actually made the claim (W16-01)', () => {
+  it('RED FIXTURE: a ticket whose attempts ran R1 and R2 folds each observation into ITS model\'s record — charging R2\'s claim to R1 is the miscalibration FR-L3 exists to prevent', async () => {
+    const log = await makeLog();
+    const { getCalibration } = await import('@dokima/memory');
+    const hook = createLearningHook({
+      log,
+      secretValues: [],
+      makerModel: 'cheap-local',
+      now: () => '2026-08-21T00:00:00.000Z',
+    });
+
+    const withLabel = (label: string, gateOk: boolean): LandAttempt => ({
+      ...claimedPassAttemptFor(gateOk),
+      sessionLabel: label,
+    });
+    await hook.onLanded({
+      ticketId: 'T-1',
+      commits: [],
+      attempts: [withLabel('cheap-local', false), withLabel('frontier', true)],
+    });
+
+    const cheap = getCalibration(log.db, 'cheap-local', 'coding-agent')!;
+    const frontier = getCalibration(log.db, 'frontier', 'coding-agent')!;
+    expect(cheap.sampleCount).toBe(1);
+    expect(frontier.sampleCount).toBe(1);
+    // The failed claim landed on the cheap model's record, not the frontier's.
+    expect(cheap.meanRawConf - cheap.meanVerifiedConf).toBe(1);
+    expect(frontier.meanRawConf - frontier.meanVerifiedConf).toBe(0);
+  });
+
+  it('an unlabeled attempt (no rung seam) still keys by makerModel — pre-W16-01 behavior unchanged', async () => {
+    const log = await makeLog();
+    const { getCalibration } = await import('@dokima/memory');
+    const hook = createLearningHook({
+      log,
+      secretValues: [],
+      makerModel: 'cheap-local',
+      now: () => '2026-08-21T00:00:00.000Z',
+    });
+    await hook.onLanded({
+      ticketId: 'T-1',
+      commits: [],
+      attempts: [claimedPassAttemptFor(true)],
+    });
+    expect(getCalibration(log.db, 'cheap-local', 'coding-agent')!.sampleCount).toBe(1);
+  });
+});
+
+function claimedPassAttemptFor(gateOk: boolean): LandAttempt {
+  return {
+    attempt: 1,
+    session: {
+      exitCode: 0,
+      output: 'done',
+      manifest: {
+        ticket: 'T-1',
+        files: ['a.ts'],
+        verify: { command: 'true', exit: 0 },
+        commits: ['abc'],
+        evidence: [],
+        memory_written: [],
+      },
+      manifestParseTier: 'contract',
+      scopeViolations: [],
+    },
+    closeGate: gateOk
+      ? ({ ok: true } as never)
+      : ({ ok: false, reasons: ['verify failed'] } as never),
+  };
+}

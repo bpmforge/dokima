@@ -54,6 +54,12 @@ export interface ReviewPassOptions {
   readonly repoRoot: string;
   /** The maker model this run used — the C-4 comparison anchor. */
   readonly makerModel: string;
+  /**
+   * W16-01: EVERY model that made work this run. With the escalation ladder
+   * live, a ticket can land on R2/R3, so a reviewer matching any rung's
+   * model would be reviewing its own work. Defaults to `[makerModel]`.
+   */
+  readonly makerModels?: readonly string[];
   /** Resolved reviewer model, or null when no reviewer is configured. */
   readonly reviewerModel: string | null;
   /** One judgment turn: prompt in, raw model text out. Injected — routing/providers are the caller's (apps/server) concern; tests inject a fake (Law 9a). */
@@ -167,20 +173,26 @@ async function reviewOne(
     return { ticketId: ticket.id, status: 'skipped', reason: 'no reviewer model' };
   }
 
-  if (options.reviewerModel === options.makerModel) {
+  const makerModels = options.makerModels ?? [options.makerModel];
+  if (makerModels.includes(options.reviewerModel)) {
     // C-4 honest degradation: never launder a self-review (Law 9b — a
     // single-model install still gets a working product AND the truth).
+    // W16-01: the refusal set covers every rung's model, not just R1 — a
+    // ticket that landed on R2 must not be reviewed by R2's model either.
     const sentence =
-      `Machine review refused: the reviewer would be the maker's own model ` +
-      `(${options.makerModel}), and the maker's model never reviews its own ` +
-      `work (C-4). Add a second model under Settings → Models for the ` +
+      `Machine review refused: the reviewer would be a model that made work ` +
+      `this run (${options.reviewerModel}), and a maker's model never reviews ` +
+      `its own work (C-4). Add a second model under Settings → Models for the ` +
       `code-reviewer role, or review this ticket yourself from the Decide card.`;
     commentTicket(options.log, {
       ticketId: ticket.id,
       actorId: options.actorId,
       body: sentence,
     });
-    record({ reason: 'same model as maker', model: options.makerModel }, 'review.skipped');
+    record(
+      { reason: 'same model as maker', model: options.reviewerModel },
+      'review.skipped',
+    );
     return { ticketId: ticket.id, status: 'skipped', reason: 'same model as maker' };
   }
 
@@ -289,5 +301,11 @@ async function reviewOne(
     },
     'review.verdict',
   );
-  return { ticketId: ticket.id, status: 'recorded', verdict, score: parsed.score, action };
+  return {
+    ticketId: ticket.id,
+    status: 'recorded',
+    verdict,
+    score: parsed.score,
+    action,
+  };
 }

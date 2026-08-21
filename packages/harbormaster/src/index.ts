@@ -70,6 +70,14 @@ export type {
   LandEscalationPolicy,
   ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
+/** W16-01: the rung->session seam apps/server composes so the ladder actually escalates the model. */
+export type {
+  LandFailureReceipt,
+  LandRungAdvance,
+  LandRungSessions,
+  PolicyRung,
+} from './loop-land-policy.js';
+export { rungForAttempt } from './loop-land-policy.js';
 export type {
   AttemptOutcomeHook,
   LandAttempt,
@@ -151,8 +159,11 @@ export type {
  * documented as landed and had zero callers.
  */
 export { isSandboxProfileAvailable, runSandboxed } from './sandbox/index.js';
-export type { SandboxProfile, SandboxRunOptions, SandboxRunResult } from './sandbox/types.js';
-
+export type {
+  SandboxProfile,
+  SandboxRunOptions,
+  SandboxRunResult,
+} from './sandbox/types.js';
 
 /**
  * W13-47: the watchdog, exported for the first time. Fourth instance of the
@@ -179,10 +190,7 @@ export type {
 } from './agent-session/external-tools.js';
 
 /** W15-01: the review pass — cross-model verdicts over in_review tickets, composed by apps/server. */
-export {
-  DEFAULT_REVIEW_VERIFY_TIMEOUT_MS,
-  runReviewPass,
-} from './loop-review.js';
+export { DEFAULT_REVIEW_VERIFY_TIMEOUT_MS, runReviewPass } from './loop-review.js';
 export type {
   ReviewOutcome,
   ReviewPassOptions,

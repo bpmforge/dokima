@@ -811,3 +811,165 @@ describe('runLandLoop', () => {
     );
   });
 });
+
+/**
+ * W16-01: the ladder actually escalates. Until this ticket every attempt ran
+ * `options.spawn` — the same model, three times — while BLUEPRINT §3.3
+ * promised cheapest-first, then one rung up, then frontier.
+ */
+describe('the rung->session seam (W16-01)', () => {
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  /** A labeled always-fails spawn per rung, and a record of which rungs were asked for. */
+  function labeledRungSessions() {
+    const asked: string[] = [];
+    const ran: string[] = [];
+    const advances: { fromRung: string; toRung: string; label: string }[] = [];
+    const forLabel =
+      (label: string): SpawnSession =>
+      async () => {
+        ran.push(label);
+        return spoofedSpawn({ prompt: '', cwd: '' });
+      };
+    return {
+      asked,
+      ran,
+      advances,
+      seam: {
+        sessionForRung(rung: 'R1' | 'R2' | 'R3') {
+          asked.push(rung);
+          const label = `model-${rung}`;
+          return { spawn: forLabel(label), label };
+        },
+        onRungAdvance(advance: { fromRung: string; toRung: string; sessionLabel: string }) {
+          advances.push({
+            fromRung: advance.fromRung,
+            toRung: advance.toRung,
+            label: advance.sessionLabel,
+          });
+        },
+      },
+    };
+  }
+
+  it(
+    'RED FIXTURE: a planted always-fails ticket under the ladder CLIMBS — a ' +
+      'rung advance is ledgered with the failed attempt\'s evidence. The ' +
+      'fixture fails if every attempt ran the same session with no ' +
+      'escalation event (which was the shipped behavior before W16-01)',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      seedTicket(log, 'W9-01');
+
+      const rungs = labeledRungSessions();
+      const options = baseOptions(fixture, spoofedSpawn);
+      const result = await runLandLoop({
+        ...options,
+        maxLadderAttempts: 3,
+        rungSessions: rungs.seam,
+      });
+
+      const outcome = result.processed[0]!;
+      expect(outcome.landed).toBe(false);
+      expect(outcome.attempts).toHaveLength(3);
+      // The climb is real: three attempts, three distinct rung sessions.
+      expect(rungs.ran).toEqual(['model-R1', 'model-R2', 'model-R3']);
+      // Each attempt records which session made its claim (calibration honesty).
+      expect(outcome.attempts.map((a) => a.sessionLabel)).toEqual([
+        'model-R1',
+        'model-R2',
+        'model-R3',
+      ]);
+
+      // The canonical FR-G3 event, evidence attached — same payload shape as
+      // the gateway ladder's own emit (fromRung/toRung/receipts, no extras).
+      const events = listEvents(log).filter(
+        (e) => e.eventType === 'escalation.rung_advanced',
+      );
+      expect(events).toHaveLength(2);
+      const payloads = events.map((e) => e.payload as {
+        fromRung: string;
+        toRung: string;
+        receipts: { name: string; exitCode: number; gapCount: number }[];
+      });
+      expect(payloads.map((p) => `${p.fromRung}->${p.toRung}`)).toEqual([
+        'R1->R2',
+        'R2->R3',
+      ]);
+      for (const payload of payloads) {
+        expect(payload.receipts.length).toBeGreaterThan(0);
+        expect(Object.keys(payload).sort()).toEqual(['fromRung', 'receipts', 'toRung']);
+      }
+      expect(rungs.advances.map((a) => a.label)).toEqual(['model-R2', 'model-R3']);
+    },
+  );
+
+  it('a locked (pinned/local-only) policy never climbs: every attempt runs the pinned tier, no escalation event', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+
+    const rungs = labeledRungSessions();
+    const options = baseOptions(fixture, spoofedSpawn);
+    const result = await runLandLoop({
+      ...options,
+      maxLadderAttempts: 3,
+      policyScope: {
+        global: {
+          'coding-agent': { mode: 'locked', pinnedTier: 'R1', tierKind: 'local' },
+        },
+      },
+      rungSessions: rungs.seam,
+    });
+
+    const outcome = result.processed[0]!;
+    expect(outcome.parkedReason).toBe('locked_ceiling_reached');
+    expect(new Set(rungs.ran)).toEqual(new Set(['model-R1']));
+    expect(
+      listEvents(log).filter((e) => e.eventType === 'escalation.rung_advanced'),
+    ).toHaveLength(0);
+  });
+
+  it('an infra failure retries on the SAME rung — a crashed endpoint is not evidence about the model (FR-G3)', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+
+    // First session throws like an unreachable endpoint; the free retry must
+    // re-run R1, not climb to R2 on the strength of a network blip.
+    let calls = 0;
+    const asked: string[] = [];
+    const seam = {
+      sessionForRung(rung: 'R1' | 'R2' | 'R3') {
+        asked.push(rung);
+        return {
+          label: `model-${rung}`,
+          spawn: (async (input) => {
+            if (calls++ === 0) throw new ProviderTimeoutError('studio', 1000);
+            return landingSpawn(input);
+          }) as SpawnSession,
+        };
+      },
+    };
+    const options = baseOptions(fixture, spoofedSpawn);
+    const result = await runLandLoop({
+      ...options,
+      maxLadderAttempts: 2,
+      rungSessions: seam,
+    });
+
+    const outcome = result.processed[0]!;
+    expect(outcome.landed).toBe(true);
+    expect(outcome.attempts).toHaveLength(1);
+    expect(asked).toEqual(['R1', 'R1']);
+    expect(
+      listEvents(log).filter((e) => e.eventType === 'escalation.rung_advanced'),
+    ).toHaveLength(0);
+  });
+});

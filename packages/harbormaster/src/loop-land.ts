@@ -29,16 +29,7 @@
  * token-gated boundary is what caused the park (see `loop-land-policy.ts`).
  */
 
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import {
-  branchNameFor,
-  createWorktree,
-  listWorktrees,
-  resolveCurrentBranch,
-  type CreateWorktreeOptions,
-  type WorktreeHandle,
-} from '@dokima/git';
+import { resolveCurrentBranch } from '@dokima/git';
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
@@ -50,8 +41,6 @@ import { attemptOnce } from './loop-land-session.js';
 import {
   claimTicket,
   commentTicket,
-  getTicket,
-  isClaimable,
   listTickets,
   releaseTicket,
   startTicket,
@@ -75,8 +64,11 @@ import {
   tokenBoundaryDecideCard,
   type LandEscalationMode,
   type LandEscalationTokenHook,
+  type LandRungSessions,
   type ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
+import { beginRungAttempt } from './loop-land-rungs.js';
+import { pickNextTicket, requireTicket, resolveWorktree } from './loop-land-board.js';
 
 export type { LandPushRemoteResult, PushToRemotesFn } from './land-push.js';
 type LandPushResults = Awaited<ReturnType<typeof pushLandedBranch>>;
@@ -88,6 +80,9 @@ export type {
   LandEscalationToken,
   LandEscalationTokenHook,
   LandEscalationTokenRequest,
+  LandFailureReceipt,
+  LandRungAdvance,
+  LandRungSessions,
   LockedLandPolicy,
   PolicyRung,
   ScopedLandEscalationPolicy,
@@ -97,8 +92,10 @@ export type {
 export {
   LADDER_LAND_POLICY,
   LAND_CONVERGENCE_CEILING,
+  isHigherRung,
   noopLandEscalationTokenHook,
   resolveLandEscalationPolicy,
+  rungForAttempt,
 } from './loop-land-policy.js';
 
 export interface LandLoopOptions {
@@ -141,6 +138,15 @@ export interface LandLoopOptions {
   readonly now?: () => string;
   /** W14-05: injected learning hook — see `AttemptOutcomeHook`. */
   readonly attemptOutcome?: AttemptOutcomeHook;
+  /**
+   * W16-01: the rung->session seam. Present, each REAL attempt runs the
+   * session the composing seam bound to its rung (`rungForAttempt`), and a
+   * climb appends the canonical `escalation.rung_advanced` event carrying the
+   * failed attempt's evidence (FR-G3). Absent, every attempt runs `spawn`,
+   * byte-identical to the pre-W16-01 loop — the honest shape for the
+   * external-agent runner and for a one-rung (pinned/local-only) ladder.
+   */
+  readonly rungSessions?: LandRungSessions;
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
 }
@@ -156,6 +162,8 @@ export interface LandAttempt {
   readonly session: SessionResult;
   /** `null` when the session returned no completion manifest — the close gate was never even attempted. */
   readonly closeGate: CloseGateResult | null;
+  /** W16-01: the composing seam's label for what ran this attempt (a model name where the seam knows one). Absent without a `rungSessions` seam. Keys per-attempt calibration honestly when attempts ran on different rungs. */
+  readonly sessionLabel?: string;
 }
 /** `no_progress` is W13-29 / BLUEPRINT §3.5: two attempts, identical gaps. */
 export type LandParkedReason =
@@ -180,52 +188,6 @@ export interface LandLoopResult {
   readonly stopReason: LandLoopStopReason;
 }
 
-function requireTicket(log: EventLog, ticketId: string): Ticket {
-  const ticket = getTicket(log, ticketId);
-  if (!ticket) {
-    throw new Error(`ticket ${ticketId} vanished mid-loop (event log is append-only)`);
-  }
-  return ticket;
-}
-
-/** Lowest-id claimable ticket, excluding this run's skip set (parked or otherwise already handled). */
-function pickNextTicket(
-  tickets: readonly Ticket[],
-  skip: ReadonlySet<string>,
-): Ticket | undefined {
-  const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
-  return tickets
-    .filter((ticket) => !skip.has(ticket.id) && isClaimable(ticket, byId))
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
-}
-
-/** Mirrors `loop-claim.ts`'s `resolveWorktree` (not exported there): reuses an on-disk worktree/branch from a prior park rather than re-`createWorktree`ing (which fails outright when the branch/directory already exist). */
-async function resolveWorktree(
-  options: LandLoopOptions,
-  ticket: Ticket,
-  baseRef: string,
-): Promise<WorktreeHandle> {
-  const worktreePath = path.join(options.repoRoot, '.dokima', 'worktrees', ticket.id);
-  const resolvedWorktreePath = await fs.realpath(worktreePath).catch(() => undefined);
-  const existing = await listWorktrees(options.repoRoot);
-  const found = resolvedWorktreePath
-    ? existing.find((entry) => entry.path === resolvedWorktreePath)
-    : undefined;
-  if (found) {
-    return {
-      repoRoot: options.repoRoot,
-      path: worktreePath,
-      branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
-      ticketId: ticket.id,
-    };
-  }
-  return createWorktree({
-    repoRoot: options.repoRoot,
-    ticketId: ticket.id,
-    slug: ticket.title,
-    baseRef: baseRef as CreateWorktreeOptions['baseRef'],
-  });
-}
 
 async function processTicket(
   options: LandLoopOptions,
@@ -260,15 +222,23 @@ async function processTicket(
     attempt <= freeRetry.limit() && current.status === 'in_progress';
     attempt++
   ) {
+    // W16-01: which rung this attempt runs at (the chapter also ledgers a
+    // climb, evidence attached). Without a seam, options come back untouched.
+    const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts);
     const { session, closeGate, infraFailure } = await attemptOnce(
-      options,
+      rungStart.options,
       current,
       worktree,
       baseRef,
       feedback,
     );
     if (freeRetry.take(infraFailure, attempt)) continue;
-    attempts.push({ attempt, session, closeGate });
+    attempts.push({
+      attempt,
+      session,
+      closeGate,
+      ...(rungStart.sessionLabel ? { sessionLabel: rungStart.sessionLabel } : {}),
+    });
     current = requireTicket(options.log, ticket.id);
 
     // W13-29: feed the gaps forward, or stop if nothing changed.
