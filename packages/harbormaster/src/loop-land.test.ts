@@ -1275,3 +1275,51 @@ describe('same-model climbs are not escalations (W17-04)', () => {
     expect(advances).toEqual([]);
   });
 });
+
+/**
+ * W17-02: a budget-stopped attempt's checkpoint leads the NEXT attempt's
+ * handoff — continue, don't restart — with the real diff as ground truth.
+ */
+describe('checkpoint continuity across attempts (W17-02)', () => {
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  it('RED FIXTURE: attempt 2\'s prompt carries attempt 1\'s checkpoint (remaining work + next step) — fails if the handoff is a fresh start', async () => {
+    fixture = await setupFixture();
+    seedTicket(fixture.log, 'W9-01');
+
+    const prompts: string[] = [];
+    let first = true;
+    const spawn: SpawnSession = async (input) => {
+      prompts.push(input.prompt);
+      if (first) {
+        first = false;
+        // A budget-stopped session: no manifest, but a checkpoint line.
+        return {
+          stdout: '',
+          stderr:
+            'agent session stopped: exceeded the per-session tool-iteration budget\n' +
+            'SESSION_CHECKPOINT {"completed":["drafted the schema"],"remaining":["validation rules"],"next":"write validate.ts"}',
+          exitCode: 1,
+        };
+      }
+      return spoofedSpawn(input);
+    };
+    await runLandLoop({
+      ...baseOptions(fixture, spawn),
+      maxLadderAttempts: 2,
+    });
+
+    expect(prompts.length).toBeGreaterThan(1);
+    expect(prompts[1]).toContain('RAN OUT OF BUDGET MID-WORK. CONTINUE');
+    expect(prompts[1]).toContain('validation rules');
+    expect(prompts[1]).toContain('write validate.ts');
+    // Attempt 1 changed nothing in the worktree, so the completed claim is
+    // flagged, not believed.
+    expect(prompts[1]).toContain('WARNING: its checkpoint claims completed work');
+  });
+});

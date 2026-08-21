@@ -12,6 +12,7 @@ import type { WorktreeHandle } from '@dokima/git';
 import { redactDeep } from '@dokima/shared';
 import type { Ticket } from '@dokima/tickets';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
+import { extractSessionCheckpoint } from './agent-session/session-checkpoint.js';
 import type { LandLoopOptions } from './loop-land.js';
 import type { AttemptFeedback } from './loop-handoff.js';
 import { sameGaps } from './loop-land-infra.js';
@@ -73,6 +74,7 @@ export async function runSessionAbsorbingProviderFailure(
         manifest: null,
         manifestParseTier: null,
         scopeViolations: [],
+        changedPaths: [],
       },
     };
   }
@@ -179,6 +181,27 @@ export function nextFeedback(
   if (stalled && bounds.mode === 'ladder' && attempt < bounds.limit) {
     return { kind: 'no_progress' };
   }
-  return { kind: 'continue', feedback: { attempt, gaps } };
+  // W17-02: a budget-stopped session leaves a checkpoint; the next attempt
+  // continues from it. The worktree's REAL changed paths ride along as
+  // ground truth, and a checkpoint claiming completed work the diff does
+  // not show is flagged, never believed (C-2).
+  const checkpoint = extractSessionCheckpoint(session.output);
+  return {
+    kind: 'continue',
+    feedback: {
+      attempt,
+      gaps,
+      ...(checkpoint
+        ? {
+            checkpoint: {
+              ...checkpoint,
+              worktreeChanged: session.changedPaths,
+              claimMismatch:
+                checkpoint.completed.length > 0 && session.changedPaths.length === 0,
+            },
+          }
+        : {}),
+    },
+  };
 }
 

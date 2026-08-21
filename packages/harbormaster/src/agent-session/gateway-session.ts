@@ -116,6 +116,11 @@ import {
   earlyStopStderr,
   type ProgressToolCall,
 } from './session-progress.js';
+import {
+  CHECKPOINT_REQUEST,
+  checkpointStderrLine,
+  parseCheckpointReply,
+} from './session-checkpoint.js';
 
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
@@ -216,6 +221,47 @@ export function createGatewaySpawnSession(
       messages.push(anchorMessage);
     };
 
+    const baseTurnDeps = {
+      route: () =>
+        route({
+          matrix: options.matrix,
+          role: options.role,
+          taskType,
+          actorId: options.actorId,
+          fitnessStore,
+        }),
+      resolveProvider: options.resolveProvider,
+      role: options.role,
+      ledger: options.ledger,
+      projectId: options.projectId,
+      runId: options.runId,
+      ticketId,
+      berthId,
+      log: options.log,
+      actorId: options.actorId,
+      onDelta: options.onDelta,
+      ...(maxTurnTokens > 0 ? { maxTokens: maxTurnTokens } : {}),
+      now,
+    };
+
+    // W17-02: one final tool-free turn at a BUDGET stop — where the session
+    // got to, so the next attempt continues instead of restarting. Best-
+    // effort: failure degrades to no checkpoint, never masks the stop (C-2).
+    const checkpointSuffix = async (): Promise<string> => {
+      try {
+        messages.push({ role: 'user', content: CHECKPOINT_REQUEST });
+        const { response } = await takeMeteredTurn({
+          ...baseTurnDeps,
+          messages,
+          tools: [],
+        });
+        const parsed = parseCheckpointReply(response.message.content);
+        return parsed ? `\n${checkpointStderrLine(parsed)}` : '';
+      } catch {
+        return '';
+      }
+    };
+
     const startedAtMs = Date.parse(now());
     const progress = options.progressBudget
       ? createSessionProgressBudget({
@@ -238,31 +284,12 @@ export function createGatewaySpawnSession(
       await refreshAnchor();
       // W13-16: route, stream and meter are one act — see `session-stream.ts`.
       const { response } = await takeMeteredTurn({
-        route: () =>
-          route({
-            matrix: options.matrix,
-            role: options.role,
-            taskType,
-            actorId: options.actorId,
-            fitnessStore,
-          }),
-        resolveProvider: options.resolveProvider,
-        role: options.role,
+        ...baseTurnDeps,
         messages,
         tools: [
           ...AGENT_SESSION_TOOL_SCHEMAS,
           ...(options.externalTools?.schemas ?? []),
         ],
-        ledger: options.ledger,
-        projectId: options.projectId,
-        runId: options.runId,
-        ticketId,
-        berthId,
-        log: options.log,
-        actorId: options.actorId,
-        onDelta: options.onDelta,
-        ...(maxTurnTokens > 0 ? { maxTokens: maxTurnTokens } : {}),
-        now,
       });
 
       const truncated = turnTokenStop(response.finishReason, maxTurnTokens);
@@ -349,21 +376,24 @@ export function createGatewaySpawnSession(
         if (stop) {
           return {
             stdout: '',
-            stderr: earlyStopStderr(iteration, stop.reason),
+            stderr: earlyStopStderr(iteration, stop.reason) + (await checkpointSuffix()),
             exitCode: 1,
           };
         }
       }
     }
 
+    const exhausted = progress
+      ? budgetExhaustedStderr(progress.budget(), progress.entries())
+      : `agent session stopped: exceeded the per-session tool-iteration budget ` +
+        `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
+        `real but unfinished, raise maxToolIterations — chatty local models often ` +
+        `need more than the default.`;
     return {
       stdout: '',
-      stderr: progress
-        ? budgetExhaustedStderr(progress.budget(), progress.entries())
-        : `agent session stopped: exceeded the per-session tool-iteration budget ` +
-          `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
-          `real but unfinished, raise maxToolIterations — chatty local models often ` +
-          `need more than the default.`,
+      // Checkpoints ride the W17-01 opt-in: the fixed legacy path stays
+      // byte-identical (its tests count provider calls).
+      stderr: exhausted + (progress ? await checkpointSuffix() : ''),
       exitCode: 1,
     };
   };

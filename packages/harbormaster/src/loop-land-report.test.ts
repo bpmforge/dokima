@@ -25,6 +25,7 @@ function attempt(output: string, attemptNo = 1): LandAttempt {
       manifest: null,
       manifestParseTier: null,
       scopeViolations: [],
+      changedPaths: [],
     },
     closeGate: null,
   };

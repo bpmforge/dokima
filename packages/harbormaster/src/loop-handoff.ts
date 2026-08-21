@@ -67,6 +67,20 @@ export interface AttemptFeedback {
    * module header for exactly that reason).
    */
   readonly priorSolution?: { readonly findingId: string; readonly summary: string };
+  /**
+   * W17-02: where the previous BUDGET-STOPPED attempt got to — its own
+   * stated checkpoint plus the worktree's REAL changed paths. Leads the
+   * handoff so the model continues instead of restarting. Evidence, not a
+   * done-claim: `claimMismatch` is set when the checkpoint claims completed
+   * work the diff does not show, and the render says so.
+   */
+  readonly checkpoint?: {
+    readonly completed: readonly string[];
+    readonly remaining: readonly string[];
+    readonly next: string;
+    readonly worktreeChanged: readonly string[];
+    readonly claimMismatch: boolean;
+  };
 }
 
 /**
@@ -145,10 +159,31 @@ export function defaultHandoffBuilder(
  * second place to keep correct.
  */
 export function withFeedback(context: string, feedback?: AttemptFeedback): string {
-  if (!feedback || (feedback.gaps.length === 0 && !feedback.priorSolution)) {
+  if (
+    !feedback ||
+    (feedback.gaps.length === 0 && !feedback.priorSolution && !feedback.checkpoint)
+  ) {
     return context;
   }
   const lines = [context];
+  // W17-02: the previous attempt's checkpoint leads everything — continue,
+  // don't restart. The worktree diff rides along as the ground truth.
+  if (feedback.checkpoint) {
+    const c = feedback.checkpoint;
+    lines.push(
+      '',
+      'PREVIOUS ATTEMPT RAN OUT OF BUDGET MID-WORK. CONTINUE it — do not start over:',
+      ...(c.completed.length ? [`  already done (per its checkpoint): ${c.completed.join('; ')}`] : []),
+      ...(c.worktreeChanged.length
+        ? [`  files it really changed: ${c.worktreeChanged.join(', ')}`]
+        : ['  the worktree shows NO changes from it']),
+      ...(c.claimMismatch
+        ? ['  WARNING: its checkpoint claims completed work the worktree does not show — verify before trusting it.']
+        : []),
+      ...(c.remaining.length ? [`  remaining: ${c.remaining.join('; ')}`] : []),
+      ...(c.next ? [`  next step it planned: ${c.next}`] : []),
+    );
+  }
   // W16-03: the prior verified solution LEADS (US-602's discipline at the
   // playbook level — meet the known answer before deriving a new one).
   if (feedback.priorSolution) {

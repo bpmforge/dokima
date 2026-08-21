@@ -65,6 +65,8 @@ export interface SessionResult {
   readonly manifestParseTier: ManifestParseTier | null;
   /** Paths the session touched (real `git diff`) that fall outside handoff.writeScope. */
   readonly scopeViolations: readonly string[];
+  /** W17-02: every path the session actually changed (real `git diff`) — the mechanical cross-check for a budget-stop checkpoint's claims. */
+  readonly changedPaths: readonly string[];
 }
 
 /**
@@ -96,6 +98,7 @@ export async function runSession(input: RunSessionInput): Promise<SessionResult>
     manifest,
     manifestParseTier: tier,
     scopeViolations,
+    changedPaths,
   };
 }
 

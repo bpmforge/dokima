@@ -35,6 +35,7 @@ function attempt(output: string): LandAttempt {
       manifest: null,
       manifestParseTier: null,
       scopeViolations: [],
+      changedPaths: [],
     },
     closeGate: null,
   };
@@ -137,6 +138,7 @@ describe('calibration observations from attempts (W15-02, FR-L3)', () => {
         },
         manifestParseTier: 'contract',
         scopeViolations: [],
+      changedPaths: [],
       },
       closeGate: gateOk
         ? ({ ok: true } as never)
@@ -266,6 +268,7 @@ function claimedPassAttemptFor(gateOk: boolean): LandAttempt {
       },
       manifestParseTier: 'contract',
       scopeViolations: [],
+      changedPaths: [],
     },
     closeGate: gateOk
       ? ({ ok: true } as never)

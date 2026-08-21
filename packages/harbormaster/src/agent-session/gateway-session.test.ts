@@ -1134,6 +1134,58 @@ describe('createGatewaySpawnSession', () => {
       },
     );
   });
+
+  describe('the budget-stop checkpoint (W17-02)', () => {
+  it('with progressBudget enabled, an exhausted session takes ONE final tool-free turn and its stderr carries the checkpoint line', async () => {
+    const { log, cwd } = await setup();
+    const provider = new ScriptedFakeProvider([
+      toolCallResponse([{ id: 'call_1', name: 'list', arguments: {} }]),
+      toolCallResponse([{ id: 'call_2', name: 'list', arguments: { path: 'b' } }]),
+      finalResponse(
+        '{"completed":["looked around"],"remaining":["the actual work"],"next":"write the file"}',
+      ),
+    ]);
+    const ledger = new CostLedger();
+    const spawn = createGatewaySpawnSession(
+      baseSpawnOptions(log, provider, ledger, {
+        maxIterations: 2,
+        progressBudget: { ceiling: 2 },
+      }),
+    );
+    const result = await spawn({
+      prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+      cwd,
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('SESSION_CHECKPOINT');
+    expect(result.stderr).toContain('the actual work');
+    // 2 budget turns + exactly 1 checkpoint turn.
+    expect(provider.calls).toHaveLength(3);
+  });
+
+  it('a failing checkpoint turn never masks the budget stop itself', async () => {
+    const { log, cwd } = await setup();
+    const provider = new ScriptedFakeProvider([
+      toolCallResponse([{ id: 'call_1', name: 'list', arguments: {} }]),
+      toolCallResponse([{ id: 'call_2', name: 'list', arguments: { path: 'b' } }]),
+      // Script runs dry -> the checkpoint turn throws inside the guard.
+    ]);
+    const ledger = new CostLedger();
+    const spawn = createGatewaySpawnSession(
+      baseSpawnOptions(log, provider, ledger, {
+        maxIterations: 2,
+        progressBudget: { ceiling: 2 },
+      }),
+    );
+    const result = await spawn({
+      prompt: 'TICKET: W9-01 Ticket W9-01\nWRITE-SCOPE: **\nVERIFY: true\n',
+      cwd,
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('exceeded the per-session tool-iteration budget');
+    expect(result.stderr).not.toContain('SESSION_CHECKPOINT');
+  });
+});
 });
 
 describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unchanged)', () => {
@@ -1482,5 +1534,4 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     const comment = ticket.history.find((h) => h.verb === 'comment');
     expect(comment?.body).toContain('Parked with evidence');
   });
-
 });
