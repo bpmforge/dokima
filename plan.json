@@ -10232,7 +10232,7 @@
       ],
       "depends_on": [],
       "phase": 19,
-      "status": "in_progress",
+      "status": "done",
       "id": "W19-02",
       "title": "a successful raised-budget retry teaches the calibrator",
       "module": "harbormaster",
