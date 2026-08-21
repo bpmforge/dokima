@@ -9812,7 +9812,7 @@
         "W17-06"
       ],
       "phase": 17,
-      "status": "in_progress",
+      "status": "done",
       "id": "W17-07",
       "title": "the board during and after a run \u2014 a visible Stop, parked tickets that say so, agents that say they are working, and an end-of-run summary",
       "module": "web",
@@ -9868,7 +9868,7 @@
       ],
       "depends_on": [],
       "phase": 17,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W17-09",
       "title": "the Fleet leads with the living \u2014 live projects first, dead entries bulk-removable, a new project opens itself",
       "module": "web",
