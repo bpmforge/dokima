@@ -1301,3 +1301,24 @@ only when there is a plugin to load) and W13-32 (wire the autonomy dial —
 **waiting on a founder decision** about which defaults are acceptable
 unattended; the dial currently stores a choice honestly labeled as not yet
 in force, per W13-26).
+
+### 2026-08-21 — W16 vision wave filed: the challenger audits the whole product
+
+Three parallel challenger audits (vision-vs-shipped, novice journey,
+learning loop) against BLUEPRINT. Verified along the way: W13-59..62
+acceptance genuinely met in code; the memory loop capture → consolidate →
+recall-into-maker-context is CLOSED (anchor refreshed before iteration 1,
+2000-token budget, redaction) — the old "notes never reach the maker" note
+is superseded for memory recall. Six CONFIRMED gaps filed as W16-01..06
+(escalation ladder never escalates; --berths read by nothing; playbook R0
+consult uncalled; forge mirror unreachable + push shim throws; challenger
+gate/research path never invoked; interview error copy novice-hostile).
+
+- W16-06 — **first-contact errors speak novice**: the interview's three
+  failure paths rendered `err.message (HTTP n)` as the primary line on the
+  first screen a person meets. Now: plain-language summary + concrete next
+  step (per-status, mechanism-true), raw string demoted to a closed
+  "Technical detail" disclosure (FailureNotice); the resume 409 says
+  "decisions above still need an answer." Gate: 3,976 tests, 72 e2e
+  (RED FIXTURE: forced 500 must never show a bare "(HTTP" primary line),
+  ui-copy 0/0. Also fixed the interview e2e rm-vs-server ENOTEMPTY race.
