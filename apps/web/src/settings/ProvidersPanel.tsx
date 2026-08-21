@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ArmedButton } from '../lib/ArmedButton.js';
 import { ProviderAuthFields } from './ProviderAuthFields.js';
 import {
   buildProviderEntry,
@@ -200,9 +201,10 @@ export function ProvidersPanel({
     }
   }, [applyGlobally, draft, entries, projectId, testProvider]);
 
+  // W18-01: two-click armed confirm on the button itself — the native
+  // dialog it replaced blocked the whole tab.
   const handleRemove = useCallback(
     async (entry: ProviderEntry) => {
-      if (!window.confirm(removalCopy(entry))) return;
       try {
         await deleteProvider(projectId, entry.id);
         setCatalogs((prev) => {
@@ -308,9 +310,13 @@ export function ProvidersPanel({
                     <button type="button" onClick={() => handleEdit(entry)}>
                       Edit
                     </button>
-                    <button type="button" onClick={() => void handleRemove(entry)}>
-                      Remove
-                    </button>
+                    <ArmedButton
+                      label="Remove"
+                      armedLabel="Really remove? Click again"
+                      armedDetail={removalCopy(entry)}
+                      testId={`provider-remove-${entry.id}`}
+                      onConfirm={() => void handleRemove(entry)}
+                    />
                   </td>
                 </tr>
               );

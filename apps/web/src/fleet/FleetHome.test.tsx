@@ -274,18 +274,19 @@ describe('a created project opens itself; the graveyard clears in one action (W1
     const alive = { ...(dead('alive') as object), available: true } as never;
     mockedApi.fetchProjects.mockResolvedValue([dead('d1'), dead('d2'), alive]);
     mockedApi.removeProject.mockResolvedValue(undefined as never);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    try {
-      render(<FleetHome onOpenProject={vi.fn()} onOpenGuidedSample={vi.fn()} />);
-      const button = await screen.findByTestId('fleet-remove-unavailable');
-      expect(button.textContent).toContain('Remove 2 unavailable');
-      fireEvent.click(button);
-      await waitFor(() => expect(mockedApi.removeProject).toHaveBeenCalledTimes(2));
-      expect(confirmSpy.mock.calls[0]![0]).toContain('Nothing on disk is touched');
-      const removed = mockedApi.removeProject.mock.calls.map((c) => c[0]);
-      expect(removed.sort()).toEqual(['d1', 'd2']);
-    } finally {
-      confirmSpy.mockRestore();
-    }
+    render(<FleetHome onOpenProject={vi.fn()} onOpenGuidedSample={vi.fn()} />);
+    const button = await screen.findByTestId('fleet-remove-unavailable');
+    expect(button.textContent).toContain('Remove 2 unavailable');
+    // W18-01: the confirmation is the armed second click — the first click
+    // alone must remove nothing, and the consequence copy appears between.
+    fireEvent.click(button);
+    expect(mockedApi.removeProject).not.toHaveBeenCalled();
+    expect(screen.getByRole('status').textContent).toContain(
+      'nothing on disk is touched',
+    );
+    fireEvent.click(button);
+    await waitFor(() => expect(mockedApi.removeProject).toHaveBeenCalledTimes(2));
+    const removed = mockedApi.removeProject.mock.calls.map((c) => c[0]);
+    expect(removed.sort()).toEqual(['d1', 'd2']);
   });
 });

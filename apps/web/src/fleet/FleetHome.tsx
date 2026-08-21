@@ -6,6 +6,7 @@ import {
   FleetApiError,
   removeProject as removeProjectRequest,
 } from './api.js';
+import { ArmedButton } from '../lib/ArmedButton.js';
 import { DirectoryPicker } from './DirectoryPicker.js';
 import { ProjectCard } from './ProjectCard.js';
 import { sortByAttention } from './sort.js';
@@ -100,18 +101,12 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
 
   // W17-09: one confirmed action for the whole graveyard. Same honest
   // removal semantics as the per-card button: registry entries only,
-  // nothing on disk, onboarding a folder again restores it.
+  // nothing on disk, onboarding a folder again restores it. W18-01 made
+  // the confirmation two clicks on the button itself — the native dialog
+  // it replaced blocked the whole tab.
   const unavailableCount = sorted.filter((card) => !card.available).length;
   const handleRemoveUnavailable = useCallback(async () => {
     const gone = cards.filter((card) => !card.available);
-    if (
-      !window.confirm(
-        `Remove ${gone.length} unavailable ${gone.length === 1 ? 'entry' : 'entries'} from the Fleet? ` +
-          'Nothing on disk is touched, and onboarding a folder again restores it.',
-      )
-    ) {
-      return;
-    }
     for (const card of gone) await removeProjectRequest(card.id);
     await refresh();
   }, [cards, refresh]);
@@ -168,15 +163,15 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
             Show archived
           </label>
           {unavailableCount > 0 && (
-            <button
-              type="button"
+            <ArmedButton
               className="btn-quiet"
-              data-testid="fleet-remove-unavailable"
-              onClick={() => void handleRemoveUnavailable()}
+              testId="fleet-remove-unavailable"
+              label={`Remove ${unavailableCount} unavailable`}
+              armedLabel={`Really remove ${unavailableCount}? Click again`}
+              armedDetail="Registry entries only — nothing on disk is touched, and onboarding a folder again restores it."
               title="Registry entries only — nothing on disk is touched, and onboarding a folder again restores it."
-            >
-              Remove {unavailableCount} unavailable
-            </button>
+              onConfirm={handleRemoveUnavailable}
+            />
           )}
         </div>
       </header>
@@ -213,7 +208,12 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
           {(() => {
             const total = (pick: (c: (typeof sorted)[number]) => number) =>
               sorted.reduce((sum, c) => sum + pick(c), 0);
-            const readings: { label: string; value: number | string; attention?: boolean; idle?: boolean }[] = [
+            const readings: {
+              label: string;
+              value: number | string;
+              attention?: boolean;
+              idle?: boolean;
+            }[] = [
               { label: 'ready', value: total((c) => c.board.ready) },
               {
                 label: 'blocked',

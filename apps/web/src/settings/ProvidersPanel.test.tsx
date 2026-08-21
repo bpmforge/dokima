@@ -13,7 +13,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ProvidersPanel } from './ProvidersPanel.js';
 import { ModelMatrixPanel } from './ModelMatrixPanel.js';
 import { useState } from 'react';
@@ -317,8 +317,7 @@ describe('ProvidersPanel remove (UX_SPEC §6a exact removal copy, C-6)', () => {
     credential_ref: 'gone-credential',
   };
 
-  it('names the id and the keychain ref in the confirm, and only calls DELETE when confirmed', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('names the id and the keychain ref between the two clicks, and only calls DELETE on the second (W18-01)', async () => {
     fetchSpy.mockImplementation(
       router([
         getProviders(() => jsonResponse({ providers: [ENTRY] })),
@@ -327,25 +326,35 @@ describe('ProvidersPanel remove (UX_SPEC §6a exact removal copy, C-6)', () => {
     );
     render(<ProvidersPanel projectId="p1" />);
     await screen.findByText('gone');
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    const button = screen.getByTestId('provider-remove-gone');
+    fireEvent.click(button);
 
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Remove gone?'));
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('gone-credential'));
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('append-only (C-6)'));
-    expect(fetchSpy).toHaveBeenCalledWith(
+    // Armed, not executed: the exact §6a removal copy stands between the clicks.
+    const detail = screen.getByRole('status').textContent ?? '';
+    expect(detail).toContain('Remove gone?');
+    expect(detail).toContain('gone-credential');
+    expect(detail).toContain('append-only (C-6)');
+    expect(fetchSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('/providers/gone'),
       expect.objectContaining({ method: 'DELETE' }),
     );
+
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/providers/gone'),
+        expect.objectContaining({ method: 'DELETE' }),
+      ),
+    );
   });
 
-  it('does nothing when the removal confirm is declined', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('does nothing when the armed state lapses unclicked', async () => {
     fetchSpy.mockImplementation(
       router([getProviders(() => jsonResponse({ providers: [ENTRY] }))]),
     );
     render(<ProvidersPanel projectId="p1" />);
     await screen.findByText('gone');
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByTestId('provider-remove-gone'));
 
     expect(fetchSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('/providers/gone'),
