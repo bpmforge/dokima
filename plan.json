@@ -9637,7 +9637,7 @@
       ],
       "depends_on": [],
       "phase": 17,
-      "status": "in_progress",
+      "status": "done",
       "id": "W17-01",
       "title": "the tool-turn budget earns itself \u2014 mechanical convergence extends it, no-progress stops it early, the T-27 ceiling never moves",
       "module": "harbormaster",
@@ -9668,7 +9668,7 @@
         "W17-01"
       ],
       "phase": 17,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W17-02",
       "title": "a budget-stopped attempt leaves a checkpoint \u2014 the retry continues the work instead of rediscovering it",
       "module": "harbormaster",
