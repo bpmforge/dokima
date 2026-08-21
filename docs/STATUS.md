@@ -1432,3 +1432,37 @@ on the turn budget). All twelve landed same day through the full gate:
 
 Board: 341/343 done — remaining are the founder-parked W12-44 and W13-32.
 Next: pnpm build + live browser pass with the full UX/UI design review.
+
+### 2026-08-21 — W18 (9/9): the first full visual design review, live
+
+The first UX/UI design pass over the REAL running canvas (screenshots,
+every surface, then fix-verify-repeat until a pass found nothing new).
+Iteration 1 found eight; iteration 2 found two more (filed as one pair);
+iteration 3 found zero — the loop's stop condition.
+
+- W18-01 — **no surface blocks the canvas**: window.confirm froze the
+  whole tab live (fleet bulk-remove). Both native-confirm sites became
+  ArmedButton (two-click confirm, consequence between the clicks); a
+  sweep test keeps native dialogs out of apps/web/src forever.
+- W18-02 — a described project greets its founder with an
+  "Already described" recap (N tickets, nothing lost), never a blank
+  form that reads as data loss.
+- W18-03 — deliverables on disk are never invisible: uncommitted docs
+  (recipe-keeper's DECISIONS.md, written by a parked run) list with a
+  "not yet committed" mark instead of vanishing.
+- W18-04/07 — every clamped line (morning digest lead lesson, park
+  reason on the card face) truncates on a word with an ellipsis; the
+  card carries the full reason in its title.
+- W18-05 — Runs & Forge uses the shared row-form: fields align, headers
+  keep their gutter.
+- W18-06 — the empty model picker names the real step ("test the
+  lm-studio provider on the Providers tab"), not a stale "above".
+- W18-08 — unavailable fleet cards compact to one honest line; the
+  removal semantics are said once per page, not 28 times.
+- W18-09 — the unset turn budget shows "12 (default)"; the docs pane
+  separates title from the uncommitted marker.
+
+Verified live post-fix: the 28-entry graveyard cleared in two clicks
+with no freeze; recap, docs marker, aligned settings, and light theme
+all confirmed in the browser. Board: 350/352 done — remaining are the
+founder-parked W12-44 and W13-32.
