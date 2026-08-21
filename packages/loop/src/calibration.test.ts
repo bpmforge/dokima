@@ -5,6 +5,7 @@ import {
   MIN_SAMPLE_COUNT,
   applyCalibrationBias,
   createCalibrationRecord,
+  escalateIfOverclaiming,
   gateDecision,
   updateCalibration,
 } from './calibration.js';
@@ -149,5 +150,49 @@ describe('gateDecision (FR-L3)', () => {
     expect(gateDecision({ anchorIsPresent: false, deterministicGatePassed: false })).toBe(
       false,
     );
+  });
+});
+
+describe('escalateIfOverclaiming (W15-02, FR-L3)', () => {
+  const NOW = () => '2026-08-20T00:00:00.000Z';
+  function history(rawVsVerified: [number, number][], model = 'm') {
+    let record = createCalibrationRecord({ model, phase: 'coding-agent' }, NOW);
+    for (const [rawConfidence, verifiedConfidence] of rawVsVerified) {
+      record = updateCalibration(record, { rawConfidence, verifiedConfidence }, NOW);
+    }
+    return record;
+  }
+
+  it('RED FIXTURE: the same borderline score splits by track record — honest maker keeps BOUNDED_POLISH, chronic over-claimer goes to a person', () => {
+    const honest = history(Array(6).fill([1, 1]) as [number, number][]);
+    const overclaimer = history(Array(6).fill([1, 0]) as [number, number][]);
+
+    expect(escalateIfOverclaiming('BOUNDED_POLISH', honest)).toEqual({
+      action: 'BOUNDED_POLISH',
+      overclaiming: false,
+    });
+    expect(escalateIfOverclaiming('BOUNDED_POLISH', overclaimer)).toEqual({
+      action: 'ESCALATE_TO_HUMAN',
+      overclaiming: true,
+    });
+  });
+
+  it('RED FIXTURE: asymmetry is structural — an over-claimer never GAINS acceptance, and a clean ACCEPT is never revoked', () => {
+    const overclaimer = history(Array(6).fill([1, 0]) as [number, number][]);
+    // ACCEPT stays ACCEPT: the deterministic gate already passed and >=7 is
+    // advisory over it; calibration only moves borderline work to a person.
+    expect(escalateIfOverclaiming('ACCEPT', overclaimer).action).toBe('ACCEPT');
+    expect(escalateIfOverclaiming('ESCALATE_TO_HUMAN', overclaimer).action).toBe(
+      'ESCALATE_TO_HUMAN',
+    );
+  });
+
+  it('below MIN_SAMPLE_COUNT the record is silent, exactly like bias', () => {
+    const thin = history(Array(3).fill([1, 0]) as [number, number][]);
+    expect(escalateIfOverclaiming('BOUNDED_POLISH', thin)).toEqual({
+      action: 'BOUNDED_POLISH',
+      overclaiming: false,
+    });
+    expect(escalateIfOverclaiming('BOUNDED_POLISH', undefined).overclaiming).toBe(false);
   });
 });

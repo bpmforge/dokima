@@ -23,10 +23,13 @@
 import { redactDeep } from '@dokima/shared';
 import {
   appendFactSolution,
+  getCalibration,
   insertFact,
   listFacts,
   markFactVerified,
+  upsertCalibration,
 } from '@dokima/memory';
+import { createCalibrationRecord, updateCalibration } from '@dokima/loop';
 import type { AttemptOutcomeHook, LandAttempt } from '@dokima/harbormaster';
 import type { EventLog } from '@dokima/events';
 
@@ -44,13 +47,44 @@ function lastAttemptOutput(attempts: readonly LandAttempt[]): string {
 export interface LearningHookOptions {
   readonly log: EventLog;
   readonly secretValues: readonly string[];
+  /** W15-02: the maker model, keying its calibration record (per model+role). */
+  readonly makerModel?: string;
   readonly now?: () => string;
+}
+
+/** W15-02 (FR-L3): fold each attempt's self-claim-vs-gate outcome into the maker's calibration record. A manifest claiming a passing verify is a self-claim of 1; the close gate's verdict is the verified value. Attempts with no manifest made no claim and observe nothing. */
+function recordCalibration(
+  options: LearningHookOptions,
+  attempts: readonly LandAttempt[],
+  now: () => string,
+): void {
+  if (!options.makerModel) return;
+  const phase = 'coding-agent';
+  let record =
+    getCalibration(options.log.db, options.makerModel, phase) ??
+    createCalibrationRecord({ model: options.makerModel, phase }, now);
+  let observed = false;
+  for (const attempt of attempts) {
+    const manifest = attempt.session.manifest;
+    if (!manifest) continue;
+    record = updateCalibration(
+      record,
+      {
+        rawConfidence: manifest.verify.exit === 0 ? 1 : 0,
+        verifiedConfidence: attempt.closeGate?.ok ? 1 : 0,
+      },
+      now,
+    );
+    observed = true;
+  }
+  if (observed) upsertCalibration(options.log.db, record);
 }
 
 export function createLearningHook(options: LearningHookOptions): AttemptOutcomeHook {
   const now = options.now ?? (() => new Date().toISOString());
   return {
     onParked({ ticketId, reason, attempts }) {
+      recordCalibration(options, attempts, now);
       const symptom = redactDeep(
         `PARKED (${reason}) after ${attempts.length} attempt(s): ` +
           lastAttemptOutput(attempts),
@@ -69,7 +103,8 @@ export function createLearningHook(options: LearningHookOptions): AttemptOutcome
       );
       markFactVerified(options.log.db, fact.id);
     },
-    onLanded({ ticketId, commits }) {
+    onLanded({ ticketId, commits, attempts }) {
+      recordCalibration(options, attempts, now);
       const solution =
         `${SOLVED_MARKER} a later attempt landed this ticket` +
         (commits.length > 0 ? ` (commits ${commits.join(', ')})` : '');
