@@ -10171,6 +10171,32 @@
         "The removal-semantics sentence appears exactly once on the fleet page",
         "Fleet e2e stays green"
       ]
+    },
+    {
+      "stories": [
+        "US-303"
+      ],
+      "depends_on": [],
+      "phase": 18,
+      "status": "in_progress",
+      "id": "W18-09",
+      "title": "the turn-budget field shows the default it currently runs at",
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/web/src/artifacts/**"
+      ],
+      "notes": [
+        "Live pass 2: an unset Starting-turns input renders empty \u2014 the founder cannot see what the budget actually is (12). Placeholder names the default; the docs pane also ran the doc title into the uncommitted marker with no separator."
+      ],
+      "acceptance": [
+        "Unset turn-budget input carries a placeholder naming the default (12, matching DEFAULT_MAX_TOOL_ITERATIONS)",
+        "The docs list separates title and uncommitted marker visibly (em-dash or styled gap)",
+        "Component tests assert both"
+      ]
     }
   ]
 }
