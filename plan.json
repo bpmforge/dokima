@@ -9336,6 +9336,180 @@
         "Fix what survives at CRITICAL/HIGH within this ticket; file MEDIUM/LOW as tickets with the verified citations. validate-ui-copy stays 0/0; axe passes on every touched surface (the W13-52 contrast lesson).",
         "RED FIXTURE: the refreshed tour fails if a new surface is missing from the pack inventory \u2014 coverage is asserted, not assumed."
       ]
+    },
+    {
+      "stories": [
+        "US-304"
+      ],
+      "depends_on": [],
+      "id": "W16-01",
+      "title": "the escalation ladder actually escalates the model \u2014 cheapest-first, rung-resolved per attempt, ledgered",
+      "phase": 16,
+      "module": "gateway",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "llm-integration-engineer",
+      "write_scope": [
+        "packages/gateway/src/escalation/**",
+        "packages/gateway/src/index.ts",
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Challenger audit 2026-08-21: runEscalationPolicy (packages/gateway/src/escalation/policy.ts:147) is not re-exported and has zero callers; the wired loop-land-policy.ts maps R1-R3 to attempt count on ONE model (\"no model-routed rungs of its own\"), and run-build-spawn.ts:88 resolves a single model once with fallbackChain: []. BLUEPRINT 3.3 promises cheapest-first THEN one rung up THEN frontier. Law 9b: which ladder applies is the user's recorded model policy \u2014 local-only users get an honest single-rung ladder (FR-G5 degrades honestly), never a silent cloud call."
+      ],
+      "acceptance": [
+        "loop-land-policy delegates rung resolution to the gateway escalation policy: each retry re-resolves the model for the current rung from the user's recorded model policy (local-only, pinned, cheapest-first, approval-gated) \u2014 no policy path ever silently escalates past what the user chose.",
+        "Every rung advance is ledgered as an escalation event (FR-G3) carrying rung, model, and reason; the spawn path (run-build-spawn) receives the rung-resolved target instead of a once-resolved model with an empty fallback chain.",
+        "Tests use the fake-model gateway only (law 9a); a fixture proves a cheapest-first policy walks R1 -> R2 -> R3 across failed attempts and a pinned/local-only policy stays on its rung with an honest degradation note.",
+        "RED FIXTURE: a planted always-fails ticket under a cheapest-first policy must show a rung advance in the ledger; the fixture fails if all attempts ran on the same model with no escalation event."
+      ]
+    },
+    {
+      "stories": [
+        "US-204"
+      ],
+      "depends_on": [
+        "W16-01"
+      ],
+      "id": "W16-02",
+      "title": "berths run in parallel \u2014 the concurrency dial actually spawns N lane-assigned workers",
+      "phase": 16,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "packages/gateway/src/pool/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Challenger audit 2026-08-21: runBerths (packages/harbormaster/src/berths.ts:296) has zero callers and is not barrel-exported; run-build.ts:291 calls the sequential runLandLoop once, and run-build.ts:120 records \"--berths was validated, stored, and read by nothing\". GatewayPool and GlobalBerthGovernor (packages/gateway/src/pool/*) also have zero external callers. BLUEPRINT 3.6/3.11. The web ActiveBerthsStrip already renders the stored count \u2014 the UI is ahead of the engine."
+      ],
+      "acceptance": [
+        "executeBuildRun consumes command.berths: N > 1 drives runBerths (or an equivalent lane-assigned multi-worker loop) with one worktree per worker, same-lane tickets never concurrent (law 1); N = 1 keeps the existing sequential path byte-for-byte in behavior.",
+        "Model traffic from concurrent berths flows through GatewayPool under GlobalBerthGovernor fair scheduling so one project cannot starve another; pool decisions are observable in the run events.",
+        "All state transitions still go through the verbs/receipts APIs from every worker (C-2/C-3); the single-writer-per-project-DB rule (C-6) is preserved \u2014 document the mechanism in the code where it is enforced.",
+        "Tests (fake gateway, recorded fixtures) prove: 2 berths land 2 independent-lane tickets with interleaved progress events; a same-lane pair is serialized; a worker crash disposes its worktree and the run continues (FR-G5).",
+        "RED FIXTURE: with --berths 2 and two claimable same-lane tickets, the fixture fails if both are ever in_progress at once."
+      ]
+    },
+    {
+      "stories": [
+        "US-602"
+      ],
+      "depends_on": [
+        "W16-01"
+      ],
+      "id": "W16-03",
+      "title": "the playbook resolves at rung 0 \u2014 a prior verified solution is consulted before any model attempt",
+      "phase": 16,
+      "module": "memory",
+      "lane": "core",
+      "points": 3,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/memory/src/playbook/**",
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Memory-loop audit 2026-08-21: createPlaybookMemoryConsultHook (packages/memory/src/playbook/r0-hook.ts:30), listPlaybookHistory, and preparePlaybookPromotion are called only from inside packages/memory and tests \u2014 the BLUEPRINT 3.3 promise \"a playbook hit resolves the ladder at rung 0 without re-attempting\" has no live consult point. Same built-but-unwired defect class W14-05 fixed for facts. Wire through the same apps/server-composed seam as memoryAnchor/attemptOutcome in run-build-spawn.ts."
+      ],
+      "acceptance": [
+        "Before the first model attempt on a ticket, the land loop consults the playbook hook; a verified hit is applied as the R0 resolution (mechanically, via the verbs/receipts path \u2014 the model does not re-derive it) and the consult outcome (hit or miss) is ledgered.",
+        "A playbook hit that fails its own gate falls through to the normal ladder \u2014 R0 never masks a stale solution as success (C-2: the gate, not the playbook, decides).",
+        "Tests use recorded fixtures and the fake gateway; one fixture proves an R0 hit lands with zero model calls, another proves a stale hit falls through and the ladder proceeds.",
+        "RED FIXTURE: a planted playbook entry matching a planted failure must produce an R0 consult event; the fixture fails if the first attempt reaches the model with no consult ledgered."
+      ]
+    },
+    {
+      "stories": [
+        "US-502",
+        "US-504"
+      ],
+      "depends_on": [],
+      "id": "W16-04",
+      "title": "forge mirror goes live \u2014 @dokima/forge becomes a real dependency, lifecycle verbs write through, dual-remote push works",
+      "phase": 16,
+      "module": "forge",
+      "lane": "core",
+      "points": 5,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/forge/src/**",
+        "apps/server/src/cli/**",
+        "apps/server/package.json"
+      ],
+      "notes": [
+        "Challenger audit 2026-08-21: packages/forge/src/mirror/* (write-through, offline queue, reconciliation) is never re-exported by the package barrel and has zero external callers; apps/server does not even declare @dokima/forge as a dependency, and run-build.ts:373-380 throws unconditionally on any push attempt (\"dual-remote push is not wired into the CLI yet\"). BLUEPRINT 3.4 (Forge Mirror, the Jira-grade guarantee) and 3.9 (dual-remote sync), FR-T5. Offline forge (Gitea off-LAN) must queue and reconcile, never block a land (FR-G5)."
+      ],
+      "acceptance": [
+        "apps/server declares @dokima/forge; the mirror subtree (write-through, queue, reconciliation) is exported by the package barrel and each ticket lifecycle verb write-throughs to the configured forge, with an offline queue that flushes on reconnect and a reconciliation pass on run start.",
+        "The run-build push shim is replaced by pushToRemotes: merged work pushes to both remotes (law 10), an unreachable remote queues with an honest, ledgered note instead of failing the run.",
+        "Forge credentials come only from credential refs resolved by the keychain (law 8) \u2014 never from settings files or the event log; tests use a fake forge adapter, never live HTTP (law 9a).",
+        "RED FIXTURE: with the fake forge offline, a ticket land must succeed AND leave a queued mirror entry that a reconnect flush drains; the fixture fails if the land blocks or the queue entry is silently dropped."
+      ]
+    },
+    {
+      "stories": [
+        "US-405",
+        "US-105"
+      ],
+      "depends_on": [],
+      "id": "W16-05",
+      "title": "the challenger gate and the cited research path run in the phase pipeline \u2014 CONFIRMED/CONTRADICTED/UNVERIFIABLE, not decoration",
+      "phase": 16,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 3,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/pipeline/src/**",
+        "apps/server/src/api/pipeline/**"
+      ],
+      "notes": [
+        "Challenger audit 2026-08-21: buildChallengeReport (packages/pipeline/src/challenger/report.ts:37), isChallengerRequired, and the research template path (packages/pipeline/src/research/*) are called only from their own defining files; research/ is not exported by the pipeline barrel at all. FR-P4 and FR-P8: both fully built and tested, never invoked by phase execution. Same barrel-export-plus-one-call-site seam as the fixed W12-04/09 wirings (build-then-wire pattern)."
+      ],
+      "acceptance": [
+        "Phase execution consults isChallengerRequired at each gate it governs; when required, buildChallengeReport runs and its CONFIRMED/CONTRADICTED/UNVERIFIABLE verdicts are recorded as receipts the gate reads \u2014 a CONTRADICTED deliverable cannot pass on the maker's say-so (C-2, maker != verifier per C-4).",
+        "The research path is reachable: research/ is barrel-exported, templatesForPhase/getResearchTemplate feed the phases that declare research deliverables, and depth (quick/standard/deep) follows the recorded user policy.",
+        "Tests use recorded fixtures and the fake gateway; one fixture proves a challenger-required phase blocks on a CONTRADICTED verdict and passes once revised.",
+        "RED FIXTURE: a planted deliverable with a fabricated citation must come back CONTRADICTED or UNVERIFIABLE and hold the gate; the fixture fails if the phase advances anyway."
+      ]
+    },
+    {
+      "stories": [
+        "US-101"
+      ],
+      "depends_on": [],
+      "id": "W16-06",
+      "title": "first-contact errors speak novice \u2014 the interview failure path explains and offers a next step, technical detail demoted",
+      "phase": 16,
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Novice-journey audit 2026-08-21: InterviewPanel.tsx:204-210 renders `${err.message} (HTTP ${status})` verbatim when the interview submit fails \u2014 the novice's very first action after describing their idea \u2014 and the 409 resume path (InterviewPanel.tsx:227) shows raw err.message. OnboardingApiError (onboarding/api.ts:27-34) forwards whatever problem+json detail the server sent. Novice north star: the first thing a person sees on failure must say what happened in plain words and what to try, with the technical string demoted, matching the W13-59..62 pattern."
+      ],
+      "acceptance": [
+        "Both InterviewPanel catch sites render a plain-language message stating what failed and a concrete next step (retry, check the model is running) with the raw error and HTTP status demoted to a secondary/expandable line \u2014 mechanism-true wording, no invented causes.",
+        "The 409 resume path explains the conflict in novice terms (someone/something already moved this interview forward) and offers the honest recovery action.",
+        "validate-ui-copy stays 0/0 (new strings pass or are consciously baselined with rationale); axe passes on the touched surface.",
+        "RED FIXTURE: a forced submit failure in e2e must show the plain-language message and must NOT show a bare `(HTTP` string as the primary error line."
+      ]
     }
   ]
 }
