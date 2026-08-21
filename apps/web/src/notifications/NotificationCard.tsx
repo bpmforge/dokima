@@ -73,6 +73,34 @@ export function formatTimestamp(iso: string): string {
   }).format(new Date(iso));
 }
 
+/**
+ * W17-11: the C-4 same-model review refusal, explained where the person
+ * meets it. A one-model install skips machine review CORRECTLY (the only
+ * model would review its own work) — but a review-tier card carrying that
+ * refusal read as a broken feature. Fired by the refusal's own marker
+ * text, never a hardcoded ticket.
+ */
+const REVIEW_SKIP_MARKERS = ['never reviews its own work', 'same model as maker'];
+
+export function reviewSkipExplainer(item: NotificationItem): string | null {
+  const text = [
+    item.title,
+    summaryLine(item),
+    ...(item.kind === 'digest'
+      ? ((item.body as DigestBody | null)?.items ?? []).map(
+          (d) => `${d.title} ${d.summary ?? ''}`,
+        )
+      : []),
+  ].join(' ');
+  if (!REVIEW_SKIP_MARKERS.some((marker) => text.includes(marker))) return null;
+  return (
+    'Machine review was skipped because the only configured model would be ' +
+    'reviewing its own work — that is the guarantee working, not a fault. ' +
+    'Add a second model for the code-reviewer role under Settings → Models ' +
+    'to enable machine review; until then, reviews land here for you.'
+  );
+}
+
 export interface NotificationCardProps {
   item: NotificationItem;
   actions?: ReactNode;
@@ -93,6 +121,17 @@ export function NotificationCard({ item, actions }: NotificationCardProps) {
       </header>
       <p className="notification-card__title">{item.title}</p>
       {summary && <p className="notification-card__summary">{summary}</p>}
+      {(() => {
+        const why = reviewSkipExplainer(item);
+        return why ? (
+          <p
+            className="notification-card__consequence"
+            data-testid={`review-skip-why-${item.id}`}
+          >
+            {why}
+          </p>
+        ) : null;
+      })()}
       {digestItems && digestItems.length > 0 && (
         <ul
           className="notification-card__digest-items"

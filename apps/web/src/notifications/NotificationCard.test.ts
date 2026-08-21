@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTimestamp, summaryLine } from './NotificationCard.js';
+import { formatTimestamp, reviewSkipExplainer, summaryLine } from './NotificationCard.js';
 import type { NotificationItem } from './types.js';
 
 function item(overrides: Partial<NotificationItem>): NotificationItem {
@@ -68,5 +68,52 @@ describe('formatTimestamp (W10-28)', () => {
 
   it('is deterministic for a given instant (no clock/random dependency)', () => {
     expect(formatTimestamp(iso)).toBe(formatTimestamp(iso));
+  });
+});
+
+describe('the same-model review skip explains itself (W17-11)', () => {
+  const base = {
+    id: 'n1',
+    tier: 'review',
+    kind: 'digest',
+    refType: null,
+    refId: null,
+    leverage: 1,
+    status: 'pending',
+    pushedAt: null,
+    createdAt: '2026-08-22T00:00:00.000Z',
+    resolvedAt: null,
+    projectId: 'p1',
+    projectName: 'Recipe Keeper',
+  } as const;
+
+  it('RED FIXTURE: a card carrying the C-4 refusal marker explains the skip and the fix — detected from the refusal text, never a hardcoded ticket', () => {
+    const item = {
+      ...base,
+      title: 'Review: PLAN-T-002',
+      body: {
+        items: [
+          {
+            title: 'PLAN-T-002',
+            summary:
+              "Machine review refused: the reviewer would be a model that made work this run (qwen), and a maker's model never reviews its own work (C-4).",
+          },
+        ],
+      },
+    } as never;
+    const why = reviewSkipExplainer(item);
+    expect(why).not.toBeNull();
+    expect(why).toContain('reviewing its own work');
+    expect(why).toContain('Settings → Models');
+    expect(why).toContain('guarantee working, not a fault');
+  });
+
+  it('an ordinary review card gets NO explainer — the sentence only appears when the refusal did', () => {
+    const item = {
+      ...base,
+      title: 'Review: PLAN-T-001',
+      body: { items: [{ title: 'PLAN-T-001', summary: 'CONFIRMED, score 8.' }] },
+    } as never;
+    expect(reviewSkipExplainer(item)).toBeNull();
   });
 });
