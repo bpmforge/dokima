@@ -9565,7 +9565,7 @@
       "module": "web",
       "lane": "ui",
       "points": 1,
-      "status": "in_progress",
+      "status": "done",
       "role": "ux-engineer",
       "write_scope": [
         "apps/web/src/**"
@@ -9590,7 +9590,7 @@
       "module": "forge",
       "lane": "core",
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "packages/forge/src/**",
