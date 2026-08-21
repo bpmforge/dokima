@@ -1333,3 +1333,9 @@ gate/research path never invoked; interview error copy novice-hostile).
   work this run. One-rung/pinned/local-only ladders degrade honestly with
   a run-start note (FR-G5). Chapter splits keep loop-land/run-build/
   model-resolution under the 400-line cap. Gate: 3,986 tests, 72 e2e.
+- W16-03 — **the playbook answers at rung zero** (FR-M2/FR-F5): the land
+  loop consults local playbook -> global playbook -> fact bank once per
+  ticket before any model spend, ledgers playbook.r0_hit/r0_miss, and a
+  verified hit leads the maker's first handoff. Not gate-skipping R0 (C-2:
+  the close gate still decides; loop-land-policy's refusal stands); consult
+  failures ledger and swallow. Gate: 3,992 tests, 72 e2e.

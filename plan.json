@@ -9414,7 +9414,7 @@
       "module": "memory",
       "lane": "core",
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/memory/src/playbook/**",
