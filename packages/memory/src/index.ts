@@ -46,3 +46,16 @@ export * from './lessons/events.js';
 export { createMemoryAnchor } from './store/anchor.js';
 export type { CreateMemoryAnchorOptions, MemoryAnchor } from './store/anchor.js';
 
+
+/**
+ * W14-05: the fact bank's production write path (cli/memory-hooks.ts in
+ * apps/server) — parks insert verified symptom facts, closes append the
+ * solution half, error-first recall leads with the pair.
+ */
+export {
+  appendFactSolution,
+  insertFact,
+  listFacts,
+  markFactVerified,
+} from './store/facts.js';
+export type { FactKind, FactRecord, InsertFactInput } from './store/facts.js';

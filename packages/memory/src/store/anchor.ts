@@ -11,6 +11,7 @@
  * and `runMicroLoop`, imported dynamically.
  */
 import type { EmbeddingProvider } from './embeddings.js';
+import { assembleErrorFirstContext } from '../consolidation/error-first-recall.js';
 import { assembleContext } from './retrieval.js';
 import type { SqliteHandle } from './handle.js';
 
@@ -40,6 +41,13 @@ export interface CreateMemoryAnchorOptions {
   readonly tokenBudget?: number;
   readonly embeddingProvider?: EmbeddingProvider;
   readonly now?: () => string;
+  /**
+   * W14-05 (US-602 "before a task class that previously failed, the failure
+   * fact + fix inject first"): assemble via error-first recall, so a
+   * matching error_solution fact LEADS the anchor regardless of raw BM25
+   * rank. Off by default — callers opt in where retry context matters.
+   */
+  readonly errorFirst?: boolean;
 }
 
 const DEFAULT_ANCHOR_TOKEN_BUDGET = 2000;
@@ -58,16 +66,16 @@ export function createMemoryAnchor(
   return {
     kind: 'memory',
     async gather(input) {
-      const assembled = await assembleContext(
-        handle,
-        `${input.criterion} ${input.item.description}`,
-        {
-          tokenBudget: options.tokenBudget ?? DEFAULT_ANCHOR_TOKEN_BUDGET,
-          embeddingProvider: options.embeddingProvider,
-          ticketId: input.item.id,
-          now: options.now,
-        },
-      );
+      const query = `${input.criterion} ${input.item.description}`;
+      const assembleOptions = {
+        tokenBudget: options.tokenBudget ?? DEFAULT_ANCHOR_TOKEN_BUDGET,
+        embeddingProvider: options.embeddingProvider,
+        ticketId: input.item.id,
+        now: options.now,
+      };
+      const assembled = options.errorFirst
+        ? await assembleErrorFirstContext(handle, query, assembleOptions)
+        : await assembleContext(handle, query, assembleOptions);
       return assembled.facts.map(({ fact }): MemoryAnchorFact => ({
         kind: 'memory',
         source: `fact:${fact.id}`,
