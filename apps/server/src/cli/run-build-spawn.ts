@@ -11,6 +11,7 @@ import type { EventLog } from '@dokima/events';
 import {
   CostLedger,
   FitnessCardStore,
+  GatewayPool,
   ROLE_CODING_AGENT,
   type Provider,
 } from '@dokima/gateway';
@@ -53,6 +54,9 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
  * cannot report a window — the packer treats that as its documented 32k
  * floor rather than guessing.
  */
+/** W16-02: ONE pool per process (FR-F3's "process-wide" is literal) — every session, every rung, every berth shares it. */
+const SHARED_GATEWAY_POOL = new GatewayPool();
+
 export interface BuiltInSpawn {
   readonly spawn: SpawnSession;
   readonly contextWindowTokens: number | undefined;
@@ -100,9 +104,22 @@ export async function buildBuiltInSpawn(
   const buildSession = async (
     target: ResolvedModelTarget,
   ): Promise<{ spawn: SpawnSession; window: number | undefined }> => {
-    const provider: Provider = await providerForConfig(
-      targetToConfig(target, process.env),
-    );
+    const raw: Provider = await providerForConfig(targetToConfig(target, process.env));
+    // W16-02 (FR-F3/§3.11): every chat flows through the process-wide pool —
+    // one FairScheduler per endpoint, fair by project, so N concurrent
+    // berths cannot starve a local endpoint that serves one request at a
+    // time (FR-G1) and a second project's calls interleave fairly.
+    const endpointId = `${target.providerId}:${target.baseUrl ?? ''}`;
+    const provider: Provider = {
+      id: raw.id,
+      chat: (request) =>
+        SHARED_GATEWAY_POOL.run(endpointId, command.projectId, () => raw.chat(request)),
+      listModels: () => raw.listModels(),
+      getContextLength: (model) => raw.getContextLength(model),
+      health: () => raw.health(),
+      warmUp: () => raw.warmUp(),
+      queueStats: () => raw.queueStats(),
+    };
     // W12-04: the context window comes from the Provider, not from
     // `ResolvedModelTarget` (which carries no window field) — so it is read
     // here, where the provider is already built, rather than resolving the

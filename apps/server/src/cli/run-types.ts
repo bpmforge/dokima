@@ -15,4 +15,6 @@ export interface BuildRunCommand {
   readonly projectId: string;
   readonly actorId: string;
   readonly agentCommand?: string;
+  /** W16-02: the concurrency dial (BLUEPRINT §3.6) — absent/1 = the sequential land loop, N>1 = `runBerths`. */
+  readonly berths?: number;
 }

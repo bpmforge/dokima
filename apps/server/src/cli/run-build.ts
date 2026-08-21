@@ -32,6 +32,7 @@ import { type SpawnSession } from '@dokima/loop';
 import {
   DEFAULT_MAX_SESSION_SECONDS,
   runLandLoop,
+  type LandLoopTicketOutcome,
   type LandRungSessions,
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
@@ -82,6 +83,7 @@ import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
 import { composeExternalToolset } from './mcp-session-tools.js';
 import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
+import { executeBerthsRun } from './run-build-berths.js';
 import { executeReviewPass } from './review-pass.js';
 import {
   MEMORY_CONSOLIDATION_SETTINGS_KEY,
@@ -300,9 +302,7 @@ export async function executeBuildRun(
     }
   }
 
-  let result!: Awaited<ReturnType<typeof runLandLoop>>;
-  try {
-    result = await runLandLoop({
+  const landOptions = {
       log,
       actorId: command.actorId,
       projectId: command.projectId,
@@ -310,9 +310,7 @@ export async function executeBuildRun(
       contentDir: resolveAsset('content', 'validators'),
       signingKey,
       spawn,
-      // W12-04: the packed builder, not `defaultHandoffBuilder()`. Until this
-      // ticket every ticket session received `ticket.interface ?? ticket.title`
-      // as its entire context while FR-L5's Context Packer sat unreachable.
+      // W12-04: the packed builder — FR-L5's Context Packer, live.
       policyScope: policyResult.scope,
       buildHandoff: await createPackedHandoffBuilder({
         repoRoot: io.cwd,
@@ -328,13 +326,27 @@ export async function executeBuildRun(
       // the session bound to its rung, and climbs are ledgered (FR-G3).
       ...(rungSessions ? { rungSessions } : {}),
       secretValues,
-      // W14-05 + W16-03: the learning loop's producer and the R0 playbook
-      // consult — composed here; harbormaster may not import memory (§4).
+      // W14-05 + W16-03: learning producer + R0 consult, composed here (§4).
       attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
       r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues }),
       ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
       now: io.now,
-    });
+    };
+  // W16-02: the dial is read — N>1 drives the lane-aware berth engine over
+  // the same one-ticket engine; N=1 keeps runLandLoop byte-identical.
+  let result!: { processed: readonly LandLoopTicketOutcome[]; stopReason: string };
+  try {
+    result =
+      (command.berths ?? 1) > 1
+        ? await executeBerthsRun({
+            log,
+            runId,
+            projectId: command.projectId,
+            berths: command.berths!,
+            landOptions,
+            stderr: io.stderr,
+          })
+        : await runLandLoop(landOptions);
   } finally {
     // W14-03: this run's freshly parked approvals become Decide cards, so
     // the morning queue has them before anyone opens it.

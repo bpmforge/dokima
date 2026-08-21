@@ -30,52 +30,29 @@
  */
 
 import { resolveCurrentBranch } from '@dokima/git';
-import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
-import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
-import { runAttemptOutcomeHook } from './loop-land-outcome.js';
-import { parkComment } from './loop-land-report.js';
+import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
 import { reclaimAbandoned } from './loop-land-reclaim.js';
-import { nextFeedback } from './loop-land-session.js';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
-import { attemptOnce } from './loop-land-session.js';
-import {
-  claimTicket,
-  commentTicket,
-  listTickets,
-  releaseTicket,
-  startTicket,
-  type Ticket,
-} from '@dokima/tickets';
+import { listTickets, type Ticket } from '@dokima/tickets';
 import { type EventLog } from '@dokima/events';
-import { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
-import type { AttemptFeedback, HandoffBuilder } from './loop-handoff.js';
+import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
 import type { CloseGateResult } from './loop-gates.js';
+import { pushLandedBranch, type PushToRemotesFn } from './land-push.js';
 import {
-  pushLandedBranch,
-  recordFailedPushes,
-  type PushToRemotesFn,
-} from './land-push.js';
-import {
-  attemptNumberForRung,
-  noopLandEscalationTokenHook,
-  resolveLandEscalationPolicy,
-  tokenBoundaryDecideCard,
   type LandEscalationMode,
   type LandEscalationTokenHook,
   type LandRungSessions,
   type ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
-import {
-  beginRungAttempt,
-  consultRungZero,
-  type LandR0Consult,
-} from './loop-land-rungs.js';
+import { type LandR0Consult } from './loop-land-rungs.js';
 export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
-import { fireVerbMirror, type LandVerbMirror } from './loop-land-verbs.js';
+import { type LandVerbMirror } from './loop-land-verbs.js';
 export type { LandVerbEvent, LandVerbMirror } from './loop-land-verbs.js';
-import { pickNextTicket, requireTicket, resolveWorktree } from './loop-land-board.js';
+import { pickNextTicket } from './loop-land-board.js';
+import { processTicket } from './loop-land-ticket.js';
+export { landClaimedTicket } from './loop-land-ticket.js';
 
 export type { LandPushRemoteResult, PushToRemotesFn } from './land-push.js';
 type LandPushResults = Awaited<ReturnType<typeof pushLandedBranch>>;
@@ -197,158 +174,6 @@ export interface LandLoopTicketOutcome {
 export interface LandLoopResult {
   readonly processed: readonly LandLoopTicketOutcome[];
   readonly stopReason: LandLoopStopReason;
-}
-
-async function processTicket(
-  options: LandLoopOptions,
-  ticket: Ticket,
-  baseRef: string,
-): Promise<LandLoopTicketOutcome> {
-  claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-  startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-  await fireVerbMirror(options, {
-    kind: 'claim',
-    ticketId: ticket.id,
-    ticketTitle: ticket.title,
-  });
-
-  const worktree = await resolveWorktree(options, ticket, baseRef);
-  const role = options.role ?? ROLE_CODING_AGENT;
-  const policy = resolveLandEscalationPolicy(options.policyScope ?? {}, role);
-  const tokenHook = options.tokenHook ?? noopLandEscalationTokenHook;
-  const ceiling = ceilingFor(
-    policy,
-    options.maxLadderAttempts ?? DEFAULT_MAX_SESSIONS_PER_TICKET,
-  );
-
-  const attempts: LandAttempt[] = [];
-  // W13-29: the previous attempt's gaps — see `loop-land-session.ts`.
-  // W16-03: seeded by the R0 consult when the playbook already holds a
-  // verified answer — the maker meets it before any model spend.
-  let feedback: AttemptFeedback | undefined = await consultRungZero(options, ticket);
-  // W13-27: infra failures retry free — see `loop-land-infra.ts`.
-  const freeRetry = createFreeRetryGate(options, ticket.id, ceiling);
-  let current = requireTicket(options.log, ticket.id);
-  let landed = false;
-  let pushResults: LandPushResults | undefined;
-  let parkedReason: LandParkedReason | undefined;
-  let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
-
-  for (
-    let attempt = 1;
-    attempt <= freeRetry.limit() && current.status === 'in_progress';
-    attempt++
-  ) {
-    // W16-01: which rung this attempt runs at (the chapter also ledgers a
-    // climb, evidence attached). Without a seam, options come back untouched.
-    const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts);
-    const { session, closeGate, infraFailure } = await attemptOnce(
-      rungStart.options,
-      current,
-      worktree,
-      baseRef,
-      feedback,
-    );
-    if (freeRetry.take(infraFailure, attempt)) continue;
-    attempts.push({
-      attempt,
-      session,
-      closeGate,
-      ...(rungStart.sessionLabel ? { sessionLabel: rungStart.sessionLabel } : {}),
-    });
-    current = requireTicket(options.log, ticket.id);
-
-    // W13-29: feed the gaps forward, or stop if nothing changed.
-    const step = nextFeedback(feedback, attempt, session, closeGate, {
-      mode: policy.mode,
-      limit: freeRetry.limit(),
-    });
-    if (step.kind === 'no_progress') {
-      parkedReason = 'no_progress';
-      break;
-    }
-    feedback = step.feedback;
-
-    if (closeGate?.ok) {
-      landed = true;
-      await runAttemptOutcomeHook(options, () =>
-        options.attemptOutcome?.onLanded({
-          ticketId: ticket.id,
-          commits: session.manifest?.commits ?? [],
-          attempts,
-        }),
-      );
-      await fireVerbMirror(options, {
-        kind: 'close',
-        ticketId: ticket.id,
-        ticketTitle: ticket.title,
-        commits: session.manifest?.commits ?? [],
-        receiptId: closeGate.receipt.id,
-      });
-      // Isolated per-remote; a failed remote is recorded, not fatal.
-      pushResults = await pushLandedBranch(
-        options.pushToRemotes,
-        worktree.path,
-        worktree.branch,
-        options.pushRemotes,
-      );
-      recordFailedPushes(options.log, options.actorId, ticket.id, pushResults);
-      break;
-    }
-
-    if (
-      policy.mode === 'token-gated' &&
-      attempt === attemptNumberForRung(policy.namedTier)
-    ) {
-      const token = await tokenHook.checkToken({
-        ticketId: ticket.id,
-        boundary: policy.namedTier,
-      });
-      if (!token) {
-        parkedReason = 'awaiting_escalation_token';
-        decideCard = tokenBoundaryDecideCard(ticket.id, ticket.title, policy);
-        break;
-      }
-    }
-  }
-
-  const parked = !landed && current.status === 'in_progress';
-  if (parked) {
-    parkedReason ??=
-      policy.mode === 'locked' ? 'locked_ceiling_reached' : 'ladder_exhausted';
-    const parkBody = parkComment(parkedReason, ceiling, attempts, decideCard);
-    commentTicket(options.log, {
-      ticketId: ticket.id,
-      actorId: options.actorId,
-      body: parkBody,
-    });
-    await fireVerbMirror(options, {
-      kind: 'evidence',
-      ticketId: ticket.id,
-      ticketTitle: ticket.title,
-      body: parkBody,
-    });
-    await runAttemptOutcomeHook(options, () =>
-      options.attemptOutcome?.onParked({
-        ticketId: ticket.id,
-        reason: parkedReason ?? 'ladder_exhausted',
-        attempts,
-      }),
-    );
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-    current = requireTicket(options.log, ticket.id);
-  }
-
-  return {
-    ticketId: ticket.id,
-    mode: policy.mode,
-    attempts,
-    landed,
-    pushResults,
-    parked,
-    parkedReason,
-    finalStatus: current.status,
-  };
 }
 
 /** Runs the land loop until idle (nothing claimable), stopped (kill-file/pause), or budget-stopped (W2-07 hard_stop). */

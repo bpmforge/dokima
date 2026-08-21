@@ -200,3 +200,21 @@ export type {
   ReviewPassOptions,
   ReviewVerdictKind,
 } from './loop-review.js';
+
+/**
+ * W16-02: the berth concurrency layer, exported for its first production
+ * caller (apps/server's run-build berths path). `runBerths` was complete,
+ * lane-aware, and unreachable; `landClaimedTicket` is the shared one-ticket
+ * engine both it and `runLandLoop` now drive.
+ */
+export { berthIdOf, runBerths } from './berths.js';
+export type {
+  BerthOutcome,
+  BerthStopReason,
+  BerthTicketOutcome,
+  BerthTicketRunner,
+  BerthTicketRunnerInput,
+  RunBerthsOptions,
+  RunBerthsResult,
+} from './berths.js';
+export { landClaimedTicket } from './loop-land-ticket.js';
