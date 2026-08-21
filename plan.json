@@ -9526,6 +9526,111 @@
         "validate-ui-copy stays 0/0 (new strings pass or are consciously baselined with rationale); axe passes on the touched surface.",
         "RED FIXTURE: a forced submit failure in e2e must show the plain-language message and must NOT show a bare `(HTTP` string as the primary error line."
       ]
+    },
+    {
+      "stories": [
+        "US-201"
+      ],
+      "depends_on": [],
+      "id": "W16-07",
+      "title": "the gate receipt gets a minter \u2014 runPhaseGate finally runs in production, and its stale mermaid caveat dies",
+      "phase": 16,
+      "module": "pipeline",
+      "lane": "pipeline",
+      "points": 3,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/pipeline/phase-gate/**",
+        "apps/server/src/api/pipeline/pipeline-routes/**",
+        "apps/web/src/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Iteration-2 challenger audit 2026-08-21: runPhaseGate (phase-gate/runner.ts) \u2014 the ONLY path that mints a gate receipt \u2014 has exactly 4 callers, all tests. The advance route verifies receipts nothing ever mints, so every real POST /phases/:n/advance refuses forever. Also: runner.ts's long header describes the validate-mermaid zero-byte-stdout defect as CURRENT, but content/validators/validate-mermaid.sh was fixed by W9-08 on 2026-07-28 \u2014 the header is stale documentation of a dead bug."
+      ],
+      "acceptance": [
+        "POST /api/v1/projects/:id/phases/:n/gate runs runPhaseGate for real (declared validators, real deliverables, distinct verifier identity per Law 5) and returns the minted receipt id or the fail-closed refusal reasons \u2014 the missing first half of the advance flow.",
+        "The web phase surface (wherever advance is offered) can request the gate run and then advance with the returned receipt id \u2014 the two-step flow a person can actually complete; e2e drives gate -> advance green against the fake validators fixture pattern advance.test.ts already uses.",
+        "runner.ts's stale mermaid-defect header is replaced by a short note that W9-08 fixed the script (dated), so the next reader does not route around a bug that no longer exists.",
+        "RED FIXTURE: advance with a receipt id the gate route never minted still refuses; gate-then-advance with the real minted receipt passes on clean content (proving the mermaid caveat is truly dead)."
+      ]
+    },
+    {
+      "stories": [
+        "US-401"
+      ],
+      "depends_on": [],
+      "id": "W16-08",
+      "title": "the W16 event kinds speak human in the trace \u2014 no undifferentiated \"Event\" rows for the new loops",
+      "phase": 16,
+      "module": "web",
+      "lane": "ui",
+      "points": 1,
+      "status": "todo",
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/**"
+      ],
+      "notes": [
+        "Iteration-2 audit 2026-08-21: TRACE_EVENT_HUMAN (trace/classify.ts) has no entries for playbook.r0_hit/r0_miss, forge.mirror_queued/mirror_flushed/mirror_written/issue_mapped, berths.ticket_admitted, escalation events landed W16 \u2014 they render as the generic \"Event\" bucket. Milder than W13-60 (raw ids are secondary text) but the novice reads nothing meaningful."
+      ],
+      "acceptance": [
+        "Every event kind the W16 wave emits carries a plain-language sentence in TRACE_EVENT_HUMAN, mechanism-true per VOCABULARY.md (wire ids stay as secondary detail, never renamed).",
+        "validate-ui-copy stays 0/0; the classify tests pin each new label.",
+        "RED FIXTURE: a classify test enumerates the W16 event kinds and fails if any falls through to the generic bucket."
+      ]
+    },
+    {
+      "stories": [
+        "US-502"
+      ],
+      "depends_on": [],
+      "id": "W16-09",
+      "title": "the generic-git forge kind is selectable \u2014 self-hosted forges beyond gitea/github mirror too, or the limit is stated",
+      "phase": 16,
+      "module": "forge",
+      "lane": "core",
+      "points": 2,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/forge/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Iteration-2 audit 2026-08-21: createGenericGitForgeAdapter has zero callers and is absent from the forge barrel; forge-mirror.ts's kind is typed gitea|github only, so a generic self-hosted forge cannot be configured at all. checkForgeAdapterParity likewise uncalled."
+      ],
+      "acceptance": [
+        "ForgeMirrorConfig accepts kind \"generic\" wired to createGenericGitForgeAdapter (barrel-exported), with the capability differences it has (per its own module doc) surfaced honestly in the disabled/degraded note when a verb needs a capability it lacks.",
+        "parseForgeMirrorSetting validates the generic kind's required fields the same refusal-shaped way; tests cover configure -> mirror verb -> write-through with the generic adapter faked (law 9a).",
+        "If the generic adapter genuinely cannot support the mirror verbs, the honest alternative is acceptable: refuse kind \"generic\" with a sentence naming what is missing \u2014 never a silent absence from the type."
+      ]
+    },
+    {
+      "stories": [
+        "US-206"
+      ],
+      "depends_on": [],
+      "id": "W16-10",
+      "title": "the conflict watch runs \u2014 human edits during a run are detected by the watcher that was built for it, or its deferral is recorded",
+      "phase": 16,
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 1,
+      "status": "todo",
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "Iteration-2 audit 2026-08-21: runConflictWatch (harbormaster conflict-watcher) has no non-test caller. FR-T6/US-206 (human edits win) landed its resolution verbs; the WATCH half that notices a human edit mid-run appears unwired. VERIFY FIRST: read conflict-watcher.ts's own header for its intended composition point before wiring \u2014 if its own docs park it on a missing surface, record that on this ticket and close as deferred instead of forcing a wrong seam."
+      ],
+      "acceptance": [
+        "Either: the build run composes runConflictWatch so a human edit to a ticket's files during a run is detected and resolved through the existing FR-T6 verbs (test with a planted mid-run edit, fake sessions); OR: the watcher's own documented blocker is quoted on this ticket and the deferral is recorded in STATUS.md \u2014 an honest park, never a silent absence.",
+        "Whatever lands, the full gate stays green and no new uncalled export is added."
+      ]
     }
   ]
 }
