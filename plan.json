@@ -10128,7 +10128,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W18-07",
       "title": "park reason on the card face clamps on a word with an ellipsis and carries the full text",
       "module": "web",
