@@ -70,3 +70,6 @@ export type {
   RunConsolidationOptions,
 } from './consolidation/consolidate.js';
 export type { MorningPreBrief, MorningPreBriefFact } from './consolidation/pre-brief.js';
+
+/** W15-02: calibration persistence for the learning hook (FR-L3) — round-trips loop's own record shape. */
+export { getCalibration, listCalibration, upsertCalibration } from './store/calibration.js';

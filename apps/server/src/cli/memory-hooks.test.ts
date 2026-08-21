@@ -119,3 +119,85 @@ describe('the learning loop writes (W14-05)', () => {
     expect(facts[0]!.detail?.factKind).toBe('error_solution');
   });
 });
+
+describe('calibration observations from attempts (W15-02, FR-L3)', () => {
+  function claimedPassAttempt(gateOk: boolean): LandAttempt {
+    return {
+      attempt: 1,
+      session: {
+        exitCode: 0,
+        output: 'done',
+        manifest: {
+          ticket: 'T-1',
+          files: ['a.ts'],
+          verify: { command: 'true', exit: 0 },
+          commits: ['abc'],
+          evidence: [],
+          memory_written: [],
+        },
+        manifestParseTier: 'contract',
+        scopeViolations: [],
+      },
+      closeGate: gateOk
+        ? ({ ok: true } as never)
+        : ({ ok: false, reasons: ['verify failed'] } as never),
+    };
+  }
+
+  it('RED FIXTURE: six claimed-pass/gate-fail attempts build an over-claimer record; six honest ones do not', async () => {
+    const log = await makeLog();
+    const { getCalibration } = await import('@dokima/memory');
+    const hook = createLearningHook({
+      log,
+      secretValues: [],
+      makerModel: 'local-coder',
+      now: () => '2026-08-20T00:00:00.000Z',
+    });
+
+    for (let i = 0; i < 6; i += 1) {
+      await hook.onLanded({
+        ticketId: `T-${i}`,
+        commits: [],
+        attempts: [claimedPassAttempt(false)],
+      });
+    }
+    const overclaimer = getCalibration(log.db, 'local-coder', 'coding-agent')!;
+    expect(overclaimer.sampleCount).toBe(6);
+    expect(overclaimer.meanRawConf - overclaimer.meanVerifiedConf).toBeGreaterThanOrEqual(
+      0.25,
+    );
+
+    const log2 = await makeLog();
+    const honest = createLearningHook({
+      log: log2,
+      secretValues: [],
+      makerModel: 'local-coder',
+      now: () => '2026-08-20T00:00:00.000Z',
+    });
+    for (let i = 0; i < 6; i += 1) {
+      await honest.onLanded({
+        ticketId: `T-${i}`,
+        commits: [],
+        attempts: [claimedPassAttempt(true)],
+      });
+    }
+    const clean = getCalibration(log2.db, 'local-coder', 'coding-agent')!;
+    expect(clean.meanRawConf - clean.meanVerifiedConf).toBe(0);
+  });
+
+  it('an attempt with no manifest made no claim and observes nothing', async () => {
+    const log = await makeLog();
+    const { getCalibration } = await import('@dokima/memory');
+    const hook = createLearningHook({
+      log,
+      secretValues: [],
+      makerModel: 'local-coder',
+    });
+    await hook.onParked({
+      ticketId: 'T-1',
+      reason: 'ladder_exhausted',
+      attempts: [attempt('no manifest at all')],
+    });
+    expect(getCalibration(log.db, 'local-coder', 'coding-agent')).toBeUndefined();
+  });
+});

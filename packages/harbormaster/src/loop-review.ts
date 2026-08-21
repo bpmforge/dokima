@@ -27,8 +27,10 @@ import { appendEvent, type EventLog } from '@dokima/events';
 import { commentTicket, listTickets, type Ticket } from '@dokima/tickets';
 import {
   classifySubjectiveScore,
+  escalateIfOverclaiming,
   formatRerunLine,
   isValidRerun,
+  type CalibrationRecord,
   type RerunEvidence,
   type ReviewSignalAction,
 } from '@dokima/loop';
@@ -59,6 +61,8 @@ export interface ReviewPassOptions {
   readonly verifyTimeoutMs?: number;
   readonly secretValues?: readonly string[];
   readonly now?: () => string;
+  /** W15-02 (FR-L3): the maker's calibration record, injected — the store lives in memory, which harbormaster may not import. */
+  readonly makerCalibration?: () => CalibrationRecord | undefined;
 }
 
 export const DEFAULT_REVIEW_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
@@ -231,8 +235,19 @@ async function reviewOne(
   const verdict: ReviewVerdictKind = gatePassed ? parsed.verdict : 'CONTRADICTED';
   // Advisory score classifies only over a PASSING deterministic gate
   // (classifySubjectiveScore's own contract) — over a failing one the
-  // verdict alone speaks.
-  const action = gatePassed ? classifySubjectiveScore(parsed.score) : undefined;
+  // verdict alone speaks. W15-02: a chronically over-claiming maker's
+  // BORDERLINE signal escalates to a person (asymmetric — never toward
+  // accept; escalateIfOverclaiming's own contract).
+  let action: ReviewSignalAction | undefined;
+  let overclaiming = false;
+  if (gatePassed) {
+    const calibrated = escalateIfOverclaiming(
+      classifySubjectiveScore(parsed.score),
+      options.makerCalibration?.(),
+    );
+    action = calibrated.action;
+    overclaiming = calibrated.overclaiming;
+  }
 
   const rerunLine = formatRerunLine(rerun);
   const lines = [
@@ -242,6 +257,13 @@ async function reviewOne(
     rerunLine,
     parsed.reasoning,
   ];
+  if (overclaiming && action === 'ESCALATE_TO_HUMAN') {
+    lines.splice(
+      1,
+      0,
+      `Escalated to you: this maker (${options.makerModel}) has historically claimed done more often than the gate confirmed, so its borderline work gets a person's eyes (FR-L3).`,
+    );
+  }
   if (!gatePassed) {
     lines.splice(
       1,
@@ -263,6 +285,7 @@ async function reviewOne(
       reviewerModel: options.reviewerModel,
       makerModel: options.makerModel,
       gatePassed,
+      overclaiming,
     },
     'review.verdict',
   );

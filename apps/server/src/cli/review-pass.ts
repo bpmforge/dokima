@@ -12,6 +12,7 @@
 
 import { ROLE_CODE_REVIEWER } from '@dokima/gateway';
 import { runReviewPass, type ReviewOutcome } from '@dokima/harbormaster';
+import { getCalibration } from '@dokima/memory';
 import type { EventLog } from '@dokima/events';
 import { resolveModelTarget } from '../api/pipeline/model-resolution.js';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
@@ -68,5 +69,9 @@ export async function executeReviewPass(
     reviewerModel,
     reviewChat: chat ?? (async () => ''),
     secretValues: options.secretValues,
+    // W15-02: the maker's track record biases borderline calls toward a
+    // person, never toward acceptance (FR-L3 asymmetry).
+    makerCalibration: () =>
+      getCalibration(options.log.db, options.makerModel, 'coding-agent'),
   });
 }

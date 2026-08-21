@@ -183,3 +183,47 @@ describe('reviewer availability (W15-01)', () => {
     expect(getTicket(log, 'T-1')!.status).toBe('in_review');
   });
 });
+
+describe('calibration reaches the verdict (W15-02)', () => {
+  const OVERCLAIMER = {
+    model: 'local-coder',
+    phase: 'coding-agent',
+    bias: 0,
+    sampleCount: 6,
+    meanRawConf: 1,
+    meanVerifiedConf: 0,
+    updatedAt: '2026-08-20T00:00:00.000Z',
+  };
+
+  it("RED FIXTURE: a borderline score from a chronic over-claimer escalates to a person, and the comment says why — the same score from a clean maker stays bounded polish", async () => {
+    const borderline = async () =>
+      '{"verdict":"CONFIRMED","score":6,"reasoning":"Looks fine but thin tests."}';
+
+    const clean = await fixture('true');
+    const cleanOutcome = await runReviewPass(
+      options(clean.log, clean.repoRoot, { reviewChat: borderline }),
+    );
+    expect(cleanOutcome[0]).toMatchObject({ action: 'BOUNDED_POLISH' });
+
+    const flagged = await fixture('true');
+    const flaggedOutcome = await runReviewPass(
+      options(flagged.log, flagged.repoRoot, {
+        reviewChat: borderline,
+        makerCalibration: () => OVERCLAIMER,
+      }),
+    );
+    expect(flaggedOutcome[0]).toMatchObject({ action: 'ESCALATE_TO_HUMAN' });
+    const comment = getTicket(flagged.log, 'T-1')!
+      .history.filter((h) => h.verb === 'comment')
+      .at(-1)!;
+    expect(comment.body).toContain('claimed done more often than the gate confirmed');
+  });
+
+  it('an over-claimer never gains acceptance from calibration: score 8 stays ACCEPT, score 6 never becomes ACCEPT', async () => {
+    const { log, repoRoot } = await fixture('true');
+    const outcome = await runReviewPass(
+      options(log, repoRoot, { makerCalibration: () => OVERCLAIMER }),
+    );
+    expect(outcome[0]).toMatchObject({ score: 8, action: 'ACCEPT' });
+  });
+});

@@ -315,7 +315,7 @@ export async function executeBuildRun(
       secretValues,
       // W14-05: parks become error->solution facts; closes complete the
       // pair. Composed here — harbormaster may not import memory.
-      attemptOutcome: createLearningHook({ log, secretValues }),
+      attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
       now: io.now,
     });
   } finally {

@@ -156,3 +156,38 @@ export interface GateInput {
 export function gateDecision(input: GateInput): boolean {
   return input.anchorIsPresent && input.deterministicGatePassed;
 }
+
+/** A mean self-claim this far above the mean verified outcome marks a chronic over-claimer (W15-02). */
+export const OVERCLAIM_GAP = 0.25;
+
+export interface CalibratedReviewSignal {
+  readonly action: 'ACCEPT' | 'BOUNDED_POLISH' | 'ESCALATE_TO_HUMAN';
+  readonly overclaiming: boolean;
+}
+
+/**
+ * Calibration's effect on a review signal (W15-02, FR-L3) — asymmetric BY
+ * CONSTRUCTION, the same shape as the rescue-only bias above:
+ *
+ *   - Only a BORDERLINE signal (BOUNDED_POLISH) can be moved, and only
+ *     DOWNWARD to ESCALATE_TO_HUMAN. A chronically over-claiming maker's
+ *     borderline work goes to a person.
+ *   - ACCEPT is never manufactured and never revoked here: a >=7 advisory
+ *     over a passing deterministic gate stays what it is (the gate already
+ *     passed; punishing it would blur advisory with gating — the
+ *     classifyReviewSignal rule), and nothing below 7 can be promoted.
+ *   - Below MIN_SAMPLE_COUNT the record is silent, exactly like bias.
+ */
+export function escalateIfOverclaiming(
+  action: CalibratedReviewSignal['action'],
+  record: CalibrationRecord | undefined,
+): CalibratedReviewSignal {
+  const overclaiming =
+    record !== undefined &&
+    record.sampleCount >= MIN_SAMPLE_COUNT &&
+    record.meanRawConf - record.meanVerifiedConf >= OVERCLAIM_GAP;
+  if (action === 'BOUNDED_POLISH' && overclaiming) {
+    return { action: 'ESCALATE_TO_HUMAN', overclaiming };
+  }
+  return { action, overclaiming };
+}
