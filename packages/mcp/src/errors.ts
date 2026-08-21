@@ -8,7 +8,10 @@ export type McpErrorCode =
   | 'APPROVAL_NOT_FOUND'
   | 'APPROVAL_NOT_PENDING'
   | 'SELF_APPROVAL'
-  | 'EXECUTOR_REQUIRED';
+  | 'EXECUTOR_REQUIRED'
+  | 'SERVER_TIMEOUT'
+  | 'SERVER_FAILED'
+  | 'TOOL_CALL_FAILED';
 
 /** Refusals are reasoned, never a bare throw (mirrors `@dokima/tickets`' `TicketError`, FR-T4). */
 export class McpError extends Error {

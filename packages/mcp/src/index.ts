@@ -56,3 +56,25 @@ export type {
   ToolCallRecord,
   ToolCallStatus,
 } from './types.js';
+
+/**
+ * W14-01: the stdio transport this package was designed to have injected.
+ * Consumed by apps/server's run preload (W14-02) — the client pool is
+ * composed there, never inside the verbs.
+ */
+export {
+  createStdioToolExecutor,
+  discoveredToolDefinitions,
+  externalToolId,
+} from './client/executor.js';
+export {
+  DEFAULT_REQUEST_DEADLINE_MS,
+  MCP_PROTOCOL_VERSION,
+  spawnStdioMcpClient,
+} from './client/stdio-client.js';
+export type {
+  DiscoveredMcpTool,
+  McpClient,
+  StdioMcpClientOptions,
+  StdioServerSpec,
+} from './client/stdio-client.js';
