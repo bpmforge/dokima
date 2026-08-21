@@ -6,6 +6,7 @@
     "Plan",
     "Decisions",
     "Roster",
+    "Morning queue",
     "Settings",
     "Light",
     "Improvement plan",
@@ -13,10 +14,11 @@
     "PC-001",
     "Proposed",
     "Re-verify the 2 stale receipt(s) so downstream phases aren't gating on invalidated evidence",
-    "Verify:",
+    "Done when every receipt still matches the work it vouches for.",
     "receipts.staleCount == 0",
     "Accept",
-    "Dismiss"
+    "Dismiss",
+    "Accept creates a ticket on the board in the lane you choose. Dismiss records your reason and sets the suggestion aside — nothing on the board changes."
   ],
   "interactive": [
     {
@@ -25,7 +27,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 776,
+        "x": 677,
         "y": 12,
         "w": 69,
         "h": 36
@@ -37,7 +39,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 849,
+        "x": 750,
         "y": 12,
         "w": 91,
         "h": 36
@@ -49,7 +51,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 944,
+        "x": 845,
         "y": 12,
         "w": 59,
         "h": 36
@@ -61,7 +63,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 1007,
+        "x": 908,
         "y": 12,
         "w": 96,
         "h": 36
@@ -73,7 +75,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -82,12 +84,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 0 awaiting a decision",
+      "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -155,6 +157,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
@@ -165,11 +168,13 @@
     "plan-item": 1,
     "plan-item__actions": 1,
     "plan-item__catalog-id": 1,
+    "plan-item__consequence": 1,
     "plan-item__header": 1,
     "plan-item__recommendation": 1,
     "plan-item__state": 1,
     "plan-item__state--proposed": 1,
     "plan-item__verify": 1,
+    "plan-item__verify-expr": 1,
     "plan-view": 1,
     "plan-view__funnel": 1,
     "plan-view__header": 1,

@@ -23,7 +23,7 @@ import {
   runSleepConsolidation,
   type ConsolidationReport,
 } from '@dokima/memory';
-import { emitNotification } from '../api/notifications/emit.js';
+import { emitReviewItem } from '../api/notifications/emit.js';
 
 export const MEMORY_CONSOLIDATION_SETTINGS_KEY = 'memoryConsolidationEnabled';
 
@@ -68,25 +68,30 @@ export function runPostRunConsolidation(
 
   if (!report.skipped && report.preBrief) {
     const brief = report.preBrief;
-    emitNotification(options.log, {
-      id: `pre-brief-${options.runId}`,
-      tier: 'review',
-      kind: 'digest',
-      refType: 'run',
-      refId: options.runId,
-      title: 'Morning pre-brief — what the fact bank learned',
-      body: {
-        ranAt: brief.ranAt,
-        dedupedCount: brief.dedupedCount,
-        decayedCount: brief.decayedCount,
-        leadFacts: brief.leadFacts.map((fact) => ({
-          id: fact.id,
-          kind: fact.kind,
-          content: fact.content.slice(0, 300),
-        })),
+    /**
+     * W15-04 (design-review finding, CONFIRMED): the first cut emitted its
+     * own review/digest card with a freeform body, which (a) broke UX_SPEC
+     * §7's "Review items coalesce — one notification per batch" and (b)
+     * rendered the summary line as "0 items batched" — a wrong sentence
+     * about real work. The pre-brief now joins the review digest through
+     * the same door as every other review item, with a summary a novice
+     * can read.
+     */
+    const lead = brief.leadFacts[0];
+    emitReviewItem(
+      options.log,
+      {
+        kind: 'digest',
+        refType: 'run',
+        refId: options.runId,
+        title: 'Morning pre-brief — what the fact bank learned',
+        summary:
+          `${brief.dedupedCount} duplicate fact${brief.dedupedCount === 1 ? '' : 's'} merged, ` +
+          `${brief.decayedCount} stale fact${brief.decayedCount === 1 ? '' : 's'} retired` +
+          (lead ? ` — the lead lesson: ${lead.content.slice(0, 160)}` : ''),
       },
-      actorId: options.actorId,
-    });
+      { id: `pre-brief-${options.runId}`, actorId: options.actorId },
+    );
   }
   return report;
 }

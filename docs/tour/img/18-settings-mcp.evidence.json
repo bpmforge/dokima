@@ -6,7 +6,8 @@
     "Plan",
     "Decisions",
     "Roster",
-    "1",
+    "Morning queue",
+    "2",
     "Settings",
     "Light",
     "Setup Wizard",
@@ -40,11 +41,15 @@
     "Enabled",
     "Use for every project",
     "Add provider",
-    "Tools surface only for roles listed in a server's allowlist (FR-I3) — a role absent here cannot see any of this server's tools. Execution is handled by the MCP host (W6-04), outside this settings surface's scope; this registers the config it will read.",
-    "No MCP servers registered yet.",
+    "An MCP server is a small program that lends agents extra tools — a docs search, a deploy hook, an issue tracker. Register one here and every run starts it, discovers its tools, and offers them only to the roles you list. Each tool call waits for your approval in the morning queue unless you switch that off for a server you trust.",
+    "No MCP servers registered yet — agents have their built-in tools only.",
     "Name",
-    "Launch command / URL",
-    "Allowed roles (comma-separated)",
+    "Command",
+    "Arguments",
+    "Environment (one KEY=secret-name per line)",
+    "Use the NAME of a secret from the project vault, never the key itself — a raw key typed here is refused when the run starts.",
+    "Roles that may use its tools (comma-separated)",
+    "Ask me in the morning queue before any of its tools run",
     "Register server"
   ],
   "interactive": [
@@ -54,7 +59,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 778,
+        "x": 679,
         "y": 12,
         "w": 69,
         "h": 36
@@ -66,7 +71,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 851,
+        "x": 752,
         "y": 12,
         "w": 91,
         "h": 36
@@ -78,7 +83,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 946,
+        "x": 847,
         "y": 12,
         "w": 57,
         "h": 36
@@ -90,7 +95,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 1007,
+        "x": 908,
         "y": 12,
         "w": 96,
         "h": 36
@@ -102,7 +107,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -111,12 +116,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 1 awaiting a decision",
+      "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -403,8 +408,56 @@
       "disabled": false,
       "rect": {
         "x": 24,
-        "y": 327,
+        "y": 344,
         "w": 180,
+        "h": 35
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "npx",
+      "disabled": false,
+      "rect": {
+        "x": 216,
+        "y": 344,
+        "w": 180,
+        "h": 35
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "-y some-mcp-server",
+      "disabled": false,
+      "rect": {
+        "x": 408,
+        "y": 344,
+        "w": 180,
+        "h": 35
+      }
+    },
+    {
+      "tag": "textarea",
+      "role": null,
+      "name": "API_TOKEN=my-registered-secret",
+      "disabled": false,
+      "rect": {
+        "x": 600,
+        "y": 327,
+        "w": 290,
+        "h": 52
+      }
+    },
+    {
+      "tag": "input",
+      "role": null,
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 828,
+        "y": 412,
+        "w": 309,
         "h": 35
       }
     },
@@ -414,22 +467,10 @@
       "name": "",
       "disabled": false,
       "rect": {
-        "x": 216,
-        "y": 327,
-        "w": 180,
-        "h": 35
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "coding-agent, challenger",
-      "disabled": false,
-      "rect": {
-        "x": 408,
-        "y": 327,
-        "w": 219,
-        "h": 35
+        "x": 28,
+        "y": 479,
+        "w": 13,
+        "h": 13
       }
     },
     {
@@ -438,8 +479,8 @@
       "name": "Register server",
       "disabled": false,
       "rect": {
-        "x": 639,
-        "y": 326,
+        "x": 421,
+        "y": 459,
         "w": 135,
         "h": 36
       }
@@ -460,6 +501,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
@@ -472,7 +514,7 @@
     "settings__checkbox": 2,
     "settings__header": 1,
     "settings__header-actions": 1,
-    "settings__hint": 3,
+    "settings__hint": 4,
     "settings__list": 1,
     "settings__panel": 1,
     "settings__row-form": 2,

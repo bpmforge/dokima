@@ -6,6 +6,7 @@
     "Plan",
     "Decisions",
     "Roster",
+    "Morning queue",
     "Settings",
     "Dark",
     "Setup Wizard",
@@ -63,7 +64,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 781,
+        "x": 681,
         "y": 12,
         "w": 69,
         "h": 36
@@ -75,7 +76,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 853,
+        "x": 754,
         "y": 12,
         "w": 91,
         "h": 36
@@ -87,7 +88,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 948,
+        "x": 849,
         "y": 12,
         "w": 57,
         "h": 36
@@ -99,7 +100,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 1009,
+        "x": 910,
         "y": 12,
         "w": 96,
         "h": 36
@@ -111,7 +112,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1110,
+        "x": 1010,
         "y": 12,
         "w": 73,
         "h": 36
@@ -120,12 +121,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 0 awaiting a decision",
+      "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1195,
+        "x": 1096,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -481,6 +482,7 @@
   },
   "classHistogram": {
     "app-shell": 1,
+    "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,

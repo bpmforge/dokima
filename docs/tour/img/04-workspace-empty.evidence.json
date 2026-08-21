@@ -6,6 +6,7 @@
     "Plan",
     "Decisions",
     "Roster",
+    "Morning queue",
     "Settings",
     "Light",
     "← Fleet",
@@ -13,8 +14,8 @@
     "Focus",
     "«",
     "No agent activity yet.",
-    "Messages, questions, findings, and manifests appear here as agents work.",
-    "The board fills once you describe your product and it is decomposed into tickets.",
+    "Messages, questions, findings, and Completion Manifests — the hand-back an agent writes when it finishes a ticket — appear here as agents work.",
+    "The board fills once you describe your idea and it is broken into tickets.",
     "Describe your product",
     "Artifacts",
     "Docs",
@@ -28,7 +29,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 776,
+        "x": 677,
         "y": 12,
         "w": 71,
         "h": 36
@@ -40,7 +41,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 851,
+        "x": 752,
         "y": 12,
         "w": 91,
         "h": 36
@@ -52,7 +53,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 946,
+        "x": 847,
         "y": 12,
         "w": 57,
         "h": 36
@@ -64,7 +65,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 1007,
+        "x": 908,
         "y": 12,
         "w": 96,
         "h": 36
@@ -76,7 +77,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1107,
+        "x": 1008,
         "y": 12,
         "w": 73,
         "h": 36
@@ -85,12 +86,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Notifications, 0 awaiting a decision",
+      "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1192,
+        "x": 1093,
         "y": 17,
-        "w": 35,
+        "w": 134,
         "h": 27
       }
     },
@@ -267,6 +268,7 @@
   "classHistogram": {
     "app-shell": 1,
     "app-shell__back-to-fleet": 1,
+    "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,

@@ -61,7 +61,7 @@ A snapshot evaluation proposed **PC-001** from the plan catalog, with its proven
 
 ## Step 9 — Morning queue
 
-The signature screen (UX_SPEC §7): Decide items get inline **Approve/Reject**; Review items batch into a digest. The elapsed timer nudges toward the ten-minute review.
+The signature screen (UX_SPEC §7): Decide items get inline **Approve/Reject** with the work on the card — a merge shows its verified manifest, a tool approval shows the exact requested arguments — and Review items (gate results, the morning pre-brief) batch below. The elapsed timer nudges toward the ten-minute review.
 
 ![Morning queue](img/09-morning-queue.png)
 
