@@ -9215,7 +9215,7 @@
       "module": "cli",
       "lane": "core",
       "points": 5,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "apps/server/src/cli/**",
