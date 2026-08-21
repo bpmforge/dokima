@@ -128,6 +128,7 @@ export function RunKnobsPanel({ projectId }: { projectId: string }) {
             min={1}
             max={MAX_TOOL_ITERATIONS_CEILING}
             value={iterations}
+            placeholder="12 (default)"
             data-testid="turn-budget-input"
             onChange={(e) => setIterations(e.target.value)}
           />

@@ -91,3 +91,13 @@ describe('RunKnobsPanel (W17-08)', () => {
     ).toBeTruthy();
   });
 });
+
+describe('the unset budget shows its default (W18-09)', () => {
+  it('an empty turn-budget input names 12 — the value runs actually use', async () => {
+    render(<RunKnobsPanel projectId="p1" />);
+    const input = (await screen.findByTestId('turn-budget-input')) as HTMLInputElement;
+    expect(input.value).toBe('');
+    expect(input.placeholder).toContain('12');
+    expect(input.placeholder.toLowerCase()).toContain('default');
+  });
+});
