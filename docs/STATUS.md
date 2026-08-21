@@ -1357,3 +1357,16 @@ gate/research path never invoked; interview error copy novice-hostile).
   anchor; token refs are vault names (law 8), config problems degrade with
   a named note (FR-G5). accept stays a human verb — its mirror belongs to
   that surface.
+- W16-02 — **berths run in parallel** (BLUEPRINT §3.6/§3.11, FR-H5/FR-F3,
+  US-204): the dial is read — N>1 drives runBerths over landClaimedTicket
+  (the one-ticket engine both paths now share, loop-land-ticket.ts), with
+  per-berth identities on every verb, governor-admitted and ledgered
+  ticket starts, and every provider chat through one process-wide
+  GatewayPool (local endpoints stay one-at-a-time under any berth count).
+  Same-lane exclusivity holds through in_review (FR-T3) — verified by RED
+  fixture; engine-escaping errors halt all berths with evidence.
+
+W16 vision wave complete (6/6, filed and landed same day from the
+2026-08-21 challenger audits). Every verification/concurrency/memory/forge
+primitive the audits found built-but-unwired now has a live production
+path, and the novice's first-contact error surface speaks plain language.
