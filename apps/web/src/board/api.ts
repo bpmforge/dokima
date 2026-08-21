@@ -212,3 +212,22 @@ export function buildRunRefusalLine(outcome: BuildRunOutcome): string | null {
   const lines = (outcome.stderr ?? []).filter((l) => l.trim() !== '');
   return lines.length > 0 ? lines[lines.length - 1]! : 'the run refused without saying why';
 }
+
+/** W17-06/07: ask the run to stop — honored at the next ticket boundary; in-flight work finishes or parks honestly. */
+export async function stopBuildRun(
+  opts: BoardApiOptions,
+  projectId: string,
+  runId: string,
+  actorId = 'operator',
+): Promise<BoardResult<{ status: string }>> {
+  const instance = `/projects/${projectId}/build-runs/${runId}/stop`;
+  const doFetch = opts.fetchImpl ?? fetch;
+  const res = await doFetch(`${opts.baseUrl}${instance}`, {
+    method: 'POST',
+    headers: { ...authHeaders(opts), 'content-type': 'application/json' },
+    body: JSON.stringify({ actor_id: actorId }),
+  });
+  const body = await parseJson(res);
+  if (!res.ok) return { ok: false, problem: asProblem(res.status, body, instance) };
+  return { ok: true, data: { status: (body as { status: string }).status } };
+}

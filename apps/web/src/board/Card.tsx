@@ -3,6 +3,7 @@ import {
   blockedExplanation,
   cardStateClass,
   isParked,
+  parkSummary,
   isStaleBlocked,
   isWaived,
   PARKED_BADGE_LABEL,
@@ -86,8 +87,29 @@ export function Card({ ticket, heartbeat, blockers, onDragStart, onFireVerb }: C
           <span className="state state--blocked">parked</span>
         </p>
       )}
+      {/* W17-07: the park worn on the face — count + the one-line why, so
+          the evidence is a glance rather than a dig through comments. */}
+      {(() => {
+        const park = parkSummary(ticket);
+        return park ? (
+          <p className="board-card__blocked-why" data-testid={`park-why-${ticket.id}`}>
+            {park.count > 1 ? `Parked ${park.count} times. ` : ''}
+            {park.reason}
+          </p>
+        ) : null;
+      })()}
       <div className="board-card__meta">
-        <span className="board-card__owner">{ticket.ownerId ?? 'unclaimed'}</span>
+        {/* W17-07: plain words for who has it; the raw actor id stays as the
+            hover detail (VOCABULARY.md rename-in-UI-only). */}
+        <span
+          className="board-card__owner"
+          title={ticket.ownerId ?? undefined}
+          data-testid={`owner-${ticket.id}`}
+        >
+          {ticket.status === 'in_progress' && ticket.ownerId
+            ? 'an agent is working this'
+            : (ticket.ownerId ?? 'unclaimed')}
+        </span>
         <span
           className="board-card__receipt-dot"
           data-state={ticket.manifest?.closeReceipt ? 'green' : 'none'}

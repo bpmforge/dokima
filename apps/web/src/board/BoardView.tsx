@@ -5,6 +5,7 @@ import {
   fetchBuildRun,
   runOutcome,
   startBuildRun,
+  stopBuildRun,
   type BuildRunOutcome,
 } from './api.js';
 import './board.css';
@@ -38,7 +39,16 @@ export function BoardView({
   onSelectTicket,
 }: BoardViewProps) {
   const [buildRun, setBuildRun] = useState<BuildRunOutcome | null>(null);
+  const [stopping, setStopping] = useState(false);
   const apiOpts = { baseUrl, token };
+
+  // W17-07: the way out the live UAT lacked. The loop stops at its next
+  // ticket boundary; in-flight work finishes or parks honestly.
+  const handleStopRun = async () => {
+    if (!buildRun || buildRun.status !== 'running') return;
+    setStopping(true);
+    await stopBuildRun(apiOpts, projectId, buildRun.runId);
+  };
 
   /**
    * Poll the status route while a run is live. The outcome map behind it is
@@ -100,10 +110,25 @@ export function BoardView({
           type="button"
           className="btn-primary"
           disabled={buildRun?.status === 'running'}
-          onClick={() => void handleStartRun()}
+          onClick={() => {
+            setStopping(false);
+            void handleStartRun();
+          }}
         >
           {buildRun?.status === 'running' ? 'Run in progress…' : 'Start a run'}
         </button>
+        {buildRun?.status === 'running' && (
+          <button
+            type="button"
+            className="btn-quiet"
+            data-testid="board-runbar-stop"
+            disabled={stopping}
+            onClick={() => void handleStopRun()}
+            title="The run stops at the next ticket boundary — work already in flight finishes or parks honestly."
+          >
+            {stopping ? 'Stopping at the next ticket…' : 'Stop the run'}
+          </button>
+        )}
         {/* W13-59: the novice's single next step was a bare button with an
             unstated consequence. One line: what a run is (VOCABULARY.md) and
             the wizard-standard reassurance about what it may use. */}

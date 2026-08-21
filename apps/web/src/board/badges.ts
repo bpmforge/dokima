@@ -95,3 +95,31 @@ export function blockedExplanation(blockers: readonly string[]): string {
   const plural = blockers.length > 1;
   return `Blocked on ${named} — opens on its own when ${plural ? 'they are' : 'it is'} done. Nothing to do here.`;
 }
+
+/**
+ * W17-07: the park worn on the card face — how many times this run of
+ * parks happened and the one-line why, so the evidence is a glance, not an
+ * archaeology dig through comments. Returns null for a non-parked ticket.
+ */
+export function parkSummary(ticket: {
+  status: string;
+  history: readonly { verb: string; body?: string }[];
+}): { count: number; reason: string } | null {
+  if (!isParked(ticket)) return null;
+  let count = 0;
+  let reason = '';
+  for (const entry of ticket.history) {
+    if (entry.verb !== 'comment') continue;
+    const body = entry.body ?? '';
+    if (!PARK_MARKERS.some((marker) => body.startsWith(marker))) continue;
+    count += 1;
+    // The second line carries the first attempt's evidence; the first line
+    // is the generic park header. Prefer the most recent park's evidence.
+    const lines = body.split('\n');
+    reason = (lines[1] ?? lines[0] ?? '').trim();
+  }
+  if (count === 0) return null;
+  // Compress the evidence line to a face-sized sentence.
+  reason = reason.replace(/^attempt \d+\/\d+:\s*/, '').slice(0, 140);
+  return { count, reason };
+}

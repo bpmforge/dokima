@@ -167,3 +167,101 @@ describe('BoardView start-run affordance (W12-28)', () => {
     expect(board.contains(screen.getByTestId('board-runbar'))).toBe(true);
   });
 });
+
+describe('the run can be STOPPED from the board (W17-07)', () => {
+  it('RED FIXTURE: while a run is in progress a working Stop control appears, states the boundary consequence, and calls the stop route', async () => {
+    mockedUseBoardData.mockReturnValue(
+      boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }),
+    );
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+      calls.push(String(url));
+      if (String(url).endsWith('/build-runs')) {
+        return new Response(JSON.stringify({ run_id: 'run-x', status: 'running' }), {
+          status: 202,
+        });
+      }
+      if (String(url).endsWith('/stop')) {
+        return new Response(JSON.stringify({ status: 'stopping' }), { status: 202 });
+      }
+      // status poll: stays running so the Stop control stays visible.
+      return new Response(
+        JSON.stringify({ run_id: 'run-x', status: 'running' }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    try {
+      render(
+        <BoardView
+          baseUrl="/api/v1"
+          token="t"
+          projectId="p1"
+          wsUrl="ws://x"
+          onSelectTicket={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
+      const stop = await screen.findByTestId('board-runbar-stop');
+      expect(stop.getAttribute('title')).toContain('next ticket boundary');
+      fireEvent.click(stop);
+      await vi.waitFor(() =>
+        expect(calls.some((u) => u.endsWith('/build-runs/run-x/stop'))).toBe(true),
+      );
+      expect((await screen.findByTestId('board-runbar-stop')).textContent).toContain(
+        'Stopping at the next ticket',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('the park is worn on the card face (W17-07)', () => {
+  it('RED FIXTURE: a parked ticket shows its count and one-line reason on the face — evidence at a glance, not an archaeology dig', () => {
+    const parked = makeBoardTicket({
+      id: 'P-1',
+      status: 'ready',
+      history: [
+        { verb: 'comment', body: 'Parked with evidence — ladder attempt cap (2) reached without a close.\nattempt 1/2: exitCode=1 no completion manifest returned — budget (12) exceeded' },
+        { verb: 'release' },
+        { verb: 'comment', body: 'Parked with evidence — ladder attempt cap (2) reached without a close.\nattempt 2/2: exitCode=1 no completion manifest returned — budget (12) exceeded' },
+        { verb: 'release' },
+      ] as never,
+    });
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [parked] }));
+    render(
+      <BoardView
+        baseUrl="/api/v1"
+        token="t"
+        projectId="p1"
+        wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
+      />,
+    );
+    const why = screen.getByTestId('park-why-P-1');
+    expect(why.textContent).toContain('Parked 2 times');
+    expect(why.textContent).toContain('no completion manifest');
+  });
+
+  it('an in-progress ticket says an agent is working it, with the raw actor id as the hover detail', () => {
+    const working = makeBoardTicket({
+      id: 'W-1',
+      status: 'in_progress',
+      ownerId: 'operator',
+    });
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [working] }));
+    render(
+      <BoardView
+        baseUrl="/api/v1"
+        token="t"
+        projectId="p1"
+        wsUrl="ws://x"
+        onSelectTicket={vi.fn()}
+      />,
+    );
+    const owner = screen.getByTestId('owner-W-1');
+    expect(owner.textContent).toBe('an agent is working this');
+    expect(owner.getAttribute('title')).toBe('operator');
+  });
+});
