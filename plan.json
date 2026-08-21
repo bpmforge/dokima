@@ -10152,7 +10152,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W18-08",
       "title": "unavailable fleet cards compact to one honest line each",
       "module": "web",
