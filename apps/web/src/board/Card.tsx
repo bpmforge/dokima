@@ -107,6 +107,7 @@ export function Card({
             <p
               className="board-card__blocked-why"
               data-testid={`park-why-${ticket.id}`}
+              title={park.fullReason}
             >
               {park.count > 1 ? `Parked ${park.count} times. ` : ''}
               {park.reason}

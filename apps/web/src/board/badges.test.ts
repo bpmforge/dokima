@@ -6,6 +6,7 @@ import {
   isStaleBlocked,
   isWaived,
   openBlockers,
+  parkSummary,
   STALE_BADGE_LABEL,
   WAIVED_BADGE_LABEL,
 } from './badges.js';
@@ -137,5 +138,37 @@ describe('openBlockers / blockedExplanation (W13-60)', () => {
     expect(line).toContain('Blocked on T-2');
     expect(line).toContain('on its own');
     expect(blockedExplanation([])).toContain('on its own');
+  });
+});
+
+describe('the park reason clamps on a word (W18-07)', () => {
+  const longEvidence =
+    'Parked with evidence — ladder attempt cap (2) reached without a close.\n' +
+    'attempt 1/2: exitCode=1 no completion manifest returned — agent session ' +
+    'stopped: exceeded the per-session tool-iteration budget (12) without a ' +
+    'Completion Manifest (T-27) and this tail keeps going well past the clamp';
+
+  it('RED FIXTURE: never ends mid-word — the live face read "…without a Completion"', () => {
+    const park = parkSummary({
+      status: 'ready',
+      history: [{ verb: 'comment', body: longEvidence }, { verb: 'release' }],
+    });
+    expect(park).not.toBeNull();
+    expect(park!.reason.endsWith('…')).toBe(true);
+    const lastWord = park!.reason.slice(0, -1).trimEnd().split(' ').at(-1) ?? '';
+    expect(park!.fullReason).toContain(`${lastWord} `);
+    expect(park!.fullReason.startsWith('exitCode=1')).toBe(true);
+  });
+
+  it('a short reason passes through whole, no ellipsis', () => {
+    const park = parkSummary({
+      status: 'ready',
+      history: [
+        { verb: 'comment', body: 'Parked with evidence — cap.\nattempt 1/2: short' },
+        { verb: 'release' },
+      ],
+    });
+    expect(park!.reason).toBe('short');
+    expect(park!.fullReason).toBe('short');
   });
 });

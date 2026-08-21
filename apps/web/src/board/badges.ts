@@ -104,7 +104,7 @@ export function blockedExplanation(blockers: readonly string[]): string {
 export function parkSummary(ticket: {
   status: string;
   history: readonly { verb: string; body?: string }[];
-}): { count: number; reason: string } | null {
+}): { count: number; reason: string; fullReason: string } | null {
   if (!isParked(ticket)) return null;
   let count = 0;
   let reason = '';
@@ -119,9 +119,18 @@ export function parkSummary(ticket: {
     reason = (lines[1] ?? lines[0] ?? '').trim();
   }
   if (count === 0) return null;
-  // Compress the evidence line to a face-sized sentence.
-  reason = reason.replace(/^attempt \d+\/\d+:\s*/, '').slice(0, 140);
-  return { count, reason };
+  // Compress the evidence line to a face-sized sentence. W18-07: clamp on a
+  // word with an ellipsis — the hard slice ended the face mid-phrase
+  // ("…without a Completion") — and keep the whole line for the title.
+  const fullReason = reason.replace(/^attempt \d+\/\d+:\s*/, '');
+  if (fullReason.length > 140) {
+    const cut = fullReason.slice(0, 140);
+    const lastSpace = cut.lastIndexOf(' ');
+    reason = `${(lastSpace > 70 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+  } else {
+    reason = fullReason;
+  }
+  return { count, reason, fullReason };
 }
 
 /**
