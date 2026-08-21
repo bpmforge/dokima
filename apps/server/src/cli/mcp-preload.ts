@@ -23,7 +23,10 @@ import {
   createStdioToolExecutor,
   discoveredToolDefinitions,
   getServer,
+  listToolsForRole,
+  loadMcpState,
   registerServer,
+  setRoleAllowlist,
   spawnStdioMcpClient,
   type McpClient,
   type ToolExecutor,
@@ -112,7 +115,13 @@ export async function preloadMcpServers(
     try {
       await client.initialize();
       const discovered = await client.listTools();
-      const definitions = discoveredToolDefinitions(server.id, discovered);
+      const definitions = discoveredToolDefinitions(server.id, discovered).map(
+        (definition) => ({
+          ...definition,
+          // W14-04: the owner's per-server choice; absent = ask (SC-12).
+          requiresApproval: server.requireApproval !== false,
+        }),
+      );
       // Idempotent across runs, the ensureAgentSessionToolsRegistered
       // tolerance: the log already knows this server from a prior run.
       if (!getServer(options.log, server.id)) {
@@ -138,6 +147,8 @@ export async function preloadMcpServers(
     }
   }
 
+  syncRoleGrants(options.log, options.actorId, options.servers, toolIds);
+
   return {
     clients,
     executor: createStdioToolExecutor(clients),
@@ -148,4 +159,48 @@ export async function preloadMcpServers(
       clients.clear();
     },
   };
+}
+
+/**
+ * Settings -> allowlist reconciliation (W14-04): the panel's `roles` list is
+ * the source of truth for which roles see a configured server's tools. Runs
+ * after preload so only LIVE tool ids are granted. Grants for servers this
+ * settings file does not mention are left alone (a manual or test grant is
+ * not ours to revoke), and the closed agent-session set is untouched.
+ */
+function syncRoleGrants(
+  log: Parameters<typeof setRoleAllowlist>[0],
+  actorId: string,
+  servers: readonly McpServerSetting[],
+  liveToolIds: readonly string[],
+): void {
+  const live = new Set(liveToolIds);
+  const configuredPrefixes = servers.map((server) => `${server.id}.`);
+  const ownedBySettings = (toolId: string) =>
+    configuredPrefixes.some((prefix) => toolId.startsWith(prefix));
+
+  const desiredByRole = new Map<string, Set<string>>();
+  for (const server of servers) {
+    for (const role of server.roles ?? []) {
+      const set = desiredByRole.get(role) ?? new Set<string>();
+      for (const toolId of live) {
+        if (toolId.startsWith(`${server.id}.`)) set.add(toolId);
+      }
+      desiredByRole.set(role, set);
+    }
+  }
+
+  const roles = new Set<string>([
+    ...desiredByRole.keys(),
+    ...loadMcpState(log).allowlist.keys(),
+  ]);
+  for (const role of roles) {
+    const current = listToolsForRole(log, role).map((tool) => tool.id);
+    const kept = current.filter((id) => !ownedBySettings(id));
+    const desired = [...(desiredByRole.get(role) ?? new Set<string>())];
+    const next = [...new Set([...kept, ...desired])].sort();
+    if (next.join('\n') !== [...current].sort().join('\n')) {
+      setRoleAllowlist(log, { role, toolIds: next, actorId });
+    }
+  }
 }
