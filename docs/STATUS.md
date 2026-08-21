@@ -1370,3 +1370,25 @@ W16 vision wave complete (6/6, filed and landed same day from the
 2026-08-21 challenger audits). Every verification/concurrency/memory/forge
 primitive the audits found built-but-unwired now has a live production
 path, and the novice's first-contact error surface speaks plain language.
+
+### 2026-08-21 — W16 iteration 2 (W16-07..10): the audit audits its own wave
+
+Second challenger pass over the just-landed wave found four more gaps; all
+landed same day:
+
+- W16-07 — **the gate receipt gets its minter**: POST .../phases/:n/gate
+  runs runPhaseGate for real (Law 5 mechanical, author from the body,
+  same-identity 422) — and the capstone fixture executes the first
+  genuinely clean phase advance in the product's history against the REAL
+  validator pack, proving W9-08's mermaid fix end to end. The stale
+  runner.ts caveat describing the dead bug is replaced with a dated note.
+- W16-08 — the W16 event kinds speak human in the trace (r0 consults,
+  forge mirror, berth admissions, consolidation, infra retries).
+- W16-09 — kind "generic" refuses by name: bare git has no issue API to
+  mirror through; push still works and the refusal says so.
+- W16-10 — the conflict watch runs at attempt boundaries (the only moments
+  a write lease is live in a sequential run); detection ledgered, the
+  resolution seam recorded as follow-up.
+
+Board: 329/331 done — the two remaining are the founder-parked W12-44
+(plugin loader) and W13-32 (autonomy dial).
