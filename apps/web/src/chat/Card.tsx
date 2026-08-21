@@ -1,3 +1,4 @@
+import { plainLeadFor } from './plain-lead.js';
 import { ProvenanceLine } from './ProvenanceLine.js';
 import type {
   ChatCard,
@@ -41,11 +42,19 @@ export function isSafeEvidenceHref(href: string): boolean {
 
 function FindingCardBody({ card }: { card: FindingCard }) {
   const safeHref = isSafeEvidenceHref(card.evidenceHref) ? card.evidenceHref : null;
+  // W19-07: recognised mechanical findings lead with one human sentence; the
+  // verbatim issue stays below, untouched — summarise, never paraphrase away.
+  const lead = plainLeadFor(card.issue);
   return (
     <>
       <span className={`chat-card__severity chat-card__severity--${card.severity}`}>
         {card.severity}
       </span>
+      {lead && (
+        <p className="chat-card__lead" data-testid="card-plain-lead">
+          {lead}
+        </p>
+      )}
       <p className="chat-card__issue">{card.issue}</p>
       {safeHref ? (
         <a

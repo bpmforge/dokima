@@ -187,3 +187,9 @@
 .chat-card__cost:hover {
   text-decoration: underline;
 }
+
+/* W19-07: the human first line of a recognised finding. */
+.chat-card__lead {
+  margin: 0 0 var(--sw-space-2);
+  font-weight: 600;
+}
