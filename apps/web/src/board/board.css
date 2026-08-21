@@ -310,3 +310,11 @@
   opacity: 0.75;
   text-align: center;
 }
+
+/* W19-04: the end-of-run summary — shares .surface; this only spaces it. */
+.board-view__run-summary {
+  margin-top: var(--sw-space-3);
+}
+.board-view__run-summary h4 {
+  margin: 0 0 var(--sw-space-2);
+}

@@ -15,6 +15,7 @@ import { openBlockers } from './badges.js';
 import { groupIntoLanes } from './lanes.js';
 import { Lane } from './Lane.js';
 import { RefusalPopover } from './RefusalPopover.js';
+import { RunSummary } from './RunSummary.js';
 import { ShippedTicker } from './ShippedTickerStrip.js';
 import { useBoardData } from './useBoardData.js';
 import { putProjectSettings } from '../settings/api.js';
@@ -159,6 +160,11 @@ export function BoardView({
           <p role="alert" data-testid="board-runbar-refusal">
             {refusalLine}
           </p>
+        )}
+        {/* W19-04: once the run ends, one card says what it did — derived
+            from the run's own event slice, nothing new to keep in sync. */}
+        {buildRun && buildRun.status !== 'running' && (
+          <RunSummary apiOpts={apiOpts} projectId={projectId} runId={buildRun.runId} />
         )}
       </div>
       <div className="board-view__strips">

@@ -91,3 +91,16 @@ export async function patchDependsOn(
   }
   return { kind: 'error', detail: body.detail ?? `unexpected status ${res.status}` };
 }
+
+/** W19-04: the run's WHOLE event slice (no ticket filter) — the end-of-run summary derives from it. */
+export async function fetchRunTraceAll(
+  opts: BoardApiOptions,
+  projectId: string,
+  runId: string,
+): Promise<TraceEvent[]> {
+  const body = (await getJson(
+    opts,
+    `/runs/${encodeURIComponent(runId)}/trace?project=${encodeURIComponent(projectId)}`,
+  )) as { items: TraceEvent[] };
+  return body.items;
+}

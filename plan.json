@@ -10293,7 +10293,7 @@
       ],
       "depends_on": [],
       "phase": 19,
-      "status": "in_progress",
+      "status": "done",
       "id": "W19-04",
       "title": "the end-of-run summary \u2014 one screen says what the run did",
       "module": "web",
