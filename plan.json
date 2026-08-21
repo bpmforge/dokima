@@ -10197,6 +10197,196 @@
         "The docs list separates title and uncommitted marker visibly (em-dash or styled gap)",
         "Component tests assert both"
       ]
+    },
+    {
+      "stories": [
+        "US-401"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-01",
+      "title": "every phase advance goes through runPhaseGate \u2014 the propped-open door closes",
+      "module": "pipeline",
+      "lane": "core",
+      "points": 5,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/pipeline/src/**",
+        "apps/server/src/api/pipeline/**"
+      ],
+      "notes": [
+        "2026-08-21 review: runPhaseGate works (W16-07 proved a clean advance against the real validator pack) but the default creation flow still advances phases without routing through it. Until every advance mints its receipt through the gate, the trust machine has one door open. Wire the creation pipeline phases through runPhaseGate; degraded honestly when a pack is absent (FR-G5), never silently skipped."
+      ],
+      "acceptance": [
+        "The creation pipeline happy path calls runPhaseGate for each phase advance and ledgers the receipt",
+        "A planted validator failure blocks the advance with evidence (red fixture)",
+        "Absent validator pack degrades with a named note, never a silent pass",
+        "Existing pipeline tests stay green (fake gateway only)"
+      ]
+    },
+    {
+      "stories": [
+        "US-308"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-02",
+      "title": "a successful raised-budget retry teaches the calibrator",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 3,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "2026-08-21 review: parks are visible and one-click-retryable (W17-07/10) but nothing learns from the outcome. When a retry with a raised budget closes the ticket, that session.turns_observed sample is calibration evidence \u2014 the fitness turns-multiplier should ingest it so the next run starts at the right budget instead of re-parking at the default. Mechanical signals only (C-2); calibration still only widens from measured turns, never from model claims."
+      ],
+      "acceptance": [
+        "A raised-budget retry that closes emits its turns_observed sample and the multiplier reflects it (unit test with 3+ samples)",
+        "A retry that parks again does NOT inflate the multiplier",
+        "The budget_profile event names the samples it was computed from"
+      ]
+    },
+    {
+      "stories": [
+        "US-401"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-03",
+      "title": "wire-or-delete #1 \u2014 five buried exports become product or deletions",
+      "module": "quality",
+      "lane": "core",
+      "points": 3,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/shared/src/**",
+        "packages/events/src/**",
+        "packages/tickets/src/**",
+        "packages/loop/src/**",
+        "packages/harbormaster/src/**",
+        "packages/pipeline/src/**",
+        "packages/forge/src/**",
+        "packages/mcp/src/**",
+        "packages/memory/src/**",
+        "apps/server/src/**"
+      ],
+      "notes": [
+        "2026-08-21 review: validate-exports still names ~130 no-caller candidates; W16 proved this list pays (the gate minter came from it). Take the top five by module importance, confirm by bundle presence not grep (see no-caller-sweep memory), then either wire each into a real production path or delete it and lower the export ratchet. No silent keeps.",
+        "Scope excludes packages/gateway/src/plugins/** \u2014 founder-parked W12-44 owns those files; a candidate living there is skipped this wave."
+      ],
+      "acceptance": [
+        "Five candidates dispositioned: each either has a live caller reachable from a production entry point (test proves it) or is deleted with the ratchet lowered",
+        "validate-exports count strictly decreases",
+        "A close comment lists the five and their dispositions"
+      ]
+    },
+    {
+      "stories": [
+        "US-305"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-04",
+      "title": "the end-of-run summary \u2014 one screen says what the run did",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/board/**",
+        "apps/web/src/notifications/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "2026-08-21 review: a finished run scatters its evidence across board, receipts, and morning queue. One surface after a run ends: N tickets closed, M parked and why (with the raise-and-retry action), spend, and what needs the founder. This is the novice single most-read screen; build it from events already in the log \u2014 no new state."
+      ],
+      "acceptance": [
+        "A completed build run renders a summary (closed count, parked count with reasons, spend, needs-you items) reachable from the board",
+        "Parked rows carry the same one-click retry the card face has",
+        "Derived from the event log only \u2014 no new writable state; component tests cover populated and empty runs"
+      ]
+    },
+    {
+      "stories": [
+        "US-303"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-05",
+      "title": "settings splits Basics from Advanced \u2014 three tabs greet the novice, not sixteen",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "2026-08-21 review: 16 top-level tabs is expert-friendly, novice-hostile (novice north star). Providers, Models, Runs & Forge stay in front; the remaining tabs collapse behind an Advanced disclosure. No panel is removed or renamed \u2014 only grouped; deep links (view=settings&tab=\u2026) keep working."
+      ],
+      "acceptance": [
+        "Default settings view shows the basic tabs plus one Advanced group holding the rest",
+        "Every existing panel remains reachable and its e2e selectors still resolve",
+        "A direct link to an advanced tab opens it with the group expanded"
+      ]
+    },
+    {
+      "stories": [
+        "US-303"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-06",
+      "title": "the fitness column earns its place or steps down",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/settings/**"
+      ],
+      "notes": [
+        "2026-08-21 review: every matrix row says \"not benched\" with no way to bench \u2014 an unfillable column reads as broken. Either a Bench action exists (running the existing fitness harness for that model, fake-gateway in tests) or the column hides until at least one bench result exists, with a hint naming how to get one."
+      ],
+      "acceptance": [
+        "Either: a Bench control per row that records a fitness result and the column renders it; or: the column absent when no results exist, replaced by a single hint naming the bench path",
+        "No permanent \"not benched\" wall in either outcome; component test covers the empty state"
+      ]
+    },
+    {
+      "stories": [
+        "US-305"
+      ],
+      "depends_on": [],
+      "phase": 19,
+      "status": "todo",
+      "id": "W19-07",
+      "title": "findings speak human first \u2014 the chat pane leads with the plain-language line",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/chat/**"
+      ],
+      "notes": [
+        "2026-08-21 review: the finding cards lead with exitCode=1/FR-refs/T-27 jargon; the plain sentence (ran out of budget before finishing \u2014 raise the turn budget) is buried mid-paragraph. Lead each finding with the human line (reuse the W16-08 humanizer where a kind matches); keep the full evidence below, untouched \u2014 summarize, never paraphrase away the mechanism."
+      ],
+      "acceptance": [
+        "A budget-park finding card leads with a plain-language sentence a novice can act on",
+        "The verbatim evidence remains visible below the lead",
+        "No finding text is altered in the ledger \u2014 presentation only; tests cover a park and a generic finding"
+      ]
     }
   ]
 }
