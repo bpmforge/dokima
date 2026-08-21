@@ -9668,7 +9668,7 @@
         "W17-01"
       ],
       "phase": 17,
-      "status": "in_progress",
+      "status": "done",
       "id": "W17-02",
       "title": "a budget-stopped attempt leaves a checkpoint \u2014 the retry continues the work instead of rediscovering it",
       "module": "harbormaster",
@@ -9698,7 +9698,7 @@
         "W17-01"
       ],
       "phase": 17,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W17-03",
       "title": "the turn budget knows the model \u2014 fitness cards carry a measured turns multiplier, defaults stop pretending all models are equal",
       "module": "gateway",
