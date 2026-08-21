@@ -309,3 +309,28 @@ export async function putBudget(
   )) as BudgetWire;
   return budgetFromWire(wire);
 }
+
+/** W19-06: the verdict the bench route returns — see models-bench-route.ts. */
+export interface BenchResult {
+  model: string;
+  role: string;
+  verdict: 'fit' | 'marginal' | 'unfit';
+  tasks: { id: string; passed: boolean }[];
+}
+
+/**
+ * W19-06: run the fitness bench for a role against the project's configured
+ * model (POST models/bench, the W19-03 producer). The card persists in the
+ * global DB the Roster reads; the returned verdict fills the matrix cell.
+ */
+export async function benchModel(
+  projectId: string,
+  role: string,
+  opts: SettingsApiOptions = {},
+): Promise<BenchResult> {
+  return (await request(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/models/bench`,
+    jsonInit('POST', { role }),
+    opts,
+  )) as BenchResult;
+}

@@ -15,6 +15,7 @@ vi.mock('./api.js', async () => {
     ...actual,
     fetchModelMatrix: vi.fn(),
     putModelMatrix: vi.fn(),
+    benchModel: vi.fn(),
   };
 });
 const mocked = vi.mocked(settingsApi);
@@ -96,5 +97,35 @@ describe('the empty model picker points at the real step (W18-06)', () => {
         'No models discovered yet — register and test a provider on the Providers tab',
       ),
     ).toBeTruthy();
+  });
+});
+
+describe('the fitness column earns its place (W19-06)', () => {
+  it('RED FIXTURE: "not benched" now carries the Bench action; clicking it runs the bench and the returned verdict fills the cell — no more permanent wall', async () => {
+    mocked.fetchModelMatrix.mockResolvedValue(MATRIX as never);
+    mocked.benchModel.mockResolvedValue({
+      model: 'cheap-local',
+      role: 'coding-agent',
+      verdict: 'marginal',
+      tasks: [{ id: 't1', passed: true }],
+    } as never);
+    render(<ModelMatrixPanel projectId="p1" catalogs={{}} providerEntries={[]} />);
+    const bench = await screen.findByTestId('bench-coding-agent-reasoning');
+    expect(bench.title).toContain('records the verdict');
+    fireEvent.click(bench);
+    const verdict = await screen.findByTestId('bench-verdict-coding-agent-reasoning');
+    expect(verdict.textContent).toBe('marginal');
+    expect(mocked.benchModel).toHaveBeenCalledWith('p1', 'coding-agent');
+  });
+
+  it('a failed bench says so and keeps the action available — never a fabricated verdict (C-1)', async () => {
+    mocked.fetchModelMatrix.mockResolvedValue(MATRIX as never);
+    mocked.benchModel.mockRejectedValue(new Error('endpoint down'));
+    render(<ModelMatrixPanel projectId="p1" catalogs={{}} providerEntries={[]} />);
+    fireEvent.click(await screen.findByTestId('bench-coding-agent-reasoning'));
+    await waitFor(() => {
+      expect(screen.getByText('bench failed')).toBeTruthy();
+    });
+    expect(screen.getByTestId('bench-coding-agent-reasoning')).toBeTruthy();
   });
 });

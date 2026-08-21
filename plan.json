@@ -10346,7 +10346,7 @@
       ],
       "depends_on": [],
       "phase": 19,
-      "status": "in_progress",
+      "status": "done",
       "id": "W19-06",
       "title": "the fitness column earns its place or steps down",
       "module": "web",

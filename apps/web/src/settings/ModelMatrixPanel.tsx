@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { MatrixFitnessCell } from './MatrixFitnessCell.js';
 import {
   fetchModelMatrix,
   putModelMatrix,
   SettingsApiError,
   type ModelMatrixWithScope,
+  benchModel,
 } from './api.js';
 import {
   MODEL_MATRIX_PRESETS,
@@ -30,9 +32,9 @@ const PRESET_LABEL: Record<(typeof MODEL_MATRIX_PRESETS)[number], string> = {
 
 export interface ModelMatrixPanelProps {
   projectId: string;
-  /** W12-35: discovered per-provider model lists, owned by SettingsPage so one fetch serves both tabs. */
+  /** W12-35: per-provider model lists, owned by SettingsPage. */
   catalogs: Record<string, ProviderCatalog>;
-  /** The matrix needs `enabled` per entry to tell "missing" apart from "unroutable" (UX_SPEC §6a). */
+  /** `enabled` per entry tells "missing" from "unroutable" (§6a). */
   providerEntries: ProviderEntry[];
 }
 
@@ -42,11 +44,9 @@ function rowKey(role: string, taskType: TaskType): string {
 
 /**
  * Model-to-role matrix (BLUEPRINT §3.1.4): rows = agent roles, columns = task
- * types (AC1); fitness-card surfacing (W2-08) and the D-019 Copilot flag
- * (AC6) render per row. Composes `ProvidersPanel` above it (UX_SPEC §6a's
- * "[ Providers ]" then "[ Models ]" stacked in one Settings panel) so the
- * Model field is a `<select>` backed by the catalog `ProvidersPanel`
- * discovers, rather than an unvalidated bare string (W10-04).
+ * types (AC1); fitness (W2-08/W19-06) and the D-019 Copilot flag render per
+ * row. Composes `ProvidersPanel` above it (UX_SPEC §6a) so the Model field
+ * is a `<select>` backed by the discovered catalog, never a bare string.
  */
 export function ModelMatrixPanel({
   projectId,
@@ -54,26 +54,37 @@ export function ModelMatrixPanel({
   providerEntries,
 }: ModelMatrixPanelProps) {
   const [matrix, setMatrix] = useState<ModelMatrixWithScope | null>(null);
-  // W10-64: write the preset every project inherits, rather than only this
-  // one. Off by default — a global write is the wider blast radius, so it is
-  // never the thing an unread click does.
+  // W10-64: optionally write the every-project preset. Off by default — a
+  // global write is never the thing an unread click does.
   const [applyGlobally, setApplyGlobally] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // W12-35: catalogs and entries arrive as PROPS now. They used to be state
-  // here, fed by a `ProvidersPanel` this component mounted itself — which was
-  // fine while that was the only mount, and became a defect the moment W12-31
-  // gave Providers its own tab: the discovered catalog lived in whichever
-  // instance did the discovering, so the Model picker arrived empty for a user
-  // who registered a provider on the other one.
+  // W12-35: catalogs/entries are PROPS (owned by SettingsPage) — as local
+  // state fed by a self-mounted ProvidersPanel, the discovered catalog lived
+  // in whichever tab's instance did the discovering, and the Model picker
+  // arrived empty for a user who registered a provider on the other one.
   const [rowError, setRowError] = useState<{ key: string; message: string } | null>(null);
+  // W19-06: per-row bench state — 'running' | verdict | 'failed'.
+  const [benchState, setBenchState] = useState<Record<string, string>>({});
+  const runBench = useCallback(
+    async (role: string, taskType: TaskType) => {
+      const key = rowKey(role, taskType);
+      setBenchState((prev) => ({ ...prev, [key]: 'running' }));
+      try {
+        const result = await benchModel(projectId, role);
+        setBenchState((prev) => ({ ...prev, [key]: result.verdict }));
+      } catch {
+        setBenchState((prev) => ({ ...prev, [key]: 'failed' }));
+      }
+    },
+    [projectId],
+  );
   const [fallbackDraft, setFallbackDraft] = useState<{ key: string; value: string }>({
     key: '',
     value: '',
   });
 
-  // W17-08: the chain is the escalation ladder's whole universe (W16-01
-  // climbs it) — until this editor, fallback[] was render-only and every
-  // ladder had exactly one rung.
+  // W17-08: until this editor, fallback[] was render-only and every
+  // escalation ladder (W16-01) had exactly one rung.
   const saveRowFallback = async (target: ModelMatrixRow, fallback: string[]) => {
     const key = rowKey(target.role, target.taskType);
     try {
@@ -142,10 +153,8 @@ export function ModelMatrixPanel({
       setError(null);
       setRowError(null);
     } catch (err) {
-      // AC2 / UX_SPEC §6a "maker = verifier": err.message IS the refusal
-      // copy the board's own drag refusals use, verbatim from the server —
-      // rendered inline at the row for that role/taskType, not just banked
-      // at the top of the panel (the "drag-refusals explained" precedent).
+      // AC2 / UX_SPEC §6a "maker = verifier": err.message IS the server's own
+      // refusal copy, rendered inline at the row (drag-refusals precedent).
       setRowError({ key, message: errorMessage(err, 'Failed to save the model matrix') });
     }
   }, [applyGlobally, draft, matrix, projectId]);
@@ -169,18 +178,15 @@ export function ModelMatrixPanel({
         Presets: {MODEL_MATRIX_PRESETS.map((p) => PRESET_LABEL[p]).join(' · ')} (applying
         a preset lands with the first-run wizard).
       </p>
-      {/* W17-08: what a chain MEANS, before the column of them. */}
       <p className="settings__hint" data-testid="fallback-explainer">
         The fallback chain is the escalation ladder: the first model does the work,
         and each later one is tried only after the gate rejects the previous
         attempt — put the cheap model first. A row with no fallbacks retries on
         the same model.
       </p>
-      {/* W10-64. An inherited row is indistinguishable from one configured
-          here, and editing one silently creates a project override — so say
-          where these came from rather than letting the user find out by
-          changing another project. Only shown when rows exist: "inherited
-          nothing" is not worth a line. */}
+      {/* W10-64: inherited rows are indistinguishable from configured ones and
+          editing silently creates a project override — say where they came
+          from. Only shown when rows exist. */}
       {matrix.scope === 'global' && matrix.rows.length > 0 && (
         <p className="settings__notice" role="status">
           These rows come from your every-project defaults. Editing one here configures
@@ -286,12 +292,12 @@ export function ModelMatrixPanel({
                   </button>
                 </td>
                 <td>
-                  {/* No fitness-bench producer is wired to apps/server yet (packages/gateway/src/fitness
-                      isn't a reachable dependency, see settings-types.ts) — honestly reports "not benched"
-                      rather than a fabricated verdict (C-1), ready to surface a real card once wired. */}
-                  <span className="settings__badge settings__badge--muted">
-                    not benched
-                  </span>
+                  <MatrixFitnessCell
+                    role={row.role}
+                    taskType={row.taskType}
+                    state={benchState[rowKey(row.role, row.taskType)]}
+                    onBench={() => void runBench(row.role, row.taskType)}
+                  />
                 </td>
                 <td>
                   {row.copilotBacked ? (
