@@ -75,29 +75,49 @@ async function walkMarkdown(root: string, dir: string): Promise<string[]> {
   return out;
 }
 
+export interface MarkdownFileEntry {
+  path: string;
+  /** false = in the working tree but in no commit yet (W18-03: a pipeline
+   * writes deliverables before anything commits them — hiding those made a
+   * produced doc invisible; the pane shows it marked uncommitted instead). */
+  tracked: boolean;
+}
+
 /**
- * Markdown files under `subdir` (default `docs`), git-tracked when the
- * project is a git repo (canonical per FR-C3), else a plain filesystem
- * walk so an un-initialized project still shows its docs honestly.
+ * Markdown files under `subdir` (default `docs`). In a git repo, tracked
+ * files are canonical (FR-C3) and untracked-but-present ones are included
+ * with `tracked: false` — never hidden. Outside a repo, a filesystem walk
+ * (everything `tracked: false`) so an un-initialized project still shows
+ * its docs honestly.
  */
 export async function listMarkdownFiles(
   projectPath: string,
   subdir = 'docs',
-): Promise<string[]> {
+): Promise<MarkdownFileEntry[]> {
   if (await isGitRepo(projectPath)) {
-    const res = await runGit(projectPath, [
+    const pathspecs = ['--', `${subdir}/**/*.md`, `${subdir}/*.md`];
+    const tracked = await runGit(projectPath, ['ls-files', ...pathspecs]);
+    const untracked = await runGit(projectPath, [
       'ls-files',
-      '--',
-      `${subdir}/**/*.md`,
-      `${subdir}/*.md`,
+      '--others',
+      '--exclude-standard',
+      ...pathspecs,
     ]);
-    if (res.ok) {
-      const files = res.stdout.split('\n').filter(Boolean);
-      return Array.from(new Set(files)).sort();
+    if (tracked.ok) {
+      const entries = new Map<string, boolean>();
+      for (const f of tracked.stdout.split('\n').filter(Boolean)) entries.set(f, true);
+      if (untracked.ok) {
+        for (const f of untracked.stdout.split('\n').filter(Boolean)) {
+          if (!entries.has(f)) entries.set(f, false);
+        }
+      }
+      return [...entries.entries()]
+        .map(([p, t]) => ({ path: p, tracked: t }))
+        .sort((a, b) => a.path.localeCompare(b.path));
     }
   }
   const files = await walkMarkdown(projectPath, path.join(projectPath, subdir));
-  return files.sort();
+  return files.sort().map((p) => ({ path: p, tracked: false }));
 }
 
 export interface GitLogEntry {

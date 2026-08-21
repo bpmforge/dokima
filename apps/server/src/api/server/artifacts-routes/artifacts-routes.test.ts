@@ -118,6 +118,32 @@ describe('artifact routes — buildApiServer integration', () => {
     });
   });
 
+  it('RED FIXTURE (W18-03): an uncommitted doc a run wrote is LISTED, marked uncommitted — hiding it made a produced deliverable invisible (recipe-keeper had docs/DECISIONS.md on disk while the pane said none existed)', async () => {
+    const { app, fleetHome } = await boot();
+    const { projectDir, projectId } = await registerGitProject(fleetHome, 'mixed-docs');
+    await writeAndCommit(
+      projectDir,
+      'docs/SRS.md',
+      '# Software Requirements\n\nv1',
+      'v1',
+    );
+    const full = path.join(projectDir, 'docs/DECISIONS.md');
+    await fs.writeFile(full, '# Decisions\n\nD-001', 'utf8');
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/artifacts`,
+      headers: authHeaders(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      items: [
+        { path: 'docs/DECISIONS.md', title: 'Decisions', uncommitted: true },
+        { path: 'docs/SRS.md', title: 'Software Requirements' },
+      ],
+    });
+  });
+
   it('GET /artifacts/doc returns content and version history, newest first', async () => {
     const { app, fleetHome } = await boot();
     const { projectDir, projectId } = await registerGitProject(fleetHome, 'versions');

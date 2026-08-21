@@ -256,6 +256,15 @@ export function ArtifactViewer({ projectId, token }: ArtifactViewerProps) {
                       }}
                     >
                       {item.title}
+                      {item.uncommitted && (
+                        <span
+                          className="artifact-viewer__uncommitted"
+                          title="Written by a run but not committed yet — it lives only in the working tree."
+                        >
+                          {' '}
+                          not yet committed
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}

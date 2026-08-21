@@ -7,6 +7,8 @@
 export interface ArtifactListItem {
   path: string;
   title: string;
+  /** W18-03: written by a run but in no commit yet — listed, marked, never hidden. */
+  uncommitted?: boolean;
 }
 
 export interface ArtifactVersion {

@@ -42,14 +42,16 @@ export function registerArtifactDocRoutes(
       if (!projectPath) return;
       const files = await listMarkdownFiles(projectPath, DOCS_SUBDIR);
       const items = await Promise.all(
-        files.map(async (filePath) => {
-          const content = await readWorkingTree(projectPath, filePath);
+        files.map(async (entry) => {
+          const content = await readWorkingTree(projectPath, entry.path);
           return {
-            path: filePath,
+            path: entry.path,
             title: titleFromMarkdown(
               content ?? '',
-              filePath.split('/').pop() ?? filePath,
+              entry.path.split('/').pop() ?? entry.path,
             ),
+            // W18-03: on disk but in no commit yet — shown, never hidden.
+            uncommitted: !entry.tracked || undefined,
           };
         }),
       );
