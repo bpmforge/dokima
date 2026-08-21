@@ -7,7 +7,7 @@
  * constructs the session that run will drive. Wiring D-027's pinned model
  * through is what pushed the file to 406.
  */
-import type { EventLog } from '@dokima/events';
+import { appendEvent, listEvents, type EventLog } from '@dokima/events';
 import {
   CostLedger,
   FitnessCardStore,
@@ -21,6 +21,8 @@ import {
   createWatchdogChildProcessSpawn,
   DEFAULT_AGENT_SESSION_TASK_TYPE,
   DEFAULT_MAX_TOOL_ITERATIONS,
+  measuredTurnsMultiplier,
+  type TurnsObservation,
   type ExternalToolset,
   type LandRungSessions,
   type PolicyRung,
@@ -43,6 +45,20 @@ import { MAX_TOOL_ITERATIONS_CEILING } from './run-build-policy.js';
  * rest back through observable progress. Never enlarges, never guesses:
  * no record or too few samples leaves the base untouched.
  */
+/** W17-03: the model's recorded turn history, replayed from the append-only log. */
+export function turnsObservationsFor(
+  log: EventLog,
+  model: string,
+): TurnsObservation[] {
+  const out: TurnsObservation[] = [];
+  for (const event of listEvents(log)) {
+    if (event.eventType !== 'session.turns_observed') continue;
+    const payload = event.payload as TurnsObservation;
+    if (payload.model === model) out.push(payload);
+  }
+  return out.slice(-25);
+}
+
 export function calibratedBaseIterations(
   base: number,
   record: { readonly bias: number; readonly sampleCount: number } | undefined,
@@ -186,10 +202,35 @@ export async function buildBuiltInSpawn(
       // maker with an over-claiming record (downward only, FR-L3).
       ...((): { maxIterations?: number } => {
         const base = maxIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
+        // W17-03: the model's MEASURED history sizes the start — mean turns
+        // its completed sessions really needed (session.turns_observed
+        // events), never a guess; clamped to the unchanged T-27 ceiling.
+        const profile = measuredTurnsMultiplier(
+          turnsObservationsFor(log, target.model),
+          DEFAULT_MAX_TOOL_ITERATIONS,
+        );
+        const profiled = Math.min(
+          Math.ceil(base * profile.multiplier),
+          MAX_TOOL_ITERATIONS_CEILING,
+        );
+        // W17-01: then calibration may only SHRINK it (FR-L3).
         const calibrated = calibratedBaseIterations(
-          base,
+          profiled,
           getCalibration(log.db, target.model, 'coding-agent') ?? undefined,
         );
+        if (profile.multiplier !== 1) {
+          appendEvent(log, {
+            eventType: 'session.budget_profile',
+            actorId: command.actorId,
+            runId,
+            payload: {
+              model: target.model,
+              multiplier: profile.multiplier,
+              samples: profile.samples,
+              base: calibrated,
+            },
+          });
+        }
         return { maxIterations: calibrated };
       })(),
       progressBudget: { ceiling: MAX_TOOL_ITERATIONS_CEILING },

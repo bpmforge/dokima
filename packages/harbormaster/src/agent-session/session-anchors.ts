@@ -77,3 +77,39 @@ export async function buildAnchorBlock(
    */
   return redactDeep(formatAnchorFactsForPrompt(facts), input.secretValues ?? []);
 }
+
+/**
+ * W17-03 (chapter shuffle, behavior unchanged — moved verbatim from
+ * gateway-session.ts under the 400-line cap): the per-session anchor
+ * refresher. Re-stated at the END of history on every round, not appended
+ * once — the previous copy is removed first so the transcript carries
+ * exactly one anchor block, always adjacent to the current turn.
+ */
+export function createAnchorRefresher(deps: {
+  readonly messages: { role: string; content: string }[];
+  readonly validatorResults: ValidatorResult[];
+  readonly memoryAnchor?: Anchor;
+  readonly ticketId: string;
+  readonly itemDescription: string;
+  readonly criterion: string;
+  readonly secretValues?: readonly string[];
+}): () => Promise<void> {
+  let anchorMessage: { role: string; content: string } | null = null;
+  return async () => {
+    const content = await buildAnchorBlock({
+      validatorResults: deps.validatorResults,
+      memoryAnchor: deps.memoryAnchor,
+      ticketId: deps.ticketId,
+      itemDescription: deps.itemDescription,
+      criterion: deps.criterion,
+      secretValues: deps.secretValues,
+    });
+    if (content === null) return;
+    if (anchorMessage) {
+      const previous = deps.messages.indexOf(anchorMessage);
+      if (previous !== -1) deps.messages.splice(previous, 1);
+    }
+    anchorMessage = { role: 'user', content };
+    deps.messages.push(anchorMessage);
+  };
+}

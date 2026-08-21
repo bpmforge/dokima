@@ -108,7 +108,7 @@ import {
   parseVerifyResult,
   refuseIfSessionExceededScope,
 } from './session-verdicts.js';
-import { buildAnchorBlock } from './session-anchors.js';
+import { createAnchorRefresher } from './session-anchors.js';
 import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 import {
   budgetExhaustedStderr,
@@ -195,31 +195,16 @@ export function createGatewaySpawnSession(
      * wired into.
      */
     const validatorResults: ValidatorResult[] = [];
-    let anchorMessage: ChatMessage | null = null;
-
-    /**
-     * Re-stated at the END of history on every round, not appended once. The
-     * previous copy is removed first so the transcript carries exactly one
-     * anchor block — always adjacent to the current turn, never growing
-     * without bound. Composition lives in `session-anchors.ts` (W13-23).
-     */
-    const refreshAnchor = async (): Promise<void> => {
-      const content = await buildAnchorBlock({
-        validatorResults,
-        memoryAnchor: options.memoryAnchor,
-        ticketId,
-        itemDescription: input.prompt.slice(0, 200),
-        criterion: toolCtx.verifyCommand,
-        secretValues: options.secretValues,
-      });
-      if (content === null) return;
-      if (anchorMessage) {
-        const previous = messages.indexOf(anchorMessage);
-        if (previous !== -1) messages.splice(previous, 1);
-      }
-      anchorMessage = { role: 'user', content };
-      messages.push(anchorMessage);
-    };
+    // W13-23 anchor refresh — factory in session-anchors.ts.
+    const refreshAnchor = createAnchorRefresher({
+      messages,
+      validatorResults,
+      memoryAnchor: options.memoryAnchor,
+      ticketId,
+      itemDescription: input.prompt.slice(0, 200),
+      criterion: toolCtx.verifyCommand,
+      secretValues: options.secretValues,
+    });
 
     const baseTurnDeps = {
       route: () =>
@@ -244,9 +229,8 @@ export function createGatewaySpawnSession(
       now,
     };
 
-    // W17-02: one final tool-free turn at a BUDGET stop — where the session
-    // got to, so the next attempt continues instead of restarting. Best-
-    // effort: failure degrades to no checkpoint, never masks the stop (C-2).
+    // W17-02: one tool-free turn at a budget stop — best-effort, never
+    // masks the stop itself (C-2).
     const checkpointSuffix = async (): Promise<string> => {
       try {
         messages.push({ role: 'user', content: CHECKPOINT_REQUEST });
@@ -260,6 +244,18 @@ export function createGatewaySpawnSession(
       } catch {
         return '';
       }
+    };
+
+    let lastModel = 'unknown';
+    // W17-03: each ending leaves a measured turns observation (mechanical).
+    const observeTurns = (turns: number, completed: boolean): void => {
+      appendEvent(options.log, {
+        eventType: 'session.turns_observed',
+        actorId: options.actorId,
+        ticketId,
+        runId: options.runId,
+        payload: { model: lastModel, turns, completed },
+      });
     };
 
     const startedAtMs = Date.parse(now());
@@ -282,8 +278,7 @@ export function createGatewaySpawnSession(
       if (watchdog) return watchdog;
 
       await refreshAnchor();
-      // W13-16: route, stream and meter are one act — see `session-stream.ts`.
-      const { response } = await takeMeteredTurn({
+      const turn = await takeMeteredTurn({
         ...baseTurnDeps,
         messages,
         tools: [
@@ -291,6 +286,8 @@ export function createGatewaySpawnSession(
           ...(options.externalTools?.schemas ?? []),
         ],
       });
+      const { response } = turn;
+      lastModel = turn.model;
 
       const truncated = turnTokenStop(response.finishReason, maxTurnTokens);
       if (truncated) return truncated;
@@ -313,6 +310,7 @@ export function createGatewaySpawnSession(
           toolCtx.writeScope,
         );
         if (scopeRefusal) return scopeRefusal;
+        observeTurns(iteration, true);
         return { stdout: response.message.content, stderr: '', exitCode: 0 };
       }
 
@@ -374,6 +372,7 @@ export function createGatewaySpawnSession(
         }
         const stop = progress.earlyStop();
         if (stop) {
+          observeTurns(iteration, false);
           return {
             stdout: '',
             stderr: earlyStopStderr(iteration, stop.reason) + (await checkpointSuffix()),
@@ -389,6 +388,7 @@ export function createGatewaySpawnSession(
         `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
         `real but unfinished, raise maxToolIterations — chatty local models often ` +
         `need more than the default.`;
+    observeTurns(progress?.budget() ?? maxIterations, false);
     return {
       stdout: '',
       // Checkpoints ride the W17-01 opt-in: the fixed legacy path stays

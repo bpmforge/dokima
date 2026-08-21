@@ -218,3 +218,9 @@ export type {
   RunBerthsResult,
 } from './berths.js';
 export { landClaimedTicket } from './loop-land-ticket.js';
+
+/** W17-03: the measured turns profile — observations emitted per session, multiplier computed by the composing caller. */
+export {
+  measuredTurnsMultiplier,
+} from './agent-session/session-progress.js';
+export type { TurnsObservation } from './agent-session/session-progress.js';

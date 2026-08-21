@@ -7,6 +7,7 @@ import {
   budgetExhaustedStderr,
   createSessionProgressBudget,
   earlyStopStderr,
+  measuredTurnsMultiplier,
   REPEATED_CALL_LIMIT,
 } from './session-progress.js';
 
@@ -111,5 +112,26 @@ describe('createSessionProgressBudget (W17-01)', () => {
     expect(message).toContain('(8');
     expect(message).toMatch(/earned 1 extension/);
     expect(message).toContain('raise maxToolIterations');
+  });
+});
+
+describe('measuredTurnsMultiplier (W17-03)', () => {
+  const obs = (turns: number, completed = true) => ({ model: 'm', turns, completed });
+
+  it('under 3 completed samples = 1, never a guess; budget stops never count as completed evidence', () => {
+    expect(measuredTurnsMultiplier([obs(30), obs(28)], 12).multiplier).toBe(1);
+    expect(
+      measuredTurnsMultiplier([obs(40, false), obs(40, false), obs(40, false)], 12)
+        .multiplier,
+    ).toBe(1);
+  });
+
+  it('a model whose completed sessions really need ~2x the default earns ~2x, clamped [1, 2.5]', () => {
+    const doubled = measuredTurnsMultiplier([obs(24), obs(22), obs(26)], 12);
+    expect(doubled.multiplier).toBeCloseTo(2, 1);
+    expect(doubled.samples).toBe(3);
+    // A fast model never shrinks the base here — that is calibration's job.
+    expect(measuredTurnsMultiplier([obs(3), obs(4), obs(5)], 12).multiplier).toBe(1);
+    expect(measuredTurnsMultiplier([obs(99), obs(99), obs(99)], 12).multiplier).toBe(2.5);
   });
 });
