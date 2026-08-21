@@ -190,3 +190,13 @@ describe('the composed mirror (W16-04, FR-T5)', () => {
     expect(notes.join('\n')).toMatch(/no secret named/);
   });
 });
+
+describe('the generic-git kind is refused by NAME, never silently absent (W16-09)', () => {
+  it('says exactly why a bare git remote cannot mirror, and what still works', () => {
+    const parsed = parseForgeMirrorSetting({ ...CONFIG, kind: 'generic' }, () => false);
+    expect(parsed).toHaveProperty('refusal');
+    const refusal = (parsed as { refusal: string }).refusal;
+    expect(refusal).toMatch(/no issue API/);
+    expect(refusal).toMatch(/push still works/i);
+  });
+});

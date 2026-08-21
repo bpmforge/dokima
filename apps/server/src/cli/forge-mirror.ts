@@ -65,6 +65,21 @@ export function parseForgeMirrorSetting(
     return { refusal: `${FORGE_MIRROR_SETTINGS_KEY} must be an object` };
   }
   const v = raw as Record<string, unknown>;
+  // W16-09: named, not silent. The generic-git adapter truthfully reports
+  // `issues: false` (packages/forge/src/generic-git.ts — bare SSH git has
+  // no issue API to write through), so a "generic" mirror cannot exist by
+  // construction. Dual-remote PUSH still works for such repos (plain git);
+  // only the issue mirror needs a real forge.
+  if (v.kind === 'generic') {
+    return {
+      refusal:
+        `${FORGE_MIRROR_SETTINGS_KEY}.kind "generic" cannot mirror: a bare ` +
+        `git remote has no issue API to write tickets through (the ` +
+        `generic-git adapter honestly reports issues:false). Dual-remote ` +
+        `push still works for it — use "gitea" or "github" here if you ` +
+        `want the ticket mirror too`,
+    };
+  }
   if (v.kind !== 'gitea' && v.kind !== 'github') {
     return { refusal: `${FORGE_MIRROR_SETTINGS_KEY}.kind must be "gitea" or "github"` };
   }
