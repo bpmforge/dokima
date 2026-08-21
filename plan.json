@@ -10320,7 +10320,7 @@
       ],
       "depends_on": [],
       "phase": 19,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W19-05",
       "title": "settings splits Basics from Advanced \u2014 three tabs greet the novice, not sixteen",
       "module": "web",
