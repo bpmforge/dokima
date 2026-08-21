@@ -1227,3 +1227,51 @@ describe('the conflict watch (W16-10)', () => {
     expect(listEvents(log).filter((e) => e.eventType === 'human.file_edited')).toHaveLength(0);
   });
 });
+
+/**
+ * W17-04: a tier advance on a one-model chain is a retry, not an escalation —
+ * the climb event fires only when the session actually changes.
+ */
+describe('same-model climbs are not escalations (W17-04)', () => {
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  it('RED FIXTURE: a one-model chain climbing R1->R2->R3 produces ZERO escalation.rung_advanced events — the trace must never say "stronger model" about the same model', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+
+    const ran: string[] = [];
+    const advances: string[] = [];
+    const result = await runLandLoop({
+      ...baseOptions(fixture, spoofedSpawn),
+      maxLadderAttempts: 3,
+      rungSessions: {
+        sessionForRung() {
+          // Every rung clamps to the same session — the one-model chain.
+          return {
+            label: 'only-model',
+            spawn: async (input) => {
+              ran.push('only-model');
+              return spoofedSpawn(input);
+            },
+          };
+        },
+        onRungAdvance(advance) {
+          advances.push(`${advance.fromRung}->${advance.toRung}`);
+        },
+      },
+    });
+
+    expect(result.processed[0]!.attempts).toHaveLength(3);
+    expect(ran).toHaveLength(3);
+    expect(
+      listEvents(log).filter((e) => e.eventType === 'escalation.rung_advanced'),
+    ).toHaveLength(0);
+    expect(advances).toEqual([]);
+  });
+});

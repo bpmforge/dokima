@@ -77,7 +77,14 @@ export async function beginRungAttempt(
 
   if (attempts.length > 0) {
     const previousRung = rungForAttempt(policy, attempts.length);
-    if (isHigherRung(previousRung, rung)) {
+    // W17-04: a tier advance is only an ESCALATION when the session actually
+    // changes. A one-model chain (fallback: []) clamps every rung to the same
+    // session, and ledgering that as `escalation.rung_advanced` made the
+    // trace say "Escalated to a stronger model" about the same model — a
+    // mechanism-true event rendering a false sentence. The previous attempt's
+    // own session label is on the attempt record; compare labels, not tiers.
+    const previousLabel = attempts[attempts.length - 1]!.sessionLabel;
+    if (isHigherRung(previousRung, rung) && rungSession.label !== previousLabel) {
       const receipts = failureReceiptsFor(attempts[attempts.length - 1]!);
       appendEvent(options.log, {
         eventType: 'escalation.rung_advanced',
@@ -133,8 +140,19 @@ export interface LandR0Consult {
  */
 export async function consultRungZero(
   options: LandLoopOptions,
-  ticket: { readonly id: string; readonly title: string; readonly acceptance: readonly { readonly text: string }[] },
-): Promise<{ attempt: 0; gaps: readonly string[]; priorSolution: { findingId: string; summary: string } } | undefined> {
+  ticket: {
+    readonly id: string;
+    readonly title: string;
+    readonly acceptance: readonly { readonly text: string }[];
+  },
+): Promise<
+  | {
+      attempt: 0;
+      gaps: readonly string[];
+      priorSolution: { findingId: string; summary: string };
+    }
+  | undefined
+> {
   if (!options.r0Consult) return undefined;
   let result: LandR0ConsultResult | undefined;
   await runAttemptOutcomeHook(options, async () => {
