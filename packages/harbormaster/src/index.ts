@@ -177,3 +177,14 @@ export type {
   ExternalApprovalDecision,
   ExternalToolset,
 } from './agent-session/external-tools.js';
+
+/** W15-01: the review pass — cross-model verdicts over in_review tickets, composed by apps/server. */
+export {
+  DEFAULT_REVIEW_VERIFY_TIMEOUT_MS,
+  runReviewPass,
+} from './loop-review.js';
+export type {
+  ReviewOutcome,
+  ReviewPassOptions,
+  ReviewVerdictKind,
+} from './loop-review.js';

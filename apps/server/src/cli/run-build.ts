@@ -88,6 +88,7 @@ export { tokenizeAgentCommand };
 import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
 import { composeExternalToolset } from './mcp-session-tools.js';
 import { createLearningHook } from './memory-hooks.js';
+import { executeReviewPass } from './review-pass.js';
 import {
   MEMORY_CONSOLIDATION_SETTINGS_KEY,
   parseConsolidationEnabled,
@@ -234,6 +235,10 @@ export async function executeBuildRun(
 
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
+  // W15-01: the maker model, for the review pass's C-4 comparison. The
+  // external-agent path cannot know its model — 'external-agent' is honest
+  // and never collides with a real reviewer id.
+  let makerModel = 'external-agent';
   /**
    * Undefined on the external-agent path: there is no `Provider` to ask, so
    * the packer gets its documented conservative floor rather than a number
@@ -273,6 +278,7 @@ export async function executeBuildRun(
       );
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;
+      makerModel = builtIn.makerModel;
     } catch (err) {
       if (err instanceof ModelResolutionError) {
         io.stderr(`${runId} started, but the built-in agent refused: ${err.message}`);
@@ -322,6 +328,18 @@ export async function executeBuildRun(
       mcpPreload.dispose();
     }
   }
+
+  // W15-01: the review pass — every in_review ticket gets a cross-model
+  // verdict (or an honest skip) before a person reads the Decide card.
+  await executeReviewPass({
+    log,
+    actorId: command.actorId,
+    runId,
+    repoRoot: io.cwd,
+    makerModel,
+    secretValues,
+    stderr: io.stderr,
+  });
 
   // W14-06: the run's end is this product's idle moment — consolidate now
   // unless the project turned it off (US-603 AC-1; ON by default, FR-M3).

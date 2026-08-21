@@ -45,6 +45,8 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
 export interface BuiltInSpawn {
   readonly spawn: SpawnSession;
   readonly contextWindowTokens: number | undefined;
+  /** W15-01: the C-4 comparison anchor for the review pass. */
+  readonly makerModel: string;
 }
 
 export async function buildBuiltInSpawn(
@@ -122,7 +124,7 @@ export async function buildBuiltInSpawn(
     secretValues,
     now: io.now,
   });
-  return { spawn, contextWindowTokens };
+  return { spawn, contextWindowTokens, makerModel: target.model };
 }
 /**
  * The external-CLI agent, under the watchdog it was always missing (W13-47).
