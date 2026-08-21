@@ -1184,3 +1184,120 @@ change an implementer should make quietly.
 2026-08-20 W13-46 done — **a completed land was being destroyed by the announcement of it.** The ticket asked whether the forge path is reachable at all; the answer mattered less than what looking for it found. `apps/server` injects `localFirstPushToRemotes`, which **throws on purpose** — "refusing loudly is correct: silently returning success would report a push that never happened", and that reasoning is right. But `loop-land.ts`'s call site was not wrapped, and the throw lands **after** `landed = true`, after the close gate minted its receipt and moved the ticket to `in_review`. So any project with a git remote configured — most real ones — got a crashed run for a ticket that had actually succeeded. Every existing test missed it for one reason: fixture repos have **zero remotes**, so `pushLandedBranch` returns early and the injected function is never called. Verified by execution before fixing (a fixture repo with one remote, `configuredRemotes` → `['origin']`, then the real loop crashing). A thrown push is now converted into a per-remote recorded failure, which is what `pushLandedBranch`'s own docstring had been promising ("a failed remote is recorded, not fatal") for an implementation that resolves rather than throws. Refusing loudly stays; losing a completed land because the announcement failed does not, and the operator is told in a ticket comment.
 
 **On the original question, answered and NOT fixed:** `createGiteaForgeAdapter`, `createGitHubForgeAdapter`, `flushMirrorQueue` and `checkMirrorPrerequisites` have no production callers, and `@dokima/forge` is not a declared dependency of `apps/server`. FR-I2's dual-remote push is therefore **unimplemented on the CLI path, honestly refused rather than faked** — which is the correct state for a partial feature, now that the refusal no longer takes a landed ticket down with it. `land-push.ts` is NOT a duplicate of forge's `pushToRemotes`: it is the injection seam, and the type it defines is what a real implementation would satisfy. **The wizard still offers a forge credential field that reaches nothing** — the W13-35 defect shape — and that is the remaining gap to close, either by wiring the adapters or by saying so at the point the field is offered.
+
+## 2026-08-21 — LEDGER BACKFILL (written after a machine crash; reconstructed from the commit record)
+
+The ledger stopped at W13-46 while the build continued through the rest of
+W13, all of W14, and all of W15 — every ticket below is `done` in plan.json
+with its close-gate commit on `main`, but no STATUS entry was written at
+land time. Entries here are condensed from the commit bodies rather than
+re-narrated from memory; the commit bodies remain the primary record.
+
+### Late W13 (2026-08-19 → 2026-08-20) — hardening, honesty, and the novice audit
+
+One line per ticket, from the landing commit:
+
+- W13-30 — tell the maker what verify actually said. W13-31 — a
+  plan-derived ticket could never close (a predicate is not a command).
+- W13-33 — the shipped bundle booted a server on every command.
+- W13-36 — no shipped model names; the models are the customer's.
+- W13-37 — the wizard asks which of your models does the work.
+- W13-38/39 — a paused run can be found again; Describe rejoins a run
+  that is still running.
+- W13-40 — branch from the repo you have, not from one called `main`.
+- W13-41 — tell the operator HOW a ticket failed, not just that it did.
+- W13-42/43/44 — bound the queue itself (`chat()` was still unbounded);
+  bound one turn's output (a runaway generation now ends); **the watchdog
+  runs — it never had, in any shipped build.**
+- W13-45 — delete two superseded duplicates, lower the export ratchet.
+- W13-47 — the external agent runs under a watchdog.
+- W13-48 — remove the forge credential field that reached nothing (closes
+  the gap the W13-46 entry above names).
+- W13-49..53 — the end-user comprehension audit's five fixes: the Roster
+  speaks to the user, not about the machinery; the Plan screen stops
+  dressing the user's features as "findings"; the product no longer
+  contradicts its own instructions; board state is a shape and the glyphs
+  explain themselves; composition, the labeled review budget, and motion.
+- W13-54..56 — **the design-review loop productized**: the tour emits
+  evidence packs (the audit's eyes, serialized); the judge — any model
+  reviews the product, code verifies every claim; the mechanical layer
+  (validate-ui-copy.mjs) gates instruction↔surface drift.
+- W13-57 — the roster resolves against the matrix that actually exists.
+- W13-58..62 — **the novice north-star wave** (founder restated the target
+  user 2026-08-20: a novice with a building idea and no clue — the product
+  walks them through everything). The 24-finding journey audit applied end
+  to end: the front door is named, primary, honest, and in order; the
+  idea-to-board path states consequences in words the novice has met;
+  blocked explains its wait and the trace speaks human first; **the
+  morning queue shows the work before asking for approval** (the critical
+  finding); global inheritance is visible, the fleet aggregate is named,
+  the queue has a door.
+
+### 2026-08-20 — W14 integration wave (6/6): MCP is real, and the product learns
+
+- W14-01 — `packages/mcp` gets its stdio client: newline-delimited
+  JSON-RPC framing, a deadline on every await (the W13-47 lesson), breach
+  kills the process group naming the server; discovered tools default
+  `requiresApproval: true` (SC-12); all tests speak to a local child
+  process fixture, never the network (law 9a).
+- W14-02 — configured MCP servers preload at run start: the `mcpServers`
+  settings key's first reader; env values are vault secret NAMES and a
+  raw credential-shaped value is refused without being echoed (law 8); a
+  failed server is disposed, ledgered, reported once — the run continues
+  (FR-G5).
+- W14-03 — **the two-phase approval protocol, mechanism-true**: pass N
+  parks a PendingApproval and the model gets a structured awaiting result
+  (never blocks a slot on a human); a re-call with the same arguments
+  meets the human's recorded verdict; execution carries the QUEUE DECIDER
+  as `decidedBy` (C-4 — approver identity mechanically distinct).
+- W14-04 — MCP has a face: the W4-06 stub wrote a shape nothing read; the
+  panel now writes the schema the preload consumes, and the morning-queue
+  card shows server, tool, the EXACT requested arguments, and the
+  fingerprint the approval covers.
+- W14-05 — **the fact bank gets its first production writer**: parks
+  become error→solution facts (symptom redacted with the run's vault
+  values before it touches the bank), the close appends the SOLVED half
+  to the same row, and on retry the prior failure leads the anchor
+  regardless of BM25 rank (US-602). Hook failures never park a landed
+  ticket.
+- W14-06 — sleep consolidation runs when a run ends (the run's end IS the
+  idle moment — a local-first product has no daemon), ON by default
+  (FR-M3), one audited `memory.consolidated` event per real pass, and the
+  morning queue gets its pre-brief card carrying the overnight landmines.
+
+### 2026-08-20 — W15 vision wave (4/4): the loops run
+
+Filed from a one-sentence audit finding: *every verification primitive was
+built, tested, and unwired from the ticket path.* W15 wired them:
+
+- W15-01 — **the review loop runs.** Until this ticket `in_review` was a
+  state a human cleared from evidence the maker produced. Now THE CORE
+  re-runs each ticket's verify in its own worktree (SC-12: agents request,
+  the core executes) and the reviewer model contributes judgment only —
+  a failing core re-run is CONTRADICTED by construction; a model cannot
+  out-vote the gate (C-2). A reviewer resolving to the maker's model
+  REFUSES machine review honestly (C-4, law 9b). **Nothing accepts** —
+  accept stays a human verb; W13-32 owns any autonomy.
+- W15-02 — **calibration runs** (FR-L3): every manifest-carrying attempt
+  folds self-claim vs gate verdict into the maker's per-(model, role)
+  record; asymmetric by construction — only a BORDERLINE review signal
+  moves, only DOWNWARD to a person; ACCEPT is never manufactured.
+- W15-03 — **the wiggum coverage loop runs at the phase gate** (R-B5
+  residual, recorded verbatim above at W5-08): failed onboard steps retry
+  to the mode cap in topology order, halt early on a byte-identical gap
+  set, every iteration ledgered (`coverage.iteration`) — a bounded loop
+  with a silent cap reads as "covered everything" when it didn't.
+- W15-04 — the design-review loop audits its own new W14/W15 surfaces:
+  tour coverage ASSERTED not assumed (the run fails unless the approval
+  evidence, pre-brief card, blocked-card explanation, and runbar hint are
+  in frame; 41 declared states). One CONFIRMED HIGH: the pre-brief
+  emitter bypassed UX_SPEC §7's review-coalescing contract and its card
+  said "0 items batched" about real work — fixed through
+  `emitReviewItem` with a sentence a novice can read.
+
+Wave gates: 3,964 tests, 71 e2e, lint/typecheck 0, ui-copy 0/0, export
+ratchet 58/59. Remaining deliberate todos: W12-44 (plugin loader — build
+only when there is a plugin to load) and W13-32 (wire the autonomy dial —
+**waiting on a founder decision** about which defaults are acceptable
+unattended; the dial currently stores a choice honestly labeled as not yet
+in force, per W13-26).
