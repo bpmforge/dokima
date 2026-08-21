@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
+import { appendEvent, createIdentity, listEvents, openEventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import { registerProject } from '../projects.js';
 import { buildApiServer, type ApiServer } from '../server.js';
@@ -334,5 +334,100 @@ describe('build runs (W12-20)', () => {
       headers: h,
     });
     expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('run stop (W17-06)', () => {
+  const PORT3 = 4321;
+  const TOKEN3 = 'test-token-w1706-0123456789';
+  const dirs3: string[] = [];
+  let active3: ApiServer | undefined;
+
+  afterEach(async () => {
+    await active3?.app.close();
+    active3 = undefined;
+    for (const d of dirs3.splice(0)) await fs.rm(d, { recursive: true, force: true });
+  });
+
+  async function boot3() {
+    const fleetHome = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-stoprun-'));
+    dirs3.push(fleetHome);
+    const server = await buildApiServer({
+      token: TOKEN3,
+      port: PORT3,
+      isDbOpen: () => true,
+      logger: false,
+      fleetHome,
+    });
+    active3 = server;
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-stoprun-proj-'));
+    dirs3.push(projectDir);
+    const record = await registerProject(path.join(fleetHome, 'fleet.json'), {
+      path: projectDir,
+      mode: 'new',
+      name: 'sr',
+    });
+    await fs.mkdir(path.join(projectDir, '.dokima'), { recursive: true });
+    return {
+      app: server.app,
+      id: record.id,
+      dir: projectDir,
+      h: { host: `127.0.0.1:${PORT3}`, authorization: `Bearer ${TOKEN3}` },
+    };
+  }
+
+  it('RED FIXTURE: a running build run can be STOPPED from the API — 202 stopping, ledgered with who asked; a second stop is a clean 409; an unknown run is 404', async () => {
+    const previous = process.env.DOKIMA_SIGNING_KEY;
+    process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w1706';
+    try {
+      const { app, id, dir, h } = await boot3();
+      const start = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${id}/build-runs`,
+        headers: h,
+        payload: { actor_id: 'operator', run_id: 'run-w1706' },
+      });
+      expect(start.statusCode).toBe(202);
+
+      const stop = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${id}/build-runs/run-w1706/stop`,
+        headers: h,
+        payload: { actor_id: 'brad' },
+      });
+      expect(stop.statusCode).toBe(202);
+      expect(stop.json()).toMatchObject({ status: 'stopping' });
+
+      const again = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${id}/build-runs/run-w1706/stop`,
+        headers: h,
+        payload: { actor_id: 'brad' },
+      });
+      expect(again.statusCode).toBe(409);
+
+      const unknown = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${id}/build-runs/run-nope/stop`,
+        headers: h,
+        payload: {},
+      });
+      expect(unknown.statusCode).toBe(404);
+
+      // Ledgered with who asked.
+      const db = openEventLog(path.join(dir, '.dokima', 'state.db'));
+      try {
+        const events = listEvents(db).filter(
+          (e) => e.eventType === 'run.stop_requested',
+        );
+        expect(events).toHaveLength(1);
+        expect((events[0] as { actorId: string }).actorId).toBe('brad');
+      } finally {
+        db.close();
+      }
+    } finally {
+      if (previous === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+      else process.env.DOKIMA_SIGNING_KEY = previous;
+    }
   });
 });

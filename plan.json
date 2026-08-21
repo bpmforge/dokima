@@ -9789,10 +9789,13 @@
       "role": "coding-agent",
       "write_scope": [
         "apps/server/src/api/server/runs-routes.ts",
-        "apps/server/src/api/server/runs-routes.test.ts"
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "apps/server/src/cli/run-types.ts",
+        "apps/server/src/cli/run-build.ts"
       ],
       "notes": [
-        "Live UAT: once \"Start a run\" was pressed the only affordance was a disabled button for 20 minutes. pauseRun/stopRun verbs exist (harbormaster breakpoints-runs) and the CLI drives them; the web API has no route to. The land loop already honors a stop switch at ticket boundaries."
+        "Live UAT: once \"Start a run\" was pressed the only affordance was a disabled button for 20 minutes. pauseRun/stopRun verbs exist (harbormaster breakpoints-runs) and the CLI drives them; the web API has no route to. The land loop already honors a stop switch at ticket boundaries.",
+        "Amended 2026-08-22 pre-implementation: the stop must thread to the land loop, so BuildRunCommand gains an injected StopSwitch (two cli files added to scope; P8-safe \u2014 no open ticket holds them). Route-born build runs mint no RunRecord, so the REAL stopRun verb is attempted-and-tolerated (RunNotFound for route-born runs is normal); the durable stop is the ledgered run.stop_requested event + the StopSwitch the loop already honors at ticket boundaries. Pause is deferred until this path mints run records \u2014 stop is the safety control the live UAT lacked."
       ],
       "acceptance": [
         "POST /api/v1/projects/:id/runs/:runId/stop (and /pause) drive the REAL harbormaster verbs under the authed actor; the running loop observes the stop at its next boundary (the existing StopSwitch contract) \u2014 no process kill, the in-flight attempt finishes or parks honestly.",

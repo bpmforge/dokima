@@ -147,8 +147,7 @@ export async function executeBuildRun(
     return 2;
   }
 
-  // W12-02: refuse rather than run with a redaction layer that has nothing
-  // to redact — a control that silently covers nothing is worse than stopping.
+  // W12-02: refuse rather than run with nothing to redact.
   const vault = resolveVaultOrRefusal(io.cwd);
   if (!vault.ok) {
     io.stderr(
@@ -330,6 +329,7 @@ export async function executeBuildRun(
       attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
       r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues }),
       ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
+      ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
       conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)
       now: io.now,
     };

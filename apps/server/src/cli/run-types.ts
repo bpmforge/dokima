@@ -17,4 +17,6 @@ export interface BuildRunCommand {
   readonly agentCommand?: string;
   /** W16-02: the concurrency dial (BLUEPRINT §3.6) — absent/1 = the sequential land loop, N>1 = `runBerths`. */
   readonly berths?: number;
+  /** W17-06: injected stop signal — the loop checks it at every ticket boundary; the web stop route flips it. */
+  readonly stopSwitch?: () => boolean | Promise<boolean>;
 }

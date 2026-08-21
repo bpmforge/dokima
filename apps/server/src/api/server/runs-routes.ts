@@ -13,7 +13,13 @@
  */
 
 import type { EventRecord } from '@dokima/events';
-import { listEvents, openEventLog, openEventLogReader } from '@dokima/events';
+import {
+  appendEvent,
+  createIdentity,
+  listEvents,
+  openEventLog,
+  openEventLogReader,
+} from '@dokima/events';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { computeFleetRegistryPath } from '../projects.js';
 import { badRequest, notFound } from './artifacts-helpers.js';
@@ -22,6 +28,7 @@ import { resolveSigningKey } from '../../cli/signing-key.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
 import { executeBuildRun } from '../../cli/run-build.js';
+import { stopRun } from '@dokima/harbormaster';
 
 export interface RunsRoutesOptions {
   /** Overrides `computeFleetRegistryPath()` — tests only. */
@@ -74,6 +81,25 @@ interface BuildRunOutcome {
 
 const buildRuns = new Map<string, BuildRunOutcome | 'running'>();
 
+/**
+ * W17-06: per-run stop flags. The web stop route flips one; the land loop
+ * observes it at its next ticket boundary (the existing StopSwitch
+ * contract) — no process kill, the in-flight attempt finishes or parks
+ * honestly. Route-born build runs mint no RunRecord, so the real `stopRun`
+ * verb is attempted-and-tolerated; the durable audit is the ledgered
+ * `run.stop_requested` event.
+ */
+const stopRequests = new Map<string, { stopped: boolean; by: string }>();
+
+/** Exposed for the stop route and tests. */
+export function requestBuildRunStop(runId: string, by: string): 'ok' | 'already' | 'unknown' {
+  if (!buildRuns.has(runId)) return 'unknown';
+  const existing = stopRequests.get(runId);
+  if (existing?.stopped) return 'already';
+  stopRequests.set(runId, { stopped: true, by });
+  return 'ok';
+}
+
 /** Exposed so the status route and its tests read the same map rather than a second one. */
 export function buildRunStatus(runId: string): BuildRunOutcome | 'running' | undefined {
   return buildRuns.get(runId);
@@ -95,7 +121,11 @@ export async function executeBuildRunJob(args: {
     try {
       exitCode = await executeBuildRun(
         log,
-        { projectId: args.projectId, actorId: args.actorId },
+        {
+          projectId: args.projectId,
+          actorId: args.actorId,
+          stopSwitch: () => stopRequests.get(args.runId)?.stopped === true,
+        },
         args.runId,
         {
           cwd: args.projectPath,
@@ -215,6 +245,66 @@ export function registerRunsRoutes(
         now: () => new Date().toISOString(),
       });
       return reply.code(202).send({ run_id: runId, status: 'running' });
+    },
+  );
+
+  /**
+   * W17-06: POST .../build-runs/:runId/stop — the safety control the live
+   * UAT lacked. The loop stops at its next ticket boundary; in-flight work
+   * finishes or parks honestly. Ledgered with who asked.
+   */
+  app.post(
+    '/api/v1/projects/:id/build-runs/:runId/stop',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id, runId } = request.params as { id: string; runId: string };
+      const projectPath = await projectPathOr404(request, reply, id);
+      if (!projectPath) return reply;
+      const body = (request.body ?? {}) as { actor_id?: string };
+      const actorId = body.actor_id ?? 'operator';
+
+      const outcome = requestBuildRunStop(runId, actorId);
+      if (outcome === 'unknown') {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(notFound(request, `no build run ${runId}`));
+      }
+      if (outcome === 'already') {
+        return reply
+          .code(409)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(
+            conflict(request, `build run ${runId} is already stopping`, 'already-stopping'),
+          );
+      }
+
+      const log = openEventLog(stateDbPath(projectPath));
+      try {
+        // events.actor_id is FK-enforced; the stopper may be a new identity.
+        try {
+          createIdentity(log, { id: actorId, name: actorId, kind: 'human' });
+        } catch {
+          // already exists — fine.
+        }
+        appendEvent(log, {
+          eventType: 'run.stop_requested',
+          actorId,
+          runId,
+          payload: { by: actorId },
+        });
+        // The REAL verb, when this run has a record (CLI-born runs do);
+        // route-born runs have none and the flag+event are the stop.
+        try {
+          stopRun(log, runId, actorId, { now: () => new Date().toISOString() });
+        } catch {
+          // RunNotFound for route-born runs — normal, tolerated.
+        }
+      } finally {
+        log.close();
+      }
+      return reply
+        .code(202)
+        .send({ run_id: runId, status: 'stopping', stops_at: 'next ticket boundary' });
     },
   );
 
