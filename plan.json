@@ -9973,7 +9973,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W18-01",
       "title": "no surface blocks the canvas \u2014 native confirm dialogs become in-app confirmations",
       "module": "web",
