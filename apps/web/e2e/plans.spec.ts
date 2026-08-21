@@ -60,9 +60,7 @@ async function openFreshProject(page: Page, name: string, dir: string): Promise<
   await page.getByLabel('Folder').fill(dir);
   await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
-  const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens it — the workspace, not the grid.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
   const projectId = new URL(page.url()).searchParams.get('project');
   if (!projectId) throw new Error('expected ?project= in the URL after opening');

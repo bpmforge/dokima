@@ -24,9 +24,7 @@ test('receipt inspector has no WCAG 2.2 AA violations', async ({ page }) => {
     .locator('.fleet__form')
     .getByRole('button', { name: 'Onboard existing repo' })
     .click();
-  const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens it — the workspace, not the grid.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 
   const artifactsPane = page.getByTestId('pane-artifacts');

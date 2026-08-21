@@ -159,9 +159,7 @@ async function newProduct(page: Page): Promise<string> {
     .getByRole('button', { name: 'Create project' })
     .click();
 
-  const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens it — the workspace, not the grid.
   return name;
 }
 
@@ -171,7 +169,7 @@ test.describe('interview -> board, in one pass (W10-61, inherited W10-54 AC5)', 
   }) => {
     await newProduct(page);
 
-    await page.getByRole('button', { name: 'Describe' }).click();
+    await page.getByRole('button', { name: 'Describe', exact: true }).click();
     await page.getByLabel('Working title').fill('Interval timer');
     // W13-18: address the OPENING questions by their own test id, never by
     // positional index. Answering a question can now add an adaptive follow-up
@@ -204,7 +202,7 @@ test.describe('interview -> board, in one pass (W10-61, inherited W10-54 AC5)', 
     async ({ page }) => {
       await newProduct(page);
 
-      await page.getByRole('button', { name: 'Describe' }).click();
+      await page.getByRole('button', { name: 'Describe', exact: true }).click();
       await page.getByLabel('Working title').fill('Interval timer');
       const openings = page.locator('[data-testid^="interview-answer-"]');
       for (const opening of await openings.all()) {

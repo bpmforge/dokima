@@ -51,10 +51,13 @@ test('create (New project), open, archive, and reopen a project', async ({ page 
       .locator('.fleet__form')
       .getByRole('button', { name: 'Create project' })
       .click();
-    await expect(page.locator('.project-card', { hasText: name })).toBeVisible();
+    // W17-09: creating a project auto-opens its workspace.
+    await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
   });
 
+  await page.getByRole('button', { name: '← Fleet' }).click();
   const card = page.locator('.project-card', { hasText: name });
+  await expect(card).toBeVisible();
   await expect(card.getByText('Ready')).toBeVisible();
 
   // Archive: card leaves the active (default) list.
@@ -91,13 +94,9 @@ test('opening a project switches to its workspace; "Fleet" breadcrumb returns', 
       .locator('.fleet__form')
       .getByRole('button', { name: 'Onboard existing repo' })
       .click();
-    await expect(page.locator('.project-card', { hasText: name })).toBeVisible();
+    // W17-09: onboarding auto-opens the workspace too.
+    await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
   });
-
-  const card = page.locator('.project-card', { hasText: name });
-  await card.getByRole('button', { name: 'Open' }).click();
-
-  await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
   await expect(page).toHaveURL(/[?&]project=/);
 
   await page.getByRole('button', { name: '← Fleet' }).click();
@@ -132,8 +131,11 @@ test('W9-15: a project whose directory vanished shows as unavailable, and Remove
         .locator('.fleet__form')
         .getByRole('button', { name: 'Create project' })
         .click();
-      await expect(page.locator('.project-card', { hasText: p.name })).toBeVisible();
+      // W17-09: creation auto-opens the workspace; return for the next one.
+      await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
     });
+    await page.getByRole('button', { name: '← Fleet' }).click();
+    await expect(page.locator('.project-card', { hasText: p.name })).toBeVisible();
   }
 
   // Delete one project's directory out from under the Fleet.

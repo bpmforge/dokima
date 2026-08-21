@@ -34,9 +34,7 @@ async function newProduct(page: Page): Promise<void> {
   await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
 
-  const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens it — the workspace, not the grid.
 }
 
 test('RED FIXTURE: a brand-new product shows no sample cards about Dokima itself', async ({

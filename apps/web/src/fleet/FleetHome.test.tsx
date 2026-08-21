@@ -239,3 +239,53 @@ describe('the fleet summary strip is a labeled aggregate (W13-62)', () => {
     expect(strip.textContent).not.toMatch(/berth/i);
   });
 });
+
+describe('a created project opens itself; the graveyard clears in one action (W17-09)', () => {
+  it('RED FIXTURE: creating a project calls onOpenProject with the new id — never a return to the grid where dead cards can bury it', async () => {
+    mockedApi.fetchProjects.mockResolvedValue([]);
+    mockedApi.createProject.mockResolvedValue({ id: 'new-proj-1' } as never);
+    const onOpenProject = vi.fn();
+    render(<FleetHome onOpenProject={onOpenProject} onOpenGuidedSample={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'New project' }));
+    fireEvent.change(screen.getByLabelText('Project name'), {
+      target: { value: 'Recipe Keeper' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create project' }));
+    await waitFor(() => expect(onOpenProject).toHaveBeenCalledWith('new-proj-1'));
+  });
+
+  it('"Remove N unavailable" removes exactly the dead entries after one confirmation, with the honest registry-only wording', async () => {
+    const dead = (id: string) =>
+      ({
+        id,
+        name: id,
+        path: `/gone/${id}`,
+        available: false,
+        archived: false,
+        createdAt: '2026-08-01T00:00:00.000Z',
+        lastOpenedAt: '2026-08-01T00:00:00.000Z',
+        phase: null,
+        board: { ready: 0, blocked: 0, done: 0 },
+        berthsRunning: 0,
+        heartbeatAgeMs: null,
+        pendingDecideCount: 0,
+        spendTodayUsd: 0,
+      }) as never;
+    const alive = { ...(dead('alive') as object), available: true } as never;
+    mockedApi.fetchProjects.mockResolvedValue([dead('d1'), dead('d2'), alive]);
+    mockedApi.removeProject.mockResolvedValue(undefined as never);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      render(<FleetHome onOpenProject={vi.fn()} onOpenGuidedSample={vi.fn()} />);
+      const button = await screen.findByTestId('fleet-remove-unavailable');
+      expect(button.textContent).toContain('Remove 2 unavailable');
+      fireEvent.click(button);
+      await waitFor(() => expect(mockedApi.removeProject).toHaveBeenCalledTimes(2));
+      expect(confirmSpy.mock.calls[0]![0]).toContain('Nothing on disk is touched');
+      const removed = mockedApi.removeProject.mock.calls.map((c) => c[0]);
+      expect(removed.sort()).toEqual(['d1', 'd2']);
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+});

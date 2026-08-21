@@ -78,9 +78,7 @@ test('per-agent history loads (zero counts, honest empty) when a project is open
   await page.getByLabel('Folder').fill(dir);
   await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
-  const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens it — the workspace, not the grid.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 
   await page.getByRole('button', { name: 'Roster', exact: true }).click();

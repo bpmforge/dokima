@@ -171,15 +171,13 @@ async function newProduct(page: Page): Promise<string> {
   await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
 
-  const card = page.locator('.project-card', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens it — the workspace, not the grid.
   return name;
 }
 
 async function runUntilPaused(page: Page): Promise<void> {
   await newProduct(page);
-  await page.getByRole('button', { name: 'Describe' }).click();
+  await page.getByRole('button', { name: 'Describe', exact: true }).click();
   await page.getByLabel('Working title').fill('Shared list');
   // W13-18: by test id, not by index — an answer can now grow an adaptive
   // follow-up textarea beneath it, so a once-taken count is stale.
@@ -261,7 +259,7 @@ test.describe('a paused run has a path through it (W10-72)', () => {
     page,
   }) => {
     await newProduct(page);
-    await page.getByRole('button', { name: 'Describe' }).click();
+    await page.getByRole('button', { name: 'Describe', exact: true }).click();
     await page.getByLabel('Working title').fill('Shared list');
     const openings = page.locator('[data-testid^="interview-answer-"]');
     for (const opening of await openings.all()) {
@@ -274,7 +272,7 @@ test.describe('a paused run has a path through it (W10-72)', () => {
     await page.getByRole('button', { name: 'Board', exact: true }).click();
     await expect(page.getByTestId('pane-board')).toBeVisible();
     // …and come back. Before W13-39: the blank form.
-    await page.getByRole('button', { name: 'Describe' }).click();
+    await page.getByRole('button', { name: 'Describe', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Building the board…' })).toBeVisible();
 
     // The rejoined poll carries the run to its real outcome — the pause.
@@ -307,7 +305,7 @@ test.describe('a paused run has a path through it (W10-72)', () => {
     await page.getByRole('button', { name: 'Board' }).click();
 
     // Back to Describe. Before this ticket: the blank interview form.
-    await page.getByRole('button', { name: 'Describe' }).click();
+    await page.getByRole('button', { name: 'Describe', exact: true }).click();
     await expect(page.getByTestId('interview-awaiting-decisions')).toBeVisible({
       timeout: 20_000,
     });

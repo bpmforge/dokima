@@ -72,11 +72,13 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
 
   const handleCreate = useCallback(
     async (input: CreateProjectInput) => {
-      await createProjectRequest(input);
+      const created = await createProjectRequest(input);
       setFormMode(null);
-      await refresh();
+      // W17-09: a just-created project OPENS — the live UAT buried it below
+      // a wall of dead cards and creation read as failure.
+      onOpenProject(created.id);
     },
-    [refresh],
+    [onOpenProject],
   );
 
   const handleArchive = useCallback(
@@ -95,6 +97,24 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
     },
     [refresh],
   );
+
+  // W17-09: one confirmed action for the whole graveyard. Same honest
+  // removal semantics as the per-card button: registry entries only,
+  // nothing on disk, onboarding a folder again restores it.
+  const unavailableCount = sorted.filter((card) => !card.available).length;
+  const handleRemoveUnavailable = useCallback(async () => {
+    const gone = cards.filter((card) => !card.available);
+    if (
+      !window.confirm(
+        `Remove ${gone.length} unavailable ${gone.length === 1 ? 'entry' : 'entries'} from the Fleet? ` +
+          'Nothing on disk is touched, and onboarding a folder again restores it.',
+      )
+    ) {
+      return;
+    }
+    for (const card of gone) await removeProjectRequest(card.id);
+    await refresh();
+  }, [cards, refresh]);
 
   const handleReopen = useCallback(
     async (projectPath: string) => {
@@ -147,6 +167,17 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
             />
             Show archived
           </label>
+          {unavailableCount > 0 && (
+            <button
+              type="button"
+              className="btn-quiet"
+              data-testid="fleet-remove-unavailable"
+              onClick={() => void handleRemoveUnavailable()}
+              title="Registry entries only — nothing on disk is touched, and onboarding a folder again restores it."
+            >
+              Remove {unavailableCount} unavailable
+            </button>
+          )}
         </div>
       </header>
 

@@ -56,3 +56,21 @@ describe('sortByAttention', () => {
     expect(cards).toEqual(original);
   });
 });
+
+describe('the living lead (W17-09)', () => {
+  it('RED FIXTURE: an available project ALWAYS outranks an unavailable one — the live UAT buried a fresh project under a wall of dead cards', () => {
+    const dead = card({ id: 'dead', available: false, pendingDecideCount: 9 });
+    const fresh = card({ id: 'fresh', available: true, pendingDecideCount: 0 });
+    const sorted = sortByAttention([dead, fresh]);
+    expect(sorted.map((c) => c.id)).toEqual(['fresh', 'dead']);
+  });
+
+  it('within the available group, needs-you-first still rules', () => {
+    const quiet = card({ id: 'quiet', available: true, pendingDecideCount: 0 });
+    const needsYou = card({ id: 'needs', available: true, pendingDecideCount: 2 });
+    expect(sortByAttention([quiet, needsYou]).map((c) => c.id)).toEqual([
+      'needs',
+      'quiet',
+    ]);
+  });
+});

@@ -56,9 +56,7 @@ test('a ready ticket can be claimed keyboard-only (Tab to the verb menu, ArrowDo
     .locator('.fleet__form')
     .getByRole('button', { name: 'Onboard existing repo' })
     .click();
-  const projectCard = page.locator('.project-card', { hasText: name });
-  await expect(projectCard).toBeVisible();
-  await projectCard.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens its workspace.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 
   seed(path.join(dir, '.dokima', 'state.db'), 'drag-claim');
@@ -109,9 +107,7 @@ test('the morning queue Decide Approve action is reachable and operable keyboard
   await page.getByLabel('Folder').fill(dir);
   await page.getByLabel('Project name').fill(name);
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
-  const projectCard = page.locator('.project-card', { hasText: name });
-  await expect(projectCard).toBeVisible();
-  await projectCard.getByRole('button', { name: 'Open' }).click();
+  // W17-09: creating a project auto-opens its workspace.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 
   const projectId = new URL(page.url()).searchParams.get('project');
