@@ -82,19 +82,9 @@
  * if the model chooses to call `commit` at all.
  */
 
-import type { EventLog } from '@dokima/events';
+import { appendEvent } from '@dokima/events';
+import { route, FitnessCardStore, type ChatMessage, type TaskType } from '@dokima/gateway';
 import {
-  route,
-  FitnessCardStore,
-  type AgentRole,
-  type ChatMessage,
-  type CostLedger,
-  type Provider,
-  type ScopedRoleMatrix,
-  type TaskType,
-} from '@dokima/gateway';
-import {
-  type Anchor,
   type SpawnSession,
   type SpawnSessionInput,
   type SpawnSessionOutput,
@@ -105,14 +95,11 @@ import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
 import { parseHandoffFields } from './handoff-fields.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
-import type { ExternalToolset } from './external-tools.js';
 import { takeMeteredTurn } from './session-stream.js';
-import {
-  DEFAULT_MAX_SESSION_SECONDS,
+import { costCapStop, DEFAULT_MAX_SESSION_SECONDS,
   DEFAULT_MAX_TURN_TOKENS,
   turnTokenStop,
-  watchdogStop,
-} from './session-limits.js';
+  watchdogStop } from './session-limits.js';
 
 // Re-exported so callers keep importing the session's limits from the session
 // (W13-44 moved the definitions to the chapter that enforces them).
@@ -123,6 +110,12 @@ import {
 } from './session-verdicts.js';
 import { buildAnchorBlock } from './session-anchors.js';
 import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
+import {
+  budgetExhaustedStderr,
+  createSessionProgressBudget,
+  earlyStopStderr,
+  type ProgressToolCall,
+} from './session-progress.js';
 
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
@@ -131,69 +124,9 @@ export const DEFAULT_MAX_TOOL_ITERATIONS = 12;
 export const DEFAULT_AGENT_SESSION_TASK_TYPE: TaskType = 'code';
 export const DEFAULT_AGENT_SESSION_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
-export interface GatewaySpawnSessionOptions {
-  readonly log: EventLog;
-  /**
-   * W13-23: prior VERIFIED findings for this ticket, recalled from the
-   * project's fact store. Injected rather than constructed — harbormaster may
-   * not import `memory` (ARCHITECTURE §4) — and optional, because a project
-   * with no memory store must still run.
-   */
-  readonly memoryAnchor?: Anchor;
-  /** W13-16 live model output, delta by delta. Not durable — see `session-stream.ts`. */
-  readonly onDelta?: (chunk: string, cumulative: number) => void;
-  /** The role this session runs as — governs BOTH the gateway routing decision below and the mcp allowlist (mcp-wiring.ts). */
-  readonly role: AgentRole;
-  readonly matrix: ScopedRoleMatrix;
-  readonly actorId: string;
-  readonly projectId: string;
-  /** Ledger/audit grouping key for every model call and tool call this spawn function's whole lifetime makes (see module header: not threaded through per-ticket by the claim/land loop today). */
-  readonly runId: string;
-  /** Defaults to `actorId` — the ledger's berth-attribution key (FR-H5). */
-  readonly berthId?: string;
-  readonly taskType?: TaskType;
-  /** Defaults to a fresh, empty store — an unbenched (model, role) pair passes the fitness guard silently (FR-G6's own contract). */
-  readonly fitnessStore?: FitnessCardStore;
-  /** Resolves a model id from the routed chain to the `Provider` that serves it. Production wiring binds this to the registry; tests inject a fake, no-network `Provider` (CLAUDE.md law 9). */
-  readonly resolveProvider: (model: string) => Provider;
-  readonly ledger: CostLedger;
-  /** Per-session tool-call-turn cap (T-27: "a session iterates tool calls indefinitely... without producing a manifest"). */
-  readonly maxIterations?: number;
-  /** W13-43: ceiling on one turn's output. 0 disables the bound. */
-  readonly maxTurnTokens?: number;
-  /** W13-44: wall-clock ceiling on the whole session. 0 disables the bound. */
-  readonly maxSessionSeconds?: number;
-  /**
-   * Optional USD cap, checked between iterations against
-   * `ledger.totalForTicket` — the other half of acceptance 1's "or the
-   * budget stops it". This is a per-TICKET cap, not per-session: `ledger`
-   * is constructed once and shared across every attempt a claim/land loop
-   * makes on a ticket, so `totalForTicket` already includes spend from
-   * earlier attempts on the same ticket. A ticket that blew the cap on
-   * attempt 1 will stop attempt 2 after its very first model call.
-   */
-  readonly maxTicketCostUsd?: number;
-  readonly verifyTimeoutMs?: number;
-  readonly now?: () => string;
-  /**
-   * Extra secret values for the `verify` tool's redaction pass beyond the
-   * known live-credential shapes (FR-S2, SC-06, W11-14) — vault-registered
-   * and `.env` secret values, typically the result of
-   * `collectSecretValues(vault, projectDir)` (`@dokima/shared`), gathered
-   * by the caller since collecting them is async while `toolCtx` here is
-   * built synchronously per session (same pattern as `RenderHandoffOptions.
-   * secretValues` in `packages/loop/src/handoff.ts`). Omit for pattern-only
-   * redaction.
-   */
-  readonly secretValues?: readonly string[];
-  /**
-   * W14-03: external MCP tools for this session — schemas already
-   * allowlist-filtered by the composer (apps/server, which owns both the
-   * live client pool and the notification store the approval verdicts
-   * live in). Absent = the closed seven only, exactly as before.
-   */
-  readonly externalTools?: ExternalToolset;
-}
+export type { GatewaySpawnSessionOptions } from './gateway-session-options.js';
+import type { GatewaySpawnSessionOptions } from './gateway-session-options.js';
+
 
 /**
  * Turns a `verify` tool result into the `ValidatorResult` the FR-L2 tool
@@ -284,14 +217,21 @@ export function createGatewaySpawnSession(
     };
 
     const startedAtMs = Date.parse(now());
+    const progress = options.progressBudget
+      ? createSessionProgressBudget({
+          base: maxIterations,
+          ceiling: options.progressBudget.ceiling,
+        })
+      : null;
+    const budgetNow = () => progress?.budget() ?? maxIterations;
 
-    for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+    for (let iteration = 1; iteration <= budgetNow(); iteration += 1) {
       const watchdog = watchdogStop({
         maxSessionSeconds,
         startedAtMs,
         nowMs: Date.parse(now()),
         iteration,
-        maxIterations,
+        maxIterations: budgetNow(),
       });
       if (watchdog) return watchdog;
 
@@ -328,23 +268,16 @@ export function createGatewaySpawnSession(
       const truncated = turnTokenStop(response.finishReason, maxTurnTokens);
       if (truncated) return truncated;
 
-      if (options.maxTicketCostUsd !== undefined) {
-        const spent = options.ledger.totalForTicket({
+      const costStop = costCapStop({
+        cap: options.maxTicketCostUsd,
+        spent: options.ledger.totalForTicket({
           projectId: options.projectId,
           runId: options.runId,
           ticketId,
-        });
-        if (spent >= options.maxTicketCostUsd) {
-          return {
-            stdout: '',
-            stderr:
-              `agent session stopped: per-ticket cost cap ($${options.maxTicketCostUsd}) ` +
-              `reached after ${iteration} model call(s) this session ` +
-              `($${spent.toFixed(4)} spent on this ticket across all attempts)`,
-            exitCode: 1,
-          };
-        }
-      }
+        }),
+        iteration,
+      });
+      if (costStop) return costStop;
 
       if (!response.toolCalls || response.toolCalls.length === 0) {
         messages.push(response.message);
@@ -361,6 +294,7 @@ export function createGatewaySpawnSession(
       // `toolCallId` to make sense next to the assistant turn it answers.
       messages.push({ ...response.message, toolCalls: response.toolCalls });
 
+      const iterationCalls: ProgressToolCall[] = [];
       for (const call of response.toolCalls) {
         const resultText = await runToolCalls(
           [call],
@@ -375,6 +309,11 @@ export function createGatewaySpawnSession(
           options.externalTools,
         );
         messages.push({ role: 'tool', content: resultText, toolCallId: call.id });
+        iterationCalls.push({
+          name: call.name,
+          argsJson: JSON.stringify(call.arguments ?? null),
+          resultText,
+        });
         if (call.name === TOOL_VERIFY) {
           const result = parseVerifyResult(resultText, toolCtx.verifyCommand);
           // Latest verdict only: an anchor asserting both "passed" and
@@ -385,15 +324,46 @@ export function createGatewaySpawnSession(
           }
         }
       }
+
+      if (progress) {
+        const before = progress.entries().length;
+        progress.noteIteration({
+          iteration,
+          toolCalls: iterationCalls,
+          verifyExit: validatorResults[0]?.exitCode ?? null,
+        });
+        // W17-01: every extension/early-stop is ledgered as it happens.
+        for (const entry of progress.entries().slice(before)) {
+          appendEvent(options.log, {
+            eventType:
+              entry.kind === 'extended'
+                ? 'session.budget_extended'
+                : 'session.stopped_early',
+            actorId: options.actorId,
+            ticketId,
+            runId: options.runId,
+            payload: entry,
+          });
+        }
+        const stop = progress.earlyStop();
+        if (stop) {
+          return {
+            stdout: '',
+            stderr: earlyStopStderr(iteration, stop.reason),
+            exitCode: 1,
+          };
+        }
+      }
     }
 
     return {
       stdout: '',
-      stderr:
-        `agent session stopped: exceeded the per-session tool-iteration budget ` +
-        `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
-        `real but unfinished, raise maxToolIterations — chatty local models often ` +
-        `need more than the default.`,
+      stderr: progress
+        ? budgetExhaustedStderr(progress.budget(), progress.entries())
+        : `agent session stopped: exceeded the per-session tool-iteration budget ` +
+          `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
+          `real but unfinished, raise maxToolIterations — chatty local models often ` +
+          `need more than the default.`,
       exitCode: 1,
     };
   };

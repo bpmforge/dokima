@@ -135,3 +135,24 @@ export function turnTokenStop(
     exitCode: 1,
   };
 }
+
+/**
+ * W17-01 (moved from gateway-session.ts under the 400-line cap, behavior
+ * unchanged): the per-ticket cost cap check — a session whose ticket has
+ * spent its cap stops with the spend stated.
+ */
+export function costCapStop(input: {
+  readonly cap: number | undefined;
+  readonly spent: number;
+  readonly iteration: number;
+}): SpawnSessionOutput | null {
+  if (input.cap === undefined || input.spent < input.cap) return null;
+  return {
+    stdout: '',
+    stderr:
+      `agent session stopped: per-ticket cost cap ($${input.cap}) ` +
+      `reached after ${input.iteration} model call(s) this session ` +
+      `($${input.spent.toFixed(4)} spent on this ticket across all attempts)`,
+    exitCode: 1,
+  };
+}

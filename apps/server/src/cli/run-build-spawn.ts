@@ -20,12 +20,13 @@ import {
   createGatewaySpawnSession,
   createWatchdogChildProcessSpawn,
   DEFAULT_AGENT_SESSION_TASK_TYPE,
+  DEFAULT_MAX_TOOL_ITERATIONS,
   type ExternalToolset,
   type LandRungSessions,
   type PolicyRung,
   type WatchdogBreach,
 } from '@dokima/harbormaster';
-import { createMemoryAnchor } from '@dokima/memory';
+import { createMemoryAnchor, getCalibration } from '@dokima/memory';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
 import {
@@ -34,6 +35,22 @@ import {
   type ResolvedModelTarget,
 } from '../api/pipeline/model-resolution.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
+import { MAX_TOOL_ITERATIONS_CEILING } from './run-build-policy.js';
+
+/**
+ * W17-01 (FR-L3, downward only): a maker whose calibration record shows a
+ * real over-claiming history starts with a SMALLER budget — it earns the
+ * rest back through observable progress. Never enlarges, never guesses:
+ * no record or too few samples leaves the base untouched.
+ */
+export function calibratedBaseIterations(
+  base: number,
+  record: { readonly bias: number; readonly sampleCount: number } | undefined,
+): number {
+  if (!record || record.bias <= 0) return base;
+  const shrunk = Math.floor(base * (1 - Math.min(record.bias, 0.5)));
+  return Math.max(4, Math.min(shrunk, base));
+}
 
 /**
  * Builds the built-in agent's `SpawnSession` (D-023): resolves the
@@ -164,7 +181,18 @@ export async function buildBuiltInSpawn(
       ...(externalTools ? { externalTools } : {}),
       // W13-11: the user's tool-turn cap, when they set one. Absent = the
       // documented default; this field was previously never set at all.
-      ...(maxIterations === undefined ? {} : { maxIterations }),
+      // W17-01: whichever base applies, it now EARNS extensions from real
+      // progress up to the unchanged T-27 ceiling, shrunk first for a
+      // maker with an over-claiming record (downward only, FR-L3).
+      ...((): { maxIterations?: number } => {
+        const base = maxIterations ?? DEFAULT_MAX_TOOL_ITERATIONS;
+        const calibrated = calibratedBaseIterations(
+          base,
+          getCalibration(log.db, target.model, 'coding-agent') ?? undefined,
+        );
+        return { maxIterations: calibrated };
+      })(),
+      progressBudget: { ceiling: MAX_TOOL_ITERATIONS_CEILING },
       ...(maxTurnTokens === undefined ? {} : { maxTurnTokens }),
       ...(maxSessionSeconds === undefined ? {} : { maxSessionSeconds }),
       secretValues,
