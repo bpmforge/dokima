@@ -9348,7 +9348,7 @@
       "module": "gateway",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/gateway/src/escalation/**",
