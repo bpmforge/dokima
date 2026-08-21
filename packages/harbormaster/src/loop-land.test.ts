@@ -1171,3 +1171,59 @@ describe('the verb mirror seam (W16-04)', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+/**
+ * W16-10 (FR-T6): the conflict watch runs — one detection pass per loop
+ * iteration. Detection only; resolution is the recorded follow-up.
+ */
+describe('the conflict watch (W16-10)', () => {
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  it('RED FIXTURE: a human edit inside the in-progress ticket\'s lease is detected at the next ATTEMPT boundary; an edit outside every lease is an ordinary human.file_edited with no conflict', async () => {
+    fixture = await setupFixture();
+    const { log, repoRoot } = fixture;
+    createIdentity(log, { id: 'brad', name: 'Brad', kind: 'human' });
+    seedTicket(log, 'W9-01');
+
+    // The human edits during attempt 1 (inside W9-01's leased scope, plus an
+    // unrelated file); the watch pass at attempt 2's boundary — the ticket
+    // still in_progress, its lease live — must flag exactly the collision.
+    const spawn: SpawnSession = async (input) => {
+      await fs.mkdir(path.join(repoRoot, 'packages/example'), { recursive: true });
+      await fs.writeFile(path.join(repoRoot, 'packages/example/human-edit.ts'), 'human\n');
+      await fs.writeFile(path.join(repoRoot, 'NOTES.md'), 'unrelated\n');
+      return spoofedSpawn(input);
+    };
+    await runLandLoop({
+      ...baseOptions(fixture, spawn),
+      maxLadderAttempts: 2,
+      conflictWatch: { humanActorId: 'brad' },
+    });
+
+    const edits = listEvents(log).filter((e) => e.eventType === 'human.file_edited');
+    const conflicts = listEvents(log).filter((e) => e.eventType === 'conflict.detected');
+    expect(edits.length).toBeGreaterThanOrEqual(2);
+    expect(conflicts.length).toBeGreaterThanOrEqual(1);
+    expect(
+      conflicts.some(
+        (e) => (e.payload as { path?: string }).path === 'packages/example/human-edit.ts',
+      ),
+    ).toBe(true);
+    expect(
+      conflicts.some((e) => (e.payload as { path?: string }).path === 'NOTES.md'),
+    ).toBe(false);
+  });
+
+  it('no conflictWatch option = no watcher events — byte-identical pre-W16-10 loop', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+    await runLandLoop({ ...baseOptions(fixture, landingSpawn), maxLadderAttempts: 1 });
+    expect(listEvents(log).filter((e) => e.eventType === 'human.file_edited')).toHaveLength(0);
+  });
+});

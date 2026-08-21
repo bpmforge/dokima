@@ -10,7 +10,14 @@
  */
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import type { WorktreeHandle } from '@dokima/git';
-import { claimTicket, commentTicket, releaseTicket, startTicket, type Ticket } from '@dokima/tickets';
+import {
+  claimTicket,
+  commentTicket,
+  listTickets,
+  releaseTicket,
+  startTicket,
+  type Ticket,
+} from '@dokima/tickets';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
 import { parkComment } from './loop-land-report.js';
@@ -25,6 +32,8 @@ import {
 import { beginRungAttempt, consultRungZero } from './loop-land-rungs.js';
 import { fireVerbMirror } from './loop-land-verbs.js';
 import { requireTicket, resolveWorktree } from './loop-land-board.js';
+import { activeLeases } from './conflict-leases.js';
+import { runConflictWatch } from './conflict-watcher.js';
 import type { AttemptFeedback } from './loop-handoff.js';
 import type {
   LandAttempt,
@@ -94,6 +103,21 @@ export async function landClaimedTicket(
     attempt <= freeRetry.limit() && current.status === 'in_progress';
     attempt++
   ) {
+    // W16-10 (FR-T6): one conflict-watch pass per attempt boundary — the
+    // ticket is in_progress here, so its write lease is live and a human
+    // edit inside it is a detectable collision. Ledger-and-swallow.
+    if (options.conflictWatch) {
+      await runAttemptOutcomeHook(options, () =>
+        runConflictWatch({
+          log: options.log,
+          actorId: options.actorId,
+          humanActorId: options.conflictWatch!.humanActorId,
+          repoRoot: options.repoRoot,
+          leases: activeLeases(listTickets(options.log)),
+          ...(options.now ? { now: options.now } : {}),
+        }).then(() => undefined),
+      );
+    }
     // W16-01: which rung this attempt runs at (the chapter also ledgers a
     // climb, evidence attached). Without a seam, options come back untouched.
     const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts);

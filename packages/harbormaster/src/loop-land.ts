@@ -135,6 +135,17 @@ export interface LandLoopOptions {
   readonly r0Consult?: LandR0Consult;
   /** W16-04: the Forge Mirror's lifecycle-verb seam (FR-T5) — composed in apps/server; failures never block the loop. */
   readonly verbMirror?: LandVerbMirror;
+  /**
+   * W16-10 (FR-T6, BLUEPRINT §7.3): human-edit conflict DETECTION, one
+   * watcher pass per ATTEMPT boundary (loop-land-ticket.ts) — the only
+   * moments a write lease is live in a sequential run (in_review does not
+   * lease; see conflict-leases.ts). Edits are ledgered
+   * (`human.file_edited`) and lease collisions mint `conflict.detected`.
+   * Detection only: driving `resolveHumanEditConflict` from here is the
+   * recorded follow-up (needs resolution policy at the attempt seam).
+   * A watcher failure is ledgered and never stops the loop.
+   */
+  readonly conflictWatch?: { readonly humanActorId: string };
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
 }

@@ -330,10 +330,10 @@ export async function executeBuildRun(
       attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
       r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues }),
       ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
+      conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)
       now: io.now,
     };
-  // W16-02: the dial is read — N>1 drives the lane-aware berth engine over
-  // the same one-ticket engine; N=1 keeps runLandLoop byte-identical.
+  // W16-02: N>1 = berth engine, N=1 = runLandLoop, same one-ticket engine.
   let result!: { processed: readonly LandLoopTicketOutcome[]; stopReason: string };
   try {
     result =
