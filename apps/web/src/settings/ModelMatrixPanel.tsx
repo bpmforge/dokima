@@ -351,8 +351,12 @@ export function ModelMatrixPanel({
             disabled={catalogOptions.length === 0}
           >
             <option value="" disabled>
+              {/* W18-06: providers live on their own tab, not "above" — and
+                  when one is already registered untested, name it. */}
               {catalogOptions.length === 0
-                ? 'No models discovered yet — register and test a provider above'
+                ? providerEntries.length > 0
+                  ? `No models discovered yet — test the ${providerEntries[0]!.id} provider on the Providers tab to discover its models`
+                  : 'No models discovered yet — register and test a provider on the Providers tab'
                 : 'Select a model…'}
             </option>
             {catalogOptions.map((m) => (

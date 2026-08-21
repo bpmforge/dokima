@@ -10104,7 +10104,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "in_progress",
+      "status": "done",
       "id": "W18-06",
       "title": "models-tab copy points at the real provider step, by name",
       "module": "web",

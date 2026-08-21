@@ -72,3 +72,29 @@ describe('the fallback-chain editor (W17-08)', () => {
     expect(explainer.textContent).toContain('cheap model first');
   });
 });
+
+describe('the empty model picker points at the real step (W18-06)', () => {
+  it('names the untested provider and the Providers tab when one is registered', async () => {
+    render(
+      <ModelMatrixPanel
+        projectId="p1"
+        catalogs={{}}
+        providerEntries={[{ id: 'lm-studio', kind: 'lmstudio', enabled: true }] as never}
+      />,
+    );
+    expect(
+      await screen.findByText(
+        'No models discovered yet — test the lm-studio provider on the Providers tab to discover its models',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('points at the Providers tab (not "above") when no provider exists', async () => {
+    render(<ModelMatrixPanel projectId="p1" catalogs={{}} providerEntries={[]} />);
+    expect(
+      await screen.findByText(
+        'No models discovered yet — register and test a provider on the Providers tab',
+      ),
+    ).toBeTruthy();
+  });
+});
