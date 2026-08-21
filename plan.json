@@ -9444,7 +9444,7 @@
       "module": "forge",
       "lane": "core",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "packages/forge/src/**",
