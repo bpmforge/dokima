@@ -1347,3 +1347,13 @@ gate/research path never invoked; interview error copy novice-hostile).
   templates are served (GET .../research/templates?phase=N) with the
   recorded depth policy. buildChallengeReport stays unexported until a
   producer path exists — no new uncalled surface.
+- W16-04 — **the Forge Mirror goes live** (FR-T5/FR-I2/SC-15, BLUEPRINT
+  §3.4/§3.9): apps/server declares @dokima/forge (matrix updated); landed
+  branches really push to every configured remote (per-remote failures
+  recorded, never fatal); the land loop's new forge-free verb seam mirrors
+  claim/evidence/close through attemptOrQueue with issue-per-ticket mapping,
+  offline writes queued durably in the event log and drained in order at the
+  next reachable run; close comments carry the minted receipt + SC-15
+  anchor; token refs are vault names (law 8), config problems degrade with
+  a named note (FR-G5). accept stays a human verb — its mirror belongs to
+  that surface.
