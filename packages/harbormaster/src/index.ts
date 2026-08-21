@@ -71,6 +71,7 @@ export type {
   ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
 export type {
+  AttemptOutcomeHook,
   LandAttempt,
   LandLoopOptions,
   LandLoopResult,

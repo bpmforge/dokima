@@ -108,7 +108,9 @@ export async function buildBuiltInSpawn(
      * keyword recall instead of a feature that quietly needs a cloud model
      * (FR-G5, law 9b).
      */
-    memoryAnchor: createMemoryAnchor(log.db),
+    // W14-05: error-first — a prior failure on this ticket LEADS the anchor
+    // (US-602), so a retry meets the symptom before anything else.
+    memoryAnchor: createMemoryAnchor(log.db, { errorFirst: true }),
     // W14-03: external MCP tools, composed by mcp-session-tools.ts from the
     // run's live client pool + the role's grants. Absent = the closed seven.
     ...(externalTools ? { externalTools } : {}),

@@ -41,6 +41,7 @@ import {
 } from '@dokima/git';
 import { policyForLevel, ROLE_CODING_AGENT, type BreakerLevel } from '@dokima/gateway';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
+import { runAttemptOutcomeHook } from './loop-land-outcome.js';
 import { parkComment } from './loop-land-report.js';
 import { reclaimAbandoned } from './loop-land-reclaim.js';
 import { nextFeedback } from './loop-land-session.js';
@@ -138,11 +139,18 @@ export interface LandLoopOptions {
   /** `git remote` names to push a landed ticket branch to (FR-I2, dual-remote sync). Defaults to whatever remotes are actually configured on the repo (`git remote`, read fresh per ticket) — local-first: zero configured remotes is a normal, valid setup and pushes nothing. */
   readonly pushRemotes?: readonly string[];
   readonly now?: () => string;
+  /** W14-05: injected learning hook — see `AttemptOutcomeHook`. */
+  readonly attemptOutcome?: AttemptOutcomeHook;
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
 }
 
 export type LandLoopStopReason = 'idle' | 'stopped' | 'budget';
+// W14-05 chapter (CODE_BOOK_PROTOCOL 400-line cap): the learning-loop seam
+// lives in loop-land-outcome.ts; re-exported so callers keep one import.
+import type { AttemptOutcomeHook } from './loop-land-outcome.js';
+export { type AttemptOutcomeHook } from './loop-land-outcome.js';
+
 export interface LandAttempt {
   readonly attempt: number;
   readonly session: SessionResult;
@@ -276,6 +284,13 @@ async function processTicket(
 
     if (closeGate?.ok) {
       landed = true;
+      await runAttemptOutcomeHook(options, () =>
+        options.attemptOutcome?.onLanded({
+          ticketId: ticket.id,
+          commits: session.manifest?.commits ?? [],
+          attempts,
+        }),
+      );
       // Isolated per-remote; a failed remote is recorded, not fatal.
       pushResults = await pushLandedBranch(
         options.pushToRemotes,
@@ -312,6 +327,13 @@ async function processTicket(
       actorId: options.actorId,
       body: parkComment(parkedReason, ceiling, attempts, decideCard),
     });
+    await runAttemptOutcomeHook(options, () =>
+      options.attemptOutcome?.onParked({
+        ticketId: ticket.id,
+        reason: parkedReason ?? 'ladder_exhausted',
+        attempts,
+      }),
+    );
     releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
     current = requireTicket(options.log, ticket.id);
   }

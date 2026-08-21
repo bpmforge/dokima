@@ -91,6 +91,7 @@ import { tokenizeAgentCommand } from './agent-command.js';
 export { tokenizeAgentCommand };
 import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
 import { composeExternalToolset } from './mcp-session-tools.js';
+import { createLearningHook } from './memory-hooks.js';
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
 async function resolveAgentRunner(
@@ -352,6 +353,9 @@ export async function executeBuildRun(
     }),
       pushToRemotes: localFirstPushToRemotes,
       secretValues,
+      // W14-05: parks become error->solution facts; closes complete the
+      // pair. Composed here — harbormaster may not import memory.
+      attemptOutcome: createLearningHook({ log, secretValues }),
       now: io.now,
     });
   } finally {

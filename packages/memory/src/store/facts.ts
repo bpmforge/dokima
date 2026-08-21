@@ -110,6 +110,22 @@ export function markFactVerified(handle: SqliteHandle, id: number): void {
   handle.prepare('UPDATE facts SET verified = 1 WHERE id = ?').run(id);
 }
 
+/**
+ * Completes an error->solution pair (W14-05, US-602): the symptom was
+ * recorded when the ticket parked; the fix is appended when a later attempt
+ * lands. One row carries the whole pair so error-first recall injects both
+ * halves together — a symptom without its fix is a warning, not a lesson.
+ */
+export function appendFactSolution(
+  handle: SqliteHandle,
+  id: number,
+  solution: string,
+): void {
+  handle
+    .prepare(`UPDATE facts SET content = content || char(10) || ? WHERE id = ?`)
+    .run(solution, id);
+}
+
 /** Bumps use_count and last_used_at when a fact is actually recalled into a prompt. */
 export function touchFactUsage(
   handle: SqliteHandle,
