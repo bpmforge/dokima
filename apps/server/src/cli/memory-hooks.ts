@@ -23,15 +23,26 @@
 import { redactDeep } from '@dokima/shared';
 import {
   appendFactSolution,
+  createPlaybookMemoryConsultHook,
   getCalibration,
   insertFact,
   listFacts,
   markFactVerified,
   upsertCalibration,
+  type GlobalPlaybookEntryLike,
 } from '@dokima/memory';
 import { createCalibrationRecord, updateCalibration } from '@dokima/loop';
-import type { AttemptOutcomeHook, LandAttempt } from '@dokima/harbormaster';
-import type { EventLog } from '@dokima/events';
+import type {
+  AttemptOutcomeHook,
+  LandAttempt,
+  LandR0Consult,
+} from '@dokima/harbormaster';
+import {
+  appendEvent,
+  listGlobalPlaybook,
+  openGlobalDb,
+  type EventLog,
+} from '@dokima/events';
 
 const SYMPTOM_HEAD_CHARS = 500;
 const SOLVED_MARKER = 'SOLVED:';
@@ -132,5 +143,64 @@ export function createLearningHook(options: LearningHookOptions): AttemptOutcome
         appendFactSolution(options.log.db, fact.id, solution);
       }
     },
+  };
+}
+
+/**
+ * W16-03: the rung-ZERO consult, composed (BLUEPRINT §3.3 "have we solved
+ * this before?", FR-M2/FR-F5). Wires the memory playbook hook into the land
+ * loop's `r0Consult` seam and ledgers every consult — one
+ * `playbook.r0_hit`/`playbook.r0_miss` event per ticket, the memory layer's
+ * own audit trail. Global playbook entries (FR-F5: consulted for every
+ * project) are read from the global DB when it exists; a missing or
+ * unreadable global DB is a normal local-first state, never an error.
+ */
+export function createR0ConsultHook(options: {
+  readonly log: EventLog;
+  readonly actorId: string;
+  readonly secretValues: readonly string[];
+  readonly now?: () => string;
+  /** Test seam — real callers read the user's global DB. */
+  readonly loadGlobalEntries?: () => GlobalPlaybookEntryLike[];
+}): LandR0Consult {
+  let globalEntries: GlobalPlaybookEntryLike[] = [];
+  try {
+    if (options.loadGlobalEntries) {
+      globalEntries = options.loadGlobalEntries();
+    } else {
+      const global = openGlobalDb();
+      try {
+        globalEntries = listGlobalPlaybook(global);
+      } finally {
+        global.close();
+      }
+    }
+  } catch {
+    // No global DB yet — honest empty set (FR-F5 degrades to local-only).
+  }
+  const hook = createPlaybookMemoryConsultHook(options.log.db, {
+    globalEntries,
+    ...(options.now ? { now: options.now } : {}),
+    sink: {
+      emit: (event) => {
+        appendEvent(
+          options.log,
+          {
+            eventType: event.type,
+            actorId: options.actorId,
+            ticketId: event.ticketId,
+            payload: {
+              criterion: event.criterion,
+              ...(event.source ? { source: event.source } : {}),
+              ...(event.findingId ? { findingId: event.findingId } : {}),
+            },
+          },
+          { secretValues: [...options.secretValues] },
+        );
+      },
+    },
+  });
+  return {
+    consult: (input) => hook.consult(input),
   };
 }

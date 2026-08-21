@@ -101,3 +101,52 @@ export async function beginRungAttempt(
   const spawn: SpawnSession = rungSession.spawn;
   return { options: { ...options, spawn }, sessionLabel: rungSession.label };
 }
+
+/**
+ * W16-03: the rung-ZERO consult — "have we solved this before?" (BLUEPRINT
+ * §3.3, FR-M2/FR-F5), asked once per ticket before any model spend. The
+ * memory layer answers (apps/server composes the hook — harbormaster may
+ * not import `memory`, ARCHITECTURE §4); a verified hit becomes the
+ * `priorSolution` block leading the first handoff. Deliberately NOT the
+ * gateway ladder's resolve-without-an-attempt R0 (refused by
+ * loop-land-policy.ts's header): the close gate still decides (C-2), so a
+ * stale hit simply fails the gate and the ladder proceeds.
+ */
+export interface LandR0ConsultResult {
+  readonly answered: boolean;
+  readonly findingId?: string;
+  readonly summary?: string;
+}
+
+export interface LandR0Consult {
+  consult(input: {
+    readonly ticketId: string;
+    readonly criterion: string;
+  }): LandR0ConsultResult | Promise<LandR0ConsultResult>;
+}
+
+/**
+ * Consults once, before attempt 1. A consult failure is ledgered and
+ * swallowed (`runAttemptOutcomeHook`'s posture: a memory store having a bad
+ * day must never park a ticket). Returns the seed feedback for the first
+ * handoff, or undefined on a miss / no hook.
+ */
+export async function consultRungZero(
+  options: LandLoopOptions,
+  ticket: { readonly id: string; readonly title: string; readonly acceptance: readonly { readonly text: string }[] },
+): Promise<{ attempt: 0; gaps: readonly string[]; priorSolution: { findingId: string; summary: string } } | undefined> {
+  if (!options.r0Consult) return undefined;
+  let result: LandR0ConsultResult | undefined;
+  await runAttemptOutcomeHook(options, async () => {
+    result = await options.r0Consult!.consult({
+      ticketId: ticket.id,
+      criterion: ticket.acceptance[0]?.text ?? ticket.title,
+    });
+  });
+  if (!result?.answered || !result.summary) return undefined;
+  return {
+    attempt: 0,
+    gaps: [],
+    priorSolution: { findingId: result.findingId ?? 'unknown', summary: result.summary },
+  };
+}

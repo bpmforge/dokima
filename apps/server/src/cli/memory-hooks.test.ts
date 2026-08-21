@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { openEventLog, type EventLog } from '@dokima/events';
 import { createMemoryAnchor, insertFact, listFacts, markFactVerified } from '@dokima/memory';
 import type { LandAttempt } from '@dokima/harbormaster';
-import { createLearningHook } from './memory-hooks.js';
+import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 
 const dirs: string[] = [];
 let openLog: EventLog | undefined;
@@ -272,3 +272,79 @@ function claimedPassAttemptFor(gateOk: boolean): LandAttempt {
       : ({ ok: false, reasons: ['verify failed'] } as never),
   };
 }
+
+describe('the R0 consult hook, composed (W16-03)', () => {
+  it('RED FIXTURE: a planted verified fact for the ticket produces a ledgered playbook.r0_hit and the answer itself — the consult event exists before any model would run', async () => {
+    const log = await makeLog();
+    const { createIdentity, listEvents } = await import('@dokima/events');
+    createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+    const fact = insertFact(
+      log.db,
+      {
+        kind: 'error_solution',
+        content: 'ABI mismatch on native addon — pin Node to 22 and rebuild.',
+        source: 'harbormaster:park',
+        confidence: 1,
+        ticketId: 'T-9',
+      },
+      () => '2026-08-21T00:00:00.000Z',
+    );
+    markFactVerified(log.db, fact.id);
+
+    const hook = createR0ConsultHook({
+      log,
+      actorId: 'worker-1',
+      secretValues: [],
+      loadGlobalEntries: () => [],
+      now: () => '2026-08-21T00:00:00.000Z',
+    });
+    const result = await hook.consult({
+      ticketId: 'T-9',
+      criterion: 'native addon ABI mismatch pin Node',
+    });
+
+    expect(result.answered).toBe(true);
+    expect(result.summary).toContain('pin Node to 22');
+    const hits = listEvents(log).filter((e) => e.eventType === 'playbook.r0_hit');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.payload).toMatchObject({ source: 'fact', findingId: `fact:${fact.id}` });
+  });
+
+  it('a miss is ledgered too — the audit trail records that memory had no answer', async () => {
+    const log = await makeLog();
+    const { createIdentity, listEvents } = await import('@dokima/events');
+    createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+
+    const hook = createR0ConsultHook({
+      log,
+      actorId: 'worker-1',
+      secretValues: [],
+      loadGlobalEntries: () => [],
+    });
+    const result = await hook.consult({ ticketId: 'T-9', criterion: 'never seen before' });
+
+    expect(result.answered).toBe(false);
+    expect(listEvents(log).filter((e) => e.eventType === 'playbook.r0_miss')).toHaveLength(1);
+  });
+
+  it('a promoted GLOBAL entry answers for a project that has never seen the task (FR-F5)', async () => {
+    const log = await makeLog();
+    const { createIdentity } = await import('@dokima/events');
+    createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+
+    const hook = createR0ConsultHook({
+      log,
+      actorId: 'worker-1',
+      secretValues: [],
+      loadGlobalEntries: () => [
+        { id: 7, taskClass: 'rotate a stale api credential', entry: 'Use the vault rotate verb; never edit settings files.' },
+      ],
+    });
+    const result = await hook.consult({
+      ticketId: 'T-1',
+      criterion: 'Rotate a stale API credential',
+    });
+    expect(result.answered).toBe(true);
+    expect(result.summary).toContain('vault rotate verb');
+  });
+});

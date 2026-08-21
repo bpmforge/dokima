@@ -9422,13 +9422,14 @@
         "apps/server/src/cli/**"
       ],
       "notes": [
-        "Memory-loop audit 2026-08-21: createPlaybookMemoryConsultHook (packages/memory/src/playbook/r0-hook.ts:30), listPlaybookHistory, and preparePlaybookPromotion are called only from inside packages/memory and tests \u2014 the BLUEPRINT 3.3 promise \"a playbook hit resolves the ladder at rung 0 without re-attempting\" has no live consult point. Same built-but-unwired defect class W14-05 fixed for facts. Wire through the same apps/server-composed seam as memoryAnchor/attemptOutcome in run-build-spawn.ts."
+        "Memory-loop audit 2026-08-21: createPlaybookMemoryConsultHook (packages/memory/src/playbook/r0-hook.ts:30), listPlaybookHistory, and preparePlaybookPromotion are called only from inside packages/memory and tests \u2014 the BLUEPRINT 3.3 promise \"a playbook hit resolves the ladder at rung 0 without re-attempting\" has no live consult point. Same built-but-unwired defect class W14-05 fixed for facts. Wire through the same apps/server-composed seam as memoryAnchor/attemptOutcome in run-build-spawn.ts.",
+        "Acceptance reworded 2026-08-21 pre-close: the original \"R0 hit lands with zero model calls\" contradicted loop-land-policy.ts's documented refusal of gate-skipping R0 (a ticket would sit in_progress while \"resolved\") and C-2 \u2014 the honest form is consult-before-spend with the answer leading the handoff and the gate still deciding."
       ],
       "acceptance": [
-        "Before the first model attempt on a ticket, the land loop consults the playbook hook; a verified hit is applied as the R0 resolution (mechanically, via the verbs/receipts path \u2014 the model does not re-derive it) and the consult outcome (hit or miss) is ledgered.",
-        "A playbook hit that fails its own gate falls through to the normal ladder \u2014 R0 never masks a stale solution as success (C-2: the gate, not the playbook, decides).",
-        "Tests use recorded fixtures and the fake gateway; one fixture proves an R0 hit lands with zero model calls, another proves a stale hit falls through and the ladder proceeds.",
-        "RED FIXTURE: a planted playbook entry matching a planted failure must produce an R0 consult event; the fixture fails if the first attempt reaches the model with no consult ledgered."
+        "Before the first model attempt on a ticket, the land loop consults the playbook (local -> global FR-F5 -> fact bank) through an apps/server-composed hook; a verified hit LEADS the maker's first handoff as a prior-solution block, and every consult is ledgered as playbook.r0_hit / playbook.r0_miss.",
+        "The close gate still decides (C-2): a hit never skips the attempt or the gate \u2014 loop-land-policy.ts's documented refusal of the gateway ladder's resolve-without-a-gate R0 stands; a stale hit simply fails the gate and the ladder proceeds. A consult failure is ledgered and swallowed, never parking the ticket.",
+        "Tests use recorded fixtures and the fake gateway (law 9a); fixtures prove a hit reaches the first prompt, a miss leaves it untouched with exactly one consult per ticket, and a promoted global entry answers for a project that never saw the task (FR-F5).",
+        "RED FIXTURE: a planted playbook answer must be ledgered and present in the first session prompt BEFORE the model runs; the fixture fails if the session ran without the consult ordered ahead of it."
       ]
     },
     {

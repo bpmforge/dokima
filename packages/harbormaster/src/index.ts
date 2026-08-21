@@ -78,6 +78,8 @@ export type {
   PolicyRung,
 } from './loop-land-policy.js';
 export { rungForAttempt } from './loop-land-policy.js';
+/** W16-03: the rung-ZERO consult seam apps/server composes from the memory playbook. */
+export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
 export type {
   AttemptOutcomeHook,
   LandAttempt,

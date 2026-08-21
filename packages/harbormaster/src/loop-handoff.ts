@@ -54,10 +54,19 @@ export const DEFAULT_VERIFY_COMMAND = 'pnpm lint && pnpm typecheck && pnpm test'
  * for `parkComment` at the end, where only a human would read it.
  */
 export interface AttemptFeedback {
-  /** 1-based number of the attempt that produced these gaps. */
+  /** 1-based number of the attempt that produced these gaps (0 = the pre-attempt R0 consult, W16-03). */
   readonly attempt: number;
   /** Close-gate reasons, scope violations, or the missing-manifest fact. */
   readonly gaps: readonly string[];
+  /**
+   * W16-03: a prior VERIFIED solution the R0 playbook consult surfaced for
+   * this ticket — leads the first handoff so the maker meets it before
+   * deriving a new approach. Advisory context only: the close gate still
+   * decides (C-2), which is why this is a handoff block and not the gateway
+   * ladder's resolve-without-a-gate R0 (refused by loop-land-policy.ts's
+   * module header for exactly that reason).
+   */
+  readonly priorSolution?: { readonly findingId: string; readonly summary: string };
 }
 
 /**
@@ -136,11 +145,26 @@ export function defaultHandoffBuilder(
  * second place to keep correct.
  */
 export function withFeedback(context: string, feedback?: AttemptFeedback): string {
-  if (!feedback || feedback.gaps.length === 0) return context;
-  return [
-    context,
-    '',
-    `PREVIOUS ATTEMPT (${feedback.attempt}) DID NOT CLOSE. Fix these, do not start over:`,
-    ...feedback.gaps.map((gap) => `  - ${gap}`),
-  ].join('\n');
+  if (!feedback || (feedback.gaps.length === 0 && !feedback.priorSolution)) {
+    return context;
+  }
+  const lines = [context];
+  // W16-03: the prior verified solution LEADS (US-602's discipline at the
+  // playbook level — meet the known answer before deriving a new one).
+  if (feedback.priorSolution) {
+    lines.push(
+      '',
+      `A PRIOR VERIFIED SOLUTION exists for this task (${feedback.priorSolution.findingId}):`,
+      `  ${feedback.priorSolution.summary}`,
+      'Check it still applies and apply it before deriving a new approach — the close gate still decides.',
+    );
+  }
+  if (feedback.gaps.length > 0) {
+    lines.push(
+      '',
+      `PREVIOUS ATTEMPT (${feedback.attempt}) DID NOT CLOSE. Fix these, do not start over:`,
+      ...feedback.gaps.map((gap) => `  - ${gap}`),
+    );
+  }
+  return lines.join('\n');
 }

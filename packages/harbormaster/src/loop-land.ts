@@ -67,7 +67,12 @@ import {
   type LandRungSessions,
   type ScopedLandEscalationPolicy,
 } from './loop-land-policy.js';
-import { beginRungAttempt } from './loop-land-rungs.js';
+import {
+  beginRungAttempt,
+  consultRungZero,
+  type LandR0Consult,
+} from './loop-land-rungs.js';
+export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
 import { pickNextTicket, requireTicket, resolveWorktree } from './loop-land-board.js';
 
 export type { LandPushRemoteResult, PushToRemotesFn } from './land-push.js';
@@ -147,6 +152,8 @@ export interface LandLoopOptions {
    * external-agent runner and for a one-rung (pinned/local-only) ladder.
    */
   readonly rungSessions?: LandRungSessions;
+  /** W16-03: the rung-ZERO consult ("have we solved this before?") — composed in apps/server; a hit leads the first handoff, the close gate still decides (C-2). */
+  readonly r0Consult?: LandR0Consult;
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
 }
@@ -188,7 +195,6 @@ export interface LandLoopResult {
   readonly stopReason: LandLoopStopReason;
 }
 
-
 async function processTicket(
   options: LandLoopOptions,
   ticket: Ticket,
@@ -208,7 +214,9 @@ async function processTicket(
 
   const attempts: LandAttempt[] = [];
   // W13-29: the previous attempt's gaps — see `loop-land-session.ts`.
-  let feedback: AttemptFeedback | undefined;
+  // W16-03: seeded by the R0 consult when the playbook already holds a
+  // verified answer — the maker meets it before any model spend.
+  let feedback: AttemptFeedback | undefined = await consultRungZero(options, ticket);
   // W13-27: infra failures retry free — see `loop-land-infra.ts`.
   const freeRetry = createFreeRetryGate(options, ticket.id, ceiling);
   let current = requireTicket(options.log, ticket.id);

@@ -973,3 +973,113 @@ describe('the rung->session seam (W16-01)', () => {
     ).toHaveLength(0);
   });
 });
+
+/**
+ * W16-03: the rung-ZERO consult — "have we solved this before?" asked before
+ * any model spend, with the verified answer leading the first handoff. NOT
+ * gateway's resolve-without-a-gate R0: the close gate still decides (C-2).
+ */
+describe('the rung-zero playbook consult (W16-03)', () => {
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  it(
+    'RED FIXTURE: a planted playbook answer reaches the maker BEFORE the first ' +
+      'session runs — the consult is ordered ahead of the model, and the ' +
+      'fixture fails if the session ran without the prior solution in its prompt',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      seedTicket(log, 'W9-01');
+
+      const order: string[] = [];
+      const prompts: string[] = [];
+      const spawn: SpawnSession = async (input) => {
+        order.push('spawn');
+        prompts.push(input.prompt);
+        return spoofedSpawn(input);
+      };
+      const options = baseOptions(fixture, spawn);
+      const result = await runLandLoop({
+        ...options,
+        maxLadderAttempts: 1,
+        r0Consult: {
+          consult({ ticketId, criterion }) {
+            order.push('consult');
+            expect(ticketId).toBe('W9-01');
+            expect(criterion).toBeTruthy();
+            return {
+              answered: true,
+              findingId: 'fact:42',
+              summary: 'Pin Node to 22 — the native addon ABI breaks on 24.',
+            };
+          },
+        },
+      });
+
+      expect(order[0]).toBe('consult');
+      expect(order).toContain('spawn');
+      expect(prompts[0]).toContain('A PRIOR VERIFIED SOLUTION exists for this task (fact:42)');
+      expect(prompts[0]).toContain('Pin Node to 22');
+      expect(prompts[0]).toContain('the close gate still decides');
+      // The gate was NOT skipped: the spoofed session fails it, and the hit
+      // does not manufacture a landing (C-2 — the gate, not the playbook,
+      // decides).
+      expect(result.processed[0]!.landed).toBe(false);
+      expect(result.processed[0]!.parked).toBe(true);
+    },
+  );
+
+  it('a miss leaves the first handoff untouched, and the consult never repeats within a ticket', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+
+    let consults = 0;
+    const prompts: string[] = [];
+    const spawn: SpawnSession = async (input) => {
+      prompts.push(input.prompt);
+      return spoofedSpawn(input);
+    };
+    const result = await runLandLoop({
+      ...baseOptions(fixture, spawn),
+      maxLadderAttempts: 2,
+      r0Consult: {
+        consult() {
+          consults += 1;
+          return { answered: false };
+        },
+      },
+    });
+
+    expect(consults).toBe(1);
+    expect(result.processed[0]!.attempts.length).toBeGreaterThan(1);
+    expect(prompts[0]).not.toContain('A PRIOR VERIFIED SOLUTION');
+  });
+
+  it('a consult that throws is ledgered and swallowed — a memory store having a bad day never parks the ticket for that reason', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, landingSpawn),
+      maxLadderAttempts: 1,
+      r0Consult: {
+        consult() {
+          throw new Error('memory store offline');
+        },
+      },
+    });
+
+    expect(result.processed[0]!.landed).toBe(true);
+    const hookFailures = listEvents(log).filter(
+      (e) => e.eventType === 'memory.hook_failed',
+    );
+    expect(hookFailures).toHaveLength(1);
+  });
+});

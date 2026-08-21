@@ -89,7 +89,7 @@ import { tokenizeAgentCommand } from './agent-command.js';
 export { tokenizeAgentCommand };
 import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
 import { composeExternalToolset } from './mcp-session-tools.js';
-import { createLearningHook } from './memory-hooks.js';
+import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { executeReviewPass } from './review-pass.js';
 import {
   MEMORY_CONSOLIDATION_SETTINGS_KEY,
@@ -327,9 +327,10 @@ export async function executeBuildRun(
       // the session bound to its rung, and climbs are ledgered (FR-G3).
       ...(rungSessions ? { rungSessions } : {}),
       secretValues,
-      // W14-05: parks become error->solution facts; closes complete the
-      // pair. Composed here — harbormaster may not import memory.
+      // W14-05 + W16-03: the learning loop's producer and the R0 playbook
+      // consult — composed here; harbormaster may not import memory (§4).
       attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
+      r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues }),
       now: io.now,
     });
   } finally {

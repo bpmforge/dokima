@@ -73,3 +73,20 @@ export type { MorningPreBrief, MorningPreBriefFact } from './consolidation/pre-b
 
 /** W15-02: calibration persistence for the learning hook (FR-L3) — round-trips loop's own record shape. */
 export { getCalibration, listCalibration, upsertCalibration } from './store/calibration.js';
+
+/**
+ * W16-03: the R0 playbook consult, exported for the first time — fourth
+ * instance of the built-but-unreachable seam (W12-04 packer, W12-09 code
+ * index, W13-23 anchor): the hook existed, its tests drove gateway's real
+ * ladder, and no production path could import it. apps/server composes it
+ * into the land loop's `r0Consult` seam (harbormaster may not import this
+ * package, ARCHITECTURE §4). NARROW export, same ratchet discipline as
+ * every block above.
+ */
+export { createPlaybookMemoryConsultHook } from './playbook/r0-hook.js';
+export type { R0ConsultInput, R0ConsultResult, R0MemoryConsultHook } from './playbook/r0-hook.js';
+export type {
+  ConsultPlaybookOptions,
+  GlobalPlaybookEntryLike,
+} from './playbook/consult.js';
+export type { PlaybookConsultEvent, PlaybookConsultSink } from './playbook/events.js';
