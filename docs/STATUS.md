@@ -1466,3 +1466,38 @@ Verified live post-fix: the 28-entry graveyard cleared in two clicks
 with no freeze; recap, docs marker, aligned settings, and light theme
 all confirmed in the browser. Board: 350/352 done — remaining are the
 founder-parked W12-44 and W13-32.
+
+### 2026-08-21 — W19 (7/7): the post-W18 review becomes product
+
+Filed from the standing review after W18; all seven landed same day
+through the full gate:
+
+- W19-01 — **the phase gate runs on the happy path**: after a clean
+  build run, runPhaseGate runs for real (distinct verifier, real
+  validator pack), decideAdvance verifies the minted receipt fresh off
+  disk, and `phase.advanced` is ledgered with the receipt id — the only
+  writer of durable phase state. Refusals land in the review queue with
+  the gate's reasons (FR-G5); the Fleet's phase column stops being
+  hardcoded null (open since W5-01).
+- W19-02 — the raised-budget-retry story is pinned: park at 12 → raise →
+  retries close ~18 → the next run starts ≥18, ledgered with its
+  samples; re-parking can never inflate (sizing chain extracted to
+  run-build-budget.ts).
+- W19-03 — wire-or-delete #1 (ratchets 61→49 / 72→47): `dokima restore`
+  wires restoreFromBackup; POST models/bench wires runFitnessBench (the
+  W2-08 harness finally has a producer); six dead global-db registry
+  exports deleted; createLoopConvergenceTracker survived its own
+  attempted delete — the FR-L7 planted fixture is its caller.
+- W19-04 — the end-of-run summary: closed / parked-with-why / spend /
+  gate line, derived from the run's own event slice.
+- W19-05 — Settings: four basic tabs greet the novice; ten live behind
+  one Advanced disclosure; an active advanced tab holds it open.
+- W19-06 — the fitness column earned its action: Bench runs the fixture
+  tasks against the configured model and fills the cell. Verified LIVE:
+  qwen3.6-35b-a3b benched **fit** through the UI, card persisted in the
+  global DB the roster reads.
+- W19-07 — finding cards lead with one human sentence for recognised
+  mechanical shapes; unrecognised findings get no lead (C-1) — and the
+  ui-copy gate caught the first draft's own tab-name drift.
+
+Board: 357/359 done — remaining are the founder-parked W12-44 and W13-32.
