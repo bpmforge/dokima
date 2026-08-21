@@ -9295,7 +9295,7 @@
       "module": "pipeline",
       "lane": "pipeline",
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "packages/pipeline/src/**",
