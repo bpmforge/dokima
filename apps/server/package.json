@@ -14,6 +14,7 @@
     "@dokima/git": "workspace:*",
     "@dokima/harbormaster": "workspace:*",
     "@dokima/loop": "workspace:*",
+    "@dokima/mcp": "workspace:*",
     "@dokima/memory": "workspace:*",
     "@dokima/pipeline": "workspace:*",
     "@dokima/shared": "workspace:*",

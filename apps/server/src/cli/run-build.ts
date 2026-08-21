@@ -28,6 +28,7 @@ import {
   resolveAsset,
   resolveCredentialStore,
   resolveEffectiveValue,
+  SECRET_PATTERNS,
   type JsonValue,
   type ProjectSecretsVault,
 } from '@dokima/shared';
@@ -65,7 +66,9 @@ import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import {
   AGENT_RUNNER_SETTINGS_KEY,
   EXTERNAL_AGENT_WARNING,
+  MCP_SERVERS_SETTINGS_KEY,
   parseAgentRunnerSetting,
+  parseMcpServersSetting,
   type AgentRunnerSetting,
 } from '../api/server/settings-types.js';
 import { ModelResolutionError } from '../api/pipeline/model-resolution.js';
@@ -82,58 +85,11 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
  * degrading it, W11-18); `executeBuildRun` below is what turns that row
  * into a refusal.
  */
-/**
- * Splits an external agent command into argv, honouring single and double
- * quotes (W12-03). The previous `.split(' ')` mis-parsed any path or argument
- * containing a space — `/Applications/My Agent/bin/agent --flag` tokenized to
- * `/Applications/My` plus four bogus args, and the operator saw a spawn
- * failure naming a truncated path with nothing explaining why. On macOS,
- * `/Applications` paths with spaces are ordinary, so this was a confusing
- * refusal waiting to happen rather than an exotic case.
- *
- * NOT A SECURITY FIX, and the distinction matters: `createChildProcessSpawn`
- * passes an argv ARRAY to `node:child_process` spawn with no shell, so a
- * split token could never have become a second command. W11-20's
- * `parseAgentRunnerSetting` separately rejects shell metacharacters and caps
- * length, and **that constraint is untouched here** — supporting quotes is
- * not licence to relax it. This function only decides where argument
- * boundaries fall in a string that has already been accepted.
- *
- * A trailing unterminated quote yields the token as typed rather than
- * throwing: the caller's existing empty-command refusal is the honest place
- * for "that isn't a runnable command", and a parse error here would surface
- * as a stack trace instead of a named refusal.
- */
-export function tokenizeAgentCommand(command: string): string[] {
-  const tokens: string[] = [];
-  let current = '';
-  let quote: '"' | "'" | null = null;
-  let started = false;
-
-  for (const char of command) {
-    if (quote) {
-      if (char === quote) quote = null;
-      else current += char;
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      // An empty quoted string is a real, intentional argument.
-      started = true;
-      continue;
-    }
-    if (char === ' ' || char === '\t') {
-      if (started) tokens.push(current);
-      current = '';
-      started = false;
-      continue;
-    }
-    current += char;
-    started = true;
-  }
-  if (started) tokens.push(current);
-  return tokens;
-}
+// Chapter of this file (W14-02, CODE_BOOK_PROTOCOL 400-line cap): a pure
+// move; the re-export keeps every existing import site working.
+import { tokenizeAgentCommand } from './agent-command.js';
+export { tokenizeAgentCommand };
+import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
 
 async function resolveAgentRunner(
   io: RunCliIO,
@@ -290,6 +246,31 @@ export async function executeBuildRun(
   }
   const limits = limitsResult.limits;
 
+  /**
+   * W14-02: preload configured MCP servers — the `mcpServers` key's first
+   * reader. A malformed setting refuses the run (same posture as the
+   * escalation policy above: a setting the user wrote deserves a named
+   * refusal, not a silent skip); a server that fails to START only costs
+   * itself (FR-G5). env refs resolve through the project vault (Law 8).
+   */
+  const mcpSetting = parseMcpServersSetting(
+    resolveEffectiveValue(MCP_SERVERS_SETTINGS_KEY, policyScoped)?.value,
+    (value) => SECRET_PATTERNS.some((p) => new RegExp(p.regex.source).test(value)),
+  );
+  if ('refusal' in mcpSetting) {
+    io.stderr(`${runId} did not start: ${mcpSetting.refusal}`);
+    return 2;
+  }
+  const mcpPreload: McpPreloadResult = await preloadMcpServers({
+    log,
+    actorId: command.actorId,
+    runId,
+    servers: mcpSetting.servers,
+    resolveSecret: (name) => vault.vault.get(name),
+    stderr: io.stderr,
+    secretValues,
+  });
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   /**
@@ -339,7 +320,9 @@ export async function executeBuildRun(
     }
   }
 
-  const result = await runLandLoop({
+  let result!: Awaited<ReturnType<typeof runLandLoop>>;
+  try {
+    result = await runLandLoop({
     log,
     actorId: command.actorId,
     projectId: command.projectId,
@@ -360,10 +343,14 @@ export async function executeBuildRun(
       // second store nobody backs up.
       codeIndexHandle: log.db,
     }),
-    pushToRemotes: localFirstPushToRemotes,
-    secretValues,
-    now: io.now,
-  });
+      pushToRemotes: localFirstPushToRemotes,
+      secretValues,
+      now: io.now,
+    });
+  } finally {
+    // Breach or not, no MCP child outlives the run (the W13-47 discipline).
+    mcpPreload.dispose();
+  }
 
   for (const outcome of result.processed) {
     io.stdout(

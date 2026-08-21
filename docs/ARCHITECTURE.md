@@ -147,7 +147,7 @@ in `package.json` **and** adding the ✅ here in the same change.
 | **loop** | ✅ | | | | | | | | | | |
 | **pipeline** | | | | | | | | | | | |
 | **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | | ✅ | ✅ | |
-| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | | ✅ | ✅ (+harbormaster) |
+| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | ✅ | ✅ (+harbormaster) |
 | **apps/web** | | | | | | | | | | | |
 
 `memory`, `forge` and `pipeline` each ship real, tested code (BLUEPRINT
@@ -186,7 +186,7 @@ graph BT
     loop[loop] --> shared
     pipeline[pipeline]
     hm[harbormaster] --> shared & events & tickets & validators & gateway & git & loop
-    server[apps/server] --> shared & events & tickets & validators & gateway & memory & git & loop & pipeline & hm
+    server[apps/server] --> shared & events & tickets & validators & gateway & memory & git & mcp & loop & pipeline & hm
     web[apps/web] -.->|REST + WS only| server
 ```
 

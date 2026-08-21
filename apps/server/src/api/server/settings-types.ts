@@ -312,3 +312,12 @@ export function parseAgentRunnerSetting(value: unknown): AgentRunnerSetting {
   }
   return DEFAULT_AGENT_RUNNER_SETTING;
 }
+
+// Chapter module (CODE_BOOK_PROTOCOL 400-line cap, split the day it was
+// added): the `mcpServers` schema + parser live in settings-mcp.ts; this
+// re-export keeps the one-import convention for settings shapes.
+export {
+  MCP_SERVERS_SETTINGS_KEY,
+  parseMcpServersSetting,
+} from './settings-mcp.js';
+export type { McpServerSetting, McpServersParseResult } from './settings-mcp.js';
