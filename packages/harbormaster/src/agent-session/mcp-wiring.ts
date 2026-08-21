@@ -24,6 +24,7 @@ import {
   type McpRole,
 } from '@dokima/mcp';
 import type { ToolCall } from './gateway-tool-types.js';
+import { runExternalToolCall, type ExternalToolset } from './external-tools.js';
 import {
   createAgentSessionToolExecutor,
   type AgentSessionToolContext,
@@ -62,12 +63,22 @@ export function ensureAgentSessionToolsRegistered(
 
   const wanted = AGENT_SESSION_TOOL_NAMES.map(agentSessionToolId);
   const allowed = new Set(listToolsForRole(log, options.role).map((tool) => tool.id));
-  const alreadyExact =
-    wanted.length === allowed.size && wanted.every((id) => allowed.has(id));
-  if (!alreadyExact) {
+  /**
+   * W14-03 amendment to the exact-set rule: "closed, not closed plus
+   * whatever accumulated" governs the AGENT-SESSION namespace only.
+   * External MCP tool grants (FR-I3, ids `<serverId>.<tool>`) are a
+   * person's explicit allowlist decisions and survive the reset — wiping
+   * them here would silently revoke a granted tool on every session start.
+   */
+  const externalGrants = [...allowed].filter(
+    (id) => !id.startsWith(`${AGENT_SESSION_SERVER_ID}.`),
+  );
+  const builtInsExact = wanted.every((id) => allowed.has(id)) &&
+    allowed.size === wanted.length + externalGrants.length;
+  if (!builtInsExact) {
     setRoleAllowlist(log, {
       role: options.role,
-      toolIds: wanted,
+      toolIds: [...wanted, ...externalGrants],
       actorId: options.actorId,
     });
   }
@@ -86,7 +97,20 @@ async function runOneToolCall(
   call: ToolCall,
   ctx: AgentSessionToolContext,
   audit: RunToolCallsAudit,
+  external?: ExternalToolset,
 ): Promise<unknown> {
+  // W14-03: an external tool id routes to the two-phase approval protocol
+  // (external-tools.ts); the closed set below is untouched.
+  if (external?.toolIds.has(call.name)) {
+    try {
+      return await runExternalToolCall(call, audit, external);
+    } catch (err) {
+      if (err instanceof McpError) {
+        return { ok: false, refusal: `${err.code}: ${err.message}` };
+      }
+      return { ok: false, refusal: err instanceof Error ? err.message : String(err) };
+    }
+  }
   const executor = createAgentSessionToolExecutor(ctx);
   try {
     const outcome = await requestToolCall(
@@ -126,10 +150,11 @@ export async function runToolCalls(
   toolCalls: readonly ToolCall[],
   ctx: AgentSessionToolContext,
   audit: RunToolCallsAudit,
+  external?: ExternalToolset,
 ): Promise<string> {
   const parts: string[] = [];
   for (const call of toolCalls) {
-    const outcome = await runOneToolCall(call, ctx, audit);
+    const outcome = await runOneToolCall(call, ctx, audit, external);
     parts.push(`TOOL_RESULT ${call.id} (${call.name}): ${JSON.stringify(outcome)}`);
   }
   return parts.join('\n');

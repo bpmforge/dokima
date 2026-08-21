@@ -14,6 +14,7 @@ import {
   createGatewaySpawnSession,
   createWatchdogChildProcessSpawn,
   DEFAULT_AGENT_SESSION_TASK_TYPE,
+  type ExternalToolset,
   type WatchdogBreach,
 } from '@dokima/harbormaster';
 import { createMemoryAnchor } from '@dokima/memory';
@@ -56,6 +57,7 @@ export async function buildBuiltInSpawn(
   maxIterations: number | undefined,
   maxTurnTokens: number | undefined,
   maxSessionSeconds: number | undefined,
+  externalTools?: ExternalToolset,
 ): Promise<BuiltInSpawn> {
   const target = await resolveModelTarget({
     projectPath: io.cwd,
@@ -107,6 +109,9 @@ export async function buildBuiltInSpawn(
      * (FR-G5, law 9b).
      */
     memoryAnchor: createMemoryAnchor(log.db),
+    // W14-03: external MCP tools, composed by mcp-session-tools.ts from the
+    // run's live client pool + the role's grants. Absent = the closed seven.
+    ...(externalTools ? { externalTools } : {}),
     // W13-11: the user's tool-turn cap, when they set one. Absent = the
     // documented default; this field was previously never set at all.
     ...(maxIterations === undefined ? {} : { maxIterations }),

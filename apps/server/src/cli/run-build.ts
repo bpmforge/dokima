@@ -90,6 +90,8 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
 import { tokenizeAgentCommand } from './agent-command.js';
 export { tokenizeAgentCommand };
 import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
+import { composeExternalToolset } from './mcp-session-tools.js';
+import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
 async function resolveAgentRunner(
   io: RunCliIO,
@@ -271,6 +273,10 @@ export async function executeBuildRun(
     secretValues,
   });
 
+  // W14-03: approvals a previous run parked get their Decide cards before
+  // this run's sessions consult the queue's verdicts.
+  syncMcpApprovalNotifications(log, command.actorId);
+
   const agentRunner = await resolveAgentRunner(io, command.agentCommand);
   let spawn: SpawnSession;
   /**
@@ -308,6 +314,7 @@ export async function executeBuildRun(
         limits.maxIterations,
         limits.maxTurnTokens,
         limits.maxSessionSeconds,
+        composeExternalToolset(log, ROLE_CODING_AGENT, mcpPreload),
       );
       spawn = builtIn.spawn;
       contextWindowTokens = builtIn.contextWindowTokens;
@@ -348,8 +355,14 @@ export async function executeBuildRun(
       now: io.now,
     });
   } finally {
-    // Breach or not, no MCP child outlives the run (the W13-47 discipline).
-    mcpPreload.dispose();
+    // W14-03: this run's freshly parked approvals become Decide cards, so
+    // the morning queue has them before anyone opens it.
+    try {
+      syncMcpApprovalNotifications(log, command.actorId);
+    } finally {
+      // Breach or not, no MCP child outlives the run (the W13-47 discipline).
+      mcpPreload.dispose();
+    }
   }
 
   for (const outcome of result.processed) {
