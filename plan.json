@@ -10027,7 +10027,7 @@
       ],
       "depends_on": [],
       "phase": 18,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W18-03",
       "title": "deliverables on disk are never invisible \u2014 the docs pane lists uncommitted docs honestly",
       "module": "cli",
