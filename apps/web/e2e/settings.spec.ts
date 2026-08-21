@@ -184,6 +184,7 @@ test('rule lifecycle: register, promote twice, then a data-gated promotion is re
   page,
 }) => {
   await openProjectSettings(page);
+  await page.getByTestId('settings-advanced-toggle').click();
   await page.getByRole('button', { name: 'Rule Lifecycle' }).click();
 
   const form = page.getByRole('form', { name: 'Register rule' });
@@ -226,6 +227,7 @@ test('agent runner: switching to an external CLI persists through the real confi
   // server distinguishes persisted from merely typed.
   const command = 'echo dokima-e2e-runner';
   await openProjectSettings(page);
+  await page.getByTestId('settings-advanced-toggle').click();
   await page.getByRole('button', { name: 'Agent', exact: true }).click();
   await expect(page.getByTestId('agent-runner-panel')).toBeVisible();
 
@@ -247,6 +249,7 @@ test('agent runner: switching to an external CLI persists through the real confi
   expect((await savePut).status()).toBe(200);
 
   await openProjectSettings(page);
+  await page.getByTestId('settings-advanced-toggle').click();
   await page.getByRole('button', { name: 'Agent', exact: true }).click();
   await expect(page.getByTestId('agent-runner-current')).toContainText('external');
   await expect(page.getByTestId('agent-runner-current')).toContainText(command);
@@ -261,6 +264,7 @@ test('agent runner: switching to an external CLI persists through the real confi
   await revertForm.getByRole('button', { name: 'Save agent runner' }).click();
   expect((await revertPut).status()).toBe(200);
   await openProjectSettings(page);
+  await page.getByTestId('settings-advanced-toggle').click();
   await page.getByRole('button', { name: 'Agent', exact: true }).click();
   await expect(page.getByTestId('agent-runner-current')).toContainText('built-in');
 });
@@ -269,6 +273,7 @@ test('Copilot consent: default-off with the account-risk warning, enabling requi
   page,
 }) => {
   await openProjectSettings(page);
+  await page.getByTestId('settings-advanced-toggle').click();
   await page.getByRole('button', { name: 'Copilot' }).click();
   await expect(page.getByTestId('copilot-warning')).toContainText('ban');
   await expect(page.getByText('disabled (default)')).toBeVisible();

@@ -55,6 +55,7 @@ async function openEstimateTab(page: Page, name: string, dir: string): Promise<v
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByTestId('settings-page')).toBeVisible();
+  await page.getByTestId('settings-advanced-toggle').click();
   await page
     .locator('nav.settings__tabs')
     .getByRole('button', { name: 'Cost Estimate' })
@@ -79,6 +80,7 @@ test('real board tickets drive a per-wave breakdown, and what-if recomputes dete
   seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByTestId('settings-advanced-toggle').click();
   await page
     .locator('nav.settings__tabs')
     .getByRole('button', { name: 'Cost Estimate' })
@@ -115,6 +117,7 @@ test('escalation-ROI view and weekly digest render honest-empty until a spend le
   seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByTestId('settings-advanced-toggle').click();
   await page
     .locator('nav.settings__tabs')
     .getByRole('button', { name: 'Cost Estimate' })

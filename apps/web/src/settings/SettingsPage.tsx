@@ -33,6 +33,12 @@ type Tab =
   | 'escalation'
   | 'copilot';
 
+/** W19-05: the four tabs a novice actually needs greet them; the other ten
+ * live behind one Advanced disclosure. Grouping only — every panel keeps its
+ * id, label, and mount; opening a tab that lives in the advanced group (e.g.
+ * programmatically) auto-expands the group so nothing is ever unreachable. */
+const BASIC_TAB_IDS: readonly Tab[] = ['providers', 'matrix', 'runs', 'autonomy-budget'];
+
 const PROJECT_TABS: { id: Tab; label: string }[] = [
   // W12-31: Providers is FIRST and named. It was nested inside "Model Matrix"
   // — a user looking for where to connect an account scanned a list of
@@ -92,6 +98,9 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
   // empty otherwise. With the catalog lifted, that reason is gone: Settings
   // opens where people actually come to it.
   const [tab, setTab] = useState<Tab>('providers');
+  // W19-05: sticky once opened this visit; an advanced ACTIVE tab keeps it open.
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const showAdvanced = advancedOpen || !BASIC_TAB_IDS.includes(tab);
   const token = readInjectedToken();
 
   if (!projectId) {
@@ -149,7 +158,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
         </div>
       </header>
       <nav className="settings__tabs" aria-label="Settings sections">
-        {PROJECT_TABS.map((t) => (
+        {PROJECT_TABS.filter((t) => BASIC_TAB_IDS.includes(t.id)).map((t) => (
           <button
             key={t.id}
             type="button"
@@ -162,6 +171,29 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
             {t.label}
           </button>
         ))}
+        <button
+          type="button"
+          className="settings__tab settings__tab--advanced-toggle"
+          data-testid="settings-advanced-toggle"
+          aria-expanded={showAdvanced}
+          onClick={() => setAdvancedOpen((open) => !open)}
+        >
+          {showAdvanced ? 'Advanced ▾' : 'Advanced ▸'}
+        </button>
+        {showAdvanced &&
+          PROJECT_TABS.filter((t) => !BASIC_TAB_IDS.includes(t.id)).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={
+                t.id === tab ? 'settings__tab settings__tab--active' : 'settings__tab'
+              }
+              aria-current={t.id === tab ? 'true' : undefined}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
       </nav>
       <div className="settings__panel">
         {/* Mounted once, always — `hidden` rather than unmounted, so the

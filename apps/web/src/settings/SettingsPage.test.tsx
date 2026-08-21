@@ -83,3 +83,47 @@ describe('global inheritance is visible where a second project asks about it (W1
     expect(lead.textContent).toContain('nothing to set up again');
   });
 });
+
+describe('Basics up front, Advanced behind one disclosure (W19-05)', () => {
+  it('RED FIXTURE: four basic tabs and the Advanced toggle greet the novice — the other ten do not render until asked. Sixteen flat tabs was the wall this replaces', () => {
+    render(<SettingsPage projectId="p1" onOpenWizard={vi.fn()} onClose={vi.fn()} />);
+    const nav = screen.getByLabelText('Settings sections');
+    const labels = Array.from(nav.querySelectorAll('button')).map((b) => b.textContent);
+    expect(labels).toEqual([
+      'Providers',
+      'Models',
+      'Runs & Forge',
+      'Autonomy · Budget · Berths',
+      'Advanced ▸',
+    ]);
+  });
+
+  it('the toggle reveals every advanced panel button — grouping only, nothing removed or renamed', () => {
+    render(<SettingsPage projectId="p1" onOpenWizard={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('settings-advanced-toggle'));
+    const nav = screen.getByLabelText('Settings sections');
+    const labels = Array.from(nav.querySelectorAll('button')).map((b) => b.textContent);
+    for (const label of [
+      'Agent',
+      'Cost Estimate',
+      'Effective Settings',
+      'MCP Servers',
+      'Validator Packs',
+      'Expert Overrides',
+      'Rule Lifecycle',
+      'Suppressions',
+      'Escalation Policy',
+      'Copilot',
+    ]) {
+      expect(labels).toContain(label);
+    }
+  });
+
+  it('an ACTIVE advanced tab keeps the group open even after the toggle is clicked — the active tab can never vanish from its own nav', () => {
+    render(<SettingsPage projectId="p1" onOpenWizard={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('settings-advanced-toggle'));
+    fireEvent.click(screen.getByRole('button', { name: 'Copilot' }));
+    fireEvent.click(screen.getByTestId('settings-advanced-toggle'));
+    expect(screen.getByRole('button', { name: 'Copilot' })).toBeTruthy();
+  });
+});
