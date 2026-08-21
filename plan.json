@@ -9896,7 +9896,7 @@
         "W17-07"
       ],
       "phase": 17,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W17-10",
       "title": "the park card offers the fix it names \u2014 one click raises the turn budget and retries",
       "module": "web",
@@ -9947,7 +9947,7 @@
       ],
       "depends_on": [],
       "phase": 17,
-      "status": "in_progress",
+      "status": "done",
       "id": "W17-12",
       "title": "the interview finishes as strongly as it starts \u2014 progress while Continuing, and a header that notices you are done",
       "module": "web",
