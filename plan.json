@@ -10395,7 +10395,7 @@
       ],
       "depends_on": [],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-01",
       "title": "every agent is an org member \u2014 stable persona identities over the real actor ids",
       "module": "cli",
