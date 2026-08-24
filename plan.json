@@ -10625,6 +10625,123 @@
         "Every animation maps 1:1 to a named state; no idle theater",
         "Toggle persists per viewer; default stays the board"
       ]
+    },
+    {
+      "stories": [
+        "US-501",
+        "US-305"
+      ],
+      "depends_on": [],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-09",
+      "title": "Otto owns the funnel \u2014 one queue to the founder, ordered mechanically",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "packages/tickets/src/**",
+        "apps/server/src/api/notifications/**",
+        "apps/server/src/api/server/**"
+      ],
+      "notes": [
+        "D-030: exactly five classes may reach the manager (OPERATIONS.md) and the coordinator that presents them never does product work, never answers, and CANNOT remove an item. The sort key is computable \u2014 blocks-the-whole-run, then count of blocked dependents in the DAG, then age, then cost-to-answer \u2014 because a model ranking what the founder sees is the same trust hole as a model grading its own work (C-2). Builds on the existing decide-tier notifications, slates, and MCP approvals rather than a new store."
+      ],
+      "acceptance": [
+        "A queue endpoint returns every open founder-facing item across the five classes, in the mechanical order, with the reason it is first",
+        "RED FIXTURE: an item can never be dropped \u2014 a suppression attempt is refused/impossible by construction, and depth always equals the true open count",
+        "Items outside the five classes never enter the queue; a peer-blocked ticket is absent",
+        "Ordering is pure and unit-tested against a planted DAG; no model call anywhere in the path"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-09",
+        "W20-02"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-10",
+      "title": "the waiting room \u2014 asks sit in your office, in queue order",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "The queue made physical (D-030): a member whose ask is founder-facing walks to the manager office and takes a chair in Otto queue order; seat index == queue position. Answering or declining sends them back to their desk and moves everyone up. Members blocked on a PEER stay on the floor \u2014 that visible difference is the point."
+      ],
+      "acceptance": [
+        "A founder-facing ask seats its member in the office; the seat order matches the queue order from W20-09",
+        "Answering returns the member to their desk and promotes the next",
+        "A peer-blocked member never enters the office (component test asserts both)",
+        "Otto panel shows true depth, the top item, and the mechanical reason it is first"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-02"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-11",
+      "title": "List view \u2014 the same truth in plain HTML, and the accessibility baseline",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Not everyone wants the office. A View: Office | List control (persisted per viewer) switches to a real table: every member, persona, state, current work, plus a Needs-you queue in Otto order with the same answer controls. UX_SPEC \u00a710a: any state the office can render, the List renders in words \u2014 a state that exists only as an animation is a spec violation."
+      ],
+      "acceptance": [
+        "A List view renders every member and every queue item with the same data as the office, keyboard-operable and screen-reader-labelled",
+        "The toggle persists per viewer and the List is reachable in one control from the office",
+        "A parity test enumerates the member-state mapping (\u00a710) and asserts the List has a text rendering for every state",
+        "No canvas required for List"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-01",
+        "W20-02"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-12",
+      "title": "the whole roster is on the floor, seated by what they actually do",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**"
+      ],
+      "notes": [
+        "The mock showed a sample; the product shows the org. Seat assignment from PERSONAS.md: maker studio (Sam, Tess, Dex), design bay (Blue, Sketch, Scout), break room for genuinely-unassigned members (Ida, Vera, Shipp), Otto at the manager door, Wiggum and Locke wherever their work is. A role with no persona still appears, under its raw actor id (D-028 fallback)."
+      ],
+      "acceptance": [
+        "Every roster role has a seat or a live position; none are hidden",
+        "An unknown/extra actor renders with its raw id rather than being dropped",
+        "Seats derive from role, not hardcoded per project"
+      ]
     }
   ]
 }

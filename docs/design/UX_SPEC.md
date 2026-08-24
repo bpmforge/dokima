@@ -375,3 +375,31 @@ Empty office (no members resolved): "The roster hasn't loaded — the
 board view still works." Member with no persona: raw actor id (D-028
 fallback). One-model install: the reviewer seat shows the honest
 review-skipped state (W17-06 markers), never a pretend review.
+
+### 10a. The waiting room and the two views (D-030, W20-09..12)
+
+**Waiting room.** A member whose ask is one of OPERATIONS.md's five classes
+walks to the manager's office and takes a chair, in Otto's mechanical queue
+order. Seat order == queue order; the chair index is rendered so position is
+readable. Answering (or declining) sends them back to their desk and the
+next member moves up. A member waiting on a **peer** never enters the office
+— that is the visible difference between "blocked on you" and "blocked".
+
+**Otto's panel** shows: the queue depth (true count, never truncated), the
+top item with its answer controls, why it is first (the mechanical reason —
+"blocks 4 tickets", "blocks the whole run", "oldest"), and Next after each
+answer. Otto never renders an opinion and never offers to decide.
+
+**Two views, one store.** A `View: Office | List` control sits in the Team
+header and persists per viewer.
+
+- *Office* — the canvas skin (§10). Decorative; never authoritative.
+- *List* — a real HTML table: every member, persona, state, what they are
+  working on, and a separate "Needs you" queue in Otto's order with the same
+  answer controls. Keyboard-operable, screen-reader-labelled, no canvas.
+
+The List view is the **accessibility baseline** (§9) and the fallback when
+canvas is unavailable or motion is reduced: `prefers-reduced-motion` does not
+disable the office, but the List must be reachable in one control from it.
+Any state the office can render, the List renders in words — a state that
+exists only as an animation is a spec violation.

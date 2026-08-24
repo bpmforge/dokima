@@ -43,3 +43,22 @@ person is worse than a slug.
 
 The human is not a persona. Surfaces address them as "you"; their
 identity stays `operator` in the ledger (D-020).
+
+## The chief of staff (D-030)
+
+| Role | Persona | Avatar key | Job line |
+|---|---|---|---|
+| chief-of-staff | **Otto** | `otto-chief` | Never does the work — decides what's worth your attention, in what order. |
+
+Otto sits outside your office door. He is the only member whose whole job is
+the interface to you, and the only one who never touches a ticket. His
+ordering is mechanical by construction (D-030) — he cannot rank by opinion,
+and he cannot drop an item.
+
+## Seats on the floor (W20-12)
+
+The full roster appears, not a sample: **Sam, Tess, Dex** in the maker
+studio; **Blue, Sketch, Scout** in the design bay; **Ida, Vera, Shipp** in
+the break room when they genuinely have nothing assigned; **Otto** at the
+manager's door; **Wiggum** and **Locke** wherever their work is — including
+the waiting chairs when what they need is you.
