@@ -74,3 +74,13 @@ Decided 2026-08-17 (W12-32). The `programs` clash is fixed. The remaining
 the command palette and six e2e specs** — mechanical but wide enough that
 doing it as an afterthought inside another ticket is how a careless rename
 breaks a spec nobody reads until CI. Filed as **W12-36**.
+
+## "Team" (W20, decided 2026-08-24)
+
+The surface is the **Team** view; the people on it are **members** (org
+members in docs, "your team" in UI copy). Not "office" (that's the W20-08
+skin's nickname, never a nav label), not "org chart", not "agents" in
+user-facing copy — "agent" stays in operator/trace surfaces where the
+mechanism speaks. The nav order is Board · Team · Describe · Plan ·
+Decisions · Roster; Roster remains the capability/model catalog (who CAN
+work), Team is who IS working now.

@@ -316,3 +316,62 @@ user's real idea.
   (dependency table) toggle; spend charts have data-table twins.
 - Playwright a11y smoke (axe) on: board, morning queue, settings matrix, receipt
   inspector — CI gate from W4.
+
+## 10. The Team view (W20, D-028/D-029)
+
+The office at a glance: every org member (docs/design/PERSONAS.md) as a
+card whose state derives STRICTLY from ledger/heartbeat events. No state
+without an event behind it — the single mapping below is shared by the
+Team board, the work diary, and the pixel-office skin (W20-08); no
+surface may invent its own.
+
+### Member-state mapping (canonical)
+
+| State | Signal (event kinds / sources) | Card face says |
+|---|---|---|
+| **working** | live berth heartbeat for an actor + session turn events (`session.*` in-flight, tool calls with write verbs) | "building T-004" |
+| **reading** | session tool events that only read (search/read tools) within the live window | "reading the codebase" |
+| **self-checking** | maker session verify/self-review turns before manifest submit (W20-07) | "checking their own work" |
+| **submitted / in review** | ticket `in_review`; reviewer identity distinct from maker | maker: "handed in"; reviewer: "reviewing T-004" |
+| **blocked on you** | open decide-tier notification or approval (slates, MCP approvals, D-029 ask-escalations) attributable to the member | "waiting on your answer" + the action |
+| **shipped** | `ticket.closed` with receipt / gate receipt minted | "shipped T-004 ✓" |
+| **idle** | none of the above in the live window | "nothing assigned" |
+
+Precedence when signals overlap: blocked-on-you > working/reading/self-
+checking (most recent signal wins among these) > submitted > shipped >
+idle. `shipped` decays to `idle` after the run ends; the diary keeps it.
+
+### Card anatomy
+
+Avatar + persona name; job line (PERSONAS.md); state line (table above,
+present-tense, names the ticket when one is attributable); one action
+when blocked-on-you (opens the decision/approval). Clicking anywhere
+else opens the work diary (W20-03): the member's own event slice,
+humanized (W16-08 kinds), every line linked to trace evidence.
+
+### Handoffs (W20-04)
+
+A completed pipeline stage or a ticket entering review renders as a
+one-line moment naming both personas ("Blue finished the blueprint —
+handing to Sam"). Derived from existing stage/verb events only.
+
+### Ask-escalation surface (D-029, W20-06)
+
+The approval card names the member, from-rung → to-rung, and the cost
+consequence, and states the defer semantics plainly: "Sam keeps working
+on the current model; the next attempt uses the stronger one if you
+approve." Decline is a first-class button, ledgered, never an error.
+
+### Pixel-office skin (W20-08)
+
+A strict re-rendering of the same store: desk-sitting/typing = working,
+book = reading, walking to the reviewer's desk = handoff, raised flag =
+blocked-on-you, absent = idle. Every animation maps 1:1 to a state above;
+no idle theater (D-028). SVG/CSS only — offline-safe.
+
+### Every state, written
+
+Empty office (no members resolved): "The roster hasn't loaded — the
+board view still works." Member with no persona: raw actor id (D-028
+fallback). One-model install: the reviewer seat shows the honest
+review-skipped state (W17-06 markers), never a pretend review.
