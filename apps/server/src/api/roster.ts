@@ -55,6 +55,7 @@ import {
   listProjectModelMatrix,
 } from './server/model-matrix-store.js';
 import { loadFitnessCards } from './roster-fitness.js';
+import { personaFor, wirePersona } from './personas.js';
 import { buildAgentHistory } from './roster-history.js';
 import { problem, PROBLEM_CONTENT_TYPE } from './problem.js';
 
@@ -148,9 +149,13 @@ function wireExpert(
   const configuredCards = roleFitnessCards.filter((card) =>
     effective.chain.includes(card.model),
   );
+  // W20-01 (D-028): the face, when this role has one. Presentation only —
+  // `id` above stays the real routing/history key and every event keeps it.
+  const persona = personaFor(expert.id);
   return {
     id: expert.id,
     display_name: expert.displayName,
+    ...(persona ? { persona: wirePersona(persona) } : {}),
     cluster: expert.cluster,
     mode: expert.mode,
     description: expert.description,

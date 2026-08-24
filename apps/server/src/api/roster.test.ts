@@ -360,4 +360,33 @@ describe('roster routes (SRS FR-E2, R-K1)', () => {
       expect(body.handoffs_run).toBe(0);
     });
   });
+  it('RED FIXTURE (W20-01, D-028): a role WITH a persona serves it; a role WITHOUT one serves no persona field at all — the client then renders the raw id, never an invented person', async () => {
+    const contentDir = await tmpDir('dokima-roster-personas-');
+    dirs.push(contentDir);
+    await fs.mkdir(path.join(contentDir, 'other'), { recursive: true });
+    await fs.mkdir(path.join(contentDir, 'coordinators'), { recursive: true });
+    await fs.writeFile(
+      path.join(contentDir, 'other', 'coding-agent.md'),
+      '---\nname: Coding Agent\nmode: primary\ndescription: Builds things\n---\nbody\n',
+    );
+    await fs.writeFile(
+      path.join(contentDir, 'coordinators', 'sdlc-lead.md'),
+      '---\nname: Sdlc Lead\nmode: primary\ndescription: A clean fixture expert\n---\nbody\n',
+    );
+    const { app } = await boot(contentDir);
+
+    const res = await app.inject({ method: 'GET', url: '/api/v1/roster', headers: headers() });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      experts: { id: string; persona?: { display_name: string; job_line: string } }[];
+    };
+    const sam = body.experts.find((e) => e.id === 'coding-agent');
+    const lead = body.experts.find((e) => e.id === 'sdlc-lead');
+    expect(sam?.persona?.display_name).toBe('Sam');
+    expect(sam?.persona?.job_line).toContain('hands on the keyboard');
+    expect(lead).toBeDefined();
+    expect(lead?.persona).toBeUndefined();
+    expect(sam?.id).toBe('coding-agent');   // the face never replaces the id
+  });
+
 });

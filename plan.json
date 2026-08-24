@@ -10395,7 +10395,7 @@
       ],
       "depends_on": [],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-01",
       "title": "every agent is an org member \u2014 stable persona identities over the real actor ids",
       "module": "cli",
@@ -10424,7 +10424,7 @@
         "W20-01"
       ],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-02",
       "title": "the Team view \u2014 the office at a glance, every state a real event",
       "module": "web",
