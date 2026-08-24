@@ -10388,6 +10388,235 @@
         "The verbatim evidence remains visible below the lead",
         "No finding text is altered in the ledger \u2014 presentation only; tests cover a park and a generic finding"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-01",
+      "title": "every agent is an org member \u2014 stable persona identities over the real actor ids",
+      "module": "cli",
+      "lane": "core",
+      "points": 2,
+      "role": "coding-agent",
+      "write_scope": [
+        "apps/server/src/api/roster*.ts",
+        "apps/server/src/api/personas/**"
+      ],
+      "notes": [
+        "2026-08-24 vision session (pixel-agents research): the roster already carries roles and jobs, but every surface speaks in role slugs or the generic \"an agent\". Give each roster role a stable persona: display name + avatar key + one-line job-in-human-words, served on the roster wire and resolvable from any actor id. Personas are presentation over the ledger, NEVER a claim: the mechanism-true actor id stays in every event and trace (HBR overclaim warning; C-1). Deterministic mapping, no per-install randomness."
+      ],
+      "acceptance": [
+        "GET /api/v1/roster serves persona {displayName, avatarKey, jobLine} per expert",
+        "A resolver maps any known actor id -> persona (unknown ids fall back honestly to the raw id, never a fabricated person)",
+        "Trace/ledger payloads unchanged \u2014 persona is wire+render only"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-01"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-02",
+      "title": "the Team view \u2014 the office at a glance, every state a real event",
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/src/App/**",
+        "apps/web/src/layout/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "The Pixel Agents insight: with several agents you lose track of who is working, idle, blocked, or off the rails. A Team view renders each org member as a card whose state derives STRICTLY from ledger/heartbeat events \u2014 working (session turns), reading (tool calls), reviewing, blocked-on-you (open decide/approval), idle, shipped (receipt minted). No state without an event behind it (C-2-true theater ban). Nav entry alongside Board; the novice landing after a run start."
+      ],
+      "acceptance": [
+        "A Team view lists org members with live state, each state traceable to a named event kind",
+        "Blocked-on-you members carry the action (open the decision/approval)",
+        "A member with no events renders idle \u2014 never a fabricated activity",
+        "Component tests cover every state mapping; e2e opens the view"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-02"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-03",
+      "title": "the work diary \u2014 click an org member, see what they actually did",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**"
+      ],
+      "notes": [
+        "Each persona card opens to that member's own event slice (same projection RunSummary uses, filtered by actor): claims, files touched, verify results, receipts. The diary is the receipts wearing a face \u2014 nothing renders that the ledger cannot back."
+      ],
+      "acceptance": [
+        "Opening a member shows their recent events humanized (W16-08 humanizer reused where kinds match)",
+        "Every diary line links to its trace evidence",
+        "Empty diary states honestly say no work yet"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-02"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-04",
+      "title": "handoffs are visible moments \u2014 work moving between people",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/src/chat/**"
+      ],
+      "notes": [
+        "The pipeline already hands off (interview -> blueprint -> decompose -> makers; tickets across lanes; maker -> reviewer). Render a handoff as a moment in the Team view / chat narrative: \"Ari finished the blueprint \u2014 handing to Quinn to break it into tickets\", derived from the phase/stage events that already exist."
+      ],
+      "acceptance": [
+        "A completed pipeline stage renders as a handoff line naming both personas",
+        "Ticket in_review renders as maker->reviewer handoff",
+        "Lines derive from existing events only; unit tests map event->line"
+      ]
+    },
+    {
+      "stories": [
+        "US-101"
+      ],
+      "depends_on": [
+        "W20-01"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-05",
+      "title": "delegation by conversation \u2014 you talk to the team, the right member answers",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/onboarding/**",
+        "apps/web/src/chat/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "The founder is the lead: \"let's build X\" should feel like briefing a person. The describe/interview flow is re-framed as the interviewer persona's job (their name and avatar on the questions), the decisions screen as that persona bringing you the choices only you can make. Copy re-frame + persona threading over existing flows \u2014 no new state machines."
+      ],
+      "acceptance": [
+        "The interview carries the interviewer persona identity end to end",
+        "Decision slates name the persona who raised them",
+        "ui-copy validator green; onboarding e2e stays green"
+      ]
+    },
+    {
+      "stories": [
+        "US-303",
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-01"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-06",
+      "title": "every org member has their own settings \u2014 including ask-me-before-escalating",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 5,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/**",
+        "apps/server/src/cli/**",
+        "apps/server/src/api/**",
+        "apps/web/src/settings/**"
+      ],
+      "notes": [
+        "Per-member settings, one drawer per persona: their model row (matrix), their escalation policy, their turn budget. The new capability: an ASK escalation mode per member \u2014 when that member's ladder wants a stronger model, the climb PAUSES and raises an approval (decide-tier notification naming member, rung, and cost consequence); approve resumes the climb, decline keeps the current rung honestly. Builds on W12-18's per-role policyScope (today collapsed to the maker role) and D-024 option (d) approval-gated escalation. Tests: fake gateway only; RED fixture proves an ask-mode climb waits and a declined ask never escalates.",
+        "Scope note: the per-member drawer lands under settings/** (P8 keeps team/** with the ui-lane tickets); the Team view links into it."
+      ],
+      "acceptance": [
+        "escalationPolicy resolves PER ROLE (not maker-only) with an ask mode",
+        "An ask-mode rung advance raises a decide notification and does not climb until approved; decline is ledgered and the run continues on the current rung",
+        "A per-member settings drawer (Team view) shows and writes that member's model row, escalation mode, and turn budget through existing settings APIs",
+        "Effective-settings view reflects per-member resolution"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-02"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-07",
+      "title": "the self-check is visible \u2014 and so is the separate reviewer",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**"
+      ],
+      "notes": [
+        "Each member visibly runs their own check-my-work loop before handing in (draft -> self-review -> submit), and then a DIFFERENT member reviews it \u2014 maker != verifier watchable, not just enforced (Law 5). Nobody grades their own homework, and the Team view shows exactly that."
+      ],
+      "acceptance": [
+        "A working member's card distinguishes drafting vs self-checking vs submitted states from real session events",
+        "The review verdict renders under the REVIEWER persona, never the maker's",
+        "A one-model install renders the honest review-skipped state (W17-06 markers) on the reviewer seat"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W20-02",
+        "W20-07"
+      ],
+      "phase": 20,
+      "status": "todo",
+      "id": "W20-08",
+      "title": "the pixel office \u2014 a skin, not a second source of truth",
+      "module": "web",
+      "lane": "ui",
+      "points": 3,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**"
+      ],
+      "notes": [
+        "The shareable layer: an optional pixel-art office rendering of the Team view \u2014 members at desks, typing while sessions turn, walking to the reviewer's desk on handoff, a flag when blocked on you. STRICTLY a skin over W20-02's event-derived states (the Pixel Agents architecture: real transcript signals only); toggling between board and office changes zero data. SVG/CSS sprites, no external assets (works offline, C-1 local-only guarantee)."
+      ],
+      "acceptance": [
+        "Office mode renders the same member states as the Team board from the same store",
+        "Every animation maps 1:1 to a named state; no idle theater",
+        "Toggle persists per viewer; default stays the board"
+      ]
     }
   ]
 }
