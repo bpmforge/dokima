@@ -1,0 +1,66 @@
+/* Team view (W20-02). State colour comes from the shared .state tokens so a
+   member's state reads the same here as on a board card. */
+.team__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--sw-space-4);
+}
+.team__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-2);
+  height: 100%;
+}
+.team__who {
+  display: flex;
+  gap: var(--sw-space-3);
+  align-items: center;
+}
+.team__avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--sw-radius-md);
+  display: grid;
+  place-items: center;
+  font-size: var(--sw-text-lg);
+  /* W13-04 ratchet: no new surface re-declares the shared card border — the
+     avatar reads as a chip from its tint, which is one fewer thing to drift. */
+  background: color-mix(in srgb, var(--sw-accent) 12%, var(--sw-surface));
+  flex: none;
+}
+.team__name {
+  display: block;
+}
+.team__job {
+  display: block;
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+}
+.team__answer,
+.team__open {
+  align-self: flex-start;
+}
+.team__empty {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+}
+.state--blocked-on-you {
+  color: var(--sw-warning);
+  font-weight: 600;
+}
+.state--working,
+.state--shipped {
+  color: var(--sw-success);
+}
+.state--in-review,
+.state--self-checking {
+  color: var(--sw-accent);
+}
+.state--reading,
+.state--submitted,
+.state--idle {
+  color: var(--sw-fg-muted);
+}

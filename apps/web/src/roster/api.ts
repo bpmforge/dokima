@@ -29,6 +29,7 @@ interface FitnessCardWire {
 interface RosterExpertWire {
   id: string;
   display_name: string;
+  persona?: { display_name: string; avatar_key: string; job_line: string };
   cluster: string;
   mode: string;
   description: string;
@@ -59,6 +60,15 @@ function expertFromWire(wire: RosterExpertWire): RosterExpert {
   return {
     id: wire.id,
     displayName: wire.display_name,
+    ...(wire.persona
+      ? {
+          persona: {
+            displayName: wire.persona.display_name,
+            avatarKey: wire.persona.avatar_key,
+            jobLine: wire.persona.job_line,
+          },
+        }
+      : {}),
     cluster: wire.cluster,
     mode: wire.mode,
     description: wire.description,

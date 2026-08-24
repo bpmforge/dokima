@@ -57,6 +57,8 @@ const DESTINATIONS: ReadonlyArray<{
   // says which it currently is — the first draft of this list made it
   // project-only, which left someone standing on the Roster with no project
   // open and NO destination back to the Fleet. Three e2e specs caught it.
+  // W20-02: Team sits right after the board — it answers "what is everyone doing".
+  { label: 'Team', view: 'team', needsProject: true },
   { label: 'Describe', view: 'interview', needsProject: true },
   { label: 'Plan', view: 'plans', needsProject: true },
   { label: 'Decisions', view: 'decisions', needsProject: true },

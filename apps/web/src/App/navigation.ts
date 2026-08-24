@@ -6,6 +6,9 @@ export type View =
   | 'settings'
   | 'wizard'
   | 'roster'
+  // W20-02: the org at a glance — who is working, who is blocked on YOU.
+  // `roster` stays what a role CAN do; `team` is who IS doing it now.
+  | 'team'
   | 'notifications'
   | 'plans'
   | 'trace'
@@ -27,6 +30,7 @@ const VALID_VIEWS = [
   'settings',
   'wizard',
   'roster',
+  'team',
   'notifications',
   'plans',
   'trace',

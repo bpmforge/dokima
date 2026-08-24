@@ -15,9 +15,17 @@ export interface FitnessCard {
   runAt: string;
 }
 
+/** W20-01 (D-028): the face, when this role has one. Absent = render `id`. */
+export interface RosterPersona {
+  displayName: string;
+  avatarKey: string;
+  jobLine: string;
+}
+
 export interface RosterExpert {
   id: string;
   displayName: string;
+  persona?: RosterPersona;
   cluster: string;
   mode: string;
   description: string;

@@ -14,6 +14,7 @@ import { InterviewPanel } from '../onboarding/InterviewPanel.js';
 import { PlanView } from '../plans/PlanView.js';
 import '../plans/plans.css';
 import { RosterView } from '../roster/RosterView.js';
+import { TeamViewRoot } from '../team/TeamViewRoot.js';
 import { FirstRunWizard } from '../settings/FirstRunWizard.js';
 import { SettingsPage } from '../settings/SettingsPage.js';
 import { DrawerTraceLink } from '../trace/DrawerTraceLink.js';
@@ -64,6 +65,18 @@ export function MainView({
 }: MainViewProps) {
   if (view === 'roster') {
     return <RosterView projectId={projectId} />;
+  }
+  // W20-02: who is working right now, as opposed to who CAN work (roster).
+  if (view === 'team' && projectId && apiOpts) {
+    return (
+      <TeamViewRoot
+        projectId={projectId}
+        baseUrl={apiOpts.baseUrl}
+        token={apiOpts.token}
+        wsUrl={wsUrl}
+        onOpenDecisions={() => openView('decisions')}
+      />
+    );
   }
   if (view === 'notifications') {
     return <NotificationsView />;
