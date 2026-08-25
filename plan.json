@@ -11095,6 +11095,36 @@
         "The existing consecutive-repeat behaviour and its tests are unchanged",
         "The stop reason names the tool and says the result was identical, so the park evidence explains itself"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "validators",
+      "lane": "quality",
+      "role": "test-engineer",
+      "status": "done",
+      "id": "W21-11",
+      "points": 1,
+      "title": "the validator fixtures budget for a sandbox that has to boot",
+      "write_scope": [
+        "packages/validators/src/run.test.ts",
+        "apps/server/src/api/pipeline/phase-gate/runner.test.ts"
+      ],
+      "notes": [
+        "Third stop-hook red with the SAME symptom and a DIFFERENT cause than W21-07/W21-08, which is why chasing it as \"more vitest timeout\" was wrong. The failure is an assertion \u2014 expected exitCode 0, got 2 \u2014 and exitCode 2 is Dokima OWN timeout code. The payload says so: {\"category\":\"timeout\",\"detail\":\"validator \"clean\" exceeded 5000ms and was killed\"}, timedOut true, durationMs 5017.",
+        "Reproduced deterministically outside vitest with a standalone probe calling runValidator N times concurrently: N=8 -> 0 of 8 fail; N=24 -> 24 of 24; N=64 -> 64 of 64. It is not flakiness and not machine load in general \u2014 it is sandbox startup under concurrency. Every validator runs inside the SC-07 sandbox (sandbox-exec on macOS), and booting ~20 of those at once costs more than 5s even for a script whose whole body is one printf.",
+        "The 5000ms is the FIXTURE own choice, passed as timeoutMs into runValidator. Production default is DEFAULT_TIMEOUT_MS = 30_000, and the phase gate passes 30_000 explicitly, so the product is not running on a 5s budget. These tests assert \"a clean validator reports a clean pass\" \u2014 the budget is incidental to what they are testing, and 5s was simply an arbitrary number chosen before the suite grew this many parallel workers.",
+        "The two fixtures that are ABOUT timeouts (300ms kill, and the hang tests at 15s) keep their budgets \u2014 for those, the number IS the assertion.",
+        "SCOPE WIDENED, recorded: the same run also reds apps/server/src/api/pipeline/phase-gate/runner.test.ts, and that one IS a W21-07-class vitest timeout (\"Test timed out in 5000ms\" at runner.test.ts:220) in a file W21-07 never touched. W21-08 missed it because the measurement pass was taken at idle, where this suite finishes in 768ms \u2014 the cost only appears when ~20 workers each boot a sandbox. Two different causes, one run, so both are fixed here rather than split."
+      ],
+      "acceptance": [
+        "Fixtures that are not about timing use a budget matching the production default, so a booting sandbox cannot fail them",
+        "The timeout fixtures keep their own budgets and still assert the kill path",
+        "The full suite passes at default parallelism"
+      ]
     }
   ]
 }

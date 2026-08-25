@@ -96,6 +96,18 @@ const BROKEN_VISION = [
   '',
 ].join('\n');
 
+/**
+ * W21-11: this suite runs REAL validators inside the SC-07 sandbox. At idle it
+ * finishes in under a second, which is why the W21-08 measurement pass did not
+ * flag it — but sandbox startup costs seconds once ~20 vitest workers are each
+ * booting one, and it then dies on vitest's 5s default while the validators
+ * themselves are still starting.
+ *
+ * Same remedy and same reasoning as W20-13 and W21-07: the timeout fits the
+ * work, nothing is stubbed out, and no assertion is loosened.
+ */
+const GATE_TIMEOUT_MS = 30_000;
+
 describe('runPhaseGate (W9-06)', () => {
   let log: EventLog;
   let projectDir: string;
@@ -335,4 +347,4 @@ describe('runPhaseGate (W9-06)', () => {
     });
     expect(verified).toEqual({ valid: true, reasons: [] });
   });
-});
+}, GATE_TIMEOUT_MS);

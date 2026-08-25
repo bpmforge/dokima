@@ -30,6 +30,27 @@ const REAL_MERMAID_VALIDATOR = path.resolve(
  */
 const SUBPROCESS_TIMEOUT_MS = 30_000;
 
+/**
+ * W21-11: the budget a fixture gives a validator is NOT what these tests are
+ * about, and 5s was an arbitrary number chosen before the suite grew this many
+ * parallel workers.
+ *
+ * Every validator runs inside the SC-07 sandbox, and booting ~20 of those at
+ * once costs more than 5s even for a script whose whole body is one printf.
+ * Reproduced outside vitest with a standalone probe: 8 concurrent runs, 0
+ * failures; 24 concurrent, 24 failures; 64, all 64. The symptom is an
+ * assertion (`exitCode: 2`), not a vitest timeout, because 2 is Dokima's own
+ * timeout code — which is why this looked nothing like W21-07/W21-08 and was
+ * not fixed by their remedy.
+ *
+ * Matching the production default (DEFAULT_TIMEOUT_MS, which the phase gate
+ * also passes explicitly) means these fixtures fail only for the reason they
+ * exist to test. The fixtures that ARE about timing keep their own budgets
+ * below — there, the number IS the assertion.
+ */
+const CLEAN_RUN_TIMEOUT_MS = 30_000;
+
+
 describe('runValidator', () => {
   let temp: TempDir;
 
@@ -45,7 +66,7 @@ describe('runValidator', () => {
       '#!/bin/bash\nprintf \'{"validator":"clean","gaps":0,"exit":0,"items":[]}\\n\'\nexit 0\n',
     );
     const spec: ValidatorSpec = { name: 'clean', path: scriptPath };
-    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS });
     expect(result).toMatchObject({ exitCode: 0, gapCount: 0, timedOut: false });
   });
 
@@ -59,7 +80,7 @@ describe('runValidator', () => {
         'exit 1\n',
     );
     const spec: ValidatorSpec = { name: 'gappy', path: scriptPath };
-    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS });
     expect(result.exitCode).toBe(1);
     expect(result.gapCount).toBe(1);
     expect(result.gaps).toEqual([{ category: 'x', detail: 'y' }]);
@@ -75,7 +96,7 @@ describe('runValidator', () => {
         'exit 0\n',
     );
     const spec: ValidatorSpec = { name: 'pwd-check', path: scriptPath };
-    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS });
     expect(result.stdout).toContain(temp.dir);
   });
 
@@ -101,7 +122,7 @@ describe('runValidator', () => {
       '#!/bin/bash\necho "everything looks great, no notes"\nexit 0\n',
     );
     const spec: ValidatorSpec = { name: 'garbage', path: scriptPath };
-    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS });
     expect(result.exitCode).toBe(2);
     expect(result.gaps[0]?.category).toBe('malformed-output');
   });
@@ -116,7 +137,7 @@ describe('runValidator', () => {
         'exit 0\n',
     );
     const spec: ValidatorSpec = { name: 'liar', path: scriptPath };
-    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS });
     expect(result.exitCode).toBe(2);
     expect(result.gaps.some((g) => g.category === 'contract-violation')).toBe(true);
   });
@@ -127,7 +148,7 @@ describe('runValidator', () => {
       name: 'missing',
       path: `${temp.dir}/does-not-exist.sh`,
     };
-    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: 5_000 });
+    const result = await runValidator(spec, { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS });
     expect(result.exitCode).toBe(2);
     expect(result.gaps[0]?.category).toBe('spawn-error');
   });
@@ -242,7 +263,7 @@ describe('runValidatorPack', () => {
           { name: 'a', path: a },
           { name: 'b', path: b },
         ],
-        { cwd: temp.dir, timeoutMs: 5_000 },
+        { cwd: temp.dir, timeoutMs: CLEAN_RUN_TIMEOUT_MS },
       );
       expect(results.map((r) => [r.name, r.exitCode])).toEqual([
         ['a', 0],
