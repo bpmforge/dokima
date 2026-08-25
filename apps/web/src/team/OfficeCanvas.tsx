@@ -16,7 +16,10 @@ import { bakeProps, type PropSprites } from './officeProps.js';
 import {
   contactShadow, drawRoom, STAGE_H, STAGE_W, YOURS_Y, YOURS_WALL_H,
 } from './officeRoom.js';
-import { DESK_SPOTS, figureFlipped, figureX, type SceneFigure } from './scene.js';
+import {
+  CHAIR_OFFSET, DESK_SPOTS, WAITING_SPOTS, figureFlipped, figureX,
+  type SceneFigure,
+} from './scene.js';
 import type { Pose, PoseSpec } from './poses.js';
 
 /**
@@ -68,9 +71,13 @@ function drawProps(ctx: CanvasRenderingContext2D): void {
     [p.couch, 620, 140],
     [p.table, 790, 150],
     [p.plant, 950, 130],
-    [p.chair, 600, yoursFloor + 98],
-    [p.chair, 710, yoursFloor + 98],
-    [p.chair, 820, yoursFloor + 98],
+    // The waiting chairs come from the scene's own spots, so a person and the
+    // chair they are standing at cannot drift apart (W21-02).
+    ...WAITING_SPOTS.map(
+      ([x, y]) =>
+        [p.chair, x + CHAIR_OFFSET.x, y + CHAIR_OFFSET.y] as
+          [HTMLCanvasElement | null, number, number],
+    ),
   ];
   for (const [sprite, x, y] of placed) {
     if (!sprite) continue;

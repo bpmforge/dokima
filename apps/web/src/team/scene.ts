@@ -51,12 +51,18 @@ export const DESK_SPOTS: readonly (readonly [number, number])[] = [
 /** The seat sits just in front of its desk, so the figure reads as AT it. */
 const seatOf = (d: readonly [number, number]): [number, number] => [d[0] + 25, d[1] + 62];
 
-/** Chairs in your office, on the carpet — the waiting room, drawn. */
-export const WAITING_CHAIRS: readonly (readonly [number, number])[] = [
-  [600, YOURS_Y + YOURS_WALL_H + 26],
-  [710, YOURS_Y + YOURS_WALL_H + 26],
-  [820, YOURS_Y + YOURS_WALL_H + 26],
+/**
+ * Where somebody waiting on you stands, in your office. The chairs are drawn
+ * FROM these same coordinates (see `CHAIR_OFFSET`) so a person and their chair
+ * can never drift apart — one constant, two consumers.
+ */
+export const WAITING_SPOTS: readonly (readonly [number, number])[] = [
+  [597, YOURS_Y + YOURS_WALL_H + 44],
+  [707, YOURS_Y + YOURS_WALL_H + 44],
+  [817, YOURS_Y + YOURS_WALL_H + 44],
 ];
+/** Chair position relative to the person standing at it. */
+export const CHAIR_OFFSET = { x: 3, y: 54 } as const;
 
 /**
  * The break room's standing room: a grid across the tile floor, below the
@@ -114,7 +120,7 @@ export function buildScene(placed: readonly PlacedMember[]): SceneFigure[] {
       };
     }
     if (place === 'your-office') {
-      const [x, y] = spotAt(WAITING_CHAIRS, n);
+      const [x, y] = spotAt(WAITING_SPOTS, n);
       return { actorId: p.actorId, pose: p.spec.pose, place, x, y, moves: false, phase };
     }
     if (place === 'break-room') {
