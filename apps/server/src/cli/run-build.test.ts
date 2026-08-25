@@ -87,6 +87,22 @@ function seedTicket(log: EventLog, interfaceField?: string): void {
   });
 }
 
+/**
+ * W21-08: this suite spawns the external agent for real, so its duration tracks how busy the machine is,
+ * not how much the code does. Measured at 6.5s for the file with the e2e
+ * suite deliberately in flight — the contention that produces the failures.
+ *
+ * The failure mode this guards against is not a chronically slow test. It is
+ * an occasional machine-level stall: packages/validators/src/run.test.ts runs
+ * in 1.3s in a normal full run and took 43s on the run where it went red, and
+ * every failure read "Test timed out in 5000ms" without ever naming an
+ * assertion. So the budget is set to fit the work rather than the average.
+ *
+ * Nothing is stubbed out and no assertion is loosened. (Same call as W20-13
+ * and W21-07.)
+ */
+const SUBPROCESS_TIMEOUT_MS = 30_000;
+
 describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
   let project: TempProject;
 
@@ -487,7 +503,7 @@ describe('executeBuildRun (W11-04, FR-H6, D-023)', () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   }, 30_000);
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('tokenizeAgentCommand (W12-03)', () => {
   it(
@@ -535,7 +551,7 @@ describe('tokenizeAgentCommand (W12-03)', () => {
   it('an unterminated quote yields the token as typed rather than throwing', () => {
     expect(tokenizeAgentCommand('agent "unclosed')).toEqual(['agent', 'unclosed']);
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('executeBuildRun policy wiring (W12-18)', () => {
   let project: TempProject;
@@ -577,7 +593,7 @@ describe('executeBuildRun policy wiring (W12-18)', () => {
     },
     30_000,
   );
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('resolvePolicyScope (W12-18)', () => {
   it(
@@ -669,7 +685,7 @@ describe('resolvePolicyScope (W12-18)', () => {
       expect(result.scope).toEqual({});
     }
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 /**
  * W13-11. Live testing: with thinking disabled a local 27b produced CORRECT
@@ -711,7 +727,7 @@ describe('resolveMaxToolIterations (W13-11)', () => {
       expect('refusal' in result, `${JSON.stringify(bad)} should be refused`).toBe(true);
     }
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('resolveMaxTurnTokens (W13-43)', () => {
   it('takes a whole number of tokens', () => {
@@ -732,7 +748,7 @@ describe('resolveMaxTurnTokens (W13-43)', () => {
       expect(resolveMaxTurnTokens(bad as never)).toHaveProperty('refusal');
     }
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 /**
  * W13-47. Every other bound this phase added protects the built-in agent. The
@@ -777,7 +793,7 @@ describe('the external agent runs under a watchdog (W13-47)', () => {
     expect(result.stdout).toContain('done');
     expect(result.stderr).not.toContain('watchdog');
   }, 30_000);
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('resolveRunLimits (W13-47)', () => {
   const none = () => undefined;
@@ -805,4 +821,4 @@ describe('resolveRunLimits (W13-47)', () => {
       limits: { maxIterations: 20, maxTurnTokens: 64_000, maxSessionSeconds: 600 },
     });
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);

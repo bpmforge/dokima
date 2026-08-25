@@ -137,6 +137,22 @@ function requireTicket(log: EventLog, ticketId: string): Ticket {
   return ticket;
 }
 
+/**
+ * W21-08: this suite git worktrees and a real validator run, so its duration tracks how busy the machine is,
+ * not how much the code does. Measured at 8.6s for the file with the e2e
+ * suite deliberately in flight — the contention that produces the failures.
+ *
+ * The failure mode this guards against is not a chronically slow test. It is
+ * an occasional machine-level stall: packages/validators/src/run.test.ts runs
+ * in 1.3s in a normal full run and took 43s on the run where it went red, and
+ * every failure read "Test timed out in 5000ms" without ever naming an
+ * assertion. So the budget is set to fit the work rather than the average.
+ *
+ * Nothing is stubbed out and no assertion is loosened. (Same call as W20-13
+ * and W21-07.)
+ */
+const SUBPROCESS_TIMEOUT_MS = 30_000;
+
 describe('runCloseGate', () => {
   let fixture: Fixture | undefined;
   let extraTempDirs: string[] = [];
@@ -871,7 +887,7 @@ describe('runCloseGate', () => {
     if (!result.ok)
       throw new Error('expected success (no cached tracking ref must never gap)');
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('parseGapLocation', () => {
   it('parses the standard "<relfile>:<lineno> — <masked>" shape', () => {
@@ -895,7 +911,7 @@ describe('parseGapLocation', () => {
       line: null,
     });
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('classifySecretsGaps', () => {
   it('effective gaps are only those whose file is in the changed-paths set', () => {
@@ -926,4 +942,4 @@ describe('classifySecretsGaps', () => {
       effectiveGaps: [result.gaps[0]],
     });
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);

@@ -162,6 +162,22 @@ class StreamingFakeProvider extends ScriptedFakeProvider {
   }
 }
 
+/**
+ * W21-08: this suite spawns agent processes, so its duration tracks how busy the machine is,
+ * not how much the code does. Measured at 8.1s for the file with the e2e
+ * suite deliberately in flight — the contention that produces the failures.
+ *
+ * The failure mode this guards against is not a chronically slow test. It is
+ * an occasional machine-level stall: packages/validators/src/run.test.ts runs
+ * in 1.3s in a normal full run and took 43s on the run where it went red, and
+ * every failure read "Test timed out in 5000ms" without ever naming an
+ * assertion. So the budget is set to fit the work rather than the average.
+ *
+ * Nothing is stubbed out and no assertion is loosened. (Same call as W20-13
+ * and W21-07.)
+ */
+const SUBPROCESS_TIMEOUT_MS = 30_000;
+
 describe('createGatewaySpawnSession', () => {
   let cwd: string | undefined;
   let dbDir: string | undefined;
@@ -1185,8 +1201,8 @@ describe('createGatewaySpawnSession', () => {
     expect(result.stderr).toContain('exceeded the per-session tool-iteration budget');
     expect(result.stderr).not.toContain('SESSION_CHECKPOINT');
   });
-});
-});
+}, SUBPROCESS_TIMEOUT_MS);
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unchanged)', () => {
   const HERE = path.dirname(new URL(import.meta.url).pathname);
@@ -1534,4 +1550,4 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     const comment = ticket.history.find((h) => h.verb === 'comment');
     expect(comment?.body).toContain('Parked with evidence');
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);

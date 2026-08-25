@@ -11002,6 +11002,39 @@
         "No assertion is loosened and no fixture work is reduced",
         "The full suite passes repeatedly, including with other heavy work in flight"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-07"
+      ],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "infra",
+      "role": "test-engineer",
+      "status": "done",
+      "id": "W21-08",
+      "points": 1,
+      "title": "the rest of the process-spawning suites, chosen by measurement",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts"
+      ],
+      "notes": [
+        "W21-07 fixed the three suites that had actually been OBSERVED failing. This finishes the class \u2014 but by measurement, not by grep. A grep for child_process/execa/spawn matches 27 test files; most of them import a helper and never spend real time in a subprocess, and blanket-editing all 27 would assert a problem nobody had measured.",
+        "Method, so it does not have to be re-derived: run the full suite twice at idle and once with the e2e suite deliberately in flight, then diff per-file durations. The load run is the one that matters \u2014 it reproduces the contention that produces the failures.",
+        "Measured under load, the heaviest suites were loop-land 23.2s (covered by W20-13), validate-history-secrets 9.7s (already 60s, documented), loop-gates 8.6s, gateway-session 8.1s, conductor-lib 6.8s (its one slow test already 30s), run-build 6.5s, artifacts-routes 4.9s, advance 4.6s (W21-07), berths 4.3s (W20-13). The four uncovered ones that ALSO genuinely spawn \u2014 git worktrees plus a real validator, or spawn()/execFile directly \u2014 are this ticket. plan-scheduler (4.5s) and providers-routes (4.3s) are heavy but spawn nothing, so there is no evidence of this failure mode there and they are left alone.",
+        "Worth recording because it changes the diagnosis: packages/validators/src/run.test.ts runs in 1.3s in a normal full run and took 43s on the run where it failed. These suites are not chronically close to the limit \u2014 they are vulnerable to occasional machine-level stalls, which is exactly why the fix is a budget that fits the work rather than shaving milliseconds."
+      ],
+      "acceptance": [
+        "The four measured, genuinely-spawning suites carry an explicit timeout with the reason and the measurement in the file",
+        "No assertion is loosened, no fixture work is cut, and no suite without evidence is touched",
+        "The full suite passes at idle and with e2e in flight"
+      ]
     }
   ]
 }
