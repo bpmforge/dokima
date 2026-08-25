@@ -10770,6 +10770,33 @@
         "pnpm test passes on a loaded machine (run it while another full suite is in flight)",
         "The timeout is stated with its reason in the test file, so a future reader knows it is deliberate rather than papering over slowness"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 20,
+      "status": "in_progress",
+      "id": "W20-14",
+      "title": "the Team view shows the org, not the whole capability catalogue",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Confirmed on the live pass (2026-08-24): the roster route serves every content-pack expert (~60), so Team renders a wall of unpersonified specialists all reading \"nothing assigned\" and the twelve real org members are buried among them. Same defect W18-08 fixed on the Fleet \u2014 repetition burying the one thing that matters. W20-12 forbids hiding anyone, so the fix is to LEAD with the personified org and collapse the rest into one honest summary per zone (\"48 other specialists, none assigned\"), linking to Roster which is already \"who CAN work\". Nobody is hidden; nobody is buried."
+      ],
+      "acceptance": [
+        "Personified members render first and prominently in all three modes",
+        "Unpersonified specialists are summarised by count rather than listed, with a link to the Roster \u2014 the count is exact, never truncated",
+        "A test asserts the summary count plus the rendered members equals the full roster length, so nobody can be dropped",
+        "The List view keeps every member reachable in text (\u00a710a parity holds)"
+      ]
     }
   ]
 }
