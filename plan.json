@@ -10797,6 +10797,37 @@
         "A test asserts the summary count plus the rendered members equals the full roster length, so nobody can be dropped",
         "The List view keeps every member reachable in text (\u00a710a parity holds)"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "status": "in_progress",
+      "id": "W21-01",
+      "title": "the office is drawn, not implied \u2014 a 32-bit room over the same states",
+      "module": "web",
+      "lane": "ui",
+      "points": 5,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Office mode shipped in W20-08 as CSS rooms and emoji figures \u2014 correct, but it renders none of the direction the founder actually asked for: a 32-bit / PS1-era room where people sit down at a realistic computer, stand up, and walk to a break room with a water cooler, with the Stardew interior treatment (floor top-down, wall drawn face-on as a layered band, window sill overhanging its frame with a shadow line).",
+        "The art is generated procedurally in canvas \u2014 no external asset pack, nothing to license, nothing to load. The scratchpad engine from the W20 mockup is the source.",
+        "CRITICAL: the office stays a strict skin. poseFor already maps state -> pose with no default branch; the renderer must consume that mapping and nothing else. A canvas has no assertion surface, so the existing DOM figures stay as positioned hit targets over it \u2014 office-figure-<actorId>, data-pose, data-state, focus and the screen-reader path all survive unchanged, and the canvas is background paint.",
+        "No idle theater: only walking-handoff moves between places. An idle character may loop in place because idle IS the state; nobody walks without submitted."
+      ],
+      "acceptance": [
+        "Office mode paints a 32-bit room: layered wall band (crown / wallpaper / chair rail / wainscot / baseboard), a window whose sill overhangs its frame with a shadow line, desks with a readable CRT-era computer, and a break room with a water cooler",
+        "A pure scene module maps placed members to figures typed to the existing Pose union, so the renderer cannot draw a pose no state maps to \u2014 enforced by the type, and tested directly",
+        "Every existing OfficeSkin assertion still passes unchanged: per-figure data-pose, data-state, click-to-select, and the e2e office-skin check",
+        "prefers-reduced-motion stops the animation loop entirely and paints one static frame",
+        "No file exceeds the 400-line cap; sprites are baked once, never per frame"
+      ]
     }
   ]
 }
