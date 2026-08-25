@@ -10742,6 +10742,31 @@
         "An unknown/extra actor renders with its raw id rather than being dropped",
         "Seats derive from role, not hardcoded per project"
       ]
+    },
+    {
+      "stories": [
+        "US-401"
+      ],
+      "depends_on": [],
+      "phase": 20,
+      "status": "in_progress",
+      "id": "W20-13",
+      "title": "the land-loop fixtures get a timeout that matches the work they do",
+      "module": "harbormaster",
+      "lane": "core",
+      "points": 1,
+      "role": "coding-agent",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "notes": [
+        "Found while landing W20 (2026-08-24): loop-land.test.ts runs a full land loop per case and sat just under vitest\u2019s 5s default. The W20 wave added ~40 tests, and the extra parallel load pushed it over consistently \u2014 the failure is \u201cTest timed out in 5000ms\u201d, never an assertion, and the file passes in isolation and within its own package. A gate that is one busy machine away from red is not a gate, and loosening an assertion would trade a real guarantee for green. Give the land-loop cases a timeout sized to what they actually do; change no assertion."
+      ],
+      "acceptance": [
+        "The land-loop cases carry an explicit timeout appropriate to a full loop run; no assertion is weakened or removed",
+        "pnpm test passes on a loaded machine (run it while another full suite is in flight)",
+        "The timeout is stated with its reason in the test file, so a future reader knows it is deliberate rather than papering over slowness"
+      ]
     }
   ]
 }
