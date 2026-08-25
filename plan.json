@@ -11035,6 +11035,33 @@
         "No assertion is loosened, no fixture work is cut, and no suite without evidence is touched",
         "The full suite passes at idle and with e2e in flight"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-08"
+      ],
+      "phase": 21,
+      "module": "quality",
+      "lane": "quality",
+      "role": "test-engineer",
+      "status": "done",
+      "id": "W21-09",
+      "points": 1,
+      "title": "write down how to tell a slow test from a starved one",
+      "write_scope": [
+        "docs/TESTING.md"
+      ],
+      "notes": [
+        "Three stop-hook reds this session had the same cause and were each diagnosed from scratch. The knowledge that stops a fourth is not a mechanism \u2014 it is a method: how to recognise the signature, how to measure it under the contention that causes it, and the rule for what may and may not be changed in response.",
+        "Deliberately NOT a validator. The obvious guard \u2014 \"a test importing child_process must declare a timeout\" \u2014 would force a timeout onto 20+ suites that import a helper and never spend real time in a subprocess, which is the unmeasured blanket edit W21-08 avoided. A guard that fires without evidence teaches people to silence it."
+      ],
+      "acceptance": [
+        "docs/TESTING.md names the signature, the measurement method, and the rule about what may not be changed",
+        "It records which suites currently carry a raised timeout and why, so the list is auditable"
+      ]
     }
   ]
 }

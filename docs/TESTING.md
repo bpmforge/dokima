@@ -177,6 +177,60 @@ not undo.
 A history hit is never fixed by deleting the file. Rotate the credential, then purge and
 force-push — the blocker write-up records what a rewrite does *not* undo.
 
+## 6b. Starved tests vs slow tests (W20-13, W21-07, W21-08)
+
+Three separate reds in one session had the same cause, and each was diagnosed
+from scratch. This is the method, so a fourth is cheaper.
+
+**The signature.** Different suites fail on different full-suite runs; every
+one of them passes in isolation; and every failure reads `Test timed out in
+5000ms` without ever naming an assertion. That is not a flaky test. It is a
+test whose work — spawning a process, creating a git worktree, running a real
+validator — takes as long as the machine makes it take, held to a budget meant
+for pure unit tests.
+
+**How to measure it.** Do not grep for `child_process`. That matches ~27 test
+files here, most of which import a helper and never spend real time in a
+subprocess; editing them all asserts a problem nobody measured. Instead run the
+full suite twice at idle and once with the e2e suite deliberately in flight,
+and diff the per-file durations. The load run is the one that matters, because
+it reproduces the contention that produces the failures.
+
+**The measurement that changes the diagnosis.**
+`packages/validators/src/run.test.ts` runs in **1.3s** in a normal full run and
+took **43s** on the run where it went red. These suites are not chronically
+close to the limit; they are vulnerable to occasional machine-level stalls. So
+the budget is set to fit the work, not to the average, and shaving milliseconds
+would not have helped.
+
+**The rule.** Raise the timeout on the measured suite, state the reason in the
+file, and change nothing else. Never stub out the subprocess, never loosen an
+assertion, never cut fixture work to fit the budget. A gate one busy machine
+away from red is not a gate — but neither is one that went green by asserting
+less.
+
+**Currently carrying a raised timeout**, all for this reason:
+
+| Suite | Why it is slow |
+| --- | --- |
+| `packages/harbormaster/src/loop-land.test.ts` | real land loop, git remotes |
+| `packages/harbormaster/test/berths.test.ts` | randomized berth counts |
+| `packages/harbormaster/src/transitions.property.test.ts` | fast-check property run |
+| `packages/harbormaster/src/loop-gates.test.ts` | git worktrees + a real validator |
+| `packages/harbormaster/src/agent-session/gateway-session.test.ts` | spawns agent processes |
+| `packages/validators/src/run.test.ts` | spawns a validator per case, one hangs on purpose |
+| `apps/server/src/cli/run-build.test.ts` | spawns the external agent for real |
+| `apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts` | `execFile` |
+| `apps/server/src/api/server/run-phase-progress.test.ts` | runs a real validator pack |
+| `apps/server/src/api/pipeline/pipeline-routes/advance.test.ts` | runs a real validator pack |
+| `scripts/conductor-lib.test.mjs` | repo-wide validator scoping |
+| `scripts/validate-history-secrets.test.mjs` | walks every commit ever made |
+
+There is deliberately **no validator** enforcing this. The obvious one — "a
+test importing `child_process` must declare a timeout" — would fire on all 27
+grep matches, most without evidence, and a guard that fires without evidence
+teaches people to silence it.
+
 ## 7. E2E — Playwright over the Canvas with a fake-model gateway
 
 - **Fake-model gateway**: a scripted provider adapter implementing FR-G1's interface,
