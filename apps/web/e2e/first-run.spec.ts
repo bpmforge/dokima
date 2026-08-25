@@ -76,7 +76,9 @@ test('RED FIXTURE: the empty-board control goes where a board actually comes fro
   await board.getByRole('button', { name: 'Describe your product' }).click();
 
   await expect(page).toHaveURL(/view=interview/);
+  // W20-05: the CTA still says what you will do; the screen greets you by
+  // the persona who is asking (Ida, the interviewer).
   await expect(
-    page.getByRole('heading', { name: 'Describe your product' }),
+    page.getByRole('heading', { name: /has some questions/ }),
   ).toBeVisible();
 });

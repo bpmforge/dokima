@@ -10513,7 +10513,7 @@
         "W20-01"
       ],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-05",
       "title": "delegation by conversation \u2014 you talk to the team, the right member answers",
       "module": "web",
@@ -10544,7 +10544,7 @@
         "W20-01"
       ],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-06",
       "title": "every org member has their own settings \u2014 including ask-me-before-escalating",
       "module": "harbormaster",
@@ -10749,18 +10749,21 @@
       ],
       "depends_on": [],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-13",
-      "title": "the land-loop fixtures get a timeout that matches the work they do",
+      "title": "heavy fixtures get timeouts that match the work they do",
       "module": "harbormaster",
       "lane": "core",
       "points": 1,
       "role": "coding-agent",
       "write_scope": [
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/test/berths.test.ts",
+        "packages/tickets/src/transitions.property.test.ts"
       ],
       "notes": [
-        "Found while landing W20 (2026-08-24): loop-land.test.ts runs a full land loop per case and sat just under vitest\u2019s 5s default. The W20 wave added ~40 tests, and the extra parallel load pushed it over consistently \u2014 the failure is \u201cTest timed out in 5000ms\u201d, never an assertion, and the file passes in isolation and within its own package. A gate that is one busy machine away from red is not a gate, and loosening an assertion would trade a real guarantee for green. Give the land-loop cases a timeout sized to what they actually do; change no assertion."
+        "Found while landing W20 (2026-08-24): loop-land.test.ts runs a full land loop per case and sat just under vitest\u2019s 5s default. The W20 wave added ~40 tests, and the extra parallel load pushed it over consistently \u2014 the failure is \u201cTest timed out in 5000ms\u201d, never an assertion, and the file passes in isolation and within its own package. A gate that is one busy machine away from red is not a gate, and loosening an assertion would trade a real guarantee for green. Give the land-loop cases a timeout sized to what they actually do; change no assertion.",
+        "Scope widened at implementation: fixing loop-land alone moved the failure to berths.test.ts (randomized concurrency) and transitions.property.test.ts (fast-check), both failing with the same \"Test timed out in 5000ms\" and never an assertion. Same defect class, same remedy \u2014 fixing one and leaving the others would have declared the gate trustworthy while it still was not."
       ],
       "acceptance": [
         "The land-loop cases carry an explicit timeout appropriate to a full loop run; no assertion is weakened or removed",

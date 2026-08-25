@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it , vi } from 'vitest';
 import {
   createIdentity,
   getIdentity,
@@ -97,7 +97,18 @@ function landingRunner(
 
 const NEVER_ok: () => BreakerLevel = () => 'ok';
 
+/**
+ * W20-13: this suite drives real concurrency across randomized berth counts, so
+ * it legitimately takes seconds and sat just under vitest's 5s default. Under
+ * parallel load it tips over with "Test timed out in 5000ms" — never an
+ * assertion. The timeout is raised rather than the randomization reduced: the
+ * randomized trip points are what make "one berth halts all" a property rather
+ * than an anecdote.
+ */
+const BERTHS_TIMEOUT_MS = 30_000;
+
 describe('runBerths (D-010, FR-H5)', () => {
+  vi.setConfig({ testTimeout: BERTHS_TIMEOUT_MS });
   let fixture: Fixture | undefined;
 
   afterEach(async () => {

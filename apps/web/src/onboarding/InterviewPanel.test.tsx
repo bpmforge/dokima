@@ -245,13 +245,15 @@ describe('the describe tab never pretends the answers were lost (W18-02)', () =>
     const recap = await screen.findByTestId('interview-described-recap');
     expect(recap.textContent).toContain('7 tickets');
     expect(recap.textContent).toContain('Nothing was lost');
-    expect(screen.getByRole('heading', { name: 'Describe it again' })).toBeTruthy();
+    // W20-05: the heading is persona-voiced now; the recap/first-contact
+    // distinction this fixture guards is unchanged.
+    expect(screen.getByRole('heading', { name: /start over/ })).toBeTruthy();
   });
 
   it('a genuinely undescribed project still gets the first-contact form, no recap', async () => {
     renderPanel();
     expect(
-      await screen.findByRole('heading', { name: 'Describe your product' }),
+      await screen.findByRole('heading', { name: /has some questions/ }),
     ).toBeTruthy();
     expect(screen.queryByTestId('interview-described-recap')).toBeNull();
   });

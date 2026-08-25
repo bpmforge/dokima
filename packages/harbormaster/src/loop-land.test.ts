@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 import { ProviderTimeoutError } from '@dokima/gateway';
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
@@ -135,7 +135,23 @@ const spoofedSpawn: SpawnSession = async () => {
   return { stdout: JSON.stringify(manifest), stderr: '', exitCode: 0 };
 };
 
+/**
+ * W20-13: these suites drive a FULL land loop per case — claim, spawn, gates,
+ * receipts, sometimes several attempts up a ladder — so they legitimately take
+ * seconds, and they sat just under vitest's 5s default. When the W20 wave added
+ * ~40 tests, the extra parallel load tipped them over consistently ("Test timed
+ * out in 5000ms", never an assertion; green in isolation and within this
+ * package alone).
+ *
+ * The timeout is raised rather than the work reduced or an assertion loosened:
+ * these fixtures prove the ladder never climbs when it is locked, and the
+ * escalation events are the point. A gate that is one busy machine away from
+ * red is not a gate — but neither is one that got green by asserting less.
+ */
+const LAND_LOOP_TIMEOUT_MS = 30_000;
+
 describe('runLandLoop', () => {
+  vi.setConfig({ testTimeout: LAND_LOOP_TIMEOUT_MS });
   let fixture: Fixture | undefined;
   let extraTempDirs: string[] = [];
 
@@ -820,6 +836,7 @@ describe('runLandLoop', () => {
  * promised cheapest-first, then one rung up, then frontier.
  */
 describe('the rung->session seam (W16-01)', () => {
+  vi.setConfig({ testTimeout: LAND_LOOP_TIMEOUT_MS });
   let fixture: Fixture | undefined;
 
   afterEach(async () => {

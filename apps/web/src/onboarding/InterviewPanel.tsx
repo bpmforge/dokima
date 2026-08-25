@@ -20,6 +20,7 @@ import {
   resumePipeline,
   runGuidedPipeline,
 } from './api.js';
+import { describeHeading, describeSubhead } from '../team/personaCopy.js';
 import { FailureNotice } from './FailureNotice.js';
 import {
   describeResumeFailure,
@@ -279,11 +280,9 @@ export function InterviewPanel({
           </p>
         </div>
       )}
-      <h3>{plannedCount > 0 ? 'Describe it again' : 'Describe your product'}</h3>
-      <p className="interview__hint">
-        Answer what you can. Anything you leave blank is skipped, not guessed at —
-        one answer is enough to start, and you can come back.
-      </p>
+      {/* W20-05: briefing the team should feel like briefing a person. */}
+      <h3>{describeHeading(plannedCount > 0)}</h3>
+      <p className="interview__hint">{describeSubhead()}</p>
       {/* W13-02: how long this is, and how far in you are. Nine questions with
           no count and no progress meant the only signal you had finished was a
           disabled button at the bottom. */}

@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createIdentity, openEventLog } from '@dokima/events';
 import { createTicket } from './create.js';
 import { TicketError } from './errors.js';
@@ -77,7 +77,17 @@ function applyOp(log: ReturnType<typeof openEventLog>, op: Op, now: () => string
   }
 }
 
+/**
+ * W20-13: fast-check runs many generated lifecycles per case, so this sits well
+ * above a trivial unit test and just under vitest's 5s default; parallel load
+ * tips it into "Test timed out in 5000ms", never an assertion. The timeout is
+ * raised rather than `numRuns` lowered — fewer runs would weaken exactly the
+ * invariant coverage this file exists for.
+ */
+const PROPERTY_TIMEOUT_MS = 30_000;
+
 describe('ticket lifecycle invariants (fast-check, FR-T1/FR-T2, TESTING.md §3)', () => {
+  vi.setConfig({ testTimeout: PROPERTY_TIMEOUT_MS });
   it('WIP=1 per actor holds and no ticket reaches done without a verified, distinct-reviewer close receipt', () => {
     fc.assert(
       fc.property(fc.array(opArb, { maxLength: 40 }), (ops) => {

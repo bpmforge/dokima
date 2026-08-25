@@ -49,7 +49,7 @@ test('Team shows the org with real faces, and a fresh project reads as nothing a
   // Nothing is waiting on the founder yet, so no answer button exists at all.
   await expect(page.getByTestId('team-answer-coding-agent')).toHaveCount(0);
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await fs.rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });
 });
 
 test('the List view holds the same truth in words, and the choice sticks across a reload (§10a)', async ({
@@ -89,5 +89,5 @@ test('the List view holds the same truth in words, and the choice sticks across 
   await page.getByTestId('team-mode-office').click();
   await expect(page.getByTestId('team-view')).toBeVisible();
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await fs.rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });
 });
