@@ -10777,7 +10777,7 @@
       ],
       "depends_on": [],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-14",
       "title": "the Team view shows the org, not the whole capability catalogue",
       "module": "web",

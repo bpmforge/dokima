@@ -8,8 +8,15 @@
  * the total function that makes that checkable (its parity test enumerates
  * ALL_MEMBER_STATES).
  */
-import { deriveMemberState, type FounderAsk, type MemberStateKind } from './memberState.js';
+import {
+  deriveMemberState,
+  type FounderAsk,
+  type MemberStateKind,
+} from './memberState.js';
 import type { BoardTicket, HeartbeatData } from '../board/types.js';
+// The List is the complete view (§10a): org first, then every other member —
+// no summary here, because a table row per member IS the accessible answer.
+import { partitionOrg } from './partition.js';
 import type { TeamMember } from './types.js';
 
 /** One human phrase per state. Total by construction — no default branch. */
@@ -57,12 +64,12 @@ export function TeamList({
   onAnswer,
   onSelect,
 }: TeamListProps) {
+  const split = partitionOrg(members);
+  const orderedMembers = [...split.org, ...split.others];
   return (
     <div className="team-list" data-testid="team-list">
       <section aria-labelledby="needs-you-heading" className="team-list__queue surface">
-        <h3 id="needs-you-heading">
-          Needs you — {queue.length} waiting
-        </h3>
+        <h3 id="needs-you-heading">Needs you — {queue.length} waiting</h3>
         {/* D-030: the order is mechanical and the coordinator cannot drop an
             item, so this count is the true depth. */}
         <p className="team-list__why">
@@ -113,7 +120,7 @@ export function TeamList({
           </tr>
         </thead>
         <tbody>
-          {members.map((m) => {
+          {orderedMembers.map((m) => {
             const state = deriveMemberState({
               actorId: m.actorId,
               tickets,

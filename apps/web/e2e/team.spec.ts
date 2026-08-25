@@ -36,6 +36,12 @@ test('Team shows the org with real faces, and a fresh project reads as nothing a
   await page.getByRole('button', { name: 'Team', exact: true }).click();
   await expect(page.getByTestId('team-view')).toBeVisible();
 
+  // W20-14: the org leads — the ~60 content-pack specialists are summarised,
+  // not listed, so the twelve real members are not buried.
+  await expect(page.getByTestId('team-others')).toContainText(
+    /\d+ other specialists are available but unassigned/,
+  );
+
   // W20-01/D-028: the persona is served by the real roster route.
   const sam = page.getByTestId('team-member-coding-agent');
   await expect(sam).toBeVisible();

@@ -30,12 +30,18 @@ function view(props: Partial<Parameters<typeof TeamView>[0]> = {}) {
 }
 
 describe('TeamView (W20-02)', () => {
-  it('RED FIXTURE: a member with no persona renders its RAW ACTOR ID — the office may never invent a person (D-028)', () => {
-    view({ members: [UNKNOWN] });
-    const card = screen.getByTestId('team-member-weird-specialist');
-    expect(card.querySelector('.team__name')?.textContent).toBe('weird-specialist');
-    // …and no invented job line echoing the id back at the reader
-    expect(card.querySelector('.team__job')).toBeNull();
+  it('RED FIXTURE (W20-02 + W20-14): a member with no persona is never given an invented name — the board counts it in the summary instead of carding it, and the List still shows its raw id', () => {
+    view({ members: [SAM, UNKNOWN] });
+    // Not carded — the board leads with the org so the team is not buried
+    // under the capability catalogue (W20-14).
+    expect(screen.queryByTestId('team-member-weird-specialist')).toBeNull();
+    // …but counted exactly, never dropped (W20-12) and never renamed (D-028).
+    expect(screen.getByTestId('team-others').textContent).toContain(
+      '1 other specialist is available but unassigned',
+    );
+    // The raw-id guarantee itself lives where unpersonified members ARE
+    // rendered: the List view (see TeamList.test.tsx) and the waiting room.
+    expect(screen.getByTestId('team-member-coding-agent')).toBeTruthy();
   });
 
   it('a live heartbeat renders as working, with the ticket named', () => {

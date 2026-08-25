@@ -392,3 +392,9 @@
   color: var(--sw-fg-muted);
   text-align: center;
 }
+
+.team__others {
+  margin: var(--sw-space-4) 0 0;
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
+}

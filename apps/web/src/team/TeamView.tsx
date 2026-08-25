@@ -9,6 +9,7 @@
 import { useMemo } from 'react';
 import type { BoardTicket, HeartbeatData } from '../board/types.js';
 import { deriveMemberState, type FounderAsk, type MemberState } from './memberState.js';
+import { partitionOrg, othersSummary } from './partition.js';
 import { seatMembers } from './seats.js';
 import type { TeamMember } from './types.js';
 import './team.css';
@@ -62,7 +63,12 @@ export function TeamView({
 
   // W20-12: grouped by what people are FOR; what they are doing still comes
   // from the state mapping, never from where they sit.
-  const zones = seatMembers(rows.map((r) => ({ ...r, role: r.member.role })));
+  // W20-14: the org leads; the capability catalogue is summarised, not listed.
+  const split = partitionOrg(rows.map((r) => r.member));
+  const orgIds = new Set(split.org.map((m) => m.actorId));
+  const zones = seatMembers(
+    rows.filter((r) => orgIds.has(r.member.actorId)).map((r) => ({ ...r, role: r.member.role })),
+  );
 
   return (
     <div className="team" data-testid="team-view">
@@ -121,6 +127,11 @@ export function TeamView({
           </ul>
         </section>
       ))}
+      {split.others.length > 0 && (
+        <p className="team__others" data-testid="team-others">
+          {othersSummary(split.others.length)}
+        </p>
+      )}
     </div>
   );
 }

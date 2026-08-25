@@ -13,6 +13,7 @@
  * true states beats shipping beautiful art that renders invented ones.
  */
 import { deriveMemberState, type FounderAsk } from './memberState.js';
+import { partitionOrg, othersSummary } from './partition.js';
 import { poseFor, type PoseSpec } from './poses.js';
 import type { BoardTicket, HeartbeatData } from '../board/types.js';
 import type { TeamMember } from './types.js';
@@ -41,7 +42,9 @@ export function OfficeSkin({
   asks,
   onSelect,
 }: OfficeSkinProps) {
-  const placed = members.map((member) => {
+  // W20-14: draw the org; the rest are summarised below the rooms.
+  const split = partitionOrg(members);
+  const placed = split.org.map((member) => {
     const state = deriveMemberState({
       actorId: member.actorId,
       tickets,
@@ -89,6 +92,11 @@ export function OfficeSkin({
             </ul>
           </section>
         ),
+      )}
+      {split.others.length > 0 && (
+        <p className="office__legend" data-testid="office-others">
+          {othersSummary(split.others.length)}
+        </p>
       )}
       <p className="office__legend" data-testid="office-legend">
         Every pose here is a ledger event. Nobody moves without evidence.
