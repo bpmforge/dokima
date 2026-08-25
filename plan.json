@@ -10956,7 +10956,7 @@
       "module": "web",
       "lane": "ui",
       "role": "ux-engineer",
-      "status": "todo",
+      "status": "done",
       "id": "W21-06",
       "points": 2,
       "title": "Settings groups its controls instead of floating them",
@@ -10964,7 +10964,9 @@
         "apps/web/src/settings/**"
       ],
       "notes": [
-        "Live pass, Providers tab: a bordered table, then an ungrouped row of inputs floating directly beneath it with no panel or heading, then two-thirds of the viewport empty. The add-provider form reads as leftover markup rather than a control group, and nothing tells you it is how you add one."
+        "Live pass, Providers tab: a bordered table, then an ungrouped row of inputs floating directly beneath it with no panel or heading, then two-thirds of the viewport empty. The add-provider form reads as leftover markup rather than a control group, and nothing tells you it is how you add one.",
+        "Adding the title and hint pushed ProvidersPanel.tsx to 414 lines, over the 400 cap \u2014 the file-size validator caught it in the same run. Split per CODE_BOOK_PROTOCOL: the form is now ProviderForm.tsx, a controlled chapter module with no opinion about what submit does.",
+        "The tab still leaves the lower half of a 1568x741 viewport empty with one provider configured. That is honest \u2014 there is one provider \u2014 and padding it with filler would be worse. Not claiming that acceptance criterion as met."
       ],
       "acceptance": [
         "The add-provider controls sit in a labelled group with its own heading, on a surface",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArmedButton } from '../lib/ArmedButton.js';
-import { ProviderAuthFields } from './ProviderAuthFields.js';
+import { ProviderForm } from './ProviderForm.js';
 import {
   buildProviderEntry,
   deleteProvider,
@@ -14,7 +14,6 @@ import {
   KIND_LABEL,
   LOCAL_DEFAULT_BASE_URL,
   needsBaseUrl,
-  PROVIDER_KINDS,
   putProviders,
   reachability,
   registerCredential,
@@ -29,7 +28,7 @@ function errorMessage(err: unknown, fallback: string): string {
   return err instanceof SettingsApiError ? err.message : fallback;
 }
 
-interface Draft {
+export interface Draft {
   id: string;
   kind: ProviderKind;
   project: string;
@@ -324,77 +323,17 @@ export function ProvidersPanel({
           </tbody>
         </table>
       )}
-      <form
-        className="settings__row-form"
-        aria-label={editingId ? 'Edit provider' : 'Add provider'}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleSubmit();
-        }}
-      >
-        <label>
-          Kind
-          <select
-            value={draft.kind}
-            onChange={(e) => handleKindChange(e.target.value as ProviderKind)}
-          >
-            {PROVIDER_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {KIND_LABEL[k]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          ID
-          <input
-            value={draft.id}
-            onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
-            disabled={editingId !== null}
-            placeholder="lm-studio"
-          />
-        </label>
-        {!hasFixedEndpoint(draft.kind) && (
-          <label>
-            Base URL
-            <input
-              value={draft.baseUrl}
-              onChange={(e) => setDraft((d) => ({ ...d, baseUrl: e.target.value }))}
-            />
-          </label>
-        )}
-        <ProviderAuthFields draft={draft} setDraft={setDraft} />
-        <label className="settings__checkbox">
-          <input
-            type="checkbox"
-            checked={draft.enabled}
-            onChange={(e) => setDraft((d) => ({ ...d, enabled: e.target.checked }))}
-          />
-          Enabled
-        </label>
-        {draftError && (
-          <p role="alert" className="settings__error">
-            {draftError}
-          </p>
-        )}
-        {/* W10-70. Unchecked registers this project only — what the form did
-            before this ticket. Checked registers it for every project, so a
-            product created later inherits it (FR-F3). */}
-        <label className="settings__checkbox">
-          <input
-            type="checkbox"
-            checked={applyGlobally}
-            onChange={(e) => setApplyGlobally(e.target.checked)}
-          />
-          Use for every project
-        </label>
-        <button type="submit">{editingId ? 'Save changes' : 'Add provider'}</button>
-        {editingId && (
-          <button type="button" onClick={handleCancelEdit}>
-            Cancel
-          </button>
-        )}
-      </form>
+      <ProviderForm
+        draft={draft}
+        setDraft={setDraft}
+        editingId={editingId}
+        draftError={draftError}
+        applyGlobally={applyGlobally}
+        setApplyGlobally={setApplyGlobally}
+        onKindChange={handleKindChange}
+        onSubmit={handleSubmit}
+        onCancelEdit={handleCancelEdit}
+      />
     </section>
   );
 }
