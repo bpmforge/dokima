@@ -51,3 +51,43 @@ test('Team shows the org with real faces, and a fresh project reads as nothing a
 
   await fs.rm(dir, { recursive: true, force: true });
 });
+
+test('the List view holds the same truth in words, and the choice sticks across a reload (§10a)', async ({
+  page,
+}) => {
+  const { dir, name } = freshProjectPath();
+  await page.goto('/');
+  const header = page.locator('.fleet__header');
+  await header.getByRole('button', { name: 'New project', exact: true }).click();
+  await page.getByRole('button', { name: 'choose the location' }).click();
+  await page.getByLabel('Folder').fill(dir);
+  await page.getByLabel('Project name').fill(name);
+  await page
+    .locator('.fleet__form')
+    .getByRole('button', { name: 'Create project' })
+    .click();
+  await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
+  await page.getByRole('button', { name: 'Team', exact: true }).click();
+  await expect(page.getByTestId('team-view')).toBeVisible();
+
+  await page.getByTestId('team-mode-list').click();
+  const list = page.getByTestId('team-list');
+  await expect(list).toBeVisible();
+
+  // A real table, not a canvas — the accessibility baseline (§10a).
+  await expect(list.getByRole('table')).toBeVisible();
+  await expect(list.getByRole('rowheader', { name: 'Sam' })).toBeVisible();
+  await expect(list.getByRole('cell', { name: 'Nothing assigned' }).first()).toBeVisible();
+  // Depth is the true count; a fresh project has nothing waiting.
+  await expect(page.getByTestId('queue-empty')).toBeVisible();
+
+  // The choice is per viewer and survives a reload.
+  await page.reload();
+  await expect(page.getByTestId('team-list')).toBeVisible();
+  await expect(page.getByTestId('team-view')).toHaveCount(0);
+
+  await page.getByTestId('team-mode-office').click();
+  await expect(page.getByTestId('team-view')).toBeVisible();
+
+  await fs.rm(dir, { recursive: true, force: true });
+});

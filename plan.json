@@ -10694,7 +10694,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-11",
       "title": "List view \u2014 the same truth in plain HTML, and the accessibility baseline",
       "module": "web",
@@ -10724,7 +10724,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-12",
       "title": "the whole roster is on the floor, seated by what they actually do",
       "module": "web",

@@ -10,10 +10,14 @@ import type { TraceEvent } from '../board/drawer/types.js';
 import { fetchRoster } from '../roster/api.js';
 import type { RosterExpert } from '../roster/types.js';
 import { TeamView } from './TeamView.js';
+import { TeamList, type QueueRow } from './TeamList.js';
 import { WorkDiary } from './WorkDiary.js';
 import { buildWorkDiary } from './diary.js';
 import type { FounderAsk } from './memberState.js';
 import type { TeamMember } from './types.js';
+
+/** Per-viewer view choice (§10a). */
+const TEAM_VIEW_KEY = 'dokima.team.view';
 
 export interface TeamViewRootProps {
   readonly projectId: string;
@@ -83,6 +87,26 @@ export function TeamViewRoot({
   // view shows no blocked-on-you state rather than guessing one (D-028).
   const asks: FounderAsk[] = [];
 
+  // W20-11 (§10a): Office is the skin, List is the accessible baseline. The
+  // choice is per viewer and survives a reload; a storage failure (private
+  // window, blocked site data) must not break the view, so every access is
+  // guarded and falls back to the office.
+  const [mode, setMode] = useState<'office' | 'list'>(() => {
+    try {
+      return localStorage.getItem(TEAM_VIEW_KEY) === 'list' ? 'list' : 'office';
+    } catch {
+      return 'office';
+    }
+  });
+  const chooseMode = useCallback((next: 'office' | 'list') => {
+    setMode(next);
+    try {
+      localStorage.setItem(TEAM_VIEW_KEY, next);
+    } catch {
+      // A viewer who cannot persist still gets the view they clicked.
+    }
+  }, []);
+
   // W20-03: the selected member's own event slice, humanised.
   const [selected, setSelected] = useState<string | null>(null);
   const [events, setEvents] = useState<readonly TraceEvent[]>([]);
@@ -99,16 +123,56 @@ export function TeamViewRoot({
   const selectedMember = members.find((m) => m.actorId === selected);
   const diary = selected ? buildWorkDiary(events, selected) : null;
 
+  const queue: readonly QueueRow[] = [];
+
   return (
     <>
-      <TeamView
+      <div className="team__viewbar">
+        <span className="team__viewlabel" id="team-view-mode">
+          View
+        </span>
+        <div className="team__seg" role="group" aria-labelledby="team-view-mode">
+          <button
+            type="button"
+            data-testid="team-mode-office"
+            aria-pressed={mode === 'office'}
+            onClick={() => chooseMode('office')}
+          >
+            Office
+          </button>
+          <button
+            type="button"
+            data-testid="team-mode-list"
+            aria-pressed={mode === 'list'}
+            onClick={() => chooseMode('list')}
+          >
+            List
+          </button>
+        </div>
+        <span className="team__viewhint">
+          The list holds the same truth in words — and it is the accessible view.
+        </span>
+      </div>
+      {mode === 'list' ? (
+        <TeamList
+          members={members}
+          tickets={tickets}
+          heartbeats={heartbeats}
+          asks={asks}
+          queue={queue}
+          onSelect={onSelect}
+          {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
+        />
+      ) : (
+        <TeamView
         members={members}
         tickets={tickets}
         heartbeats={heartbeats}
         asks={asks}
         onSelect={onSelect}
         {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
-      />
+        />
+      )}
       {selectedMember && diary && (
         <section className="team__drawer surface" data-testid="team-diary-drawer">
           <h3>
