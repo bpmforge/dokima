@@ -1552,3 +1552,40 @@ Verified live: all three modes render against the rebuilt core, the
 waiting room reads honestly when nothing is waiting, and the org is no
 longer buried. Board: 369/371 done — remaining are the founder-parked
 W12-44 and W13-32.
+
+### 2026-08-24 — W21-01: the office is drawn
+
+The gap named at the end of W20: Office mode was honest but was not what was
+asked for — CSS rooms and emoji standing in for a 32-bit room. This is the
+room.
+
+The Stardew interior formula, applied literally: the floor is drawn top-down,
+the wall is drawn face-on as a band across the top, and the band is layered
+crown / wallpaper / chair rail / wainscot / baseboard. Windows sit inside the
+band with sills drawn wider than their frames and a shadow line beneath — the
+overhang is what makes a window read as set into a wall rather than stuck on
+it. Desks carry CRT-era workstations whose screens light only when somebody is
+at them; the break room has the water cooler. Everything is generated in code
+and baked once, so there is no asset pack to license, load, or lose.
+
+The part worth recording is not the art. A canvas has no assertion surface, so
+the obvious failure mode was to swap the renderer and quietly weaken the tests
+that made W20-08's "no idle theater" checkable. Instead:
+
+- the canvas is `aria-hidden` background paint, and the DOM figures stay as
+  positioned hit targets over it — `office-figure-<id>`, `data-pose`,
+  `data-state`, keyboard focus and the screen-reader path all unchanged;
+- `scene.ts` is a pure function typed to the existing `Pose` union, so the
+  renderer cannot draw a pose no member state maps to — a type error rather
+  than a review note — and its red fixture asserts that ONLY walking-handoff
+  moves;
+- the per-room DOM sections the canvas replaced were not simply dropped: the
+  room a member is in is now asserted per figure (`data-place`), which is
+  strictly stronger and survives the next renderer too.
+
+Two ratchets held rather than being raised: W13-04's card border (the stage
+uses the shared `surface` primitive) and W10-06's raw-hex rule (the canvas
+paints its own ground, so the box needs no background of its own).
+
+Verified live against the rebuilt core. Board: 370/372 done — remaining are the
+founder-parked W12-44 and W13-32.
