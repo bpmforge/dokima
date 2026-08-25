@@ -73,12 +73,41 @@ describe('RosterView — an end-user surface, not a debug dump (W13-49)', () => 
     render(<RosterView />);
     await screen.findByText('Anti-Slop Auditor');
 
-    expect(
-      screen.getByText('No model will take this role yet — pick models in Settings → Models.'),
-    ).toBeTruthy();
+    // W21-04: the row keeps the actionable chip; the explanation is stated
+    // once for the page rather than once per role.
     expect(screen.getByTestId('roster-expert-scope-anti-slop-auditor').textContent).toBe(
       'needs a model',
     );
+    expect(screen.getByTestId('roster-needs-models').textContent).toContain(
+      'Settings → Models',
+    );
+  });
+
+  it('RED FIXTURE: the model warning is said ONCE with a count, not once per role (W21-04, the W18-08 pattern)', async () => {
+    const none = { chain: [], scope: null, usedDefaultRole: false };
+    vi.mocked(api.fetchRoster).mockResolvedValue([
+      expert({ id: 'a', displayName: 'A', effectiveModel: none }),
+      expert({ id: 'b', displayName: 'B', effectiveModel: none }),
+      expert({ id: 'c', displayName: 'C', effectiveModel: { chain: ['m'], scope: null, usedDefaultRole: false } }),
+    ]);
+    render(<RosterView />);
+    await screen.findByText('A');
+
+    const banner = screen.getAllByTestId('roster-needs-models');
+    expect(banner).toHaveLength(1);
+    // The count is exact — it is the whole point of saying it once.
+    expect(banner[0]!.textContent).toContain('2 of 3 roles');
+    // …and nobody is hidden to achieve that.
+    for (const name of ['A', 'B', 'C']) {
+      expect(screen.getByText(name)).toBeTruthy();
+    }
+    // The instruction appears exactly once in the page's text — the assertion
+    // is on the whole document, because "said once" is a page-level property
+    // and per-element queries would miss a second copy inside a row.
+    const occurrences = (
+      document.body.textContent?.match(/Settings → Models/g) ?? []
+    ).length;
+    expect(occurrences).toBe(1);
   });
 
   it('fitness and instruction cost render only when they carry a value', async () => {

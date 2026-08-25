@@ -37,6 +37,11 @@ function scopeChip(expert: RosterExpert): string | null {
   return scope === 'project' || scope === 'run' ? `${scope} override` : null;
 }
 
+/** How many roles nothing will take yet — the page-level fact (W21-04). */
+export function countWithoutModel(experts: readonly RosterExpert[]): number {
+  return experts.filter((e) => e.effectiveModel.chain.length === 0).length;
+}
+
 function groupByCluster(experts: RosterExpert[]): Map<string, RosterExpert[]> {
   const groups = new Map<string, RosterExpert[]>();
   for (const expert of experts) {
@@ -138,15 +143,14 @@ function ExpertRow({ expert, projectId, expanded, onToggle }: ExpertRowProps) {
           of a healthy install — "unconfigured — no routing matrix entry",
           "not benched", "instruction cost: —" — builder diagnostics shipped
           to the user (UX_AUDIT A-1). */}
-      {expert.effectiveModel.chain.length > 0 ? (
+      {/* W21-04: when a role has a model, the chain IS the useful line. When it
+          does not, the row keeps its "needs a model" chip and says nothing
+          more — the explanation is stated once for the whole page above,
+          because ~75 verbatim copies of one sentence bury the very fact they
+          are trying to report (the W18-08 pattern). */}
+      {expert.effectiveModel.chain.length > 0 && (
         <div className="roster__expert-model">
           <span>{expert.effectiveModel.chain.join(' → ')}</span>
-        </div>
-      ) : (
-        <div className="roster__expert-model">
-          <span className="roster__unconfigured">
-            No model will take this role yet — pick models in Settings → Models.
-          </span>
         </div>
       )}
       {expert.fitnessCards.length > 0 && (
@@ -207,6 +211,7 @@ export function RosterView({ projectId = null }: RosterViewProps) {
   }, [refresh]);
 
   const grouped = useMemo(() => groupByCluster(experts), [experts]);
+  const needsModel = countWithoutModel(experts);
 
   return (
     <div className="page roster" data-testid="roster-view">
@@ -224,6 +229,21 @@ export function RosterView({ projectId = null }: RosterViewProps) {
         {error && (
           <p className="roster__error" role="alert">
             {error}
+          </p>
+        )}
+
+        {/* Said once, with the count, where it can actually be acted on. */}
+        {needsModel > 0 && (
+          <p
+            className="surface roster__needs-models"
+            data-testid="roster-needs-models"
+            role="status"
+          >
+            <b>
+              {needsModel} of {experts.length} roles have no model yet.
+            </b>{' '}
+            Nothing on this roster can run until one is picked — Settings →
+            Models assigns them, and a role with a model shows its chain here.
           </p>
         )}
 

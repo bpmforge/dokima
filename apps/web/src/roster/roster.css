@@ -124,3 +124,14 @@
 .roster__empty {
   opacity: 0.7;
 }
+
+/* W21-04: the one place the model warning is said, with its count. */
+.roster__needs-models {
+  margin: 0;
+  font-size: var(--sw-text-md);
+  color: var(--sw-fg-muted);
+}
+
+.roster__needs-models b {
+  color: var(--sw-fg);
+}
