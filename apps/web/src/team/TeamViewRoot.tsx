@@ -13,6 +13,7 @@ import { TeamView } from './TeamView.js';
 import { TeamList, type QueueRow } from './TeamList.js';
 import { WaitingRoom } from './WaitingRoom.js';
 import { fetchFounderQueue, type FounderQueue } from './founderQueue.js';
+import { deriveHandoffs, handoffLine } from './handoffs.js';
 import { WorkDiary } from './WorkDiary.js';
 import { buildWorkDiary } from './diary.js';
 import type { FounderAsk } from './memberState.js';
@@ -140,6 +141,28 @@ export function TeamViewRoot({
   // W20-03: the selected member's own event slice, humanised.
   const [selected, setSelected] = useState<string | null>(null);
   const [events, setEvents] = useState<readonly TraceEvent[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRunTraceAll({ baseUrl, token }, projectId, '')
+      .then((e) => {
+        if (!cancelled) setEvents(e);
+      })
+      .catch(() => {
+        // No trace, no handoff lines — better silent than invented (D-028).
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, projectId]);
+
+  const nameOf = useCallback(
+    (actorId: string) =>
+      members.find((m) => m.actorId === actorId)?.displayName ?? actorId,
+    [members],
+  );
+  // W20-04: the relay, read from events that already exist.
+  const handoffs = deriveHandoffs(events).slice(-3).reverse();
+
   const onSelect = useCallback(
     (actorId: string) => {
       setSelected(actorId);
@@ -202,6 +225,15 @@ export function TeamViewRoot({
         />
       ) : (
         <>
+        {handoffs.length > 0 && (
+          <ul className="team__handoffs" data-testid="team-handoffs">
+            {handoffs.map((h) => (
+              <li key={h.seq} data-testid={`handoff-${h.seq}`}>
+                {handoffLine(h, nameOf)}
+              </li>
+            ))}
+          </ul>
+        )}
         <WaitingRoom
           queue={queue}
           members={members}
