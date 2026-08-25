@@ -1501,3 +1501,51 @@ through the full gate:
   ui-copy gate caught the first draft's own tab-name drift.
 
 Board: 357/359 done — remaining are the founder-parked W12-44 and W13-32.
+
+### 2026-08-21..24 — W20 (14/14): the org, not the agent list
+
+The founder asked for a view where the agents are people you manage,
+not rows in a capability catalogue — an architect who exists, a place
+where anyone stuck on you is visibly waiting, and everything else
+automated. Twelve planned tickets landed, plus two the wave found in
+its own live pass.
+
+Three decisions were pinned before any code (do not re-litigate):
+**D-028** personas are presentation over real actor ids, never identity
+— no persona invents a face for an unknown actor, and none asserts a
+state the ledger did not record. **D-029** ask-mode escalation
+*defers*: the attempt continues, approval goes to the queue, the next
+attempt climbs. **D-030** Otto owns the one funnel to the founder, and
+the ordering is mechanical (blocks-run → blocked dependents in the DAG
+→ age → cost) because a model ranking what the founder sees is the same
+trust hole as a model grading its own work.
+
+- W20-01 — twelve personas, docs/design/PERSONAS.md made executable;
+  an unmapped actor renders as its own id.
+- W20-02 — `deriveMemberState`: one mapping every Team surface reads
+  (blocked-on-you → live session → in-review → shipped → idle).
+- W20-03..05 — the work diary, the handoff relay, and review pairing:
+  maker ≠ verifier stops being merely enforced and becomes watchable.
+- W20-06 — per-member settings, written per role, including
+  ask-before-escalating; a save can never reach another member's policy.
+- W20-07..08 — the pixel office as a *skin* over the same states, plus
+  seating by what people are for.
+- W20-09..10 — `orderFounderQueue` and its route: a total sort with no
+  filter, no cap, no hidden flag, so "Otto cannot drop an item" is a
+  property of the type rather than a promise in a doc. Depth is always
+  the true open count.
+- W20-11..12 — three view modes (Board / Office / List), the choice per
+  viewer and storage-failure safe; the List is the accessible baseline
+  holding the same truth in words.
+- W20-13 — the wave's ~40 new tests pushed parallel load past the 5s
+  default and made *different* suites time out each run; three suites
+  now carry explicit 30s timeouts with the reason stated in-file.
+- W20-14 — found by the live pass: the roster's ~60 content-pack experts
+  buried the twelve real members (the W18-08 defect, on a new surface).
+  Board and Office draw the org and summarise the rest; the List leads
+  with the org and still lists everyone.
+
+Verified live: all three modes render against the rebuilt core, the
+waiting room reads honestly when nothing is waiting, and the org is no
+longer buried. Board: 369/371 done — remaining are the founder-parked
+W12-44 and W13-32.
