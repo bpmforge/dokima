@@ -14,6 +14,7 @@ import { TeamList, type QueueRow } from './TeamList.js';
 import { WaitingRoom } from './WaitingRoom.js';
 import { fetchFounderQueue, type FounderQueue } from './founderQueue.js';
 import { deriveHandoffs, handoffLine } from './handoffs.js';
+import { reviewPairFor, reviewPairLine } from './reviewPairing.js';
 import { WorkDiary } from './WorkDiary.js';
 import { buildWorkDiary } from './diary.js';
 import type { FounderAsk } from './memberState.js';
@@ -174,6 +175,16 @@ export function TeamViewRoot({
   );
 
   const selectedMember = members.find((m) => m.actorId === selected);
+  // W20-07: for the selected member's in-flight ticket, who built it and who
+  // graded it — the rule made watchable rather than merely enforced.
+  const pairTicket = selected
+    ? tickets.find(
+        (t) =>
+          t.status === 'in_review' &&
+          (t.ownerId === selected || t.ownerId?.endsWith(`:${selected}`) ||
+            t.history.some((h) => h.actorId === selected || h.actorId.endsWith(`:${selected}`))),
+      )
+    : undefined;
   const diary = selected ? buildWorkDiary(events, selected) : null;
 
   const queueRows: readonly QueueRow[] = queue.rows.map((r) => ({
@@ -254,6 +265,11 @@ export function TeamViewRoot({
           <h3>
             What {selectedMember.displayName ?? selectedMember.actorId} actually did
           </h3>
+          {pairTicket && (
+            <p className="team__pairing" data-testid="review-pairing">
+              {reviewPairLine(reviewPairFor(pairTicket), nameOf)}
+            </p>
+          )}
           <WorkDiary
             displayName={selectedMember.displayName ?? selectedMember.actorId}
             entries={diary.entries}

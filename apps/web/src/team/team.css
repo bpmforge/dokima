@@ -251,3 +251,9 @@
   font-size: var(--sw-text-sm);
   color: var(--sw-fg-muted);
 }
+
+.team__pairing {
+  margin: 0 0 var(--sw-space-2);
+  font-size: var(--sw-text-sm);
+  color: var(--sw-accent);
+}

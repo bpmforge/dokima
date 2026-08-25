@@ -10513,7 +10513,7 @@
         "W20-01"
       ],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-05",
       "title": "delegation by conversation \u2014 you talk to the team, the right member answers",
       "module": "web",
@@ -10577,7 +10577,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-07",
       "title": "the self-check is visible \u2014 and so is the separate reviewer",
       "module": "web",
