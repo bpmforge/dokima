@@ -62,6 +62,14 @@ const POSES: Record<MemberStateKind, PoseSpec> = {
     place: 'aisle',
     because: 'work handed to a different member',
   },
+  assigned: {
+    // At their own desk with the screen dark: the desk is occupied, but
+    // nothing is running on it. Different from the break room, where nothing
+    // is assigned at all (W21-02).
+    pose: 'sitting-idle',
+    place: 'desk',
+    because: 'a ticket claimed, with no live session on it',
+  },
   shipped: {
     pose: 'celebrating',
     place: 'desk',

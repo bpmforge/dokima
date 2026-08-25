@@ -19,6 +19,7 @@ export type MemberStateKind =
   | 'self-checking'
   | 'in-review'
   | 'submitted'
+  | 'assigned'
   | 'shipped'
   | 'idle';
 
@@ -61,7 +62,7 @@ function ownedBy(t: BoardTicket, actorId: string): boolean {
 /**
  * Precedence (UX_SPEC §10), highest first:
  *   blocked-on-you > live session (working / reading / self-checking)
- *   > in-review / submitted > shipped > idle
+ *   > in-review / submitted > assigned > shipped > idle
  *
  * Blocked-on-you outranks everything because it is the only state whose
  * resolution costs the founder's attention — burying it under "working"
@@ -133,6 +134,22 @@ export function deriveMemberState(input: DeriveInput): MemberState {
     };
   }
 
+  // W21-02: the honest middle. The ticket is theirs and the ledger says so —
+  // it just has no session running on it. Before this branch existed, this
+  // case fell all the way through to `idle` and the Team view told the founder
+  // "nothing assigned" about a member the Board showed mid-ticket.
+  const assigned = tickets.find(
+    (t) => (t.status === 'in_progress' || t.status === 'claimed') && ownedBy(t, actorId),
+  );
+  if (assigned) {
+    return {
+      kind: 'assigned',
+      line: `holding ${assigned.id} — no session running`,
+      ticketId: assigned.id,
+      evidence: `ticket ${assigned.status}, claimed by this member, no live heartbeat`,
+    };
+  }
+
   const shipped = tickets
     .filter((t) => t.status === 'done' && ownedBy(t, actorId) && t.closedAt)
     .sort((a, b) => (a.closedAt! < b.closedAt! ? 1 : -1))[0];
@@ -170,6 +187,7 @@ export const ALL_MEMBER_STATES: readonly MemberStateKind[] = [
   'self-checking',
   'in-review',
   'submitted',
+  'assigned',
   'shipped',
   'idle',
 ];

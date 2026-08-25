@@ -97,3 +97,59 @@ describe('deriveMemberState (W20-02)', () => {
     expect(ALL_MEMBER_STATES).toContain('idle');
   });
 });
+
+describe('a claimed ticket with no session (W21-02)', () => {
+  it('RED FIXTURE: the exact live case — owned, in_progress, no heartbeat — is NOT "nothing assigned"', () => {
+    const tickets = [
+      makeBoardTicket({ id: 'PLAN-T-001', status: 'in_progress', ownerId: 'coding-agent' }),
+    ];
+    const state = deriveMemberState({
+      actorId: 'coding-agent',
+      tickets,
+      heartbeats: new Map(),
+      asks: [],
+    });
+    expect(state.kind).toBe('assigned');
+    expect(state.ticketId).toBe('PLAN-T-001');
+    expect(state.line).toContain('PLAN-T-001');
+    expect(state.line).not.toContain('nothing assigned');
+    // The Board says "an agent is working this" for exactly this ticket; the
+    // Team view must not contradict it.
+    expect(state.evidence).toContain('claimed by this member');
+  });
+
+  it('a claimed-but-not-started ticket counts too — it is still theirs', () => {
+    const tickets = [
+      makeBoardTicket({ id: 'T-9', status: 'claimed', ownerId: 'coding-agent' }),
+    ];
+    expect(
+      deriveMemberState({
+        actorId: 'coding-agent', tickets, heartbeats: new Map(), asks: [],
+      }).kind,
+    ).toBe('assigned');
+  });
+
+  it('a LIVE heartbeat still outranks it — "working" keeps meaning a running session', () => {
+    const tickets = [
+      makeBoardTicket({ id: 'T-9', status: 'in_progress', ownerId: 'coding-agent' }),
+    ];
+    const state = deriveMemberState({
+      actorId: 'coding-agent',
+      tickets,
+      heartbeats: new Map([['T-9', { ticket: 'T-9', pass: 'edit', age_s: 2 }]]),
+      asks: [],
+    });
+    expect(state.kind).toBe('working');
+  });
+
+  it('somebody else’s claimed ticket leaves this member idle — ownership is not contagious', () => {
+    const tickets = [
+      makeBoardTicket({ id: 'T-9', status: 'in_progress', ownerId: 'coding-agent' }),
+    ];
+    expect(
+      deriveMemberState({
+        actorId: 'test-engineer', tickets, heartbeats: new Map(), asks: [],
+      }).kind,
+    ).toBe('idle');
+  });
+});

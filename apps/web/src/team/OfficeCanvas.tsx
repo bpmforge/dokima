@@ -17,17 +17,26 @@ import {
   contactShadow, drawRoom, STAGE_H, STAGE_W, YOURS_Y, YOURS_WALL_H,
 } from './officeRoom.js';
 import { DESK_SPOTS, figureFlipped, figureX, type SceneFigure } from './scene.js';
-import type { Pose } from './poses.js';
+import type { Pose, PoseSpec } from './poses.js';
 
-/** Pose -> which baked frame to blit. Total over the union, by construction. */
-const FRAME: Record<Pose, (f: CharacterFrames, t: number) => HTMLCanvasElement | null> = {
+/**
+ * Pose -> which baked frame to blit. Total over the union, by construction.
+ * `place` is passed because one pose reads differently in two rooms: idle at a
+ * desk is somebody sitting at their own workstation with the screen dark
+ * (W21-02), while idle in the break room is somebody on the couch.
+ */
+type FramePick = (
+  f: CharacterFrames, t: number, place: PoseSpec['place'],
+) => HTMLCanvasElement | null;
+
+const FRAME: Record<Pose, FramePick> = {
   // The one animation that means something: keys actually moving.
   'sitting-typing': (f, t) => (Math.floor(t * 6) % 2 ? f.sitTyping : f.sit),
   'sitting-reading': (f) => f.sit,
   'sitting-checking': (f) => f.sit,
   'standing-waiting': (f) => f.standing,
   'walking-handoff': (f, t) => f.walk[Math.floor(t * 6) % f.walk.length] ?? f.carrying,
-  'sitting-idle': (f) => f.lounge,
+  'sitting-idle': (f, _t, place) => (place === 'desk' ? f.sit : f.lounge),
   celebrating: (f, t) => (Math.floor(t * 3) % 2 ? f.raising : f.standing),
 };
 
@@ -94,7 +103,7 @@ function paint(
   // Painter's order — lower on the stage draws later, so it overlaps correctly.
   for (const fig of [...figures].sort((a, b) => a.y - b.y)) {
     const frames = framesFor(fig.actorId);
-    const sprite = FRAME[fig.pose](frames, t + fig.phase);
+    const sprite = FRAME[fig.pose](frames, t + fig.phase, fig.place);
     if (!sprite) continue;
     const x = figureX(fig, t);
     contactShadow(ctx, x + sprite.width / 2, fig.y + sprite.height - 4, sprite.width * 0.38);

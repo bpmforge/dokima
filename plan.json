@@ -10828,6 +10828,37 @@
         "prefers-reduced-motion stops the animation loop entirely and paints one static frame",
         "No file exceeds the 400-line cap; sprites are baked once, never per frame"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "status": "done",
+      "id": "W21-02",
+      "title": "a claimed ticket with no live session is not \"nothing assigned\"",
+      "module": "web",
+      "lane": "ui",
+      "points": 2,
+      "role": "ux-engineer",
+      "write_scope": [
+        "apps/web/src/team/**",
+        "apps/web/e2e/**"
+      ],
+      "notes": [
+        "Confirmed live 2026-08-24: claimed and started PLAN-T-001 as coding-agent through the CLI. The Board shows it In Progress and says \"an agent is working this\" (so ownerId is populated and the projection is fine), but the Team view shows Sam idle in the break room reading \"nothing assigned\". Two surfaces, two truths \u2014 the exact defect W20-02 exists to prevent.",
+        "Root cause verified by reading the mapping rather than guessing: deriveMemberState derives working/reading/self-checking ONLY from a live heartbeat, and has no branch at all for a ticket that is owned and in_progress (or claimed) with no session running. It therefore falls through every branch to idle.",
+        "The fix is a state, not a relaxation. \"Working\" must keep meaning a live session \u2014 that distinction is real and worth having. What is missing is the honest middle: the ticket is theirs and nothing is running on it. That is ledger-backed by the claim/start events, so it does not weaken D-028.",
+        "In the office this reads as sitting at their own desk with the screen dark \u2014 occupied desk, no work happening \u2014 which is different from the break room, where nothing is assigned at all."
+      ],
+      "acceptance": [
+        "A member owning a claimed or in_progress ticket with no live heartbeat reports a distinct state naming the ticket, never \"nothing assigned\"",
+        "A live heartbeat still outranks it, so working/reading/self-checking keep meaning a running session",
+        "The office draws that member at a desk with an unlit screen, not in the break room",
+        "The List view has a phrase for it and the state-parity test still enumerates every state",
+        "A red fixture pins the exact live case: owned + in_progress + no heartbeat"
+      ]
     }
   ]
 }

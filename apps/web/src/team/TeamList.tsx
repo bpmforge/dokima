@@ -27,6 +27,7 @@ const STATE_LABEL: Record<MemberStateKind, string> = {
   'self-checking': 'Checking their own work',
   'in-review': 'Reviewing someone else’s work',
   submitted: 'Handed in — someone else is reviewing',
+  assigned: 'Holding a ticket — nothing running on it',
   shipped: 'Shipped',
   idle: 'Nothing assigned',
 };
