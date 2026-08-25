@@ -154,6 +154,25 @@ export function resolvePolicyScope(
   const value = raw as Record<string, unknown>;
   const mode = value.mode;
 
+  if (mode === 'ask') {
+    // D-029: never climb unattended. `locked` is exactly "retry the same rung
+    // under the ceiling, then park" — so the attempt in flight is unaffected
+    // and nothing escalates until the founder answers. Approving writes this
+    // member's mode to `ladder`, which is a visible, inspectable settings
+    // change rather than hidden approval state.
+    return {
+      scope: {
+        global: {
+          [role]: {
+            mode: 'locked',
+            pinnedTier: 'R1',
+            tierKind: tierKindFor(value.providerKind),
+          } as LandEscalationPolicy,
+        },
+      },
+    };
+  }
+
   if (mode === 'pinned') {
     // D-027: a pin is TWO facts in two layers, and this function only owns the
     // second. WHICH MODEL is a routing fact (`resolvePinnedModel` below, fed to

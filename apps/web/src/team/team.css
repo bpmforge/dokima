@@ -257,3 +257,47 @@
   font-size: var(--sw-text-sm);
   color: var(--sw-accent);
 }
+
+/* Per-member settings (W20-06) */
+.team__settings {
+  margin-top: var(--sw-space-4);
+  padding-top: var(--sw-space-3);
+  border-top: var(--sw-border-width) solid var(--sw-border);
+}
+.team__settings h4 {
+  margin: 0 0 var(--sw-space-2);
+  font-size: var(--sw-text-md);
+}
+.team__settings-group {
+  border: 0;
+  margin: 0 0 var(--sw-space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-2);
+}
+.team__settings-group legend {
+  font-size: var(--sw-text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sw-fg-muted);
+  padding: 0;
+}
+.team__settings-hint {
+  display: block;
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+}
+.team__settings-turns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+  font-size: var(--sw-text-sm);
+  margin-bottom: var(--sw-space-3);
+  max-width: 12rem;
+}
+.team__settings-saved {
+  margin: var(--sw-space-2) 0 0;
+  font-size: var(--sw-text-sm);
+  color: var(--sw-success);
+}

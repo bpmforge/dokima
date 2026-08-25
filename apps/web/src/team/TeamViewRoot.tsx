@@ -15,6 +15,8 @@ import { WaitingRoom } from './WaitingRoom.js';
 import { fetchFounderQueue, type FounderQueue } from './founderQueue.js';
 import { deriveHandoffs, handoffLine } from './handoffs.js';
 import { reviewPairFor, reviewPairLine } from './reviewPairing.js';
+import { MemberSettings, type MemberSettingsValue } from './MemberSettings.js';
+import { putProjectSettings } from '../settings/api.js';
 import { WorkDiary } from './WorkDiary.js';
 import { buildWorkDiary } from './diary.js';
 import type { FounderAsk } from './memberState.js';
@@ -164,6 +166,20 @@ export function TeamViewRoot({
   // W20-04: the relay, read from events that already exist.
   const handoffs = deriveHandoffs(events).slice(-3).reverse();
 
+  const saveMemberSettings = useCallback(
+    async (actorId: string, next: MemberSettingsValue) => {
+      // Per-role shape (W20-06): the resolver reads `roles[<role>]`, so a save
+      // here can never reach another member's policy.
+      await putProjectSettings(projectId, {
+        escalationPolicy: { roles: { [actorId]: { mode: next.escalation } } },
+        ...(next.maxToolIterations === undefined
+          ? {}
+          : { maxToolIterations: next.maxToolIterations }),
+      } as never);
+    },
+    [projectId],
+  );
+
   const onSelect = useCallback(
     (actorId: string) => {
       setSelected(actorId);
@@ -274,6 +290,15 @@ export function TeamViewRoot({
             displayName={selectedMember.displayName ?? selectedMember.actorId}
             entries={diary.entries}
             total={diary.total}
+          />
+          {/* W20-06: this member's own knobs, written through the settings API
+              that already exists — scoped to one role, never to everyone. */}
+          <MemberSettings
+            displayName={selectedMember.displayName ?? selectedMember.actorId}
+            value={{ escalation: 'ladder' }}
+            onSave={(next: MemberSettingsValue) =>
+              saveMemberSettings(selectedMember.actorId, next)
+            }
           />
         </section>
       )}
