@@ -135,3 +135,91 @@ describe('measuredTurnsMultiplier (W17-03)', () => {
     expect(measuredTurnsMultiplier([obs(99), obs(99), obs(99)], 12).multiplier).toBe(2.5);
   });
 });
+
+/**
+ * W21-10 — found in live UAT, not in review. The agent finished the work,
+ * committed it, and then spun on a question it already had the answer to.
+ * These fixtures pin the exact observed sequence and the two conditions that
+ * keep the cumulative check from firing on honest work.
+ */
+describe('zero-information repeats (W21-10)', () => {
+  const call = (name: string, argsJson: string, resultText: string) => ({
+    name,
+    argsJson,
+    resultText,
+  });
+  const LIST_ARGS = '{"path":"."}';
+  const LIST_RESULT = '{"files":["package.json","tsconfig.json"]}';
+
+  it('RED FIXTURE: the exact live sequence — list, list, verify, list — stops the session', () => {
+    const budget = createSessionProgressBudget({ base: 12, ceiling: 16 });
+    // #70 and #72 in the Vault run: identical args, identical result.
+    budget.noteIteration({
+      iteration: 1,
+      toolCalls: [call('list', LIST_ARGS, LIST_RESULT)],
+    });
+    budget.noteIteration({
+      iteration: 2,
+      toolCalls: [call('list', LIST_ARGS, LIST_RESULT)],
+    });
+    // #74: one verify between them. This is what reset the consecutive
+    // counter and let the real session escape the guard.
+    budget.noteIteration({
+      iteration: 3,
+      toolCalls: [call('verify', '{}', '{"exit":1}')],
+      verifyExit: 1,
+    });
+    expect(budget.earlyStop(), 'must not have stopped yet').toBeNull();
+    // #76: the third identical list.
+    budget.noteIteration({
+      iteration: 4,
+      toolCalls: [call('list', LIST_ARGS, LIST_RESULT)],
+    });
+    const stop = budget.earlyStop();
+    expect(stop).not.toBeNull();
+    expect(stop!.reason).toContain('list');
+    expect(stop!.reason).toContain('identical result');
+    // The park evidence must carry it, so the ticket explains itself.
+    expect(budget.entries().some((e) => e.kind === 'stopped_early')).toBe(true);
+  });
+
+  it('a repeated call whose RESULT CHANGED is real work and never counts', () => {
+    const budget = createSessionProgressBudget({ base: 12, ceiling: 16 });
+    for (let i = 1; i <= 6; i += 1) {
+      budget.noteIteration({
+        iteration: i,
+        // Same tool, same arguments — but the world moved underneath it.
+        toolCalls: [call('list', LIST_ARGS, `{"files":["f${i}.ts"]}`)],
+      });
+    }
+    expect(budget.earlyStop()).toBeNull();
+  });
+
+  it('the CUMULATIVE rule excludes mutations — a write revisited between other work is not a spin', () => {
+    const budget = createSessionProgressBudget({ base: 12, ceiling: 16 });
+    // Interleaved, so only the cumulative rule is in play. Three identical
+    // writes in a row would still stop — that is the consecutive rule, and it
+    // is right: rewriting the same bytes three times running changes nothing.
+    for (let i = 1; i <= 6; i += 1) {
+      budget.noteIteration({
+        iteration: i,
+        toolCalls: [
+          i % 2 === 1
+            ? call('write', '{"path":"a.ts"}', '{"ok":true}')
+            : call('read', `{"p":"f${i}"}`, `body-${i}`),
+        ],
+      });
+    }
+    expect(budget.earlyStop()).toBeNull();
+  });
+
+  it('two different zero-information calls do not add up into one spin', () => {
+    const budget = createSessionProgressBudget({ base: 12, ceiling: 16 });
+    budget.noteIteration({ iteration: 1, toolCalls: [call('list', LIST_ARGS, LIST_RESULT)] });
+    budget.noteIteration({ iteration: 2, toolCalls: [call('read', '{"p":"a"}', 'A')] });
+    budget.noteIteration({ iteration: 3, toolCalls: [call('list', LIST_ARGS, LIST_RESULT)] });
+    budget.noteIteration({ iteration: 4, toolCalls: [call('read', '{"p":"a"}', 'A')] });
+    // Each has been seen twice; neither has reached the limit.
+    expect(budget.earlyStop()).toBeNull();
+  });
+});

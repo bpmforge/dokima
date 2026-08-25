@@ -11062,6 +11062,39 @@
         "docs/TESTING.md names the signature, the measurement method, and the rule about what may not be changed",
         "It records which suites currently carry a raised timeout and why, so the list is auditable"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-10",
+      "points": 3,
+      "title": "a spin with one call interleaved is still a spin",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts"
+      ],
+      "notes": [
+        "Live UAT 2026-08-25, a fresh project (Vault, a password manager) driven entirely through the UI as a founder would. Decomposition worked; the agent claimed PLAN-vault-001, wrote package.json/tsconfig.json/.eslintrc.js/.prettierrc and COMMITTED them; the budget correctly extended at iteration 12 -> 16 on the signal \"commit changed the worktree\". Then it parked without a Completion Manifest.",
+        "The event log names the cause exactly. Events #70, #72 and #76 are agent-session.list with argsDigest 4ae486c3 and resultDigest dcec2fb1 \u2014 byte-identical arguments AND byte-identical results, three times. Between #72 and #76 sits #74, one agent-session.verify.",
+        "W17-01 already HAS a spin detector, and it did not fire: identicalRun resets to 1 whenever a different fingerprint appears, so list -> list -> verify -> list never reaches REPEATED_CALL_LIMIT. Consecutiveness is the wrong proxy for the behaviour it is trying to catch. The session was not converging slowly; it was asking a question it already had the answer to, and one interleaved call was enough to evade the guard.",
+        "The honest signal is still purely code-observed, with no model judgment: a NON-MUTATION call whose name+arguments AND result are byte-identical to an earlier call in the same session carries zero information by definition. Count those cumulatively rather than consecutively. Requiring the RESULT to match too is what keeps it safe \u2014 if the result changed, the call learned something and must not count; and mutations are excluded because a repeated write is a retry, and mutations already earn budget as progress.",
+        "Do NOT raise the budget in response to this. The agent parked with 4 unused iterations of headroom it had just earned; more ceiling only buys more identical calls.",
+        "SCOPE CHANGE, recorded rather than silent: acceptance said the existing consecutive check would be unchanged. Writing the fixtures exposed a false positive in it \u2014 it compared name+arguments only, so a call repeated with the same arguments but a DIFFERENT result (polling something that is actually changing) was stopped as a spin. The result is now part of the fingerprint for both checks, which is the same principle applied consistently. Its own RED FIXTURE still passes unchanged."
+      ],
+      "acceptance": [
+        "A non-mutation call repeated with identical arguments AND identical result stops the session early, even when other calls are interleaved",
+        "RED FIXTURE: the exact observed sequence (list A, list A, verify B, list A) stops \u2014 it does not today",
+        "A repeated call whose RESULT differs does not count, and neither does a repeated mutation",
+        "The existing consecutive-repeat behaviour and its tests are unchanged",
+        "The stop reason names the tool and says the result was identical, so the park evidence explains itself"
+      ]
     }
   ]
 }
