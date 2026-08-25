@@ -10973,6 +10973,35 @@
         "The tab content does not leave the majority of the viewport empty at 1568px wide",
         "Existing settings tests still pass unchanged"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "validators",
+      "lane": "infra",
+      "role": "test-engineer",
+      "status": "done",
+      "id": "W21-07",
+      "points": 1,
+      "title": "the subprocess-spawning suites get a timeout that matches what they do",
+      "write_scope": [
+        "packages/validators/src/run.test.ts",
+        "apps/server/src/api/server/run-phase-progress.test.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/advance.test.ts"
+      ],
+      "notes": [
+        "Third stop-hook red this session with the same signature as W20-13: different suites fail on different full-suite runs, all pass in isolation, and every failure reads \"Test timed out in 5000ms\" \u2014 never an assertion. Confirmed from the run log rather than assumed.",
+        "These three suites are the slowest things in the suite because they SPAWN PROCESSES: runValidator shells out to a validator script (and one fixture deliberately spawns a hanging process to prove the watchdog kills it), and the two phase-gate suites run a real validator pack. Holding a subprocess test to the same 5s budget as a pure unit test is the actual defect \u2014 the suite has simply grown enough that the machine is busier at the moment they run.",
+        "Same remedy and same reasoning as W20-13: raise the timeout on exactly these suites, with the reason stated in-file, and change no assertion. A gate one busy machine away from red is not a gate, but neither is one that went green by asserting less."
+      ],
+      "acceptance": [
+        "The three subprocess-spawning suites carry an explicit timeout with the reason written in the file",
+        "No assertion is loosened and no fixture work is reduced",
+        "The full suite passes repeatedly, including with other heavy work in flight"
+      ]
     }
   ]
 }

@@ -81,6 +81,16 @@ function fakeCleanResult(name: string): ValidatorRunResult {
   };
 }
 
+/**
+ * W21-07: this suite runs a REAL validator pack — it spawns validator
+ * processes rather than stubbing them, which is the point of the fixtures.
+ * At vitest's 5s default it fails under full-suite load and passes in
+ * isolation, and the failures read "Test timed out in 5000ms" without ever
+ * naming an assertion. The timeout is raised; nothing is stubbed out and no
+ * assertion is loosened. (Same call as W20-13.)
+ */
+const GATE_TIMEOUT_MS = 30_000;
+
 describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
   const dirs: string[] = [];
   const apps: FastifyInstance[] = [];
@@ -821,7 +831,7 @@ describe('POST /api/v1/projects/:id/phases/:n/advance (W9-07)', () => {
       log2.close();
     }
   });
-});
+}, GATE_TIMEOUT_MS);
 
 /**
  * W16-07: the gate-receipt MINTER route — runPhaseGate's first production
@@ -966,4 +976,4 @@ describe('POST /api/v1/projects/:id/phases/:n/gate (W16-07)', () => {
     expect(advance.statusCode).toBe(200);
     expect((advance.json() as { allowed: boolean }).allowed).toBe(true);
   });
-});
+}, GATE_TIMEOUT_MS);

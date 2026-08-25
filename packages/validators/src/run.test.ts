@@ -17,6 +17,19 @@ const REAL_MERMAID_VALIDATOR = path.resolve(
   'validate-mermaid.sh',
 );
 
+/**
+ * W21-07: these fixtures SPAWN PROCESSES — a validator script per case, and
+ * one that deliberately hangs so the watchdog can be proven to kill it. Held
+ * to vitest's 5s default they fail under full-suite load and pass in
+ * isolation, which is the signature of a starved subprocess, not a bug: the
+ * failures read "Test timed out in 5000ms" and never name an assertion.
+ *
+ * The timeout is raised; no assertion is loosened and no fixture work is cut.
+ * A gate one busy machine away from red is not a gate — but neither is one
+ * that went green by asserting less. (Same call as W20-13.)
+ */
+const SUBPROCESS_TIMEOUT_MS = 30_000;
+
 describe('runValidator', () => {
   let temp: TempDir;
 
@@ -118,7 +131,7 @@ describe('runValidator', () => {
     expect(result.exitCode).toBe(2);
     expect(result.gaps[0]?.category).toBe('spawn-error');
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 /**
  * W9-08 unblock proof: the REAL, unmodified `content/validators/
@@ -208,7 +221,7 @@ describe('runValidator against the real content/validators/validate-mermaid.sh (
     expect(result.gapCount).toBe(1);
     expect(result.gaps[0]?.category).toBe('M013');
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);
 
 describe('runValidatorPack', () => {
   it('runs every spec against the same sandbox', async () => {
@@ -239,4 +252,4 @@ describe('runValidatorPack', () => {
       await temp.cleanup();
     }
   });
-});
+}, SUBPROCESS_TIMEOUT_MS);

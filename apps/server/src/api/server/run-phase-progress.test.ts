@@ -60,6 +60,16 @@ async function writePhase0Deliverables(projectDir: string): Promise<void> {
   );
 }
 
+/**
+ * W21-07: this suite runs a REAL validator pack — it spawns validator
+ * processes rather than stubbing them, which is the point of the fixtures.
+ * At vitest's 5s default it fails under full-suite load and passes in
+ * isolation, and the failures read "Test timed out in 5000ms" without ever
+ * naming an assertion. The timeout is raised; nothing is stubbed out and no
+ * assertion is loosened. (Same call as W20-13.)
+ */
+const GATE_TIMEOUT_MS = 30_000;
+
 describe('attemptPhaseProgress (W19-01)', () => {
   let log: EventLog;
   let projectDir: string;
@@ -159,4 +169,4 @@ describe('attemptPhaseProgress (W19-01)', () => {
     });
     expect(currentPhaseFromLog(log)).toBe(2);
   });
-});
+}, GATE_TIMEOUT_MS);
