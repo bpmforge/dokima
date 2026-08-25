@@ -145,9 +145,10 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
   }
 
   return (
-    <div className="settings" data-testid="settings-page">
-      <header className="settings__header">
-        <h1>Settings</h1>
+    <div className="page settings" data-testid="settings-page">
+      <div className="page__inner">
+      <header className="page__header settings__header">
+        <h1 className="page__title">Settings</h1>
         <div className="settings__header-actions">
           <button type="button" onClick={onOpenWizard}>
             Setup Wizard
@@ -227,6 +228,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
         {tab === 'suppressions' && <SuppressionsPanel projectId={projectId} />}
         {tab === 'escalation' && <EscalationPolicyPanel projectId={projectId} />}
         {tab === 'copilot' && <CopilotConsentPanel projectId={projectId} />}
+      </div>
       </div>
     </div>
   );

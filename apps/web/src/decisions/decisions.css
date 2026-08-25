@@ -1,10 +1,6 @@
+/* Layout, gutters and the measure come from the shared `.page` shell
+   (W21-03); the board's own rules used to fight it for both. */
 .decisions-board {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--sw-space-2) var(--sw-space-3);
   font-size: var(--sw-text-base);
 }
 

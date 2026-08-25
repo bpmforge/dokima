@@ -1,26 +1,10 @@
-.roster {
-  flex: 1;
-  overflow: auto;
-  padding: var(--sw-space-6);
-}
-
-.roster__header {
-  margin-bottom: var(--sw-space-6);
-}
-
-.roster__header h1 {
-  margin: 0;
-  font-size: var(--sw-text-xl);
-}
-
+/* Layout, gutters and the measure come from the shared `.page` shell
+   (W21-03); the row's ground and border come from `.surface`. What is left
+   here is only what is specific to a roster. */
 .roster__cluster {
-  margin-bottom: var(--sw-space-6);
-}
-
-.roster__cluster h2 {
-  font-size: var(--sw-text-lg);
-  text-transform: capitalize;
-  color: var(--sw-fg-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-2);
 }
 
 .roster__expert-list {
@@ -32,10 +16,10 @@
   gap: var(--sw-space-2);
 }
 
+/* `.surface` in the markup carries the ground, border and radius — W13-04's
+   ratchet is why this is a class and not another border declaration here. */
 .roster__expert {
-  border: var(--sw-border-width) solid var(--sw-border);
-  border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-2) var(--sw-space-3);
+  padding: var(--sw-space-3) var(--sw-space-4);
 }
 
 .roster__expert-summary {

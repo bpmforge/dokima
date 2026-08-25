@@ -7,11 +7,8 @@
   gap: var(--sw-space-2);
 }
 
-.settings {
-  flex: 1;
-  overflow: auto;
-  padding: var(--sw-space-6);
-}
+/* Layout, gutters and the measure come from the shared `.page` shell
+   (W21-03). Settings keeps only what is specific to it. */
 
 .settings__header {
   display: flex;

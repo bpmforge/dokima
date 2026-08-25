@@ -10869,7 +10869,7 @@
       "module": "web",
       "lane": "ui",
       "role": "ux-engineer",
-      "status": "todo",
+      "status": "done",
       "id": "W21-03",
       "points": 3,
       "title": "the standalone pages get a page shell \u2014 content that sits on something",
@@ -10929,7 +10929,7 @@
       "module": "web",
       "lane": "ui",
       "role": "ux-engineer",
-      "status": "todo",
+      "status": "done",
       "id": "W21-05",
       "points": 2,
       "title": "an empty page is still a page",
@@ -10939,7 +10939,8 @@
       ],
       "notes": [
         "Live pass: Decisions with no slates is one grey sentence at the top-left of an otherwise empty full-screen black field. There is no heading, no panel, and nothing that says which page you are on \u2014 it reads as a broken load rather than an honest empty state.",
-        "The .empty-state primitive already exists (W13-03/W13-04 note that seven surfaces ignored it and wrote their own). Use it rather than adding an eighth."
+        "The .empty-state primitive already exists (W13-03/W13-04 note that seven surfaces ignored it and wrote their own). Use it rather than adding an eighth.",
+        "Landed with W21-03: the shell and the empty state are the same edit on this page \u2014 giving Decisions a heading and a measure IS what makes the empty state legible, and splitting them would have meant touching the same twenty lines twice."
       ],
       "acceptance": [
         "The empty Decisions view has a page heading, sits in the shared empty-state primitive, and says what will fill it and what causes that",

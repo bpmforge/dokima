@@ -119,7 +119,7 @@ interface ExpertRowProps {
 function ExpertRow({ expert, projectId, expanded, onToggle }: ExpertRowProps) {
   const chip = scopeChip(expert);
   return (
-    <li className="roster__expert" data-testid={`roster-expert-${expert.id}`}>
+    <li className="surface roster__expert" data-testid={`roster-expert-${expert.id}`}>
       <button type="button" className="roster__expert-summary" onClick={onToggle}>
         <span className="roster__expert-name">{expert.displayName}</span>
         <span className="roster__expert-mode">{expert.mode}</span>
@@ -209,27 +209,34 @@ export function RosterView({ projectId = null }: RosterViewProps) {
   const grouped = useMemo(() => groupByCluster(experts), [experts]);
 
   return (
-    <div className="roster" data-testid="roster-view">
-      <header className="roster__header">
-        <h1>Agent Roster</h1>
-      </header>
+    <div className="page roster" data-testid="roster-view">
+      <div className="page__inner">
+        <header className="page__header roster__header">
+          <div>
+            <h1 className="page__title">Agent Roster</h1>
+            <p className="page__lede">
+              Who <em>can</em> work on this project. Who <em>is</em> working right now
+              is the Team view.
+            </p>
+          </div>
+        </header>
 
-      {error && (
-        <p className="roster__error" role="alert">
-          {error}
-        </p>
-      )}
+        {error && (
+          <p className="roster__error" role="alert">
+            {error}
+          </p>
+        )}
 
-      {!loading && experts.length === 0 && !error ? (
-        <p className="roster__empty">No experts found.</p>
-      ) : (
-        Array.from(grouped.entries()).map(([cluster, clusterExperts]) => (
+        {!loading && experts.length === 0 && !error ? (
+          <p className="roster__empty">No experts found.</p>
+        ) : (
+          Array.from(grouped.entries()).map(([cluster, clusterExperts]) => (
           <section
             key={cluster}
             className="roster__cluster"
             data-testid={`roster-cluster-${cluster}`}
           >
-            <h2>{cluster}</h2>
+            <h2 className="page__group-label">{cluster}</h2>
             <ul className="roster__expert-list">
               {clusterExperts.map((expert) => (
                 <ExpertRow
@@ -244,8 +251,9 @@ export function RosterView({ projectId = null }: RosterViewProps) {
               ))}
             </ul>
           </section>
-        ))
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

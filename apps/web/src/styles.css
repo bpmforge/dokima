@@ -706,3 +706,86 @@ label:has(> input[type='radio']) {
     transition: color 180ms ease-out;
   }
 }
+
+/* ─── The page shell (W21-03) ──────────────────────────────────────────────
+   W13-03 gave the BOARD panes a raised surface, dividers and card borders.
+   The standalone views — Roster, Settings, Decisions, Describe — never got
+   that pass: they render straight onto the page background with no gutters
+   and no max-width, so text runs the full width of a 1500px window, rows
+   bleed to both edges, and an empty view is one grey sentence in a void.
+
+   These primitives live HERE, in styles.css, on purpose. The W13-04 ratchet
+   counts `border: … --sw-border…` declarations in every OTHER stylesheet and
+   is capped at exactly where it stands; the fix for "this needs a border" is
+   therefore always a shared class applied at the call site, never a new rule
+   in a per-view stylesheet. That is the constraint doing its job. */
+.page {
+  flex: 1;
+  overflow: auto;
+  padding: var(--sw-space-8) var(--sw-space-6) var(--sw-space-12);
+}
+
+/* The measure. Without it, a roster row is a 1500px line of text and the eye
+   has no column to travel down. */
+.page__inner {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-6);
+}
+
+.page__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sw-space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--sw-space-4);
+  border-bottom: var(--sw-border-width) solid var(--sw-border);
+}
+
+.page__title {
+  margin: 0;
+  font-size: var(--sw-text-2xl);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+/* One sentence under the title saying what the page is for. */
+.page__lede {
+  margin: var(--sw-space-2) 0 0;
+  max-width: 46rem;
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-md);
+}
+
+/* A titled group of controls or rows. `.surface` gives it the ground to sit
+   on; this gives it internal rhythm and a heading that belongs to it. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-3);
+}
+
+.panel__title {
+  margin: 0;
+  font-size: var(--sw-text-lg);
+}
+
+.panel__hint {
+  margin: 0;
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+}
+
+/* A section label above a group of cards — the Roster's clusters, the Team's
+   zones. Quiet by design: it names a group, it is not a heading you read. */
+.page__group-label {
+  margin: 0;
+  font-size: var(--sw-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sw-fg-muted);
+}

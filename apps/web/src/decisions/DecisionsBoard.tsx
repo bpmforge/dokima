@@ -84,13 +84,32 @@ export function DecisionsBoard({ projectId, token, onDecided }: DecisionsBoardPr
   );
 
   return (
-    <div className="decisions-board" data-testid="decisions-board">
+    <div className="page decisions-board" data-testid="decisions-board">
+      <div className="page__inner">
+      <header className="page__header">
+        <div>
+          <h1 className="page__title">Decisions</h1>
+          <p className="page__lede">
+            The forks only you can settle. Each one names the choice, what it commits
+            you to, and what is waiting on the answer.
+          </p>
+        </div>
+      </header>
       {loadError && <p role="alert">{loadError}</p>}
+      {/* W21-05: an empty page is still a page. The shared primitive, not an
+          eighth hand-rolled empty state. */}
       {slates.length === 0 ? (
-        <p className="decisions-board__empty" role="status">
-          No decision slates yet — they appear when an agent hits a founder or technical
-          fork.
-        </p>
+        <div className="surface empty-state" data-testid="decisions-empty">
+          <p className="empty-state__lead" role="status">
+            Nothing needs deciding right now.
+          </p>
+          <p className="empty-state__hint">
+            A slate appears here when an agent reaches a fork it is not allowed to
+            settle on its own — a founder choice, or a technical one with consequences
+            worth your name on it. Until then this page stays empty, and that is the
+            honest state rather than a missing load.
+          </p>
+        </div>
       ) : (
         <ul className="decisions-board__list">
           {slates.map((record) => (
@@ -105,6 +124,7 @@ export function DecisionsBoard({ projectId, token, onDecided }: DecisionsBoardPr
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

@@ -918,10 +918,11 @@ describe('the component system (W13-04)', () => {
       const declarations = surfaceCss
         .flatMap((c) => [...c.matchAll(/border:[^;]*--sw-border[^;]*;/g)])
         .length;
-      // 51 at W13-04; 50 with the Fleet card (W13-05); 49 with the ticket card (W13-06).
-      // Lower it whenever the number drops. Never raise it to make a change
-      // pass — the same rule the export ratchet carries.
-      expect(declarations).toBeLessThanOrEqual(49);
+      // 51 at W13-04; 50 with the Fleet card (W13-05); 49 with the ticket card
+      // (W13-06); 48 once the Roster row took `.surface` instead of its own
+      // border (W21-03). Lower it whenever the number drops. Never raise it to
+      // make a change pass — the same rule the export ratchet carries.
+      expect(declarations).toBeLessThanOrEqual(48);
     },
   );
 

@@ -104,11 +104,25 @@ afterEach(() => {
 });
 
 describe('DecisionsBoard empty state', () => {
-  it('shows an empty-state message when there are no open slates', async () => {
+  it('says nothing needs deciding, and what would put something here (W21-05)', async () => {
     mockedApi.fetchSlates.mockResolvedValue([]);
     render(<DecisionsBoard projectId="proj-1" token="tok-1" />);
     await screen.findByRole('status');
-    expect(screen.getByRole('status').textContent).toContain('No decision slates yet');
+    expect(screen.getByRole('status').textContent).toContain('Nothing needs deciding');
+    // An empty page must still say what fills it — otherwise it reads as a
+    // failed load rather than an honest empty state.
+    const panel = screen.getByTestId('decisions-empty');
+    expect(panel.textContent).toContain('fork');
+    expect(panel.className).toContain('empty-state');
+    // …and it must sit on something, not float on the page background.
+    expect(panel.className).toContain('surface');
+  });
+
+  it('the page names itself, so an empty view is still recognisably Decisions', async () => {
+    mockedApi.fetchSlates.mockResolvedValue([]);
+    render(<DecisionsBoard projectId="proj-1" token="tok-1" />);
+    await screen.findByRole('status');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Decisions');
   });
 });
 
