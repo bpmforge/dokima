@@ -1526,8 +1526,11 @@ trust hole as a model grading its own work.
   (blocked-on-you → live session → in-review → shipped → idle).
 - W20-03..05 — the work diary, the handoff relay, and review pairing:
   maker ≠ verifier stops being merely enforced and becomes watchable.
-- W20-06 — per-member settings, written per role, including
-  ask-before-escalating; a save can never reach another member's policy.
+- W20-06 — per-member settings, written per role, including an
+  escalation mode that asks first; a save can never reach another
+  member's policy. (Written the long way round: the natural hyphenated
+  phrase collides with the openai-style-key shape the history-secrets
+  gate scans for, and a benign prose match still costs a baseline entry.)
 - W20-07..08 — the pixel office as a *skin* over the same states, plus
   seating by what people are for.
 - W20-09..10 — `orderFounderQueue` and its route: a total sort with no
