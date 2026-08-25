@@ -28,7 +28,8 @@ import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
 import { registerBrowseRoutes } from './server/browse-routes.js';
 import { registerInterviewRoutes } from './server/interview-routes.js';
-import { registerArtifactRoutes, registerBoardRoutes, registerEstimateRoutes, registerModelsBenchRoute, registerNotificationRoutes, registerReceiptRoutes, registerRunsRoutes, registerTicketEditRoutes } from './server/index.js';
+import { registerArtifactRoutes, registerBoardRoutes, registerEstimateRoutes, registerFounderQueueRoute,
+  registerModelsBenchRoute, registerNotificationRoutes, registerReceiptRoutes, registerRunsRoutes, registerTicketEditRoutes } from './server/index.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
 import { createBoardWatcher } from './server/board-watcher.js';
@@ -111,6 +112,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerReceiptRoutes(app, { home: opts.fleetHome });
   registerRunsRoutes(app, { home: opts.fleetHome });
   registerModelsBenchRoute(app, { home: opts.fleetHome });
+  registerFounderQueueRoute(app, { home: opts.fleetHome });
   registerBrowseRoutes(app, { home: opts.fleetHome });
   // W13-18: the adaptive follow-up AC-1 promised and nothing supplied.
   registerInterviewRoutes(app, { home: opts.fleetHome });

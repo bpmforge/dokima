@@ -11,6 +11,7 @@ export { registerNotificationRoutes } from './notifications-routes/index.js';
 export type { NotificationRoutesOptions } from './notifications-routes/index.js';
 export { registerRunsRoutes } from './runs-routes.js';
 export { registerModelsBenchRoute } from './models-bench-route.js';
+export { registerFounderQueueRoute } from './founder-queue-route.js';
 export type { RunsRoutesOptions } from './runs-routes.js';
 export { registerTicketEditRoutes } from './ticket-edit-routes.js';
 export type { TicketEditRoutesOptions } from './ticket-edit-routes.js';

@@ -224,3 +224,15 @@ export {
   measuredTurnsMultiplier,
 } from './agent-session/session-progress.js';
 export type { TurnsObservation } from './agent-session/session-progress.js';
+
+/** W20-09 (D-030): Otto's funnel — a total order over the founder's queue, computed never judged. */
+export {
+  countBlockedDependents,
+  FOUNDER_ITEM_CLASSES,
+  orderFounderQueue,
+} from './founder-queue.js';
+export type {
+  FounderItemClass,
+  FounderQueueItem,
+  OrderedFounderItem,
+} from './founder-queue.js';
