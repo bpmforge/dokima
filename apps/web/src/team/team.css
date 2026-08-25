@@ -64,3 +64,47 @@
 .state--idle {
   color: var(--sw-fg-muted);
 }
+
+/* Work diary (W20-03) */
+.team__diary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+  font-size: var(--sw-text-sm);
+}
+.team__diary-list li {
+  display: flex;
+  gap: var(--sw-space-2);
+  align-items: baseline;
+}
+.team__diary-list time {
+  font-family: var(--sw-font-mono);
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+  flex: none;
+}
+.team__diary-line {
+  flex: 1;
+}
+.team__diary-ticket,
+.team__diary-receipt {
+  font-family: var(--sw-font-mono);
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+}
+.team__diary-empty,
+.team__diary-more {
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
+}
+
+.team__drawer {
+  margin-top: var(--sw-space-4);
+}
+.team__drawer h3 {
+  margin: 0 0 var(--sw-space-2);
+  font-size: var(--sw-text-lg);
+}

@@ -10456,7 +10456,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-03",
       "title": "the work diary \u2014 click an org member, see what they actually did",
       "module": "web",
@@ -10694,7 +10694,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-11",
       "title": "List view \u2014 the same truth in plain HTML, and the accessibility baseline",
       "module": "web",

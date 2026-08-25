@@ -3,11 +3,15 @@
  * board projection, then hands both to `TeamView`. No state is computed here —
  * `deriveMemberState` owns that, once, for every Team surface.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useBoardData } from '../board/useBoardData.js';
+import { fetchRunTraceAll } from '../board/drawer/api.js';
+import type { TraceEvent } from '../board/drawer/types.js';
 import { fetchRoster } from '../roster/api.js';
 import type { RosterExpert } from '../roster/types.js';
 import { TeamView } from './TeamView.js';
+import { WorkDiary } from './WorkDiary.js';
+import { buildWorkDiary } from './diary.js';
 import type { FounderAsk } from './memberState.js';
 import type { TeamMember } from './types.js';
 
@@ -75,17 +79,48 @@ export function TeamViewRoot({
     };
   }, [projectId, baseUrl, token]);
 
-  // W20-09 supplies the real founder queue; until it lands the Team view shows
-  // no blocked-on-you state rather than guessing one (D-028).
+  // W20-09 supplies the real founder queue; until W20-10 wires it in, the Team
+  // view shows no blocked-on-you state rather than guessing one (D-028).
   const asks: FounderAsk[] = [];
 
+  // W20-03: the selected member's own event slice, humanised.
+  const [selected, setSelected] = useState<string | null>(null);
+  const [events, setEvents] = useState<readonly TraceEvent[]>([]);
+  const onSelect = useCallback(
+    (actorId: string) => {
+      setSelected(actorId);
+      void fetchRunTraceAll({ baseUrl, token }, projectId, '')
+        .then(setEvents)
+        .catch(() => setEvents([]));
+    },
+    [baseUrl, token, projectId],
+  );
+
+  const selectedMember = members.find((m) => m.actorId === selected);
+  const diary = selected ? buildWorkDiary(events, selected) : null;
+
   return (
-    <TeamView
-      members={members}
-      tickets={tickets}
-      heartbeats={heartbeats}
-      asks={asks}
-      {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
-    />
+    <>
+      <TeamView
+        members={members}
+        tickets={tickets}
+        heartbeats={heartbeats}
+        asks={asks}
+        onSelect={onSelect}
+        {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
+      />
+      {selectedMember && diary && (
+        <section className="team__drawer surface" data-testid="team-diary-drawer">
+          <h3>
+            What {selectedMember.displayName ?? selectedMember.actorId} actually did
+          </h3>
+          <WorkDiary
+            displayName={selectedMember.displayName ?? selectedMember.actorId}
+            entries={diary.entries}
+            total={diary.total}
+          />
+        </section>
+      )}
+    </>
   );
 }
