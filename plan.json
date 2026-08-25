@@ -10606,7 +10606,7 @@
         "W20-07"
       ],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-08",
       "title": "the pixel office \u2014 a skin, not a second source of truth",
       "module": "web",

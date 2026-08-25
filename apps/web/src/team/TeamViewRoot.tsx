@@ -12,6 +12,7 @@ import type { RosterExpert } from '../roster/types.js';
 import { TeamView } from './TeamView.js';
 import { TeamList, type QueueRow } from './TeamList.js';
 import { WaitingRoom } from './WaitingRoom.js';
+import { OfficeSkin } from './OfficeSkin.js';
 import { fetchFounderQueue, type FounderQueue } from './founderQueue.js';
 import { deriveHandoffs, handoffLine } from './handoffs.js';
 import { reviewPairFor, reviewPairLine } from './reviewPairing.js';
@@ -23,6 +24,7 @@ import type { FounderAsk } from './memberState.js';
 import type { TeamMember } from './types.js';
 
 /** Per-viewer view choice (§10a). */
+type ViewMode = 'board' | 'office' | 'list';
 const TEAM_VIEW_KEY = 'dokima.team.view';
 /** The queue is the founder's to-do list; a stale one is worse than a slow one. */
 const QUEUE_POLL_MS = 5_000;
@@ -125,14 +127,15 @@ export function TeamViewRoot({
   // choice is per viewer and survives a reload; a storage failure (private
   // window, blocked site data) must not break the view, so every access is
   // guarded and falls back to the office.
-  const [mode, setMode] = useState<'office' | 'list'>(() => {
+  const [mode, setMode] = useState<ViewMode>(() => {
     try {
-      return localStorage.getItem(TEAM_VIEW_KEY) === 'list' ? 'list' : 'office';
+      const stored = localStorage.getItem(TEAM_VIEW_KEY);
+      return stored === 'list' || stored === 'office' ? stored : 'board';
     } catch {
-      return 'office';
+      return 'board';
     }
   });
-  const chooseMode = useCallback((next: 'office' | 'list') => {
+  const chooseMode = useCallback((next: ViewMode) => {
     setMode(next);
     try {
       localStorage.setItem(TEAM_VIEW_KEY, next);
@@ -221,6 +224,14 @@ export function TeamViewRoot({
         <div className="team__seg" role="group" aria-labelledby="team-view-mode">
           <button
             type="button"
+            data-testid="team-mode-board"
+            aria-pressed={mode === 'board'}
+            onClick={() => chooseMode('board')}
+          >
+            Board
+          </button>
+          <button
+            type="button"
             data-testid="team-mode-office"
             aria-pressed={mode === 'office'}
             onClick={() => chooseMode('office')}
@@ -249,6 +260,14 @@ export function TeamViewRoot({
           queue={queueRows}
           onSelect={onSelect}
           {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
+        />
+      ) : mode === 'office' ? (
+        <OfficeSkin
+          members={members}
+          tickets={tickets}
+          heartbeats={heartbeats}
+          asks={asks}
+          onSelect={onSelect}
         />
       ) : (
         <>

@@ -86,7 +86,16 @@ test('the List view holds the same truth in words, and the choice sticks across 
   await expect(page.getByTestId('team-list')).toBeVisible();
   await expect(page.getByTestId('team-view')).toHaveCount(0);
 
+  // W20-08: Office is the skin now — the card board is its own mode.
   await page.getByTestId('team-mode-office').click();
+  await expect(page.getByTestId('office-skin')).toBeVisible();
+  // …and it renders the SAME states the board does, from the same store.
+  await expect(page.getByTestId('office-figure-coding-agent')).toHaveAttribute(
+    'data-state',
+    'idle',
+  );
+
+  await page.getByTestId('team-mode-board').click();
   await expect(page.getByTestId('team-view')).toBeVisible();
 
   await fs.rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });

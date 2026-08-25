@@ -390,10 +390,15 @@ top item with its answer controls, why it is first (the mechanical reason —
 "blocks 4 tickets", "blocks the whole run", "oldest"), and Next after each
 answer. Otto never renders an opinion and never offers to decide.
 
-**Two views, one store.** A `View: Office | List` control sits in the Team
-header and persists per viewer.
+**Three views, one store.** A `View: Board | Office | List` control sits in
+the Team header and persists per viewer. (Written as two at design time; the
+card board earned its own mode during W20-02 and is the default.)
 
-- *Office* — the canvas skin (§10). Decorative; never authoritative.
+- *Board* — persona cards grouped by zone, with each member's state and the
+  action that clears it. The default.
+- *Office* — the skin (§10). Decorative; never authoritative. Every pose maps
+  1:1 to a named state via a total mapping (`poses.ts`), so a character can
+  never be drawn doing something no event recorded.
 - *List* — a real HTML table: every member, persona, state, what they are
   working on, and a separate "Needs you" queue in Otto's order with the same
   answer controls. Keyboard-operable, screen-reader-labelled, no canvas.
