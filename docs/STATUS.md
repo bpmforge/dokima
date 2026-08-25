@@ -1589,3 +1589,60 @@ paints its own ground, so the box needs no background of its own).
 
 Verified live against the rebuilt core. Board: 370/372 done — remaining are the
 founder-parked W12-44 and W13-32.
+
+### 2026-08-24 — W21-02..06: the states work, and the pages have edges
+
+Two asks, in order: make the important parts actually work, then have design
+look at all the pages, because "there is no real borders and that".
+
+**Making it work found a real defect (W21-02).** Driving the live path rather
+than reading it — claim, start, close, then a distinct reviewer commenting —
+showed the Board saying "an agent is working this" while the Team view said
+Sam was idle with "nothing assigned". `deriveMemberState` derived
+working/reading/self-checking only from a live heartbeat and had no branch at
+all for a ticket that is owned and in_progress with nothing running on it, so
+that case fell through everything to idle. Fixed with a state, not a
+relaxation: "working" still means a live session, and the honest middle
+("holding T-001 — no session running") now exists and is ledger-backed by the
+claim/start events. In the office it draws as sitting at your own desk with
+the screen dark. The exhaustive Record over MemberStateKind broke the List's
+label map at compile time rather than shipping a blank cell.
+
+The whole chain then verified live: Tess reviews at a lit desk, Sam waits in
+your office, Otto's queue reads "PLAN-T-001 is finished — accept it? · blocks
+1 ticket". A follow-up fixed a person standing a chair's height above the
+chair they were waiting at — two coordinate lists that had drifted, now one
+exported constant with the offset named.
+
+**The design pass has one cause behind it (W21-03..06).** W13-03 gave the
+BOARD panes a raised surface, dividers and card borders; the standalone views
+never got that pass. Roster, Settings and Decisions rendered onto the page
+background with no gutters and no max-width — text ran the full width of a
+1500px window, rows bled to both edges, and Decisions with nothing to decide
+was one grey sentence adrift in a black field. The borders mostly existed;
+what was missing was anything for them to sit ON, which is exactly what
+W13-03's own comment says makes an app read as undesigned.
+
+So: an adoption sweep, no new tokens. `.page`, `.page__inner`,
+`.page__header`, `.page__title`, `.page__lede`, `.panel` and
+`.page__group-label` live in styles.css deliberately — W13-04's ratchet counts
+border declarations in every OTHER stylesheet and stood at its cap, so "this
+needs a border" can only be answered with a shared class at the call site. The
+constraint pointed straight at the right fix, and swapping the Roster row's
+hand-rolled border for `.surface` **dropped the ratchet 49 → 48**, so the cap
+moved down with it.
+
+- W21-04 — the Roster said "No model will take this role yet" 85 times
+  verbatim; it now leads with "84 of 85 roles have no model yet" once, with
+  the exact count. The row keeps the actionable chip. The red fixture asserts
+  the page-level property (one occurrence in the document text), because a
+  per-element query would miss a second copy inside a row.
+- W21-05 — an empty page is still a page: Decisions has a heading and uses the
+  shared empty-state primitive rather than becoming the eighth surface to
+  hand-roll one.
+- W21-06 — Settings' add-provider controls are a titled group that says what a
+  provider is. Adding those lines crossed the 400-line cap and the file-size
+  validator caught it in the same run; split per CODE_BOOK_PROTOCOL.
+
+Both themes checked live. Board: 375/377 done — remaining are the
+founder-parked W12-44 and W13-32.
