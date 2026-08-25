@@ -47,14 +47,15 @@ describe('OfficeSkin (W20-08)', () => {
         asks={[{ actorId: 'coding-agent', ticketId: null, title: 'Approve?' }]}
       />,
     );
-    expect(screen.getByTestId('office-room-your-office')).toBeTruthy();
-    expect(
-      screen.getByTestId('office-figure-coding-agent').getAttribute('data-pose'),
-    ).toBe('standing-waiting');
-    expect(
-      screen.getByTestId('office-figure-release-manager').getAttribute('data-pose'),
-    ).toBe('sitting-idle');
-    expect(screen.getByTestId('office-room-break-room')).toBeTruthy();
+    // W21-01: rooms are painted on the canvas now, so the ROOM a member is in
+    // is asserted per figure rather than per section — strictly stronger, and
+    // it survives any future change of renderer.
+    const waiting = screen.getByTestId('office-figure-coding-agent');
+    expect(waiting.getAttribute('data-pose')).toBe('standing-waiting');
+    expect(waiting.getAttribute('data-place')).toBe('your-office');
+    const idle = screen.getByTestId('office-figure-release-manager');
+    expect(idle.getAttribute('data-pose')).toBe('sitting-idle');
+    expect(idle.getAttribute('data-place')).toBe('break-room');
   });
 
   it('every figure carries the reason its pose is on screen — the office explains itself, never narrates', () => {
@@ -80,5 +81,30 @@ describe('OfficeSkin (W20-08)', () => {
     );
     fireEvent.click(screen.getByTestId('office-figure-release-manager'));
     expect(onSelect).toHaveBeenCalledWith('release-manager');
+  });
+});
+
+describe('OfficeSkin as a painted room (W21-01)', () => {
+  it('the canvas is decorative — every fact it paints is also a real element above it', () => {
+    render(<OfficeSkin members={MEMBERS} tickets={[]} heartbeats={new Map()} asks={[]} />);
+    const stage = screen.getByTestId('office-stage');
+    expect(stage.tagName).toBe('CANVAS');
+    expect(stage.getAttribute('aria-hidden')).toBe('true');
+    // Losing the canvas must not lose the office: the members are buttons.
+    for (const m of MEMBERS) {
+      const figure = screen.getByTestId(`office-figure-${m.actorId}`);
+      expect(figure.tagName).toBe('BUTTON');
+      expect(figure.textContent).toContain(m.displayName!);
+    }
+  });
+
+  it('each figure is positioned at its own scene spot — nobody is stacked on anybody', () => {
+    render(<OfficeSkin members={MEMBERS} tickets={[]} heartbeats={new Map()} asks={[]} />);
+    const spots = MEMBERS.map((m) => {
+      const slot = screen.getByTestId(`office-figure-${m.actorId}`).parentElement!;
+      return `${slot.style.left},${slot.style.top}`;
+    });
+    expect(new Set(spots).size).toBe(MEMBERS.length);
+    expect(spots.every((s) => s.includes('%'))).toBe(true);
   });
 });

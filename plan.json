@@ -10804,7 +10804,7 @@
       ],
       "depends_on": [],
       "phase": 21,
-      "status": "in_progress",
+      "status": "done",
       "id": "W21-01",
       "title": "the office is drawn, not implied \u2014 a 32-bit room over the same states",
       "module": "web",

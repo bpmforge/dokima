@@ -100,6 +100,14 @@ test('the List view holds the same truth in words, and the choice sticks across 
     'data-state',
     'idle',
   );
+  // W21-01: the room is painted, but the canvas is decorative — the member is
+  // still a real, clickable element carrying their place in the room.
+  const stage = page.getByTestId('office-stage');
+  await expect(stage).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.getByTestId('office-figure-coding-agent')).toHaveAttribute(
+    'data-place',
+    'break-room',
+  );
 
   await page.getByTestId('team-mode-board').click();
   await expect(page.getByTestId('team-view')).toBeVisible();
