@@ -46,9 +46,14 @@ test('lists real content/experts grouped by cluster; a role with no model gets a
   await expect(sdlcLead.getByTestId('roster-expert-scope-sdlc-lead')).toHaveText(
     'needs a model',
   );
-  await expect(
-    sdlcLead.getByText('No model will take this role yet — pick models in Settings → Models.'),
-  ).toBeVisible();
+  // W21-04: the explanation moved off the row and is stated once for the
+  // page, with a count — 85 verbatim copies buried the fact they reported.
+  // The row keeps the chip, which is the per-role, actionable part.
+  await expect(sdlcLead.getByText(/pick models in Settings/)).toHaveCount(0);
+  await expect(page.getByTestId('roster-needs-models')).toContainText(
+    'Settings → Models',
+  );
+  await expect(page.getByTestId('roster-needs-models')).toContainText(/\d+ of \d+ roles/);
   await expect(sdlcLead.getByText('not benched')).toHaveCount(0);
   await expect(sdlcLead.getByText(/routing matrix/)).toHaveCount(0);
 });
