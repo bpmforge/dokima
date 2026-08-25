@@ -187,3 +187,11 @@
   text-transform: uppercase;
   color: var(--sw-fg-muted);
 }
+
+.team__zone {
+  font-size: var(--sw-text-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sw-fg-muted);
+  margin: var(--sw-space-4) 0 var(--sw-space-2);
+}

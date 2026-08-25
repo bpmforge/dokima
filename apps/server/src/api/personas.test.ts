@@ -67,6 +67,18 @@ describe('personas (W20-01, D-028)', () => {
     expect(Object.keys(wire).sort()).toEqual(['avatar_key', 'display_name', 'job_line']);
   });
 
+  it('the web mirror lists the same roles — a persona added here without a seat over there fails loudly, not silently (W20-12)', async () => {
+    const mirror = await fs.readFile(
+      path.join(REPO, 'apps', 'web', 'src', 'team', 'roles.ts'),
+      'utf8',
+    );
+    for (const p of PERSONAS) {
+      expect(mirror, `${p.role} missing from apps/web roles.ts`).toContain(`'${p.role}'`);
+    }
+    const mirrored = [...mirror.matchAll(/'([a-z-]+)',/g)].map((m2) => m2[1]);
+    expect(new Set(mirrored)).toEqual(new Set(PERSONAS.map((p) => p.role)));
+  });
+
   it('the code table and docs/design/PERSONAS.md name the same people — the doc is the spec, this is it executable', async () => {
     const doc = await fs.readFile(
       path.join(REPO, 'docs', 'design', 'PERSONAS.md'),

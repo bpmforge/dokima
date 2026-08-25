@@ -9,6 +9,7 @@
 import { useMemo } from 'react';
 import type { BoardTicket, HeartbeatData } from '../board/types.js';
 import { deriveMemberState, type FounderAsk, type MemberState } from './memberState.js';
+import { seatMembers } from './seats.js';
 import type { TeamMember } from './types.js';
 import './team.css';
 
@@ -59,10 +60,17 @@ export function TeamView({
     );
   }
 
+  // W20-12: grouped by what people are FOR; what they are doing still comes
+  // from the state mapping, never from where they sit.
+  const zones = seatMembers(rows.map((r) => ({ ...r, role: r.member.role })));
+
   return (
     <div className="team" data-testid="team-view">
-      <ul className="team__grid">
-        {rows.map(({ member, state }) => (
+      {zones.map((zone) => (
+        <section key={zone.zone} data-testid={`team-zone-${zone.zone}`}>
+          <h3 className="team__zone">{zone.label}</h3>
+          <ul className="team__grid">
+        {zone.members.map(({ member, state }) => (
           <li key={member.actorId}>
             <article
               className={`surface team__card team__card--${state.kind}`}
@@ -110,7 +118,9 @@ export function TeamView({
             </article>
           </li>
         ))}
-      </ul>
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
