@@ -10859,6 +10859,117 @@
         "The List view has a phrase for it and the state-parity test still enumerates every state",
         "A red fixture pins the exact live case: owned + in_progress + no heartbeat"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "status": "todo",
+      "id": "W21-03",
+      "points": 3,
+      "title": "the standalone pages get a page shell \u2014 content that sits on something",
+      "write_scope": [
+        "apps/web/src/styles.css",
+        "apps/web/src/roster/**",
+        "apps/web/src/settings/**",
+        "apps/web/src/decisions/**",
+        "apps/web/src/describe/**",
+        "apps/web/src/App.tsx"
+      ],
+      "notes": [
+        "Live design pass 2026-08-24, every view screenshotted. The finding is systemic and has one cause: W13-03 gave the BOARD panes a raised surface, dividers and card borders, and the standalone views never got the same pass. Roster, Settings, Decisions and Describe render content directly onto the page background \u2014 no max-width, no gutters, no panel \u2014 so text runs the full 1500px, rows bleed to both edges, and Decisions is a single sentence floating in an empty black field.",
+        "This is exactly what W13-03 named as the reason the app read as undesigned: things had nothing to sit ON. The tokens and the .surface primitive already exist; the standalone pages simply do not use them. This is an ADOPTION sweep, not a new visual system \u2014 do not invent new border tokens.",
+        "HARD CONSTRAINT: the W13-04 ratchet counts /border:[^;]*--sw-border[^;]*;/ across every stylesheet except styles.css and is capped at 49, which is exactly where it sits today. The substring also matches --sw-border-strong, so that is not a dodge. Every new border must therefore live as a shared primitive in styles.css and be applied by class at the call site \u2014 the same fix .office__scene used."
+      ],
+      "acceptance": [
+        "A shared page shell exists in styles.css: max-width, gutters that are equal on both sides, and heading rhythm",
+        "Roster, Settings, Decisions and Describe all use it \u2014 no view renders content edge-to-edge any more",
+        "Page-level groups sit on a surface rather than on the page background",
+        "The W13-04 border ratchet is unchanged at 49 or lower \u2014 counted before and after, and the count reported",
+        "Screenshots before and after each page; both themes checked"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "status": "todo",
+      "id": "W21-04",
+      "points": 2,
+      "title": "the Roster says the model warning once, not seventy-five times",
+      "write_scope": [
+        "apps/web/src/roster/**"
+      ],
+      "notes": [
+        "Live pass: every one of ~75 roster rows repeats \"needs a model\" and the sentence \"No model will take this role yet \u2014 pick models in Settings -> Models.\" verbatim. The one fact the founder needs (nothing in this roster can run yet, and here is where to fix it) is buried under 75 identical copies of itself.",
+        "This is the W18-08 pattern exactly \u2014 repetition burying signal \u2014 and it was fixed there by saying the removal semantics once per page and compacting the rows. Same fix here."
+      ],
+      "acceptance": [
+        "The unassigned-model explanation appears once per page, with the count, and links to Settings -> Models",
+        "A row with no model compacts to one honest line and keeps its own badge",
+        "No expert is hidden: rendered rows plus any summarised count equals the full roster length, asserted by a test"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "status": "todo",
+      "id": "W21-05",
+      "points": 2,
+      "title": "an empty page is still a page",
+      "write_scope": [
+        "apps/web/src/decisions/**",
+        "apps/web/src/styles.css"
+      ],
+      "notes": [
+        "Live pass: Decisions with no slates is one grey sentence at the top-left of an otherwise empty full-screen black field. There is no heading, no panel, and nothing that says which page you are on \u2014 it reads as a broken load rather than an honest empty state.",
+        "The .empty-state primitive already exists (W13-03/W13-04 note that seven surfaces ignored it and wrote their own). Use it rather than adding an eighth."
+      ],
+      "acceptance": [
+        "The empty Decisions view has a page heading, sits in the shared empty-state primitive, and says what will fill it and what causes that",
+        "The wording passes validate-ui-copy (baseline updated if the copy changes)"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "status": "todo",
+      "id": "W21-06",
+      "points": 2,
+      "title": "Settings groups its controls instead of floating them",
+      "write_scope": [
+        "apps/web/src/settings/**"
+      ],
+      "notes": [
+        "Live pass, Providers tab: a bordered table, then an ungrouped row of inputs floating directly beneath it with no panel or heading, then two-thirds of the viewport empty. The add-provider form reads as leftover markup rather than a control group, and nothing tells you it is how you add one."
+      ],
+      "acceptance": [
+        "The add-provider controls sit in a labelled group with its own heading, on a surface",
+        "The tab content does not leave the majority of the viewport empty at 1568px wide",
+        "Existing settings tests still pass unchanged"
+      ]
     }
   ]
 }
