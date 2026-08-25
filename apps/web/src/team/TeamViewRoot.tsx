@@ -11,6 +11,8 @@ import { fetchRoster } from '../roster/api.js';
 import type { RosterExpert } from '../roster/types.js';
 import { TeamView } from './TeamView.js';
 import { TeamList, type QueueRow } from './TeamList.js';
+import { WaitingRoom } from './WaitingRoom.js';
+import { fetchFounderQueue, type FounderQueue } from './founderQueue.js';
 import { WorkDiary } from './WorkDiary.js';
 import { buildWorkDiary } from './diary.js';
 import type { FounderAsk } from './memberState.js';
@@ -18,6 +20,8 @@ import type { TeamMember } from './types.js';
 
 /** Per-viewer view choice (§10a). */
 const TEAM_VIEW_KEY = 'dokima.team.view';
+/** The queue is the founder's to-do list; a stale one is worse than a slow one. */
+const QUEUE_POLL_MS = 5_000;
 
 export interface TeamViewRootProps {
   readonly projectId: string;
@@ -83,9 +87,35 @@ export function TeamViewRoot({
     };
   }, [projectId, baseUrl, token]);
 
-  // W20-09 supplies the real founder queue; until W20-10 wires it in, the Team
-  // view shows no blocked-on-you state rather than guessing one (D-028).
-  const asks: FounderAsk[] = [];
+  // W20-10: Otto's real queue (W20-09). The client never re-sorts or filters
+  // it — doing either here would rebuild the suppression capability D-030
+  // deliberately removed on the server.
+  const [queue, setQueue] = useState<FounderQueue>({ depth: 0, rows: [] });
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      void fetchFounderQueue({ baseUrl, token }, projectId)
+        .then((q) => {
+          if (!cancelled) setQueue(q);
+        })
+        .catch(() => {
+          // An unreachable queue shows as empty rather than as a fake backlog;
+          // the board and List still work.
+        });
+    load();
+    const timer = window.setInterval(load, QUEUE_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [baseUrl, token, projectId]);
+
+  // Each queued item makes its member read blocked-on-you (UX_SPEC §10).
+  const asks: FounderAsk[] = queue.rows.map((r) => ({
+    actorId: r.actorId,
+    ticketId: r.ticketId,
+    title: r.title,
+  }));
 
   // W20-11 (§10a): Office is the skin, List is the accessible baseline. The
   // choice is per viewer and survives a reload; a storage failure (private
@@ -123,7 +153,14 @@ export function TeamViewRoot({
   const selectedMember = members.find((m) => m.actorId === selected);
   const diary = selected ? buildWorkDiary(events, selected) : null;
 
-  const queue: readonly QueueRow[] = [];
+  const queueRows: readonly QueueRow[] = queue.rows.map((r) => ({
+    id: r.id,
+    position: r.position,
+    actorId: r.actorId,
+    kind: r.kind,
+    title: r.title,
+    reason: r.reason,
+  }));
 
   return (
     <>
@@ -159,11 +196,17 @@ export function TeamViewRoot({
           tickets={tickets}
           heartbeats={heartbeats}
           asks={asks}
-          queue={queue}
+          queue={queueRows}
           onSelect={onSelect}
           {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
         />
       ) : (
+        <>
+        <WaitingRoom
+          queue={queue}
+          members={members}
+          {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
+        />
         <TeamView
         members={members}
         tickets={tickets}
@@ -172,6 +215,7 @@ export function TeamViewRoot({
         onSelect={onSelect}
         {...(onOpenDecisions ? { onAnswer: () => onOpenDecisions() } : {})}
         />
+        </>
       )}
       {selectedMember && diary && (
         <section className="team__drawer surface" data-testid="team-diary-drawer">

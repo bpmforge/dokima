@@ -195,3 +195,46 @@
   color: var(--sw-fg-muted);
   margin: var(--sw-space-4) 0 var(--sw-space-2);
 }
+
+/* Waiting room (W20-10) */
+.team__waiting {
+  margin-bottom: var(--sw-space-4);
+}
+.team__waiting h3 {
+  margin: 0 0 var(--sw-space-1);
+  font-size: var(--sw-text-lg);
+}
+.team__waiting-why,
+.team__waiting-empty {
+  margin: 0 0 var(--sw-space-2);
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
+}
+.team__chairs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-2);
+}
+.team__chairs li {
+  display: flex;
+  gap: var(--sw-space-3);
+  align-items: baseline;
+}
+.team__chair-seat {
+  font-family: var(--sw-font-mono);
+  font-size: var(--sw-text-xs);
+  color: var(--sw-fg-muted);
+  flex: none;
+}
+.team__chair-who {
+  flex: 1;
+}
+.team__chair-title,
+.team__chair-reason {
+  display: block;
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
+}

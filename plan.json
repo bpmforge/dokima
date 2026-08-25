@@ -10484,7 +10484,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "todo",
+      "status": "in_progress",
       "id": "W20-04",
       "title": "handoffs are visible moments \u2014 work moving between people",
       "module": "web",
@@ -10665,7 +10665,7 @@
         "W20-02"
       ],
       "phase": 20,
-      "status": "in_progress",
+      "status": "done",
       "id": "W20-10",
       "title": "the waiting room \u2014 asks sit in your office, in queue order",
       "module": "web",

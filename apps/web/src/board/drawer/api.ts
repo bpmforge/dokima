@@ -5,7 +5,7 @@ function authHeaders(opts: BoardApiOptions): Record<string, string> {
   return { Authorization: `Bearer ${opts.token}` };
 }
 
-async function getJson(opts: BoardApiOptions, path: string): Promise<unknown> {
+export async function getJson(opts: BoardApiOptions, path: string): Promise<unknown> {
   const doFetch = opts.fetchImpl ?? fetch;
   const res = await doFetch(`${opts.baseUrl}${path}`, { headers: authHeaders(opts) });
   const text = await res.text();
