@@ -1,4 +1,5 @@
 import { stat } from 'node:fs/promises';
+import { cpus } from 'node:os';
 import { execa } from 'execa';
 import { parseValidatorOutput, type ValidatorGap } from './contract.js';
 
@@ -207,10 +208,52 @@ export async function runValidator(
   };
 }
 
-/** Runs every spec against the same sandbox, concurrently. */
+/**
+ * How many validators may be starting at once (W21-17).
+ *
+ * Every validator runs inside the SC-07 sandbox, and sandbox startup is the
+ * expensive part — not the script. Measured with a standalone probe against
+ * this very function: 8 concurrent runs, 0 failures; 24 concurrent, 24 of 24
+ * TIMED OUT; 64, all 64. The scripts were a single `printf`.
+ *
+ * An unbounded fan-out therefore has a cliff: past some pack size every
+ * validator times out at once, and a timeout is reported as a GAP. The gate
+ * would tell a founder "your project failed validation" when the truth is
+ * "the machine was busy" — the trust model lying, in the safe direction but
+ * still lying. Bounding the pool spreads the startup cost instead of
+ * multiplying it.
+ *
+ * Derived from the host rather than a magic number, and never below 2: one
+ * validator at a time would make a large pack serial, which is its own kind
+ * of wrong.
+ */
+export function validatorPackConcurrency(cpuCount = cpus().length): number {
+  return Math.max(2, Math.min(8, cpuCount - 1));
+}
+
+/**
+ * Runs every spec against the same sandbox through a BOUNDED pool.
+ *
+ * Results stay in `specs` order regardless of the order they finish in —
+ * callers index into this to pair a result with its spec, so completion order
+ * must never leak into it.
+ */
 export async function runValidatorPack(
   specs: readonly ValidatorSpec[],
   opts: RunValidatorOptions,
 ): Promise<ValidatorRunResult[]> {
-  return Promise.all(specs.map((spec) => runValidator(spec, opts)));
+  const limit = validatorPackConcurrency();
+  const results = new Array<ValidatorRunResult>(specs.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const index = next++;
+      if (index >= specs.length) return;
+      results[index] = await runValidator(specs[index]!, opts);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(limit, specs.length) }, () => worker()),
+  );
+  return results;
 }

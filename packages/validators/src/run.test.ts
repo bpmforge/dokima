@@ -2,7 +2,12 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runValidator, runValidatorPack, type ValidatorSpec } from './run.js';
+import {
+  runValidator,
+  runValidatorPack,
+  validatorPackConcurrency,
+  type ValidatorSpec,
+} from './run.js';
 import { createTempDir, writeScript, type TempDir } from './test-helpers.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -273,4 +278,57 @@ describe('runValidatorPack', () => {
       await temp.cleanup();
     }
   });
+}, SUBPROCESS_TIMEOUT_MS);
+
+describe('a validator pack cannot starve its own sandboxes (W21-17)', () => {
+  let temp: TempDir;
+
+  afterEach(async () => {
+    await temp?.cleanup();
+  });
+
+  it('the bound comes from the host, is never 1, and never runs away', () => {
+    expect(validatorPackConcurrency(1)).toBe(2);
+    expect(validatorPackConcurrency(4)).toBe(3);
+    expect(validatorPackConcurrency(64)).toBe(8);
+  });
+
+  it('RED FIXTURE: a pack far larger than the bound completes — unbounded, this size is where every validator timed out at once', async () => {
+    temp = await createTempDir('pack-bounded');
+    const specs: ValidatorSpec[] = [];
+    for (let i = 0; i < 24; i += 1) {
+      const scriptPath = await writeScript(
+        temp.dir,
+        `v${i}.sh`,
+        `#!/bin/bash\nprintf '{"validator":"v${i}","gaps":0,"exit":0,"items":[]}\\n'\nexit 0\n`,
+      );
+      specs.push({ name: `v${i}`, path: scriptPath });
+    }
+    const results = await runValidatorPack(specs, {
+      cwd: temp.dir,
+      timeoutMs: CLEAN_RUN_TIMEOUT_MS,
+    });
+    expect(results).toHaveLength(24);
+    expect(results.every((r) => r.exitCode === 0)).toBe(true);
+    expect(results.some((r) => r.timedOut)).toBe(false);
+  }, 120_000);
+
+  it('results keep SPEC order, not completion order — callers index into this to pair a result with its spec', async () => {
+    temp = await createTempDir('pack-order');
+    const specs: ValidatorSpec[] = [];
+    // Deliberately finish out of order: the first sleeps longest.
+    for (let i = 0; i < 6; i += 1) {
+      const scriptPath = await writeScript(
+        temp.dir,
+        `ordered${i}.sh`,
+        `#!/bin/bash\nsleep 0.${6 - i}\nprintf '{"validator":"ordered${i}","gaps":0,"exit":0,"items":[]}\\n'\nexit 0\n`,
+      );
+      specs.push({ name: `ordered${i}`, path: scriptPath });
+    }
+    const results = await runValidatorPack(specs, {
+      cwd: temp.dir,
+      timeoutMs: CLEAN_RUN_TIMEOUT_MS,
+    });
+    expect(results.map((r) => r.name)).toEqual(specs.map((s) => s.name));
+  }, 120_000);
 }, SUBPROCESS_TIMEOUT_MS);

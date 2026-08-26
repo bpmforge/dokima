@@ -11,6 +11,7 @@ export {
 export {
   runValidator,
   runValidatorPack,
+  validatorPackConcurrency,
   type RunValidatorOptions,
   type ValidatorRunResult,
   type ValidatorSpec,
