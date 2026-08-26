@@ -109,6 +109,33 @@ export function reduceTicketEvent(
         history: pushHistory(ticket, 'release', event.actorId, event.createdAt),
       };
     }
+    /**
+     * W21-27: the founder widening a ticket whose scope could not satisfy its
+     * own acceptance. Append-only (C-6): this is a new event applied forward,
+     * never an edit of the ticket.created row. Additive by construction — the
+     * verb refuses a narrowing call, because past commits were scope-checked
+     * against the wider set and narrowing would retroactively invalidate
+     * checks that already passed.
+     */
+    case 'ticket.scope_widened': {
+      if (!ticket) return ticket;
+      const payload = event.payload as { added?: string[]; reason?: string };
+      const added = payload.added ?? [];
+      const merged = [...ticket.writeScope];
+      for (const entry of added) if (!merged.includes(entry)) merged.push(entry);
+      return {
+        ...ticket,
+        writeScope: merged,
+        history: pushHistory(
+          ticket,
+          'comment',
+          event.actorId,
+          event.createdAt,
+          `write_scope widened with ${added.join(', ')}${payload.reason ? ` — ${payload.reason}` : ''}`,
+        ),
+      };
+    }
+
     case 'ticket.commented': {
       if (!ticket) return ticket;
       const payload = event.payload as TicketCommentedPayload;

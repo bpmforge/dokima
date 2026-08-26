@@ -82,6 +82,16 @@ export interface Ticket {
   closedAt: string | null;
 }
 
+/** W21-27: the founder answering "this ticket is not right as written". */
+export interface WidenTicketScopeInput {
+  readonly ticketId: string;
+  readonly actorId: string;
+  /** Entries to ADD. Additive only — a narrowing call is refused. */
+  readonly add: readonly string[];
+  /** Why, in the founder's words. Ledgered so the change is never mysterious. */
+  readonly reason: string;
+}
+
 export interface CreateTicketInput {
   id: string;
   type: TicketType;

@@ -1,9 +1,16 @@
 import { appendEvent, type EventLog } from '@dokima/events';
 import type { TicketVerbOptions } from './create.js';
 import { TicketError } from './errors.js';
+import { validateLaneWriteScopes } from './lanes.js';
 import { loadTickets } from './query.js';
 import { isValidTransition, TRANSITIONS, type LifecycleVerb } from './transitions.js';
-import type { CloseReceipt, Ticket, TicketManifest, VerifyResult } from './types.js';
+import type {
+  CloseReceipt,
+  Ticket,
+  TicketManifest,
+  VerifyResult,
+  WidenTicketScopeInput,
+} from './types.js';
 
 function requireTicket(tickets: ReadonlyMap<string, Ticket>, ticketId: string): Ticket {
   const ticket = tickets.get(ticketId);
@@ -276,6 +283,67 @@ export interface CommentTicketInput {
 }
 
 /** No status change, any status — evidence/history only (API_DESIGN.md `POST /tickets/{id}/comment`). */
+/**
+ * W21-27: widen a ticket's write_scope — the answer to a question the product
+ * had no way to let anybody answer.
+ *
+ * A live project produced a ticket whose write_scope was four config files and
+ * whose acceptance ran a typecheck. A typecheck on a project with no source
+ * files cannot pass, so the ticket was unsatisfiable as written, and it parked
+ * on seven consecutive runs. The product eventually noticed and asked the
+ * founder "is this ticket right as written?" — and there was no verb in the
+ * system that could change a ticket at all.
+ *
+ * ADDITIVE ONLY, deliberately. Widening is monotonic: every commit that
+ * already passed a scope check still passes against a superset. Narrowing
+ * would retroactively invalidate checks that had already succeeded, which is
+ * the kind of quiet rewriting of history the event log exists to prevent.
+ *
+ * Refuses a widening that would make two lanes overlap (P8) — widening is
+ * precisely how that constraint would be broken, and the conflict is named
+ * rather than discovered later by a validator.
+ */
+export function widenTicketScope(
+  log: EventLog,
+  input: WidenTicketScopeInput,
+  opts: TicketVerbOptions = {},
+): Ticket {
+  return log.db.transaction((): Ticket => {
+    const tickets = loadTickets(log);
+    const ticket = requireTicket(tickets, input.ticketId);
+
+    const added = input.add.filter((entry) => !ticket.writeScope.includes(entry));
+    if (added.length === 0) {
+      throw new Error(
+        `write_scope for ${ticket.id} already contains ${input.add.join(', ')} — ` +
+          'nothing to widen',
+      );
+    }
+
+    const widened: Ticket = {
+      ...ticket,
+      writeScope: [...ticket.writeScope, ...added],
+    };
+    // The conflict is named here, not left for a validator to find later.
+    validateLaneWriteScopes([
+      ...[...tickets.values()].filter((t) => t.id !== ticket.id),
+      widened,
+    ]);
+
+    appendEvent(
+      log,
+      {
+        eventType: 'ticket.scope_widened',
+        actorId: input.actorId,
+        ticketId: ticket.id,
+        payload: { added, reason: input.reason },
+      },
+      opts,
+    );
+    return requireTicket(loadTickets(log), ticket.id);
+  })();
+}
+
 export function commentTicket(
   log: EventLog,
   input: CommentTicketInput,

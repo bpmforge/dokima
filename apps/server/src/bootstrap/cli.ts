@@ -180,6 +180,10 @@ board & tickets (address a project with --project <id> from the Fleet, or --db <
   dokima accept <ticketId> --actor <id>
                                 accept someone ELSE's work (maker != verifier)
   dokima comment <ticketId> --actor <id> --body <text>
+  dokima widen-scope <ticketId> --actor <id> --add <glob,glob> --reason <why>
+                                when a ticket cannot satisfy its own acceptance
+                                as written; additive only, and refused if it
+                                would make two lanes overlap
   dokima verify-chain           verify the event log's hash chain
   dokima run <start|pause|resume|stop> ...
                                 run bookkeeping (FR-C7)

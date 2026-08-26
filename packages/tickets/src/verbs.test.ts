@@ -6,6 +6,8 @@ import {
   type EventLog,
 } from '@dokima/events';
 import { createTicket } from './create.js';
+import { widenTicketScope } from './verbs.js';
+import { getTicket } from './query.js';
 import { TicketError, type TicketErrorCode } from './errors.js';
 import * as ticketsModule from './index.js';
 import { createTempDbPath, type TempDb } from './test-helpers.js';
@@ -390,5 +392,77 @@ describe('close/accept refusals (FR-T2)', () => {
       { now: NOW },
     );
     expect(ticket.status).toBe('done');
+  });
+});
+
+describe('widenTicketScope (W21-27) — answering "this ticket is not right as written"', () => {
+  it('RED FIXTURE: the live case — a ticket that cannot satisfy its own typecheck gains the source path it needed', async () => {
+    const { temp, log } = await setup();
+    createTicket(log, 'maker-1', {
+      id: 'PLAN-vault-001',
+      type: 'task',
+      title: 'Initialize Repository',
+      lane: 'vault-001',
+      writeScope: ['package.json', 'tsconfig.json'],
+    });
+    const widened = widenTicketScope(log, {
+      ticketId: 'PLAN-vault-001',
+      actorId: 'maker-1',
+      add: ['src/**'],
+      reason: 'typecheck cannot pass without a source file in scope',
+    });
+    expect(widened.writeScope).toContain('src/**');
+    // The original entries survive: this adds, it does not replace.
+    expect(widened.writeScope).toContain('package.json');
+    // …and it is ledgered in words a person can read later.
+    const last = widened.history.at(-1)!;
+    expect(last.body).toContain('src/**');
+    expect(last.body).toContain('typecheck cannot pass');
+    log.close();
+    await temp.cleanup();
+  });
+
+  it('refuses a no-op rather than writing an event that changed nothing', async () => {
+    const { temp, log } = await setup();
+    createTicket(log, 'maker-1', {
+      id: 'T-scope-1', type: 'task', title: 'x', lane: 'sc-1', writeScope: ['src/**'],
+    });
+    expect(() =>
+      widenTicketScope(log, {
+        ticketId: 'T-scope-1', actorId: 'maker-1', add: ['src/**'], reason: 'already there',
+      }),
+    ).toThrow(/already contains/);
+    log.close();
+    await temp.cleanup();
+  });
+
+  it('refuses a widening that would make two lanes overlap (P8) — widening is exactly how that breaks', async () => {
+    const { temp, log } = await setup();
+    createTicket(log, 'maker-1', {
+      id: 'T-a', type: 'task', title: 'a', lane: 'lane-a', writeScope: ['a/**'],
+    });
+    createTicket(log, 'maker-1', {
+      id: 'T-b', type: 'task', title: 'b', lane: 'lane-b', writeScope: ['b/**'],
+    });
+    expect(() =>
+      widenTicketScope(log, {
+        ticketId: 'T-a', actorId: 'maker-1', add: ['b/**'], reason: 'grab the other lane',
+      }),
+    ).toThrow();
+    log.close();
+    await temp.cleanup();
+  });
+
+  it('the widened scope is what a later read sees — the reducer applies it forward', async () => {
+    const { temp, log } = await setup();
+    createTicket(log, 'maker-1', {
+      id: 'T-fwd', type: 'task', title: 'f', lane: 'lane-f', writeScope: ['a/**'],
+    });
+    widenTicketScope(log, {
+      ticketId: 'T-fwd', actorId: 'maker-1', add: ['c/**'], reason: 'needed',
+    });
+    expect(getTicket(log, 'T-fwd')!.writeScope).toEqual(['a/**', 'c/**']);
+    log.close();
+    await temp.cleanup();
   });
 });

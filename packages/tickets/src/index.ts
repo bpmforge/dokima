@@ -43,6 +43,7 @@ export {
   claimTicket,
   closeTicket,
   commentTicket,
+  widenTicketScope,
   releaseTicket,
   startTicket,
 } from './verbs.js';

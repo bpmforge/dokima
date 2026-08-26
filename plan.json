@@ -11584,6 +11584,43 @@
         "A ticket that parks and is then picked up again leaves the queue",
         "No model text drives any state change; it is shown as evidence only"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-26"
+      ],
+      "phase": 21,
+      "module": "tickets",
+      "lane": "core",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-27",
+      "points": 5,
+      "title": "the founder can answer the question the product just asked",
+      "write_scope": [
+        "packages/tickets/src/verbs.ts",
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/index.ts",
+        "packages/tickets/src/verbs.test.ts",
+        "apps/server/src/cli/**"
+      ],
+      "notes": [
+        "W21-26 landed and works: the Team view now reads \"Your office \u2014 1 waiting on you / PLAN-vault-001 keeps being retried and never finishes \u2014 is it right as written?\" with an Answer button. The product stopped looping silently and asked.",
+        "And the question cannot be answered. Answer navigates to Decisions, which says \"Nothing needs deciding right now.\" There is no slate behind the item, and \u2014 the deeper cause \u2014 there is NO VERB that can change a ticket at all. packages/tickets exposes claim, start, close, accept, release and comment. Once decomposed, a ticket is immutable except for its lifecycle, so a ticket that is wrong as written can never be made right.",
+        "The concrete case: PLAN-vault-001 needs its write_scope to include a source file so that its own typecheck acceptance can pass. Nothing in the product can do that.",
+        "Design constraints that shape the verb: events are append-only (C-6), so this is a NEW event and never an UPDATE. It must be ADDITIVE only \u2014 widening is monotonic and safe, while narrowing would retroactively invalidate the scope checks that already passed on earlier commits. And it must re-run validateLaneWriteScopes, because widening is exactly how a cross-lane overlap (P8) would be introduced."
+      ],
+      "acceptance": [
+        "A founder verb widens a ticket's write_scope, ledgered with who did it and why",
+        "Widening is additive only \u2014 a call that would remove an existing entry is refused",
+        "A widening that would create a cross-lane write_scope overlap is refused with the conflict named",
+        "The reducer applies it, so the widened scope is what the next session is handed",
+        "A red fixture pins the live case: the ticket cannot satisfy its acceptance, is widened, and the new scope contains the file it needed"
+      ]
     }
   ]
 }

@@ -3,6 +3,7 @@ import {
   claimTicket,
   closeTicket,
   commentTicket,
+  widenTicketScope,
   listTickets,
   releaseTicket,
   startTicket,
@@ -144,6 +145,27 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
             { now: io.now },
           );
           io.stdout(`${ticket.id} close -> ${ticket.status}`);
+          return 0;
+        } catch (err) {
+          return reportVerbError(err, io);
+        }
+      }
+      case 'widen-scope': {
+        ensureActorIdentity(log, command.actorId, io.now);
+        try {
+          const ticket = widenTicketScope(
+            log,
+            {
+              ticketId: command.ticketId,
+              actorId: command.actorId,
+              add: command.add,
+              reason: command.reason,
+            },
+            { now: io.now },
+          );
+          io.stdout(
+            `${ticket.id} write_scope -> ${ticket.writeScope.join(', ')}`,
+          );
           return 0;
         } catch (err) {
           return reportVerbError(err, io);

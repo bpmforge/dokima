@@ -33,6 +33,16 @@ export type CliCommand =
       projectId?: string;
     }
   | {
+      /** W21-27: the founder answering "this ticket is not right as written". */
+      kind: 'widen-scope';
+      ticketId: string;
+      actorId: string;
+      add: string[];
+      reason: string;
+      dbPath?: string;
+      projectId?: string;
+    }
+  | {
       kind: 'comment';
       ticketId: string;
       actorId: string;
@@ -101,6 +111,37 @@ export function parseCliArgs(argv: string[]): CliCommand {
       verb: command,
       ticketId,
       actorId: values.actor,
+      dbPath: values.db,
+      projectId: values.project,
+    };
+  }
+
+  if (command === 'widen-scope') {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      options: {
+        actor: { type: 'string' },
+        add: { type: 'string' },
+        reason: { type: 'string' },
+        db: { type: 'string' },
+        project: { type: 'string' },
+      },
+      allowPositionals: true,
+    });
+    const ticketId = requirePositional(
+      positionals,
+      'usage: dokima widen-scope <ticketId> --actor <actorId> --add <glob,glob> ' +
+        '--reason <why> [--db <path>]',
+    );
+    if (!values.actor) throw new CliUsageError('widen-scope requires --actor <actorId>');
+    if (!values.add) throw new CliUsageError('widen-scope requires --add <glob,glob>');
+    if (!values.reason) throw new CliUsageError('widen-scope requires --reason <why>');
+    return {
+      kind: 'widen-scope',
+      ticketId,
+      actorId: values.actor,
+      add: values.add.split(',').map((s2) => s2.trim()).filter(Boolean),
+      reason: values.reason,
       dbPath: values.db,
       projectId: values.project,
     };
