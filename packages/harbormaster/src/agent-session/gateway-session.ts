@@ -288,8 +288,8 @@ export function createGatewaySpawnSession(
       });
       const { response } = turn;
       lastModel = turn.model;
-
-      const truncated = turnTokenStop(response.finishReason, maxTurnTokens);
+      const { finishReason, message } = response;
+      const truncated = turnTokenStop(finishReason, maxTurnTokens, message.content);
       if (truncated) return truncated;
 
       const costStop = costCapStop({

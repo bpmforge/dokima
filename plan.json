@@ -11307,7 +11307,7 @@
         "US-501"
       ],
       "phase": 21,
-      "status": "todo",
+      "status": "done",
       "id": "W21-18",
       "points": 3,
       "module": "gateway",
@@ -11323,7 +11323,9 @@
       "notes": [
         "Measured against the newly added mtplx provider (localhost:8888, 256k context): with max_tokens 16 it returns content \"\" with EVERYTHING in reasoning_content and finish_reason \"length\", and completion_tokens_details.reasoning_tokens accounting for the whole budget. With room it answers normally.",
         "The gateway correctly ignores reasoning_content \u2014 reasoning is not an answer \u2014 and it does capture and normalise finish_reason. The gap is what happens next: an empty content with finish_reason length is indistinguishable downstream from \"the model said nothing\", which is exactly what run 1 park evidence looked like (\"exitCode=0 no completion manifest returned\").",
-        "Two halves, both wanted: surface truncation as its own honest reason rather than an empty turn, and stop provoking it \u2014 a reasoning model needs budget for reasoning tokens on top of its answer."
+        "Two halves, both wanted: surface truncation as its own honest reason rather than an empty turn, and stop provoking it \u2014 a reasoning model needs budget for reasoning tokens on top of its answer.",
+        "Found while implementing: truncation was ALREADY handled \u2014 turnTokenStop returns exit 1 on finish_reason length, so it never silently became an empty answer. The defect was the DIAGNOSIS: one message asserted \"a model that will not stop, not a model that needs more room\", which is exactly backwards for a reasoning model cut off before its answer began. Emptiness of content is the discriminator and it was already on the response, so no new plumbing and no guessing.",
+        "gateway-session.ts sat at exactly 400 lines; the change pushed it to 404. Compacted the call site rather than splitting a file for four lines \u2014 noting it because the next edit to that file WILL have to split it."
       ],
       "acceptance": [
         "A turn that ends with finish_reason length and empty content is reported as truncation, never as an empty answer",

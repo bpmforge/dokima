@@ -123,15 +123,37 @@ export function watchdogStop(input: WatchdogStopInput): SpawnSessionOutput | nul
 export function turnTokenStop(
   finishReason: FinishReason,
   maxTurnTokens: number,
+  /**
+   * W21-18: what the turn actually SAID. A reasoning model spends tokens on
+   * reasoning before it answers, and those tokens are reported separately
+   * from `content` — so a turn that hit the ceiling mid-thought comes back
+   * with content EMPTY and everything in the provider's reasoning field.
+   * Measured against a real MTP server: with a 16-token budget, `content` was
+   * `""`, the whole budget was reasoning tokens, and finish_reason was
+   * "length".
+   *
+   * That is the opposite diagnosis from a model that would not stop talking,
+   * and it deserves the opposite advice. Emptiness is the discriminator
+   * because it is already on the response — no new plumbing, no guessing.
+   */
+  content = '',
 ): SpawnSessionOutput | null {
   if (finishReason !== 'length') return null;
+  const saidNothing = content.trim().length === 0;
   return {
     stdout: '',
-    stderr:
-      `agent session stopped: one turn hit the ${maxTurnTokens}-token output ` +
-      `ceiling and was still generating (T-27). That is a model that will not ` +
-      `stop, not a model that needs more room — raise maxTurnTokens only if a ` +
-      `legitimate turn is genuinely this large.`,
+    stderr: saidNothing
+      ? `agent session stopped: one turn hit the ${maxTurnTokens}-token output ` +
+        `ceiling having produced NO answer text at all (T-27). That is the ` +
+        `signature of a reasoning model truncated mid-thought — its reasoning ` +
+        `tokens count against this ceiling and its answer never started. This ` +
+        `is not "no manifest returned": the model was cut off before it could ` +
+        `return anything. Give it room by raising maxTurnTokens, or route this ` +
+        `role to a model that reasons less per turn.`
+      : `agent session stopped: one turn hit the ${maxTurnTokens}-token output ` +
+        `ceiling and was still generating (T-27). That is a model that will not ` +
+        `stop, not a model that needs more room — raise maxTurnTokens only if a ` +
+        `legitimate turn is genuinely this large.`,
     exitCode: 1,
   };
 }
