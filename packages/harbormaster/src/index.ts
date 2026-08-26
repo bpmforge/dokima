@@ -246,3 +246,11 @@ export {
   type ProvisionPlan,
   type ProvisionResult,
 } from './worktree-provision.js';
+
+// W21-19: cross-session zero-information repetition, read from the ledger.
+export {
+  repeatedZeroInformationCalls,
+  repetitionEvidenceLine,
+  CROSS_SESSION_REPEAT_THRESHOLD,
+  type RepeatedCall,
+} from './loop-land-repetition.js';

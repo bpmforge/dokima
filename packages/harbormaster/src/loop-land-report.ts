@@ -87,6 +87,8 @@ export function parkComment(
   decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined,
   /** W21-15: absorbed infra retries — shown, but never counted against the cap. */
   absorbedInfraRetries = 0,
+  /** W21-19: the cross-session repetition line, when there is one to report. */
+  repetitionLine: string | null = null,
 ): string {
   /**
    * W13-63: "Parked", because that is what HAPPENS. This header said
@@ -115,6 +117,7 @@ export function parkComment(
         `count against the cap — see the session.infra_retry events for what failed.`,
     );
   }
+  if (repetitionLine) lines.push(repetitionLine);
   if (decideCard) lines.push('', renderDecideCard(decideCard));
   return lines.join('\n');
 }

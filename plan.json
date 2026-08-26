@@ -11339,7 +11339,7 @@
         "US-501"
       ],
       "phase": 21,
-      "status": "todo",
+      "status": "done",
       "id": "W21-19",
       "points": 2,
       "module": "harbormaster",
@@ -11357,7 +11357,9 @@
       "notes": [
         "W21-10 counts zero-information repeats within ONE session. Run 2 made six agent-session.list calls with identical arguments AND identical results across several sessions and never tripped it \u2014 stopped_early stayed 0.",
         "Per-session reset is defensible: a NEW session legitimately re-reads state it cannot remember. What is not defensible is a run burning attempt after attempt on the same zero-information loop with nothing noticing.",
-        "Enhance rather than replace: keep the per-session rule as is, and add a run-level observation so the PARK EVIDENCE can say \"this run asked the same question N times across M sessions\". Whether it should also stop the run is the interesting design call \u2014 state the reasoning either way."
+        "Enhance rather than replace: keep the per-session rule as is, and add a run-level observation so the PARK EVIDENCE can say \"this run asked the same question N times across M sessions\". Whether it should also stop the run is the interesting design call \u2014 state the reasoning either way.",
+        "DECISION on whether cross-session repetition should STOP a run: it reports, it does not stop. A run legitimately repeats reads after an absorbed infra retry \u2014 the session died and started over, so of course it lists the directory again \u2014 and stopping on that would punish the very retry mechanism W13-27 exists to provide. The per-session guard already stops a genuine spin at the moment it happens. What the park evidence was missing is the pattern no single session can see, and with that in hand a person can tell a stuck model from an unlucky one, which is a judgement the product should not make for them.",
+        "Implemented by READING THE LEDGER rather than threading run-scoped state through the session: mcp.tool_call.completed already carries toolId, argsDigest and resultDigest, already scoped to ticket and run. No new plumbing, and it uses the same evidence a person would."
       ],
       "acceptance": [
         "Zero-information repeats are counted across the sessions of one run, not only within a session",

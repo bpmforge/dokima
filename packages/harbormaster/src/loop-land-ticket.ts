@@ -22,6 +22,10 @@ import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
 import { parkComment } from './loop-land-report.js';
 import { attemptOnce, nextFeedback } from './loop-land-session.js';
+import {
+  repeatedZeroInformationCalls,
+  repetitionEvidenceLine,
+} from './loop-land-repetition.js';
 import { pushLandedBranch, recordFailedPushes } from './land-push.js';
 import {
   attemptNumberForRung,
@@ -209,6 +213,11 @@ export async function landClaimedTicket(
       attempts,
       decideCard,
       freeRetry.absorbed(),
+      // W21-19: read back out of the ledger — the pattern no single session
+      // could see.
+      repetitionEvidenceLine(
+        repeatedZeroInformationCalls({ log: options.log, ticketId: ticket.id }),
+      ),
     );
     commentTicket(options.log, {
       ticketId: ticket.id,
