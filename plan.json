@@ -11654,6 +11654,40 @@
         "The commit is ledgered and its message says the harness made it",
         "A red fixture pins the exact live trio: .gitignore, package-lock.json and validator telemetry no longer reach the scope sweep"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-28"
+      ],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-29",
+      "points": 2,
+      "title": "the scope sweep judges the agent, not the product",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-verdicts.ts",
+        "packages/harbormaster/src/agent-session/session-verdicts.test.ts",
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-harness-paths.ts"
+      ],
+      "notes": [
+        "Run 10. W21-28 worked for two of the three paths \u2014 .gitignore and package-lock.json are gone from the refusal. docs/work/telemetry.jsonl remains, because the harness tidies at CLAIM time and the file is written LATER: content/validators/_lib.sh appends a verdict row to /docs/work/telemetry.jsonl on every validator run, i.e. during the close gate, after provisioning has already committed.",
+        "The root fix would be for validator telemetry to land in .dokima/ (already hard-excluded) instead of the audited project's docs/. That file is in content/, which is a SIGNED pack \u2014 content/manifest.json carries per-file sha256 hashes and a signature \u2014 so editing it there breaks verification and needs a re-sign with a key held outside the repo. Not this ticket, and recorded as the better fix.",
+        "The harness-side fix is not a third ignore list: it is the SAME list W21-28 introduced, used at the point where attribution actually matters. A path the harness owns is not the agent's change by construction, so the sweep that judges the agent must not count it.",
+        "worktree-provision.ts hit 401 lines. Split rather than shaved, because the seam is real: provisioning decides what a worktree NEEDS and installs it; worktree-harness-paths decides what the harness may claim AUTHORSHIP of. Two modules import the second answer now \u2014 the provisioner to commit its leavings, and the scope sweep to avoid blaming the agent for them."
+      ],
+      "acceptance": [
+        "The out-of-session scope sweep ignores harness-owned paths, sharing the one list rather than a new one",
+        "An agent-authored path outside write_scope is still refused \u2014 the guard keeps its teeth",
+        "A red fixture pins the live case: validator telemetry does not refuse a session",
+        "The better fix (telemetry into .dokima/) is recorded where the next person will find it"
+      ]
     }
   ]
 }

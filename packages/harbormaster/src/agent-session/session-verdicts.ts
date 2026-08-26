@@ -1,4 +1,5 @@
 import { checkWriteScope } from '@dokima/git';
+import { HARNESS_OWNED_PATHS } from '../worktree-harness-paths.js';
 import {
   computeChangedPaths,
   type SpawnSessionOutput,
@@ -49,7 +50,20 @@ export async function refuseIfSessionExceededScope(
   writeScope: readonly string[],
 ): Promise<SpawnSessionOutput | null> {
   const changedPaths = await computeChangedPaths(cwd, 'HEAD');
-  const violations = await checkWriteScope([...changedPaths], [...writeScope], cwd);
+  /**
+   * W21-29: judge the AGENT, not the product. Some paths in a ticket worktree
+   * are written by the harness itself — the dependency install's lockfile, the
+   * .gitignore line that keeps node_modules out of this very diff, and the
+   * verdict row content/validators/_lib.sh appends on every validator run.
+   * Refusing a session for those blames the agent for the product's own
+   * changes, which cost three separate live runs before it was understood.
+   *
+   * The same list the harness commits from, used where attribution matters.
+   */
+  const agentPaths = changedPaths.filter(
+    (p) => !(HARNESS_OWNED_PATHS as readonly string[]).includes(p),
+  );
+  const violations = await checkWriteScope([...agentPaths], [...writeScope], cwd);
   if (violations.length === 0) return null;
   return {
     stdout: '',
