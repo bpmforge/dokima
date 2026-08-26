@@ -147,6 +147,29 @@ async function run(
   });
 }
 
+/**
+ * Append `entry` to the worktree's .gitignore unless it is already covered.
+ * Returns true when the file was changed. Never overwrites: an existing
+ * .gitignore is the project's, and this adds one line to it.
+ */
+async function ensureIgnored(worktreePath: string, entry: string): Promise<boolean> {
+  const file = path.join(worktreePath, '.gitignore');
+  let current = '';
+  try {
+    current = await fs.readFile(file, 'utf8');
+  } catch {
+    current = '';
+  }
+  const lines = current.split('\n').map((l) => l.trim());
+  const bare = entry.replace(/\/$/, '');
+  if (lines.some((l) => l === entry || l === bare || l === `/${entry}` || l === `/${bare}`)) {
+    return false;
+  }
+  const needsNewline = current.length > 0 && !current.endsWith('\n');
+  await fs.writeFile(file, `${current}${needsNewline ? '\n' : ''}${entry}\n`, 'utf8');
+  return true;
+}
+
 export interface ProvisionInput {
   readonly worktreePath: string;
   readonly log: EventLog;
@@ -186,6 +209,22 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
     return { ran: false, ok: true, exitCode: null, durationMs: 0, output: '', plan: null };
   }
 
+  /**
+   * W21-23: ignore the dependency directory BEFORE installing it.
+   *
+   * The out-of-session SC-01 sweep reads the real worktree diff, tracked and
+   * untracked, and `git ls-files --others --exclude-standard` respects
+   * .gitignore. Without this, a successful install put thousands of files in
+   * front of that sweep and the session was refused for a violation the
+   * harness itself had just created — with park evidence that was several
+   * thousand lines of `node_modules/...`.
+   *
+   * Using git's own mechanism rather than a second exclusion list also leaves
+   * the tree correct for the human: `git status` in that worktree is clean,
+   * which is what a developer would have done first anyway.
+   */
+  const ignored = await ensureIgnored(input.worktreePath, 'node_modules/');
+
   const startedAt = Date.now();
   const { exitCode, output } = await run(
     plan,
@@ -206,6 +245,10 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
       exitCode,
       durationMs,
       ok,
+      // Recorded because it MUTATES the tree the agent is judged on. A
+      // harness-made change that nobody can see is the shape of every
+      // "why is this file here?" an hour later.
+      gitignoreUpdated: ignored,
       // Only on failure: a successful install's output is thousands of lines
       // of noise, and the ledger is not a build log.
       ...(ok ? {} : { output: trim(output) }),

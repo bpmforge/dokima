@@ -16,6 +16,27 @@ import {
  */
 
 /**
+ * W21-23: evidence that dumps thousands of paths is not evidence.
+ *
+ * A single provisioning install once put several thousand `node_modules/...`
+ * entries into a park comment, and the one line that mattered was
+ * unfindable. The count is what a person needs first; a readable handful of
+ * examples is what they need second. Everything after that is volume.
+ */
+const MAX_LISTED_VIOLATIONS = 12;
+
+function summariseViolations(
+  violations: readonly { path: string; reason: string }[],
+): string {
+  const shown = violations
+    .slice(0, MAX_LISTED_VIOLATIONS)
+    .map((v) => `${v.path} (${v.reason})`)
+    .join(', ');
+  if (violations.length <= MAX_LISTED_VIOLATIONS) return shown;
+  return `${violations.length} paths, first ${MAX_LISTED_VIOLATIONS}: ${shown}, …`;
+}
+
+/**
  * SC-01's own real check (see module header), run once the tool loop has
  * genuinely ended. `changedPaths` is the REAL worktree diff against `HEAD`
  * (tracked + untracked, exactly what canonical SC-01 diffs) — never the
@@ -35,9 +56,8 @@ export async function refuseIfSessionExceededScope(
     stderr:
       'agent session refused (SC-01, out-of-session — this runs regardless of the ' +
       'tool-boundary pre-check): the real worktree diff contains path(s) outside ' +
-      `write_scope after the tool loop ended — ${violations
-        .map((v) => `${v.path} (${v.reason})`)
-        .join(', ')}. Session output discarded; no Completion Manifest was produced.`,
+      `write_scope after the tool loop ended — ${summariseViolations(violations)}. ` +
+      'Session output discarded; no Completion Manifest was produced.',
     exitCode: 1,
   };
 }

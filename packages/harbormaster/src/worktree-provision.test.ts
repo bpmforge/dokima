@@ -154,6 +154,40 @@ describe('provisionWorktree (W21-12)', () => {
   });
 });
 
+describe('installing must not look like a scope violation (W21-23)', () => {
+  it('RED FIXTURE: the dependency directory is ignored BEFORE the install, so the SC-01 sweep never sees it', async () => {
+    const dir = await tempDir('ignore');
+    const log = await logIn(dir);
+    await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
+    await fs.writeFile(path.join(dir, '.gitignore'), '.dokima/\n');
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+      timeoutMs: 60_000,
+    });
+    const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
+    expect(ignore).toContain('node_modules/');
+    // The project's own entry survives — this appends, never overwrites.
+    expect(ignore).toContain('.dokima/');
+    log.close();
+  }, 90_000);
+
+  it('re-provisioning does not add the entry twice', async () => {
+    const dir = await tempDir('ignore-twice');
+    const log = await logIn(dir);
+    await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
+    await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\n');
+    await provisionWorktree({
+      worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1', timeoutMs: 60_000,
+    });
+    const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
+    expect(ignore.match(/node_modules\//g)).toHaveLength(1);
+    log.close();
+  }, 90_000);
+});
+
 describe('the agent still cannot install anything (SC-18, D-023)', () => {
   it('RED FIXTURE: the closed tool set gains NO install-shaped tool — the harness provisions, the model never does', () => {
     expect([...AGENT_SESSION_TOOL_NAMES].sort()).toEqual(

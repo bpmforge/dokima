@@ -11463,6 +11463,39 @@
         "A test pins that the environment line reaches the rendered handoff",
         "Handoffs with nothing to report gain no empty section"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-22"
+      ],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-23",
+      "points": 2,
+      "title": "installing dependencies must not look like a scope violation",
+      "write_scope": [
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts",
+        "packages/harbormaster/src/agent-session/session-verdicts.ts",
+        "packages/harbormaster/src/agent-session/session-verdicts.test.ts"
+      ],
+      "notes": [
+        "Caused by W21-21 succeeding. Provisioning installed node_modules into the worktree, and the out-of-session SC-01 sweep reads the REAL worktree diff \u2014 tracked plus untracked \u2014 so every one of the thousands of installed files came back as an out-of-scope change. The session was refused for a violation the harness itself created, and the park evidence became several thousand \"node_modules/... (outside-scope)\" entries.",
+        "The clean fix is git's own mechanism, not a second exclusion list: computeChangedPaths already uses , which respects .gitignore. The worktree's .gitignore contained only \".dokima/\". Provisioning must ensure the dependency directory is ignored BEFORE it installs \u2014 which is also exactly what a developer does, so the tree is correct for the human too.",
+        "AUDIT DEFECT, same incident: evidence that dumps thousands of paths is not evidence. Nobody can read it, and it buried the one line that mattered. A scope refusal must name a readable number of paths and say how many more there were."
+      ],
+      "acceptance": [
+        "The dependency directory is git-ignored before the install runs, and the fact is ledgered",
+        "An existing .gitignore is extended, never overwritten, and the entry is not duplicated on re-provision",
+        "A scope refusal lists at most a readable number of paths and states the true total",
+        "A test pins that installed dependencies do not appear as scope violations"
+      ]
     }
   ]
 }
