@@ -128,7 +128,10 @@ export async function landClaimedTicket(
       baseRef,
       feedback,
     );
-    if (freeRetry.take(infraFailure, attempt)) continue;
+    // W21-13: hand the provider's own words to the ledger, not just the
+    // category. `session.output` is where runSessionAbsorbingProviderFailure
+    // put them (`provider failure: …`).
+    if (freeRetry.take(infraFailure, attempt, session.output)) continue;
     attempts.push({
       attempt,
       session,

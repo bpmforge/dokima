@@ -14,6 +14,7 @@
  * needs a person to clear it, which is the symptom this exists to remove: the
  * run stopping to wait for someone to tell it to continue.
  */
+import { redactString } from '@dokima/shared';
 import { appendEvent } from '@dokima/events';
 import { createInfraFailureTracker } from '@dokima/loop';
 import type { InfraFailureKind, InfraFailureTracker } from '@dokima/loop';
@@ -65,7 +66,21 @@ export function ceilingFor(
 export interface FreeRetryGate {
   /** Ladder ceiling plus the free retries spent so far — the loop's real bound. */
   limit(): number;
-  take(kind: InfraFailureKind | null, attempt: number): boolean;
+  /**
+   * W21-13: `detail` is the provider's own words. The category alone left an
+   * operator unable to tell a timeout from a refused connection from a 500,
+   * which point at completely different fixes — and cost real misdiagnoses
+   * during the live UAT before this was threaded through.
+   */
+  take(kind: InfraFailureKind | null, attempt: number, detail?: string): boolean;
+}
+
+/** The ledger is not a log: enough of the provider's words to act on, no more. */
+const MAX_REASON_CHARS = 500;
+
+function trimReason(text: string): string {
+  const line = text.trim();
+  return line.length > MAX_REASON_CHARS ? `${line.slice(0, MAX_REASON_CHARS)}…` : line;
 }
 
 export function createFreeRetryGate(
@@ -76,7 +91,8 @@ export function createFreeRetryGate(
   const infra: InfraFailureTracker = createInfraFailureTracker();
   return {
     limit: () => ceiling + infra.total,
-    take: (kind, attempt) => takeFreeInfraRetry(options, infra, kind, ticketId, attempt),
+    take: (kind, attempt, detail) =>
+      takeFreeInfraRetry(options, infra, kind, ticketId, attempt, detail),
   };
 }
 
@@ -86,6 +102,7 @@ function takeFreeInfraRetry(
   kind: InfraFailureKind | null,
   ticketId: string,
   attempt: number,
+  detail?: string,
 ): boolean {
   if (!kind || infra.total >= MAX_FREE_INFRA_RETRIES) return false;
   infra.record(kind);
@@ -96,7 +113,14 @@ function takeFreeInfraRetry(
     eventType: 'session.infra_retry',
     actorId: options.actorId,
     ticketId,
-    payload: { kind, freeRetries: infra.total, attempt },
+    // The reason goes through the same redaction layer the report and the
+    // handoff use: a provider error happily echoes back a URL or a key.
+    payload: {
+      kind,
+      freeRetries: infra.total,
+      attempt,
+      ...(detail ? { reason: trimReason(redactString(detail)) } : {}),
+    },
   });
   return true;
 }
