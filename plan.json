@@ -11621,6 +11621,39 @@
         "The reducer applies it, so the widened scope is what the next session is handed",
         "A red fixture pins the live case: the ticket cannot satisfy its acceptance, is widened, and the new scope contains the file it needed"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-23"
+      ],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-28",
+      "points": 3,
+      "title": "the agent is not refused for changes the harness made",
+      "write_scope": [
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts"
+      ],
+      "notes": [
+        "Live, run 9. After the founder widened the scope the agent DID create src/index.ts \u2014 the widening worked. It was then refused twice by the out-of-session SC-01 sweep for three paths, and not one of them is the agent's: \".gitignore (outside-scope), docs/work/telemetry.jsonl (outside-scope), package-lock.json (outside-scope)\".",
+        ".gitignore is modified by W21-23's provisioning. package-lock.json is created by the npm install provisioning runs. docs/work/telemetry.jsonl is written by the close gate's own validators \u2014 its contents are {\"source\":\"validator\",\"validator\":\"secrets-scan\"...}. All three are the PRODUCT mutating the agent's worktree and then blaming the agent for the difference.",
+        "This is the same defect W21-23 fixed for node_modules, in smaller form, and my fix for that is what introduced two of the three paths. Fixing it by adding another ignore list would be the third patch of the same shape.",
+        "The invariant worth establishing instead: the worktree the agent receives has no uncommitted harness changes in it. Commit what the harness owns, under the harness's own message, so the change is attributable in git history rather than invisible \u2014 and so the session diff contains only what the agent did.",
+        "Commit ONLY known harness-owned paths, never everything: sweeping up a parked session's uncommitted work under a harness message would misattribute the agent's work, which is worse than the bug being fixed."
+      ],
+      "acceptance": [
+        "A worktree handed to a session contains no uncommitted harness-owned changes",
+        "Only known harness-owned paths are committed \u2014 a fixture proves agent-authored changes are left alone",
+        "The commit is ledgered and its message says the harness made it",
+        "A red fixture pins the exact live trio: .gitignore, package-lock.json and validator telemetry no longer reach the scope sweep"
+      ]
     }
   ]
 }

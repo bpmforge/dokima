@@ -237,6 +237,8 @@ const LIFECYCLE_COMMANDS = [
   'release',
   'close',
   'comment',
+  // W21-27: the founder's answer to "this ticket is not right as written".
+  'widen-scope',
   'run',
 ] as const;
 

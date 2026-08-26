@@ -188,6 +188,49 @@ describe('installing must not look like a scope violation (W21-23)', () => {
   }, 90_000);
 });
 
+describe('the agent is not refused for changes the harness made (W21-28)', () => {
+  const gitInit = async (dir: string) => {
+    const { execFile } = await import('node:child_process');
+    const run = (args: string[]) =>
+      new Promise<void>((resolve, reject) =>
+        execFile('git', args, { cwd: dir }, (err) => (err ? reject(err) : resolve())),
+      );
+    await run(['init', '-q']);
+    await run(['config', 'user.email', 'harness@dokima.test']);
+    await run(['config', 'user.name', 'Harness']);
+    await fs.writeFile(path.join(dir, 'seed.txt'), 'seed');
+    await run(['add', '-A']);
+    await run(['commit', '-q', '-m', 'seed']);
+  };
+
+  it('RED FIXTURE: the live trio — .gitignore, the lockfile and validator telemetry — is committed by the harness, so the session diff is only the agent\'s', async () => {
+    const dir = await tempDir('harness-commit');
+    const log = await logIn(dir);
+    await gitInit(dir);
+    await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
+    await fs.mkdir(path.join(dir, 'docs', 'work'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'docs/work/telemetry.jsonl'), '{"source":"validator"}\n');
+    // Something the AGENT wrote: it must be left exactly where it is.
+    await fs.writeFile(path.join(dir, 'agent-work.ts'), 'export const x = 1;\n');
+
+    await provisionWorktree({
+      worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1', timeoutMs: 90_000,
+    });
+
+    const { execFile } = await import('node:child_process');
+    const status = await new Promise<string>((resolve) =>
+      execFile('git', ['status', '--porcelain'], { cwd: dir }, (_e, out) => resolve(out)),
+    );
+    // The harness's leavings are gone from the diff…
+    expect(status).not.toContain('.gitignore');
+    expect(status).not.toContain('package-lock.json');
+    expect(status).not.toContain('telemetry.jsonl');
+    // …and the agent's file is untouched, still waiting to be judged.
+    expect(status).toContain('agent-work.ts');
+    log.close();
+  }, 120_000);
+});
+
 describe('the agent still cannot install anything (SC-18, D-023)', () => {
   it('RED FIXTURE: the closed tool set gains NO install-shaped tool — the harness provisions, the model never does', () => {
     expect([...AGENT_SESSION_TOOL_NAMES].sort()).toEqual(

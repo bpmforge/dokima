@@ -34,6 +34,7 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { appendEvent, type EventLog } from '@dokima/events';
+import { git } from '@dokima/git';
 
 /** How long a provision may take before it is killed. Installs are slow. */
 export const PROVISION_TIMEOUT_MS = 300_000;
@@ -170,6 +171,72 @@ async function ensureIgnored(worktreePath: string, entry: string): Promise<boole
   return true;
 }
 
+/**
+ * W21-28: paths the HARNESS owns in a ticket worktree.
+ *
+ * Live evidence, run 9: after a founder widened the scope, the agent did the
+ * work and was then refused twice by the out-of-session SC-01 sweep for three
+ * paths — ".gitignore", "package-lock.json" and "docs/work/telemetry.jsonl" —
+ * not one of which it wrote. The first two are this module's own provisioning;
+ * the third is written by the close gate's validators. The product was
+ * mutating the agent's worktree and then blaming the agent for the difference.
+ *
+ * Adding a third ignore list would have been the third patch of this shape.
+ * The invariant instead: the worktree a session receives has no uncommitted
+ * harness changes in it. Committing them under the harness's own message keeps
+ * the change attributable in git history rather than invisible, and leaves the
+ * session diff containing only what the agent did.
+ *
+ * ONLY these paths, never `git add -A`: sweeping up a parked session's
+ * uncommitted work under a harness commit would misattribute the agent's work,
+ * which is worse than the bug being fixed.
+ */
+const HARNESS_OWNED_PATHS = [
+  '.gitignore',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'docs/work/telemetry.jsonl',
+];
+
+/**
+ * Commit whatever the harness changed, so the next session's diff is only the
+ * agent's. Returns the paths committed; empty when the worktree was already
+ * clean of harness changes.
+ */
+async function commitHarnessChanges(worktreePath: string): Promise<string[]> {
+  /**
+   * Best-effort tidying, never a gate. A directory that is not a git worktree
+   * (tests, and any future caller) must not turn provisioning into a failure —
+   * the worst case of not committing here is the pre-existing behaviour.
+   */
+  try {
+    return await commitHarnessChangesUnsafe(worktreePath);
+  } catch {
+    return [];
+  }
+}
+
+async function commitHarnessChangesUnsafe(worktreePath: string): Promise<string[]> {
+  const status = await git(worktreePath, ['status', '--porcelain']);
+  const dirty = status.stdout
+    .split('\n')
+    .map((line) => line.slice(3).trim())
+    .filter(Boolean);
+  const toCommit = HARNESS_OWNED_PATHS.filter((owned) => dirty.includes(owned));
+  if (toCommit.length === 0) return [];
+  await git(worktreePath, ['add', '--', ...toCommit]);
+  await git(worktreePath, [
+    'commit',
+    '--no-verify',
+    '-m',
+    'chore(harness): provision worktree\n\nWritten by Dokima itself, not by the agent — dependency install and\nvalidator telemetry. Committed so the session diff contains only the\nagent\'s work (W21-28).',
+    '--',
+    ...toCommit,
+  ]);
+  return toCommit;
+}
+
 export interface ProvisionInput {
   readonly worktreePath: string;
   readonly log: EventLog;
@@ -199,12 +266,20 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
      * An audit trail that is silent when nothing happened cannot tell you the
      * difference between working and absent.
      */
+    // W21-28: even with nothing to install, an earlier run's validator
+    // telemetry or lockfile can still be sitting uncommitted, and the next
+    // session would be refused for it.
+    const committedOnSkip = await commitHarnessChanges(input.worktreePath);
     appendEvent(input.log, {
       eventType: 'worktree.provisioned',
       actorId: input.actorId,
       ticketId: input.ticketId,
       ...(input.runId ? { runId: input.runId } : {}),
-      payload: { ran: false, why: await skipReason(input.worktreePath) },
+      payload: {
+        ran: false,
+        why: await skipReason(input.worktreePath),
+        ...(committedOnSkip.length > 0 ? { harnessCommitted: committedOnSkip } : {}),
+      },
     });
     return { ran: false, ok: true, exitCode: null, durationMs: 0, output: '', plan: null };
   }
@@ -233,6 +308,10 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
   );
   const durationMs = Date.now() - startedAt;
   const ok = exitCode === 0;
+  // W21-28: the install's own leavings (a lockfile, the .gitignore line above)
+  // are the harness's, not the agent's. Commit them so the session diff is
+  // only what the agent did.
+  const harnessCommitted = ok ? await commitHarnessChanges(input.worktreePath) : [];
 
   appendEvent(input.log, {
     eventType: 'worktree.provisioned',
@@ -249,6 +328,7 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
       // harness-made change that nobody can see is the shape of every
       // "why is this file here?" an hour later.
       gitignoreUpdated: ignored,
+      ...(harnessCommitted.length > 0 ? { harnessCommitted } : {}),
       // Only on failure: a successful install's output is thousands of lines
       // of noise, and the ledger is not a build log.
       ...(ok ? {} : { output: trim(output) }),
