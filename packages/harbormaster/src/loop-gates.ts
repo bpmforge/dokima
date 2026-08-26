@@ -31,6 +31,7 @@ import { promises as fs } from 'node:fs';
 import { checkWriteScope } from '@dokima/git';
 import { computeChangedPaths } from '@dokima/loop';
 import { loadValidatorPack, runValidatorPack } from '@dokima/validators';
+import { agentAuthoredPaths } from './worktree-harness-paths.js';
 import { mintReceipt, type ReceiptInputFile } from '@dokima/events';
 import { closeTicket, commentTicket } from '@dokima/tickets';
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
@@ -219,8 +220,10 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
     // the gate's own execution — a check that fails closed forever on a
     // stray uncommitted artifact would be as broken as one that can be
     // bypassed.
+    // W21-31: …and harness-committed files are not the agent's — see
+    // agentAuthoredPaths for why this check in particular needs it.
     const scopeViolations = await checkWriteScope(
-      committedFiles,
+      agentAuthoredPaths(committedFiles),
       ticket.writeScope,
       worktree.path,
     );

@@ -91,3 +91,23 @@ async function commitHarnessChangesUnsafe(worktreePath: string): Promise<string[
   return toCommit;
 }
 
+
+/**
+ * The subset of `paths` the AGENT is answerable for (W21-31).
+ *
+ * Three checks ask this question — the out-of-session scope sweep, the close
+ * gate's commit-set check, and the provisioner deciding what it may commit —
+ * and they must not drift, because drift here means either the agent blamed
+ * for the product's changes or a real violation missed.
+ *
+ * The close gate needs it because W21-28 changed what "committed" means. That
+ * check deliberately reads the real commit set rather than the working tree,
+ * so the gate's own telemetry and build artifacts could not cause false
+ * positives — and then the harness started COMMITTING its files so the session
+ * diff would be clean, which put them in the very set the check trusted. The
+ * first Completion Manifest the product ever produced was refused for
+ * `.gitignore` and `package-lock.json`, neither of which the agent wrote.
+ */
+export function agentAuthoredPaths(paths: readonly string[]): string[] {
+  return paths.filter((p) => !(HARNESS_OWNED_PATHS as readonly string[]).includes(p));
+}

@@ -11721,6 +11721,40 @@
         "The message is built from the loop's own counters, never from model text",
         "A red fixture pins the live case: work verified, budget nearly gone, and the session is told to hand back now"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-29"
+      ],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-31",
+      "points": 2,
+      "title": "the close gate judges the commit set the agent made",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/loop-gates.test.ts",
+        "packages/harbormaster/src/worktree-harness-paths.ts"
+      ],
+      "notes": [
+        "THE FURTHEST THE PRODUCT HAS EVER GOT. Run 13, event #1077: session.turns_observed {\"model\":\"qwen-qwen3.8-27b-mtplx\",\"turns\":9,\"completed\":true} \u2014 the agent produced a Completion Manifest and reached the close gate for the first time.",
+        "And #1078 refused it: \"close gate refused \u2014 no receipt minted (FR-H1, SC-02): real commit set contains path(s) outside ticket.writeScope: .gitignore (outside-scope), package-lock.json (outside-scope)\". Both are files W21-28 has the HARNESS commit before the session starts.",
+        "The existing comment at that check already reasons about this exact class \u2014 it deliberately uses committedFiles (base..HEAD) rather than the working-tree diff so that the gate's own telemetry and build side effects cannot cause false positives. W21-28 broke that assumption by making the harness COMMIT its files, which puts them in the very set the check trusted.",
+        "Third consumer of the same HARNESS_OWNED_PATHS list, and the last one: a path the product wrote is not the agent's work at any of the three places that ask.",
+        "loop-gates.ts sits at the 400-line cap, so the filter and its explanation moved into worktree-harness-paths.ts as agentAuthoredPaths(). Better placement anyway: the reasoning about which paths belong to the product now lives with the list rather than being restated at each of the three call sites."
+      ],
+      "acceptance": [
+        "Harness-committed paths do not fail the close gate's commit-set scope check",
+        "An AGENT-committed path outside write_scope still fails it, named \u2014 the gate keeps its teeth",
+        "The comment explaining the committedFiles choice is updated, since W21-28 invalidated its reasoning",
+        "A red fixture pins the live case: .gitignore and package-lock.json in the commit set do not refuse"
+      ]
     }
   ]
 }

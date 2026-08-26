@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { HARNESS_OWNED_PATHS } from './worktree-harness-paths.js';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -943,3 +944,21 @@ describe('classifySecretsGaps', () => {
     });
   });
 }, SUBPROCESS_TIMEOUT_MS);
+
+describe('the close gate judges the commit set the AGENT made (W21-31)', () => {
+  it('RED FIXTURE: the live refusal — .gitignore and package-lock.json in the commit set — is not the agent’s work', () => {
+    // The exact pair that refused the first Completion Manifest the product
+    // ever produced. Both are committed by the harness before the session
+    // starts (W21-28), so neither can be a scope violation by the agent.
+    for (const path of ['.gitignore', 'package-lock.json', 'docs/work/telemetry.jsonl']) {
+      expect(HARNESS_OWNED_PATHS).toContain(path);
+    }
+  });
+
+  it('the list is shared, not copied — three checks ask the same question', () => {
+    // A second list would drift, and drift here means either a false refusal
+    // (the agent blamed for the product) or a real one missed.
+    expect(new Set(HARNESS_OWNED_PATHS).size).toBe(HARNESS_OWNED_PATHS.length);
+    expect(HARNESS_OWNED_PATHS.length).toBeGreaterThan(0);
+  });
+});
