@@ -11125,6 +11125,275 @@
         "The timeout fixtures keep their own budgets and still assert the kill path",
         "The full suite passes at default parallelism"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-12",
+      "points": 5,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "depends_on": [],
+      "title": "a fresh worktree can satisfy its own verify command",
+      "write_scope": [
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts",
+        "packages/harbormaster/src/loop-claim.ts",
+        "packages/harbormaster/src/index.ts"
+      ],
+      "notes": [
+        "Live UAT blocker, 2026-08-25. Vault (greenfield) PLAN-vault-001: coder-next wrote package.json declaring eslint/typescript, committed, and produced a Completion Manifest claiming the verify command passed. The close gate re-ran it and refused \u2014 \"sh: eslint: command not found\". Correct refusal; impossible ticket.",
+        "Nothing in the system can install: the agent tool set excludes it by design (tools.ts, SC-18/D-023 \u2014 \"nothing that can run a free-form process, install a dependency, or open a socket\"), and reRunVerify runs inside the SC-07 sandbox which is --network=none / (deny network*). There is NO provisioning step anywhere \u2014 a worktree is created from git and handed over.",
+        "FOUNDER DECISION (approved): option A, narrowly scoped. The HARNESS provisions, exactly as it already provisions the git worktree. The AGENT still cannot install anything \u2014 SC-18 protects against a model running free-form processes, and that stays fully intact.",
+        "Scope tightly: only when a manifest exists AND its installed-deps directory is absent; command derived from the lockfile, never from model output; ledgered as an event with command, exit code and duration; failure surfaces honestly rather than being swallowed."
+      ],
+      "acceptance": [
+        "A worktree with a manifest and no installed dependencies is provisioned before any agent session sees it",
+        "The command is derived from the lockfile, never from model output or ticket text",
+        "The step is ledgered with command, exit code and duration",
+        "A failed provision surfaces as its own honest reason, never a silent continue into a doomed verify",
+        "The agent tool set is unchanged \u2014 a test asserts no install-shaped tool exists",
+        "Re-claiming an already-provisioned worktree does not re-install"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-13",
+      "points": 1,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "depends_on": [],
+      "title": "an infra retry says WHY, not just that it happened",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts"
+      ],
+      "notes": [
+        "The ledgered event is {\"kind\":\"endpoint_failure\",\"freeRetries\":N,\"attempt\":N} and nothing else; the core log is silent. runSessionAbsorbingProviderFailure already computes `provider failure: ${err.message}` and puts it in result.output, then the event drops it.",
+        "Cost, measured: I misdiagnosed the cause of these retries twice in one session because the evidence was not there. Run 3 only revealed it by accident \u2014 \"lm-studio: request timed out after 300000ms\" \u2014 because that one landed in the park comment instead.",
+        "The module header already argues the distinction matters (\"a bigger timeout versus a different model\"). This makes the event carry what the code already knows."
+      ],
+      "acceptance": [
+        "session.infra_retry carries the provider failure message alongside the kind",
+        "The message is redacted through the same layer handoffs use \u2014 a provider error can echo a URL or key",
+        "A test pins that the message survives to the event, not just to result.output"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-14",
+      "points": 2,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "depends_on": [],
+      "title": "PLAN ONLY: a dead run leaves its ticket claimed by nobody",
+      "write_scope": [
+        "docs/design/OPERATIONS.md"
+      ],
+      "notes": [
+        "Observed live: when run 2 ended, PLAN-vault-001 stayed in_progress showing \"an agent is working this\" with no run attached. Nothing could claim it and the board did not mark the state abnormal \u2014 you have to know to use Move to -> Release it.",
+        "PLAN ONLY per the founder: write the design, do not implement. The interesting question is what OWNS the reaping \u2014 a claim lease with an expiry, a run-end sweep, or the board surfacing orphaned claims for a person to clear. Each has a different failure mode when the core is killed mid-run rather than exiting cleanly."
+      ],
+      "acceptance": [
+        "OPERATIONS.md names the orphaned-claim state, how it arises, and what the board should show",
+        "At least two mechanisms are compared with their failure modes when the core dies uncleanly",
+        "A recommendation is stated with its reasoning; no code changes in this ticket"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-15",
+      "points": 1,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "depends_on": [],
+      "title": "the attempt counter cannot exceed its own cap",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "packages/harbormaster/src/loop-land.ts"
+      ],
+      "notes": [
+        "Park evidence from the Vault run reads \"attempt 5/2\" \u2014 five attempts against a cap of two. Either the counter increments where it should not (free infra retries were absorbed but still counted) or the display is wrong.",
+        "Diagnose before fixing: run 3 had 3 free infra retries and a cap of 2, so 5 = 2 real + 3 absorbed is the likely arithmetic. If so, the fix is that absorbed retries must not advance the attempt number the evidence prints.",
+        "This matters more than its size: the park comment is the evidence a person acts on, and a counter that contradicts its own cap undermines the whole ledger."
+      ],
+      "acceptance": [
+        "The printed attempt number never exceeds the cap",
+        "Free infra retries are visible in the evidence but do not advance the attempt count",
+        "A test pins the exact observed shape: 2 real attempts plus 3 absorbed retries"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-16",
+      "points": 1,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "depends_on": [
+        "W21-15"
+      ],
+      "title": "the park advice stops being wrong in its commonest case",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts"
+      ],
+      "notes": [
+        "budgetExhaustedStderr always ends with \"raise maxToolIterations \u2014 chatty local models often need more than the default\". Run 1 parked holding FOUR unused iterations it had just earned from real progress, and printed that advice anyway.",
+        "Advice that is wrong in its own most common case teaches people to ignore the evidence. When the budget was extended and not consumed, the honest line is the opposite: more ceiling will not help."
+      ],
+      "acceptance": [
+        "The raise-the-budget advice appears only when the budget was actually the binding constraint",
+        "A session that parked with earned-but-unused headroom says so instead",
+        "Existing tests for the exhausted case still pass"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-17",
+      "points": 2,
+      "module": "validators",
+      "lane": "quality",
+      "role": "coding-agent",
+      "depends_on": [],
+      "title": "a validator pack cannot starve its own sandboxes",
+      "write_scope": [
+        "packages/validators/src/run.ts",
+        "packages/validators/src/run.test.ts"
+      ],
+      "notes": [
+        "runValidatorPack is Promise.all(specs.map(...)) \u2014 every validator starts its sandbox at once. Reproduced with a standalone probe: 8 concurrent runValidator calls, 0 failures; 24 concurrent, 24 of 24 fail; 64, all 64 \u2014 every one a timeout, because sandbox-exec startup costs seconds when many boot together.",
+        "Production survives on a 30s budget today. A large enough content pack on a busy machine would not, and the gate would report TIMEOUTS AS GAPS \u2014 \"your project failed validation\" when the truth is \"the machine was busy\". That is the trust model lying, just in the safe direction.",
+        "Founder asked for a polling/bounded approach: run with a bounded worker pool rather than an unbounded fan-out, so startup cost is spread instead of multiplied."
+      ],
+      "acceptance": [
+        "Pack execution is bounded rather than an unbounded Promise.all",
+        "Results are identical in content and order to the unbounded version \u2014 a test asserts order is preserved",
+        "A test drives enough specs to prove the bound holds and nothing times out that would have passed serially",
+        "The bound adapts to available CPUs rather than being a magic number"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-18",
+      "points": 3,
+      "module": "gateway",
+      "lane": "gateway",
+      "role": "coding-agent",
+      "depends_on": [],
+      "title": "a truncated reasoning model is not an empty answer",
+      "write_scope": [
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts"
+      ],
+      "notes": [
+        "Measured against the newly added mtplx provider (localhost:8888, 256k context): with max_tokens 16 it returns content \"\" with EVERYTHING in reasoning_content and finish_reason \"length\", and completion_tokens_details.reasoning_tokens accounting for the whole budget. With room it answers normally.",
+        "The gateway correctly ignores reasoning_content \u2014 reasoning is not an answer \u2014 and it does capture and normalise finish_reason. The gap is what happens next: an empty content with finish_reason length is indistinguishable downstream from \"the model said nothing\", which is exactly what run 1 park evidence looked like (\"exitCode=0 no completion manifest returned\").",
+        "Two halves, both wanted: surface truncation as its own honest reason rather than an empty turn, and stop provoking it \u2014 a reasoning model needs budget for reasoning tokens on top of its answer."
+      ],
+      "acceptance": [
+        "A turn that ends with finish_reason length and empty content is reported as truncation, never as an empty answer",
+        "The session evidence names truncation distinctly from \"no manifest returned\"",
+        "Reasoning models are given headroom so a normal turn is not truncated mid-thought",
+        "Fixture-driven: a recorded response with reasoning_content and finish_reason length, no live call"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-19",
+      "points": 2,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "depends_on": [
+        "W21-13"
+      ],
+      "title": "a spin that spans sessions is still a spin",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts",
+        "packages/harbormaster/src/loop-land.ts"
+      ],
+      "notes": [
+        "W21-10 counts zero-information repeats within ONE session. Run 2 made six agent-session.list calls with identical arguments AND identical results across several sessions and never tripped it \u2014 stopped_early stayed 0.",
+        "Per-session reset is defensible: a NEW session legitimately re-reads state it cannot remember. What is not defensible is a run burning attempt after attempt on the same zero-information loop with nothing noticing.",
+        "Enhance rather than replace: keep the per-session rule as is, and add a run-level observation so the PARK EVIDENCE can say \"this run asked the same question N times across M sessions\". Whether it should also stop the run is the interesting design call \u2014 state the reasoning either way."
+      ],
+      "acceptance": [
+        "Zero-information repeats are counted across the sessions of one run, not only within a session",
+        "The park evidence reports the cross-session count so a person can see the pattern",
+        "The existing per-session behaviour and its fixtures are unchanged",
+        "The decision on whether cross-session repetition STOPS a run is stated with its reasoning"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "id": "W21-20",
+      "points": 2,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "depends_on": [],
+      "title": "the last four pages get the shell",
+      "write_scope": [
+        "apps/web/src/onboarding/**",
+        "apps/web/src/plans/**",
+        "apps/web/src/fleet/**",
+        "apps/web/src/notifications/**",
+        "apps/web/src/styles.css"
+      ],
+      "notes": [
+        "W21-03 gave Roster, Settings and Decisions the page shell. Describe (onboarding), Plan, Fleet and the Morning queue (notifications) never got it \u2014 Describe in particular renders a narrow column hard against the left edge of a 1568px window with the rest empty.",
+        "Same constraint as W21-03: the W13-04 ratchet counts border declarations outside styles.css and is at 48. Any new border must be a shared class applied at the call site."
+      ],
+      "acceptance": [
+        "Describe, Plan, Fleet and the Morning queue use the shared page shell",
+        "No view renders content edge-to-edge",
+        "The W13-04 border ratchet is unchanged or lower \u2014 counted before and after",
+        "Screenshots before and after each page, both themes"
+      ]
     }
   ]
 }
