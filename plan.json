@@ -11688,6 +11688,39 @@
         "A red fixture pins the live case: validator telemetry does not refuse a session",
         "The better fix (telemetry into .dokima/) is recorded where the next person will find it"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-30",
+      "points": 3,
+      "title": "a session is told when it is running out of turns",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-limits.ts",
+        "packages/harbormaster/src/agent-session/session-limits.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/session-setup.ts"
+      ],
+      "notes": [
+        "Run 11, and the closest the product has come. Attempt 2's checkpoint reads completed:[\"Verification passed with pnpm lint && pnpm typecheck && pnpm test (exit 0)\"] \u2014 THE WORK IS DONE AND VERIFIED. It then ran out of turns before emitting the Completion Manifest. Attempt 1 ended with next = \"Use git add to stage only write-scope files, then commit and generate manifest\".",
+        "The session is never told how much budget it has left. It gets a system prompt describing how a session ends and a handoff describing the ticket, and no arithmetic: no turn number, no remaining count. So it explores at a comfortable pace and discovers the wall by hitting it, with the work finished and unclaimed.",
+        "The module header of session-prompt.ts already records the ancestor of this failure \u2014 an agent that did the work, verified it, committed it, and then reported in prose instead of returning the manifest. Same family: the agent does not know when to stop.",
+        "The nudge is arithmetic the harness already has (iteration, budget), not model judgement, so it does not touch C-2. It only reports a fact the loop is already using to decide when to stop.",
+        "gateway-session.ts had been shaved to fit the 400-line cap for three tickets running; this one finally split it. session-setup.ts owns everything a session knows BEFORE its first turn \u2014 resolving the ticket, building the tool context, seeding the messages \u2014 while gateway-session owns the loop that spends it. SC-17 moved with it, and is the reason the split is a real seam rather than arithmetic: write_scope and the verify command come from the ticket record, never from the prompt, and an unresolvable ticket fails closed."
+      ],
+      "acceptance": [
+        "A session close to its budget is told how many turns remain and what finishing requires",
+        "The warning fires only near the end \u2014 an early session is not nagged every turn",
+        "The message is built from the loop's own counters, never from model text",
+        "A red fixture pins the live case: work verified, budget nearly gone, and the session is told to hand back now"
+      ]
     }
   ]
 }

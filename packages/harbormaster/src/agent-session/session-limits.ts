@@ -178,3 +178,47 @@ export function costCapStop(input: {
     exitCode: 1,
   };
 }
+
+/**
+ * W21-30: how many turns are left, told to the session that is spending them.
+ *
+ * Run 11 came the closest the product had: the agent's own checkpoint read
+ * `completed: ["Verification passed with pnpm lint && pnpm typecheck && pnpm
+ * test (exit 0)"]` — the work was DONE and VERIFIED — and it then ran out of
+ * turns before emitting the Completion Manifest. The attempt before it ended
+ * on "Use git add to stage only write-scope files, then commit and generate
+ * manifest".
+ *
+ * The session was never told the arithmetic. It received a system prompt about
+ * how a session ends and a handoff about the ticket, and no turn number and no
+ * remaining count — so it explored at a comfortable pace and discovered the
+ * wall by hitting it, with the work finished and unclaimed.
+ *
+ * This reports a number the loop is already using to decide when to stop, so
+ * it introduces no model judgement anywhere (C-2). It fires only near the end:
+ * a warning on every turn is a warning nobody reads.
+ */
+export const BUDGET_WARNING_TURNS = 3;
+
+export function budgetWarning(
+  iteration: number,
+  budget: number,
+  warnWithin = BUDGET_WARNING_TURNS,
+): string | null {
+  const remaining = budget - iteration;
+  if (remaining < 0 || remaining > warnWithin) return null;
+  if (remaining === 0) {
+    return (
+      'BUDGET: this is your LAST tool turn. The session ends after it. If the ' +
+      'work is done, stop calling tools and reply with ONLY the Completion ' +
+      'Manifest now — a session that ends without one closes nothing and the ' +
+      'work is discarded.'
+    );
+  }
+  return (
+    `BUDGET: ${remaining} tool turn${remaining === 1 ? '' : 's'} left before this ` +
+    'session ends. If the work is done, stop exploring and reply with ONLY the ' +
+    'Completion Manifest; if it is not, spend what is left finishing it rather ' +
+    'than reading.'
+  );
+}

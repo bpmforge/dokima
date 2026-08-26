@@ -83,22 +83,21 @@
  */
 
 import { appendEvent } from '@dokima/events';
-import { route, FitnessCardStore, type ChatMessage, type TaskType } from '@dokima/gateway';
+import { route, FitnessCardStore, type TaskType } from '@dokima/gateway';
 import {
   type SpawnSession,
   type SpawnSessionInput,
   type SpawnSessionOutput,
   type ValidatorResult,
 } from '@dokima/loop';
-import { getTicket } from '@dokima/tickets';
-import { DEFAULT_VERIFY_COMMAND } from '../loop-handoff.js';
-import { parseHandoffFields } from './handoff-fields.js';
+import { prepareSession } from './session-setup.js';
 import { ensureAgentSessionToolsRegistered, runToolCalls } from './mcp-wiring.js';
 import { AGENT_SESSION_TOOL_SCHEMAS, TOOL_VERIFY } from './tools.js';
 import { takeMeteredTurn } from './session-stream.js';
 import { costCapStop, DEFAULT_MAX_SESSION_SECONDS,
   DEFAULT_MAX_TURN_TOKENS,
   turnTokenStop,
+  budgetWarning,
   watchdogStop } from './session-limits.js';
 
 // Re-exported so callers keep importing the session's limits from the session
@@ -109,7 +108,6 @@ import {
   refuseIfSessionExceededScope,
 } from './session-verdicts.js';
 import { createAnchorRefresher } from './session-anchors.js';
-import { SESSION_SYSTEM_PROMPT } from './session-prompt.js';
 import {
   budgetExhaustedStderr,
   createSessionProgressBudget,
@@ -164,26 +162,13 @@ export function createGatewaySpawnSession(
       actorId: options.actorId,
     });
 
-    const fields = parseHandoffFields(input.prompt);
-    const ticketId = fields.ticketId ?? 'unknown';
-    // SC-17 (see module header): write_scope AND verifyCommand are the
-    // ticket record's own fields, never anything parsed from the prompt —
-    // an unresolvable ticket fails closed to an empty write_scope (every
-    // write/edit refused) and the default verify command.
-    const ticket = getTicket(options.log, ticketId);
-    const toolCtx = {
+    const { ticketId, toolCtx, messages } = prepareSession({
+      log: options.log,
+      prompt: input.prompt,
       cwd: input.cwd,
-      writeScope: ticket?.writeScope ?? [],
-      verifyCommand: ticket?.verify ?? DEFAULT_VERIFY_COMMAND,
       verifyTimeoutMs,
       secretValues: options.secretValues ?? [],
-    };
-
-    // W13-09: a system message, where there was none — see session-prompt.ts.
-    const messages: ChatMessage[] = [
-      { role: 'system', content: SESSION_SYSTEM_PROMPT },
-      { role: 'user', content: input.prompt },
-    ];
+    });
 
     /**
      * FR-L2 tool anchor (W12-05). Validator/verify output is external ground
@@ -278,6 +263,8 @@ export function createGatewaySpawnSession(
       if (watchdog) return watchdog;
 
       await refreshAnchor();
+      const warning = budgetWarning(iteration, budgetNow());
+      if (warning) messages.push({ role: 'user', content: warning });
       const turn = await takeMeteredTurn({
         ...baseTurnDeps,
         messages,
