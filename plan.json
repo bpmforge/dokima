@@ -11496,6 +11496,59 @@
         "A scope refusal lists at most a readable number of paths and states the true total",
         "A test pins that installed dependencies do not appear as scope violations"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-24",
+      "points": 3,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "title": "a second provider must not make the product unconfigurable",
+      "write_scope": [
+        "apps/web/src/settings/**"
+      ],
+      "notes": [
+        "Live, 2026-08-26. Added a second provider (an OpenAI-compatible endpoint) exactly as the UI invites. Every subsequent run then REFUSED before spending anything: \"qwen/qwen3-coder-next has no provider prefix and 2 providers are enabled \u2014 qualify it as <providerId>/qwen/qwen3-coder-next\". The refusal itself is excellent: it names the problem, names the fix, and costs nothing.",
+        "The defect is that the fix it names cannot be performed in the UI. Zero of the 36 options in the Models dropdown carry a provider prefix, and the control is a select \u2014 there is no way to type one. So enabling a second provider makes the Models tab unable to express a valid configuration, and the only escape is disabling a provider.",
+        "Also observed: the catalogue lists that endpoint's model under a normalised id that differs from the one its own /v1/models reports, so a hand-entered id showed as \"missing from any registered provider\". Whatever the dropdown offers must be exactly what the resolver accepts."
+      ],
+      "acceptance": [
+        "With two or more providers enabled, the Models dropdown offers ids the resolver accepts",
+        "What is offered and what is accepted are the same string \u2014 asserted by a test, not by eye",
+        "A run configured entirely through the UI does not refuse for a qualification error"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-25",
+      "points": 2,
+      "module": "web",
+      "lane": "ui",
+      "role": "ux-engineer",
+      "title": "discovered models survive a restart, or the UI says they did not",
+      "write_scope": [
+        "apps/web/src/settings/**",
+        "apps/server/src/api/server/providers-routes.ts"
+      ],
+      "notes": [
+        "Live: after a core restart the Models dropdown was empty and both providers read \"Not tested yet\", though nothing about them had changed. Discovery is in-memory, so every restart silently loses the catalogue and the Models tab becomes unusable until each provider is re-tested by hand.",
+        "The honest minimum is that the UI says so rather than presenting an empty list that looks like \"you have no models\". Persisting the catalogue is better; either is better than a blank control with no explanation."
+      ],
+      "acceptance": [
+        "After a restart the Models tab either shows the previously discovered models or states plainly that discovery must be re-run and why",
+        "An empty dropdown is never shown without an explanation next to it"
+      ]
     }
   ]
 }
