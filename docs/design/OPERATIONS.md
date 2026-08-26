@@ -94,3 +94,56 @@ Watch a run to keep it moving.
 
 Neither view may show a state the other cannot. A person who never opens the
 office loses nothing but the charm.
+
+## Orphaned claims — a ticket held by nobody (W21-14, design only)
+
+**Observed, 2026-08-25.** A run ended while `PLAN-vault-001` was `in_progress`.
+The board went on showing the card in In Progress with *"an agent is working
+this"*, and no run existed. Nothing could claim it, because a claimed ticket is
+not claimable; and nothing marked the state as abnormal, so the only way out
+was knowing to use the card's `Move to… → Release it`. A founder who does not
+know that sees a board that has quietly stopped working.
+
+The state is real and will keep happening: a claim is durable (it is a ledger
+event) and a run is not (it is a process). Any crash, kill, machine sleep or
+power cut between `claimTicket` and the run's end leaves exactly this.
+
+### What could own the reaping
+
+**A. A lease with an expiry.** The claim carries a deadline; the claimer
+renews it while it works; an expired lease makes the ticket claimable again.
+*Failure mode:* the clock, not the process, decides. A legitimately slow
+session — a large local model on a busy machine, exactly what this product
+runs on — has its ticket stolen mid-flight, and two workers can then hold the
+same ticket. That is worse than the problem, and mitigating it means renewal
+heartbeats, which is a second liveness mechanism to get wrong.
+
+**B. A sweep at run end.** When a run finishes, it releases anything it still
+holds. *Failure mode:* it only works when the run gets to run its own cleanup.
+The case that produced this — a core killed mid-run — is precisely the case
+where no cleanup executes. It fixes the tidy exits, which were never the
+problem.
+
+**C. The board names the state.** Nothing reaps automatically. A claim whose
+run is not among the live runs is rendered as what it is — *held by a run that
+is no longer going* — with the release action on the card. *Failure mode:* it
+needs a person, so a board left alone stays stuck.
+
+### Recommendation
+
+**C, with B as an optimisation.** The reason is C-2: the trust boundary. A
+lease that silently un-claims work is the product making a liveness judgement
+on the founder's behalf, and it gets that judgement wrong in exactly the
+conditions this product is designed for — slow local models on contended
+machines. B is free and correct where it applies, so a clean run end should
+release what it holds; but it must not be mistaken for a fix, because the
+failure that matters is the unclean one.
+
+C also matches the queue's existing rule (D-030): the founder's attention is a
+resource the product must ask for honestly rather than route around. An
+orphaned claim is a five-second decision for a person and an unbounded risk
+for an algorithm.
+
+Implementation is out of scope for this ticket by founder instruction; what is
+in scope is that the recommendation and its reasoning are written down before
+anybody builds a lease.

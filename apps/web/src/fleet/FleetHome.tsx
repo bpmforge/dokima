@@ -126,7 +126,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
   const setupIsPrimary = !loading && !formMode && sorted.length === 0 && !archivedFilter;
 
   return (
-    <div className="fleet" data-testid="fleet-home">
+    <div className="page fleet" data-testid="fleet-home">
       <header className="fleet__header">
         <h1>Fleet</h1>
         <div className="fleet__actions">

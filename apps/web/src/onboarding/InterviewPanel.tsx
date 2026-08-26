@@ -258,7 +258,7 @@ export function InterviewPanel({
 
   if (stage === 'done') {
     return (
-      <div className="interview" data-testid="interview-done">
+      <div className="page interview" data-testid="interview-done">
         <h3>Board built</h3>
         <p>
           {result?.plan.tickets.length ?? 0} ticket(s) from your answers. The board is on
@@ -269,7 +269,7 @@ export function InterviewPanel({
   }
 
   return (
-    <div className="interview" data-testid="interview-panel">
+    <div className="page interview" data-testid="interview-panel">
       {plannedCount > 0 && (
         <div className="surface interview__recap" data-testid="interview-described-recap">
           <h3>Already described</h3>

@@ -250,7 +250,7 @@ export function PlanView({ projectId }: PlanViewProps) {
   );
 
   return (
-    <div className="plan-view" data-testid="plan-view">
+    <div className="page plan-view" data-testid="plan-view">
       <header className="plan-view__header">
         <h2>Improvement plan</h2>
         <p className="plan-view__funnel" data-testid="plan-funnel">

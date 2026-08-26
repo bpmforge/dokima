@@ -29,7 +29,7 @@ export function NotificationsView() {
   const projectId = projectFilter || undefined;
 
   return (
-    <div className="notifications-view" data-testid="notifications-view">
+    <div className="page notifications-view" data-testid="notifications-view">
       <header className="notifications-view__header">
         <nav className="notifications-view__tabs" role="tablist">
           <button

@@ -1,8 +1,6 @@
-.fleet {
-  flex: 1;
-  overflow: auto;
-  padding: var(--sw-space-6);
-}
+/* W21-20: layout, gutters and the measure come from the shared `.page` shell
+   in styles.css (W21-03). What stays here is only what is specific to this
+   view. */
 
 /* W13-53: a composed page, not an island — content holds a measured width
    and the summary strip gives the readings a line of their own. */

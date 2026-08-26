@@ -45,12 +45,15 @@
    Every value below is a --sw-* token, not a literal: styles.test.ts gates
    raw hex, raw px and off-scale rem, and a new stylesheet is exactly where
    those slip in. */
+/* W21-20: the shell (W21-03) supplies the gutters and centres the column; the
+   interview keeps its own narrower measure, because a form is read one
+   question at a time and 44rem is the right line length for that. */
 .interview {
   display: flex;
   flex-direction: column;
   gap: var(--sw-space-4);
   max-width: 44rem;
-  padding: var(--sw-space-4);
+  margin: 0 auto;
 }
 
 .interview__hint {

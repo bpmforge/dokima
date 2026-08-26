@@ -1,9 +1,7 @@
 /* Improvement Plan view (FR-PLAN2/4). Lives here rather than styles.css, which is outside this ticket's write_scope — App.tsx imports this file globally, same precedent as notifications.css. */
-.plan-view {
-  flex: 1;
-  overflow: auto;
-  padding: var(--sw-space-6);
-}
+/* W21-20: layout, gutters and the measure come from the shared `.page` shell
+   in styles.css (W21-03). What stays here is only what is specific to this
+   view. */
 
 .plan-view__header {
   margin-bottom: var(--sw-space-4);

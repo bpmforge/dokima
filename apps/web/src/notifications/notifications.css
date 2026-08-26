@@ -31,11 +31,9 @@
   padding: 0 var(--sw-space-1);
 }
 
-.notifications-view {
-  flex: 1;
-  overflow: auto;
-  padding: var(--sw-space-6);
-}
+/* W21-20: layout, gutters and the measure come from the shared `.page` shell
+   in styles.css (W21-03). What stays here is only what is specific to this
+   view. */
 
 .notifications-view__header {
   display: flex;
