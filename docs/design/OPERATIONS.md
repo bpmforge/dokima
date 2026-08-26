@@ -36,6 +36,17 @@ your office. Waiting for a peer is not your problem to look at.
 4. **Acceptance** — accepting someone else's finished work stays a human verb
    (D-020). The gate proves it *passed*; you decide it's *what you wanted*.
 5. **Interview answers** — the describe questions, and follow-ups.
+6. **Stuck tickets** (W21-26) — a ticket the loop keeps claiming, working and
+   releasing without ever reaching review. This one is not a question somebody
+   asked you; it is the product noticing it is going in circles. Observed on a
+   real project: a ticket whose write_scope could not satisfy its own
+   acceptance parked on seven consecutive runs, each park returning it to Ready
+   for the next run to repeat, the last two attempts spending 36 and 40 model
+   turns on work that could never close. The loop has no exit of its own, so
+   without this the product knows it is stuck and tells nobody. The decision is
+   different in kind from the others — not "answer this" but "is this ticket
+   right as written?" — which is why it is its own class rather than folded
+   into blocked-on-you.
 
 Anything that is not one of these five and still reaches you is a bug in this
 document, not a feature.
@@ -48,8 +59,8 @@ Borrowed shape (the "head of desk" pattern, 2026-08-24): one member who
 Otto's charter:
 
 - **Never does product work.** No tickets, no code, no reviews, no gates.
-- **Never answers for you.** Not one of the five classes above is ever
-  resolved by Otto.
+- **Never answers for you.** Not one of the classes above is ever resolved by
+  Otto.
 - **Never removes an item.** Otto orders the queue; he cannot suppress it.
   Queue depth is always the true count.
 - **Orders it mechanically** — no model judgement in the ordering, because a
@@ -74,7 +85,7 @@ uncomfortable in the right way: if four people are sitting in your office,
 - Answer them and they stand, walk back to their desk, and resume.
 - Decline is a first-class answer; they walk back just the same, and the
   decline is ledgered.
-- Nobody sits in your office for a reason that isn't one of the five classes.
+- Nobody sits in your office for a reason that isn't one of the classes above.
 - The chairs are finite on screen; the count in Otto's panel is not.
 
 ## What you never have to do

@@ -24,7 +24,25 @@
 
 /** The five classes OPERATIONS.md allows through. Anything else is a bug. */
 export type FounderItemClass =
-  'founder-decision' | 'approval' | 'blocked-on-you' | 'acceptance' | 'interview';
+  | 'founder-decision'
+  | 'approval'
+  | 'blocked-on-you'
+  | 'acceptance'
+  | 'interview'
+  /**
+   * W21-26: a ticket that has been claimed, worked and released repeatedly
+   * without ever reaching review. The loop has no exit of its own — each park
+   * returns the ticket to Ready and the next run repeats it, so a ticket whose
+   * scope cannot satisfy its acceptance is retried forever and nobody is told.
+   * Observed on a real project: seven consecutive parks, the last two spending
+   * 36 and 40 turns each on work that could never close.
+   *
+   * This belongs in the "blocked on you" family of OPERATIONS.md — the run
+   * cannot proceed without a person changing something — but it is named
+   * distinctly because the decision is different: not "answer a question" but
+   * "this ticket may be wrong as written".
+   */
+  | 'stuck-ticket';
 
 export const FOUNDER_ITEM_CLASSES: readonly FounderItemClass[] = [
   'founder-decision',
@@ -32,7 +50,36 @@ export const FOUNDER_ITEM_CLASSES: readonly FounderItemClass[] = [
   'blocked-on-you',
   'acceptance',
   'interview',
+  'stuck-ticket',
 ];
+
+/**
+ * How many claim-and-release cycles before a ticket is treated as stuck.
+ *
+ * Two is deliberate and matches the ladder cap: one park is a bad attempt, two
+ * is a pattern, and the product already gives up on its own at that point —
+ * it just used to give up silently.
+ */
+export const STUCK_CLAIM_THRESHOLD = 2;
+
+/**
+ * Whether a ticket keeps being picked up and put back down without ever
+ * reaching review. Counted from the ledgered verbs — never from a model's
+ * account of what happened (C-2). `close` is the verb that moves a ticket to
+ * review, so a ticket that has ever closed is making progress by definition.
+ */
+export function isStuckTicket(
+  ticket: {
+    readonly status: string;
+    readonly history: readonly { readonly verb: string }[];
+  },
+  threshold = STUCK_CLAIM_THRESHOLD,
+): boolean {
+  if (ticket.status !== 'ready') return false;
+  if (ticket.history.some((h) => h.verb === 'close' || h.verb === 'accept')) return false;
+  const releases = ticket.history.filter((h) => h.verb === 'release').length;
+  return releases >= threshold;
+}
 
 export interface FounderQueueItem {
   readonly id: string;
@@ -60,6 +107,9 @@ export interface OrderedFounderItem extends FounderQueueItem {
 }
 
 function reasonFor(item: FounderQueueItem): string {
+  if (item.kind === 'stuck-ticket') {
+    return 'picked up and put back down repeatedly without ever reaching review';
+  }
   if (item.blocksRun) return 'blocks the whole run';
   if (item.blockedDependents > 0) {
     return `blocks ${item.blockedDependents} ticket${item.blockedDependents === 1 ? '' : 's'}`;

@@ -17,6 +17,7 @@ import { listTickets } from '@dokima/tickets';
 import { listPendingApprovals } from '@dokima/mcp';
 import {
   countBlockedDependents,
+  isStuckTicket,
   orderFounderQueue,
   type FounderQueueItem,
 } from '@dokima/harbormaster';
@@ -119,6 +120,30 @@ export function registerFounderQueueRoute(
             title: `${ticket.id} is finished — accept it?`,
             ticketId: ticket.id,
             openedAt: ticket.claimedAt ?? new Date(0).toISOString(),
+            estimatedCostUsd: null,
+            blocksRun: false,
+            blockedDependents: countBlockedDependents(ticket.id, tickets),
+          });
+        }
+
+        // W21-26: a ticket the loop keeps picking up and putting back down.
+        // Each park returns it to Ready and the next run repeats it, so
+        // without this it is retried forever and nobody is told — observed on
+        // a real project as seven consecutive parks. The signal is the
+        // ledgered verbs, never a model's account of what happened (C-2); the
+        // last park comment rides along as evidence for the person deciding.
+        for (const ticket of listTickets(log).values()) {
+          if (!isStuckTicket(ticket)) continue;
+          const lastComment = [...ticket.history]
+            .reverse()
+            .find((h) => h.verb === 'comment' && h.body);
+          items.push({
+            id: `stuck:${ticket.id}`,
+            kind: 'stuck-ticket',
+            actorId: ownerOf(ticket.id, tickets) ?? 'coding-agent',
+            title: `${ticket.id} keeps being retried and never finishes — is it right as written?`,
+            ticketId: ticket.id,
+            openedAt: lastComment?.at ?? ticket.claimedAt ?? new Date(0).toISOString(),
             estimatedCostUsd: null,
             blocksRun: false,
             blockedDependents: countBlockedDependents(ticket.id, tickets),

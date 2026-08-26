@@ -229,6 +229,8 @@ export type { TurnsObservation } from './agent-session/session-progress.js';
 export {
   countBlockedDependents,
   FOUNDER_ITEM_CLASSES,
+  isStuckTicket,
+  STUCK_CLAIM_THRESHOLD,
   orderFounderQueue,
 } from './founder-queue.js';
 export type {

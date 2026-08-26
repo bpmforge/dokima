@@ -11549,6 +11549,41 @@
         "After a restart the Models tab either shows the previously discovered models or states plainly that discovery must be re-run and why",
         "An empty dropdown is never shown without an explanation next to it"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-26",
+      "points": 3,
+      "title": "a ticket that parked at its cap reaches the founder instead of looping forever",
+      "write_scope": [
+        "apps/server/src/api/server/founder-queue-route.ts",
+        "apps/server/src/api/server/founder-queue-route.test.ts",
+        "packages/harbormaster/src/founder-queue.ts",
+        "packages/harbormaster/src/founder-queue.test.ts",
+        "docs/design/OPERATIONS.md"
+      ],
+      "notes": [
+        "Live evidence, PLAN-vault-001 in the Vault project. writeScope is exactly [\"package.json\",\"tsconfig.json\",\".eslintrc.js\",\".prettierrc\"] and acceptance is \"npm run lint && npm run typecheck\". tsc on a project with zero .ts files cannot pass, so the ticket is unsatisfiable AS SCOPED. The agent worked it out itself and said so: next = \"Create index.ts file outside write_scope to satisfy TypeScript requirements\".",
+        "It has now parked on seven consecutive runs. Each park releases the ticket back to Ready, and the park comment even predicts the outcome \u2014 \"the next run will retry it, and will likely park again unless the evidence below is addressed\" \u2014 and then nothing routes it to anybody. The product knows it is stuck and tells no one.",
+        "The last two attempts spent 36 and 40 turns, earning 6 and 7 budget extensions from real progress signals, on work that could never close. That is the cost of a loop with no exit.",
+        "C-2 boundary, deliberately observed: the session checkpoint is MODEL-authored, so it may be shown as evidence but must never drive state. What drives this is code-observed and already ledgered \u2014 the ticket parked at its cap. The founder decides what to do about it.",
+        "SCOPE WIDENED, recorded: a W20-09 fixture asserts the queue carries exactly the OPERATIONS.md classes and invents no others \u2014 which is the right guard and it fired. Adding a sixth class in code alone would have been exactly what that fixture exists to stop, so OPERATIONS.md now documents stuck-ticket too, and the fixture asserts the full list rather than a count. The invariant is that code and doc agree, not that the number never moves."
+      ],
+      "acceptance": [
+        "A ticket parked at the ladder cap appears in the founder queue as something waiting on a person",
+        "The item carries the park evidence, including what each session reported it was blocked on",
+        "Ordering stays mechanical (D-030) \u2014 a parked ticket does not jump the queue by being noisy",
+        "A ticket that parks and is then picked up again leaves the queue",
+        "No model text drives any state change; it is shown as evidence only"
+      ]
     }
   ]
 }

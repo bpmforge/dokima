@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countBlockedDependents,
+  isStuckTicket,
   FOUNDER_ITEM_CLASSES,
   orderFounderQueue,
   type FounderQueueItem,
@@ -72,12 +73,22 @@ describe('orderFounderQueue (W20-09, D-030)', () => {
     expect(JSON.stringify(items)).toBe(snapshot);
   });
 
-  it('carries all five OPERATIONS.md classes and invents no sixth', () => {
+  it('carries exactly the OPERATIONS.md classes and invents none of its own', () => {
     const out = orderFounderQueue(
       FOUNDER_ITEM_CLASSES.map((kind, i) => item({ id: `k-${i}`, kind })),
     );
     expect(new Set(out.map((o) => o.kind))).toEqual(new Set(FOUNDER_ITEM_CLASSES));
-    expect(FOUNDER_ITEM_CLASSES).toHaveLength(5);
+    // The guard is that code and doc agree, not that the number never moves.
+    // W21-26 added a sixth class — stuck-ticket — as a founder decision, and
+    // OPERATIONS.md carries it; a class added in code alone still fails here.
+    expect(FOUNDER_ITEM_CLASSES).toEqual([
+      'founder-decision',
+      'approval',
+      'blocked-on-you',
+      'acceptance',
+      'interview',
+      'stuck-ticket',
+    ]);
   });
 });
 
@@ -103,5 +114,57 @@ describe('countBlockedDependents (the "unblocks the most work" signal)', () => {
       { id: 'B', dependsOn: ['A'] },
     ];
     expect(countBlockedDependents('A', cyclic)).toBe(2);
+  });
+});
+
+describe('a ticket that keeps being retried reaches the founder (W21-26)', () => {
+  const h = (verb: string) => ({ verb });
+
+  it('RED FIXTURE: the live shape — claimed, worked and released twice, never reviewed — is stuck', () => {
+    expect(
+      isStuckTicket({
+        status: 'ready',
+        history: [h('claim'), h('start'), h('comment'), h('release'), h('claim'), h('start'), h('comment'), h('release')],
+      }),
+    ).toBe(true);
+  });
+
+  it('one park is a bad attempt, not a pattern', () => {
+    expect(
+      isStuckTicket({ status: 'ready', history: [h('claim'), h('start'), h('release')] }),
+    ).toBe(false);
+  });
+
+  it('a ticket that has ever CLOSED is making progress, however many times it was released', () => {
+    expect(
+      isStuckTicket({
+        status: 'ready',
+        history: [h('claim'), h('close'), h('release'), h('claim'), h('release'), h('release')],
+      }),
+    ).toBe(false);
+  });
+
+  it('a ticket someone is working right now is not stuck — it is in progress', () => {
+    expect(
+      isStuckTicket({
+        status: 'in_progress',
+        history: [h('release'), h('release'), h('release')],
+      }),
+    ).toBe(false);
+  });
+
+  it('being noisy does not jump the queue — ordering stays mechanical (D-030)', () => {
+    const ordered = orderFounderQueue([
+      {
+        id: 'stuck:T-1', kind: 'stuck-ticket', actorId: 'a', title: 'stuck', ticketId: 'T-1',
+        openedAt: '2026-01-02T00:00:00Z', estimatedCostUsd: null, blocksRun: false, blockedDependents: 0,
+      },
+      {
+        id: 'slate:1', kind: 'founder-decision', actorId: 'b', title: 'blocks everything', ticketId: null,
+        openedAt: '2026-01-03T00:00:00Z', estimatedCostUsd: null, blocksRun: true, blockedDependents: 0,
+      },
+    ]);
+    expect(ordered[0]!.id).toBe('slate:1');
+    expect(ordered[1]!.reason).toContain('picked up and put back down');
   });
 });
