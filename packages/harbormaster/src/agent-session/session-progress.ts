@@ -218,11 +218,27 @@ export function budgetExhaustedStderr(
     extensions.length > 0
       ? ` (started lower and earned ${extensions.length} extension(s) from real progress)`
       : '';
+  /**
+   * W21-16: the advice used to be unconditional, and was WRONG in the case it
+   * fired most. The live UAT parked a session that had just earned an
+   * extension and still had headroom left — and the evidence told the founder
+   * to raise the ceiling. Advice that is wrong in its own commonest case
+   * teaches people to stop reading the evidence.
+   *
+   * The budget was only the binding constraint if it never grew. If it did
+   * grow, the session had room and did not use it, and more ceiling buys more
+   * of whatever it was doing instead of finishing.
+   */
+  const advice =
+    extensions.length > 0
+      ? ` This session EARNED more budget from real progress and still did not ` +
+        `hand back a manifest, so raising maxToolIterations will not help — the ` +
+        `evidence to read is what it spent those turns on.`
+      : ` If the work was real but unfinished, raise maxToolIterations — chatty ` +
+        `local models often need more than the default.`;
   return (
     `agent session stopped: exceeded the per-session tool-iteration budget ` +
-    `(${finalBudget}${earned}) without a Completion Manifest (T-27). If the work was ` +
-    `real but unfinished, raise maxToolIterations — chatty local models often ` +
-    `need more than the default.`
+    `(${finalBudget}${earned}) without a Completion Manifest (T-27).${advice}`
   );
 }
 

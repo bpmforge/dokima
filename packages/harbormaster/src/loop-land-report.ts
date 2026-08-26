@@ -85,6 +85,8 @@ export function parkComment(
   ceiling: number,
   attempts: readonly LandAttempt[],
   decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined,
+  /** W21-15: absorbed infra retries — shown, but never counted against the cap. */
+  absorbedInfraRetries = 0,
 ): string {
   /**
    * W13-63: "Parked", because that is what HAPPENS. This header said
@@ -104,6 +106,15 @@ export function parkComment(
     header,
     ...attempts.map((attempt) => attemptSummaryLine(attempt, ceiling)),
   ];
+  // W21-15: visible, because a ticket that took five passes to reach two
+  // judged attempts should say so — but never folded into the attempt number,
+  // which is what made the evidence read "attempt 5/2".
+  if (absorbedInfraRetries > 0) {
+    lines.push(
+      `${absorbedInfraRetries} infrastructure retry(s) were absorbed and did NOT ` +
+        `count against the cap — see the session.infra_retry events for what failed.`,
+    );
+  }
   if (decideCard) lines.push('', renderDecideCard(decideCard));
   return lines.join('\n');
 }

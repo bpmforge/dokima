@@ -73,6 +73,8 @@ export interface FreeRetryGate {
    * during the live UAT before this was threaded through.
    */
   take(kind: InfraFailureKind | null, attempt: number, detail?: string): boolean;
+  /** How many retries were absorbed — evidence, not a counter the cap uses (W21-15). */
+  absorbed(): number;
 }
 
 /** The ledger is not a log: enough of the provider's words to act on, no more. */
@@ -93,6 +95,7 @@ export function createFreeRetryGate(
     limit: () => ceiling + infra.total,
     take: (kind, attempt, detail) =>
       takeFreeInfraRetry(options, infra, kind, ticketId, attempt, detail),
+    absorbed: () => infra.total,
   };
 }
 

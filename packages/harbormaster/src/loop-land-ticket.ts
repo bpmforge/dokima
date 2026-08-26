@@ -133,7 +133,12 @@ export async function landClaimedTicket(
     // put them (`provider failure: …`).
     if (freeRetry.take(infraFailure, attempt, session.output)) continue;
     attempts.push({
-      attempt,
+      // W21-15. Not the loop index: that counter also advances for every free
+      // infra retry, which is how the park evidence came to read
+      // "attempt 5/2" — five attempts against a cap of two. The number a
+      // person reads must be the count of attempts that were actually
+      // JUDGED, so it can never exceed the ceiling it is printed against.
+      attempt: attempts.length + 1,
       session,
       closeGate,
       ...(rungStart.sessionLabel ? { sessionLabel: rungStart.sessionLabel } : {}),
@@ -198,7 +203,13 @@ export async function landClaimedTicket(
   if (parked) {
     parkedReason ??=
       policy.mode === 'locked' ? 'locked_ceiling_reached' : 'ladder_exhausted';
-    const parkBody = parkComment(parkedReason, ceiling, attempts, decideCard);
+    const parkBody = parkComment(
+      parkedReason,
+      ceiling,
+      attempts,
+      decideCard,
+      freeRetry.absorbed(),
+    );
     commentTicket(options.log, {
       ticketId: ticket.id,
       actorId: options.actorId,

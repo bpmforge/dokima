@@ -11220,7 +11220,7 @@
         "US-501"
       ],
       "phase": 21,
-      "status": "todo",
+      "status": "done",
       "id": "W21-15",
       "points": 1,
       "module": "harbormaster",
@@ -11249,7 +11249,7 @@
         "US-501"
       ],
       "phase": 21,
-      "status": "todo",
+      "status": "done",
       "id": "W21-16",
       "points": 1,
       "module": "harbormaster",

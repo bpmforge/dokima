@@ -111,7 +111,11 @@ describe('createSessionProgressBudget (W17-01)', () => {
     const message = budgetExhaustedStderr(budget.budget(), budget.entries());
     expect(message).toContain('(8');
     expect(message).toMatch(/earned 1 extension/);
-    expect(message).toContain('raise maxToolIterations');
+    // W21-16 changed the advice here on purpose: this session EARNED budget
+    // and still parked, so telling the reader to raise the ceiling was wrong
+    // in exactly the case it fired most. It still names maxToolIterations —
+    // to say it will not help.
+    expect(message).toContain('will not help');
   });
 });
 
@@ -221,5 +225,24 @@ describe('zero-information repeats (W21-10)', () => {
     budget.noteIteration({ iteration: 4, toolCalls: [call('read', '{"p":"a"}', 'A')] });
     // Each has been seen twice; neither has reached the limit.
     expect(budget.earlyStop()).toBeNull();
+  });
+});
+
+describe('the park advice stops being wrong in its commonest case (W21-16)', () => {
+  it('RED FIXTURE: a session that EARNED budget and still parked is not told to raise the budget', () => {
+    const entries = [
+      { kind: 'extended' as const, atIteration: 12, to: 16, signal: 'commit changed the worktree' },
+    ];
+    const text = budgetExhaustedStderr(16, entries);
+    // The live park said exactly this while holding four unused iterations.
+    expect(text).not.toContain('raise maxToolIterations — chatty');
+    expect(text).toContain('will not help');
+    expect(text).toContain('what it spent those turns on');
+  });
+
+  it('a session that never grew its budget IS told to raise it — that advice is right there', () => {
+    const text = budgetExhaustedStderr(12, []);
+    expect(text).toContain('raise maxToolIterations');
+    expect(text).toContain('without a Completion Manifest');
   });
 });

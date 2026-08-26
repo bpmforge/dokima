@@ -88,3 +88,39 @@ describe('attemptSummaryLine — why a session returned nothing (W13-41)', () =>
     expect(comment.match(/ran out of turns/g)).toHaveLength(2);
   });
 });
+
+describe('the attempt counter cannot exceed its own cap (W21-15)', () => {
+  const attempt = (n: number): LandAttempt =>
+    ({
+      attempt: n,
+      session: { exitCode: 1, output: '', manifest: null } as LandAttempt['session'],
+      closeGate: null,
+    }) as LandAttempt;
+
+  it('RED FIXTURE: the exact observed shape — 2 judged attempts and 3 absorbed retries — never prints "5/2"', () => {
+    const body = parkComment(
+      'ladder_exhausted',
+      2,
+      [attempt(1), attempt(2)],
+      undefined,
+      3,
+    );
+    expect(body).toContain('attempt 1/2');
+    expect(body).toContain('attempt 2/2');
+    expect(body).not.toContain('attempt 3/2');
+    expect(body).not.toContain('attempt 4/2');
+    expect(body).not.toContain('attempt 5/2');
+  });
+
+  it('the absorbed retries are still VISIBLE — hiding them would trade one lie for another', () => {
+    const body = parkComment('ladder_exhausted', 2, [attempt(1)], undefined, 3);
+    expect(body).toContain('3 infrastructure retry(s) were absorbed');
+    expect(body).toContain('did NOT count against the cap');
+    expect(body).toContain('session.infra_retry');
+  });
+
+  it('a run with no infra trouble says nothing about retries', () => {
+    const body = parkComment('ladder_exhausted', 2, [attempt(1)], undefined, 0);
+    expect(body).not.toContain('absorbed');
+  });
+});
