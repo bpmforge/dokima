@@ -26,6 +26,11 @@ import {
   repeatedZeroInformationCalls,
   repetitionEvidenceLine,
 } from './loop-land-repetition.js';
+import {
+  provisionWorktree,
+  provisionFailureReason,
+  provisionEnvironmentNote,
+} from './worktree-provision.js';
 import { pushLandedBranch, recordFailedPushes } from './land-push.js';
 import {
   attemptNumberForRung,
@@ -81,6 +86,56 @@ export async function landClaimedTicket(
     ticketId: ticket.id,
     ticketTitle: ticket.title,
   });
+  /**
+   * W21-21: provisioning lives HERE, in the shared engine, because there are
+   * THREE claim sites — loop-claim's processTicket (which nothing calls),
+   * this file's processTicket, and berths' injected runTicket — each with its
+   * own resolveWorktree. W21-12 put it at one of them and a live run proved it
+   * never executed. Everything that lands a ticket funnels through this
+   * function, so this is the only place it cannot be bypassed.
+   */
+  const provision = await provisionWorktree({
+    worktreePath: worktree.path,
+    log: options.log,
+    actorId: options.actorId,
+    ticketId: ticket.id,
+  });
+  const provisionFailure = provisionFailureReason(provision);
+  if (provisionFailure) {
+    commentTicket(options.log, {
+      ticketId: ticket.id,
+      actorId: options.actorId,
+      body: provisionFailure,
+    });
+    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
+    return {
+      ticketId: ticket.id,
+      mode: resolveLandEscalationPolicy(options.policyScope ?? {}, options.role ?? ROLE_CODING_AGENT).mode,
+      attempts: [],
+      landed: false,
+      parked: true,
+      finalStatus: requireTicket(options.log, ticket.id).status,
+    };
+  }
+
+  /**
+   * W21-22: the agent is told what is already true of the worktree it is
+   * standing in. Wrapped locally rather than widening HandoffBuilder and every
+   * caller — the same shape this engine already uses to wrap `spawn` for
+   * redaction.
+   */
+  const environment = provisionEnvironmentNote(provision);
+  if (environment) {
+    const inner = options.buildHandoff;
+    options = {
+      ...options,
+      buildHandoff: async (t: Ticket, f?: AttemptFeedback) => ({
+        ...(await inner(t, f)),
+        environment,
+      }),
+    };
+  }
+
   const role = options.role ?? ROLE_CODING_AGENT;
   const policy = resolveLandEscalationPolicy(options.policyScope ?? {}, role);
   const tokenHook = options.tokenHook ?? noopLandEscalationTokenHook;

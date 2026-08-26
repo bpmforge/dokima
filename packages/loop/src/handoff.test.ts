@@ -173,3 +173,37 @@ describe('the handoff states the manifest contract (W13-09)', () => {
     },
   );
 });
+
+describe('the handoff says what the harness already did (W21-22)', () => {
+  const base = {
+    role: 'coding-agent',
+    mission: 'build it',
+    ticket: { id: 'T-1', title: 'Init' },
+    context: 'a fresh project',
+    writeScope: ['src/**'],
+    produce: ['a working config'],
+    verify: 'pnpm lint',
+  };
+
+  it('RED FIXTURE: an installed worktree SAYS SO — a live run burned both attempts planning an install the harness had already done', () => {
+    const text = renderHandoff({
+      ...base,
+      environment:
+        'Dependencies are ALREADY INSTALLED — the harness ran `npm install` in this worktree before you started.',
+    });
+    expect(text).toContain('ENVIRONMENT:');
+    expect(text).toContain('ALREADY INSTALLED');
+  });
+
+  it('nothing to report means no empty section — a heading that is sometimes noise gets skipped when it is not', () => {
+    expect(renderHandoff(base)).not.toContain('ENVIRONMENT:');
+  });
+
+  it('the environment line is redacted like every other field', () => {
+    const text = renderHandoff(
+      { ...base, environment: 'installed with token sk-abcdefghijklmnopqrstuvwxyz012345' },
+      { secretValues: ['sk-abcdefghijklmnopqrstuvwxyz012345'] },
+    );
+    expect(text).not.toContain('sk-abcdefghijklmnopqrstuvwxyz012345');
+  });
+});

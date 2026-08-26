@@ -11398,6 +11398,71 @@
         "The W13-04 border ratchet is unchanged or lower \u2014 counted before and after",
         "Screenshots before and after each page, both themes"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "phase": 21,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-21",
+      "points": 2,
+      "title": "provisioning is wired into the loop the product actually runs",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts",
+        "packages/harbormaster/src/loop-claim.ts"
+      ],
+      "notes": [
+        "W21-12 landed the provisioning step and wired it into loop-claim.ts processTicket. Live run 4 proved it never executes: worktree.provisioned events = 0, and the agent parked with its own checkpoint reading remaining:[\"Install dependencies with pnpm install\"], next:\"pnpm install\". The agent knew exactly what it needed and could not do it \u2014 which is the defect W21-12 was supposed to remove.",
+        "Root cause: the product runs runLandLoop, not runClaimLoop. They are two claim paths with two resolveWorktree calls, and the export ratchet has been reporting runClaimLoop as having no non-test caller for waves \u2014 the evidence was there and I wired to the dead one.",
+        "AUDIT GAP that hid it, and the reason this ticket also changes the event: provisioning only ledgered when it RAN. A no-op wrote nothing, so an empty ledger meant either \"nothing needed installing\" or \"the step never executed\" \u2014 indistinguishable. That ambiguity is exactly what stopped me seeing a dead call site from the evidence alone."
+      ],
+      "acceptance": [
+        "The land loop provisions before its first session, proven by a worktree.provisioned event in a live run",
+        "Provisioning ALWAYS ledgers, including when it decides nothing is needed, with the reason it decided that \u2014 a silent skip and a dead call site must never look the same",
+        "The claim-loop call site is kept in step or removed, not left to drift",
+        "A test pins that the land path provisions"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [
+        "W21-21"
+      ],
+      "phase": 21,
+      "module": "loop",
+      "lane": "engine",
+      "role": "coding-agent",
+      "status": "done",
+      "id": "W21-22",
+      "points": 2,
+      "title": "tell the agent its environment is already prepared",
+      "write_scope": [
+        "packages/loop/src/handoff.ts",
+        "packages/loop/src/handoff.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-session.ts"
+      ],
+      "notes": [
+        "W21-21 made provisioning actually run \u2014 proven in a live run: worktree.provisioned at 15:17:17 with command \"npm install\", exitCode 0, 30.9s, and node_modules now exists in the worktree. The very next attempt correctly skipped with \"dependencies already installed\".",
+        "And the agent STILL parked planning to install. Its own checkpoint: remaining:[\"Install dependencies with pnpm install\",...], next:\"pnpm install\". It burned both attempts trying to do something the harness had already done for it, using a tool it does not have.",
+        "The handoff never mentions the environment. The agent is told its role, ticket, context, write-scope, what to produce and how to verify \u2014 and nothing about what is already true of the worktree it is standing in. So it plans from scratch every session and plans the one step it is forbidden to take.",
+        "Wrap the injected builder locally rather than changing HandoffBuilder signature and every caller \u2014 the same trick the land engine already uses to wrap spawn for redaction."
+      ],
+      "acceptance": [
+        "The handoff states what the harness already did to the worktree, including that dependencies are installed",
+        "It says plainly that the agent cannot and need not install anything",
+        "A test pins that the environment line reaches the rendered handoff",
+        "Handoffs with nothing to report gain no empty section"
+      ]
     }
   ]
 }

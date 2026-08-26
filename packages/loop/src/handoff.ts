@@ -29,6 +29,14 @@ export interface Handoff {
   readonly produce: readonly string[];
   /** The command/validator that must exit 0. */
   readonly verify: string;
+  /**
+   * W21-22: what the HARNESS already did to this worktree before the agent
+   * arrived. Without it, an agent plans from scratch every session and plans
+   * steps it is not allowed to take — a live run burned both of its attempts
+   * intending to run `pnpm install`, which the harness had already run for it
+   * and which no tool in its set can do.
+   */
+  readonly environment?: string;
 }
 
 const BLOCK_RULE = '═'.repeat(40);
@@ -122,6 +130,11 @@ export function renderHandoff(handoff: Handoff, opts: RenderHandoffOptions = {})
     `WRITE-SCOPE: ${handoff.writeScope.join(', ')}`,
     `PRODUCE: ${produce.join('; ')}`,
     `VERIFY: ${verify}`,
+    // Omitted entirely when there is nothing to say: an empty section is one
+    // more thing to read and teaches the reader that sections can be noise.
+    ...(handoff.environment
+      ? [`ENVIRONMENT: ${redactDeep(handoff.environment, secretValues)}`]
+      : []),
     returnBlock(handoff.ticket.id, verify),
     BLOCK_RULE,
   ];

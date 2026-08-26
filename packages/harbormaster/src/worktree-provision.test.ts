@@ -84,6 +84,29 @@ describe('provisionWorktree (W21-12)', () => {
     });
     expect(result.ran).toBe(false);
     expect(result.ok).toBe(true);
+    // W21-21: a skip is LEDGERED with its reason. Silence would make "nothing
+    // needed installing" and "this code never ran" identical from the
+    // outside — which is exactly how a dead call site hid for a whole wave.
+    const row = log.db
+      .prepare("select payload from events where event_type = 'worktree.provisioned'")
+      .get() as { payload: string };
+    expect(row).toBeTruthy();
+    const payload = JSON.parse(row.payload) as Record<string, unknown>;
+    expect(payload.ran).toBe(false);
+    expect(String(payload.why)).toContain('no package.json');
+    log.close();
+  });
+
+  it('an already-installed tree says so in the ledger, distinctly from having no manifest', async () => {
+    const dir = await tempDir('skip-installed');
+    const log = await logIn(dir);
+    await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
+    await fs.mkdir(path.join(dir, 'node_modules'));
+    await provisionWorktree({ worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1' });
+    const row = log.db
+      .prepare("select payload from events where event_type = 'worktree.provisioned'")
+      .get() as { payload: string };
+    expect(String(JSON.parse(row.payload).why)).toContain('already installed');
     log.close();
   });
 

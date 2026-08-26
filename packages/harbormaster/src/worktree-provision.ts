@@ -82,6 +82,21 @@ export async function planProvision(worktreePath: string): Promise<ProvisionPlan
   return { command: 'npm', args: ['install'], because: 'package.json with no lockfile' };
 }
 
+/** Why `planProvision` decided there was nothing to do — for the ledger. */
+async function skipReason(worktreePath: string): Promise<string> {
+  const exists = async (rel: string): Promise<boolean> => {
+    try {
+      await fs.stat(path.join(worktreePath, rel));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (!(await exists('package.json'))) return 'no package.json — nothing to install';
+  if (await exists('node_modules')) return 'dependencies already installed';
+  return 'nothing to do';
+}
+
 export interface ProvisionResult {
   readonly ran: boolean;
   readonly ok: boolean;
@@ -149,6 +164,25 @@ export interface ProvisionInput {
 export async function provisionWorktree(input: ProvisionInput): Promise<ProvisionResult> {
   const plan = await planProvision(input.worktreePath);
   if (!plan) {
+    /**
+     * W21-21: a no-op is ledgered too, and this is not bookkeeping for its own
+     * sake. W21-12 wired this step into a claim path the product does not
+     * run, and because a skip wrote nothing, an empty ledger meant either
+     * "nothing needed installing" or "this code never executed" —
+     * indistinguishable from the outside. A live run then parked with the
+     * agent's own checkpoint asking for `pnpm install`, and the only way to
+     * tell which had happened was to read the call graph.
+     *
+     * An audit trail that is silent when nothing happened cannot tell you the
+     * difference between working and absent.
+     */
+    appendEvent(input.log, {
+      eventType: 'worktree.provisioned',
+      actorId: input.actorId,
+      ticketId: input.ticketId,
+      ...(input.runId ? { runId: input.runId } : {}),
+      payload: { ran: false, why: await skipReason(input.worktreePath) },
+    });
     return { ran: false, ok: true, exitCode: null, durationMs: 0, output: '', plan: null };
   }
 
@@ -179,6 +213,38 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
   });
 
   return { ran: true, ok, exitCode, durationMs, output: trim(output), plan };
+}
+
+/**
+ * W21-22: what to tell the AGENT about the worktree it is about to work in.
+ *
+ * A live run made the need obvious: the harness ran `npm install` for the
+ * agent, and the agent then spent both of its attempts planning to run
+ * `pnpm install` itself — a step it is not permitted to take and did not need
+ * to. It had no way to know, because the handoff described the ticket and
+ * never the environment.
+ *
+ * Null when there is nothing worth saying: an environment line that appears
+ * on every handoff regardless of content is noise, and noise is what gets
+ * skipped.
+ */
+export function provisionEnvironmentNote(result: ProvisionResult): string | null {
+  if (result.ran && result.ok && result.plan) {
+    return (
+      `Dependencies are ALREADY INSTALLED — the harness ran \`${result.plan.command} ` +
+      `${result.plan.args.join(' ')}\` in this worktree before you started. Do not ` +
+      `try to install anything: you have no tool that can, and you do not need one. ` +
+      `The verify command can be run directly.`
+    );
+  }
+  if (!result.ran) {
+    return (
+      'This worktree needs no dependency install — either there is no package ' +
+      'manifest or its dependencies are already present. Do not try to install ' +
+      'anything: you have no tool that can, and you do not need one.'
+    );
+  }
+  return null;
 }
 
 /**
