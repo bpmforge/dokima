@@ -236,3 +236,13 @@ export type {
   FounderQueueItem,
   OrderedFounderItem,
 } from './founder-queue.js';
+
+// W21-12: the harness-side provisioning step (the agent still cannot install).
+export {
+  planProvision,
+  provisionWorktree,
+  provisionFailureReason,
+  PROVISION_TIMEOUT_MS,
+  type ProvisionPlan,
+  type ProvisionResult,
+} from './worktree-provision.js';

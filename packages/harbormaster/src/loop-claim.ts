@@ -50,6 +50,7 @@ import {
 import type { EventLog } from '@dokima/events';
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
+import { provisionWorktree, provisionFailureReason } from './worktree-provision.js';
 
 export const DEFAULT_MAX_SESSIONS_PER_TICKET = 2;
 
@@ -173,6 +174,35 @@ async function processTicket(
   startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
 
   const worktree = await resolveWorktree(options, ticket);
+
+  // W21-12: a fresh worktree cannot satisfy its own verify command until its
+  // dependencies exist, and NOTHING else in the system can install them — the
+  // agent's tool set forbids it (SC-18) and the verify sandbox has no network
+  // (SC-07). The harness provisions here, exactly as it provisioned the git
+  // worktree above, from the lockfile on disk and never from model output.
+  const provision = await provisionWorktree({
+    worktreePath: worktree.path,
+    log: options.log,
+    actorId: options.actorId,
+    ticketId: ticket.id,
+  });
+  const provisionFailure = provisionFailureReason(provision);
+  if (provisionFailure) {
+    // Refuse loudly instead of spending attempts on a ticket whose verify
+    // command cannot pass for a reason that has nothing to do with the work.
+    commentTicket(options.log, {
+      ticketId: ticket.id,
+      actorId: options.actorId,
+      body: provisionFailure,
+    });
+    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
+    return {
+      ticketId: ticket.id,
+      attempts: [],
+      autoBlocked: false,
+      finalStatus: requireTicket(options.log, ticket.id).status,
+    };
+  }
 
   // `secretValues` (W11-17) wraps `spawn` to redact the rendered prompt
   // before it leaves the process, since `runSession` has no redaction hook
