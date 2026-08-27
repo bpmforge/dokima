@@ -68,15 +68,24 @@ export async function beginRungAttempt(
   policy: LandEscalationPolicy,
   ticketId: string,
   attempts: readonly LandAttempt[],
+  /**
+   * W21-55: rungs already known to have failed this ticket (W21-46). Shifts
+   * which RUNG runs without consuming an ATTEMPT — the two are deliberately
+   * separate numbers. W21-15 made `realAttempt` count only JUDGED attempts so
+   * the park evidence can never read "attempt 5/2"; the first version of the
+   * rung-memory fix moved the loop counter instead and so moved neither, which
+   * a live run caught: the skip said "starts above R1" and R1's model ran.
+   */
+  rungOffset = 0,
 ): Promise<RungAttemptStart> {
   if (!options.rungSessions) return { options };
 
   const realAttempt = attempts.length + 1;
-  const rung = rungForAttempt(policy, realAttempt);
+  const rung = rungForAttempt(policy, realAttempt + rungOffset);
   const rungSession = options.rungSessions.sessionForRung(rung);
 
   if (attempts.length > 0) {
-    const previousRung = rungForAttempt(policy, attempts.length);
+    const previousRung = rungForAttempt(policy, attempts.length + rungOffset);
     // W17-04: a tier advance is only an ESCALATION when the session actually
     // changes. A one-model chain (fallback: []) clamps every rung to the same
     // session, and ledgering that as `escalation.rung_advanced` made the

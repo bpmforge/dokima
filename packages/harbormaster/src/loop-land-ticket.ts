@@ -171,8 +171,7 @@ export async function landClaimedTicket(
     log: options.log,
     actorId: options.actorId,
     ticketId: ticket.id,
-    // W21-32: the option existed and this, its only live call site, never
-    // passed it — so `worktree.provisioned` was run=null too.
+    // W21-32: the option existed and this call site never passed it.
     ...(options.runId ? { runId: options.runId } : {}),
   });
   const provisionFailure = provisionFailureReason(provision);
@@ -225,9 +224,10 @@ export async function landClaimedTicket(
   let parkedReason: LandParkedReason | undefined;
   let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
 
-  // W21-46: a rung that already failed THIS ticket is not re-run from scratch.
+  // W21-46/55: a failed rung shifts the RUNG, never the attempt budget.
+  const rungOffset = startAttemptFor(options.log, ticket.id, options.actorId, options.runId) - 1;
   for (
-    let attempt = startAttemptFor(options.log, ticket.id, options.actorId, options.runId);
+    let attempt = 1;
     attempt <= freeRetry.limit() && current.status === 'in_progress';
     attempt++
   ) {
@@ -248,7 +248,7 @@ export async function landClaimedTicket(
     }
     // W16-01: which rung this attempt runs at (the chapter also ledgers a
     // climb, evidence attached). Without a seam, options come back untouched.
-    const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts);
+    const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts, rungOffset);
     // W21-44: the ledger marker this attempt's tool calls are counted from.
     const attemptStartSeq = latestSeq(options.log);
     const { session, closeGate, infraFailure } = await attemptOnce(

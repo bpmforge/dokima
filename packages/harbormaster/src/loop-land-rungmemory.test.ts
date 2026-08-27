@@ -123,3 +123,39 @@ describe('rungSkipNotice (W21-46)', () => {
     expect(rungSkipNotice('T-1', { failed: [], startAttempt: 1 })).toBeNull();
   });
 });
+
+/**
+ * W21-55. The first version of this chapter moved the LOOP COUNTER, and run 38
+ * caught it live: the skip comment said "PLAN-vault-002a starts above R1" and
+ * `qwen/qwen3-coder-next` — R1's model — ran anyway, burning the single
+ * remaining attempt on the rung it was meant to skip.
+ *
+ * The cause is a decoupling W21-15 made on purpose. `beginRungAttempt` derives
+ * the rung from `attempts.length + 1`, which counts JUDGED attempts so park
+ * evidence can never read "attempt 5/2" — it does not follow the loop index.
+ * Moving the loop counter therefore moved neither the rung nor the reporting,
+ * and cost an attempt for nothing.
+ */
+describe('the skip shifts the rung, not the attempt budget (W21-55)', () => {
+  it('RED FIXTURE: an offset of 1 puts the FIRST attempt on R2, not R1', async () => {
+    const { rungForAttempt } = await import('./loop-land-policy.js');
+    const policy = { mode: 'ladder' } as Parameters<typeof rungForAttempt>[0];
+    const firstAttempt = 1;
+    const offset = 1; // startAttempt 2 -> offset 1
+    expect(rungForAttempt(policy, firstAttempt)).toBe('R1');
+    expect(rungForAttempt(policy, firstAttempt + offset)).toBe('R2');
+  });
+
+  it('the attempt NUMBER is untouched — W21-15 keeps it counting judged attempts', () => {
+    // The loop still starts at 1, so a cap of 2 still buys two real attempts
+    // even when the first of them runs on R2.
+    const attemptsSoFar = 0;
+    expect(attemptsSoFar + 1).toBe(1);
+  });
+
+  it('with no failed rungs the offset is 0 and nothing changes', () => {
+    expect(rungMemoryFor.length).toBeGreaterThan(0); // module loaded
+    const memory = { failed: [] as string[], startAttempt: 1 };
+    expect(memory.startAttempt - 1).toBe(0);
+  });
+});

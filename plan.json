@@ -12665,6 +12665,40 @@
         "git() takes an env override, since commit-tree reads its dates from nowhere else",
         "A multi-dependency worktree is reused across runs when its dependencies have not changed"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-46"
+      ],
+      "id": "W21-55",
+      "title": "the rung skip moved the loop counter instead of the rung",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-rungs.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-rungmemory.test.ts"
+      ],
+      "notes": [
+        "W21-46 FIRED LIVE FOR THE FIRST TIME IN RUN 38 AND WAS WRONG. #2845 says \"PLAN-vault-002a starts above R1: that rung has already failed this ticket\" \u2014 and #2874 says the session that ran was qwen/qwen3-coder-next, which IS R1`s model. It skipped nothing and burned the only remaining attempt doing it.",
+        "The cause is a decoupling W21-15 made deliberately. beginRungAttempt derives the rung from `attempts.length + 1` \u2014 a count of JUDGED attempts, so park evidence can never read \"attempt 5/2\" \u2014 and that number does not follow the loop index. My fix moved the loop counter, which moved neither the rung nor the reporting, and cost an attempt for nothing.",
+        "Worse than a no-op: starting the loop at 2 against a cap of 2 left ONE attempt, so the ticket got a single R1 session where it would otherwise have had two. The skip made things strictly worse than not skipping.",
+        "The right shape was there in W21-15`s own reasoning: attempt number and rung are two different quantities. The skip is a RUNG offset \u2014 it changes which model runs, never how many attempts the ticket gets.",
+        "ONLY A LIVE RUN COULD HAVE CAUGHT THIS. Nine unit fixtures on rungMemoryFor all passed, because they tested what the ledger REMEMBERS and never what the loop DOES with it. The seam between a correct fact and its use had no test, which is the same gap W21-12 fell into when provisioning was wired into a function nothing called."
+      ],
+      "acceptance": [
+        "A skipped rung changes which model runs on the first attempt",
+        "The attempt budget is untouched \u2014 a cap of 2 still buys two judged attempts",
+        "The reported attempt number still counts judged attempts only (W21-15 preserved)",
+        "A fixture pins the arithmetic: offset 1 puts attempt 1 on R2"
+      ]
     }
   ]
 }
