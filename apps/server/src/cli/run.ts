@@ -4,6 +4,7 @@ import {
   closeTicket,
   commentTicket,
   createTicketValidatingLanes,
+  rejectTicket,
   retargetTicketDependencies,
   setTicketBrief,
   widenTicketScope,
@@ -230,6 +231,20 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
             { now: io.now },
           );
           io.stdout(`${ticket.id} brief set — the next handoff carries it as context`);
+          return 0;
+        } catch (err) {
+          return reportVerbError(err, io);
+        }
+      }
+      case 'reject': {
+        ensureActorIdentity(log, command.actorId, io.now);
+        try {
+          const ticket = rejectTicket(
+            log,
+            { ticketId: command.ticketId, actorId: command.actorId, reason: command.reason },
+            { now: io.now },
+          );
+          io.stdout(`${ticket.id} reject -> ${ticket.status}`);
           return 0;
         } catch (err) {
           return reportVerbError(err, io);

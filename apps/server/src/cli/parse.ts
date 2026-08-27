@@ -80,6 +80,15 @@ export type CliCommand =
       projectId?: string;
     }
   | {
+      /** W21-42: the reviewer sending work back — the counterpart of accept. */
+      kind: 'reject';
+      ticketId: string;
+      actorId: string;
+      reason: string;
+      dbPath?: string;
+      projectId?: string;
+    }
+  | {
       kind: 'comment';
       ticketId: string;
       actorId: string;
@@ -284,6 +293,33 @@ export function parseCliArgs(argv: string[]): CliCommand {
       ticketId,
       actorId: values.actor,
       text: values.text,
+      dbPath: values.db,
+      projectId: values.project,
+    };
+  }
+
+  if (command === 'reject') {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      options: {
+        actor: { type: 'string' },
+        reason: { type: 'string' },
+        db: { type: 'string' },
+        project: { type: 'string' },
+      },
+      allowPositionals: true,
+    });
+    const ticketId = requirePositional(
+      positionals,
+      'usage: dokima reject <ticketId> --actor <actorId> --reason <why> [--db <path>]',
+    );
+    if (!values.actor) throw new CliUsageError('reject requires --actor <actorId>');
+    if (!values.reason) throw new CliUsageError('reject requires --reason <why>');
+    return {
+      kind: 'reject',
+      ticketId,
+      actorId: values.actor,
+      reason: values.reason,
       dbPath: values.db,
       projectId: values.project,
     };

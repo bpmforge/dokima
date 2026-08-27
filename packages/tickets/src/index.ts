@@ -28,6 +28,8 @@ export type { BoardEntry } from './reflow.js';
 export { createTicketValidatingLanes } from './create.js';
 export { findDependencyCycle, retargetTicketDependencies } from './retarget.js';
 export { setTicketBrief } from './brief.js';
+export { latestRejectionReason, rejectTicket } from './reject.js';
+export type { RejectTicketInput } from './reject.js';
 export type { SetTicketBriefInput } from './brief.js';
 export type { RetargetDependenciesInput } from './retarget.js';
 export { assertReleaseRunOwnership } from './claim-run.js';

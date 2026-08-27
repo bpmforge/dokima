@@ -9,7 +9,8 @@
  * an attempt tier, and what runs at each tier is the composing seam's
  * business (`LandRungSessions`, wired in apps/server).
  */
-import { appendEvent } from '@dokima/events';
+import { appendEvent, listEvents } from '@dokima/events';
+import { latestRejectionReason } from '@dokima/tickets';
 import type { SpawnSession } from '@dokima/loop';
 import type { LandAttempt, LandLoopOptions } from './loop-land.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
@@ -158,10 +159,22 @@ export async function consultRungZero(
   | {
       attempt: 0;
       gaps: readonly string[];
-      priorSolution: { findingId: string; summary: string };
+      priorSolution?: { findingId: string; summary: string };
     }
   | undefined
 > {
+  /**
+   * W21-42: a rejection outranks a playbook hit. If a reviewer sent this
+   * ticket back, that judgement is the most specific thing anyone knows about
+   * it — more specific than "we solved something like this before" — and it
+   * has no receipt behind it, so if it does not reach the maker it reaches
+   * nobody. Cleared by a later close (the maker answered it), so a stale
+   * judgement never follows a ticket forward.
+   */
+  const rejection = latestRejectionReason(listEvents(options.log), ticket.id);
+  if (rejection) {
+    return { attempt: 0, gaps: [`a reviewer sent this back: ${rejection}`] };
+  }
   if (!options.r0Consult) return undefined;
   let result: LandR0ConsultResult | undefined;
   await runAttemptOutcomeHook(options, async () => {

@@ -109,6 +109,19 @@ export function reduceTicketEvent(
         history: pushHistory(ticket, 'close', event.actorId, event.createdAt),
       };
     }
+    case 'ticket.rejected': {
+      // W21-42: back to Ready like a release, but by the REVIEWER — so the
+      // owner is cleared and the next run claims it fresh.
+      if (!ticket || !isValid('reject', ticket.status)) return ticket;
+      return {
+        ...ticket,
+        status: 'ready',
+        ownerId: null,
+        claimedAt: null,
+        claimRunId: null,
+        history: pushHistory(ticket, 'reject', event.actorId, event.createdAt),
+      };
+    }
     case 'ticket.accepted': {
       if (!ticket || !isValid('accept', ticket.status)) return ticket;
       return {

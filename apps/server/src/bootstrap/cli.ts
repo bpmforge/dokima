@@ -179,6 +179,9 @@ board & tickets (address a project with --project <id> from the Fleet, or --db <
                                 close with a manifest — refused without one
   dokima accept <ticketId> --actor <id>
                                 accept someone ELSE's work (maker != verifier)
+  dokima reject <ticketId> --actor <id> --reason <why>
+                                send someone ELSE's work back to Ready; the
+                                reason reaches the next attempt
   dokima comment <ticketId> --actor <id> --body <text>
   dokima widen-scope <ticketId> --actor <id> --add <glob,glob> --reason <why>
                                 when a ticket cannot satisfy its own acceptance
@@ -248,6 +251,9 @@ const LIFECYCLE_COMMANDS = [
   'claim',
   'start',
   'accept',
+  // W21-42: and the counterpart it lacked — a reviewer that may only approve
+  // is not a review gate.
+  'reject',
   'release',
   'close',
   'comment',

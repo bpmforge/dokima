@@ -44,7 +44,7 @@ export interface TicketManifest {
 }
 
 export interface TicketHistoryEntry {
-  verb: 'claim' | 'start' | 'close' | 'accept' | 'release' | 'comment';
+  verb: 'claim' | 'start' | 'close' | 'accept' | 'reject' | 'release' | 'comment';
   actorId: string;
   at: string;
   /** Comment text (API_DESIGN.md: `POST /tickets/{id}/comment` -> history row). */

@@ -12191,20 +12191,24 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "tickets",
       "depends_on": [],
       "id": "W21-42",
       "title": "the reviewer may approve and may not reject",
       "write_scope": [
-        "packages/tickets/src/verbs.ts",
-        "packages/tickets/src/transitions.ts",
-        "packages/tickets/src/types.ts",
+        "packages/tickets/src/reject.ts",
         "packages/tickets/src/reject.test.ts",
+        "packages/tickets/src/transitions.ts",
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/index.ts",
+        "packages/harbormaster/src/loop-land-rungs.ts",
+        "apps/server/src/cli/parse.ts",
         "apps/server/src/cli/run.ts",
-        "apps/server/src/api/server/board-routes.ts",
-        "packages/tickets/src/index.ts"
+        "apps/server/src/bootstrap/cli.ts",
+        "apps/server/src/api/server/board-routes.ts"
       ],
       "notes": [
         "FOUND WHILE REJECTING PLAN-vault-002. I reviewed the landed crypto ticket, found a placeholder password hash (see W21-41), and tried to send it back:",
@@ -12214,7 +12218,11 @@
         "The founder CAN accept \u2014 acceptTicket requires a DIFFERENT actor than the owner (maker != verifier, C-4). So the verifier identity is allowed to approve and forbidden to reject. That is the exact inverse of what a review gate is for, and it is the one shape a trust boundary must never have: the reviewer`s only permitted verdict is yes.",
         "The workaround available today is to release as the maker identity `operator`, which means a founder rejecting work has to act AS the thing being reviewed. That defeats C-4 to perform C-4`s own purpose.",
         "This is not a missing feature so much as a missing verb in a graph that otherwise reasons carefully about who may do what. `reject` is the counterpart of `accept` and belongs beside it: same actor rule (must not be the owner), opposite destination.",
-        "It must carry a REASON. An accept needs no words \u2014 the receipt is the evidence. A rejection is a judgement with no receipt behind it, so the reason is the entire artifact, and it is what the next attempt reads."
+        "It must carry a REASON. An accept needs no words \u2014 the receipt is the evidence. A rejection is a judgement with no receipt behind it, so the reason is the entire artifact, and it is what the next attempt reads.",
+        "THE REASON IS REQUIRED, and the asymmetry with accept is the whole point. An accept needs no words because the close receipt is the evidence \u2014 signed, verifiable, already in the ledger. A rejection has no receipt behind it: it is a judgement, and a judgement with no stated grounds is indistinguishable from a whim to whoever picks the ticket up next.",
+        "THE RULE CUTS BOTH WAYS. reject refuses the ticket`s own owner by the same check accept uses \u2014 a maker must not be able to dispose of its own work in EITHER direction. Rejecting is not a lesser act than accepting and does not get a lesser rule.",
+        "A rejection OUTRANKS a playbook hit when seeding the next attempt. It is the most specific thing anyone knows about the ticket \u2014 more specific than \"we solved something like this before\" \u2014 and unlike a park it has no receipt, so if it does not reach the maker it reaches nobody. A later close clears it, so a stale judgement never follows a ticket forward.",
+        "Verified live through the CLI: `dokima reject PLAN-vault-002a --actor local-operator --reason probe` correctly refused with INVALID_TRANSITION because that ticket is ready, not in_review \u2014 which exercises the dispatcher, the parser, the verb and the refusal formatting in one call."
       ],
       "acceptance": [
         "A `reject` verb moves in_review back to ready and is refused for the ticket`s owner, mirroring accept`s maker != verifier rule",

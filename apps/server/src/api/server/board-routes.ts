@@ -6,6 +6,7 @@ import {
 } from '@dokima/events';
 import {
   acceptTicket,
+  rejectTicket,
   claimTicket,
   closeTicket,
   commentTicket,
@@ -41,6 +42,8 @@ const VERBS: readonly LifecycleVerb[] = [
   'start',
   'close',
   'accept',
+  // W21-42: a reviewer that may only approve is not a review gate.
+  'reject',
   'release',
   'comment',
 ];
@@ -51,6 +54,7 @@ const VERB_EVENT_TYPE: Record<LifecycleVerb, string> = {
   start: 'ticket.started',
   close: 'ticket.closed',
   accept: 'ticket.accepted',
+  reject: 'ticket.rejected',
   release: 'ticket.released',
   comment: 'ticket.commented',
 };
@@ -132,6 +136,8 @@ function registerListRoute(app: FastifyInstance, registryPath: string): void {
 
 interface VerbBody {
   body?: unknown;
+  /** W21-42: why the reviewer sent it back — required by `rejectTicket`. */
+  reason?: unknown;
   files?: unknown;
   verify?: { command?: unknown; exitCode?: unknown };
   commits?: unknown;
@@ -151,6 +157,12 @@ function fireVerb(
       return startTicket(log, { ticketId, actorId });
     case 'accept':
       return acceptTicket(log, { ticketId, actorId });
+    case 'reject':
+      return rejectTicket(log, {
+        ticketId,
+        actorId,
+        reason: typeof body.reason === 'string' ? body.reason : '',
+      });
     case 'release':
       return releaseTicket(log, { ticketId, actorId });
     case 'comment':
