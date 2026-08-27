@@ -12594,6 +12594,39 @@
         "It is a distinct error type, so the loop parks on it and rethrows everything else",
         "The three pre-attempt park paths produce one shape on the board"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-53",
+      "title": "the park advice is now wrong in the opposite case from the one W21-16 fixed",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts"
+      ],
+      "notes": [
+        "RUN 34, both rungs. Each session earned SIX extensions \u2014 iterations 16, 20, 24, 28, 32, 36, every window boundary to the ceiling, each signalled \"write changed the worktree\" \u2014 and hit 40 turns without a manifest. Neither spun; both were writing to the worktree in their final window.",
+        "And the park evidence told the founder: \"This session EARNED more budget from real progress and still did not hand back a manifest, so raising maxToolIterations will not help \u2014 the evidence to read is what it spent those turns on.\"",
+        "That is exactly backwards here. The ceiling was binding and the work was cut off mid-stride, which is the precise failure W17-01`s own module header exists to prevent: \"a local model converging slowly (honest work, cut off mid-stride \u2014 the 2026-08-21 live UAT parked two real tickets this way)\".",
+        "W21-16 was RIGHT about its case: a session that earns a couple of extensions and then stalls has headroom it did not use, and more ceiling buys more of whatever it did instead. Its fixture says so explicitly \u2014 \"the live park said exactly this while holding four unused iterations\". Fixing that case introduced the inverse error.",
+        "I TRIED A DISCRIMINATOR AND REVERTED IT. \"Did the last window earn an extension?\" fails, because extensions are only ever granted AT the wall (the code requires iteration + windowSize > budget), so every extension is a final-window extension by construction \u2014 W21-16`s single extension at iteration 12 with budget 16 satisfies it identically to run 34`s six. \"Unbroken run of extensions\" fails too: a single extension is trivially unbroken. I could not derive a clean separator from the ledger without guessing a threshold, and a guessed threshold in advice that is read as authoritative is worse than the current wrong sentence being a known wrong sentence.",
+        "THE OPEN QUESTION, stated so the next attempt does not re-derive it: what distinguishes \"still converging at the ceiling\" from \"stopped converging with budget left\"? Candidate signals not yet examined \u2014 the RATE of mutating calls across the last N windows rather than the presence of one; whether the final iterations contained a verify whose exit improved; whether the session left a checkpoint claiming near-completion (W17-02 already extracts one, and C-2 says do not believe it, but its ABSENCE is honest evidence).",
+        "Until then the advice should probably say both possibilities rather than assert one \u2014 a sentence naming the two cases and the evidence that separates them is more useful than a confident wrong one."
+      ],
+      "acceptance": [
+        "A session cut off at the ceiling while still making progress is not told that raising the ceiling will not help",
+        "A session that earned budget and then stalled is still told the truth W21-16 established",
+        "The discriminator is derived from ledger evidence, not a guessed threshold \u2014 or the advice names both cases honestly instead of asserting one",
+        "Both live shapes are red fixtures: run 34 (six consecutive extensions to the ceiling, still writing) and W21-16`s (extensions earned, then idle with headroom)"
+      ]
     }
   ]
 }
