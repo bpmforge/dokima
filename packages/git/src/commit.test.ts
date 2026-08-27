@@ -74,3 +74,85 @@ describe('commitWithScopeCheck', () => {
     expect(log).toBe('chore: initial commit');
   });
 });
+
+/**
+ * W21-60. `git commit` with an empty index exits non-zero, so this used to
+ * throw out of commitWithScopeCheck and out of the agent tool's {ok, reason}
+ * contract entirely — the maker got an exception where every other refusal
+ * gives it a sentence it can act on.
+ *
+ * Live: run 44's session called commit once, the branch tip did not move, and
+ * the file it had just written was still unstaged. It then spent the rest of
+ * its budget without trying again.
+ */
+describe('an empty index is a refusal, not an exception (W21-60)', () => {
+  let repo: TempRepo | undefined;
+  let handle: WorktreeHandle | undefined;
+
+  afterEach(async () => {
+    if (handle) await destroyWorktree(handle, { deleteBranch: true });
+    await repo?.cleanup();
+    repo = undefined;
+    handle = undefined;
+  });
+
+  const setup = async (): Promise<WorktreeHandle> => {
+    repo = await createTempRepo();
+    handle = await createWorktree({
+      repoRoot: repo.repoRoot,
+      ticketId: 'W21-60',
+      slug: 'empty index',
+    });
+    return handle;
+  };
+
+  it('RED FIXTURE: committing a path with no changes refuses rather than throwing', async () => {
+    const wt = await setup();
+    const filePath = path.join(wt.path, 'packages', 'git', 'src', 'untouched.ts');
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, 'export const x = 1;\n');
+    await commitWithScopeCheck(wt, {
+      paths: ['packages/git/src/untouched.ts'],
+      message: 'first',
+      writeScope: ['packages/git/**'],
+    });
+
+    // Committing the SAME path again stages nothing — the live shape.
+    const again = await commitWithScopeCheck(wt, {
+      paths: ['packages/git/src/untouched.ts'],
+      message: 'again',
+      writeScope: ['packages/git/**'],
+    });
+    expect(again.committed).toBe(false);
+    expect(again.nothingStaged).toBe(true);
+    expect(again.violations).toEqual([]);
+  });
+
+  it('a real change still commits and is not reported as nothingStaged', async () => {
+    const wt = await setup();
+    const filePath = path.join(wt.path, 'packages', 'git', 'src', 'real.ts');
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, 'export const a = 1;\n');
+    const result = await commitWithScopeCheck(wt, {
+      paths: ['packages/git/src/real.ts'],
+      message: 'real change',
+      writeScope: ['packages/git/**'],
+    });
+    expect(result.committed).toBe(true);
+    expect(result.nothingStaged).toBeUndefined();
+  });
+
+  it('a scope violation is still a scope violation — the two are told apart', async () => {
+    const wt = await setup();
+    const filePath = path.join(wt.path, 'outside.ts');
+    await fs.writeFile(filePath, 'export const x = 1;\n');
+    const result = await commitWithScopeCheck(wt, {
+      paths: ['outside.ts'],
+      message: 'outside',
+      writeScope: ['packages/git/**'],
+    });
+    expect(result.committed).toBe(false);
+    expect(result.nothingStaged).toBeUndefined();
+    expect(result.violations.length).toBeGreaterThan(0);
+  });
+});

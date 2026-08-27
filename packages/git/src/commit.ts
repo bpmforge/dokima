@@ -12,6 +12,8 @@ export interface CommitWithScopeOptions {
 export interface CommitResult {
   committed: boolean;
   violations: ScopeViolation[];
+  /** W21-60: the named paths had no changes to stage — a refusal, not a scope problem. */
+  nothingStaged?: boolean;
 }
 
 export async function stagePaths(handle: WorktreeHandle, paths: string[]): Promise<void> {
@@ -44,6 +46,24 @@ export async function commitWithScopeCheck(
       await git(handle.path, ['reset', '--', ...staged]);
     }
     return { committed: false, violations };
+  }
+  /**
+   * W21-60: nothing staged is a REFUSAL, not an exception.
+   *
+   * `git commit` with an empty index exits non-zero, so this line used to
+   * throw out of the tool and out of `gitCommitTool`'s `{ok, reason}` contract
+   * entirely — the agent got an exception where every other refusal gives it a
+   * sentence it can act on. Live: run 44's session called commit once, the
+   * branch tip did not move, and the file it had just written was still
+   * unstaged. It then spent the rest of its budget without trying again.
+   *
+   * The two conditions are told apart because the fixes are opposite: a scope
+   * violation means "you touched something you may not", and an empty index
+   * means "the paths you named have no changes — name the file you actually
+   * edited".
+   */
+  if (staged.length === 0) {
+    return { committed: false, violations: [], nothingStaged: true };
   }
   await git(handle.path, ['commit', '-m', opts.message]);
   return { committed: true, violations: [] };

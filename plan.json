@@ -12850,6 +12850,38 @@
         "An empty brief is refused rather than silently clearing the context",
         "A brief changes nothing about the gates: acceptance, write_scope and verify are untouched"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "git",
+      "depends_on": [],
+      "id": "W21-60",
+      "title": "a commit that stages nothing throws instead of refusing",
+      "write_scope": [
+        "packages/git/src/commit.ts",
+        "packages/git/src/commit.test.ts",
+        "packages/harbormaster/src/agent-session/git-tools.ts"
+      ],
+      "notes": [
+        "RUN 44. Tool histogram: read x10, list x5, write x2, commit x1. The branch tip did not move and src/crypto/argon2id.spec.ts was still modified afterwards \u2014 the session called commit once, got nothing, and spent the rest of its budget without trying again.",
+        "commitWithScopeCheck stages the named paths, checks scope, and then calls `git commit`. With an empty index that exits non-zero, and `git()` throws on non-zero \u2014 so the failure left the tool`s own {ok, reason} contract entirely. Every other refusal in the agent tool set hands back a sentence the model can act on; this one handed back an exception.",
+        "The two conditions are now told apart because their fixes are OPPOSITE. A scope violation means \"you touched something you may not\". An empty index means \"the paths you named have no changes \u2014 name the file you actually edited\". Reporting the first for the second would send a model to widen its scope when the scope was never the problem.",
+        "Note the pre-existing code was not wrong about what it checked: commitWithScopeCheck returned committed:false ONLY for violations, so git-tools` message was accurate for every case it could observe. The gap was the case it could not observe, because that one threw past it.",
+        "I confirmed the empty-commit exit by running it in the live worktree \u2014 and my `| head` masked the exit code the first time, which is the third instance of that trap in this session. Reading the message text rather than the status is what caught it."
+      ],
+      "acceptance": [
+        "Committing paths with no changes returns a refusal naming the empty index, not an exception",
+        "A real change still commits and is not reported as nothingStaged",
+        "A scope violation is still reported as one \u2014 the two are distinguishable",
+        "The agent-facing reason tells the model what to do next"
+      ]
     }
   ]
 }

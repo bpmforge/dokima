@@ -89,6 +89,17 @@ export async function commitTool(
     message: args.message,
     writeScope: [...writeScope],
   });
+  if (result.nothingStaged) {
+    // W21-60: told apart from a scope violation because the fixes are
+    // opposite — this one means "name the file you actually changed".
+    return {
+      ok: false,
+      reason:
+        `commit staged nothing: ${files.join(', ')} ${files.length === 1 ? 'has' : 'have'} ` +
+        `no changes to commit. Name the file(s) you actually edited — a file you ` +
+        `wrote earlier in this session and already committed will not stage again.`,
+    };
+  }
   if (!result.committed) {
     return {
       ok: false,
