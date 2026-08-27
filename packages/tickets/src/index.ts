@@ -27,11 +27,13 @@ export {
 export type { BoardEntry } from './reflow.js';
 export { createTicketValidatingLanes } from './create.js';
 export { findDependencyCycle, retargetTicketDependencies } from './retarget.js';
+export { numberCriteria, retargetTicketAcceptance } from './acceptance.js';
 export { setTicketBrief } from './brief.js';
 export { latestRejectionReason, rejectTicket } from './reject.js';
 export type { RejectTicketInput } from './reject.js';
 export type { SetTicketBriefInput } from './brief.js';
 export type { RetargetDependenciesInput } from './retarget.js';
+export type { RetargetAcceptanceInput } from './acceptance.js';
 export { assertReleaseRunOwnership } from './claim-run.js';
 export type { ClaimSteal, StealRecord } from './claim-run.js';
 export { isValidTransition, TRANSITIONS } from './transitions.js';

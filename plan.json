@@ -13212,6 +13212,58 @@
         "CANDIDATE FIX: run start derives a machine actor for the session lifecycle verbs regardless of the bookkeeping actor, or refuses an --actor that is also a registered human reviewer. Prefer the former; a refusal still leaves distinctness to the operator.",
         "ACCEPTANCE: a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it; that human can accept the resulting ticket; the run bookkeeping still records who launched it."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "server",
+      "depends_on": [],
+      "id": "W21-71",
+      "title": "the product tells the founder to change an acceptance criterion and gives them no verb to change it",
+      "write_scope": [
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/cli/bootstrap/cli.ts",
+        "packages/tickets/src/acceptance.ts",
+        "packages/tickets/src/acceptance.test.ts"
+      ],
+      "notes": [
+        "LIVE, run 55, PLAN-vault-002b: \"acceptance criterion AC-1 proves nothing: `node --test src/crypto/argon2id.spec.ts` passes against this ticket's BASE too, so it returns the same answer whether or not the work was done. Give the ticket a criterion that FAILS before the work and passes after it.\" W21-50 is working exactly as designed \u2014 it caught a bad ticket I filed.",
+        "THE GAP: `dokima --help` lists eighteen verbs and none of them edits an acceptance criterion. widen-scope repairs write_scope (W21-27), depends-on repairs dependencies (W21-51), brief adds context (W21-59), reject sends work back (W21-42) \u2014 every other wrong-ticket axis has a repair verb. The one change W21-50 explicitly instructs the founder to make is the one with no way to make it.",
+        "The founder is therefore left with no in-product move: they cannot amend the criterion, cannot delete the ticket, and re-filing under a new id orphans the comments and the ledger history. The product diagnosed the problem precisely and then offered no exit \u2014 which is the shape W21-45/46 keep recurring in: knowledge the product holds and cannot act on.",
+        "Same guard rails as the sibling verbs: an amended criterion is an event (ticket.acceptance_retargeted), it must be refused on a done ticket, and it must clear rung memory the way ticket.brief_set now does (W21-62) \u2014 a ticket whose criterion changed is not the ticket that defeated the cheap rung.",
+        "ACCEPTANCE: `dokima retarget-acceptance <id> --actor <id> --set <text> --reason <why>` amends the criterion via an appended event; refused on a done ticket; the new criterion appears in the next handoff; TICKET_CHANGED includes the new event type."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-72",
+      "title": "a park that happens before the first attempt reports its reason as \"unknown\"",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts"
+      ],
+      "notes": [
+        "LIVE, run 55: the summary line read \"PLAN-vault-002: parked (unknown) after 0 attempt(s)\". The ledger at the same moment held a complete explanation (seq 4446): \"PLAN-vault-002 cannot start: its worktree was created from a different base and its branch ... already holds commits, so reusing it would run against the wrong tree and recreating it would discard that work. Neither is the product's call.\"",
+        "So the reason was known, well-written, and correct \u2014 the W21-52 StaleWorktreeError park doing its job. Only the run summary lost it. defaultParkReason() (W21-58) covers the paths that park AFTER an attempt; a park raised before attempt 1 never reaches it and falls through to the \"unknown\" default.",
+        "Why it matters more than a cosmetic string: \"unknown after 0 attempts\" reads as the product malfunctioning, and it is the line a founder sees first. It sent me to the ledger to find out whether anything had happened at all. W21-64 is the same disease on the timeout path \u2014 a park whose printed reason does not match the reason the product actually has.",
+        "ACCEPTANCE: a ticket parked before its first attempt reports the park reason from the event that caused it; the \"unknown\" default is unreachable for any park the product itself raised; regression test covers the pre-attempt stale-worktree path."
+      ]
     }
   ]
 }

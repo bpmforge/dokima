@@ -1,7 +1,9 @@
 import { parseArgs } from 'node:util';
 import type { VerifyResult } from '@dokima/tickets';
+import { CliUsageError } from './cli-usage-error.js';
+import { parseBoardEdit, requirePositional, splitCsv, type BoardEditCommand } from './parse-board-edits.js';
 
-export class CliUsageError extends Error {}
+export { CliUsageError } from './cli-usage-error.js';
 
 const SIMPLE_VERBS = ['claim', 'start', 'accept', 'release'] as const;
 export type SimpleVerb = (typeof SIMPLE_VERBS)[number];
@@ -32,53 +34,7 @@ export type CliCommand =
       dbPath?: string;
       projectId?: string;
     }
-  | {
-      /** W21-27: the founder answering "this ticket is not right as written". */
-      kind: 'widen-scope';
-      ticketId: string;
-      actorId: string;
-      add: string[];
-      reason: string;
-      dbPath?: string;
-      projectId?: string;
-    }
-  | {
-      /**
-       * W21-48: the founder answering "this BOARD is not right as written".
-       * W21-27's widen-scope covers a ticket that is wrong; this covers one
-       * that is missing, which a decomposition produced once cannot fix.
-       */
-      kind: 'add-ticket';
-      ticketId: string;
-      actorId: string;
-      lane: string;
-      title: string;
-      writeScope: string[];
-      dependsOn: string[];
-      acceptance?: string;
-      verify?: string;
-      dbPath?: string;
-      projectId?: string;
-    }
-  | {
-      /** W21-51: the founder pointing a ticket at work the board was missing. */
-      kind: 'depends-on';
-      ticketId: string;
-      actorId: string;
-      on: string[];
-      reason: string;
-      dbPath?: string;
-      projectId?: string;
-    }
-  | {
-      /** W21-59: the founder telling a stuck maker something it cannot discover. */
-      kind: 'brief';
-      ticketId: string;
-      actorId: string;
-      text: string;
-      dbPath?: string;
-      projectId?: string;
-    }
+  | BoardEditCommand
   | {
       /** W21-42: the reviewer sending work back — the counterpart of accept. */
       kind: 'reject';
@@ -103,18 +59,6 @@ function isSimpleVerb(command: string): command is SimpleVerb {
   return (SIMPLE_VERBS as readonly string[]).includes(command);
 }
 
-function splitCsv(value: string): string[] {
-  return value
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
-
-function requirePositional(positionals: string[], usage: string): string {
-  const ticketId = positionals[0];
-  if (!ticketId) throw new CliUsageError(usage);
-  return ticketId;
-}
 
 export function parseCliArgs(argv: string[]): CliCommand {
   const [command, ...rest] = argv;
@@ -162,141 +106,8 @@ export function parseCliArgs(argv: string[]): CliCommand {
     };
   }
 
-  if (command === 'widen-scope') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        add: { type: 'string' },
-        reason: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
-    const ticketId = requirePositional(
-      positionals,
-      'usage: dokima widen-scope <ticketId> --actor <actorId> --add <glob,glob> ' +
-        '--reason <why> [--db <path>]',
-    );
-    if (!values.actor) throw new CliUsageError('widen-scope requires --actor <actorId>');
-    if (!values.add) throw new CliUsageError('widen-scope requires --add <glob,glob>');
-    if (!values.reason) throw new CliUsageError('widen-scope requires --reason <why>');
-    return {
-      kind: 'widen-scope',
-      ticketId,
-      actorId: values.actor,
-      add: values.add.split(',').map((s2) => s2.trim()).filter(Boolean),
-      reason: values.reason,
-      dbPath: values.db,
-      projectId: values.project,
-    };
-  }
-
-  if (command === 'add-ticket') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        lane: { type: 'string' },
-        title: { type: 'string' },
-        'write-scope': { type: 'string' },
-        'depends-on': { type: 'string' },
-        acceptance: { type: 'string' },
-        verify: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
-    const ticketId = requirePositional(
-      positionals,
-      'usage: dokima add-ticket <ticketId> --actor <actorId> --lane <lane> ' +
-        '--title <title> --write-scope <glob,glob> [--depends-on <id,id>] ' +
-        '[--acceptance <text>] [--verify <cmd>] [--db <path>]',
-    );
-    if (!values.actor) throw new CliUsageError('add-ticket requires --actor <actorId>');
-    if (!values.lane) throw new CliUsageError('add-ticket requires --lane <lane>');
-    if (!values.title) throw new CliUsageError('add-ticket requires --title <title>');
-    if (!values['write-scope']) {
-      throw new CliUsageError('add-ticket requires --write-scope <glob,glob>');
-    }
-    const list = (v: string | undefined): string[] =>
-      (v ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-    return {
-      kind: 'add-ticket',
-      ticketId,
-      actorId: values.actor,
-      lane: values.lane,
-      title: values.title,
-      writeScope: list(values['write-scope']),
-      dependsOn: list(values['depends-on']),
-      ...(values.acceptance ? { acceptance: values.acceptance } : {}),
-      ...(values.verify ? { verify: values.verify } : {}),
-      dbPath: values.db,
-      projectId: values.project,
-    };
-  }
-
-  if (command === 'depends-on') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        on: { type: 'string' },
-        reason: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
-    const ticketId = requirePositional(
-      positionals,
-      'usage: dokima depends-on <ticketId> --actor <actorId> --on <id,id> ' +
-        '--reason <why> [--db <path>]',
-    );
-    if (!values.actor) throw new CliUsageError('depends-on requires --actor <actorId>');
-    if (values.on === undefined) {
-      throw new CliUsageError('depends-on requires --on <id,id> (empty string clears)');
-    }
-    if (!values.reason) throw new CliUsageError('depends-on requires --reason <why>');
-    return {
-      kind: 'depends-on',
-      ticketId,
-      actorId: values.actor,
-      on: values.on.split(',').map((x) => x.trim()).filter(Boolean),
-      reason: values.reason,
-      dbPath: values.db,
-      projectId: values.project,
-    };
-  }
-
-  if (command === 'brief') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        text: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
-    const ticketId = requirePositional(
-      positionals,
-      'usage: dokima brief <ticketId> --actor <actorId> --text <context> [--db <path>]',
-    );
-    if (!values.actor) throw new CliUsageError('brief requires --actor <actorId>');
-    if (!values.text) throw new CliUsageError('brief requires --text <context>');
-    return {
-      kind: 'brief',
-      ticketId,
-      actorId: values.actor,
-      text: values.text,
-      dbPath: values.db,
-      projectId: values.project,
-    };
-  }
+  const boardEdit = parseBoardEdit(command, rest);
+  if (boardEdit) return boardEdit;
 
   if (command === 'reject') {
     const { values, positionals } = parseArgs({

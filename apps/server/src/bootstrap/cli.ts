@@ -196,6 +196,11 @@ board & tickets (address a project with --project <id> from the Fleet, or --db <
   dokima depends-on <ticketId> --actor <id> --on <id,id> --reason <why>
                                 repoint a ticket at different dependencies;
                                 refuses unknown ids and cycles
+  dokima retarget-acceptance <ticketId> --actor <id> --set <cmd> --reason <why>
+                                replace a ticket's acceptance criteria when a
+                                criterion proves nothing — it passes against
+                                the ticket's base too. Refused on a done
+                                ticket; the new criterion faces the same gates
   dokima brief <ticketId> --actor <id> --text <context>
                                 give the maker context it cannot discover;
                                 carried into every later handoff. A brief
@@ -267,6 +272,9 @@ const LIFECYCLE_COMMANDS = [
   'depends-on',
   // W21-59: and telling a stuck maker something it cannot discover for itself.
   'brief',
+  // W21-71: and amending a criterion W21-50 proved unfalsifiable — the one
+  // change the product asks a person to make had no way to make it.
+  'retarget-acceptance',
   'run',
 ] as const;
 

@@ -80,6 +80,32 @@ export function reduceTicketEvent(
       if (!Array.isArray(payload.to)) return ticket;
       return { ...ticket, dependsOn: payload.to.map(String) };
     }
+    /**
+     * W21-71: the founder amending a criterion that proves nothing. Replaces
+     * rather than merges — a criterion that returns the same answer with and
+     * without the work is not something to keep alongside the fix for it.
+     * `done` resets to false for every criterion, because a criterion nobody
+     * has run yet has not been met, whatever the old one's flag said.
+     */
+    case 'ticket.acceptance_retargeted': {
+      if (!ticket) return ticket;
+      const payload = event.payload as { to?: unknown; reason?: unknown };
+      if (!Array.isArray(payload.to)) return ticket;
+      const texts = payload.to.filter((text): text is string => typeof text === 'string');
+      if (texts.length === 0) return ticket;
+      return {
+        ...ticket,
+        acceptance: texts.map((text, index) => ({ id: `AC-${index + 1}`, text, done: false })),
+        history: pushHistory(
+          ticket,
+          'comment',
+          event.actorId,
+          event.createdAt,
+          `acceptance retargeted to ${texts.join('; ')}${typeof payload.reason === 'string' && payload.reason ? ` — ${payload.reason}` : ''}`,
+        ),
+      };
+    }
+
     case 'ticket.claimed': {
       if (!ticket || !isValid('claim', ticket.status)) return ticket;
       return {

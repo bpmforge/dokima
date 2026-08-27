@@ -49,6 +49,12 @@ const TICKET_CHANGED = new Set([
    * one that then hit the 300s request ceiling.
    */
   'ticket.brief_set',
+  /**
+   * W21-71: a ticket whose acceptance criteria changed is asking for
+   * different work, so the cheap rung has not failed THIS ticket. Same
+   * reasoning as brief_set above, for the axis W21-50 tells a founder to fix.
+   */
+  'ticket.acceptance_retargeted',
 ]);
 
 export interface RungMemory {
