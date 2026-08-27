@@ -285,3 +285,37 @@ describe('the agent still cannot install anything (SC-18, D-023)', () => {
     }
   });
 });
+
+describe('W21-86 — a tool\'s own artifacts never trip the scope sweep', () => {
+  /**
+   * Tally's PLAN-tally-01 finished its work and had the session DISCARDED:
+   * "tsconfig.tsbuildinfo (outside-scope). Session output discarded; no
+   * Completion Manifest was produced." Its acceptance criterion is
+   * `npm run build` — `tsc --build` — which writes that file. The product
+   * told the maker to run a command and refused it for the command's output.
+   */
+  it('ignores the tsc build cache alongside node_modules', async () => {
+    const dir = await tempDir('artifacts');
+    await fs.writeFile(path.join(dir, 'package.json'), '{}');
+    const log = await logIn(dir);
+
+    await provisionWorktree({ worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1' });
+
+    const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
+    expect(ignore).toContain('node_modules/');
+    expect(ignore).toContain('*.tsbuildinfo');
+  });
+
+  it("never overwrites the project's own .gitignore", async () => {
+    const dir = await tempDir('keeps');
+    await fs.writeFile(path.join(dir, 'package.json'), '{}');
+    await fs.writeFile(path.join(dir, '.gitignore'), 'secrets.env\n');
+    const log = await logIn(dir);
+
+    await provisionWorktree({ worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1' });
+
+    const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
+    expect(ignore).toContain('secrets.env');
+    expect(ignore).toContain('*.tsbuildinfo');
+  });
+});

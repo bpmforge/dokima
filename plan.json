@@ -13612,6 +13612,32 @@
         "This is an honesty control (C-1) pointing the wrong way, which is the dangerous direction. A badge that marks fixture data as fixture protects a person. A badge that marks REAL evidence as fixture teaches them to discount exactly the thing they must read \u2014 and I nearly filed it as \"demo content leaking into a real project\", the opposite diagnosis, before checking which way round it was.",
         "Fixed by marking the fixture stream at source (both hand-mirrored copies) and rendering the badge only for it. ACCEPTANCE (met): a thread from the real projection carries no Sample badge; the unregistered preview still does; the fixture copies stay in sync."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-86",
+      "title": "a session was discarded for the build artifact its own acceptance command produced",
+      "write_scope": [
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts"
+      ],
+      "notes": [
+        "LIVE, Tally PLAN-tally-01, run-mtbzjq6q: \"agent session refused (SC-01, out-of-session): the real worktree diff contains path(s) outside write_scope after the tool loop ended \u2014 tsconfig.tsbuildinfo (outside-scope). Session output discarded; no Completion Manifest was produced.\"",
+        "The ticket's acceptance criterion is `npm run build`, which is `tsc --build`, which writes tsconfig.tsbuildinfo. The product told the maker to run a command and then discarded its whole session for the command's own leavings \u2014 with the work finished and passing.",
+        "IT WAS FOUND ONLY BECAUSE OF W21-83: the park now says \"THE WORK IS ALREADY DONE THOUGH \u2014 every acceptance criterion passes in the worktree right now (`npm run build`)\". Before that line existed this read as an ordinary budget park and I would have gone on tuning turn budgets.",
+        "The GATE already reasons correctly about this class \u2014 it checks committedFiles rather than the raw diff precisely because the raw diff \"mixes the session's real work with the GATE'S OWN build/telemetry side effects\". The earlier out-of-session SC-01 sweep reads the working tree, and MUST keep doing so: catching an agent that writes outside scope without committing is that control's entire purpose.",
+        "So the sweep is not weakened. The noise in front of it is removed, with git's own mechanism, exactly as W21-23 did for node_modules/ after the identical failure (\"the session was refused for a violation the harness itself had just created\"). HARNESS_ARTIFACTS is deliberately short and unambiguous \u2014 a tool's own cache or install output, never source. Anything that could name real work belongs in write_scope instead.",
+        "ACCEPTANCE (met): provisioning ignores *.tsbuildinfo alongside node_modules/; an existing project .gitignore is appended to, never overwritten."
+      ]
     }
   ]
 }

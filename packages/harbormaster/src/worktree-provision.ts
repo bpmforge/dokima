@@ -171,6 +171,46 @@ async function ensureIgnored(worktreePath: string, entry: string): Promise<boole
   return true;
 }
 
+
+/**
+ * Artifacts a TOOL produces and a person never writes — ignored for the same
+ * reason `node_modules/` is (W21-23), and found the same way: live.
+ *
+ * W21-86: Tally's PLAN-tally-01 finished its work and had the whole session
+ * DISCARDED — "the real worktree diff contains path(s) outside write_scope
+ * after the tool loop ended — tsconfig.tsbuildinfo (outside-scope). Session
+ * output discarded; no Completion Manifest was produced." The ticket's own
+ * acceptance criterion is `npm run build`, which is `tsc --build`, which
+ * writes that file. The product told the maker to run a command and then
+ * refused it for the command's own leavings.
+ *
+ * The GATE already reasons correctly about this class — it checks
+ * `committedFiles` rather than the raw diff precisely because the raw diff
+ * "mixes the session's real work with the GATE'S OWN build/telemetry side
+ * effects" — but the earlier out-of-session SC-01 sweep reads the working
+ * tree, and it must keep doing so: catching an agent that writes outside
+ * scope WITHOUT committing is the whole point of that control. So the answer
+ * is not to weaken the sweep, it is to stop generating noise in front of it,
+ * using git's own mechanism exactly as W21-23 did.
+ *
+ * Deliberately short and unambiguous: every entry is a tool's own cache or
+ * install output, never source. A pattern that could ever name real work
+ * belongs in the ticket's write_scope, not here.
+ */
+const HARNESS_ARTIFACTS: readonly string[] = ['node_modules/', '*.tsbuildinfo'];
+
+/** Ignores each entry; true when any of them changed the file. */
+async function ensureIgnoredAll(
+  worktreePath: string,
+  entries: readonly string[],
+): Promise<boolean> {
+  let changed = false;
+  for (const entry of entries) {
+    if (await ensureIgnored(worktreePath, entry)) changed = true;
+  }
+  return changed;
+}
+
 export interface ProvisionInput {
   readonly worktreePath: string;
   readonly log: EventLog;
@@ -232,7 +272,7 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
    * the tree correct for the human: `git status` in that worktree is clean,
    * which is what a developer would have done first anyway.
    */
-  const ignored = await ensureIgnored(input.worktreePath, 'node_modules/');
+  const ignored = await ensureIgnoredAll(input.worktreePath, HARNESS_ARTIFACTS);
 
   const startedAt = Date.now();
   const { exitCode, output } = await run(
