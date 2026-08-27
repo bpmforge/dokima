@@ -39,6 +39,7 @@
  * command would refuse good work for noise.
  */
 import type { VerifyRunResult } from './loop-gates-types.js';
+import { scopeBlockedNotice } from './loop-gates-scope-blocked.js';
 import { reRunVerify, verifyFailureTail } from './loop-gates-verify.js';
 import { unfalsifiableCriteria, unfalsifiableReason } from './loop-gates-unfalsifiable.js';
 
@@ -206,6 +207,8 @@ export async function runGateChecks(input: {
   readonly repoRoot?: string;
   readonly baseRef?: string;
   readonly ticketId?: string;
+  /** W21-80: to tell an unwinnable ticket from one with work left. */
+  readonly writeScope?: readonly string[];
 }): Promise<{
   readonly verify: VerifyRunResult;
   readonly acceptance: AcceptanceOutcome;
@@ -230,6 +233,20 @@ export async function runGateChecks(input: {
     input.timeoutMs,
   );
   reasons.push(...acceptance.reasons);
+  /**
+   * W21-80: advisory only — never changes the verdict, because the extraction
+   * is a heuristic over compiler output and a heuristic must not fail a
+   * ticket. Read from output the gate already captured; runs no command.
+   */
+  if (input.writeScope && reasons.length > 0) {
+    const notice = scopeBlockedNotice({
+      command: input.verifyCommand,
+      output: `${verify.stdout}\n${verify.stderr}\n${reasons.join('\n')}`,
+      writeScope: input.writeScope,
+      worktreePath: input.worktreePath,
+    });
+    if (notice) reasons.push(notice);
+  }
   // W21-50: only when the criteria PASSED — a failing one is already refusing,
   // and the probe costs a worktree.
   if (input.repoRoot && input.baseRef && input.ticketId) {
