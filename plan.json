@@ -13679,7 +13679,7 @@
       "id": "W21-88",
       "points": 1,
       "module": "web",
-      "title": "the first click after a board loads is swallowed",
+      "title": "UNCONFIRMED: clicks on Start a run appear to be discarded after a board loads",
       "write_scope": [
         "apps/web/src/board/BoardView.tsx",
         "apps/web/src/board/BoardView.test.tsx"
@@ -13688,7 +13688,11 @@
         "Reproduced on every core restart this session \u2014 six times: open a project, click \"Start a run\" promptly, nothing happens; click again and it starts. Same shape in Settings, where the first click after load landed on Providers instead of the tab I aimed at.",
         "The board re-renders when its data arrives and replaces the element between the click and the handler. A person opening a fresh project clicks the one button on the screen, gets no feedback that the click was swallowed, and reasonably concludes the product is broken \u2014 the same conclusion W21-82 produced by a different route.",
         "Low severity, disproportionate effect: it is the first interaction anyone has with a new project.",
-        "ACCEPTANCE: a click on Start a run issued immediately after the board first paints starts a run; the control is either disabled with a visible loading state until it is live, or the handler survives the re-render; no click is silently discarded."
+        "ACCEPTANCE: a click on Start a run issued immediately after the board first paints starts a run; the control is either disabled with a visible loading state until it is live, or the handler survives the re-render; no click is silently discarded.",
+        "MECHANISM UNCONFIRMED \u2014 CORRECTING MY OWN FILING. I wrote this as \"the board re-renders and replaces the element between the click and the handler\". I do not have evidence for that. What I have is: coordinate-targeted clicks at the button's apparent position did nothing (six times, and twice in a row on one load), while a click targeted at the resolved element reference started a run instantly.",
+        "That is equally consistent with my automation simply missing a target that moves \u2014 the run-status line and the \"What this run did\" panel appear and disappear between states, which shifts everything below them. A person clicking a button they can see would not hit that.",
+        "So this may be entirely a tooling artifact of how I drive the browser, and NOT a product defect. It is left on the board rather than deleted because six occurrences is worth someone reproducing by hand, but it must not be treated as confirmed.",
+        "HOW TO SETTLE IT: click the control by hand immediately after a project opens, with the pointer visibly over it. If a human click registers first time, close this as not-a-defect. If it does not, capture the element identity before and after the click \u2014 that distinguishes a replaced node from a moved one."
       ]
     },
     {
