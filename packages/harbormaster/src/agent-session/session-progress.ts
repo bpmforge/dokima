@@ -275,8 +275,26 @@ export function budgetExhaustedStderr(
    * "unbroken". The extension ledger cannot answer this question; the window
    * signal can.
    */
+  /**
+   * W21-61: the ceiling check has to come FIRST, because a session that starts
+   * AT the ceiling can never earn an extension — and W21-56 nested the check
+   * inside the extensions branch, so it never ran for exactly the case it was
+   * built for.
+   *
+   * Found live: I raised this project's maxToolIterations to 40, its hard
+   * ceiling. Run 46's sessions then used all 40 turns, earned zero extensions
+   * (there was no headroom to grant), and were told "raise maxToolIterations"
+   * — the lever-with-no-room advice W21-56 exists to prevent, reached by the
+   * one path W21-56 did not cover.
+   */
+  const atTheCeiling = hardCeiling !== null && finalBudget >= hardCeiling;
   const advice =
-    extensions.length === 0
+    atTheCeiling && extensions.length === 0
+      ? ` It is already at this install's HARD CEILING of ${hardCeiling}, so there ` +
+        `is no setting left to raise. The ticket is bigger than one session may be ` +
+        `allowed to be — re-run it first (the worktree keeps whatever this session ` +
+        `committed), and split it if successive runs stop adding commits.`
+      : extensions.length === 0
       ? ` If the work was real but unfinished, raise maxToolIterations — chatty ` +
         `local models often need more than the default.`
       : lastWindowProgress

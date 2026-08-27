@@ -352,3 +352,37 @@ describe('advice must name a lever that still has room (W21-56)', () => {
     expect(text).not.toContain('HARD CEILING');
   });
 });
+
+/**
+ * W21-61. W21-56 put the ceiling check INSIDE the extensions branch — and a
+ * session that starts at the ceiling can never earn an extension, so the check
+ * never ran for the exact case it was built for.
+ *
+ * Found live: I raised the vault project's maxToolIterations to 40, its hard
+ * ceiling. Run 46's sessions used all 40 turns, earned zero extensions (no
+ * headroom to grant), and were told "raise maxToolIterations".
+ */
+describe('starting AT the ceiling earns no extensions, and must still be told (W21-61)', () => {
+  it('RED FIXTURE: run 46 — budget 40, ceiling 40, no extensions, do NOT say raise it', () => {
+    const text = budgetExhaustedStderr(40, [], null, 40);
+    expect(text).toContain('HARD CEILING');
+    expect(text).not.toContain('raise maxToolIterations — chatty');
+  });
+
+  it('and it names the right next move: re-run first, split if commits stop', () => {
+    const text = budgetExhaustedStderr(40, [], null, 40);
+    expect(text).toContain('re-run it first');
+    expect(text).toContain('worktree keeps whatever this session committed');
+    expect(text).toContain('split it if successive runs stop adding commits');
+  });
+
+  it('below the ceiling with no extensions still says raise it — that advice is right there', () => {
+    const text = budgetExhaustedStderr(12, [], null, 40);
+    expect(text).toContain('raise maxToolIterations');
+    expect(text).not.toContain('HARD CEILING');
+  });
+
+  it('a caller that does not know the ceiling is unchanged', () => {
+    expect(budgetExhaustedStderr(40, [], null)).toContain('raise maxToolIterations');
+  });
+});

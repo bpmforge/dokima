@@ -12882,6 +12882,39 @@
         "A scope violation is still reported as one \u2014 the two are distinguishable",
         "The agent-facing reason tells the model what to do next"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 1,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-56"
+      ],
+      "id": "W21-61",
+      "title": "the ceiling check never ran for the case it was built for",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts"
+      ],
+      "notes": [
+        "W21-56 nested the hard-ceiling check inside the \"extensions were earned\" branch. A session that STARTS at the ceiling can never earn an extension \u2014 there is no headroom to grant \u2014 so the check never ran for exactly the case it exists to catch.",
+        "Found live and by my own hand: I raised the vault project`s maxToolIterations to 40, its hard ceiling. Run 46`s two sessions then used all 40 turns, earned zero extensions, and were told \"If the work was real but unfinished, raise maxToolIterations\" \u2014 the lever-with-no-room advice W21-56 was written to prevent, reached by the one path W21-56 did not cover.",
+        "The ceiling test now comes FIRST, before the extensions branch, because \"is there any room left\" is a property of the SETTING and not of what this session earned.",
+        "It also names the right next move rather than only refusing the wrong one: re-run first (the worktree keeps what was committed \u2014 W21-57), and split only if successive runs stop adding commits.",
+        "Third fix in this chain, each found by acting on the previous one`s advice: W21-53 (mid-stride vs stalled) -> W21-56 (the lever was maxed) -> W21-61 (the check could not fire at the max). Advice is a surface, and each of these was invisible until the previous fix made the next state reachable."
+      ],
+      "acceptance": [
+        "A session at the ceiling with zero extensions is not told to raise the ceiling",
+        "It is told to re-run first and split only if commits stop accumulating",
+        "Below the ceiling with no extensions, raising it is still the advice",
+        "A caller that does not know the ceiling is unchanged"
+      ]
     }
   ]
 }
