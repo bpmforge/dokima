@@ -84,6 +84,8 @@ import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
 import { executeBerthsRun } from './run-build-berths.js';
 import { executeReviewPass } from './review-pass.js';
+import { printRunOutcomes } from './run-summary.js';
+import { listTickets } from '@dokima/tickets';
 import {
   MEMORY_CONSOLIDATION_SETTINGS_KEY,
   parseConsolidationEnabled,
@@ -385,15 +387,12 @@ export async function executeBuildRun(
     ),
   });
 
-  for (const outcome of result.processed) {
-    io.stdout(
-      `${outcome.ticketId}: ${outcome.landed ? 'landed' : `parked (${outcome.parkedReason ?? 'unknown'})`}` +
-        ` after ${outcome.attempts.length} attempt(s)`,
-    );
-  }
-  io.stdout(
-    `${runId} finished: ${result.processed.filter((o) => o.landed).length} landed, ` +
-      `${result.processed.filter((o) => !o.landed).length} parked (stop: ${result.stopReason})`,
+  printRunOutcomes(
+    io.stdout,
+    runId,
+    result.processed,
+    result.stopReason,
+    [...listTickets(log).values()].filter((t) => t.status === 'in_review').length,
   );
   return 0;
 }

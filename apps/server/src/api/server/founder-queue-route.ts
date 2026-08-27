@@ -19,6 +19,8 @@ import {
   countBlockedDependents,
   isStuckTicket,
   orderFounderQueue,
+  reviewStatusFor,
+  reviewStatusSentence,
   type FounderQueueItem,
 } from '@dokima/harbormaster';
 import { listSlates } from '../decisions/store.js';
@@ -113,11 +115,16 @@ export function registerFounderQueueRoute(
         // 4. Acceptance — finished work waiting on a human verb (D-020).
         for (const ticket of listTickets(log).values()) {
           if (ticket.status !== 'in_review') continue;
+          // W21-34: what the machine review did is part of the question. A
+          // ticket a second model confirmed and one whose review was skipped
+          // for want of a second model used to read identically here, and
+          // they ask different things of the person accepting.
+          const review = reviewStatusSentence(reviewStatusFor(log, ticket.id));
           items.push({
             id: `accept:${ticket.id}`,
             kind: 'acceptance',
             actorId: ownerOf(ticket.id, tickets) ?? 'coding-agent',
-            title: `${ticket.id} is finished — accept it?`,
+            title: `${ticket.id} is finished — accept it? (${review})`,
             ticketId: ticket.id,
             openedAt: ticket.claimedAt ?? new Date(0).toISOString(),
             estimatedCostUsd: null,

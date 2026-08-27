@@ -129,12 +129,19 @@ describe('GET /projects/:id/founder-queue (W20-09)', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json() as {
       depth: number;
-      items: { id: string; kind: string; position: number; reason: string }[];
+      items: { id: string; kind: string; position: number; reason: string; title: string }[];
     };
     // the invariant: depth is the true count, because nothing is filtered
     expect(body.depth).toBe(body.items.length);
     expect(body.depth).toBeGreaterThanOrEqual(1);
     expect(body.items.some((i) => i.kind === 'founder-decision')).toBe(true);
+    // W21-34: the acceptance path runs through this handler and was never
+    // asserted — the reason a code read had to stand in for evidence.
+    expect(body.items.some((i) => i.kind === 'acceptance')).toBe(true);
+    // W21-34: and it says what the machine review did. T-1 was never reviewed,
+    // so accepting it means being the only check — which the item must say.
+    const accept = body.items.find((i) => i.kind === 'acceptance');
+    expect(accept!.title).toContain('nothing has checked this but you');
     // positions are dense and 1-based — a gap would mean something was dropped
     expect(body.items.map((i) => i.position)).toEqual(
       body.items.map((_, idx) => idx + 1),

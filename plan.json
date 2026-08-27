@@ -11867,30 +11867,38 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-34",
       "title": "a run that leaves work nothing will ever advance does not report success",
       "write_scope": [
-        "packages/harbormaster/src/loop-review.ts",
-        "packages/harbormaster/src/founder-queue.ts",
-        "packages/harbormaster/src/founder-queue.test.ts",
-        "apps/server/src/cli/review-pass.ts"
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-summary.ts",
+        "apps/server/src/cli/run-summary.test.ts",
+        "apps/server/src/api/server/founder-queue-route.ts",
+        "apps/server/src/api/server/founder-queue-route.test.ts",
+        "packages/harbormaster/src/review-status.ts",
+        "packages/harbormaster/src/review-status.test.ts",
+        "packages/harbormaster/src/index.ts"
       ],
       "notes": [
         "LIVE EVIDENCE, run 16 on the vault project. PLAN-vault-001 landed after 1 attempt: #1327 gate.receipt_minted, #1328 ticket.closed. Then #1329 review.skipped, and the run printed \"1 landed, 0 parked (stop: idle)\" and exited. The board showed in_review with done: (none), and NOTHING would ever have changed that.",
         "TWO layers, and the second is the one that surprised me. First: the model matrix had only coding-agent rows, so no reviewer model resolved and the review was skipped. The reason went to stderr \u2014 a founder not watching the terminal sees only \"1 landed\".",
         "Second, and independent of any model config: THE REVIEW PASS NEVER CALLS acceptTicket. It re-runs verify in the ticket worktree, gets a verdict, comments it, and records an event. The only acceptTicket callers in the whole product are apps/server/src/cli/run.ts (the dokima accept verb) and board-routes.ts:153 (a person clicking). So even with a second model configured and a passing verdict, done still requires a human \u2014 which may well be right under C-4, but the product never says so anywhere.",
         "Net effect: an autonomous run can land every ticket in a project and reach done on none of them, while reporting success each time. That is the same class W21-26 fixed for stuck tickets \u2014 a ticket in a state only a person can advance is a founder DECISION, not a silent terminal state.",
-        "I reached done by running `dokima accept PLAN-vault-001 --actor local-operator`, which the CLI help describes exactly right (\"accept someone ELSE\u2019s work (maker != verifier)\"). The verb was there; nothing pointed me at it."
+        "I reached done by running `dokima accept PLAN-vault-001 --actor local-operator`, which the CLI help describes exactly right (\"accept someone ELSE\u2019s work (maker != verifier)\"). The verb was there; nothing pointed me at it.",
+        "MY OWN FINDING WAS PARTLY WRONG, corrected before building on it. founder-queue-route.ts:113-127 DOES emit an `acceptance` item for every in_review ticket (\"PLAN-vault-001 is finished \u2014 accept it?\"), and `acceptance` is one of the five OPERATIONS.md classes. The founder queue was never silent. I was driving from the CLI and never looked at the Decide surface, and wrote the finding from that.",
+        "WHAT IS ACTUALLY MISSING, narrowed to two things. (1) The CLI run summary reads \"1 landed, 0 parked (stop: idle)\" and never mentions that N tickets are waiting on a person \u2014 a founder driving from the terminal gets no pointer to the `dokima accept` verb that the CLI help describes perfectly. (2) The acceptance item says \"is finished \u2014 accept it?\" and carries NOTHING about whether a machine reviewed it. A ticket a reviewer passed and a ticket whose review was skipped for want of a second model look identical at the moment of acceptance. That is a trust gap, not a cosmetic one: C-4 exists so that work is checked by someone other than its maker, and the surface where a person supplies that check does not tell them whether the machine check happened.",
+        "The review pass never calling acceptTicket stands as observed and is almost certainly CORRECT under C-4 \u2014 a machine verdict is advice, a person accepts. The defect is that nothing says so.",
+        "CONFIRMED EMPIRICALLY, not by code read: added an acceptance-kind assertion to the existing founder-queue route test (which built an in_review ticket and hit the real HTTP handler but only ever asserted founder-decision) and it passed. That missing assertion was itself a coverage gap \u2014 the path was exercised and never checked \u2014 and it is now permanent."
       ],
       "acceptance": [
-        "A ticket left in in_review that no machine review will advance reaches the founder queue as a decision, with the reason (no reviewer model, same model as maker, or review is advisory only)",
-        "The run summary does not read as unqualified success when it leaves tickets nothing will advance \u2014 it says how many landed AND how many are waiting on a person",
-        "The founder is told the verb that answers it, the way W21-27 told them about widen-scope",
-        "A red fixture pins the live shape: a run that lands one ticket and skips its review does not report 1 landed with no qualification"
+        "The CLI run summary says how many tickets are waiting on a person, not only landed and parked",
+        "It names the verb that answers them, the way W21-27 named widen-scope",
+        "The acceptance founder-queue item carries the review outcome for that ticket \u2014 reviewed and passed, skipped and why, or never reviewed",
+        "A red fixture pins the live shape: a run that lands one ticket and skips its review does not summarise as unqualified success, and its acceptance item says the review was skipped"
       ]
     },
     {

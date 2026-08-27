@@ -193,6 +193,10 @@ export type {
   ExternalToolset,
 } from './agent-session/external-tools.js';
 
+/** W21-34: what the machine review actually did to a ticket, for the surface where a person accepts it. */
+export { reviewStatusFor, reviewStatusSentence } from './review-status.js';
+export type { ReviewState, TicketReviewStatus } from './review-status.js';
+
 /** W15-01: the review pass — cross-model verdicts over in_review tickets, composed by apps/server. */
 export { DEFAULT_REVIEW_VERIFY_TIMEOUT_MS, runReviewPass } from './loop-review.js';
 export type {
