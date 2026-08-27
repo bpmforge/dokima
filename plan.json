@@ -12494,7 +12494,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [
@@ -12503,10 +12503,11 @@
       "id": "W21-50",
       "title": "a founder-authored ticket can state an acceptance that cannot fail",
       "write_scope": [
-        "packages/harbormaster/src/loop-land-satisfiable.ts",
-        "packages/harbormaster/src/loop-land-satisfiable.test.ts",
-        "apps/server/src/cli/parse.ts",
-        "apps/server/src/cli/run.ts"
+        "packages/harbormaster/src/loop-gates-unfalsifiable.ts",
+        "packages/harbormaster/src/loop-gates-unfalsifiable.test.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.ts",
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/index.ts"
       ],
       "notes": [
         "MY OWN MISTAKE, MADE WITH THE VERB I JUST SHIPPED, and the product did exactly what I asked. Using W21-48`s `dokima add-ticket` I created PLAN-vault-001a \u2014 \"Test infrastructure: node --test must run TypeScript specs\", write_scope package.json + tsconfig.json \u2014 with acceptance `npm run typecheck`.",
@@ -12514,7 +12515,10 @@
         "The gate did its job. W21-41 runs executable acceptance criteria and W21-41`s own vacuous-green check catches \"0 tests, exit 0\" \u2014 but `npm run typecheck` is not a test runner, so nothing was vacuous by that definition. The criterion was simply unrelated to the ticket`s purpose.",
         "THE GENERAL SHAPE, and it is not confined to founder-typed tickets: an acceptance criterion that passes identically before and after the work is not an acceptance criterion. It is checkable \u2014 run the criterion against the BASE before the session starts, and if it already passes, the ticket cannot be judged by it.",
         "That check is cheap (the base tree is already resolved for the worktree), mechanical, and would have refused PLAN-vault-001a at creation with a reason a person can act on. It also generalises to the pipeline`s own decomposition, which has no such pass either.",
-        "Interaction worth stating: this must NOT fire for a ticket whose criterion legitimately passes at base because the work is additive elsewhere \u2014 so the signal is \"passes at base AND still passes unchanged after\", not \"passes at base\". The pre-flight version is the cheap warning; the post-hoc version is the refusal."
+        "Interaction worth stating: this must NOT fire for a ticket whose criterion legitimately passes at base because the work is additive elsewhere \u2014 so the signal is \"passes at base AND still passes unchanged after\", not \"passes at base\". The pre-flight version is the cheap warning; the post-hoc version is the refusal.",
+        "CHECKED ONLY FOR CRITERIA THAT PASSED, which is what makes it affordable. A failing criterion is already refusing the close, so what it would have done at base is irrelevant; the expensive half \u2014 a throwaway worktree at baseRef plus a second run of the command \u2014 happens only where a pass is about to certify a ticket.",
+        "A probe that cannot be built refuses NOTHING. This check exists to make the gate more honest, not to add a new way for real work to be rejected by infrastructure \u2014 so a bad baseRef or a failed worktree add returns an empty finding rather than a refusal. That posture is deliberate and has its own fixture.",
+        "W21-41 owns the vacuously-green case (exit 0, zero tests) and this owns the general one. They do not double-refuse: a run already flagged ranNothing is skipped here."
       ],
       "acceptance": [
         "An executable acceptance criterion that already passes against the ticket`s BASE is reported when the ticket is created",
@@ -12691,7 +12695,8 @@
         "The cause is a decoupling W21-15 made deliberately. beginRungAttempt derives the rung from `attempts.length + 1` \u2014 a count of JUDGED attempts, so park evidence can never read \"attempt 5/2\" \u2014 and that number does not follow the loop index. My fix moved the loop counter, which moved neither the rung nor the reporting, and cost an attempt for nothing.",
         "Worse than a no-op: starting the loop at 2 against a cap of 2 left ONE attempt, so the ticket got a single R1 session where it would otherwise have had two. The skip made things strictly worse than not skipping.",
         "The right shape was there in W21-15`s own reasoning: attempt number and rung are two different quantities. The skip is a RUNG offset \u2014 it changes which model runs, never how many attempts the ticket gets.",
-        "ONLY A LIVE RUN COULD HAVE CAUGHT THIS. Nine unit fixtures on rungMemoryFor all passed, because they tested what the ledger REMEMBERS and never what the loop DOES with it. The seam between a correct fact and its use had no test, which is the same gap W21-12 fell into when provisioning was wired into a function nothing called."
+        "ONLY A LIVE RUN COULD HAVE CAUGHT THIS. Nine unit fixtures on rungMemoryFor all passed, because they tested what the ledger REMEMBERS and never what the loop DOES with it. The seam between a correct fact and its use had no test, which is the same gap W21-12 fell into when provisioning was wired into a function nothing called.",
+        "VERIFIED LIVE IN RUN 39, both halves: #2887 is the skip, #3053 is session.turns_observed with model qwen3.6-35b-a3b \u2014 R2, not R1 \u2014 and the ticket parked after TWO attempts, so the budget was preserved. That is the fix doing exactly what run 38 proved the first version did not."
       ],
       "acceptance": [
         "A skipped rung changes which model runs on the first attempt",

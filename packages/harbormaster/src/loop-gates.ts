@@ -142,6 +142,9 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
     claimed: { command: manifest.verify.command, exit: manifest.verify.exit },
     criteria: ticket.acceptance ?? [],
     timeoutMs: verifyTimeoutMs,
+    repoRoot: worktree.repoRoot,
+    baseRef,
+    ticketId: ticket.id,
   });
   reasons.push(...checkReasons);
 

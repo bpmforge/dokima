@@ -40,6 +40,7 @@
  */
 import type { VerifyRunResult } from './loop-gates-types.js';
 import { reRunVerify, verifyFailureTail } from './loop-gates-verify.js';
+import { unfalsifiableCriteria, unfalsifiableReason } from './loop-gates-unfalsifiable.js';
 
 /**
  * First tokens that mean "this line is a command". Extend deliberately: every
@@ -201,6 +202,10 @@ export async function runGateChecks(input: {
   readonly claimed: { readonly command: string; readonly exit: number };
   readonly criteria: readonly AcceptanceCriterionLike[];
   readonly timeoutMs: number;
+  /** W21-50: for the base probe — a passing criterion that also passes at base proves nothing. */
+  readonly repoRoot?: string;
+  readonly baseRef?: string;
+  readonly ticketId?: string;
 }): Promise<{
   readonly verify: VerifyRunResult;
   readonly acceptance: AcceptanceOutcome;
@@ -225,5 +230,20 @@ export async function runGateChecks(input: {
     input.timeoutMs,
   );
   reasons.push(...acceptance.reasons);
+  // W21-50: only when the criteria PASSED — a failing one is already refusing,
+  // and the probe costs a worktree.
+  if (input.repoRoot && input.baseRef && input.ticketId) {
+    reasons.push(
+      ...unfalsifiableReason(
+        await unfalsifiableCriteria({
+          repoRoot: input.repoRoot,
+          ticketId: input.ticketId,
+          baseRef: input.baseRef,
+          runs: acceptance.runs,
+          timeoutMs: input.timeoutMs,
+        }),
+      ),
+    );
+  }
   return { verify, acceptance, reasons };
 }

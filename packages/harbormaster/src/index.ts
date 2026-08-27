@@ -196,6 +196,10 @@ export type {
 /** W21-34: what the machine review actually did to a ticket, for the surface where a person accepts it. */
 export { reviewStatusFor, reviewStatusSentence } from './review-status.js';
 
+/** W21-50: a criterion that also passes at BASE certifies nothing. */
+export { unfalsifiableCriteria, unfalsifiableReason } from './loop-gates-unfalsifiable.js';
+export type { UnfalsifiableCriterion } from './loop-gates-unfalsifiable.js';
+
 /** W21-46: a rung that already failed this ticket is not re-run from scratch. */
 export { rungMemoryFor, rungSkipNotice, startAttemptFor } from './loop-land-rungmemory.js';
 export type { RungMemory } from './loop-land-rungmemory.js';
