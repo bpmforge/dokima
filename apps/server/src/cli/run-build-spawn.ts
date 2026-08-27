@@ -28,6 +28,7 @@ import {
 import { createMemoryAnchor } from '@dokima/memory';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
+import { assertModelIsServed } from './model-preflight.js';
 import {
   resolveModelTargetChain,
   type PinnedModel,
@@ -123,6 +124,11 @@ export async function buildBuiltInSpawn(
       warmUp: () => raw.warmUp(),
       queueStats: () => raw.queueStats(),
     };
+    // W21-78: ask the provider whether it actually serves this model, before
+    // anything is claimed. The eager loop below already exists so a ladder
+    // that fails to BIND refuses at run start; a model the provider does not
+    // have is the same class of failure, and used to surface only mid-session.
+    await assertModelIsServed(provider, target.model);
     // W12-04: the context window comes from the Provider, not from
     // `ResolvedModelTarget` (which carries no window field) — so it is read
     // here, where the provider is already built, rather than resolving the
