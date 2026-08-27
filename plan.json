@@ -11999,7 +11999,9 @@
         "ACCEPTED dependencies only, never merely closed. A dependency in in_review has not passed the human check, and building on it would make acceptance retroactive and launder C-4.",
         "A dependency whose branch is missing must REFUSE, not fall back to main. Falling back is precisely what produced this failure: the base was wrong and the only thing that said so was an informational provisioning line.",
         "WORKTREE REUSE IS THE TRAP IN VERIFYING THIS. loop-land-board.ts:42 resolveWorktree returns an EXISTING worktree when one is present, so a base fix alone will not move PLAN-vault-002`s worktree, which run 17 already created on the wrong base. A stale worktree carrying no agent commits can be recreated; one carrying agent work must refuse rather than silently discard it.",
-        "MY FIRST COMPOSE WAS WRONG and the two-dependency fixture caught it: `merge-tree --write-tree --merge-base X X B` makes the merge base equal one side, so the OTHER side`s tree wins outright and the first dependency`s files vanish. The single-dependency case passed the whole time. Two dependencies is not a bigger version of one dependency."
+        "MY FIRST COMPOSE WAS WRONG and the two-dependency fixture caught it: `merge-tree --write-tree --merge-base X X B` makes the merge base equal one side, so the OTHER side`s tree wins outright and the first dependency`s files vanish. The single-dependency case passed the whole time. Two dependencies is not a bigger version of one dependency.",
+        "AND MY FIX CRASHED RUN 18. The base resolution was RIGHT \u2014 it correctly picked sw/PLAN-vault-001-\u2026 as the base for PLAN-vault-002 \u2014 but destroyWorktree removes the directory and leaves the branch, so createWorktree -b failed with \"a branch named \u2026 already exists\" and the error escaped the loop. Fixed by passing deleteBranch, which is safe exactly here and nowhere else: hasAgentCommits has just established the branch carries nothing of its own. A fixture now pins both halves.",
+        "SEPARATE DEFECT THE CRASH EXPOSED, worth its own ticket: a worktree-creation failure killed the run and appended NOTHING to the ledger. Same class as W21-32`s refused close \u2014 the diagnosis came from a stack trace in a terminal log, not from the event log."
       ],
       "acceptance": [
         "A ticket whose dependencies are accepted branches from their work, not from the run`s current branch",
@@ -12044,6 +12046,42 @@
         "A validator that skips because its input document is missing does not report as a pass at the close gate \u2014 a skip and a pass are distinguishable",
         "The phase-0 deliverables-not-on-disk refusal reaches the founder rather than being carried past by the build",
         "A red fixture pins the live shape: a ticket that adds a dependency absent from docs/TECH_STACK.md does not close clean"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 5,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-38"
+      ],
+      "id": "W21-39",
+      "title": "attest-parity controls: the pack ships 83 validators and a generated build runs 2",
+      "write_scope": [
+        "docs/ARCHITECTURE.md",
+        "docs/TESTING.md"
+      ],
+      "notes": [
+        "ASKED DIRECTLY BY THE FOUNDER: attest has controls in place; Dokima needs the same level or stricter, so stray code cannot get added to a generated product. The comparison is stark, and the good news is that almost nothing is missing from the PACK \u2014 it is all missing from the GATE.",
+        "WHAT DOKIMA ALREADY SHIPS AS DATA: content/validators/ holds 83 validators imported from attest, including validate-tech-stack, validate-deps, validate-scope, validate-dead-code, validate-no-reinvent, validate-code-health, validate-module-boundaries, validate-circular-deps, validate-model-pins, validate-no-ascii-art. content/protocols/ holds ANTI_SLOP_RULES.md, CODE_BOOK_PROTOCOL.md, SCOPE_BOUNDARY.md, LOOP_PREVENTION.md and 30 more. content/experts/code-review/ holds anti-slop-auditor.md, pattern-consistency-checker.md, duplication-detector.md, error-handling-auditor.md, code-health-synthesizer.md and METHODOLOGY.md.",
+        "WHAT ACTUALLY RUNS ON A GENERATED PROJECT: two validators. DEFAULT_REQUIRED_VALIDATORS = [secrets-scan, validate-remote-parity]. Run 16`s close receipt for PLAN-vault-001 lists exactly those two.",
+        "AND THE PROTOCOLS NEVER REACH ANYONE. Grepping ANTI_SLOP / protocols/ across packages/harbormaster, packages/loop and apps/server returns only Dokima`s own source comments about its own CODE_BOOK_PROTOCOL adherence. No code path injects content/protocols/* into an agent handoff, and no code path dispatches the anti-slop auditor over a generated project. The rules are shipped and unread.",
+        "ATTEST RUNS A FIVE-GATE CHAIN PER HANDOFF (scripts/validators/run-handoff-gates.sh, which is ALSO in Dokima`s pack as content/validators/run-handoff-gates.sh and is never invoked): 1 scope, 2 manifest checked against disk, 3 domain coverage validator, 4 tracker freshness against the branch point, 5 runtime build+lint+file-size. Dokima reimplements 1, 2 and part of 5 in TypeScript \u2014 correctly, and out of session, which is STRONGER than attest for those three because the agent cannot influence them. It runs none of 3 and 4, and none of the 83.",
+        "SO THE HONEST SUMMARY: Dokima`s trust boundary is stronger than attest`s (out-of-session gates, signed receipts, hash-chained ledger, maker != verifier by construction). Its CODE CONTENT controls are far weaker. An agent building the vault can add a hallucinated package (R-21 slopsquatting), leave an unimplemented stub as a feature (R-27), reimplement a library badly (R-30), or wire a disconnected pipeline (R-26), and every gate passes.",
+        "R-21 is the one that is a security issue rather than a quality one: a hallucinated package name an attacker has registered enters the product through a gate that never compares dependencies against anything."
+      ],
+      "acceptance": [
+        "The control inventory above is recorded in docs/ARCHITECTURE.md as a table: control, where attest enforces it, where Dokima enforces it, gap",
+        "The decision on which of the 83 belong in a GENERATED PRODUCT`s gate is recorded with reasoning \u2014 not all 83, and the reason each excluded one is excluded",
+        "The anti-slop rules reach the maker (handoff) or the verifier (review pass) or both, and which is chosen is argued rather than assumed",
+        "R-21 slopsquatting specifically has a named control, since it is the one that admits an attacker rather than sloppiness",
+        "docs/TESTING.md records how a generated project`s gate is red-fixture tested, the way Dokima`s own is"
       ]
     }
   ]

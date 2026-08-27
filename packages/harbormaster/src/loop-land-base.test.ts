@@ -140,3 +140,57 @@ describe('resolveTicketBase (W21-37)', () => {
     expect(base).toMatchObject({ ok: true, ref: 'main', from: [] });
   });
 });
+
+/**
+ * W21-37 follow-up. The first version of the stale-worktree fix crashed run 18
+ * outright: it removed the worktree directory and left the branch, so
+ * `createWorktree -b sw/<ticket>` failed with "a branch named … already
+ * exists" and the error escaped the loop with no ledger trace at all.
+ */
+describe('recreating a worktree left on a stale base (W21-37)', () => {
+  it('RED FIXTURE: the branch goes with the directory, so the worktree can actually be recreated', async () => {
+    const dir = await repo();
+    await landedBranch(dir, 'sw/A-a', 'package.json');
+    const { createWorktree, destroyWorktree, listWorktrees } = await import('@dokima/git');
+
+    // A worktree forked from the empty main — run 17's exact leftover.
+    const stale = await createWorktree({
+      repoRoot: dir,
+      ticketId: 'B',
+      slug: 'b',
+      baseRef: 'main',
+    });
+    expect((await git(stale.path, ['ls-tree', '--name-only', 'HEAD'])).stdout).not.toContain(
+      'package.json',
+    );
+
+    await destroyWorktree(stale, { deleteBranch: true });
+    expect(await listWorktrees(dir)).toHaveLength(1); // the main checkout only
+
+    // Recreating on the RIGHT base now succeeds where it used to throw.
+    const fresh = await createWorktree({
+      repoRoot: dir,
+      ticketId: 'B',
+      slug: 'b',
+      baseRef: 'sw/A-a',
+    });
+    expect((await git(fresh.path, ['ls-tree', '--name-only', 'HEAD'])).stdout).toContain(
+      'package.json',
+    );
+  });
+
+  it('leaving the branch behind is what broke it — recreate refuses while it exists', async () => {
+    const dir = await repo();
+    const stale = await createWorktreeFor(dir, 'B');
+    const { destroyWorktree, createWorktree } = await import('@dokima/git');
+    await destroyWorktree(stale); // no deleteBranch — the bug
+    await expect(
+      createWorktree({ repoRoot: dir, ticketId: 'B', slug: 'b', baseRef: 'main' }),
+    ).rejects.toThrow(/already exists/);
+  });
+});
+
+async function createWorktreeFor(dir: string, ticketId: string) {
+  const { createWorktree } = await import('@dokima/git');
+  return createWorktree({ repoRoot: dir, ticketId, slug: ticketId.toLowerCase(), baseRef: 'main' });
+}

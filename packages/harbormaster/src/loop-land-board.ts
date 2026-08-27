@@ -71,12 +71,21 @@ export async function resolveWorktree(
             `them. Land or discard that branch, then re-run (W21-37).`,
         );
       }
-      await destroyWorktree({
-        repoRoot: options.repoRoot,
-        path: worktreePath,
-        branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
-        ticketId: ticket.id,
-      });
+      // The BRANCH goes too, not just the directory. Removing the worktree
+      // alone leaves `sw/<ticket>` behind, and `createWorktree` then fails
+      // with "a branch named … already exists" — which is exactly how the
+      // first version of this fix crashed run 18 with no ledger trace. Safe
+      // here and nowhere else: `hasAgentCommits` has just established the
+      // branch carries nothing of its own, so there is nothing to lose.
+      await destroyWorktree(
+        {
+          repoRoot: options.repoRoot,
+          path: worktreePath,
+          branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
+          ticketId: ticket.id,
+        },
+        { deleteBranch: true },
+      );
     } else {
       return {
         repoRoot: options.repoRoot,
