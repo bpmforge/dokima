@@ -33,7 +33,8 @@ import { resolveCurrentBranch } from '@dokima/git';
 import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
 import { reclaimAbandoned } from './loop-land-reclaim.js';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
-import { listTickets, type Ticket } from '@dokima/tickets';
+import { commentTicket, listTickets, releaseTicket, type Ticket } from '@dokima/tickets';
+import { resolveTicketBase } from './loop-land-base.js';
 import { type EventLog } from '@dokima/events';
 
 import type { HandoffBuilder } from './loop-handoff.js';
@@ -195,6 +196,31 @@ export interface LandLoopResult {
   readonly stopReason: LandLoopStopReason;
 }
 
+/**
+ * W21-37: a ticket whose base cannot be built is comment-and-released, not
+ * attempted. Running it anyway is what produced the live failure — a session
+ * spending its whole budget being asked to redo a dependency's work. The
+ * comment is the founder's evidence; `isStuckTicket` (W21-26) will surface it
+ * once it repeats.
+ */
+function refuseTicketBase(
+  options: LandLoopOptions,
+  ticket: Ticket,
+  reason: string,
+): LandLoopTicketOutcome {
+  const opts = { runId: options.runId ?? null };
+  commentTicket(options.log, { ticketId: ticket.id, actorId: options.actorId, body: reason }, opts);
+  releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, opts);
+  return {
+    ticketId: ticket.id,
+    mode: 'ladder',
+    attempts: [],
+    landed: false,
+    parked: true,
+    finalStatus: 'ready',
+  };
+}
+
 /** Runs the land loop until idle (nothing claimable), stopped (kill-file/pause), or budget-stopped (W2-07 hard_stop). */
 export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopResult> {
   /**
@@ -234,7 +260,21 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
       return { processed, stopReason: 'idle' };
     }
 
-    processed.push(await processTicket(options, next, await baseRefFor()));
+    // W21-37: the base is per TICKET, not per run — a ticket forks from its
+    // accepted dependencies' work. `baseRefFor()` remains the fallback for a
+    // ticket that has none, so a single-ticket board is unchanged.
+    const base = await resolveTicketBase({
+      repoRoot: options.repoRoot,
+      ticket: next,
+      tickets: listTickets(options.log),
+      fallbackRef: await baseRefFor(),
+    });
+    if (!base.ok) {
+      processed.push(refuseTicketBase(options, next, base.reason));
+      skip.add(next.id);
+      continue;
+    }
+    processed.push(await processTicket(options, next, base.ref));
     skip.add(next.id);
   }
 }

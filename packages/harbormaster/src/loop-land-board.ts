@@ -11,6 +11,8 @@ import path from 'node:path';
 import {
   branchNameFor,
   createWorktree,
+  destroyWorktree,
+  git,
   listWorktrees,
   type CreateWorktreeOptions,
   type WorktreeHandle,
@@ -51,12 +53,38 @@ export async function resolveWorktree(
     ? existing.find((entry) => entry.path === resolvedWorktreePath)
     : undefined;
   if (found) {
-    return {
-      repoRoot: options.repoRoot,
-      path: worktreePath,
-      branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
-      ticketId: ticket.id,
-    };
+    /**
+     * W21-37: a worktree created on the WRONG base is worse than no worktree.
+     * Run 17 left PLAN-vault-002 a worktree forked from a `main` that held one
+     * file, and reusing it would defeat the base fix silently — the failure
+     * would look identical and the cause would have moved.
+     *
+     * Recreating is safe only while the agent has committed nothing: a
+     * worktree carrying real work must never be discarded to fix a base, so
+     * that case refuses and reaches a person instead.
+     */
+    if (!(await containsBase(options.repoRoot, worktreePath, baseRef))) {
+      if (await hasAgentCommits(options.repoRoot, worktreePath, baseRef)) {
+        throw new Error(
+          `worktree for ${ticket.id} was created from a different base and ` +
+            `already holds commits, so it cannot be recreated without losing ` +
+            `them. Land or discard that branch, then re-run (W21-37).`,
+        );
+      }
+      await destroyWorktree({
+        repoRoot: options.repoRoot,
+        path: worktreePath,
+        branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
+        ticketId: ticket.id,
+      });
+    } else {
+      return {
+        repoRoot: options.repoRoot,
+        path: worktreePath,
+        branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
+        ticketId: ticket.id,
+      };
+    }
   }
   return createWorktree({
     repoRoot: options.repoRoot,
@@ -64,4 +92,38 @@ export async function resolveWorktree(
     slug: ticket.title,
     baseRef: baseRef as CreateWorktreeOptions['baseRef'],
   });
+}
+
+/** Whether an existing worktree's HEAD already contains everything `baseRef` carries. */
+async function containsBase(
+  repoRoot: string,
+  worktreePath: string,
+  baseRef: string,
+): Promise<boolean> {
+  try {
+    const base = (await git(repoRoot, ['rev-parse', `${baseRef}^{commit}`])).stdout.trim();
+    await git(worktreePath, ['merge-base', '--is-ancestor', base, 'HEAD']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether the worktree's branch has commits of its own beyond where it forked. */
+async function hasAgentCommits(
+  repoRoot: string,
+  worktreePath: string,
+  baseRef: string,
+): Promise<boolean> {
+  try {
+    const forkPoint = (await git(repoRoot, ['rev-parse', `${baseRef}^{commit}`])).stdout.trim();
+    const count = (
+      await git(worktreePath, ['rev-list', '--count', `${forkPoint}..HEAD`])
+    ).stdout.trim();
+    return Number(count) > 0;
+  } catch {
+    // Cannot tell — assume there IS work. Refusing costs a person a minute;
+    // guessing wrong destroys a session's output.
+    return true;
+  }
 }

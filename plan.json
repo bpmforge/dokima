@@ -11970,6 +11970,81 @@
         "runWatchdogSession gets the same verdict in the same pass \u2014 it is the same shape named in the same comment",
         "A check fails when an exported orchestration entry point has no non-test caller, so this class cannot recur silently"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-37",
+      "points": 3,
+      "title": "a ticket starts from its dependencies, not from an empty repo",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-base.ts",
+        "packages/harbormaster/src/loop-land-base.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-board.ts",
+        "packages/harbormaster/src/index.ts"
+      ],
+      "notes": [
+        "THE STRUCTURAL BLOCKER FOR THE WHOLE PROJECT, found by run 17. PLAN-vault-002 (Argon2id + AES-256-GCM) parked after 2 attempts in 70 seconds. #1336 worktree.provisioned {\"ran\":false,\"why\":\"no package.json \u2014 nothing to install\"} \u2014 and the agent\u2019s own checkpoint says why: {\"completed\":[],\"remaining\":[...],\"next\":\"Create package.json with test scripts\"}. It was asked to redo PLAN-vault-001\u2019s work, which is outside its write_scope.",
+        "The vault repo`s main holds ONE file, .gitignore. PLAN-vault-001`s landed work sits on sw/PLAN-vault-001-\u2026 and was never merged. loop-land.ts:215 baseRefFor() resolves the current branch ONCE and every ticket branches from it, so depends_on orders the work and never feeds it. A dependency-ordered DAG whose tickets cannot see each other`s output cannot build a multi-ticket product.",
+        "THE FIX IS NOT AUTO-MERGE. BLUEPRINT \u00a7\"Autonomy dial\" and ARCHITECTURE.md:204 both say merges to main are NEVER-AUTO, in the morning queue. land-push.ts:16 says the same: \"the merge to main this package deliberately never performs\". Auto-merging to satisfy a demo would break a documented founder guarantee, which is the class of shortcut this wave exists to find, not to create.",
+        "ACCEPTED dependencies only, never merely closed. A dependency in in_review has not passed the human check, and building on it would make acceptance retroactive and launder C-4.",
+        "A dependency whose branch is missing must REFUSE, not fall back to main. Falling back is precisely what produced this failure: the base was wrong and the only thing that said so was an informational provisioning line.",
+        "WORKTREE REUSE IS THE TRAP IN VERIFYING THIS. loop-land-board.ts:42 resolveWorktree returns an EXISTING worktree when one is present, so a base fix alone will not move PLAN-vault-002`s worktree, which run 17 already created on the wrong base. A stale worktree carrying no agent commits can be recreated; one carrying agent work must refuse rather than silently discard it.",
+        "MY FIRST COMPOSE WAS WRONG and the two-dependency fixture caught it: `merge-tree --write-tree --merge-base X X B` makes the merge base equal one side, so the OTHER side`s tree wins outright and the first dependency`s files vanish. The single-dependency case passed the whole time. Two dependencies is not a bigger version of one dependency."
+      ],
+      "acceptance": [
+        "A ticket whose dependencies are accepted branches from their work, not from the run`s current branch",
+        "Only accepted (done) dependencies are used \u2014 an in_review dependency does not become a base",
+        "Several accepted dependencies compose into one base, and a composition that conflicts reaches the founder as a decision rather than crashing",
+        "A dependency whose branch is missing refuses with that named as the reason",
+        "A worktree left on a stale base is recreated when it holds no agent commits, and refuses when it does",
+        "A ticket with no dependencies behaves exactly as today",
+        "A red fixture reproduces run 17: ticket B depends on accepted ticket A, and B`s worktree contains A`s files"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "module": "server",
+      "depends_on": [],
+      "id": "W21-38",
+      "points": 3,
+      "title": "nothing checks that a generated project used the stack it designed",
+      "write_scope": [
+        "apps/server/src/cli/run-build.ts",
+        "packages/harbormaster/src/loop-gates-types.ts",
+        "apps/server/src/cli/run-validators.ts",
+        "apps/server/src/cli/run-validators.test.ts"
+      ],
+      "notes": [
+        "ASKED DIRECTLY BY THE FOUNDER: is the product keeping the model honest about the designed tech stack and dependencies? It is not, at three layers, and each would defeat the fix for the others.",
+        "LAYER 1 \u2014 the gate does not run it. DEFAULT_REQUIRED_VALIDATORS in loop-gates-types.ts:30 is exactly [\"secrets-scan\",\"validate-remote-parity\"]. Run 16`s close receipt for PLAN-vault-001 lists those two and nothing else. The content pack ships 60+ validators INCLUDING validate-tech-stack.sh (\"every direct dependency in the project`s manifest must appear in docs/TECH_STACK.md\") and validate-deps.sh, and a generated project`s close gate consults neither.",
+        "LAYER 2 \u2014 there is no way to opt in. run-build.ts never passes requiredValidators at all, so there is no per-project path to add one. Which validators belong in a GENERATED PRODUCT`s gate, as opposed to Dokima`s own, is a founder decision \u2014 most of the 60 are irrelevant to a password manager.",
+        "LAYER 3 \u2014 and this is the one that would make the other two hollow: the vault project has NO docs/ ON DISK. Not TECH_STACK.md, not BLUEPRINT, not SCOPE. The pipeline recorded blueprint / technical-slate / ticket-decomposition phases in the event log, and none of it materialised as files. validate-tech-stack.sh warns and exits CLEAN when docs/TECH_STACK.md is absent, so requiring it today would enforce nothing while reporting a pass \u2014 worse than not running it.",
+        "The product already noticed layer 3 and said so: run 15`s digest carried \"Phase gate: Idea did not clear \u2014 phase 0 gate refused: declared deliverable(s) not found on disk\". The phase gate was right and the build proceeded anyway.",
+        "CONSEQUENCE, and why this is a security ticket and not hygiene: an agent can add any dependency it likes, including one it invented (slopsquatting \u2014 a hallucinated package name an attacker has registered), and nothing in the close gate compares what it added against what the project designed."
+      ],
+      "acceptance": [
+        "A generated project`s close gate can require validators beyond the two defaults, chosen per project rather than hardcoded",
+        "validate-tech-stack and validate-deps are in that set for a generated product, or the reason they are not is recorded",
+        "A validator that skips because its input document is missing does not report as a pass at the close gate \u2014 a skip and a pass are distinguishable",
+        "The phase-0 deliverables-not-on-disk refusal reaches the founder rather than being carried past by the build",
+        "A red fixture pins the live shape: a ticket that adds a dependency absent from docs/TECH_STACK.md does not close clean"
+      ]
     }
   ]
 }
