@@ -102,7 +102,7 @@ export function runPostRunConsolidation(
           `${brief.decayedCount} stale fact${brief.decayedCount === 1 ? '' : 's'} retired` +
           (lead ? ` — the lead lesson: ${truncateAtWord(lead.content, 160)}` : ''),
       },
-      { id: `pre-brief-${options.runId}`, actorId: options.actorId },
+      { id: `pre-brief-${options.runId}`, actorId: options.actorId, runId: options.runId },
     );
   }
   return report;

@@ -210,9 +210,22 @@ describe('notifications core (FR-N4, US-704, DATABASE.md §3)', () => {
       const second = emitReviewItem(
         log,
         { kind: 'pr_ready', title: 'PR ready', summary: 'branch pushed' },
-        { id: 'digest-2', actorId: 'operator', now: () => '2026-07-18T09:05:00.000Z' },
+        {
+          id: 'digest-2',
+          actorId: 'operator',
+          now: () => '2026-07-18T09:05:00.000Z',
+          runId: 'run-B',
+        },
       );
       expect(second.id).toBe('digest-1'); // absorbed into the existing open digest, not a new row
+      // W21-35: digests coalesce ACROSS runs, so the append event names the run
+      // whose item was just added — the question actually asked when reading
+      // one back. Left null, this was the last unattributed event in a live run.
+      const { listEvents } = await import('@dokima/events');
+      const appended = listEvents(log).filter(
+        (e) => e.eventType === 'notification.digest_appended',
+      );
+      expect(appended.at(-1)!.runId).toBe('run-B');
       expect((second.body as { items: unknown[] }).items).toHaveLength(2);
       expect(second.leverage).toBe(LEVERAGE_BY_KIND.pr_ready); // max() of batched items' leverage
 

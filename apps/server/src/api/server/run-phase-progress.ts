@@ -117,6 +117,7 @@ export async function attemptPhaseProgress(
       {
         id: `phase-gate-${args.runId}-${phaseId}`,
         actorId: PHASE_GATE_VERIFIER_ACTOR_ID,
+        runId: args.runId,
         now,
       },
     );
@@ -174,6 +175,7 @@ export async function attemptPhaseProgress(
     },
     {
       id: `phase-advance-${args.runId}-${phaseId}`,
+      runId: args.runId,
       actorId: PHASE_GATE_VERIFIER_ACTOR_ID,
       now,
     },

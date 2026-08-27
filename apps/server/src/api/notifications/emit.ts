@@ -163,6 +163,12 @@ export interface EmitReviewItemOptions extends EmitOptions {
   /** Only used when no open digest exists yet (a fresh digest is created). */
   id: string;
   actorId: string;
+  /**
+   * W21-35: the run the digest item is about. Digests coalesce across runs, so
+   * this names the run whose item was just appended, not the digest as a whole
+   * — which is exactly the question asked when reading one back.
+   */
+  runId?: string | null;
 }
 
 /**
@@ -231,6 +237,7 @@ export function emitReviewItem(
       {
         eventType: 'notification.digest_appended',
         actorId: opts.actorId,
+        runId: opts.runId ?? null,
         payload: { id: existing.id, item: items[items.length - 1] },
       },
       { now: () => at },

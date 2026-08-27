@@ -158,6 +158,8 @@ export function createLearningHook(options: LearningHookOptions): AttemptOutcome
 export function createR0ConsultHook(options: {
   readonly log: EventLog;
   readonly actorId: string;
+  /** W21-35: the run consulting the playbook — W21-32 stamped the lifecycle verbs and missed this one. */
+  readonly runId?: string | null;
   readonly secretValues: readonly string[];
   readonly now?: () => string;
   /** Test seam — real callers read the user's global DB. */
@@ -189,6 +191,7 @@ export function createR0ConsultHook(options: {
             eventType: event.type,
             actorId: options.actorId,
             ticketId: event.ticketId,
+            runId: options.runId ?? null,
             payload: {
               criterion: event.criterion,
               ...(event.source ? { source: event.source } : {}),

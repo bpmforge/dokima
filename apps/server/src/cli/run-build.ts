@@ -329,7 +329,7 @@ export async function executeBuildRun(
       secretValues,
       // W14-05 + W16-03: learning producer + R0 consult, composed here (§4).
       attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
-      r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues }),
+      r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues, runId }),
       ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
       ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
       conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)

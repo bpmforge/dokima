@@ -300,6 +300,9 @@ describe('the R0 consult hook, composed (W16-03)', () => {
       secretValues: [],
       loadGlobalEntries: () => [],
       now: () => '2026-08-21T00:00:00.000Z',
+      // W21-35: this event was the last one in a live run still carrying
+      // run=null after W21-32 stamped everything else.
+      runId: 'run-A',
     });
     const result = await hook.consult({
       ticketId: 'T-9',
@@ -307,6 +310,8 @@ describe('the R0 consult hook, composed (W16-03)', () => {
     });
 
     expect(result.answered).toBe(true);
+    const hit = listEvents(log).find((e) => e.eventType === 'playbook.r0_hit');
+    expect(hit!.runId).toBe('run-A');
     expect(result.summary).toContain('pin Node to 22');
     const hits = listEvents(log).filter((e) => e.eventType === 'playbook.r0_hit');
     expect(hits).toHaveLength(1);

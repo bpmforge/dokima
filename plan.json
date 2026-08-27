@@ -11908,7 +11908,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 1,
       "module": "harbormaster",
       "depends_on": [
@@ -11917,18 +11917,58 @@
       "id": "W21-35",
       "title": "the last two events that still do not say which run wrote them",
       "write_scope": [
-        "packages/harbormaster/src/loop-r0.ts",
-        "packages/harbormaster/src/notifications.ts"
+        "apps/server/src/cli/memory-hooks.ts",
+        "apps/server/src/cli/memory-hooks.test.ts",
+        "apps/server/src/api/notifications/emit.ts",
+        "apps/server/src/api/notifications/notifications.test.ts",
+        "apps/server/src/cli/consolidation.ts",
+        "apps/server/src/api/server/run-phase-progress.ts",
+        "apps/server/src/cli/run-build.ts"
       ],
       "notes": [
         "W21-32 stamped the lifecycle verbs and the receipt anchor. Run 16 is almost fully attributed \u2014 every event from #1304 to #1330 carries run=run-2026-08-27T00:30:53.054Z \u2014 with exactly two holdouts: #1308 playbook.r0_hit and #1331 notification.digest_appended.",
         "Same class, two call sites W21-32 did not reach. Small, and worth closing while the shape is fresh: the value of run attribution is that it is TOTAL \u2014 one unattributed event is the one a future diagnosis will need.",
-        "The write_scope here is a guess at the two appending modules and should be corrected at claim time by grepping the two event types."
+        "The write_scope here is a guess at the two appending modules and should be corrected at claim time by grepping the two event types.",
+        "The guessed write_scope was wrong, as flagged at filing. The appenders are not in packages/memory or a notifications module: playbook.r0_hit is emitted through a SINK whose only implementation lives in apps/server/src/cli/memory-hooks.ts, and notification.digest_appended in apps/server/src/api/notifications/emit.ts. Both stamp at the composition layer, which is right \u2014 packages/memory has no business knowing what a run is.",
+        "Four call sites needed the id, not two: the r0 hook (run-build), the pre-brief digest (consolidation), and BOTH phase-gate digests (run-phase-progress). The phase ones already had args.runId in scope and simply never passed it."
       ],
       "acceptance": [
         "playbook.r0_hit carries the run that consulted the playbook",
         "notification.digest_appended carries the run the digest is about",
         "A fixture asserts no event type appended during a run is left unattributed"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-36",
+      "title": "runClaimLoop: delete it or give it a caller \u2014 a founder decision, not a cleanup",
+      "write_scope": [
+        "packages/harbormaster/src/loop-claim.ts",
+        "packages/harbormaster/src/loop-claim.test.ts",
+        "docs/ARCHITECTURE.md"
+      ],
+      "notes": [
+        "loop-claim.ts:245 says it plainly: \"NOT ON A LIVE PATH TODAY (checked at W11-17, re-verify before citing this as coverage): apps/server's only wired execution engine is runLandLoop. Nothing in apps/* calls runClaimLoop \u2014 its only callers are its own tests.\"",
+        "THIS ALREADY COST A LIVE RUN. W21-12 put worktree provisioning into it, the full gate passed because its tests exercise it, and the live run proved the code never executed. The docstring was there and I did not read it. That is the failure mode of documented-dead code: it passes every mechanical check a live path passes, so nothing distinguishes them except a comment somebody has to happen to read.",
+        "The export ratchet has flagged this for several waves and it keeps being deferred, which is its own signal.",
+        "NOT filed as a cleanup because it is not one. runClaimLoop carries real behaviour runLandLoop may or may not have \u2014 the WIP=1 claim protocol, the abandoned-claim sweep, secretValues redaction wired in and equally dead. Deleting it might drop a capability; keeping it keeps a trap. Which one is right is an architecture call, and the same is true of watchdog-session.ts runWatchdogSession, named in the same docstring as the other dead twin.",
+        "Whichever way it goes, the mechanical follow-up is the same: a check that fails when an exported orchestration entry point has no non-test caller, so the next one cannot sit for waves behind a comment."
+      ],
+      "acceptance": [
+        "The decision is recorded in docs/ARCHITECTURE.md with its reasoning, either way",
+        "If deleted: runLandLoop demonstrably covers the abandoned-claim sweep and the WIP=1 protocol, or those move across first",
+        "If kept: it has a real non-test caller, or a mechanical marker that says it is a library entry point and not a live path",
+        "runWatchdogSession gets the same verdict in the same pass \u2014 it is the same shape named in the same comment",
+        "A check fails when an exported orchestration entry point has no non-test caller, so this class cannot recur silently"
       ]
     }
   ]
