@@ -268,10 +268,60 @@ describe('combinedModelOptions / findServingProviderId (AC1 "select from a LIST"
     { id: 'disabled-endpoint', kind: 'ollama', enabled: false },
   ];
 
-  it('flattens and dedupes model ids across enabled catalogs only, sorted', () => {
+  /**
+   * W21-24 REVERSED THIS DELIBERATELY. The fixture asserted bare model ids
+   * against THREE enabled providers — and a bare ref is exactly what
+   * `resolveBoundModel` refuses once more than one provider is enabled
+   * ("has no provider prefix and 3 providers are enabled"). So every option
+   * this panel offered in that configuration was one the resolver would
+   * reject, and the control is a `<select>` with no way to type a valid one.
+   *
+   * Deduping across providers went with it, and that is the improvement rather
+   * than a cost: a model served by both ollama and lm-studio is two different
+   * routes, and which endpoint serves it was previously unexpressible.
+   */
+  it('offers PROVIDER-QUALIFIED refs when more than one provider is enabled — a bare id is unroutable there', () => {
     expect(combinedModelOptions(CATALOGS, ENTRIES)).toEqual([
+      'lm-studio/qwen2.5-coder-32b',
+      'lm-studio/qwen2.5-coder-7b',
+      'ollama/qwen2.5-coder-7b',
+    ]);
+  });
+
+  it('a single enabled provider keeps bare ids — qualification is what the resolver requires, not a style', () => {
+    const one: ProviderEntry[] = [{ id: 'lm-studio', kind: 'lm-studio', enabled: true }];
+    expect(combinedModelOptions(CATALOGS, one)).toEqual([
       'qwen2.5-coder-32b',
       'qwen2.5-coder-7b',
+    ]);
+  });
+
+  it('a qualified row reports its own provider — the prefix IS the answer', () => {
+    expect(findServingProviderId('ollama/qwen2.5-coder-7b', CATALOGS, ENTRIES)).toBe('ollama');
+  });
+
+  it('a model id that merely contains a slash is not a provider prefix', () => {
+    // The trap splitModelRef exists for: `qwen/qwen3-coder-next` is one model.
+    const catalogs: Record<string, ProviderCatalog> = {
+      'lm-studio': { status: 'ok', source: 'discovered', models: [{ id: 'qwen/qwen3-coder-next' }] },
+    };
+    const one: ProviderEntry[] = [{ id: 'lm-studio', kind: 'lm-studio', enabled: true }];
+    expect(combinedModelOptions(catalogs, one)).toEqual(['qwen/qwen3-coder-next']);
+    expect(findServingProviderId('qwen/qwen3-coder-next', catalogs, one)).toBe('lm-studio');
+  });
+
+  it('THE LIVE CASE: two providers, a slash-bearing model id, qualified exactly once', () => {
+    const catalogs: Record<string, ProviderCatalog> = {
+      'lm-studio': { status: 'ok', source: 'discovered', models: [{ id: 'qwen/qwen3-coder-next' }] },
+      mtplx: { status: 'ok', source: 'discovered', models: [{ id: 'qwen-qwen3.8-27b-mtplx' }] },
+    };
+    const two: ProviderEntry[] = [
+      { id: 'lm-studio', kind: 'lm-studio', enabled: true },
+      { id: 'mtplx', kind: 'oai-compat', enabled: true },
+    ];
+    expect(combinedModelOptions(catalogs, two)).toEqual([
+      'lm-studio/qwen/qwen3-coder-next',
+      'mtplx/qwen-qwen3.8-27b-mtplx',
     ]);
   });
 

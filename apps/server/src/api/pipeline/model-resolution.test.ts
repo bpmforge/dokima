@@ -67,6 +67,47 @@ describe('splitModelRef', () => {
   });
 });
 
+/**
+ * W21-24: THE MIRROR. `apps/web` takes no dependency on `@dokima/shared` — its
+ * types are hand-mirrored — so the guarantee that what the Models panel OFFERS
+ * is what this resolver ACCEPTS cannot be a shared import. It is this test and
+ * its twin in `apps/web/src/settings/providers-api.test.ts`, over the same
+ * strings, and the two must be changed together.
+ *
+ * The live failure it pins: adding a second provider made every option the
+ * panel offered unroutable, because the panel emitted bare model ids and this
+ * resolver refuses those once more than one provider is enabled. The control
+ * is a `<select>`, so there was no way to enter a valid value and the only
+ * escape was disabling a provider.
+ */
+describe('what the Models panel offers is what this resolver accepts (W21-24)', () => {
+  const KNOWN = ['lm-studio', 'mtplx'];
+
+  it('the panel’s two-provider output splits into a real provider and a real model', () => {
+    // Exactly the strings combinedModelOptions produces for the live setup.
+    expect(splitModelRef('lm-studio/qwen/qwen3-coder-next', KNOWN)).toEqual({
+      providerId: 'lm-studio',
+      model: 'qwen/qwen3-coder-next',
+    });
+    expect(splitModelRef('mtplx/qwen-qwen3.8-27b-mtplx', KNOWN)).toEqual({
+      providerId: 'mtplx',
+      model: 'qwen-qwen3.8-27b-mtplx',
+    });
+  });
+
+  it('the panel’s single-provider output is a bare id, which this resolver also accepts', () => {
+    expect(splitModelRef('qwen/qwen3-coder-next', ['lm-studio'])).toEqual({
+      model: 'qwen/qwen3-coder-next',
+    });
+  });
+
+  it('the slash inside a model id is never mistaken for a provider — the trap both sides share', () => {
+    expect(splitModelRef('qwen/qwen3-coder-next', KNOWN)).toEqual({
+      model: 'qwen/qwen3-coder-next',
+    });
+  });
+});
+
 describe('resolveModelTarget — THE SEAM (W10-03)', () => {
   /**
    * THE ACCEPTANCE TEST. Set the matrix to provider B; the call must go to B.

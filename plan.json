@@ -11502,7 +11502,7 @@
         "US-501"
       ],
       "phase": 21,
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W21-24",
       "points": 3,
@@ -11511,12 +11511,20 @@
       "role": "ux-engineer",
       "title": "a second provider must not make the product unconfigurable",
       "write_scope": [
-        "apps/web/src/settings/**"
+        "apps/web/src/settings/providers-api.ts",
+        "apps/web/src/settings/providers-model-refs.ts",
+        "apps/web/src/settings/providers-api.test.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts"
       ],
       "notes": [
         "Live, 2026-08-26. Added a second provider (an OpenAI-compatible endpoint) exactly as the UI invites. Every subsequent run then REFUSED before spending anything: \"qwen/qwen3-coder-next has no provider prefix and 2 providers are enabled \u2014 qualify it as <providerId>/qwen/qwen3-coder-next\". The refusal itself is excellent: it names the problem, names the fix, and costs nothing.",
         "The defect is that the fix it names cannot be performed in the UI. Zero of the 36 options in the Models dropdown carry a provider prefix, and the control is a select \u2014 there is no way to type one. So enabling a second provider makes the Models tab unable to express a valid configuration, and the only escape is disabling a provider.",
-        "Also observed: the catalogue lists that endpoint's model under a normalised id that differs from the one its own /v1/models reports, so a hand-entered id showed as \"missing from any registered provider\". Whatever the dropdown offers must be exactly what the resolver accepts."
+        "Also observed: the catalogue lists that endpoint's model under a normalised id that differs from the one its own /v1/models reports, so a hand-entered id showed as \"missing from any registered provider\". Whatever the dropdown offers must be exactly what the resolver accepts.",
+        "THE DEFECT WAS ONE LINE. combinedModelOptions did `ids.add(model.id)` \u2014 a BARE id, always. resolveBoundModel accepts a bare ref only when exactly one provider is enabled; with two or more it refuses and names the fix. So the panel offered, in that configuration, only strings the resolver would reject, and the control is a <select> with no way to type a valid one.",
+        "The resolver`s own splitModelRef docstring records this exact class from the OTHER side: \"the W10-04 panel offered the model and the resolver then refused it\". Same mismatch, opposite direction, ten waves apart. The rule that keeps them in step is worth more than either fix.",
+        "THE \"SAME STRING\" GUARANTEE COULD NOT BE A SHARED IMPORT. apps/web takes no dependency on @dokima/shared at all \u2014 its types are hand-mirrored by design (board/types.ts says so). So it is a test on each side over the SAME strings: providers-api.test.ts and model-resolution.test.ts, each pointing at the other, and they must change together.",
+        "Deduping across providers went away and that is the improvement, not the cost: a model served by both lm-studio and ollama is two different routes, and which endpoint serves it was previously unexpressible.",
+        "The existing fixture asserted bare ids against THREE enabled providers \u2014 it encoded the bug. Reversed with the reasoning recorded at the assertion."
       ],
       "acceptance": [
         "With two or more providers enabled, the Models dropdown offers ids the resolver accepts",

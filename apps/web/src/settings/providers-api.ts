@@ -287,41 +287,14 @@ export async function registerCredential(
  * disabled provider serves is a distinct case — see `findServingProviderId`
  * and the "unroutable" state it enables.
  */
-export function combinedModelOptions(
-  catalogs: Record<string, ProviderCatalog>,
-  entries: readonly ProviderEntry[],
-): string[] {
-  const enabledIds = new Set(entries.filter((e) => e.enabled).map((e) => e.id));
-  const ids = new Set<string>();
-  for (const [providerId, catalog] of Object.entries(catalogs)) {
-    if (!enabledIds.has(providerId)) continue;
-    for (const model of catalog.models) ids.add(model.id);
-  }
-  return [...ids].sort();
-}
-
-/**
- * The provider currently serving `model`, across every known catalog
- * (enabled or not) — used to render "missing from <provider>" vs.
- * "unroutable — provider disabled" for an existing matrix row. Prefers an
- * enabled provider when more than one catalog lists the same model id, so a
- * model available from both a disabled and an enabled endpoint is never
- * misreported as unroutable.
- */
-export function findServingProviderId(
-  model: string,
-  catalogs: Record<string, ProviderCatalog>,
-  entries: readonly ProviderEntry[],
-): string | undefined {
-  const entryById = new Map(entries.map((e) => [e.id, e]));
-  let disabledMatch: string | undefined;
-  for (const [providerId, catalog] of Object.entries(catalogs)) {
-    if (!catalog.models.some((m) => m.id === model)) continue;
-    if (entryById.get(providerId)?.enabled) return providerId;
-    disabledMatch ??= providerId;
-  }
-  return disabledMatch;
-}
+// W21-24 chapter (CODE_BOOK_PROTOCOL 400-line cap): the model-ref rules moved
+// to providers-model-refs.ts; re-exported so every import site keeps working.
+export {
+  combinedModelOptions,
+  findServingProviderId,
+  modelRefFor,
+  splitModelRefLocal,
+} from './providers-model-refs.js';
 
 export interface ProviderDraftInput {
   id: string;
