@@ -10,7 +10,11 @@
  */
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import { unsatisfiableCriteria, unsatisfiableNotice } from './loop-land-satisfiable.js';
-import { latestSeq, parkIfAttemptedNothing } from './loop-land-attempted.js';
+import {
+  attemptedNothingEndsTheLadder,
+  latestSeq,
+  parkIfAttemptedNothing,
+} from './loop-land-attempted.js';
 import type { WorktreeHandle } from '@dokima/git';
 import {
   claimTicket,
@@ -274,17 +278,17 @@ export async function landClaimedTicket(
     // W21-44: before feeding gaps forward, ask whether anything was attempted
     // at all. A second attempt after a session that changed nothing carries
     // the same information and the same instruction as the first.
-    // Only while an attempt remains to be SAVED — see loop-land-attempted.ts.
+    // Only while an attempt remains to be SAVED, and only with nowhere left to
+    // CLIMB — see loop-land-attempted.ts, and the live run that found it.
     if (
       !closeGate?.ok &&
       attempt < freeRetry.limit() &&
-      parkIfAttemptedNothing({
-        log: options.log,
-        ticketId: ticket.id,
-        actorId: options.actorId,
-        runId: options.runId ?? null,
-        sinceSeq: attemptStartSeq,
-      })
+      attemptedNothingEndsTheLadder({
+        hasRungSessions: options.rungSessions !== undefined,
+        policy,
+        attempt,
+      }) &&
+      parkIfAttemptedNothing({ ...options, ticketId: ticket.id, sinceSeq: attemptStartSeq })
     ) {
       parkedReason = 'attempted_nothing';
       break;

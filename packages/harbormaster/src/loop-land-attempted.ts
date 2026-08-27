@@ -23,6 +23,9 @@
  * Spending a second attempt on it cannot help: the next attempt has the same
  * information and the same instruction, and run 23 is the proof.
  *
+ * THAT IS ONLY TRUE WITHOUT A LADDER, and the first version of this chapter
+ * missed it — see `attemptedNothingEndsTheLadder`.
+ *
  * COUNTED FROM THE LEDGER, not by threading new state through the session —
  * the precedent W21-19 set for exactly this reason. `mcp.tool_call.completed`
  * already records every call with its tool id, and events are already scoped
@@ -36,6 +39,7 @@
  */
 import { listEvents, type EventLog } from '@dokima/events';
 import { commentTicket } from '@dokima/tickets';
+import { rungForAttempt, type LandEscalationPolicy } from './loop-land-policy.js';
 
 /** Tool-name suffixes that change the worktree. Mirrors W17-01's MUTATION_TOOLS. */
 const MUTATION_SUFFIXES = ['write', 'edit', 'commit'];
@@ -129,7 +133,7 @@ export function parkIfAttemptedNothing(input: {
   readonly log: EventLog;
   readonly ticketId: string;
   readonly actorId: string;
-  readonly runId?: string | null;
+  readonly runId?: string | undefined;
   readonly sinceSeq: number;
 }): boolean {
   const histogram = toolHistogramSince(input.log, input.ticketId, input.sinceSeq);
@@ -144,4 +148,36 @@ export function parkIfAttemptedNothing(input: {
     { runId: input.runId ?? null },
   );
   return true;
+}
+
+/**
+ * Whether a session that changed nothing should PARK, or escalate instead.
+ *
+ * Run 27 caught this, and it was mine. R1 made ten calls, mutated nothing, and
+ * this chapter parked the ticket after one attempt — pre-empting the climb to
+ * R2. Run 26 had just proved that climb is exactly the answer: R1 spent forty
+ * turns and produced no manifest, R2 produced one in eight.
+ *
+ * The error was in the sentence this module is built on. "A further attempt
+ * would carry the same information and the same instruction" is true only when
+ * the next attempt runs the SAME MODEL. Under a ladder it runs a different
+ * one, which is the definition of new information — and a rung that did
+ * nothing at all is the strongest signal there is that the rung is wrong,
+ * rather than that the ticket is.
+ *
+ * So: park only when there is nowhere left to climb. A locked policy (one
+ * pinned tier) and a run with no rung seam both qualify, because in both the
+ * next attempt really is the same model over again.
+ */
+export function attemptedNothingEndsTheLadder(input: {
+  /** Present only when the composing seam binds a distinct session per rung. */
+  readonly hasRungSessions: boolean;
+  readonly policy: LandEscalationPolicy;
+  readonly attempt: number;
+}): boolean {
+  if (!input.hasRungSessions) return true;
+  return (
+    rungForAttempt(input.policy, input.attempt) ===
+    rungForAttempt(input.policy, input.attempt + 1)
+  );
 }

@@ -11,6 +11,7 @@ import { appendEvent, createIdentity, openEventLog, type EventLog } from '@dokim
 import { createTicket } from '@dokima/tickets';
 import {
   attemptedNothing,
+  attemptedNothingEndsTheLadder,
   attemptedNothingNotice,
   latestSeq,
   parkIfAttemptedNothing,
@@ -169,5 +170,49 @@ describe('the ceiling rule (W21-44)', () => {
     expect(1 < 1).toBe(false);
     // attempt 1 of 2: a second attempt would be spent on the same information.
     expect(1 < 2).toBe(true);
+  });
+});
+
+/**
+ * THE LADDER RULE, and run 27 caught this one live — it was mine.
+ *
+ * Run 26 proved the climb is the answer to a rung that does nothing: R1 spent
+ * forty turns and produced no manifest, R2 produced one in eight. Run 27 then
+ * had R1 make ten calls and mutate nothing, and this chapter parked the ticket
+ * after ONE attempt, pre-empting the escalation entirely. No
+ * `escalation.rung_advanced` appears anywhere in that run.
+ *
+ * The error was in the sentence the whole module rests on. "A further attempt
+ * carries the same information and the same instruction" holds only when the
+ * next attempt runs the SAME MODEL.
+ */
+describe('the ladder rule (W21-44, found by run 27)', () => {
+  const ladder = { mode: 'ladder' } as unknown as Parameters<
+    typeof attemptedNothingEndsTheLadder
+  >[0]['policy'];
+  const locked = { mode: 'locked', pinnedTier: 'R2' } as unknown as typeof ladder;
+
+  it('RED FIXTURE: run 27 — attempt 1 of a real ladder must ESCALATE, not park', () => {
+    expect(
+      attemptedNothingEndsTheLadder({ hasRungSessions: true, policy: ladder, attempt: 1 }),
+    ).toBe(false);
+  });
+
+  it('at the top of the ladder there is nowhere to climb, so parking is right again', () => {
+    expect(
+      attemptedNothingEndsTheLadder({ hasRungSessions: true, policy: ladder, attempt: 3 }),
+    ).toBe(true);
+  });
+
+  it('no rung seam means every attempt is the same model — park', () => {
+    expect(
+      attemptedNothingEndsTheLadder({ hasRungSessions: false, policy: ladder, attempt: 1 }),
+    ).toBe(true);
+  });
+
+  it('a LOCKED policy pins one tier, so the next attempt is the same model — park', () => {
+    expect(
+      attemptedNothingEndsTheLadder({ hasRungSessions: true, policy: locked, attempt: 1 }),
+    ).toBe(true);
   });
 });

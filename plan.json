@@ -12284,7 +12284,8 @@
         "It must reach the founder rather than just failing faster. A model that reads its way around a ticket twice without touching it is telling you something about the ticket or the model, and either way the answer is a person`s.",
         "THE CEILING RULE, which I got wrong and an existing T-27 fixture caught. My first version parked with attempted_nothing whenever a session mutated nothing \u2014 including on the LAST attempt, where there is nothing left to save and the relabelling only obscures a real budget stop. nextFeedback already documents exactly this rule for no_progress (\"at the ceiling the ladder`s own reason is the true one; relabelling an exhausted ladder would change FR-H1/H2`s documented outcome\"). I mirrored it rather than editing the fixture \u2014 the fixture was right.",
         "ALSO REJECTED session.changedPaths, which is right there on the SessionResult and looks like the obvious signal. It is the worktree diff against the BASE, so it stays non-empty for every later attempt once any earlier one wrote anything. In run 23 it was non-empty throughout \u2014 the branch already carried the previous run`s commits \u2014 and would have hidden the exact case this exists to catch. The ledger`s own tool calls are the honest source.",
-        "LIVE RUN 24 CONFIRMED IT: \"PLAN-vault-002: parked (attempted_nothing) after 1 attempt(s)\" \u2014 a whole session saved. And the park COMMENT said \"ladder attempt cap (2) reached\", after one attempt. parkComment was a three-way choice with a catch-all else, so no_progress had been rendering that same wrong sentence since W13-29 and attempted_nothing inherited it. A park comment is the founder`s entire account of why a ticket stopped; naming the wrong mechanism is worse than saying nothing. Every reason now has its own sentence, with a fixture."
+        "LIVE RUN 24 CONFIRMED IT: \"PLAN-vault-002: parked (attempted_nothing) after 1 attempt(s)\" \u2014 a whole session saved. And the park COMMENT said \"ladder attempt cap (2) reached\", after one attempt. parkComment was a three-way choice with a catch-all else, so no_progress had been rendering that same wrong sentence since W13-29 and attempted_nothing inherited it. A park comment is the founder`s entire account of why a ticket stopped; naming the wrong mechanism is worse than saying nothing. Every reason now has its own sentence, with a fixture.",
+        "AND I BROKE THE LADDER WITH IT. Run 27: R1 made 10 calls, mutated nothing, and this guard parked the ticket after ONE attempt \u2014 no escalation.rung_advanced anywhere in the run. Run 26 had just proved the climb is the answer to exactly that: R1 forty turns no manifest, R2 a manifest in eight. The error was in the sentence the whole chapter rests on \u2014 \"a further attempt carries the same information and the same instruction\" holds ONLY when the next attempt runs the same model. Under a ladder it runs a different one, which is the definition of new information, and a rung that did nothing at all is the strongest signal that the RUNG is wrong rather than the ticket. Now parks only when there is nowhere to climb: no rung seam, a locked policy, or the top rung."
       ],
       "acceptance": [
         "A session that ends having made no successful mutating tool call is recorded as having attempted nothing, from the ledger`s own tool calls",
@@ -12292,7 +12293,8 @@
         "A session that mutated and still failed is unaffected \u2014 this stops empty attempts, not failing ones",
         "The founder item says what the session actually did (the tool histogram), not that it \"failed\"",
         "A red fixture reproduces run 23: 6 list, 7 read, 2 verify, 0 writes across two attempts does not spend a second attempt",
-        "The check only fires while a further attempt would otherwise be spent \u2014 at the ladder ceiling the existing reason stands"
+        "The check only fires while a further attempt would otherwise be spent \u2014 at the ladder ceiling the existing reason stands",
+        "A session that changed nothing ESCALATES when a higher rung exists, and parks only when there is nowhere to climb"
       ]
     },
     {
@@ -12331,6 +12333,41 @@
         "A ticket refused for the same reason twice does not present that reason to the model as new",
         "A ticket with no prior refusals is unaffected \u2014 its first attempt is byte-identical to today`s",
         "A red fixture pins runs 22-24: the third run`s first attempt carries the refusal the first run earned"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-45"
+      ],
+      "id": "W21-46",
+      "title": "an exhausted ladder starts again from the bottom on the next run",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-rungs.ts",
+        "packages/harbormaster/src/loop-land-rungs.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts"
+      ],
+      "notes": [
+        "RUN 26, the first with a real two-rung ladder. It climbed for the first time \u2014 #1867 escalation.rung_advanced {\"fromRung\":\"R1\",\"toRung\":\"R2\"} carrying R1`s gate evidence \u2014 and that whole mechanism works.",
+        "R1 (qwen/qwen3-coder-next) spent FORTY turns and produced no manifest: #1865 session.turns_observed {\"turns\":40,\"completed\":false}. R2 (qwen3.6-35b-a3b) then produced one in EIGHT: #1888 {\"turns\":8,\"completed\":true}. The ladder`s premise held exactly as designed.",
+        "Then the ticket parked at the cap and returned to Ready \u2014 and the NEXT run will start it at R1 again, re-spending those forty turns on the model this ticket has now demonstrably defeated. The ledger already knows: escalation.rung_advanced names the ticket, the rung it left, and why. Nothing reads it back when the rung is chosen.",
+        "Same shape as W21-45 at a different granularity: knowledge the product has WRITTEN DOWN is not consulted at the moment it would pay. There the vehicle was the R0 fact bank; here it is the escalation record, and the rung chooser simply starts at index 0 every time.",
+        "Not \"always start at the highest rung reached\" \u2014 that would defeat cheapest-first (D-018) for a ticket whose R1 failure was a one-off. The signal is a rung that failed THIS ticket with no manifest, which is exactly what the escalation event records."
+      ],
+      "acceptance": [
+        "A rung that has already failed this ticket without producing a manifest is not re-run from scratch on the next run",
+        "The choice reads the ledger`s escalation record \u2014 no new state, the way W21-19 and W21-45 both did",
+        "Cheapest-first is preserved for a ticket with no such history \u2014 a first encounter still starts at R1",
+        "The founder can see WHY a run started above R1, on the ticket",
+        "A red fixture pins run 26: R1 failed with no manifest at 40 turns, so the next run does not begin at R1"
       ]
     }
   ]
