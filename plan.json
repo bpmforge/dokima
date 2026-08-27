@@ -13036,6 +13036,156 @@
         "It names requestTimeoutMs as the lever, the way W21-56 names maxToolIterations",
         "A red fixture reproduces runs 48/49: three timeout failures do not read as an endpoint refusal"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-65",
+      "title": "a maker can spend a whole session writing and never commit",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts",
+        "packages/harbormaster/src/loop-land-attempted.ts",
+        "packages/harbormaster/src/loop-land-attempted.test.ts"
+      ],
+      "notes": [
+        "RUN 51, coder-next, the most productive session of the whole exercise: read x24, list x13, edit x7, write x10 \u2014 and commit x0. Seventeen mutations, nothing committed. The branch tip was unchanged afterwards and only an uncommitted spec edit survived.",
+        "The close gate requires commits in the manifest, so that session could never have closed no matter how good the code was. It reached the gate, was refused on the acceptance criterion, and the real blocker \u2014 no commits \u2014 was never named.",
+        "W21-44 does not catch this: it asks whether the session MUTATED anything, and this one mutated seventeen times. W21-60 does not catch it either: that is a commit that stages nothing, and this is a commit never attempted. The gap is between them \u2014 work done, never durably recorded.",
+        "The signal is free and already collected: the tool histogram is in the ledger per attempt (W21-44 reads it), and \"mutations > 0 AND commits == 0\" is unambiguous. A session that wrote and never committed has produced nothing the gate can see, and telling it so mid-session is cheaper than letting it reach a gate that will refuse for a reason it will not understand.",
+        "Worth distinguishing from a park: this is a MAKER-facing gap, not a founder-facing one. The right place is probably the session budget check that already counts mutations, warning the model at a window boundary rather than after the fact."
+      ],
+      "acceptance": [
+        "A session that has mutated files and made no successful commit is told so before its budget runs out",
+        "A session that committed at least once is unaffected",
+        "A session that mutated nothing is W21-44`s case and is not double-reported",
+        "The park evidence names uncommitted work as the blocker when the gate refused and no commit was made",
+        "A red fixture reproduces run 51: 17 mutations, zero commits, and the session is warned"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-66",
+      "title": "the ladder has no way to know a rung cannot do agentic work",
+      "write_scope": [
+        "docs/ARCHITECTURE.md",
+        "packages/harbormaster/src/loop-land-policy.ts"
+      ],
+      "notes": [
+        "MEASURED, three controlled tests against an identical mid-session fixture (same tools, same conversation, the scrypt failure and the file contents already supplied):",
+        "1. FREE CHOICE \u2014 qwen/qwen3-coder-next called `edit` (529 tokens, 12s). qwen/qwen3.8-27b called `list, list` (93 tokens, 14s) despite already holding the file contents.",
+        "2. DIRECTIVE PROMPT \u2014 system prompt rewritten to \"ACT, do not explore; you already have what you need; never call list or read for a file whose contents you have been shown\". 3.8-27b called `list, list` again, 43s and 960 tokens. Prompting does not move it.",
+        "3. FORCED \u2014 read/list removed entirely and tool_choice=required. 3.8-27b called `write` on the correct path with EMPTY CONTENT \u2014 a destructive no-op that would blank the file.",
+        "So it is not a prompting problem and not a timeout problem. The model is exploration-biased and, when compelled to act, produces degenerate output. That is the whole explanation for every 3.8-27b session in this project showing reads and lists with zero mutations, and for the 5,405-token completions that blew the request ceiling.",
+        "THE PRODUCT HAS NO WAY TO EXPRESS THIS. The ladder assumes a higher rung is BETTER, and D-018 frames escalation as cheapest-first. But \"bigger model\" and \"better at agentic tool use\" are different axes: escalating from coder-next to 3.8-27b traded a model that edits for one that browses, and cost ~4 minutes per turn to do it.",
+        "The measured-turns profile (W17-03) already keys per model and could carry a mutation RATE alongside it \u2014 a model whose sessions mutate nothing is not a rung worth climbing to, and the ledger has the tool histograms to say so without a benchmark.",
+        "Config changed for this project as a result: coding-agent is coder-next with NO fallback; 3.8-27b stays as code-reviewer, where reading widely and reasoning at length is the job rather than the failure."
+      ],
+      "acceptance": [
+        "The ladder can express that a rung is unsuitable for agentic work, rather than only that it is more expensive",
+        "The signal is derived from the ledger`s own tool histograms, not a hand-maintained list of model names",
+        "A rung that mutates nothing across sessions stops being escalated to, and the founder is told why",
+        "docs/ARCHITECTURE.md records that model size and agentic tool-use ability are different axes, with these three measurements as the evidence"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-67",
+      "title": "the ledger cannot say how a turn ended",
+      "write_scope": [
+        "packages/gateway/src/providers/oai-compat-types.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/session-limits.test.ts"
+      ],
+      "notes": [
+        "ASKED BY THE FOUNDER AND I COULD NOT ANSWER IT FROM THE LEDGER: \"is a thinking model being cut off before it does the work?\" That is a good question about every 3.8-27b session in this project, which showed reads and lists with zero mutations and completions of 4,475-5,405 tokens.",
+        "spend.recorded carries role, model, costUsd, promptTokens, completionTokens, streamed and a timestamp \u2014 and NOT finish_reason. So a turn that ended because the model chose to stop is indistinguishable, after the fact, from one cut off at a ceiling. I had to infer from token counts against DEFAULT_MAX_TURN_TOKENS (32,000), which is weaker than the ledger should require.",
+        "The product already USES finish_reason live: W21-18`s turnTokenStop reads it, together with empty content, to tell reasoning truncation from a runaway model. So the value is in hand at the moment it matters and is dropped immediately afterwards.",
+        "This is the same shape as W21-32 (lifecycle events carried no run id) and W21-64 (a timeout park could not name the ceiling): the evidence needed to answer a real question exists when it happens and is not kept.",
+        "It also blocks W21-66 from being settled honestly. I have controlled evidence that 3.8-27b explores rather than acts \u2014 free choice gave list,list at 93 tokens with finish_reason tool_calls, a NATURAL stop \u2014 but I cannot check the real sessions the same way, so the conclusion rests on a fixture rather than on what actually ran.",
+        "SIDE OBSERVATION worth keeping: LM Studio cannot load a second model while one is serving \u2014 \"Failed to load model \u2026 Operation canceled\" reproduced while a run held coder-next. That is memory contention, and it probably explains the earlier load failures I attributed to the linked machine being away."
+      ],
+      "acceptance": [
+        "spend.recorded (or a sibling event) carries the turn`s finish_reason",
+        "A session whose turns ended at a token ceiling is distinguishable from one whose model chose to stop, after the fact and from the ledger alone",
+        "The park evidence can say \"the model was cut off mid-thought\" when that is what happened",
+        "A fixture pins both shapes: a natural tool_calls stop and a length stop with empty content"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-68",
+      "title": "a brief can instruct a maker to do what it has no tool to do",
+      "write_scope": [
+        "packages/tickets/src/brief.ts",
+        "packages/tickets/src/brief.test.ts"
+      ],
+      "notes": [
+        "FOUNDER ERROR FIRST: I wrote the brief. PLAN-vault-002a brief #2 says \"consult the node:crypto documentation for the permitted relationship between N, r and maxmem\". A maker has exactly seven tools (packages/harbormaster/src/agent-session/tools.ts:13-19): read, list, search, write, edit, commit, verify. All repo-scoped. There is NO documentation channel. I instructed a component to perform an action it structurally cannot perform, and then spent a full ladder watching it guess.",
+        "The maker guessed, and its guess is internally consistent and wrong: run 52 landed 75892cf \"fix scrypt parameters to use valid N, r, p values\", which derives N from the memory cost (N = memoryKb*8/(r*p) = 524288 at r=1). Node requires N < 2^(128*r/8), which is 65536 at r=1, and 128*N*r = 67MB exceeds the 32MB default maxmem. Two constraints, both violated, both stated in the doc I told it to read. Its own source comment says \"there are constraints between N, r, p\" \u2014 it knew a constraint existed and could not find out what it was.",
+        "THE PRODUCT DEFECT: setTicketBrief (W21-59) accepts free text and nothing checks it against the tool surface. The brief channel exists precisely to carry what the maker cannot discover, so a brief that points at an unreachable source is the one failure mode the channel is built to prevent, and it is the one it cannot detect. NOT \"give makers a fetch tool\" \u2014 that puts an untrusted network surface inside the trust boundary (C-2/C-3) and live calls near the loop (Law 9a). The fix is to refuse or warn at the moment the brief is written: flag imperatives that direct the maker outside its tools (\"consult the documentation\", \"look up\", \"check online\", \"see the spec\"), naming the tool surface in the refusal.",
+        "ACCEPTANCE: setTicketBrief warns (with the seven tool names) when a brief contains a directive to consult a source outside the tool surface; a brief that states the fact instead passes clean; the warning text names what the maker actually has."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-69",
+      "title": "the run knows a session is spinning and never tells the session",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-repetition.ts",
+        "packages/harbormaster/src/agent-session/handoff-fields.ts",
+        "packages/harbormaster/src/agent-session/handoff-fields.test.ts"
+      ],
+      "notes": [
+        "Run 52 park evidence, verbatim from the ledger (PLAN-vault-002a, seq 4202): \"Across this ticket's sessions the same agent-session.read call was made 61 times with identical arguments and an identical result (and 22 other repeated call(s)) \u2014 no single session repeated it enough to stop itself, so the run kept spending attempts on it.\"",
+        "W21-19 chose to REPORT and not stop, and that decision is still right \u2014 an absorbed infra retry legitimately re-reads. But report-to-the-founder is not the only alternative to stopping. The run holds a fact the session would act on and never hands it over: the next session starts with no idea that the file it is about to read has been read 61 times with the same bytes. The knowledge is written down and not consulted where it would pay, which is the same shape as W21-45 and W21-46.",
+        "Evidence that the session would have used it: run 52 SESSION_CHECKPOINT reads {\"remaining\":[\"add type: module to package.json to fix ES module error\"]} while the actual failure is ERR_CRYPTO_INVALID_SCRYPT_PARAMS. The maker re-read its way to a diagnosis the repetition record contradicts.",
+        "ACCEPTANCE: buildHandoff carries the cross-session repeated-call summary for the ticket when there is one; the session prompt renders it as fact, not instruction; no change to the report-not-stop behaviour of W21-19."
+      ]
     }
   ]
 }
