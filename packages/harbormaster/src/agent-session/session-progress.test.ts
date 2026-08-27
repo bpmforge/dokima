@@ -328,10 +328,18 @@ describe('advice must name a lever that still has room (W21-56)', () => {
     signal: 'write changed the worktree',
   });
 
-  it('RED FIXTURE: at the hard ceiling, it says SPLIT rather than raise', () => {
+  /**
+   * W21-57 corrected this. It asserted "splitting it is the move", which was
+   * wrong: the worktree PERSISTS across runs, so re-running continues from
+   * whatever the session committed. Run 41 added two commits and fixed the bug
+   * that blocked run 39 purely by continuing. Splitting is right only once
+   * successive runs stop adding commits.
+   */
+  it('RED FIXTURE: at the hard ceiling, it says RE-RUN FIRST rather than raise', () => {
     const text = budgetExhaustedStderr(40, [extended(36, 40)], 'write changed the worktree', 40);
     expect(text).toContain('HARD CEILING');
-    expect(text).toContain('splitting it is the move');
+    expect(text).toContain('Re-run it first');
+    expect(text).toContain('split it only if successive runs stop adding commits');
     expect(text).not.toContain('Raising maxToolIterations is the right response');
   });
 
@@ -371,9 +379,29 @@ describe('starting AT the ceiling earns no extensions, and must still be told (W
 
   it('and it names the right next move: re-run first, split if commits stop', () => {
     const text = budgetExhaustedStderr(40, [], null, 40);
-    expect(text).toContain('re-run it first');
+    expect(text).toContain('Re-run it first');
     expect(text).toContain('worktree keeps whatever this session committed');
-    expect(text).toContain('split it if successive runs stop adding commits');
+    expect(text).toContain('split it only if successive runs stop adding commits');
+  });
+
+  it('BOTH ways of reaching the ceiling now give the SAME sentence (W21-57)', () => {
+    const anExtension = {
+      kind: 'extended' as const,
+      atIteration: 36,
+      to: 40,
+      signal: 'write changed the worktree',
+    };
+    const withExtensions = budgetExhaustedStderr(
+      40,
+      [anExtension],
+      'write changed the worktree',
+      40,
+    );
+    const withNone = budgetExhaustedStderr(40, [], null, 40);
+    // Two paths to one situation had drifted to two different answers, and the
+    // older one was wrong. The shared clause is now literally shared.
+    expect(withExtensions).toContain('Re-run it first');
+    expect(withNone).toContain('Re-run it first');
   });
 
   it('below the ceiling with no extensions still says raise it — that advice is right there', () => {

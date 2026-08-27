@@ -288,12 +288,34 @@ export function budgetExhaustedStderr(
    * one path W21-56 did not cover.
    */
   const atTheCeiling = hardCeiling !== null && finalBudget >= hardCeiling;
+  /**
+   * W21-57: ONE sentence for the ceiling, because there are two ways to reach
+   * it and they had drifted. W21-56 wrote "splitting it is the move" for a
+   * session that earned extensions; W21-61 wrote the corrected "re-run first"
+   * for one that started at the ceiling and could earn none. Same situation,
+   * two answers, and the older one was wrong.
+   *
+   * Wrong because the worktree PERSISTS across runs. I went to split
+   * PLAN-vault-002a on this advice and checked its worktree first: run 39 had
+   * left a real commit — a genuine crypto.scrypt KDF — plus an uncommitted
+   * spec edit. Splitting would have discarded exactly the partial work that
+   * makes the next run cheap, which is the mistake I had already made by hand
+   * when I threw away run 35's worktree and sent that ticket from 12 turns
+   * back to 40.
+   *
+   * Run 41 then proved the point: it added two commits and fixed the bug that
+   * had blocked run 39, purely by continuing. Splitting is the answer only
+   * once successive runs stop adding commits — which run 42 did, and that is
+   * the signal, not the ceiling itself.
+   */
+  const atCeilingAdvice =
+    ` It is already at this install's HARD CEILING of ${hardCeiling}, so there is ` +
+    `no setting left to raise. Re-run it first — the worktree keeps whatever this ` +
+    `session committed, and the next one continues from there — and split it only ` +
+    `if successive runs stop adding commits.`;
   const advice =
     atTheCeiling && extensions.length === 0
-      ? ` It is already at this install's HARD CEILING of ${hardCeiling}, so there ` +
-        `is no setting left to raise. The ticket is bigger than one session may be ` +
-        `allowed to be — re-run it first (the worktree keeps whatever this session ` +
-        `committed), and split it if successive runs stop adding commits.`
+      ? atCeilingAdvice
       : extensions.length === 0
       ? ` If the work was real but unfinished, raise maxToolIterations — chatty ` +
         `local models often need more than the default.`
@@ -301,11 +323,7 @@ export function budgetExhaustedStderr(
         ? ` It was STILL MAKING PROGRESS in its final window (${lastWindowProgress}), ` +
           `so the ceiling is what stopped it rather than a lack of progress — this ` +
           `is work cut off mid-stride.` +
-          (hardCeiling !== null && finalBudget >= hardCeiling
-            ? ` And it is already at this install's HARD CEILING of ${hardCeiling}, ` +
-              `so there is no setting left to raise: the ticket is bigger than one ` +
-              `session can be allowed to be, and splitting it is the move.`
-            : ` Raising maxToolIterations is the right response.`)
+          (atTheCeiling ? atCeilingAdvice : ` Raising maxToolIterations is the right response.`)
         : ` This session EARNED more budget from real progress, then stopped making ` +
           `it before the end, so raising maxToolIterations will not help — the ` +
           `evidence to read is what it spent those turns on.`;

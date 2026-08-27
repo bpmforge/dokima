@@ -12772,7 +12772,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [
@@ -12790,7 +12790,9 @@
         "So a ticket too big for ONE SESSION is not necessarily too big for the ticket: successive runs accumulate. The advice is right about the session and wrong about the remedy, and following it would have thrown away exactly the partial work that makes the next run cheap \u2014 which is the mistake I already made once by hand, discarding run 35`s worktree.",
         "THE HONEST ADVICE at the ceiling is: run it again first, because the worktree keeps what this session committed; split only if successive runs stop making progress. That is checkable \u2014 the ledger has a commit count per attempt and W21-44 already counts mutations.",
         "Pattern worth naming across W21-53, W21-56 and this: each was found by trying to DO what the product just told me to do. Advice is a surface like any other and needs the same live exercise as a button.",
-        "CONFIRMED BY RUN 41: two NEW commits on the worktree \u2014 \"fix: rewrite spec to use ESM imports instead of require\" and \"fix argon2id spec test\" \u2014 so the ticket fixed the exact bug that blocked run 39 by continuing from committed work. Running again was the right move and splitting would have discarded it. The accumulation claim is now evidenced rather than argued."
+        "CONFIRMED BY RUN 41: two NEW commits on the worktree \u2014 \"fix: rewrite spec to use ESM imports instead of require\" and \"fix argon2id spec test\" \u2014 so the ticket fixed the exact bug that blocked run 39 by continuing from committed work. Running again was the right move and splitting would have discarded it. The accumulation claim is now evidenced rather than argued.",
+        "TWO PATHS TO ONE SITUATION HAD DRIFTED TO TWO ANSWERS. W21-56 wrote \"splitting it is the move\" for a session that earned extensions; W21-61 wrote the corrected \"re-run first\" for one that started AT the ceiling and could earn none. Same situation, opposite advice, and the older one was wrong. The clause is now literally shared, with a fixture asserting both paths produce it.",
+        "Wrong because the worktree PERSISTS. Run 41 added two commits and fixed the bug that had blocked run 39 purely by continuing; run 42 then added none, which is the real signal for splitting. The ceiling is not the signal \u2014 accumulation stopping is."
       ],
       "acceptance": [
         "At the ceiling the advice names re-running first, since the worktree carries committed work forward",
