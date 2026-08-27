@@ -12369,6 +12369,83 @@
         "The founder can see WHY a run started above R1, on the ticket",
         "A red fixture pins run 26: R1 failed with no manifest at 40 turns, so the next run does not begin at R1"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-43"
+      ],
+      "id": "W21-47",
+      "title": "a ticket whose verify and acceptance contradict each other burns the whole ladder",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-satisfiable.ts",
+        "packages/harbormaster/src/loop-land-satisfiable.test.ts",
+        "packages/harbormaster/src/founder-queue.ts",
+        "apps/server/src/api/server/founder-queue-route.ts"
+      ],
+      "notes": [
+        "PROVED EMPIRICALLY IN THE WORKTREE, not inferred. PLAN-vault-002 has verify `npm run typecheck` and acceptance AC-1 `node --test src/crypto/*.spec.ts`. The generated spec imports `./argon2id` with no extension.",
+        "WITHOUT the extension: node --test exits 1 with ERR_MODULE_NOT_FOUND \u2014 AC-1 fails.",
+        "WITH `./argon2id.ts`: tsc --noEmit exits 1 with TS5097 \"An import path can only end with a .ts extension when allowImportingTsExtensions is enabled\" \u2014 the ticket`s own verify fails.",
+        "There is no third option inside the ticket`s write_scope. The tsconfig says \"module\": \"commonjs\" while node --test on a .ts file runs ESM type-stripping, and the reconciliation lives in tsconfig.json or package.json \u2014 neither of which this ticket may write. The two gates are mutually unsatisfiable as the project is configured, and every model that touches it will fail one of them.",
+        "FOUR RUNS SPENT ON THIS. Runs 26 and 28 both climbed R1->R2 and both rungs failed the same way; the R0 lesson delivered the exact error to the next attempt and it changed nothing, because no amount of instruction fixes a contradiction.",
+        "W21-43 DOES NOT CATCH IT and correctly so \u2014 it compares an acceptance command`s referenced PATHS against write_scope, and here the paths are fine. The contradiction is between two commands` toolchain requirements, which is not decidable statically.",
+        "THE DETECTABLE VERSION IS EMPIRICAL: a ticket where verify passes and acceptance fails (or the reverse) across attempts on DIFFERENT rungs has a problem no model will solve, because the ladder has already ruled out \"wrong model\". That is a founder decision and the product has the evidence for it in escalation.rung_advanced plus the gate reasons.",
+        "The stuck-ticket detector now reaches it thanks to W21-43 removing the close disqualifier \u2014 this ticket has closed once and parked five times since."
+      ],
+      "acceptance": [
+        "A ticket that failed the SAME gate on two different rungs is surfaced as a founder decision rather than retried",
+        "The evidence names both commands and what each demands, so the person can see the contradiction without reproducing it",
+        "A ticket failing for a reason a bigger model plausibly fixes is NOT surfaced \u2014 the ladder must still be allowed to do its job",
+        "A red fixture pins PLAN-vault-002: same close-gate reason at R1 and R2 reaches the founder"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 5,
+      "module": "tickets",
+      "depends_on": [],
+      "id": "W21-48",
+      "title": "a board that turns out to be missing a ticket cannot be corrected",
+      "write_scope": [
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/create.ts",
+        "packages/tickets/src/types.ts",
+        "apps/server/src/api/server/ticket-edit-routes.ts",
+        "apps/server/src/api/server/ticket-edit-routes.test.ts",
+        "apps/server/src/cli/run.ts"
+      ],
+      "notes": [
+        "LIVE, AND THE PRODUCT WAS RIGHT AT EVERY STEP \u2014 which is what makes the gap clear. PLAN-vault-002 needs tsconfig.json and package.json changed (W21-47: its verify and its acceptance are mutually unsatisfiable without them). I answered with the product`s own verb:",
+        "  $ dokima widen-scope PLAN-vault-002 --add \"tsconfig.json,package.json\"",
+        "  LaneScopeError: lane/write-scope invariant violated (FR-T3): cross-lane-overlap between PLAN-vault-001 (vault-001) and PLAN-vault-002 (vault-002)",
+        "CORRECT REFUSAL. Those files belong to PLAN-vault-001`s lane and two lanes may not own the same paths \u2014 that invariant is what makes N berths provably collision-free. The product refused the wrong answer, precisely, with the rule named.",
+        "The RIGHT answer is a new ticket in the vault-001 lane: \"add test infrastructure so node --test can run TypeScript specs\". And there is no way to create one. No CLI verb, no board route \u2014 POST /tickets/:id/:verb is lifecycle-only.",
+        "ticket-edit-routes.ts already documents this honestly and returns 501 rather than faking a write: reduceTicketEvent has no ticket.updated case, createTicket exists but is not wired to a route, and \"a create-with-no-edit path completes no DAG-edit flow and would be a misleading half-feature\". That reasoning was right for its own ticket. What it did not anticipate is the FOUNDER consequence: a decomposition is produced once, and when it turns out to be missing a ticket the project cannot proceed at all.",
+        "W21-27 added widen-scope for \"this ticket is wrong as written\". This is the next case and the product hits it on its first real project: \"this BOARD is wrong as written\".",
+        "Append-only (C-6) is not the obstacle \u2014 creating a ticket is an append. ticket.created already exists and the reducer already handles it. What is missing is a route and a verb, plus a decision about lane assignment for a ticket a person adds."
+      ],
+      "acceptance": [
+        "A founder can add a ticket to an existing board, with lane and write_scope validated by the same invariant that refused the widen",
+        "The new ticket takes part in the DAG \u2014 other tickets can depend on it and pickNextTicket honours that",
+        "Creation is ledgered as ticket.created by the human identity, never by a machine one",
+        "The lane invariant refuses a creation that would overlap, with the same explain-refusal shape widen-scope uses",
+        "A red fixture pins the live case: adding a test-infrastructure ticket owning tsconfig.json in the vault-001 lane is accepted, and the same ticket in vault-002`s lane is refused"
+      ]
     }
   ]
 }
