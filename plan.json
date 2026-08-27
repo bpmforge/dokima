@@ -13638,6 +13638,81 @@
         "So the sweep is not weakened. The noise in front of it is removed, with git's own mechanism, exactly as W21-23 did for node_modules/ after the identical failure (\"the session was refused for a violation the harness itself had just created\"). HARNESS_ARTIFACTS is deliberately short and unambiguous \u2014 a tool's own cache or install output, never source. Anything that could name real work belongs in write_scope instead.",
         "ACCEPTANCE (met): provisioning ignores *.tsbuildinfo alongside node_modules/; an existing project .gitignore is appended to, never overwritten."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-87",
+      "points": 2,
+      "module": "harbormaster",
+      "title": "a script that prints a pass without running anything defeats the vacuous-check",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates-acceptance.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.test.ts",
+        "packages/harbormaster/src/verify-command.ts"
+      ],
+      "notes": [
+        "LIVE, Tally PLAN-tally-01, the first ticket in this project to reach a receipt: package.json shipped \"test\": \"echo 'Tests passed' || true\", and the minted receipt records verify as `npm run lint && npm run typecheck && npm run test` exit 0. The receipt therefore rests partly on a command that cannot fail.",
+        "ranZeroTests() does not catch it and cannot: it matches \"# tests 0\", \"no tests ran/found\" and \"No test files found\" \u2014 the honest ways a runner reports emptiness. A script that PRINTS \"Tests passed\" and exits 0 produces none of those. The check catches an empty run, not a lying one.",
+        "IT ALSO IS NOT APPLIED TO VERIFY AT ALL. runGateChecks tests the acceptance criteria for vacuity (run.ranNothing) and only checks `verify.exitCode !== 0` for the verify re-run. So the one command the manifest is judged against gets the weaker check.",
+        "PROVENANCE MATTERS HERE: the agent wrote that script to satisfy `pnpm test`, a command W21-75 was wrongly imposing on an npm project. The product created the pressure that produced the lie, and then recorded the lie as evidence. Fixing W21-75 stops new projects acquiring it; nothing stops an existing one.",
+        "AND IT COMPOUNDS: the derived verify command (W21-75) includes every script that exists, so once a project has a no-op `test` script, every later ticket in it inherits a weakened gate.",
+        "NOT a general lying-script detector \u2014 that is undecidable. A narrow refusal on the obvious no-op shapes (a script whose whole body is echo/true/exit 0, or that runs no command at all) is cheap, explainable, and would have caught this exact one.",
+        "ACCEPTANCE: the verify re-run is checked for vacuity the way acceptance criteria already are; a package script whose body is a bare echo/true/exit-0 is refused as a verify component with a reason naming the script; a real runner is unaffected; the refusal names the script rather than failing the ticket opaquely."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-88",
+      "points": 1,
+      "module": "web",
+      "title": "the first click after a board loads is swallowed",
+      "write_scope": [
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/board/BoardView.test.tsx"
+      ],
+      "notes": [
+        "Reproduced on every core restart this session \u2014 six times: open a project, click \"Start a run\" promptly, nothing happens; click again and it starts. Same shape in Settings, where the first click after load landed on Providers instead of the tab I aimed at.",
+        "The board re-renders when its data arrives and replaces the element between the click and the handler. A person opening a fresh project clicks the one button on the screen, gets no feedback that the click was swallowed, and reasonably concludes the product is broken \u2014 the same conclusion W21-82 produced by a different route.",
+        "Low severity, disproportionate effect: it is the first interaction anyone has with a new project.",
+        "ACCEPTANCE: a click on Start a run issued immediately after the board first paints starts a run; the control is either disabled with a visible loading state until it is live, or the handler survives the re-render; no click is silently discarded."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-89",
+      "points": 1,
+      "module": "server",
+      "title": "provider reachability resets to \"Not tested yet\" on every core restart",
+      "write_scope": [
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts"
+      ],
+      "notes": [
+        "Observed on every restart this session: the Providers row returns to Reachability \"Not tested yet\" with Models \"\u2014\", and the Models dropdown goes back to \"No models discovered yet \u2014 test the lm-studio provider on the Providers tab\", even though the provider is enabled, unchanged, and serving 34 models.",
+        "The probe result lives only in memory. A user who restarts (or whose machine restarts) is told their working provider is untested, and cannot pick a model until they rediscover the Providers -> Test step on their own. This is the same trap a NEW project falls into, arriving by a different route.",
+        "ACCEPTANCE: a successful provider probe survives a core restart, with its timestamp shown so a stale result is visibly stale; a provider that has genuinely never been tested still reads \"Not tested yet\"; the Models dropdown offers the last known model list rather than nothing."
+      ]
     }
   ]
 }
