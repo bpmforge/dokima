@@ -196,6 +196,19 @@ export type {
 /** W21-34: what the machine review actually did to a ticket, for the surface where a person accepts it. */
 export { reviewStatusFor, reviewStatusSentence } from './review-status.js';
 
+/** W21-44: a session that made tool calls and changed nothing has not attempted the work. */
+export {
+  attemptedNothing,
+  attemptedNothingNotice,
+  latestSeq,
+  parkIfAttemptedNothing,
+  toolHistogramSince,
+} from './loop-land-attempted.js';
+export type { ToolHistogram } from './loop-land-attempted.js';
+
+/** W21-43: a ticket whose acceptance references paths outside its scope never runs. */
+export { unsatisfiableCriteria, unsatisfiableNotice } from './loop-land-satisfiable.js';
+
 /** W21-41: the ticket's own acceptance criteria are executed by the close gate. */
 export {
   humanCheckNotice,

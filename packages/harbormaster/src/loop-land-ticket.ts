@@ -10,6 +10,7 @@
  */
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import { unsatisfiableCriteria, unsatisfiableNotice } from './loop-land-satisfiable.js';
+import { latestSeq, parkIfAttemptedNothing } from './loop-land-attempted.js';
 import type { WorktreeHandle } from '@dokima/git';
 import {
   claimTicket,
@@ -244,6 +245,8 @@ export async function landClaimedTicket(
     // W16-01: which rung this attempt runs at (the chapter also ledgers a
     // climb, evidence attached). Without a seam, options come back untouched.
     const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts);
+    // W21-44: the ledger marker this attempt's tool calls are counted from.
+    const attemptStartSeq = latestSeq(options.log);
     const { session, closeGate, infraFailure } = await attemptOnce(
       rungStart.options,
       current,
@@ -267,6 +270,25 @@ export async function landClaimedTicket(
       ...(rungStart.sessionLabel ? { sessionLabel: rungStart.sessionLabel } : {}),
     });
     current = requireTicket(options.log, ticket.id);
+
+    // W21-44: before feeding gaps forward, ask whether anything was attempted
+    // at all. A second attempt after a session that changed nothing carries
+    // the same information and the same instruction as the first.
+    // Only while an attempt remains to be SAVED — see loop-land-attempted.ts.
+    if (
+      !closeGate?.ok &&
+      attempt < freeRetry.limit() &&
+      parkIfAttemptedNothing({
+        log: options.log,
+        ticketId: ticket.id,
+        actorId: options.actorId,
+        runId: options.runId ?? null,
+        sinceSeq: attemptStartSeq,
+      })
+    ) {
+      parkedReason = 'attempted_nothing';
+      break;
+    }
 
     // W13-29: feed the gaps forward, or stop if nothing changed.
     const step = nextFeedback(feedback, attempt, session, closeGate, {

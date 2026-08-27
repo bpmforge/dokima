@@ -178,7 +178,9 @@ export type LandParkedReason =
   | 'ladder_exhausted'
   | 'locked_ceiling_reached'
   | 'awaiting_escalation_token'
-  | 'no_progress';
+  | 'no_progress'
+  /** W21-44: the session made tool calls and changed nothing — not attempted. */
+  | 'attempted_nothing';
 export interface LandLoopTicketOutcome {
   readonly ticketId: string;
   readonly mode: LandEscalationMode;

@@ -12250,7 +12250,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [],
@@ -12268,14 +12268,17 @@
         "THE SIGNAL IS FREE AND ALREADY COLLECTED. W17-01 counts mutating tool calls as the progress signal that EARNS budget. The inverse of that same counter is unused: a session that reaches its end having made no successful write, edit or commit has not attempted the work, whatever its manifest claims. That is code-observed, not model-reported (C-2), and it is unambiguous in a way \"did it try hard enough\" never is.",
         "Spending a second attempt on a session that made zero mutations cannot help \u2014 the second one has the same information and the same instruction as the first, and run 23 is the proof: identical shape, identical refusal.",
         "W21-19`s cross-session repetition evidence DID fire here and reported it faithfully (\"the same agent-session.list call was made 9 times ... this did not stop the run\"). It reports and does not act, by design. This is the case that argues one specific pattern should act: not repetition, which has honest causes, but ZERO MUTATIONS, which does not.",
-        "It must reach the founder rather than just failing faster. A model that reads its way around a ticket twice without touching it is telling you something about the ticket or the model, and either way the answer is a person`s."
+        "It must reach the founder rather than just failing faster. A model that reads its way around a ticket twice without touching it is telling you something about the ticket or the model, and either way the answer is a person`s.",
+        "THE CEILING RULE, which I got wrong and an existing T-27 fixture caught. My first version parked with attempted_nothing whenever a session mutated nothing \u2014 including on the LAST attempt, where there is nothing left to save and the relabelling only obscures a real budget stop. nextFeedback already documents exactly this rule for no_progress (\"at the ceiling the ladder`s own reason is the true one; relabelling an exhausted ladder would change FR-H1/H2`s documented outcome\"). I mirrored it rather than editing the fixture \u2014 the fixture was right.",
+        "ALSO REJECTED session.changedPaths, which is right there on the SessionResult and looks like the obvious signal. It is the worktree diff against the BASE, so it stays non-empty for every later attempt once any earlier one wrote anything. In run 23 it was non-empty throughout \u2014 the branch already carried the previous run`s commits \u2014 and would have hidden the exact case this exists to catch. The ledger`s own tool calls are the honest source."
       ],
       "acceptance": [
         "A session that ends having made no successful mutating tool call is recorded as having attempted nothing, from the ledger`s own tool calls",
         "A second attempt is not spent when the first attempted nothing \u2014 the ladder stops and the ticket reaches the founder",
         "A session that mutated and still failed is unaffected \u2014 this stops empty attempts, not failing ones",
         "The founder item says what the session actually did (the tool histogram), not that it \"failed\"",
-        "A red fixture reproduces run 23: 6 list, 7 read, 2 verify, 0 writes across two attempts does not spend a second attempt"
+        "A red fixture reproduces run 23: 6 list, 7 read, 2 verify, 0 writes across two attempts does not spend a second attempt",
+        "The check only fires while a further attempt would otherwise be spent \u2014 at the ladder ceiling the existing reason stands"
       ]
     }
   ]
