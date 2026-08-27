@@ -33,6 +33,22 @@ const TICKET_CHANGED = new Set([
   'ticket.created',
   'ticket.scope_widened',
   'ticket.dependencies_retargeted',
+  /**
+   * W21-62: a brief changes the ticket as much as its scope does.
+   *
+   * W21-59 gave the founder a way to tell a maker something it could not
+   * discover, and the whole point is that the next attempt knows more than the
+   * last one did. Leaving that out of this set meant the cheap rung stayed
+   * condemned for failing a version of the ticket that no longer existed —
+   * exactly the mistake the expiry rule was written to prevent, missed for the
+   * one channel added after it.
+   *
+   * Live: PLAN-vault-002a was briefed with the .ts import convention and then
+   * the scrypt parameter constraint, and every run since has skipped
+   * coder-next and gone straight to the slower reasoning model, which is the
+   * one that then hit the 300s request ceiling.
+   */
+  'ticket.brief_set',
 ]);
 
 export interface RungMemory {
@@ -75,8 +91,8 @@ export function rungSkipNotice(ticketId: string, memory: RungMemory): string | n
     `${memory.failed.length === 1 ? 'that rung has' : 'those rungs have'} already ` +
     `failed this ticket since it last changed (escalation.rung_advanced), and ` +
     `re-running them costs a full session to rediscover it. Change the ticket — ` +
-    `widen its scope or repoint its dependencies — and the cheap rung gets a ` +
-    `fresh go at the new job.`
+    `widen its scope, repoint its dependencies, or brief it — and the cheap rung ` +
+    `gets a fresh go at the new job.`
   );
 }
 

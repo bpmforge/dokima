@@ -12940,6 +12940,102 @@
         "Below the ceiling with no extensions, raising it is still the advice",
         "A caller that does not know the ceiling is unchanged"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 1,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-59"
+      ],
+      "id": "W21-62",
+      "title": "a brief did not give the cheap rung another go",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-rungmemory.ts",
+        "packages/harbormaster/src/loop-land-rungmemory.test.ts"
+      ],
+      "notes": [
+        "MINE, AND A GAP BETWEEN TWO OF MY OWN FIXES. W21-46`s rung memory expires when a ticket materially changes \u2014 scope widened, dependencies repointed \u2014 and I wrote that set BEFORE W21-59 added the brief. So ticket.brief_set was not in it.",
+        "The cost was exact: PLAN-vault-002a was briefed twice (the .ts import convention, then the scrypt parameter constraint) and every run since skipped coder-next and went straight to qwen3.8-27b \u2014 the slower reasoning model, which is the one that then hit the 300s request ceiling. The cheap rung stayed condemned for failing a version of the ticket that no longer existed, which is precisely the mistake the expiry rule exists to prevent.",
+        "The founder asked to use coder-next wherever possible and to explain which timeout was the issue. Those turned out to be the same question: the brief forced the expensive rung, and the expensive rung is the one that blows the per-request ceiling.",
+        "A rung that fails AFTER a brief is remembered again, so the memory is scoped rather than disabled. The skip notice now names briefing as a way to reset it, alongside widening scope and repointing dependencies."
+      ],
+      "acceptance": [
+        "Briefing a ticket clears its rung memory, so the cheapest rung gets a fresh attempt",
+        "A rung that fails after the brief is remembered again \u2014 the memory is not disabled",
+        "The skip notice names briefing as one of the ways to reset it"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-46"
+      ],
+      "id": "W21-63",
+      "title": "rung memory cannot tell a rung that failed from one that cannot be reached",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-rungmemory.ts",
+        "packages/harbormaster/src/loop-land-rungmemory.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts"
+      ],
+      "notes": [
+        "RUN 47: rung memory skipped R1 (coder-next, serving fine at 200) to reach R2, which could not load \u2014 \"Failed to load model qwen3.6-35b-a3b. Error: Operation canceled.\" The run made ZERO tool calls. An available cheaper model sat unused while the ticket got no session at all.",
+        "A rung that FAILED THE WORK and a rung that CANNOT BE REACHED are different facts and rung memory records only the first. Skipping past a working model to an unreachable one is strictly worse than not skipping.",
+        "The root cause in run 47 was my own bad model choice (I picked a model served by the LINKED machine out of the /v1/models catalogue), but the interaction is a real product gap and will recur whenever a higher rung is down.",
+        "Candidate fix: when every attempt at the skipped-to rung fails with a provider error, fall back DOWN to the remembered rung rather than parking with nothing \u2014 the memory says that rung failed the work, not that it is unusable, and a session that runs is worth more than one that does not."
+      ],
+      "acceptance": [
+        "A skipped rung is used when every higher rung is unreachable, rather than parking with no session",
+        "A rung that failed the WORK is still skipped when a higher rung is reachable \u2014 cheapest-first is not restored by accident",
+        "The fallback is visible on the ticket, so a person can see why it ran the model the memory had ruled out",
+        "A red fixture reproduces run 47: R1 available, R2 unloadable, and a session runs"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-64",
+      "title": "a run that dies on timeouts does not say the ceiling is wrong for this model",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "packages/harbormaster/src/loop-land-infra.ts"
+      ],
+      "notes": [
+        "RUNS 48 AND 49 died identically: reads and lists, then three `provider failure: lm-studio: request timed out after 300000ms`, no writes, no manifest. W21-58 correctly parked them as provider_unavailable and told the founder to check the endpoint \u2014 which was UP and answering.",
+        "Finding the real cause took hand measurement: I timed the model at 22 tok/s, timed a tool-calling request at 6s, and then read the ledger to find `prompt 5235 completion 4475`. A 4,475-token completion is ~200s at that rate, so a slightly longer one crosses the ceiling. qwen3.8-27b is a reasoning model and emits completions that size routinely.",
+        "DEFAULT_REQUEST_TIMEOUT_MS = 300_000 (packages/gateway/src/providers/oai-compat-types.ts) is tuned for cloud latency. On local hardware it is not a runaway guard, it is a throughput assumption \u2014 and the product has every number needed to say so: completion token counts and elapsed time are both already on spend.recorded.",
+        "The founder-facing gap: \"the endpoint refused each request\" sends a person to check the endpoint. When every failure is a TIMEOUT rather than a refusal, the sentence should name the ceiling and the observed completion size instead.",
+        "DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will bite the same way once berths > 1 put requests behind a long reasoning turn. Nothing has queued yet, so this is a prediction rather than an observation."
+      ],
+      "acceptance": [
+        "A park where every attempt failed on a TIMEOUT is distinguished from one where the endpoint refused",
+        "The evidence names the per-request ceiling and the largest completion actually observed, so the founder does not have to measure tokens/sec by hand",
+        "It names requestTimeoutMs as the lever, the way W21-56 names maxToolIterations",
+        "A red fixture reproduces runs 48/49: three timeout failures do not read as an endpoint refusal"
+      ]
     }
   ]
 }

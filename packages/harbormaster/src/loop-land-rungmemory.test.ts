@@ -159,3 +159,48 @@ describe('the skip shifts the rung, not the attempt budget (W21-55)', () => {
     expect(memory.startAttempt - 1).toBe(0);
   });
 });
+
+/**
+ * W21-62. W21-59 added the brief — the founder's channel for telling a maker
+ * something it cannot discover — and W21-46's expiry set was written before it
+ * existed, so briefing a ticket did not clear the rung memory. The cheap rung
+ * stayed condemned for failing a version of the ticket that no longer existed,
+ * which is precisely the mistake the expiry rule was written to prevent.
+ *
+ * Live: PLAN-vault-002a was briefed with the .ts import convention and then
+ * the scrypt constraint, and every run since skipped coder-next for the slower
+ * reasoning model — the one that went on to hit the 300s request ceiling.
+ */
+describe('a brief gives the cheap rung another go (W21-62)', () => {
+  it('RED FIXTURE: briefing a ticket clears the rung memory', () => {
+    const log = board();
+    climb(log, 'R1', 'R2');
+    expect(rungMemoryFor(log, 'T-1').startAttempt).toBe(2);
+    appendEvent(log, {
+      eventType: 'ticket.brief_set',
+      actorId: 'operator',
+      ticketId: 'T-1',
+      payload: { from: null, to: 'import sibling modules with a .ts extension' },
+    });
+    expect(rungMemoryFor(log, 'T-1')).toEqual({ failed: [], startAttempt: 1 });
+    log.close();
+  });
+
+  it('a rung that fails AFTER the brief is remembered again — the memory is not disabled', () => {
+    const log = board();
+    appendEvent(log, {
+      eventType: 'ticket.brief_set',
+      actorId: 'operator',
+      ticketId: 'T-1',
+      payload: { to: 'something useful' },
+    });
+    climb(log, 'R1', 'R2');
+    expect(rungMemoryFor(log, 'T-1')).toEqual({ failed: ['R1'], startAttempt: 2 });
+    log.close();
+  });
+
+  it('the skip notice names briefing as a way to reset it', () => {
+    const notice = rungSkipNotice('T-1', { failed: ['R1'], startAttempt: 2 });
+    expect(notice).toContain('brief it');
+  });
+});
