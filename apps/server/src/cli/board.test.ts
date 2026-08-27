@@ -19,6 +19,7 @@ function fixtureTicket(overrides: Partial<Ticket>): Ticket {
     history: [],
     evidence: [],
     claimedAt: null,
+    claimRunId: null,
     closedAt: null,
     ...overrides,
   };

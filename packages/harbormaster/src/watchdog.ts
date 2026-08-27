@@ -120,5 +120,15 @@ export function deadLetterAndBlock(
     },
     opts,
   );
-  releaseTicket(input.log, { ticketId: input.ticketId, actorId: input.actorId }, opts);
+  // W21-33: the watchdog's whole job is taking a claim back from a run that
+  // is no longer running it, so it says so rather than being exempted.
+  releaseTicket(
+    input.log,
+    {
+      ticketId: input.ticketId,
+      actorId: input.actorId,
+      steal: { reason: `watchdog: ${input.breach.reason}` },
+    },
+    { ...opts, runId: input.runId ?? null },
+  );
 }

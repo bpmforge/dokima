@@ -1,4 +1,5 @@
 import { appendEvent, type EventLog } from '@dokima/events';
+import { assertReleaseRunOwnership, type ClaimSteal } from './claim-run.js';
 import type { TicketVerbOptions } from './create.js';
 import { TicketError } from './errors.js';
 import { validateLaneWriteScopes } from './lanes.js';
@@ -254,6 +255,12 @@ export function acceptTicket(
 export interface ReleaseTicketInput {
   ticketId: string;
   actorId: string;
+  /**
+   * W21-33: say so to release a ticket a DIFFERENT run claimed. Required only
+   * in that case; the watchdog and the orphaned-claim reclaim are the callers
+   * that legitimately need it. See claim-run.ts for why it is explicit.
+   */
+  steal?: ClaimSteal;
 }
 
 export function releaseTicket(
@@ -266,6 +273,11 @@ export function releaseTicket(
     const ticket = requireTicket(tickets, input.ticketId);
     assertTransition('release', ticket);
     assertOwner(ticket, input.actorId, 'release');
+    const steal = assertReleaseRunOwnership({
+      ticket,
+      runId: opts.runId ?? null,
+      steal: input.steal,
+    });
     appendEvent(
       log,
       {
@@ -273,7 +285,7 @@ export function releaseTicket(
         actorId: input.actorId,
         ticketId: ticket.id,
         runId: opts.runId ?? null,
-        payload: {},
+        payload: steal ? { steal } : {},
       },
       opts,
     );

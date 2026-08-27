@@ -16,6 +16,7 @@ import {
   listTickets,
   releaseTicket,
   startTicket,
+  TicketError,
   type Ticket,
 } from '@dokima/tickets';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
@@ -53,6 +54,41 @@ import type {
 import { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
 type LandPushResults = Awaited<ReturnType<typeof pushLandedBranch>>;
+
+/**
+ * W21-33: release, unless another run has since claimed the ticket.
+ *
+ * The park path is where the live defect fired: a run whose ladder was
+ * exhausted released a ticket a NEWER run had claimed fourteen seconds
+ * earlier, and the newer run's close receipt was orphaned. With the guard in
+ * place that release now throws, and a throw here would be no better — it
+ * would crash the park and lose the park evidence that took two attempts to
+ * produce. The right behaviour for a run that no longer holds the ticket is to
+ * leave it alone and say so, which is what this does.
+ */
+function releaseUnlessTakenOver(options: LandLoopOptions, ticketId: string): void {
+  try {
+    releaseTicket(
+      options.log,
+      { ticketId, actorId: options.actorId },
+      { runId: options.runId ?? null },
+    );
+  } catch (err) {
+    if (!(err instanceof TicketError) || err.code !== 'STALE_RUN') throw err;
+    commentTicket(
+      options.log,
+      {
+        ticketId,
+        actorId: options.actorId,
+        body:
+          `not released: another run has claimed this ticket since, so returning it ` +
+          `to ready would take it away from the run currently working it (W21-33). ` +
+          `${err.message}`,
+      },
+      { runId: options.runId ?? null },
+    );
+  }
+}
 
 export async function processTicket(
   options: LandLoopOptions,
@@ -110,7 +146,7 @@ export async function landClaimedTicket(
       actorId: options.actorId,
       body: provisionFailure,
     }, { runId: options.runId ?? null });
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
+    releaseUnlessTakenOver(options, ticket.id);
     return {
       ticketId: ticket.id,
       mode: resolveLandEscalationPolicy(options.policyScope ?? {}, options.role ?? ROLE_CODING_AGENT).mode,
@@ -295,7 +331,7 @@ export async function landClaimedTicket(
         attempts,
       }),
     );
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
+    releaseUnlessTakenOver(options, ticket.id);
     current = requireTicket(options.log, ticket.id);
   }
 

@@ -18,6 +18,7 @@ function ticket(overrides: Partial<Ticket> & Pick<Ticket, 'id'>): Ticket {
     history: [],
     evidence: [],
     claimedAt: null,
+    claimRunId: null,
     closedAt: null,
     ...overrides,
   };

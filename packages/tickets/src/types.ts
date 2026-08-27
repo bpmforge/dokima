@@ -79,6 +79,12 @@ export interface Ticket {
   /** Failure receipts / escalation trail (DATABASE.md §3) — populated by later tickets (loop escalation). */
   evidence: unknown[];
   claimedAt: string | null;
+  /**
+   * W21-33: the run that claimed it, from the claim event's own `run_id`.
+   * Null for a claim made with no run (a person), and null whenever the ticket
+   * is not claimed. Read by the release guard — see claim-run.ts.
+   */
+  claimRunId: string | null;
   closedAt: string | null;
 }
 

@@ -20,6 +20,7 @@ function ticket(id: string, status: TicketStatus, dependsOn: string[]): Ticket {
     history: [],
     evidence: [],
     claimedAt: null,
+    claimRunId: null,
     closedAt: null,
   };
 }

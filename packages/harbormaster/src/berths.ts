@@ -47,6 +47,7 @@ import {
   listTickets,
   releaseTicket,
   startTicket,
+  TicketError,
   type Ticket,
 } from '@dokima/tickets';
 import type { EventLog } from '@dokima/events';
@@ -269,7 +270,17 @@ async function runOneBerth(
             'auto-blocked with evidence: berth runner returned without closing or ' +
             'releasing the ticket (FR-H5).',
         });
-        releaseTicket(options.log, { ticketId: next.id, actorId });
+        // W21-33: stamped and guarded like every other loop-internal release —
+        // a berth must not return a ticket another run has since claimed.
+        try {
+          releaseTicket(
+            options.log,
+            { ticketId: next.id, actorId },
+            { runId: options.runId },
+          );
+        } catch (err) {
+          if (!(err instanceof TicketError) || err.code !== 'STALE_RUN') throw err;
+        }
         current = requireTicket(options.log, next.id);
       }
 

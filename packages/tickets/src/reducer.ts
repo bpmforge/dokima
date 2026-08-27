@@ -59,6 +59,7 @@ export function reduceTicketEvent(
         history: [],
         evidence: [],
         claimedAt: null,
+        claimRunId: null,
         closedAt: null,
       };
     }
@@ -69,6 +70,7 @@ export function reduceTicketEvent(
         status: 'claimed',
         ownerId: event.actorId,
         claimedAt: event.createdAt,
+        claimRunId: event.runId,
         history: pushHistory(ticket, 'claim', event.actorId, event.createdAt),
       };
     }
@@ -106,6 +108,7 @@ export function reduceTicketEvent(
         status: 'ready',
         ownerId: null,
         claimedAt: null,
+        claimRunId: null,
         history: pushHistory(ticket, 'release', event.actorId, event.createdAt),
       };
     }

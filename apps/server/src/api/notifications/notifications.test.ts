@@ -53,6 +53,7 @@ function ticket(overrides: Partial<Ticket> & { id: string }): Ticket {
     history: [],
     evidence: [],
     claimedAt: null,
+    claimRunId: null,
     closedAt: null,
     ...overrides,
   };

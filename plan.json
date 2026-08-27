@@ -11810,7 +11810,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "tickets",
       "depends_on": [
@@ -11825,7 +11825,19 @@
         "packages/tickets/src/verbs-run.test.ts",
         "packages/harbormaster/src/watchdog.ts",
         "packages/harbormaster/src/loop-land-reclaim.ts",
-        "packages/harbormaster/src/loop-land-ticket.ts"
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/tickets/src/claim-run.ts",
+        "packages/tickets/src/claim-run.test.ts",
+        "packages/tickets/src/errors.ts",
+        "packages/tickets/src/index.ts",
+        "packages/harbormaster/src/berths.ts",
+        "packages/tickets/src/lanes.test.ts",
+        "packages/tickets/src/lanes.property.test.ts",
+        "packages/tickets/src/reflow.test.ts",
+        "packages/tickets/src/reflow.property.test.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "apps/server/src/api/notifications/notifications.test.ts",
+        "apps/server/src/cli/board.test.ts"
       ],
       "notes": [
         "THE FURTHEST THE PRODUCT HAS EVER GOT, and the last mile. Run run-mtao40ub: #1302 session.turns_observed {turns:11, completed:true}, #1303 gate.receipt_minted kind=close, receipt row verify_exit 0, validators secrets-scan 0 and validate-remote-parity 0. The close gate PASSED for the first time in fifteen runs.",
@@ -11836,7 +11848,8 @@
         "The watchdog (watchdog.ts:123) and reclaim (loop-land-reclaim.ts:37) exist precisely TO release another run claim. An unconditional guard would make dead claims permanent, which is worse than this defect. They steal explicitly and the release payload records the stolen-from run and the reason.",
         "board-routes.ts:155 is a person with no run id and must keep working: absent run id fails open, so no-run-id unambiguously means a human did it.",
         "Also unexplained and covered by the same fix: #1273 released 22:30:42 then #1279 released 22:31:12 \u2014 the stale run appears to release twice.",
-        "DIAGNOSIS CORRECTED BY THE FIXTURE: the refusal code the live run hit is INVALID_TRANSITION, not NOT_OWNER. The release put the ticket back in ready, so assertTransition refuses before assertOwner is ever consulted. The cause is unchanged \u2014 a stale run released a live run ticket \u2014 but the code the ledger will now show is the transition one."
+        "DIAGNOSIS CORRECTED BY THE FIXTURE: the refusal code the live run hit is INVALID_TRANSITION, not NOT_OWNER. The release put the ticket back in ready, so assertTransition refuses before assertOwner is ever consulted. The cause is unchanged \u2014 a stale run released a live run ticket \u2014 but the code the ledger will now show is the transition one.",
+        "The park path must TOLERATE the new refusal, not crash on it. A stale run whose release is refused should quietly leave the ticket alone and say so \u2014 trading a silent wrong release for a crashed park that loses the park evidence would be no improvement."
       ],
       "acceptance": [
         "A ticket records the run that claimed it, folded from the claim event",

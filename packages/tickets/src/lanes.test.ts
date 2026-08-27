@@ -24,6 +24,7 @@ function ticket(
     history: [],
     evidence: [],
     claimedAt: null,
+    claimRunId: null,
     closedAt: null,
     ...overrides,
   };

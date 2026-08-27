@@ -25,6 +25,8 @@ export {
   isStaleBlocked,
 } from './reflow.js';
 export type { BoardEntry } from './reflow.js';
+export { assertReleaseRunOwnership } from './claim-run.js';
+export type { ClaimSteal, StealRecord } from './claim-run.js';
 export { isValidTransition, TRANSITIONS } from './transitions.js';
 export type { LifecycleVerb } from './transitions.js';
 export type {

@@ -34,6 +34,20 @@ export function reclaimAbandoned(options: LandLoopOptions): void {
         `claimed it is gone (crash, kill, or a closed lid). Returned to ready; any work ` +
         `it committed is still on its branch.`,
     });
-    releaseTicket(options.log, { ticketId: abandoned.id, actorId: options.actorId });
+    // W21-33: an abandoned claim belongs to a run that is gone — this is the
+    // steal the guard must never block, or a dead run's claim is permanent.
+    releaseTicket(
+      options.log,
+      {
+        ticketId: abandoned.id,
+        actorId: options.actorId,
+        steal: {
+          reason:
+            `orphaned claim: no activity for over ` +
+            `${Math.round(STALE_CLAIM_MS / 60000)} minutes`,
+        },
+      },
+      { runId: options.runId ?? null },
+    );
   }
 }

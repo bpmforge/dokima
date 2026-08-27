@@ -9,7 +9,9 @@ export type TicketErrorCode =
   | 'NOT_OWNER'
   | 'SELF_ACCEPT'
   | 'MANIFEST_INVALID'
-  | 'MISSING_CLOSE_RECEIPT';
+  | 'MISSING_CLOSE_RECEIPT'
+  /** W21-33: a different run holds the claim and the caller did not say it was stealing. */
+  | 'STALE_RUN';
 
 export class TicketError extends Error {
   readonly code: TicketErrorCode;

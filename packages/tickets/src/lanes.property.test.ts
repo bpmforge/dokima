@@ -120,6 +120,7 @@ function makeTicket(
     history: [],
     evidence: [],
     claimedAt: null,
+    claimRunId: null,
     closedAt: null,
   };
 }
