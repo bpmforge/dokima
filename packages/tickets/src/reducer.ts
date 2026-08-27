@@ -63,6 +63,15 @@ export function reduceTicketEvent(
         closedAt: null,
       };
     }
+    case 'ticket.brief_set': {
+      // W21-59: the founder's line to the maker. `interface` is what
+      // buildHandoff renders as the context block, so this is the one field a
+      // person can use to tell a stuck model something true about the project.
+      if (!ticket) return ticket;
+      const payload = event.payload as { to?: unknown };
+      if (typeof payload.to !== 'string') return ticket;
+      return { ...ticket, interface: payload.to };
+    }
     case 'ticket.dependencies_retargeted': {
       // W21-51: a founder pointing a ticket at different work. No status
       // change — the DAG moves, the lifecycle does not.

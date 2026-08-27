@@ -71,6 +71,15 @@ export type CliCommand =
       projectId?: string;
     }
   | {
+      /** W21-59: the founder telling a stuck maker something it cannot discover. */
+      kind: 'brief';
+      ticketId: string;
+      actorId: string;
+      text: string;
+      dbPath?: string;
+      projectId?: string;
+    }
+  | {
       kind: 'comment';
       ticketId: string;
       actorId: string;
@@ -248,6 +257,33 @@ export function parseCliArgs(argv: string[]): CliCommand {
       actorId: values.actor,
       on: values.on.split(',').map((x) => x.trim()).filter(Boolean),
       reason: values.reason,
+      dbPath: values.db,
+      projectId: values.project,
+    };
+  }
+
+  if (command === 'brief') {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      options: {
+        actor: { type: 'string' },
+        text: { type: 'string' },
+        db: { type: 'string' },
+        project: { type: 'string' },
+      },
+      allowPositionals: true,
+    });
+    const ticketId = requirePositional(
+      positionals,
+      'usage: dokima brief <ticketId> --actor <actorId> --text <context> [--db <path>]',
+    );
+    if (!values.actor) throw new CliUsageError('brief requires --actor <actorId>');
+    if (!values.text) throw new CliUsageError('brief requires --text <context>');
+    return {
+      kind: 'brief',
+      ticketId,
+      actorId: values.actor,
+      text: values.text,
       dbPath: values.db,
       projectId: values.project,
     };

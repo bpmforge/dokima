@@ -193,6 +193,11 @@ board & tickets (address a project with --project <id> from the Fleet, or --db <
   dokima depends-on <ticketId> --actor <id> --on <id,id> --reason <why>
                                 repoint a ticket at different dependencies;
                                 refuses unknown ids and cycles
+  dokima brief <ticketId> --actor <id> --text <context>
+                                give the maker context it cannot discover;
+                                carried into every later handoff. A brief
+                                cannot make anything pass — the gates are
+                                unchanged
   dokima verify-chain           verify the event log's hash chain
   dokima run <start|pause|resume|stop> ...
                                 run bookkeeping (FR-C7)
@@ -254,6 +259,8 @@ const LIFECYCLE_COMMANDS = [
   // W21-51: and pointing existing work at it — a ticket nothing depends on is
   // not on the DAG in any useful sense.
   'depends-on',
+  // W21-59: and telling a stuck maker something it cannot discover for itself.
+  'brief',
   'run',
 ] as const;
 

@@ -5,6 +5,7 @@ import {
   commentTicket,
   createTicketValidatingLanes,
   retargetTicketDependencies,
+  setTicketBrief,
   widenTicketScope,
   listTickets,
   releaseTicket,
@@ -215,6 +216,20 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
           io.stdout(
             `${ticket.id} depends_on -> ${ticket.dependsOn.join(', ') || '(nothing)'}`,
           );
+          return 0;
+        } catch (err) {
+          return reportVerbError(err, io);
+        }
+      }
+      case 'brief': {
+        ensureActorIdentity(log, command.actorId, io.now);
+        try {
+          const ticket = setTicketBrief(
+            log,
+            { ticketId: command.ticketId, actorId: command.actorId, brief: command.text },
+            { now: io.now },
+          );
+          io.stdout(`${ticket.id} brief set — the next handoff carries it as context`);
           return 0;
         } catch (err) {
           return reportVerbError(err, io);

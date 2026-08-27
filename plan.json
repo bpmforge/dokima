@@ -12812,6 +12812,44 @@
         "A mixed run \u2014 some attempts real, some infra \u2014 keeps the ladder reason, since the ticket genuinely was attempted",
         "A red fixture pins run 40: two attempts, both provider 400s, does not report a ladder cap"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 3,
+      "module": "tickets",
+      "depends_on": [
+        "W21-51"
+      ],
+      "id": "W21-59",
+      "title": "the founder can see what the maker needs to know and cannot tell it",
+      "write_scope": [
+        "packages/tickets/src/brief.ts",
+        "packages/tickets/src/brief.test.ts",
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/index.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/bootstrap/cli.ts"
+      ],
+      "notes": [
+        "PLAN-vault-002a, five runs. Run 41 accumulated real work (two commits). Run 42 added NOTHING and the model oscillated between two wrong import forms: `./argon2id` (ERR_MODULE_NOT_FOUND) and `./argon2id.js` (also ERR_MODULE_NOT_FOUND, because nothing compiles). The correct form is `./argon2id.ts`, which PLAN-vault-001b`s tsconfig deliberately enabled with allowImportingTsExtensions.",
+        "I could read that off the failing spec in ten seconds and had no way to tell the maker. W21-27 (widen-scope) and W21-51 (depends-on) let a founder change a ticket`s SHAPE; nothing let them add KNOWLEDGE. Comments do not reach the maker \u2014 buildHandoff carries title, writeScope, the acceptance criteria, the verify command and `context`, and nothing else.",
+        "THE CHANNEL ALREADY EXISTED AND WAS SIMPLY UNWRITABLE. `context` is `ticket.interface ?? ticket.title`, so `interface` IS the founder`s line to the maker \u2014 set once at decomposition and never again. This adds the verb and nothing else: no new plumbing, no second path into the prompt.",
+        "IT IS A BRIEF, NOT AN INSTRUCTION TO OBEY, and that is what makes it safe for a person to write. The maker still faces the same gates against the same acceptance criteria (C-2); a brief cannot make anything pass, only tell a model something true about the project it would otherwise have to rediscover. A fixture asserts acceptance, write_scope and verify are untouched.",
+        "ALSO EVIDENCE FOR W21-57: run 41 added two commits, run 42 added none. That is the \"successive runs stop accumulating\" signal, arriving exactly where the ticket predicted it would."
+      ],
+      "acceptance": [
+        "A founder can set a ticket`s brief from the CLI, and the next handoff carries it as context",
+        "The previous brief is on the event \u2014 an append, never a rewrite (C-6)",
+        "An empty brief is refused rather than silently clearing the context",
+        "A brief changes nothing about the gates: acceptance, write_scope and verify are untouched"
+      ]
     }
   ]
 }
