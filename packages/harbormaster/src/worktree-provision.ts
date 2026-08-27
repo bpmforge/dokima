@@ -199,6 +199,16 @@ async function ensureIgnored(worktreePath: string, entry: string): Promise<boole
  */
 const HARNESS_ARTIFACTS: readonly string[] = ['node_modules/', '*.tsbuildinfo'];
 
+/** A worktree with no manifest is not a Node project — leave its .gitignore alone. */
+async function hasManifest(worktreePath: string): Promise<boolean> {
+  try {
+    await fs.stat(path.join(worktreePath, 'package.json'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Ignores each entry; true when any of them changed the file. */
 async function ensureIgnoredAll(
   worktreePath: string,
@@ -226,6 +236,20 @@ export interface ProvisionInput {
  * was never provisioned at all.
  */
 export async function provisionWorktree(input: ProvisionInput): Promise<ProvisionResult> {
+  /**
+   * W21-86: ignore tool artifacts on BOTH paths, before deciding whether to
+   * install. `planProvision` returns null the moment `node_modules` exists,
+   * so a worktree that was provisioned by an earlier run skips this function
+   * entirely — and that is exactly the worktree where a build has since run
+   * and left `tsconfig.tsbuildinfo` in front of the SC-01 sweep. Tally's
+   * PLAN-tally-01 was in that state: provisioned once, then five runs of
+   * "dependencies already installed" while the artifact discarded each
+   * session. These files appear because commands RUN here, not because an
+   * install happened, so the ignore cannot hang off the install path.
+   */
+  const ignored = (await hasManifest(input.worktreePath))
+    ? await ensureIgnoredAll(input.worktreePath, HARNESS_ARTIFACTS)
+    : false;
   const plan = await planProvision(input.worktreePath);
   if (!plan) {
     /**
@@ -252,6 +276,7 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
       payload: {
         ran: false,
         why: await skipReason(input.worktreePath),
+        ...(ignored ? { gitignoreUpdated: true } : {}),
         ...(committedOnSkip.length > 0 ? { harnessCommitted: committedOnSkip } : {}),
       },
     });
@@ -272,8 +297,6 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
    * the tree correct for the human: `git status` in that worktree is clean,
    * which is what a developer would have done first anyway.
    */
-  const ignored = await ensureIgnoredAll(input.worktreePath, HARNESS_ARTIFACTS);
-
   const startedAt = Date.now();
   const { exitCode, output } = await run(
     plan,

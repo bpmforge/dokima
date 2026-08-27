@@ -319,3 +319,31 @@ describe('W21-86 — a tool\'s own artifacts never trip the scope sweep', () => 
     expect(ignore).toContain('*.tsbuildinfo');
   });
 });
+
+describe('W21-86b — the ignore reaches a worktree that skips provisioning', () => {
+  /**
+   * `planProvision` returns null the moment node_modules exists, so a
+   * worktree provisioned by an earlier run skips the whole function — and
+   * that is precisely the worktree where a build has since run. Tally's
+   * PLAN-tally-01 sat in that state for five runs, each discarded for
+   * tsconfig.tsbuildinfo, while provisioning reported "dependencies already
+   * installed" and did nothing.
+   */
+  it('ignores tool artifacts even when there is nothing to install', async () => {
+    const dir = await tempDir('skip-path');
+    await fs.writeFile(path.join(dir, 'package.json'), '{}');
+    await fs.mkdir(path.join(dir, 'node_modules'));
+    const log = await logIn(dir);
+
+    const result = await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+    });
+
+    expect(result.ran).toBe(false);
+    const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
+    expect(ignore).toContain('*.tsbuildinfo');
+  });
+});
