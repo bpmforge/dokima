@@ -194,3 +194,48 @@ async function createWorktreeFor(dir: string, ticketId: string) {
   const { createWorktree } = await import('@dokima/git');
   return createWorktree({ repoRoot: dir, ticketId, slug: ticketId.toLowerCase(), baseRef: 'main' });
 }
+
+/**
+ * W21-37 second follow-up. A leftover BRANCH with no worktree is its own state
+ * and the first fix missed it: run 18 removed the directory and left the
+ * branch, so run 20 found no worktree, went straight to `createWorktree -b`,
+ * and hit the identical crash from the opposite direction.
+ */
+describe('a leftover branch with no worktree (W21-37)', () => {
+  it('RED FIXTURE: an empty leftover branch is cleared so the ticket can fork from the right base', async () => {
+    const dir = await repo();
+    await landedBranch(dir, 'sw/A-a', 'package.json');
+    // run 17: worktree on the wrong base. run 18: directory removed, branch left.
+    const { createWorktree, destroyWorktree } = await import('@dokima/git');
+    const stale = await createWorktree({ repoRoot: dir, ticketId: 'B', slug: 'b', baseRef: 'main' });
+    await destroyWorktree(stale);
+    expect((await git(dir, ['rev-parse', '--verify', 'sw/B-b'])).stdout).toBeTruthy();
+
+    // The branch carries nothing of its own, so clearing it loses nothing.
+    const behind = await git(dir, ['rev-list', '--count', 'sw/A-a..sw/B-b']);
+    expect(Number(behind.stdout.trim())).toBe(0);
+    await git(dir, ['branch', '-D', 'sw/B-b']);
+    const fresh = await createWorktree({ repoRoot: dir, ticketId: 'B', slug: 'b', baseRef: 'sw/A-a' });
+    expect((await git(fresh.path, ['ls-tree', '--name-only', 'HEAD'])).stdout).toContain(
+      'package.json',
+    );
+  });
+
+  it('a leftover branch WITH commits is adopted, never deleted — that is a session’s work', async () => {
+    const dir = await repo();
+    await landedBranch(dir, 'sw/A-a', 'package.json');
+    const { createWorktree, destroyWorktree } = await import('@dokima/git');
+    const wt = await createWorktree({ repoRoot: dir, ticketId: 'B', slug: 'b', baseRef: 'main' });
+    await fs.writeFile(path.join(wt.path, 'agent-work.ts'), 'export const x = 1;\n');
+    await git(wt.path, ['add', '-A']);
+    await git(wt.path, ['commit', '-q', '-m', 'agent work']);
+    await destroyWorktree(wt);
+
+    expect(Number((await git(dir, ['rev-list', '--count', 'main..sw/B-b'])).stdout.trim())).toBe(1);
+    // Adopted: the worktree comes back ON the branch, work intact.
+    await git(dir, ['worktree', 'add', wt.path, 'sw/B-b']);
+    expect((await git(wt.path, ['ls-tree', '--name-only', 'HEAD'])).stdout).toContain(
+      'agent-work.ts',
+    );
+  });
+});

@@ -95,12 +95,63 @@ export async function resolveWorktree(
       };
     }
   }
+  /**
+   * W21-37 follow-up: a BRANCH with no worktree is its own leftover state, and
+   * the first version of this fix did not handle it. Run 18 removed the
+   * worktree directory and left `sw/PLAN-vault-002-…` behind, so run 20 found
+   * no worktree, went straight to `createWorktree -b`, and hit "a branch named
+   * … already exists" — the same crash from the opposite direction.
+   *
+   * A leftover branch carrying real commits is a previous session's work and
+   * must be adopted, not deleted: the worktree is rebuilt ON that branch. One
+   * carrying nothing is deleted so the ticket can start from the right base.
+   */
+  const branch = branchNameFor(ticket.id, ticket.title);
+  if (await refExists(options.repoRoot, branch)) {
+    if (await branchHasOwnCommits(options.repoRoot, branch, baseRef)) {
+      await git(options.repoRoot, ['worktree', 'add', worktreePath, branch]);
+      return {
+        repoRoot: options.repoRoot,
+        path: worktreePath,
+        branch,
+        ticketId: ticket.id,
+      };
+    }
+    await git(options.repoRoot, ['branch', '-D', branch]);
+  }
   return createWorktree({
     repoRoot: options.repoRoot,
     ticketId: ticket.id,
     slug: ticket.title,
     baseRef: baseRef as CreateWorktreeOptions['baseRef'],
   });
+}
+
+async function refExists(repoRoot: string, ref: string): Promise<boolean> {
+  try {
+    await git(repoRoot, ['rev-parse', '--verify', `${ref}^{commit}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Commits on `branch` that `baseRef` does not already contain. */
+async function branchHasOwnCommits(
+  repoRoot: string,
+  branch: string,
+  baseRef: string,
+): Promise<boolean> {
+  try {
+    const count = (
+      await git(repoRoot, ['rev-list', '--count', `${baseRef}..${branch}`])
+    ).stdout.trim();
+    return Number(count) > 0;
+  } catch {
+    // Cannot tell — assume there IS work, as above: refusing to delete costs a
+    // person a minute, guessing wrong destroys a session's output.
+    return true;
+  }
 }
 
 /** Whether an existing worktree's HEAD already contains everything `baseRef` carries. */

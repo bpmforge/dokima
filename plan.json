@@ -12083,6 +12083,44 @@
         "R-21 slopsquatting specifically has a named control, since it is the one that admits an attacker rather than sloppiness",
         "docs/TESTING.md records how a generated project`s gate is red-fixture tested, the way Dokima`s own is"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-40",
+      "title": "a run that dies strands its ticket, and the next run calls that idle",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-board.ts",
+        "packages/harbormaster/src/loop-land-reclaim.ts",
+        "packages/harbormaster/src/loop-land-reclaim.test.ts",
+        "apps/server/src/cli/run-summary.ts",
+        "apps/server/src/cli/run-summary.test.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "notes": [
+        "FOUND IMMEDIATELY, BY MY OWN CRASH. Run 18 threw out of createWorktree, the error escaped runLandLoop, and the process exited with PLAN-vault-002 still in_progress \u2014 claimed, started, never released. Run 19 then reported \"0 landed, 0 parked (stop: idle)\" and exited in seconds. The board says in_progress: PLAN-vault-002 the whole time.",
+        "THREE FAILURES STACKED, and each one alone would have been survivable.",
+        "(1) The crash appended NOTHING to the ledger. The diagnosis came from a stack trace in a terminal log. Same class as W21-32`s refused close: the moment a run dies is the moment its state is least recoverable and most worth recording.",
+        "(2) The ticket was stranded for 30 minutes. reclaimAbandoned`s STALE_CLAIM_MS is 30 minutes and its reasoning is sound for its own case \u2014 \"the event log is the heartbeat\", a live session that has gone quiet must never be reaped early. But a run whose PROCESS IS GONE is not a quiet session, and the product already knows the difference: there is a runs table and a run.created event. Waiting 30 minutes to reclaim from a run that demonstrably ended is a threshold applied to the wrong question.",
+        "(3) And the next run called it IDLE. stop:idle means pickNextTicket found nothing claimable, which is reported identically whether the board is genuinely empty or every remaining ticket is held by a corpse. This is the W21-34 class again \u2014 a run reporting quiet success over work that is not moving.",
+        "The founder-facing shape of this is the worst part: the terminal says the run finished with nothing to do, and the board says a ticket is in progress. Two surfaces of the same product disagreeing, with the reassuring one printed and the accurate one needing to be asked for."
+      ],
+      "acceptance": [
+        "A run that ends abnormally appends an event naming the ticket it held, the run, and the error, before the process exits",
+        "A ticket held by a run that has ended is reclaimable without waiting out the stale-claim window \u2014 the run record already distinguishes ended from quiet",
+        "The 30-minute window keeps its meaning for a run that is still alive; the two cases are not merged",
+        "A run that finds nothing claimable BECAUSE tickets are held says so, naming them, rather than reporting idle",
+        "A red fixture reproduces run 18 to 19: a ticket left in_progress by an ended run does not produce a bare idle summary"
+      ]
     }
   ]
 }
