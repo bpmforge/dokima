@@ -35,6 +35,50 @@ async function logIn(dir: string): Promise<EventLog> {
   return log;
 }
 
+describe('W21-74 — the manifest can appear DURING the session', () => {
+  /**
+   * The premise the post-session provision in `attemptOnce` rests on: this
+   * step is a fresh look at disk every time, not a once-per-worktree decision.
+   * Tally's PLAN-tally-01 skipped at 17:57:49 with "no package.json", the
+   * agent wrote one at 17:58:03, and the close gate then failed on
+   * `sh: tsc: command not found`. If planProvision ever memoises or a caller
+   * makes it once-only, that failure comes straight back.
+   */
+  it('plans nothing on an empty worktree and an install once the agent writes package.json', async () => {
+    const dir = await tempDir('appears');
+    expect(await planProvision(dir)).toBeNull();
+
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'tally', devDependencies: { typescript: '^5.3.2' } }),
+    );
+
+    // Greenfield: a manifest and no lockfile yet — npm is the one that works.
+    expect(await planProvision(dir)).toEqual({
+      command: 'npm',
+      args: ['install'],
+      because: 'package.json with no lockfile',
+    });
+  });
+
+  it('a second call is a cheap skip once dependencies are present', async () => {
+    const dir = await tempDir('already');
+    await fs.writeFile(path.join(dir, 'package.json'), '{}');
+    await fs.mkdir(path.join(dir, 'node_modules'));
+    const log = await logIn(dir);
+
+    const result = await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+    });
+
+    expect(result.ran).toBe(false);
+    expect(provisionFailureReason(result)).toBeNull();
+  });
+});
+
 describe('planProvision (W21-12) — decided only from files on disk', () => {
   it('a worktree with no manifest needs nothing', async () => {
     expect(await planProvision(await tempDir('bare'))).toBeNull();

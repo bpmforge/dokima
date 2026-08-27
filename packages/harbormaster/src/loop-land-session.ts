@@ -16,6 +16,7 @@ import { extractSessionCheckpoint } from './agent-session/session-checkpoint.js'
 import type { LandLoopOptions } from './loop-land.js';
 import type { AttemptFeedback } from './loop-handoff.js';
 import { sameGaps } from './loop-land-infra.js';
+import { provisionWorktree } from './worktree-provision.js';
 import {
   runSession,
   type Handoff,
@@ -111,6 +112,38 @@ export async function attemptOnce(
     // attempt or a real defect retries forever.
     return { session, closeGate: null, infraFailure };
   }
+  /**
+   * W21-74: provision AGAIN, now that the session has run.
+   *
+   * The pre-session provision (loop-land-ticket.ts) inspects a worktree the
+   * agent has not touched yet. For the first ticket of a greenfield project
+   * that worktree is empty, so it correctly records `no package.json —
+   * nothing to install` and never looks again — and the very next thing the
+   * agent does is write the package.json that declares the toolchain its own
+   * acceptance criterion needs.
+   *
+   * Live (Tally, run-mtbtsm2c): provisioned at 17:57:49 with `ran:false`, the
+   * agent wrote package.json at 17:58:03 naming typescript, and the close
+   * gate refused with `sh: tsc: command not found` on BOTH the verify re-run
+   * and `npm run build`. Every new project failed its first ticket this way.
+   *
+   * That is the exact scenario worktree-provision.ts was written for (W21-12);
+   * it was only ever wired to a moment that cannot see it. Running it a second
+   * time here is the whole fix — the step self-skips when node_modules already
+   * exists, so a worktree that was provisioned before the session pays two
+   * stat calls and nothing else.
+   *
+   * SC-18/D-023 are untouched: this takes no input from the model, the command
+   * is still derived from the lockfile (or its absence) on disk, and the skip
+   * or install is ledgered exactly as the pre-session one is.
+   */
+  await provisionWorktree({
+    worktreePath: worktree.path,
+    log: options.log,
+    actorId: options.actorId,
+    ticketId: ticket.id,
+    ...(options.runId ? { runId: options.runId } : {}),
+  });
   const closeGate = await runCloseGate({
     log: options.log,
     actorId: options.actorId,

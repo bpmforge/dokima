@@ -13264,6 +13264,111 @@
         "Why it matters more than a cosmetic string: \"unknown after 0 attempts\" reads as the product malfunctioning, and it is the line a founder sees first. It sent me to the ledger to find out whether anything had happened at all. W21-64 is the same disease on the timeout path \u2014 a park whose printed reason does not match the reason the product actually has.",
         "ACCEPTANCE: a ticket parked before its first attempt reports the park reason from the event that caused it; the \"unknown\" default is unreachable for any park the product itself raised; regression test covers the pre-attempt stale-worktree path."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-73",
+      "title": "the handoff carries the last session\u2019s diagnosis and not the evidence that disproves it",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/handoff-fields.ts",
+        "packages/harbormaster/src/agent-session/handoff-fields.test.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.ts"
+      ],
+      "notes": [
+        "W17-02 is right that a budget-stopped session should hand its successor what it learned, and it already cross-checks the CLAIM: \"the loop cross-checks it against the REAL worktree diff, flagging a checkpoint that claims completed work the diff does not show.\" Nothing cross-checks the DIAGNOSIS \u2014 the `next` field \u2014 and `next` is the one the successor acts on.",
+        "THREE LIVE CASES, each a wrong `next` carried forward verbatim while the product held its disproof: (1) PLAN-vault-002a run 52, next=\"Add type: module to package.json to fix ES module error\" \u2014 the failure was ERR_CRYPTO_INVALID_SCRYPT_PARAMS and package.json was fine. (2) PLAN-vault-002b run 56, next=\"investigate why timing-safe.spec.ts tests are not running\" \u2014 they run; 10 tests, 7 pass, 3 fail with ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH. (3) PLAN-vault-002 run 56, next=\"Rewrite argon2id.spec.ts using ES module imports instead of require statements\" \u2014 it was converting that file TO require, which regresses work already accepted as PLAN-vault-002a.",
+        "In all three the product had already run the acceptance command at the close gate and held the real output. So the successor session receives a confident wrong sentence and none of the text that contradicts it, and spends its whole budget on the wrong problem \u2014 twice at 40 turns, the hard ceiling.",
+        "THE FIX IS THE ONE I HAVE BEEN APPLYING BY HAND. Every one of these three was resolved by a founder brief that simply stated the observed failure, and each was resolved on the NEXT attempt: 002a landed first-try after brief #4, 002b and 002c are briefed the same way. A brief is a person pasting the acceptance output next to the diagnosis. The product can do that itself.",
+        "NOT \"validate the diagnosis\" \u2014 the loop cannot judge whether a sentence about code is true, and a model scoring another model\u2019s guess is a worse gate than none. Attach the evidence and let the model see the contradiction: the handoff already carries the checkpoint, so carry the last acceptance-command output beside it, verbatim and labelled as observed fact rather than instruction.",
+        "ACCEPTANCE: when a handoff carries a SESSION_CHECKPOINT, it also carries the most recent acceptance-criterion output for that ticket (command, exit code, and the failing lines); a ticket with no prior run carries no such block and the handoff is unchanged; the evidence is rendered as observation, never as a step to perform."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-74",
+      "points": 3,
+      "module": "harbormaster",
+      "title": "provisioning runs before the session, so the ticket whose job is to create package.json can never install it",
+      "write_scope": [
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts"
+      ],
+      "notes": [
+        "LIVE, a brand-new project created entirely through the UI (Tally, run-mtbtsm2c). PLAN-tally-01 \"Initialize Project Structure and Configuration\" ran, wrote package.json declaring typescript + @types/node, wrote tsconfig.json, committed \u2014 and the close gate refused: \"verify output: sh: tsc: command not found\" and \"acceptance criterion AC-1 failed: `npm run build` exited 127\".",
+        "THE PROVISION STEP IS THE FIX FOR THIS AND IT DID NOT RUN: worktree.provisioned at 17:57:49 recorded {\"ran\":false,\"why\":\"no package.json \u2014 nothing to install\"}. The maker created package.json at 17:58:03, fourteen seconds later. Provisioning is a one-shot BEFORE the session, so it inspected an empty worktree, correctly concluded there was nothing to install, and never looked again.",
+        "READ worktree-provision.ts's OWN DOCSTRING (W21-12): \"A greenfield project's first ticket declared `pnpm lint && pnpm typecheck && pnpm test`. The agent wrote a package.json naming eslint and typescript, committed it... The close gate re-ran the command itself \u2014 as it must \u2014 and refused: sh: eslint: command not found. The refusal was right and the ticket was impossible.\" That is this exact scenario, verbatim. W21-12 solved it for a worktree whose BASE already carries a manifest; it does not solve it for the ticket that CREATES the manifest \u2014 which is the first ticket of every greenfield project, and the one its docstring describes.",
+        "So every new project fails on its first ticket, forever, the same way. This is the release blocker for a start-to-finish journey.",
+        "The fix keeps SC-18/D-023 intact \u2014 nothing here takes input from a model, the command is still derived from the lockfile on disk. It only changes WHEN the harness looks: re-check for a manifest after the session ends and before the close gate re-runs verify, and provision then if one appeared. Ledger it exactly as the pre-session provision is ledgered, so it is never silent.",
+        "ACCEPTANCE: a session that creates package.json in a worktree that had none gets its dependencies provisioned before the close gate re-runs verify; a worktree whose manifest is unchanged provisions once, as today; the post-session provision emits worktree.provisioned with its own reason; the agent tool set is unchanged (toolSetHasNoInstallTool still pins it)."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-75",
+      "points": 2,
+      "module": "harbormaster",
+      "title": "every generated project inherits Dokima\u2019s own gate command as its verify default",
+      "write_scope": [
+        "packages/harbormaster/src/loop-handoff.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "packages/harbormaster/src/loop-review.ts"
+      ],
+      "notes": [
+        "DEFAULT_VERIFY_COMMAND (loop-handoff.ts:43) is the literal string `pnpm lint && pnpm typecheck && pnpm test`, commented \"Falls back to the project's own full gate (CLAUDE.md law 3)\". The project whose full gate that is, is DOKIMA. loop-review.ts:75 hard-codes the same string a second time.",
+        "LIVE: decomposition set verify=null on all seven Tally tickets, so all seven inherit it. Tally is an npm project with no pnpm, no lockfile, and no eslint. The close gate then re-ran `pnpm lint && pnpm typecheck && pnpm test` against it \u2014 a command from a different project, in a different package manager, that the user never wrote and cannot see on the ticket.",
+        "It happened to resolve only because the maker invented matching scripts, including \"test\": \"echo 'Tests passed' || true\" \u2014 a vacuously green test script written to satisfy a command the product imposed. The default did not just fail; it taught the maker to fake a pass.",
+        "This is squarely the \"works across the board\" problem: the default assumes every generated project is a pnpm TypeScript monorepo shaped like Dokima. NOT a fix by moving the string to config \u2014 a greenfield project has no config yet. Derive it from what is actually on disk (lockfile kind picks the runner, package.json scripts pick the verbs) and fall back to the ticket's own acceptance criterion, which is the only command the founder actually saw.",
+        "ACCEPTANCE: a ticket with no verify command gets one derived from the worktree (package-lock.json -> npm, pnpm-lock.yaml -> pnpm, yarn.lock -> yarn; only scripts that exist are included); a project with no manifest at all falls back to the ticket's acceptance criteria rather than a pnpm string; the literal is defined once, not twice."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-76",
+      "points": 3,
+      "module": "server",
+      "title": "decomposition produces no phase-0 deliverables, so the phase gate can never clear",
+      "write_scope": [
+        "apps/server/src/api/pipeline/decompose-tickets.ts",
+        "apps/server/src/api/pipeline/decompose-tickets.test.ts"
+      ],
+      "notes": [
+        "LIVE, Tally: the run ended with a notification reading \"Phase gate: Idea did not clear \u2014 The Idea phase (0) gate refused after this run: declared deliverable(s) not found on disk: docs/VISION.md, docs/COMPETITIVE_ANALYSIS.md\". No docs/ directory exists in the project root at all.",
+        "I HAD THIS WRONG AND THE LEDGER CORRECTED ME. I first read the Fleet card's \"Not started\" badge as a phase model that is never driven. It is driven: the gate ran, evaluated, and refused for a stated reason. The defect is upstream \u2014 the interview produced seven implementation tickets and not one ticket that writes the documents the phase-0 gate requires, so the gate refuses on every run and the project can never leave Idea no matter how much code lands.",
+        "That is why a project with real accepted work still reads \"Not started\" on the Fleet card: the badge is honest about a phase that genuinely never advanced.",
+        "Either decomposition emits tickets for the phase deliverables it will be gated on, or the phase-0 gate must accept what the interview itself produced as the deliverable. The first is the honest one \u2014 the gate exists so a phase is entered on evidence, and the evidence should be something a ticket was actually asked to produce.",
+        "ACCEPTANCE: a board built from the interview contains a ticket for each phase-0 deliverable the gate requires; running that board to completion clears the Idea gate and advances the project phase; a project whose deliverables already exist gains no duplicate ticket."
+      ]
     }
   ]
 }
