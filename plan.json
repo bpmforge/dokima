@@ -11859,6 +11859,69 @@
         "close is NOT run-guarded: a receipt minted by the run that holds the claim still lands",
         "A red fixture reproduces the live shape: run A claims, run B stale park releases -> refused; run A then closes -> succeeds"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-34",
+      "title": "a run that leaves work nothing will ever advance does not report success",
+      "write_scope": [
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/founder-queue.ts",
+        "packages/harbormaster/src/founder-queue.test.ts",
+        "apps/server/src/cli/review-pass.ts"
+      ],
+      "notes": [
+        "LIVE EVIDENCE, run 16 on the vault project. PLAN-vault-001 landed after 1 attempt: #1327 gate.receipt_minted, #1328 ticket.closed. Then #1329 review.skipped, and the run printed \"1 landed, 0 parked (stop: idle)\" and exited. The board showed in_review with done: (none), and NOTHING would ever have changed that.",
+        "TWO layers, and the second is the one that surprised me. First: the model matrix had only coding-agent rows, so no reviewer model resolved and the review was skipped. The reason went to stderr \u2014 a founder not watching the terminal sees only \"1 landed\".",
+        "Second, and independent of any model config: THE REVIEW PASS NEVER CALLS acceptTicket. It re-runs verify in the ticket worktree, gets a verdict, comments it, and records an event. The only acceptTicket callers in the whole product are apps/server/src/cli/run.ts (the dokima accept verb) and board-routes.ts:153 (a person clicking). So even with a second model configured and a passing verdict, done still requires a human \u2014 which may well be right under C-4, but the product never says so anywhere.",
+        "Net effect: an autonomous run can land every ticket in a project and reach done on none of them, while reporting success each time. That is the same class W21-26 fixed for stuck tickets \u2014 a ticket in a state only a person can advance is a founder DECISION, not a silent terminal state.",
+        "I reached done by running `dokima accept PLAN-vault-001 --actor local-operator`, which the CLI help describes exactly right (\"accept someone ELSE\u2019s work (maker != verifier)\"). The verb was there; nothing pointed me at it."
+      ],
+      "acceptance": [
+        "A ticket left in in_review that no machine review will advance reaches the founder queue as a decision, with the reason (no reviewer model, same model as maker, or review is advisory only)",
+        "The run summary does not read as unqualified success when it leaves tickets nothing will advance \u2014 it says how many landed AND how many are waiting on a person",
+        "The founder is told the verb that answers it, the way W21-27 told them about widen-scope",
+        "A red fixture pins the live shape: a run that lands one ticket and skips its review does not report 1 landed with no qualification"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 1,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-32"
+      ],
+      "id": "W21-35",
+      "title": "the last two events that still do not say which run wrote them",
+      "write_scope": [
+        "packages/harbormaster/src/loop-r0.ts",
+        "packages/harbormaster/src/notifications.ts"
+      ],
+      "notes": [
+        "W21-32 stamped the lifecycle verbs and the receipt anchor. Run 16 is almost fully attributed \u2014 every event from #1304 to #1330 carries run=run-2026-08-27T00:30:53.054Z \u2014 with exactly two holdouts: #1308 playbook.r0_hit and #1331 notification.digest_appended.",
+        "Same class, two call sites W21-32 did not reach. Small, and worth closing while the shape is fresh: the value of run attribution is that it is TOTAL \u2014 one unattributed event is the one a future diagnosis will need.",
+        "The write_scope here is a guess at the two appending modules and should be corrected at claim time by grepping the two event types."
+      ],
+      "acceptance": [
+        "playbook.r0_hit carries the run that consulted the playbook",
+        "notification.digest_appended carries the run the digest is about",
+        "A fixture asserts no event type appended during a run is left unattributed"
+      ]
     }
   ]
 }

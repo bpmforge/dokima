@@ -1646,3 +1646,74 @@ moved down with it.
 
 Both themes checked live. Board: 375/377 done — remaining are the
 founder-parked W12-44 and W13-32.
+
+## W21 — the founder wave, and the run that finally landed
+
+The whole of W21 came out of one exercise: acting as a founder, creating a
+real project (Vault, a local-first password manager) and driving the product
+to complete it. Every ticket below is a defect that exercise surfaced, filed
+with the live ledger evidence that found it.
+
+The last two are the ones that mattered.
+
+**W21-32 — the ledger says which run did it, and a refused close leaves a
+trace.** Every ticket lifecycle event ever written carried `run_id = NULL`.
+The column has always existed and every *other* subsystem fills it — tool
+calls, spend, turns observed, memory consolidation. The six verbs never did,
+so working out which run released a ticket out from under another one meant
+correlating the release's *timestamp* against neighbouring events that
+happened to carry a run id. `gate.receipt_minted` was null too, so the one
+event naming a receipt could not say which run held it, and
+`provisionWorktree` already *accepted* a `runId` its only live call site never
+passed.
+
+The second half is the one worth remembering. A close that FAILED left no
+trace at all: `runCloseGate` called `closeTicket` with no handler, and the
+throw landed in the berth catch as `stopReason: 'error'` — in memory, on the
+run outcome, gone at process exit. A run minted a valid signed receipt
+(verify exit 0, both validators exit 0) and the project's entire history held
+zero `ticket.closed` events and no explanation anywhere. `close` is the point
+where a run's whole effort either becomes durable state or evaporates, which
+makes it the last place silence is acceptable.
+
+The fixture corrected the diagnosis while it was being written: the live
+refusal code is `INVALID_TRANSITION`, not `NOT_OWNER` — the release put the
+ticket back in `ready`, so `assertTransition` refuses before `assertOwner` is
+ever consulted.
+
+**W21-33 — a stale run cannot release the ticket a live run is working.** The
+ledger holds the whole story in four lines:
+
+    #1274  ticket.claimed      22:30:58   run-mtao40ub
+    #1275  ticket.started      22:30:58
+    #1279  ticket.released     22:31:12   run-mtalpxhj's park handler
+    #1303  gate.receipt_minted 22:32:21   run-mtao40ub's gate PASSES
+
+A previous run parked fourteen seconds after a new run claimed the same
+ticket, and its park handler returned to `ready` work it was no longer doing.
+Ownership was per ACTOR; both runs used the identity `operator`, so the stale
+run satisfied `assertOwner` and passed every check the system had.
+
+Three constraints shape the guard, each ruling out a simpler version. It
+guards `release` and never `close` — a run guard on close would be a NEW way
+for a valid signed receipt to fail to land, which is the failure being fixed.
+Stealing stays possible explicitly, because the watchdog and the
+orphaned-claim reclaim exist in order to take another run's claim, and an
+unconditional guard would make a dead run's claim permanent — worse than this
+defect, since nothing would ever clear it. And an absent run id fails open: a
+person at the API has no run, and with W21-32 stamping every loop-internal
+call, "no run id" now means "a human did this" unambiguously.
+
+The park path tolerates the refusal rather than crashing on it. Trading a
+silent wrong release for a crashed park that loses two attempts' worth of park
+evidence would have been no improvement.
+
+**Run 16 landed PLAN-vault-001 after one attempt** — `#1328 ticket.closed
+run=run-2026-08-27T00:30:53.054Z`, the first `ticket.closed` in the project's
+history after fifteen runs that produced none. `dokima accept PLAN-vault-001
+--actor local-operator` took it to done. Chain verified.
+
+Two findings from that run are filed and open: **W21-34** (the review pass
+never calls `acceptTicket` at all, so a run can land every ticket in a project
+and reach done on none of them while reporting "1 landed" each time) and
+**W21-35** (two event types still unattributed to a run).
