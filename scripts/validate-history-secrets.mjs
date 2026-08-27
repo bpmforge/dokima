@@ -156,14 +156,19 @@ function reachableObjects(root) {
   const shas = [...pathBySha.keys()];
   const scannable = [];
   const typeBySha = new Map();
+  // W21-84: the SIZE was already on this line and thrown away. It is what lets
+  // the scan below read history in bounded chunks instead of one buffer that
+  // the repo eventually outgrows.
+  const sizeBySha = new Map();
   for (const line of git(root, ['cat-file', '--batch-check', '--buffer'], { input: shas.join('\n') }).split('\n')) {
-    const [sha, type] = line.split(' ');
+    const [sha, type, size] = line.split(' ');
     if (type === 'blob' || type === 'commit' || type === 'tag') {
       scannable.push(sha);
       typeBySha.set(sha, type);
+      sizeBySha.set(sha, Number(size) || 0);
     }
   }
-  return { scannable, pathBySha, typeBySha };
+  return { scannable, pathBySha, typeBySha, sizeBySha };
 }
 
 /** Where a human should go looking. A commit has no path — name the message. */
@@ -184,6 +189,53 @@ export function scanText(text) {
   return hits;
 }
 
+
+/**
+ * How many bytes of object data one `git cat-file --batch` call may return.
+ *
+ * W21-84: this used to be one call with `maxBuffer: 1 << 30`, and Dokima's own
+ * history reached 1.01 GiB of blobs — so the validator began failing with
+ * `spawnSync git ENOBUFS`, which reads as a broken tool rather than a repo
+ * that outgrew a constant. Raising the constant only moves the date. A cap an
+ * order of magnitude below it, applied per chunk, does not.
+ */
+const CHUNK_BYTES = 128 * 1024 * 1024;
+
+/**
+ * Reads the objects in size-bounded chunks, yielding each chunk's raw buffer.
+ * An object larger than the cap gets a chunk to itself rather than being
+ * skipped — the scan must never quietly stop covering something.
+ */
+export function planChunks(shas, sizeBySha, cap = CHUNK_BYTES) {
+  const chunks = [];
+  let batch = [];
+  let bytes = 0;
+  for (const sha of shas) {
+    const size = sizeBySha.get(sha) ?? 0;
+    if (bytes > 0 && bytes + size > cap) {
+      chunks.push(batch);
+      batch = [];
+      bytes = 0;
+    }
+    batch.push(sha);
+    bytes += size;
+  }
+  if (batch.length > 0) chunks.push(batch);
+  return chunks;
+}
+
+function* readObjectsInChunks(root, shas, sizeBySha) {
+  for (const batch of planChunks(shas, sizeBySha)) {
+    const res = spawnSync('git', ['-C', root, 'cat-file', '--batch', '--buffer'], {
+      input: batch.join('\n') + '\n',
+      maxBuffer: CHUNK_BYTES * 4,
+    });
+    if (res.error) throw new Error(`git cat-file failed to spawn: ${res.error.message}`);
+    if (res.status !== 0) throw new Error(`git cat-file exited ${res.status}`);
+    yield res.stdout;
+  }
+}
+
 /**
  * Scan every reachable object. Returns findings keyed by fingerprint (one entry
  * per distinct secret VALUE, however many objects carry it) plus scan stats.
@@ -191,19 +243,12 @@ export function scanText(text) {
 export function scanHistory(root, { verifyRemoteRefs = false } = {}) {
   assertScannableHistory(root);
   if (verifyRemoteRefs) assertRemoteRefsPresent(root);
-  const { scannable, pathBySha, typeBySha } = reachableObjects(root);
-
-  const res = spawnSync('git', ['-C', root, 'cat-file', '--batch', '--buffer'], {
-    input: scannable.join('\n') + '\n',
-    maxBuffer: 1 << 30,
-  });
-  if (res.error) throw new Error(`git cat-file failed to spawn: ${res.error.message}`);
-  if (res.status !== 0) throw new Error(`git cat-file exited ${res.status}`);
-  const buf = res.stdout;
+  const { scannable, pathBySha, typeBySha, sizeBySha } = reachableObjects(root);
 
   const byFingerprint = new Map();
   let scanned = 0;
   let binarySkipped = 0;
+  for (const buf of readObjectsInChunks(root, scannable, sizeBySha)) {
   let offset = 0;
   while (offset < buf.length) {
     const nl = buf.indexOf(10, offset);
@@ -233,6 +278,7 @@ export function scanHistory(root, { verifyRemoteRefs = false } = {}) {
         });
       }
     }
+  }
   }
 
   return {

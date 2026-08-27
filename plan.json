@@ -13557,6 +13557,32 @@
         "Sibling of W21-73 (the handoff carries the diagnosis and not the evidence). W21-73 assumed a prior gate run existed to quote; this is the case where none ever did, so the evidence has to be produced rather than recalled. That is one command execution the gate would have run anyway, not a new class of work.",
         "ACCEPTANCE: a session that ends without a manifest has its acceptance criteria evaluated once; when they pass, the park evidence says so and names returning the manifest as the remaining step, and the next handoff carries that line; when they fail, behaviour is unchanged; the criteria are run in the same sandbox the close gate uses, never a new one."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "scripts",
+      "depends_on": [],
+      "id": "W21-84",
+      "title": "the history-secrets gate failed once the repo outgrew its buffer",
+      "write_scope": [
+        "scripts/validate-history-secrets.mjs",
+        "scripts/validate-history-secrets.test.mjs"
+      ],
+      "notes": [
+        "LIVE: `pnpm test` went red on a clean tree \u2014 validate-history-secrets.test.mjs failing with \"git cat-file failed to spawn: spawnSync git ENOBUFS\". Nothing had leaked; the validator had stopped being able to read the repo.",
+        "It read every reachable object in ONE `git cat-file --batch` with maxBuffer 1 << 30 \u2014 exactly 1.00 GiB. Measured at the time of failure: 1.01 GiB of blobs across 15182 objects. The repo had just crossed the constant.",
+        "Ranked the causes before fixing, per the bug-fix rule: (1) memory pressure from LM Studio holding two models, (2) the data genuinely exceeding the buffer, (3) transient pipe exhaustion. Measurement settled it \u2014 1.35M free pages, LM Studio at 0 RSS, blobs at 1.01 GiB. Cause 2.",
+        "Raising the constant would only move the date, and the failure mode is bad: an ENOBUFS crash reads as a broken tool, not as a repo that grew, so the honest response is to stop reading history in one gulp. Objects are now read in 128 MiB chunks planned from the sizes `--batch-check` was already returning and throwing away.",
+        "The planner is pure and tested for the property that matters: every object appears exactly once and in order, an object larger than the cap gets its own chunk rather than being skipped, and an empty input yields no chunks so git is never handed an empty batch. Coverage must never silently shrink \u2014 that is the one way this fix could be worse than the crash.",
+        "ACCEPTANCE (met): the gate passes on this repo \u2014 9004 objects scanned, 27 shapes, 27 baselined, 0 gating; planChunks covers every object exactly once; a single oversized object still gets scanned."
+      ]
     }
   ]
 }

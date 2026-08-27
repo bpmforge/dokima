@@ -19,7 +19,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { fingerprint, mask, scanText, SECRET_PATTERNS } from './validate-history-secrets.mjs';
+import { fingerprint, mask, scanText, SECRET_PATTERNS,
+  planChunks,
+} from './validate-history-secrets.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(here, 'validate-history-secrets.mjs');
@@ -313,4 +315,40 @@ describe('history-secrets: this repo', () => {
     expect(res.stderr).toBe('');
     expect(res.status).toBe(0);
   }, 60_000);
+});
+
+describe('W21-84 — history is read in bounded chunks', () => {
+  /**
+   * Dokima's own history reached 1.01 GiB of blobs against a `maxBuffer` of
+   * 1 << 30, and the validator began failing with `spawnSync git ENOBUFS` —
+   * which reads as a broken tool, not a repo that outgrew a constant. The
+   * gate went red on a clean tree.
+   */
+  const sizes = (entries) => new Map(entries);
+
+  it('covers every object exactly once, in order', () => {
+    const shas = ['a', 'b', 'c', 'd'];
+    const chunks = planChunks(shas, sizes([['a', 60], ['b', 60], ['c', 60], ['d', 60]]), 100);
+    expect(chunks.flat()).toEqual(shas);
+    expect(new Set(chunks.flat()).size).toBe(shas.length);
+  });
+
+  it('splits when the cap would be exceeded', () => {
+    const chunks = planChunks(['a', 'b', 'c'], sizes([['a', 60], ['b', 60], ['c', 10]]), 100);
+    expect(chunks).toEqual([['a'], ['b', 'c']]);
+  });
+
+  it('an object larger than the cap gets its own chunk rather than being skipped', () => {
+    const chunks = planChunks(['a', 'big', 'b'], sizes([['a', 10], ['big', 999], ['b', 10]]), 100);
+    expect(chunks.flat()).toEqual(['a', 'big', 'b']);
+    expect(chunks.some((c) => c.length === 1 && c[0] === 'big')).toBe(true);
+  });
+
+  it('an object with no recorded size still gets scanned', () => {
+    expect(planChunks(['a'], sizes([]), 100).flat()).toEqual(['a']);
+  });
+
+  it('no objects means no chunks, never an empty batch handed to git', () => {
+    expect(planChunks([], sizes([]), 100)).toEqual([]);
+  });
 });
