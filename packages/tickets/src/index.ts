@@ -26,6 +26,8 @@ export {
 } from './reflow.js';
 export type { BoardEntry } from './reflow.js';
 export { createTicketValidatingLanes } from './create.js';
+export { findDependencyCycle, retargetTicketDependencies } from './retarget.js';
+export type { RetargetDependenciesInput } from './retarget.js';
 export { assertReleaseRunOwnership } from './claim-run.js';
 export type { ClaimSteal, StealRecord } from './claim-run.js';
 export { isValidTransition, TRANSITIONS } from './transitions.js';

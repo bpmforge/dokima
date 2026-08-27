@@ -15,6 +15,16 @@
  * does exist) wired through a real route, but a create-with-no-edit path
  * completes no DAG-edit flow and would be a misleading half-feature.
  *
+ * W21-51 UPDATE: the reprioritize half is no longer blocked on a missing
+ * event type — `ticket.dependencies_retargeted` exists and the reducer folds
+ * it, and the founder can make the edit from the CLI. What still blocks THIS
+ * route is narrower and more interesting than what the paragraph above
+ * described: C-6's single writer per project DB. This handler deliberately
+ * holds a reader, and appending from an HTTP request while a run holds the
+ * writer is a concurrency decision rather than a wiring one. The 501 now says
+ * that, because a refusal naming the wrong obstacle sends the next person to
+ * the wrong place.
+ *
  * What IS real and delivered: the "reprioritize" case (rewriting a ticket's
  * `dependsOn`) gets full schema-invariant validation — unknown ticket ids
  * and dependency cycles are refused with the exact explain-refusal pattern
@@ -173,9 +183,13 @@ export function registerTicketEditRoutes(
               title: 'Validated, not yet persisted',
               status: 501,
               detail:
-                'this dependsOn edit passed schema validation (no unknown ids, no cycle) but ' +
-                'cannot be written yet — packages/tickets has no ticket-update event type ' +
-                "(HANDOFF, see this route's module header)",
+                'this dependsOn edit passed schema validation (no unknown ids, no cycle). ' +
+                'The event type now EXISTS (ticket.dependencies_retargeted, W21-51) and the ' +
+                'edit is available from the CLI as `dokima depends-on <id> --actor <id> ' +
+                '--on <id,id> --reason <why>`. What still blocks this ROUTE is C-6\'s single ' +
+                'writer per project DB: this handler holds a reader, and appending from an ' +
+                'HTTP request while a run holds the writer is a concurrency decision, not a ' +
+                'mechanical change',
               instance: request.url,
               requestId: request.id.toString(),
               rule: 'NOT_PERSISTED',

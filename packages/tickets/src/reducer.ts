@@ -63,6 +63,14 @@ export function reduceTicketEvent(
         closedAt: null,
       };
     }
+    case 'ticket.dependencies_retargeted': {
+      // W21-51: a founder pointing a ticket at different work. No status
+      // change — the DAG moves, the lifecycle does not.
+      if (!ticket) return ticket;
+      const payload = event.payload as { to?: unknown };
+      if (!Array.isArray(payload.to)) return ticket;
+      return { ...ticket, dependsOn: payload.to.map(String) };
+    }
     case 'ticket.claimed': {
       if (!ticket || !isValid('claim', ticket.status)) return ticket;
       return {

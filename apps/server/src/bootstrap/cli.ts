@@ -190,6 +190,9 @@ board & tickets (address a project with --project <id> from the Fleet, or --db <
                                 when the BOARD is missing a ticket, not just
                                 wrong; refused if it would make two lanes
                                 overlap, same rule as widen-scope
+  dokima depends-on <ticketId> --actor <id> --on <id,id> --reason <why>
+                                repoint a ticket at different dependencies;
+                                refuses unknown ids and cycles
   dokima verify-chain           verify the event log's hash chain
   dokima run <start|pause|resume|stop> ...
                                 run bookkeeping (FR-C7)
@@ -248,6 +251,9 @@ const LIFECYCLE_COMMANDS = [
   // W21-48: and to "this BOARD is not right as written" — a missing ticket,
   // which a decomposition produced once cannot fix.
   'add-ticket',
+  // W21-51: and pointing existing work at it — a ticket nothing depends on is
+  // not on the DAG in any useful sense.
+  'depends-on',
   'run',
 ] as const;
 

@@ -4,6 +4,7 @@ import {
   closeTicket,
   commentTicket,
   createTicketValidatingLanes,
+  retargetTicketDependencies,
   widenTicketScope,
   listTickets,
   releaseTicket,
@@ -193,6 +194,27 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
             { now: io.now },
           );
           io.stdout(`${ticket.id} created in lane ${ticket.lane} -> ${ticket.status}`);
+          return 0;
+        } catch (err) {
+          return reportVerbError(err, io);
+        }
+      }
+      case 'depends-on': {
+        ensureActorIdentity(log, command.actorId, io.now);
+        try {
+          const ticket = retargetTicketDependencies(
+            log,
+            {
+              ticketId: command.ticketId,
+              actorId: command.actorId,
+              dependsOn: command.on,
+              reason: command.reason,
+            },
+            { now: io.now },
+          );
+          io.stdout(
+            `${ticket.id} depends_on -> ${ticket.dependsOn.join(', ') || '(nothing)'}`,
+          );
           return 0;
         } catch (err) {
           return reportVerbError(err, io);

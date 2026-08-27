@@ -12439,7 +12439,8 @@
         "W21-27 added widen-scope for \"this ticket is wrong as written\". This is the next case and the product hits it on its first real project: \"this BOARD is wrong as written\".",
         "Append-only (C-6) is not the obstacle \u2014 creating a ticket is an append. ticket.created already exists and the reducer already handles it. What is missing is a route and a verb, plus a decision about lane assignment for a ticket a person adds.",
         "I FIRST PUT THE LANE CHECK INSIDE createTicket ITSELF and it failed five existing tests \u2014 every one a REAL pre-existing violation, not a test artefact. That is filed as W21-49 rather than bundled in here.",
-        "So the shipped version is narrow and honest: createTicketValidatingLanes is the founder path, createTicket is unchanged. A person cannot introduce an overlap, and the overlaps already in the product stay visible as their own defect instead of being silently absorbed by a fix for something else."
+        "So the shipped version is narrow and honest: createTicketValidatingLanes is the founder path, createTicket is unchanged. A person cannot introduce an overlap, and the overlaps already in the product stay visible as their own defect instead of being silently absorbed by a fix for something else.",
+        "I MARKED THIS DONE HAVING UNDER-DELIVERED ONE OF ITS OWN ACCEPTANCE CRITERIA. It says \"The new ticket takes part in the DAG \u2014 other tickets can depend on it\", and I only tested that the NEW ticket can declare dependencies, not that EXISTING tickets can be pointed at it. Run 31 found the difference: PLAN-vault-001b landed and was accepted, and PLAN-vault-002 still failed because its dependsOn named only PLAN-vault-001 and nothing could change that. Completed by W21-51."
       ],
       "acceptance": [
         "A founder can add a ticket to an existing board, with lane and write_scope validated by the same invariant that refused the widen",
@@ -12480,6 +12481,82 @@
         "validateLaneWriteScopes can be turned on inside createTicket without failing the suite \u2014 that is the proof",
         "The resume.test.ts same-lane fixture is corrected or its overlap justified in place",
         "A red fixture pins the live shape: an onboard run over a fixture repo emits a lane-valid board"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-48"
+      ],
+      "id": "W21-50",
+      "title": "a founder-authored ticket can state an acceptance that cannot fail",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-satisfiable.ts",
+        "packages/harbormaster/src/loop-land-satisfiable.test.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/run.ts"
+      ],
+      "notes": [
+        "MY OWN MISTAKE, MADE WITH THE VERB I JUST SHIPPED, and the product did exactly what I asked. Using W21-48`s `dokima add-ticket` I created PLAN-vault-001a \u2014 \"Test infrastructure: node --test must run TypeScript specs\", write_scope package.json + tsconfig.json \u2014 with acceptance `npm run typecheck`.",
+        "It landed in 2 attempts having changed ONE line: package.json`s test script to `node --test`. It never touched tsconfig.json. And it was right to: `npm run typecheck` passes on that worktree whether or not test infrastructure works, so the criterion I wrote could not distinguish the ticket being done from the ticket being untouched.",
+        "The gate did its job. W21-41 runs executable acceptance criteria and W21-41`s own vacuous-green check catches \"0 tests, exit 0\" \u2014 but `npm run typecheck` is not a test runner, so nothing was vacuous by that definition. The criterion was simply unrelated to the ticket`s purpose.",
+        "THE GENERAL SHAPE, and it is not confined to founder-typed tickets: an acceptance criterion that passes identically before and after the work is not an acceptance criterion. It is checkable \u2014 run the criterion against the BASE before the session starts, and if it already passes, the ticket cannot be judged by it.",
+        "That check is cheap (the base tree is already resolved for the worktree), mechanical, and would have refused PLAN-vault-001a at creation with a reason a person can act on. It also generalises to the pipeline`s own decomposition, which has no such pass either.",
+        "Interaction worth stating: this must NOT fire for a ticket whose criterion legitimately passes at base because the work is additive elsewhere \u2014 so the signal is \"passes at base AND still passes unchanged after\", not \"passes at base\". The pre-flight version is the cheap warning; the post-hoc version is the refusal."
+      ],
+      "acceptance": [
+        "An executable acceptance criterion that already passes against the ticket`s BASE is reported when the ticket is created",
+        "A ticket that closes with a criterion whose result is identical before and after the session is refused, naming the criterion",
+        "A criterion that genuinely goes from failing to passing is unaffected \u2014 this catches unfalsifiable criteria, not passing ones",
+        "A red fixture pins PLAN-vault-001a: acceptance `npm run typecheck` passing at base does not certify the ticket"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 3,
+      "module": "tickets",
+      "depends_on": [
+        "W21-48"
+      ],
+      "id": "W21-51",
+      "title": "a ticket nothing can depend on is not on the DAG",
+      "write_scope": [
+        "packages/tickets/src/retarget.ts",
+        "packages/tickets/src/retarget.test.ts",
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/index.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/bootstrap/cli.ts",
+        "apps/server/src/api/server/ticket-edit-routes.ts"
+      ],
+      "notes": [
+        "W21-48 let a founder ADD a ticket. Run 31 proved that is half a board correction. I added PLAN-vault-001b to fix the toolchain contradiction, it LANDED in one attempt with exactly the right change (module: nodenext + allowImportingTsExtensions), I accepted it \u2014 and PLAN-vault-002 failed again with the identical error, because its worktree tsconfig still read \"module\": \"commonjs\".",
+        "The reason is W21-37 working correctly: a ticket`s base is composed from its ACCEPTED DEPENDENCIES, and PLAN-vault-002.dependsOn named only PLAN-vault-001. The fix was accepted onto a branch nothing downstream pointed at. An orphan, and a founder with no way to tell why nothing changed.",
+        "ticket-edit-routes.ts had already written the validation \u2014 unknown ids and cycles refused with the standard explain shape \u2014 and returned 501 because there was no event to append it as. Its docstring named the follow-up exactly. This is that follow-up, narrowed to the one edit a live project needed.",
+        "THE ROUTE STAYS 501, and its message now names the REAL obstacle. The event type exists and the CLI verb works; what blocks the HTTP path is C-6`s single writer per project DB \u2014 that handler holds a reader, and appending from a request while a run holds the writer is a concurrency decision rather than a wiring one. A refusal naming the wrong obstacle sends the next person to the wrong place.",
+        "Append-only was never the obstacle: retargeting is an append like every other verb, and the previous dependency list stays readable in the event payload."
+      ],
+      "acceptance": [
+        "A founder can repoint an existing ticket`s dependsOn, from the CLI, ledgered with the previous value and a reason",
+        "Unknown ids and cycles are refused, naming which \u2014 the cycle refusal prints the path",
+        "The lifecycle does not move: the DAG changes, the status does not",
+        "The 501 route`s message names the actual remaining blocker rather than the one that is now fixed",
+        "A red fixture reproduces run 31: vault-002 pointed at 001b picks up its work"
       ]
     }
   ]

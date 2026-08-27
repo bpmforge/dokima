@@ -61,6 +61,16 @@ export type CliCommand =
       projectId?: string;
     }
   | {
+      /** W21-51: the founder pointing a ticket at work the board was missing. */
+      kind: 'depends-on';
+      ticketId: string;
+      actorId: string;
+      on: string[];
+      reason: string;
+      dbPath?: string;
+      projectId?: string;
+    }
+  | {
       kind: 'comment';
       ticketId: string;
       actorId: string;
@@ -205,6 +215,39 @@ export function parseCliArgs(argv: string[]): CliCommand {
       dependsOn: list(values['depends-on']),
       ...(values.acceptance ? { acceptance: values.acceptance } : {}),
       ...(values.verify ? { verify: values.verify } : {}),
+      dbPath: values.db,
+      projectId: values.project,
+    };
+  }
+
+  if (command === 'depends-on') {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      options: {
+        actor: { type: 'string' },
+        on: { type: 'string' },
+        reason: { type: 'string' },
+        db: { type: 'string' },
+        project: { type: 'string' },
+      },
+      allowPositionals: true,
+    });
+    const ticketId = requirePositional(
+      positionals,
+      'usage: dokima depends-on <ticketId> --actor <actorId> --on <id,id> ' +
+        '--reason <why> [--db <path>]',
+    );
+    if (!values.actor) throw new CliUsageError('depends-on requires --actor <actorId>');
+    if (values.on === undefined) {
+      throw new CliUsageError('depends-on requires --on <id,id> (empty string clears)');
+    }
+    if (!values.reason) throw new CliUsageError('depends-on requires --reason <why>');
+    return {
+      kind: 'depends-on',
+      ticketId,
+      actorId: values.actor,
+      on: values.on.split(',').map((x) => x.trim()).filter(Boolean),
+      reason: values.reason,
       dbPath: values.db,
       projectId: values.project,
     };
