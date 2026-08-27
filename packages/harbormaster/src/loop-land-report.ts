@@ -80,6 +80,21 @@ function noManifestSummary(attempt: LandAttempt): string {
     : `no completion manifest returned — ${why}`;
 }
 
+function parkHeader(reason: LandParkedReason, ceiling: number): string {
+  switch (reason) {
+    case 'locked_ceiling_reached':
+      return `Parked with evidence — locked-mode convergence ceiling (${ceiling}) reached without a close (D-018). The ticket is back in Ready; the next run will retry it.`;
+    case 'awaiting_escalation_token':
+      return 'Parked with evidence — token-gated escalation boundary reached without an approval token (D-018, FR-N2). The ticket is back in Ready; approve the escalation to let the next run continue.';
+    case 'no_progress':
+      return 'Parked with evidence — two attempts produced the IDENTICAL gaps, so the ladder stopped rather than spending the rest of it on the same failure (BLUEPRINT §3.5). The ticket is back in Ready; the gaps below are what did not move.';
+    case 'attempted_nothing':
+      return 'Parked with evidence — the session made tool calls and changed NOTHING, so there is no work to judge and a further attempt would carry the same information (W21-44). The ticket is back in Ready; the tool histogram below is what it actually did.';
+    default:
+      return `Parked with evidence — ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2). The ticket is back in Ready; the next run will retry it, and will likely park again unless the evidence below is addressed.`;
+  }
+}
+
 export function parkComment(
   reason: LandParkedReason,
   ceiling: number,
@@ -98,12 +113,18 @@ export function parkComment(
    * The ticket returns to Ready ON PURPOSE (blocked has no exit verb; the
    * next run retries), and the words now say so.
    */
-  const header =
-    reason === 'locked_ceiling_reached'
-      ? `Parked with evidence — locked-mode convergence ceiling (${ceiling}) reached without a close (D-018). The ticket is back in Ready; the next run will retry it.`
-      : reason === 'awaiting_escalation_token'
-        ? 'Parked with evidence — token-gated escalation boundary reached without an approval token (D-018, FR-N2). The ticket is back in Ready; approve the escalation to let the next run continue.'
-        : `Parked with evidence — ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2). The ticket is back in Ready; the next run will retry it, and will likely park again unless the evidence below is addressed.`;
+  /**
+   * W21-44: every reason gets its own sentence. This was a three-way choice
+   * with a CATCH-ALL else, so `no_progress` had been rendering as "ladder
+   * attempt cap (2) reached" since W13-29 — a ticket that stopped after one
+   * attempt reported a cap it never hit. `attempted_nothing` inherited the
+   * same lie the moment it existed, which is how it was noticed: a live park
+   * after ONE attempt announcing that the cap of two had been reached.
+   *
+   * A park comment is the founder's whole account of why a ticket stopped. It
+   * naming the wrong mechanism is worse than it saying nothing.
+   */
+  const header = parkHeader(reason, ceiling);
   const lines = [
     header,
     ...attempts.map((attempt) => attemptSummaryLine(attempt, ceiling)),

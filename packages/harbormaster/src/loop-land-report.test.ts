@@ -124,3 +124,41 @@ describe('the attempt counter cannot exceed its own cap (W21-15)', () => {
     expect(body).not.toContain('absorbed');
   });
 });
+
+/**
+ * W21-44. The park comment is the founder's whole account of why a ticket
+ * stopped, and it was a three-way choice with a catch-all else — so
+ * `no_progress` had rendered as "ladder attempt cap reached" since W13-29, and
+ * `attempted_nothing` inherited the same lie the moment it existed. It was
+ * noticed live: a park after ONE attempt announcing a cap of two had been hit.
+ */
+describe('every park reason names its own mechanism (W21-44)', () => {
+  const noAttempts: never[] = [];
+
+  it('RED FIXTURE: attempted_nothing does not claim a cap it never reached', () => {
+    const comment = parkComment('attempted_nothing', 2, noAttempts, undefined);
+    expect(comment).toContain('changed NOTHING');
+    expect(comment).not.toContain('attempt cap');
+  });
+
+  it('no_progress says what actually stopped it — identical gaps, not a cap', () => {
+    const comment = parkComment('no_progress', 2, noAttempts, undefined);
+    expect(comment).toContain('IDENTICAL gaps');
+    expect(comment).not.toContain('attempt cap');
+  });
+
+  it('a real ladder exhaustion still says so', () => {
+    expect(parkComment('ladder_exhausted', 2, noAttempts, undefined)).toContain(
+      'ladder attempt cap (2)',
+    );
+  });
+
+  it('the other two documented reasons keep their own sentences', () => {
+    expect(parkComment('locked_ceiling_reached', 3, noAttempts, undefined)).toContain(
+      'convergence ceiling (3)',
+    );
+    expect(parkComment('awaiting_escalation_token', 2, noAttempts, undefined)).toContain(
+      'approval token',
+    );
+  });
+});

@@ -12260,7 +12260,9 @@
         "packages/harbormaster/src/agent-session/session-progress.ts",
         "packages/harbormaster/src/agent-session/session-progress.test.ts",
         "packages/harbormaster/src/loop-land-ticket.ts",
-        "packages/harbormaster/src/loop-land-session.ts"
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts"
       ],
       "notes": [
         "RUN 23, with the scope already widened so the agent COULD write the specs. Its complete tool history across both attempts: agent-session.list x6, agent-session.read x7, agent-session.verify x2. FIFTEEN calls, ZERO mutations. It never attempted to write anything, in either attempt, and the ladder ran to exhaustion.",
@@ -12270,7 +12272,8 @@
         "W21-19`s cross-session repetition evidence DID fire here and reported it faithfully (\"the same agent-session.list call was made 9 times ... this did not stop the run\"). It reports and does not act, by design. This is the case that argues one specific pattern should act: not repetition, which has honest causes, but ZERO MUTATIONS, which does not.",
         "It must reach the founder rather than just failing faster. A model that reads its way around a ticket twice without touching it is telling you something about the ticket or the model, and either way the answer is a person`s.",
         "THE CEILING RULE, which I got wrong and an existing T-27 fixture caught. My first version parked with attempted_nothing whenever a session mutated nothing \u2014 including on the LAST attempt, where there is nothing left to save and the relabelling only obscures a real budget stop. nextFeedback already documents exactly this rule for no_progress (\"at the ceiling the ladder`s own reason is the true one; relabelling an exhausted ladder would change FR-H1/H2`s documented outcome\"). I mirrored it rather than editing the fixture \u2014 the fixture was right.",
-        "ALSO REJECTED session.changedPaths, which is right there on the SessionResult and looks like the obvious signal. It is the worktree diff against the BASE, so it stays non-empty for every later attempt once any earlier one wrote anything. In run 23 it was non-empty throughout \u2014 the branch already carried the previous run`s commits \u2014 and would have hidden the exact case this exists to catch. The ledger`s own tool calls are the honest source."
+        "ALSO REJECTED session.changedPaths, which is right there on the SessionResult and looks like the obvious signal. It is the worktree diff against the BASE, so it stays non-empty for every later attempt once any earlier one wrote anything. In run 23 it was non-empty throughout \u2014 the branch already carried the previous run`s commits \u2014 and would have hidden the exact case this exists to catch. The ledger`s own tool calls are the honest source.",
+        "LIVE RUN 24 CONFIRMED IT: \"PLAN-vault-002: parked (attempted_nothing) after 1 attempt(s)\" \u2014 a whole session saved. And the park COMMENT said \"ladder attempt cap (2) reached\", after one attempt. parkComment was a three-way choice with a catch-all else, so no_progress had been rendering that same wrong sentence since W13-29 and attempted_nothing inherited it. A park comment is the founder`s entire account of why a ticket stopped; naming the wrong mechanism is worse than saying nothing. Every reason now has its own sentence, with a fixture."
       ],
       "acceptance": [
         "A session that ends having made no successful mutating tool call is recorded as having attempted nothing, from the ledger`s own tool calls",
@@ -12279,6 +12282,43 @@
         "The founder item says what the session actually did (the tool histogram), not that it \"failed\"",
         "A red fixture reproduces run 23: 6 list, 7 read, 2 verify, 0 writes across two attempts does not spend a second attempt",
         "The check only fires while a further attempt would otherwise be spent \u2014 at the ladder ceiling the existing reason stands"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 5,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-44"
+      ],
+      "id": "W21-45",
+      "title": "a refusal a ticket already earned does not survive to the next run",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-rungzero.ts",
+        "apps/server/src/cli/memory-hooks.ts",
+        "apps/server/src/cli/memory-hooks.test.ts"
+      ],
+      "notes": [
+        "Runs 22, 23 and 24 all refused PLAN-vault-002 for the SAME reason, and each one started over knowing nothing about the last.",
+        "processTicket seeds `feedback` from consultRungZero and nothing else (loop-land-ticket.ts:216). Within a run, W13-29 feeds gaps from attempt 1 into attempt 2 and that works. ACROSS runs there is exactly one vehicle \u2014 the R0 playbook consult \u2014 and it missed every time: the ledger shows playbook.r0_miss on each of these runs.",
+        "So a fresh run`s FIRST attempt meets a ticket that has already been refused three times with no knowledge of any of it. Run 22 attempt 2 had the gap; run 23 attempt 1 did not; run 24 attempt 1 did not. The product spends a full session per run rediscovering a refusal it has already written down twice, in the ticket`s own comments.",
+        "The evidence is already durable and already on the ticket: park comments carry the exact gate reason, and close_refused events (W21-32) carry it structurally. Nothing reads them back at claim time.",
+        "THE R0 CONSULT IS THE RIGHT SEAM and it is already wired \u2014 this is not a new mechanism, it is a missing WRITE. A park with a gate refusal is precisely the \"have we solved this before?\" material FR-M2/FR-F5 describe, and nothing writes it to the playbook.",
+        "Note the shape of the waste, which is the same one W21-19 named at session granularity: asking a question you already have the answer to. At run granularity it costs a whole session each time instead of a turn."
+      ],
+      "acceptance": [
+        "A close-gate refusal recorded on a ticket reaches the next RUN`s first attempt, not only the next attempt in the same run",
+        "It goes through the existing R0 consult seam rather than a second, parallel memory path",
+        "A ticket refused for the same reason twice does not present that reason to the model as new",
+        "A ticket with no prior refusals is unaffected \u2014 its first attempt is byte-identical to today`s",
+        "A red fixture pins runs 22-24: the third run`s first attempt carries the refusal the first run earned"
       ]
     }
   ]
