@@ -12630,6 +12630,41 @@
         "The discriminator is derived from ledger evidence, not a guessed threshold \u2014 or the advice names both cases honestly instead of asserting one",
         "Both live shapes are red fixtures: run 34 (six consecutive extensions to the ceiling, still writing) and W21-16`s (extensions earned, then idle with headroom)"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-37"
+      ],
+      "id": "W21-54",
+      "title": "the composed base was not a pure function of its inputs",
+      "write_scope": [
+        "packages/git/src/git-cli.ts",
+        "packages/git/src/index.ts",
+        "packages/harbormaster/src/loop-land-base.ts",
+        "packages/harbormaster/src/loop-land-base.test.ts"
+      ],
+      "notes": [
+        "MINE, IN W21-37, AND IT TOOK THREE OF MY OWN MECHANISMS TO SURFACE IT. Run 36 refused to start PLAN-vault-002a: \"cannot start: its worktree was created from a different base\" \u2014 when NOTHING about its dependencies had changed since run 35 created that worktree.",
+        "The cause: composeBase rebuilds the integration ref every run, and `git commit-tree` takes its author and committer dates from the environment. A fresh wall-clock stamp each run means an identical TREE produces a different COMMIT, so containsBase (merge-base --is-ancestor) reported every multi-dependency worktree as stale on the very next run.",
+        "It only became visible because W21-52 had just turned that refusal from a crash into a park with evidence \u2014 before that it would have read as another mysterious dead run. The chain that found it: W21-37 built the composed base, W21-51 made vault-002a use one, W21-52 made the refusal legible, and the ledger named it in one line.",
+        "A FIXED EPOCH IS RIGHT RATHER THAN CONVENIENT. This ref is a throwaway construction whose only job is to name a tree; its date carries no information, and pinning it is precisely what makes \"the same accepted dependencies\" mean \"the same base commit\". The fixture asserts both halves \u2014 same inputs give the same sha, DIFFERENT inputs still give a different one, so it is determinism and not a constant.",
+        "Cost note: every multi-dependency ticket was affected, and PLAN-vault-002a was simply the first ticket in this project to have two accepted dependencies. A single-dependency ticket uses the branch ref directly and never hit it."
+      ],
+      "acceptance": [
+        "Composing the same accepted dependencies twice produces the same commit sha",
+        "Different dependencies still produce a different base \u2014 determinism, not a constant",
+        "git() takes an env override, since commit-tree reads its dates from nowhere else",
+        "A multi-dependency worktree is reused across runs when its dependencies have not changed"
+      ]
     }
   ]
 }

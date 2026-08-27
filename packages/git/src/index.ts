@@ -1,4 +1,4 @@
-export { git, type GitResult } from './git-cli.js';
+export { git, type GitOptions, type GitResult } from './git-cli.js';
 export { globToRegExp, matchesGlob, matchesAnyGlob } from './glob.js';
 export {
   checkWriteScope,

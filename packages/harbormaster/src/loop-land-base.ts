@@ -62,13 +62,40 @@ export interface TicketBaseInput {
 }
 
 /** `git(cwd, args)` throws on a non-zero exit, so "did this work" is a catch. */
-async function tryGit(repoRoot: string, args: string[]): Promise<string | null> {
+async function tryGit(
+  repoRoot: string,
+  args: string[],
+  env?: Record<string, string>,
+): Promise<string | null> {
   try {
-    return (await git(repoRoot, args)).stdout.trim();
+    return (await git(repoRoot, args, env ? { env } : {})).stdout.trim();
   } catch {
     return null;
   }
 }
+
+/**
+ * W21-54: the composed base must be a PURE FUNCTION OF ITS INPUTS, and it was
+ * not. `commit-tree` takes its dates from the environment, so each run stamped
+ * a fresh timestamp and produced a different commit hash for an identical
+ * tree — which made `containsBase` report every multi-dependency worktree as
+ * stale on the run after it was created. Run 36 hit exactly that: the
+ * PLAN-vault-002a worktree was refused as "created from a different base"
+ * when nothing about its dependencies had changed at all.
+ *
+ * A fixed epoch is right rather than merely convenient. This ref is a
+ * throwaway construction whose only job is to name a tree; its date carries no
+ * information, and pinning it is what makes "same accepted dependencies" mean
+ * "same base commit".
+ */
+const DETERMINISTIC_DATE = {
+  GIT_AUTHOR_DATE: '1970-01-01T00:00:00Z',
+  GIT_COMMITTER_DATE: '1970-01-01T00:00:00Z',
+  GIT_AUTHOR_NAME: 'dokima',
+  GIT_AUTHOR_EMAIL: 'dokima@localhost',
+  GIT_COMMITTER_NAME: 'dokima',
+  GIT_COMMITTER_EMAIL: 'dokima@localhost',
+};
 
 async function branchExists(repoRoot: string, ref: string): Promise<boolean> {
   return (await tryGit(repoRoot, ['rev-parse', '--verify', `${ref}^{commit}`])) !== null;
@@ -157,16 +184,11 @@ async function composeBase(
     const merged = await tryGit(repoRoot, ['merge-tree', '--write-tree', integration, branch]);
     if (merged === null) return abandon();
     const tree = merged.split('\n')[0]!;
-    const commit = await tryGit(repoRoot, [
-      'commit-tree',
-      tree,
-      '-p',
-      integration,
-      '-p',
-      branch,
-      '-m',
-      `dokima base: ${branch}`,
-    ]);
+    const commit = await tryGit(
+      repoRoot,
+      ['commit-tree', tree, '-p', integration, '-p', branch, '-m', `dokima base: ${branch}`],
+      DETERMINISTIC_DATE,
+    );
     if (commit === null) return abandon();
     await tryGit(repoRoot, ['update-ref', integration, commit]);
   }

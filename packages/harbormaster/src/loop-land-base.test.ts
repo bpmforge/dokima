@@ -201,6 +201,59 @@ async function createWorktreeFor(dir: string, ticketId: string) {
  * branch, so run 20 found no worktree, went straight to `createWorktree -b`,
  * and hit the identical crash from the opposite direction.
  */
+/**
+ * W21-54. Run 36 refused to start PLAN-vault-002a — "its worktree was created
+ * from a different base" — when nothing about its dependencies had changed.
+ * The composed ref was rebuilt each run and `commit-tree` stamped a fresh
+ * wall-clock date, so an identical tree produced a different commit hash and
+ * every multi-dependency worktree looked stale on the run after it was made.
+ */
+describe('the composed base is a pure function of its inputs (W21-54)', () => {
+  it('RED FIXTURE: composing the same dependencies twice yields the SAME commit', async () => {
+    const dir = await repo();
+    await landedBranch(dir, 'sw/A-a', 'package.json');
+    await landedBranch(dir, 'sw/C-c', 'tsconfig.json');
+    const tickets = [
+      ticket('A', { status: 'done', title: 'a' }),
+      ticket('C', { status: 'done', title: 'c' }),
+      ticket('B'),
+    ];
+    const input = {
+      repoRoot: dir,
+      ticket: ticket('B', { dependsOn: ['A', 'C'] }),
+      tickets,
+      fallbackRef: 'main',
+    };
+    const first = await resolveTicketBase(input);
+    const firstSha = (await git(dir, ['rev-parse', (first as { ref: string }).ref])).stdout.trim();
+    const second = await resolveTicketBase(input);
+    const secondSha = (await git(dir, ['rev-parse', (second as { ref: string }).ref])).stdout.trim();
+    expect(secondSha).toBe(firstSha);
+  });
+
+  it('DIFFERENT dependencies still yield a different base — determinism, not a constant', async () => {
+    const dir = await repo();
+    await landedBranch(dir, 'sw/A-a', 'package.json');
+    await landedBranch(dir, 'sw/C-c', 'tsconfig.json');
+    await landedBranch(dir, 'sw/D-d', 'eslint.config.js');
+    const base = (deps: string[], done: string[]) =>
+      resolveTicketBase({
+        repoRoot: dir,
+        ticket: ticket('B', { dependsOn: deps }),
+        tickets: [
+          ...done.map((id) => ticket(id, { status: 'done', title: id.toLowerCase() })),
+          ticket('B'),
+        ],
+        fallbackRef: 'main',
+      });
+    const one = await base(['A', 'C'], ['A', 'C']);
+    const oneSha = (await git(dir, ['rev-parse', (one as { ref: string }).ref])).stdout.trim();
+    const two = await base(['A', 'D'], ['A', 'D']);
+    const twoSha = (await git(dir, ['rev-parse', (two as { ref: string }).ref])).stdout.trim();
+    expect(twoSha).not.toBe(oneSha);
+  });
+});
+
 describe('a leftover branch with no worktree (W21-37)', () => {
   it('RED FIXTURE: an empty leftover branch is cleared so the ticket can fork from the right base', async () => {
     const dir = await repo();
