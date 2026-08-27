@@ -47,7 +47,37 @@ import {
 const SYMPTOM_HEAD_CHARS = 500;
 const SOLVED_MARKER = 'SOLVED:';
 
-function lastAttemptOutput(attempts: readonly LandAttempt[]): string {
+/**
+ * W21-45: what a park is actually EVIDENCE of.
+ *
+ * This read `session.output` — the model's own words, tail-sliced — and for
+ * any session that produced a Completion Manifest, that tail is the manifest
+ * JSON. So the fact bank filled up with entries like
+ *
+ *   PARKED (attempted_nothing) after 1 attempt(s): ```json {"ticket":…,"files":[…]}
+ *
+ * The one durable, trustworthy sentence about why the ticket parked — the
+ * close gate's own refusal, "acceptance criterion AC-1 ran NOTHING …" —
+ * appeared nowhere. The lesson bank was storing the untrusted self-report and
+ * discarding the verified verdict, which is C-2 inverted at the one place
+ * memory is supposed to make the next run smarter.
+ *
+ * It also made the R0 consult miss. That consult searches the fact bank by the
+ * ticket's first acceptance criterion, and a manifest JSON does not contain
+ * it, so runs 22, 23 and 24 each rediscovered the same refusal from scratch —
+ * `playbook.r0_miss` on every one.
+ *
+ * The gate's reasons come first, newest attempt first. Session output is the
+ * fallback for a session that never reached the gate at all (no manifest, a
+ * budget stop) — there the model's own words really are the only account.
+ */
+function parkSymptom(attempts: readonly LandAttempt[]): string {
+  for (let i = attempts.length - 1; i >= 0; i -= 1) {
+    const gate = attempts[i]!.closeGate;
+    if (gate && !gate.ok && gate.reasons.length > 0) {
+      return gate.reasons.join('; ').slice(0, SYMPTOM_HEAD_CHARS);
+    }
+  }
   for (let i = attempts.length - 1; i >= 0; i -= 1) {
     const output = attempts[i]!.session.output.trim();
     if (output) return output.slice(-SYMPTOM_HEAD_CHARS);
@@ -114,7 +144,7 @@ export function createLearningHook(options: LearningHookOptions): AttemptOutcome
       recordCalibration(options, attempts, now);
       const symptom = redactDeep(
         `PARKED (${reason}) after ${attempts.length} attempt(s): ` +
-          lastAttemptOutput(attempts),
+          parkSymptom(attempts),
         options.secretValues,
       ) as string;
       const fact = insertFact(

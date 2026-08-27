@@ -12291,7 +12291,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 5,
       "module": "harbormaster",
       "depends_on": [
@@ -12300,8 +12300,6 @@
       "id": "W21-45",
       "title": "a refusal a ticket already earned does not survive to the next run",
       "write_scope": [
-        "packages/harbormaster/src/loop-land-ticket.ts",
-        "packages/harbormaster/src/loop-land-rungzero.ts",
         "apps/server/src/cli/memory-hooks.ts",
         "apps/server/src/cli/memory-hooks.test.ts"
       ],
@@ -12311,7 +12309,10 @@
         "So a fresh run`s FIRST attempt meets a ticket that has already been refused three times with no knowledge of any of it. Run 22 attempt 2 had the gap; run 23 attempt 1 did not; run 24 attempt 1 did not. The product spends a full session per run rediscovering a refusal it has already written down twice, in the ticket`s own comments.",
         "The evidence is already durable and already on the ticket: park comments carry the exact gate reason, and close_refused events (W21-32) carry it structurally. Nothing reads them back at claim time.",
         "THE R0 CONSULT IS THE RIGHT SEAM and it is already wired \u2014 this is not a new mechanism, it is a missing WRITE. A park with a gate refusal is precisely the \"have we solved this before?\" material FR-M2/FR-F5 describe, and nothing writes it to the playbook.",
-        "Note the shape of the waste, which is the same one W21-19 named at session granularity: asking a question you already have the answer to. At run granularity it costs a whole session each time instead of a turn."
+        "Note the shape of the waste, which is the same one W21-19 named at session granularity: asking a question you already have the answer to. At run granularity it costs a whole session each time instead of a turn.",
+        "DIAGNOSIS CORRECTED BY THE LEDGER, and the real defect is better than the one I filed. I assumed the cross-run WRITE was missing. It is not: onParked inserts a verified error_solution fact per park, and the vault DB holds four of them for PLAN-vault-002, none decayed. The defect is WHAT it writes. lastAttemptOutput took session.output \u2014 the model`s own words, tail-sliced \u2014 so for any session that produced a Completion Manifest the stored \"symptom\" is the manifest JSON: `PARKED (attempted_nothing) after 1 attempt(s): ```json {\"ticket\":\u2026,\"files\":[\u2026]}`. The close gate`s own refusal appears nowhere.",
+        "That is C-2 INVERTED at the one place memory exists to make the next run smarter: the lesson bank kept the untrusted self-report and discarded the verified verdict. It also explains the r0_miss mechanically \u2014 the consult searches the fact bank by the ticket`s first acceptance criterion, and a manifest JSON does not contain it. The gate reason does, verbatim.",
+        "Fix is small because the seam was already right: prefer the close gate`s reasons (newest attempt first), fall back to session output only when the gate never ran \u2014 a budget stop with no manifest, where the model`s words genuinely are the only account."
       ],
       "acceptance": [
         "A close-gate refusal recorded on a ticket reaches the next RUN`s first attempt, not only the next attempt in the same run",

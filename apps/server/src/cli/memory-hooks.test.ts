@@ -356,3 +356,78 @@ describe('the R0 consult hook, composed (W16-03)', () => {
     expect(result.summary).toContain('vault rotate verb');
   });
 });
+
+/**
+ * W21-45. The fact bank was storing the model's own manifest JSON as the
+ * "symptom" of a park, and discarding the close gate's refusal — the one
+ * verified sentence about why the ticket stopped. That is C-2 inverted at the
+ * exact place memory exists to make the next run smarter, and it is why the R0
+ * consult missed on three consecutive runs.
+ */
+describe('a park records the GATE’s verdict, not the model’s claim (W21-45)', () => {
+  const gateAttempt = (reasons: string[], output: string): LandAttempt =>
+    ({
+      attempt: 1,
+      session: {
+        exitCode: 0,
+        output,
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+        changedPaths: [],
+      },
+      closeGate: { ok: false, reasons, ticket: undefined as never },
+    }) as unknown as LandAttempt;
+
+  it('RED FIXTURE: the gate reason is the fact, where the manifest JSON used to be', async () => {
+    const log = await makeLog();
+    const { createIdentity } = await import('@dokima/events');
+    createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+    const hook = createLearningHook({ log, secretValues: [], now: () => '2026-08-27T00:00:00.000Z' });
+    hook.onParked({
+      ticketId: 'T-9',
+      reason: 'attempted_nothing',
+      attempts: [
+        gateAttempt(
+          ['acceptance criterion AC-1 ran NOTHING: `node --test src/crypto/*.spec.ts` exited 0'],
+          '```json\n{"ticket":"T-9","files":["src/crypto/index.ts"]}\n```',
+        ),
+      ],
+    });
+    const { listFacts } = await import('@dokima/memory');
+    const facts = listFacts(log.db, { kind: 'error_solution', ticketId: 'T-9' });
+    expect(facts).toHaveLength(1);
+    expect(facts[0]!.content).toContain('acceptance criterion AC-1 ran NOTHING');
+    // The searchable text the R0 consult keys on is now present.
+    expect(facts[0]!.content).toContain('node --test src/crypto/*.spec.ts');
+    expect(facts[0]!.content).not.toContain('"files"');
+  });
+
+  it('a session that never reached the gate still records its own words — there is nothing else', async () => {
+    const log = await makeLog();
+    const { createIdentity } = await import('@dokima/events');
+    createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+    const hook = createLearningHook({ log, secretValues: [], now: () => '2026-08-27T00:00:00.000Z' });
+    hook.onParked({
+      ticketId: 'T-10',
+      reason: 'ladder_exhausted',
+      attempts: [
+        {
+          attempt: 1,
+          session: {
+            exitCode: 1,
+            output: 'agent session stopped: exceeded the per-session tool-iteration budget (12)',
+            manifest: null,
+            manifestParseTier: null,
+            scopeViolations: [],
+            changedPaths: [],
+          },
+          closeGate: null,
+        } as unknown as LandAttempt,
+      ],
+    });
+    const { listFacts } = await import('@dokima/memory');
+    const facts = listFacts(log.db, { kind: 'error_solution', ticketId: 'T-10' });
+    expect(facts[0]!.content).toContain('tool-iteration budget');
+  });
+});
