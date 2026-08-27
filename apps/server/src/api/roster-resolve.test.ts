@@ -113,11 +113,11 @@ describe('resolveEffectiveModelFromSources (W13-57)', () => {
     // own — and the shipped roster claimed "needs a model" for it on a fully
     // configured install, because it read a settings key nothing writes.
     const rows = [
-      row('coding-agent', 'code', 'qwen/qwen3-coder-next', ['qwen3.6-35b-a3b']),
-      row('default', 'code', 'qwen/qwen3-coder-next', ['qwen3.6-35b-a3b']),
+      row('coding-agent', 'code', 'qwen/qwen3-coder-next', ['test-fallback-model']),
+      row('default', 'code', 'qwen/qwen3-coder-next', ['test-fallback-model']),
     ];
     const result = resolveEffectiveModelFromSources(NO_SETTINGS, rows, [], 'anti-slop-auditor');
-    expect(result.chain).toEqual(['qwen/qwen3-coder-next', 'qwen3.6-35b-a3b']);
+    expect(result.chain).toEqual(['qwen/qwen3-coder-next', 'test-fallback-model']);
     expect(result.usedDefaultRole).toBe(true);
     expect(result.scope).toBe('global');
   });

@@ -414,3 +414,25 @@ describe('starting AT the ceiling earns no extensions, and must still be told (W
     expect(budgetExhaustedStderr(40, [], null)).toContain('raise maxToolIterations');
   });
 });
+
+describe('W21-79 — the ceiling in the advice is the install ceiling, not the start budget', () => {
+  /**
+   * Tally's PLAN-tally-01 parked at the default 12 and was told "this
+   * install's HARD CEILING of 12, so there is no setting left to raise",
+   * while MAX_TOOL_ITERATIONS_CEILING is 40 and raising maxToolIterations was
+   * the correct move. A session that earns no extension always ends at its
+   * start budget, so passing that as the ceiling made every such park claim
+   * the lever was spent.
+   */
+  it('a session parked at the default budget is told to RAISE, not that it is capped', () => {
+    const text = budgetExhaustedStderr(12, [], null, 40);
+    expect(text).toContain('raise maxToolIterations');
+    expect(text).not.toContain('no setting left to raise');
+  });
+
+  it('a session parked at the real ceiling is told the lever is spent', () => {
+    const text = budgetExhaustedStderr(40, [], null, 40);
+    expect(text).toContain("HARD CEILING of 40");
+    expect(text).toContain('no setting left to raise');
+  });
+});

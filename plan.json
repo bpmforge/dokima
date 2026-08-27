@@ -13394,6 +13394,57 @@
         "It matters more than a flake normally would because e2e is IN the ticket gate (Law 3, since 2026-07-27). A gate that fails at random teaches everyone to re-run it, which is how a real red gets waved through \u2014 and this project already had one red e2e reach main for a related reason.",
         "ACCEPTANCE: the full e2e suite run repeatedly on an unchanged tree produces no ENOTEMPTY teardown failure; the temp project database handles are released before the fixture removes the directory; computeProjectStats treats a project directory that vanished as absent rather than logging an error."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "server",
+      "depends_on": [],
+      "id": "W21-78",
+      "title": "a run starts on whatever model is configured without ever checking the provider serves it",
+      "write_scope": [
+        "apps/server/src/api/pipeline/model-resolution.ts",
+        "apps/server/src/api/pipeline/model-resolution.test.ts"
+      ],
+      "notes": [
+        "FOUNDER ASK: make sure qwen3.6-35b-a3b is never used. The sweep found NO production code that selects it \u2014 presets take the user's own two model picks (buildPresetMatrix), and the only non-test references are historical records. The model was reaching real runs from ONE place: the every-project default in ~/.dokima/config.json, written 2026-08-03 and never revisited. A brand-new project (Tally, created through the UI) silently inherited it.",
+        "THE GENERAL DEFECT UNDER THAT: nothing checks a configured model against what the provider actually serves before the run starts. Providers expose listModels() and the gateway has ProviderUnreachableError, but that is raised at REQUEST time, mid-session, after the ticket is claimed and the worktree provisioned. There is no preflight.",
+        "Two live shapes of the same hole. (1) Tally: the provider row read \"Not tested yet\" with Models \"\u2014\" and the run started anyway on a model the UI could not even offer in its dropdown. (2) The catalogue lists what is KNOWN, not what is LOCAL \u2014 qwen3.6-35b-a3b appears in LM Studio's /v1/models while actually being served by a linked machine, so even a listed model can be the wrong answer.",
+        "This is the \"any LLM they want to use\" problem in miniature: the moment a user picks a model the product cannot reach, the failure should be a refusal at the start with the model name in it, not a session that burns its budget and parks as something else (see W21-63, W21-64).",
+        "NOT a blocklist of model names \u2014 that is unmaintainable and would not have caught this. Check the configured model against the provider's own listModels() before the first ticket is claimed, and refuse the run naming the model, the provider, and what the provider does serve.",
+        "ACCEPTANCE: starting a run whose configured model is not in the provider's listModels() refuses before any ticket is claimed, naming the model and the provider; the refusal names at least one model the provider does serve; a provider that cannot be reached at all refuses distinctly from one that is reachable but lacks the model; a run whose model IS served proceeds unchanged."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 1,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-79",
+      "title": "every budget park claimed the turn ceiling was already reached",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts"
+      ],
+      "notes": [
+        "gateway-session.ts passed `maxIterations` \u2014 where the session STARTED \u2014 as budgetExhaustedStderr's `hardCeiling`. A session that earns no extension ends with budget() === maxIterations, so `atTheCeiling` was true for every such park and the founder was always told \"this install's HARD CEILING of N, so there is no setting left to raise\".",
+        "LIVE (Tally, PLAN-tally-01, created through the UI): parked at the default 12 with that exact sentence, while MAX_TOOL_ITERATIONS_CEILING is 40 and raising maxToolIterations was precisely the right move. The advice sent the founder away from the one lever that would have helped.",
+        "It hid because Vault has maxToolIterations set to 40 by hand \u2014 which IS the ceiling \u2014 so every message I had read all session was accidentally correct. The bug only shows on a project that has configured nothing, which is every new one.",
+        "Fixed by passing options.progressBudget?.ceiling. Found while sweeping for hardcoded qwen3.6-35b-a3b at the founder's request: the sweep cleared production code, and this turned up in the same park evidence."
+      ]
     }
   ]
 }

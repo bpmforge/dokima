@@ -154,7 +154,7 @@ describe('pipeline/run resolves the model PER PROJECT (W10-69)', () => {
         { id: 'lm-studio', kind: 'oai-compat', baseUrl: url, enabled: true },
       ]);
       await putModelMatrix(dir, [
-          { role: 'coding-agent', taskType: 'reasoning', model: 'qwen3.6-35b-a3b', fallback: [] },
+          { role: 'coding-agent', taskType: 'reasoning', model: 'test-fallback-model', fallback: [] },
         ]);
     });
     process.env.DOKIMA_MODEL_ID = 'env-default-must-lose';
@@ -163,7 +163,7 @@ describe('pipeline/run resolves the model PER PROJECT (W10-69)', () => {
 
     expect(res.statusCode).toBe(201);
     // THE ASSERTION THIS TICKET EXISTS FOR: what went on the wire.
-    expect(server.requests[0]?.model).toBe('qwen3.6-35b-a3b');
+    expect(server.requests[0]?.model).toBe('test-fallback-model');
     expect(server.requests[0]?.model).not.toBe('env-default-must-lose');
   });
 
@@ -189,7 +189,7 @@ describe('pipeline/run resolves the model PER PROJECT (W10-69)', () => {
         { id: 'lm-studio', kind: 'oai-compat', baseUrl: url, enabled: true },
       ]);
       await putModelMatrix(dir, [
-          { role: 'coding-agent', taskType: 'reasoning', model: 'qwen3.6-35b-a3b', fallback: [] },
+          { role: 'coding-agent', taskType: 'reasoning', model: 'test-fallback-model', fallback: [] },
         ]);
     });
 
@@ -197,7 +197,7 @@ describe('pipeline/run resolves the model PER PROJECT (W10-69)', () => {
 
     expect(server.requests.length).toBeGreaterThanOrEqual(3);
     for (const req of server.requests) {
-      expect(req.model).toBe('qwen3.6-35b-a3b');
+      expect(req.model).toBe('test-fallback-model');
     }
   });
 

@@ -253,7 +253,7 @@ describe('model matrix global preset (W10-64)', () => {
   const ROW = {
     role: 'coding-agent',
     taskType: 'reasoning' as const,
-    model: 'qwen3.6-35b-a3b',
+    model: 'test-fallback-model',
     fallback: [],
   };
 
@@ -266,7 +266,7 @@ describe('model matrix global preset (W10-64)', () => {
 
     const resolved = await listModelMatrix(brandNewProject);
 
-    expect(resolved.map((r) => r.model)).toEqual(['qwen3.6-35b-a3b']);
+    expect(resolved.map((r) => r.model)).toEqual(['test-fallback-model']);
   });
 
   it('a project with its OWN rows ignores the global preset entirely', async () => {

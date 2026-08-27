@@ -374,7 +374,9 @@ export function createGatewaySpawnSession(
           progress.budget(),
           progress.entries(),
           progress.lastWindowProgress(),
-          maxIterations,
+          // W21-79: the install CEILING, not this session's start budget —
+          // see `hardCeiling` in session-progress.ts for why that matters.
+          options.progressBudget?.ceiling ?? null,
         )
       : `agent session stopped: exceeded the per-session tool-iteration budget ` +
         `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +

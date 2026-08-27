@@ -231,6 +231,19 @@ export function budgetExhaustedStderr(
    * W21-56: the absolute cap this install allows. When the budget has already
    * reached it, "raise maxToolIterations" names a lever with nothing left in
    * it, and advice that cannot be acted on is worse than none.
+   *
+   * W21-79: it must be the CEILING, never the session's starting budget. The
+   * caller passed `maxIterations` — where the session began — and a session
+   * that earns no extension ends with `budget() === maxIterations`, so
+   * `atTheCeiling` was true for every such park and the founder was always
+   * told the lever was spent.
+   *
+   * Live (Tally, PLAN-tally-01): parked at the default 12 and the evidence
+   * read "HARD CEILING of 12, so there is no setting left to raise", while
+   * MAX_TOOL_ITERATIONS_CEILING is 40 and raising maxToolIterations was
+   * exactly right. Vault only looked correct because it had been set to 40 by
+   * hand, which IS the ceiling — so the advice was wrong precisely for the
+   * project that had configured nothing, which is every new one.
    */
   hardCeiling: number | null = null,
 ): string {
