@@ -241,7 +241,7 @@ export async function landClaimedTicket(
     const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts, rungOffset);
     // W21-44: the ledger marker this attempt's tool calls are counted from.
     const attemptStartSeq = latestSeq(options.log);
-    const { session, closeGate, infraFailure } = await attemptOnce(
+    const { session, closeGate, infraFailure, silent } = await attemptOnce(
       rungStart.options,
       current,
       worktree,
@@ -285,10 +285,14 @@ export async function landClaimedTicket(
     }
 
     // W13-29: feed the gaps forward, or stop if nothing changed.
-    const step = nextFeedback(feedback, attempt, session, closeGate, {
-      mode: policy.mode,
-      limit: freeRetry.limit(),
-    });
+    const step = nextFeedback(
+      feedback,
+      attempt,
+      session,
+      closeGate,
+      { mode: policy.mode, limit: freeRetry.limit() },
+      silent,
+    );
     if (step.kind === 'no_progress') {
       parkedReason = 'no_progress';
       break;

@@ -12,11 +12,18 @@ import type { WorktreeHandle } from '@dokima/git';
 import { redactDeep } from '@dokima/shared';
 import type { Ticket } from '@dokima/tickets';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
+import { DEFAULT_VERIFY_TIMEOUT_MS } from './loop-gates-types.js';
 import { extractSessionCheckpoint } from './agent-session/session-checkpoint.js';
 import type { LandLoopOptions } from './loop-land.js';
 import type { AttemptFeedback } from './loop-handoff.js';
 import { sameGaps } from './loop-land-infra.js';
 import { provisionWorktree } from './worktree-provision.js';
+import {
+  NOTHING_TO_REPORT,
+  silentCompletion,
+  silentCompletionGap,
+  type SilentCompletion,
+} from './loop-land-session-acceptance.js';
 import {
   runSession,
   type Handoff,
@@ -93,6 +100,8 @@ export async function attemptOnce(
   session: SessionResult;
   closeGate: CloseGateResult | null;
   infraFailure: InfraFailureKind | null;
+  /** W21-83: the work was finished and never reported. */
+  silent: SilentCompletion;
 }> {
   const handoff = await options.buildHandoff(ticket, feedback);
   const secrets = options.secretValues;
@@ -110,7 +119,24 @@ export async function attemptOnce(
     // NOT infra when `infraFailure` is null: a session that answered without a
     // Completion Manifest failed the contract, and that must keep costing an
     // attempt or a real defect retries forever.
-    return { session, closeGate: null, infraFailure };
+    //
+    // W21-83: but ask whether it finished anyway. Provision first for the same
+    // reason the gate path does — the criteria cannot run against a toolchain
+    // that is not installed.
+    if (infraFailure) return { session, closeGate: null, infraFailure, silent: NOTHING_TO_REPORT };
+    await provisionWorktree({
+      worktreePath: worktree.path,
+      log: options.log,
+      actorId: options.actorId,
+      ticketId: ticket.id,
+      ...(options.runId ? { runId: options.runId } : {}),
+    });
+    const silent = await silentCompletion({
+      worktreePath: worktree.path,
+      criteria: ticket.acceptance ?? [],
+      timeoutMs: options.verifyTimeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS,
+    });
+    return { session, closeGate: null, infraFailure, silent };
   }
   /**
    * W21-74: provision AGAIN, now that the session has run.
@@ -162,7 +188,7 @@ export async function attemptOnce(
     memoryEligibleRoles: options.memoryEligibleRoles,
     now: options.now,
   });
-  return { session, closeGate, infraFailure };
+  return { session, closeGate, infraFailure, silent: NOTHING_TO_REPORT };
 }
 
 /**
@@ -172,11 +198,16 @@ export async function attemptOnce(
  * session did matters if it never reported: telling a model its scope was
  * wrong when it never returned a manifest points at the wrong fix.
  */
-export function gapsFrom(session: SessionResult, closeGate: CloseGateResult | null): string[] {
+export function gapsFrom(
+  session: SessionResult,
+  closeGate: CloseGateResult | null,
+  silent: SilentCompletion = NOTHING_TO_REPORT,
+): string[] {
   const gaps: string[] = [];
   if (!session.manifest) {
     gaps.push(
-      'no Completion Manifest was returned — reply with ONLY the JSON object described above',
+      silentCompletionGap(silent) ??
+        'no Completion Manifest was returned — reply with ONLY the JSON object described above',
     );
   }
   for (const violation of session.scopeViolations ?? []) {
@@ -209,8 +240,10 @@ export function nextFeedback(
    * documented outcome for the commonest failure there is.
    */
   bounds: { readonly mode: string; readonly limit: number },
+  /** W21-83: so the next attempt is told the work is already done. */
+  silent: SilentCompletion = NOTHING_TO_REPORT,
 ): { kind: 'continue'; feedback: AttemptFeedback } | { kind: 'no_progress' } {
-  const gaps = gapsFrom(session, closeGate);
+  const gaps = gapsFrom(session, closeGate, silent);
   const stalled = previous !== undefined && gaps.length > 0 && sameGaps(previous.gaps, gaps);
   if (stalled && bounds.mode === 'ladder' && attempt < bounds.limit) {
     return { kind: 'no_progress' };

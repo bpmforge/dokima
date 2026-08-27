@@ -13364,15 +13364,19 @@
       "module": "server",
       "title": "decomposition produces no phase-0 deliverables, so the phase gate can never clear",
       "write_scope": [
-        "apps/server/src/api/pipeline/decompose-tickets.ts",
-        "apps/server/src/api/pipeline/decompose-tickets.test.ts"
+        "packages/pipeline/src/run/run-pipeline.ts",
+        "packages/pipeline/src/run/run-pipeline.test.ts",
+        "packages/pipeline/src/phases/topology.ts"
       ],
       "notes": [
         "LIVE, Tally: the run ended with a notification reading \"Phase gate: Idea did not clear \u2014 The Idea phase (0) gate refused after this run: declared deliverable(s) not found on disk: docs/VISION.md, docs/COMPETITIVE_ANALYSIS.md\". No docs/ directory exists in the project root at all.",
         "I HAD THIS WRONG AND THE LEDGER CORRECTED ME. I first read the Fleet card's \"Not started\" badge as a phase model that is never driven. It is driven: the gate ran, evaluated, and refused for a stated reason. The defect is upstream \u2014 the interview produced seven implementation tickets and not one ticket that writes the documents the phase-0 gate requires, so the gate refuses on every run and the project can never leave Idea no matter how much code lands.",
         "That is why a project with real accepted work still reads \"Not started\" on the Fleet card: the badge is honest about a phase that genuinely never advanced.",
         "Either decomposition emits tickets for the phase deliverables it will be gated on, or the phase-0 gate must accept what the interview itself produced as the deliverable. The first is the honest one \u2014 the gate exists so a phase is entered on evidence, and the evidence should be something a ticket was actually asked to produce.",
-        "ACCEPTANCE: a board built from the interview contains a ticket for each phase-0 deliverable the gate requires; running that board to completion clears the Idea gate and advances the project phase; a project whose deliverables already exist gains no duplicate ticket."
+        "ACCEPTANCE: a board built from the interview contains a ticket for each phase-0 deliverable the gate requires; running that board to completion clears the Idea gate and advances the project phase; a project whose deliverables already exist gains no duplicate ticket.",
+        "SCOPE CORRECTED, AND THE BOARD PROVED ITS OWN POINT: this ticket was filed against apps/server/src/api/pipeline/decompose-tickets.ts, which does not exist. As filed it was unsatisfiable within its own write_scope \u2014 precisely the defect class W21-80 was built to detect, produced by me, on this board, hours after shipping the detector.",
+        "ROOT CAUSE HAS MOVED, DO NOT BUILD THE FILED FIX YET. runPipeline DOES synthesize the blueprint (synthesizeBlueprint, run-pipeline.ts:69) and nothing writes it to disk; only docs/DECISIONS.md has a read/write path (apps/server/src/api/decisions/ledger-file.ts). So the gap may be \"the deliverable is produced and never persisted\", which is far cheaper than \"decomposition must emit deliverable tickets\".",
+        "AND PHASE 0 IS waiverEligible: true (packages/pipeline/src/phases/topology.ts). If the product intends a small project to waive Idea, then \"no project can leave Idea\" is wrong as stated and the real defect is that the waiver is not discoverable from the Fleet card or the phase-gate notification. Establish which of the three it is \u2014 persist the blueprint, emit deliverable tickets, or surface the waiver \u2014 before writing code."
       ]
     },
     {
@@ -13525,6 +13529,33 @@
         "Four minutes is not an edge case for this product: a local model working a real ticket routinely runs longer, and EVERY run in this session did. So the normal path for the target user was a board that permanently looked busy.",
         "Fixed by following the run for as long as one plausibly lives, and on any exit that is not a terminal status returning to idle instead of lying. Idle is the honest state: the outcome map behind the poll is in-memory by design (W12-20) and the ticket cards carry the durable truth, so \"this page is no longer following that run\" is true where \"it finished\" would not be.",
         "Red fixture verified both ways: the new test fails against the old loop (button stays disabled) and passes against the fix."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-83",
+      "title": "a session can finish the work and never find out, so the ticket parks with its acceptance already passing",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts"
+      ],
+      "notes": [
+        "LIVE, Tally PLAN-tally-01, run-mtbxacux, driven entirely from the UI. The ticket parked \"ladder attempt cap reached\". Its acceptance criterion passes on disk RIGHT NOW: `npm run build` exits 0 in the worktree. The work is done and the product does not know it.",
+        "THE TOOL HISTOGRAM IS THE WHOLE STORY: 72 tool calls since provisioning \u2014 read 37, commit 14, write 7, edit 6, list 8, and agent-session.verify ZERO. The maker fixed the build, committed fourteen times, and never once ran the tool that would have told it so. It had earlier verify failures (tsc not found before W21-74 landed, pnpm before W21-75) and appears to have simply abandoned the tool.",
+        "THE PRODUCT CANNOT CORRECT IT EITHER, BY CONSTRUCTION: attemptOnce returns early when there is no manifest (`if (!session.manifest) return { closeGate: null }`), so the close gate never runs, so nothing ever evaluates the acceptance criteria. A session that does the work but cannot report it is indistinguishable from one that did nothing \u2014 three attempts in a row recorded turns:40, completed:false.",
+        "This is the last thing standing between a project created in the browser and its first receipt, and it is cheap to fix: when a session ends at its budget WITHOUT a manifest, run the acceptance criteria once \u2014 the same run the gate would have made \u2014 and if they pass, say so in the park evidence and carry it into the next handoff: \"AC-1 already passes; the next attempt needs only to return a Completion Manifest.\"",
+        "Sibling of W21-73 (the handoff carries the diagnosis and not the evidence). W21-73 assumed a prior gate run existed to quote; this is the case where none ever did, so the evidence has to be produced rather than recalled. That is one command execution the gate would have run anyway, not a new class of work.",
+        "ACCEPTANCE: a session that ends without a manifest has its acceptance criteria evaluated once; when they pass, the park evidence says so and names returning the manifest as the remaining step, and the next handoff carries that line; when they fail, behaviour is unchanged; the criteria are run in the same sandbox the close gate uses, never a new one."
       ]
     }
   ]
