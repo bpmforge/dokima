@@ -13717,6 +13717,34 @@
         "The probe result lives only in memory. A user who restarts (or whose machine restarts) is told their working provider is untested, and cannot pick a model until they rediscover the Providers -> Test step on their own. This is the same trap a NEW project falls into, arriving by a different route.",
         "ACCEPTANCE: a successful provider probe survives a core restart, with its timestamp shown so a stale result is visibly stale; a provider that has genuinely never been tested still reads \"Not tested yet\"; the Models dropdown offers the last known model list rather than nothing."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-90",
+      "title": "a rejection is advisory only \u2014 the maker can ignore it and the gate mints anyway",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.test.ts"
+      ],
+      "notes": [
+        "LIVE, Tally PLAN-tally-01, the exact sequence from the ledger: 1117 gate.receipt_minted (22:13:21) -> 1123 ticket.rejected (22:14:46) -> 1177 gate.receipt_minted (22:44:41). I rejected the work naming one thing to change \u2014 package.json ships \"test\": \"echo 'Tests passed' || true\", a script that cannot fail \u2014 and told it to change nothing else.",
+        "The reason DID reach the maker. loop-land-rungs.ts delivers it as `a reviewer sent this back: ...` and the mechanism is verified. The maker then committed changes to .gitignore and src/index.ts, left package.json's test script untouched, and the close gate minted a second receipt whose verify command is `npm run lint && npm run typecheck && npm run test` exit 0 \u2014 running the very script the rejection was about.",
+        "SO A REJECTION HAS NO TEETH. The reviewer's judgement is the most specific thing anyone knows about a ticket (loop-land-rungs.ts says exactly that) and it is delivered as advice a maker may decline. The gate re-runs verify and acceptance, both pass, and it mints \u2014 the rejection is not a gate condition and nothing checks whether it was addressed.",
+        "THIS IS NOT AN ARGUMENT FOR LETTING A REVIEWER BLOCK FOREVER. C-2 is right that only the close gate decides done, and a rejection that could veto indefinitely would put a model (or a tired founder) above the evidence. But \"cannot veto\" and \"cannot even be noticed\" are different things, and the product currently has the second.",
+        "The cheapest honest fix is not enforcement, it is VISIBILITY: a close that follows an unaddressed rejection should say so on the receipt and in the Decide card \u2014 \"this reverses a rejection whose reason was X; the reviewer asked for Y and the diff since does not touch it\". Then the human accepting sees, at the moment of accepting, that they are overruling themselves. A second option worth weighing is requiring the maker to state how it addressed the rejection in the manifest, which is checkable without giving anyone a veto.",
+        "It matters most for the founder-as-reviewer case this product is built around: I rejected, the product agreed with me enough to carry my words to the maker, and then handed me a receipt as though nothing had happened. If I had not diffed package.json by hand I would have accepted it.",
+        "ACCEPTANCE: a receipt minted while an unanswered rejection stands records that fact, with the rejection reason, and the Decide card shows it before the accept control; a close that DOES address the rejection is unaffected; nothing gains a veto over the close gate (C-2)."
+      ]
     }
   ]
 }
