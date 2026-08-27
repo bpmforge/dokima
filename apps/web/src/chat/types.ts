@@ -21,6 +21,12 @@ export interface Thread {
   concern: string | null;
   archived: boolean;
   cards: ChatCard[];
+  /**
+   * W21-85: this thread is the FIXTURE preview, not this project's telemetry.
+   * Only the unregistered preview surface sets it; a registered project's
+   * chat is the real projection (chat-projection.ts, W13-63).
+   */
+  sample?: boolean;
 }
 
 /**
@@ -210,6 +216,8 @@ export interface ThreadOpenedWire {
   id: string;
   kind: ThreadKind;
   concern: string | null;
+  /** W21-85: present and true only on the fixture preview stream. */
+  sample?: boolean;
 }
 
 export function isThreadOpenedWire(data: unknown): data is ThreadOpenedWire {

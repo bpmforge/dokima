@@ -20,12 +20,13 @@ export function reduceChatEvents(events: readonly ServerEnvelope[]): Thread[] {
 
   for (const event of events) {
     if (event.type === 'thread.opened' && isThreadOpenedWire(event.data)) {
-      const { id, kind, concern } = event.data;
+      const { id, kind, concern, sample } = event.data;
       if (!threads.has(id)) order.push(id);
       threads.set(id, {
         id,
         kind,
         concern,
+        ...(sample ? { sample: true } : {}),
         archived: false,
         cards: threads.get(id)?.cards ?? [],
       });

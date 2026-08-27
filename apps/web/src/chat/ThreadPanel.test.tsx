@@ -41,3 +41,37 @@ describe('ThreadPanel sample marker', () => {
     }
   });
 });
+
+describe('W21-85 — a real project\'s telemetry is never labelled Sample', () => {
+  /**
+   * The badge rendered on EVERY thread, with a tooltip swearing the content
+   * was not real telemetry. That premise died when W13-63 landed the real
+   * projection: a registered project gets its own parks and manifests here.
+   * Live on Tally — the pane showed a genuine park finding, badged Sample,
+   * so the one piece of evidence the founder needed read as demo data.
+   */
+  it('a thread from the real projection carries no Sample badge', () => {
+    render(
+      <ThreadPanel
+        thread={{ id: 't', kind: 'program', concern: null, archived: false, cards: [] }}
+      />,
+    );
+    expect(screen.queryByTestId('chat-thread-sample-badge')).toBeNull();
+  });
+
+  it('the fixture preview still says Sample', () => {
+    render(
+      <ThreadPanel
+        thread={{
+          id: 't',
+          kind: 'program',
+          concern: null,
+          archived: false,
+          cards: [],
+          sample: true,
+        }}
+      />,
+    );
+    expect(screen.getByTestId('chat-thread-sample-badge').textContent).toBe('Sample');
+  });
+});

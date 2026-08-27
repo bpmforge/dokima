@@ -35,7 +35,7 @@ const CHAT_FIXTURE_ITEMS = [
     seq: 1,
     type: 'thread.opened',
     at: '2026-07-15T14:02:00Z',
-    data: { id: 'thread-program', kind: 'program', concern: null },
+    data: { id: 'thread-program', kind: 'program', concern: null, sample: true },
   },
   {
     sub: 'chat:default',
@@ -46,6 +46,7 @@ const CHAT_FIXTURE_ITEMS = [
       id: 'thread-w4-04-security',
       kind: 'agent',
       concern: 'W4-04 security review',
+      sample: true,
     },
   },
   {

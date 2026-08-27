@@ -29,13 +29,23 @@ export function ThreadPanel({ thread }: ThreadPanelProps) {
         <span className="chat__thread-title">
           {thread.kind === 'program' ? 'Program' : thread.concern}
         </span>
-        <span
-          className="chat__thread-badge chat__thread-badge--sample"
-          data-testid="chat-thread-sample-badge"
-          title="Fixture data — no real chat/message producer exists yet, so this isn't real telemetry."
-        >
-          Sample
-        </span>
+        {/*
+          W21-85: ONLY on the fixture preview. This badge used to render on
+          every thread, with a tooltip swearing the content was not real
+          telemetry — a premise that went stale when W13-63 landed the real
+          projection. A registered project's parks and manifests were being
+          labelled fake, which is an honesty control (C-1) pointing the wrong
+          way: it tells a person to discount the evidence they most need.
+        */}
+        {thread.sample && (
+          <span
+            className="chat__thread-badge chat__thread-badge--sample"
+            data-testid="chat-thread-sample-badge"
+            title="Preview of the card types — this is the unregistered sample stream, not a project's telemetry."
+          >
+            Sample
+          </span>
+        )}
         {thread.archived && <span className="chat__thread-badge">archived</span>}
       </header>
       <div className="chat__thread-cards" role="list">

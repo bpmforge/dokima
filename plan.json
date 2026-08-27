@@ -13583,6 +13583,35 @@
         "The planner is pure and tested for the property that matters: every object appears exactly once and in order, an object larger than the cap gets its own chunk rather than being skipped, and an empty input yields no chunks so git is never handed an empty batch. Coverage must never silently shrink \u2014 that is the one way this fix could be worse than the crash.",
         "ACCEPTANCE (met): the gate passes on this repo \u2014 9004 objects scanned, 27 shapes, 27 baselined, 0 gating; planChunks covers every object exactly once; a single oversized object still gets scanned."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "web",
+      "depends_on": [],
+      "id": "W21-85",
+      "title": "a real project\u2019s parks and manifests were labelled \"Sample \u2014 not real telemetry\"",
+      "write_scope": [
+        "apps/web/src/chat/ThreadPanel.tsx",
+        "apps/web/src/chat/ThreadPanel.test.tsx",
+        "apps/web/src/chat/types.ts",
+        "apps/web/src/chat/reduceChatEvents.ts",
+        "apps/web/src/chat/fixtures.ts",
+        "apps/server/src/api/server/chat-fixture.ts"
+      ],
+      "notes": [
+        "LIVE, Tally, seen by looking at the board as a user rather than reading the ledger: the Chat pane showed a genuine park finding \u2014 the evidence a founder most needs \u2014 under an amber \"Sample\" badge whose tooltip read \"Fixture data \u2014 no real chat/message producer exists yet, so this isn't real telemetry.\"",
+        "The content was real. chat-fixture.ts routes a REGISTERED project to chatEnvelopesForProject (chat-projection.ts, \"the REAL chat stream\", W13-63) and serves the fixture only to the unregistered preview surface. ThreadPanel rendered the badge unconditionally, so every thread in every real project carried it.",
+        "The premise died when W13-63 landed and nobody told the badge \u2014 the same staleness W13-63 itself was written to fix (\"that premise went stale weeks ago... and nobody rewired the reader\"). The reader got rewired; its label did not.",
+        "This is an honesty control (C-1) pointing the wrong way, which is the dangerous direction. A badge that marks fixture data as fixture protects a person. A badge that marks REAL evidence as fixture teaches them to discount exactly the thing they must read \u2014 and I nearly filed it as \"demo content leaking into a real project\", the opposite diagnosis, before checking which way round it was.",
+        "Fixed by marking the fixture stream at source (both hand-mirrored copies) and rendering the badge only for it. ACCEPTANCE (met): a thread from the real projection carries no Sample badge; the unregistered preview still does; the fixture copies stay in sync."
+      ]
     }
   ]
 }
