@@ -7,7 +7,7 @@
  * re-run of the TICKET's OWN verify command (never the manifest's claimed
  * command or exit code — an agent claiming `{command: 'true', exit: 0}`
  * must not sail through), real `git` history — and only mints a close
- * receipt and calls `closeTicket` once every check passes. Any failure
+ * receipt and closes the ticket once every check passes. Any failure
  * produces a `commentTicket` evidence entry and never advances ticket
  * state ("no close receipt => failure comment, never forward progress").
  *
@@ -33,7 +33,8 @@ import { computeChangedPaths } from '@dokima/loop';
 import { loadValidatorPack, runValidatorPack } from '@dokima/validators';
 import { agentAuthoredPaths } from './worktree-harness-paths.js';
 import { mintReceipt, type ReceiptInputFile } from '@dokima/events';
-import { closeTicket, commentTicket } from '@dokima/tickets';
+import { commentTicket } from '@dokima/tickets';
+import { closeTicketLedgeringRefusal } from './loop-gates-close.js';
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
 import {
   DEFAULT_REQUIRED_VALIDATORS,
@@ -87,7 +88,7 @@ export const DEFAULT_MEMORY_ELIGIBLE_ROLES: readonly string[] = ['coding-agent']
  * changed more than it declared cannot close regardless of which
  * `SpawnSession` runner produced it), and the required validator pack
  * including secrets-scan (acceptance 4/5) — then and only then mints a
- * close receipt and calls `closeTicket`. Any failure calls `commentTicket`
+ * close receipt and closes the ticket. Any failure calls `commentTicket`
  * with every reason and returns without touching ticket state otherwise.
  */
 export async function runCloseGate(options: CloseGateOptions): Promise<CloseGateResult> {
@@ -372,6 +373,7 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
       verifyCommand,
       verifyExit: verify.exitCode,
       actorId,
+      runId: options.runId ?? null,
       payload: {
         commits,
         files: manifest.files,
@@ -381,8 +383,8 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
     },
     { signingKey, now },
   );
-
-  const closed = closeTicket(
+  // W21-32: the receipt is minted, so a refusal here orphans it silently.
+  const closed = closeTicketLedgeringRefusal(
     log,
     {
       ticketId: ticket.id,
@@ -391,7 +393,7 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
       verify: { command: verifyCommand, exitCode: verify.exitCode },
       commits,
     },
-    { now },
+    { now, runId: options.runId ?? null, receiptId: receipt.id },
   );
 
   return { ok: true, ticket: closed, receipt };

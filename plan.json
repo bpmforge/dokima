@@ -11755,6 +11755,97 @@
         "The comment explaining the committedFiles choice is updated, since W21-28 invalidated its reasoning",
         "A red fixture pins the live case: .gitignore and package-lock.json in the commit set do not refuse"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "tickets",
+      "depends_on": [],
+      "id": "W21-32",
+      "title": "the ledger says which run did it, and a refused close leaves a trace",
+      "write_scope": [
+        "packages/tickets/src/verbs.ts",
+        "packages/tickets/src/create.ts",
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/verbs-run.test.ts",
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/loop-gates.test.ts",
+        "packages/events/src/receipts/mint.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "apps/server/src/cli/run-build.ts",
+        "packages/harbormaster/src/loop-gates-types.ts",
+        "packages/harbormaster/src/loop-gates-close.ts",
+        "packages/harbormaster/src/loop-gates-close.test.ts"
+      ],
+      "notes": [
+        "LIVE EVIDENCE, vault project DB. Every ticket lifecycle event ever written carries run_id = NULL: #1273 released, #1274 claimed, #1275 started, #1279 released \u2014 all run=null. Meanwhile mcp.tool_call.completed, spend.recorded, session.turns_observed and memory.consolidated all carry a real run id. The events table HAS the column; the six verbs never fill it.",
+        "The cost of that is concrete: to work out which run released a ticket out from under another one I had to correlate #1279 timestamp (22:31:12) against the NEIGHBOURING events #1280-#1282, which do carry run=run-mtalpxhj. The ledger could not answer the question directly. That is exactly the audit strength the founder asked for and did not have.",
+        "gate.receipt_minted #1303 is also run=null \u2014 the event naming the orphaned receipt cannot say which run held it.",
+        "SECOND HALF, and the more important one: a close that FAILS leaves no ledger trace at all. loop-gates.ts:385 calls closeTicket immediately after mintReceipt with no try/catch; the throw propagates to berths.ts:285 which stores it as stopReason:error / error:err \u2014 in memory, on the run result, and nothing is ever appended. Run run-mtao40ub minted a valid signed close receipt (verify_exit 0, both validators exit 0) and the ticket did not close, and the ledger contains ZERO explanation.",
+        "select count(*) from events where event_type=ticket.closed is 0 across the whole project history, and no event anywhere says why.",
+        "write_scope widened at filing time: the land loop has NO runId anywhere (grep runId across harbormaster returns nothing in loop-land*.ts or loop-gates.ts), so stamping it means threading it from run-build.ts:304 where it is already in scope, through LandLoopOptions, to the verbs and to mintReceipt. provisionWorktree already ACCEPTS a runId and its one live call site never passes one \u2014 the same gap, already latent.",
+        "DIAGNOSIS CORRECTED BY THE FIXTURE: the refusal code the live run hit is INVALID_TRANSITION, not NOT_OWNER. The release put the ticket back in ready, so assertTransition refuses before assertOwner is ever consulted. The cause is unchanged \u2014 a stale run released a live run ticket \u2014 but the code the ledger will now show is the transition one."
+      ],
+      "acceptance": [
+        "TicketVerbOptions carries an optional runId, and every lifecycle verb stamps it on the event it appends",
+        "The loop-internal claim/release/close call sites pass the run id they already hold",
+        "gate.receipt_minted carries the run id of the run that minted it",
+        "A close that is refused appends an event naming the ticket, the actor, the run and the refusal reason, before the error propagates",
+        "A red fixture pins the live shape: a close that throws NOT_OWNER leaves a readable event behind, where today it leaves nothing"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "tickets",
+      "depends_on": [
+        "W21-32"
+      ],
+      "id": "W21-33",
+      "title": "a stale run cannot release the ticket a live run is working",
+      "write_scope": [
+        "packages/tickets/src/verbs.ts",
+        "packages/tickets/src/reducer.ts",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/verbs-run.test.ts",
+        "packages/harbormaster/src/watchdog.ts",
+        "packages/harbormaster/src/loop-land-reclaim.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts"
+      ],
+      "notes": [
+        "THE FURTHEST THE PRODUCT HAS EVER GOT, and the last mile. Run run-mtao40ub: #1302 session.turns_observed {turns:11, completed:true}, #1303 gate.receipt_minted kind=close, receipt row verify_exit 0, validators secrets-scan 0 and validate-remote-parity 0. The close gate PASSED for the first time in fifteen runs.",
+        "And the ticket did not close, because 69 seconds earlier a DIFFERENT run took it away. #1274 ticket.claimed 22:30:58 (run-mtao40ub), #1279 ticket.released 22:31:12 \u2014 the release belongs to run-mtalpxhj, whose park comment #1278 and digests #1280-#1282 bracket it. A stale run parked, and its park path released a ticket a live run had already claimed 14 seconds before.",
+        "The mechanism: ownership is per ACTOR, not per RUN. Both runs use actorId operator, so assertOwner passed for the stale run and it released work it did not own in any meaningful sense. Then the live run finished, closeTicket called assertOwner on a ticket now owned by nobody, and a valid signed receipt was orphaned.",
+        "W21-14 designed the opposite failure (a dead run leaving a claim behind). Same missing concept \u2014 a claim has no run identity \u2014 biting from the other direction, now with live evidence for why it matters.",
+        "GUARD RELEASE ONLY, NOT CLOSE. A run guard on close would be a NEW way for a valid signed receipt to fail to land, which is the failure being fixed.",
+        "The watchdog (watchdog.ts:123) and reclaim (loop-land-reclaim.ts:37) exist precisely TO release another run claim. An unconditional guard would make dead claims permanent, which is worse than this defect. They steal explicitly and the release payload records the stolen-from run and the reason.",
+        "board-routes.ts:155 is a person with no run id and must keep working: absent run id fails open, so no-run-id unambiguously means a human did it.",
+        "Also unexplained and covered by the same fix: #1273 released 22:30:42 then #1279 released 22:31:12 \u2014 the stale run appears to release twice.",
+        "DIAGNOSIS CORRECTED BY THE FIXTURE: the refusal code the live run hit is INVALID_TRANSITION, not NOT_OWNER. The release put the ticket back in ready, so assertTransition refuses before assertOwner is ever consulted. The cause is unchanged \u2014 a stale run released a live run ticket \u2014 but the code the ledger will now show is the transition one."
+      ],
+      "acceptance": [
+        "A ticket records the run that claimed it, folded from the claim event",
+        "release is refused when a different run holds the claim, naming both runs",
+        "The watchdog and the orphaned-claim reclaim can still release another run claim, explicitly, and the release event records the stolen-from run and the reason",
+        "A release with no run id (a person at the API) is still allowed \u2014 the guard has teeth only where a run id is actually passed",
+        "close is NOT run-guarded: a receipt minted by the run that holds the claim still lands",
+        "A red fixture reproduces the live shape: run A claims, run B stale park releases -> refused; run A then closes -> succeeds"
+      ]
     }
   ]
 }

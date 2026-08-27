@@ -87,6 +87,14 @@ export interface LandLoopOptions {
   /** This worker/berth's identity (must already exist — events.actor_id is FK-enforced). */
   readonly actorId: string;
   readonly projectId: string;
+  /**
+   * W21-32: the run these tickets are being landed under, stamped onto every
+   * lifecycle event, the close receipt's anchoring event, and any refused
+   * close. Optional because the loop still runs without one — but absent, the
+   * ledger cannot say which run claimed, released or closed a ticket, which is
+   * exactly the question a cross-run interference bug forces someone to ask.
+   */
+  readonly runId?: string;
   /** The real repo root a ticket worktree branches from (FR-I1: `sw/<ticket-id>-<slug>`). */
   readonly repoRoot: string;
   /** `content/validators` in production; a fixture directory in tests. */

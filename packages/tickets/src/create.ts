@@ -6,6 +6,24 @@ import type { CreateTicketInput, Ticket } from './types.js';
 export interface TicketVerbOptions {
   /** Injectable clock for deterministic fixtures (TESTING.md §2). */
   now?: () => string;
+  /**
+   * W21-32: the run this verb belongs to, stamped onto the event.
+   *
+   * The events table has carried a `run_id` column all along, and every other
+   * subsystem fills it — `mcp.tool_call.completed`, `spend.recorded`,
+   * `session.turns_observed`, `memory.consolidated`. The six lifecycle verbs
+   * never did, so every `ticket.claimed` / `ticket.released` ever written is
+   * `run_id = NULL`, and the ledger cannot answer "which run did this?".
+   *
+   * That cost a live diagnosis: working out which run released a ticket out
+   * from under another one meant correlating the release's TIMESTAMP against
+   * neighbouring events that did carry a run id. The answer was in the ledger
+   * only by inference.
+   *
+   * Optional, and absent means absent — a person acting through the API has
+   * no run, and writing a fake one would be worse than a null.
+   */
+  runId?: string | null;
 }
 
 /**
@@ -40,7 +58,13 @@ export function createTicket(
     };
     appendEvent(
       log,
-      { eventType: 'ticket.created', actorId, ticketId: input.id, payload },
+      {
+        eventType: 'ticket.created',
+        actorId,
+        ticketId: input.id,
+        runId: opts.runId ?? null,
+        payload,
+      },
       opts,
     );
     const ticket = getTicket(log, input.id);

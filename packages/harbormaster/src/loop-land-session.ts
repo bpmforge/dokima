@@ -115,6 +115,7 @@ export async function attemptOnce(
     log: options.log,
     actorId: options.actorId,
     projectId: options.projectId,
+    runId: options.runId ?? null,
     ticket,
     worktree,
     manifest: session.manifest,

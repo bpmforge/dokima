@@ -31,6 +31,13 @@ export interface MintReceiptInput {
   verifyExit?: number | null;
   /** Identity minting the receipt; recorded on the anchoring event (C3). */
   actorId: string;
+  /**
+   * W21-32: the run that minted it. `gate.receipt_minted` carried `run_id =
+   * NULL` for every receipt ever minted, so the one event that names a
+   * receipt could not say which run held it — which is exactly the question
+   * asked when a valid signed receipt failed to land its close.
+   */
+  runId?: string | null;
   /** Required for kind === 'waiver'; must resolve to a human identity (FR-P2). */
   signedBy?: string | null;
   payload?: unknown;
@@ -175,6 +182,7 @@ export function mintReceipt(
         eventType,
         actorId: input.actorId,
         ticketId,
+        runId: input.runId ?? null,
         payload: { receiptId: input.id, kind: input.kind, contentMac },
       },
       { now },

@@ -59,8 +59,8 @@ export async function processTicket(
   ticket: Ticket,
   baseRef: string,
 ): Promise<LandLoopTicketOutcome> {
-  claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-  startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
+  claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
+  startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
   const worktree = await resolveWorktree(options, ticket, baseRef);
   return landClaimedTicket(options, ticket, worktree, baseRef);
 }
@@ -99,6 +99,9 @@ export async function landClaimedTicket(
     log: options.log,
     actorId: options.actorId,
     ticketId: ticket.id,
+    // W21-32: the option existed and this, its only live call site, never
+    // passed it — so `worktree.provisioned` was run=null too.
+    ...(options.runId ? { runId: options.runId } : {}),
   });
   const provisionFailure = provisionFailureReason(provision);
   if (provisionFailure) {
@@ -106,8 +109,8 @@ export async function landClaimedTicket(
       ticketId: ticket.id,
       actorId: options.actorId,
       body: provisionFailure,
-    });
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
+    }, { runId: options.runId ?? null });
+    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
     return {
       ticketId: ticket.id,
       mode: resolveLandEscalationPolicy(options.policyScope ?? {}, options.role ?? ROLE_CODING_AGENT).mode,
@@ -278,7 +281,7 @@ export async function landClaimedTicket(
       ticketId: ticket.id,
       actorId: options.actorId,
       body: parkBody,
-    });
+    }, { runId: options.runId ?? null });
     await fireVerbMirror(options, {
       kind: 'evidence',
       ticketId: ticket.id,
@@ -292,7 +295,7 @@ export async function landClaimedTicket(
         attempts,
       }),
     );
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
+    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
     current = requireTicket(options.log, ticket.id);
   }
 

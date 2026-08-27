@@ -59,6 +59,8 @@ export interface CloseGateOptions {
   readonly role?: string;
   /** Roles whose manifest must carry a non-empty `memory_written[]`. Defaults to none — inert until W7-01 lands. */
   readonly memoryEligibleRoles?: readonly string[];
+  /** W21-32: stamped onto the receipt's anchoring event, the `ticket.closed` event, and any `ticket.close_refused` this gate appends. */
+  readonly runId?: string | null;
 }
 
 export interface CloseGateSuccess {

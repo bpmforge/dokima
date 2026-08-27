@@ -75,8 +75,7 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
  * degrading it, W11-18); `executeBuildRun` below is what turns that row
  * into a refusal.
  */
-// Chapter of this file (W14-02, CODE_BOOK_PROTOCOL 400-line cap): a pure
-// move; the re-export keeps every existing import site working.
+// Chapter of this file (W14-02, 400-line cap): a pure move, re-exported.
 import { tokenizeAgentCommand } from './agent-command.js';
 export { tokenizeAgentCommand };
 import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
@@ -93,8 +92,7 @@ import {
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
 
-// Chapter (W14-06, CODE_BOOK_PROTOCOL 400-line cap): the vault refusal
-// moved verbatim to run-vault.ts.
+// Chapter (W14-06, 400-line cap): the vault refusal moved to run-vault.ts.
 import { resolveVaultOrRefusal } from './run-vault.js';
 import {
   countReceipts,
@@ -305,6 +303,8 @@ export async function executeBuildRun(
       log,
       actorId: command.actorId,
       projectId: command.projectId,
+      // W21-32: in scope here all along, never passed — hence run=null events.
+      runId,
       repoRoot: io.cwd,
       contentDir: resolveAsset('content', 'validators'),
       signingKey,
