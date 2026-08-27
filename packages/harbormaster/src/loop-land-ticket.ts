@@ -9,6 +9,7 @@
  * drift apart in what a ticket run actually does.
  */
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
+import { unsatisfiableCriteria, unsatisfiableNotice } from './loop-land-satisfiable.js';
 import type { WorktreeHandle } from '@dokima/git';
 import {
   claimTicket,
@@ -130,6 +131,30 @@ export async function landClaimedTicket(
    * never executed. Everything that lands a ticket funnels through this
    * function, so this is the only place it cannot be bypassed.
    */
+  // W21-43: before a single model call. An unsatisfiable ticket used to burn
+  // its whole ladder — two sessions, every turn — to discover a mismatch
+  // readable from the ticket record alone.
+  const unsatisfiable = unsatisfiableCriteria(ticket.acceptance ?? [], ticket.writeScope);
+  if (unsatisfiable.length > 0) {
+    const notice = unsatisfiableNotice(ticket.id, unsatisfiable);
+    commentTicket(
+      options.log,
+      { ticketId: ticket.id, actorId: options.actorId, body: notice },
+      { runId: options.runId ?? null },
+    );
+    releaseUnlessTakenOver(options, ticket.id);
+    return {
+      ticketId: ticket.id,
+      mode: resolveLandEscalationPolicy(
+        options.policyScope ?? {},
+        options.role ?? ROLE_CODING_AGENT,
+      ).mode,
+      attempts: [],
+      landed: false,
+      parked: true,
+      finalStatus: requireTicket(options.log, ticket.id).status,
+    };
+  }
   const provision = await provisionWorktree({
     worktreePath: worktree.path,
     log: options.log,

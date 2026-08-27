@@ -135,13 +135,26 @@ describe('a ticket that keeps being retried reaches the founder (W21-26)', () =>
     ).toBe(false);
   });
 
-  it('a ticket that has ever CLOSED is making progress, however many times it was released', () => {
+  /**
+   * W21-43 REVERSED THIS ASSERTION DELIBERATELY, and the original was right
+   * when it was written. It read "a ticket that has ever closed is making
+   * progress by definition", which held while `close` was a one-way door:
+   * nothing could take a ticket back out of review except accepting it.
+   *
+   * Once work can come BACK — a founder rejecting it (W21-42) — a close stops
+   * being proof of progress, and a ticket that closed, was sent back, and now
+   * parks repeatedly becomes the one a person most needs to see. It was the
+   * single shape this predicate could not report, and PLAN-vault-002 hid in it
+   * for exactly that reason. `accept` still disqualifies: accepted work is
+   * finished.
+   */
+  it('a ticket that closed and was SENT BACK is stuck — a close is no longer proof of progress', () => {
     expect(
       isStuckTicket({
         status: 'ready',
         history: [h('claim'), h('close'), h('release'), h('claim'), h('release'), h('release')],
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('a ticket someone is working right now is not stuck — it is in progress', () => {
@@ -166,5 +179,23 @@ describe('a ticket that keeps being retried reaches the founder (W21-26)', () =>
     ]);
     expect(ordered[0]!.id).toBe('slate:1');
     expect(ordered[1]!.reason).toContain('picked up and put back down');
+  });
+});
+
+describe('isStuckTicket after a rejection (W21-43)', () => {
+  it('RED FIXTURE: a ticket that closed, was sent back, and parks again is STUCK — the one shape it could not report', () => {
+    const history = [
+      { verb: 'claim' }, { verb: 'start' }, { verb: 'close' }, { verb: 'release' },
+      { verb: 'claim' }, { verb: 'start' }, { verb: 'release' },
+    ];
+    expect(isStuckTicket({ status: 'ready', history })).toBe(true);
+  });
+
+  it('an ACCEPTED ticket is still finished — accept keeps disqualifying', () => {
+    const history = [
+      { verb: 'claim' }, { verb: 'start' }, { verb: 'close' }, { verb: 'accept' },
+      { verb: 'release' }, { verb: 'release' },
+    ];
+    expect(isStuckTicket({ status: 'ready', history })).toBe(false);
   });
 });

@@ -76,7 +76,17 @@ export function isStuckTicket(
   threshold = STUCK_CLAIM_THRESHOLD,
 ): boolean {
   if (ticket.status !== 'ready') return false;
-  if (ticket.history.some((h) => h.verb === 'close' || h.verb === 'accept')) return false;
+  /**
+   * W21-43: `accept` still disqualifies — accepted work is finished. `close`
+   * no longer does, and the original rule was right when written for a reason
+   * that stopped being true. It read "a ticket that has ever closed is making
+   * progress by definition", which held while close was a one-way door. Once
+   * work can come BACK from review (a founder rejecting it, W21-42), a ticket
+   * that closed, was sent back, and now parks repeatedly is exactly the one a
+   * person most needs to see — and it was the single shape this could not
+   * report. PLAN-vault-002 was invisible here for precisely that reason.
+   */
+  if (ticket.history.some((h) => h.verb === 'accept')) return false;
   const releases = ticket.history.filter((h) => h.verb === 'release').length;
   return releases >= threshold;
 }

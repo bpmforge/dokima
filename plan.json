@@ -12202,6 +12202,81 @@
         "The CLI and the board API both expose it, since the Decide card is where a person forms the judgement",
         "A red fixture pins the live shape: the founder identity that may accept PLAN-vault-002 may also reject it, and the maker may not accept its own"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-41"
+      ],
+      "id": "W21-43",
+      "title": "a ticket whose acceptance cannot be satisfied inside its own scope reaches the founder first",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-satisfiable.ts",
+        "packages/harbormaster/src/loop-land-satisfiable.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/founder-queue.ts",
+        "packages/harbormaster/src/founder-queue.test.ts",
+        "apps/server/src/api/server/founder-queue-route.ts"
+      ],
+      "notes": [
+        "RUN 22, the first with W21-41`s acceptance gate live. It worked exactly as designed and refused PLAN-vault-002 twice: \"acceptance criterion AC-1 ran NOTHING: `node --test src/crypto/*.spec.ts` exited 0 having executed zero tests.\" The placeholder password hash did not land. Good.",
+        "THEN THE REAL CAUSE. PLAN-vault-002`s write_scope is exactly three files: src/crypto/index.ts, src/crypto/argon2id.ts, src/crypto/aes-gcm.ts. It does not include src/crypto/*.spec.ts. The agent CANNOT create the test files its own acceptance criterion demands. It was not failing to comply \u2014 it could not comply, and the gate`s advice (\"write the tests it names\") is advice it has no permission to follow.",
+        "I checked the other explanation before concluding this: the close-gate reasons DO reach the next attempt (gapsFrom -> nextFeedback, loop-land-session.ts:152), so the agent was told, twice. And Node 22 CAN run a .spec.ts directly \u2014 I ran a probe spec in the worktree and it executed. Neither the feedback path nor the toolchain is the problem. The scope is.",
+        "THIS IS THE W21-27 CLASS AGAIN and the product already has the answer verb \u2014 `dokima widen-scope`. What it does not have is the moment of noticing. Nothing compares an executable acceptance criterion`s referenced paths against write_scope, so an unsatisfiable ticket burns its full ladder before anybody hears about it. That check is cheap and can happen at CLAIM time, before a single model call.",
+        "AND W21-26`S STUCK DETECTOR IS BLIND TO IT. isStuckTicket requires status ready, no close and no accept in history, and >=2 releases. PLAN-vault-002 HAS a close in its history \u2014 it closed in run 21 and I rejected it \u2014 so the close disqualifies it forever. A ticket that closed once, was sent back, and now parks repeatedly is exactly the ticket a founder most needs to see, and it is the one shape the detector cannot report.",
+        "The disqualifying-on-close rule was right when written (a ticket that has closed is making progress by definition) and W21-42`s reject verb makes it wrong: once work can come BACK from review, a close is no longer proof of progress.",
+        "CORRECTION TO MY OWN DIAGNOSIS, from run 23. I widened the scope with `dokima widen-scope` \u2014 the product`s own answer verb \u2014 and re-ran, and the ticket parked AGAIN with the identical refusal. The narrow scope was a real blocker (the agent genuinely could not have written those files) but it was NOT the whole cause. Necessary, not sufficient. The check this ticket adds is still right \u2014 it saves two full sessions on a mismatch readable from the ticket record \u2014 but it does not by itself make PLAN-vault-002 land."
+      ],
+      "acceptance": [
+        "Before the first model call, an executable acceptance criterion whose referenced paths fall outside write_scope is detected and the ticket is not attempted",
+        "It reaches the founder as a decision naming the paths and the verb that answers it (widen-scope), rather than burning the ladder",
+        "isStuckTicket counts a ticket that closed, was rejected, and parks again \u2014 a close is no longer proof of progress once work can return from review",
+        "A ticket whose acceptance IS satisfiable is unaffected \u2014 this adds a refusal, it does not narrow what runs",
+        "A red fixture pins run 22: write_scope of three src/crypto files with acceptance `node --test src/crypto/*.spec.ts` is refused before any attempt"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-44",
+      "title": "a session that changes nothing has not attempted the work",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-session.ts"
+      ],
+      "notes": [
+        "RUN 23, with the scope already widened so the agent COULD write the specs. Its complete tool history across both attempts: agent-session.list x6, agent-session.read x7, agent-session.verify x2. FIFTEEN calls, ZERO mutations. It never attempted to write anything, in either attempt, and the ladder ran to exhaustion.",
+        "The close-gate reason reached it \u2014 gapsFrom -> nextFeedback delivers \"acceptance criterion AC-1 ran NOTHING ... write the tests it names\" \u2014 and attempt 2 was byte-identical in shape to attempt 1.",
+        "THE SIGNAL IS FREE AND ALREADY COLLECTED. W17-01 counts mutating tool calls as the progress signal that EARNS budget. The inverse of that same counter is unused: a session that reaches its end having made no successful write, edit or commit has not attempted the work, whatever its manifest claims. That is code-observed, not model-reported (C-2), and it is unambiguous in a way \"did it try hard enough\" never is.",
+        "Spending a second attempt on a session that made zero mutations cannot help \u2014 the second one has the same information and the same instruction as the first, and run 23 is the proof: identical shape, identical refusal.",
+        "W21-19`s cross-session repetition evidence DID fire here and reported it faithfully (\"the same agent-session.list call was made 9 times ... this did not stop the run\"). It reports and does not act, by design. This is the case that argues one specific pattern should act: not repetition, which has honest causes, but ZERO MUTATIONS, which does not.",
+        "It must reach the founder rather than just failing faster. A model that reads its way around a ticket twice without touching it is telling you something about the ticket or the model, and either way the answer is a person`s."
+      ],
+      "acceptance": [
+        "A session that ends having made no successful mutating tool call is recorded as having attempted nothing, from the ledger`s own tool calls",
+        "A second attempt is not spent when the first attempted nothing \u2014 the ladder stops and the ticket reaches the founder",
+        "A session that mutated and still failed is unaffected \u2014 this stops empty attempts, not failing ones",
+        "The founder item says what the session actually did (the tool histogram), not that it \"failed\"",
+        "A red fixture reproduces run 23: 6 list, 7 read, 2 verify, 0 writes across two attempts does not spend a second attempt"
+      ]
     }
   ]
 }
