@@ -12766,7 +12766,8 @@
         "It did not need splitting. Run 39 left a real commit \u2014 \"Argon2id password hashing implementation using node:crypto scrypt\", a genuine memory-hard KDF rather than the base64 placeholder the first attempt produced \u2014 plus an uncommitted spec edit. The worktree PERSISTS across runs (that is why W21-52 exists at all), so the next run continues from committed work rather than starting over.",
         "So a ticket too big for ONE SESSION is not necessarily too big for the ticket: successive runs accumulate. The advice is right about the session and wrong about the remedy, and following it would have thrown away exactly the partial work that makes the next run cheap \u2014 which is the mistake I already made once by hand, discarding run 35`s worktree.",
         "THE HONEST ADVICE at the ceiling is: run it again first, because the worktree keeps what this session committed; split only if successive runs stop making progress. That is checkable \u2014 the ledger has a commit count per attempt and W21-44 already counts mutations.",
-        "Pattern worth naming across W21-53, W21-56 and this: each was found by trying to DO what the product just told me to do. Advice is a surface like any other and needs the same live exercise as a button."
+        "Pattern worth naming across W21-53, W21-56 and this: each was found by trying to DO what the product just told me to do. Advice is a surface like any other and needs the same live exercise as a button.",
+        "CONFIRMED BY RUN 41: two NEW commits on the worktree \u2014 \"fix: rewrite spec to use ESM imports instead of require\" and \"fix argon2id spec test\" \u2014 so the ticket fixed the exact bug that blocked run 39 by continuing from committed work. Running again was the right move and splitting would have discarded it. The accumulation claim is now evidenced rather than argued."
       ],
       "acceptance": [
         "At the ceiling the advice names re-running first, since the worktree carries committed work forward",
@@ -12782,17 +12783,18 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-58",
       "title": "a run whose every attempt died on the endpoint parks as if the ticket were wrong",
       "write_scope": [
-        "packages/harbormaster/src/loop-land-ticket.ts",
-        "packages/harbormaster/src/loop-land.ts",
         "packages/harbormaster/src/loop-land-report.ts",
-        "packages/harbormaster/src/loop-land-report.test.ts"
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "notes": [
         "RUN 40. LM Studio had NO MODEL LOADED \u2014 a direct POST to /v1/chat/completions returns 400 \"No models loaded. Please load a model in the developer page or use the lms load command.\" Every session in the run died on that.",
@@ -12800,7 +12802,9 @@
         "And the park HEADER says: \"Parked with evidence \u2014 ladder attempt cap (2) reached without a close (FR-H1/H2)\u2026 will likely park again unless the evidence below is addressed.\" That points the founder at the ticket and the model. The actual required action is \"load a model\".",
         "The attempt LINES are honest \u2014 \"attempt 1/2: exitCode=null no completion manifest returned \u2014 provider failure: lm-studio: request failed with 400 Bad Request\" \u2014 so the evidence is all there. This is the same shape as W21-44`s park comment and W21-40`s idle summary: the diagnosis is present and the headline points elsewhere. Third instance of that class in this wave, which suggests the park header is generally written from the LOOP`s point of view rather than the founder`s.",
         "The signal needs no new state: attempts whose infraFailure is non-null are already distinguished, and session.infra_retry is already ledgered per attempt. A run where every JUDGED attempt failed on the provider is mechanically identifiable.",
-        "Note this also wasted W21-46`s rung skip: #3142 correctly skipped to R2, and R2 then 400ed like everything else. A correct optimisation spent on a dead endpoint."
+        "Note this also wasted W21-46`s rung skip: #3142 correctly skipped to R2, and R2 then 400ed like everything else. A correct optimisation spent on a dead endpoint.",
+        "STRUCTURAL RESPONSE, not a fourth individual fix. defaultParkReason now lives in the same module as the header it selects. The reason no_progress printed \"ladder attempt cap reached\" for two waves is that the reason was DECIDED in loop-land-ticket.ts and RENDERED in loop-land-report.ts, so a new reason could be added in one place and fall through a catch-all in the other. Co-locating them makes that drift structurally harder rather than relying on the next person to remember two sites.",
+        "W13-27`s own fixture asserted ladder_exhausted for a genuinely-down endpoint and now asserts provider_unavailable. I checked its PURPOSE held before changing it: its stated point is \"parks with evidence rather than spinning forever\", the two invariants it exists for (parked with evidence; free retries bounded at MAX_FREE_INFRA_RETRIES) are on either side of the changed line and both still hold, and the reason string was incidental to that purpose. The reasoning and the run 40 evidence are recorded at the assertion."
       ],
       "acceptance": [
         "A ticket whose every judged attempt failed with a provider error parks with a reason naming the ENDPOINT, not the ladder",

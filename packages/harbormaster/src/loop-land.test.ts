@@ -672,7 +672,23 @@ describe('runLandLoop', () => {
         const outcome = result.processed[0]!;
         expect(outcome.landed).toBe(false);
         expect(outcome.parked).toBe(true);
-        expect(outcome.parkedReason).toBe('ladder_exhausted');
+        /**
+         * W21-58 CHANGED THIS ASSERTION, and this fixture describes exactly the
+         * case it was written for. Its stated purpose — "an endpoint that is
+         * genuinely down still parks with evidence rather than spinning
+         * forever" — is unchanged and better served: the park now names the
+         * ENDPOINT rather than the ladder, so a founder is sent to the thing
+         * that is actually broken.
+         *
+         * Live evidence: run 40 hit this with LM Studio holding no loaded
+         * model, and the header said "ladder attempt cap (2) reached … will
+         * likely park again unless the evidence below is addressed" — pointing
+         * at the ticket when the action was "load a model".
+         *
+         * The invariants this fixture exists for are the two either side of
+         * this line, and both still hold.
+         */
+        expect(outcome.parkedReason).toBe('provider_unavailable');
         expect(
           listEvents(log).filter((e) => e.eventType === 'session.infra_retry'),
         ).toHaveLength(MAX_FREE_INFRA_RETRIES);

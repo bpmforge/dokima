@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSummaryLine, parkComment } from './loop-land-report.js';
+import { attemptSummaryLine, parkComment, defaultParkReason, everyAttemptHitTheProvider } from './loop-land-report.js';
 import type { LandAttempt } from './loop-land.js';
 
 /**
@@ -160,5 +160,75 @@ describe('every park reason names its own mechanism (W21-44)', () => {
     expect(parkComment('awaiting_escalation_token', 2, noAttempts, undefined)).toContain(
       'approval token',
     );
+  });
+});
+
+/**
+ * W21-58. Run 40: LM Studio had no model loaded, every session died on a 400,
+ * and the park header read "ladder attempt cap (2) reached … will likely park
+ * again unless the evidence below is addressed" — pointing the founder at the
+ * ticket and the model when the action was "load a model". The attempt lines
+ * named the provider failure honestly; only the headline was wrong.
+ *
+ * Third instance of that class in this wave, after W21-40's idle summary and
+ * W21-44's park comment.
+ */
+describe('a dead endpoint is not a verdict on the ticket (W21-58)', () => {
+  const providerFailure = (attempt: number) =>
+    ({
+      attempt,
+      session: {
+        exitCode: null,
+        output: 'provider failure: lm-studio: request failed with 400 Bad Request',
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+        changedPaths: [],
+      },
+      closeGate: null,
+    }) as unknown as Parameters<typeof everyAttemptHitTheProvider>[0][number];
+
+  const realAttempt = () =>
+    ({
+      attempt: 1,
+      session: {
+        exitCode: 1,
+        output: 'no completion manifest returned',
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+        changedPaths: [],
+      },
+      closeGate: null,
+    }) as unknown as Parameters<typeof everyAttemptHitTheProvider>[0][number];
+
+  it('RED FIXTURE: run 40 — two provider failures do not report a ladder cap', () => {
+    expect(everyAttemptHitTheProvider([providerFailure(1), providerFailure(2)])).toBe(true);
+    expect(defaultParkReason([providerFailure(1), providerFailure(2)], 'ladder')).toBe(
+      'provider_unavailable',
+    );
+  });
+
+  it('the header says what to DO and disclaims any verdict on the ticket', () => {
+    const comment = parkComment('provider_unavailable', 2, [], undefined);
+    expect(comment).toContain('EVERY attempt failed before the model could work');
+    expect(comment).toContain('Nothing here is a judgement about this ticket');
+    expect(comment).toContain('has a model loaded');
+    expect(comment).not.toContain('attempt cap');
+  });
+
+  it('a MIXED run keeps the ladder reason — the ticket genuinely was attempted', () => {
+    expect(everyAttemptHitTheProvider([providerFailure(1), realAttempt()])).toBe(false);
+    expect(defaultParkReason([providerFailure(1), realAttempt()], 'ladder')).toBe(
+      'ladder_exhausted',
+    );
+  });
+
+  it('no attempts at all is not a provider verdict either', () => {
+    expect(everyAttemptHitTheProvider([])).toBe(false);
+  });
+
+  it('locked mode still reports its own ceiling when the attempts were real', () => {
+    expect(defaultParkReason([realAttempt()], 'locked')).toBe('locked_ceiling_reached');
   });
 });

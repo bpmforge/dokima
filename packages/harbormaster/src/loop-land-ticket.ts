@@ -27,7 +27,7 @@ import {
 } from '@dokima/tickets';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
-import { parkComment } from './loop-land-report.js';
+import { defaultParkReason, parkComment } from './loop-land-report.js';
 import { attemptOnce, nextFeedback } from './loop-land-session.js';
 import {
   repeatedZeroInformationCalls,
@@ -350,8 +350,7 @@ export async function landClaimedTicket(
 
   const parked = !landed && current.status === 'in_progress';
   if (parked) {
-    parkedReason ??=
-      policy.mode === 'locked' ? 'locked_ceiling_reached' : 'ladder_exhausted';
+    parkedReason ??= defaultParkReason(attempts, policy.mode);
     const parkBody = parkComment(
       parkedReason,
       ceiling,

@@ -80,6 +80,37 @@ function noManifestSummary(attempt: LandAttempt): string {
     : `no completion manifest returned — ${why}`;
 }
 
+/**
+ * W21-58: every judged attempt died on the provider, so the ticket was never
+ * really attempted.
+ *
+ * `runSessionAbsorbingProviderFailure` reports an endpoint failure as a null
+ * exit code with an output that begins `provider failure:` — that is the
+ * marker, and it is already on every attempt record.
+ */
+export function everyAttemptHitTheProvider(attempts: readonly LandAttempt[]): boolean {
+  return (
+    attempts.length > 0 &&
+    attempts.every(
+      (a) => a.session.exitCode === null && a.session.output.startsWith('provider failure:'),
+    )
+  );
+}
+
+/**
+ * The reason to report when no earlier branch set one. Lives here with the
+ * header it selects, so a new reason cannot be added in one place and rendered
+ * as something else in the other — which is exactly how `no_progress` came to
+ * print "ladder attempt cap reached" for two waves.
+ */
+export function defaultParkReason(
+  attempts: readonly LandAttempt[],
+  mode: string,
+): LandParkedReason {
+  if (everyAttemptHitTheProvider(attempts)) return 'provider_unavailable';
+  return mode === 'locked' ? 'locked_ceiling_reached' : 'ladder_exhausted';
+}
+
 function parkHeader(reason: LandParkedReason, ceiling: number): string {
   switch (reason) {
     case 'locked_ceiling_reached':
@@ -90,6 +121,8 @@ function parkHeader(reason: LandParkedReason, ceiling: number): string {
       return 'Parked with evidence — two attempts produced the IDENTICAL gaps, so the ladder stopped rather than spending the rest of it on the same failure (BLUEPRINT §3.5). The ticket is back in Ready; the gaps below are what did not move.';
     case 'attempted_nothing':
       return 'Parked with evidence — the session made tool calls and changed NOTHING, so there is no work to judge and a further attempt would carry the same information (W21-44). The ticket is back in Ready; the tool histogram below is what it actually did.';
+    case 'provider_unavailable':
+      return 'Parked with evidence — EVERY attempt failed before the model could work: the provider endpoint refused each request (W21-58). Nothing here is a judgement about this ticket or the model chosen for it. Check the endpoint is up and has a model loaded, then re-run; the ticket is back in Ready and its worktree still holds whatever earlier runs committed.';
     default:
       return `Parked with evidence — ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2). The ticket is back in Ready; the next run will retry it, and will likely park again unless the evidence below is addressed.`;
   }

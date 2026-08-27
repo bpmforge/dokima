@@ -180,7 +180,9 @@ export type LandParkedReason =
   | 'awaiting_escalation_token'
   | 'no_progress'
   /** W21-44: the session made tool calls and changed nothing — not attempted. */
-  | 'attempted_nothing';
+  | 'attempted_nothing'
+  /** W21-58: every attempt died on the provider — not a judgement about the ticket. */
+  | 'provider_unavailable';
 export interface LandLoopTicketOutcome {
   readonly ticketId: string;
   readonly mode: LandEscalationMode;
