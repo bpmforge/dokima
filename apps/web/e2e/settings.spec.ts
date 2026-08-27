@@ -153,7 +153,23 @@ test('model matrix: pick a model from the provider-discovered list, and a copilo
   await matrixForm.getByLabel('Role').fill('coding-agent');
   const modelSelect = matrixForm.getByLabel('Model');
   await expect(modelSelect).toBeEnabled();
-  await modelSelect.selectOption('qwen2.5-coder');
+  /**
+   * W21-24: the option's exact string depends on how many providers are
+   * ENABLED, because that is the rule the resolver applies — bare with one,
+   * `<providerId>/<model>` with two or more. An earlier test in this file
+   * registers a provider in the same project, so this one usually sees two.
+   *
+   * Picking by suffix rather than by a hardcoded literal is the honest
+   * assertion anyway: AC1 is "pick from a list, no free text", and pinning the
+   * exact qualification here would just re-encode the resolver's rule in a
+   * third place that has to be kept in step.
+   */
+  const value = await modelSelect
+    .locator('option', { hasText: 'qwen2.5-coder' })
+    .first()
+    .getAttribute('value');
+  expect(value).toBeTruthy();
+  await modelSelect.selectOption(value!);
   await matrixForm.getByRole('button', { name: 'Add / update row' }).click();
   await expect(page.getByRole('row', { name: /coding-agent/ })).toContainText(
     'qwen2.5-coder',

@@ -11514,7 +11514,8 @@
         "apps/web/src/settings/providers-api.ts",
         "apps/web/src/settings/providers-model-refs.ts",
         "apps/web/src/settings/providers-api.test.ts",
-        "apps/server/src/api/pipeline/model-resolution.test.ts"
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/web/e2e/settings.spec.ts"
       ],
       "notes": [
         "Live, 2026-08-26. Added a second provider (an OpenAI-compatible endpoint) exactly as the UI invites. Every subsequent run then REFUSED before spending anything: \"qwen/qwen3-coder-next has no provider prefix and 2 providers are enabled \u2014 qualify it as <providerId>/qwen/qwen3-coder-next\". The refusal itself is excellent: it names the problem, names the fix, and costs nothing.",
@@ -11524,7 +11525,9 @@
         "The resolver`s own splitModelRef docstring records this exact class from the OTHER side: \"the W10-04 panel offered the model and the resolver then refused it\". Same mismatch, opposite direction, ten waves apart. The rule that keeps them in step is worth more than either fix.",
         "THE \"SAME STRING\" GUARANTEE COULD NOT BE A SHARED IMPORT. apps/web takes no dependency on @dokima/shared at all \u2014 its types are hand-mirrored by design (board/types.ts says so). So it is a test on each side over the SAME strings: providers-api.test.ts and model-resolution.test.ts, each pointing at the other, and they must change together.",
         "Deduping across providers went away and that is the improvement, not the cost: a model served by both lm-studio and ollama is two different routes, and which endpoint serves it was previously unexpressible.",
-        "The existing fixture asserted bare ids against THREE enabled providers \u2014 it encoded the bug. Reversed with the reasoning recorded at the assertion."
+        "The existing fixture asserted bare ids against THREE enabled providers \u2014 it encoded the bug. Reversed with the reasoning recorded at the assertion.",
+        "I PUSHED A RED E2E. `pnpm --filter @dokima/web e2e 2>&1 | tail -2 && git commit` \u2014 the pipeline`s exit status is tail`s, so && saw success and the commit and both pushes went out with settings.spec.ts red. Exactly the masking trap this session already hit once on `pnpm typecheck | tail`. Fixed forward in the next commit; the gate command in the loop instructions must never be run through a pipe again.",
+        "The e2e failure was REAL and my change caused it: an earlier test in settings.spec.ts registers a provider in the same project, so the matrix test sees TWO enabled providers and the options are now qualified. The test`s hardcoded bare `qwen2.5-coder` no longer exists. Fixed by picking the option whose text contains the model rather than a literal \u2014 which is the honest assertion for AC1 (\"pick from a list, no free text\") and avoids re-encoding the resolver`s rule in a third place."
       ],
       "acceptance": [
         "With two or more providers enabled, the Models dropdown offers ids the resolver accepts",
