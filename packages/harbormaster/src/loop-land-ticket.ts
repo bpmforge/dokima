@@ -46,6 +46,7 @@ import {
   tokenBoundaryDecideCard,
 } from './loop-land-policy.js';
 import { beginRungAttempt, consultRungZero } from './loop-land-rungs.js';
+import { startAttemptFor } from './loop-land-rungmemory.js';
 import { fireVerbMirror } from './loop-land-verbs.js';
 import {
   parkBeforeAttempting,
@@ -224,8 +225,9 @@ export async function landClaimedTicket(
   let parkedReason: LandParkedReason | undefined;
   let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
 
+  // W21-46: a rung that already failed THIS ticket is not re-run from scratch.
   for (
-    let attempt = 1;
+    let attempt = startAttemptFor(options.log, ticket.id, options.actorId, options.runId);
     attempt <= freeRetry.limit() && current.status === 'in_progress';
     attempt++
   ) {

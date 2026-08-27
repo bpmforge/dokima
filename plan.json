@@ -12343,7 +12343,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [
@@ -12352,16 +12352,19 @@
       "id": "W21-46",
       "title": "an exhausted ladder starts again from the bottom on the next run",
       "write_scope": [
-        "packages/harbormaster/src/loop-land-rungs.ts",
-        "packages/harbormaster/src/loop-land-rungs.test.ts",
-        "packages/harbormaster/src/loop-land-ticket.ts"
+        "packages/harbormaster/src/loop-land-rungmemory.ts",
+        "packages/harbormaster/src/loop-land-rungmemory.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/index.ts"
       ],
       "notes": [
         "RUN 26, the first with a real two-rung ladder. It climbed for the first time \u2014 #1867 escalation.rung_advanced {\"fromRung\":\"R1\",\"toRung\":\"R2\"} carrying R1`s gate evidence \u2014 and that whole mechanism works.",
         "R1 (qwen/qwen3-coder-next) spent FORTY turns and produced no manifest: #1865 session.turns_observed {\"turns\":40,\"completed\":false}. R2 (qwen3.6-35b-a3b) then produced one in EIGHT: #1888 {\"turns\":8,\"completed\":true}. The ladder`s premise held exactly as designed.",
         "Then the ticket parked at the cap and returned to Ready \u2014 and the NEXT run will start it at R1 again, re-spending those forty turns on the model this ticket has now demonstrably defeated. The ledger already knows: escalation.rung_advanced names the ticket, the rung it left, and why. Nothing reads it back when the rung is chosen.",
         "Same shape as W21-45 at a different granularity: knowledge the product has WRITTEN DOWN is not consulted at the moment it would pay. There the vehicle was the R0 fact bank; here it is the escalation record, and the rung chooser simply starts at index 0 every time.",
-        "Not \"always start at the highest rung reached\" \u2014 that would defeat cheapest-first (D-018) for a ticket whose R1 failure was a one-off. The signal is a rung that failed THIS ticket with no manifest, which is exactly what the escalation event records."
+        "Not \"always start at the highest rung reached\" \u2014 that would defeat cheapest-first (D-018) for a ticket whose R1 failure was a one-off. The signal is a rung that failed THIS ticket with no manifest, which is exactly what the escalation event records.",
+        "THE FORGETTING IS THE HALF THAT MAKES IT SAFE, and PLAN-vault-002 is the live proof. It defeated R1 four times \u2014 and then the founder split it and gave it a working toolchain, so it is no longer the ticket that defeated R1 and the cheap rung genuinely deserves a fresh go at the smaller job. Without expiry this fix would permanently condemn a ticket for failing a version of itself that no longer exists. Memory clears on ticket.scope_widened (W21-27) and ticket.dependencies_retargeted (W21-51).",
+        "It prints why it skipped a rung. Silence there would read as the ladder misbehaving rather than remembering."
       ],
       "acceptance": [
         "A rung that has already failed this ticket without producing a manifest is not re-run from scratch on the next run",

@@ -196,6 +196,10 @@ export type {
 /** W21-34: what the machine review actually did to a ticket, for the surface where a person accepts it. */
 export { reviewStatusFor, reviewStatusSentence } from './review-status.js';
 
+/** W21-46: a rung that already failed this ticket is not re-run from scratch. */
+export { rungMemoryFor, rungSkipNotice, startAttemptFor } from './loop-land-rungmemory.js';
+export type { RungMemory } from './loop-land-rungmemory.js';
+
 /** W21-40: a claim held by a run that has ended needs no waiting period. */
 export { heldTicketsNotice, orphanedClaimNotice, orphanedClaims } from './loop-land-orphan.js';
 export type { OrphanedClaim } from './loop-land-orphan.js';
