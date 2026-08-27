@@ -12071,7 +12071,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 5,
       "module": "harbormaster",
       "depends_on": [
@@ -12080,8 +12080,7 @@
       "id": "W21-39",
       "title": "attest-parity controls: the pack ships 83 validators and a generated build runs 2",
       "write_scope": [
-        "docs/ARCHITECTURE.md",
-        "docs/TESTING.md"
+        "docs/ARCHITECTURE.md"
       ],
       "notes": [
         "ASKED DIRECTLY BY THE FOUNDER: attest has controls in place; Dokima needs the same level or stricter, so stray code cannot get added to a generated product. The comparison is stark, and the good news is that almost nothing is missing from the PACK \u2014 it is all missing from the GATE.",
@@ -12091,7 +12090,12 @@
         "ATTEST RUNS A FIVE-GATE CHAIN PER HANDOFF (scripts/validators/run-handoff-gates.sh, which is ALSO in Dokima`s pack as content/validators/run-handoff-gates.sh and is never invoked): 1 scope, 2 manifest checked against disk, 3 domain coverage validator, 4 tracker freshness against the branch point, 5 runtime build+lint+file-size. Dokima reimplements 1, 2 and part of 5 in TypeScript \u2014 correctly, and out of session, which is STRONGER than attest for those three because the agent cannot influence them. It runs none of 3 and 4, and none of the 83.",
         "SO THE HONEST SUMMARY: Dokima`s trust boundary is stronger than attest`s (out-of-session gates, signed receipts, hash-chained ledger, maker != verifier by construction). Its CODE CONTENT controls are far weaker. An agent building the vault can add a hallucinated package (R-21 slopsquatting), leave an unimplemented stub as a feature (R-27), reimplement a library badly (R-30), or wire a disconnected pipeline (R-26), and every gate passes.",
         "R-21 is the one that is a security issue rather than a quality one: a hallucinated package name an attacker has registered enters the product through a gate that never compares dependencies against anything.",
-        "LIVE PROOF, no longer hypothetical. PLAN-vault-002 landed a password hash that base64-encodes the plaintext password and a verifier that returns true for any input, both labelled \"(placeholder)\" \u2014 R-27, straight through the gate, as the security core of a password manager. Alongside it: an unused EncryptOptions interface (dead scaffolding, R-26 family) and an encrypt/decrypt pair whose aad handling is asymmetric. Three anti-slop rules the pack documents and the gate never applies, in one ticket."
+        "LIVE PROOF, no longer hypothetical. PLAN-vault-002 landed a password hash that base64-encodes the plaintext password and a verifier that returns true for any input, both labelled \"(placeholder)\" \u2014 R-27, straight through the gate, as the security core of a password manager. Alongside it: an unused EncryptOptions interface (dead scaffolding, R-26 family) and an encrypt/decrypt pair whose aad handling is asymmetric. Three anti-slop rules the pack documents and the gate never applies, in one ticket.",
+        "THE TABLE IS MEASURED, NOT ASSERTED. Every \"Dokima\" row was observed on the vault project during W21, and the honest result is mixed rather than damning: on write-scope containment, manifest-vs-disk and verify re-run, Dokima is STRONGER than attest because those run OUT OF SESSION where the agent cannot influence them. Its acceptance-criteria execution (W21-41, W21-50) has no attest equivalent at all. What is weaker is code CONTENT: 83 validators ship and two ran.",
+        "LAYER 3 DEMONSTRATED LIVE rather than reasoned: validate-tech-stack.sh on the vault worktree prints \"no docs/TECH_STACK.md found \u2014 skipping\" and then \"clean -- 0 gaps\", exit 0. _lib.sh`s warn writes to stderr only and the JSON envelope carries gaps/exit and nothing else, so a skip is STRUCTURALLY identical to a pass. Requiring that validator today would enforce nothing while reporting success \u2014 the same shape as W21-40, W21-44 and W21-58.",
+        "AND IT CANNOT BE FIXED HERE. content/ is imported, provenance-headed and never hand-restyled (CLAUDE.md), so the envelope has to gain a `skipped` field UPSTREAM IN ATTEST. I did not edit the pack to make the number look better, and I did not add prose-matching on stderr to fake the distinction \u2014 a fragile detector would have been a fourth instance of a check that reports more confidence than it has.",
+        "validate-deps emitted NO JSON ENVELOPE AT ALL on the vault worktree (npm audit with no lockfile-backed data). Recorded as needing investigation before it is required \u2014 requiring a validator whose output cannot be parsed is a different way to get a hollow gate.",
+        "THE POLICY DECISION IS RECORDED AS THE FOUNDER`S, with reasoning: not all 83, because most assume documents a generated project may never produce, and a gate that refuses for debt a ticket did not create teaches people to bypass the gate. That is why W21-38 shipped a per-project setting and left the default at two."
       ],
       "acceptance": [
         "The control inventory above is recorded in docs/ARCHITECTURE.md as a table: control, where attest enforces it, where Dokima enforces it, gap",

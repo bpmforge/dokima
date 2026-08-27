@@ -267,3 +267,71 @@ Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute*
 | Oversized session output/diff (ENOBUFS class) | bounded buffers on session/git pipes | truncate-with-marker + summarize; never a process crash; oversized tool results spill to disk (FR-L8) | card note "output summarized (N MB)" |
 | Reviewer bookkeeping vs verdict divergence | fresh APPROVE with stale sticky findings | fresh explicit verdict wins; block only on freshly-raised or explicitly STILL-PRESENT findings (field report §5) | history shows the superseded findings |
 | Resume state drift | event log vs receipts vs disk disagree | resume REFUSES with a drift report; never guesses (FR-H3) | drift report card, human decides |
+
+## 9. Controls on generated projects (W21-39)
+
+Dokima's own board is guarded by the gates in §2. A **generated** project — the
+thing a founder actually asked for — is guarded by much less, and the gap is
+not in the content pack. `content/validators/` ships 83 validators imported
+from attest; a generated project's close gate ran two of them.
+
+The comparison, measured rather than asserted (every "Dokima" row was observed
+on the vault project during W21):
+
+| Control | attest | Dokima on a generated project | Gap |
+| --- | --- | --- | --- |
+| Write-scope containment | `run-handoff-gates.sh` gate 1, in-session | SC-01, **out of session** against the real worktree diff | none — Dokima is stronger, the agent cannot influence it |
+| Manifest checked against disk | gate 2, in-session | close gate re-stats every claimed file (FR-H1) | none — stronger, same reason |
+| Verify re-run | gate 5 (`--runtime`) | close gate re-runs it in a sandbox (SC-07) and never trusts the manifest's claim | none — stronger |
+| Ticket acceptance criteria executed | n/a (HANDOFF-shaped) | W21-41: executable criteria are run; zero-test runs refuse; W21-50: a criterion that also passes at BASE certifies nothing | Dokima-only |
+| Dependency ↔ designed stack | `validate-tech-stack.sh` | ships, and was **never required** until W21-38 | closed as a mechanism; see the skip note below |
+| Supply-chain / CVE | `validate-deps.sh` | ships, never required | as above |
+| Dead code, duplication, complexity | 6 code-health validators | ship, never required | as above |
+| ANTI_SLOP R-01…R-31 | `ANTI_SLOP_RULES.md` + anti-slop auditor, dispatched | **ship in `content/protocols/` and `content/experts/` and nothing reads them** | open — no code path injects a protocol into a handoff or dispatches that auditor |
+| Domain coverage / tracker freshness | gates 3 and 4 | not run | open, and likely correct to leave open — see below |
+
+### Which of the 83 belong in a generated product's gate
+
+Not all of them, and the reason is not cost. Most assume documents a generated
+project may never produce, and **a gate that refuses for debt a ticket did not
+create teaches people to bypass the gate** — which is worse than not running
+it. The set is therefore per-project (`requiredValidators`, W21-38) rather
+than a new default, and the default stays at two.
+
+The candidates worth enabling for a typical generated product, with what each
+actually did when run against the vault worktree:
+
+- `validate-tech-stack` — **skipped**, see below. Enable only alongside a real
+  `docs/TECH_STACK.md`.
+- `validate-deps` — emitted **no JSON envelope at all** on a project with no
+  lockfile-backed audit; needs investigating before it is required.
+- `validate-file-size`, `validate-dead-code`, `validate-no-reinvent`,
+  `validate-circular-deps` — all ran and reported clean on a 5-file project,
+  so they are cheap and honest there; their value grows with the codebase.
+
+### The skip that reports as a pass (open, upstream)
+
+`validate-tech-stack.sh` on the vault worktree prints
+
+```
+! no docs/TECH_STACK.md found — skipping (Phase 3 may not have produced one)
+[validate-tech-stack] clean -- 0 gaps
+```
+
+and exits **0**. `_lib.sh`'s `warn` writes to stderr only, and the JSON
+envelope carries `gaps`/`exit` and nothing else, so a skip is **structurally
+identical to a pass**. Requiring that validator today would enforce nothing
+while reporting success — the exact failure shape W21-40, W21-44 and W21-58
+each found elsewhere.
+
+This cannot be fixed here: `content/` is imported, provenance-headed and never
+hand-restyled (CLAUDE.md), so the envelope has to gain a `skipped` field
+**upstream in attest**. Until it does, requiring a document-dependent
+validator is worse than not requiring it, and that is why W21-38 shipped the
+mechanism and left the policy to the founder.
+
+The deeper cause is one layer further back: the vault project has no `docs/`
+on disk at all. The pipeline recorded blueprint, technical-slate and
+ticket-decomposition phases in the event log and none of it materialised as
+files — and the phase-0 gate said so ("declared deliverable(s) not found on
+disk") while the build proceeded anyway.
