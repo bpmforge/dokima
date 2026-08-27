@@ -261,6 +261,7 @@ export async function landClaimedTicket(
       attempt: attempts.length + 1,
       session,
       closeGate,
+      silent,
       ...(rungStart.sessionLabel ? { sessionLabel: rungStart.sessionLabel } : {}),
     });
     current = requireTicket(options.log, ticket.id);

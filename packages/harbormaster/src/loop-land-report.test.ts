@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { attemptSummaryLine, parkComment, defaultParkReason, everyAttemptHitTheProvider } from './loop-land-report.js';
+import type { SilentCompletion } from './loop-land-session-acceptance.js';
 import type { LandAttempt } from './loop-land.js';
 
 /**
@@ -230,5 +231,41 @@ describe('a dead endpoint is not a verdict on the ticket (W21-58)', () => {
 
   it('locked mode still reports its own ceiling when the attempts were real', () => {
     expect(defaultParkReason([realAttempt()], 'locked')).toBe('locked_ceiling_reached');
+  });
+});
+
+describe('W21-83 — the park tells the PERSON the work is already done', () => {
+  /**
+   * The half of W21-83 that shipped missing. Tally's founder saw "re-run it
+   * first" for three runs while `npm run build` exited 0 in the worktree the
+   * whole time. Advice to retry finished work is worse than none.
+   */
+  const attempt = (silent: SilentCompletion | undefined) => ({
+    attempt: 1,
+    session: { exitCode: 1, output: '', manifest: null, manifestParseTier: null, scopeViolations: [], changedPaths: [] },
+    closeGate: null,
+    ...(silent ? { silent } : {}),
+  });
+
+  it('names the passing criteria and says not to redo the work', () => {
+    const line = attemptSummaryLine(
+      attempt({ complete: true, passing: ['npm run build'] }),
+      2,
+    );
+    expect(line).toContain('ALREADY DONE');
+    expect(line).toContain('npm run build');
+    expect(line).toContain('return the manifest');
+  });
+
+  it('is silent when the work is not done, so the ordinary line stands', () => {
+    const line = attemptSummaryLine(attempt({ complete: false, passing: [] }), 2);
+    expect(line).toContain('no completion manifest returned');
+    expect(line).not.toContain('ALREADY DONE');
+  });
+
+  it('an attempt from before this existed is unchanged', () => {
+    const line = attemptSummaryLine(attempt(undefined), 2);
+    expect(line).toContain('no completion manifest returned');
+    expect(line).not.toContain('ALREADY DONE');
   });
 });

@@ -75,9 +75,25 @@ export function attemptSummaryLine(attempt: LandAttempt, ceiling: number): strin
  */
 function noManifestSummary(attempt: LandAttempt): string {
   const why = sessionFailureTail(attempt.session.output);
-  return why === null
-    ? 'no completion manifest returned'
-    : `no completion manifest returned — ${why}`;
+  const base =
+    why === null
+      ? 'no completion manifest returned'
+      : `no completion manifest returned — ${why}`;
+  /**
+   * W21-83: the half of that ticket I shipped without. The maker was told its
+   * criteria already passed; the PERSON reading the park was not, so a founder
+   * looking at Tally saw "re-run it first" while `npm run build` had been
+   * exiting 0 in the worktree for three runs. Advice to retry work that is
+   * already finished is worse than no advice.
+   */
+  if (!attempt.silent?.complete) return base;
+  return (
+    `${base}. THE WORK IS ALREADY DONE THOUGH — every acceptance criterion ` +
+    `passes in the worktree right now ` +
+    `(${attempt.silent.passing.map((c) => `\`${c}\``).join(', ')}). ` +
+    `The session finished the job and could not report it; the next attempt is ` +
+    `told to return the manifest rather than redo the work.`
+  );
 }
 
 /**

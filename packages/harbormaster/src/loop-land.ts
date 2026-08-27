@@ -39,6 +39,7 @@ import { type EventLog } from '@dokima/events';
 
 import type { HandoffBuilder } from './loop-handoff.js';
 import type { StopSwitch } from './loop-killswitch.js';
+import type { SilentCompletion } from './loop-land-session-acceptance.js';
 import type { CloseGateResult } from './loop-gates.js';
 import { pushLandedBranch, type PushToRemotesFn } from './land-push.js';
 import {
@@ -170,6 +171,8 @@ export interface LandAttempt {
   readonly session: SessionResult;
   /** `null` when the session returned no completion manifest — the close gate was never even attempted. */
   readonly closeGate: CloseGateResult | null;
+  /** W21-83: the criteria already passed, so the session finished and could not say so. */
+  readonly silent?: SilentCompletion;
   /** W16-01: the composing seam's label for what ran this attempt (a model name where the seam knows one). Absent without a `rungSessions` seam. Keys per-attempt calibration honestly when attempts ran on different rungs. */
   readonly sessionLabel?: string;
 }
