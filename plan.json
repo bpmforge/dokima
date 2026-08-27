@@ -13186,6 +13186,32 @@
         "Evidence that the session would have used it: run 52 SESSION_CHECKPOINT reads {\"remaining\":[\"add type: module to package.json to fix ES module error\"]} while the actual failure is ERR_CRYPTO_INVALID_SCRYPT_PARAMS. The maker re-read its way to a diagnosis the repetition record contradicts.",
         "ACCEPTANCE: buildHandoff carries the cross-session repeated-call summary for the ticket when there is one; the session prompt renders it as fact, not instruction; no change to the report-not-stop behaviour of W21-19."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-70",
+      "title": "run start hands the maker the launching human\u2019s identity, so that human can never accept the work",
+      "write_scope": [
+        "apps/server/src/cli/run-cmd.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build.test.ts"
+      ],
+      "notes": [
+        "LIVE: PLAN-vault-002a landed on the first attempt of run 54, and `dokima accept PLAN-vault-002a --actor founder` was refused [SELF_ACCEPT]: \"reviewer founder is also the owner (maker != verifier)\". The ledger shows why \u2014 ticket.claimed (seq 4209), ticket.started (4210) and ticket.closed (4432) all carry actor_id=founder, because the run was started with `run start --actor founder`. The bookkeeping actor for the RUN (FR-C7) is propagated into the SESSION lifecycle verbs.",
+        "C-4 says reviewer identities are distinct BY CONSTRUCTION. Here distinctness depends on the operator remembering to type an --actor that is not their own id \u2014 distinct by convention, which is the thing C-4 exists to forbid. The failure mode is silent until the first ticket actually lands, which is why fifteen runs of parking never surfaced it.",
+        "Note what was NOT broken, so the fix does not overreach: the machine review DID have mechanically distinct identities (review.verdict seq 4434: reviewerModel qwen/qwen3.8-27b, makerModel qwen/qwen3-coder-next). Only the human accept step collides.",
+        "CANDIDATE FIX: run start derives a machine actor for the session lifecycle verbs regardless of the bookkeeping actor, or refuses an --actor that is also a registered human reviewer. Prefer the former; a refusal still leaves distinctness to the operator.",
+        "ACCEPTANCE: a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it; that human can accept the resulting ticket; the run bookkeeping still records who launched it."
+      ]
     }
   ]
 }
