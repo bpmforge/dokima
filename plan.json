@@ -12031,17 +12031,18 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "module": "server",
       "depends_on": [],
       "id": "W21-38",
       "points": 3,
       "title": "nothing checks that a generated project used the stack it designed",
       "write_scope": [
-        "apps/server/src/cli/run-build.ts",
-        "packages/harbormaster/src/loop-gates-types.ts",
         "apps/server/src/cli/run-validators.ts",
-        "apps/server/src/cli/run-validators.test.ts"
+        "apps/server/src/cli/run-validators.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/mcp-preload.ts",
+        "apps/server/src/cli/signing-key.ts"
       ],
       "notes": [
         "ASKED DIRECTLY BY THE FOUNDER: is the product keeping the model honest about the designed tech stack and dependencies? It is not, at three layers, and each would defeat the fix for the others.",
@@ -12049,7 +12050,11 @@
         "LAYER 2 \u2014 there is no way to opt in. run-build.ts never passes requiredValidators at all, so there is no per-project path to add one. Which validators belong in a GENERATED PRODUCT`s gate, as opposed to Dokima`s own, is a founder decision \u2014 most of the 60 are irrelevant to a password manager.",
         "LAYER 3 \u2014 and this is the one that would make the other two hollow: the vault project has NO docs/ ON DISK. Not TECH_STACK.md, not BLUEPRINT, not SCOPE. The pipeline recorded blueprint / technical-slate / ticket-decomposition phases in the event log, and none of it materialised as files. validate-tech-stack.sh warns and exits CLEAN when docs/TECH_STACK.md is absent, so requiring it today would enforce nothing while reporting a pass \u2014 worse than not running it.",
         "The product already noticed layer 3 and said so: run 15`s digest carried \"Phase gate: Idea did not clear \u2014 phase 0 gate refused: declared deliverable(s) not found on disk\". The phase gate was right and the build proceeded anyway.",
-        "CONSEQUENCE, and why this is a security ticket and not hygiene: an agent can add any dependency it likes, including one it invented (slopsquatting \u2014 a hallucinated package name an attacker has registered), and nothing in the close gate compares what it added against what the project designed."
+        "CONSEQUENCE, and why this is a security ticket and not hygiene: an agent can add any dependency it likes, including one it invented (slopsquatting \u2014 a hallucinated package name an attacker has registered), and nothing in the close gate compares what it added against what the project designed.",
+        "SHIPPED THE MECHANISM, NOT A POLICY, and deliberately. Which of the 83 belong in a GENERATED PRODUCT`s gate is a founder decision: most are irrelevant to a password manager, several assume documents a given project may never produce, and a gate that refuses for debt a ticket did not create teaches people to bypass it. The setting is where that decision gets recorded.",
+        "AN UNKNOWN NAME REFUSES rather than being ignored \u2014 a typo`d validator that silently does nothing is worse than no setting, because the founder believes a check is running and it is not. That is the exact shape of every reporting defect this wave has found (W21-40, W21-44, W21-58), so it was worth building the refusal in from the start rather than discovering it live.",
+        "LAYER 3 IS STILL OPEN and is W21-39`s: validate-tech-stack.sh warns and exits CLEAN when docs/TECH_STACK.md is absent, and the vault project has no docs/ on disk at all \u2014 so requiring it today would enforce nothing while reporting a pass. Distinguishing a skip from a pass needs the content pack to change, which is upstream in attest, not here.",
+        "run-build.ts had sat at the 400-line cap for this entire wave and this was the fourth time a change pushed it over. Rather than a fifth comment shave I moved two cohesive blocks to the modules that own them \u2014 the MCP settings read to mcp-preload.ts and the resolve-or-mint signing key to signing-key.ts \u2014 both verbatim, every message and exit code unchanged. 424 -> 384."
       ],
       "acceptance": [
         "A generated project`s close gate can require validators beyond the two defaults, chosen per project rather than hardcoded",

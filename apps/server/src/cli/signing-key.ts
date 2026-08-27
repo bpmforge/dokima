@@ -105,3 +105,40 @@ export async function resolveSigningKey(
   await store.set(SIGNING_KEY_REF, minted);
   return { key: minted, source: 'minted' };
 }
+
+/**
+ * W21-38 chapter (CODE_BOOK_PROTOCOL 400-line cap): the resolve-or-refuse
+ * wrapper `run-build.ts` used inline, moved here verbatim when adding the
+ * required-validators setting pushed that file over the cap. A move, not a
+ * rewrite — every message and every exit code is unchanged, they simply live
+ * with the module that owns the key.
+ */
+export async function signingKeyOrRefusal(
+  receiptCount: number,
+  runId: string,
+  stderr: (line: string) => void,
+): Promise<{ readonly key: string } | { readonly refused: true }> {
+  try {
+    const resolved = await resolveSigningKey({ receiptCount });
+    if (resolved.source === 'minted') {
+      // Said once, on the run that creates it: a key now exists that backups
+      // should carry, and nothing else will ever mention it.
+      stderr(
+        `${runId}: minted a receipt signing key and stored it in your keychain ` +
+          `(ref ${SIGNING_KEY_REF}). Receipts signed with it verify only while ` +
+          `it exists — include it when you back this machine up.`,
+      );
+    }
+    return { key: resolved.key };
+  } catch (err) {
+    if (err instanceof SigningKeyMissingError) {
+      stderr(`${runId} refused: ${err.message}`);
+      return { refused: true };
+    }
+    stderr(
+      `${runId} refused: no signing key could be resolved — ` +
+        `${err instanceof Error ? err.message : String(err)}`,
+    );
+    return { refused: true };
+  }
+}

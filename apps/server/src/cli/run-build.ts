@@ -38,11 +38,7 @@ import {
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import { assertSandboxOrWaiver } from './sandbox-preflight.js';
-import {
-  resolveSigningKey,
-  SigningKeyMissingError,
-  SIGNING_KEY_REF,
-} from './signing-key.js';
+import { signingKeyOrRefusal } from './signing-key.js';
 
 import {
   announceRungSessions,
@@ -60,7 +56,6 @@ import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import {
   EXTERNAL_AGENT_WARNING,
   MCP_SERVERS_SETTINGS_KEY,
-  parseMcpServersSetting,
 } from '../api/server/settings-types.js';
 import { ModelResolutionError } from '../api/pipeline/model-resolution.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
@@ -79,13 +74,14 @@ import type { BuildRunCommand, RunCliIO } from './run-types.js';
 // Chapter of this file (W14-02, 400-line cap): a pure move, re-exported.
 import { tokenizeAgentCommand } from './agent-command.js';
 export { tokenizeAgentCommand };
-import { preloadMcpServers, type McpPreloadResult } from './mcp-preload.js';
+import { preloadMcpFromSettings, type McpPreloadResult } from './mcp-preload.js';
 import { composeExternalToolset } from './mcp-session-tools.js';
 import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
 import { executeBerthsRun } from './run-build-berths.js';
 import { executeReviewPass } from './review-pass.js';
 import { printRunOutcomes } from './run-summary.js';
+import { requiredValidatorsFor } from './run-validators.js';
 import { listTickets } from '@dokima/tickets';
 import {
   MEMORY_CONSOLIDATION_SETTINGS_KEY,
@@ -119,33 +115,10 @@ export async function executeBuildRun(
   runId: string,
   io: RunCliIO,
 ): Promise<number> {
-  // W12-43: minted on a fresh install rather than demanded; env var wins
-  // (CI seam); refuses only when existing receipts' key has gone missing.
-  let signingKey: string;
-  try {
-    const receiptCount = countReceipts(log);
-    const resolved = await resolveSigningKey({ receiptCount });
-    signingKey = resolved.key;
-    if (resolved.source === 'minted') {
-      // Said once, on the run that creates it: a key now exists that backups
-      // should carry, and nothing else will ever mention it.
-      io.stderr(
-        `${runId}: minted a receipt signing key and stored it in your keychain ` +
-          `(ref ${SIGNING_KEY_REF}). Receipts signed with it verify only while ` +
-          `it exists — include it when you back this machine up.`,
-      );
-    }
-  } catch (err) {
-    if (err instanceof SigningKeyMissingError) {
-      io.stderr(`${runId} refused: ${err.message}`);
-      return 2;
-    }
-    io.stderr(
-      `${runId} refused: no signing key could be resolved — ` +
-        `${err instanceof Error ? err.message : String(err)}`,
-    );
-    return 2;
-  }
+  // W12-43: minted on a fresh install rather than demanded — see signing-key.ts.
+  const keyResult = await signingKeyOrRefusal(countReceipts(log), runId, io.stderr);
+  if ('refused' in keyResult) return 2;
+  const signingKey = keyResult.key;
 
   // W12-02: refuse rather than run with nothing to redact.
   const vault = resolveVaultOrRefusal(io.cwd);
@@ -188,26 +161,23 @@ export async function executeBuildRun(
   }
   const limits = limitsResult.limits;
 
-  // W14-02: preload configured MCP servers. Malformed setting = named
-  // refusal; a server that fails to start only costs itself (FR-G5);
-  // env refs resolve through the vault (Law 8).
-  const mcpSetting = parseMcpServersSetting(
-    resolveEffectiveValue(MCP_SERVERS_SETTINGS_KEY, policyScoped)?.value,
-    (value) => SECRET_PATTERNS.some((p) => new RegExp(p.regex.source).test(value)),
-  );
-  if ('refusal' in mcpSetting) {
-    io.stderr(`${runId} did not start: ${mcpSetting.refusal}`);
-    return 2;
-  }
-  const mcpPreload: McpPreloadResult = await preloadMcpServers({
+  // W14-02: preload configured MCP servers — see mcp-preload.ts.
+  const mcp = await preloadMcpFromSettings({
     log,
     actorId: command.actorId,
     runId,
-    servers: mcpSetting.servers,
+    settingValue: resolveEffectiveValue(MCP_SERVERS_SETTINGS_KEY, policyScoped)?.value,
+    isSecretLike: (value) =>
+      SECRET_PATTERNS.some((p) => new RegExp(p.regex.source).test(value)),
     resolveSecret: (name) => vault.vault.get(name),
     stderr: io.stderr,
     secretValues,
   });
+  if ('refusal' in mcp) {
+    io.stderr(`${runId} did not start: ${mcp.refusal}`);
+    return 2;
+  }
+  const mcpPreload: McpPreloadResult = mcp.preload;
 
   // W14-03: approvals a previous run parked get their Decide cards before
   // this run's sessions consult the queue's verdicts.
@@ -301,6 +271,17 @@ export async function executeBuildRun(
     }
   }
 
+  // W21-38: which validators this project's close gate runs. Unset keeps the
+  // built-in set, so an install that never touches it is unchanged.
+  const validators = await requiredValidatorsFor(
+    resolveAsset('content', 'validators'),
+    (key) => resolveEffectiveValue(key, policyScoped)?.value as JsonValue | undefined,
+  );
+  if ('refusal' in validators) {
+    io.stderr(`${runId} did not start: ${validators.refusal}`);
+    return 2;
+  }
+
   const landOptions = {
       log,
       actorId: command.actorId,
@@ -313,6 +294,9 @@ export async function executeBuildRun(
       spawn,
       // W12-04: the packed builder — FR-L5's Context Packer, live.
       policyScope: policyResult.scope,
+      ...(validators.requiredValidators
+        ? { requiredValidators: validators.requiredValidators }
+        : {}),
       buildHandoff: await createPackedHandoffBuilder({
         repoRoot: io.cwd,
         modelWindowTokens: contextWindowTokens ?? 0,

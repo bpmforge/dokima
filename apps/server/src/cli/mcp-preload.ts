@@ -31,7 +31,10 @@ import {
   type McpClient,
   type ToolExecutor,
 } from '@dokima/mcp';
-import type { McpServerSetting } from '../api/server/settings-types.js';
+import {
+  parseMcpServersSetting,
+  type McpServerSetting,
+} from '../api/server/settings-types.js';
 
 export interface McpPreloadFailure {
   readonly serverId: string;
@@ -203,4 +206,35 @@ function syncRoleGrants(
       setRoleAllowlist(log, { role, toolIds: next, actorId });
     }
   }
+}
+
+/**
+ * W21-38 chapter (CODE_BOOK_PROTOCOL 400-line cap): the settings-read half of
+ * the MCP preload, moved out of `run-build.ts` verbatim when adding the
+ * required-validators setting pushed that file over the cap for the fourth
+ * time this wave. A move, not a rewrite — the refusal and the preload are
+ * unchanged, they simply live with the module that owns them.
+ */
+export async function preloadMcpFromSettings(input: {
+  readonly log: Parameters<typeof preloadMcpServers>[0]['log'];
+  readonly actorId: string;
+  readonly runId: string;
+  readonly settingValue: unknown;
+  readonly isSecretLike: (value: string) => boolean;
+  readonly resolveSecret: (name: string) => Promise<string | undefined>;
+  readonly stderr: (line: string) => void;
+  readonly secretValues: readonly string[];
+}): Promise<{ readonly preload: McpPreloadResult } | { readonly refusal: string }> {
+  const setting = parseMcpServersSetting(input.settingValue, input.isSecretLike);
+  if ('refusal' in setting) return { refusal: setting.refusal };
+  const preload = await preloadMcpServers({
+    log: input.log,
+    actorId: input.actorId,
+    runId: input.runId,
+    servers: setting.servers,
+    resolveSecret: input.resolveSecret,
+    stderr: input.stderr,
+    secretValues: input.secretValues,
+  });
+  return { preload };
 }
