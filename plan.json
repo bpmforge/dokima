@@ -12074,7 +12074,8 @@
         "AND THE PROTOCOLS NEVER REACH ANYONE. Grepping ANTI_SLOP / protocols/ across packages/harbormaster, packages/loop and apps/server returns only Dokima`s own source comments about its own CODE_BOOK_PROTOCOL adherence. No code path injects content/protocols/* into an agent handoff, and no code path dispatches the anti-slop auditor over a generated project. The rules are shipped and unread.",
         "ATTEST RUNS A FIVE-GATE CHAIN PER HANDOFF (scripts/validators/run-handoff-gates.sh, which is ALSO in Dokima`s pack as content/validators/run-handoff-gates.sh and is never invoked): 1 scope, 2 manifest checked against disk, 3 domain coverage validator, 4 tracker freshness against the branch point, 5 runtime build+lint+file-size. Dokima reimplements 1, 2 and part of 5 in TypeScript \u2014 correctly, and out of session, which is STRONGER than attest for those three because the agent cannot influence them. It runs none of 3 and 4, and none of the 83.",
         "SO THE HONEST SUMMARY: Dokima`s trust boundary is stronger than attest`s (out-of-session gates, signed receipts, hash-chained ledger, maker != verifier by construction). Its CODE CONTENT controls are far weaker. An agent building the vault can add a hallucinated package (R-21 slopsquatting), leave an unimplemented stub as a feature (R-27), reimplement a library badly (R-30), or wire a disconnected pipeline (R-26), and every gate passes.",
-        "R-21 is the one that is a security issue rather than a quality one: a hallucinated package name an attacker has registered enters the product through a gate that never compares dependencies against anything."
+        "R-21 is the one that is a security issue rather than a quality one: a hallucinated package name an attacker has registered enters the product through a gate that never compares dependencies against anything.",
+        "LIVE PROOF, no longer hypothetical. PLAN-vault-002 landed a password hash that base64-encodes the plaintext password and a verifier that returns true for any input, both labelled \"(placeholder)\" \u2014 R-27, straight through the gate, as the security core of a password manager. Alongside it: an unused EncryptOptions interface (dead scaffolding, R-26 family) and an encrypt/decrypt pair whose aad handling is asymmetric. Three anti-slop rules the pack documents and the gate never applies, in one ticket."
       ],
       "acceptance": [
         "The control inventory above is recorded in docs/ARCHITECTURE.md as a table: control, where attest enforces it, where Dokima enforces it, gap",
@@ -12120,6 +12121,86 @@
         "The 30-minute window keeps its meaning for a run that is still alive; the two cases are not merged",
         "A run that finds nothing claimable BECAUSE tickets are held says so, naming them, rather than reporting idle",
         "A red fixture reproduces run 18 to 19: a ticket left in_progress by an ended run does not produce a bare idle summary"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 5,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-41",
+      "title": "a ticket closes without its acceptance criteria ever being run",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.test.ts",
+        "packages/harbormaster/src/loop-gates-types.ts"
+      ],
+      "notes": [
+        "THE MOST SERIOUS FINDING OF THIS WAVE, and it is not hypothetical \u2014 the product just shipped it into a password manager.",
+        "PLAN-vault-002 \"Implement Argon2id and AES-256-GCM Wrappers\" LANDED after 2 attempts. Its one acceptance criterion, AC-1, is a runnable command: `node --test src/crypto/*.spec.ts`. There are no .spec.ts files in the worktree. The agent wrote zero tests. AC-1 was never executed, and the ticket closed clean with a signed receipt.",
+        "THE MECHANISM: the ticket`s `verify` field is null, so the close gate ran its DEFAULT verify command instead. Acceptance criteria are carried on the ticket, rendered in the handoff, and never executed by anything. They are text, not a gate. A ticket can close with every criterion it states unmet and unmeasured.",
+        "WHAT SHIPPED, and this is why it matters rather than being tidy-up: src/crypto/argon2id.ts hashPassword builds a string containing `Buffer.from(password).toString(\"base64\")` \u2014 the \"hash\" is a REVERSIBLE ENCODING of the plaintext password. verifyPassword returns `hash.startsWith(\"argon2id\")`, so it accepts ANY password for ANY account. Both docstrings say \"(placeholder)\". This is ANTI_SLOP R-27 (unimplemented stub as a feature) landing as the security core of a password manager, through a gate that passed.",
+        "The AES-256-GCM half is real crypto and mostly sound, which makes it worse rather than better: a reviewer skimming the ticket sees credible cipher code next to a fake hash.",
+        "ALSO in that file set: EncryptOptions is declared and never used anywhere, and encrypt() ignores aad while decrypt() accepts one \u2014 an asymmetric API that throws at runtime the moment anybody passes aad. Dead interface plus a latent runtime break, both through the same clean gate.",
+        "WHY THE EXISTING GATES DID NOT CATCH IT. The close gate independently re-runs verify (correct, C-2) and the required validators (secrets-scan, remote-parity). None of those ask \"does this do what the ticket said\". lint and typecheck pass happily on a placeholder. This is the same hole W21-39 names from the validator side, arriving from the acceptance side.",
+        "THE FIX IS NOT \"add tests to the ticket\". The decomposition already produced an executable acceptance criterion; the product simply did not run it. An acceptance criterion that is executable must BE the verify, or must be run alongside it, and one that cannot be executed must be marked as needing a human check rather than silently passing.",
+        "THE FIXTURE FOUND A LARGER HALF THAN THE TICKET DESCRIBED. `node --test src/crypto/*.spec.ts` against a directory with no spec files prints \"# tests 0\" and exits ZERO. So running the criterion would ALSO have passed PLAN-vault-002 \u2014 the placeholder password hash would have landed endorsed by a green check. Zero tests executed is now itself a refusal, with the count named: \"0 passed, 0 failed\" is the most reassuring-looking way for a gate to say nothing at all.",
+        "Both prose tells were found by fixtures rather than reasoned up front: terminal punctuation alone rejected `go test ./...`, and adding a plain-word rule still admitted \"node is pinned to 22 in .nvmrc.\" because `.nvmrc.` is not a plain word. Function-word detection caught it."
+      ],
+      "acceptance": [
+        "An acceptance criterion that is an executable command is run by the close gate, and its exit code is on the receipt",
+        "A ticket whose executable acceptance criteria did not pass does not close, and the refusal names which criterion and its output",
+        "A criterion that is NOT executable is recorded as requiring a human check rather than counted as satisfied",
+        "A ticket with `verify: null` whose acceptance criteria are executable uses them rather than falling back to a default command",
+        "A red fixture reproduces PLAN-vault-002 exactly: acceptance `node --test src/crypto/*.spec.ts` with no spec files present does not close",
+        "A test-runner criterion that exits 0 having executed ZERO tests is refused, not passed"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "tickets",
+      "depends_on": [],
+      "id": "W21-42",
+      "title": "the reviewer may approve and may not reject",
+      "write_scope": [
+        "packages/tickets/src/verbs.ts",
+        "packages/tickets/src/transitions.ts",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/reject.test.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/api/server/board-routes.ts",
+        "packages/tickets/src/index.ts"
+      ],
+      "notes": [
+        "FOUND WHILE REJECTING PLAN-vault-002. I reviewed the landed crypto ticket, found a placeholder password hash (see W21-41), and tried to send it back:",
+        "  $ dokima release PLAN-vault-002 --actor local-operator",
+        "  refused [NOT_OWNER]: release refused: actor local-operator does not own ticket PLAN-vault-002 (owner: operator)",
+        "TRANSITIONS allows release from in_review, so the transition is legal. releaseTicket then calls assertOwner, and the owner of a closed ticket is its MAKER. So the only actor permitted to send work back is the one that produced it.",
+        "The founder CAN accept \u2014 acceptTicket requires a DIFFERENT actor than the owner (maker != verifier, C-4). So the verifier identity is allowed to approve and forbidden to reject. That is the exact inverse of what a review gate is for, and it is the one shape a trust boundary must never have: the reviewer`s only permitted verdict is yes.",
+        "The workaround available today is to release as the maker identity `operator`, which means a founder rejecting work has to act AS the thing being reviewed. That defeats C-4 to perform C-4`s own purpose.",
+        "This is not a missing feature so much as a missing verb in a graph that otherwise reasons carefully about who may do what. `reject` is the counterpart of `accept` and belongs beside it: same actor rule (must not be the owner), opposite destination.",
+        "It must carry a REASON. An accept needs no words \u2014 the receipt is the evidence. A rejection is a judgement with no receipt behind it, so the reason is the entire artifact, and it is what the next attempt reads."
+      ],
+      "acceptance": [
+        "A `reject` verb moves in_review back to ready and is refused for the ticket`s owner, mirroring accept`s maker != verifier rule",
+        "reject requires a reason, and the reason is on the event and reaches the next attempt`s handoff",
+        "The existing release path keeps working for the maker \u2014 this adds a verb, it does not repurpose one",
+        "The CLI and the board API both expose it, since the Decide card is where a person forms the judgement",
+        "A red fixture pins the live shape: the founder identity that may accept PLAN-vault-002 may also reject it, and the maker may not accept its own"
       ]
     }
   ]

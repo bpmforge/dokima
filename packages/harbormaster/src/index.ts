@@ -196,6 +196,16 @@ export type {
 /** W21-34: what the machine review actually did to a ticket, for the surface where a person accepts it. */
 export { reviewStatusFor, reviewStatusSentence } from './review-status.js';
 
+/** W21-41: the ticket's own acceptance criteria are executed by the close gate. */
+export {
+  humanCheckNotice,
+  isExecutableCriterion,
+  ranZeroTests,
+  runAcceptanceCriteria,
+  runGateChecks,
+} from './loop-gates-acceptance.js';
+export type { AcceptanceOutcome, AcceptanceRun } from './loop-gates-acceptance.js';
+
 /** W21-37: a ticket forks from its accepted dependencies, never from an empty base. */
 export { resolveTicketBase, integrationRefFor } from './loop-land-base.js';
 export type { TicketBase, TicketBaseInput } from './loop-land-base.js';

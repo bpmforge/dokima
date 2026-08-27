@@ -35,6 +35,7 @@ import { agentAuthoredPaths } from './worktree-harness-paths.js';
 import { mintReceipt, type ReceiptInputFile } from '@dokima/events';
 import { commentTicket } from '@dokima/tickets';
 import { closeTicketLedgeringRefusal } from './loop-gates-close.js';
+import { humanCheckNotice, runGateChecks } from './loop-gates-acceptance.js';
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
 import {
   DEFAULT_REQUIRED_VALIDATORS,
@@ -46,9 +47,7 @@ import {
 import {
   commitsSince,
   filesChangedInRange,
-  reRunVerify,
   resolveForkPoint,
-  verifyFailureTail,
 } from './loop-gates-verify.js';
 import {
   checkMemoryWritten,
@@ -137,24 +136,14 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
   }
 
   const verifyCommand = ticket.verify ?? DEFAULT_VERIFY_COMMAND;
-  const verify = await reRunVerify(worktree.path, verifyCommand, verifyTimeoutMs);
-  if (verify.exitCode !== 0) {
-    reasons.push(
-      `verify re-run failed: \`${verifyCommand}\` exited ${verify.exitCode} (manifest claimed ` +
-        `\`${manifest.verify.command}\` exit ${manifest.verify.exit} — never trusted)`,
-    );
-    /**
-     * W13-30: and WHAT it said. The output was captured here and discarded at
-     * this line, so once W13-29 began feeding gate reasons forward the maker
-     * was told THAT it failed and never HOW — the position a person is in when
-     * an agent keeps reporting done against a symptom that has not changed.
-     *
-     * Bounded and stderr-first: a failing command puts its diagnosis on stderr,
-     * and a whole test run would crowd the prompt it is meant to inform.
-     */
-    const output = verifyFailureTail(verify);
-    if (output) reasons.push(output);
-  }
+  const { verify, acceptance, reasons: checkReasons } = await runGateChecks({
+    worktreePath: worktree.path,
+    verifyCommand,
+    claimed: { command: manifest.verify.command, exit: manifest.verify.exit },
+    criteria: ticket.acceptance ?? [],
+    timeoutMs: verifyTimeoutMs,
+  });
+  reasons.push(...checkReasons);
 
   let base = '';
   try {
@@ -379,6 +368,12 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
         files: manifest.files,
         evidence: manifest.evidence,
         secretsScan: secretsSummary,
+        // W21-41: the ticket's own stated checks and what they actually
+        // returned, plus the ones no machine could check — said out loud,
+        // because a receipt quiet about what it did not verify claims more
+        // than it earned.
+        acceptance: acceptance.runs,
+        acceptanceNeedsHumanCheck: humanCheckNotice(acceptance.needsHumanCheck),
       },
     },
     { signingKey, now },
