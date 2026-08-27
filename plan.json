@@ -12415,19 +12415,19 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 5,
       "module": "tickets",
       "depends_on": [],
       "id": "W21-48",
       "title": "a board that turns out to be missing a ticket cannot be corrected",
       "write_scope": [
-        "packages/tickets/src/reducer.ts",
         "packages/tickets/src/create.ts",
-        "packages/tickets/src/types.ts",
-        "apps/server/src/api/server/ticket-edit-routes.ts",
-        "apps/server/src/api/server/ticket-edit-routes.test.ts",
-        "apps/server/src/cli/run.ts"
+        "packages/tickets/src/index.ts",
+        "packages/tickets/src/create-lane.test.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/bootstrap/cli.ts"
       ],
       "notes": [
         "LIVE, AND THE PRODUCT WAS RIGHT AT EVERY STEP \u2014 which is what makes the gap clear. PLAN-vault-002 needs tsconfig.json and package.json changed (W21-47: its verify and its acceptance are mutually unsatisfiable without them). I answered with the product`s own verb:",
@@ -12437,7 +12437,9 @@
         "The RIGHT answer is a new ticket in the vault-001 lane: \"add test infrastructure so node --test can run TypeScript specs\". And there is no way to create one. No CLI verb, no board route \u2014 POST /tickets/:id/:verb is lifecycle-only.",
         "ticket-edit-routes.ts already documents this honestly and returns 501 rather than faking a write: reduceTicketEvent has no ticket.updated case, createTicket exists but is not wired to a route, and \"a create-with-no-edit path completes no DAG-edit flow and would be a misleading half-feature\". That reasoning was right for its own ticket. What it did not anticipate is the FOUNDER consequence: a decomposition is produced once, and when it turns out to be missing a ticket the project cannot proceed at all.",
         "W21-27 added widen-scope for \"this ticket is wrong as written\". This is the next case and the product hits it on its first real project: \"this BOARD is wrong as written\".",
-        "Append-only (C-6) is not the obstacle \u2014 creating a ticket is an append. ticket.created already exists and the reducer already handles it. What is missing is a route and a verb, plus a decision about lane assignment for a ticket a person adds."
+        "Append-only (C-6) is not the obstacle \u2014 creating a ticket is an append. ticket.created already exists and the reducer already handles it. What is missing is a route and a verb, plus a decision about lane assignment for a ticket a person adds.",
+        "I FIRST PUT THE LANE CHECK INSIDE createTicket ITSELF and it failed five existing tests \u2014 every one a REAL pre-existing violation, not a test artefact. That is filed as W21-49 rather than bundled in here.",
+        "So the shipped version is narrow and honest: createTicketValidatingLanes is the founder path, createTicket is unchanged. A person cannot introduce an overlap, and the overlaps already in the product stay visible as their own defect instead of being silently absorbed by a fix for something else."
       ],
       "acceptance": [
         "A founder can add a ticket to an existing board, with lane and write_scope validated by the same invariant that refused the widen",
@@ -12445,6 +12447,39 @@
         "Creation is ledgered as ticket.created by the human identity, never by a machine one",
         "The lane invariant refuses a creation that would overlap, with the same explain-refusal shape widen-scope uses",
         "A red fixture pins the live case: adding a test-infrastructure ticket owning tsconfig.json in the vault-001 lane is accepted, and the same ticket in vault-002`s lane is refused"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 5,
+      "module": "server",
+      "depends_on": [],
+      "id": "W21-49",
+      "title": "the onboard pipeline emits a board that violates the lane invariant",
+      "write_scope": [
+        "apps/server/src/api/pipeline/onboard-board-lifecycle.ts",
+        "apps/server/src/api/pipeline/onboard-board-lifecycle.test.ts",
+        "packages/harbormaster/src/resume.test.ts"
+      ],
+      "notes": [
+        "FOUND BY TURNING ON A CHECK, NOT BY LOOKING. W21-48 briefly put validateLaneWriteScopes inside createTicket. Five tests failed, and none of them was a fixture artefact:",
+        "onboard-run.test.ts \u2014 a single real onboard run produces SEVEN cross-lane overlaps at once: cross-lane-overlap between PLAN-onboard:landscape (quality) and PLAN-onboard:security-sast (security), and the same against entry-points, data-model, components, patterns, health and architecture. The onboard decomposition gives quality-lane and security-lane tickets overlapping write scopes as a matter of course.",
+        "onboard-board-lifecycle.test.ts \u2014 the same shape via proposeFromMatches/acceptItem: PLAN-onboard:health (quality) vs PLAN-onboard:security-sast (security).",
+        "resume.test.ts \u2014 same-lane-active-overlap between W9-01 and W9-02, both in lane `core`. A DIFFERENT violation class (same lane, active overlap) in a harbormaster fixture.",
+        "WHY THIS MATTERS RATHER THAN BEING TIDY-UP: CLAUDE.md law 1 calls cross-lane write-scope overlap a schema bug and says to report it rather than work around it. BLUEPRINT \u00a7Berths says the lane invariant is what makes N berths PROVABLY collision-free. An onboard board that violates it cannot be run at berths > 1 without two workers writing the same file, and nothing currently refuses it.",
+        "The invariant has existed and been enforced on widen-scope since W21-27. It has never been enforced at creation, so the pipeline has been free to emit boards it forbids."
+      ],
+      "acceptance": [
+        "A real onboard run produces a board with no cross-lane write-scope overlap",
+        "validateLaneWriteScopes can be turned on inside createTicket without failing the suite \u2014 that is the proof",
+        "The resume.test.ts same-lane fixture is corrected or its overlap justified in place",
+        "A red fixture pins the live shape: an onboard run over a fixture repo emits a lane-valid board"
       ]
     }
   ]

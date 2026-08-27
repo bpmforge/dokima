@@ -43,6 +43,24 @@ export type CliCommand =
       projectId?: string;
     }
   | {
+      /**
+       * W21-48: the founder answering "this BOARD is not right as written".
+       * W21-27's widen-scope covers a ticket that is wrong; this covers one
+       * that is missing, which a decomposition produced once cannot fix.
+       */
+      kind: 'add-ticket';
+      ticketId: string;
+      actorId: string;
+      lane: string;
+      title: string;
+      writeScope: string[];
+      dependsOn: string[];
+      acceptance?: string;
+      verify?: string;
+      dbPath?: string;
+      projectId?: string;
+    }
+  | {
       kind: 'comment';
       ticketId: string;
       actorId: string;
@@ -142,6 +160,51 @@ export function parseCliArgs(argv: string[]): CliCommand {
       actorId: values.actor,
       add: values.add.split(',').map((s2) => s2.trim()).filter(Boolean),
       reason: values.reason,
+      dbPath: values.db,
+      projectId: values.project,
+    };
+  }
+
+  if (command === 'add-ticket') {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      options: {
+        actor: { type: 'string' },
+        lane: { type: 'string' },
+        title: { type: 'string' },
+        'write-scope': { type: 'string' },
+        'depends-on': { type: 'string' },
+        acceptance: { type: 'string' },
+        verify: { type: 'string' },
+        db: { type: 'string' },
+        project: { type: 'string' },
+      },
+      allowPositionals: true,
+    });
+    const ticketId = requirePositional(
+      positionals,
+      'usage: dokima add-ticket <ticketId> --actor <actorId> --lane <lane> ' +
+        '--title <title> --write-scope <glob,glob> [--depends-on <id,id>] ' +
+        '[--acceptance <text>] [--verify <cmd>] [--db <path>]',
+    );
+    if (!values.actor) throw new CliUsageError('add-ticket requires --actor <actorId>');
+    if (!values.lane) throw new CliUsageError('add-ticket requires --lane <lane>');
+    if (!values.title) throw new CliUsageError('add-ticket requires --title <title>');
+    if (!values['write-scope']) {
+      throw new CliUsageError('add-ticket requires --write-scope <glob,glob>');
+    }
+    const list = (v: string | undefined): string[] =>
+      (v ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    return {
+      kind: 'add-ticket',
+      ticketId,
+      actorId: values.actor,
+      lane: values.lane,
+      title: values.title,
+      writeScope: list(values['write-scope']),
+      dependsOn: list(values['depends-on']),
+      ...(values.acceptance ? { acceptance: values.acceptance } : {}),
+      ...(values.verify ? { verify: values.verify } : {}),
       dbPath: values.db,
       projectId: values.project,
     };

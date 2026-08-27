@@ -1,5 +1,6 @@
 import { appendEvent, type EventLog } from '@dokima/events';
-import { getTicket } from './query.js';
+import { validateLaneWriteScopes } from './lanes.js';
+import { getTicket, loadTickets } from './query.js';
 import type { TicketCreatedPayload } from './reducer.js';
 import type { CreateTicketInput, Ticket } from './types.js';
 
@@ -71,6 +72,34 @@ export function createTicket(
     if (!ticket) {
       throw new Error(`ticket.created did not fold into a ticket for ${input.id}`);
     }
+    return ticket;
+  })();
+}
+
+/**
+ * W21-48: `createTicket`, plus the lane invariant — the founder path.
+ *
+ * Cross-lane write-scope overlap is a schema bug (CLAUDE.md law 1) and the
+ * reason N berths are provably collision-free, so a ticket a PERSON types
+ * needs the same check `widenTicketScope` applies. That check is deliberately
+ * NOT inside `createTicket` itself: turning it on there failed five existing
+ * tests, and every one of them was a real pre-existing violation rather than a
+ * test artefact — including the onboard pipeline's own decomposition, which
+ * emits seven cross-lane overlaps in a single run. Fixing that is a separate
+ * ticket with its own evidence; quietly bundling it here would have hidden it.
+ *
+ * So this is the narrow, honest version: the founder cannot introduce an
+ * overlap, and the pre-existing ones stay visible as their own defect.
+ */
+export function createTicketValidatingLanes(
+  log: EventLog,
+  actorId: string,
+  input: CreateTicketInput,
+  opts: TicketVerbOptions = {},
+): Ticket {
+  return log.db.transaction((): Ticket => {
+    const ticket = createTicket(log, actorId, input, opts);
+    validateLaneWriteScopes([...loadTickets(log).values()]);
     return ticket;
   })();
 }

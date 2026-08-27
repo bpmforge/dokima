@@ -3,6 +3,7 @@ import {
   claimTicket,
   closeTicket,
   commentTicket,
+  createTicketValidatingLanes,
   widenTicketScope,
   listTickets,
   releaseTicket,
@@ -166,6 +167,32 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
           io.stdout(
             `${ticket.id} write_scope -> ${ticket.writeScope.join(', ')}`,
           );
+          return 0;
+        } catch (err) {
+          return reportVerbError(err, io);
+        }
+      }
+      case 'add-ticket': {
+        ensureActorIdentity(log, command.actorId, io.now);
+        try {
+          const ticket = createTicketValidatingLanes(
+            log,
+            command.actorId,
+            {
+              id: command.ticketId,
+              type: 'task',
+              title: command.title,
+              lane: command.lane,
+              writeScope: command.writeScope,
+              dependsOn: command.dependsOn,
+              ...(command.acceptance
+                ? { acceptance: [{ id: 'AC-1', text: command.acceptance, done: false }] }
+                : {}),
+              ...(command.verify ? { verify: command.verify } : {}),
+            },
+            { now: io.now },
+          );
+          io.stdout(`${ticket.id} created in lane ${ticket.lane} -> ${ticket.status}`);
           return 0;
         } catch (err) {
           return reportVerbError(err, io);

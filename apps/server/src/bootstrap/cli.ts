@@ -184,6 +184,12 @@ board & tickets (address a project with --project <id> from the Fleet, or --db <
                                 when a ticket cannot satisfy its own acceptance
                                 as written; additive only, and refused if it
                                 would make two lanes overlap
+  dokima add-ticket <ticketId> --actor <id> --lane <lane> --title <t>
+                    --write-scope <glob,glob> [--depends-on <id,id>]
+                    [--acceptance <text>] [--verify <cmd>]
+                                when the BOARD is missing a ticket, not just
+                                wrong; refused if it would make two lanes
+                                overlap, same rule as widen-scope
   dokima verify-chain           verify the event log's hash chain
   dokima run <start|pause|resume|stop> ...
                                 run bookkeeping (FR-C7)
