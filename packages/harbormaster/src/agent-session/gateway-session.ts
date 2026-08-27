@@ -370,7 +370,11 @@ export function createGatewaySpawnSession(
     }
 
     const exhausted = progress
-      ? budgetExhaustedStderr(progress.budget(), progress.entries())
+      ? budgetExhaustedStderr(
+          progress.budget(),
+          progress.entries(),
+          progress.lastWindowProgress(),
+        )
       : `agent session stopped: exceeded the per-session tool-iteration budget ` +
         `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
         `real but unfinished, raise maxToolIterations — chatty local models often ` +

@@ -246,3 +246,68 @@ describe('the park advice stops being wrong in its commonest case (W21-16)', () 
     expect(text).toContain('without a Completion Manifest');
   });
 });
+
+/**
+ * W21-53. Run 34 hit the ceiling twice with extensions at every window
+ * boundary — 16, 20, 24, 28, 32, 36, each "write changed the worktree" — and
+ * was told raising maxToolIterations would not help. That is the failure
+ * W17-01's header exists to prevent: honest work, cut off mid-stride.
+ *
+ * An earlier attempt reasoned from the EXTENSION ledger and had to be
+ * reverted: extensions are only ever granted at the wall, so every extension
+ * is a final-window extension by construction. The per-window progress signal
+ * answers it; the extension list cannot.
+ */
+describe('cut off mid-stride is not the same as stalled (W21-53)', () => {
+  const extended = (atIteration: number, to: number) => ({
+    kind: 'extended' as const,
+    atIteration,
+    to,
+    signal: 'write changed the worktree',
+  });
+
+  it('RED FIXTURE: run 34 — still writing in the final window, so the CEILING stopped it', () => {
+    const text = budgetExhaustedStderr(
+      40,
+      [extended(32, 36), extended(36, 40)],
+      'write changed the worktree',
+    );
+    expect(text).toContain('STILL MAKING PROGRESS');
+    expect(text).toContain('raising maxToolIterations is the right response');
+    expect(text).not.toContain('will not help');
+  });
+
+  it('W21-16’s case is untouched: earned budget, then nothing in the final window', () => {
+    const text = budgetExhaustedStderr(16, [extended(12, 16)], null);
+    expect(text).toContain('will not help');
+    expect(text).toContain('what it spent those turns on');
+    expect(text).not.toContain('STILL MAKING PROGRESS');
+  });
+
+  it('a caller with no window signal falls back to W21-16’s wording — no silent change', () => {
+    const text = budgetExhaustedStderr(16, [extended(12, 16)]);
+    expect(text).toContain('will not help');
+  });
+
+  it('a session that never grew its budget is still told to raise it', () => {
+    expect(budgetExhaustedStderr(12, [], 'write changed the worktree')).toContain(
+      'raise maxToolIterations',
+    );
+  });
+
+  it('the budget remembers its last completed window rather than discarding it', () => {
+    const toolCall = (name: string, argsJson: string, resultText: string) => ({
+      name,
+      argsJson,
+      resultText,
+    });
+    const budget = createSessionProgressBudget({ base: 4, ceiling: 12, windowSize: 2 });
+    budget.noteIteration({ iteration: 1, toolCalls: [toolCall('write', '{}', 'ok')] });
+    budget.noteIteration({ iteration: 2, toolCalls: [] });
+    expect(budget.lastWindowProgress()).toBe('write changed the worktree');
+    // A window with no mutation clears it — that is the "stalled" signal.
+    budget.noteIteration({ iteration: 3, toolCalls: [toolCall('read', '{"p":"a"}', 'A')] });
+    budget.noteIteration({ iteration: 4, toolCalls: [] });
+    expect(budget.lastWindowProgress()).toBeNull();
+  });
+});

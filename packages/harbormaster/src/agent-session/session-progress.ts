@@ -104,6 +104,13 @@ export interface SessionProgressBudget {
   earlyStop(): { readonly reason: string } | null;
   /** Every extension and early stop, for the ledger and the park evidence. */
   entries(): readonly BudgetLedgerEntry[];
+  /**
+   * W21-53: the progress signal from the LAST COMPLETED WINDOW, or null when
+   * that window contained none. Already computed per window — it was simply
+   * discarded at each boundary. It is what separates a session cut off
+   * mid-stride from one that stalled with budget still to spend.
+   */
+  lastWindowProgress(): string | null;
 }
 
 function looksRefused(resultText: string): boolean {
@@ -124,12 +131,14 @@ export function createSessionProgressBudget(
   /** name+args+result -> how many times this exact zero-information call was made. */
   const zeroInformationCalls = new Map<string, number>();
   let stop: { reason: string } | null = null;
+  let lastWindowSignal: string | null = null;
   const entries: BudgetLedgerEntry[] = [];
 
   return {
     budget: () => budget,
     earlyStop: () => stop,
     entries: () => entries.slice(),
+    lastWindowProgress: () => lastWindowSignal,
     noteIteration({ iteration, toolCalls, verifyExit }) {
       for (const call of toolCalls) {
         // W21-10: the RESULT is part of the identity. A call repeated with the
@@ -202,6 +211,10 @@ export function createSessionProgressBudget(
             signal: windowSignal,
           });
         }
+        // W21-53: remembered BEFORE the reset. A window that produced a
+        // signal but no extension (because the budget had room) is still a
+        // window in which the session made progress.
+        lastWindowSignal = windowSignal;
         windowSignal = null;
       }
     },
@@ -212,6 +225,8 @@ export function createSessionProgressBudget(
 export function budgetExhaustedStderr(
   finalBudget: number,
   entries: readonly BudgetLedgerEntry[],
+  /** W21-53: the last completed window's progress signal, when the caller has one. */
+  lastWindowProgress: string | null = null,
 ): string {
   const extensions = entries.filter((e) => e.kind === 'extended');
   const earned =
@@ -229,13 +244,43 @@ export function budgetExhaustedStderr(
    * grow, the session had room and did not use it, and more ceiling buys more
    * of whatever it was doing instead of finishing.
    */
+  /**
+   * W21-53: W21-16 fixed advice that was wrong in one case and left it wrong
+   * in the opposite one. Its branch — "you earned budget and still did not
+   * finish, so more ceiling buys more of whatever you did instead" — is right
+   * for a session that earns a few extensions early and then STALLS.
+   *
+   * It is exactly backwards for a session still working at the wall. Run 34
+   * did that twice: extensions at iterations 16, 20, 24, 28, 32 and 36, every
+   * window boundary to the ceiling, each signalled "write changed the
+   * worktree" — and it was told raising the cap would not help. That is the
+   * failure W17-01's own header exists to prevent: "honest work, cut off
+   * mid-stride".
+   *
+   * The separator is the LAST COMPLETED WINDOW, and it needed no new judgement
+   * — only for the per-window signal to stop being thrown away. Still making
+   * progress in the final window means the CEILING stopped it. Nothing in the
+   * final window means it stalled and had budget it did not use.
+   *
+   * An earlier attempt at this reasoned from the EXTENSIONS instead and had to
+   * be reverted: extensions are only ever granted at the wall (the code
+   * requires `iteration + windowSize > budget`), so every extension is a
+   * final-window extension by construction and a single one is trivially
+   * "unbroken". The extension ledger cannot answer this question; the window
+   * signal can.
+   */
   const advice =
-    extensions.length > 0
-      ? ` This session EARNED more budget from real progress and still did not ` +
-        `hand back a manifest, so raising maxToolIterations will not help — the ` +
-        `evidence to read is what it spent those turns on.`
-      : ` If the work was real but unfinished, raise maxToolIterations — chatty ` +
-        `local models often need more than the default.`;
+    extensions.length === 0
+      ? ` If the work was real but unfinished, raise maxToolIterations — chatty ` +
+        `local models often need more than the default.`
+      : lastWindowProgress
+        ? ` It was STILL MAKING PROGRESS in its final window (${lastWindowProgress}), ` +
+          `so the ceiling is what stopped it rather than a lack of progress — this ` +
+          `is work cut off mid-stride, and raising maxToolIterations is the right ` +
+          `response.`
+        : ` This session EARNED more budget from real progress, then stopped making ` +
+          `it before the end, so raising maxToolIterations will not help — the ` +
+          `evidence to read is what it spent those turns on.`;
   return (
     `agent session stopped: exceeded the per-session tool-iteration budget ` +
     `(${finalBudget}${earned}) without a Completion Manifest (T-27).${advice}`
