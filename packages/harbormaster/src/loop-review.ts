@@ -35,6 +35,9 @@ import {
   type ReviewSignalAction,
 } from '@dokima/loop';
 import { reRunVerify } from './loop-gates-verify.js';
+// W21-75: the literal that used to sit further down was Dokima's own gate,
+// duplicated; the ticket's verify command is resolved in loop-gates.ts now.
+import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
 
 export type ReviewVerdictKind = 'CONFIRMED' | 'CONTRADICTED' | 'UNVERIFIABLE';
 
@@ -72,7 +75,6 @@ export interface ReviewPassOptions {
 }
 
 export const DEFAULT_REVIEW_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
-const DEFAULT_VERIFY_COMMAND = 'pnpm lint && pnpm typecheck && pnpm test';
 
 /** Test-count extraction is best-effort; the contract only demands a non-empty counts record, and `commandsRun` is always true. */
 function countsFrom(output: string): Record<string, number> {

@@ -33,10 +33,10 @@ import {
   repeatedZeroInformationCalls,
   repetitionEvidenceLine,
 } from './loop-land-repetition.js';
+import { wrapHandoffForWorktree } from './loop-land-handoff-wrap.js';
 import {
   provisionWorktree,
   provisionFailureReason,
-  provisionEnvironmentNote,
 } from './worktree-provision.js';
 import { pushLandedBranch, recordFailedPushes } from './land-push.js';
 import {
@@ -191,17 +191,7 @@ export async function landClaimedTicket(
    * caller — the same shape this engine already uses to wrap `spawn` for
    * redaction.
    */
-  const environment = provisionEnvironmentNote(provision);
-  if (environment) {
-    const inner = options.buildHandoff;
-    options = {
-      ...options,
-      buildHandoff: async (t: Ticket, f?: AttemptFeedback) => ({
-        ...(await inner(t, f)),
-        environment,
-      }),
-    };
-  }
+  options = await wrapHandoffForWorktree(options, provision, worktree.path);
 
   const role = options.role ?? ROLE_CODING_AGENT;
   const policy = resolveLandEscalationPolicy(options.policyScope ?? {}, role);

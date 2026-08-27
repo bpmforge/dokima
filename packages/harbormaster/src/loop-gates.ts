@@ -36,7 +36,7 @@ import { mintReceipt, type ReceiptInputFile } from '@dokima/events';
 import { commentTicket } from '@dokima/tickets';
 import { closeTicketLedgeringRefusal } from './loop-gates-close.js';
 import { humanCheckNotice, runGateChecks } from './loop-gates-acceptance.js';
-import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
+import { verifyCommandFor } from './verify-command.js';
 import {
   DEFAULT_REQUIRED_VALIDATORS,
   DEFAULT_VALIDATOR_TIMEOUT_MS,
@@ -135,12 +135,13 @@ export async function runCloseGate(options: CloseGateOptions): Promise<CloseGate
     );
   }
 
-  const verifyCommand = ticket.verify ?? DEFAULT_VERIFY_COMMAND;
+  const criteria = ticket.acceptance ?? [];
+  const verifyCommand = await verifyCommandFor(worktree.path, ticket.verify, criteria);
   const { verify, acceptance, reasons: checkReasons } = await runGateChecks({
     worktreePath: worktree.path,
     verifyCommand,
     claimed: { command: manifest.verify.command, exit: manifest.verify.exit },
-    criteria: ticket.acceptance ?? [],
+    criteria,
     timeoutMs: verifyTimeoutMs,
     repoRoot: worktree.repoRoot,
     baseRef,
