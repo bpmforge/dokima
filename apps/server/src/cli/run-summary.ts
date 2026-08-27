@@ -23,12 +23,20 @@
  * testable without a run.
  */
 
+import { heldTicketsNotice } from '@dokima/harbormaster';
+
 export interface RunSummaryCounts {
   readonly landed: number;
   readonly parked: number;
   /** Tickets sitting in `in_review` — finished work no machine will advance. */
   readonly awaitingAcceptance: number;
   readonly stopReason: string;
+  /**
+   * W21-40: tickets a run that has ended still holds. `stop: idle` reads
+   * identically whether the board is empty or every remaining ticket is held
+   * by a corpse, and that ambiguity hid this class three separate times.
+   */
+  readonly heldByEndedRuns?: readonly string[];
 }
 
 /**
@@ -39,10 +47,12 @@ export function runSummaryLine(runId: string, counts: RunSummaryCounts): string 
   const head =
     `${runId} finished: ${counts.landed} landed, ${counts.parked} parked ` +
     `(stop: ${counts.stopReason})`;
-  if (counts.awaitingAcceptance === 0) return head;
+  const held = heldTicketsNotice(counts.heldByEndedRuns ?? []);
+  if (counts.awaitingAcceptance === 0) return held ? `${head}\n${held}` : head;
   const plural = counts.awaitingAcceptance === 1 ? 'ticket is' : 'tickets are';
   return (
-    `${head}\n${counts.awaitingAcceptance} ${plural} finished and waiting on YOU — ` +
+    `${head}${held ? `\n${held}` : ''}` +
+    `\n${counts.awaitingAcceptance} ${plural} finished and waiting on YOU — ` +
     `nothing in the product will move them further, because accepting work is a ` +
     `human verb (maker != verifier). Review them on the Decide card, or accept ` +
     `one from here with: dokima accept <ticketId> --actor <your-id>`
@@ -65,6 +75,7 @@ export function printRunOutcomes(
   }[],
   stopReason: string,
   awaitingAcceptance: number,
+  heldByEndedRuns: readonly string[] = [],
 ): void {
   for (const outcome of outcomes) {
     stdout(
@@ -78,6 +89,7 @@ export function printRunOutcomes(
       parked: outcomes.filter((o) => !o.landed).length,
       awaitingAcceptance,
       stopReason,
+      heldByEndedRuns,
     }),
   );
 }

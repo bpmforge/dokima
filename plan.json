@@ -12103,19 +12103,18 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-40",
       "title": "a run that dies strands its ticket, and the next run calls that idle",
       "write_scope": [
-        "packages/harbormaster/src/loop-land.ts",
-        "packages/harbormaster/src/loop-land-board.ts",
+        "packages/harbormaster/src/loop-land-orphan.ts",
+        "packages/harbormaster/src/loop-land-orphan.test.ts",
         "packages/harbormaster/src/loop-land-reclaim.ts",
-        "packages/harbormaster/src/loop-land-reclaim.test.ts",
+        "packages/harbormaster/src/index.ts",
         "apps/server/src/cli/run-summary.ts",
-        "apps/server/src/cli/run-summary.test.ts",
         "apps/server/src/cli/run-build.ts"
       ],
       "notes": [
@@ -12124,7 +12123,9 @@
         "(1) The crash appended NOTHING to the ledger. The diagnosis came from a stack trace in a terminal log. Same class as W21-32`s refused close: the moment a run dies is the moment its state is least recoverable and most worth recording.",
         "(2) The ticket was stranded for 30 minutes. reclaimAbandoned`s STALE_CLAIM_MS is 30 minutes and its reasoning is sound for its own case \u2014 \"the event log is the heartbeat\", a live session that has gone quiet must never be reaped early. But a run whose PROCESS IS GONE is not a quiet session, and the product already knows the difference: there is a runs table and a run.created event. Waiting 30 minutes to reclaim from a run that demonstrably ended is a threshold applied to the wrong question.",
         "(3) And the next run called it IDLE. stop:idle means pickNextTicket found nothing claimable, which is reported identically whether the board is genuinely empty or every remaining ticket is held by a corpse. This is the W21-34 class again \u2014 a run reporting quiet success over work that is not moving.",
-        "The founder-facing shape of this is the worst part: the terminal says the run finished with nothing to do, and the board says a ticket is in progress. Two surfaces of the same product disagreeing, with the reassuring one printed and the accurate one needing to be asked for."
+        "The founder-facing shape of this is the worst part: the terminal says the run finished with nothing to do, and the board says a ticket is in progress. Two surfaces of the same product disagreeing, with the reassuring one printed and the accurate one needing to be asked for.",
+        "THIS COST THREE RUNS BEFORE I IMPLEMENTED IT \u2014 19, and then 32 to 33 \u2014 and it was identical every time. I filed it, kept finding other things, and let it keep eating runs. That is the cost of leaving a known reporting defect open: it does not just fail, it disguises the next failure as calm.",
+        "The immediate-reclaim rule fell out of W21-32 rather than needing new state. Since every ticket.claimed carries its run id, and C-6 gives ONE WRITER per project DB, a claim stamped with a different run id belongs by construction to a run that is no longer running. There is nothing to wait for, so the thirty-minute window has nothing to measure \u2014 and it keeps its full meaning for the case it was written for (a live session gone quiet, and a claim with no run id, which may be a person)."
       ],
       "acceptance": [
         "A run that ends abnormally appends an event naming the ticket it held, the run, and the error, before the process exits",

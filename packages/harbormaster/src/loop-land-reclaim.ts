@@ -1,6 +1,7 @@
 import { commentTicket, listTickets, releaseTicket } from '@dokima/tickets';
 import { listEvents } from '@dokima/events';
 import { findAbandonedTickets, STALE_CLAIM_MS } from './loop-claim.js';
+import { orphanedClaimNotice, orphanedClaims } from './loop-land-orphan.js';
 import type { LandLoopOptions } from './loop-land.js';
 
 /**
@@ -20,6 +21,24 @@ import type { LandLoopOptions } from './loop-land.js';
  * 400-line cap — a move, not a rewrite.
  */
 export function reclaimAbandoned(options: LandLoopOptions): void {
+  /**
+   * W21-40: first, the claims that need no waiting at all. A claim stamped
+   * with a different run's id belongs to a run that has ended (C-6: one writer
+   * per project DB), so the thirty-minute window below has nothing to measure.
+   */
+  for (const orphan of orphanedClaims(options.log, options.runId)) {
+    const body = orphanedClaimNotice(orphan, options.runId!);
+    commentTicket(options.log, { ticketId: orphan.ticket.id, actorId: options.actorId, body });
+    releaseTicket(
+      options.log,
+      {
+        ticketId: orphan.ticket.id,
+        actorId: options.actorId,
+        steal: { reason: `claimed by run ${orphan.heldByRunId}, which has ended` },
+      },
+      { runId: options.runId ?? null },
+    );
+  }
   for (const abandoned of findAbandonedTickets(
     listTickets(options.log),
     listEvents(options.log),

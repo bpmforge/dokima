@@ -31,6 +31,7 @@ import {
 import { type SpawnSession } from '@dokima/loop';
 import {
   DEFAULT_MAX_SESSION_SECONDS,
+  orphanedClaims,
   runLandLoop,
   type LandLoopTicketOutcome,
   type LandRungSessions,
@@ -94,7 +95,6 @@ import {
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
 
-// Chapter (W14-06, 400-line cap): the vault refusal moved to run-vault.ts.
 import { resolveVaultOrRefusal } from './run-vault.js';
 import {
   countReceipts,
@@ -393,6 +393,7 @@ export async function executeBuildRun(
     result.processed,
     result.stopReason,
     [...listTickets(log).values()].filter((t) => t.status === 'in_review').length,
+    orphanedClaims(log, runId).map((o) => o.ticket.id), // W21-40: still held.
   );
   return 0;
 }
