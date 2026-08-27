@@ -227,6 +227,12 @@ export function budgetExhaustedStderr(
   entries: readonly BudgetLedgerEntry[],
   /** W21-53: the last completed window's progress signal, when the caller has one. */
   lastWindowProgress: string | null = null,
+  /**
+   * W21-56: the absolute cap this install allows. When the budget has already
+   * reached it, "raise maxToolIterations" names a lever with nothing left in
+   * it, and advice that cannot be acted on is worse than none.
+   */
+  hardCeiling: number | null = null,
 ): string {
   const extensions = entries.filter((e) => e.kind === 'extended');
   const earned =
@@ -276,8 +282,12 @@ export function budgetExhaustedStderr(
       : lastWindowProgress
         ? ` It was STILL MAKING PROGRESS in its final window (${lastWindowProgress}), ` +
           `so the ceiling is what stopped it rather than a lack of progress — this ` +
-          `is work cut off mid-stride, and raising maxToolIterations is the right ` +
-          `response.`
+          `is work cut off mid-stride.` +
+          (hardCeiling !== null && finalBudget >= hardCeiling
+            ? ` And it is already at this install's HARD CEILING of ${hardCeiling}, ` +
+              `so there is no setting left to raise: the ticket is bigger than one ` +
+              `session can be allowed to be, and splitting it is the move.`
+            : ` Raising maxToolIterations is the right response.`)
         : ` This session EARNED more budget from real progress, then stopped making ` +
           `it before the end, so raising maxToolIterations will not help — the ` +
           `evidence to read is what it spent those turns on.`;

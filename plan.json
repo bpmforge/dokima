@@ -12708,6 +12708,39 @@
         "The reported attempt number still counts judged attempts only (W21-15 preserved)",
         "A fixture pins the arithmetic: offset 1 puts attempt 1 on R2"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-53"
+      ],
+      "id": "W21-56",
+      "title": "advice that names a lever with nothing left in it",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts"
+      ],
+      "notes": [
+        "CAUGHT MINUTES AFTER SHIPPING W21-53, BY GOING TO ACT ON ITS OWN ADVICE. That fix made the park evidence say \"raising maxToolIterations is the right response\" for a session cut off mid-stride \u2014 correct diagnosis. I then went to raise it for the vault project and found MAX_TOOL_ITERATIONS_CEILING = 40, a hardcoded absolute cap, which runs 34 and 39 had both already reached exactly.",
+        "So the advice named a lever with nothing left in it. That is worse than the wrong advice it replaced, because it reads as actionable and sends a person to a setting that will refuse them.",
+        "I should have checked the ceiling was reachable before shipping the sentence. The finding is only visible if you try to DO what the product tells you \u2014 which is the whole method of this wave applied to my own output.",
+        "ALSO WORTH RECORDING: the ceiling`s own comment says \"40 is roughly three times the default and comfortably past what a chatty local model needed in testing\". Runs 34 and 39 falsify that for real work \u2014 two crypto modules with specs from an empty worktree needs more than 40 turns on both local rungs. The number is not obviously wrong (T-27`s runaway guard is real), but its stated justification no longer matches observed behaviour, and the honest response is the one the advice now gives: at the ceiling, the ticket is too big for one session and splitting is the move."
+      ],
+      "acceptance": [
+        "At the hard ceiling the advice says SPLIT rather than raise",
+        "Below the ceiling, raising it is still the advice",
+        "A caller that does not know the ceiling keeps the plain wording \u2014 no silent change",
+        "A stalled session is unaffected: it had budget it did not use, so the ceiling is irrelevant"
+      ]
     }
   ]
 }

@@ -273,7 +273,8 @@ describe('cut off mid-stride is not the same as stalled (W21-53)', () => {
       'write changed the worktree',
     );
     expect(text).toContain('STILL MAKING PROGRESS');
-    expect(text).toContain('raising maxToolIterations is the right response');
+    // W21-56 split this into its own sentence, so it capitalises.
+    expect(text).toContain('Raising maxToolIterations is the right response');
     expect(text).not.toContain('will not help');
   });
 
@@ -309,5 +310,45 @@ describe('cut off mid-stride is not the same as stalled (W21-53)', () => {
     budget.noteIteration({ iteration: 3, toolCalls: [toolCall('read', '{"p":"a"}', 'A')] });
     budget.noteIteration({ iteration: 4, toolCalls: [] });
     expect(budget.lastWindowProgress()).toBeNull();
+  });
+});
+
+/**
+ * W21-56. W21-53's new branch told the founder to raise maxToolIterations —
+ * and MAX_TOOL_ITERATIONS_CEILING is a hardcoded 40, which run 34 and run 39
+ * had both already reached. Advice that names a lever with nothing left in it
+ * is worse than none, and I shipped it before checking the ceiling was
+ * reachable.
+ */
+describe('advice must name a lever that still has room (W21-56)', () => {
+  const extended = (atIteration: number, to: number) => ({
+    kind: 'extended' as const,
+    atIteration,
+    to,
+    signal: 'write changed the worktree',
+  });
+
+  it('RED FIXTURE: at the hard ceiling, it says SPLIT rather than raise', () => {
+    const text = budgetExhaustedStderr(40, [extended(36, 40)], 'write changed the worktree', 40);
+    expect(text).toContain('HARD CEILING');
+    expect(text).toContain('splitting it is the move');
+    expect(text).not.toContain('Raising maxToolIterations is the right response');
+  });
+
+  it('below the ceiling, raising it IS the right advice', () => {
+    const text = budgetExhaustedStderr(20, [extended(16, 20)], 'write changed the worktree', 40);
+    expect(text).toContain('Raising maxToolIterations is the right response');
+    expect(text).not.toContain('HARD CEILING');
+  });
+
+  it('a caller that does not know the ceiling keeps the plain advice', () => {
+    const text = budgetExhaustedStderr(40, [extended(36, 40)], 'write changed the worktree');
+    expect(text).toContain('Raising maxToolIterations is the right response');
+  });
+
+  it('a stalled session is unaffected by the ceiling — it had budget it did not use', () => {
+    const text = budgetExhaustedStderr(40, [extended(12, 16)], null, 40);
+    expect(text).toContain('will not help');
+    expect(text).not.toContain('HARD CEILING');
   });
 });

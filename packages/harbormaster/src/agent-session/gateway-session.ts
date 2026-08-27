@@ -374,6 +374,7 @@ export function createGatewaySpawnSession(
           progress.budget(),
           progress.entries(),
           progress.lastWindowProgress(),
+          maxIterations,
         )
       : `agent session stopped: exceeded the per-session tool-iteration budget ` +
         `(${maxIterations}) without a Completion Manifest (T-27). If the work was ` +
