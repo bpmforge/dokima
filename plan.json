@@ -12996,7 +12996,8 @@
         "RUN 47: rung memory skipped R1 (coder-next, serving fine at 200) to reach R2, which could not load \u2014 \"Failed to load model qwen3.6-35b-a3b. Error: Operation canceled.\" The run made ZERO tool calls. An available cheaper model sat unused while the ticket got no session at all.",
         "A rung that FAILED THE WORK and a rung that CANNOT BE REACHED are different facts and rung memory records only the first. Skipping past a working model to an unreachable one is strictly worse than not skipping.",
         "The root cause in run 47 was my own bad model choice (I picked a model served by the LINKED machine out of the /v1/models catalogue), but the interaction is a real product gap and will recur whenever a higher rung is down.",
-        "Candidate fix: when every attempt at the skipped-to rung fails with a provider error, fall back DOWN to the remembered rung rather than parking with nothing \u2014 the memory says that rung failed the work, not that it is unusable, and a session that runs is worth more than one that does not."
+        "Candidate fix: when every attempt at the skipped-to rung fails with a provider error, fall back DOWN to the remembered rung rather than parking with nothing \u2014 the memory says that rung failed the work, not that it is unusable, and a session that runs is worth more than one that does not.",
+        "ACCEPTANCE: a rung that failed because the provider could not be reached does not count as a rung that failed the ticket, so the cheap rung is retried rather than condemned; a rung that failed on the WORK still counts as today; the distinction is drawn from the recorded failure kind, not from a string match on the message."
       ],
       "acceptance": [
         "A skipped rung is used when every higher rung is unreachable, rather than parking with no session",
@@ -13028,7 +13029,8 @@
         "Finding the real cause took hand measurement: I timed the model at 22 tok/s, timed a tool-calling request at 6s, and then read the ledger to find `prompt 5235 completion 4475`. A 4,475-token completion is ~200s at that rate, so a slightly longer one crosses the ceiling. qwen3.8-27b is a reasoning model and emits completions that size routinely.",
         "DEFAULT_REQUEST_TIMEOUT_MS = 300_000 (packages/gateway/src/providers/oai-compat-types.ts) is tuned for cloud latency. On local hardware it is not a runaway guard, it is a throughput assumption \u2014 and the product has every number needed to say so: completion token counts and elapsed time are both already on spend.recorded.",
         "The founder-facing gap: \"the endpoint refused each request\" sends a person to check the endpoint. When every failure is a TIMEOUT rather than a refusal, the sentence should name the ceiling and the observed completion size instead.",
-        "DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will bite the same way once berths > 1 put requests behind a long reasoning turn. Nothing has queued yet, so this is a prediction rather than an observation."
+        "DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will bite the same way once berths > 1 put requests behind a long reasoning turn. Nothing has queued yet, so this is a prediction rather than an observation.",
+        "ACCEPTANCE: a run whose attempts all ended on request timeouts parks naming the timeout and the elapsed time, not \"provider unavailable\"; the park names the setting that governs it; a genuine endpoint refusal still parks as an endpoint refusal. Note DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will present identically at berths > 1."
       ],
       "acceptance": [
         "A park where every attempt failed on a TIMEOUT is distinguished from one where the endpoint refused",
@@ -13061,7 +13063,8 @@
         "The close gate requires commits in the manifest, so that session could never have closed no matter how good the code was. It reached the gate, was refused on the acceptance criterion, and the real blocker \u2014 no commits \u2014 was never named.",
         "W21-44 does not catch this: it asks whether the session MUTATED anything, and this one mutated seventeen times. W21-60 does not catch it either: that is a commit that stages nothing, and this is a commit never attempted. The gap is between them \u2014 work done, never durably recorded.",
         "The signal is free and already collected: the tool histogram is in the ledger per attempt (W21-44 reads it), and \"mutations > 0 AND commits == 0\" is unambiguous. A session that wrote and never committed has produced nothing the gate can see, and telling it so mid-session is cheaper than letting it reach a gate that will refuse for a reason it will not understand.",
-        "Worth distinguishing from a park: this is a MAKER-facing gap, not a founder-facing one. The right place is probably the session budget check that already counts mutations, warning the model at a window boundary rather than after the fact."
+        "Worth distinguishing from a park: this is a MAKER-facing gap, not a founder-facing one. The right place is probably the session budget check that already counts mutations, warning the model at a window boundary rather than after the fact.",
+        "ACCEPTANCE: a session that mutated the worktree and produced no commit parks with a reason naming that specifically, and the uncommitted paths are listed; a session that committed parks as it does today; the check reads the tool histogram and the worktree diff the loop already has."
       ],
       "acceptance": [
         "A session that has mutated files and made no successful commit is told so before its budget runs out",
@@ -13096,7 +13099,8 @@
         "So it is not a prompting problem and not a timeout problem. The model is exploration-biased and, when compelled to act, produces degenerate output. That is the whole explanation for every 3.8-27b session in this project showing reads and lists with zero mutations, and for the 5,405-token completions that blew the request ceiling.",
         "THE PRODUCT HAS NO WAY TO EXPRESS THIS. The ladder assumes a higher rung is BETTER, and D-018 frames escalation as cheapest-first. But \"bigger model\" and \"better at agentic tool use\" are different axes: escalating from coder-next to 3.8-27b traded a model that edits for one that browses, and cost ~4 minutes per turn to do it.",
         "The measured-turns profile (W17-03) already keys per model and could carry a mutation RATE alongside it \u2014 a model whose sessions mutate nothing is not a rung worth climbing to, and the ledger has the tool histograms to say so without a benchmark.",
-        "Config changed for this project as a result: coding-agent is coder-next with NO fallback; 3.8-27b stays as code-reviewer, where reading widely and reasoning at length is the job rather than the failure."
+        "Config changed for this project as a result: coding-agent is coder-next with NO fallback; 3.8-27b stays as code-reviewer, where reading widely and reasoning at length is the job rather than the failure.",
+        "ACCEPTANCE: a rung whose sessions repeatedly produce reads and lists with zero mutations is recorded as unable to do agentic work for this role, and the ladder skips it for later tickets with the reason on the record; a rung that mutates is unaffected; the judgement is made from recorded tool histograms, never from a model scoring another model."
       ],
       "acceptance": [
         "The ladder can express that a rung is unsuitable for agentic work, rather than only that it is more expensive",
@@ -13129,7 +13133,8 @@
         "The product already USES finish_reason live: W21-18`s turnTokenStop reads it, together with empty content, to tell reasoning truncation from a runaway model. So the value is in hand at the moment it matters and is dropped immediately afterwards.",
         "This is the same shape as W21-32 (lifecycle events carried no run id) and W21-64 (a timeout park could not name the ceiling): the evidence needed to answer a real question exists when it happens and is not kept.",
         "It also blocks W21-66 from being settled honestly. I have controlled evidence that 3.8-27b explores rather than acts \u2014 free choice gave list,list at 93 tokens with finish_reason tool_calls, a NATURAL stop \u2014 but I cannot check the real sessions the same way, so the conclusion rests on a fixture rather than on what actually ran.",
-        "SIDE OBSERVATION worth keeping: LM Studio cannot load a second model while one is serving \u2014 \"Failed to load model \u2026 Operation canceled\" reproduced while a run held coder-next. That is memory contention, and it probably explains the earlier load failures I attributed to the linked machine being away."
+        "SIDE OBSERVATION worth keeping: LM Studio cannot load a second model while one is serving \u2014 \"Failed to load model \u2026 Operation canceled\" reproduced while a run held coder-next. That is memory contention, and it probably explains the earlier load failures I attributed to the linked machine being away.",
+        "ACCEPTANCE: spend.recorded carries the provider-reported finish/stop reason alongside its token counts; a provider that reports none records that explicitly rather than omitting the field; the founder can tell a turn that hit the token cap from one that stopped on its own from one the provider truncated, without reading a fixture. This is a prerequisite for any cross-model run (see the model-agnosticism note in W21-78)."
       ],
       "acceptance": [
         "spend.recorded (or a sibling event) carries the turn`s finish_reason",
