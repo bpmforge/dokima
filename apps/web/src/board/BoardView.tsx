@@ -76,13 +76,43 @@ export function BoardView({
       return;
     }
     setBuildRun({ runId: started.data.runId, status: 'running' });
-    for (let i = 0; i < 240; i++) {
+    /**
+     * W21-82: the poll must never leave the board CLAIMING a run is live.
+     *
+     * This looped 240 times at one second, so any run longer than four
+     * minutes fell out of the bottom with `buildRun` still at
+     * `status: 'running'` — and `disabled={buildRun?.status === 'running'}`
+     * then kept the button dead forever. A failed poll did the same thing one
+     * line earlier, breaking without touching state at all.
+     *
+     * Live (Tally, run-mtbveccb): the run parked at 18:50:53 and the board
+     * still read "Run in progress… run-mtbveccb — running" ten minutes later.
+     * Clicking did nothing, because the click landed on a disabled button. A
+     * page reload cleared it instantly, which is the tell: the run was over,
+     * only this component's state said otherwise.
+     *
+     * Four minutes is not an edge case for the product's own target user — a
+     * local model working a real ticket routinely runs longer, and every one
+     * of this session's runs did.
+     *
+     * So: follow it for as long as a run plausibly lives, and on ANY exit
+     * that is not a terminal status, drop back to idle rather than lie. The
+     * outcome map behind this poll is in-memory by design (W12-20) and the
+     * board's own ticket cards carry the durable truth, so idle is honest —
+     * "this page is no longer following that run", not "it finished".
+     */
+    const MAX_POLLS = 4 * 60 * 60;
+    for (let i = 0; i < MAX_POLLS; i++) {
       const polled = await fetchBuildRun(apiOpts, projectId, started.data.runId);
-      if (!polled.ok) break;
+      if (!polled.ok) {
+        setBuildRun(null);
+        return;
+      }
       setBuildRun(polled.data);
-      if (polled.data.status !== 'running') break;
+      if (polled.data.status !== 'running') return;
       await new Promise((r) => setTimeout(r, 1000));
     }
+    setBuildRun(null);
   };
 
   const refusalLine = buildRun ? buildRunRefusalLine(buildRun) : null;

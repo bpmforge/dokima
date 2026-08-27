@@ -13445,6 +13445,82 @@
         "It hid because Vault has maxToolIterations set to 40 by hand \u2014 which IS the ceiling \u2014 so every message I had read all session was accidentally correct. The bug only shows on a project that has configured nothing, which is every new one.",
         "Fixed by passing options.progressBudget?.ceiling. Found while sweeping for hardcoded qwen3.6-35b-a3b at the founder's request: the sweep cleared production code, and this turned up in the same park evidence."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-80",
+      "points": 3,
+      "module": "harbormaster",
+      "title": "a ticket whose acceptance command needs a file its write_scope forbids parks forever, and the product cannot say why",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates-acceptance.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.test.ts",
+        "packages/harbormaster/src/loop-land-report.ts"
+      ],
+      "notes": [
+        "LIVE, Tally PLAN-tally-01, a project created entirely through the UI. acceptance AC-1 = `npm run build` (which is `tsc`), tsconfig.json declares include [\"src/**/*.ts\"], and write_scope = [\"package.json\",\"tsconfig.json\",\".gitignore\"]. tsc refuses with TS18003 \"No inputs were found\" and the ticket cannot create an input, because no .ts path is in its scope. It is unsatisfiable by construction.",
+        "THE EVIDENCE OF THE TRAP IS UNMISTAKABLE: across two runs the maker made 61 tool calls, 25 of them writes, and produced no src/ directory. ZERO writes were refused \u2014 it never even tried the forbidden path; it simply rewrote package.json and tsconfig.json over and over, the only two files it was allowed to touch, hunting for a spelling of tsconfig that would make a build with no inputs succeed. Its own checkpoint knew the answer \u2014 \"Create src/index.ts file\" \u2014 and its scope forbade it.",
+        "unsatisfiableCriteria(ticket.acceptance, ticket.writeScope) already exists and runs at loop-land-ticket.ts:160. It did not fire because it can only reason about criteria that NAME a path, and this criterion is a command. The check is right; its reach is too short.",
+        "The product does hold the disproof. The acceptance output says TS18003 and names the include pattern; the write_scope is on the ticket. After an attempt fails, the run can ask: does the failing command name, or imply, a path outside write_scope? Then park with THAT sentence \u2014 \"this ticket cannot satisfy `npm run build` within its write_scope; it needs src/**/*.ts, which it may not write. Widen it or split it\" \u2014 instead of the generic ladder-exhausted park that sent me to read 61 tool calls to find out.",
+        "Same family as W21-50 (a criterion that proves nothing) and W21-73 (the product holds the evidence and does not hand it over). This one is worse than a wasted run: it is unwinnable, and it re-parks forever.",
+        "ACCEPTANCE: a ticket whose acceptance command fails naming a path its write_scope excludes parks with a reason that names the command, the path, and widen-scope as the move; a ticket whose failure is ordinary work still parks as it does today; the check reads the acceptance output already captured, and adds no new command execution."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W21-81",
+      "points": 1,
+      "module": "server",
+      "title": "widen-scope prints a raw stack trace when the lane invariant refuses it",
+      "write_scope": [
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/cli/run.test.ts"
+      ],
+      "notes": [
+        "LIVE: `dokima widen-scope PLAN-tally-01 --actor bmatthews --add \"src/**/*.ts\" --reason ...` printed \"LaneScopeError: lane/write-scope invariant violated (FR-T3): cross-lane-overlap between ...\" followed by a node stack trace through dist/main.js and better-sqlite3, then a pretty-printed JSON array of violation objects.",
+        "THE REFUSAL ITSELF IS CORRECT AND VALUABLE \u2014 src/**/*.ts would have collided with PLAN-tally-02..06, which own src/models/, src/cli/ and src/commands/. Law 1: cross-lane overlap is always a violation. The product was right and I was wrong, and I narrowed the widen to src/index.ts on the strength of it.",
+        "But every other verb refusal in this CLI arrives as one explained line \u2014 \"refused [SELF_ACCEPT]: accept refused: reviewer founder is also the owner (maker != verifier)\". This one escapes reportVerbError and reaches the user as an unhandled throw. A person told to widen a scope, who then gets a stack trace, reasonably concludes the product broke rather than that it protected them.",
+        "ACCEPTANCE: a lane-invariant refusal from widen-scope (and add-ticket, which shares the check) prints one refusal line naming the overlapping tickets and their lanes, with no stack trace and no JSON dump; the exit code stays non-zero; the underlying violation list is still available in the ledger/verbose path."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "web",
+      "depends_on": [],
+      "id": "W21-82",
+      "title": "the board claims a run is still live after it has finished, so no further run can be started",
+      "write_scope": [
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/board/BoardView.test.tsx"
+      ],
+      "notes": [
+        "LIVE, Tally, entirely through the UI: run-mtbveccb parked at 18:50:53 and the board still read \"Run in progress... run-mtbveccb \u2014 running\" ten minutes later. Clicking Start a run did nothing, because disabled={buildRun?.status === \"running\"} meant the click landed on a dead button. A page reload cleared it instantly \u2014 the tell that the run was over and only this component believed otherwise.",
+        "The status poll ran `for (let i = 0; i < 240; i++)` at one second per turn. Any run longer than four minutes fell out of the bottom with buildRun still at status running, and a failed poll did the same one line earlier \u2014 `if (!polled.ok) break;` exits without touching state at all.",
+        "Four minutes is not an edge case for this product: a local model working a real ticket routinely runs longer, and EVERY run in this session did. So the normal path for the target user was a board that permanently looked busy.",
+        "Fixed by following the run for as long as one plausibly lives, and on any exit that is not a terminal status returning to idle instead of lying. Idle is the honest state: the outcome map behind the poll is in-memory by design (W12-20) and the ticket cards carry the durable truth, so \"this page is no longer following that run\" is true where \"it finished\" would not be.",
+        "Red fixture verified both ways: the new test fails against the old loop (button stays disabled) and passes against the fix."
+      ]
     }
   ]
 }

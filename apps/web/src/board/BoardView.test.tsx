@@ -352,3 +352,45 @@ describe('the park card offers the fix it names (W17-10)', () => {
     expect(screen.queryByTestId('raise-retry-P-3')).toBeNull();
   });
 });
+
+describe('W21-82 — the board never claims a run is live after it has stopped', () => {
+  /**
+   * Live: Tally's run-mtbveccb parked at 18:50:53 and the board still read
+   * "Run in progress… run-mtbveccb — running" ten minutes later. The poll
+   * broke out without touching state, so the button stayed disabled and a
+   * page reload was the only way to start another run.
+   */
+  it('a failed status poll returns the button to Start a run instead of leaving it disabled', async () => {
+    mockedUseBoardData.mockReturnValue(
+      boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }),
+    );
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).endsWith('/build-runs')) {
+        return new Response(JSON.stringify({ run_id: 'run-y', status: 'running' }), {
+          status: 202,
+        });
+      }
+      // The status route stops answering — the shape that stranded the board.
+      return new Response(JSON.stringify({ detail: 'gone' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    try {
+      render(
+        <BoardView
+          baseUrl="/api/v1"
+          token="t"
+          projectId="p1"
+          wsUrl="ws://x"
+          onSelectTicket={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
+      const button = await screen.findByRole('button', { name: 'Start a run' });
+      await vi.waitFor(() =>
+        expect((button as HTMLButtonElement).disabled).toBe(false),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
