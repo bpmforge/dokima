@@ -245,6 +245,9 @@ const LIFECYCLE_COMMANDS = [
   'comment',
   // W21-27: the founder's answer to "this ticket is not right as written".
   'widen-scope',
+  // W21-48: and to "this BOARD is not right as written" — a missing ticket,
+  // which a decomposition produced once cannot fix.
+  'add-ticket',
   'run',
 ] as const;
 
