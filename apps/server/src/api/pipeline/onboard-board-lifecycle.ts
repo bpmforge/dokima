@@ -97,18 +97,36 @@ export function catalogIdFor(origin: OnboardFindingOrigin): string {
   return `onboard:${origin.stepId}:${hash}`;
 }
 
-/** `security-*`/`threat-model-refresh` step ids (the security-cluster
- * topology `run-onboard.ts` appends after `ONBOARD_STEPS`, W8-08) go to a
- * `security` board lane; every other onboard step to `quality` — derived
- * from the step id itself (data this ticket already has), not an imported
- * role-list constant (`modes/index.js`'s security-cluster role arrays are
- * out of this ticket's reach, same barrel wall `onboard-executor.ts`'s
- * header documents for the step topology). */
-function laneForStepId(stepId: string): string {
-  return stepId.startsWith('security-') || stepId === 'threat-model-refresh'
-    ? 'security'
-    : 'quality';
-}
+/**
+ * ONE LANE FOR EVERY ONBOARD TICKET (W21-49).
+ *
+ * This used to split `security-*`/`threat-model-refresh` into a `security`
+ * lane and everything else into `quality`. Both that split and the whole-repo
+ * `ONBOARD_TICKET_WRITE_SCOPE` below are individually well-reasoned, and
+ * together they made every onboard board violate the lane invariant by
+ * construction: two lanes whose tickets both carry `['**']` overlap on every
+ * possible path. A single real onboard run produced SEVEN cross-lane
+ * violations, and the board was still runnable — nothing checked at creation.
+ *
+ * CLAUDE.md law 1 calls cross-lane write-scope overlap a schema bug, and
+ * BLUEPRINT §Berths says the lane invariant is what makes N berths PROVABLY
+ * collision-free. An onboard board could not honestly run at berths > 1.
+ *
+ * One lane is the fix rather than narrower scopes, because the scopes cannot
+ * be narrowed — see `ONBOARD_TICKET_WRITE_SCOPE`: a finding carries no path,
+ * and deriving one from model-authored JSON would let a completion self-grant
+ * scope. Given tickets that may each touch any file, the only safe
+ * arrangement is one lane, which is exactly what the invariant then enforces:
+ * same-lane overlap is a violation only while BOTH tickets are ACTIVE, so
+ * they serialise instead of colliding. That is the guarantee you want when
+ * every ticket can reach every file.
+ *
+ * The quality/security distinction was a REPORTING concern wearing a
+ * concurrency mechanism's clothes. It survives on the ticket's title and its
+ * originating step id, which is where a reader looks for it; the lane is a
+ * scheduling primitive and now says only what it can enforce.
+ */
+export const ONBOARD_BOARD_LANE = 'onboard';
 
 /** Write scope granted to every board ticket minted from an onboard finding.
  * `OnboardFinding` (`onboard-types.ts`) deliberately carries no file/path
@@ -234,7 +252,7 @@ export async function acceptOnboardPlanItems(
       projectPath,
       created_.id,
       {
-        lane: laneForStepId(origin.stepId),
+        lane: ONBOARD_BOARD_LANE,
         writeScope: ONBOARD_TICKET_WRITE_SCOPE,
         dependsOn: [],
       },

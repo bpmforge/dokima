@@ -69,6 +69,26 @@ export function createTicket(
       opts,
     );
     const ticket = getTicket(log, input.id);
+    /**
+     * W21-49: the lane invariant, enforced where tickets come into existence.
+     *
+     * It had only ever been checked by `widenTicketScope` (W21-27), so the
+     * pipeline was free to emit boards it forbids — and did: a single real
+     * onboard run produced SEVEN cross-lane overlaps, because every onboard
+     * ticket carries the whole-repo `['**']` scope and they were split across
+     * two lanes. CLAUDE.md law 1 calls that a schema bug and BLUEPRINT says
+     * the invariant is what makes N berths provably collision-free, so those
+     * boards could not honestly run at berths > 1.
+     *
+     * Checking here rather than at the end of decomposition is what makes it
+     * unavoidable: there is one place a ticket is created, and every caller —
+     * pipeline, onboard, founder (W21-48) — goes through it.
+     *
+     * Every prefix of a valid board is valid, since a subset of
+     * non-overlapping lanes cannot overlap, so this never refuses a
+     * decomposition that would have been accepted whole.
+     */
+    if (ticket) validateLaneWriteScopes([...loadTickets(log).values()]);
     if (!ticket) {
       throw new Error(`ticket.created did not fold into a ticket for ${input.id}`);
     }

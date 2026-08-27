@@ -132,18 +132,25 @@ describe('resumeProject (FR-H3) — two-phase, all-or-nothing', () => {
     fixture = await setupFixture();
     const { log, repoRoot } = fixture;
 
+    /**
+     * W21-49: disjoint scopes, because these two are ACTIVE at the same time.
+     * They shared `packages/example/**` and lane `core`, which is a
+     * same-lane-active-overlap — a state berths cannot produce, since at most
+     * one berth serves a lane. The fixture's point is resume across two
+     * in-flight tickets, and that survives the change intact.
+     */
     await claimedTicketWithReceipt(
       fixture,
       'W9-01',
       'export const a = 1;\n',
-      {},
+      { writeScope: ['packages/example/a/**'] },
       'worker-1',
     );
     await claimedTicketWithReceipt(
       fixture,
       'W9-02',
       'export const b = 2;\n',
-      {},
+      { writeScope: ['packages/example/b/**'] },
       'worker-2',
     );
     const { filePath: driftedFile } = await claimedTicketWithReceipt(

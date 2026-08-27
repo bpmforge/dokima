@@ -12470,7 +12470,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 5,
       "module": "server",
       "depends_on": [],
@@ -12479,6 +12479,7 @@
       "write_scope": [
         "apps/server/src/api/pipeline/onboard-board-lifecycle.ts",
         "apps/server/src/api/pipeline/onboard-board-lifecycle.test.ts",
+        "packages/tickets/src/create.ts",
         "packages/harbormaster/src/resume.test.ts"
       ],
       "notes": [
@@ -12487,7 +12488,12 @@
         "onboard-board-lifecycle.test.ts \u2014 the same shape via proposeFromMatches/acceptItem: PLAN-onboard:health (quality) vs PLAN-onboard:security-sast (security).",
         "resume.test.ts \u2014 same-lane-active-overlap between W9-01 and W9-02, both in lane `core`. A DIFFERENT violation class (same lane, active overlap) in a harbormaster fixture.",
         "WHY THIS MATTERS RATHER THAN BEING TIDY-UP: CLAUDE.md law 1 calls cross-lane write-scope overlap a schema bug and says to report it rather than work around it. BLUEPRINT \u00a7Berths says the lane invariant is what makes N berths PROVABLY collision-free. An onboard board that violates it cannot be run at berths > 1 without two workers writing the same file, and nothing currently refuses it.",
-        "The invariant has existed and been enforced on widen-scope since W21-27. It has never been enforced at creation, so the pipeline has been free to emit boards it forbids."
+        "The invariant has existed and been enforced on widen-scope since W21-27. It has never been enforced at creation, so the pipeline has been free to emit boards it forbids.",
+        "NOT SLOPPINESS \u2014 A DESIGN TENSION BETWEEN TWO GOOD DECISIONS. Every onboard ticket carries the whole-repo `[\"**\"]` scope, and that grant is deliberate and well argued in place: a finding carries no path, and deriving one from model-authored JSON would let a completion self-grant its own scope. The quality/security lane split was equally reasonable on its own. Together they made every onboard board violate the invariant BY CONSTRUCTION \u2014 two lanes whose tickets both hold `[\"**\"]` overlap on every possible path.",
+        "ONE LANE IS THE FIX because the scopes cannot be narrowed. Same-lane overlap is a violation only while BOTH tickets are ACTIVE, so tickets that may each touch any file SERIALISE rather than collide \u2014 which is exactly the guarantee you want there. Cross-lane overlap violates always, regardless of status, which is why the split was fatal and the merge is safe.",
+        "The quality/security distinction was a REPORTING concern wearing a concurrency mechanism`s clothes. It survives on the ticket`s title and its originating step id; the lane is a scheduling primitive and now says only what it can enforce.",
+        "The resume.test.ts fixture had W9-01 and W9-02 both ACTIVE in lane `core` with identical scope \u2014 a state berths cannot produce, since at most one berth serves a lane. Disjoint scopes fix it and the test`s purpose (resume across two in-flight tickets) is untouched.",
+        "validateLaneWriteScopes now runs inside createTicket, which is what surfaced all of this when I tried it during W21-48 and reverted rather than bundling. There is ONE place a ticket comes into existence and every caller goes through it \u2014 pipeline, onboard and founder alike \u2014 so the invariant is now unavoidable rather than checked at one verb."
       ],
       "acceptance": [
         "A real onboard run produces a board with no cross-lane write-scope overlap",

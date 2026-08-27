@@ -9,6 +9,7 @@ import { stateDbPath } from '../server/settings-db.js';
 import {
   catalogIdFor,
   flattenOnboardFindings,
+  ONBOARD_BOARD_LANE,
   ONBOARD_TICKET_WRITE_SCOPE,
   persistOnboardFindings,
   proposePlanItemsFromOnboardFindings,
@@ -72,7 +73,23 @@ describe('onboard-board-lifecycle (W8-09 AC2 — findings become board items via
     ]);
   });
 
-  it('proposes a plan item per finding and accepts it into a real board ticket, lane by step id (quality vs security)', async () => {
+  /**
+   * W21-49 CHANGED THIS DELIBERATELY. It asserted a quality/security lane
+   * split, and that split — combined with the whole-repo write_scope every
+   * onboard ticket carries — made every onboard board violate the lane
+   * invariant by construction: two lanes whose tickets both hold `['**']`
+   * overlap on every path. One real run produced seven cross-lane violations.
+   *
+   * The scopes cannot be narrowed (a finding carries no path, and deriving
+   * one from model-authored JSON would let a completion self-grant scope), so
+   * one lane is the fix. Same-lane overlap is a violation only while BOTH
+   * tickets are active, which serialises them — the right guarantee when
+   * every ticket can reach every file.
+   *
+   * The quality/security distinction was a reporting concern wearing a
+   * concurrency mechanism's clothes; it survives on the title and step id.
+   */
+  it('proposes a plan item per finding and accepts it into a real board ticket, on ONE lane (W21-49)', async () => {
     const dir = await tmpProjectDir();
     dirs.push(dir);
     const origins: OnboardFindingOrigin[] = [
@@ -119,8 +136,8 @@ describe('onboard-board-lifecycle (W8-09 AC2 — findings become board items via
         accepted.find((a) => a.item.catalogId === catalogIdFor(origins[1]!))!.item
           .ticketId!,
       );
-      expect(healthTicket?.lane).toBe('quality');
-      expect(securityTicket?.lane).toBe('security');
+      expect(healthTicket?.lane).toBe(ONBOARD_BOARD_LANE);
+      expect(securityTicket?.lane).toBe(ONBOARD_BOARD_LANE);
       expect(tickets).toHaveLength(2);
     } finally {
       db.close();
