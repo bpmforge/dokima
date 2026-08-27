@@ -12741,6 +12741,73 @@
         "A caller that does not know the ceiling keeps the plain wording \u2014 no silent change",
         "A stalled session is unaffected: it had budget it did not use, so the ceiling is irrelevant"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-56"
+      ],
+      "id": "W21-57",
+      "title": "the ceiling advice says SPLIT without knowing the worktree accumulates",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/session-progress.ts",
+        "packages/harbormaster/src/agent-session/session-progress.test.ts"
+      ],
+      "notes": [
+        "FOUND BY GOING TO ACT ON W21-56`s ADVICE, the same way W21-56 was found by acting on W21-53`s. At the hard ceiling the park evidence now says \"the ticket is bigger than one session can be allowed to be, and splitting it is the move\". I went to split PLAN-vault-002a and checked its worktree first.",
+        "It did not need splitting. Run 39 left a real commit \u2014 \"Argon2id password hashing implementation using node:crypto scrypt\", a genuine memory-hard KDF rather than the base64 placeholder the first attempt produced \u2014 plus an uncommitted spec edit. The worktree PERSISTS across runs (that is why W21-52 exists at all), so the next run continues from committed work rather than starting over.",
+        "So a ticket too big for ONE SESSION is not necessarily too big for the ticket: successive runs accumulate. The advice is right about the session and wrong about the remedy, and following it would have thrown away exactly the partial work that makes the next run cheap \u2014 which is the mistake I already made once by hand, discarding run 35`s worktree.",
+        "THE HONEST ADVICE at the ceiling is: run it again first, because the worktree keeps what this session committed; split only if successive runs stop making progress. That is checkable \u2014 the ledger has a commit count per attempt and W21-44 already counts mutations.",
+        "Pattern worth naming across W21-53, W21-56 and this: each was found by trying to DO what the product just told me to do. Advice is a surface like any other and needs the same live exercise as a button."
+      ],
+      "acceptance": [
+        "At the ceiling the advice names re-running first, since the worktree carries committed work forward",
+        "It recommends splitting only when successive runs are not accumulating",
+        "The distinction is drawn from evidence the ledger already holds, not a guess",
+        "A red fixture pins PLAN-vault-002a: a ceiling stop with a real commit in the worktree does not advise splitting"
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 3,
+      "module": "harbormaster",
+      "depends_on": [],
+      "id": "W21-58",
+      "title": "a run whose every attempt died on the endpoint parks as if the ticket were wrong",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts"
+      ],
+      "notes": [
+        "RUN 40. LM Studio had NO MODEL LOADED \u2014 a direct POST to /v1/chat/completions returns 400 \"No models loaded. Please load a model in the developer page or use the lms load command.\" Every session in the run died on that.",
+        "The product handled the failures correctly at first: W13-27`s free-retry gate absorbed three (#3158-#3160 session.infra_retry, freeRetries 1..3) without charging the ladder, which is exactly its purpose. Then the gate ran out and the failures started counting.",
+        "And the park HEADER says: \"Parked with evidence \u2014 ladder attempt cap (2) reached without a close (FR-H1/H2)\u2026 will likely park again unless the evidence below is addressed.\" That points the founder at the ticket and the model. The actual required action is \"load a model\".",
+        "The attempt LINES are honest \u2014 \"attempt 1/2: exitCode=null no completion manifest returned \u2014 provider failure: lm-studio: request failed with 400 Bad Request\" \u2014 so the evidence is all there. This is the same shape as W21-44`s park comment and W21-40`s idle summary: the diagnosis is present and the headline points elsewhere. Third instance of that class in this wave, which suggests the park header is generally written from the LOOP`s point of view rather than the founder`s.",
+        "The signal needs no new state: attempts whose infraFailure is non-null are already distinguished, and session.infra_retry is already ledgered per attempt. A run where every JUDGED attempt failed on the provider is mechanically identifiable.",
+        "Note this also wasted W21-46`s rung skip: #3142 correctly skipped to R2, and R2 then 400ed like everything else. A correct optimisation spent on a dead endpoint."
+      ],
+      "acceptance": [
+        "A ticket whose every judged attempt failed with a provider error parks with a reason naming the ENDPOINT, not the ladder",
+        "The evidence says what to do (the endpoint refused; check it is up and a model is loaded) rather than \"address the evidence below\"",
+        "A mixed run \u2014 some attempts real, some infra \u2014 keeps the ladder reason, since the ticket genuinely was attempted",
+        "A red fixture pins run 40: two attempts, both provider 400s, does not report a ladder cap"
+      ]
     }
   ]
 }
