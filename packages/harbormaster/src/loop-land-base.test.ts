@@ -239,3 +239,31 @@ describe('a leftover branch with no worktree (W21-37)', () => {
     );
   });
 });
+
+/**
+ * W21-52. My W21-37 guard was right to refuse and wrong to throw: run 32 died
+ * with a bare Error escaping runLandLoop, which is the same class W21-40 filed
+ * against a worktree-creation failure — and I wrote this one AFTER filing
+ * that. A guard that protects a session's work must not destroy the run
+ * reporting it.
+ */
+describe('a stale worktree is a decision, not a crash (W21-52)', () => {
+  it('RED FIXTURE: the refusal names both choices and the exact commands', async () => {
+    const { StaleWorktreeError } = await import('./loop-land-board.js');
+    const err = new StaleWorktreeError('PLAN-vault-002', 'sw/PLAN-vault-002-crypto');
+    expect(err.message).toContain('different base');
+    expect(err.message).toContain('discard that work');
+    // Actionable: a person should not have to work out the incantation.
+    expect(err.message).toContain('worktree remove --force');
+    expect(err.message).toContain('branch -D sw/PLAN-vault-002-crypto');
+    expect(err.ticketId).toBe('PLAN-vault-002');
+  });
+
+  it('it is a distinct type, so the loop can park on it and rethrow anything else', async () => {
+    const { StaleWorktreeError } = await import('./loop-land-board.js');
+    const err = new StaleWorktreeError('T-1', 'sw/T-1');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('StaleWorktreeError');
+    expect(new Error('something else')).not.toBeInstanceOf(StaleWorktreeError);
+  });
+});

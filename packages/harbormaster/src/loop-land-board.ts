@@ -17,9 +17,35 @@ import {
   type CreateWorktreeOptions,
   type WorktreeHandle,
 } from '@dokima/git';
-import { getTicket, isClaimable, type Ticket } from '@dokima/tickets';
+import { commentTicket, getTicket, isClaimable, type Ticket } from '@dokima/tickets';
 import type { EventLog } from '@dokima/events';
+import { ROLE_CODING_AGENT } from '@dokima/gateway';
+import { resolveLandEscalationPolicy } from './loop-land-policy.js';
 import type { LandLoopOptions } from './loop-land.js';
+
+/**
+ * W21-52: the worktree for this ticket was built on a different base and
+ * carries commits, so it can be neither reused (wrong base) nor recreated
+ * (would discard real work). Only a person can choose between those.
+ */
+export class StaleWorktreeError extends Error {
+  readonly ticketId: string;
+  readonly branch: string;
+  constructor(ticketId: string, branch: string) {
+    super(
+      `${ticketId} cannot start: its worktree was created from a different base ` +
+        `and its branch ${branch} already holds commits, so reusing it would run ` +
+        `against the wrong tree and recreating it would discard that work. ` +
+        `Neither is the product's call.\n` +
+        `Land the branch, or discard it deliberately with:\n` +
+        `  git -C <repo> worktree remove --force .dokima/worktrees/${ticketId}\n` +
+        `  git -C <repo> branch -D ${branch}`,
+    );
+    this.name = 'StaleWorktreeError';
+    this.ticketId = ticketId;
+    this.branch = branch;
+  }
+}
 
 export function requireTicket(log: EventLog, ticketId: string): Ticket {
   const ticket = getTicket(log, ticketId);
@@ -65,11 +91,14 @@ export async function resolveWorktree(
      */
     if (!(await containsBase(options.repoRoot, worktreePath, baseRef))) {
       if (await hasAgentCommits(options.repoRoot, worktreePath, baseRef)) {
-        throw new Error(
-          `worktree for ${ticket.id} was created from a different base and ` +
-            `already holds commits, so it cannot be recreated without losing ` +
-            `them. Land or discard that branch, then re-run (W21-37).`,
-        );
+        /**
+         * W21-52: a REFUSAL, not a crash. The first version threw a bare
+         * Error, which escaped runLandLoop and killed run 32 outright — the
+         * same class W21-40 filed against a worktree-creation failure, and I
+         * wrote this one after filing that. A guard that protects a session's
+         * work must not destroy the run reporting it.
+         */
+        throw new StaleWorktreeError(ticket.id, branchNameFor(ticket.id, ticket.title));
       }
       // The BRANCH goes too, not just the directory. Removing the worktree
       // alone leaves `sw/<ticket>` behind, and `createWorktree` then fails
@@ -186,4 +215,42 @@ async function hasAgentCommits(
     // guessing wrong destroys a session's output.
     return true;
   }
+}
+
+/**
+ * W21-52: comment the reason on the ticket, put it back in Ready, and report a
+ * park. Shared by every "this ticket cannot start" path so they produce one
+ * shape — a founder reading the board sees the same thing whether the scope,
+ * the base, or the worktree is what stopped it.
+ */
+export function parkBeforeAttempting(
+  options: LandLoopOptions,
+  ticket: Ticket,
+  reason: string,
+  release: (options: LandLoopOptions, ticketId: string) => void,
+): {
+  ticketId: string;
+  mode: string;
+  attempts: never[];
+  landed: false;
+  parked: true;
+  finalStatus: string;
+} {
+  commentTicket(
+    options.log,
+    { ticketId: ticket.id, actorId: options.actorId, body: reason },
+    { runId: options.runId ?? null },
+  );
+  release(options, ticket.id);
+  return {
+    ticketId: ticket.id,
+    mode: resolveLandEscalationPolicy(
+      options.policyScope ?? {},
+      options.role ?? ROLE_CODING_AGENT,
+    ).mode,
+    attempts: [],
+    landed: false,
+    parked: true,
+    finalStatus: requireTicket(options.log, ticket.id).status,
+  };
 }

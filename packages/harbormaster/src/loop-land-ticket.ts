@@ -47,7 +47,12 @@ import {
 } from './loop-land-policy.js';
 import { beginRungAttempt, consultRungZero } from './loop-land-rungs.js';
 import { fireVerbMirror } from './loop-land-verbs.js';
-import { requireTicket, resolveWorktree } from './loop-land-board.js';
+import {
+  parkBeforeAttempting,
+  requireTicket,
+  resolveWorktree,
+  StaleWorktreeError,
+} from './loop-land-board.js';
 import { activeLeases } from './conflict-leases.js';
 import { runConflictWatch } from './conflict-watcher.js';
 import type { AttemptFeedback } from './loop-handoff.js';
@@ -103,7 +108,19 @@ export async function processTicket(
 ): Promise<LandLoopTicketOutcome> {
   claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
   startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
-  const worktree = await resolveWorktree(options, ticket, baseRef);
+  let worktree: WorktreeHandle;
+  try {
+    worktree = await resolveWorktree(options, ticket, baseRef);
+  } catch (err) {
+    // W21-52: a stale worktree is a founder decision, not a crashed run.
+    if (!(err instanceof StaleWorktreeError)) throw err;
+    return parkBeforeAttempting(
+      options,
+      ticket,
+      err.message,
+      releaseUnlessTakenOver,
+    ) as LandLoopTicketOutcome;
+  }
   return landClaimedTicket(options, ticket, worktree, baseRef);
 }
 
@@ -141,24 +158,12 @@ export async function landClaimedTicket(
   // readable from the ticket record alone.
   const unsatisfiable = unsatisfiableCriteria(ticket.acceptance ?? [], ticket.writeScope);
   if (unsatisfiable.length > 0) {
-    const notice = unsatisfiableNotice(ticket.id, unsatisfiable);
-    commentTicket(
-      options.log,
-      { ticketId: ticket.id, actorId: options.actorId, body: notice },
-      { runId: options.runId ?? null },
-    );
-    releaseUnlessTakenOver(options, ticket.id);
-    return {
-      ticketId: ticket.id,
-      mode: resolveLandEscalationPolicy(
-        options.policyScope ?? {},
-        options.role ?? ROLE_CODING_AGENT,
-      ).mode,
-      attempts: [],
-      landed: false,
-      parked: true,
-      finalStatus: requireTicket(options.log, ticket.id).status,
-    };
+    return parkBeforeAttempting(
+      options,
+      ticket,
+      unsatisfiableNotice(ticket.id, unsatisfiable),
+      releaseUnlessTakenOver,
+    ) as LandLoopTicketOutcome;
   }
   const provision = await provisionWorktree({
     worktreePath: worktree.path,
@@ -171,20 +176,13 @@ export async function landClaimedTicket(
   });
   const provisionFailure = provisionFailureReason(provision);
   if (provisionFailure) {
-    commentTicket(options.log, {
-      ticketId: ticket.id,
-      actorId: options.actorId,
-      body: provisionFailure,
-    }, { runId: options.runId ?? null });
-    releaseUnlessTakenOver(options, ticket.id);
-    return {
-      ticketId: ticket.id,
-      mode: resolveLandEscalationPolicy(options.policyScope ?? {}, options.role ?? ROLE_CODING_AGENT).mode,
-      attempts: [],
-      landed: false,
-      parked: true,
-      finalStatus: requireTicket(options.log, ticket.id).status,
-    };
+    // W21-52: the third early-park path, now the same shape as the other two.
+    return parkBeforeAttempting(
+      options,
+      ticket,
+      provisionFailure,
+      releaseUnlessTakenOver,
+    ) as LandLoopTicketOutcome;
   }
 
   /**

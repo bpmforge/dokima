@@ -12558,6 +12558,41 @@
         "The 501 route`s message names the actual remaining blocker rather than the one that is now fixed",
         "A red fixture reproduces run 31: vault-002 pointed at 001b picks up its work"
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "done",
+      "points": 2,
+      "module": "harbormaster",
+      "depends_on": [
+        "W21-37"
+      ],
+      "id": "W21-52",
+      "title": "a stale worktree is a founder decision, not a crashed run",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-board.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-base.test.ts"
+      ],
+      "notes": [
+        "MINE, AND I HAD ALREADY FILED THE CLASS. W21-37`s guard refuses to recreate a worktree built on a different base when its branch carries agent commits \u2014 correct, and the whole point is not discarding a session`s work. I implemented that refusal as a bare `throw new Error`, and run 32 died on it:",
+        "  Error: worktree for PLAN-vault-002 was created from a different base and already holds commits\u2026 at resolveWorktree \u2026 at runLandLoop \u2026 at executeBuildRun",
+        "The run crashed with no ledger trace \u2014 exactly the class W21-40 filed against a worktree-CREATION failure. I filed that ticket and then wrote the same defect into the neighbouring branch of the same function.",
+        "THE GUARD WAS RIGHT. After W21-51 repointed PLAN-vault-002 at PLAN-vault-001b, its base changed to a composed ref the existing worktree did not contain, and that worktree held the crypto work of nine runs. Reusing it would run against the wrong tree; recreating it would throw the work away. Neither is the product`s call \u2014 which is precisely why it must reach a person rather than a stack trace.",
+        "Now a typed StaleWorktreeError parked with founder evidence, and the message names BOTH choices and the exact git commands, so a person is not left to work out the incantation.",
+        "Three early-park paths (unsatisfiable acceptance, unresolvable base, stale worktree) now share one `parkBeforeAttempting` helper, so a founder reading the board sees the same shape whatever stopped the ticket. That also gave back the lines the fix cost \u2014 loop-land-ticket.ts came in UNDER the cap rather than needing another shave."
+      ],
+      "acceptance": [
+        "A stale worktree parks the ticket with evidence instead of killing the run",
+        "The refusal names both choices (land it, or discard it) and the exact commands for the second",
+        "It is a distinct error type, so the loop parks on it and rethrows everything else",
+        "The three pre-attempt park paths produce one shape on the board"
+      ]
     }
   ]
 }
