@@ -13867,13 +13867,15 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "in_progress",
       "points": 5,
       "module": "gateway",
       "depends_on": [],
       "id": "W21-96",
       "title": "the per-entry model timeout is served by the API and ignored by the run",
       "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/provider.test.ts",
         "apps/server/src/api/pipeline/gateway-model-port/config.ts",
         "apps/server/src/api/pipeline/gateway-model-port/config.test.ts"
       ],
@@ -13895,7 +13897,8 @@
         "SHARPENED 2026-08-28 by measurement, and the first framing was too pessimistic. The knob is NOT missing: `requestTimeoutMs` has been a registry field since W10-57, whose type comment was written for this exact case (\"a 70B on a laptop can exceed even 300s\"). What was missing was the HTTP contract \u2014 `providers-wire.ts` omitted it from BOTH toWire and fromWire, which that module's own header calls out as the failure mode (\"a field missing from either direction is settable and inert\"). That wire gap is FIXED in the same commit as this note, with round-trip tests.",
         "AND THE REAL DEFECT IS WORSE THAN A MISSING FIELD. With the wire fixed, PUT /providers with request_timeout_ms=1200000 returns 200 and GET reads back 1200000 \u2014 verified in the browser against the authenticated API. The resume then still failed with `lm-studio: request timed out after 300000ms`, at 16:51:02 -> 16:57:32, about 390s. So the value is stored, served, and IGNORED by the call it exists to govern. The product now accepts a setting it does not honour, which is a worse state than not offering it.",
         "RULED OUT while tracing, so the next person need not redo it: (1) NOT the request-queue acquire bound \u2014 `asProviderTimeout` decorates that case with \"(waiting for a request-queue slot; N active, M queued)\" and the observed message has no such suffix, so this is the real request timeout; (2) NOT a stale port cached at the route \u2014 `registerResumeRoute` receives the same `resolvePort`, which calls `resolveGatewayConfigForProject(projectPath)` fresh per request; (3) both success branches of `resolveModelTarget` return `toTarget(entry)`, which does spread `requestTimeoutMs`. The break is somewhere between that target and the constructed provider, or in which registry scope the resolver reads (compare W10-62, where the route and the resolver read different scopes and disagreed).",
-        "REPRODUCTION, ~12 minutes: drive the wizard to a sample project, PUT the provider with request_timeout_ms 1200000 (bearer token required, D-005 \u2014 a bare fetch gets a 401 and silently leaves the ceiling at its default), answer the three founder decisions in Describe, press Continue, and read the 504 detail. It will name 300000 while GET names 1200000."
+        "REPRODUCTION, ~12 minutes: drive the wizard to a sample project, PUT the provider with request_timeout_ms 1200000 (bearer token required, D-005 \u2014 a bare fetch gets a 401 and silently leaves the ceiling at its default), answer the three founder decisions in Describe, press Continue, and read the 504 detail. It will name 300000 while GET names 1200000.",
+        "ROOT CAUSE, found 2026-08-28 before any edit: providerForConfig drops the timeout for the two LOCAL kinds only. case ollama and case lm-studio call createOllamaProvider/createLmStudioProvider with { baseUrl } and nothing else, while anthropic, openai, copilot, vertex and the oai-compat default all spread config.requestTimeoutMs. Both constructors take Partial<OaiCompatConfig>, which includes requestTimeoutMs, so the value is simply not passed and the oai-compat default of 300000 wins. That is the exact inversion of the field intent: W10-57 added it because a 70B on a laptop can exceed 300s, and the two laptop kinds are the ones ignoring it. write_scope corrected from config.ts to provider.ts, where the defect actually is."
       ]
     },
     {
