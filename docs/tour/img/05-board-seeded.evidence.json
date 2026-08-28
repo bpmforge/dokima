@@ -2,6 +2,7 @@
   "strings": [
     "Dokima",
     "Board",
+    "Team",
     "Describe",
     "Plan",
     "Decisions",
@@ -14,7 +15,6 @@
     "Focus",
     "«",
     "Program",
-    "Sample",
     "manifest",
     "c/x.ts",
     "verify",
@@ -68,9 +68,21 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 677,
+        "x": 608,
         "y": 12,
         "w": 71,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Team",
+      "disabled": false,
+      "rect": {
+        "x": 683,
+        "y": 12,
+        "w": 65,
         "h": 36
       }
     },
@@ -201,7 +213,7 @@
       "disabled": false,
       "rect": {
         "x": 21,
-        "y": 185,
+        "y": 181,
         "w": 257,
         "h": 102
       }
@@ -213,7 +225,7 @@
       "disabled": false,
       "rect": {
         "x": 160,
-        "y": 262,
+        "y": 258,
         "w": 54,
         "h": 16
       }
@@ -413,7 +425,7 @@
     {
       "tag": "select",
       "role": null,
-      "name": "",
+      "name": "Move ticket E2E-1Move to…Claim it yourself → Claimed (starts no agent, spends nothing)",
       "disabled": false,
       "rect": {
         "x": 344,
@@ -575,7 +587,7 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 5,
+    "app-shell__nav-item": 6,
     "app-shell__notifications-bell": 1,
     "artifact-empty-state": 1,
     "artifact-viewer": 1,
@@ -628,8 +640,6 @@
     "chat__agent-threads": 1,
     "chat__thread": 1,
     "chat__thread--program": 1,
-    "chat__thread-badge": 1,
-    "chat__thread-badge--sample": 1,
     "chat__thread-cards": 1,
     "chat__thread-header": 1,
     "chat__thread-title": 1,

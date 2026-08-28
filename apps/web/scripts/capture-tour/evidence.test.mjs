@@ -70,3 +70,65 @@ describe('extractEvidence', () => {
     expect(geometry.contentBox).toEqual({ x: 0, y: 0, w: 0, h: 0 });
   });
 });
+
+/**
+ * The pack is what a model without vision judges the UI from, so a pack that
+ * misdescribes the screen manufactures findings and hides real ones. Both
+ * fixtures below are the live shapes that were wrong.
+ */
+describe('extractEvidence: the pack describes what is actually on screen', () => {
+  it('omits controls inside a hidden container — SettingsPage keeps ProvidersPanel mounted under [hidden]', () => {
+    mount(`
+      <div class="settings__panel">
+        <div hidden>
+          <label>Base URL <input name="baseUrl" /></label>
+          <button type="submit">Register provider</button>
+        </div>
+        <section><button>Enable Copilot</button></section>
+      </div>
+    `);
+    const { interactive, strings } = extractEvidence();
+    const names = interactive.map((el) => el.name);
+    expect(names).toContain('Enable Copilot');
+    expect(names).not.toContain('Register provider');
+    expect(interactive).toHaveLength(1);
+    // And its text does not leak into the strings either.
+    expect(strings.join(' ')).not.toContain('Base URL');
+  });
+
+  it('a control nested deep inside a display:none ancestor is still omitted', () => {
+    mount(`
+      <div style="display:none"><div><span><button>Ghost</button></span></div></div>
+      <button>Real</button>
+    `);
+    expect(extractEvidence().interactive.map((el) => el.name)).toEqual(['Real']);
+  });
+
+  it('names a control from its wrapping <label> — how nearly every control here is named', () => {
+    mount(`<label>Use for every project <input type="checkbox" /></label>`);
+    const [control] = extractEvidence().interactive;
+    expect(control.name).toBe('Use for every project');
+  });
+
+  it('names a control from label[for] and from aria-labelledby', () => {
+    mount(`
+      <label for="folder">Folder</label>
+      <input id="folder" />
+      <span id="lbl">Project name</span>
+      <input aria-labelledby="lbl" />
+    `);
+    const names = extractEvidence().interactive.map((el) => el.name);
+    expect(names).toContain('Folder');
+    expect(names).toContain('Project name');
+  });
+
+  it('a genuinely unlabelled control still reads as unnamed — the check must be able to fail', () => {
+    mount(`<input type="checkbox" />`);
+    expect(extractEvidence().interactive[0].name).toBe('');
+  });
+
+  it('aria-label still wins over a wrapping label, as the accname order requires', () => {
+    mount(`<label>visible text <button aria-label="close receipt on file">○</button></label>`);
+    expect(extractEvidence().interactive[0].name).toBe('close receipt on file');
+  });
+});

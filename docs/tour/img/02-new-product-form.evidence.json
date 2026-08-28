@@ -83,7 +83,7 @@
       "disabled": false,
       "rect": {
         "x": 479,
-        "y": 85,
+        "y": 93,
         "w": 133,
         "h": 36
       }
@@ -95,7 +95,7 @@
       "disabled": false,
       "rect": {
         "x": 621,
-        "y": 85,
+        "y": 93,
         "w": 186,
         "h": 36
       }
@@ -107,7 +107,7 @@
       "disabled": false,
       "rect": {
         "x": 815,
-        "y": 85,
+        "y": 93,
         "w": 74,
         "h": 36
       }
@@ -115,11 +115,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Show archived",
       "disabled": false,
       "rect": {
         "x": 901,
-        "y": 97,
+        "y": 105,
         "w": 13,
         "h": 13
       }
@@ -127,11 +127,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "My App",
+      "name": "Project name",
       "disabled": false,
       "rect": {
         "x": 438,
-        "y": 259,
+        "y": 267,
         "w": 350,
         "h": 35
       }
@@ -139,11 +139,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "/Users/you/Code/my-app",
+      "name": "Folder",
       "disabled": false,
       "rect": {
         "x": 438,
-        "y": 323,
+        "y": 331,
         "w": 350,
         "h": 35
       }
@@ -155,7 +155,7 @@
       "disabled": false,
       "rect": {
         "x": 438,
-        "y": 366,
+        "y": 374,
         "w": 129,
         "h": 36
       }
@@ -167,7 +167,7 @@
       "disabled": false,
       "rect": {
         "x": 575,
-        "y": 366,
+        "y": 374,
         "w": 76,
         "h": 36
       }
@@ -205,6 +205,7 @@
     "fleet__grid": 1,
     "fleet__header": 1,
     "icon": 2,
+    "page": 1,
     "theme-toggle": 1
   }
 }

@@ -30,9 +30,33 @@ export function extractEvidence() {
   // layout engine, so every rect is 0x0 there — a size gate would reject the
   // entire document and the extractor would be testable only against a live
   // browser. Sizes still feed geometry, where zeros degrade to occupancy 0.
-  const isVisible = (el) => {
+  const isHiddenItself = (el) => {
+    if (el.hasAttribute && el.hasAttribute('hidden')) return true;
     const style = window.getComputedStyle(el);
-    return style.visibility !== 'hidden' && style.display !== 'none';
+    return style.visibility === 'hidden' || style.display === 'none';
+  };
+  /**
+   * ANCESTOR-AWARE. It used to test the element's OWN computed style only,
+   * and `getComputedStyle` on a child of a `display:none` parent reports the
+   * child's own specified display — never `none`. So every control inside a
+   * hidden container passed as visible.
+   *
+   * Live consequence: `SettingsPage` mounts `ProvidersPanel` permanently
+   * under `hidden={tab !== 'providers'}` (so its discovered catalog survives
+   * a tab switch), and the pack for EVERY other Settings tab therefore listed
+   * six provider controls — a Kind select, Base URL, two checkboxes, a submit
+   * button — sized 0x0 at the origin. A model judging the Copilot tab was
+   * being shown controls that are not on that screen, and 0x0 geometry it
+   * could reasonably read as a layout defect. Both are fictions.
+   *
+   * Still style-based, never size-based: jsdom has no layout engine, so a
+   * size gate would reject the whole document there (see the header).
+   */
+  const isVisible = (el) => {
+    for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+      if (isHiddenItself(node)) return false;
+    }
+    return true;
   };
   const round = (n) => Math.round(n);
 
@@ -48,6 +72,55 @@ export function extractEvidence() {
     strings.push(text);
   }
 
+  const clean = (text) => (text ?? '').replace(/\s+/g, ' ').trim();
+
+  /**
+   * The name assistive tech would announce, in the order the accname spec
+   * resolves it. It previously read `aria-label`, then placeholder/title for
+   * form controls, then text content — and consulted no `<label>` at all.
+   *
+   * A `<label>` is how almost every control in this app is named, so the pack
+   * reported them as `""`: Base URL, Enabled, Use for every project, the Kind
+   * select, the Copilot consent checkbox. Worse than the blanks themselves,
+   * a genuinely unlabelled control looked exactly like a correctly labelled
+   * one, so the pack could neither surface a real accessibility defect nor be
+   * trusted when it seemed to show one.
+   */
+  const accessibleName = (el) => {
+    const aria = clean(el.getAttribute('aria-label'));
+    if (aria) return aria;
+
+    const labelledBy = el.getAttribute('aria-labelledby');
+    if (labelledBy) {
+      const text = labelledBy
+        .split(/\s+/)
+        .map((id) => clean(document.getElementById(id)?.textContent))
+        .filter(Boolean)
+        .join(' ');
+      if (text) return text;
+    }
+
+    // `<label for>` first, then a wrapping `<label>` — both are how this app
+    // labels its controls, and neither was consulted before.
+    if (el.id) {
+      const forLabel = document.querySelector(`label[for="${el.id.replace(/"/g, '\\"')}"]`);
+      const text = clean(forLabel?.textContent);
+      if (text) return text;
+    }
+    const wrapping = el.closest ? el.closest('label') : null;
+    if (wrapping) {
+      const text = clean(wrapping.textContent);
+      if (text) return text;
+    }
+
+    const isFormControl =
+      el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA';
+    if (isFormControl) {
+      return clean(el.getAttribute('placeholder') ?? el.getAttribute('title') ?? '');
+    }
+    return clean(el.textContent);
+  };
+
   // Interactive elements: what a user can operate, named the way assistive
   // tech would name it — the instruction↔surface check's raw material.
   const interactive = [];
@@ -57,11 +130,7 @@ export function extractEvidence() {
   for (const el of controls) {
     if (!isVisible(el)) continue;
     const rect = el.getBoundingClientRect();
-    const name =
-      el.getAttribute('aria-label') ??
-      (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA'
-        ? (el.getAttribute('placeholder') ?? el.getAttribute('title') ?? '')
-        : (el.textContent ?? '').replace(/\s+/g, ' ').trim());
+    const name = accessibleName(el);
     interactive.push({
       tag: el.tagName.toLowerCase(),
       role: el.getAttribute('role') ?? null,

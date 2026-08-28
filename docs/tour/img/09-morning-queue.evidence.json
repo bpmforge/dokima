@@ -18,7 +18,7 @@
     "Approval",
     "Merge the demo branch",
     "Diff: +120 -4",
-    "Aug 20, 2026, 10:47 PM",
+    "Aug 28, 2026, 9:53 AM",
     "Approve",
     "Reject",
     "Either choice records your decision in the project's ledger, with your name, and clears this card. Nothing merges or is discarded by the click itself — the work stays on its branch, and the run waiting on this answer reads the ledger.",
@@ -114,7 +114,7 @@
       "disabled": false,
       "rect": {
         "x": 400,
-        "y": 98,
+        "y": 106,
         "w": 280,
         "h": 36
       }
@@ -126,7 +126,7 @@
       "disabled": false,
       "rect": {
         "x": 400,
-        "y": 98,
+        "y": 106,
         "w": 135,
         "h": 36
       }
@@ -138,7 +138,7 @@
       "disabled": false,
       "rect": {
         "x": 543,
-        "y": 98,
+        "y": 106,
         "w": 137,
         "h": 36
       }
@@ -146,11 +146,11 @@
     {
       "tag": "select",
       "role": null,
-      "name": "",
+      "name": "ProjectAll projectsDemo Voyage",
       "disabled": false,
       "rect": {
         "x": 904,
-        "y": 110,
+        "y": 118,
         "w": 136,
         "h": 37
       }
@@ -161,8 +161,8 @@
       "name": "Approve",
       "disabled": false,
       "rect": {
-        "x": 538,
-        "y": 295,
+        "x": 535,
+        "y": 303,
         "w": 79,
         "h": 99
       }
@@ -173,8 +173,8 @@
       "name": "Reject",
       "disabled": false,
       "rect": {
-        "x": 625,
-        "y": 295,
+        "x": 622,
+        "y": 303,
         "w": 64,
         "h": 99
       }
@@ -185,8 +185,8 @@
       "name": "Approve",
       "disabled": false,
       "rect": {
-        "x": 670,
-        "y": 466,
+        "x": 669,
+        "y": 474,
         "w": 79,
         "h": 222
       }
@@ -197,8 +197,8 @@
       "name": "Reject",
       "disabled": false,
       "rect": {
-        "x": 757,
-        "y": 466,
+        "x": 755,
+        "y": 474,
         "w": 64,
         "h": 222
       }
@@ -210,7 +210,7 @@
       "disabled": false,
       "rect": {
         "x": 890,
-        "y": 835,
+        "y": 843,
         "w": 112,
         "h": 28
       }
@@ -265,6 +265,7 @@
     "notifications-view__header": 1,
     "notifications-view__project-filter": 1,
     "notifications-view__tabs": 1,
+    "page": 1,
     "theme-toggle": 1
   }
 }

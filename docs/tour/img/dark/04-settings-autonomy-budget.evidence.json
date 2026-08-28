@@ -2,6 +2,7 @@
   "strings": [
     "Dokima",
     "Board",
+    "Team",
     "Describe",
     "Plan",
     "Decisions",
@@ -13,8 +14,10 @@
     "Close",
     "Providers",
     "Models",
-    "Agent",
+    "Runs & Forge",
     "Autonomy · Budget · Berths",
+    "Advanced ▾",
+    "Agent",
     "Cost Estimate",
     "Effective Settings",
     "MCP Servers",
@@ -24,22 +27,6 @@
     "Suppressions",
     "Escalation Policy",
     "Copilot",
-    "No providers yet. Dokima runs fully local — point it at Ollama or LM Studio and nothing leaves this machine.",
-    "Kind",
-    "Ollama (local)",
-    "LM Studio (local)",
-    "OpenAI-compatible endpoint",
-    "Anthropic",
-    "OpenAI",
-    "Vertex AI",
-    "GitHub Copilot (consent-gated)",
-    "ID",
-    "Base URL",
-    "No credentials needed (runs on this machine)",
-    ". Nothing is stored for this provider.",
-    "Enabled",
-    "Use for every project",
-    "Add provider",
     "Autonomy dial",
     "Interactive — every gated pause asks",
     "Auto — not in effect yet: every gated pause still asks",
@@ -81,9 +68,21 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 681,
+        "x": 612,
         "y": 12,
         "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Team",
+      "disabled": false,
+      "rect": {
+        "x": 685,
+        "y": 12,
+        "w": 65,
         "h": 36
       }
     },
@@ -177,8 +176,8 @@
       "name": "Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 1218,
-        "y": 85,
+        "x": 1098,
+        "y": 93,
         "w": 124,
         "h": 36
       }
@@ -189,8 +188,8 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1349,
-        "y": 85,
+        "x": 1229,
+        "y": 93,
         "w": 67,
         "h": 36
       }
@@ -201,8 +200,8 @@
       "name": "Providers",
       "disabled": false,
       "rect": {
-        "x": 24,
-        "y": 137,
+        "x": 144,
+        "y": 186,
         "w": 79,
         "h": 27
       }
@@ -213,8 +212,8 @@
       "name": "Models",
       "disabled": false,
       "rect": {
-        "x": 107,
-        "y": 137,
+        "x": 227,
+        "y": 186,
         "w": 65,
         "h": 27
       }
@@ -222,12 +221,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Agent",
+      "name": "Runs & Forge",
       "disabled": false,
       "rect": {
-        "x": 176,
-        "y": 137,
-        "w": 56,
+        "x": 296,
+        "y": 186,
+        "w": 105,
         "h": 27
       }
     },
@@ -237,9 +236,33 @@
       "name": "Autonomy · Budget · Berths",
       "disabled": false,
       "rect": {
-        "x": 236,
-        "y": 137,
+        "x": 405,
+        "y": 186,
         "w": 196,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Advanced ▾",
+      "disabled": false,
+      "rect": {
+        "x": 604,
+        "y": 186,
+        "w": 92,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Agent",
+      "disabled": false,
+      "rect": {
+        "x": 701,
+        "y": 186,
+        "w": 56,
         "h": 27
       }
     },
@@ -249,8 +272,8 @@
       "name": "Cost Estimate",
       "disabled": false,
       "rect": {
-        "x": 436,
-        "y": 137,
+        "x": 761,
+        "y": 186,
         "w": 108,
         "h": 27
       }
@@ -261,8 +284,8 @@
       "name": "Effective Settings",
       "disabled": false,
       "rect": {
-        "x": 547,
-        "y": 137,
+        "x": 872,
+        "y": 186,
         "w": 132,
         "h": 27
       }
@@ -273,8 +296,8 @@
       "name": "MCP Servers",
       "disabled": false,
       "rect": {
-        "x": 683,
-        "y": 137,
+        "x": 1008,
+        "y": 186,
         "w": 102,
         "h": 27
       }
@@ -285,8 +308,8 @@
       "name": "Validator Packs",
       "disabled": false,
       "rect": {
-        "x": 789,
-        "y": 137,
+        "x": 1114,
+        "y": 186,
         "w": 117,
         "h": 27
       }
@@ -297,8 +320,8 @@
       "name": "Expert Overrides",
       "disabled": false,
       "rect": {
-        "x": 909,
-        "y": 137,
+        "x": 144,
+        "y": 217,
         "w": 127,
         "h": 27
       }
@@ -309,8 +332,8 @@
       "name": "Rule Lifecycle",
       "disabled": false,
       "rect": {
-        "x": 1040,
-        "y": 137,
+        "x": 275,
+        "y": 217,
         "w": 107,
         "h": 27
       }
@@ -321,8 +344,8 @@
       "name": "Suppressions",
       "disabled": false,
       "rect": {
-        "x": 1151,
-        "y": 137,
+        "x": 386,
+        "y": 217,
         "w": 105,
         "h": 27
       }
@@ -333,8 +356,8 @@
       "name": "Escalation Policy",
       "disabled": false,
       "rect": {
-        "x": 1261,
-        "y": 137,
+        "x": 495,
+        "y": 217,
         "w": 126,
         "h": 27
       }
@@ -345,92 +368,20 @@
       "name": "Copilot",
       "disabled": false,
       "rect": {
-        "x": 24,
-        "y": 168,
+        "x": 626,
+        "y": 217,
         "w": 64,
         "h": 27
       }
     },
     {
-      "tag": "select",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
       "tag": "input",
       "role": null,
-      "name": "lm-studio",
+      "name": "Interactive — every gated pause asks",
       "disabled": false,
       "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "button",
-      "role": null,
-      "name": "Add provider",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 29,
-        "y": 275,
+        "x": 149,
+        "y": 364,
         "w": 13,
         "h": 13
       }
@@ -438,11 +389,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Auto — not in effect yet: every gated pause still asks",
       "disabled": true,
       "rect": {
-        "x": 29,
-        "y": 296,
+        "x": 149,
+        "y": 385,
         "w": 13,
         "h": 13
       }
@@ -450,11 +401,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Per-run cap (USD)",
       "disabled": false,
       "rect": {
-        "x": 24,
-        "y": 595,
+        "x": 144,
+        "y": 684,
         "w": 163,
         "h": 25
       }
@@ -462,11 +413,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Per-project cap (USD)",
       "disabled": false,
       "rect": {
-        "x": 199,
-        "y": 595,
+        "x": 319,
+        "y": 684,
         "w": 163,
         "h": 25
       }
@@ -477,8 +428,8 @@
       "name": "Save budget",
       "disabled": false,
       "rect": {
-        "x": 374,
-        "y": 584,
+        "x": 494,
+        "y": 673,
         "w": 117,
         "h": 36
       }
@@ -489,8 +440,8 @@
       "name": "Default berths",
       "disabled": false,
       "rect": {
-        "x": 26,
-        "y": 747,
+        "x": 146,
+        "y": 836,
         "w": 192,
         "h": 16
       }
@@ -515,21 +466,25 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 5,
+    "app-shell__nav-item": 6,
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,
+    "page": 1,
+    "page__header": 1,
+    "page__inner": 1,
+    "page__title": 1,
     "settings": 1,
-    "settings__checkbox": 2,
     "settings__header": 1,
     "settings__header-actions": 1,
-    "settings__hint": 4,
+    "settings__hint": 2,
     "settings__never-auto": 1,
     "settings__panel": 1,
     "settings__radio": 2,
-    "settings__row-form": 2,
-    "settings__tab": 13,
+    "settings__row-form": 1,
+    "settings__tab": 15,
     "settings__tab--active": 1,
+    "settings__tab--advanced-toggle": 1,
     "settings__tabs": 1,
     "theme-toggle": 1
   }

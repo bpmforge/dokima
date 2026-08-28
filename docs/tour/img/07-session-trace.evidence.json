@@ -2,6 +2,7 @@
   "strings": [
     "Dokima",
     "Board",
+    "Team",
     "Describe",
     "Plan",
     "Decisions",
@@ -21,16 +22,16 @@
     "The run made a pass over the ticket",
     "loop.pass",
     "agent-1",
-    "Aug 20, 2026, 10:47 PM",
+    "Aug 28, 2026, 9:52 AM",
     "Gate result",
     "A gate checked the work and minted a receipt",
     "gate.receipt_minted",
-    "Aug 20, 2026, 10:47 PM (+2ms)",
+    "Aug 28, 2026, 9:52 AM (+1ms)",
     "Escalation",
     "Escalated to a stronger model",
     "escalation.rung_advanced",
     "rung R0 → R1",
-    "Aug 20, 2026, 10:47 PM (+0ms)"
+    "Aug 28, 2026, 9:52 AM (+0ms)"
   ],
   "interactive": [
     {
@@ -39,9 +40,21 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 679,
+        "x": 610,
         "y": 12,
         "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Team",
+      "disabled": false,
+      "rect": {
+        "x": 683,
+        "y": 12,
+        "w": 65,
         "h": 36
       }
     },
@@ -159,7 +172,7 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 710,
+        "x": 705,
         "y": 239,
         "w": 135,
         "h": 36
@@ -171,7 +184,7 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 921,
+        "x": 914,
         "y": 301,
         "w": 135,
         "h": 36
@@ -183,7 +196,7 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 308,
+        "x": 303,
         "y": 415,
         "w": 135,
         "h": 36
@@ -209,7 +222,7 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 5,
+    "app-shell__nav-item": 6,
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,

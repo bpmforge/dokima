@@ -25,7 +25,7 @@ Clicking **New project** opens the creation form: a project name, with an escape
 
 ## Step 3 — Project registered on the Fleet
 
-The project appears as a card with a **Not started** phase chip, Ready/Blocked/Done ticket counters, berth status, and today’s spend — plus Open and Archive actions.
+Creating a project drops you straight into its workspace. Going back to the Fleet, it is now a card with a **Not started** phase chip, Ready/Blocked/Done ticket counters, berth status, and today’s spend — plus Open and Archive actions.
 
 ![Project registered on the Fleet](img/03-project-created.png)
 

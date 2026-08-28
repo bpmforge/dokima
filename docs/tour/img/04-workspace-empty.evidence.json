@@ -2,6 +2,7 @@
   "strings": [
     "Dokima",
     "Board",
+    "Team",
     "Describe",
     "Plan",
     "Decisions",
@@ -29,9 +30,21 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 677,
+        "x": 608,
         "y": 12,
         "w": 71,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Team",
+      "disabled": false,
+      "rect": {
+        "x": 683,
+        "y": 12,
+        "w": 65,
         "h": 36
       }
     },
@@ -272,7 +285,7 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 5,
+    "app-shell__nav-item": 6,
     "app-shell__notifications-bell": 1,
     "artifact-empty-state": 1,
     "artifact-viewer": 1,

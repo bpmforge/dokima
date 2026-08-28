@@ -105,7 +105,7 @@
       "disabled": false,
       "rect": {
         "x": 525,
-        "y": 85,
+        "y": 93,
         "w": 133,
         "h": 36
       }
@@ -117,7 +117,7 @@
       "disabled": false,
       "rect": {
         "x": 666,
-        "y": 85,
+        "y": 93,
         "w": 186,
         "h": 36
       }
@@ -129,7 +129,7 @@
       "disabled": false,
       "rect": {
         "x": 861,
-        "y": 85,
+        "y": 93,
         "w": 74,
         "h": 36
       }
@@ -137,11 +137,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Show archived",
       "disabled": false,
       "rect": {
         "x": 946,
-        "y": 97,
+        "y": 105,
         "w": 13,
         "h": 13
       }
@@ -153,7 +153,7 @@
       "disabled": false,
       "rect": {
         "x": 392,
-        "y": 375,
+        "y": 383,
         "w": 59,
         "h": 28
       }
@@ -165,7 +165,7 @@
       "disabled": false,
       "rect": {
         "x": 459,
-        "y": 375,
+        "y": 383,
         "w": 72,
         "h": 28
       }
@@ -216,6 +216,7 @@
     "fleet__summary": 1,
     "fleet__summary-caption": 1,
     "icon": 2,
+    "page": 1,
     "project-card": 1,
     "project-card__actions": 1,
     "project-card__berths": 1,

@@ -44,12 +44,18 @@ export async function runLightPass(browser, app, ctx) {
   );
 
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
+  // W17-09: creating a project AUTO-OPENS its workspace, so the Fleet card
+  // is not on screen at this point. The tour waited on the card here and
+  // hung for 30s until it timed out — it had been written before W17-09 and
+  // never re-run against it. `fleet.spec.ts` navigates back the same way.
+  await page.getByTestId('split-pane-workspace').waitFor();
+  await page.getByRole('button', { name: '← Fleet' }).click();
   await page.locator('.project-card', { hasText: 'Demo Voyage' }).waitFor();
   await shoot(
     page,
     '03-project-created',
     'Project registered on the Fleet',
-    'The project appears as a card with a **Not started** phase chip, Ready/Blocked/Done ticket counters, berth status, and today’s spend — plus Open and Archive actions.',
+    'Creating a project drops you straight into its workspace. Going back to the Fleet, it is now a card with a **Not started** phase chip, Ready/Blocked/Done ticket counters, berth status, and today’s spend — plus Open and Archive actions.',
     undefined,
     ctx,
   );

@@ -32,11 +32,10 @@ export async function runDarkPass(browser, app, ctx) {
   await page.getByLabel('Folder').fill(app.projectDir);
   await page.getByLabel('Project name').fill('Demo Voyage');
   await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
-  await page.locator('.project-card', { hasText: 'Demo Voyage' }).waitFor();
-  await page
-    .locator('.project-card', { hasText: 'Demo Voyage' })
-    .getByRole('button', { name: 'Open' })
-    .click();
+  // W17-09: creating a project auto-opens its workspace, so this pass is
+  // already where it wants to be — the Fleet card it used to click `Open` on
+  // is not on screen. Same rot as `light-pass.mjs`; that pass still goes back
+  // to the Fleet because it captures the card, and this one does not.
   await page.getByTestId('split-pane-workspace').waitFor();
   const projectId = new URL(page.url()).searchParams.get('project');
   await shoot(

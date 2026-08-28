@@ -82,7 +82,7 @@
       "disabled": false,
       "rect": {
         "x": 552,
-        "y": 85,
+        "y": 93,
         "w": 114,
         "h": 36
       }
@@ -94,7 +94,7 @@
       "disabled": false,
       "rect": {
         "x": 674,
-        "y": 85,
+        "y": 93,
         "w": 186,
         "h": 36
       }
@@ -106,7 +106,7 @@
       "disabled": false,
       "rect": {
         "x": 868,
-        "y": 85,
+        "y": 93,
         "w": 74,
         "h": 36
       }
@@ -114,11 +114,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Show archived",
       "disabled": false,
       "rect": {
         "x": 954,
-        "y": 97,
+        "y": 105,
         "w": 13,
         "h": 13
       }
@@ -130,7 +130,7 @@
       "disabled": false,
       "rect": {
         "x": 368,
-        "y": 287,
+        "y": 295,
         "w": 152,
         "h": 36
       }
@@ -142,7 +142,7 @@
       "disabled": false,
       "rect": {
         "x": 532,
-        "y": 287,
+        "y": 295,
         "w": 114,
         "h": 36
       }
@@ -154,7 +154,7 @@
       "disabled": false,
       "rect": {
         "x": 657,
-        "y": 287,
+        "y": 295,
         "w": 186,
         "h": 36
       }
@@ -194,6 +194,7 @@
     "fleet__empty": 1,
     "fleet__header": 1,
     "icon": 2,
+    "page": 1,
     "theme-toggle": 1
   }
 }

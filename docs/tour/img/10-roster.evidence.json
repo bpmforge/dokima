@@ -8,12 +8,20 @@
     "Settings",
     "Light",
     "Agent Roster",
+    "Who",
+    "can",
+    "work on this project. Who",
+    "is",
+    "working right now is the Team view.",
+    "85",
+    "of",
+    "roles have no model yet.",
+    "Nothing on this roster can run until one is picked — Settings → Models assigns them, and a role with a model shows its chain here.",
     "code-review",
     "Anti-Slop Auditor",
     "subagent",
     "needs a model",
     "AI slop detection specialist",
-    "No model will take this role yet — pick models in Settings → Models.",
     "Code Health Synthesizer",
     "Code health master synthesizer",
     "Complexity Analyzer",
@@ -247,14 +255,26 @@
       }
     },
     {
+      "tag": "p",
+      "role": "status",
+      "name": "85 of 85 roles have no model yet. Nothing on this roster can run until one is picked — Settings → Models assigns them, and a role with a model shows its chain here.",
+      "disabled": false,
+      "rect": {
+        "x": 144,
+        "y": 191,
+        "w": 1152,
+        "h": 51
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Anti-Slop Auditorsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 172,
-        "w": 1366,
+        "x": 161,
+        "y": 307,
+        "w": 1118,
         "h": 22
       }
     },
@@ -264,9 +284,9 @@
       "name": "Code Health Synthesizersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 262,
-        "w": 1366,
+        "x": 161,
+        "y": 396,
+        "w": 1118,
         "h": 22
       }
     },
@@ -276,9 +296,9 @@
       "name": "Complexity Analyzersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 352,
-        "w": 1366,
+        "x": 161,
+        "y": 485,
+        "w": 1118,
         "h": 22
       }
     },
@@ -288,9 +308,9 @@
       "name": "Dead Code Detectorsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 442,
-        "w": 1366,
+        "x": 161,
+        "y": 574,
+        "w": 1118,
         "h": 22
       }
     },
@@ -300,9 +320,9 @@
       "name": "Duplication Detectorsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 532,
-        "w": 1366,
+        "x": 161,
+        "y": 663,
+        "w": 1118,
         "h": 22
       }
     },
@@ -312,9 +332,9 @@
       "name": "Error Handling Auditorsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 622,
-        "w": 1366,
+        "x": 161,
+        "y": 752,
+        "w": 1118,
         "h": 22
       }
     },
@@ -324,9 +344,9 @@
       "name": "Pattern Consistency Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 712,
-        "w": 1366,
+        "x": 161,
+        "y": 841,
+        "w": 1118,
         "h": 22
       }
     },
@@ -336,9 +356,9 @@
       "name": "Type Safety Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 802,
-        "w": 1366,
+        "x": 161,
+        "y": 930,
+        "w": 1118,
         "h": 22
       }
     },
@@ -348,9 +368,9 @@
       "name": "Guide Scribesubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 940,
-        "w": 1366,
+        "x": 161,
+        "y": 1059,
+        "w": 1118,
         "h": 22
       }
     },
@@ -360,9 +380,9 @@
       "name": "Guideprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1030,
-        "w": 1366,
+        "x": 161,
+        "y": 1148,
+        "w": 1118,
         "h": 22
       }
     },
@@ -372,9 +392,9 @@
       "name": "Sdlc Leadprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1120,
-        "w": 1366,
+        "x": 161,
+        "y": 1237,
+        "w": 1118,
         "h": 22
       }
     },
@@ -384,9 +404,9 @@
       "name": "Task Decomposerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1210,
-        "w": 1366,
+        "x": 161,
+        "y": 1326,
+        "w": 1118,
         "h": 22
       }
     },
@@ -396,9 +416,9 @@
       "name": "Game Asset Pipelinesubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1347,
-        "w": 1366,
+        "x": 161,
+        "y": 1455,
+        "w": 1118,
         "h": 22
       }
     },
@@ -408,9 +428,9 @@
       "name": "Game Audio Designersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1437,
-        "w": 1366,
+        "x": 161,
+        "y": 1544,
+        "w": 1118,
         "h": 22
       }
     },
@@ -420,9 +440,9 @@
       "name": "Game Balance Designersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1527,
-        "w": 1366,
+        "x": 161,
+        "y": 1633,
+        "w": 1118,
         "h": 22
       }
     },
@@ -432,9 +452,9 @@
       "name": "Game Designersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1617,
-        "w": 1366,
+        "x": 161,
+        "y": 1722,
+        "w": 1118,
         "h": 22
       }
     },
@@ -444,9 +464,9 @@
       "name": "Game Producersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1707,
-        "w": 1366,
+        "x": 161,
+        "y": 1811,
+        "w": 1118,
         "h": 22
       }
     },
@@ -456,9 +476,9 @@
       "name": "Gameplay Engineersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1797,
-        "w": 1366,
+        "x": 161,
+        "y": 1900,
+        "w": 1118,
         "h": 22
       }
     },
@@ -468,9 +488,9 @@
       "name": "Level Designersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1887,
-        "w": 1366,
+        "x": 161,
+        "y": 1989,
+        "w": 1118,
         "h": 22
       }
     },
@@ -480,9 +500,9 @@
       "name": "Narrative Designersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 1977,
-        "w": 1366,
+        "x": 161,
+        "y": 2078,
+        "w": 1118,
         "h": 22
       }
     },
@@ -492,9 +512,9 @@
       "name": "Playtest Evaluatorsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2067,
-        "w": 1366,
+        "x": 161,
+        "y": 2167,
+        "w": 1118,
         "h": 22
       }
     },
@@ -504,9 +524,9 @@
       "name": "Component Mapperallneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2204,
-        "w": 1366,
+        "x": 161,
+        "y": 2296,
+        "w": 1118,
         "h": 22
       }
     },
@@ -516,9 +536,9 @@
       "name": "Entry Point Tracerallneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2294,
-        "w": 1366,
+        "x": 161,
+        "y": 2385,
+        "w": 1118,
         "h": 22
       }
     },
@@ -528,9 +548,9 @@
       "name": "Health Coordinatorallneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2384,
-        "w": 1366,
+        "x": 161,
+        "y": 2474,
+        "w": 1118,
         "h": 22
       }
     },
@@ -540,9 +560,9 @@
       "name": "Landscape Mapperallneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2474,
-        "w": 1366,
+        "x": 161,
+        "y": 2563,
+        "w": 1118,
         "h": 22
       }
     },
@@ -552,9 +572,9 @@
       "name": "A11y Complianceprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2611,
-        "w": 1366,
+        "x": 161,
+        "y": 2692,
+        "w": 1118,
         "h": 22
       }
     },
@@ -564,9 +584,9 @@
       "name": "Analytics Architectprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2701,
-        "w": 1366,
+        "x": 161,
+        "y": 2781,
+        "w": 1118,
         "h": 22
       }
     },
@@ -576,9 +596,9 @@
       "name": "App Cartographersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2791,
-        "w": 1366,
+        "x": 161,
+        "y": 2870,
+        "w": 1118,
         "h": 22
       }
     },
@@ -588,9 +608,9 @@
       "name": "Challengerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2881,
-        "w": 1366,
+        "x": 161,
+        "y": 2959,
+        "w": 1118,
         "h": 22
       }
     },
@@ -600,9 +620,9 @@
       "name": "Changelog Writerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 2971,
-        "w": 1366,
+        "x": 161,
+        "y": 3048,
+        "w": 1118,
         "h": 22
       }
     },
@@ -612,9 +632,9 @@
       "name": "Code Reviewerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3061,
-        "w": 1366,
+        "x": 161,
+        "y": 3137,
+        "w": 1118,
         "h": 22
       }
     },
@@ -624,9 +644,9 @@
       "name": "Coding Agentprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3151,
-        "w": 1366,
+        "x": 161,
+        "y": 3226,
+        "w": 1118,
         "h": 22
       }
     },
@@ -636,9 +656,9 @@
       "name": "Container Opsprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3241,
-        "w": 1366,
+        "x": 161,
+        "y": 3315,
+        "w": 1118,
         "h": 22
       }
     },
@@ -648,9 +668,9 @@
       "name": "Data Stewardprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3331,
-        "w": 1366,
+        "x": 161,
+        "y": 3404,
+        "w": 1118,
         "h": 22
       }
     },
@@ -660,9 +680,9 @@
       "name": "Db Architectprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3421,
-        "w": 1366,
+        "x": 161,
+        "y": 3493,
+        "w": 1118,
         "h": 22
       }
     },
@@ -672,9 +692,9 @@
       "name": "Design Iteratorprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3511,
-        "w": 1366,
+        "x": 161,
+        "y": 3582,
+        "w": 1118,
         "h": 22
       }
     },
@@ -684,9 +704,9 @@
       "name": "Design System Leadsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3601,
-        "w": 1366,
+        "x": 161,
+        "y": 3671,
+        "w": 1118,
         "h": 22
       }
     },
@@ -696,9 +716,9 @@
       "name": "Documentation Gap Finderprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3691,
-        "w": 1366,
+        "x": 161,
+        "y": 3760,
+        "w": 1118,
         "h": 22
       }
     },
@@ -708,9 +728,9 @@
       "name": "End User Simulatorprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3781,
-        "w": 1366,
+        "x": 161,
+        "y": 3849,
+        "w": 1118,
         "h": 22
       }
     },
@@ -720,9 +740,9 @@
       "name": "Frontend Designprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3871,
-        "w": 1366,
+        "x": 161,
+        "y": 3938,
+        "w": 1118,
         "h": 22
       }
     },
@@ -732,9 +752,9 @@
       "name": "Gauntlet Leadprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 3961,
-        "w": 1366,
+        "x": 161,
+        "y": 4027,
+        "w": 1118,
         "h": 22
       }
     },
@@ -744,9 +764,9 @@
       "name": "Git Expertprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4051,
-        "w": 1366,
+        "x": 161,
+        "y": 4116,
+        "w": 1118,
         "h": 22
       }
     },
@@ -756,9 +776,9 @@
       "name": "Manual Writersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4141,
-        "w": 1366,
+        "x": 161,
+        "y": 4205,
+        "w": 1118,
         "h": 22
       }
     },
@@ -768,9 +788,9 @@
       "name": "Migration Plannerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4231,
-        "w": 1366,
+        "x": 161,
+        "y": 4294,
+        "w": 1118,
         "h": 22
       }
     },
@@ -780,9 +800,9 @@
       "name": "Release Managerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4321,
-        "w": 1366,
+        "x": 161,
+        "y": 4383,
+        "w": 1118,
         "h": 22
       }
     },
@@ -792,9 +812,9 @@
       "name": "Sdlc Feature Modesubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4411,
-        "w": 1366,
+        "x": 161,
+        "y": 4472,
+        "w": 1118,
         "h": 22
       }
     },
@@ -804,9 +824,9 @@
       "name": "Sdlc Improve Modesubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4501,
-        "w": 1366,
+        "x": 161,
+        "y": 4561,
+        "w": 1118,
         "h": 22
       }
     },
@@ -816,9 +836,9 @@
       "name": "Sdlc Init Modesubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4591,
-        "w": 1366,
+        "x": 161,
+        "y": 4650,
+        "w": 1118,
         "h": 22
       }
     },
@@ -828,9 +848,9 @@
       "name": "Sdlc Init Phase 3subagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4681,
-        "w": 1366,
+        "x": 161,
+        "y": 4739,
+        "w": 1118,
         "h": 22
       }
     },
@@ -840,9 +860,9 @@
       "name": "Sdlc Init Phase 4subagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4771,
-        "w": 1366,
+        "x": 161,
+        "y": 4828,
+        "w": 1118,
         "h": 22
       }
     },
@@ -852,9 +872,9 @@
       "name": "Sdlc Init Phase 5subagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4861,
-        "w": 1366,
+        "x": 161,
+        "y": 4917,
+        "w": 1118,
         "h": 22
       }
     },
@@ -864,9 +884,9 @@
       "name": "Sdlc Init Phases 0 2subagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 4951,
-        "w": 1366,
+        "x": 161,
+        "y": 5006,
+        "w": 1118,
         "h": 22
       }
     },
@@ -876,9 +896,9 @@
       "name": "Sdlc Init Phases 3 4subagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5041,
-        "w": 1366,
+        "x": 161,
+        "y": 5095,
+        "w": 1118,
         "h": 22
       }
     },
@@ -888,9 +908,9 @@
       "name": "Sdlc Onboard Modesubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5131,
-        "w": 1366,
+        "x": 161,
+        "y": 5184,
+        "w": 1118,
         "h": 22
       }
     },
@@ -900,9 +920,9 @@
       "name": "Security Auditorprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5221,
-        "w": 1366,
+        "x": 161,
+        "y": 5273,
+        "w": 1118,
         "h": 22
       }
     },
@@ -912,9 +932,9 @@
       "name": "Ui Verifierprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5311,
-        "w": 1366,
+        "x": 161,
+        "y": 5362,
+        "w": 1118,
         "h": 22
       }
     },
@@ -924,9 +944,9 @@
       "name": "Bundle Analyzersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5449,
-        "w": 1366,
+        "x": 161,
+        "y": 5491,
+        "w": 1118,
         "h": 22
       }
     },
@@ -936,9 +956,9 @@
       "name": "Concurrency Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5539,
-        "w": 1366,
+        "x": 161,
+        "y": 5580,
+        "w": 1118,
         "h": 22
       }
     },
@@ -948,9 +968,9 @@
       "name": "DB Query Analyzersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5629,
-        "w": 1366,
+        "x": 161,
+        "y": 5669,
+        "w": 1118,
         "h": 22
       }
     },
@@ -960,9 +980,9 @@
       "name": "Perf Synthesizersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5719,
-        "w": 1366,
+        "x": 161,
+        "y": 5758,
+        "w": 1118,
         "h": 22
       }
     },
@@ -972,9 +992,9 @@
       "name": "Profiler Agentsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5809,
-        "w": 1366,
+        "x": 161,
+        "y": 5847,
+        "w": 1118,
         "h": 22
       }
     },
@@ -984,9 +1004,9 @@
       "name": "Static Perf Analyzersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 5899,
-        "w": 1366,
+        "x": 161,
+        "y": 5936,
+        "w": 1118,
         "h": 22
       }
     },
@@ -996,9 +1016,9 @@
       "name": "Api Designerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6036,
-        "w": 1366,
+        "x": 161,
+        "y": 6065,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1008,9 +1028,9 @@
       "name": "Architecture Designerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6126,
-        "w": 1366,
+        "x": 161,
+        "y": 6154,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1020,9 +1040,9 @@
       "name": "Content Designersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6216,
-        "w": 1366,
+        "x": 161,
+        "y": 6243,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1032,9 +1052,9 @@
       "name": "Cost Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6306,
-        "w": 1366,
+        "x": 161,
+        "y": 6332,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1044,9 +1064,9 @@
       "name": "Llm Integration Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6396,
-        "w": 1366,
+        "x": 161,
+        "y": 6421,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1056,9 +1076,9 @@
       "name": "Performance Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6486,
-        "w": 1366,
+        "x": 161,
+        "y": 6510,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1068,9 +1088,9 @@
       "name": "Qa Vnv Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6576,
-        "w": 1366,
+        "x": 161,
+        "y": 6599,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1080,9 +1100,9 @@
       "name": "Reliability Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6666,
-        "w": 1366,
+        "x": 161,
+        "y": 6688,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1092,9 +1112,9 @@
       "name": "Researcherprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6756,
-        "w": 1366,
+        "x": 161,
+        "y": 6777,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1104,9 +1124,9 @@
       "name": "Sre Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6846,
-        "w": 1366,
+        "x": 161,
+        "y": 6866,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1116,9 +1136,9 @@
       "name": "Test Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 6936,
-        "w": 1366,
+        "x": 161,
+        "y": 6955,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1128,9 +1148,9 @@
       "name": "Ux Engineerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7026,
-        "w": 1366,
+        "x": 161,
+        "y": 7044,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1140,9 +1160,9 @@
       "name": "UX Researchersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7116,
-        "w": 1366,
+        "x": 161,
+        "y": 7133,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1152,9 +1172,9 @@
       "name": "Pm Interviewerprimaryneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7253,
-        "w": 1366,
+        "x": 161,
+        "y": 7262,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1164,9 +1184,9 @@
       "name": "Attack Chainersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7390,
-        "w": 1366,
+        "x": 161,
+        "y": 7391,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1176,9 +1196,9 @@
       "name": "Cloud Security Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
+        "x": 161,
         "y": 7480,
-        "w": 1366,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1188,9 +1208,9 @@
       "name": "Dependency Auditorsubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7570,
-        "w": 1366,
+        "x": 161,
+        "y": 7569,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1200,9 +1220,9 @@
       "name": "IaC Security Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7660,
-        "w": 1366,
+        "x": 161,
+        "y": 7658,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1212,9 +1232,9 @@
       "name": "OWASP LLM Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7750,
-        "w": 1366,
+        "x": 161,
+        "y": 7747,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1224,9 +1244,9 @@
       "name": "OWASP Web Checkersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7840,
-        "w": 1366,
+        "x": 161,
+        "y": 7836,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1236,9 +1256,9 @@
       "name": "Secrets Scannersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 7930,
-        "w": 1366,
+        "x": 161,
+        "y": 7925,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1248,9 +1268,9 @@
       "name": "Semgrep Runnersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 8020,
-        "w": 1366,
+        "x": 161,
+        "y": 8014,
+        "w": 1118,
         "h": 22
       }
     },
@@ -1260,9 +1280,9 @@
       "name": "Threat Modelersubagentneeds a model",
       "disabled": false,
       "rect": {
-        "x": 37,
-        "y": 8110,
-        "w": 1366,
+        "x": 161,
+        "y": 8103,
+        "w": 1118,
         "h": 22
       }
     }
@@ -1291,18 +1311,24 @@
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,
+    "page": 1,
+    "page__group-label": 9,
+    "page__header": 1,
+    "page__inner": 1,
+    "page__lede": 1,
+    "page__title": 1,
     "roster": 1,
     "roster__cluster": 9,
     "roster__expert": 85,
     "roster__expert-description": 85,
     "roster__expert-list": 9,
     "roster__expert-mode": 85,
-    "roster__expert-model": 85,
     "roster__expert-name": 85,
     "roster__expert-scope": 85,
     "roster__expert-summary": 85,
     "roster__header": 1,
-    "roster__unconfigured": 85,
+    "roster__needs-models": 1,
+    "surface": 86,
     "theme-toggle": 1
   }
 }

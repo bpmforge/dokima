@@ -80,8 +80,8 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1349,
-        "y": 85,
+        "x": 1373,
+        "y": 61,
         "w": 67,
         "h": 36
       }
@@ -92,8 +92,8 @@
       "name": "Choose a project",
       "disabled": false,
       "rect": {
-        "x": 24,
-        "y": 348,
+        "x": 0,
+        "y": 324,
         "w": 170,
         "h": 36
       }
@@ -104,8 +104,8 @@
       "name": "Run Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 206,
-        "y": 348,
+        "x": 182,
+        "y": 324,
         "w": 156,
         "h": 36
       }

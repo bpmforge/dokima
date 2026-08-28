@@ -36,7 +36,21 @@ export async function shoot(page, id, title, caption, requireTestId, ctx) {
   console.log(`  [${id}] ${title}`);
 }
 
+/**
+ * W17-08 split the Settings nav into four BASIC tabs and an `Advanced ▸`
+ * disclosure holding the other ten. The sweep walks every declared tab, so it
+ * opens the disclosure first — before this, it clicked a tab that was not in
+ * the DOM and hung for 30s on `Cost Estimate`, the first advanced one.
+ * Idempotent: `aria-expanded` is read rather than toggled blindly, so calling
+ * it on an already-open nav does not close it.
+ */
+async function revealAdvancedTabs(page) {
+  const toggle = page.getByTestId('settings-advanced-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+}
+
 export async function captureSettingsTabs(page, idPrefix, startIndex, ctx) {
+  await revealAdvancedTabs(page);
   for (const [i, tab] of SETTINGS_TABS.entries()) {
     await page
       .locator('nav.settings__tabs')

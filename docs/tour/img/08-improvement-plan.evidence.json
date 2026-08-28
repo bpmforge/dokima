@@ -2,6 +2,7 @@
   "strings": [
     "Dokima",
     "Board",
+    "Team",
     "Describe",
     "Plan",
     "Decisions",
@@ -27,9 +28,21 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 677,
+        "x": 608,
         "y": 12,
         "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Team",
+      "disabled": false,
+      "rect": {
+        "x": 681,
+        "y": 12,
+        "w": 65,
         "h": 36
       }
     },
@@ -124,7 +137,7 @@
       "disabled": false,
       "rect": {
         "x": 41,
-        "y": 305,
+        "y": 313,
         "w": 77,
         "h": 36
       }
@@ -136,7 +149,7 @@
       "disabled": false,
       "rect": {
         "x": 126,
-        "y": 305,
+        "y": 313,
         "w": 82,
         "h": 36
       }
@@ -161,10 +174,11 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 5,
+    "app-shell__nav-item": 6,
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,
+    "page": 1,
     "plan-item": 1,
     "plan-item__actions": 1,
     "plan-item__catalog-id": 1,

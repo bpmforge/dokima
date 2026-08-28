@@ -2,6 +2,7 @@
   "strings": [
     "Dokima",
     "Board",
+    "Team",
     "Describe",
     "Plan",
     "Decisions",
@@ -13,8 +14,10 @@
     "Close",
     "Providers",
     "Models",
-    "Agent",
+    "Runs & Forge",
     "Autonomy · Budget · Berths",
+    "Advanced ▾",
+    "Agent",
     "Cost Estimate",
     "Effective Settings",
     "MCP Servers",
@@ -24,22 +27,6 @@
     "Suppressions",
     "Escalation Policy",
     "Copilot",
-    "No providers yet. Dokima runs fully local — point it at Ollama or LM Studio and nothing leaves this machine.",
-    "Kind",
-    "Ollama (local)",
-    "LM Studio (local)",
-    "OpenAI-compatible endpoint",
-    "Anthropic",
-    "OpenAI",
-    "Vertex AI",
-    "GitHub Copilot (consent-gated)",
-    "ID",
-    "Base URL",
-    "No credentials needed (runs on this machine)",
-    ". Nothing is stored for this provider.",
-    "Enabled",
-    "Use for every project",
-    "Add provider",
     "An MCP server is a small program that lends agents extra tools — a docs search, a deploy hook, an issue tracker. Register one here and every run starts it, discovers its tools, and offers them only to the roles you list. Each tool call waits for your approval in the morning queue unless you switch that off for a server you trust.",
     "No MCP servers registered yet — agents have their built-in tools only.",
     "Name",
@@ -58,9 +45,21 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 681,
+        "x": 612,
         "y": 12,
         "w": 69,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Team",
+      "disabled": false,
+      "rect": {
+        "x": 685,
+        "y": 12,
+        "w": 65,
         "h": 36
       }
     },
@@ -154,8 +153,8 @@
       "name": "Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 1218,
-        "y": 85,
+        "x": 1098,
+        "y": 93,
         "w": 124,
         "h": 36
       }
@@ -166,8 +165,8 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1349,
-        "y": 85,
+        "x": 1229,
+        "y": 93,
         "w": 67,
         "h": 36
       }
@@ -178,8 +177,8 @@
       "name": "Providers",
       "disabled": false,
       "rect": {
-        "x": 24,
-        "y": 137,
+        "x": 144,
+        "y": 186,
         "w": 79,
         "h": 27
       }
@@ -190,8 +189,8 @@
       "name": "Models",
       "disabled": false,
       "rect": {
-        "x": 107,
-        "y": 137,
+        "x": 227,
+        "y": 186,
         "w": 65,
         "h": 27
       }
@@ -199,12 +198,12 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Agent",
+      "name": "Runs & Forge",
       "disabled": false,
       "rect": {
-        "x": 176,
-        "y": 137,
-        "w": 56,
+        "x": 296,
+        "y": 186,
+        "w": 105,
         "h": 27
       }
     },
@@ -214,9 +213,33 @@
       "name": "Autonomy · Budget · Berths",
       "disabled": false,
       "rect": {
-        "x": 236,
-        "y": 137,
+        "x": 405,
+        "y": 186,
         "w": 196,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Advanced ▾",
+      "disabled": false,
+      "rect": {
+        "x": 604,
+        "y": 186,
+        "w": 92,
+        "h": 27
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Agent",
+      "disabled": false,
+      "rect": {
+        "x": 701,
+        "y": 186,
+        "w": 56,
         "h": 27
       }
     },
@@ -226,8 +249,8 @@
       "name": "Cost Estimate",
       "disabled": false,
       "rect": {
-        "x": 436,
-        "y": 137,
+        "x": 761,
+        "y": 186,
         "w": 108,
         "h": 27
       }
@@ -238,8 +261,8 @@
       "name": "Effective Settings",
       "disabled": false,
       "rect": {
-        "x": 547,
-        "y": 137,
+        "x": 872,
+        "y": 186,
         "w": 132,
         "h": 27
       }
@@ -250,8 +273,8 @@
       "name": "MCP Servers",
       "disabled": false,
       "rect": {
-        "x": 683,
-        "y": 137,
+        "x": 1008,
+        "y": 186,
         "w": 102,
         "h": 27
       }
@@ -262,8 +285,8 @@
       "name": "Validator Packs",
       "disabled": false,
       "rect": {
-        "x": 789,
-        "y": 137,
+        "x": 1114,
+        "y": 186,
         "w": 117,
         "h": 27
       }
@@ -274,8 +297,8 @@
       "name": "Expert Overrides",
       "disabled": false,
       "rect": {
-        "x": 909,
-        "y": 137,
+        "x": 144,
+        "y": 217,
         "w": 127,
         "h": 27
       }
@@ -286,8 +309,8 @@
       "name": "Rule Lifecycle",
       "disabled": false,
       "rect": {
-        "x": 1040,
-        "y": 137,
+        "x": 275,
+        "y": 217,
         "w": 107,
         "h": 27
       }
@@ -298,8 +321,8 @@
       "name": "Suppressions",
       "disabled": false,
       "rect": {
-        "x": 1151,
-        "y": 137,
+        "x": 386,
+        "y": 217,
         "w": 105,
         "h": 27
       }
@@ -310,8 +333,8 @@
       "name": "Escalation Policy",
       "disabled": false,
       "rect": {
-        "x": 1261,
-        "y": 137,
+        "x": 495,
+        "y": 217,
         "w": 126,
         "h": 27
       }
@@ -322,92 +345,20 @@
       "name": "Copilot",
       "disabled": false,
       "rect": {
-        "x": 24,
-        "y": 168,
+        "x": 626,
+        "y": 217,
         "w": 64,
         "h": 27
       }
     },
     {
-      "tag": "select",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
       "tag": "input",
       "role": null,
-      "name": "lm-studio",
+      "name": "Name",
       "disabled": false,
       "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "button",
-      "role": null,
-      "name": "Add provider",
-      "disabled": false,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 0,
-        "h": 0
-      }
-    },
-    {
-      "tag": "input",
-      "role": null,
-      "name": "",
-      "disabled": false,
-      "rect": {
-        "x": 24,
-        "y": 344,
+        "x": 144,
+        "y": 431,
         "w": 180,
         "h": 35
       }
@@ -415,11 +366,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "npx",
+      "name": "Command",
       "disabled": false,
       "rect": {
-        "x": 216,
-        "y": 344,
+        "x": 336,
+        "y": 431,
         "w": 180,
         "h": 35
       }
@@ -427,11 +378,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "-y some-mcp-server",
+      "name": "Arguments",
       "disabled": false,
       "rect": {
-        "x": 408,
-        "y": 344,
+        "x": 528,
+        "y": 431,
         "w": 180,
         "h": 35
       }
@@ -439,11 +390,11 @@
     {
       "tag": "textarea",
       "role": null,
-      "name": "API_TOKEN=my-registered-secret",
+      "name": "Environment (one KEY=secret-name per line)",
       "disabled": false,
       "rect": {
-        "x": 600,
-        "y": 327,
+        "x": 720,
+        "y": 414,
         "w": 290,
         "h": 52
       }
@@ -451,11 +402,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Roles that may use its tools (comma-separated)",
       "disabled": false,
       "rect": {
-        "x": 828,
-        "y": 412,
+        "x": 948,
+        "y": 499,
         "w": 309,
         "h": 35
       }
@@ -463,11 +414,11 @@
     {
       "tag": "input",
       "role": null,
-      "name": "",
+      "name": "Ask me in the morning queue before any of its tools run",
       "disabled": false,
       "rect": {
-        "x": 28,
-        "y": 479,
+        "x": 148,
+        "y": 566,
         "w": 13,
         "h": 13
       }
@@ -478,8 +429,8 @@
       "name": "Register server",
       "disabled": false,
       "rect": {
-        "x": 421,
-        "y": 459,
+        "x": 541,
+        "y": 546,
         "w": 135,
         "h": 36
       }
@@ -504,20 +455,24 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 5,
+    "app-shell__nav-item": 6,
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,
+    "page": 1,
+    "page__header": 1,
+    "page__inner": 1,
+    "page__title": 1,
     "settings": 1,
-    "settings__checkbox": 2,
     "settings__header": 1,
     "settings__header-actions": 1,
-    "settings__hint": 4,
+    "settings__hint": 2,
     "settings__list": 1,
     "settings__panel": 1,
-    "settings__row-form": 2,
-    "settings__tab": 13,
+    "settings__row-form": 1,
+    "settings__tab": 15,
     "settings__tab--active": 1,
+    "settings__tab--advanced-toggle": 1,
     "settings__tabs": 1,
     "theme-toggle": 1
   }
