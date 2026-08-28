@@ -77,6 +77,22 @@ export function WizardModelsStep({
   const tooFew = catalog !== null && !unreachable && ids.length < 2;
   const ready =
     work.trim() !== '' && review.trim() !== '' && work.trim() !== review.trim();
+  /**
+   * W13-02's rule: name the precondition that is ACTUALLY unmet, never a
+   * generic one. The same-model case already had its own hint below; the two
+   * empty-field cases had none, so a half-filled step showed a dead Next and
+   * no reason. Returns null when the same-model hint is what is showing, so
+   * the screen never states the same blocker twice.
+   */
+  const blockedBecause = (() => {
+    if (ready || saving) return null;
+    const noWork = work.trim() === '';
+    const noReview = review.trim() === '';
+    if (noWork && noReview) return 'Name both models to continue.';
+    if (noWork) return 'Name the model that writes the code.';
+    if (noReview) return 'Name the model that reviews it.';
+    return null;
+  })();
 
   const save = async () => {
     setSaving(true);
@@ -173,6 +189,11 @@ export function WizardModelsStep({
       >
         {saving ? 'Saving…' : 'Next'}
       </button>
+      {blockedBecause !== null && (
+        <small className="settings__hint" data-testid="wizard-models-blocked">
+          {blockedBecause}
+        </small>
+      )}
     </section>
   );
 }

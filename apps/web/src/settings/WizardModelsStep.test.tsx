@@ -159,3 +159,38 @@ describe('WizardModelsStep', () => {
     );
   });
 });
+
+/**
+ * W13-02's rule — "the disabled primary says what IT is waiting for" — was
+ * fixed on the interview screen and never applied to the setup wizard, which
+ * is the screen a novice reaches FIRST.
+ */
+describe('the disabled Next names the precondition that is actually unmet', () => {
+  it('RED FIXTURE: an empty step says both models are needed, not nothing at all', async () => {
+    renderStep();
+    expect(await screen.findByTestId('wizard-models-blocked')).toBeTruthy();
+    expect(screen.getByTestId('wizard-models-blocked').textContent).toMatch(/both models/i);
+  });
+
+  it('names only the half that is missing', async () => {
+    renderStep();
+    await screen.findByTestId('wizard-models-blocked');
+    fireEvent.change(screen.getByTestId('wizard-model-work'), {
+      target: { value: 'model-a' },
+    });
+    expect(screen.getByTestId('wizard-models-blocked').textContent).toMatch(/reviews it/i);
+  });
+
+  it('does not state the same blocker twice — the same-model case keeps its own hint', async () => {
+    renderStep();
+    await screen.findByTestId('wizard-models-blocked');
+    fireEvent.change(screen.getByTestId('wizard-model-work'), {
+      target: { value: 'same' },
+    });
+    fireEvent.change(screen.getByTestId('wizard-model-review'), {
+      target: { value: 'same' },
+    });
+    expect(screen.getByTestId('wizard-models-same')).toBeTruthy();
+    expect(screen.queryByTestId('wizard-models-blocked')).toBeNull();
+  });
+});

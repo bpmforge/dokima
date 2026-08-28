@@ -53,6 +53,17 @@ export function WizardPresetStep({ number, choiceId, onChoose, onNext }: WizardP
       >
         Next
       </button>
+      {/* W13-02's rule, applied to the screen it was never applied to: a
+          disabled primary says what IT is waiting for. This is step 1 of the
+          setup wizard — the product's front door, reached from the empty
+          Fleet's own call to action — and it offered five unselected options
+          above a dead Next with nothing saying a choice was required. */}
+      {choiceId === null && (
+        <small className="settings__hint" data-testid="wizard-preset-blocked">
+          Pick one of the options above to continue. Nothing is chosen for you —
+          which models do your work is your call, not a default.
+        </small>
+      )}
     </section>
   );
 }
