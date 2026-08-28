@@ -10,6 +10,7 @@ import {
   InvalidTechnicalSlateError,
   UnresolvedFounderDecisionError,
 } from '@dokima/pipeline';
+import { ProviderTimeoutError, ProviderUnreachableError } from '@dokima/gateway';
 import { InvalidPipelineRunRequestError, MalformedModelOutputError } from '../errors.js';
 import { ModelResolutionError } from '../model-resolution.js';
 
@@ -83,6 +84,31 @@ const KNOWN_ERROR_STATUSES: readonly [new (...args: never[]) => Error, ProblemMa
     [
       InvalidPipelineRunRequestError,
       { status: 400, title: 'Invalid request body', rule: 'INVALID_REQUEST' },
+    ],
+    /**
+     * A slow or absent local model is an EXPECTED condition for a product that
+     * guarantees local-only works (C-1, D-024 option a) — `isProviderError`'s
+     * own comment says so, after W13-13 watched a 27B model blow the 300s
+     * timeout and kill a run that had already produced verified, committed
+     * work. That lesson was applied to the land loop and never reached these
+     * routes: `ProviderTimeoutError` was in no mapping, fell through to
+     * `throw err`, and Fastify rendered its default
+     * `{statusCode, error, message}` 500.
+     *
+     * Measured live 2026-08-28, resuming the guided sample after answering its
+     * three founder decisions: 500 with "lm-studio: request timed out after
+     * 300000ms". Because that envelope carries `message` and not `detail`, the
+     * browser could not even read the reason — it showed the generic
+     * "check that your model is running", about a model that was running fine
+     * and merely slow.
+     *
+     * 504 and 503 rather than 500: the request was well formed and our code
+     * did not fail. Something upstream was too slow, or not there.
+     */
+    [ProviderTimeoutError, { status: 504, title: 'Model timed out', rule: 'MODEL_TIMEOUT' }],
+    [
+      ProviderUnreachableError,
+      { status: 503, title: 'Model endpoint unreachable', rule: 'MODEL_UNREACHABLE' },
     ],
   ];
 

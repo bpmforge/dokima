@@ -30,6 +30,29 @@ export interface FriendlyFailure {
 const ANSWERS_KEPT = 'Your answers are still here — nothing you typed was lost.';
 
 function summarizeStatus(status: number, building: string): string {
+  /**
+   * The model answered nothing in time (504 MODEL_TIMEOUT) or the endpoint was
+   * not there (503 MODEL_UNREACHABLE). Both used to land on the generic branch
+   * below, which tells the person to "check that your model is running" — the
+   * exactly wrong thing to read when the model IS running and merely slow, and
+   * the reason a first-run user with a freshly loaded local model gives up on
+   * a run that a second attempt would have finished.
+   */
+  if (status === 504) {
+    return (
+      `The model did not answer in time, so ${building} was stopped. It was not a wrong ` +
+      `answer — just too slow. A local model that has only just been loaded is often ` +
+      `much faster the second time, so trying again is worth it; if it keeps timing ` +
+      `out, choose a smaller model in Settings → Models.`
+    );
+  }
+  if (status === 503) {
+    return (
+      `Dokima could not reach the model's endpoint, so ${building} was stopped. Start ` +
+      `the provider, then try again. The endpoint this project uses is listed under ` +
+      `Settings → Providers.`
+    );
+  }
   if (status === 401 || status === 403) {
     return `This window is no longer signed in to your Dokima server, so ${building} was refused. Close and reopen the project, then try again.`;
   }

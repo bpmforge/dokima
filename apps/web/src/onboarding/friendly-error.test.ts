@@ -166,3 +166,43 @@ describe('describeResumeError: which of the two 409s is this', () => {
     expect(describeResumeError(new Error('offline')).kind).toBe('failed');
   });
 });
+
+/**
+ * Found by driving the guided sample to completion on a real local model
+ * (2026-08-28): after all three founder decisions were answered, Continue
+ * returned 500 "lm-studio: request timed out after 300000ms" and the screen
+ * said "check that your model is running". The model was running. It was slow.
+ */
+describe('a slow or absent model is not "check that your model is running"', () => {
+  it('RED FIXTURE: a 504 says the model was too slow, and that a retry is worth it', () => {
+    const { summary } = describeRunFailure(new OnboardingApiError(504, 'timed out', 'MODEL_TIMEOUT'));
+    expect(summary).toMatch(/did not answer in time/i);
+    expect(summary).toMatch(/trying again is worth it/i);
+    expect(summary).toMatch(/smaller model/i);
+    expect(summary).not.toMatch(/check that your model is running/i);
+  });
+
+  it('a 503 points at the endpoint, not at the model choice', () => {
+    const { summary } = describeRunFailure(
+      new OnboardingApiError(503, 'unreachable', 'MODEL_UNREACHABLE'),
+    );
+    expect(summary).toMatch(/could not reach/i);
+    expect(summary).toMatch(/Settings → Providers/);
+    expect(summary).not.toMatch(/check that your model is running/i);
+  });
+
+  it('both reach the resume path too — the run that timed out was a resume', () => {
+    expect(describeResumeFailure(new OnboardingApiError(504, 'timed out')).summary).toMatch(
+      /did not answer in time/i,
+    );
+    expect(describeResumeFailure(new OnboardingApiError(504, 'x')).summary).toMatch(
+      /continuing the run/i,
+    );
+  });
+
+  it('an ordinary 500 still gets the generic branch', () => {
+    expect(describeRunFailure(new OnboardingApiError(500, 'boom')).summary).toMatch(
+      /check that your model is running/i,
+    );
+  });
+});

@@ -88,9 +88,21 @@ export function GuidedSample({ projectId, onContinue }: GuidedSampleProps) {
         // run — the id lived in the interview panel's state and navigating
         // away discarded it. Describe now recovers a waiting run on open, so
         // the sentence names the screen that can actually finish the job.
+        //
+        // The destination was right and the ROUTE to it was missing. This is
+        // shown inside the setup wizard, where the menu is Fleet / Roster /
+        // Morning queue / Settings — `Describe` is declared `needsProject` in
+        // Header.tsx, so it does not exist until setup is finished and a
+        // project is open. A first-run user with pending decisions read "Open
+        // Describe", found no such control, and had nowhere to go. Verified
+        // live: Done lands on ?project=<id>, and Describe there holds the
+        // decisions — so the sentence names that step and explains the absence
+        // the person is looking at.
         setDegradeMessage(
           'The sample paused on a founder decision — that is the gate working, not a ' +
-            'failure. Open Describe to answer it and continue the run.',
+            'failure. Finish setup with Done — that opens the sample project, where ' +
+            'Describe has the decision waiting. Describe is not in the menu yet ' +
+            'because it only appears once a project is open.',
         );
         setStage('degraded');
         return;

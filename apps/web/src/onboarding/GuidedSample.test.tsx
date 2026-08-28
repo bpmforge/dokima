@@ -179,3 +179,42 @@ describe('GuidedSample honest degrade', () => {
     expect(mockedApi.runGuidedPipeline).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The awaiting-decisions branch had no test, and its instruction named a
+ * control that does not exist on the screen showing it: `Describe` is
+ * `needsProject` (Header.tsx), and this renders inside the setup wizard, where
+ * no project is open. Verified live on 2026-08-28 — the wizard's menu is
+ * Fleet / Roster / Morning queue / Settings, and a first-run user with three
+ * pending decisions had nowhere to go.
+ */
+describe('GuidedSample: the pause names a route the person can actually take', () => {
+  async function pauseOnDecisions() {
+    mockedApi.runGuidedPipeline.mockResolvedValue({
+      status: 'awaiting_decisions',
+      run_id: 'run-1',
+      reasons: ['the blueprint raised three founder decisions'],
+      decisions: [{ key: 'auth', slate_id: 's1', title: 'How should local auth work?' }],
+    } as never);
+    render(<GuidedSample projectId="proj-1" onContinue={vi.fn()} />);
+    await advanceThroughInterview();
+    fireEvent.click(await screen.findByTestId('guided-sample-run'));
+    return screen.findByRole('alert');
+  }
+
+  it('RED FIXTURE: does not tell someone in the wizard to open a project-only screen', async () => {
+    const alert = await pauseOnDecisions();
+    expect(alert.textContent).not.toMatch(/^.*Open Describe to answer it/);
+    expect(alert.textContent).toMatch(/finish setup with done/i);
+  });
+
+  it('explains why Describe is missing from the menu right now', async () => {
+    const alert = await pauseOnDecisions();
+    expect(alert.textContent).toMatch(/only appears once a project is open/i);
+  });
+
+  it('still says the pause is the gate working, not a failure', async () => {
+    const alert = await pauseOnDecisions();
+    expect(alert.textContent).toMatch(/gate working, not a failure/i);
+  });
+});
