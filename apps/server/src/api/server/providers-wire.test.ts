@@ -49,3 +49,23 @@ describe('providers-wire: the per-entry request timeout survives both directions
     expect(wire.enabled).toBe(true);
   });
 });
+
+/**
+ * W21 audit follow-up: `streamIdleMs` governs every streamed pipeline phase
+ * (chat-json prefers chatStream), and until now it was the one bound with no
+ * registry surface at all — hardcoded 60s, unreachable from the API.
+ */
+describe('providers-wire: the stream idle bound round-trips too', () => {
+  it('RED FIXTURE: toWire carries it', () => {
+    expect(toWire({ ...ENTRY, streamIdleMs: 120_000 }).stream_idle_ms).toBe(120_000);
+  });
+
+  it('RED FIXTURE: fromWire keeps it', () => {
+    const mapped = fromWire({ ...ENTRY, base_url: ENTRY.baseUrl, stream_idle_ms: 120_000 });
+    expect((mapped as { streamIdleMs?: number }).streamIdleMs).toBe(120_000);
+  });
+
+  it('absent stays absent — the adapter default still applies', () => {
+    expect(toWire(ENTRY).stream_idle_ms).toBeUndefined();
+  });
+});

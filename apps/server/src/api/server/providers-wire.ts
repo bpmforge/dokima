@@ -38,6 +38,8 @@ export interface WireProvider {
    * or the UI could ask for longer.
    */
   request_timeout_ms?: number;
+  /** W21: how long a stream may go silent between chunks. Distinct from the request timeout, which bounds the wait for the FIRST chunk. */
+  stream_idle_ms?: number;
   enabled: boolean;
 }
 
@@ -55,6 +57,7 @@ export function toWire(entry: ProviderEntry): WireProvider {
     ...(entry.requestTimeoutMs === undefined
       ? {}
       : { request_timeout_ms: entry.requestTimeoutMs }),
+    ...(entry.streamIdleMs === undefined ? {} : { stream_idle_ms: entry.streamIdleMs }),
     enabled: entry.enabled,
   };
 }
@@ -80,6 +83,7 @@ export function fromWire(raw: unknown): unknown {
     // positive integer and refuses anything else, so a bad value is reported
     // rather than coerced — this mapper only has to stop dropping it.
     requestTimeoutMs: v.request_timeout_ms ?? v.requestTimeoutMs,
+    streamIdleMs: v.stream_idle_ms ?? v.streamIdleMs,
     enabled: v.enabled,
   };
 }

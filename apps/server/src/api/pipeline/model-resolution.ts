@@ -56,6 +56,8 @@ export interface ResolvedModelTarget {
   readonly credentialRef?: string;
   /** W10-57: the entry's own timeout, when it set one. Absent = the kind's default. */
   readonly requestTimeoutMs?: number;
+  /** W21: the stream's inter-chunk silence bound, when the entry set one. */
+  readonly streamIdleMs?: number;
   /** W13-10: extra request-body fields for this endpoint (e.g. `reasoning_effort`). */
   readonly requestExtras?: Record<string, unknown>;
   /** The bare model id sent on the wire — prefix stripped. */
@@ -250,6 +252,7 @@ function toTarget(entry: ProviderEntry): Omit<ResolvedModelTarget, 'model' | 'so
     ...(entry.requestTimeoutMs === undefined
       ? {}
       : { requestTimeoutMs: entry.requestTimeoutMs }),
+    ...(entry.streamIdleMs === undefined ? {} : { streamIdleMs: entry.streamIdleMs }),
     ...(entry.requestExtras === undefined ? {} : { requestExtras: entry.requestExtras }),
   };
 }

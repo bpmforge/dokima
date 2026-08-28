@@ -173,6 +173,21 @@ export function validateProviderEntry(
     );
   }
 
+  if (v.streamIdleMs !== undefined) {
+    // Same reasoning as requestTimeoutMs: a bound that never fires is not a
+    // bound, and an unbounded one pins a concurrency-1 endpoint.
+    if (
+      typeof v.streamIdleMs !== 'number' ||
+      !Number.isInteger(v.streamIdleMs) ||
+      v.streamIdleMs <= 0 ||
+      v.streamIdleMs > MAX_REQUEST_TIMEOUT_MS
+    ) {
+      throw new ProviderRegistryError(
+        `streamIdleMs must be a positive integer (ms) no greater than ${MAX_REQUEST_TIMEOUT_MS}, got ${JSON.stringify(v.streamIdleMs)}`,
+        'invalid-stream-idle',
+      );
+    }
+  }
   if (v.requestExtras !== undefined && !isPlainObject(v.requestExtras)) {
     throw new ProviderRegistryError(
       'requestExtras must be a JSON object of fields to merge into each request',
@@ -206,6 +221,7 @@ export function validateProviderEntry(
     // W10-57. This construction is an ALLOWLIST — a field validated above but
     // omitted here is silently dropped, which is how the entry would have gone
     // out settable and inert.
+    ...(typeof v.streamIdleMs === 'number' ? { streamIdleMs: v.streamIdleMs } : {}),
     ...(typeof v.requestTimeoutMs === 'number'
       ? { requestTimeoutMs: v.requestTimeoutMs }
       : {}),

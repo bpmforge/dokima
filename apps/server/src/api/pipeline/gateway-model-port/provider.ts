@@ -169,6 +169,9 @@ export async function providerForConfig(
         ...(config.requestTimeoutMs === undefined
           ? {}
           : { requestTimeoutMs: config.requestTimeoutMs }),
+        ...(config.streamIdleMs === undefined
+          ? {}
+          : { streamIdleMs: config.streamIdleMs }),
       });
     case 'lm-studio':
       return createLmStudioProvider({
@@ -176,6 +179,9 @@ export async function providerForConfig(
         ...(config.requestTimeoutMs === undefined
           ? {}
           : { requestTimeoutMs: config.requestTimeoutMs }),
+        ...(config.streamIdleMs === undefined
+          ? {}
+          : { streamIdleMs: config.streamIdleMs }),
       });
 
     case 'anthropic':

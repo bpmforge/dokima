@@ -25,11 +25,14 @@ import { parseModelJson } from '../model-json.js';
  * `TypeError: fetch failed <- HeadersTimeoutError [UND_ERR_HEADERS_TIMEOUT]`.
  *
  * A streamed response sends headers immediately, so that bound never applies.
- * What governs instead is `createIdleAbort` (DEFAULT_STREAM_IDLE_MS, 60s) —
- * "an abort that fires when a stream goes QUIET, not when it takes a while",
- * which is the right question to ask of a slow local model: it tolerates a
- * twenty-minute generation that keeps producing tokens and still fails fast on
- * a genuine stall.
+ * On the oai-compat adapters (which is every LOCAL kind) what governs instead
+ * is `createIdleAbort` — `requestTimeoutMs` until the first chunk, then
+ * `streamIdleMs` — "an abort that fires when a stream goes QUIET, not when it
+ * takes a while". That is the right question to ask of a slow local model: it
+ * tolerates a twenty-minute generation that keeps producing tokens and still
+ * fails fast on a genuine stall. Anthropic and OpenAI have no idle abort, so
+ * for them the bound remains total duration; saying otherwise would mislead
+ * someone raising a timeout for a cloud model.
  *
  * `chatStream` is OPTIONAL on Provider (declaration-merged in gateway's
  * types.ts) — vertex and copilot have not ported their SSE paths — so this

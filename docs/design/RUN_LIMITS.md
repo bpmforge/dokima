@@ -35,7 +35,8 @@ which is what W13-13 was filed for. A hosted endpoint that has not answered in
 Health checks are **5s** everywhere: a probe that needs longer has answered the
 question it was asked.
 
-Configurable per provider entry (`requestTimeoutMs`).
+Configurable per provider entry (`requestTimeoutMs`), and capped at two hours —
+a bound that never fires is not a bound.
 
 **On a stream, the bound is different and better (W13-15).** A generation that
 is producing tokens is alive by definition, so the streaming path measures
@@ -43,6 +44,23 @@ is producing tokens is alive by definition, so the streaming path measures
 total duration. A local model generating steadily for six minutes is not
 interrupted; one that goes quiet for a minute is. Duration still bounds the
 non-streaming path, because there a single response is the only signal there is.
+
+**Until the first chunk, `requestTimeoutMs` governs, not `streamIdleMs` (W21).**
+The idle signal is armed before the request is sent, so before any chunk arrives
+it is not measuring silence between tokens — it is measuring connect, upload and
+the server's prefill. Prefill on a large local model with a long prompt is
+legitimately slow and silent, and holding it to the inter-token bound turned a
+working setup into a failure. So the first chunk gets the request timeout, and
+the tighter idle window takes over once tokens are flowing.
+
+**Every pipeline phase now streams (W21).** `chat-json.ts` prefers `chatStream`,
+because a non-streaming call sends no response headers until generation
+finishes and Node's own fetch abandons it at 300s — a ceiling no setting could
+lift. Adapters without an SSE path (vertex, copilot) still take `chat()` and
+are still bounded by duration.
+
+Both stream bounds are configurable per provider entry: `requestTimeoutMs` for
+the first chunk, `streamIdleMs` for the gaps after it.
 
 ### One command
 

@@ -71,6 +71,19 @@ export interface ProviderEntry {
    */
   readonly requestTimeoutMs?: number;
   /**
+   * How long a STREAM may go silent between chunks before it is treated as
+   * stalled (W21). Distinct from `requestTimeoutMs`, which bounds the wait for
+   * the FIRST chunk — connect, upload and the server's prefill.
+   *
+   * Separate because they answer different questions. Prefill on a large local
+   * model is legitimately slow and silent; a gap in the middle of a generation
+   * is not. Absent means the adapter default (60s), which is right for almost
+   * everyone — this exists because a machine slow enough to need a longer
+   * request timeout may also stream in longer bursts, and until now that
+   * number was the one bound nobody could reach.
+   */
+  readonly streamIdleMs?: number;
+  /**
    * GCP project id — required for `vertex`, meaningless elsewhere (W12-14).
    * This is the field whose absence made Vertex the one cloud kind that still
    * refused at construction after W12-11 solved credentials and pricing.
