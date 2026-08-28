@@ -28,12 +28,43 @@ const realFetch = globalThis.fetch;
  * Every case stubs `fetch`, which is what the oai-compat adapter resolves
  * (`config.fetchImpl ?? fetch`).
  */
+/**
+ * Answers BOTH shapes, because `chatJson` now prefers `chatStream`: a
+ * non-streaming completion sends no headers until it finishes, and Node's
+ * fetch abandons it at 300s (UND_ERR_HEADERS_TIMEOUT) — a ceiling no setting
+ * can lift. A stub that only knew the blocking shape would leave this route
+ * tested on a path production no longer takes.
+ */
 function stubModel(reply: unknown, status = 200): void {
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify(reply), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    })) as unknown as typeof fetch;
+  globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
+    const wantsStream =
+      typeof init?.body === 'string' &&
+      (JSON.parse(init.body) as { stream?: boolean }).stream === true;
+    if (!wantsStream || status !== 200) {
+      return new Response(JSON.stringify(reply), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    const choice = (reply as { choices?: { message?: { content?: string } }[] }).choices?.[0];
+    const content = choice?.message?.content ?? '';
+    const usage = (reply as { usage?: unknown }).usage;
+    const frame = (payload: unknown) => `data: ${JSON.stringify(payload)}\n\n`;
+    const body =
+      frame({
+        id: 'x',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: { role: 'assistant', content }, finish_reason: null }],
+      }) +
+      frame({
+        id: 'x',
+        object: 'chat.completion.chunk',
+        choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+        usage,
+      }) +
+      'data: [DONE]\n\n';
+    return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  }) as unknown as typeof fetch;
 }
 
 /** An endpoint that is simply not there — the local-only case, without waiting on a socket. */

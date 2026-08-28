@@ -48,13 +48,36 @@ export function startFakeGatewayServer(
       req.on('data', (chunk: Buffer) => chunks.push(chunk));
       req.on('end', () => {
         const raw = Buffer.concat(chunks).toString('utf8');
+        let parsedBody: { stream?: boolean } | undefined;
         try {
-          requests.push(JSON.parse(raw) as Record<string, unknown>);
+          const body = JSON.parse(raw) as Record<string, unknown>;
+          requests.push(body);
+          parsedBody = body as { stream?: boolean };
         } catch {
           requests.push({ raw });
         }
         const content = responses[callIndex] ?? responses[responses.length - 1] ?? '{}';
         callIndex += 1;
+        const usage = { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 };
+
+        /**
+         * SSE when asked. `chatJson` now prefers `chatStream`, because a
+         * non-streaming completion sends no headers until it finishes and
+         * Node's fetch abandons it at 300s (UND_ERR_HEADERS_TIMEOUT) — a
+         * ceiling no product setting can lift. A fixture answering only the
+         * blocking shape would test a path production no longer takes.
+         */
+        if (parsedBody?.stream === true) {
+          res.writeHead(200, { 'content-type': 'text/event-stream' });
+          const send = (payload: unknown) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+          const base = { id: 'fake-completion', object: 'chat.completion.chunk', model: 'local-model' };
+          send({ ...base, choices: [{ index: 0, delta: { role: 'assistant', content }, finish_reason: null }] });
+          send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage });
+          res.write('data: [DONE]\n\n');
+          res.end();
+          return;
+        }
+
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(
           JSON.stringify({
@@ -67,7 +90,7 @@ export function startFakeGatewayServer(
                 finish_reason: 'stop',
               },
             ],
-            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+            usage,
           }),
         );
       });

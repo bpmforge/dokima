@@ -12,6 +12,32 @@
 import type { Provider } from '@dokima/gateway';
 import { parseModelJson } from '../model-json.js';
 
+/**
+ * STREAMS WHEN THE ADAPTER CAN, because a blocking call cannot outlive five
+ * minutes no matter what anyone configures.
+ *
+ * Node's own `fetch` defaults `headersTimeout` to 300s, and a non-streaming
+ * completion sends no response headers until generation finishes — so every
+ * phase was capped at five minutes by our HTTP client, independent of the
+ * `AbortSignal` `requestTimeoutMs` governs. Measured 2026-08-28 by driving the
+ * real journey: raising the registry ceiling to 20 and then 30 minutes changed
+ * nothing, and the failure finally identified itself as
+ * `TypeError: fetch failed <- HeadersTimeoutError [UND_ERR_HEADERS_TIMEOUT]`.
+ *
+ * A streamed response sends headers immediately, so that bound never applies.
+ * What governs instead is `createIdleAbort` (DEFAULT_STREAM_IDLE_MS, 60s) —
+ * "an abort that fires when a stream goes QUIET, not when it takes a while",
+ * which is the right question to ask of a slow local model: it tolerates a
+ * twenty-minute generation that keeps producing tokens and still fails fast on
+ * a genuine stall.
+ *
+ * `chatStream` is OPTIONAL on Provider (declaration-merged in gateway's
+ * types.ts) — vertex and copilot have not ported their SSE paths — so this
+ * falls back to `chat()` rather than requiring every adapter to move first.
+ * The terminal `final` event carries "the same normalized ChatResponse chat()
+ * would have returned, usage included", so metering and parsing are unchanged;
+ * this is the same answer by a transport that can survive the wait.
+ */
 export async function chatJson(
   provider: Provider,
   model: string,
@@ -19,13 +45,27 @@ export async function chatJson(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<Record<string, unknown>> {
-  const response = await provider.chat({
+  const request = {
     model,
     messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: userPrompt },
     ],
     temperature: 0,
-  });
+  };
+
+  if (provider.chatStream) {
+    for await (const event of provider.chatStream(request)) {
+      if (event.type === 'final') return parseModelJson(event.response.message.content, phase);
+    }
+    // A stream that ends without its terminal event has told us nothing about
+    // what the model said. Falling through to `chat()` here would quietly pay
+    // for the work twice; refusing names the transport as the problem.
+    throw new Error(
+      `${phase}: the model stream ended without a final event — no completion was received`,
+    );
+  }
+
+  const response = await provider.chat(request);
   return parseModelJson(response.message.content, phase);
 }

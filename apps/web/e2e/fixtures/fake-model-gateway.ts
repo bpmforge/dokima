@@ -127,6 +127,79 @@ export async function startFakeModelGateway(
         }));
       }
 
+      const usage = {
+        prompt_tokens: 0,
+        completion_tokens: turn.content.length,
+        total_tokens: turn.content.length,
+      };
+      const finishReason = turn.toolCalls ? 'tool_calls' : 'stop';
+
+      /**
+       * SSE, when the caller asks for it (W21 streaming switch).
+       *
+       * `chat-json.ts` — the helper every pipeline phase goes through — now
+       * prefers `chatStream` so a slow local model is bounded by silence
+       * rather than by total duration. A fixture that only answered
+       * non-streaming would have sent the whole e2e suite down a path no
+       * customer takes, which is the "a green suite would prove nothing" trap
+       * this repo already warns about in W11-01's notes.
+       *
+       * Deltas are emitted in a few pieces rather than one, so the adapter's
+       * accumulation is genuinely exercised instead of trivially satisfied.
+       */
+      if ((parsed as { stream?: unknown }).stream === true) {
+        res.writeHead(200, {
+          'content-type': 'text/event-stream',
+          'cache-control': 'no-cache',
+          connection: 'keep-alive',
+        });
+        const send = (payload: unknown) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+        const base = { id: `fake-${role}-${callIndex}`, object: 'chat.completion.chunk', created: 0, model: role };
+
+        if (turn.toolCalls) {
+          send({
+            ...base,
+            choices: [
+              {
+                index: 0,
+                delta: {
+                  role: 'assistant',
+                  tool_calls: turn.toolCalls.map((call, index) => ({
+                    index,
+                    id: call.id,
+                    type: 'function',
+                    function: { name: call.name, arguments: call.arguments },
+                  })),
+                },
+                finish_reason: null,
+              },
+            ],
+          });
+        } else {
+          const text = turn.content;
+          const pieces = text.length > 1 ? [text.slice(0, Math.ceil(text.length / 2)), text.slice(Math.ceil(text.length / 2))] : [text];
+          let first = true;
+          for (const piece of pieces) {
+            send({
+              ...base,
+              choices: [
+                {
+                  index: 0,
+                  delta: first ? { role: 'assistant', content: piece } : { content: piece },
+                  finish_reason: null,
+                },
+              ],
+            });
+            first = false;
+          }
+        }
+
+        send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: finishReason }], usage });
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -134,18 +207,8 @@ export async function startFakeModelGateway(
           object: 'chat.completion',
           created: 0,
           model: role,
-          choices: [
-            {
-              index: 0,
-              message,
-              finish_reason: turn.toolCalls ? 'tool_calls' : 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: 0,
-            completion_tokens: turn.content.length,
-            total_tokens: turn.content.length,
-          },
+          choices: [{ index: 0, message, finish_reason: finishReason }],
+          usage,
         }),
       );
     }
