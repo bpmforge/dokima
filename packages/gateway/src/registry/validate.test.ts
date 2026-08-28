@@ -99,3 +99,53 @@ describe('requestExtras on a provider entry (W13-10)', () => {
     expect(validateProviderEntry(base).requestExtras).toBeUndefined();
   });
 });
+
+/**
+ * Found by a security review of the streaming work, 2026-08-28. Node refuses a
+ * credentialed URL at fetch time with the secret in the message, and that
+ * message now reaches the browser through problem+json `detail`. The only
+ * place to keep a credential out of the error path is to never store one.
+ */
+describe('baseUrl is a Law 8 boundary', () => {
+  const base = { id: 'x', kind: 'oai-compat' as const, enabled: true };
+
+  it('RED FIXTURE: refuses a URL carrying a password', () => {
+    expect(() =>
+      validateProviderRegistry([{ ...base, baseUrl: 'http://user:sk-SECRET@host/v1' }]),
+    ).toThrow(/must not embed credentials/);
+  });
+
+  it('refuses a URL carrying only a username', () => {
+    expect(() =>
+      validateProviderRegistry([{ ...base, baseUrl: 'http://tokenish@host/v1' }]),
+    ).toThrow(/must not embed credentials/);
+  });
+
+  it('accepts an ordinary endpoint, including one with a port and path', () => {
+    expect(() =>
+      validateProviderRegistry([{ ...base, baseUrl: 'http://127.0.0.1:1234/v1' }]),
+    ).not.toThrow();
+  });
+
+  it('refuses something that is not a URL at all', () => {
+    expect(() => validateProviderRegistry([{ ...base, baseUrl: 'not a url' }])).toThrow(
+      /valid URL/,
+    );
+  });
+});
+
+describe('requestTimeoutMs has a ceiling', () => {
+  const base = { id: 'x', kind: 'oai-compat' as const, enabled: true, baseUrl: 'http://h/v1' };
+
+  it('RED FIXTURE: refuses a timeout that pins the endpoint for a day', () => {
+    expect(() =>
+      validateProviderRegistry([{ ...base, requestTimeoutMs: 24 * 60 * 60 * 1000 }]),
+    ).toThrow(/at most/);
+  });
+
+  it('accepts a generous but finite one', () => {
+    expect(() =>
+      validateProviderRegistry([{ ...base, requestTimeoutMs: 30 * 60 * 1000 }]),
+    ).not.toThrow();
+  });
+});

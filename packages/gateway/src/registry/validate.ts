@@ -67,6 +67,35 @@ export function validateProviderEntry(
       'missing-base-url',
     );
   }
+  /**
+   * A URL may not carry credentials, and this is a Law 8 boundary rather than
+   * a nicety. Node refuses such a URL at fetch time with the secret INSIDE the
+   * message — "Request cannot be constructed from a URL that includes
+   * credentials: http://user:sk-...@host" — and that message now travels
+   * `ProviderUnreachableError` -> problem+json `detail` -> the browser's
+   * technical-detail disclosure. Refusing at registration keeps a credential
+   * out of the error path entirely, which is the only place it can be kept
+   * out: once stored, every failure risks echoing it.
+   *
+   * Rejected on the parsed URL, not by pattern — an `@` is legal elsewhere.
+   */
+  if (needsEndpoint && typeof v.baseUrl === 'string') {
+    let parsed: URL | undefined;
+    try {
+      parsed = new URL(v.baseUrl);
+    } catch {
+      throw new ProviderRegistryError(
+        `baseUrl must be a valid URL`,
+        'invalid-base-url',
+      );
+    }
+    if (parsed.username !== '' || parsed.password !== '') {
+      throw new ProviderRegistryError(
+        `baseUrl must not embed credentials — put a secret in a credential reference, never in the URL (Law 8)`,
+        'credentials-in-base-url',
+      );
+    }
+  }
   if (v.requestTimeoutMs !== undefined) {
     // A timeout that never fires is not a timeout (W10-57 acceptance 5), so a
     // non-positive or non-integer value is refused rather than coerced.

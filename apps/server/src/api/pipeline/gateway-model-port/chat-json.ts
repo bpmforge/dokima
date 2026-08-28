@@ -55,8 +55,29 @@ export async function chatJson(
   };
 
   if (provider.chatStream) {
-    for await (const event of provider.chatStream(request)) {
-      if (event.type === 'final') return parseModelJson(event.response.message.content, phase);
+    try {
+      for await (const event of provider.chatStream(request)) {
+        if (event.type === 'final') return parseModelJson(event.response.message.content, phase);
+      }
+    } catch (err) {
+      /**
+       * A provider that streams but will not METER cannot be used on this path
+       * — `oai-compat` refuses a stream that ends with no usage-bearing chunk,
+       * because FR-G1 forbids an unmetered call. But `chat()` reads usage from
+       * the aggregated body and never needed `stream_options.include_usage`,
+       * so switching the pipeline to streaming silently narrowed which
+       * endpoints work at all: any OpenAI-compatible server that ignores that
+       * option went from working to failing every phase.
+       *
+       * So fall back rather than fail. It costs one repeated generation on
+       * such an endpoint, which is strictly better than losing the phase, and
+       * it keeps the metering guarantee intact — the fallback IS metered.
+       * Only this shape falls back; every other stream failure still surfaces.
+       */
+      if (!(err instanceof ProviderResponseShapeError) || !/cannot meter/i.test(err.message)) {
+        throw err;
+      }
+      return parseModelJson((await provider.chat(request)).message.content, phase);
     }
     // A stream that ends without its terminal event has told us nothing about
     // what the model said. Falling through to `chat()` here would quietly pay
