@@ -13731,6 +13731,64 @@
         "SCOPE DEFECT, found 2026-08-28 during a pre-claim check, not yet resolved: this ticket cannot be worked as filed. Its acceptance says \"the Decide card shows it before the accept control\", but the Decide card is a web surface \u2014 apps/web/src/decisions/DecisionsBoard.tsx and SlateCard.tsx \u2014 while write_scope is three packages/harbormaster files and nothing else. The receipt half (recording that a close reverses an unanswered rejection) is in scope; the UI half is not. Either widen write_scope to the decisions surface, or split the UI half into a ui-lane ticket that depends on this one. NOTE it would then overlap nothing today, so this is a narrow scope, not the cross-lane schema bug W21-89 was.",
         "RELATED, verified while landing W21-87: a non-empty `reasons` array from runGateChecks does block the mint (loop-gates.ts returns ok:false when reasons.length > 0), so a gate-side refusal here would have real teeth. The W21-80 comment calling its notice \"advisory only\" is not a general property of the array \u2014 that notice is advisory because it only fires when reasons are already non-empty."
       ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "ui",
+      "role": "ux-engineer",
+      "status": "todo",
+      "points": 2,
+      "module": "web",
+      "depends_on": [],
+      "id": "W21-92",
+      "title": "the capture tour is in no gate, so the design-review loop rots unnoticed",
+      "write_scope": [
+        "apps/web/scripts/capture-tour/**",
+        "apps/web/scripts/lib/**"
+      ],
+      "acceptance": [
+        "Something automated fails when the tour can no longer drive the product \u2014 a CI job, a validator, or a smoke step short of the full 39-state capture",
+        "The check runs without a person remembering to run it, and names the step that broke rather than printing a Playwright timeout",
+        "A green check means the tour actually drove the app, not that its files still parse"
+      ],
+      "notes": [
+        "Found 2026-08-28: the tour had not been run since W17 and both passes were broken by shipped behaviour changes. W17-09 (create auto-opens the workspace) and W17-08 (Settings basic/Advanced tab split) each hung a pass for 30s on a locator that can no longer match. Fixed in the same session, but nothing had reported it for a whole wave.",
+        "THIS IS THE THIRD TIME THE SAME CLASS HAS BITTEN. W13-54 found the harness still booting main.ts after W13-33 moved the boot \u2014 \"nothing noticed because nobody ran the tour since\", in app-harness.mjs's own comment. The e2e suite had the identical problem until it joined Law 3 on 2026-07-27, after a plans.spec.ts assertion sat silently red for days. The tour is the only surface still outside a gate.",
+        "IT IS NOT COSMETIC. docs/tour/ is shipped documentation \u2014 README.md links its hero image \u2014 so a rotted tour means the pictures a new user sees are of a product that no longer behaves that way. It is also layer 1 of DESIGN_REVIEW_LOOP.md: the evidence packs the ux-audit judge reads come from here, so when the tour is dead the whole review loop is dead and reports nothing rather than failing.",
+        "NOT NECESSARILY THE FULL CAPTURE IN THE TICKET GATE \u2014 it rebuilds the SPA and boots two servers, and Law 3 is already ~30s of e2e. A cheap smoke (boot, create a project, open Settings, walk the tabs, assert the declared-state list is still reachable) would have caught both of this session's breaks. Weigh where it belongs: the ticket gate, a CI job, or a validator that fails on a stale docs/tour/ timestamp."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
+      "points": 1,
+      "module": "cli",
+      "depends_on": [],
+      "id": "W21-91",
+      "title": "a mistyped flag on any ticket verb prints a node stack trace",
+      "write_scope": [
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/parse.test.ts"
+      ],
+      "acceptance": [
+        "An unknown option on any lifecycle verb prints one usage line naming the option, with no stack trace",
+        "The exit code stays 2, the same as every other usage error",
+        "A known option is unaffected"
+      ],
+      "notes": [
+        "LIVE, found while trying to boot the core: `dokima start --no-open` printed \"TypeError [ERR_PARSE_ARGS_UNKNOWN_OPTION]: Unknown option '--no-open'. To specify a positional argument starting with a '-', place it at the end of the command after '--'\" followed by a node stack trace through parse_args, dist/main.js and ModuleJob.run. Reproduced on `dokima board --wrongflag` and `dokima claim T1 --actor me --bogus`, so it is every lifecycle verb, not one.",
+        "THE SURROUNDING CASES ARE ALREADY RIGHT, which is what makes this jarring. `dokima --foo` prints \"dokima: unknown command '--foo'\" and the full help. `dokima start` with no args prints its usage line. Only a mistyped OPTION escapes, and a mistyped option is the most likely typo of the three \u2014 a novice who writes `--acter` for `--actor` is told the product crashed.",
+        "MECHANISM: `parseCliArgs` (apps/server/src/cli/parse.ts) calls node's `parseArgs`, which throws a native TypeError with code ERR_PARSE_ARGS_UNKNOWN_OPTION. runCli catches only CliUsageError and rethrows the rest, so it reaches the top-level catch in cli/index.ts, which prints `err.stack`. Same shape as W21-81, one layer up: a refusal escaping as a crash because the handler recognises only its own error class.",
+        "The fix is the same shape too \u2014 translate the native error into a CliUsageError naming the offending option, at the one place parseArgs is called. Note `parse-board-edits.ts` calls parseArgs separately for widen-scope/add-ticket/retarget-acceptance/depends-on and needs the same treatment; check whether one wrapper can serve both before duplicating it."
+      ]
     }
   ]
 }
