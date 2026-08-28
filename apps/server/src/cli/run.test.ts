@@ -301,3 +301,117 @@ describe('runCli (W0 exit criterion: a board that cannot lie, moved by CLI)', ()
     expect(stderr[0]).toContain('verify-chain refused');
   });
 });
+
+describe('W21-81: a lane/write-scope refusal reads as a refusal, not a crash', () => {
+  let project: TempProject;
+
+  afterEach(async () => {
+    await project?.cleanup();
+  });
+
+  /** Seeds a second ticket in a DIFFERENT lane, so any overlap is FR-T3 cross-lane. */
+  async function seedOtherLane(cwd: string): Promise<void> {
+    const log: EventLog = openWritableLog(resolveDbPath(cwd));
+    createTicket(
+      log,
+      'maker-1',
+      {
+        id: 'W9-02',
+        type: 'task',
+        title: 'Other lane ticket',
+        lane: 'web',
+        writeScope: ['packages/other/**'],
+      },
+      { now: NOW },
+    );
+    log.close();
+  }
+
+  it('widen-scope prints one refusal line naming both tickets and lanes, with no stack trace', async () => {
+    project = await createTempProject();
+    await seed(project);
+    await seedOtherLane(project.cwd);
+
+    const { stderr, stdout, io } = collectIO();
+    const code = await runCli(
+      [
+        'widen-scope',
+        'W9-01',
+        '--actor',
+        'maker-1',
+        '--add',
+        'packages/other/**',
+        '--reason',
+        'the ticket cannot satisfy its own acceptance without it',
+      ],
+      { cwd: project.cwd, now: NOW, ...io },
+    );
+
+    expect(code).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0]).toContain('refused [LANE_SCOPE]');
+    // The detail the dumped violation array carried survives in the one line.
+    expect(stderr[0]).toContain('cross-lane-overlap');
+    expect(stderr[0]).toContain('W9-01');
+    expect(stderr[0]).toContain('W9-02');
+    expect(stderr[0]).toContain('core');
+    expect(stderr[0]).toContain('web');
+    // A stack trace through dist/main.js is what made this read as breakage.
+    expect(stderr[0]).not.toContain('    at ');
+    expect(stderr[0]).not.toContain('LaneScopeError:');
+  });
+
+  it('add-ticket shares the check and refuses the same way', async () => {
+    project = await createTempProject();
+    await seed(project);
+
+    const { stderr, io } = collectIO();
+    const code = await runCli(
+      [
+        'add-ticket',
+        'W9-03',
+        '--actor',
+        'maker-1',
+        '--lane',
+        'web',
+        '--title',
+        'Collides with W9-01 across lanes',
+        '--write-scope',
+        'packages/example/**',
+      ],
+      { cwd: project.cwd, now: NOW, ...io },
+    );
+
+    expect(code).toBe(1);
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0]).toContain('refused [LANE_SCOPE]');
+    expect(stderr[0]).toContain('W9-01');
+    expect(stderr[0]).toContain('W9-03');
+    expect(stderr[0]).not.toContain('    at ');
+  });
+
+  it('a widen that does not collide still succeeds', async () => {
+    project = await createTempProject();
+    await seed(project);
+    await seedOtherLane(project.cwd);
+
+    const { stdout, io } = collectIO();
+    const code = await runCli(
+      [
+        'widen-scope',
+        'W9-01',
+        '--actor',
+        'maker-1',
+        '--add',
+        'packages/example-docs/**',
+        '--reason',
+        'the acceptance criterion names a file outside the scope',
+      ],
+      { cwd: project.cwd, now: NOW, ...io },
+    );
+
+    expect(code).toBe(0);
+    expect(stdout[0]).toContain('W9-01 write_scope ->');
+  });
+});

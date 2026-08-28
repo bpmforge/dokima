@@ -9,6 +9,7 @@ import {
   retargetTicketDependencies,
   setTicketBrief,
   widenTicketScope,
+  LaneScopeError,
   listTickets,
   releaseTicket,
   startTicket,
@@ -55,6 +56,16 @@ const SIMPLE_VERB_FNS: Record<
 function reportVerbError(err: unknown, io: CliIO): number {
   if (err instanceof TicketError) {
     io.stderr(`refused [${err.code}]: ${err.message}`);
+    return 1;
+  }
+  // W21-81: a lane/write-scope refusal is a refusal, not a crash. It reaches
+  // the two verbs that can create an overlap (widen-scope, add-ticket), and
+  // without this it escaped as an unhandled throw — a stack trace through
+  // dist/main.js reads as "the product broke", not "the product protected
+  // you". The message already names every violation's kind, both tickets and
+  // both lanes, so one line loses nothing the dumped violation array carried.
+  if (err instanceof LaneScopeError) {
+    io.stderr(`refused [LANE_SCOPE]: ${err.message}`);
     return 1;
   }
   throw err;
