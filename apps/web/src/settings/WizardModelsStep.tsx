@@ -137,8 +137,20 @@ export function WizardModelsStep({
           className="settings__error"
           data-testid="wizard-models-unreachable"
         >
-          That provider did not answer{catalog.reason ? `: ${catalog.reason}` : '.'} Start
-          it and reopen this step, or type the model ids below exactly as it lists them.
+          That provider did not answer. Start it and reopen this step, or type the model
+          ids below exactly as it lists them.
+        </p>
+      )}
+      {/* W16-06's rule, applied to the screen it was never applied to: the raw
+          string is SHOWN, never the headline. `catalog.reason` is built as
+          `${providerId}: endpoint unreachable — ${String(cause)}` (gateway
+          providers/errors.ts), so inlining it put "TypeError: fetch failed"
+          into the first sentence a novice reads — and, because the reason ends
+          without punctuation, ran it straight into the next one:
+          "…fetch failed Start it and reopen this step". */}
+      {catalog?.status === 'unreachable' && catalog.reason && (
+        <p className="settings__hint" data-testid="wizard-models-unreachable-reason">
+          What it said: {catalog.reason}
         </p>
       )}
       {tooFew && (

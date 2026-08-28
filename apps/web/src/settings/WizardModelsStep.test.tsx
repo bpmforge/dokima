@@ -194,3 +194,45 @@ describe('the disabled Next names the precondition that is actually unmet', () =
     expect(screen.queryByTestId('wizard-models-blocked')).toBeNull();
   });
 });
+
+describe('an unreachable provider explains itself without shouting an exception', () => {
+  it('RED FIXTURE: the headline carries no raw exception string', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue({
+      status: 'unreachable',
+      source: null,
+      models: [],
+      reason: 'lm-studio: endpoint unreachable — TypeError: fetch failed',
+    });
+    renderStep();
+
+    const headline = await screen.findByTestId('wizard-models-unreachable');
+    expect(headline.textContent).not.toContain('TypeError');
+    expect(headline.textContent).toMatch(/did not answer\./);
+    expect(headline.textContent).toMatch(/type the model ids below/i);
+  });
+
+  it('keeps what the provider said — shown, not swallowed', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue({
+      status: 'unreachable',
+      source: null,
+      models: [],
+      reason: 'lm-studio: endpoint unreachable — TypeError: fetch failed',
+    });
+    renderStep();
+
+    const detail = await screen.findByTestId('wizard-models-unreachable-reason');
+    expect(detail.textContent).toContain('endpoint unreachable');
+  });
+
+  it('an unreachable provider that gave no reason shows no empty detail line', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue({
+      status: 'unreachable',
+      source: null,
+      models: [],
+    });
+    renderStep();
+
+    await screen.findByTestId('wizard-models-unreachable');
+    expect(screen.queryByTestId('wizard-models-unreachable-reason')).toBeNull();
+  });
+});
