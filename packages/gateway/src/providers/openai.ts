@@ -36,7 +36,7 @@ import {
 } from './errors.js';
 import { createOaiCompatProvider } from './oai-compat.js';
 import { RequestQueue } from './request-queue.js';
-import { readSseDataLines, runQueuedStream } from './streaming.js';
+import { mapAbortsToTimeout, readSseDataLines, runQueuedStream } from './streaming.js';
 import {
   applyToolCallDelta,
   finalizeToolCallDeltas,
@@ -207,7 +207,20 @@ export class OpenAiProvider implements Provider {
 
   /** Streams token/delta events, then a final normalized ChatResponse — same metering as chat() (FR-G1, W2-09). */
   async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
-    yield* runQueuedStream(this.streamQueue, () => this.streamEvents(request));
+    /**
+     * `mapAbortsToTimeout` matters now that the pipeline prefers chatStream
+     * for every phase (chat-json.ts). Before that, these adapters only ever
+     * ran `chat()`, where an AbortSignal.timeout lands inside `fetchRaw`'s try
+     * and becomes a ProviderTimeoutError. Streaming moves the abort into the
+     * BODY read, outside that try — so without this wrapper a cloud phase that
+     * exceeds its timeout raises a bare DOMException, which `isProviderError`
+     * does not recognise and the land loop rethrows, stranding the ticket.
+     */
+    yield* mapAbortsToTimeout(
+      runQueuedStream(this.streamQueue, () => this.streamEvents(request)),
+      this.id,
+      this.requestTimeoutMs,
+    );
   }
 
   private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {

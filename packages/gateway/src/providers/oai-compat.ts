@@ -220,7 +220,10 @@ export class OaiCompatProvider implements Provider {
 
     // W13-15: idle, not duration — a stream that is producing is alive by
     // definition. See DEFAULT_STREAM_IDLE_MS and docs/design/RUN_LIMITS.md.
-    const idle = createIdleAbort(this.streamIdleMs);
+    // The first chunk gets the REQUEST timeout (the bound a user can raise),
+    // because until it arrives this signal is covering prefill, not silence
+    // between tokens. After it, the tighter idle window guards a real stall.
+    const idle = createIdleAbort(this.streamIdleMs, this.requestTimeoutMs);
     const response = await this.fetchRaw(
       '/chat/completions',
       { method: 'POST', body: JSON.stringify(body), signal: idle.signal },

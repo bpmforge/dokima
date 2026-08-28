@@ -225,3 +225,51 @@ describe('the queue bound must not wedge the queue it protects (W13-42)', () => 
     expect(got).toEqual(['ran']);
   });
 });
+
+/**
+ * Found by an audit of the streaming switch, 2026-08-28. Two defects, both on
+ * the path `chat-json.ts` made primary for every pipeline phase.
+ */
+describe('createIdleAbort: the bound names itself, and prefill is not silence', () => {
+  it('RED FIXTURE: the abort reason is a TimeoutError, so classifiers recognise it', async () => {
+    const idle = createIdleAbort(10);
+    await new Promise((r) => setTimeout(r, 40));
+    const reason = idle.signal.reason as Error;
+    // A bare `new Error('idle')` has name 'Error'; oai-compat's fetchRaw and
+    // mapAbortsToTimeout both branch on name, so it fell through to
+    // ProviderUnreachableError — "endpoint unreachable" for a model that was
+    // up and merely slow.
+    expect(idle.signal.aborted).toBe(true);
+    expect(reason.name).toBe('TimeoutError');
+    idle.done();
+  });
+
+  it('RED FIXTURE: the FIRST chunk gets its own, longer window', async () => {
+    // 20ms between tokens, but 200ms allowed before the first one: prefill on a
+    // large local model is legitimately slow and silent, and holding it to the
+    // inter-token bound killed healthy runs.
+    const idle = createIdleAbort(20, 200);
+    await new Promise((r) => setTimeout(r, 90));
+    expect(idle.signal.aborted).toBe(false);
+    expect(idle.startedStreaming).toBe(false);
+    idle.done();
+  });
+
+  it('once streaming starts, the tighter idle bound takes over', async () => {
+    const idle = createIdleAbort(20, 200);
+    idle.bump();
+    expect(idle.startedStreaming).toBe(true);
+    await new Promise((r) => setTimeout(r, 80));
+    expect(idle.signal.aborted).toBe(true);
+    idle.done();
+  });
+
+  it('one argument keeps the old behaviour exactly', async () => {
+    const idle = createIdleAbort(30);
+    await new Promise((r) => setTimeout(r, 15));
+    expect(idle.signal.aborted).toBe(false);
+    await new Promise((r) => setTimeout(r, 40));
+    expect(idle.signal.aborted).toBe(true);
+    idle.done();
+  });
+});

@@ -9,7 +9,7 @@
  * completion, and both therefore died on a markdown fence.
  */
 
-import type { Provider } from '@dokima/gateway';
+import { ProviderResponseShapeError, type Provider } from '@dokima/gateway';
 import { parseModelJson } from '../model-json.js';
 
 /**
@@ -61,7 +61,14 @@ export async function chatJson(
     // A stream that ends without its terminal event has told us nothing about
     // what the model said. Falling through to `chat()` here would quietly pay
     // for the work twice; refusing names the transport as the problem.
-    throw new Error(
+    // ProviderResponseShapeError, not a bare Error: `isProviderError` matches an
+    // explicit list, and the land loop rethrows anything absent from it
+    // (loop-land-session.ts) — so a plain Error would strand the ticket and
+    // render as a generic 500, which is exactly what this branch exists to
+    // avoid. The endpoint returning a truncated stream IS a response-shape
+    // problem.
+    throw new ProviderResponseShapeError(
+      'pipeline-run',
       `${phase}: the model stream ended without a final event — no completion was received`,
     );
   }

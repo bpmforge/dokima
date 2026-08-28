@@ -17,6 +17,9 @@ import {
   type ProviderKind,
 } from './types.js';
 
+/** Upper bound for a per-entry request timeout: generous for a slow local model, finite by design. */
+export const MAX_REQUEST_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+
 /** `id` is a settings-file key and a matrix routing target — keep it boring. */
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -67,6 +70,13 @@ export function validateProviderEntry(
   if (v.requestTimeoutMs !== undefined) {
     // A timeout that never fires is not a timeout (W10-57 acceptance 5), so a
     // non-positive or non-integer value is refused rather than coerced.
+    //
+    // And an ARBITRARILY LARGE one is not a timeout either. The field was inert
+    // on the wire until W21-96 threaded it end to end; now that a caller can
+    // set it over HTTP, an unbounded value pins a request (and, at concurrency
+    // 1, the endpoint behind it) for as long as it likes. Two hours is far
+    // above any real local generation — the longest measured here is about
+    // thirty minutes — and far below "forever".
     if (
       typeof v.requestTimeoutMs !== 'number' ||
       !Number.isInteger(v.requestTimeoutMs) ||
@@ -74,6 +84,12 @@ export function validateProviderEntry(
     ) {
       throw new ProviderRegistryError(
         `requestTimeoutMs must be a positive integer (ms), got ${JSON.stringify(v.requestTimeoutMs)}`,
+        'invalid-request-timeout',
+      );
+    }
+    if (v.requestTimeoutMs > MAX_REQUEST_TIMEOUT_MS) {
+      throw new ProviderRegistryError(
+        `requestTimeoutMs must be at most ${MAX_REQUEST_TIMEOUT_MS}ms (2 hours), got ${v.requestTimeoutMs}`,
         'invalid-request-timeout',
       );
     }

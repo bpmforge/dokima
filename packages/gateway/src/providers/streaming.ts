@@ -114,26 +114,59 @@ export interface IdleAbort {
   bump(): void;
   /** Always call when the stream ends, or the timer keeps the process alive. */
   done(): void;
+  /** Whether any chunk has arrived — the first-chunk bound has handed over. */
+  readonly startedStreaming: boolean;
 }
 
-export function createIdleAbort(idleMs: number): IdleAbort {
+export function createIdleAbort(idleMs: number, firstChunkMs = idleMs): IdleAbort {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const arm = () => {
-    timer = setTimeout(() => controller.abort(new Error('idle')), idleMs);
+  let seenChunk = false;
+  const arm = (ms: number) => {
+    /**
+     * The reason carries `name: 'TimeoutError'` because that is what this IS,
+     * and because every classifier downstream reads `name`. A bare
+     * `new Error('idle')` has name 'Error', so `fetchRaw` fell through to
+     * `ProviderUnreachableError` and a healthy but slow model was reported as
+     * "endpoint unreachable — Error: idle". That is the same novice-facing
+     * harm a9d2efb fixed this morning, arriving through a different door, and
+     * it breaks RUN_LIMITS.md's rule that every limit names itself when it
+     * fires.
+     */
+    timer = setTimeout(
+      () => controller.abort(Object.assign(new Error('idle'), { name: 'TimeoutError' })),
+      ms,
+    );
     // Never hold the event loop open for a timer whose only job is to cancel.
     timer.unref?.();
   };
-  arm();
+  /**
+   * TWO BOUNDS, because they answer different questions.
+   *
+   * The idle window is armed BEFORE the request is sent (the adapter passes
+   * this signal to fetch), so until the first chunk arrives it is not bounding
+   * silence between tokens — it is bounding connect + upload + the server's
+   * prefill. On a large local model with a long prompt, prefill is legitimately
+   * slow and silent, and 60s of it is normal. Holding that to the inter-token
+   * bound made a working setup fail.
+   *
+   * So `firstChunkMs` governs until the first chunk, then `idleMs` takes over.
+   * A caller that passes one value keeps the old behaviour exactly.
+   */
+  arm(firstChunkMs);
   return {
     signal: controller.signal,
     bump() {
       if (timer) clearTimeout(timer);
-      arm();
+      seenChunk = true;
+      arm(idleMs);
     },
     done() {
       if (timer) clearTimeout(timer);
       timer = undefined;
+    },
+    get startedStreaming() {
+      return seenChunk;
     },
   };
 }
