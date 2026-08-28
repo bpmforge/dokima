@@ -13911,6 +13911,38 @@
       "lane": "orchestrator",
       "role": "coding-agent",
       "status": "todo",
+      "points": 5,
+      "module": "pipeline",
+      "depends_on": [],
+      "id": "W21-97",
+      "title": "the plan it writes for a customer is feature-only \u2014 no security, accessibility, performance or release work",
+      "write_scope": [
+        "packages/pipeline/src/decompose/**",
+        "apps/server/src/api/pipeline/gateway-model-port/ticket-phase.ts"
+      ],
+      "acceptance": [
+        "A generated plan includes the quality work a product needs before release, not only its features \u2014 at minimum a security review, an accessibility pass, and a test-coverage step, each as real tickets with acceptance criteria",
+        "The quality tickets depend on the feature work they check, so they cannot be closed first",
+        "A user who does not want them can drop them, but they are present by default rather than absent by default",
+        "The product states what \"done\" means for a project, so a novice knows whether they are finished"
+      ],
+      "notes": [
+        "RAISED BY THE FOUNDER 2026-08-28, watching a full e2e run: \"this product is supposed to do things like get it properly designed, coded and running for release\". The observation is correct and the evidence is direct.",
+        "MEASURED: describing a houseplant tracker through the UI produced 9 tickets \u2014 Foundation workspace setup, Plant domain database schema, Seed plant-type watering presets, Generate watering schedules from presets, Manage houseplants in the web app, Subscribe browser to web push notifications, Send scheduled watering reminders with VAPID web push, Trigger reminders from a protected cron endpoint, Configure VAPID keys and reminder environment. Every one is a FEATURE. There is no security review, no accessibility pass, no performance check, no test-coverage ticket, and no release-readiness step. And this plan handles VAPID keys and an authenticated cron endpoint \u2014 a real security surface \u2014 with no ticket that ever looks at it.",
+        "PER-TICKET GATING IS A FLOOR, NOT A QUALITY BAR: DEFAULT_REQUIRED_VALIDATORS (packages/harbormaster/src/loop-gates-types.ts) is exactly [secrets-scan, validate-remote-parity]. Those catch a leaked credential and a wrong git remote. Nothing in the close gate asks whether the code is correct, accessible, fast, or tested beyond the ticket's own verify command.",
+        "AND THE MECHANISM THAT WOULD ENFORCE RELEASE QUALITY HAS NO CUSTOMER PATH. `runPhaseGate` exists and is wired to an HTTP route (apps/server/src/api/pipeline/pipeline-routes/gate.ts:97), but grepping apps/web for it finds only the team-seat label \"phase-gate-runner\" in seats.ts/roles.ts \u2014 a ROLE NAME, never a call. No button, no fetch. A novice in the UI cannot run a phase gate; it is reachable only by hand-POSTing the API. Same buried-machinery class as W21-95 (Onboard existing repo) and the W16 audit theme.",
+        "THE ASYMMETRY IS THE POINT. This repo holds ITSELF to phases, gates, validators, maker != verifier and receipts \u2014 CLAUDE.md Law 3 runs lint, typecheck, the full suite and e2e before any ticket closes. The product does not put that discipline into the plans it writes for users. A novice \u2014 the stated north star, someone with an idea and no clue \u2014 is exactly the person who does not know to ask for a security review.",
+        "SCOPE NOTE: the fix is in decomposition (what tickets get written), not in the gate. Whether the standard set is fixed, derived from the project type, or asked at setup is a founder decision. Filed rather than implemented for that reason."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
       "points": 1,
       "module": "cli",
       "depends_on": [],
