@@ -65,9 +65,31 @@ export class ProviderTimeoutError extends Error {
   }
 }
 
+/**
+ * The REASON a connection failed, dug out of the nested cause.
+ *
+ * `String(err)` on a failed `fetch` flattens to "TypeError: fetch failed" and
+ * throws away everything that distinguishes the cases: nothing listening
+ * (ECONNREFUSED), a socket dropped mid-request (UND_ERR_SOCKET), or the
+ * client's own header/body deadline expiring (UND_ERR_HEADERS_TIMEOUT). Those
+ * want different actions from the user, and the flattened string made them
+ * identical — the product told someone to "start the provider" while their
+ * provider was up and serving.
+ */
+function describeCause(cause: unknown): string {
+  const parts: string[] = [];
+  let node: unknown = cause;
+  for (let depth = 0; node instanceof Error && depth < 4; depth += 1) {
+    const code = (node as { code?: unknown }).code;
+    parts.push(typeof code === 'string' ? `${node.name}: ${node.message} [${code}]` : `${node.name}: ${node.message}`);
+    node = (node as { cause?: unknown }).cause;
+  }
+  return parts.length > 0 ? parts.join(' <- ') : String(cause);
+}
+
 export class ProviderUnreachableError extends Error {
   constructor(providerId: string, cause: unknown) {
-    super(`${providerId}: endpoint unreachable — ${String(cause)}`);
+    super(`${providerId}: endpoint unreachable — ${describeCause(cause)}`);
     this.name = 'ProviderUnreachableError';
     this.cause = cause;
   }
