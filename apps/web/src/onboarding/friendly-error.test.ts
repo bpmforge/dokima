@@ -177,9 +177,13 @@ describe('a slow or absent model is not "check that your model is running"', () 
   it('RED FIXTURE: a 504 says the model was too slow, and that a retry is worth it', () => {
     const { summary } = describeRunFailure(new OnboardingApiError(504, 'timed out', 'MODEL_TIMEOUT'));
     expect(summary).toMatch(/did not answer in time/i);
-    expect(summary).toMatch(/trying again is worth it/i);
-    expect(summary).toMatch(/smaller model/i);
+    expect(summary).toMatch(/faster model/i);
     expect(summary).not.toMatch(/check that your model is running/i);
+    // Measured: three consecutive resume attempts timed out identically, so a
+    // promise that retrying works would be a claim the product cannot keep.
+    expect(summary).not.toMatch(/trying again is worth it/i);
+    expect(summary).toMatch(/one more try may/i);
+    expect(summary).toMatch(/times out again/i);
   });
 
   it('a 503 points at the endpoint, not at the model choice', () => {

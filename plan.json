@@ -13868,6 +13868,38 @@
       "lane": "orchestrator",
       "role": "coding-agent",
       "status": "todo",
+      "points": 3,
+      "module": "gateway",
+      "depends_on": [],
+      "id": "W21-96",
+      "title": "a local model cannot finish the board step inside the fixed 300s timeout, and nobody can raise it",
+      "write_scope": [
+        "apps/server/src/api/pipeline/gateway-model-port/config.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/config.test.ts"
+      ],
+      "acceptance": [
+        "The per-request model timeout is configurable by the user, with the default unchanged for anyone who does not touch it",
+        "A run that exceeds the timeout says which model and which step ran long, not only which provider",
+        "The local-only path can complete the guided sample end to end on a reasonable local model, or the product states plainly that this step needs more time than it is allowed"
+      ],
+      "notes": [
+        "MEASURED LIVE 2026-08-28, driving the guided sample end to end through the UI on this machine (LM Studio, work model qwen3.8-flash-next, review model google/gemma-4-e4b \u2014 deliberately a SMALL review model). Interview, blueprint and decisions all worked: three founder decisions were raised, answered through the UI and ledgered as D-001..003. Then Continue \u2014 the resume that builds the board \u2014 timed out three consecutive times, at 15:31, 15:37 and 15:44, each after exactly 300000ms. The board was still empty at the end. The customer journey cannot be completed.",
+        "THE TIMEOUT IS FIXED AND UNREACHABLE. DEFAULT_REQUEST_TIMEOUT_MS = 300_000 (packages/gateway/src/providers/oai-compat-types.ts). requestTimeoutMs plumbs through ResolvedModelTarget -> gateway-model-port/config.ts -> provider.ts, so the seam EXISTS \u2014 but nothing ever sets it: grep of settings-types.ts and all of apps/web finds no reference. There is no setting, no field, no env override reaching it. A user whose hardware needs 6 minutes for this step has no way to ask for 6 minutes.",
+        "THIS IS A LOCAL-ONLY GUARANTEE PROBLEM, NOT A TUNING NICETY. C-1/D-024 option (a) says a user who chooses local-only gets a fully working product, and that a feature silently needing a cloud model is a bug. The wizard offers \"Local only \u2014 never contact a cloud provider\" as the first choice and calls it \"Fully supported\". On this hardware that choice cannot produce a board, because the one step that turns an approved blueprint into tickets exceeds a ceiling the user cannot move. It fails honestly now (504 MODEL_TIMEOUT, landed this session) \u2014 but honest and impossible is still impossible.",
+        "RETRYING IS NOT THE ANSWER AND THE PRODUCT SHOULD NOT IMPLY IT IS. The first version of the 504 copy said \"trying again is worth it\"; three measured attempts disproved it and the wording was corrected in the same session. A cold model genuinely is faster on a second pass, so a single retry is worth offering \u2014 but repeated identical timeouts mean capacity, not warm-up.",
+        "THE ERROR NAMES THE PROVIDER, NOT THE MODEL OR THE STEP: \"lm-studio: request timed out after 300000ms\". The user has TWO models configured (maker and reviewer, C-4) and is told to pick a faster one without being told which of the two ran long, or that the slow part was the decompose. That makes the advice hard to act on even when it is right.",
+        "WORTH CONSIDERING rather than only raising the number: the decompose is one large generation, and a step that reliably exceeds five minutes on consumer hardware may want chunking or streaming progress instead of a single blocking call. Raising the ceiling is the cheap fix; not needing it is the better one. That trade is a founder call, which is why this is filed rather than fixed.",
+        "LANE/SCOPE NOTE: the obvious file to touch is packages/gateway/src/providers/oai-compat-types.ts, where DEFAULT_REQUEST_TIMEOUT_MS lives \u2014 but W21-67 already owns that file in the orchestrator lane, and claiming it from the gateway lane is the cross-lane overlap Law 1 calls a schema bug (validate-plan flagged exactly that on the first draft of this ticket). This ticket is therefore in the orchestrator lane too, and scoped to the config seam that already threads `requestTimeoutMs` through; if the default constant itself must move, coordinate with W21-67 rather than widening across lanes."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
       "points": 1,
       "module": "cli",
       "depends_on": [],

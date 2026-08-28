@@ -41,9 +41,9 @@ function summarizeStatus(status: number, building: string): string {
   if (status === 504) {
     return (
       `The model did not answer in time, so ${building} was stopped. It was not a wrong ` +
-      `answer — just too slow. A local model that has only just been loaded is often ` +
-      `much faster the second time, so trying again is worth it; if it keeps timing ` +
-      `out, choose a smaller model in Settings → Models.`
+      `answer — just too slow. If the model had only just loaded, one more try may ` +
+      `finish it. If it times out again, this step is too slow for that model on this ` +
+      `machine rather than a passing glitch — pick a faster model in Settings → Models.`
     );
   }
   if (status === 503) {
