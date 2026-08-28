@@ -29,3 +29,10 @@ docs/acceptance/runs/
 
 # npm pack output (release verification artifact, never committed)
 *.tgz
+
+# SAST output is a working artifact, not a record. It was committed once as a
+# false clean (0 files scanned, 2 errors, exit 0) and could have been cited as
+# evidence — see W21-98. Baseline it deliberately or not at all.
+docs/security/semgrep-results.json
+docs/security/semgrep-results.sarif
+docs/security/semgrep-scan-*.log

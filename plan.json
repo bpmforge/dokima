@@ -13940,6 +13940,38 @@
         "US-501"
       ],
       "phase": 21,
+      "lane": "quality",
+      "role": "security-auditor",
+      "status": "todo",
+      "points": 5,
+      "module": "quality",
+      "depends_on": [],
+      "id": "W21-98",
+      "title": "the first real SAST run: 0 true HIGH, one rule producing 62% noise, and 63 catches that cannot tell empty from broken",
+      "write_scope": [
+        "docs/security/**",
+        ".semgrepignore"
+      ],
+      "acceptance": [
+        "A security scan runs against this repo with a config that loads, and its result is recorded as a baseline so later scans show DRIFT rather than the whole backlog",
+        "Rules that do not fit a local-first tool are scoped or excluded, with the reason written down \u2014 a scan whose output is 62% noise gets ignored, which is the same as not running it",
+        "Every catch that returns an empty result distinguishes \"nothing here yet\" from \"could not read\", or says why it cannot"
+      ],
+      "notes": [
+        "FIRST HONEST SAST RUN, 2026-08-28: 120 rules over 2027 files, 724 findings. Every earlier \"clean\" from semgrep-full-audit.sh was void \u2014 it exited 0 having scanned ZERO files, because one malformed rule file aborted the whole config load and the script judged success on the exit code alone. Fixed in ~/.claude (9 unquoted YAML patterns across 3 rule files, a `- pattern: &http.Client{}` parsed as a YAML anchor, two probes that could not survive the failure they existed to detect, and a guard that now fails when zero files are scanned).",
+        "ALL 6 HIGH FINDINGS ARE FALSE POSITIVES, checked individually: 4x fetch-user-url SSRF are test harnesses fetching their OWN localhost server (fake-model-gateway.test.ts, app-harness.mjs, run-dogfood.mjs); 2x math-random-security use Math.random() for a temp DIRECTORY NAME, not a token. No action.",
+        "ONE RULE IS 62% OF THE OUTPUT AND DOES NOT FIT. fs-read-user-input fires 449 times \u2014 393 in tests/fixtures/scripts, and the 56 in product source read files under a repo root the USER CHOSE, which is what a local-first tool does. Traversal is already guarded (DOKIMA_WORKSPACE_ROOT). Left unscoped it buries everything else, which is how a scan becomes theatre.",
+        "THE REAL SIGNAL IS THE IN-HOUSE SLOP PACK: 31 bpm-slop-empty-catch and 32 bpm-slop-fallback-hides-failure in PRODUCT SOURCE. Many are the documented honest-empty pattern and are fine. Some are not, and the distinction is the one this codebase already draws.",
+        "WORKED EXAMPLE, chat-projection.ts:128 \u2014 `chatEnvelopesForProject` comments \"Absent DB \u2192 empty stream (a project that has never run has no chat \u2014 truthfully)\", then catches EVERYTHING from openEventLog and returns []. A missing DB is truthfully empty; a corrupt one, a permissions error or a schema mismatch is not, and all three render as \"no chat yet\". `computeProjectStats` on the same kind of failure LOGS it (\"open failed for ...: Cannot open database because the directory does not exist\"), so the codebase already knows how to tell these apart \u2014 this site just does not. Triage the other 62 against that line rather than as a sweep.",
+        "ALSO: 11 files could not be parsed at all (opengrep chokes on inline `import('...')` TS type syntax in 3 gateway tests, an e2e spec, and a .mjs script). Those files were NOT scanned. That is a coverage gap worth recording, not a config failure \u2014 the new guard reports it as PARTIAL rather than clean.",
+        "AND NO SCAN RUNS IN ANY GATE. Law 3 is lint + typecheck + test + e2e. Nothing invokes SAST, so this backlog accumulated unseen and the broken script hid it for as long as it has existed."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
       "status": "todo",
