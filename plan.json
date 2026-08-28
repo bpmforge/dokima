@@ -13868,18 +13868,20 @@
       "lane": "orchestrator",
       "role": "coding-agent",
       "status": "todo",
-      "points": 3,
+      "points": 5,
       "module": "gateway",
       "depends_on": [],
       "id": "W21-96",
-      "title": "a local model cannot finish the board step inside the fixed 300s timeout, and nobody can raise it",
+      "title": "the per-entry model timeout is served by the API and ignored by the run",
       "write_scope": [
         "apps/server/src/api/pipeline/gateway-model-port/config.ts",
         "apps/server/src/api/pipeline/gateway-model-port/config.test.ts"
       ],
       "acceptance": [
-        "The per-request model timeout is configurable by the user, with the default unchanged for anyone who does not touch it",
+        "A per-provider request timeout set through the API is the timeout the pipeline call actually uses",
+        "A run that exceeds it reports the number that was in force, so the message and the setting cannot disagree",
         "A run that exceeds the timeout says which model and which step ran long, not only which provider",
+        "The timeout is settable from the Providers panel, not only over HTTP",
         "The local-only path can complete the guided sample end to end on a reasonable local model, or the product states plainly that this step needs more time than it is allowed"
       ],
       "notes": [
@@ -13889,7 +13891,11 @@
         "RETRYING IS NOT THE ANSWER AND THE PRODUCT SHOULD NOT IMPLY IT IS. The first version of the 504 copy said \"trying again is worth it\"; three measured attempts disproved it and the wording was corrected in the same session. A cold model genuinely is faster on a second pass, so a single retry is worth offering \u2014 but repeated identical timeouts mean capacity, not warm-up.",
         "THE ERROR NAMES THE PROVIDER, NOT THE MODEL OR THE STEP: \"lm-studio: request timed out after 300000ms\". The user has TWO models configured (maker and reviewer, C-4) and is told to pick a faster one without being told which of the two ran long, or that the slow part was the decompose. That makes the advice hard to act on even when it is right.",
         "WORTH CONSIDERING rather than only raising the number: the decompose is one large generation, and a step that reliably exceeds five minutes on consumer hardware may want chunking or streaming progress instead of a single blocking call. Raising the ceiling is the cheap fix; not needing it is the better one. That trade is a founder call, which is why this is filed rather than fixed.",
-        "LANE/SCOPE NOTE: the obvious file to touch is packages/gateway/src/providers/oai-compat-types.ts, where DEFAULT_REQUEST_TIMEOUT_MS lives \u2014 but W21-67 already owns that file in the orchestrator lane, and claiming it from the gateway lane is the cross-lane overlap Law 1 calls a schema bug (validate-plan flagged exactly that on the first draft of this ticket). This ticket is therefore in the orchestrator lane too, and scoped to the config seam that already threads `requestTimeoutMs` through; if the default constant itself must move, coordinate with W21-67 rather than widening across lanes."
+        "LANE/SCOPE NOTE: the obvious file to touch is packages/gateway/src/providers/oai-compat-types.ts, where DEFAULT_REQUEST_TIMEOUT_MS lives \u2014 but W21-67 already owns that file in the orchestrator lane, and claiming it from the gateway lane is the cross-lane overlap Law 1 calls a schema bug (validate-plan flagged exactly that on the first draft of this ticket). This ticket is therefore in the orchestrator lane too, and scoped to the config seam that already threads `requestTimeoutMs` through; if the default constant itself must move, coordinate with W21-67 rather than widening across lanes.",
+        "SHARPENED 2026-08-28 by measurement, and the first framing was too pessimistic. The knob is NOT missing: `requestTimeoutMs` has been a registry field since W10-57, whose type comment was written for this exact case (\"a 70B on a laptop can exceed even 300s\"). What was missing was the HTTP contract \u2014 `providers-wire.ts` omitted it from BOTH toWire and fromWire, which that module's own header calls out as the failure mode (\"a field missing from either direction is settable and inert\"). That wire gap is FIXED in the same commit as this note, with round-trip tests.",
+        "AND THE REAL DEFECT IS WORSE THAN A MISSING FIELD. With the wire fixed, PUT /providers with request_timeout_ms=1200000 returns 200 and GET reads back 1200000 \u2014 verified in the browser against the authenticated API. The resume then still failed with `lm-studio: request timed out after 300000ms`, at 16:51:02 -> 16:57:32, about 390s. So the value is stored, served, and IGNORED by the call it exists to govern. The product now accepts a setting it does not honour, which is a worse state than not offering it.",
+        "RULED OUT while tracing, so the next person need not redo it: (1) NOT the request-queue acquire bound \u2014 `asProviderTimeout` decorates that case with \"(waiting for a request-queue slot; N active, M queued)\" and the observed message has no such suffix, so this is the real request timeout; (2) NOT a stale port cached at the route \u2014 `registerResumeRoute` receives the same `resolvePort`, which calls `resolveGatewayConfigForProject(projectPath)` fresh per request; (3) both success branches of `resolveModelTarget` return `toTarget(entry)`, which does spread `requestTimeoutMs`. The break is somewhere between that target and the constructed provider, or in which registry scope the resolver reads (compare W10-62, where the route and the resolver read different scopes and disagreed).",
+        "REPRODUCTION, ~12 minutes: drive the wizard to a sample project, PUT the provider with request_timeout_ms 1200000 (bearer token required, D-005 \u2014 a bare fetch gets a 401 and silently leaves the ceiling at its default), answer the three founder decisions in Describe, press Continue, and read the 504 detail. It will name 300000 while GET names 1200000."
       ]
     },
     {

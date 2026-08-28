@@ -21,6 +21,23 @@ export interface WireProvider {
   location?: string;
   /** W13-10: extra chat-request body fields for this endpoint. */
   request_extras?: Record<string, unknown>;
+  /**
+   * W10-57's per-entry timeout, which never reached this contract.
+   *
+   * The registry has carried `requestTimeoutMs` since W10-57 — its type
+   * comment exists for exactly this case: "a 70B on a laptop can exceed even
+   * 300s". Validation accepts it and `targetToConfig` threads it to the
+   * provider. It was missing from BOTH directions here, which this module's
+   * own header calls out as the failure mode: "a field missing from either
+   * direction is settable and inert". So the one knob that lets a slow local
+   * box finish a long step was reachable only by hand-editing settings JSON,
+   * never through the product.
+   *
+   * Measured 2026-08-28: the resume that builds the board timed out at the
+   * 300s default three times in a row on local models, and nothing in the API
+   * or the UI could ask for longer.
+   */
+  request_timeout_ms?: number;
   enabled: boolean;
 }
 
@@ -35,6 +52,9 @@ export function toWire(entry: ProviderEntry): WireProvider {
     ...(entry.requestExtras === undefined
       ? {}
       : { request_extras: entry.requestExtras }),
+    ...(entry.requestTimeoutMs === undefined
+      ? {}
+      : { request_timeout_ms: entry.requestTimeoutMs }),
     enabled: entry.enabled,
   };
 }
@@ -56,6 +76,10 @@ export function fromWire(raw: unknown): unknown {
     // W13-10: same allowlist reasoning — dropped here, the registry would
     // refuse (or silently ignore) a field the user demonstrably filled in.
     requestExtras: v.request_extras ?? v.requestExtras,
+    // W10-57's field, same allowlist reasoning. The registry validates it as a
+    // positive integer and refuses anything else, so a bad value is reported
+    // rather than coerced — this mapper only has to stop dropping it.
+    requestTimeoutMs: v.request_timeout_ms ?? v.requestTimeoutMs,
     enabled: v.enabled,
   };
 }
