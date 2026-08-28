@@ -10,7 +10,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   humanCheckNotice,
   isExecutableCriterion,
+  isNoOpScriptBody,
+  noOpVerifyScripts,
   runAcceptanceCriteria,
+  runGateChecks,
 } from './loop-gates-acceptance.js';
 
 const dirs: string[] = [];
@@ -149,4 +152,128 @@ describe('humanCheckNotice (W21-41)', () => {
   it('nothing unchecked is null, not an empty reassurance', () => {
     expect(humanCheckNotice([])).toBeNull();
   });
+});
+
+/**
+ * W21-87 RED FIXTURE (docs/TESTING.md planted-defect harness). Tally's first
+ * ticket to reach a receipt is reproduced exactly: package.json ships
+ * `"test": "echo 'Tests passed' || true"`, and the close gate re-runs
+ * `npm run test` and sees exit 0. Before this chapter the gate minted on it.
+ */
+describe('isNoOpScriptBody (W21-87)', () => {
+  it('refuses the exact body Tally shipped', () => {
+    expect(isNoOpScriptBody("echo 'Tests passed' || true")).toBe(true);
+  });
+
+  it('refuses the other obvious shapes of a script that cannot fail', () => {
+    for (const body of ['true', 'exit 0', ':', 'echo ok', 'echo a && true', 'echo a; exit 0', '  ']) {
+      expect(isNoOpScriptBody(body), body).toBe(true);
+    }
+  });
+
+  it('leaves a real runner alone — refusing good work is the expensive error', () => {
+    for (const body of [
+      'vitest run',
+      'node --test',
+      'jest --ci',
+      'tsc --noEmit',
+      'eslint .',
+      'echo running && vitest run',
+      'pytest -q',
+    ]) {
+      expect(isNoOpScriptBody(body), body).toBe(false);
+    }
+  });
+});
+
+describe('noOpVerifyScripts (W21-87)', () => {
+  async function manifest(dir: string, scripts: Record<string, string>): Promise<void> {
+    await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ scripts }), 'utf8');
+  }
+
+  it('names the script the verify command actually invokes', async () => {
+    const dir = worktree();
+    await manifest(dir, {
+      lint: 'eslint .',
+      typecheck: 'tsc --noEmit',
+      test: "echo 'Tests passed' || true",
+    });
+
+    const found = await noOpVerifyScripts(
+      dir,
+      'npm run lint && npm run typecheck && npm run test',
+    );
+
+    expect(found).toEqual([{ name: 'test', body: "echo 'Tests passed' || true" }]);
+  });
+
+  it('a script that exists but is not in the verify command is not the gate’s business', async () => {
+    const dir = worktree();
+    await manifest(dir, { test: 'vitest run', bench: 'echo soon' });
+    expect(await noOpVerifyScripts(dir, 'npm run test')).toEqual([]);
+  });
+
+  it('a worktree with no manifest yields nothing — absence of evidence is not evidence of a lie', async () => {
+    expect(await noOpVerifyScripts(worktree(), 'npm run test')).toEqual([]);
+  });
+});
+
+describe('runGateChecks: the verify re-run is checked for vacuity too (W21-87)', () => {
+  const base = { claimed: { command: 'npm test', exit: 0 }, criteria: [], timeoutMs: 30_000 };
+
+  it('RED FIXTURE: a lying test script is refused BY NAME, though verify exits 0', async () => {
+    const dir = worktree();
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { test: "echo 'Tests passed' || true" } }),
+      'utf8',
+    );
+
+    const result = await runGateChecks({
+      ...base,
+      worktreePath: dir,
+      verifyCommand: 'npm run test',
+    });
+
+    expect(result.verify.exitCode).toBe(0);
+    const reason = result.reasons.join('\n');
+    expect(reason).toContain('`test` cannot fail');
+    expect(reason).toContain("echo 'Tests passed' || true");
+  }, 60_000);
+
+  it('a verify run that executed zero tests is refused, the way a criterion already was', async () => {
+    const dir = worktree();
+
+    const result = await runGateChecks({
+      ...base,
+      worktreePath: dir,
+      verifyCommand: 'node -e "console.log(\'# tests 0\')"',
+    });
+
+    expect(result.verify.exitCode).toBe(0);
+    expect(result.reasons.join('\n')).toContain('verify ran NOTHING');
+  }, 60_000);
+
+  it('a real verify command that really runs is untouched', async () => {
+    const dir = worktree();
+    await fs.writeFile(
+      path.join(dir, 'real.test.js'),
+      "const { test } = require('node:test');\ntest('adds', () => {});\n",
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { test: 'node --test real.test.js' } }),
+      'utf8',
+    );
+
+    const result = await runGateChecks({
+      ...base,
+      worktreePath: dir,
+      verifyCommand: 'npm run test',
+    });
+
+    expect(result.verify.exitCode).toBe(0);
+    expect(result.reasons).toEqual([]);
+  }, 60_000);
 });

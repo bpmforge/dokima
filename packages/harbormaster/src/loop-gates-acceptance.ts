@@ -38,6 +38,8 @@
  * real command leaves today's behaviour, while running a sentence as a shell
  * command would refuse good work for noise.
  */
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import type { VerifyRunResult } from './loop-gates-types.js';
 import { scopeBlockedNotice } from './loop-gates-scope-blocked.js';
 import { reRunVerify, verifyFailureTail } from './loop-gates-verify.js';
@@ -125,6 +127,88 @@ export function ranZeroTests(output: string): boolean {
     /\bno tests? (ran|found|were found)\b/i.test(output) ||
     /\bNo test files found\b/i.test(output)
   );
+}
+
+/**
+ * A package script that cannot fail (W21-87).
+ *
+ * `ranZeroTests` above catches a run that executed nothing, which is how an
+ * HONEST runner reports emptiness. It cannot catch a script that PRINTS a pass
+ * and exits 0, because such a script produces none of those strings. LIVE, on
+ * Tally's first ticket to reach a receipt: package.json shipped
+ * `"test": "echo 'Tests passed' || true"`, and the minted receipt records
+ * verify as `npm run lint && npm run typecheck && npm run test` exit 0. The
+ * receipt rests partly on a command that cannot fail.
+ *
+ * The provenance matters and is not the agent's fault alone: the agent wrote
+ * that script to satisfy `pnpm test`, a command W21-75 was wrongly imposing on
+ * an npm project. The product created the pressure that produced the lie and
+ * then recorded the lie as evidence.
+ *
+ * THIS IS NOT A GENERAL LYING-SCRIPT DETECTOR — that is undecidable. It
+ * recognises only the obvious no-op shapes: a body made entirely of `echo`,
+ * `true`, `:` and `exit 0` joined by `;`, `&&` or `||`. A real runner is
+ * untouched, and anything ambiguous is left alone, because the cost of the two
+ * errors is asymmetric — a missed no-op is today's behaviour, while refusing a
+ * real command would fail good work.
+ */
+export function isNoOpScriptBody(body: string): boolean {
+  const trimmed = body.trim();
+  if (trimmed.length === 0) return true;
+  const segments = trimmed
+    .split(/\|\||&&|;/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (segments.length === 0) return true;
+  return segments.every((segment) => {
+    if (/^:$/.test(segment)) return true;
+    if (/^true$/.test(segment)) return true;
+    if (/^exit\s+0$/.test(segment)) return true;
+    // `echo` with any argument, quoted or not — the printed text is the lie.
+    if (/^echo\b/.test(segment)) return true;
+    return false;
+  });
+}
+
+/** The `<runner> run <script>` names a verify command invokes, in order. */
+function scriptsInvokedBy(command: string): string[] {
+  const names: string[] = [];
+  const pattern = /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?([A-Za-z0-9:_-]+)/g;
+  let match = pattern.exec(command);
+  while (match) {
+    const name = match[1];
+    if (name && name !== 'run' && !names.includes(name)) names.push(name);
+    match = pattern.exec(command);
+  }
+  return names;
+}
+
+/**
+ * Every script the verify command runs whose package.json body cannot fail.
+ *
+ * Reads the manifest the gate already has on disk; runs nothing. A worktree
+ * with no manifest, or an unreadable one, yields nothing — absence of evidence
+ * is not evidence of a lie.
+ */
+export async function noOpVerifyScripts(
+  worktreePath: string,
+  command: string,
+): Promise<{ readonly name: string; readonly body: string }[]> {
+  let manifest: Record<string, unknown> | null = null;
+  try {
+    manifest = JSON.parse(
+      await fs.readFile(path.join(worktreePath, 'package.json'), 'utf8'),
+    ) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const scripts = (manifest.scripts ?? {}) as Record<string, unknown>;
+  const found: { name: string; body: string }[] = [];
+  for (const name of scriptsInvokedBy(command)) {
+    const body = scripts[name];
+    if (typeof body === 'string' && isNoOpScriptBody(body)) found.push({ name, body });
+  }
+  return found;
 }
 
 /** Bounded tail of a failing run, stderr first — the same shape verify uses. */
@@ -216,6 +300,19 @@ export async function runGateChecks(input: {
 }> {
   const reasons: string[] = [];
   const verify = await reRunVerify(input.worktreePath, input.verifyCommand, input.timeoutMs);
+  /**
+   * W21-87: the verify re-run gets the SAME vacuity check the acceptance
+   * criteria have had since W21-41. It did not have one — `runGateChecks`
+   * tested `run.ranNothing` for every criterion and only `exitCode !== 0` for
+   * verify, so the one command the manifest is judged against got the weaker
+   * check. Both shapes are covered: a run that executed nothing, and a package
+   * script that prints a pass without running anything.
+   */
+  const verifyRanNothing =
+    verify.exitCode === 0 && ranZeroTests(`${verify.stdout}\n${verify.stderr}`);
+  // Not gated on the exit code: this reads the manifest and runs nothing, and
+  // a fake test script is worth naming whether or not something else failed.
+  const noOpScripts = await noOpVerifyScripts(input.worktreePath, input.verifyCommand);
   if (verify.exitCode !== 0) {
     reasons.push(
       `verify re-run failed: \`${input.verifyCommand}\` exited ${verify.exitCode} ` +
@@ -226,6 +323,25 @@ export async function runGateChecks(input: {
     // prompt it is meant to inform.
     const output = verifyFailureTail(verify);
     if (output) reasons.push(output);
+  } else if (verifyRanNothing) {
+    reasons.push(
+      `verify ran NOTHING: \`${input.verifyCommand}\` exited 0 having executed zero ` +
+        `tests. A check that cannot fail is not a check — write the tests it names, ` +
+        `or correct the command.`,
+    );
+  }
+  // Named, never opaque: the refusal says WHICH script and what its body is,
+  // because the fix is to write that script, and a ticket failed without
+  // naming it would send a maker looking in the wrong place. It is reported
+  // even when verify already failed for another reason — a fake test script
+  // stays fake, and the next attempt should know.
+  for (const script of noOpScripts) {
+    reasons.push(
+      `verify component \`${script.name}\` cannot fail: package.json runs it as ` +
+        `\`${script.body}\`, a script that reports success without running anything. ` +
+        `The receipt would rest on it. Give \`${script.name}\` a real runner, or drop ` +
+        `it from the verify command so the gate stops claiming it was checked.`,
+    );
   }
   const acceptance = await runAcceptanceCriteria(
     input.worktreePath,
