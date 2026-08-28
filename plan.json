@@ -13836,6 +13836,38 @@
       "lane": "orchestrator",
       "role": "coding-agent",
       "status": "todo",
+      "points": 3,
+      "module": "web",
+      "depends_on": [],
+      "id": "W21-95",
+      "title": "\"Onboard existing repo\" registers the folder and never reads the repo",
+      "write_scope": [
+        "apps/web/src/fleet/**",
+        "apps/web/src/App/**"
+      ],
+      "acceptance": [
+        "Onboarding a real repository either runs the analysis the product already has, or says plainly that it has not yet looked at the code and what would make it",
+        "The workspace after onboarding is distinguishable from the workspace after New project",
+        "The empty board does not tell someone who just pointed at an existing codebase that it \"fills once you describe your idea\", when the board could be filled from their code",
+        "A repo that cannot be analysed yet (no model configured) says so, rather than looking like a successful onboarding"
+      ],
+      "notes": [
+        "LIVE 2026-08-28. Built a real repository in a tmpdir \u2014 package.json with a test script, README.md, src/index.ts, git init plus one commit \u2014 and onboarded it through the Fleet form. The resulting workspace is BYTE-IDENTICAL to the one you get from New project on an empty folder: \"The board fills once you describe your idea and it is broken into tickets\", \"Describe your product\", \"Deliverables appear as phases produce them\". Nothing acknowledges a repository was read, nothing names a single file it found, and the person cannot tell whether onboarding did anything at all.",
+        "THE MACHINERY EXISTS AND THE BUTTON DOES NOT CALL IT. `runOnboardAnalysis` (apps/server/src/api/pipeline/onboard-run.ts) gathers repo context, dispatches the analysis, and proposes plan items from the findings \u2014 `proposePlanItemsFromOnboardFindings` / `acceptOnboardPlanItems`. Its own header names its two callers: the HTTP route (pipeline-routes/onboard.ts) and the CLI (`run start --mode onboard`). Neither is the web. Grepping apps/web for \"onboard\" returns only the fleet FORM MODE \u2014 `ProjectMode = new | onboard | import` decides whether the directory must already exist, and nothing more.",
+        "SO THE VERB IS THE PROMISE AND THE PRODUCT DOES NOT KEEP IT. \"Onboard existing repo\" reads as \"read my code and get started\"; what it does is register a path. This is the buried-machinery class the W16 audit catalogued (runPhaseGate uncalled, the buried-exports list): real, tested capability with no live caller from the surface that should have one.",
+        "A FOUNDER DECISION SITS INSIDE THIS, which is why it is filed rather than fixed: should the button RUN the analysis (it needs a model, and may be slow), OFFER it as the workspace's first suggested action, or simply be honest that it has not looked yet? The third is cheap and would already stop the product overpromising. The first is what the label implies.",
+        "THE CHEAP HONEST INTERIM, if the full wiring is deferred: the post-onboard empty board must not reuse the new-project copy. Someone who just pointed at fifty thousand lines being told the board fills \"once you describe your idea\" is being told something false about their own situation.",
+        "Scope note: apps/web/src/fleet/** and App/** only. The pipeline side already exists and needs no change to be called; if wiring it turns out to need a server route change, that is a second ticket rather than a widen \u2014 apps/server is not in this scope."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 21,
+      "lane": "orchestrator",
+      "role": "coding-agent",
+      "status": "todo",
       "points": 1,
       "module": "cli",
       "depends_on": [],
