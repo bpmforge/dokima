@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { OnboardingApiError } from './api.js';
 import {
+  describeResumeError,
   describeResumeFailure,
   describeRunFailure,
   describeStillWaiting,
@@ -114,5 +115,54 @@ describe('describeRunFailure: 409 is the no-model case, and it must not say "try
     expect(describeRunFailure(new OnboardingApiError(500, 'boom')).summary).toMatch(
       /check that your model is running/i,
     );
+  });
+});
+
+describe('describeResumeFailure: the parked run whose model went away', () => {
+  it('names the fix rather than reporting a generic server error', () => {
+    const { summary } = describeResumeFailure(new OnboardingApiError(409, 'no model', 'MODEL_RESOLUTION'));
+    expect(summary).toContain('Settings → Models');
+    expect(summary).not.toMatch(/check that your model is running/i);
+    // The decisions were already answered — never imply they were lost.
+    expect(summary).toMatch(/saved/i);
+  });
+
+  it('does not claim decisions are still unanswered — that screen is asking nothing', () => {
+    const { summary } = describeResumeFailure(new OnboardingApiError(409, 'no model', 'MODEL_RESOLUTION'));
+    expect(summary).not.toMatch(/still need an answer/i);
+  });
+});
+
+describe('OnboardingApiError carries the problem rule, so two 409s stay distinguishable', () => {
+  it('keeps the rule the server sent', () => {
+    expect(new OnboardingApiError(409, 'x', 'UNDECIDED_SLATE').rule).toBe('UNDECIDED_SLATE');
+    expect(new OnboardingApiError(409, 'x', 'MODEL_RESOLUTION').rule).toBe('MODEL_RESOLUTION');
+  });
+
+  it('is optional — a server that sends no rule still constructs', () => {
+    expect(new OnboardingApiError(500, 'x').rule).toBeUndefined();
+  });
+});
+
+describe('describeResumeError: which of the two 409s is this', () => {
+  it('an UNDECIDED_SLATE 409 is still-waiting, not a failure', () => {
+    const out = describeResumeError(new OnboardingApiError(409, 'x', 'UNDECIDED_SLATE'));
+    expect(out.kind).toBe('still-waiting');
+    expect(out.kind === 'still-waiting' && out.message).toMatch(/still need an answer/i);
+  });
+
+  it('RED FIXTURE: a MODEL_RESOLUTION 409 is a failure naming the fix, never still-waiting', () => {
+    const out = describeResumeError(new OnboardingApiError(409, 'no model', 'MODEL_RESOLUTION'));
+    expect(out.kind).toBe('failed');
+    expect(out.kind === 'failed' && out.failure.summary).toContain('Settings → Models');
+  });
+
+  it('a 409 with no rule keeps the old still-waiting reading — the server that sends none is the old one', () => {
+    expect(describeResumeError(new OnboardingApiError(409, 'x')).kind).toBe('still-waiting');
+  });
+
+  it('any other status is a failure', () => {
+    expect(describeResumeError(new OnboardingApiError(500, 'boom')).kind).toBe('failed');
+    expect(describeResumeError(new Error('offline')).kind).toBe('failed');
   });
 });

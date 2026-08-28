@@ -18,6 +18,7 @@ vi.mock('./api.js', async () => {
     runGuidedPipeline: vi.fn(),
     // Mount recovery finds nothing active — these tests own what happens next.
     fetchActiveRun: vi.fn().mockResolvedValue(null),
+    resumePipeline: vi.fn(),
     // W18-02: undescribed by default; the recap tests override this.
     fetchPlannedTicketCount: vi.fn().mockResolvedValue(0),
   };
@@ -256,5 +257,57 @@ describe('the describe tab never pretends the answers were lost (W18-02)', () =>
       await screen.findByRole('heading', { name: /has some questions/ }),
     ).toBeTruthy();
     expect(screen.queryByTestId('interview-described-recap')).toBeNull();
+  });
+});
+
+/**
+ * Found 2026-08-28. `pipeline-routes/resume.ts` emits TWO different 409s —
+ * UNDECIDED_SLATE, and MODEL_RESOLUTION through `problemForError` when the
+ * model stopped resolving while the run sat parked. The panel branched on the
+ * bare status, so the second one rendered the first one's message: answer the
+ * decisions you have already answered, on a screen asking nothing.
+ */
+describe('resume: the two 409s must not be told apart by status alone', () => {
+  const AWAITING = {
+    status: 'awaiting_decisions' as const,
+    run_id: 'run-1',
+    reasons: ['two slates need a founder decision'],
+    decisions: [{ key: 'db', slate_id: 's1', title: 'Which database?' }],
+  };
+
+  async function renderAwaiting() {
+    vi.mocked(onboardingApi.fetchActiveRun).mockResolvedValue({
+      kind: 'awaiting',
+      awaiting: AWAITING,
+    });
+    renderPanel();
+    await screen.findByText(/Which database\?/);
+  }
+
+  afterEach(() => {
+    vi.mocked(onboardingApi.fetchActiveRun).mockResolvedValue(null);
+  });
+
+  it('RED FIXTURE: a MODEL_RESOLUTION 409 does not claim decisions are unanswered', async () => {
+    vi.mocked(onboardingApi.resumePipeline).mockRejectedValue(
+      new onboardingApi.OnboardingApiError(409, 'no model is configured', 'MODEL_RESOLUTION'),
+    );
+    await renderAwaiting();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    expect(await screen.findByText(/Settings → Models/)).toBeTruthy();
+    expect(screen.queryByText(/still need an answer/i)).toBeNull();
+  });
+
+  it('an UNDECIDED_SLATE 409 still says exactly what it always said', async () => {
+    vi.mocked(onboardingApi.resumePipeline).mockRejectedValue(
+      new onboardingApi.OnboardingApiError(409, 'still awaiting', 'UNDECIDED_SLATE'),
+    );
+    await renderAwaiting();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    expect(await screen.findByText(/still need an answer/i)).toBeTruthy();
   });
 });

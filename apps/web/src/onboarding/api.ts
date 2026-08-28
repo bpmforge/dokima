@@ -28,6 +28,16 @@ export class OnboardingApiError extends Error {
   constructor(
     public readonly status: number,
     detail?: string,
+    /**
+     * The problem+json `rule`, when the server sent one.
+     *
+     * A status code alone cannot separate the two DIFFERENT 409s the resume
+     * route emits — `UNDECIDED_SLATE` ("still awaiting a founder decision")
+     * and `MODEL_RESOLUTION` (the model became unresolvable while the run was
+     * parked). The server has always distinguished them; the client threw the
+     * distinction away at this line and then guessed.
+     */
+    public readonly rule?: string,
   ) {
     super(detail ?? `Onboarding API request failed with status ${status}`);
     this.name = 'OnboardingApiError';
@@ -68,7 +78,11 @@ async function request(
       typeof body === 'object' && body !== null && 'detail' in body
         ? String((body as { detail: unknown }).detail)
         : undefined;
-    throw new OnboardingApiError(res.status, detail);
+    const rule =
+      typeof body === 'object' && body !== null && 'rule' in body
+        ? String((body as { rule: unknown }).rule)
+        : undefined;
+    throw new OnboardingApiError(res.status, detail, rule);
   }
   return res.json();
 }

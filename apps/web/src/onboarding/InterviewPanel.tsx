@@ -15,7 +15,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AwaitingDecisions } from './AwaitingDecisions.js';
 import './onboarding.css';
 import {
-  OnboardingApiError,
   fetchPlannedTicketCount,
   resumePipeline,
   runGuidedPipeline,
@@ -23,9 +22,8 @@ import {
 import { describeHeading, describeSubhead } from '../team/personaCopy.js';
 import { FailureNotice } from './FailureNotice.js';
 import {
-  describeResumeFailure,
+  describeResumeError,
   describeRunFailure,
-  describeStillWaiting,
   type FriendlyFailure,
 } from './friendly-error.js';
 import { recoverActiveRun } from './run-recovery.js';
@@ -229,13 +227,9 @@ export function InterviewPanel({
       setStage('done');
       onComplete?.();
     } catch (err) {
-      if (err instanceof OnboardingApiError && err.status === 409) {
-        // W16-06: 409 here means "decisions still unanswered" — say that in
-        // the screen's own words, not the server's problem+json detail.
-        setStillWaiting(describeStillWaiting());
-      } else {
-        setResumeError(describeResumeFailure(err));
-      }
+      const outcome = describeResumeError(err);
+      if (outcome.kind === 'still-waiting') setStillWaiting(outcome.message);
+      else setResumeError(outcome.failure);
     } finally {
       setResuming(false);
     }

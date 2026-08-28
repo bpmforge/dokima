@@ -89,10 +89,28 @@ export function describeRunFailure(err: unknown): FriendlyFailure {
   };
 }
 
-/** The resume path: "Continue" after decisions failed (409 is NOT an error —
- * the caller handles still-waiting separately with `describeStillWaiting`). */
+/**
+ * The resume path: "Continue" after decisions failed.
+ *
+ * A 409 reaches here ONLY when the caller has already ruled out the
+ * still-waiting case by its `rule` (InterviewPanel.tsx) — resume emits two
+ * different 409s, and the one that gets this far is MODEL_RESOLUTION.
+ */
 export function describeResumeFailure(err: unknown): FriendlyFailure {
   if (err instanceof OnboardingApiError) {
+    // The run was parked, and the model stopped resolving while it waited.
+    // Same two places fix it, and Continue will keep failing until one of
+    // them does — so it must not read as a transient server error either.
+    if (err.status === 409) {
+      return {
+        summary:
+          "No model is set up for this project yet, so the run couldn't " +
+          'continue. Open Settings → Models to choose one — if the list is ' +
+          'empty, add a provider on the Providers tab first. Your answers to ' +
+          'the decisions are saved; press Continue again once a model is set.',
+        detail: `${err.message} (HTTP ${String(err.status)})`,
+      };
+    }
     return {
       summary: summarizeStatus(err.status, 'continuing the run'),
       detail: `${err.message} (HTTP ${String(err.status)})`,
@@ -103,6 +121,35 @@ export function describeResumeFailure(err: unknown): FriendlyFailure {
       "The Dokima server couldn't be reached, so the run wasn't continued. Check that the server is still running, then press Continue again.",
     detail: err instanceof Error ? err.message : String(err),
   };
+}
+
+/**
+ * What the screen should say when "Continue" failed — the whole decision, in
+ * the module that owns error-to-copy mapping.
+ *
+ * It lives here rather than in the panel because resume emits TWO 409s
+ * (pipeline-routes/resume.ts) and telling them apart is a copy decision, not a
+ * rendering one: `UNDECIDED_SLATE`, and `MODEL_RESOLUTION` when the model
+ * stopped resolving while the run sat parked — a provider disabled, a matrix
+ * row repointed, a pin gone stale, all ordinary things to do while a run
+ * waits. The panel branched on the bare status, so the second rendered the
+ * first's message: answer the decisions you have already answered, on a screen
+ * asking nothing, with Continue failing identically every time.
+ *
+ * The server always distinguished them by `rule`; the client discarded it.
+ */
+export type ResumeOutcome =
+  | { readonly kind: 'still-waiting'; readonly message: string }
+  | { readonly kind: 'failed'; readonly failure: FriendlyFailure };
+
+export function describeResumeError(err: unknown): ResumeOutcome {
+  const stillWaiting =
+    err instanceof OnboardingApiError &&
+    err.status === 409 &&
+    err.rule !== 'MODEL_RESOLUTION';
+  return stillWaiting
+    ? { kind: 'still-waiting', message: describeStillWaiting() }
+    : { kind: 'failed', failure: describeResumeFailure(err) };
 }
 
 /** The 409 on resume means exactly one thing here: the run is still parked on
