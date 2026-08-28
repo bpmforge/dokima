@@ -148,10 +148,35 @@ export async function providerForConfig(
   const purpose = options.purpose ?? 'inference';
 
   switch (config.kind) {
+    /**
+     * The two LOCAL kinds, and the only two that used to drop the per-entry
+     * timeout: both passed `{ baseUrl }` and nothing else, while anthropic,
+     * openai, copilot, vertex and the oai-compat default all spread
+     * `config.requestTimeoutMs`. Both constructors take
+     * `Partial<OaiCompatConfig>`, which carries the field — it was simply not
+     * handed over, so the oai-compat default of 300s always won.
+     *
+     * That inverted the reason the field exists. W10-57 added it because "a
+     * 70B on a laptop can exceed even 300s", and a laptop is exactly what
+     * `ollama` and `lm-studio` run on: the two kinds that most need a longer
+     * ceiling were the two that could not be given one. Measured 2026-08-28 —
+     * a registry entry serving `request_timeout_ms: 1200000` over the API
+     * still died at "request timed out after 300000ms".
+     */
     case 'ollama':
-      return createOllamaProvider(config.baseUrl ? { baseUrl: config.baseUrl } : {});
+      return createOllamaProvider({
+        ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+        ...(config.requestTimeoutMs === undefined
+          ? {}
+          : { requestTimeoutMs: config.requestTimeoutMs }),
+      });
     case 'lm-studio':
-      return createLmStudioProvider(config.baseUrl ? { baseUrl: config.baseUrl } : {});
+      return createLmStudioProvider({
+        ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+        ...(config.requestTimeoutMs === undefined
+          ? {}
+          : { requestTimeoutMs: config.requestTimeoutMs }),
+      });
 
     case 'anthropic':
       return createAnthropicProvider({
