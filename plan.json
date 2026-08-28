@@ -11543,7 +11543,7 @@
       "status": "todo",
       "depends_on": [],
       "id": "W21-25",
-      "points": 2,
+      "points": 3,
       "module": "web",
       "lane": "ui",
       "role": "ux-engineer",
@@ -11554,11 +11554,18 @@
       ],
       "notes": [
         "Live: after a core restart the Models dropdown was empty and both providers read \"Not tested yet\", though nothing about them had changed. Discovery is in-memory, so every restart silently loses the catalogue and the Models tab becomes unusable until each provider is re-tested by hand.",
-        "The honest minimum is that the UI says so rather than presenting an empty list that looks like \"you have no models\". Persisting the catalogue is better; either is better than a blank control with no explanation."
+        "The honest minimum is that the UI says so rather than presenting an empty list that looks like \"you have no models\". Persisting the catalogue is better; either is better than a blank control with no explanation.",
+        "W21-89 FOLDED IN HERE (2026-08-28, founder decision). It was this same defect filed a second time from the server side, and its write_scope overlapped this ticket on apps/server/src/api/server/providers-routes.ts \u2014 a cross-lane overlap (ui x orchestrator) that validate-plan flagged as a P8 schema violation and Law 1 calls a schema bug. Neither could be worked as filed: W21-89 was too narrow for its own third criterion, which needs apps/web/src/settings/**. This ticket already owned both halves, so it absorbed the criteria and the W21-89 row was removed (the plan has no superseded status, and any write_scope left on it either recreated the overlap or was empty).",
+        "From W21-89, observed on every restart: the Providers row returns to Reachability \"Not tested yet\" with Models \"\u2014\", and the dropdown reads \"No models discovered yet \u2014 test the lm-studio provider on the Providers tab\", though the provider is enabled, unchanged, and serving 34 models. This is the same trap a NEW project falls into, arriving by a different route.",
+        "MECHANISM, verified while triaging: the catalog is cached nowhere. GET .../providers/:id/models recomputes it per request, and apps/web ProvidersPanel fills its catalogs state ONLY in testProvider (the Test click) \u2014 nothing runs on mount. That is why the fix needs both halves and one ticket must own them.",
+        "PERSISTENCE CAVEAT for whoever lands this: the obvious store is a settings key via putProjectSetting, but every settings write emits a settings.changed audit event (FR-S3), so caching a probe on every models fetch writes one event per fetch. Writing only when the result materially changes (status/source/model-id set) keeps the audit log meaningful \u2014 weigh it, do not discover it late."
       ],
       "acceptance": [
         "After a restart the Models tab either shows the previously discovered models or states plainly that discovery must be re-run and why",
-        "An empty dropdown is never shown without an explanation next to it"
+        "An empty dropdown is never shown without an explanation next to it",
+        "A successful provider probe survives a core restart, with its timestamp shown so a stale result is visibly stale",
+        "A provider that has genuinely never been tested still reads \"Not tested yet\"",
+        "The Models dropdown offers the last known model list rather than nothing"
       ]
     },
     {
@@ -13693,29 +13700,6 @@
         "That is equally consistent with my automation simply missing a target that moves \u2014 the run-status line and the \"What this run did\" panel appear and disappear between states, which shifts everything below them. A person clicking a button they can see would not hit that.",
         "So this may be entirely a tooling artifact of how I drive the browser, and NOT a product defect. It is left on the board rather than deleted because six occurrences is worth someone reproducing by hand, but it must not be treated as confirmed.",
         "HOW TO SETTLE IT: click the control by hand immediately after a project opens, with the pointer visibly over it. If a human click registers first time, close this as not-a-defect. If it does not, capture the element identity before and after the click \u2014 that distinguishes a replaced node from a moved one."
-      ]
-    },
-    {
-      "stories": [
-        "US-501"
-      ],
-      "phase": 21,
-      "lane": "orchestrator",
-      "role": "coding-agent",
-      "status": "todo",
-      "depends_on": [],
-      "id": "W21-89",
-      "points": 1,
-      "module": "server",
-      "title": "provider reachability resets to \"Not tested yet\" on every core restart",
-      "write_scope": [
-        "apps/server/src/api/server/providers-routes.ts",
-        "apps/server/src/api/server/providers-routes.test.ts"
-      ],
-      "notes": [
-        "Observed on every restart this session: the Providers row returns to Reachability \"Not tested yet\" with Models \"\u2014\", and the Models dropdown goes back to \"No models discovered yet \u2014 test the lm-studio provider on the Providers tab\", even though the provider is enabled, unchanged, and serving 34 models.",
-        "The probe result lives only in memory. A user who restarts (or whose machine restarts) is told their working provider is untested, and cannot pick a model until they rediscover the Providers -> Test step on their own. This is the same trap a NEW project falls into, arriving by a different route.",
-        "ACCEPTANCE: a successful provider probe survives a core restart, with its timestamp shown so a stale result is visibly stale; a provider that has genuinely never been tested still reads \"Not tested yet\"; the Models dropdown offers the last known model list rather than nothing."
       ]
     },
     {
