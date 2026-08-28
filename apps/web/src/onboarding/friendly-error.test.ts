@@ -78,3 +78,41 @@ describe('describeStillWaiting (W16-06)', () => {
     expect(text).not.toContain('409');
   });
 });
+
+/**
+ * Found live 2026-08-28 by walking the novice path with no provider
+ * configured: create a project, answer one interview question, press Build
+ * the board. The server answered 409 with the right sentence; the screen
+ * showed the generic one and buried the useful one under "Technical detail".
+ */
+describe('describeRunFailure: 409 is the no-model case, and it must not say "try again"', () => {
+  const failure = () => describeRunFailure(new OnboardingApiError(409, 'no model is configured'));
+
+  it('names the fix instead of an invented cause', () => {
+    const { summary } = failure();
+    expect(summary).toContain('Settings → Models');
+    expect(summary).toContain('Providers');
+    // The generic branch's two wrong claims: there is no model to be running,
+    // and retrying cannot succeed.
+    expect(summary).not.toMatch(/check that your model is running/i);
+    expect(summary).not.toMatch(/^The server hit an error/);
+  });
+
+  it('says plainly that retrying will not help', () => {
+    expect(failure().summary).toMatch(/will not help/i);
+  });
+
+  it('still reassures that the answers survived, and still demotes the raw string', () => {
+    const { summary, detail } = failure();
+    expect(summary).toMatch(/answers are still here/i);
+    expect(summary).not.toContain('(HTTP');
+    expect(summary).not.toContain('no model is configured');
+    expect(detail).toBe('no model is configured (HTTP 409)');
+  });
+
+  it('leaves every other status on the generic branch', () => {
+    expect(describeRunFailure(new OnboardingApiError(500, 'boom')).summary).toMatch(
+      /check that your model is running/i,
+    );
+  });
+});
