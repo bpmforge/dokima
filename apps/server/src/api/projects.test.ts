@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, openEventLog } from '@dokima/events';
 import {
   acceptTicket,
@@ -23,8 +23,30 @@ import {
 
 const TOKEN = 'test-token-0123456789abcdef';
 
+/**
+ * W22-18: every temp directory this file makes, removed after its tests.
+ *
+ * These leaked because the cleanup was per-test and partial: a test that
+ * failed early, or a path with no `afterEach` of its own, left its directory
+ * behind and nothing ever failed because of it. Tracking what was actually
+ * made is what makes the sweep complete rather than a list someone has to
+ * remember to extend.
+ *
+ * `force` so removing twice is fine — the per-test cleanups that already
+ * exist stay, and this only catches what they miss.
+ */
+const madeTempDirs: string[] = [];
+
+afterAll(async () => {
+  for (const dir of madeTempDirs) {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 async function tmpDir(prefix: string): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  madeTempDirs.push(dir);
+  return dir;
 }
 
 /** Seeds one ready, one blocked (via unmet dep), and one done ticket. */

@@ -40,7 +40,7 @@
     "typecheck": "pnpm -r run typecheck",
     "pretest": "node scripts/check-node.mjs",
     "test": "vitest run --retry=2",
-    "validate": "node scripts/run-validators.mjs",
+    "validate": "node scripts/run-validators.mjs && node scripts/validate-temp-leaks.mjs",
     "next": "node scripts/next-work.mjs",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

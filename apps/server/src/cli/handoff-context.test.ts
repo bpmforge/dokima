@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { defaultHandoffBuilder } from '@dokima/harbormaster';
 import type { Ticket } from '@dokima/tickets';
 import {
@@ -34,6 +34,16 @@ const noRulesFile = {
   readTextFile: async () => null,
   listRepoPaths: async () => ['packages/tickets/src/verbs.ts', 'README.md'],
 };
+
+/**
+ * W22-18: the temp repo this file makes, removed after its tests.
+ */
+const madeTempDirs: string[] = [];
+
+afterAll(async () => {
+  const { rm } = await import('node:fs/promises');
+  for (const dir of madeTempDirs) await rm(dir, { recursive: true, force: true });
+});
 
 describe('packed HANDOFF context (W12-04, FR-L5)', () => {
   it(
@@ -123,6 +133,9 @@ describe('ranked code slices (W12-09)', () => {
       const path = await import('node:path');
 
       const repo = await mkdtemp(path.join(tmpdir(), 'dokima-w1209-'));
+      // W22-18: this test built a repo and never removed it. Recorded rather
+      // than wrapped in try/finally so a failure mid-test still cleans up.
+      madeTempDirs.push(repo);
       await mkdir(path.join(repo, 'src'), { recursive: true });
       await writeFile(
         path.join(repo, 'src', 'verbs.ts'),

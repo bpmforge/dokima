@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { appendEvent, openEventLog, createIdentity } from '@dokima/events';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { createSlate, decideSlate } from '../decisions/store.js';
 import { computeProjectStats, latestAdvancedPhase, sumSpendToday } from './stats.js';
 
@@ -16,6 +16,19 @@ import { computeProjectStats, latestAdvancedPhase, sumSpendToday } from './stats
  *
  * `apps/server/src/api/projects/` had no test file at all before this ticket.
  */
+/**
+ * W22-18: the temp projects these fixtures make, removed after the tests.
+ *
+ * Both are deliberately half-destroyed — the W21-77 race needs a project whose
+ * `.dokima` is gone while the directory remains — so neither test could remove
+ * its own directory as part of what it was proving.
+ */
+const madeTempDirs: string[] = [];
+
+afterAll(async () => {
+  for (const dir of madeTempDirs) await fs.rm(dir, { recursive: true, force: true });
+});
+
 describe('computeProjectStats counts what needs a human (W10-73)', () => {
   const dirs: string[] = [];
 
@@ -231,6 +244,7 @@ describe('a project that vanished is absent, not broken (W21-77)', () => {
     // passed against the unfixed code. The probe answers yes once (as the
     // real check did, before the directory went) and no afterwards.
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2177-'));
+    madeTempDirs.push(dir);
     await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
     const dbPath = path.join(dir, '.dokima', 'state.db');
     openEventLog(dbPath).close();
@@ -257,6 +271,7 @@ describe('a project that vanished is absent, not broken (W21-77)', () => {
     // existence rather than matching better-sqlite3's error text, whose
     // wording is not a contract.
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2177-bad-'));
+    madeTempDirs.push(dir);
     await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
     await fs.writeFile(path.join(dir, '.dokima', 'state.db'), 'not a database\n');
 

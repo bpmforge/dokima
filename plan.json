@@ -14944,7 +14944,7 @@
       "id": "W22-18",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14960,7 +14960,10 @@
         "apps/server/src/api/projects.test.ts",
         "scripts/validate-temp-leaks.mjs",
         "scripts/validate-temp-leaks.test.mjs",
-        "scripts/run-validators.mjs"
+        "scripts/run-validators.mjs",
+        "apps/server/src/api/projects/stats.test.ts",
+        "CLAUDE.md",
+        "package.json"
       ],
       "acceptance": [
         "A full `pnpm test` run leaves no dokima-* directory in the machine tmpdir",
@@ -14972,7 +14975,47 @@
         "THE PRODUCERS, all `mkdtemp` with no removal: packages/harbormaster/src/loop-land-session.test.ts ('dokima-w1313-', 5 per run), packages/harbormaster/src/agent-session/gateway-session.test.ts ('dokima-agent-session-cwd-/-db-/-repo-/-repo-db-/-outside-'), apps/server/src/cli/handoff-context.test.ts ('dokima-w1209-'), apps/server/src/api/projects.test.ts ('dokima-w915-home-/-gone-/-remove-/-kept-'). Each is a per-test mkdtemp, so the count scales with the tests, not the runs.",
         "THE VALIDATOR IS THE POINT, not the twelve directories. Three separate tickets have now found temp leaks by hand \u2014 W22-12 (the e2e teardown race), W22-15 (20 per e2e run), W22-16 (270 per unit run) \u2014 and each was found because someone happened to look at a tmpdir, never because anything failed. 26,760 directories and 968M accumulated under a permanently green gate. A leak that cannot fail a check is a leak nobody will find again once this wave of attention passes; that is the L-47 shape the board keeps re-learning.",
         "MEASUREMENT METHOD THAT WORKS, so it does not have to be rediscovered a fourth time: mkdtemp a marker directory immediately before the run, then `find $TMPDIR -maxdepth 1 -name 'dokima-*' -newer $MARKER`. Counting totals is useless \u2014 the tmpdir holds months of history \u2014 and `ls /tmp` finds nothing at all on macOS, where os.tmpdir() is under /var/folders.",
-        "PLANT A REAL LEAK for the third criterion. A validator written against an already-clean tree is a validator that has never been observed to fail, which is precisely the SAST-runner and capture-tour failure (W21-98, W21-92): a check nobody has seen say no."
+        "PLANT A REAL LEAK for the third criterion. A validator written against an already-clean tree is a validator that has never been observed to fail, which is precisely the SAST-runner and capture-tour failure (W21-98, W21-92): a check nobody has seen say no.",
+        "A1 IS READ AS 'LEAVES BEHIND', NOT 'NONE EXIST', and the distinction is forced by the machine: 26,829 dokima-* directories are on this tmpdir right now, almost all of them dokima-suite-home-* from before W22-16. Nothing sweeps that backlog and this ticket does not delete 26k directories out of a user's temp folder on its own initiative \u2014 the OS clears it in time. What is checkable, and what the acceptance means, is that a RUN creates nothing it does not remove. Measured with a marker directory and `find -newer`, the same method W22-15 and W22-16 used.",
+        "SCOPE WIDENED THE MOMENT THE MEASUREMENT NAMED A FIFTH FILE (Law 1). I filed this ticket from a tally of PREFIXES and listed four producers; apps/server/src/api/projects/stats.test.ts makes 'dokima-w2177-' and 'dokima-w2177-bad-' and I missed it because I mapped the prefixes I recognised rather than every one in the list. The re-measurement after fixing the four named files reported exactly those two, which is the check doing its job on its own author. Unowned; widened rather than left for A1 to fail on.",
+        "SCOPE WIDENED FOR CLAUDE.md (Law 1): Law 3 names 'the six repo validators' and lists them by name, so adding a seventh without updating that sentence would leave the project's own entry-point instructions wrong about its own gate. Unowned. This is the ui-copy validator's thesis applied to the rules themselves \u2014 an instruction that has drifted from the surface it describes is worse than no instruction.",
+        "THE FIRST PLACEMENT WAS WRONG AND THE SUITE PROVED IT, the same way W22-15's per-suite teardown was proved wrong. Putting validate-temp-leaks inside run-validators.mjs's VALIDATORS list is CIRCULAR: scripts/run-validators.test.mjs shells out to that script AS A TEST, so the leak check ran DURING the test run and saw other vitest workers' live, in-flight temp directories as leaks. The full gate went red on a single dokima-suite-home-* that was not leaked at all \u2014 it belonged to a test file still executing in another worker. apps/server's suite run alone leaks zero.",
+        "SO THE ENVIRONMENT CHECK SITS BESIDE THE SOURCE CHECKS, NOT AMONG THEM: `pnpm validate` runs run-validators.mjs and then validate-temp-leaks.mjs. run-validators.mjs asks questions about the repo's SOURCE, which is why a unit test can safely execute it; this one asks a question about the MACHINE after a run, which nothing inside a run may ask. Scope widened to package.json to say so (Law 1).",
+        "A1 DONE \u2014 a full `pnpm test` run now leaves zero. Five test files were leaking, not the four I filed: the fifth (apps/server/src/api/projects/stats.test.ts) was found by re-measuring after fixing the other four, which is the check catching its own author's incomplete list. Each now records what it made and sweeps it in afterAll, so the cleanup cannot fall behind the code the way a hand-maintained list does.",
+        "A2/A3 DONE \u2014 validate-temp-leaks.mjs, in `pnpm validate`, proven by SIX planted-leak cases against a temp root the test owns rather than against the machine. A validator first observed passing on an already-clean tree is one nobody has seen say no, which is the SAST-runner and capture-tour failure this exists to stop repeating.",
+        "IT REPORTS AND NEVER REMOVES, and that is a hard rule rather than a preference: W13-64 is an e2e cleanup that glob-deleted every dokima-* folder on the machine and destroyed a real walkthrough's project. Observed data loss. A validator that swept what it found would be that incident with a wider blast radius.",
+        "THE WINDOW WAS MEASURED BEFORE IT WAS CHOSEN (L-56). A 60-minute window flagged 1,501 directories and a 20-minute one 312 \u2014 all true, all leaks from earlier runs the same hour, and all useless as a gate because no commit can address them. Ten minutes covers one Law 3 gate (test ~30s, e2e ~45s, then validate) and asks only about the run that just happened.",
+        "PLACEMENT WAS WRONG FIRST AND THE SUITE SAID SO. Inside run-validators.mjs's list the check is CIRCULAR: run-validators.test.mjs executes that script as a test, so the leak check ran during the test run and read another worker's live temp directory as a leak. It now runs beside the six rather than among them \u2014 they ask about the repo's SOURCE, which is why a test may safely execute them; this asks about the MACHINE after a run, which nothing inside a run may ask.",
+        "25,941 UNIT-TEST LEFTOVERS REMOVED as a one-off, by exact prefix (suite-home, w1313, w1209, w2177, w915, agent-session) and never by a dokima-* glob \u2014 see the W13-64 rule above. The e2e-named backlog was left alone to age out: it matches no producer that still exists.",
+        "RESIDUAL, FILED AS W22-19: one run in which a test FAILED left a single suite home behind. Two passing runs after it leaked none and I cannot yet explain the difference, so it is filed UNCONFIRMED with a cheap reproduction written down rather than fixed defensively.",
+        "Gate: lint clean, typecheck 0, 4788 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK. An independent marker directory confirms the whole gate created and left nothing."
+      ]
+    },
+    {
+      "id": "W22-19",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "UNCONFIRMED: a run containing a FAILING test may leak one temp home",
+      "write_scope": [
+        "apps/server/vitest.setup.ts"
+      ],
+      "acceptance": [
+        "Either a reproduction is recorded \u2014 a run with a deliberately failing test, leaking a home \u2014 or the ticket is closed as not reproducible with the attempts written down",
+        "If it reproduces, the home is removed on that path too"
+      ],
+      "notes": [
+        "FILED RATHER THAN LEFT AS A SENTENCE (Law 1), and filed as UNCONFIRMED on purpose \u2014 I can describe the observation but not the mechanism, and W21-88 is the precedent for downgrading rather than asserting a cause I cannot evidence.",
+        "THE OBSERVATION, once, during W22-18: a full `pnpm test` run in which scripts/run-validators.test.mjs FAILED left exactly one dokima-suite-home-* behind. Two subsequent full runs, both passing, leaked none, and apps/server's suite run in isolation leaks none. So the afterAll added by W22-16 works in the ordinary case and something about that run did not reach it.",
+        "MY FIRST EXPLANATION WAS WRONG and is recorded so nobody re-derives it: I assumed the directory was a live one belonging to a still-running worker, seen mid-run by a validator that should not have been running mid-run. That placement bug was real and is fixed, but it was a different bug \u2014 the same directory name was still present minutes later, so it had genuinely leaked rather than been observed in flight.",
+        "CHEAP TO TEST: add a deliberately failing test to one apps/server file, run that file, and see whether its home survives. Do that before changing anything \u2014 if it does not reproduce, close it as not reproducible and say so, because a defensive fix for a mechanism nobody has seen is how dead cleanup code like the process.on('exit') handler gets written in the first place."
       ]
     }
   ]

@@ -27,7 +27,7 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
 3. **Full gate before closing any ticket**:
    `pnpm lint && pnpm typecheck && pnpm test` (workspace-wide), **`pnpm
    --filter @dokima/web e2e`**, and **`pnpm validate`** (the six repo
-   validators), plus the ticket's own acceptance criteria. Report test counts
+   validators, plus the temp-leak check), plus the ticket's own acceptance criteria. Report test counts
    in commit bodies.
    *`pnpm validate` joined the gate 2026-08-28. The six validators — plan,
    traceability, ui-copy, exports, volatile-paths, history-secrets — existed
@@ -36,6 +36,15 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    check and no close gate could see them. Same shape as the capture tour
    (W21-92) and the SAST runner (W21-98) — a real check nobody runs decays
    into a check nobody can trust.*
+   *temp-leaks runs beside them, not among them (W22-18, 2026-08-29). Three consecutive tickets
+   found temp-directory leaks BY HAND — 26,760 directories and 968M had
+   accumulated under a permanently green gate — because a leak costs nothing a
+   test can observe and so survives every gate indefinitely. It reports and
+   never removes: W13-64 is an e2e cleanup that glob-deleted every `dokima-*`
+   folder on the machine and destroyed a real walkthrough's project. It is NOT
+   in run-validators' list, because a unit test executes that script and the
+   check would then read live workers' temp dirs as leaks — the six ask about
+   source, this one asks about the machine after a run.*
    **Run everything on Node 22** (`.nvmrc`, `engines.node`): the
    `better-sqlite3` native binary is built for it, and Node 24 fails ~50
    `apps/server` tests with a `NODE_MODULE_VERSION 127 vs 137` mismatch

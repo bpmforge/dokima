@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 import {
   CostLedger,
@@ -178,6 +178,31 @@ class StreamingFakeProvider extends ScriptedFakeProvider {
  */
 const SUBPROCESS_TIMEOUT_MS = 30_000;
 
+/**
+ * W22-18: every temp directory this file makes, removed after its tests.
+ *
+ * The per-test cleanup below was partial by construction — it holds ONE
+ * directory per variable, so a test creating two leaked the first (the note
+ * at the second `setupSession` call says exactly that), and the `outsideDir`
+ * paths had no cleanup at all. Tracking what was actually made is what makes
+ * the sweep complete rather than a list someone must remember to extend.
+ *
+ * `force`, so removing twice is fine: the existing afterEach hooks stay and
+ * this only catches what they miss.
+ */
+const madeTempDirs: string[] = [];
+
+afterAll(async () => {
+  for (const dir of madeTempDirs) await fs.rm(dir, { recursive: true, force: true });
+});
+
+/** mkdtemp that remembers, so the sweep above cannot fall behind the code. */
+async function tempDir(prefix: string): Promise<string> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  madeTempDirs.push(dir);
+  return dir;
+}
+
 describe('createGatewaySpawnSession', () => {
   let cwd: string | undefined;
   let dbDir: string | undefined;
@@ -215,7 +240,7 @@ describe('createGatewaySpawnSession', () => {
     writeScope: string[] = ['**'],
     verify = 'true',
   ): Promise<{ log: EventLog; cwd: string }> {
-    dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-agent-session-db-'));
+    dbDir = await tempDir('dokima-agent-session-db-');
     log = openEventLog(path.join(dbDir, 'state.db'));
     createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
     createTicket(log, 'worker-1', {
@@ -226,7 +251,7 @@ describe('createGatewaySpawnSession', () => {
       writeScope,
       verify,
     });
-    cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-agent-session-cwd-'));
+    cwd = await tempDir('dokima-agent-session-cwd-');
     await git(cwd, ['init', '-b', 'main']);
     await git(cwd, ['config', 'user.name', 'Dokima Test']);
     await git(cwd, ['config', 'user.email', 'test@dokima.invalid']);
@@ -807,9 +832,7 @@ describe('createGatewaySpawnSession', () => {
       it('refuses a leaf symlink escaping the worktree, even though its literal path matches write_scope, that reached disk some other way', async () => {
         const { log, cwd } = await setup(['packages/example/**']);
         await fs.mkdir(path.join(cwd, 'packages', 'example'), { recursive: true });
-        const outsideDir = await fs.mkdtemp(
-          path.join(os.tmpdir(), 'dokima-agent-session-outside-'),
-        );
+        const outsideDir = await tempDir('dokima-agent-session-outside-');
         try {
           await fs.writeFile(path.join(outsideDir, 'leak.ts'), 'secret\n');
           await fs.symlink(
@@ -884,9 +907,7 @@ describe('createGatewaySpawnSession', () => {
           'stage, diff, or merge it no matter how it reached disk)',
         async () => {
           const { cwd } = await setup(['packages/example/**']);
-          const outsideDir = await fs.mkdtemp(
-            path.join(os.tmpdir(), 'dokima-agent-session-outside-'),
-          );
+          const outsideDir = await tempDir('dokima-agent-session-outside-');
           try {
             await fs.writeFile(path.join(outsideDir, 'outside.ts'), 'leaked\n');
             await fs.writeFile(
@@ -1231,7 +1252,7 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
   });
 
   async function setupRepo(): Promise<{ log: EventLog; repoRoot: string }> {
-    repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-agent-session-repo-'));
+    repoRoot = await tempDir('dokima-agent-session-repo-');
     await git(repoRoot, ['init', '-b', 'main']);
     await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
     await git(repoRoot, ['config', 'user.email', 'test@dokima.invalid']);
@@ -1239,7 +1260,7 @@ describe('createGatewaySpawnSession wired into runLandLoop (real close gate, unc
     await git(repoRoot, ['add', '--', 'README.md']);
     await git(repoRoot, ['commit', '-m', 'chore: initial commit']);
 
-    dbDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-agent-session-repo-db-'));
+    dbDir = await tempDir('dokima-agent-session-repo-db-');
     log = openEventLog(path.join(dbDir, 'state.db'));
     createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
     return { log, repoRoot };

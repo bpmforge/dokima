@@ -73,6 +73,12 @@ export const VALIDATORS = [
   'validate-exports',
   'validate-volatile-paths',
   'validate-history-secrets',
+  // NOT validate-temp-leaks (W22-18). It belongs to `pnpm validate` but not to
+  // THIS list: run-validators.test.mjs executes this script as a test, so a
+  // check that inspects the machine's tmpdir would run DURING the test run and
+  // read other vitest workers' live temp directories as leaks. Every validator
+  // here asks a question about the repo's SOURCE, which is why executing them
+  // mid-run is safe. See package.json's `validate` script.
 ];
 
 function main() {

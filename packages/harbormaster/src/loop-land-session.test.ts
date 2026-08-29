@@ -4,7 +4,7 @@
  * and killed the run with a stack trace — after the session had already
  * written correct code, verified it to exit 0 and committed it.
  */
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,8 +25,30 @@ const handoff = {
   verify: 'true',
 };
 
+/**
+ * W22-18: every temp directory this file makes, removed after its tests.
+ *
+ * These leaked because the cleanup was per-test and partial: a test that
+ * failed early, or a path with no `afterEach` of its own, left its directory
+ * behind and nothing ever failed because of it. Tracking what was actually
+ * made is what makes the sweep complete rather than a list someone has to
+ * remember to extend.
+ *
+ * `force` so removing twice is fine — the per-test cleanups that already
+ * exist stay, and this only catches what they miss.
+ */
+const madeTempDirs: string[] = [];
+
+afterAll(async () => {
+  for (const dir of madeTempDirs) {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 async function cwd(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w1313-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w1313-'));
+  madeTempDirs.push(dir);
+  return dir;
 }
 
 describe('a provider failure ends the attempt, not the process (W13-13)', () => {
