@@ -7,7 +7,13 @@ import { promises as fs, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import {
+  appendEvent,
+  createIdentity,
+  listEvents,
+  openEventLog,
+  type EventLog,
+} from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import {
   attemptedNothing,
@@ -16,6 +22,9 @@ import {
   latestSeq,
   parkIfAttemptedNothing,
   toolHistogramSince,
+  uncommittedWorkNotice,
+  wroteWithoutCommitting,
+  type ToolHistogram,
 } from './loop-land-attempted.js';
 
 const dirs: string[] = [];
@@ -214,5 +223,88 @@ describe('the ladder rule (W21-44, found by run 27)', () => {
     expect(
       attemptedNothingEndsTheLadder({ hasRungSessions: true, policy: locked, attempt: 1 }),
     ).toBe(true);
+  });
+});
+
+describe('work done and never committed (W21-65)', () => {
+  const histogram = (counts: Record<string, number>): ToolHistogram => {
+    const map = new Map(Object.entries(counts));
+    let mutations = 0;
+    let total = 0;
+    for (const [toolId, n] of map) {
+      total += n;
+      if (['write', 'edit', 'commit'].some((s) => toolId.endsWith(s))) mutations += n;
+    }
+    return { counts: map, mutations, total };
+  };
+
+  it('RED FIXTURE: run 51 — 17 mutations, zero commits', () => {
+    // The most productive session of the whole exercise, and it could never
+    // have closed: the gate reads commits, and the branch tip was unchanged.
+    const run51 = histogram({
+      'agent-session.read': 24,
+      'agent-session.list': 13,
+      'agent-session.edit': 7,
+      'agent-session.write': 10,
+    });
+    expect(run51.mutations).toBe(17);
+    expect(wroteWithoutCommitting(run51)).toBe(true);
+  });
+
+  it('a session that committed at least once is unaffected', () => {
+    const committed = histogram({
+      'agent-session.write': 10,
+      'agent-session.commit': 1,
+    });
+    expect(wroteWithoutCommitting(committed)).toBe(false);
+  });
+
+  it('a session that mutated NOTHING is W21-44’s case, not this one', () => {
+    // Acceptance 3: the two signals must not double-report the same session.
+    const browsed = histogram({ 'agent-session.read': 24, 'agent-session.list': 13 });
+    expect(attemptedNothing(browsed)).toBe(true);
+    expect(wroteWithoutCommitting(browsed)).toBe(false);
+  });
+
+  it('the notice names what was changed, so the maker knows what to commit', () => {
+    const notice = uncommittedWorkNotice(
+      histogram({ 'agent-session.write': 10, 'agent-session.edit': 7, 'agent-session.read': 24 }),
+    );
+    expect(notice).toContain('write x10');
+    expect(notice).toContain('edit x7');
+    expect(notice).not.toContain('read x24');
+    expect(notice).toContain('cannot close until you commit');
+  });
+});
+
+describe('the park path names uncommitted work as the blocker (W21-65)', () => {
+  it('RED FIXTURE: a session that wrote and never committed is told so on the ticket', () => {
+    // Acceptance 4. Run 51 reached the close gate, was refused on the
+    // acceptance criterion, and the real blocker — no commits — was never
+    // named anywhere a person would read.
+    const log = fixture();
+    const sinceSeq = latestSeq(log);
+    for (const tool of ['read', 'write', 'edit']) call(log, `agent-session.${tool}`);
+    const parked = parkIfAttemptedNothing({
+      log,
+      ticketId: 'T-1',
+      actorId: 'operator',
+      sinceSeq,
+    });
+
+    // It does NOT park: the work is real and the next attempt continues from
+    // the same worktree.
+    expect(parked).toBe(false);
+    const comments = listEvents(log).filter((e) => e.eventType === 'ticket.commented');
+    expect(JSON.stringify(comments.map((c) => c.payload))).toContain('made NO commit');
+  });
+
+  it('a session that committed gets no such comment', () => {
+    const log = fixture();
+    const sinceSeq = latestSeq(log);
+    for (const tool of ['write', 'commit']) call(log, `agent-session.${tool}`);
+    parkIfAttemptedNothing({ log, ticketId: 'T-1', actorId: 'operator', sinceSeq });
+    const comments = listEvents(log).filter((e) => e.eventType === 'ticket.commented');
+    expect(JSON.stringify(comments.map((c) => c.payload))).not.toContain('made NO commit');
   });
 });

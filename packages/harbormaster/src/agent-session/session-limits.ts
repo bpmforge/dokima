@@ -222,3 +222,25 @@ export function budgetWarning(
     'than reading.'
   );
 }
+
+/**
+ * Told to the maker mid-session, once, while it can still act (W21-65).
+ *
+ * RUN 51 was the most productive session of the exercise — read x24, list x13,
+ * edit x7, write x10 — and commit x0. Seventeen mutations, nothing committed;
+ * the branch tip was unchanged afterwards. The close gate reads COMMITS, so
+ * that session could never have closed however good the code was: it reached
+ * the gate, was refused on the acceptance criterion, and the real blocker was
+ * never named.
+ *
+ * Sits beside `budgetWarning` because it is the same kind of message — the
+ * product telling a session something it cannot observe about its own
+ * situation — but it fires on a DIFFERENT signal. Budget warnings fire near
+ * the end; this fires as soon as the pattern appears, because the whole value
+ * is having turns left in which to fix it.
+ */
+export const UNCOMMITTED_WORK_WARNING =
+  'UNCOMMITTED WORK: you have changed files and made no commit. The close gate ' +
+  'reads COMMITS, not the working tree — uncommitted changes are invisible to ' +
+  'it and this session cannot close until you commit. Commit what you have now, ' +
+  'then carry on.';

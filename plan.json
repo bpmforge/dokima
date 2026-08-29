@@ -13069,7 +13069,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [],
@@ -13078,6 +13078,8 @@
       "write_scope": [
         "packages/harbormaster/src/agent-session/session-progress.ts",
         "packages/harbormaster/src/agent-session/session-progress.test.ts",
+        "packages/harbormaster/src/agent-session/session-limits.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.ts",
         "packages/harbormaster/src/loop-land-attempted.ts",
         "packages/harbormaster/src/loop-land-attempted.test.ts"
       ],
@@ -13087,7 +13089,14 @@
         "W21-44 does not catch this: it asks whether the session MUTATED anything, and this one mutated seventeen times. W21-60 does not catch it either: that is a commit that stages nothing, and this is a commit never attempted. The gap is between them \u2014 work done, never durably recorded.",
         "The signal is free and already collected: the tool histogram is in the ledger per attempt (W21-44 reads it), and \"mutations > 0 AND commits == 0\" is unambiguous. A session that wrote and never committed has produced nothing the gate can see, and telling it so mid-session is cheaper than letting it reach a gate that will refuse for a reason it will not understand.",
         "Worth distinguishing from a park: this is a MAKER-facing gap, not a founder-facing one. The right place is probably the session budget check that already counts mutations, warning the model at a window boundary rather than after the fact.",
-        "ACCEPTANCE: a session that mutated the worktree and produced no commit parks with a reason naming that specifically, and the uncommitted paths are listed; a session that committed parks as it does today; the check reads the tool histogram and the worktree diff the loop already has."
+        "ACCEPTANCE: a session that mutated the worktree and produced no commit parks with a reason naming that specifically, and the uncommitted paths are listed; a session that committed parks as it does today; the check reads the tool histogram and the worktree diff the loop already has.",
+        "BOTH HALVES LANDED. Maker-facing (acceptance 1): the session budget already sees every tool call, so it now tracks \"mutated since the last commit\" and the session is told UNCOMMITTED_WORK_WARNING at the next turn \u2014 once, while it still has budget to act. Founder-facing (acceptance 4): the park path comments the same finding on the ticket, naming which tools changed the worktree.",
+        "THE WARNING IS CONSUMED, AND A LATER UNCOMMITTED WRITE WARNS AGAIN. Repeating it every turn is noise; staying silent after more uncommitted work would be wrong, because the work is still stranded. There is a fixture for each.",
+        "A REFUSED WRITE IS NOT A CHANGE \u2014 the same rule the progress signal already uses. Warning about work that never landed would be its own false alarm.",
+        "MY OWN VALIDATOR CAUGHT ME MID-TICKET, and this is the second time today the check I strengthened this session found real buried machinery. wroteWithoutCommitting and uncommittedWorkNotice were exported, tested, and called by no production code \u2014 the buried ratchet went 47 to 49 and pnpm validate failed. The fix was not to raise the baseline but to WIRE them, which is what acceptance 4 asked for anyway.",
+        "WIRED WHERE THE DATA ALREADY IS: parkIfAttemptedNothing computes the tool histogram for EVERY attempt and holds the log. Adding the check on its non-parking branch costs no second pass over the same events and no line in loop-land-ticket.ts, which sits at exactly 400. It deliberately does NOT park \u2014 the work is real and the next attempt continues from the same worktree.",
+        "THE 400-LINE CAP SHAPED THE PLACEMENT, THREE TIMES. session-progress.ts (390) and gateway-session.ts (394) had almost no headroom, so the warning TEXT went to session-limits.ts beside budgetWarning \u2014 where it belongs anyway, since both are the product telling a session something it cannot observe about itself \u2014 and the once-only latch went into the budget rather than a local flag in the caller. Two false starts (403 and 401 lines) before the placement was right.",
+        "RED PROVEN by stashing session-progress.ts and loop-land-attempted.ts: 9 fixtures fail."
       ],
       "acceptance": [
         "A session that has mutated files and made no successful commit is told so before its budget runs out",

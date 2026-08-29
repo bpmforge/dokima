@@ -137,7 +137,32 @@ export function parkIfAttemptedNothing(input: {
   readonly sinceSeq: number;
 }): boolean {
   const histogram = toolHistogramSince(input.log, input.ticketId, input.sinceSeq);
-  if (!attemptedNothing(histogram)) return false;
+  if (!attemptedNothing(histogram)) {
+    /**
+     * W21-65: the session DID work — and if none of it was committed, the
+     * close gate cannot see any of it. That is the real blocker, and run 51
+     * reached the gate without it ever being named.
+     *
+     * Here rather than in a new call site because this function already
+     * computes the histogram for EVERY attempt and already holds the log; a
+     * second pass over the same events to say a second thing about the same
+     * attempt would be the drift this module's own header warns about. It
+     * does not park — the work is real and the next attempt continues from
+     * the same worktree.
+     */
+    if (wroteWithoutCommitting(histogram)) {
+      commentTicket(
+        input.log,
+        {
+          ticketId: input.ticketId,
+          actorId: input.actorId,
+          body: uncommittedWorkNotice(histogram),
+        },
+        { runId: input.runId ?? null },
+      );
+    }
+    return false;
+  }
   commentTicket(
     input.log,
     {
@@ -179,5 +204,53 @@ export function attemptedNothingEndsTheLadder(input: {
   return (
     rungForAttempt(input.policy, input.attempt) ===
     rungForAttempt(input.policy, input.attempt + 1)
+  );
+}
+
+/**
+ * Work done and never durably recorded (W21-65).
+ *
+ * RUN 51, the most productive session of the whole exercise: read x24,
+ * list x13, edit x7, write x10 — and commit x0. Seventeen mutations, nothing
+ * committed. The branch tip was unchanged afterwards and only an uncommitted
+ * spec edit survived. The close gate requires commits in the manifest, so that
+ * session could never have closed no matter how good the code was: it reached
+ * the gate, was refused on the acceptance criterion, and the real blocker was
+ * never named.
+ *
+ * THE GAP IS BETWEEN TWO CHECKS THAT ALREADY EXIST. W21-44 asks whether the
+ * session mutated ANYTHING, and this one mutated seventeen times. W21-60
+ * catches a commit that stages nothing, and this is a commit never attempted.
+ * Neither sees "wrote a lot, committed none".
+ *
+ * The signal costs nothing: the histogram is already in the ledger, and
+ * `mutations > 0 AND commits === 0` is unambiguous.
+ */
+export function wroteWithoutCommitting(histogram: ToolHistogram): boolean {
+  if (histogram.mutations === 0) return false; // W21-44's case, not this one.
+  for (const [toolId, count] of histogram.counts) {
+    if (count > 0 && toolId.endsWith('commit')) return false;
+  }
+  return true;
+}
+
+/**
+ * What to tell the MAKER, mid-session, while it can still act.
+ *
+ * Deliberately maker-facing rather than a park reason: by the time a park is
+ * written the session is over and the work is already stranded. Telling it at
+ * a window boundary is cheaper than letting it reach a gate that will refuse
+ * for a reason it will not understand.
+ */
+export function uncommittedWorkNotice(histogram: ToolHistogram): string {
+  const changed = [...histogram.counts.entries()]
+    .filter(([toolId]) => toolId.endsWith('write') || toolId.endsWith('edit'))
+    .map(([toolId, count]) => `${toolId} x${count}`)
+    .join(', ');
+  return (
+    `You have changed the worktree (${changed}) and made NO commit. The close ` +
+    `gate reads commits, not the working tree — uncommitted work is invisible ` +
+    `to it, and this session cannot close until you commit. Commit what you ` +
+    `have before continuing.`
   );
 }

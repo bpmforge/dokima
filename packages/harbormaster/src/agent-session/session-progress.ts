@@ -111,6 +111,7 @@ export interface SessionProgressBudget {
    * mid-stride from one that stalled with budget still to spend.
    */
   lastWindowProgress(): string | null;
+  takeUncommittedWarning(): boolean; // W21-65; see UNCOMMITTED_WORK_WARNING.
 }
 
 function looksRefused(resultText: string): boolean {
@@ -132,6 +133,8 @@ export function createSessionProgressBudget(
   const zeroInformationCalls = new Map<string, number>();
   let stop: { reason: string } | null = null;
   let lastWindowSignal: string | null = null;
+  let uncommitted = false; // W21-65: wrote since the last commit (or ever).
+  let committed = false;
   const entries: BudgetLedgerEntry[] = [];
 
   return {
@@ -139,6 +142,11 @@ export function createSessionProgressBudget(
     earlyStop: () => stop,
     entries: () => entries.slice(),
     lastWindowProgress: () => lastWindowSignal,
+    takeUncommittedWarning: () => {
+      if (!uncommitted || committed) return false;
+      uncommitted = false; // consumed; a LATER uncommitted write warns again.
+      return true;
+    },
     noteIteration({ iteration, toolCalls, verifyExit }) {
       for (const call of toolCalls) {
         // W21-10: the RESULT is part of the identity. A call repeated with the
@@ -183,6 +191,8 @@ export function createSessionProgressBudget(
 
         if (MUTATION_TOOLS.has(call.name) && !looksRefused(call.resultText)) {
           windowSignal ??= `${call.name} changed the worktree`;
+          if (call.name === 'commit') committed = true;
+          else uncommitted = true;
         }
       }
       if (verifyExit !== undefined && verifyExit !== null) {

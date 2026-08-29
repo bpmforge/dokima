@@ -98,6 +98,7 @@ import { costCapStop, DEFAULT_MAX_SESSION_SECONDS,
   DEFAULT_MAX_TURN_TOKENS,
   turnTokenStop,
   budgetWarning,
+  UNCOMMITTED_WORK_WARNING,
   watchdogStop } from './session-limits.js';
 
 // Re-exported so callers keep importing the session's limits from the session
@@ -356,6 +357,10 @@ export function createGatewaySpawnSession(
             runId: options.runId,
             payload: entry,
           });
+        }
+        // W21-65: told once, while it still has turns left to act on it.
+        if (progress.takeUncommittedWarning()) {
+          messages.push({ role: 'user', content: UNCOMMITTED_WORK_WARNING });
         }
         const stop = progress.earlyStop();
         if (stop) {

@@ -436,3 +436,51 @@ describe('W21-79 — the ceiling in the advice is the install ceiling, not the s
     expect(text).toContain('no setting left to raise');
   });
 });
+
+describe('a session that writes and never commits is told so (W21-65)', () => {
+  const call = (name: string) => ({ name, argsJson: '{}', resultText: '{"ok":true}' });
+
+  function budgetWith(names: readonly string[]) {
+    const budget = createSessionProgressBudget({ base: 12, ceiling: 40 });
+    names.forEach((name, i) =>
+      budget.noteIteration({ iteration: i + 1, toolCalls: [call(name)] }),
+    );
+    return budget;
+  }
+
+  it('RED FIXTURE: writes with no commit warn ONCE, while turns remain', () => {
+    // Run 51: 17 mutations, zero commits, and the session was never told —
+    // it reached a gate that reads commits and was refused for a reason it
+    // could not connect to the omission.
+    const budget = budgetWith(['write', 'edit', 'write']);
+    expect(budget.takeUncommittedWarning()).toBe(true);
+    // Consumed: repeating it every turn would be noise.
+    expect(budget.takeUncommittedWarning()).toBe(false);
+  });
+
+  it('a session that committed is never warned', () => {
+    expect(budgetWith(['write', 'commit']).takeUncommittedWarning()).toBe(false);
+  });
+
+  it('a session that mutated nothing is not warned — that is W21-44’s case', () => {
+    expect(budgetWith(['read', 'list', 'read']).takeUncommittedWarning()).toBe(false);
+  });
+
+  it('a REFUSED write does not count as a change', () => {
+    // Same rule the progress signal uses: a refused mutation changed nothing,
+    // so warning about uncommitted work would be about work that never landed.
+    const budget = createSessionProgressBudget({ base: 12, ceiling: 40 });
+    budget.noteIteration({
+      iteration: 1,
+      toolCalls: [{ name: 'write', argsJson: '{}', resultText: '{"reason":"outside scope"}' }],
+    });
+    expect(budget.takeUncommittedWarning()).toBe(false);
+  });
+
+  it('writing AGAIN after being warned warns again — the work is still stranded', () => {
+    const budget = budgetWith(['write']);
+    expect(budget.takeUncommittedWarning()).toBe(true);
+    budget.noteIteration({ iteration: 2, toolCalls: [call('edit')] });
+    expect(budget.takeUncommittedWarning()).toBe(true);
+  });
+});
