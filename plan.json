@@ -14125,6 +14125,120 @@
       "stories": [
         "US-501"
       ],
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W22-01",
+      "lane": "orchestrator",
+      "module": "cli",
+      "points": 2,
+      "title": "the CLI refuses by default \u2014 a stack trace becomes the exception, not the fallback",
+      "write_scope": [
+        "apps/server/src/cli/index.ts",
+        "apps/server/src/cli/index.test.ts"
+      ],
+      "acceptance": [
+        "An unhandled error from any command prints one refusal line naming what failed, not a stack trace",
+        "The underlying stack is still reachable \u2014 with a flag or an env var \u2014 because hiding it entirely trades one silence for another",
+        "The exit code stays non-zero and distinguishes a refusal from a crash",
+        "A genuinely unexpected error still says so, rather than being dressed up as a refusal"
+      ],
+      "notes": [
+        "LESSON L-48. The same defect was fixed three times in one session, each time by teaching one more error type to one more handler: LaneScopeError escaping reportVerbError (W21-81), a native parseArgs TypeError escaping runCli (W21-91), SqliteError escaping both (W21-99). Every one reached the top-level catch in cli/index.ts, which prints err.stack.",
+        "Three instances is a class, not a coincidence. The durable fix is at that catch: make a refusal the DEFAULT and a stack trace the exception, so the fourth error type does not need a fourth ticket.",
+        "NOT a blanket swallow. A stack trace is the right output for a genuine bug \u2014 the change is which case is the default. Keep the stack behind a flag and say it is there."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W22-02",
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "a capability with no live caller is reported, not discovered a year later",
+      "write_scope": [
+        "scripts/validate-exports.mjs",
+        "scripts/validate-exports.test.mjs"
+      ],
+      "acceptance": [
+        "An exported capability that nothing in the product calls is reported by name",
+        "A capability reached only from tests is reported as test-only, which is not the same as reached",
+        "Something deliberately unreached can be marked so, with a reason, and stops being reported",
+        "The report distinguishes \"no caller anywhere\" from \"no caller outside its own module\""
+      ],
+      "notes": [
+        "LESSON L-46, the product's most common defect class and the one no test catches. Eight instances found in a single session: runPhaseGate wired to a route no UI calls; \"Onboard existing repo\" registering a folder while runOnboardAnalysis sits unused; requestTimeoutMs stored, validated and threaded but dropped by the two LOCAL provider kinds; streamIdleMs governing every streamed phase with no wire surface; 85 shipped validators of which 2 ran.",
+        "Each of those passed its own unit tests. Nothing asserts that a capability is REACHED, so \"built\" and \"in use\" are indistinguishable from inside the codebase.",
+        "validate-exports already names ~130 candidate no-caller defects (see the no-caller-sweep memory) \u2014 it exists and is not gated. Making its output trustworthy enough to gate is the work: today a human must confirm each by bundle presence rather than grep."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W22-03",
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "a ticket whose acceptance its own write_scope cannot satisfy is refused at filing",
+      "write_scope": [
+        "scripts/validate-plan.mjs",
+        "scripts/validate-plan.test.mjs"
+      ],
+      "acceptance": [
+        "A ticket whose acceptance names a surface outside its write_scope is reported when the plan is validated, not discovered at claim time",
+        "The report names the criterion and the path it implies, so the fix is obvious",
+        "A criterion that names no path is not guessed at \u2014 silence beats a false positive here",
+        "An existing ticket that already passes is unaffected"
+      ],
+      "notes": [
+        "LESSON L-54. Reading acceptance against write_scope before claiming caught SIX unworkable tickets in one session: W21-89 (needed apps/web/src/settings/** against a server-only scope), W21-90 (Decide card in apps/web/src/decisions/), W21-93 (declared catalog/** when the data originates in the provider adapter), W21-97 (named a file that does not exist), and two cross-lane overlaps that validate-plan already flags.",
+        "The check is currently a habit, which means it works until somebody is in a hurry. Every one of those cost a claim, a scope correction and a commit that had to explain itself.",
+        "DELIBERATELY CONSERVATIVE: acceptance is prose, and inferring paths from prose will produce false positives that teach people to ignore the validator \u2014 the failure mode D-014 and W21-38 both warn about. Report only where a criterion names something path-shaped that no scope entry could match."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "depends_on": [],
+      "id": "W22-04",
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "a settings field ships with proof it reaches the call, not merely the store",
+      "write_scope": [
+        "docs/TESTING.md"
+      ],
+      "acceptance": [
+        "The testing guide states that a new setting needs a test asserting the value reaches the code that consumes it",
+        "The rule names the worked example, so it reads as a scar rather than a preference",
+        "It says what such a test looks like when the consumer is a third-party client whose internals cannot be inspected"
+      ],
+      "notes": [
+        "LESSON L-50. \"Settable and inert\" recurred one layer up each time it was fixed. W10-57 added requestTimeoutMs to the registry with validation and a comment explaining why it exists. providers-wire.ts omitted it from BOTH directions \u2014 the failure its own module header names. Once that was wired, providerForConfig dropped it for exactly the two LOCAL kinds the field was added for. Each layer had tests; none asserted the value arrived.",
+        "It was caught only by setting the value over HTTP against a live daemon and watching the run still die at the old ceiling. A unit test at any single layer would have passed.",
+        "Cheap to state, hard to remember unattended \u2014 which is why it belongs in TESTING.md beside the other planted-defect discipline rather than in a reviewer's head."
+      ]
+    },
+    {
+      "stories": [
+        "US-501"
+      ],
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
