@@ -14307,6 +14307,35 @@
       ]
     },
     {
+      "id": "W22-06",
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "title": "the Law 3 validator run enforces the ratchets it already reports",
+      "write_scope": [
+        "scripts/run-validators.mjs",
+        "conductor.config.json"
+      ],
+      "acceptance": [
+        "The Law 3 validator command fails when a ratcheted count exceeds its baseline, as the per-ticket gate already does",
+        "The baselines live in one place, so the two callers cannot drift apart",
+        "A validator with no baseline is unaffected"
+      ],
+      "notes": [
+        "FOUND 2026-08-28 while working W22-02. run-validators.mjs invokes `node scripts/validate-exports.mjs` with NO --max and NO --max-buried, so under `pnpm validate` \u2014 the only place Law 3 runs it \u2014 the validator always exits 0 no matter what the count is. The ratchet bites only in the per-ticket conductor gate, which reads its own numbers from conductor.config.json (--max 49, --max-buried 47).",
+        "So the same validator is enforcing in one place and reporting in another, and the numbers are already stale relative to each other: the measured counts are 47 and 47 against a configured 49 and 47. That is the L-47 shape one level up \u2014 not a check nobody runs, but a check that runs without its teeth.",
+        "DELIBERATELY NOT FOLDED INTO W22-02, which found it. Wiring a hard baseline into the Law 3 path has blast radius on every future ticket's gate, and W22-02 was already changing what gets COUNTED \u2014 a red gate would then be unattributable between new debt and a new counting rule. Same argument as W22-05: bundling two changes hides one behind the other.",
+        "W22-02 left the counting honest and unchanged (47/47 before and after its stripComments fix), so this ticket starts from known-good numbers."
+      ]
+    },
+    {
       "stories": [
         "US-501"
       ],
