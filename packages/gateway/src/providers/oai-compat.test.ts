@@ -1506,3 +1506,74 @@ describe('streaming carries requestExtras too (W13-15)', () => {
     );
   });
 });
+
+describe('a timed-out call names the model it was for (W22-07)', () => {
+  /** What `AbortSignal.timeout` actually throws — name, not class. */
+  function timeoutError(): Error {
+    return Object.assign(new Error('The operation was aborted due to timeout'), {
+      name: 'TimeoutError',
+    });
+  }
+
+  it(
+    'RED FIXTURE: chat() surfaces the model. Asserting on the error CLASS alone ' +
+      'would have passed while the model never left the request — the ' +
+      '"settable and inert" shape docs/TESTING.md 6c was written for',
+    async () => {
+      const fetchImpl = (async () => {
+        throw timeoutError();
+      }) as unknown as typeof fetch;
+      const provider = createOaiCompatProvider({
+        id: 'lm-studio',
+        baseUrl: 'http://localhost:1234/v1',
+        fetchImpl,
+        costTable: NO_COST,
+      });
+
+      await expect(
+        provider.chat({ model: 'qwen3.8-flash-next', messages: [{ role: 'user', content: 'hi' }] }),
+      ).rejects.toThrow(/qwen3\.8-flash-next/);
+    },
+  );
+
+  it('the model reaches the error object, not only the message', async () => {
+    const fetchImpl = (async () => {
+      throw timeoutError();
+    }) as unknown as typeof fetch;
+    const provider = createOaiCompatProvider({
+      id: 'lm-studio',
+      baseUrl: 'http://localhost:1234/v1',
+      fetchImpl,
+      costTable: NO_COST,
+    });
+
+    const err = await provider
+      .chat({ model: 'gemma-4-e4b-it-mlx', messages: [{ role: 'user', content: 'hi' }] })
+      .then(() => undefined)
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProviderTimeoutError);
+    expect((err as ProviderTimeoutError).model).toBe('gemma-4-e4b-it-mlx');
+    expect((err as ProviderTimeoutError).providerId).toBe('lm-studio');
+  });
+
+  it('model discovery still times out WITHOUT a model, because it has none', async () => {
+    // The degrade-honestly half of the acceptance: listModels is not for any
+    // model, so naming one would be an invention.
+    const fetchImpl = (async () => {
+      throw timeoutError();
+    }) as unknown as typeof fetch;
+    const provider = createOaiCompatProvider({
+      id: 'lm-studio',
+      baseUrl: 'http://localhost:1234/v1',
+      fetchImpl,
+      costTable: NO_COST,
+    });
+
+    const err = await provider
+      .listModels()
+      .then(() => undefined)
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProviderTimeoutError);
+    expect((err as ProviderTimeoutError).model).toBeUndefined();
+  });
+});

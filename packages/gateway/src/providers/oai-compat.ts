@@ -96,6 +96,9 @@ export class OaiCompatProvider implements Provider {
     path: string,
     init: RequestInit,
     timeoutMs: number,
+    // W22-07: the model this call is FOR, when the caller knows it. Model
+    // discovery and warm-up calls legitimately do not.
+    model?: string,
   ): Promise<Response> {
     const url = `${this.baseUrl}${path}`;
     try {
@@ -112,7 +115,7 @@ export class OaiCompatProvider implements Provider {
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
-        throw new ProviderTimeoutError(this.id, timeoutMs);
+        throw new ProviderTimeoutError(this.id, timeoutMs, model);
       }
       throw new ProviderUnreachableError(this.id, err);
     }
@@ -140,8 +143,9 @@ export class OaiCompatProvider implements Provider {
     path: string,
     init: RequestInit,
     timeoutMs: number,
+    model?: string,
   ): Promise<T> {
-    const response = await this.fetchRaw(path, init, timeoutMs);
+    const response = await this.fetchRaw(path, init, timeoutMs, model);
     if (!response.ok) await this.throwForStatus(response);
     return (await response.json()) as T;
   }
@@ -175,6 +179,7 @@ export class OaiCompatProvider implements Provider {
           '/chat/completions',
           { method: 'POST', body: JSON.stringify(body) },
           this.requestTimeoutMs,
+          request.model,
         );
 
         const choice = raw.choices?.[0];
@@ -200,7 +205,7 @@ export class OaiCompatProvider implements Provider {
     await this.ensureWarm();
     // W13-22: mapAbortsToTimeout names a mid-body stall so a session absorbs it.
     yield* runQueuedStream(this.queue, () =>
-      mapAbortsToTimeout(this.streamEvents(request), this.id, this.streamIdleMs),
+      mapAbortsToTimeout(this.streamEvents(request), this.id, this.streamIdleMs, request.model),
     );
   }
 
@@ -228,6 +233,7 @@ export class OaiCompatProvider implements Provider {
       '/chat/completions',
       { method: 'POST', body: JSON.stringify(body), signal: idle.signal },
       this.requestTimeoutMs,
+      request.model,
     );
     let content = '';
     let role: ChatRole = 'assistant';

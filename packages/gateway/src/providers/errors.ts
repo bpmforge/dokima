@@ -58,9 +58,31 @@ export class ProviderUnsupportedRoleError extends Error {
   }
 }
 
+/**
+ * A call that ran past its ceiling — and WHICH model ran past it (W22-07).
+ *
+ * The message used to be "lm-studio: request timed out after 300000ms", which
+ * names the host and not the thing that was slow. C-4 means a user always has
+ * at least two models configured — a maker and a distinct reviewer — so being
+ * told to "pick a faster model" without being told WHICH of the two ran long
+ * leaves them guessing between the two halves of their own setup. Measured
+ * live 2026-08-28 against LM Studio serving both.
+ *
+ * `model` is OPTIONAL and degrades honestly: a throw site that does not know
+ * the model (the request-queue wait in `asProviderTimeout`, a provider whose
+ * failure happens before a model is chosen) omits it rather than inventing
+ * one, and the message is then exactly what it always was.
+ */
 export class ProviderTimeoutError extends Error {
-  constructor(providerId: string, timeoutMs: number) {
-    super(`${providerId}: request timed out after ${timeoutMs}ms`);
+  constructor(
+    public readonly providerId: string,
+    public readonly timeoutMs: number,
+    public readonly model?: string,
+  ) {
+    super(
+      `${providerId}${model === undefined ? '' : ` (model ${model})`}: ` +
+        `request timed out after ${timeoutMs}ms`,
+    );
     this.name = 'ProviderTimeoutError';
   }
 }

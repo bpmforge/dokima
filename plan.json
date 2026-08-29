@@ -14342,7 +14342,7 @@
       "points": 3,
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14352,6 +14352,7 @@
         "packages/gateway/src/providers/errors.ts",
         "packages/gateway/src/providers/errors.test.ts",
         "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
         "packages/gateway/src/providers/streaming.ts"
       ],
       "acceptance": [
@@ -14363,7 +14364,13 @@
       "notes": [
         "SPLIT FROM W21-96 criterion 3, which its scope (a route-level error mapper) could never satisfy. Measured live 2026-08-28: the message is \"lm-studio: request timed out after 300000ms\". C-4 means a user has TWO models configured \u2014 a maker and a distinct reviewer \u2014 and this tells them to pick a faster one without saying which of the two ran long.",
         "THE MODEL IS AVAILABLE WHERE THE ERROR IS THROWN, which is why this is a gateway ticket and not a plumbing exercise: oai-compat.ts:115 and streaming.ts:196 both construct ProviderTimeoutError inside a call that already has the request body, and the model id is in it. ProviderTimeoutError takes (providerId, timeoutMs) today and needs an optional third.",
-        "THE STEP IS A DIFFERENT PROBLEM and is deliberately NOT in this acceptance. Which pipeline step ran long is known only to the caller in apps/server, not to the gateway, and inventing a step name inside a provider would be worse than omitting it."
+        "THE STEP IS A DIFFERENT PROBLEM and is deliberately NOT in this acceptance. Which pipeline step ran long is known only to the caller in apps/server, not to the gateway, and inventing a step name inside a provider would be worse than omitting it.",
+        "SCOPE WIDENED BY ONE FILE \u2014 oai-compat.test.ts \u2014 and the omission was my own, in a ticket filed an hour earlier in this same session. The filing listed three source files and exactly one test twin. That is the L-54 class again, and worth recording rather than quietly fixing: writing the rule down (W22-03) and writing the lesson down (L-54) did not stop me making the mistake, only made it cheap to catch. The file was verified unowned.",
+        "THE TEST THAT FORCED THE WIDENING IS THE ONE THAT MATTERS. docs/TESTING.md 6c \u2014 written earlier today under W22-04 \u2014 says a value ships with proof it reaches the CALL, not merely the store. Asserting ProviderTimeoutError can HOLD a model is the store; that test passes while the model never leaves the request. The composition test drives provider.chat() through a fetchImpl that throws a TimeoutError and asserts the model appears, which is the assertion that would have failed.",
+        "THREADED, not bolted on: ProviderTimeoutError takes an optional third argument; mapAbortsToTimeout carries one through for the streaming path; fetchRaw and requestJson take the model the call is FOR. chat() and chatStream() both have request.model in hand, which is why this was a gateway ticket rather than a plumbing exercise.",
+        "DEGRADES HONESTLY, with a fixture: listModels() times out with NO model, because model discovery is not for any model and naming one would be an invention. The request-queue wait (asProviderTimeout) likewise keeps its old message. A caller that cannot know does not guess.",
+        "RED FIXTURES PROVEN by stashing all three source files: 4 of 56 fail, and they are the four that assert the model \u2014 the degrade-honestly test passes either way, which is correct, since it asserts an absence.",
+        "THE STEP HALF REMAINS OPEN and is not a gap in this ticket: which pipeline step ran long is known only in apps/server, and the acceptance deliberately excluded it. The message now reads \"lm-studio (model qwen3.8-flash-next): request timed out after 300000ms\"."
       ]
     },
     {

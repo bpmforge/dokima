@@ -188,12 +188,16 @@ export async function* mapAbortsToTimeout<T>(
   inner: AsyncIterable<T>,
   providerId: string,
   idleMs: number,
+  // W22-07. Optional, and the providers that do not pass it keep the message
+  // they had: a stream stall should say which model went quiet, but a caller
+  // that cannot know must not guess.
+  model?: string,
 ): AsyncGenerator<T> {
   try {
     yield* inner;
   } catch (err) {
     if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
-      throw new ProviderTimeoutError(providerId, idleMs);
+      throw new ProviderTimeoutError(providerId, idleMs, model);
     }
     throw err;
   }
