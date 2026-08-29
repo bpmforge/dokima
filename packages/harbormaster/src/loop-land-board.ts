@@ -234,6 +234,8 @@ export function parkBeforeAttempting(
   attempts: never[];
   landed: false;
   parked: true;
+  parkedReason: 'cannot_start';
+  parkedDetail: string;
   finalStatus: string;
 } {
   commentTicket(
@@ -251,6 +253,12 @@ export function parkBeforeAttempting(
     attempts: [],
     landed: false,
     parked: true,
+    // W21-72: this function is HANDED the reason and comments it on the ticket
+    // — then dropped it from the outcome, so the run summary printed
+    // "parked (unknown) after 0 attempt(s)" while the ledger held a complete
+    // explanation. The reason was never missing; only the report lost it.
+    parkedReason: 'cannot_start',
+    parkedDetail: reason,
     finalStatus: requireTicket(options.log, ticket.id).status,
   };
 }

@@ -60,6 +60,40 @@ export function runSummaryLine(runId: string, counts: RunSummaryCounts): string 
 }
 
 /**
+ * What to print inside `parked (…)` — W21-72.
+ *
+ * This was `outcome.parkedReason ?? 'unknown'`, and live on run 55 it printed
+ * "PLAN-vault-002: parked (unknown) after 0 attempt(s)" while the ledger held
+ * a complete, well-written explanation at the same moment. The reason was
+ * never missing: parks raised BEFORE the first attempt discarded it when
+ * building their outcome, so `defaultParkReason` (which only covers parks
+ * after an attempt) never saw them.
+ *
+ * "unknown after 0 attempts" reads as the product malfunctioning, and it is
+ * the first line a founder sees.
+ *
+ * Every park the product raises now carries a reason, so the fallback below is
+ * unreachable by construction. It stays as a fallback rather than a
+ * non-optional field because this function also renders outcomes read back
+ * from an older log, where the field genuinely may be absent — and it says
+ * "reason not recorded", which is true, instead of "unknown", which sounds
+ * like the product does not know why it stopped.
+ */
+function parkedLabel(outcome: {
+  readonly parkedReason?: string | null;
+  readonly parkedDetail?: string | null;
+}): string {
+  const detail = outcome.parkedDetail?.trim();
+  if (detail) {
+    // First sentence only: the full text is already commented on the ticket,
+    // and a summary line that wraps for a paragraph stops being a summary.
+    const firstSentence = /^(.*?[.!?])(\s|$)/.exec(detail)?.[1] ?? detail;
+    return firstSentence.length > 160 ? `${firstSentence.slice(0, 157)}...` : firstSentence;
+  }
+  return outcome.parkedReason ?? 'reason not recorded';
+}
+
+/**
  * Prints a finished run's per-ticket outcomes and its closing line. Lives here
  * rather than in `run-build.ts` because that file sits at the 400-line cap and
  * because reporting what a run did is one concern, not two.
@@ -71,6 +105,8 @@ export function printRunOutcomes(
     readonly ticketId: string;
     readonly landed: boolean;
     readonly parkedReason?: string | null;
+    /** W21-72: the written explanation a "cannot start" park already carries. */
+    readonly parkedDetail?: string | null;
     readonly attempts: readonly unknown[];
   }[],
   stopReason: string,
@@ -79,7 +115,7 @@ export function printRunOutcomes(
 ): void {
   for (const outcome of outcomes) {
     stdout(
-      `${outcome.ticketId}: ${outcome.landed ? 'landed' : `parked (${outcome.parkedReason ?? 'unknown'})`}` +
+      `${outcome.ticketId}: ${outcome.landed ? 'landed' : `parked (${parkedLabel(outcome)})`}` +
         ` after ${outcome.attempts.length} attempt(s)`,
     );
   }

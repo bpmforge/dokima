@@ -185,7 +185,14 @@ export type LandParkedReason =
   /** W21-44: the session made tool calls and changed nothing — not attempted. */
   | 'attempted_nothing'
   /** W21-58: every attempt died on the provider — not a judgement about the ticket. */
-  | 'provider_unavailable';
+  | 'provider_unavailable'
+  /**
+   * W21-72: the ticket could not be STARTED — a stale worktree, an unbuildable
+   * base, a scope refusal. Every one of these already has a written reason
+   * that gets commented on the ticket; before this they were reported as no
+   * reason at all, which the run summary rendered as "unknown".
+   */
+  | 'cannot_start';
 export interface LandLoopTicketOutcome {
   readonly ticketId: string;
   readonly mode: LandEscalationMode;
@@ -196,6 +203,17 @@ export interface LandLoopTicketOutcome {
   readonly pushResults?: LandPushResults;
   readonly parked: boolean;
   readonly parkedReason?: LandParkedReason;
+  /**
+   * W21-72: the sentence a person should read, when the park has one.
+   *
+   * `parkedReason` is a closed enum chosen so the header switch cannot drift,
+   * and it is the right shape for the ladder's own outcomes. But a "cannot
+   * start" park is raised WITH a written explanation — the stale-worktree text
+   * runs to three clauses about why neither reusing nor recreating the
+   * worktree is the product's call — and collapsing that to an enum member
+   * throws away the only part a founder can act on.
+   */
+  readonly parkedDetail?: string;
   readonly finalStatus: Ticket['status'];
 }
 export interface LandLoopResult {
@@ -224,6 +242,9 @@ function refuseTicketBase(
     attempts: [],
     landed: false,
     parked: true,
+    // W21-72: `reason` is right here and used to be dropped on the floor.
+    parkedReason: 'cannot_start',
+    parkedDetail: reason,
     finalStatus: 'ready',
   };
 }

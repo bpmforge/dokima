@@ -139,6 +139,11 @@ function parkHeader(reason: LandParkedReason, ceiling: number): string {
       return 'Parked with evidence — the session made tool calls and changed NOTHING, so there is no work to judge and a further attempt would carry the same information (W21-44). The ticket is back in Ready; the tool histogram below is what it actually did.';
     case 'provider_unavailable':
       return 'Parked with evidence — EVERY attempt failed before the model could work: the provider endpoint refused each request (W21-58). Nothing here is a judgement about this ticket or the model chosen for it. Check the endpoint is up and has a model loaded, then re-run; the ticket is back in Ready and its worktree still holds whatever earlier runs committed.';
+    case 'cannot_start':
+      // W21-72. Deliberately short: unlike every other reason here, this park
+      // carries its own written explanation (`parkedDetail`), and repeating a
+      // generic sentence above it would bury the specific one.
+      return 'Parked before starting — the ticket could not be attempted at all. The reason is below; the ticket is back in Ready.';
     default:
       return `Parked with evidence — ladder attempt cap (${ceiling}) reached without a close (FR-H1/H2). The ticket is back in Ready; the next run will retry it, and will likely park again unless the evidence below is addressed.`;
   }

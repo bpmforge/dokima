@@ -13286,21 +13286,33 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-72",
       "title": "a park that happens before the first attempt reports its reason as \"unknown\"",
       "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-board.ts",
+        "packages/harbormaster/src/loop-land-board.test.ts",
         "packages/harbormaster/src/loop-land-report.ts",
-        "packages/harbormaster/src/loop-land-report.test.ts"
+        "apps/server/src/cli/run-summary.ts",
+        "apps/server/src/cli/run-summary.test.ts"
       ],
       "notes": [
         "LIVE, run 55: the summary line read \"PLAN-vault-002: parked (unknown) after 0 attempt(s)\". The ledger at the same moment held a complete explanation (seq 4446): \"PLAN-vault-002 cannot start: its worktree was created from a different base and its branch ... already holds commits, so reusing it would run against the wrong tree and recreating it would discard that work. Neither is the product's call.\"",
         "So the reason was known, well-written, and correct \u2014 the W21-52 StaleWorktreeError park doing its job. Only the run summary lost it. defaultParkReason() (W21-58) covers the paths that park AFTER an attempt; a park raised before attempt 1 never reaches it and falls through to the \"unknown\" default.",
         "Why it matters more than a cosmetic string: \"unknown after 0 attempts\" reads as the product malfunctioning, and it is the line a founder sees first. It sent me to the ledger to find out whether anything had happened at all. W21-64 is the same disease on the timeout path \u2014 a park whose printed reason does not match the reason the product actually has.",
-        "ACCEPTANCE: a ticket parked before its first attempt reports the park reason from the event that caused it; the \"unknown\" default is unreachable for any park the product itself raised; regression test covers the pre-attempt stale-worktree path."
+        "ACCEPTANCE: a ticket parked before its first attempt reports the park reason from the event that caused it; the \"unknown\" default is unreachable for any park the product itself raised; regression test covers the pre-attempt stale-worktree path.",
+        "SCOPE CORRECTED AT CLAIM, and this ticket's OWN NOTES prove the filed scope was wrong. It named loop-land-report.ts, which holds defaultParkReason \u2014 and the notes say plainly that \"a park raised before attempt 1 never reaches it\". The fix therefore could not be in the only file the scope allowed. The \"unknown\" string is in apps/server/src/cli/run-summary.ts and the dropped reason is in loop-land-board.ts. All six files verified clear of other open tickets.",
+        "THE REASON WAS NEVER MISSING \u2014 it was discarded. parkBeforeAttempting is HANDED the written explanation and comments it on the ticket, then built an outcome without it. refuseTicketBase (W21-37) does the identical thing. Both had the sentence in a local variable and dropped it on the floor.",
+        "FIXED AT ALL THREE PARK CONSTRUCTORS so acceptance 2 is structural rather than a promise: every park the product raises now sets parkedReason, and the two pre-attempt paths also carry parkedDetail \u2014 the sentence a person can act on. A closed enum alone would not do: the stale-worktree text runs to three clauses about why neither reusing nor recreating the worktree is the product's call, and collapsing that to a member throws away the only actionable part.",
+        "A NAMED MEMBER TOO, not just prose: \"cannot_start\" joins LandParkedReason so the header switch in loop-land-report.ts selects deliberately. Without one, these parks would fall through to the ladder-cap sentence \u2014 the exact W21-44 defect where a park after ONE attempt announced that a cap of two had been reached.",
+        "THE FALLBACK NOW SAYS \"reason not recorded\" RATHER THAN \"unknown\", and the distinction is the point. It is unreachable for any park this product raises, but it still renders outcomes read back from an OLDER log where the field genuinely may be absent \u2014 and \"unknown\" sounds like the product does not know why it stopped, which is a different and worse claim than \"this record predates the field\".",
+        "FIRST SENTENCE ONLY in the summary line: the full text is already commented on the ticket, and a summary that wraps for a paragraph stops summarising. Capped at 160 characters with an ellipsis.",
+        "W21-64 IS NOT SUBSUMED, checked rather than assumed. It is about the CONTENT of a timeout park's reason \u2014 whether the product says the ceiling is wrong for this model \u2014 not about a missing reason. It shares this file and stays open.",
+        "RED PROVEN by stashing the three sources: 4 of 14 fail, including both named RED FIXTURES."
       ],
       "acceptance": [
         "a ticket parked before its first attempt reports the park reason from the event that caused it",
