@@ -13977,7 +13977,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "in_progress",
       "points": 1,
       "module": "cli",
       "depends_on": [],
