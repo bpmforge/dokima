@@ -13917,7 +13917,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "in_progress",
       "points": 5,
       "module": "pipeline",
       "depends_on": [],
@@ -13925,7 +13925,7 @@
       "title": "the plan it writes for a customer is feature-only \u2014 no security, accessibility, performance or release work",
       "write_scope": [
         "packages/pipeline/src/decompose/**",
-        "apps/server/src/api/pipeline/gateway-model-port/ticket-phase.ts"
+        "apps/server/src/api/pipeline/gateway-model-port/ticket-drafts-phase.ts"
       ],
       "acceptance": [
         "A generated plan includes the quality work a product needs before release, not only its features \u2014 at minimum a security review, an accessibility pass, and a test-coverage step, each as real tickets with acceptance criteria",
@@ -13939,7 +13939,10 @@
         "PER-TICKET GATING IS A FLOOR, NOT A QUALITY BAR: DEFAULT_REQUIRED_VALIDATORS (packages/harbormaster/src/loop-gates-types.ts) is exactly [secrets-scan, validate-remote-parity]. Those catch a leaked credential and a wrong git remote. Nothing in the close gate asks whether the code is correct, accessible, fast, or tested beyond the ticket's own verify command.",
         "AND THE MECHANISM THAT WOULD ENFORCE RELEASE QUALITY HAS NO CUSTOMER PATH. `runPhaseGate` exists and is wired to an HTTP route (apps/server/src/api/pipeline/pipeline-routes/gate.ts:97), but grepping apps/web for it finds only the team-seat label \"phase-gate-runner\" in seats.ts/roles.ts \u2014 a ROLE NAME, never a call. No button, no fetch. A novice in the UI cannot run a phase gate; it is reachable only by hand-POSTing the API. Same buried-machinery class as W21-95 (Onboard existing repo) and the W16 audit theme.",
         "THE ASYMMETRY IS THE POINT. This repo holds ITSELF to phases, gates, validators, maker != verifier and receipts \u2014 CLAUDE.md Law 3 runs lint, typecheck, the full suite and e2e before any ticket closes. The product does not put that discipline into the plans it writes for users. A novice \u2014 the stated north star, someone with an idea and no clue \u2014 is exactly the person who does not know to ask for a security review.",
-        "SCOPE NOTE: the fix is in decomposition (what tickets get written), not in the gate. Whether the standard set is fixed, derived from the project type, or asked at setup is a founder decision. Filed rather than implemented for that reason."
+        "SCOPE NOTE: the fix is in decomposition (what tickets get written), not in the gate. Whether the standard set is fixed, derived from the project type, or asked at setup is a founder decision. Filed rather than implemented for that reason.",
+        "FOUNDER DECISION RECEIVED 2026-08-28: \"this application should be doing all the code checks and such because it is to help people develop their projects, especially those that want to automate their ideas or those that have no development experience.\" That settles the open question \u2014 the quality work belongs in the plan BY DEFAULT, not on request. Someone with no development background will never think to ask for a security review, which is the whole argument for the product planning one.",
+        "SCOPE CORRECTED at claim: the declared apps/server/.../ticket-phase.ts does not exist; the real file is ticket-drafts-phase.ts.",
+        "AND THE MECHANISM ALREADY EXISTS ON BOTH SIDES. content/validators/ ships 85 validators including validate-code-health.sh, validate-dead-code.sh, validate-security-controls.sh, validate-wcag-coverage.sh, validate-lint.sh and validate-tests.sh. W21-38 built the per-project requiredValidators setting and said in its own header: \"THIS ADDS THE MECHANISM, NOT A POLICY. Which of the 83 belong in a GENERATED PRODUCT gate is a founder decision.\" The product owns the checks and points two of them at a user project."
       ]
     },
     {
