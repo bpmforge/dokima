@@ -14644,7 +14644,7 @@
     {
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-501"
       ],
@@ -14655,9 +14655,13 @@
       "points": 1,
       "title": "the e2e temp-project teardown retries instead of racing",
       "write_scope": [
+        "apps/web/e2e/temp-project.ts",
         "apps/web/e2e/notifications.spec.ts",
         "apps/web/e2e/trace.spec.ts",
-        "apps/web/e2e/estimate.spec.ts"
+        "apps/web/e2e/estimate.spec.ts",
+        "apps/web/e2e/plans.spec.ts",
+        "apps/web/e2e/roster.spec.ts",
+        "apps/web/e2e/team.spec.ts"
       ],
       "acceptance": [
         "A temp project directory removal that loses a race is retried rather than failing the suite",
@@ -14667,7 +14671,11 @@
       "notes": [
         "DROPPED FOLLOW-UP from W21-77, filed 2026-08-29 during a completeness sweep. W21-77 fixed the SERVER half \u2014 computeProjectStats no longer logs when a project vanishes mid-read \u2014 and its note recorded that the failing `fs.rm` is inline in notifications.spec.ts with freshProjectPath duplicated across three specs, which \"would need all three and is a different change\". It was never filed.",
         "W21-77 measured five consecutive clean e2e runs after the server fix, so this is a latent flake rather than an active one \u2014 file it, do not treat it as urgent. node's fs.rm takes maxRetries/retryDelay for exactly this.",
-        "The duplication is the real cost: three copies of freshProjectPath means a teardown fix has to be made three times or it is not made."
+        "The duplication is the real cost: three copies of freshProjectPath means a teardown fix has to be made three times or it is not made.",
+        "SCOPE ANSWERED AT THE SCOPE READ, before claiming \u2014 the first ticket worked under the Law 1 clause added 2026-08-29, and it collided immediately. Two collisions, both answered by WIDENING (every file verified unowned) rather than by a note at close: (1) acceptance 2 says freshProjectPath must exist ONCE, which needs a shared file the filed scope did not include; (2) acceptance 1 covers every temp-project teardown, and those live in plans.spec.ts and roster.spec.ts too, which the filed scope also omitted.",
+        "THE FILED SCOPE UNDERCOUNTED: freshProjectPath is duplicated in 3 specs (notifications, trace, estimate) but the `fs.rm(dir, ...)` teardown appears in 4 (notifications x4 sites, plans x3, roster x1, team x2).",
+        "THE FIX ALREADY EXISTS IN THIS REPO, applied once: team.spec.ts already removes with `maxRetries: 8, retryDelay: 60`. So this is not a new technique to prove \u2014 it is one spec's fix that never reached the others, which is exactly what a shared helper prevents.",
+        "FOUND WHILE READING, beyond the ticket: trace.spec.ts and estimate.spec.ts create temp project directories and NEVER remove them. They were not in the ENOTEMPTY report because they never rm at all \u2014 they leak instead. Fixed here rather than filed, because the helper this ticket builds is precisely what they were missing."
       ]
     },
     {
