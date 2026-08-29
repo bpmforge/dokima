@@ -11540,7 +11540,7 @@
         "US-501"
       ],
       "phase": 21,
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W21-25",
       "points": 3,
@@ -11549,8 +11549,7 @@
       "role": "ux-engineer",
       "title": "discovered models survive a restart, or the UI says they did not",
       "write_scope": [
-        "apps/web/src/settings/**",
-        "apps/server/src/api/server/providers-routes.ts"
+        "apps/web/src/settings/**"
       ],
       "notes": [
         "Live: after a core restart the Models dropdown was empty and both providers read \"Not tested yet\", though nothing about them had changed. Discovery is in-memory, so every restart silently loses the catalogue and the Models tab becomes unusable until each provider is re-tested by hand.",
@@ -11558,7 +11557,15 @@
         "W21-89 FOLDED IN HERE (2026-08-28, founder decision). It was this same defect filed a second time from the server side, and its write_scope overlapped this ticket on apps/server/src/api/server/providers-routes.ts \u2014 a cross-lane overlap (ui x orchestrator) that validate-plan flagged as a P8 schema violation and Law 1 calls a schema bug. Neither could be worked as filed: W21-89 was too narrow for its own third criterion, which needs apps/web/src/settings/**. This ticket already owned both halves, so it absorbed the criteria and the W21-89 row was removed (the plan has no superseded status, and any write_scope left on it either recreated the overlap or was empty).",
         "From W21-89, observed on every restart: the Providers row returns to Reachability \"Not tested yet\" with Models \"\u2014\", and the dropdown reads \"No models discovered yet \u2014 test the lm-studio provider on the Providers tab\", though the provider is enabled, unchanged, and serving 34 models. This is the same trap a NEW project falls into, arriving by a different route.",
         "MECHANISM, verified while triaging: the catalog is cached nowhere. GET .../providers/:id/models recomputes it per request, and apps/web ProvidersPanel fills its catalogs state ONLY in testProvider (the Test click) \u2014 nothing runs on mount. That is why the fix needs both halves and one ticket must own them.",
-        "PERSISTENCE CAVEAT for whoever lands this: the obvious store is a settings key via putProjectSetting, but every settings write emits a settings.changed audit event (FR-S3), so caching a probe on every models fetch writes one event per fetch. Writing only when the result materially changes (status/source/model-id set) keeps the audit log meaningful \u2014 weigh it, do not discover it late."
+        "PERSISTENCE CAVEAT for whoever lands this: the obvious store is a settings key via putProjectSetting, but every settings write emits a settings.changed audit event (FR-S3), so caching a probe on every models fetch writes one event per fetch. Writing only when the result materially changes (status/source/model-id set) keeps the audit log meaningful \u2014 weigh it, do not discover it late.",
+        "THE CATALOGUE WAS NEVER LOST, and that changes the fix entirely. GET /providers/:id/models RECOMPUTES per request \u2014 the panel simply filled `catalogs` in testProvider alone, which only runs on a Test click. So nothing needed persisting; the panel needed to ASK. It now probes every ENABLED provider once when it opens.",
+        "THAT ALSO SIDESTEPS THE CAVEAT THIS TICKET WARNED ABOUT. The obvious store was a settings key, but every settings write emits a settings.changed audit event (FR-S3), so caching a probe per fetch would write one event per fetch and an audit log full of them says less, not more. No persistence, no events, no staleness to manage \u2014 the answer on screen was fetched when the screen opened.",
+        "THE SERVER HALF WAS NOT NEEDED. The filed scope included apps/server/src/api/server/providers-routes.ts (inherited from the folded W21-89), and the route already does the right thing \u2014 it recomputes. Only the client was silent. Scope narrowed to apps/web/src/settings/** and the route left untouched.",
+        "A FAILED PROBE ON OPEN IS QUIET, deliberately: the reachability chip already says \"Unreachable\" with the reason, and a red banner for a provider the person did not just touch reads as something they broke. A probe the USER asks for still reports loudly. There is a fixture for each.",
+        "ACCEPTANCE 4 STAYS HONEST: a DISABLED provider is not probed and still reads \"Not tested yet\". The automatic probe must not paper over the never-tested state, only remove the case where the state was wrong.",
+        "ONCE PER PROVIDER PER MOUNT, tracked explicitly rather than by \"is the catalog still undefined\" \u2014 a probe that FAILS never sets one, so that condition would retry forever against an endpoint that is down.",
+        "ONE VISIBLE BEHAVIOUR CHANGE, and it is honest: the probe control reads `catalogs[id] ? \"Refresh\" : \"Test\"`, so for an enabled provider it now says Refresh by the time anyone can click it. Nine existing tests asserted the literal \"Test\"; they now match the CONTROL rather than a transient label, with a note saying why.",
+        "RED PROVEN by stashing ProvidersPanel.tsx: the two mount-probe fixtures fail."
       ],
       "acceptance": [
         "After a restart the Models tab either shows the previously discovered models or states plainly that discovery must be re-run and why",

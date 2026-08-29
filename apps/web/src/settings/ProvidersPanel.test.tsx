@@ -194,6 +194,14 @@ describe('ProvidersPanel empty + registration states (AC1, AC2 states table)', (
   });
 });
 
+/**
+ * W21-25 changed one thing these tests see: the panel now probes enabled
+ * providers when it opens, so by the time a click can happen the probe control
+ * already reads "Refresh" rather than "Test". The label logic is untouched
+ * (`catalogs[id] ? 'Refresh' : 'Test'`) — what changed is that a catalog
+ * exists on mount, which is the whole point of the ticket. Matched by either
+ * name so the tests assert the CONTROL rather than a transient label.
+ */
 describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written")', () => {
   const ENTRY = {
     id: 'lm1',
@@ -218,7 +226,7 @@ describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written
     );
     render(<ProvidersPanel projectId="p1" />);
     await screen.findByText('lm1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     await screen.findByText('Bundled');
     await screen.findByText(/connect ECONNREFUSED/);
@@ -240,7 +248,7 @@ describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written
     );
     render(<ProvidersPanel projectId="p1" />);
     await screen.findByText('lm1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     await screen.findByText('Unreachable');
     await screen.findByText('timeout');
@@ -255,7 +263,7 @@ describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written
     );
     render(<ProvidersPanel projectId="p1" />);
     await screen.findByText('lm1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     await screen.findByText('Reachable');
     await screen.findByText(/serves no models yet/);
@@ -286,7 +294,7 @@ describe('ProvidersPanel reachability states (UX_SPEC §6a "every state, written
     );
     render(<ProvidersPanel projectId="p1" />);
     await screen.findByText('oa1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     await screen.findByText(/needs a credential/);
   });
@@ -464,7 +472,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     expect(modelSelect.disabled).toBe(true);
 
     await screen.findByText('ollama1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     await vi.waitFor(() => {
       expect(modelSelect.disabled).toBe(false);
@@ -495,7 +503,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     );
     render(<MatrixWithProviders />);
     await screen.findByText('off1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     const modelSelect = (await screen.findByLabelText('Model')) as HTMLSelectElement;
     // Test resolved (models fetched), but the disabled provider's models
@@ -549,7 +557,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     );
     render(<MatrixWithProviders />);
     await screen.findByText('ollama1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     const modelSelect = (await screen.findByLabelText('Model')) as HTMLSelectElement;
     await vi.waitFor(() => expect(modelSelect.disabled).toBe(false));
@@ -596,7 +604,7 @@ describe('ModelMatrixPanel model picker (AC1 "select from a LIST", composed via 
     );
     render(<MatrixWithProviders />);
     await screen.findByText('ollama1');
-    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Test|Refresh)$/ }));
 
     await screen.findByText(/missing from any registered provider/);
   });
@@ -894,5 +902,88 @@ describe('the request ceiling is settable in the UI (W22-08)', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Edit/ })[0]!);
     const field = (await screen.findByLabelText(/Request timeout/)) as HTMLInputElement;
     expect(field.value).toBe('1500000');
+  });
+});
+
+describe('the Models tab is usable again after a restart (W21-25)', () => {
+  it('RED FIXTURE: opening the panel probes enabled providers, so the dropdown is not empty', async () => {
+    // Live, after every core restart: the dropdown was empty and both
+    // providers read "Not tested yet", though nothing about them had changed.
+    // The catalogue was never lost — GET /providers/:id/models recomputes it
+    // per request — the panel simply never asked again.
+    let modelsFetched = 0;
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() =>
+          jsonResponse({
+            providers: [{ id: 'lm-studio', kind: 'lm-studio', enabled: true }],
+          }),
+        ),
+        getModels(() => {
+          modelsFetched += 1;
+          return jsonResponse({
+            status: 'ok',
+            source: 'discovered',
+            models: [{ id: 'qwen3-coder-next' }],
+          });
+        }),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+
+    // No Test click anywhere: the panel asked on its own.
+    expect(await screen.findByText('Reachable')).toBeDefined();
+    expect(modelsFetched).toBeGreaterThan(0);
+  });
+
+  it('shows WHEN it was checked, so a result on screen is visibly current', async () => {
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() =>
+          jsonResponse({
+            providers: [{ id: 'lm-studio', kind: 'lm-studio', enabled: true }],
+          }),
+        ),
+        getModels(() =>
+          jsonResponse({ status: 'ok', source: 'discovered', models: [{ id: 'm' }] }),
+        ),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    expect(await screen.findByText(/^Checked /)).toBeDefined();
+  });
+
+  it('a DISABLED provider is not probed and still reads "Not tested yet"', async () => {
+    // Acceptance 4: the never-tested state must stay honest rather than being
+    // papered over by an automatic probe.
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() =>
+          jsonResponse({
+            providers: [{ id: 'ollama', kind: 'ollama', enabled: false }],
+          }),
+        ),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    expect(await screen.findByText('Not tested yet')).toBeDefined();
+  });
+
+  it('a probe that FAILS on open shows the chip, not a red banner', async () => {
+    // A banner for a provider the person did not just touch reads as
+    // something they broke. The chip already carries the reason.
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() =>
+          jsonResponse({
+            providers: [{ id: 'lm-studio', kind: 'lm-studio', enabled: true }],
+          }),
+        ),
+        getModels(() => jsonResponse({ title: 'nope', detail: 'endpoint unreachable' }, 503)),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText('lm-studio');
+    expect(screen.queryByText(/Failed to test/)).toBeNull();
   });
 });

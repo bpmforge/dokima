@@ -71,6 +71,10 @@ export function ProvidersPanel({
 }: ProvidersPanelProps) {
   const [entries, setEntries] = useState<ProviderEntry[] | null>(null);
   const [catalogs, setCatalogs] = useState<Record<string, ProviderCatalog>>({});
+  /** W21-25: when the UI last asked, so a result on screen can be seen to be current. */
+  const [checkedAt, setCheckedAt] = useState<Record<string, string>>({});
+  /** W21-25: providers this mount has already probed — see the effect below. */
+  const [probed, setProbed] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -102,16 +106,47 @@ export function ProvidersPanel({
   }, [entries, onEntriesChange]);
 
   const testProvider = useCallback(
-    async (providerId: string) => {
+    async (providerId: string, opts: { quiet?: boolean } = {}) => {
       try {
         const catalog = await fetchProviderModels(projectId, providerId);
         setCatalogs((prev) => ({ ...prev, [providerId]: catalog }));
+        setCheckedAt((prev) => ({ ...prev, [providerId]: new Date().toISOString() }));
       } catch (err) {
-        setError(errorMessage(err, `Failed to test ${providerId}`));
+        // W21-25: a probe the USER asked for reports its failure loudly. One
+        // the panel ran by itself on open must not — the reachability chip
+        // already says "Unreachable" with the reason, and a red banner for a
+        // provider the person did not just touch reads as something they broke.
+        if (!opts.quiet) setError(errorMessage(err, `Failed to test ${providerId}`));
       }
     },
     [projectId],
   );
+
+  /**
+   * W21-25: ask again on open. Nothing did.
+   *
+   * Live, after every core restart: the Models dropdown was empty and both
+   * providers read "Not tested yet", though nothing about them had changed —
+   * the same trap a NEW project falls into, reached by a different route.
+   *
+   * THE CATALOGUE WAS NEVER LOST. `GET /providers/:id/models` recomputes it
+   * per request; the panel simply filled `catalogs` in `testProvider` alone,
+   * which only ever runs on a Test click. So the fix is not persistence — it
+   * is asking. That also sidesteps the audit caveat this ticket warned about:
+   * caching a probe through `putProjectSetting` writes a settings.changed
+   * event per fetch (FR-S3), and an audit log full of them says less, not more.
+   *
+   * ONCE PER PROVIDER PER MOUNT, tracked explicitly rather than by "is the
+   * catalog still undefined" — a probe that FAILS never sets one, so that
+   * condition would retry forever against an endpoint that is down.
+   */
+  useEffect(() => {
+    if (!entries) return;
+    const pending = entries.filter((entry) => entry.enabled && !probed.has(entry.id));
+    if (pending.length === 0) return;
+    setProbed((prev) => new Set([...prev, ...pending.map((entry) => entry.id)]));
+    for (const entry of pending) void testProvider(entry.id, { quiet: true });
+  }, [entries, probed, testProvider]);
 
   const handleKindChange = (kind: ProviderKind) => {
     const baseUrl =
@@ -309,6 +344,15 @@ export function ProvidersPanel({
                   <td>
                     <span className={badgeClass}>{chip}</span>
                     {detail && <p className="settings__hint">{detail}</p>}
+                    {/* W21-25: WHEN this was checked, so a result on screen
+                        can be seen to be current rather than assumed to be.
+                        Absent for a provider nothing has probed, which keeps
+                        "Not tested yet" honest. */}
+                    {checkedAt[entry.id] && (
+                      <p className="settings__hint">
+                        Checked {new Date(checkedAt[entry.id]!).toLocaleTimeString()}
+                      </p>
+                    )}
                   </td>
                   <td>{catalogs[entry.id]?.models.length ?? '—'}</td>
                   <td>
