@@ -231,6 +231,61 @@ test importing `child_process` must declare a timeout" — would fire on all 27
 grep matches, most without evidence, and a guard that fires without evidence
 teaches people to silence it.
 
+## 6c. A setting ships with proof it reaches the CALL, not merely the store (W22-04)
+
+A configuration field can be stored, validated, typed, threaded through three
+layers and still never reach the thing it governs. Every layer has tests; none
+of them assert that the value arrived. **"Settable and inert" is the default
+outcome, not an unlucky one** — and it recurs one layer further up each time it
+is fixed.
+
+**The scar.** `requestTimeoutMs` (W10-57) was added to the provider registry
+with validation and a comment explaining why it exists. Then:
+
+1. `providers-wire.ts` omitted it from **both** `toWire` and `fromWire` — the
+   exact failure that module's own header warns about. Set it over HTTP and it
+   round-tripped to nothing.
+2. Once that was wired, `providerForConfig` dropped it for precisely the two
+   LOCAL provider kinds (`ollama`, `lm-studio`) the field had been added for,
+   constructing the provider with `{ baseUrl }` alone.
+
+Each layer's unit tests passed at every step. The defect was found by setting
+the value over HTTP against a live daemon and watching the run die at the *old*
+ceiling anyway — and even then it took three raises (20 min, 30 min, no change)
+before the diagnosis closed, because a fourth limit was firing (§ L-51).
+
+**The rule.** A change that adds or moves a setting lands with a test that
+asserts the value reaches its **consumer**, not its store. Concretely, the test
+fails if you delete the field from any single layer between the two.
+
+**When you own the consumer**, assert on the consumer: construct it through the
+real path and read back what it received.
+
+**When the consumer is a third party whose internals you cannot inspect** — an
+HTTP client, a native binding, an SDK — you cannot assert on its behaviour, and
+you should not try to. Assert at **the last seam you own: the arguments handed
+across the boundary.** Inject the constructor (or the factory that calls it) as
+a test double, drive the real configuration path, and assert on the captured
+options object. That is a real assertion about your own code, and it is exactly
+the assertion that was missing above: a spy on the provider factory would have
+shown `{ baseUrl }` with no `requestTimeoutMs`, in milliseconds, with no daemon
+and no live model.
+
+Do **not** substitute a live end-to-end run for this test. The live run is what
+*found* the defect, but it is slow, it needs a model, and Law 9a keeps it out of
+CI — so it cannot be the thing that stops the defect coming back.
+
+**Two worked examples now in the tree**, one per layer of the scar:
+
+- `apps/server/src/api/server/providers-wire.test.ts` — asserts the field
+  survives `toWire` **and** `fromWire`, and that an entry without it still
+  serialises to `undefined` rather than a zero. A one-directional test would
+  have passed against the original defect.
+- `apps/server/src/api/pipeline/gateway-model-port/provider.test.ts` — drives
+  the real `providerForConfig` path per provider kind and reads the value back
+  off the constructed provider, including the default when nothing is set.
+  This is the last-seam assertion: it never calls a model.
+
 ## 7. E2E — Playwright over the Canvas with a fake-model gateway
 
 - **Fake-model gateway**: a scripted provider adapter implementing FR-G1's interface,

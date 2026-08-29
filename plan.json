@@ -14233,7 +14233,7 @@
       ],
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W22-04",
       "lane": "quality",
@@ -14251,7 +14251,12 @@
       "notes": [
         "LESSON L-50. \"Settable and inert\" recurred one layer up each time it was fixed. W10-57 added requestTimeoutMs to the registry with validation and a comment explaining why it exists. providers-wire.ts omitted it from BOTH directions \u2014 the failure its own module header names. Once that was wired, providerForConfig dropped it for exactly the two LOCAL kinds the field was added for. Each layer had tests; none asserted the value arrived.",
         "It was caught only by setting the value over HTTP against a live daemon and watching the run still die at the old ceiling. A unit test at any single layer would have passed.",
-        "Cheap to state, hard to remember unattended \u2014 which is why it belongs in TESTING.md beside the other planted-defect discipline rather than in a reviewer's head."
+        "Cheap to state, hard to remember unattended \u2014 which is why it belongs in TESTING.md beside the other planted-defect discipline rather than in a reviewer's head.",
+        "LANDED as docs/TESTING.md section 6c, beside the planted-defect harness (6) and the starved-tests method (6b) rather than in a reviewer's head, which is where this rule has lived until now.",
+        "THE THIRD CRITERION IS THE ONE WITH TEETH, and the answer is: when the consumer is a third party whose internals you cannot inspect, do not assert on its behaviour \u2014 assert at the last seam you own, the arguments handed across the boundary. Inject the constructor or factory as a double, drive the real configuration path, read the captured options. A spy on the provider factory would have shown \"{ baseUrl }\" with no requestTimeoutMs, in milliseconds, with no daemon and no live model.",
+        "THE RULE HAS TWO LIVE EXEMPLARS ALREADY IN THE TREE, so it is not aspirational: providers-wire.test.ts asserts the field survives BOTH toWire and fromWire (a one-directional test would have passed against the original defect), and gateway-model-port/provider.test.ts drives providerForConfig per provider kind and reads the value back off the constructed provider, including the default. Both are cited by path in 6c. Verified they exist rather than assumed \u2014 a rule citing a test that does not exist would be the same defect one level up.",
+        "SAYS EXPLICITLY that a live end-to-end run does not substitute for the test. The live run is what FOUND the defect, but it is slow, needs a model, and Law 9a keeps it out of CI, so it can never be what stops the defect returning.",
+        "NO CODE CHANGE, and deliberately none: write_scope is docs/TESTING.md alone, the two exemplars already exist, and inventing a third to justify the ticket would be work nobody asked for."
       ]
     },
     {
