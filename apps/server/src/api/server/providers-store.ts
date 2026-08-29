@@ -28,6 +28,32 @@ import {
 export const PROVIDERS_SETTINGS_KEY = 'providers';
 
 /**
+ * Validates a registry that IS present, and says so when it will not read
+ * (W21-98).
+ *
+ * All three readers below already distinguished "nothing configured" from
+ * "configured but unreadable" — the `raw === undefined` guard IS that test —
+ * and then threw the distinction away, catching the validation error and
+ * returning the same empty array. A user whose registry had gone invalid was
+ * shown a Settings panel saying no providers were configured, which is the
+ * one thing that was definitely not true, and the CLI/GUI divergence this
+ * module's header exists to prevent is exactly what that looks like from the
+ * outside.
+ *
+ * It still returns empty. A broken registry has no entries to offer and
+ * throwing would take Settings down (FR-S4). What changes is that the reason
+ * leaves the process instead of dying in a bare `catch`.
+ */
+function readRegistry(raw: unknown, scope: string): ProviderEntry[] {
+  try {
+    return validateProviderRegistry(raw);
+  } catch (err) {
+    console.error(`[settings] ${scope} provider registry could not be read:`, err);
+    return [];
+  }
+}
+
+/**
  * Reads the registry. A malformed stored value degrades to an empty registry
  * rather than throwing: an unreadable setting must not take the whole
  * settings surface down, and "no providers configured" is a normal,
@@ -55,11 +81,7 @@ export async function listProviders(projectPath: string): Promise<ProviderEntry[
   const effective = await getEffectiveProjectSettings(projectPath);
   const raw = effective[PROVIDERS_SETTINGS_KEY]?.value;
   if (raw === undefined) return [];
-  try {
-    return validateProviderRegistry(raw);
-  } catch {
-    return [];
-  }
+  return readRegistry(raw, 'effective');
 }
 
 /**
@@ -72,11 +94,7 @@ export async function listProjectProviders(
   const settings = await getProjectSettings(projectPath);
   const raw = settings[PROVIDERS_SETTINGS_KEY];
   if (raw === undefined) return [];
-  try {
-    return validateProviderRegistry(raw);
-  } catch {
-    return [];
-  }
+  return readRegistry(raw, 'project');
 }
 
 /**
@@ -91,11 +109,7 @@ export async function listProjectProviders(
 export async function listGlobalProviders(): Promise<ProviderEntry[]> {
   const raw = (await getGlobalSettings())[PROVIDERS_SETTINGS_KEY];
   if (raw === undefined) return [];
-  try {
-    return validateProviderRegistry(raw);
-  } catch {
-    return [];
-  }
+  return readRegistry(raw, 'global');
 }
 
 /**

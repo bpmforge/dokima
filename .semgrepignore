@@ -1,0 +1,28 @@
+# .semgrepignore — what a security scan must not read (W21-98).
+#
+# CAREFUL: the audit runner adds its own sensible defaults ONLY when this file
+# does not exist (semgrep-full-audit.sh, "if [ ! -f .semgrepignore ]"), so
+# creating it REPLACES them. They are repeated here rather than inherited.
+#
+# DELIBERATELY SHORT. The temptation with a 730-finding scan is to silence the
+# noisiest paths — tests are 376 of the 450 fs-read-user-input hits — and that
+# would be a mistake twice over: this repo's red fixtures are part of ticket
+# acceptance (docs/TESTING.md), so a finding in a test can be a real finding,
+# and a scan that has been trimmed until it is quiet is the theatre the whole
+# ticket is about. Volume is handled by the BASELINE instead, which makes a
+# later scan show drift rather than the backlog. See docs/security/SAST_BASELINE.md.
+
+# The runner's defaults, restored.
+node_modules/
+vendor/
+dist/
+build/
+coverage/
+*.min.js
+**/__generated__/**
+
+# The scan's own output. Not tidiness: semgrep-results.json embeds every
+# matched source line, so scanning it re-reports each finding a second time
+# and re-trips the secret rules on the fixture credentials they quoted.
+docs/security/semgrep-results.json
+docs/security/semgrep-results.sarif

@@ -7,9 +7,9 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
-import { projectChatEnvelopes } from './chat-projection.js';
+import { chatEnvelopesForProject, projectChatEnvelopes } from './chat-projection.js';
 
 const dirs: string[] = [];
 afterEach(async () => {
@@ -106,6 +106,52 @@ describe('projectChatEnvelopes (W13-63)', () => {
       expect(projectChatEnvelopes(log, 'proj-1')).toEqual([]);
     } finally {
       log.close();
+    }
+  });
+});
+
+/**
+ * W21-98, the SAST triage's worked example. `chatEnvelopesForProject` said
+ * "Absent DB → empty stream (a project that has never run has no chat —
+ * truthfully)" and then caught EVERYTHING from `openEventLog`, so a corrupt
+ * database, a permissions error and a schema mismatch all rendered as the
+ * same silent "no chat yet".
+ *
+ * The distinction is one this codebase already draws — `computeProjectStats`
+ * re-checks the path and logs anything that is still there and still will not
+ * open (W21-77) — so this is not a new idea, it is the same idea applied at a
+ * site that had not had it.
+ */
+describe('chatEnvelopesForProject tells absent from broken (W21-98)', () => {
+  it('an absent database is truthfully empty, and says nothing', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-chatproj-absent-'));
+    dirs.push(dir);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(chatEnvelopesForProject(path.join(dir, 'state.db'), 'p1')).toEqual([]);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('RED FIXTURE: a database that IS there and will not open is reported, not swallowed', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-chatproj-broken-'));
+    dirs.push(dir);
+    // A directory where the database should be: the path exists, so this is
+    // not the absent case, and the open fails for a reason a person needs to
+    // hear about.
+    const dbPath = path.join(dir, 'state.db');
+    await fs.mkdir(dbPath);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      // It still degrades to empty rather than throwing — the Chat pane must
+      // not take the page down (FR-C2) — but it no longer does so in silence.
+      expect(chatEnvelopesForProject(dbPath, 'p1')).toEqual([]);
+      expect(spy).toHaveBeenCalledOnce();
+      expect(String(spy.mock.calls[0]?.[0])).toContain(dbPath);
+    } finally {
+      spy.mockRestore();
     }
   });
 });

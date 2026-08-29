@@ -22,6 +22,7 @@
  * Wire shapes mirror `chat-fixture.ts`'s items exactly — the web reducer
  * (`reduceChatEvents`) already speaks them, so the pane needs no change.
  */
+import { existsSync } from 'node:fs';
 import { listEvents, openEventLog, type EventLog } from '@dokima/events';
 
 const PARK_MARKERS = ['Parked with evidence', 'auto-blocked with evidence'];
@@ -124,12 +125,33 @@ export function projectChatEnvelopes(log: EventLog, projectId: string): Envelope
   return out;
 }
 
-/** Opens the project log read-only, projects, closes. Absent DB → empty stream (a project that has never run has no chat — truthfully). */
+/**
+ * Opens the project log read-only, projects, closes.
+ *
+ * ABSENT IS NOT BROKEN (W21-98). The header on this function was true and the
+ * code did not implement it: it said "absent DB → empty stream (a project
+ * that has never run has no chat — truthfully)" and then caught EVERYTHING
+ * from `openEventLog`, so a corrupt database, a permissions error and a
+ * schema mismatch each rendered as the same silent "no chat yet". A person
+ * looking at an empty Chat pane could not tell which of those they had.
+ *
+ * The distinction is one this codebase already draws: `computeProjectStats`
+ * re-checks the path and logs anything still there that still will not open
+ * (W21-77), precisely because the vanished-project race is ordinary and the
+ * unreadable-file case is not. Re-checked rather than string-matched for the
+ * same reason it gives — better-sqlite3's wording is not a contract.
+ *
+ * It still degrades to empty either way. The Chat pane must not take the page
+ * down, so this reports; it does not recover.
+ */
 export function chatEnvelopesForProject(dbPath: string, projectId: string): Envelope[] {
   let log: EventLog;
   try {
     log = openEventLog(dbPath);
-  } catch {
+  } catch (err) {
+    if (existsSync(dbPath)) {
+      console.error(`[chat] projection open failed for ${dbPath}:`, err);
+    }
     return [];
   }
   try {

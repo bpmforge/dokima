@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProviderRegistryError, validateProviderRegistry } from '@dokima/gateway';
 import {
   listGlobalProviders,
@@ -279,5 +279,56 @@ describe('every-project provider registry (W10-70)', () => {
   it('nothing registered at either scope stays the normal first-run state (C-1)', async () => {
     await scopedHome();
     expect(await listProviders(await project())).toEqual([]);
+  });
+});
+
+/**
+ * W21-98, from the SAST triage. All three list functions distinguished
+ * "nothing configured" from "configured but unreadable" in the CODE — the
+ * `raw === undefined` guard is exactly that test — and then threw the
+ * distinction away, catching the validation error and returning the same
+ * empty array. A user whose registry had gone invalid saw a Settings panel
+ * that said no providers were configured, which is the one thing that was
+ * definitely not true.
+ *
+ * The panel still shows none: a broken registry has no entries to offer, and
+ * throwing here would take Settings down. What changes is that the reason
+ * leaves the process.
+ */
+describe('an unreadable provider registry is reported, not silently empty (W21-98)', () => {
+  async function projectWithRegistry(raw: unknown): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2198-providers-'));
+    dirs.push(dir);
+    await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, '.dokima', 'settings.json'),
+      JSON.stringify({ [PROVIDERS_SETTINGS_KEY]: raw }),
+    );
+    return dir;
+  }
+
+  it('RED FIXTURE: a registry that fails validation says so', async () => {
+    // Present and wrong — not absent. `{}` is not a provider array.
+    const dir = await projectWithRegistry({ nonsense: true });
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(await listProjectProviders(dir)).toEqual([]);
+      expect(spy).toHaveBeenCalledOnce();
+      expect(String(spy.mock.calls[0]?.[0])).toContain('provider registry');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('a project with NO registry stays silent — absent is not broken', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2198-none-'));
+    dirs.push(dir);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(await listProjectProviders(dir)).toEqual([]);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

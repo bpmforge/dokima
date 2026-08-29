@@ -36,3 +36,10 @@ docs/acceptance/runs/
 docs/security/semgrep-results.json
 docs/security/semgrep-results.sarif
 docs/security/semgrep-scan-*.log
+
+# SAST raw output (W21-98): 1.0MB + 1.2MB, rewritten on every scan, and it
+# embeds every matched source line — including the fixture credentials the
+# secret rules match. docs/security/SAST_BASELINE.md and sast-baseline.json
+# are the tracked record; these are the working files behind them.
+docs/security/semgrep-results.json
+docs/security/semgrep-results.sarif

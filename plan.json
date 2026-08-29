@@ -14189,7 +14189,7 @@
       "phase": 21,
       "lane": "quality",
       "role": "security-auditor",
-      "status": "todo",
+      "status": "done",
       "points": 5,
       "module": "quality",
       "depends_on": [],
@@ -14197,7 +14197,12 @@
       "title": "the first real SAST run: 0 true HIGH, one rule producing 62% noise, and 63 catches that cannot tell empty from broken",
       "write_scope": [
         "docs/security/**",
-        ".semgrepignore"
+        ".semgrepignore",
+        "apps/server/src/api/server/chat-projection.ts",
+        "apps/server/src/api/server/chat-projection.test.ts",
+        "apps/server/src/api/server/providers-store.ts",
+        "apps/server/src/api/server/providers-store.test.ts",
+        ".gitignore"
       ],
       "acceptance": [
         "A security scan runs against this repo with a config that loads, and its result is recorded as a baseline so later scans show DRIFT rather than the whole backlog",
@@ -14214,7 +14219,19 @@
         "AND NO SCAN RUNS IN ANY GATE. Law 3 is lint + typecheck + test + e2e. Nothing invokes SAST, so this backlog accumulated unseen and the broken script hid it for as long as it has existed.",
         "ROOT CAUSE OF THE PARTIAL PARSES, pinned 2026-08-28, and NOT fixable from our config. A rule declaring languages [javascript] makes opengrep parse .ts files with the JAVASCRIPT parser, which cannot read TypeScript's inline import('../types.js').SomeType in a type position. Our packs declare both javascript and typescript, so the javascript pass fails on every TS file using that construct.",
         "IT IS AN OPENGREP BUG, NOT OURS. semgrep runs the identical rule over the identical file with ZERO errors; opengrep emits a syntax error. Verified both ways on the same two-rule repro. TWO WORKAROUNDS WERE TESTED AND BOTH FAIL: scoping the javascript rule with a paths.include filter still errors (opengrep parses the file per-language BEFORE path filters apply \u2014 the run reports \"Ran 1 rule\" and still emits the error), and splitting rules by language fails for the same reason.",
-        "OPTIONS, none free: (a) accept it \u2014 21 lines across 10 files, every one a type signature rather than logic, and the new guard now reports PARTIAL instead of pretending clean; (b) report upstream to opengrep with the minimal repro; (c) run semgrep on TS-heavy trees, which reintroduces exactly the licensing problem the move to opengrep was made to avoid. (a) plus (b) is the honest combination \u2014 do not quietly switch engines back."
+        "OPTIONS, none free: (a) accept it \u2014 21 lines across 10 files, every one a type signature rather than logic, and the new guard now reports PARTIAL instead of pretending clean; (b) report upstream to opengrep with the minimal repro; (c) run semgrep on TS-heavy trees, which reintroduces exactly the licensing problem the move to opengrep was made to avoid. (a) plus (b) is the honest combination \u2014 do not quietly switch engines back.",
+        "SCOPE WIDENED AT THE READ (Law 1), and only as far as the measurement justifies. A3 is a statement about CODE \u2014 'every catch that returns an empty result distinguishes nothing-here-yet from could-not-read' \u2014 and the filed scope was docs/security/** plus .semgrepignore, which cannot change a single catch. Widening to all of it would have meant 35 files across apps/server, apps/web and six packages; measuring first (L-56) reduced it to two.",
+        "THE MEASUREMENT: 44 of the 72 empty-catch/fallback findings are in product source, across 35 files. I read every one. The great majority are correct and already documented \u2014 a JSON.parse whose failure IS the answer, a process.kill on a group that has already exited, an absent optional file, a canvas context jsdom refuses. The rule fires on the SHAPE, and the shape is right in those places. Two sites are genuinely the defect the ticket describes, and they are the ones being changed.",
+        "SCOPE WIDENED FOR .gitignore (Law 1): the audit script writes semgrep-results.json and .sarif into docs/security/, 1.0MB and 1.2MB, and they change on every scan. Committing them would put a two-megabyte churn artifact in every diff and would also commit every matched source line \u2014 including the twelve fixture credentials the secret rules match. The BASELINE is the small file; the raw output is not.",
+        "A1 DONE, AND THE DRIFT MECHANISM PROVED ITSELF ON ITS FIRST USE. The scan runs and the config loads: 120 rules over 2062 git-tracked files. docs/security/sast-baseline.json records counts per rule; SAST_BASELINE.md records the reasoning behind each line. The second scan of this session, run after the code fixes, showed exactly two changed rules \u2014 bpm-slop-fallback-hides-failure 34 -> 30 (the four sites fixed here) and fs-read-user-input 450 -> 453 (this ticket's own new test files read files). That is drift reporting rather than a 729-finding wall, which is the whole point of the criterion.",
+        "A2 DONE, WITH ONE HONEST LIMIT WRITTEN DOWN RATHER THAN WORKED AROUND. .semgrepignore excludes what genuinely must not be read \u2014 and note it REPLACES the runner's built-in defaults rather than adding to them (semgrep-full-audit.sh only applies them when no such file exists), so they are restored explicitly. The scan's own output is excluded for a real reason: semgrep-results.json embeds every matched source line, so scanning it re-reports each finding and re-trips the secret rules on the fixture credentials they quoted.",
+        "THE 62% RULE CANNOT BE SCOPED FROM THIS REPO, and pretending otherwise would have been the wrong fix. fs-read-user-input's pack lives in ~/.claude/.semgrep, shared by every project on this machine, so silencing it here would silence it in repos where it is the correct rule; .semgrepignore is path-based and cannot scope a single rule. Excluding the 376 test hits by path was rejected outright \u2014 this repo's red fixtures are part of ticket acceptance (docs/TESTING.md), so a finding in a test can be a real finding, and a scan trimmed until it is quiet is exactly the theatre this ticket is about. The baseline carries the number instead.",
+        "A3 DONE BY READING ALL 44 PRODUCT-SOURCE SITES, not by sweeping. They divide three ways and the document says which each is: the failure IS the answer (JSON.parse to null, a kill on an already-exited group, new URL on a non-URL \u2014 the catch is the predicate and the caller handles null); documented degradation (localStorage in private mode, an absent global playbook DB per FR-F5, a repo git cannot read); and two sites genuinely hiding a real failure, both fixed here.",
+        "THE TWO REAL ONES. chat-projection.ts documented 'absent DB -> empty stream (truthfully)' and caught EVERYTHING from openEventLog, so corrupt, unreadable and schema-mismatched all rendered as silent 'no chat yet'; it now re-checks the path and reports what is still there and still will not open \u2014 the distinction computeProjectStats already draws (W21-77), so this is an existing idea applied where it was missing, not a new one. providers-store.ts's three readers already distinguished 'nothing configured' from 'configured but unreadable' in code \u2014 `raw === undefined` IS that test \u2014 and then discarded it, showing a user with an invalid registry a Settings panel that said no providers were configured. Both still degrade to empty and neither throws: the Chat pane and Settings must not take the page down. They report; they do not recover.",
+        "BOTH PROVEN RED FIRST, and each with its negative twin so the fixture discriminates: absent-and-silent passes while present-and-broken fails, before the fix and not after.",
+        "THE HIGH FINDINGS ARE STILL ALL FALSE POSITIVES, re-checked on this run: 4 fetch-user-url SSRF are harnesses fetching their own localhost server, 2 math-random-security name a temp directory rather than mint a token. No action, recorded so the next reader does not re-derive it.",
+        "STILL NOT IN ANY GATE, said plainly in the document rather than left implied. Law 3 is lint + typecheck + test + e2e + pnpm validate; nothing invokes SAST, which is why this backlog accumulated unseen and why a broken runner could hide it for as long as it existed. Gating it needs the noise question answered upstream in ~/.claude first \u2014 outside this repo \u2014 so the baseline is the honest half that can be done from here.",
+        "Gate: lint clean, typecheck 0, 4792 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     },
     {
