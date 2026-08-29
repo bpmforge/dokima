@@ -1,8 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { freshProjectPath, removeTempProject } from './temp-project.js';
 
 /**
  * Notification center + morning queue (UX_SPEC §2/§7, FR-N4/FR-F4) against
@@ -14,13 +12,6 @@ import { expect, test, type Page } from '@playwright/test';
  * contract, not a shortcut around it.
  */
 
-function freshProjectPath(): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-notifications-e2e-${id}`),
-    name: `Notifications E2E ${id}`,
-  };
-}
 
 async function openFreshProject(page: Page, name: string, dir: string): Promise<string> {
   await fs.mkdir(dir, { recursive: true });
@@ -82,7 +73,7 @@ test('bell nav toggles the notification center and back to Fleet', async ({ page
 test('empty states per UX_SPEC §2b for a freshly-registered project', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('notifications');
   const projectId = await openFreshProject(page, name, dir);
 
   await page.goto(`/?view=notifications`);
@@ -101,14 +92,14 @@ test('empty states per UX_SPEC §2b for a freshly-registered project', async ({
   await page.getByRole('tab', { name: 'All notifications' }).click();
   await expect(page.getByTestId('notification-center-empty')).toBeVisible();
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
   void projectId;
 });
 
 test('an emitted Decide card appears in the morning queue and Approve resolves it', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('notifications');
   const projectId = await openFreshProject(page, name, dir);
   const token = await readToken(page);
 
@@ -129,13 +120,13 @@ test('an emitted Decide card appears in the morning queue and Approve resolves i
   await card.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByTestId('morning-queue-empty')).toBeVisible();
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });
 
 test('Review-tier emits batch into one digest card, and Record never appears in the queue', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('notifications');
   const projectId = await openFreshProject(page, name, dir);
   const token = await readToken(page);
 
@@ -168,11 +159,11 @@ test('Review-tier emits batch into one digest card, and Record never appears in 
   await page.getByRole('tab', { name: 'All notifications' }).click();
   await expect(page.getByTestId('notification-center-list')).toContainText('FYI only');
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });
 
 test('a Decide notification bumps the header bell badge count', async ({ page }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('notifications');
   const projectId = await openFreshProject(page, name, dir);
   const token = await readToken(page);
 
@@ -185,5 +176,5 @@ test('a Decide notification bumps the header bell badge count', async ({ page })
   await page.goto('/');
   await expect(page.getByTestId('decide-badge')).toBeVisible({ timeout: 10_000 });
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { removeTempProject } from './temp-project.js';
 
 /**
  * The Team view (W20-02, UX_SPEC §10) against the real apps/server: the org
@@ -55,7 +55,7 @@ test('Team shows the org with real faces, and a fresh project reads as nothing a
   // Nothing is waiting on the founder yet, so no answer button exists at all.
   await expect(page.getByTestId('team-answer-coding-agent')).toHaveCount(0);
 
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });
+  await removeTempProject(dir);
 });
 
 test('the List view holds the same truth in words, and the choice sticks across a reload (§10a)', async ({
@@ -112,5 +112,5 @@ test('the List view holds the same truth in words, and the choice sticks across 
   await page.getByTestId('team-mode-board').click();
   await expect(page.getByTestId('team-view')).toBeVisible();
 
-  await fs.rm(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });
+  await removeTempProject(dir);
 });

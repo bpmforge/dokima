@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { removeTempProject } from './temp-project.js';
 
 /** Agent roster & observability view (SRS FR-E2, R-K1) against the real apps/server + real content/experts tree. */
 
@@ -95,5 +95,5 @@ test('per-agent history loads (zero counts, honest empty) when a project is open
   await expect(history).toBeVisible();
   await expect(history).toContainText('0');
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });

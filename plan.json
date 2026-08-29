@@ -14644,7 +14644,7 @@
     {
       "phase": 22,
       "role": "coding-agent",
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14675,7 +14675,12 @@
         "SCOPE ANSWERED AT THE SCOPE READ, before claiming \u2014 the first ticket worked under the Law 1 clause added 2026-08-29, and it collided immediately. Two collisions, both answered by WIDENING (every file verified unowned) rather than by a note at close: (1) acceptance 2 says freshProjectPath must exist ONCE, which needs a shared file the filed scope did not include; (2) acceptance 1 covers every temp-project teardown, and those live in plans.spec.ts and roster.spec.ts too, which the filed scope also omitted.",
         "THE FILED SCOPE UNDERCOUNTED: freshProjectPath is duplicated in 3 specs (notifications, trace, estimate) but the `fs.rm(dir, ...)` teardown appears in 4 (notifications x4 sites, plans x3, roster x1, team x2).",
         "THE FIX ALREADY EXISTS IN THIS REPO, applied once: team.spec.ts already removes with `maxRetries: 8, retryDelay: 60`. So this is not a new technique to prove \u2014 it is one spec's fix that never reached the others, which is exactly what a shared helper prevents.",
-        "FOUND WHILE READING, beyond the ticket: trace.spec.ts and estimate.spec.ts create temp project directories and NEVER remove them. They were not in the ENOTEMPTY report because they never rm at all \u2014 they leak instead. Fixed here rather than filed, because the helper this ticket builds is precisely what they were missing."
+        "FOUND WHILE READING, beyond the ticket: trace.spec.ts and estimate.spec.ts create temp project directories and NEVER remove them. They were not in the ENOTEMPTY report because they never rm at all \u2014 they leak instead. Fixed here rather than filed, because the helper this ticket builds is precisely what they were missing.",
+        "ALL THREE CRITERIA MET. A1: every temp-project removal now goes through removeTempProject, which retries a lost race (maxRetries 8, retryDelay 60ms). A2: freshProjectPath exists once, in apps/web/e2e/temp-project.ts, instead of three times. A3: no try/catch anywhere \u2014 `force` swallows \"already gone\", which is correct, and a directory that genuinely cannot be removed still throws after the last attempt. A teardown that swallowed everything would hide the leak it exists to prevent.",
+        "THE DUPLICATION WAS THE DEFECT, not untidiness. team.spec.ts had carried the exact retry for some time and nothing carried it to the other five specs, because the removal was written longhand at ten call sites across four files \u2014 fixing it meant fixing it ten times, so it was fixed once. That is the whole argument for the shared module.",
+        "THE LEAK FOUND WHILE READING IS FIXED AND MEASURED. trace.spec.ts and estimate.spec.ts created temp projects and never removed them \u2014 absent from the ENOTEMPTY report because they leaked rather than raced. Both now clean up, and it is verified by observation rather than assertion: three timed e2e runs, counting directories created in that window, and neither suite appears.",
+        "THAT SAME MEASUREMENT FOUND FOUR MORE SUITES STILL LEAKING \u2014 board 5 per run, artifacts 5, fleet 2, settings 1 \u2014 filed as W22-15 AT THE MOMENT IT WAS FOUND rather than in this note, which is the Law 1 clause added hours earlier doing its job on the first ticket worked under it.",
+        "VERIFIED BY RUNNING IT, three times: 76 passed each time, and no dokima-trace-e2e-* or dokima-estimate-e2e-* directory created in the window. The ENOTEMPTY race is intermittent, so three clean runs are consistent with the fix rather than proof of it \u2014 the leak half, by contrast, is directly observable and is fixed."
       ]
     },
     {
@@ -14730,6 +14735,38 @@
         "DROPPED FOLLOW-UP from W22-02, filed 2026-08-29 during a completeness sweep. W22-02 built the @unreached marker and deliberately applied it to nothing, because the obvious candidate lives outside its scope \u2014 \"the first real marker belongs to whoever owns that file\". Nobody was asked to.",
         "A MECHANISM WITH NO REAL USER IS THE CLASS W22-02 EXISTS TO CATCH, which is the argument for closing the loop rather than leaving the marker theoretical. baseProbePath is exported so a stale probe can be recognised, per its own docstring \u2014 a genuine deliberate non-caller.",
         "One line plus the reason. If it turns out baseProbePath SHOULD have a caller, that is the more valuable finding and this ticket should say so instead."
+      ]
+    },
+    {
+      "id": "W22-15",
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "title": "every e2e suite removes the temp project it made",
+      "write_scope": [
+        "apps/web/e2e/board.spec.ts",
+        "apps/web/e2e/artifacts.spec.ts",
+        "apps/web/e2e/fleet.spec.ts",
+        "apps/web/e2e/settings.spec.ts"
+      ],
+      "acceptance": [
+        "A full e2e run leaves no dokima-*-e2e-* directory behind",
+        "Each suite removes its temp project through the shared helper rather than longhand",
+        "A genuine removal failure still fails the suite"
+      ],
+      "notes": [
+        "MEASURED 2026-08-29 while landing W22-12, and filed at the moment it was found rather than in that ticket's closing note (Law 1). Three consecutive e2e runs were timed and the temp directories created in that window counted: board leaks 5 per run, artifacts 5 (one per fixture variant: diff, doc, empty, no-gates, resolve), fleet 2, settings 1 \u2014 about 23 directories per run.",
+        "ACCUMULATED: 927M across 1284 dokima-*-e2e-* directories in the machine tmpdir at the time of measurement. Every one holds a .dokima/state.db.",
+        "W22-12 FIXED trace AND estimate and proved the method: after its change neither appears among the directories created during a run. It did not touch these four because they were outside its write_scope and beyond its acceptance, which named the teardown race rather than the leak.",
+        "THE HELPER ALREADY EXISTS: apps/web/e2e/temp-project.ts (W22-12) has freshProjectPath and removeTempProject, with the retry that stops a lost race failing the suite. This is applying it, not designing it.",
+        "NOT THE SAME DEFECT AS THE ENOTEMPTY RACE, and worth keeping distinct: these suites never remove at all, so they never raced. They leak silently, which is why no failure ever pointed at them."
       ]
     },
     {

@@ -1,10 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { freshProjectPath, removeTempProject } from './temp-project.js';
 
 /**
  * Session trace viewer (BLUEPRINT §12.4, this ticket's `apps/web/src/
@@ -20,13 +19,6 @@ const repoRoot = path.resolve(here, '..', '..', '..');
 const TSX_BIN = path.join(repoRoot, 'apps', 'server', 'node_modules', '.bin', 'tsx');
 const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
 
-function freshProjectPath(): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-trace-e2e-${id}`),
-    name: `Trace E2E ${id}`,
-  };
-}
 
 function seed(dbPath: string, scenario: string): void {
   execFileSync(TSX_BIN, [SEED_SCRIPT, dbPath, scenario], { stdio: 'inherit' });
@@ -52,7 +44,7 @@ async function openFreshProject(page: Page, name: string, dir: string): Promise<
 test('the trace view is honestly empty for a ticket no run has ever touched', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('trace');
   await openFreshProject(page, name, dir);
   seed(path.join(dir, '.dokima', 'state.db'), 'trace');
   await page.reload();
@@ -66,12 +58,17 @@ test('the trace view is honestly empty for a ticket no run has ever touched', as
   await expect(traceView).toBeVisible();
   await expect(traceView).toContainText('Session trace — E2E-TRACE-EMPTY');
   await expect(traceView.getByTestId('trace-view-empty')).toBeVisible();
+
+  // W22-12: this suite created a temp project and never removed it —
+  // it was absent from the ENOTEMPTY report because it leaked instead
+  // of racing. Every run left a directory behind.
+  await removeTempProject(dir);
 });
 
 test("replays a run's events labeled by kind, each feeding the lessons form (BLUEPRINT §12.4)", async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('trace');
   await openFreshProject(page, name, dir);
   seed(path.join(dir, '.dokima', 'state.db'), 'trace');
   await page.reload();
@@ -95,4 +92,9 @@ test("replays a run's events labeled by kind, each feeding the lessons form (BLU
 
   await traceView.getByTestId('file-field-report-action').first().click();
   await expect(traceView.getByTestId('field-report-form').first()).toBeVisible();
+
+  // W22-12: this suite created a temp project and never removed it —
+  // it was absent from the ENOTEMPTY report because it leaked instead
+  // of racing. Every run left a directory behind.
+  await removeTempProject(dir);
 });

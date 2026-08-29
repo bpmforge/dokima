@@ -1,10 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { freshProjectPath, removeTempProject } from './temp-project.js';
 
 /**
  * Dry-run estimate / escalation-ROI / weekly digest (BLUEPRINT §12.2,
@@ -24,13 +23,6 @@ const repoRoot = path.resolve(here, '..', '..', '..');
 const TSX_BIN = path.join(repoRoot, 'apps', 'server', 'node_modules', '.bin', 'tsx');
 const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
 
-function freshProjectPath(): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-estimate-e2e-${id}`),
-    name: `Estimate E2E ${id}`,
-  };
-}
 
 function seed(dbPath: string, scenario: string): void {
   execFileSync(TSX_BIN, [SEED_SCRIPT, dbPath, scenario], { stdio: 'inherit' });
@@ -65,17 +57,22 @@ async function openEstimateTab(page: Page, name: string, dir: string): Promise<v
 test('empty board yields an honest empty estimate, not a fabricated total', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('estimate');
   await openEstimateTab(page, name, dir);
 
   const workspace = page.getByTestId('estimate-workspace');
   await expect(workspace.getByTestId('estimate-empty')).toBeVisible();
+
+  // W22-12: this suite created a temp project and never removed it —
+  // it was absent from the ENOTEMPTY report because it leaked instead
+  // of racing. Every run left a directory behind.
+  await removeTempProject(dir);
 });
 
 test('real board tickets drive a per-wave breakdown, and what-if recomputes deterministically (FR-G7)', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('estimate');
   await openEstimateTab(page, name, dir);
   seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
@@ -107,12 +104,17 @@ test('real board tickets drive a per-wave breakdown, and what-if recomputes dete
       return Number(text?.replace('$', ''));
     })
     .toBeLessThan(baseTotal);
+
+  // W22-12: this suite created a temp project and never removed it —
+  // it was absent from the ENOTEMPTY report because it leaked instead
+  // of racing. Every run left a directory behind.
+  await removeTempProject(dir);
 });
 
 test('escalation-ROI view and weekly digest render honest-empty until a spend ledger exists (US-309)', async ({
   page,
 }) => {
-  const { dir, name } = freshProjectPath();
+  const { dir, name } = freshProjectPath('estimate');
   await openEstimateTab(page, name, dir);
   seed(path.join(dir, '.dokima', 'state.db'), 'basic');
   await page.reload();
@@ -131,4 +133,9 @@ test('escalation-ROI view and weekly digest render honest-empty until a spend le
   await expect(digest).toHaveAttribute('data-tier', 'review');
   await expect(workspace.getByTestId('weekly-digest-total')).toContainText('$0.00');
   await expect(workspace.getByTestId('weekly-digest-suppression-empty')).toBeVisible();
+
+  // W22-12: this suite created a temp project and never removed it —
+  // it was absent from the ENOTEMPTY report because it leaked instead
+  // of racing. Every run left a directory behind.
+  await removeTempProject(dir);
 });

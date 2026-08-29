@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { removeTempProject } from './temp-project.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../../..');
@@ -136,7 +137,7 @@ test('plan view renders catalog provenance, verify criterion, state, and accept/
   // which was the audit's two-names-for-one-thing finding (A-2).
   await expect(item.getByTestId(`plan-item-PC-001-ticket`)).toHaveText('PLAN-PC-001');
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });
 
 test('dismiss removes a proposed item from the list and the funnel keeps raw findings visible (AC1/AC2 funnel)', async ({
@@ -168,7 +169,7 @@ test('dismiss removes a proposed item from the list and the funnel keeps raw fin
   await expect(page.getByTestId('plan-funnel')).toContainText('1 found');
   await expect(page.getByTestId('plan-funnel')).toContainText('0 planned');
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });
 
 /**
@@ -242,5 +243,5 @@ test('a regressed plan item surfaces as a Review card in the morning queue with 
   await expect(queueList).toContainText('rules.fpHeavyCount == 0');
   await expect(queueList).toContainText('fpHeavyCount=1');
 
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeTempProject(dir);
 });
