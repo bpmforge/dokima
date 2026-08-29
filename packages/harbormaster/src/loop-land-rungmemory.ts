@@ -121,3 +121,75 @@ export function startAttemptFor(
   }
   return memory.startAttempt;
 }
+
+/**
+ * The skipped-to rung cannot be REACHED, so use the one memory ruled out
+ * (W21-63).
+ *
+ * Run 47: rung memory skipped R1 — coder-next, serving fine — to reach R2,
+ * which could not load ("Failed to load model … Operation canceled"). The run
+ * made ZERO tool calls. An available cheaper model sat unused while the ticket
+ * got no session at all, which is strictly worse than not skipping.
+ *
+ * A rung that FAILED THE WORK and a rung that CANNOT BE REACHED are different
+ * facts, and rung memory records only the first. `escalation.rung_advanced`
+ * means "this rung was tried and was not enough"; it says nothing about
+ * whether the rung above it exists today.
+ *
+ * KEYED ON THE RECORDED FAILURE KIND, never on the message text.
+ * `runSessionAbsorbingProviderFailure` already returns
+ * `infraFailure: 'endpoint_failure'` for exactly this case, so the distinction
+ * is a value the loop is handed rather than a string it parses. (W21-64 does
+ * match on a message, and the difference is that it classifies OUR OWN error
+ * text; here a structured kind exists, so using prose would be a choice to be
+ * less certain than the code already is.)
+ *
+ * Falls back ONCE. If the cheap rung then fails the work too, that is a real
+ * verdict on the ticket and the ladder should park with it.
+ */
+export function rungFallbackNotice(ticketId: string, skipped: readonly string[]): string {
+  const rungs = skipped.length > 0 ? skipped.join(', ') : 'the remembered rung';
+  return (
+    `${ticketId} is falling back to ${rungs}. The rung it skipped to could not be ` +
+    `reached at all — the provider failed before the model could work, which is ` +
+    `not the same as that rung failing this ticket. A session on a model memory ` +
+    `had ruled out is worth more than no session, so the ladder is starting cheap ` +
+    `again for the rest of this run.`
+  );
+}
+
+/**
+ * Comments the fallback and returns the rung offset that restarts the ladder
+ * at its cheapest rung.
+ *
+ * NEGATIVE, and that is the whole subtlety. `beginRungAttempt` picks
+ * `rungForAttempt(attempts.length + 1 + rungOffset)`, so the offset is
+ * relative to how many attempts have already been judged — setting it to 0
+ * does NOT go back to R1, it leaves the ladder exactly where the attempt
+ * counter has already carried it. The first version of this fix returned 0
+ * and the fixture caught it: R2 was asked five times and R1 never ran.
+ *
+ * `-(judged + 1)` cancels the attempts spent so far, so the NEXT attempt is
+ * rung 1 and the ladder climbs from there normally — a rung that became
+ * reachable again is still available, and cheapest-first is restored rather
+ * than pinned.
+ *
+ * Lives here, next to the memory it overrides, so the notice cannot drift from
+ * the decision and so `loop-land-ticket.ts` stays under the 400-line cap.
+ */
+export function fallBackToRememberedRung(
+  /** Narrowed to what this needs, so the caller passes `options` unchanged. */
+  options: { readonly log: EventLog; readonly actorId: string; readonly runId?: string },
+  ticketId: string,
+  /** Attempts already JUDGED when the fallback fires (W21-15's count, not the loop index). */
+  judged: number,
+): number {
+  const { log, actorId, runId } = options;
+  const memory = rungMemoryFor(log, ticketId);
+  commentTicket(
+    log,
+    { ticketId, actorId, body: rungFallbackNotice(ticketId, memory.failed) },
+    { runId: runId ?? null },
+  );
+  return -(judged + 1);
+}

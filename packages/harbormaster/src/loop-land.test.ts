@@ -3,7 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
+import {
+  appendEvent,
+  createIdentity,
+  listEvents,
+  openEventLog,
+  type EventLog,
+} from '@dokima/events';
 import { ProviderTimeoutError, ProviderUnreachableError } from '@dokima/gateway';
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
 import { branchNameFor, git } from '@dokima/git';
@@ -1363,4 +1369,98 @@ describe('checkpoint continuity across attempts (W17-02)', () => {
     // flagged, not believed.
     expect(prompts[1]).toContain('WARNING: its checkpoint claims completed work');
   });
+});
+
+describe('an unreachable rung falls back rather than parking with no session (W21-63)', () => {
+  let fixture: Awaited<ReturnType<typeof setupFixture>>;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+  });
+
+  it(
+    'RED FIXTURE (run 47): R1 is serving, memory has skipped it, and R2 cannot ' +
+      'be loaded. Before this the ticket parked having made ZERO tool calls, ' +
+      'with an available cheaper model sitting unused',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      seedTicket(log, 'W9-01');
+      // Rung memory: R1 already failed the WORK on this ticket, so the ladder
+      // starts at R2 — the state run 47 was in.
+      appendEvent(log, {
+        eventType: 'escalation.rung_advanced',
+        actorId: 'worker-1',
+        ticketId: 'W9-01',
+        payload: {
+          fromRung: 'R1',
+          toRung: 'R2',
+          receipts: [{ name: 'session', exitCode: 1, gapCount: 1, gaps: ['no manifest'] }],
+        },
+      });
+
+      const asked: string[] = [];
+      const seam = {
+        sessionForRung(rung: 'R1' | 'R2' | 'R3') {
+          asked.push(rung);
+          return {
+            label: `model-${rung}`,
+            spawn: (async (input) => {
+              // R2 is the model that could not load; R1 is serving fine.
+              if (rung !== 'R1') {
+                throw new ProviderUnreachableError('studio', new Error('Failed to load model'));
+              }
+              return landingSpawn(input);
+            }) as SpawnSession,
+          };
+        },
+      };
+
+      const options = baseOptions(fixture, spoofedSpawn);
+      const result = await runLandLoop({ ...options, maxLadderAttempts: 2, rungSessions: seam });
+
+      const outcome = result.processed[0]!;
+      // The point of the ticket: a session RAN. "A session that runs is worth
+      // more than one that does not."
+      expect(asked).toContain('R1');
+      expect(outcome.landed).toBe(true);
+
+      const comments = listEvents(log).filter((e) => e.eventType === 'ticket.commented');
+      expect(JSON.stringify(comments.map((c) => c.payload))).toContain('falling back to R1');
+    },
+  );
+
+  it(
+    'a rung that failed the WORK is still skipped while the higher rung is ' +
+      'reachable — cheapest-first is not restored by accident',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      seedTicket(log, 'W9-01');
+      appendEvent(log, {
+        eventType: 'escalation.rung_advanced',
+        actorId: 'worker-1',
+        ticketId: 'W9-01',
+        payload: {
+          fromRung: 'R1',
+          toRung: 'R2',
+          receipts: [{ name: 'session', exitCode: 1, gapCount: 1, gaps: ['no manifest'] }],
+        },
+      });
+
+      const asked: string[] = [];
+      const seam = {
+        sessionForRung(rung: 'R1' | 'R2' | 'R3') {
+          asked.push(rung);
+          return { label: `model-${rung}`, spawn: landingSpawn as SpawnSession };
+        },
+      };
+
+      const options = baseOptions(fixture, spoofedSpawn);
+      await runLandLoop({ ...options, maxLadderAttempts: 2, rungSessions: seam });
+
+      // R2 was reachable and landed it; R1 must never have been asked.
+      expect(asked).not.toContain('R1');
+    },
+  );
 });

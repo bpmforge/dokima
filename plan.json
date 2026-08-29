@@ -12984,7 +12984,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [
@@ -12995,14 +12995,23 @@
       "write_scope": [
         "packages/harbormaster/src/loop-land-rungmemory.ts",
         "packages/harbormaster/src/loop-land-rungmemory.test.ts",
-        "packages/harbormaster/src/loop-land-ticket.ts"
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "notes": [
         "RUN 47: rung memory skipped R1 (coder-next, serving fine at 200) to reach R2, which could not load \u2014 \"Failed to load model qwen3.6-35b-a3b. Error: Operation canceled.\" The run made ZERO tool calls. An available cheaper model sat unused while the ticket got no session at all.",
         "A rung that FAILED THE WORK and a rung that CANNOT BE REACHED are different facts and rung memory records only the first. Skipping past a working model to an unreachable one is strictly worse than not skipping.",
         "The root cause in run 47 was my own bad model choice (I picked a model served by the LINKED machine out of the /v1/models catalogue), but the interaction is a real product gap and will recur whenever a higher rung is down.",
         "Candidate fix: when every attempt at the skipped-to rung fails with a provider error, fall back DOWN to the remembered rung rather than parking with nothing \u2014 the memory says that rung failed the work, not that it is unusable, and a session that runs is worth more than one that does not.",
-        "ACCEPTANCE: a rung that failed because the provider could not be reached does not count as a rung that failed the ticket, so the cheap rung is retried rather than condemned; a rung that failed on the WORK still counts as today; the distinction is drawn from the recorded failure kind, not from a string match on the message."
+        "ACCEPTANCE: a rung that failed because the provider could not be reached does not count as a rung that failed the ticket, so the cheap rung is retried rather than condemned; a rung that failed on the WORK still counts as today; the distinction is drawn from the recorded failure kind, not from a string match on the message.",
+        "KEYED ON THE RECORDED FAILURE KIND, as the acceptance demands and not on a message match. runSessionAbsorbingProviderFailure already returns infraFailure: \"endpoint_failure\" for exactly this case, so the distinction is a value the loop is handed. Worth contrasting with W21-64, closed an hour earlier, which DOES match on message text: there no structured kind exists and the string is one this repo produces. Here a kind exists, so parsing prose would be choosing to be less certain than the code already is.",
+        "MY FIRST FIX WAS WRONG AND THE RED FIXTURE CAUGHT IT \u2014 this is the ticket's best evidence that acceptance 4 was worth writing. I set the rung offset to 0 on fallback, reasoning that 0 means cheapest-first. It does not: beginRungAttempt picks rungForAttempt(attempts.length + 1 + rungOffset), so the offset is RELATIVE to attempts already judged, and 0 leaves the ladder exactly where the attempt counter has carried it. The fixture reported R2 asked five times and R1 never run \u2014 the identical shape of the live run 47 failure the ticket describes.",
+        "THE CORRECT OFFSET IS NEGATIVE: -(judged + 1) cancels the attempts spent so far, so the NEXT attempt is rung 1 and the ladder then climbs normally. Restarting rather than pinning is deliberate \u2014 a rung that becomes reachable again should still be available.",
+        "FALLS BACK ONCE, with no extra state: the guard is rungOffset > 0, and the fallback makes it negative, so the condition cannot fire twice. If the cheap rung then fails the WORK, that is a real verdict and the ladder should park with it.",
+        "THE MEMORY IS NOT ERASED (acceptance 2, and there is a test for it at both layers). The fallback is a statement about THIS run \u2014 the rung above was unreachable now \u2014 not a finding that the cheap rung has become good enough. A later run still skips a rung that failed the work.",
+        "SCOPE WIDENED by loop-land.test.ts, verified clear. Acceptance 4 asks for a fixture in which \"a session runs\", which is a loop-level fact: the unit tests can prove the decision but only the loop can prove a session happened. That fixture is what caught the wrong offset.",
+        "THE FILE-SIZE CAP SHAPED THE SIGNATURE, honestly rather than by cheating it. loop-land-ticket.ts sat at 396 lines; the first working version pushed it to 402 and a spread-argument trick got it to 401. Narrowing the helper to take the options object it already had gave a 3-line call site and a better signature \u2014 400 exactly.",
+        "RED PROVEN by stashing the two sources: 5 fixtures fail, including the run-47 reproduction."
       ],
       "acceptance": [
         "A skipped rung is used when every higher rung is unreachable, rather than parking with no session",

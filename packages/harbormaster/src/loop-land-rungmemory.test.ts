@@ -7,9 +7,20 @@ import { promises as fs, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent, createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import {
+  appendEvent,
+  createIdentity,
+  listEvents,
+  openEventLog,
+  type EventLog,
+} from '@dokima/events';
 import { createTicket, widenTicketScope } from '@dokima/tickets';
-import { rungMemoryFor, rungSkipNotice } from './loop-land-rungmemory.js';
+import {
+  fallBackToRememberedRung,
+  rungFallbackNotice,
+  rungMemoryFor,
+  rungSkipNotice,
+} from './loop-land-rungmemory.js';
 
 const dirs: string[] = [];
 
@@ -202,5 +213,48 @@ describe('a brief gives the cheap rung another go (W21-62)', () => {
   it('the skip notice names briefing as a way to reset it', () => {
     const notice = rungSkipNotice('T-1', { failed: ['R1'], startAttempt: 2 });
     expect(notice).toContain('brief it');
+  });
+});
+
+describe('an UNREACHABLE rung is not a rung that failed the ticket (W21-63)', () => {
+  it('the notice explains why it is running a model memory had ruled out', () => {
+    // Acceptance 3: without this the run looks like the ladder misbehaving —
+    // it is deliberately starting cheap again after saying it would not.
+    const notice = rungFallbackNotice('T-1', ['R1']);
+    expect(notice).toContain('R1');
+    expect(notice).toContain('could not be reached');
+    expect(notice).toContain('not the same as that rung failing this ticket');
+  });
+
+  it('reads as sense when memory has no named rung', () => {
+    expect(rungFallbackNotice('T-1', [])).toContain('the remembered rung');
+  });
+
+  it('the fallback comments on the ticket and returns cheapest-first', () => {
+    const log = board();
+    climb(log, 'R1', 'R2');
+    expect(rungMemoryFor(log, 'T-1').startAttempt).toBe(2);
+
+    // NEGATIVE, not 0: `beginRungAttempt` reads the offset relative to the
+    // attempts already judged, so 0 leaves the ladder where the attempt
+    // counter carried it. With one attempt judged, -2 puts the NEXT attempt
+    // back on rung 1. Returning 0 was the first version of this fix, and the
+    // loop fixture caught it — R2 was asked five times and R1 never ran.
+    const offset = fallBackToRememberedRung({ log, actorId: 'operator', runId: 'run-1' }, 'T-1', 1);
+    expect(offset).toBe(-2);
+
+    const comments = listEvents(log).filter((e) => e.eventType === 'ticket.commented');
+    expect(JSON.stringify(comments.at(-1)?.payload)).toContain('falling back to R1');
+  });
+
+  it('does NOT erase the memory — a later run still skips the rung that failed the work', () => {
+    // Acceptance 2, at the memory layer: the fallback is for THIS run, because
+    // the rung above was unreachable now. It is not a verdict that R1 has
+    // become good enough, and cheapest-first must not be restored by accident.
+    const log = board();
+    climb(log, 'R1', 'R2');
+    fallBackToRememberedRung({ log, actorId: 'operator', runId: 'run-1' }, 'T-1', 1);
+    expect(rungMemoryFor(log, 'T-1').failed).toEqual(['R1']);
+    expect(rungMemoryFor(log, 'T-1').startAttempt).toBe(2);
   });
 });

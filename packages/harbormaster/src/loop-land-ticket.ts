@@ -46,7 +46,7 @@ import {
   tokenBoundaryDecideCard,
 } from './loop-land-policy.js';
 import { beginRungAttempt, consultRungZero } from './loop-land-rungs.js';
-import { startAttemptFor } from './loop-land-rungmemory.js';
+import { fallBackToRememberedRung, startAttemptFor } from './loop-land-rungmemory.js';
 import { fireVerbMirror } from './loop-land-verbs.js';
 import {
   parkBeforeAttempting,
@@ -215,7 +215,7 @@ export async function landClaimedTicket(
   let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
 
   // W21-46/55: a failed rung shifts the RUNG, never the attempt budget.
-  const rungOffset = startAttemptFor(options.log, ticket.id, options.actorId, options.runId) - 1;
+  let rungOffset = startAttemptFor(options.log, ticket.id, options.actorId, options.runId) - 1;
   for (
     let attempt = 1;
     attempt <= freeRetry.limit() && current.status === 'in_progress';
@@ -252,6 +252,10 @@ export async function landClaimedTicket(
     // category. `session.output` is where runSessionAbsorbingProviderFailure
     // put them (`provider failure: …`).
     if (freeRetry.take(infraFailure, attempt, session.output)) continue;
+    // W21-63: the skipped-to rung is UNREACHABLE, not failing the work.
+    if (infraFailure !== null && rungOffset > 0) {
+      rungOffset = fallBackToRememberedRung(options, ticket.id, attempts.length);
+    }
     attempts.push({
       // W21-15. Not the loop index: that counter also advances for every free
       // infra retry, which is how the park evidence came to read
