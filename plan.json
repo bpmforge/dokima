@@ -14780,7 +14780,7 @@
       "points": 2,
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14790,7 +14790,13 @@
         "apps/web/e2e/board.spec.ts",
         "apps/web/e2e/artifacts.spec.ts",
         "apps/web/e2e/fleet.spec.ts",
-        "apps/web/e2e/settings.spec.ts"
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/e2e/tour-contract.spec.ts",
+        "apps/web/e2e/a11y/board.spec.ts",
+        "apps/web/e2e/a11y/settings.spec.ts",
+        "apps/web/e2e/a11y/keyboard-only.spec.ts",
+        "apps/web/e2e/global-teardown.ts",
+        "apps/web/playwright.config.ts"
       ],
       "acceptance": [
         "A full e2e run leaves no dokima-*-e2e-* directory behind",
@@ -14802,7 +14808,20 @@
         "ACCUMULATED: 927M across 1284 dokima-*-e2e-* directories in the machine tmpdir at the time of measurement. Every one holds a .dokima/state.db.",
         "W22-12 FIXED trace AND estimate and proved the method: after its change neither appears among the directories created during a run. It did not touch these four because they were outside its write_scope and beyond its acceptance, which named the teardown race rather than the leak.",
         "THE HELPER ALREADY EXISTS: apps/web/e2e/temp-project.ts (W22-12) has freshProjectPath and removeTempProject, with the retry that stops a lost race failing the suite. This is applying it, not designing it.",
-        "NOT THE SAME DEFECT AS THE ENOTEMPTY RACE, and worth keeping distinct: these suites never remove at all, so they never raced. They leak silently, which is why no failure ever pointed at them."
+        "NOT THE SAME DEFECT AS THE ENOTEMPTY RACE, and worth keeping distinct: these suites never remove at all, so they never raced. They leak silently, which is why no failure ever pointed at them.",
+        "SCOPE WIDENED AT THE READ (Law 1), because the filed scope could not satisfy the filed acceptance. A1 is a WHOLE-RUN claim \u2014 'a full e2e run leaves no dokima-*-e2e-* directory behind' \u2014 and the four filed suites are not the only ones that leak. Re-measured today against a full run: board 5, artifacts 5, fleet 2, settings 1 (the filed thirteen), PLUS tour-contract 2, a11y/settings 3, a11y/board 1, a11y/keyboard-only 1. All four extra files are unowned.",
+        "A1's GLOB IS THE REASON THEY WERE MISSED, and that is the more useful finding. The extra suites name their directories dokima-a11y-settings-<uuid>, dokima-tour-tabs-<id>, dokima-a11y-board-<id> \u2014 no '-e2e-' segment \u2014 so they slip through 'dokima-*-e2e-*' entirely. Fixing only the filed four would have turned A1 green while the run still leaked seven directories under names the check cannot see. That is the shape this repo keeps re-learning (L-47, the capture tour, the SAST runner): a check that passes for the wrong reason.",
+        "MEASURED, NOT ASSUMED. A timestamp marker was created immediately before a full e2e run and `find -newer` counted what the run left. First pass used A1's own glob and reported 13; widening the glob to dokima-* found the other 7 plus the shared fixture dir.",
+        "dokima-web-e2e-home IS NOT A LEAK and must not be removed: env-paths.ts uses it as the ONE fixed-name shared HOME for the whole suite. It matches A1's glob by coincidence of naming, does not accumulate (one directory, reused), and deleting it would break every spec. A1 is about the per-run temp PROJECT its title names, not about that fixture.",
+        "PER-SUITE REMOVAL IS UNSAFE HERE, AND THE SUITE PROVED IT. The obvious implementation \u2014 each spec removes its own projects in afterAll \u2014 was written, and it turned notifications.spec.ts and roster.spec.ts red: 'getByRole(heading, {name: Fleet}) resolved to 3 elements'. The projects stay in the SHARED fleet registry after their directory is gone, so later specs enumerate a Fleet card whose directory has vanished, and an unavailable card renders its name as a heading where an available one does not. A stash-and-rerun control passed 76/76 with the same registry, which rules out accumulation and pins it on the removal.",
+        "W9-14 WROTE THIS DOWN IN ADVANCE, in global-setup.ts's own header: 'Whether the Fleet view should itself hide or prune projects whose directory has vanished is a real question, but it is a product question and belongs in its own ticket.' Deleting mid-run is the test-side way of asking that product question, and A2's 'each suite removes' cannot be honoured literally without answering it. Removal moves to a global teardown that runs after every spec, where nothing can observe the gap.",
+        "SCOPE WIDENED A SECOND TIME (Law 1, at the moment it was found): apps/web/e2e/global-teardown.ts (new) and apps/web/playwright.config.ts to wire it. Both unowned. A2's INTENT \u2014 removal through the shared helper rather than ten longhand fs.rm calls \u2014 is kept; its letter ('each suite') is not, and this note is why.",
+        "DONE, AND MEASURED BOTH WAYS. Before: a timestamp marker plus `find -newer` across a full run showed 20 temp projects left behind (13 under A1's own glob, 7 more under names that dodge it). After: the same measurement leaves exactly one directory \u2014 dokima-web-e2e-home, the shared fixture, which is not a temp project. The teardown reported 'removed 984 temp project(s)': this run's twenty plus the historical backlog, since every leftover matching the shape is swept. Disk went from 26,760 dokima-* directories toward empty.",
+        "A2 IS HONOURED IN INTENT AND NOT IN LETTER, deliberately, and the reason is in global-teardown.ts's header. 'Each suite removes its own' was implemented first and turned notifications.spec.ts and roster.spec.ts red; a stash-and-rerun control passed 76/76 against the same registry, so the removal was the cause and not accumulation. Removal now happens once, after the last spec, through removeTempProject \u2014 the shared helper, not longhand. What each suite gained instead is the uniform name: every temp project comes from freshProjectPath, which is what makes one teardown able to find them all.",
+        "A3 HOLDS BY CONSTRUCTION: the teardown loop is serial and unguarded, so a directory that still cannot be removed after the helper's retries fails the run. The one thing that could not be proven by the run passing \u2014 that the shared HOME is excluded \u2014 is proven by the run's own output: dokima-web-e2e-home is still on disk afterwards. A teardown runs last, so an over-broad delete there would NOT have failed anything, which is exactly why it is checked rather than assumed.",
+        "386 OLD DIRECTORIES REMAIN and are not a leak: they carry legacy names like dokima-artifacts-e2e-diff-<uuid>, where the label sits AFTER the -e2e- segment. Nothing produces that shape any more. They will age out with the tmpdir; matching them would mean loosening a pattern whose tightness is the reason it is safe to delete by name at all.",
+        "THE GATE CAUGHT MY OWN FILING. W22-16, filed mid-ticket, was written with `type` instead of `role` and no `stories`, and validate-plan P6 refused it \u2014 which also reds run-validators.test.mjs, since that test shells out to the real runner. That is `pnpm validate` joining the close gate (2026-08-28) doing precisely what it was added for, against the person who added it.",
+        "Gate: lint clean, typecheck 0, 4770 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean."
       ]
     },
     {
@@ -14832,6 +14851,35 @@
         "THE SURROUNDING CASES ARE ALREADY RIGHT, which is what makes this jarring. `dokima --foo` prints \"dokima: unknown command '--foo'\" and the full help. `dokima start` with no args prints its usage line. Only a mistyped OPTION escapes, and a mistyped option is the most likely typo of the three \u2014 a novice who writes `--acter` for `--actor` is told the product crashed.",
         "MECHANISM: `parseCliArgs` (apps/server/src/cli/parse.ts) calls node's `parseArgs`, which throws a native TypeError with code ERR_PARSE_ARGS_UNKNOWN_OPTION. runCli catches only CliUsageError and rethrows the rest, so it reaches the top-level catch in cli/index.ts, which prints `err.stack`. Same shape as W21-81, one layer up: a refusal escaping as a crash because the handler recognises only its own error class.",
         "The fix is the same shape too \u2014 translate the native error into a CliUsageError naming the offending option, at the one place parseArgs is called. Note `parse-board-edits.ts` calls parseArgs separately for widen-scope/add-ticket/retarget-acceptance/depends-on and needs the same treatment; check whether one wrapper can serve both before duplicating it."
+      ]
+    },
+    {
+      "id": "W22-16",
+      "title": "the unit suite leaks a temp home per test file \u2014 23k directories, 86% of the tmpdir spill",
+      "phase": 22,
+      "module": "quality",
+      "lane": "quality",
+      "points": 3,
+      "status": "todo",
+      "depends_on": [],
+      "write_scope": [
+        "apps/server/vitest.setup.ts"
+      ],
+      "acceptance": [
+        "A full `pnpm test` run leaves no dokima-suite-home-* directory behind",
+        "The diagnosis is written down: why the existing exit handler does not fire",
+        "The fix is proven by measurement \u2014 directories created during a run are counted before and after"
+      ],
+      "notes": [
+        "FILED AT THE MOMENT IT WAS FOUND while measuring W22-15 (Law 1), not deferred into its closing note. W22-15 is about the e2e suites; this is a different subsystem with a different root cause, and it is FIVE TIMES the volume of everything W22-15 touches.",
+        "MEASURED 2026-08-29 on this machine: 26,760 dokima-* directories in the tmpdir, 968M. Of those, 22,978 are dokima-suite-home-* \u2014 86%. The e2e leak W22-15 was filed for is 380 (board) + 207 (estimate) + 152 (fleet) + 78 (settings) and change. The big one was invisible because W22-15's glob only looks for '-e2e-'.",
+        "IT ALREADY TRIES TO CLEAN UP, which is why nobody noticed. apps/server/vitest.setup.ts mkdtemps a DOKIMA_HOME per test FILE (W10-71, correctly \u2014 see its header: two files must never see each other's global settings) and registers process.on('exit', rmSync). Roughly 270 directories appeared during one run, so the handler is not running. UNCONFIRMED root cause: vitest runs test files in worker threads, and a worker torn down by the pool may never reach an 'exit' listener. Verify that before changing anything \u2014 the candidate fix (an onTestFinished/teardown hook, or vitest's globalSetup return-teardown) depends on which it is.",
+        "DO NOT 'FIX' IT BY SHARING ONE HOME ACROSS FILES. The per-file isolation is load-bearing and was itself a bug fix: W10-71 records main going red in four tests because DOKIMA_HOME was unpinned and the suite read the developer's real configuration. Cleanup must not cost isolation.",
+        "SECOND-ORDER, worth stating because it explains why this went unseen for so long: none of this ever fails a test. It fills a disk slowly, on developer machines only, and the tmpdir is swept by the OS eventually. It is a housekeeping defect, not a correctness one \u2014 which is exactly the kind that survives a green gate indefinitely."
+      ],
+      "role": "coding-agent",
+      "stories": [
+        "US-501"
       ]
     }
   ]

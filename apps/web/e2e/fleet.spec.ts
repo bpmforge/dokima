@@ -1,18 +1,15 @@
-import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
+import { freshProjectPath as newTempProject } from './temp-project.js';
 
 /** FR-F1/F2, UX_SPEC §2/§2b: create/open/archive/reopen through the real apps/server. */
 
+/** This suite's label bound to the shared helper (W22-15) — the uniform
+ * `dokima-<label>-e2e-<uuid>` name is what global-teardown removes. */
 function freshProjectPath(): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-fleet-e2e-${id}`),
-    name: `Fleet E2E ${id}`,
-  };
+  return newTempProject('fleet');
 }
 
 test('Fleet home renders the header actions (empty-state affordances, UX_SPEC §2b)', async ({

@@ -1,10 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { freshProjectPath as newTempProject } from './temp-project.js';
 
 /**
  * Kanban board (UX_SPEC §4, FR-C4/FR-T4) against the real apps/server +
@@ -27,12 +26,10 @@ const repoRoot = path.resolve(here, '..', '..', '..');
 const TSX_BIN = path.join(repoRoot, 'apps', 'server', 'node_modules', '.bin', 'tsx');
 const SEED_SCRIPT = path.join(here, 'fixtures', 'seed-board-tickets.mjs');
 
+/** This suite's label bound to the shared helper (W22-15) — the uniform
+ * `dokima-<label>-e2e-<uuid>` name is what global-teardown removes. */
 function freshProjectPath(): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-board-e2e-${id}`),
-    name: `Board E2E ${id}`,
-  };
+  return newTempProject('board');
 }
 
 function seed(dbPath: string, scenario: string): void {

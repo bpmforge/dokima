@@ -23,14 +23,12 @@
  * hand. It deliberately does NOT re-run the 39-state capture: that rebuilds the
  * SPA and boots two servers, and the acceptance asks for a smoke short of it.
  */
-import { randomUUID } from 'node:crypto';
-import os from 'node:os';
-import path from 'node:path';
 import { expect, test } from '@playwright/test';
 // The tour's OWN list — importing it is the point. A tab added there without a
 // matching surface fails here rather than at capture time.
 import { SETTINGS_TABS } from '../scripts/capture-tour/declared-states.mjs';
 import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
+import { freshProjectPath as newTempProject } from './temp-project.js';
 
 test('every Settings tab the tour declares is reachable, and names itself when it is not', async ({
   page,
@@ -38,13 +36,12 @@ test('every Settings tab the tour declares is reachable, and names itself when i
   // A project must be OPEN: with none, SettingsPage renders its no-project
   // state and the tab nav does not exist at all. The tour reaches Settings
   // from inside a project, so the contract is only meaningful there.
-  const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `dokima-tour-tabs-${id}`);
+  const { dir, name } = newTempProject('tour-tabs');
   await page.goto('/');
   await page.locator('.fleet__header').getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByRole('button', { name: 'choose the location' }).click();
   await page.getByLabel('Folder').fill(dir);
-  await page.getByLabel('Project name').fill(`Tour Tabs ${id}`);
+  await page.getByLabel('Project name').fill(name);
   await withProjectRegistryLock(async () => {
     await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
     await expect(page.getByTestId('split-pane-workspace')).toBeVisible({ timeout: 30_000 });
@@ -79,13 +76,12 @@ test('every Settings tab the tour declares is reachable, and names itself when i
 });
 
 test('creating a project auto-opens its workspace — the flow the tour walks', async ({ page }) => {
-  const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `dokima-tour-contract-${id}`);
+  const { dir, name } = newTempProject('tour-contract');
   await page.goto('/');
   await page.locator('.fleet__header').getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByRole('button', { name: 'choose the location' }).click();
   await page.getByLabel('Folder').fill(dir);
-  await page.getByLabel('Project name').fill(`Tour Contract ${id}`);
+  await page.getByLabel('Project name').fill(name);
 
   await withProjectRegistryLock(async () => {
     await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
@@ -100,5 +96,5 @@ test('creating a project auto-opens its workspace — the flow the tour walks', 
 
   // And the way back the tour takes to photograph the Fleet card.
   await page.getByRole('button', { name: '← Fleet' }).click();
-  await expect(page.locator('.project-card', { hasText: `Tour Contract ${id}` })).toBeVisible();
+  await expect(page.locator('.project-card', { hasText: name })).toBeVisible();
 });

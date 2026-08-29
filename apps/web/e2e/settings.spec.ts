@@ -1,9 +1,7 @@
-import { randomUUID } from 'node:crypto';
-import os from 'node:os';
-import path from 'node:path';
 import { expect, request, test } from '@playwright/test';
 import { withProjectRegistryLock } from './fixtures/project-registry-lock.js';
 import { chooseWizardModels } from './fixtures/wizard-models.js';
+import { freshProjectPath as newTempProject } from './temp-project.js';
 
 /**
  * W4-06: settings UI driven end-to-end through the real apps/server. One
@@ -29,11 +27,11 @@ test.beforeAll(async ({ baseURL }) => {
   const api = await request.newContext({ baseURL });
   const token = await fetchDokimaToken(api);
 
-  const dir = path.join(os.tmpdir(), `dokima-settings-e2e-${randomUUID()}`);
+  const { dir, name } = newTempProject('settings');
   const created = await withProjectRegistryLock(async () => {
     const res = await api.post('/api/v1/projects', {
       headers: { Authorization: `Bearer ${token}` },
-      data: { path: dir, mode: 'new', name: `Settings E2E ${randomUUID()}` },
+      data: { path: dir, mode: 'new', name },
     });
     return (await res.json()) as { id: string };
   });

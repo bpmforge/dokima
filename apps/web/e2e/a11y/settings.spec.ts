@@ -1,9 +1,7 @@
-import { randomUUID } from 'node:crypto';
-import os from 'node:os';
-import path from 'node:path';
 import { expect, request, test, type Locator, type Page } from '@playwright/test';
 import { withProjectRegistryLock } from '../fixtures/project-registry-lock.js';
 import { scanForA11yViolations } from './axeHelper.js';
+import { freshProjectPath as newTempProject } from '../temp-project.js';
 
 /** Axe scan on the settings matrix (docs/TESTING.md §7; UX_SPEC §9). Same setup as settings.spec.ts. */
 
@@ -27,11 +25,11 @@ test('settings page has no WCAG 2.2 AA violations', async ({ page, baseURL }) =>
   const tokenMatch = /__DOKIMA_TOKEN__=("(?:[^"\\]|\\.)*")/.exec(html);
   const token = tokenMatch ? (JSON.parse(tokenMatch[1]!) as string) : undefined;
 
-  const dir = path.join(os.tmpdir(), `dokima-a11y-settings-${randomUUID()}`);
+  const { dir, name } = newTempProject('a11y-settings');
   const created = await withProjectRegistryLock(async () => {
     const res = await api.post('/api/v1/projects', {
       headers: { Authorization: `Bearer ${token}` },
-      data: { path: dir, mode: 'new', name: `A11y Settings ${randomUUID()}` },
+      data: { path: dir, mode: 'new', name },
     });
     return (await res.json()) as { id: string };
   });
@@ -62,11 +60,11 @@ test('settings page has no WCAG 2.2 AA violations with a provider registered and
   const tokenMatch = /__DOKIMA_TOKEN__=("(?:[^"\\]|\\.)*")/.exec(html);
   const token = tokenMatch ? (JSON.parse(tokenMatch[1]!) as string) : undefined;
 
-  const dir = path.join(os.tmpdir(), `dokima-a11y-settings-populated-${randomUUID()}`);
+  const { dir, name } = newTempProject('a11y-settings-populated');
   const created = await withProjectRegistryLock(async () => {
     const res = await api.post('/api/v1/projects', {
       headers: { Authorization: `Bearer ${token}` },
-      data: { path: dir, mode: 'new', name: `A11y Settings Populated ${randomUUID()}` },
+      data: { path: dir, mode: 'new', name },
     });
     return (await res.json()) as { id: string };
   });
@@ -117,11 +115,11 @@ test('the Providers row action and the Model matrix picker are reachable and ope
   const tokenMatch = /__DOKIMA_TOKEN__=("(?:[^"\\]|\\.)*")/.exec(html);
   const token = tokenMatch ? (JSON.parse(tokenMatch[1]!) as string) : undefined;
 
-  const dir = path.join(os.tmpdir(), `dokima-a11y-settings-kbd-${randomUUID()}`);
+  const { dir, name } = newTempProject('a11y-settings-kbd');
   const created = await withProjectRegistryLock(async () => {
     const res = await api.post('/api/v1/projects', {
       headers: { Authorization: `Bearer ${token}` },
-      data: { path: dir, mode: 'new', name: `A11y Settings Keyboard ${randomUUID()}` },
+      data: { path: dir, mode: 'new', name },
     });
     return (await res.json()) as { id: string };
   });

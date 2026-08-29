@@ -1,10 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { freshProjectPath as newTempProject } from '../temp-project.js';
 
 /**
  * Keyboard-only pass for board verbs + the morning queue (docs/TESTING.md
@@ -40,9 +39,7 @@ async function tabUntilFocused(
 test('a ready ticket can be claimed keyboard-only (Tab to the verb menu, ArrowDown to fire claim)', async ({
   page,
 }) => {
-  const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `dokima-a11y-kbd-board-${id}`);
-  const name = `A11y Keyboard Board ${id}`;
+  const { dir, name } = newTempProject('a11y-kbd-board');
   await fs.mkdir(dir, { recursive: true });
 
   await page.goto('/');
@@ -90,9 +87,7 @@ test('a ready ticket can be claimed keyboard-only (Tab to the verb menu, ArrowDo
 test('the morning queue Decide Approve action is reachable and operable keyboard-only', async ({
   page,
 }) => {
-  const id = randomUUID();
-  const dir = path.join(os.tmpdir(), `dokima-a11y-kbd-queue-${id}`);
-  const name = `A11y Keyboard Queue ${id}`;
+  const { dir, name } = newTempProject('a11y-kbd-queue');
   await fs.mkdir(dir, { recursive: true });
 
   await page.goto('/');
@@ -136,5 +131,4 @@ test('the morning queue Decide Approve action is reachable and operable keyboard
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('morning-queue-empty')).toBeVisible();
 
-  await fs.rm(dir, { recursive: true, force: true });
 });

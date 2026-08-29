@@ -1,10 +1,9 @@
 import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
+import { freshProjectPath as newTempProject } from './temp-project.js';
 
 /** FR-C3/C5/C8, UX_SPEC §5: artifact viewer + receipt inspector, through the real apps/server. */
 
@@ -14,12 +13,10 @@ async function git(cwd: string, args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd });
 }
 
+/** This suite's label bound to the shared helper (W22-15) — the uniform
+ * `dokima-<label>-e2e-<uuid>` name is what global-teardown removes. */
 function freshProjectPath(label: string): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-artifacts-e2e-${label}-${id}`),
-    name: `Artifacts E2E ${label} ${id}`,
-  };
+  return newTempProject(`artifacts-${label}`);
 }
 
 async function initGitRepoWithDoc(dir: string): Promise<void> {

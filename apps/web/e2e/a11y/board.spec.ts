@@ -1,11 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { scanForA11yViolations } from './axeHelper.js';
+import { freshProjectPath as newTempProject } from '../temp-project.js';
 
 /** Axe scan on the board (docs/TESTING.md §7 "axe scan per routed page"; UX_SPEC §9). */
 test.use({ viewport: { width: 2400, height: 1000 } });
@@ -15,12 +14,10 @@ const repoRoot = path.resolve(here, '..', '..', '..', '..');
 const TSX_BIN = path.join(repoRoot, 'apps', 'server', 'node_modules', '.bin', 'tsx');
 const SEED_SCRIPT = path.join(here, '..', 'fixtures', 'seed-board-tickets.mjs');
 
+/** This suite's label bound to the shared helper (W22-15) — the uniform
+ * `dokima-<label>-e2e-<uuid>` name is what global-teardown removes. */
 function freshProjectPath(): { dir: string; name: string } {
-  const id = randomUUID();
-  return {
-    dir: path.join(os.tmpdir(), `dokima-a11y-board-${id}`),
-    name: `A11y Board ${id}`,
-  };
+  return newTempProject('a11y-board');
 }
 
 function seed(dbPath: string, scenario: string): void {

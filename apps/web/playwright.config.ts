@@ -17,6 +17,11 @@ export default defineConfig({
   // registry accumulates across runs forever -- it reached 1,164 projects and
   // took trace.spec.ts red plus the suite from 22s to 3.7m (W9-14).
   globalSetup: './e2e/global-setup.ts',
+  // Removes the temp projects the run made (W22-15). After the run, not
+  // during it: a project deleted mid-run stays in the shared fleet
+  // registry, and later specs then see a card whose directory has
+  // vanished -- which took two suites red before this moved here.
+  globalTeardown: './e2e/global-teardown.ts',
   fullyParallel: false,
   retries: 0,
   reporter: 'list',
