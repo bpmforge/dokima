@@ -56,7 +56,7 @@ export async function unfalsifiableCriteria(input: {
 
   // A throwaway checkout of the base. `createWorktree` names it after the
   // ticket, so a distinct id keeps it clear of the ticket's real worktree.
-  const probeId = `${input.ticketId}--base-probe`;
+  const probeId = baseProbeId(input.ticketId);
   let probePath: string | undefined;
   const found: UnfalsifiableCriterion[] = [];
   try {
@@ -78,12 +78,21 @@ export async function unfalsifiableCriteria(input: {
      * ticket on that account — this check exists to make the gate more honest,
      * not to add a new way for real work to be rejected by infrastructure.
      */
-    if (probePath) {
-      await destroyWorktree(
-        { repoRoot: input.repoRoot, path: probePath, branch: `sw/${probeId}`, ticketId: probeId },
-        { deleteBranch: true },
-      ).catch(() => undefined);
-    }
+    /**
+     * W22-14: clean up even when `createWorktree` never returned.
+     *
+     * `probePath` is only set once the create RESOLVES, so a create that threw
+     * after making the directory left it behind with nothing to remove it —
+     * and `dokima doctor` then reported a worktree for a ticket that was never
+     * in progress. `baseProbePath` computes exactly the path we could not
+     * obtain by other means, which is what it was written for and why it had
+     * no caller until now.
+     */
+    const path_ = probePath ?? baseProbePath(input.repoRoot, input.ticketId);
+    await destroyWorktree(
+      { repoRoot: input.repoRoot, path: path_, branch: `sw/${probeId}`, ticketId: probeId },
+      { deleteBranch: true },
+    ).catch(() => undefined);
     return [];
   }
   return found;
@@ -100,7 +109,35 @@ export function unfalsifiableReason(found: readonly UnfalsifiableCriterion[]): s
   );
 }
 
-/** Where a base probe would live — exported so a stale one can be recognised. */
+/**
+ * The suffix that marks a worktree as this module's throwaway base probe.
+ *
+ * W22-14: `baseProbePath` was exported "so a stale one can be recognised" and
+ * nothing recognised anything — it was reported by validate-exports as an
+ * export with no caller, and the obvious answer was to mark it deliberately
+ * unreached. That would have been wrong. There IS a recogniser: `dokima
+ * doctor`'s worktree-orphans check, which lists every directory under
+ * `.dokima/worktrees` that is not an in_progress ticket. A probe is never an
+ * in_progress ticket, so a leftover one was already being reported — as a bare
+ * directory name, indistinguishable from a ticket whose record had vanished.
+ *
+ * So the export was not decoration awaiting a marker; it was a wire that had
+ * never been connected. The suffix is named once, here, and both the creator
+ * and the recogniser use it.
+ */
+export const BASE_PROBE_SUFFIX = '--base-probe';
+
+/** The worktree id this module gives its throwaway base checkout. */
+export function baseProbeId(ticketId: string): string {
+  return `${ticketId}${BASE_PROBE_SUFFIX}`;
+}
+
+/** True when a worktree directory name is one of these probes rather than a ticket's. */
+export function isBaseProbeWorktree(name: string): boolean {
+  return name.endsWith(BASE_PROBE_SUFFIX);
+}
+
+/** Where a base probe lives. Mirrors `createWorktree`'s own layout (packages/git/src/worktree.ts). */
 export function baseProbePath(repoRoot: string, ticketId: string): string {
-  return path.join(repoRoot, '.dokima', 'worktrees', `${ticketId}--base-probe`);
+  return path.join(repoRoot, '.dokima', 'worktrees', baseProbeId(ticketId));
 }

@@ -14714,7 +14714,7 @@
     {
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14723,18 +14723,31 @@
       "lane": "orchestrator",
       "module": "harbormaster",
       "points": 1,
-      "title": "the deliberately-unreached export carries the marker built for it",
+      "title": "baseProbePath was a wire never connected, not an export awaiting a marker",
       "write_scope": [
-        "packages/harbormaster/src/loop-gates-unfalsifiable.ts"
+        "packages/harbormaster/src/loop-gates-unfalsifiable.ts",
+        "packages/harbormaster/src/loop-gates-unfalsifiable.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "apps/server/src/cli/ops/doctor.test.ts",
+        "scripts/validate-exports.test.mjs"
       ],
       "acceptance": [
-        "baseProbePath carries an @unreached marker with the reason its docstring already gives",
-        "validate-exports reports it as deliberate rather than as a finding"
+        "baseProbePath has a real production caller, or is marked deliberately unreached with its reason",
+        "validate-exports stops reporting it as a finding",
+        "dokima doctor tells a stale base probe from a ticket whose record vanished"
       ],
       "notes": [
         "DROPPED FOLLOW-UP from W22-02, filed 2026-08-29 during a completeness sweep. W22-02 built the @unreached marker and deliberately applied it to nothing, because the obvious candidate lives outside its scope \u2014 \"the first real marker belongs to whoever owns that file\". Nobody was asked to.",
         "A MECHANISM WITH NO REAL USER IS THE CLASS W22-02 EXISTS TO CATCH, which is the argument for closing the loop rather than leaving the marker theoretical. baseProbePath is exported so a stale probe can be recognised, per its own docstring \u2014 a genuine deliberate non-caller.",
-        "One line plus the reason. If it turns out baseProbePath SHOULD have a caller, that is the more valuable finding and this ticket should say so instead."
+        "One line plus the reason. If it turns out baseProbePath SHOULD have a caller, that is the more valuable finding and this ticket should say so instead.",
+        "THE PREMISE WAS WRONG, WHICH THE TICKET ITSELF ANTICIPATED: \"if it turns out baseProbePath SHOULD have a caller, that is the more valuable finding and this ticket should say so instead\". It should have two, and marking it @unreached would have declared deliberate what was simply never connected.",
+        "CALLER ONE, A REAL BUG: unfalsifiableCriteria sets `probePath` only after createWorktree RESOLVES, so a create that threw after making the directory left it behind with nothing to remove it \u2014 the cleanup was guarded by `if (probePath)`. baseProbePath computes exactly the path that is otherwise unobtainable there, which is what it was written for. The guard is gone and the fallback is the export.",
+        "CALLER TWO, THE RECOGNISER IT NAMED: its docstring said \"exported so a stale one can be recognised\", and the recogniser already existed \u2014 `dokima doctor`'s worktree-orphans check, which lists every directory under .dokima/worktrees that is not an in_progress ticket. A probe never is one, so a leftover was ALREADY being reported \u2014 as a bare directory name, reading like a ticket whose record had vanished, sending anyone who read it looking for a ticket that never existed. It now says \"stale base-probe worktree(s) left by an interrupted close gate \u2014 safe to delete\".",
+        "THE SUFFIX IS NAMED ONCE. It was spelt inline where the probe is created and again inside baseProbePath \u2014 two constructions of the same string, each free to drift from createWorktree's real layout. Now BASE_PROBE_SUFFIX/baseProbeId/isBaseProbeWorktree, with the creator, the path and the recogniser all using them.",
+        "THE VALIDATOR CAUGHT MY FIRST PASS, correctly and usefully. Adding a TEST for baseProbePath moved it from \"referenced by nothing\" into \"tested but never called\" and took gaps 47 -> 48, over the baseline. A test is not a caller \u2014 which is the exact distinction W22-02 built that category to draw, catching its own author two tickets later. gaps is back to 47 because the export now has real callers, not because a number was raised.",
+        "THE ZERO-REFERENCE COUNT DROPPED 2 -> 1 and the W22-02 fixture now says why: lowering that number by wiring the export is the allowed direction; lowering it any other way would not be.",
+        "RED PROVEN by stashing the two sources: 4 fixtures fail."
       ]
     },
     {

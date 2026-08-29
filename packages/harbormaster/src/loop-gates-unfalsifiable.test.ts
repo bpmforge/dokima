@@ -13,6 +13,9 @@ import { git } from '@dokima/git';
 import {
   unfalsifiableCriteria,
   unfalsifiableReason,
+  baseProbeId,
+  baseProbePath,
+  isBaseProbeWorktree,
 } from './loop-gates-unfalsifiable.js';
 
 const dirs: string[] = [];
@@ -128,5 +131,30 @@ describe('unfalsifiableReason (W21-50)', () => {
     expect(reason).toContain('npm run typecheck');
     expect(reason).toContain('BASE');
     expect(reason).toContain('FAILS before the work');
+  });
+});
+
+describe('a base probe is nameable, so a stale one can be recognised (W22-14)', () => {
+  it('the id is built in one place, and the path agrees with it', () => {
+    // The id used to be spelt inline where the probe is created and again in
+    // baseProbePath — two constructions of the same string, either free to
+    // drift from createWorktree's real layout.
+    expect(baseProbeId('PLAN-tally-01')).toBe('PLAN-tally-01--base-probe');
+    expect(baseProbePath('/repo', 'PLAN-tally-01')).toBe(
+      '/repo/.dokima/worktrees/PLAN-tally-01--base-probe',
+    );
+  });
+
+  it('RED FIXTURE: a probe worktree is distinguishable from a ticket’s', () => {
+    // This is what `dokima doctor` could not do. A leftover probe was reported
+    // as a bare directory name, reading like a ticket whose record had
+    // vanished — sending someone to look for a ticket that never existed.
+    expect(isBaseProbeWorktree('PLAN-tally-01--base-probe')).toBe(true);
+    expect(isBaseProbeWorktree('PLAN-tally-01')).toBe(false);
+  });
+
+  it('does not mistake a ticket that merely contains the words', () => {
+    // The suffix is anchored: only a name that ENDS with it is a probe.
+    expect(isBaseProbeWorktree('W1-01--base-probe-notes')).toBe(false);
   });
 });

@@ -256,10 +256,14 @@ describe('the three degrees of unreached (W22-02)', () => {
     // baselines are silently counting something new.
     const gated = new Set([...findings, ...buried].map((f) => `${f.package}:${f.symbol}`));
     for (const u of unreferenced) expect(gated.has(`${u.package}:${u.symbol}`)).toBe(false);
-    // Two, both hand-verified: tickets:numberCriteria and
-    // harbormaster:baseProbePath, whose own docstring says it is exported so a
-    // stale probe can be recognised.
-    expect(unreferenced.length).toBe(2);
+    // ONE now, and the drop is the point. This was two: tickets:numberCriteria
+    // and harbormaster:baseProbePath. W22-14 set out to mark baseProbePath as
+    // deliberately unreached and found the opposite — it was a wire that had
+    // never been connected, and `unfalsifiableCriteria`'s failure path needed
+    // exactly the value it computes. Giving it a real caller is why this
+    // number moved; lowering it without one would be the forbidden direction.
+    expect(unreferenced.length).toBe(1);
+    expect(unreferenced.map((u) => u.symbol)).not.toContain('baseProbePath');
   });
 
   it('adding the new categories did not move either gated number', () => {

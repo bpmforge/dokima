@@ -197,7 +197,14 @@ export type {
 export { reviewStatusFor, reviewStatusSentence } from './review-status.js';
 
 /** W21-50: a criterion that also passes at BASE certifies nothing. */
-export { unfalsifiableCriteria, unfalsifiableReason } from './loop-gates-unfalsifiable.js';
+export {
+  baseProbeId,
+  baseProbePath,
+  BASE_PROBE_SUFFIX,
+  isBaseProbeWorktree,
+  unfalsifiableCriteria,
+  unfalsifiableReason,
+} from './loop-gates-unfalsifiable.js';
 export type { UnfalsifiableCriterion } from './loop-gates-unfalsifiable.js';
 
 /** W21-46: a rung that already failed this ticket is not re-run from scratch. */

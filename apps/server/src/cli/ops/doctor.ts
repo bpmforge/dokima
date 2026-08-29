@@ -10,6 +10,7 @@ import { promises as fs } from 'node:fs';
 import { openEventLogReader, type EventLog } from '@dokima/events';
 import { type CredentialStore, resolveCredentialStore } from '@dokima/shared';
 import { listTickets } from '@dokima/tickets';
+import { isBaseProbeWorktree } from '@dokima/harbormaster';
 import { auditTailCheck } from '../../bootstrap/audit-tail.js';
 import { type CliIO, resolvePort } from '../../bootstrap/cli.js';
 import { resolveProjectPaths, type ProjectPaths } from '../../bootstrap/config.js';
@@ -244,13 +245,39 @@ async function checkWorktreeOrphans(paths: ProjectPaths): Promise<DoctorCheck> {
     }
   }
 
+  /**
+   * W22-14: a base probe is not a vanished ticket, and saying so is the whole
+   * point of naming it.
+   *
+   * `loop-gates-unfalsifiable.ts` makes a throwaway checkout of the ticket's
+   * BASE to find acceptance criteria that pass without the work, and names it
+   * `<ticketId>--base-probe`. That name is never an in_progress ticket, so a
+   * leftover one already showed up here — as a bare directory, reading like a
+   * ticket whose record had disappeared. Someone chasing it would look for a
+   * ticket that never existed.
+   *
+   * The suffix is that module's own export, used here rather than re-spelt:
+   * `baseProbePath` was written "so a stale one can be recognised" and nothing
+   * recognised it, which is why validate-exports reported it as an export with
+   * no caller. This is the caller.
+   */
   const orphans = entries.filter((name) => !inProgressIds.has(name));
+  const staleProbes = orphans.filter((name) => isBaseProbeWorktree(name));
+  const ticketOrphans = orphans.filter((name) => !isBaseProbeWorktree(name));
   if (orphans.length > 0) {
-    return {
-      name: 'worktree-orphans',
-      status: 'warn',
-      detail: `orphaned worktree dir(s) with no in_progress ticket: ${orphans.join(', ')}`,
-    };
+    const parts: string[] = [];
+    if (ticketOrphans.length > 0) {
+      parts.push(`orphaned worktree dir(s) with no in_progress ticket: ${ticketOrphans.join(', ')}`);
+    }
+    if (staleProbes.length > 0) {
+      // Named as what it is, with what it means: a probe outlives its gate run
+      // only when the run died between creating it and destroying it.
+      parts.push(
+        `stale base-probe worktree(s) left by an interrupted close gate — safe to ` +
+          `delete: ${staleProbes.join(', ')}`,
+      );
+    }
+    return { name: 'worktree-orphans', status: 'warn', detail: parts.join('; ') };
   }
   return {
     name: 'worktree-orphans',

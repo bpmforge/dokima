@@ -161,6 +161,52 @@ describe('runDoctor', () => {
     expect(worktreeCheck?.detail).toContain('W1-99');
   });
 
+  it(
+    'RED FIXTURE (W22-14): a stale base probe is named as one, not reported as a ' +
+      'ticket whose record vanished',
+    async () => {
+      // loop-gates-unfalsifiable makes a throwaway checkout of the ticket's
+      // BASE and names it <ticketId>--base-probe. That is never an in_progress
+      // ticket, so a leftover one already appeared here — as a bare directory,
+      // sending anyone who read it looking for a ticket that never existed.
+      const io = await scratchIo();
+      const paths = resolveProjectPaths(io.cwd);
+      await fs.mkdir(path.join(paths.worktreesDir, 'W1-99--base-probe'), { recursive: true });
+
+      const report = await runDoctor(io, {
+        detectRunningCore: vi.fn().mockResolvedValue(false),
+        resolveCredentialStore: fakeStore(),
+        loadConfiguredProviders: vi.fn().mockResolvedValue([]),
+        packSource: realPackSource,
+      });
+
+      const check = report.checks.find((c) => c.name === 'worktree-orphans');
+      expect(check?.status).toBe('warn');
+      expect(check?.detail).toContain('stale base-probe worktree');
+      expect(check?.detail).toContain('safe to delete');
+      // And it is NOT described as a ticket orphan.
+      expect(check?.detail).not.toContain('no in_progress ticket');
+    },
+  );
+
+  it('reports a real ticket orphan and a stale probe distinctly, in one check', async () => {
+    const io = await scratchIo();
+    const paths = resolveProjectPaths(io.cwd);
+    await fs.mkdir(path.join(paths.worktreesDir, 'W1-98'), { recursive: true });
+    await fs.mkdir(path.join(paths.worktreesDir, 'W1-99--base-probe'), { recursive: true });
+
+    const report = await runDoctor(io, {
+      detectRunningCore: vi.fn().mockResolvedValue(false),
+      resolveCredentialStore: fakeStore(),
+      loadConfiguredProviders: vi.fn().mockResolvedValue([]),
+      packSource: realPackSource,
+    });
+
+    const check = report.checks.find((c) => c.name === 'worktree-orphans');
+    expect(check?.detail).toContain('no in_progress ticket: W1-98');
+    expect(check?.detail).toContain('W1-99--base-probe');
+  });
+
   it('fails pack-signatures when the manifest signature does not verify', async () => {
     const io = await scratchIo();
 
