@@ -204,3 +204,23 @@ export function priorPhase(id: PhaseId): PhaseDefinition | null {
 export function nextPhase(id: PhaseId): PhaseDefinition {
   return getPhase(((id as number) + 1) as PhaseId);
 }
+
+/**
+ * The deliverables a phase's gate will look for on disk (W21-76).
+ *
+ * MEASURED, live on the Tally project: the run ended with "The Idea phase (0)
+ * gate refused after this run: declared deliverable(s) not found on disk:
+ * docs/VISION.md, docs/COMPETITIVE_ANALYSIS.md" — and no `docs/` directory
+ * existed in the project at all. The gate was working; nothing had ever been
+ * ASKED to produce what it checks for. The interview produced seven
+ * implementation tickets and not one that writes a phase deliverable, so the
+ * gate refused on every run and the project could never leave Idea.
+ *
+ * Exposed here because the topology is already the single statement of what a
+ * phase owes, and a second list of the same paths anywhere else would drift
+ * from it — which is the whole reason the gate reads this table rather than a
+ * hardcoded set.
+ */
+export function deliverablesFor(id: PhaseId): readonly Deliverable[] {
+  return getPhase(id).deliverables;
+}

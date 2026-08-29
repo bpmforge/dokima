@@ -28,6 +28,8 @@
  */
 import { assertDecisionComplete } from '../blueprint/gate.js';
 import { synthesizeBlueprint } from '../blueprint/synth.js';
+import { deliverablesFor } from '../phases/topology.js';
+import type { TicketDraftInput } from '../decompose/types.js';
 import { buildTechnicalSlate } from '../decisions/technical-slate.js';
 import { decompose } from '../decompose/decompose.js';
 import type { DecomposedPlan } from '../decompose/types.js';
@@ -58,6 +60,65 @@ export class IncompleteInterviewSessionError extends Error {
  * rejects its input, or if the blueprint's decision-complete gate
  * (FR-P7) refuses phase 4.
  */
+
+/**
+ * The phase this board must clear before the project can leave Idea (W21-76).
+ *
+ * Not a general "every phase" sweep: the measured failure is that a project
+ * can never leave phase 0, and every later phase's gate is only reached once
+ * this one clears. Widening it would file work nobody can start yet.
+ */
+const IDEA_PHASE_ID = 0;
+
+/**
+ * A ticket per phase-0 deliverable the project does not already have.
+ *
+ * THE GATE WAS RIGHT AND NOTHING FED IT. `runPipeline` synthesizes a blueprint
+ * and the interview produces implementation tickets; neither writes
+ * `docs/VISION.md` or `docs/COMPETITIVE_ANALYSIS.md`, which are what phase 0
+ * declares. So the gate refused on every run for a stated, correct reason, and
+ * the project's Fleet card honestly read "Not started" while real work landed.
+ *
+ * PERSISTING THE BLUEPRINT WOULD NOT HAVE FIXED IT, which is worth recording
+ * because it was the cheaper theory: the blueprint is ONE markdown document
+ * with a title and sections, not these two named files. Writing it to disk
+ * produces a different artifact than the gate checks for.
+ *
+ * A TICKET RATHER THAN A SILENT WRITE, for the reason the ticket's own note
+ * gives: the gate exists so a phase is entered on evidence, and the evidence
+ * should be something a ticket was actually asked to produce — visible,
+ * orderable work a person can read, reorder or delete. Same argument as
+ * W21-97's quality tickets, which this sits beside.
+ */
+function deliverableDrafts(
+  existing: readonly string[],
+): readonly TicketDraftInput[] {
+  const have = new Set(existing);
+  return deliverablesFor(IDEA_PHASE_ID)
+    .filter((d) => !have.has(d.id))
+    .map((d) => ({
+      id: `PHASE0-${d.id.replace(/^docs\//, '').replace(/\.md$/, '')}`,
+      type: 'task' as const,
+      title: `Write ${d.id}`,
+      writeScope: [d.id],
+      dependsOn: [],
+      acceptance: [
+        `${d.id} exists and is written for a reader who has not seen this project before`,
+        'It reflects what the interview actually established, not a template',
+      ],
+      // The phase gate re-checks existence itself; the ticket's own verify
+      // asserts the file is there and not empty, so a close cannot claim it.
+      verify: `test -s ${d.id}`,
+      // A doc-only ticket: no package of its own, no code, no seams. Stated
+      // explicitly rather than left off, because every one of these fields is
+      // a seam the decomposer reasons about and an omitted one is a guess.
+      ownPackage: null,
+      importsWorkspacePackages: [],
+      providesInterfaces: [],
+      consumesInterfaces: [],
+    }));
+}
+
 export function runPipeline(input: RunPipelineInput, port: PipelinePort): DecomposedPlan {
   if (!isInterviewComplete(input.interviewSession)) {
     throw new IncompleteInterviewSessionError();
@@ -79,7 +140,12 @@ export function runPipeline(input: RunPipelineInput, port: PipelinePort): Decomp
   const technicalSlate = buildTechnicalSlate(technicalSlateInput);
   port.emit({ kind: 'decisions-decided', slateTitle: technicalSlate.title });
 
-  const ticketDrafts = port.model.ticketDraftsFrom(blueprint, technicalSlate);
+  const ticketDrafts = [
+    // W21-76: FIRST, so the documents a phase gate checks for are the first
+    // thing the board asks for rather than an afterthought below the features.
+    ...deliverableDrafts(input.existingDeliverables ?? []),
+    ...port.model.ticketDraftsFrom(blueprint, technicalSlate),
+  ];
   // W21-97: a plan built from someone's IDEA carries its quality work. This is
   // the call site that serves a person who may have no development experience
   // and would never think to ask for a security review — unlike

@@ -249,11 +249,16 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
       plan_items: { ticket_created: boolean; ticket_id: string }[];
     };
     // W21-97: a board built from an idea now also carries the standard quality
-    // work, so the DRAFTED feature is asserted directly rather than by total.
-    const drafted = body.plan.tickets.filter((t) => !t.id.startsWith('QUALITY-'));
+    // work, and W21-76 adds the phase-0 documents its own gate checks for, so
+    // the DRAFTED feature is asserted directly rather than by total.
+    const drafted = body.plan.tickets.filter(
+      (t) => !t.id.startsWith('QUALITY-') && !t.id.startsWith('PHASE0-'),
+    );
     expect(drafted).toHaveLength(1);
     expect(body.plan.tickets.map((t) => t.id)).toContain('QUALITY-SECURITY-REVIEW');
-    const draftedItems = body.plan_items.filter((i) => !i.ticket_id.includes('QUALITY-'));
+    const draftedItems = body.plan_items.filter(
+      (i) => !i.ticket_id.includes('QUALITY-') && !i.ticket_id.includes('PHASE0-'),
+    );
     expect(draftedItems).toHaveLength(1);
     expect(draftedItems[0]?.ticket_created).toBe(true);
     expect(draftedItems[0]?.ticket_id).toBe('PLAN-T-DEMO-1');

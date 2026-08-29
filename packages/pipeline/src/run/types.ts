@@ -41,6 +41,18 @@ export interface RunPipelineInput {
    * resolved markers against. Empty string is valid — an empty ledger cites
    * no D-IDs, so it only blocks a blueprint that claims a RESOLVED marker. */
   readonly ledgerMarkdown: string;
+  /**
+   * Deliverable paths that ALREADY exist on disk for this project (W21-76).
+   *
+   * Injected rather than probed: this package takes no filesystem dependency
+   * by design (see topology.ts's header), and the caller is the one that knows
+   * the project root. Absent means "none of them", which is the correct
+   * default for a project being planned for the first time.
+   *
+   * This is what stops a second run adding a duplicate ticket for a document
+   * the first run already produced.
+   */
+  readonly existingDeliverables?: readonly string[];
 }
 
 /**

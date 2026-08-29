@@ -146,12 +146,18 @@ describe('runPipeline (BLUEPRINT §4, phases 0-4)', () => {
     // W21-97: a board built from someone's idea carries its quality work too —
     // the drafted feature, plus the standard checks a person with no
     // development experience would never think to ask for.
-    const drafted = plan.tickets.filter((t) => !t.id.startsWith('QUALITY-'));
+    // W21-76: and the phase-0 documents its own gate will check for, without
+    // which the project can never leave Idea however much work lands.
+    const drafted = plan.tickets.filter(
+      (t) => !t.id.startsWith('QUALITY-') && !t.id.startsWith('PHASE0-'),
+    );
     expect(drafted).toHaveLength(1);
     expect(plan.tickets.map((t) => t.id)).toEqual(
       expect.arrayContaining(['QUALITY-SECURITY-REVIEW', 'QUALITY-RELEASE-READINESS']),
     );
-    expect(plan.tickets[0]?.id).toBe('T1');
+    // W21-76: the drafted feature is no longer first — the phase-0 documents
+    // the gate checks for come ahead of it. It is still the first DRAFTED one.
+    expect(drafted[0]?.id).toBe('T1');
     expect(plan.mermaid.startsWith('flowchart TD')).toBe(true);
     expect(plan.violations).toEqual([]);
 
@@ -248,5 +254,67 @@ describe('runPipeline (BLUEPRINT §4, phases 0-4)', () => {
       'interview-complete',
       'blueprint-synthesized',
     ]);
+  });
+});
+
+/** The same complete-interview input the AC1 case uses. */
+function ideaInput() {
+  return {
+    interviewSession: completedSession(),
+    blueprintTitle: 'Test Blueprint',
+    ledgerMarkdown: '',
+  };
+}
+
+describe('a board carries the documents its own phase gate checks for (W21-76)', () => {
+  it(
+    'RED FIXTURE: the board contains a ticket for every phase-0 deliverable. ' +
+      'Live on Tally the run ended "declared deliverable(s) not found on disk: ' +
+      'docs/VISION.md, docs/COMPETITIVE_ANALYSIS.md" with no docs/ directory ' +
+      'at all — the gate was right and nothing had ever been asked to feed it',
+    () => {
+      const plan = runPipeline(ideaInput(), fakePort().port);
+      const ids = plan.tickets.map((t) => t.id);
+      expect(ids).toContain('PHASE0-VISION');
+      expect(ids).toContain('PHASE0-COMPETITIVE_ANALYSIS');
+    },
+  );
+
+  it('each one writes exactly the path the gate looks for', () => {
+    // A ticket that writes somewhere else would leave the gate refusing while
+    // the board looked complete — worse than no ticket at all.
+    const plan = runPipeline(ideaInput(), fakePort().port);
+    const vision = plan.tickets.find((t) => t.id === 'PHASE0-VISION')!;
+    expect(vision.writeScope).toEqual(['docs/VISION.md']);
+    expect(vision.verify).toBe('test -s docs/VISION.md');
+  });
+
+  it('a deliverable that ALREADY exists gains no duplicate ticket', () => {
+    // Acceptance 3. A second run must not re-file work the first one did.
+    const plan = runPipeline(
+      { ...ideaInput(), existingDeliverables: ['docs/VISION.md'] },
+      fakePort().port,
+    );
+    const ids = plan.tickets.map((t) => t.id);
+    expect(ids).not.toContain('PHASE0-VISION');
+    expect(ids).toContain('PHASE0-COMPETITIVE_ANALYSIS');
+  });
+
+  it('a project with every deliverable already present gains none of them', () => {
+    const plan = runPipeline(
+      {
+        ...ideaInput(),
+        existingDeliverables: ['docs/VISION.md', 'docs/COMPETITIVE_ANALYSIS.md'],
+      },
+      fakePort().port,
+    );
+    expect(plan.tickets.filter((t) => t.id.startsWith('PHASE0-'))).toHaveLength(0);
+  });
+
+  it('the deliverable tickets come FIRST, ahead of the features', () => {
+    // Ordering is the only signal a person reading the board gets about what
+    // has to happen before the phase can advance.
+    const plan = runPipeline(ideaInput(), fakePort().port);
+    expect(plan.tickets[0]?.id).toMatch(/^PHASE0-/);
   });
 });

@@ -13461,7 +13461,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W21-76",
       "points": 3,
@@ -13470,7 +13470,9 @@
       "write_scope": [
         "packages/pipeline/src/run/run-pipeline.ts",
         "packages/pipeline/src/run/run-pipeline.test.ts",
-        "packages/pipeline/src/phases/topology.ts"
+        "packages/pipeline/src/run/types.ts",
+        "packages/pipeline/src/phases/topology.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/index.test.ts"
       ],
       "notes": [
         "LIVE, Tally: the run ended with a notification reading \"Phase gate: Idea did not clear \u2014 The Idea phase (0) gate refused after this run: declared deliverable(s) not found on disk: docs/VISION.md, docs/COMPETITIVE_ANALYSIS.md\". No docs/ directory exists in the project root at all.",
@@ -13480,7 +13482,15 @@
         "ACCEPTANCE: a board built from the interview contains a ticket for each phase-0 deliverable the gate requires; running that board to completion clears the Idea gate and advances the project phase; a project whose deliverables already exist gains no duplicate ticket.",
         "SCOPE CORRECTED, AND THE BOARD PROVED ITS OWN POINT: this ticket was filed against apps/server/src/api/pipeline/decompose-tickets.ts, which does not exist. As filed it was unsatisfiable within its own write_scope \u2014 precisely the defect class W21-80 was built to detect, produced by me, on this board, hours after shipping the detector.",
         "ROOT CAUSE HAS MOVED, DO NOT BUILD THE FILED FIX YET. runPipeline DOES synthesize the blueprint (synthesizeBlueprint, run-pipeline.ts:69) and nothing writes it to disk; only docs/DECISIONS.md has a read/write path (apps/server/src/api/decisions/ledger-file.ts). So the gap may be \"the deliverable is produced and never persisted\", which is far cheaper than \"decomposition must emit deliverable tickets\".",
-        "AND PHASE 0 IS waiverEligible: true (packages/pipeline/src/phases/topology.ts). If the product intends a small project to waive Idea, then \"no project can leave Idea\" is wrong as stated and the real defect is that the waiver is not discoverable from the Fleet card or the phase-gate notification. Establish which of the three it is \u2014 persist the blueprint, emit deliverable tickets, or surface the waiver \u2014 before writing code."
+        "AND PHASE 0 IS waiverEligible: true (packages/pipeline/src/phases/topology.ts). If the product intends a small project to waive Idea, then \"no project can leave Idea\" is wrong as stated and the real defect is that the waiver is not discoverable from the Fleet card or the phase-gate notification. Establish which of the three it is \u2014 persist the blueprint, emit deliverable tickets, or surface the waiver \u2014 before writing code.",
+        "THE THREE CANDIDATES WERE SETTLED BEFORE ANY CODE, as the previous note demanded. (1) PERSIST THE BLUEPRINT: run-pipeline.ts contains no writeFile or mkdir at all, so the blueprint really is synthesized and dropped \u2014 but it is ONE markdown document with a title and sections, not docs/VISION.md plus docs/COMPETITIVE_ANALYSIS.md. Writing it to disk produces a different artifact than the gate checks for, so this was the cheap theory and it does not work. (2) SURFACE THE WAIVER: phase 0 is waiverEligible, but a waiver needs a human signature (FR-P2) \u2014 a deliberate escape hatch, not the path a project should take by default. (3) EMIT DELIVERABLE TICKETS: the one the acceptance names, and the honest one.",
+        "CONFIRMED ON DISK, not inferred: of this machine's three real projects, vault and tally have NO docs/ directory at all and recipe-keeper has only DECISIONS.md \u2014 which is exactly the one file with a write path (apps/server/src/api/decisions/ledger-file.ts). The pattern matches the diagnosis precisely.",
+        "THE GATE WAS RIGHT AND NOTHING FED IT. It refused for a stated, correct reason on every run, and the Fleet card's \"Not started\" badge was honest about a phase that genuinely never advanced while real work landed.",
+        "EXISTENCE IS INJECTED, NOT PROBED: RunPipelineInput gains existingDeliverables. This package takes no filesystem dependency by design (topology.ts says so in its own header) and the caller is what knows the project root. Absent means \"none\", the right default for a project being planned for the first time \u2014 and it is what stops a second run re-filing work the first one did (acceptance 3).",
+        "THE DELIVERABLE TICKETS COME FIRST on the board, ahead of the features. Ordering is the only signal a person reading the board gets about what must happen before the phase can advance.",
+        "SCOPE: phase 0 only, deliberately. Every later phase has the same shape, but its gate is only reached once this one clears, so emitting tickets for all of them would file work nobody can start. Worth a follow-up once a project actually leaves Idea.",
+        "TWO PRE-EXISTING TESTS CHANGED THEIR EXPECTED COUNTS, at both layers, and both were updated to state the new contract rather than loosened: the board now carries three tickets where it carried one. The same thing happened for W21-97's quality tickets, and the filters now read as a list of what a generated board carries beyond the drafted features.",
+        "RED PROVEN by stashing run-pipeline.ts and topology.ts: 4 of the new fixtures fail."
       ],
       "acceptance": [
         "a board built from the interview contains a ticket for each phase-0 deliverable the gate requires",
