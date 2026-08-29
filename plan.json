@@ -14388,7 +14388,7 @@
       "points": 3,
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14396,8 +14396,10 @@
       "title": "the request ceiling is settable where a user would look for it",
       "write_scope": [
         "apps/web/src/settings/ProviderForm.tsx",
-        "apps/web/src/settings/ProviderForm.test.tsx",
-        "apps/web/src/settings/providers-api.ts"
+        "apps/web/src/settings/ProvidersPanel.tsx",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "apps/web/src/settings/providers-api.ts",
+        "apps/web/src/settings/providers-api.test.ts"
       ],
       "acceptance": [
         "A user can raise the per-provider request ceiling from the Providers UI, without an HTTP client and a bearer token",
@@ -14409,7 +14411,15 @@
         "SPLIT FROM W21-96 criterion 4. The registry has carried requestTimeoutMs since W10-57 and the wire has carried it since 2026-08-28 in both directions; the run honours it; the only thing missing is a place for a person to type it. Today the ONLY way to raise it is PUT /providers with a bearer token (D-005 \u2014 a bare fetch gets a 401 and silently leaves the ceiling at its default, which cost this session an hour of misdiagnosis).",
         "THIS IS THE LOCAL-ONLY GUARANTEE, not a convenience: C-1/D-024 option (a) says a user who chooses local-only gets a fully working product. A 27B model on a laptop legitimately needs more than 300s for one decompose, and the product currently offers no way to say so.",
         "ProviderForm.tsx rather than ProvidersPanel.tsx: the panel is owned by W21-25 in this same lane, and same-lane overlap is only a problem while both are in_progress \u2014 but the field belongs on the form that already edits an entry, so this avoids the question entirely.",
-        "CRITERION 4 OF W21-96 IS ALSO WHAT validate-plan P12 REPORTS. When this lands, that report should drop to a single entry (W21-90)."
+        "CRITERION 4 OF W21-96 IS ALSO WHAT validate-plan P12 REPORTS. When this lands, that report should drop to a single entry (W21-90).",
+        "SCOPE CORRECTED AT CLAIM, and my filed note about it was wrong. I wrote \"ProviderForm.tsx rather than ProvidersPanel.tsx, because the panel is owned by W21-25\" \u2014 but W21-25's write_scope is the GLOB apps/web/src/settings/**, so it covers every file here including ProviderForm.tsx. The overlap is structural, not avoidable by picking a different file, and P8 permits it because same-lane overlap is an error only among concurrently in_progress tickets (W21-25 is todo). Scope now names the four files the work actually needs.",
+        "THE FIELD CANNOT BE ADDED IN ONE FILE: Draft lives in ProvidersPanel.tsx, buildProviderEntry and both wire mappers live in providers-api.ts, and the input lives in ProviderForm.tsx. Each of the three would pass its own tests while the value went nowhere \u2014 the shape docs/TESTING.md 6c was written for this week.",
+        "CRITERION 3 IS MET BY NOT DUPLICATING THE RULE. The registry owns the bounds (positive integer, at most two hours, W10-57 + W21-96). The form keeps NO second copy: an out-of-range value is sent and the server's own reason is displayed. A client-side copy would drift and start refusing values the server accepts, which is worse than the round trip.",
+        "AN EMPTY BOX SENDS NOTHING, not zero. The registry refuses a non-positive value, so a 0 would turn \"I typed nothing\" into a named refusal. There is a fixture for it.",
+        "AN EDIT SHOWS THE SAVED CEILING, which is the W12-25 lesson one field over: a value the form does not reconstruct is silently blanked by the next edit of any other field.",
+        "CRITERION 4, THE RECORDED CHOICE: streamIdleMs is deliberately NOT exposed. The request ceiling is what the local-only guarantee needs \u2014 it is the bound a slow first token runs into \u2014 while the idle bound guards a stall between tokens and has a different failure mode. Two numeric millisecond boxes on an add-a-provider form would make the common case harder to find in order to serve a case no measurement here has needed. It stays settable over HTTP.",
+        "E2E CAUGHT A REGRESSION UNIT TESTS COULD NOT, which is L-55 for the second time this week. I nested the hint inside the <label>, so the input's accessible name became the whole sentence \u2014 and \"mid-answer\" contains \"id\", so Playwright's case-insensitive getByLabel('ID') matched two fields and three specs went red, two of them WCAG a11y specs. All 140 settings unit tests passed throughout. Fixed by making the hint a sibling tied with aria-describedby, which is also the correct a11y shape: a long hint does not belong in an accessible name.",
+        "RED FIXTURES proven by stashing the three source files: 6 of 75 fail."
       ]
     },
     {

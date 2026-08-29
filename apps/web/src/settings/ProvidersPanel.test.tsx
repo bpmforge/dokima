@@ -785,3 +785,114 @@ describe('Vertex project scope (W12-25)', () => {
     expect(screen.queryByLabelText('Region')).toBeNull();
   });
 });
+
+describe('the request ceiling is settable in the UI (W22-08)', () => {
+  it('RED FIXTURE: a typed ceiling reaches the PUT body', async () => {
+    // docs/TESTING.md 6c: a setting ships with proof it reaches the CALL, not
+    // merely the store. Until this ticket the only way to raise this ceiling
+    // was a PUT with a bearer token — a bare fetch gets a 401 (D-005) and
+    // silently leaves the ceiling at its default, which cost a full hour of
+    // misdiagnosis on 2026-08-28.
+    let putBody: { providers: { request_timeout_ms?: number }[] } | undefined;
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() => jsonResponse({ providers: [] })),
+        putProvidersRoute((body) => {
+          putBody = body as typeof putBody;
+          return jsonResponse({ providers: body.providers });
+        }),
+        getModels(() => jsonResponse({ status: 'ok', source: 'discovered', models: [] })),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText(/No providers yet/);
+
+    fireEvent.change(screen.getByLabelText('ID'), { target: { value: 'lm-studio' } });
+    fireEvent.change(screen.getByLabelText(/Request timeout/), {
+      target: { value: '1200000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add provider' }));
+
+    await screen.findByText('lm-studio');
+    expect(putBody?.providers[0]?.request_timeout_ms).toBe(1_200_000);
+  });
+
+  it('an empty box sends no ceiling at all, rather than a zero', async () => {
+    // Zero is not "default" — the registry refuses a non-positive value, so
+    // sending one would turn "I typed nothing" into a named refusal.
+    let putBody: { providers: Record<string, unknown>[] } | undefined;
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() => jsonResponse({ providers: [] })),
+        putProvidersRoute((body) => {
+          putBody = body as typeof putBody;
+          return jsonResponse({ providers: body.providers });
+        }),
+        getModels(() => jsonResponse({ status: 'ok', source: 'discovered', models: [] })),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText(/No providers yet/);
+
+    fireEvent.change(screen.getByLabelText('ID'), { target: { value: 'lm-studio' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add provider' }));
+
+    await screen.findByText('lm-studio');
+    expect(putBody?.providers[0]).not.toHaveProperty('request_timeout_ms');
+  });
+
+  it('shows the server’s own reason when it refuses the value', async () => {
+    // The registry owns the bounds (positive integer, at most two hours). The
+    // form does not keep a second copy that could drift and start refusing
+    // values the server accepts — so the refusal shown is the real one.
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() => jsonResponse({ providers: [] })),
+        putProvidersRoute(() =>
+          jsonResponse(
+            { title: 'Invalid provider', detail: 'requestTimeoutMs must be at most 7200000ms' },
+            400,
+          ),
+        ),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText(/No providers yet/);
+
+    fireEvent.change(screen.getByLabelText('ID'), { target: { value: 'lm-studio' } });
+    fireEvent.change(screen.getByLabelText(/Request timeout/), {
+      target: { value: '99999999999' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add provider' }));
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/7200000/);
+  });
+
+  it('editing an entry SHOWS its saved ceiling, so another edit cannot drop it', async () => {
+    // The W12-25 lesson one field over: an existing value the form does not
+    // reconstruct is silently blanked by the next edit of anything else.
+    fetchSpy.mockImplementation(
+      router([
+        getProviders(() =>
+          jsonResponse({
+            providers: [
+              {
+                id: 'lm-studio',
+                kind: 'lm-studio',
+                request_timeout_ms: 1_500_000,
+                enabled: true,
+              },
+            ],
+          }),
+        ),
+        getModels(() => jsonResponse({ status: 'ok', source: 'discovered', models: [] })),
+      ]),
+    );
+    render(<ProvidersPanel projectId="p1" />);
+    await screen.findByText('lm-studio');
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Edit/ })[0]!);
+    const field = (await screen.findByLabelText(/Request timeout/)) as HTMLInputElement;
+    expect(field.value).toBe('1500000');
+  });
+});

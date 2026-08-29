@@ -37,6 +37,8 @@ export interface Draft {
   authMethod: AuthMethod;
   baseUrl: string;
   apiKey: string;
+  /** W22-08: raw text, because an empty box means "default" and 0 does not. */
+  requestTimeoutMs: string;
   enabled: boolean;
   previousCredentialRef?: string;
 }
@@ -49,6 +51,7 @@ const EMPTY_DRAFT: Draft = {
   authMethod: defaultAuthMethod('ollama'),
   baseUrl: LOCAL_DEFAULT_BASE_URL.ollama,
   apiKey: '',
+  requestTimeoutMs: '',
   enabled: true,
 };
 
@@ -134,6 +137,11 @@ export function ProvidersPanel({
       kind: entry.kind,
       baseUrl: entry.baseUrl ?? '',
       apiKey: '',
+      // W22-08: an entry saved with a raised ceiling must SHOW it, or the next
+      // edit of any other field would silently drop it back to the default —
+      // the same way W12-25 had to reconstruct project/location.
+      requestTimeoutMs:
+        entry.requestTimeoutMs === undefined ? '' : String(entry.requestTimeoutMs),
       enabled: entry.enabled,
       previousCredentialRef: entry.credentialRef,
     });
@@ -184,6 +192,7 @@ export function ProvidersPanel({
       registeredCredentialRef,
       project: draft.project,
       location: draft.location,
+      requestTimeoutMs: draft.requestTimeoutMs,
     });
     try {
       const saved = await putProviders(

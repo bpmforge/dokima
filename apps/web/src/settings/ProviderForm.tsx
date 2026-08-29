@@ -88,6 +88,39 @@ export function ProviderForm({
           </label>
         )}
         <ProviderAuthFields draft={draft} setDraft={setDraft} />
+        {/* W22-08. The registry has carried this since W10-57 and the run has
+            honoured it since W21-96; until now the only way to set it was a
+            PUT with a bearer token. It is the local-only guarantee (C-1,
+            D-024 option a), not a convenience — a large model on a laptop
+            legitimately needs longer than the default for one generation.
+
+            Deliberately NOT a number input: the browser's spinner invites
+            nudging a millisecond value one at a time, and its empty state is
+            indistinguishable from a typed 0 in some browsers, which here is
+            the difference between "leave it alone" and a value the registry
+            refuses. */}
+        <label>
+          Request timeout (ms)
+          <input
+            inputMode="numeric"
+            value={draft.requestTimeoutMs}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, requestTimeoutMs: e.target.value }))
+            }
+            placeholder="300000"
+            aria-describedby="provider-request-timeout-hint"
+          />
+        </label>
+        {/* The hint is a SIBLING tied by aria-describedby, not a child of the
+            label. Nested, it became part of the input's accessible name — a
+            whole sentence instead of a field name — and three e2e specs went
+            red because "mid-answer" contains "id", so `getByLabel('ID')`
+            matched two fields. A long hint inside a label is bad for a screen
+            reader for the same reason it broke the locator. */}
+        <span id="provider-request-timeout-hint" className="settings__hint">
+          How long one request may take. Leave empty for the default of five
+          minutes. Raise it if a large local model runs past it mid-generation.
+        </span>
         <label className="settings__checkbox">
           <input
             type="checkbox"

@@ -508,3 +508,76 @@ describe('auth methods (W12-21)', () => {
     }
   });
 });
+
+describe('the request ceiling survives both mappers (W22-08)', () => {
+  it('omits the field entirely when the box is empty', () => {
+    // Empty means "leave it at the default", NOT zero. The registry refuses a
+    // non-positive value, so sending 0 would turn "I typed nothing" into a
+    // named refusal.
+    const entry = buildProviderEntry({
+      id: 'lm-studio',
+      kind: 'lm-studio',
+      baseUrl: '',
+      enabled: true,
+      requestTimeoutMs: '',
+    });
+    expect('requestTimeoutMs' in entry).toBe(false);
+  });
+
+  it('passes a typed value through as a number', () => {
+    const entry = buildProviderEntry({
+      id: 'lm-studio',
+      kind: 'lm-studio',
+      baseUrl: '',
+      enabled: true,
+      requestTimeoutMs: ' 1200000 ',
+    });
+    expect(entry.requestTimeoutMs).toBe(1_200_000);
+  });
+
+  it('does NOT second-guess the registry’s bounds', () => {
+    // The registry owns them (positive integer, at most two hours). A second
+    // copy here would drift and start refusing values the server accepts —
+    // so an out-of-range value is sent, and the server's own reason is what
+    // the user sees.
+    const entry = buildProviderEntry({
+      id: 'lm-studio',
+      kind: 'lm-studio',
+      baseUrl: '',
+      enabled: true,
+      requestTimeoutMs: '99999999999',
+    });
+    expect(entry.requestTimeoutMs).toBe(99_999_999_999);
+  });
+
+  it('RED FIXTURE: the value survives BOTH mappers, over the real call', async () => {
+    // Both are allowlists — the failure this file's own fromWire comment warns
+    // about, and the one the SERVER-side twin actually committed:
+    // requestTimeoutMs was missing from toWire AND fromWire until 2026-08-28,
+    // so it round-tripped to nothing while every layer's tests passed. A
+    // one-directional test would have passed against that defect, so this
+    // drives putProviders and fetchProviders rather than the mappers.
+    const entry = buildProviderEntry({
+      id: 'lm-studio',
+      kind: 'lm-studio',
+      baseUrl: '',
+      enabled: true,
+      requestTimeoutMs: '900000',
+    });
+
+    const put = vi.fn().mockResolvedValue(jsonResponse({ providers: [] }));
+    await putProviders('proj-1', [entry], { fetchImpl: put, getToken: () => 'tok' });
+    const [, init] = put.mock.calls[0] as [string, RequestInit];
+    const sent = JSON.parse(String(init.body)) as {
+      providers: { request_timeout_ms?: number }[];
+    };
+    expect(sent.providers[0]?.request_timeout_ms).toBe(900_000);
+
+    const get = vi.fn().mockResolvedValue(jsonResponse({ providers: sent.providers }));
+    const [back] = await fetchProviders('proj-1', {
+      fetchImpl: get,
+      getToken: () => 'tok',
+    });
+    expect(back?.requestTimeoutMs).toBe(900_000);
+  });
+});

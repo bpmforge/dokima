@@ -90,6 +90,16 @@ export interface ProviderEntry {
   /** W12-25: GCP project/region, required for `vertex` — the registry rejects it without them (W12-14). */
   project?: string;
   location?: string;
+  /**
+   * W22-08: how long one request to this provider may take, in milliseconds.
+   *
+   * The registry has carried this since W10-57 and the run has honoured it
+   * since W21-96; until now the ONLY way to set it was a PUT with a bearer
+   * token. That is the local-only guarantee (C-1, D-024 option a), not a
+   * convenience: a 27B model on a laptop legitimately needs more than the
+   * 300s default for one decompose, and the product offered no way to say so.
+   */
+  requestTimeoutMs?: number;
   enabled: boolean;
 }
 
@@ -106,6 +116,8 @@ interface WireProvider {
   /** W12-25: snake_case on the wire, same convention as `base_url`. */
   project?: string;
   location?: string;
+  /** W22-08: snake_case on the wire, same convention as `base_url`. */
+  request_timeout_ms?: number;
   enabled: boolean;
 }
 
@@ -120,6 +132,9 @@ function fromWireEntry(wire: WireProvider): ProviderEntry {
     // registry validator and W12-14 nearly repeated.
     ...(wire.project === undefined ? {} : { project: wire.project }),
     ...(wire.location === undefined ? {} : { location: wire.location }),
+    ...(wire.request_timeout_ms === undefined
+      ? {}
+      : { requestTimeoutMs: wire.request_timeout_ms }),
     enabled: wire.enabled,
   };
 }
@@ -132,6 +147,13 @@ function toWireEntry(entry: ProviderEntry): WireProvider {
     ...(entry.credentialRef === undefined ? {} : { credential_ref: entry.credentialRef }),
     ...(entry.project === undefined ? {} : { project: entry.project }),
     ...(entry.location === undefined ? {} : { location: entry.location }),
+    // BOTH DIRECTIONS. The server-side twin of this mapper omitted
+    // requestTimeoutMs from both until 2026-08-28, which is exactly the
+    // allowlist failure the fromWire comment above warns about — a value that
+    // round-trips to nothing while every layer's tests pass.
+    ...(entry.requestTimeoutMs === undefined
+      ? {}
+      : { request_timeout_ms: entry.requestTimeoutMs }),
     enabled: entry.enabled,
   };
 }
@@ -312,6 +334,8 @@ export interface ProviderDraftInput {
   /** W12-25: only meaningful for a project-scoped kind. */
   project?: string;
   location?: string;
+  /** W22-08: the form's raw text. Empty means "leave it at the default". */
+  requestTimeoutMs?: string;
 }
 
 /**
@@ -341,6 +365,16 @@ export function buildProviderEntry(input: ProviderDraftInput): ProviderEntry {
       : {}),
     ...(needsProjectScope(input.kind) && input.location?.trim()
       ? { location: input.location.trim() }
+      : {}),
+    // W22-08. An empty box means "leave it at the default", so the field is
+    // OMITTED rather than sent as 0 — the registry refuses a non-positive
+    // value, and sending one would turn "I did not type anything" into a
+    // refusal. Anything else is passed through as typed, INCLUDING values the
+    // registry will reject: it owns the bounds (positive integer, at most two
+    // hours), and a second copy of them here would drift from the real rule
+    // and start refusing values the server accepts.
+    ...(input.requestTimeoutMs?.trim()
+      ? { requestTimeoutMs: Number(input.requestTimeoutMs.trim()) }
       : {}),
   };
 }
