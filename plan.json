@@ -13739,7 +13739,7 @@
       "phase": 21,
       "lane": "ui",
       "role": "ux-engineer",
-      "status": "in_progress",
+      "status": "done",
       "points": 2,
       "module": "web",
       "depends_on": [],
