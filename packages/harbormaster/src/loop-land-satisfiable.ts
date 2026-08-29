@@ -103,3 +103,97 @@ export function unsatisfiableNotice(
     `  dokima widen-scope ${ticketId} --actor <your-id> --add "<glob>" --reason "<why>"`
   );
 }
+
+/**
+ * A ticket whose gates contradict each other (W21-47).
+ *
+ * PROVED IN THE WORKTREE, not inferred. PLAN-vault-002 has verify
+ * `npm run typecheck` and acceptance AC-1 `node --test src/crypto/*.spec.ts`,
+ * and the generated spec imports a sibling module:
+ *
+ *   without the extension — `node --test` exits 1, ERR_MODULE_NOT_FOUND, so
+ *     AC-1 fails;
+ *   with `./argon2id.ts` — `tsc --noEmit` exits 1, TS5097, so the ticket's own
+ *     verify fails.
+ *
+ * There is no third option inside the ticket's write_scope: the reconciliation
+ * lives in tsconfig.json or package.json, neither of which it may write. Every
+ * model that touches it fails one gate or the other, and four runs were spent
+ * discovering that — runs 26 and 28 both climbed R1 to R2, both rungs failed
+ * identically, and the R0 lesson delivered the exact error to the next attempt
+ * and changed nothing. No amount of instruction fixes a contradiction.
+ *
+ * W21-43 (above) cannot see this and correctly so: it compares an acceptance
+ * command's referenced PATHS against write_scope, and here the paths are fine.
+ * The contradiction is between two commands' toolchain requirements, which is
+ * not decidable statically.
+ *
+ * THE DETECTABLE VERSION IS EMPIRICAL, and the ladder supplies it. A gate
+ * reason that repeats on two DIFFERENT rungs has already had "wrong model"
+ * ruled out by the product's own escalation — that is exactly what climbing a
+ * rung tests. What remains is a property of the ticket, which is a founder
+ * decision.
+ *
+ * ACCEPTANCE 3 IS THE CONSTRAINT THAT SHAPES IT: a ticket failing for a reason
+ * a bigger model plausibly fixes must NOT be surfaced, or this steals the
+ * ladder's job. So it requires the SAME reason on DIFFERENT rungs — different
+ * reasons mean the ladder is still learning something, and one rung failing
+ * twice means nothing has been ruled out yet.
+ */
+export interface ContradictoryGate {
+  /** The gate reason that repeated, verbatim. */
+  readonly reason: string;
+  /** The distinct rung labels that produced it — at least two. */
+  readonly models: readonly string[];
+}
+
+export interface RungGateAttempt {
+  /** The composing seam's label for what ran this attempt (W16-01). */
+  readonly sessionLabel?: string | undefined;
+  /** The close gate's reasons, when it ran and refused. */
+  readonly reasons: readonly string[];
+}
+
+export function contradictoryGates(
+  attempts: readonly RungGateAttempt[],
+): ContradictoryGate[] {
+  /** reason -> the distinct labels that produced it. */
+  const byReason = new Map<string, Set<string>>();
+  for (const attempt of attempts) {
+    const label = attempt.sessionLabel;
+    // No label means no rung seam, so "a different model tried it" cannot be
+    // established — and without that the finding would be exactly the
+    // one-rung-twice case acceptance 3 excludes.
+    if (label === undefined || label === '') continue;
+    for (const reason of attempt.reasons) {
+      const labels = byReason.get(reason) ?? new Set<string>();
+      labels.add(label);
+      byReason.set(reason, labels);
+    }
+  }
+  return [...byReason]
+    .filter(([, labels]) => labels.size >= 2)
+    .map(([reason, labels]) => ({ reason, models: [...labels].sort() }));
+}
+
+/**
+ * The founder-facing sentence. Names what each gate demanded, so the person
+ * can see the contradiction without reproducing it (acceptance 2).
+ */
+export function contradictoryGateNotice(
+  found: readonly ContradictoryGate[],
+): string | null {
+  if (found.length === 0) return null;
+  const lines = found.map((item) => `  - ${item.reason}`);
+  const models = [...new Set(found.flatMap((f) => f.models))].sort();
+  return (
+    `This ticket failed the SAME gate on ${models.length} different rungs ` +
+    `(${models.join(', ')}). Escalating rung tests whether a stronger model ` +
+    `fixes it, and that has now been ruled out — what is left is a property of ` +
+    `the ticket, not of the model. What failed identically each time:\n` +
+    `${lines.join('\n')}\n` +
+    `If its verify command and its acceptance criteria demand different things ` +
+    `from the same toolchain, no model can satisfy both: change one of them, or ` +
+    `widen the scope to include the file that reconciles them.`
+  );
+}

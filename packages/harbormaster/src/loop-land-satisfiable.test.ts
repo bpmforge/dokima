@@ -8,6 +8,8 @@ import {
   referencedPaths,
   unsatisfiableCriteria,
   unsatisfiableNotice,
+  contradictoryGates,
+  contradictoryGateNotice,
 } from './loop-land-satisfiable.js';
 
 const VAULT_SCOPE = [
@@ -91,5 +93,78 @@ describe('unsatisfiableNotice (W21-43)', () => {
     expect(notice).toContain('src/crypto/*.spec.ts');
     expect(notice).toContain('dokima widen-scope PLAN-vault-002');
     expect(notice).toContain('No attempt was made');
+  });
+});
+
+describe('a ticket whose gates contradict each other (W21-47)', () => {
+  const TYPECHECK =
+    'verify re-run failed: `npm run typecheck` exited 1 (TS5097: An import path can ' +
+    'only end with a .ts extension when allowImportingTsExtensions is enabled)';
+  const ACCEPTANCE =
+    'acceptance criterion AC-1 failed: `node --test src/crypto/*.spec.ts` exited 1 ' +
+    '(ERR_MODULE_NOT_FOUND)';
+
+  it('RED FIXTURE: PLAN-vault-002 — the same gate reason at R1 and R2 is surfaced', () => {
+    // Runs 26 and 28 both climbed R1 to R2 and both rungs failed identically.
+    // Climbing a rung IS the test of "would a stronger model fix this", and it
+    // came back no — what is left is a property of the ticket.
+    const found = contradictoryGates([
+      { sessionLabel: 'coder-next', reasons: [TYPECHECK] },
+      { sessionLabel: 'qwen3.8-27b', reasons: [TYPECHECK] },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.models).toEqual(['coder-next', 'qwen3.8-27b']);
+
+    const notice = contradictoryGateNotice(found)!;
+    expect(notice).toContain('2 different rungs');
+    expect(notice).toContain('TS5097');
+    expect(notice).toContain('no model can satisfy both');
+  });
+
+  it('the SAME rung failing twice is NOT surfaced — nothing has been ruled out', () => {
+    // Acceptance 3. Without a rung change the ladder has not yet tested
+    // whether a stronger model fixes it, and surfacing here would steal its job.
+    expect(
+      contradictoryGates([
+        { sessionLabel: 'coder-next', reasons: [TYPECHECK] },
+        { sessionLabel: 'coder-next', reasons: [TYPECHECK] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('DIFFERENT reasons on different rungs are not a contradiction', () => {
+    // The ladder is still learning something; let it work.
+    expect(
+      contradictoryGates([
+        { sessionLabel: 'coder-next', reasons: [TYPECHECK] },
+        { sessionLabel: 'qwen3.8-27b', reasons: [ACCEPTANCE] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('an attempt with no rung label cannot establish "a different model tried it"', () => {
+    // No rung seam means one model ran everything, which is the case above.
+    expect(
+      contradictoryGates([
+        { sessionLabel: undefined, reasons: [TYPECHECK] },
+        { sessionLabel: undefined, reasons: [TYPECHECK] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('reports every reason that repeated across rungs, not just the first', () => {
+    const found = contradictoryGates([
+      { sessionLabel: 'a', reasons: [TYPECHECK, ACCEPTANCE] },
+      { sessionLabel: 'b', reasons: [TYPECHECK, ACCEPTANCE] },
+    ]);
+    expect(found).toHaveLength(2);
+    const notice = contradictoryGateNotice(found)!;
+    expect(notice).toContain('TS5097');
+    expect(notice).toContain('ERR_MODULE_NOT_FOUND');
+  });
+
+  it('says nothing when there is nothing to say', () => {
+    expect(contradictoryGateNotice([])).toBeNull();
+    expect(contradictoryGates([])).toEqual([]);
   });
 });

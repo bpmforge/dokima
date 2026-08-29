@@ -12,6 +12,10 @@
  * which is why every retry rendered a byte-identical prompt.
  */
 import { listEvents, type EventLog } from '@dokima/events';
+import {
+  contradictoryGateNotice,
+  contradictoryGates,
+} from './loop-land-satisfiable.js';
 import { redactString } from '@dokima/shared';
 import {
   renderDecideCard,
@@ -328,6 +332,21 @@ export function parkComment(
   // W21-15: visible, because a ticket that took five passes to reach two
   // judged attempts should say so — but never folded into the attempt number,
   // which is what made the evidence read "attempt 5/2".
+  /**
+   * W21-47: the ladder has already ruled out "wrong model", so a gate that
+   * failed identically on two rungs is a property of the TICKET. Printed
+   * before the per-attempt lines because it changes what the reader should do
+   * with them — no amount of re-reading the attempts fixes a contradiction.
+   */
+  const contradictions = contradictoryGateNotice(
+    contradictoryGates(
+      attempts.map((a) => ({
+        sessionLabel: a.sessionLabel,
+        reasons: a.closeGate && !a.closeGate.ok ? a.closeGate.reasons : [],
+      })),
+    ),
+  );
+  if (contradictions) lines.push('', contradictions);
   /**
    * W21-67: "is a thinking model being cut off before it does the work?" — the
    * question that could not be answered from the ledger at all. It is reported

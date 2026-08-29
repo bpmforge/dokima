@@ -12403,7 +12403,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [
@@ -12414,8 +12414,7 @@
       "write_scope": [
         "packages/harbormaster/src/loop-land-satisfiable.ts",
         "packages/harbormaster/src/loop-land-satisfiable.test.ts",
-        "packages/harbormaster/src/founder-queue.ts",
-        "apps/server/src/api/server/founder-queue-route.ts"
+        "packages/harbormaster/src/loop-land-report.ts"
       ],
       "notes": [
         "PROVED EMPIRICALLY IN THE WORKTREE, not inferred. PLAN-vault-002 has verify `npm run typecheck` and acceptance AC-1 `node --test src/crypto/*.spec.ts`. The generated spec imports `./argon2id` with no extension.",
@@ -12425,7 +12424,14 @@
         "FOUR RUNS SPENT ON THIS. Runs 26 and 28 both climbed R1->R2 and both rungs failed the same way; the R0 lesson delivered the exact error to the next attempt and it changed nothing, because no amount of instruction fixes a contradiction.",
         "W21-43 DOES NOT CATCH IT and correctly so \u2014 it compares an acceptance command`s referenced PATHS against write_scope, and here the paths are fine. The contradiction is between two commands` toolchain requirements, which is not decidable statically.",
         "THE DETECTABLE VERSION IS EMPIRICAL: a ticket where verify passes and acceptance fails (or the reverse) across attempts on DIFFERENT rungs has a problem no model will solve, because the ladder has already ruled out \"wrong model\". That is a founder decision and the product has the evidence for it in escalation.rung_advanced plus the gate reasons.",
-        "The stuck-ticket detector now reaches it thanks to W21-43 removing the close disqualifier \u2014 this ticket has closed once and parked five times since."
+        "The stuck-ticket detector now reaches it thanks to W21-43 removing the close disqualifier \u2014 this ticket has closed once and parked five times since.",
+        "THE LADDER ALREADY SUPPLIES THE SIGNAL, which is why this is decidable at all. Climbing a rung IS the test of \"would a stronger model fix this\", so a gate reason that repeats on two DIFFERENT rungs has had that ruled out by the product's own escalation. What remains is a property of the ticket \u2014 a founder decision.",
+        "ACCEPTANCE 3 SHAPED THE RULE, not an afterthought. It requires the SAME reason on DIFFERENT rungs: different reasons mean the ladder is still learning something, and one rung failing twice means nothing has been ruled out yet. An attempt with no rung label is skipped for the same reason \u2014 without a label, \"a different model tried it\" cannot be established, and it would collapse into the one-rung-twice case. There is a fixture for each of the three exclusions.",
+        "THE LADDER ALREADY STOPPED RETRYING, and I checked rather than assuming. nextFeedback returns no_progress when consecutive attempts produce identical gaps (sameGaps), so the run does not burn the whole ladder \u2014 the real gap was that the park said \"two attempts produced the IDENTICAL gaps\" and never named the CONTRADICTION, so a founder read it as a bad model rather than an impossible ticket.",
+        "SO THE EVIDENCE IS THE DELIVERABLE: the park comment now names what failed identically on which rungs, and says plainly that if verify and acceptance demand different things from the same toolchain, no model can satisfy both \u2014 with the two answers, change one or widen the scope to the file that reconciles them. Printed BEFORE the per-attempt lines because it changes what the reader should do with them.",
+        "W21-43 CANNOT SEE THIS AND CORRECTLY SO, as the ticket says: it compares an acceptance command's referenced PATHS against write_scope, and here the paths are fine. The contradiction is between two commands' toolchain requirements, which is not decidable statically \u2014 hence the empirical rule. Both now live in loop-land-satisfiable.ts, the static check and the observed one, which is the right pairing.",
+        "SCOPE CORRECTED AT CLAIM: founder-queue.ts and founder-queue-route.ts were not needed. The stuck-ticket class (W21-26) already surfaces a ticket that parks repeatedly, and this ticket parks through that same path \u2014 adding a second class would have split one founder-facing concept across two. loop-land-report.ts carries the evidence instead, verified clear.",
+        "RED PROVEN by stashing loop-land-satisfiable.ts: 6 fixtures fail."
       ],
       "acceptance": [
         "A ticket that failed the SAME gate on two different rungs is surfaced as a founder decision rather than retried",
