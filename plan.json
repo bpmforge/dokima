@@ -13387,16 +13387,16 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-73",
       "title": "the handoff carries the last session\u2019s diagnosis and not the evidence that disproves it",
       "write_scope": [
-        "packages/harbormaster/src/agent-session/handoff-fields.ts",
-        "packages/harbormaster/src/agent-session/handoff-fields.test.ts",
-        "packages/harbormaster/src/loop-gates-acceptance.ts"
+        "packages/harbormaster/src/loop-handoff.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "packages/harbormaster/src/loop-land-session.ts"
       ],
       "notes": [
         "W17-02 is right that a budget-stopped session should hand its successor what it learned, and it already cross-checks the CLAIM: \"the loop cross-checks it against the REAL worktree diff, flagging a checkpoint that claims completed work the diff does not show.\" Nothing cross-checks the DIAGNOSIS \u2014 the `next` field \u2014 and `next` is the one the successor acts on.",
@@ -13404,7 +13404,14 @@
         "In all three the product had already run the acceptance command at the close gate and held the real output. So the successor session receives a confident wrong sentence and none of the text that contradicts it, and spends its whole budget on the wrong problem \u2014 twice at 40 turns, the hard ceiling.",
         "THE FIX IS THE ONE I HAVE BEEN APPLYING BY HAND. Every one of these three was resolved by a founder brief that simply stated the observed failure, and each was resolved on the NEXT attempt: 002a landed first-try after brief #4, 002b and 002c are briefed the same way. A brief is a person pasting the acceptance output next to the diagnosis. The product can do that itself.",
         "NOT \"validate the diagnosis\" \u2014 the loop cannot judge whether a sentence about code is true, and a model scoring another model\u2019s guess is a worse gate than none. Attach the evidence and let the model see the contradiction: the handoff already carries the checkpoint, so carry the last acceptance-command output beside it, verbatim and labelled as observed fact rather than instruction.",
-        "ACCEPTANCE: when a handoff carries a SESSION_CHECKPOINT, it also carries the most recent acceptance-criterion output for that ticket (command, exit code, and the failing lines); a ticket with no prior run carries no such block and the handoff is unchanged; the evidence is rendered as observation, never as a step to perform."
+        "ACCEPTANCE: when a handoff carries a SESSION_CHECKPOINT, it also carries the most recent acceptance-criterion output for that ticket (command, exit code, and the failing lines); a ticket with no prior run carries no such block and the handoff is unchanged; the evidence is rendered as observation, never as a step to perform.",
+        "THE EVIDENCE WAS ALREADY IN HAND \u2014 no new persistence was needed, which is the shape this ticket shares with W21-67 and W21-69. gapsFrom already pushes closeGate.reasons, and those reasons already carry the acceptance command, its exit code and the failing output. What it could not do is survive an attempt that never reached the gate: a BUDGET-STOPPED attempt has no closeGate, so its gaps are the missing-manifest fact alone and the real output is dropped \u2014 while checkpoint.next, a confident sentence the model wrote about why it failed, is carried forward verbatim.",
+        "SO THE FIX IS ONE LINE OF LIFETIME: gateEvidence is the last FAILING gate's reasons, and an attempt that did not reach the gate keeps its predecessor's, because that output is still the most recent thing actually observed about this ticket. nextFeedback already had `previous` in hand.",
+        "RENDERED NEXT TO THE CLAIM, not elsewhere in the prompt. The whole failure is a confident wrong sentence arriving with nothing beside it; a reader who sees the claim and the observed output together can tell they disagree. Labelled \"verbatim output, not a step to perform\" and closed with \"if the checkpoint below disagrees with this, the observation is what actually happened\" \u2014 observation, never instruction (acceptance 3), with a fixture.",
+        "NOT \"VALIDATE THE DIAGNOSIS\", as the ticket insists: the loop cannot judge whether a sentence about code is true, and a model scoring another model's guess is a worse gate than none. Attach the fact and let the model see the contradiction.",
+        "SCOPE CORRECTED AT CLAIM. The filed scope named agent-session/handoff-fields.ts \u2014 a PARSER that builds nothing, the same wrong file W21-69 was filed against an hour ago \u2014 and loop-gates-acceptance.ts, whose runGateChecks is pure and holds no log. The rendering is in loop-handoff.ts (withFeedback) and the lifetime is in loop-land-session.ts (nextFeedback). All three verified clear.",
+        "KNOWN LIMIT, stated rather than hidden: gateEvidence lives for the life of a RUN, because attempt feedback does. The three live cases were multi-attempt within a run, so this covers them; carrying it across runs would need the acceptance outcome persisted as an event, which no event type currently does. Worth its own ticket if a cross-run case is ever observed.",
+        "RED PROVEN by stashing loop-handoff.ts and loop-land-session.ts: 2 fixtures fail."
       ],
       "acceptance": [
         "when a handoff carries a SESSION_CHECKPOINT, it also carries the most recent acceptance-criterion output for that ticket (command, exit code, and the failing lines)",

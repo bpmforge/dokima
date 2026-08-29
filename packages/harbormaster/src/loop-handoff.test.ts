@@ -4,6 +4,7 @@ import {
   DEFAULT_VERIFY_COMMAND,
   defaultHandoffBuilder,
   TicketRoleRefusedError,
+  withFeedback,
 } from './loop-handoff.js';
 
 function ticket(overrides: Partial<Ticket> = {}): Ticket {
@@ -130,5 +131,62 @@ describe('per-ticket expert selection (W12-06, D-025)', () => {
     for (const role of ['security-auditor', 'db-architect', 'ux-engineer', 'sre-engineer']) {
       expect(build(ticket({ role })).role).toBe(role);
     }
+  });
+});
+
+describe('the evidence travels beside the diagnosis (W21-73)', () => {
+  const checkpoint = {
+    completed: ['wrote the KDF wrapper'],
+    remaining: ['add type: module to package.json to fix ES module error'],
+    next: 'add type: module to package.json to fix ES module error',
+    worktreeChanged: ['src/crypto/argon2id.ts'],
+    claimMismatch: false,
+  };
+
+  it('RED FIXTURE: run 52 — the observed failure sits next to the wrong `next`', () => {
+    // The maker wrote a confident sentence blaming package.json. The real
+    // failure was ERR_CRYPTO_INVALID_SCRYPT_PARAMS, and the product had
+    // already run the command and held that output. The successor received
+    // the sentence and none of the text that contradicts it, then spent forty
+    // turns — the hard ceiling — on the wrong problem.
+    const rendered = withFeedback('build the KDF', {
+      attempt: 2,
+      gaps: ['no Completion Manifest was returned'],
+      checkpoint,
+      gateEvidence: [
+        'acceptance AC-1 failed: `node --test src/crypto/argon2id.spec.ts` exited 1',
+        'ERR_CRYPTO_INVALID_SCRYPT_PARAMS: Invalid scrypt params',
+      ],
+    });
+    expect(rendered).toContain('ERR_CRYPTO_INVALID_SCRYPT_PARAMS');
+    expect(rendered).toContain('OBSERVED when this ticket was last checked');
+    // Both present, so the contradiction is visible to the reader.
+    expect(rendered).toContain('type: module');
+  });
+
+  it('is rendered as observation, never as a step to perform (acceptance 3)', () => {
+    const rendered = withFeedback('build it', {
+      attempt: 2,
+      gaps: [],
+      checkpoint,
+      gateEvidence: ['ERR_CRYPTO_INVALID_SCRYPT_PARAMS'],
+    });
+    expect(rendered).toContain('verbatim output, not a step to perform');
+    expect(rendered).toContain('the observation is what actually happened');
+  });
+
+  it('a ticket with no prior gate output is unchanged (acceptance 2)', () => {
+    const withEvidence = withFeedback('build it', { attempt: 2, gaps: [], checkpoint });
+    expect(withEvidence).not.toContain('OBSERVED when this ticket');
+  });
+
+  it('an empty evidence list adds nothing', () => {
+    const rendered = withFeedback('build it', {
+      attempt: 2,
+      gaps: [],
+      checkpoint,
+      gateEvidence: [],
+    });
+    expect(rendered).not.toContain('OBSERVED when this ticket');
   });
 });

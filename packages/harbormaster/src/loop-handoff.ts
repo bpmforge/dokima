@@ -68,6 +68,23 @@ export interface AttemptFeedback {
    */
   readonly priorSolution?: { readonly findingId: string; readonly summary: string };
   /**
+   * W21-73: what the close gate ACTUALLY OBSERVED, the last time it ran on
+   * this ticket — carried forward across attempts that never reached it.
+   *
+   * `gaps` already carries the gate's reasons, but only for the attempt that
+   * produced them. A BUDGET-STOPPED attempt never reaches the gate, so its
+   * gaps are the missing-manifest fact alone and the real output is dropped —
+   * while its `checkpoint.next` (a confident sentence the model wrote about
+   * why it failed) is carried forward verbatim.
+   *
+   * Three live cases, each a wrong `next` handed on while the product held its
+   * disproof: "Add type: module to package.json" against a failure that was
+   * ERR_CRYPTO_INVALID_SCRYPT_PARAMS; "investigate why the tests are not
+   * running" against ten tests that ran, seven passing. Twice the successor
+   * spent all forty turns — the hard ceiling — on the wrong problem.
+   */
+  readonly gateEvidence?: readonly string[];
+  /**
    * W17-02: where the previous BUDGET-STOPPED attempt got to — its own
    * stated checkpoint plus the worktree's REAL changed paths. Leads the
    * handoff so the model continues instead of restarting. Evidence, not a
@@ -170,6 +187,24 @@ export function withFeedback(context: string, feedback?: AttemptFeedback): strin
   // don't restart. The worktree diff rides along as the ground truth.
   if (feedback.checkpoint) {
     const c = feedback.checkpoint;
+    /**
+     * W21-73: the evidence goes NEXT TO the diagnosis, not somewhere else in
+     * the prompt. The whole failure is a confident wrong sentence arriving
+     * with nothing beside it, and a reader who sees the claim and the observed
+     * output together can tell they disagree.
+     *
+     * NOT "validate the diagnosis": the loop cannot judge whether a sentence
+     * about code is true, and a model scoring another model's guess is a worse
+     * gate than none. Attach the fact; let the model see the contradiction.
+     */
+    if (feedback.gateEvidence && feedback.gateEvidence.length > 0) {
+      lines.push(
+        '',
+        'OBSERVED when this ticket was last checked (verbatim output, not a step to perform):',
+        ...feedback.gateEvidence.map((line) => `  ${line}`),
+        'If the checkpoint below disagrees with this, the observation is what actually happened.',
+      );
+    }
     lines.push(
       '',
       'PREVIOUS ATTEMPT RAN OUT OF BUDGET MID-WORK. CONTINUE it — do not start over:',

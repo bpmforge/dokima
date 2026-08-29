@@ -266,11 +266,20 @@ export function nextFeedback(
   // ground truth, and a checkpoint claiming completed work the diff does
   // not show is flagged, never believed (C-2).
   const checkpoint = extractSessionCheckpoint(session.output);
+  /**
+   * W21-73: the last REAL gate output, carried across attempts that never
+   * reached the gate. An attempt that ran it supplies fresh evidence; one that
+   * was budget-stopped keeps its predecessor's, because that output is still
+   * the most recent thing actually observed about this ticket.
+   */
+  const gateEvidence =
+    closeGate && !closeGate.ok ? closeGate.reasons : previous?.gateEvidence;
   return {
     kind: 'continue',
     feedback: {
       attempt,
       gaps,
+      ...(gateEvidence && gateEvidence.length > 0 ? { gateEvidence } : {}),
       ...(checkpoint
         ? {
             checkpoint: {
