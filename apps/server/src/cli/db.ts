@@ -54,13 +54,46 @@ export async function resolveDbPathForProject(
  * commands are the CLI's own single writer for the duration of the call
  * (C6); the connection closes before the process exits.
  */
+/**
+ * A path that cannot be opened is a refusal, not a crash (W21-99).
+ *
+ * `dokima board --db /nonexistent.db` printed "SqliteError: unable to open
+ * database file" and a stack trace through better-sqlite3 and dist/main.js. A
+ * person who mistypes a path gets told the product broke.
+ *
+ * THIRD INSTANCE OF ONE CLASS. W21-81 was a LaneScopeError escaping
+ * reportVerbError; W21-91 a native parseArgs TypeError escaping runCli; this a
+ * SqliteError doing the same. Each time a handler recognised only its own
+ * error class and everything else reached the top-level catch that prints
+ * `err.stack`. `verify-chain` already had the right shape — "cannot open event
+ * log at <path>" — it was simply never applied to the other verbs.
+ */
+export class DbOpenError extends Error {
+  constructor(
+    public readonly dbPath: string,
+    cause: unknown,
+  ) {
+    super(`cannot open the event log at ${dbPath} (${(cause as Error).message})`);
+    this.name = 'DbOpenError';
+    this.cause = cause;
+  }
+}
+
 export function openWritableLog(dbPath: string): EventLog {
-  mkdirSync(path.dirname(dbPath), { recursive: true });
-  return openEventLog(dbPath);
+  try {
+    mkdirSync(path.dirname(dbPath), { recursive: true });
+    return openEventLog(dbPath);
+  } catch (err) {
+    throw new DbOpenError(dbPath, err);
+  }
 }
 
 /** Read-only connection for `verify-chain` — refuses to conjure a log that doesn't exist yet. */
 export function openReadOnlyLog(dbPath: string): EventLog {
-  const db = openEventLogReader(dbPath);
-  return { db, path: dbPath, close: () => db.close() };
+  try {
+    const db = openEventLogReader(dbPath);
+    return { db, path: dbPath, close: () => db.close() };
+  } catch (err) {
+    throw new DbOpenError(dbPath, err);
+  }
 }

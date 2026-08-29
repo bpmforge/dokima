@@ -415,3 +415,61 @@ describe('W21-81: a lane/write-scope refusal reads as a refusal, not a crash', (
     expect(stdout[0]).toContain('W9-01 write_scope ->');
   });
 });
+
+/**
+ * W21-99. `dokima board --db /nonexistent.db` printed "SqliteError: unable to
+ * open database file" and a stack trace through better-sqlite3 and
+ * dist/main.js — a person who mistypes a path is told the product broke.
+ *
+ * Third instance of one class: W21-81 (LaneScopeError), W21-91 (parseArgs
+ * TypeError), now SqliteError. Each time a handler knew only its own error
+ * type and everything else reached the top-level catch that prints err.stack.
+ */
+describe('a db path that cannot be opened refuses, it does not crash (W21-99)', () => {
+  let project: TempProject;
+
+  afterEach(async () => {
+    await project?.cleanup();
+  });
+
+  it('RED FIXTURE: board names the path in one line, with no stack trace', async () => {
+    const { stderr, io } = collectIO();
+
+    const code = await runCli(['board', '--db', '/nonexistent-dir-w2199/x.db'], {
+      cwd: '/tmp',
+      now: NOW,
+      ...io,
+    });
+
+    expect(code).toBe(1);
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0]).toContain('refused [DB_OPEN]');
+    expect(stderr[0]).toContain('/nonexistent-dir-w2199/x.db');
+    expect(stderr[0]).not.toContain('    at ');
+    expect(stderr[0]).not.toContain('SqliteError');
+  });
+
+  it('a lifecycle verb refuses the same way', async () => {
+    const { stderr, io } = collectIO();
+
+    const code = await runCli(
+      ['claim', 'W9-01', '--actor', 'maker-1', '--db', '/nonexistent-dir-w2199/y.db'],
+      { cwd: '/tmp', now: NOW, ...io },
+    );
+
+    expect(code).toBe(1);
+    expect(stderr[0]).toContain('refused [DB_OPEN]');
+    expect(stderr[0]).not.toContain('    at ');
+  });
+
+  it('a path that opens is unaffected', async () => {
+    project = await createTempProject();
+    await seed(project);
+    const { stdout, io } = collectIO();
+
+    const code = await runCli(['board'], { cwd: project.cwd, now: NOW, ...io });
+
+    expect(code).toBe(0);
+    expect(stdout.join('\n')).toContain('LANE: core');
+  });
+});

@@ -18,6 +18,7 @@ import {
 } from '@dokima/tickets';
 import { renderBoard } from './board.js';
 import {
+  DbOpenError,
   openReadOnlyLog,
   openWritableLog,
   resolveDbPathForProject,
@@ -56,6 +57,12 @@ const SIMPLE_VERB_FNS: Record<
 function reportVerbError(err: unknown, io: CliIO): number {
   if (err instanceof TicketError) {
     io.stderr(`refused [${err.code}]: ${err.message}`);
+    return 1;
+  }
+  // W21-99: a db path that cannot be opened is a refusal too — third instance
+  // of the same class, after LaneScopeError (W21-81) and parseArgs (W21-91).
+  if (err instanceof DbOpenError) {
+    io.stderr(`refused [DB_OPEN]: ${err.message}`);
     return 1;
   }
   // W21-81: a lane/write-scope refusal is a refusal, not a crash. It reaches
@@ -110,9 +117,7 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
     try {
       log = openReadOnlyLog(dbPath);
     } catch (err) {
-      io.stderr(
-        `verify-chain refused: cannot open event log at ${dbPath} (${(err as Error).message})`,
-      );
+      io.stderr(`verify-chain refused: ${(err as Error).message}`);
       return 1;
     }
     try {
@@ -124,7 +129,12 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
     }
   }
 
-  const log = openWritableLog(dbPath);
+  let log;
+  try {
+    log = openWritableLog(dbPath);
+  } catch (err) {
+    return reportVerbError(err, io);
+  }
   try {
     switch (command.kind) {
       case 'board': {

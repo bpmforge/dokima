@@ -13984,7 +13984,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 1,
       "module": "cli",
       "depends_on": [],
@@ -13992,7 +13992,9 @@
       "title": "a bad --db path prints a raw SqliteError stack instead of a refusal",
       "write_scope": [
         "apps/server/src/cli/db.ts",
-        "apps/server/src/cli/db.test.ts"
+        "apps/server/src/cli/db.test.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/cli/run.test.ts"
       ],
       "acceptance": [
         "A --db path that cannot be opened prints one refusal line naming the path, with no stack trace",
@@ -14002,7 +14004,8 @@
       "notes": [
         "Found 2026-08-28 while verifying W21-91: `dokima board --db /nonexistent.db` prints \"SqliteError: unable to open database file\" followed by a node stack trace through better-sqlite3 and dist/main.js.",
         "THIRD INSTANCE OF ONE CLASS. W21-81 was a LaneScopeError escaping reportVerbError; W21-91 was a native parseArgs TypeError escaping runCli; this is a SqliteError escaping the same way. Each time, a handler recognised only its own error class and everything else reached the top-level catch that prints err.stack. Worth fixing as a class rather than a fourth ticket: the top-level handler in cli/index.ts could translate any known-shaped failure into one refusal line, so the default is a refusal and a stack trace is the exception.",
-        "The immediate fix is narrow: `openWritableLog`/`openReadOnlyLog` already have a callsite that catches for verify-chain (\"verify-chain refused: cannot open event log at ...\"), so the pattern exists \u2014 it is just not applied to the other verbs."
+        "The immediate fix is narrow: `openWritableLog`/`openReadOnlyLog` already have a callsite that catches for verify-chain (\"verify-chain refused: cannot open event log at ...\"), so the pattern exists \u2014 it is just not applied to the other verbs.",
+        "SCOPE at claim: added run.ts/run.test.ts. db.ts can raise a named error but only the CLI layer can PRINT a refusal line, which is what the acceptance asks for. Both files are unowned by any open ticket."
       ]
     },
     {
