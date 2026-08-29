@@ -13768,7 +13768,7 @@
       "phase": 21,
       "lane": "gateway",
       "role": "coding-agent",
-      "status": "in_progress",
+      "status": "done",
       "points": 3,
       "module": "gateway",
       "depends_on": [],
@@ -13776,9 +13776,9 @@
       "title": "the catalog throws away the model capability the provider already reports",
       "write_scope": [
         "packages/gateway/src/catalog/**",
-        "apps/server/src/api/pipeline/gateway-model-port/provider.ts",
-        "apps/server/src/api/server/providers-wire.ts",
-        "apps/server/src/api/server/providers-wire.test.ts"
+        "packages/gateway/src/providers/types.ts",
+        "packages/gateway/src/providers/oai-compat-presets.ts",
+        "packages/gateway/src/providers/oai-compat-presets.test.ts"
       ],
       "acceptance": [
         "A discovered model carries what the provider said about its kind \u2014 generative or embedding \u2014 from the provider adapter through the catalog",

@@ -183,6 +183,24 @@ export interface ModelInfo {
   id: string;
   /** Only populated when the provider's discovery response carries it (rare) or a static override is configured. */
   contextLength?: number;
+  /**
+   * What the PROVIDER said this model is for (W21-93). Absent when it said
+   * nothing, and absence must never be read as "generative" — an endpoint that
+   * does not report kinds is unknown, not confirmed.
+   *
+   * Exists because the model picker was offering embedding models as "the
+   * model that writes the code": measured 2026-08-28, LM Studio served four of
+   * them among 34 and the picker listed all 34. An embedding model cannot
+   * generate text, so choosing one produces a setup broken by construction and
+   * a failure that surfaces much later.
+   *
+   * Derived from the provider response ONLY. The four here happen to share a
+   * `text-embedding-` prefix, which makes a name match look tempting — but
+   * that prefix is LM Studio's normalization, and an Ollama user sees
+   * `nomic-embed-text:latest` with none. A name rule would protect one
+   * provider and silently fail another.
+   */
+  kind?: 'generative' | 'embedding';
 }
 
 export type ProviderHealthStatus = 'ok' | 'unreachable' | 'error';
