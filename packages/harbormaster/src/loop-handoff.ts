@@ -15,6 +15,8 @@
  * the widened type, so nothing that already passes a builder changed.
  */
 
+import { listEvents, type EventLog } from '@dokima/events';
+import { lastObservedGateOutput } from './loop-gates-close.js';
 import { isVerifierRole, ROLE_CODING_AGENT } from '@dokima/gateway';
 import type { Handoff, HandoffTicket } from '@dokima/loop';
 import type { Ticket } from '@dokima/tickets';
@@ -178,33 +180,46 @@ export function defaultHandoffBuilder(
 export function withFeedback(context: string, feedback?: AttemptFeedback): string {
   if (
     !feedback ||
-    (feedback.gaps.length === 0 && !feedback.priorSolution && !feedback.checkpoint)
+    (feedback.gaps.length === 0 &&
+      !feedback.priorSolution &&
+      !feedback.checkpoint &&
+      // W22-10: a new run has none of the three — no gaps, no prior
+      // solution, no checkpoint — and observed gate output is the only thing
+      // it carries. Without this the block below could never be reached.
+      !(feedback.gateEvidence && feedback.gateEvidence.length > 0))
   ) {
     return context;
   }
   const lines = [context];
+  /**
+   * W21-73: the evidence goes NEXT TO the diagnosis, not somewhere else in
+   * the prompt. The whole failure is a confident wrong sentence arriving with
+   * nothing beside it, and a reader who sees the claim and the observed
+   * output together can tell they disagree.
+   *
+   * NOT "validate the diagnosis": the loop cannot judge whether a sentence
+   * about code is true, and a model scoring another model's guess is a worse
+   * gate than none. Attach the fact; let the model see the contradiction.
+   *
+   * W22-10: hoisted OUT of the checkpoint branch it was written in. Every
+   * case W21-73 came from was a budget-stopped attempt inside one run, so a
+   * checkpoint was always present and nesting it there cost nothing. A run
+   * that starts fresh has no checkpoint, and the first session of every new
+   * run was meeting the ticket with nothing observed beside it — the same
+   * defect, one level out. It still leads the checkpoint when there is one.
+   */
+  if (feedback.gateEvidence && feedback.gateEvidence.length > 0) {
+    lines.push(
+      '',
+      'OBSERVED when this ticket was last checked (verbatim output, not a step to perform):',
+      ...feedback.gateEvidence.map((line) => `  ${line}`),
+      'If the checkpoint below disagrees with this, the observation is what actually happened.',
+    );
+  }
   // W17-02: the previous attempt's checkpoint leads everything — continue,
   // don't restart. The worktree diff rides along as the ground truth.
   if (feedback.checkpoint) {
     const c = feedback.checkpoint;
-    /**
-     * W21-73: the evidence goes NEXT TO the diagnosis, not somewhere else in
-     * the prompt. The whole failure is a confident wrong sentence arriving
-     * with nothing beside it, and a reader who sees the claim and the observed
-     * output together can tell they disagree.
-     *
-     * NOT "validate the diagnosis": the loop cannot judge whether a sentence
-     * about code is true, and a model scoring another model's guess is a worse
-     * gate than none. Attach the fact; let the model see the contradiction.
-     */
-    if (feedback.gateEvidence && feedback.gateEvidence.length > 0) {
-      lines.push(
-        '',
-        'OBSERVED when this ticket was last checked (verbatim output, not a step to perform):',
-        ...feedback.gateEvidence.map((line) => `  ${line}`),
-        'If the checkpoint below disagrees with this, the observation is what actually happened.',
-      );
-    }
     lines.push(
       '',
       'PREVIOUS ATTEMPT RAN OUT OF BUDGET MID-WORK. CONTINUE it — do not start over:',
@@ -237,4 +252,35 @@ export function withFeedback(context: string, feedback?: AttemptFeedback): strin
     );
   }
   return lines.join('\n');
+}
+
+/**
+ * Seeds a RUN's feedback with what the close gate last observed (W22-10).
+ *
+ * W21-73 carries the gate's real output across ATTEMPTS, and that is the
+ * whole life of it: a run that starts fresh has no previous attempt to carry
+ * from, so its first session met the ticket with the checkpoint's confident
+ * sentence and nothing beside it — the defect W21-73 closed, one level out.
+ *
+ * NOTHING NEW IS PERSISTED FOR THIS, and the ticket that asked for it assumed
+ * otherwise: every refusal is already a `ticket.commented` row written by
+ * `runCloseGate`. The outcome has been durable all along; only the reading of
+ * it across runs was missing, so the FR-S3 audit-volume question the ticket
+ * posed has nothing to weigh.
+ *
+ * MERGED, NOT OVERWRITTEN. `consultRungZero` may have returned a prior
+ * verified solution (W16-03), and replacing the feedback here would cost the
+ * maker the known answer before it ever spent a token. `gaps` stays empty so
+ * nothing renders "PREVIOUS ATTEMPT (n)": no attempt has happened in this
+ * run, and claiming one would be the "attempt 5/2" class of lie W21-15 exists
+ * to prevent.
+ */
+export function withObservedGateOutput(
+  feedback: AttemptFeedback | undefined,
+  log: EventLog,
+  ticketId: string,
+): AttemptFeedback | undefined {
+  const observed = lastObservedGateOutput(listEvents(log), ticketId);
+  if (!observed || observed.length === 0) return feedback;
+  return { attempt: 0, gaps: [], ...(feedback ?? {}), gateEvidence: observed };
 }

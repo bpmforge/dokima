@@ -14587,7 +14587,7 @@
     {
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14600,7 +14600,10 @@
       "write_scope": [
         "packages/harbormaster/src/loop-gates-close.ts",
         "packages/harbormaster/src/loop-gates-close.test.ts",
-        "packages/harbormaster/src/loop-handoff.ts"
+        "packages/harbormaster/src/loop-handoff.ts",
+        "packages/harbormaster/src/loop-handoff.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "acceptance": [
         "A session in a NEW run is shown the last acceptance/verify output observed for its ticket, even though no attempt in this run reached the gate",
@@ -14610,7 +14613,17 @@
       "notes": [
         "DROPPED FOLLOW-UP from W21-73, filed 2026-08-29 during a completeness sweep \u2014 the note said \"carrying it across runs needs the acceptance outcome persisted as an event, which nothing currently does\" and no ticket was ever filed for it.",
         "W21-73 carries gateEvidence for the life of a RUN, because attempt feedback does. The three live cases it fixed were multi-attempt within one run. A run that starts fresh has no attempt feedback at all, so the successor sees the checkpoint diagnosis with nothing beside it again \u2014 the exact defect W21-73 closed, one level out.",
-        "THE MISSING PIECE IS PERSISTENCE: no event type currently records an acceptance/verify outcome. `ticket.close_refused` carries only the refusal reason string, and gate.receipt_minted carries a hash. Weigh recording it against FR-S3 audit volume the way W21-25 had to \u2014 one event per gate run is far rarer than one per fetch, so this is probably fine, but measure rather than assume."
+        "THE MISSING PIECE IS PERSISTENCE: no event type currently records an acceptance/verify outcome. `ticket.close_refused` carries only the refusal reason string, and gate.receipt_minted carries a hash. Weigh recording it against FR-S3 audit volume the way W21-25 had to \u2014 one event per gate run is far rarer than one per fetch, so this is probably fine, but measure rather than assume.",
+        "THE PREMISE NOTE IS WRONG, and finding that out is most of this ticket. It says 'no event type currently records an acceptance/verify outcome' and asks me to weigh a new event against FR-S3 audit volume. There is no new event to weigh: runCloseGate ALREADY persists every gate failure, on both of its failure paths, as commentTicket(formatFailureComment(reasons)) \u2014 the same `reasons` array that loop-land-session.ts hands to gateEvidence in-run. The outcome has been in the event log the whole time. This is a read-and-wire, not a persistence design, and the FR-S3 question dissolves rather than being answered.",
+        "THE ACTUAL GAP IS IN THE RENDERER, which is why loop-handoff.ts was rightly in scope. withFeedback only emits the OBSERVED block INSIDE `if (feedback.checkpoint)`, and it early-returns entirely when gaps, priorSolution and checkpoint are all absent. A new run has no checkpoint and no gaps, so even a correctly seeded gateEvidence would render nothing at all. Persisting and reading it without this would have produced a green ticket and no visible change \u2014 the failure mode the board keeps naming.",
+        "SCOPE WIDENED AT THE READ (Law 1): loop-land-ticket.ts holds the run's feedback seed (line 208, `await consultRungZero(...)`) and is the only place with both options.log and the start of a run \u2014 the wiring cannot happen in the three filed files. Its tests live in loop-land.test.ts (there is no loop-land-ticket.test.ts), and the renderer's in loop-handoff.test.ts. All three unowned.",
+        "DONE, AND SMALLER THAN FILED BECAUSE THE PREMISE WAS WRONG. No event type was added and none was needed: runCloseGate already writes every refusal as commentTicket(formatFailureComment(reasons)), the same reasons array W21-73 carries in-run. lastObservedGateOutput reads it back; withObservedGateOutput seeds the run's feedback with it; withFeedback renders it. The FR-S3 volume measurement the ticket asked for has nothing to measure.",
+        "THE REAL DEFECT WAS IN THE RENDERER, and it would have been easy to miss. withFeedback emitted the OBSERVED block only INSIDE `if (feedback.checkpoint)`, and early-returned entirely when gaps, priorSolution and checkpoint were all absent \u2014 which is precisely the state of a fresh run. Persisting and reading without hoisting that block would have produced a green ticket, a correct value, and no visible change to any handoff.",
+        "ORDER DECIDES, NOT PRESENCE, the same discipline latestRejectionReason applies one function above it: a gate.receipt_minted for the ticket clears the remembered failure, so a ticket cannot carry its oldest refusal into every future run as though the gate had just said it. Keyed on the failure header rather than on 'is a comment', because W21-90's reversal notice and ticket.scope_widened's row are comments too.",
+        "PROVEN RED, and the wiring separately from the renderer. The renderer's fixtures failed 2/18 against the unhoisted block. The end-to-end fixture \u2014 a log holding one prior refusal, a fresh runLandLoop, assert on prompts[0] \u2014 was proven red by stashing loop-land-ticket.ts alone: 1 failed, and A3's companion stayed green, so the fixture discriminates rather than just failing.",
+        "A2 IS TESTED AS A NEGATIVE TOO: the block renders as observation, and a fresh run must NOT print 'PREVIOUS ATTEMPT (0)'. That line lives behind gaps.length > 0 and gaps stays empty \u2014 an attempt claimed for a run that has not had one is the 'attempt 5/2' class W21-15 was filed for.",
+        "THE 400-LINE CAP BIT MID-TICKET and is now filed as W22-17. loop-land-ticket.ts was at EXACTLY 400 lines, so this change did not fit: the logic and its rationale moved into loop-handoff.ts, which owns AttemptFeedback and is a defensible home, but the call-site comment was compressed from three lines to two purely to fit. A code cap editing prose is the wrong pressure on the wrong thing, and the next person gets no room at all.",
+        "Gate: lint clean, typecheck 0, 4782 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean."
       ]
     },
     {
@@ -14880,6 +14893,35 @@
       "role": "coding-agent",
       "stories": [
         "US-501"
+      ]
+    },
+    {
+      "id": "W22-17",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "loop-land-ticket.ts sits exactly on the 400-line cap \u2014 the next line of code cannot be written",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "acceptance": [
+        "landClaimedTicket is split per CODE_BOOK_PROTOCOL \u2014 an index plus chapter modules, one concern each",
+        "No chapter is within ten lines of the cap when the split lands",
+        "The existing loop-land tests pass unchanged \u2014 this is a move, not a behaviour change"
+      ],
+      "notes": [
+        "FILED AT THE MOMENT IT BLOCKED ME (Law 1), during W22-10. The file was at EXACTLY 400 lines before that ticket and validate-file-size fails at 401, so a two-line change could not be written. It is not near the cap; it is on it.",
+        "WHAT THAT COSTS, concretely, because it already cost it once. W22-10's seeding logic and its rationale had to be relocated into loop-handoff.ts to make room, and its comment at the call site was compressed from three lines to two purely to fit \u2014 a code cap silently editing prose is the wrong pressure on the wrong thing. The relocation happened to land somewhere defensible (loop-handoff.ts owns AttemptFeedback), which is luck, not design. The next person may not be so lucky, and the cheapest way out will be to delete an explanation.",
+        "NOT URGENT AND NOT COSMETIC. Nothing is broken today and no test is red. The defect is that the file is now write-locked by a mechanical rule, so any ticket touching landClaimedTicket inherits a refactor it did not ask for \u2014 the exact coupling one-ticket-at-a-time exists to prevent.",
+        "A MOVE, NOT A REWRITE. The acceptance says the existing tests pass unchanged on purpose: this file is the ladder's control flow (free-retry gate, rung advance, park reasons, conflict watch, verb mirror), and a split that also 'improves' behaviour would be unreviewable against the tests that exist."
       ]
     }
   ]

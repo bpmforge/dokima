@@ -56,7 +56,7 @@ import {
 } from './loop-land-board.js';
 import { activeLeases } from './conflict-leases.js';
 import { runConflictWatch } from './conflict-watcher.js';
-import type { AttemptFeedback } from './loop-handoff.js';
+import { withObservedGateOutput } from './loop-handoff.js';
 import type {
   LandAttempt,
   LandLoopOptions,
@@ -203,9 +203,9 @@ export async function landClaimedTicket(
 
   const attempts: LandAttempt[] = [];
   // W13-29: the previous attempt's gaps — see `loop-land-session.ts`.
-  // W16-03: seeded by the R0 consult when the playbook already holds a
-  // verified answer — the maker meets it before any model spend.
-  let feedback: AttemptFeedback | undefined = await consultRungZero(options, ticket);
+  // W16-03: seeded by the R0 consult when the playbook already holds a verified
+  // answer. W22-10: plus what the gate observed in an earlier RUN, from the log.
+  let feedback = withObservedGateOutput(await consultRungZero(options, ticket), options.log, ticket.id);
   // W13-27: infra failures retry free — see `loop-land-infra.ts`.
   const freeRetry = createFreeRetryGate(options, ticket.id, ceiling);
   let current = requireTicket(options.log, ticket.id);

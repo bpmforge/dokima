@@ -50,6 +50,62 @@ export interface LedgeredCloseOptions {
 export const CLOSE_REFUSED_EVENT = 'ticket.close_refused';
 
 /**
+ * The first line `formatFailureComment` writes (loop-gates-secrets.ts).
+ *
+ * Duplicated rather than imported to keep the dependency pointing one way —
+ * the secrets module already imports nothing from here and the gate imports
+ * both — and pinned mechanically instead: `loop-gates-close.test.ts` round-
+ * trips the real formatter through the reader below, so a reworded header
+ * turns a test red rather than silently emptying every future handoff.
+ */
+const GATE_FAILURE_HEADER = 'close gate refused — no receipt minted';
+
+/**
+ * What the close gate last OBSERVED about a ticket, across runs (W22-10).
+ *
+ * NOTHING NEW IS RECORDED FOR THIS. `runCloseGate` already writes every
+ * refusal to the log as a `ticket.commented` row carrying
+ * `formatFailureComment(reasons)` — the same `reasons` array W21-73 carries
+ * forward inside a run. The outcome has been durable all along; only the
+ * reader was missing. The ticket that asked for this expected to weigh a new
+ * event type against FR-S3 audit volume, and there is no new event to weigh.
+ *
+ * ORDER DECIDES, NOT PRESENCE, exactly as `latestRejectionReason` above it
+ * treats a close: a refusal the gate has since gone past is history, not the
+ * last thing observed, so a `gate.receipt_minted` for this ticket clears it.
+ * Without that a ticket would carry its oldest failure into every future run
+ * as though the gate had just said it.
+ *
+ * KEYED ON THE HEADER, because `commentTicket` is not only the gate's:
+ * W21-90's reversal notice and `ticket.scope_widened`'s row are comments too,
+ * and neither is gate output.
+ */
+export function lastObservedGateOutput(
+  events: readonly { eventType: string; ticketId: string | null; payload: unknown }[],
+  ticketId: string,
+): string[] | null {
+  let reasons: string[] | null = null;
+  for (const event of events) {
+    if (event.ticketId !== ticketId) continue;
+    if (event.eventType === 'gate.receipt_minted') {
+      reasons = null;
+      continue;
+    }
+    if (event.eventType !== 'ticket.commented') continue;
+    const body = (event.payload as { body?: unknown }).body;
+    if (typeof body !== 'string' || !body.startsWith(GATE_FAILURE_HEADER)) continue;
+    // The formatter's own shape: a header line, then one `- reason` per line.
+    const parsed = body
+      .split('\n')
+      .slice(1)
+      .filter((line) => line.startsWith('- '))
+      .map((line) => line.slice(2));
+    if (parsed.length > 0) reasons = parsed;
+  }
+  return reasons;
+}
+
+/**
  * A close that reverses a standing rejection without touching what it named
  * (W21-90).
  *

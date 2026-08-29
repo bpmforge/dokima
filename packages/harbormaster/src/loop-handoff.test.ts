@@ -190,3 +190,55 @@ describe('the evidence travels beside the diagnosis (W21-73)', () => {
     expect(rendered).not.toContain('OBSERVED when this ticket');
   });
 });
+
+/**
+ * W22-10. W21-73 attached the gate's real output to a CHECKPOINT, because
+ * every case it was written from was a budget-stopped attempt inside one run.
+ * A run that starts fresh has no checkpoint at all, so the block never
+ * rendered — and the first session of every new run met the ticket with
+ * nothing observed beside it, which is the same defect one level out.
+ */
+describe('the last gate output reaches a run that has no attempt of its own (W22-10)', () => {
+  const EVIDENCE = ['verify exited 1: 7 passing, 3 failing', '  at src/auth.test.ts:12'];
+
+  it('RED FIXTURE: a first session in a new run — no checkpoint, no gaps — is still shown what the gate observed', () => {
+    const rendered = withFeedback('CONTEXT', { attempt: 0, gaps: [], gateEvidence: EVIDENCE });
+    expect(rendered).toContain('OBSERVED when this ticket was last checked');
+    expect(rendered).toContain('verify exited 1: 7 passing, 3 failing');
+    expect(rendered).toContain('  at src/auth.test.ts:12');
+  });
+
+  it('A2: it is rendered as observation, and claims no attempt that did not happen', () => {
+    const rendered = withFeedback('CONTEXT', { attempt: 0, gaps: [], gateEvidence: EVIDENCE });
+    expect(rendered).toContain('verbatim output, not a step to perform');
+    // The "PREVIOUS ATTEMPT (n)" line belongs to gaps. A fresh run has none,
+    // and announcing attempt 0 would be the "attempt 5/2" class of lie.
+    expect(rendered).not.toContain('PREVIOUS ATTEMPT');
+    expect(rendered).not.toContain('RAN OUT OF BUDGET');
+  });
+
+  it('A3: with nothing observed, the handoff is untouched', () => {
+    expect(withFeedback('CONTEXT', { attempt: 0, gaps: [] })).toBe('CONTEXT');
+    expect(withFeedback('CONTEXT', { attempt: 0, gaps: [], gateEvidence: [] })).toBe('CONTEXT');
+  });
+
+  it('with a checkpoint the evidence still leads it — W21-73 unchanged', () => {
+    const rendered = withFeedback('CONTEXT', {
+      attempt: 2,
+      gaps: [],
+      gateEvidence: EVIDENCE,
+      checkpoint: {
+        completed: [],
+        remaining: [],
+        next: 'add type: module to package.json',
+        worktreeChanged: [],
+        claimMismatch: false,
+      },
+    });
+    expect(rendered.indexOf('OBSERVED when this ticket')).toBeLessThan(
+      rendered.indexOf('RAN OUT OF BUDGET'),
+    );
+    // And exactly once — not one copy per branch.
+    expect(rendered.split('OBSERVED when this ticket').length - 1).toBe(1);
+  });
+});

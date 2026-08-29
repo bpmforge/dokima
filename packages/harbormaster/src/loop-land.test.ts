@@ -14,9 +14,10 @@ import { ProviderTimeoutError, ProviderUnreachableError } from '@dokima/gateway'
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
 import { branchNameFor, git } from '@dokima/git';
 import type { SpawnSession } from '@dokima/loop';
-import { createTicket, getTicket, type Ticket } from '@dokima/tickets';
+import { commentTicket, createTicket, getTicket, type Ticket } from '@dokima/tickets';
 import type { PushToRemotesFn } from './land-push.js';
 import type { CompletionManifest } from './loop-gates.js';
+import { formatFailureComment } from './loop-gates-secrets.js';
 import { defaultHandoffBuilder } from './loop-handoff.js';
 import { runLandLoop, type LandLoopOptions } from './loop-land.js';
 import { MAX_FREE_INFRA_RETRIES } from './loop-land-infra.js';
@@ -858,6 +859,71 @@ describe('runLandLoop', () => {
       },
     );
   });
+});
+
+/**
+ * W22-10. W21-73's carry lives for the length of a RUN, because attempt
+ * feedback does. A run that starts fresh has no attempt to carry from, so the
+ * first session met the ticket with nothing observed beside it — the defect
+ * W21-73 closed, one level out.
+ */
+describe('the last gate output survives across runs (W22-10)', () => {
+  vi.setConfig({ testTimeout: LAND_LOOP_TIMEOUT_MS });
+  let fixture: Fixture | undefined;
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  it(
+    'RED FIXTURE: a FIRST session in a new run is shown what the gate last observed — no attempt in this run reached it',
+    async () => {
+      fixture = await setupFixture();
+      const { log } = fixture;
+      seedTicket(log, 'W9-01', {});
+
+      // A previous run's refusal, written the way runCloseGate writes it.
+      // Nothing else about that run survives — which is the point.
+      commentTicket(log, {
+        ticketId: 'W9-01',
+        // 'worker-1' is the fixture's registered identity; the events table
+        // has a foreign key on the actor, so an invented one is refused.
+        actorId: 'worker-1',
+        body: formatFailureComment(['GHOST-EDGE-4713: expected 2 received 3']),
+      });
+
+      const prompts: string[] = [];
+      const spawn: SpawnSession = async (input) => {
+        prompts.push(input.prompt);
+        return { stdout: '', stderr: '', exitCode: 1 };
+      };
+      await runLandLoop({ ...baseOptions(fixture, spawn), maxLadderAttempts: 1 });
+
+      // The FIRST prompt — not the second. There is no second.
+      expect(prompts[0]).toContain('OBSERVED when this ticket was last checked');
+      expect(prompts[0]).toContain('GHOST-EDGE-4713: expected 2 received 3');
+      // A2: observation, not instruction, and no attempt is claimed.
+      expect(prompts[0]).toContain('verbatim output, not a step to perform');
+      expect(prompts[0]).not.toContain('PREVIOUS ATTEMPT');
+    },
+  );
+
+  it(
+    'A3: a ticket whose gate has never run carries no such block',
+    async () => {
+      fixture = await setupFixture();
+      seedTicket(fixture.log, 'W9-01', {});
+
+      const prompts: string[] = [];
+      const spawn: SpawnSession = async (input) => {
+        prompts.push(input.prompt);
+        return { stdout: '', stderr: '', exitCode: 1 };
+      };
+      await runLandLoop({ ...baseOptions(fixture, spawn), maxLadderAttempts: 1 });
+
+      expect(prompts[0]).not.toContain('OBSERVED when this ticket');
+    },
+  );
 });
 
 /**
