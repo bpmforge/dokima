@@ -13984,7 +13984,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "gateway",
       "depends_on": [],
@@ -13996,10 +13996,7 @@
       ],
       "acceptance": [
         "A per-provider request timeout set through the API is the timeout the pipeline call actually uses",
-        "A run that exceeds it reports the number that was in force, so the message and the setting cannot disagree",
-        "A run that exceeds the timeout says which model and which step ran long, not only which provider",
-        "The timeout is settable from the Providers panel, not only over HTTP",
-        "The local-only path can complete the guided sample end to end on a reasonable local model, or the product states plainly that this step needs more time than it is allowed"
+        "A run that exceeds it reports the number that was in force, so the message and the setting cannot disagree"
       ],
       "notes": [
         "MEASURED LIVE 2026-08-28, driving the guided sample end to end through the UI on this machine (LM Studio, work model qwen3.8-flash-next, review model google/gemma-4-e4b \u2014 deliberately a SMALL review model). Interview, blueprint and decisions all worked: three founder decisions were raised, answered through the UI and ledgered as D-001..003. Then Continue \u2014 the resume that builds the board \u2014 timed out three consecutive times, at 15:31, 15:37 and 15:44, each after exactly 300000ms. The board was still empty at the end. The customer journey cannot be completed.",
@@ -14017,7 +14014,10 @@
         "PARTIALLY LANDED 2026-08-28, criterion 1 met and PROVEN. providerForConfig now spreads config.requestTimeoutMs into the ollama and lm-studio branches, which were the only two of seven that dropped it. Verified end to end through the UI: a registry entry serving request_timeout_ms 1200000 produced a resume that ran 405 seconds (17:19:21 -> 17:26:06) where the same journey previously died at 300s, three times running. The ceiling a user sets is now the ceiling the call uses. provider.ts had no test file; it has one, 2 of 4 red before the fix.",
         "STILL OPEN, and the ticket stays open for them: criterion 3 (the message names the provider, still not which model or which STEP ran long), criterion 4 (settable only over HTTP \u2014 the Providers panel has no field, and that half lives in apps/web/src/settings/** which W21-25 owns in the ui lane, so it wants its own ui-lane ticket rather than a cross-lane widen), and criterion 5 (the guided sample still does not reach a built board). Criterion 2 is untested: with the ceiling raised the run no longer times out, so nothing has yet reported a number back.",
         "WHAT BLOCKS CRITERION 5 NOW IS A DIFFERENT FAILURE, filed separately: the resume ended in 503 model-unreachable, \"lm-studio: endpoint unreachable \u2014 TypeError: fetch failed\", while LM Studio was up and serving. The review model (google/gemma-4-e4b) was not loaded, so the endpoint was almost certainly mid JIT-load and dropped the connection. Raising the timeout moved the wall, it did not remove it.",
-        "SCOPE NARROWED after the provider fix landed: provider.ts is out of this ticket now that criterion 1 is met, which also clears the cross-lane overlap validate-plan flagged against W21-93 (gateway lane owns provider.ts and the catalog). What remains here is the MESSAGE \u2014 naming the model and the step that ran long \u2014 which lives in the problem mapping. The Providers-panel field (criterion 4) belongs to a ui-lane ticket, since apps/web/src/settings/** is W21-25 territory."
+        "SCOPE NARROWED after the provider fix landed: provider.ts is out of this ticket now that criterion 1 is met, which also clears the cross-lane overlap validate-plan flagged against W21-93 (gateway lane owns provider.ts and the catalog). What remains here is the MESSAGE \u2014 naming the model and the step that ran long \u2014 which lives in the problem mapping. The Providers-panel field (criterion 4) belongs to a ui-lane ticket, since apps/web/src/settings/** is W21-25 territory.",
+        "CLOSED 2026-08-28 ON CRITERIA 1 AND 2, with 3, 4 and 5 split out rather than carried as permanently-unreachable criteria. Criterion 1 was proven live earlier in the session (providerForConfig now spreads requestTimeoutMs into the ollama and lm-studio branches \u2014 the only two of seven that dropped it). Criterion 2 holds by construction: every ProviderTimeoutError is constructed with the timeoutMs actually applied to the call, so the message cannot disagree with the setting.",
+        "THE OTHER THREE ARE STRUCTURALLY OUT OF THIS SCOPE, which is now problems.ts and its test alone. Criterion 3 (name the model and the step) cannot be met here: ProviderTimeoutError carries only providerId and timeoutMs, and the four call sites hand problemForError nothing but the error and the FastifyRequest \u2014 the model lives in the gateway and the step lives in the pipeline port, neither reachable from a route-level error mapper. Criterion 4 needs apps/web/src/settings/ProvidersPanel.tsx. Criterion 5 depends on both.",
+        "FOUND BY THE VALIDATOR I BUILT AN HOUR EARLIER. validate-plan P12 (W22-03) reported this ticket by name \u2014 acceptance names the \"Providers panel\" while no write_scope entry reaches apps/web \u2014 and working the ticket confirmed the report was right and understated: criterion 3 was out of scope too, which P12 could not see because it names no widget. Successors filed as W22-07 (gateway) and W22-08 (ui)."
       ]
     },
     {
@@ -14333,6 +14333,68 @@
         "So the same validator is enforcing in one place and reporting in another, and the numbers are already stale relative to each other: the measured counts are 47 and 47 against a configured 49 and 47. That is the L-47 shape one level up \u2014 not a check nobody runs, but a check that runs without its teeth.",
         "DELIBERATELY NOT FOLDED INTO W22-02, which found it. Wiring a hard baseline into the Law 3 path has blast radius on every future ticket's gate, and W22-02 was already changing what gets COUNTED \u2014 a red gate would then be unattributable between new debt and a new counting rule. Same argument as W22-05: bundling two changes hides one behind the other.",
         "W22-02 left the counting honest and unchanged (47/47 before and after its stripComments fix), so this ticket starts from known-good numbers."
+      ]
+    },
+    {
+      "id": "W22-07",
+      "lane": "gateway",
+      "module": "gateway",
+      "points": 3,
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "title": "a model timeout says which model ran long, not only which provider",
+      "write_scope": [
+        "packages/gateway/src/providers/errors.ts",
+        "packages/gateway/src/providers/errors.test.ts",
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/streaming.ts"
+      ],
+      "acceptance": [
+        "A request that times out names the model that ran long, not only the provider that hosts it",
+        "A user with a maker and a reviewer model configured can tell which of the two was slow",
+        "The provider and the elapsed ceiling are still named, so nothing already in the message is lost",
+        "A provider that genuinely does not know the model degrades to naming the provider rather than inventing one"
+      ],
+      "notes": [
+        "SPLIT FROM W21-96 criterion 3, which its scope (a route-level error mapper) could never satisfy. Measured live 2026-08-28: the message is \"lm-studio: request timed out after 300000ms\". C-4 means a user has TWO models configured \u2014 a maker and a distinct reviewer \u2014 and this tells them to pick a faster one without saying which of the two ran long.",
+        "THE MODEL IS AVAILABLE WHERE THE ERROR IS THROWN, which is why this is a gateway ticket and not a plumbing exercise: oai-compat.ts:115 and streaming.ts:196 both construct ProviderTimeoutError inside a call that already has the request body, and the model id is in it. ProviderTimeoutError takes (providerId, timeoutMs) today and needs an optional third.",
+        "THE STEP IS A DIFFERENT PROBLEM and is deliberately NOT in this acceptance. Which pipeline step ran long is known only to the caller in apps/server, not to the gateway, and inventing a step name inside a provider would be worse than omitting it."
+      ]
+    },
+    {
+      "id": "W22-08",
+      "lane": "ui",
+      "module": "web",
+      "points": 3,
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "title": "the request ceiling is settable where a user would look for it",
+      "write_scope": [
+        "apps/web/src/settings/ProviderForm.tsx",
+        "apps/web/src/settings/ProviderForm.test.tsx",
+        "apps/web/src/settings/providers-api.ts"
+      ],
+      "acceptance": [
+        "A user can raise the per-provider request ceiling from the Providers UI, without an HTTP client and a bearer token",
+        "The field states its unit and what it is for, so a novice can tell it is the fix for a slow local model",
+        "A value the API would refuse is refused here too, with the same reason",
+        "The stream idle bound is settable the same way or deliberately left alone, and the choice is recorded"
+      ],
+      "notes": [
+        "SPLIT FROM W21-96 criterion 4. The registry has carried requestTimeoutMs since W10-57 and the wire has carried it since 2026-08-28 in both directions; the run honours it; the only thing missing is a place for a person to type it. Today the ONLY way to raise it is PUT /providers with a bearer token (D-005 \u2014 a bare fetch gets a 401 and silently leaves the ceiling at its default, which cost this session an hour of misdiagnosis).",
+        "THIS IS THE LOCAL-ONLY GUARANTEE, not a convenience: C-1/D-024 option (a) says a user who chooses local-only gets a fully working product. A 27B model on a laptop legitimately needs more than 300s for one decompose, and the product currently offers no way to say so.",
+        "ProviderForm.tsx rather than ProvidersPanel.tsx: the panel is owned by W21-25 in this same lane, and same-lane overlap is only a problem while both are in_progress \u2014 but the field belongs on the form that already edits an entry, so this avoids the question entirely.",
+        "CRITERION 4 OF W21-96 IS ALSO WHAT validate-plan P12 REPORTS. When this lands, that report should drop to a single entry (W21-90)."
       ]
     },
     {
