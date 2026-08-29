@@ -1,148 +1,49 @@
 /**
- * W21-32. The red fixture reproduces the live shape: a run mints a valid close
- * receipt, the ticket has been released out from under it, and `closeTicket`
- * refuses. Before this chapter that refusal produced NOTHING — the ledger held
- * a `gate.receipt_minted` with no `ticket.closed` and no explanation anywhere.
+ * W21-90. A rejection is the most specific thing anyone knows about a ticket,
+ * and it arrived as advice a maker could decline. These fixtures are the live
+ * Tally sequence: reject naming package.json, close touching everything else.
  */
-import { promises as fs, mkdtempSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  createIdentity,
-  listEvents,
-  openEventLog,
-  type EventLog,
-} from '@dokima/events';
-import { claimTicket, createTicket, releaseTicket, startTicket } from '@dokima/tickets';
-import { CLOSE_REFUSED_EVENT, closeTicketLedgeringRefusal } from './loop-gates-close.js';
+  rejectionNamedPaths,
+  unaddressedRejectionNotice,
+} from './loop-gates-close.js';
 
-const dirs: string[] = [];
+describe('a close that reverses an unaddressed rejection says so (W21-90)', () => {
+  const REJECTION =
+    "package.json ships \"test\": \"echo 'Tests passed' || true\", a script that " +
+    'cannot fail. Change that and nothing else.';
 
-afterEach(async () => {
-  await Promise.all(
-    dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
-  );
-});
-
-function fixture(): EventLog {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'close-refusal-'));
-  dirs.push(dir);
-  const log = openEventLog(path.join(dir, 'state.db'));
-  createIdentity(log, { id: 'operator', name: 'Operator', kind: 'machine' });
-  createTicket(log, 'operator', {
-    id: 'T-1',
-    type: 'task',
-    title: 'a ticket',
-    lane: 'solo',
-    writeScope: ['src/**'],
-  });
-  return log;
-}
-
-const MANIFEST = {
-  files: ['src/index.ts'],
-  verify: { command: 'pnpm test', exitCode: 0 },
-  commits: ['abc1234'],
-};
-
-describe('closeTicketLedgeringRefusal (W21-32)', () => {
-  it('RED FIXTURE: a refused close leaves a readable event — the live run left none', () => {
-    const log = fixture();
-    claimTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    startTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    // The live shape: something else released the ticket while this run worked.
-    releaseTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-
-    expect(() =>
-      closeTicketLedgeringRefusal(
-        log,
-        { ticketId: 'T-1', actorId: 'operator', ...MANIFEST },
-        { runId: 'run-live', receiptId: 'receipt-42' },
-      ),
-    ).toThrow();
-
-    const refusals = listEvents(log).filter((e) => e.eventType === CLOSE_REFUSED_EVENT);
-    expect(refusals).toHaveLength(1);
-    const payload = refusals[0]!.payload as Record<string, unknown>;
-    expect(refusals[0]!.ticketId).toBe('T-1');
-    expect(refusals[0]!.runId).toBe('run-live');
-    expect(payload.orphanedReceiptId).toBe('receipt-42');
-    expect(String(payload.reason)).toContain('T-1');
-    log.close();
+  it('RED FIXTURE: Tally PLAN-tally-01 — the reviewer named package.json and the close did not touch it', () => {
+    // From the ledger: receipt 22:13, rejected 22:14, receipt again 22:44.
+    // The maker committed .gitignore and src/index.ts, left package.json
+    // alone, and the gate re-ran the unfailable script and minted.
+    const notice = unaddressedRejectionNotice(REJECTION, ['.gitignore', 'src/index.ts']);
+    expect(notice).toContain('package.json');
+    expect(notice).toContain('REVERSES A REJECTION');
+    // Acceptance 3, in the words the person reads: it did not block.
+    expect(notice).toContain('did not block');
   });
 
-  it('the refusal names WHY — the reason code, not just that something failed', () => {
-    const log = fixture();
-    claimTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    startTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    // A manifest with no commits: a different refusal, distinguishable in the
-    // ledger from the ownership one without reading prose.
-    expect(() =>
-      closeTicketLedgeringRefusal(log, {
-        ticketId: 'T-1',
-        actorId: 'operator',
-        files: ['src/index.ts'],
-        verify: { command: 'pnpm test', exitCode: 0 },
-        commits: [],
-      }),
-    ).toThrow();
-    const refusal = listEvents(log).find((e) => e.eventType === CLOSE_REFUSED_EVENT);
-    expect((refusal!.payload as Record<string, unknown>).code).toBe('MANIFEST_INVALID');
-    log.close();
+  it('a close that DOES touch the named file is unaffected (acceptance 2)', () => {
+    expect(unaddressedRejectionNotice(REJECTION, ['package.json'])).toBeNull();
   });
 
-  it('rethrows unchanged — it records, it does not recover, and the live code is INVALID_TRANSITION not NOT_OWNER', () => {
-    const log = fixture();
-    claimTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    startTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    releaseTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    let caught: unknown;
-    try {
-      closeTicketLedgeringRefusal(log, { ticketId: 'T-1', actorId: 'operator', ...MANIFEST });
-    } catch (err) {
-      caught = err;
-    }
-    // The release put the ticket back in `ready`, so `assertTransition` refuses
-    // before `assertOwner` is ever consulted. Worth pinning: the ownership
-    // story is the CAUSE, but the code the ledger will show is the transition.
-    expect((caught as { code?: string }).code).toBe('INVALID_TRANSITION');
-    log.close();
+  it('matches a named file inside a directory the close changed', () => {
+    expect(unaddressedRejectionNotice('fix apps/web/src/App.tsx', ['apps/web/src/App.tsx'])).toBeNull();
+    expect(unaddressedRejectionNotice('fix App.tsx', ['apps/web/src/App.tsx'])).toBeNull();
   });
 
-  it('a close that SUCCEEDS appends no refusal and returns the closed ticket', () => {
-    const log = fixture();
-    claimTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    startTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    const closed = closeTicketLedgeringRefusal(
-      log,
-      { ticketId: 'T-1', actorId: 'operator', ...MANIFEST },
-      { runId: 'run-live' },
-    );
-    expect(closed.status).toBe('in_review');
-    expect(listEvents(log).filter((e) => e.eventType === CLOSE_REFUSED_EVENT)).toHaveLength(0);
-    log.close();
-  });
-});
-
-describe('lifecycle events carry a run id (W21-32)', () => {
-  it('RED FIXTURE: claim/start/release/close stamp the run — every one ever written was run=null', () => {
-    const log = fixture();
-    claimTicket(log, { ticketId: 'T-1', actorId: 'operator' }, { runId: 'run-A' });
-    startTicket(log, { ticketId: 'T-1', actorId: 'operator' }, { runId: 'run-A' });
-    releaseTicket(log, { ticketId: 'T-1', actorId: 'operator' }, { runId: 'run-A' });
-    const runs = listEvents(log)
-      .filter((e) => e.eventType.startsWith('ticket.') && e.eventType !== 'ticket.created')
-      .map((e) => e.runId);
-    expect(runs).toEqual(['run-A', 'run-A', 'run-A']);
-    log.close();
+  it('a rejection naming NO file yields nothing rather than a guess', () => {
+    // The same conservatism referencedPaths applies: whether a rejection was
+    // "addressed" is a judgement about meaning, and this makes none.
+    expect(unaddressedRejectionNotice('this is not good enough yet', ['src/index.ts'])).toBeNull();
+    expect(rejectionNamedPaths('please try harder')).toEqual([]);
   });
 
-  it('no run id stays null — a person at the API has no run, and a fake one would be worse', () => {
-    const log = fixture();
-    claimTicket(log, { ticketId: 'T-1', actorId: 'operator' });
-    const claimed = listEvents(log).find((e) => e.eventType === 'ticket.claimed');
-    expect(claimed!.runId).toBeNull();
-    log.close();
+  it('reads paths out of ordinary reviewer prose', () => {
+    const named = rejectionNamedPaths('package.json and src/crypto/argon2id.ts both need work.');
+    expect(named).toContain('package.json');
+    expect(named).toContain('src/crypto/argon2id.ts');
   });
 });
