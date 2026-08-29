@@ -110,3 +110,37 @@ export function repetitionEvidenceLine(repeats: readonly RepeatedCall[]): string
     `see the pattern a per-session view cannot.`
   );
 }
+
+/**
+ * The same fact, addressed to the MAKER (W21-69).
+ *
+ * W21-19 chose to REPORT this and not stop, and that decision stands — an
+ * absorbed infra retry legitimately re-reads. But report-to-the-founder is not
+ * the only alternative to stopping: the run holds a fact the session would act
+ * on and never hands it over. The next session starts with no idea that the
+ * file it is about to read has already been read 61 times, by its
+ * predecessors, with identical arguments and identical bytes back.
+ *
+ * Run 52 is the evidence that it would have been used: its SESSION_CHECKPOINT
+ * read `{"remaining":["add type: module to package.json to fix ES module
+ * error"]}` while the actual failure was ERR_CRYPTO_INVALID_SCRYPT_PARAMS. The
+ * maker re-read its way to a diagnosis the repetition record contradicts.
+ *
+ * PHRASED AS FACT, NEVER AS INSTRUCTION (acceptance 2). "Do not read X again"
+ * would be the product telling a model how to work, and a wrong instruction
+ * here is expensive — there are legitimate reasons to re-read. Stating what
+ * happened lets the model draw its own conclusion, which is the same posture
+ * `withFeedback` takes with the previous attempt's gaps.
+ */
+export function repetitionHandoffNote(repeats: readonly RepeatedCall[]): string | null {
+  if (repeats.length === 0) return null;
+  const worst = repeats[0]!;
+  const others =
+    repeats.length > 1 ? `, and ${repeats.length - 1} other call(s) repeat similarly` : '';
+  return (
+    `ALREADY TRIED IN EARLIER SESSIONS ON THIS TICKET: the ${worst.toolId} call ` +
+    `has been made ${worst.count} times with identical arguments, returning an ` +
+    `identical result every time${others}. Those answers have not changed and ` +
+    `will not change by asking again.`
+  );
+}

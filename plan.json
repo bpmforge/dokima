@@ -13238,7 +13238,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
@@ -13246,14 +13246,20 @@
       "title": "the run knows a session is spinning and never tells the session",
       "write_scope": [
         "packages/harbormaster/src/loop-land-repetition.ts",
-        "packages/harbormaster/src/agent-session/handoff-fields.ts",
-        "packages/harbormaster/src/agent-session/handoff-fields.test.ts"
+        "packages/harbormaster/src/loop-land-repetition.test.ts",
+        "packages/harbormaster/src/loop-land-session.ts"
       ],
       "notes": [
         "Run 52 park evidence, verbatim from the ledger (PLAN-vault-002a, seq 4202): \"Across this ticket's sessions the same agent-session.read call was made 61 times with identical arguments and an identical result (and 22 other repeated call(s)) \u2014 no single session repeated it enough to stop itself, so the run kept spending attempts on it.\"",
         "W21-19 chose to REPORT and not stop, and that decision is still right \u2014 an absorbed infra retry legitimately re-reads. But report-to-the-founder is not the only alternative to stopping. The run holds a fact the session would act on and never hands it over: the next session starts with no idea that the file it is about to read has been read 61 times with the same bytes. The knowledge is written down and not consulted where it would pay, which is the same shape as W21-45 and W21-46.",
         "Evidence that the session would have used it: run 52 SESSION_CHECKPOINT reads {\"remaining\":[\"add type: module to package.json to fix ES module error\"]} while the actual failure is ERR_CRYPTO_INVALID_SCRYPT_PARAMS. The maker re-read its way to a diagnosis the repetition record contradicts.",
-        "ACCEPTANCE: buildHandoff carries the cross-session repeated-call summary for the ticket when there is one; the session prompt renders it as fact, not instruction; no change to the report-not-stop behaviour of W21-19."
+        "ACCEPTANCE: buildHandoff carries the cross-session repeated-call summary for the ticket when there is one; the session prompt renders it as fact, not instruction; no change to the report-not-stop behaviour of W21-19.",
+        "SCOPE CORRECTED AT CLAIM. The filed scope named agent-session/handoff-fields.ts, which is a PARSER (rendered prompt -> ticket id) and builds nothing, so acceptance 1 could not be met there. The context block is assembled by defaultHandoffBuilder (loop-handoff.ts) and the only place with both the built handoff and the LOG is attemptOnce in loop-land-session.ts \u2014 the repetition query needs the ledger, and the builder is sync with no log. All three files verified clear.",
+        "APPENDED TO CONTEXT, following withFeedback's precedent exactly: the ticket's own interface is still the thing being built, and replacing it with a history list would trade one blindness for another. Redaction is untouched \u2014 renderHandoff redacts context through redactDeep on the way out (SC-06), the single choke point, and redacting twice would imply a second place to keep correct.",
+        "PHRASED AS FACT, NEVER INSTRUCTION (acceptance 2), with a fixture asserting the absence of \"do not / you must / stop / never\". \"Do not read X again\" would be the product telling a model how to work, and a wrong instruction here is expensive because re-reading is sometimes right. Stating what happened lets the model draw its own conclusion \u2014 the same posture withFeedback takes with the previous attempt's gaps.",
+        "W21-19 IS UNTOUCHED (acceptance 3). Its founder-facing line still says the run was not stopped, and there is a test asserting both survive: the two say the same thing to different readers, which is the whole point \u2014 report-to-the-founder was never the only alternative to stopping.",
+        "THE EVIDENCE IT WOULD BE USED: run 52's SESSION_CHECKPOINT read {\"remaining\":[\"add type: module to package.json to fix ES module error\"]} while the real failure was ERR_CRYPTO_INVALID_SCRYPT_PARAMS. The maker re-read its way to a diagnosis the repetition record contradicts, and had never been shown that record.",
+        "RED PROVEN by stashing the two sources: 4 fixtures fail."
       ],
       "acceptance": [
         "buildHandoff carries the cross-session repeated-call summary for the ticket when there is one",

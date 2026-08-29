@@ -11,6 +11,7 @@ import { appendEvent, createIdentity, openEventLog, type EventLog } from '@dokim
 import {
   repeatedZeroInformationCalls,
   repetitionEvidenceLine,
+  repetitionHandoffNote,
 } from './loop-land-repetition.js';
 
 const dirs: string[] = [];
@@ -108,5 +109,44 @@ describe('repetitionEvidenceLine (W21-19)', () => {
 
   it('nothing to report is null, not an empty sentence', () => {
     expect(repetitionEvidenceLine([])).toBeNull();
+  });
+});
+
+describe('the session is told what earlier sessions already asked (W21-69)', () => {
+  const repeat = (toolId: string, count: number) => ({ toolId, argsJson: '{}', count });
+
+  it('RED FIXTURE: run 52’s pattern reaches the maker as a fact', () => {
+    // Verbatim from the ledger (PLAN-vault-002a, seq 4202): the same read was
+    // made 61 times across sessions with identical arguments and an identical
+    // result. No single session repeated it enough to stop itself, and the
+    // next one began with no idea any of it had happened.
+    const note = repetitionHandoffNote([
+      repeat('agent-session.read', 61),
+      repeat('agent-session.list', 7),
+    ]);
+    expect(note).toContain('61 times');
+    expect(note).toContain('agent-session.read');
+    expect(note).toContain('1 other call(s)');
+  });
+
+  it('states the fact and gives no instruction (acceptance 2)', () => {
+    // "Do not read X again" would be the product telling a model how to work,
+    // and a wrong instruction here is expensive — re-reading is sometimes
+    // right. Stating what happened lets the model draw its own conclusion.
+    const note = repetitionHandoffNote([repeat('agent-session.read', 61)])!;
+    expect(note).not.toMatch(/\b(do not|don't|you must|stop|never)\b/i);
+    expect(note).toContain('ALREADY TRIED');
+  });
+
+  it('says nothing when there is nothing to say', () => {
+    expect(repetitionHandoffNote([])).toBeNull();
+  });
+
+  it('does not change the report-not-stop behaviour (acceptance 3)', () => {
+    // W21-19's founder-facing line is untouched and still says the run was not
+    // stopped — the two say the same thing to different readers.
+    const repeats = [repeat('agent-session.read', 61)];
+    expect(repetitionEvidenceLine(repeats)).toContain('did not stop the run');
+    expect(repetitionHandoffNote(repeats)).not.toBeNull();
   });
 });

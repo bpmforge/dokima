@@ -11,6 +11,10 @@ import type { InfraFailureKind } from '@dokima/loop';
 import type { WorktreeHandle } from '@dokima/git';
 import { redactDeep } from '@dokima/shared';
 import type { Ticket } from '@dokima/tickets';
+import {
+  repeatedZeroInformationCalls,
+  repetitionHandoffNote,
+} from './loop-land-repetition.js';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
 import { DEFAULT_VERIFY_TIMEOUT_MS } from './loop-gates-types.js';
 import { extractSessionCheckpoint } from './agent-session/session-checkpoint.js';
@@ -103,7 +107,16 @@ export async function attemptOnce(
   /** W21-83: the work was finished and never reported. */
   silent: SilentCompletion;
 }> {
-  const handoff = await options.buildHandoff(ticket, feedback);
+  const built = await options.buildHandoff(ticket, feedback);
+  // W21-69: the run knows what earlier sessions already asked; hand it over.
+  // Appended to `context` for the same reason `withFeedback` appends there —
+  // the ticket's own interface is still the thing being built.
+  const repetition = repetitionHandoffNote(
+    repeatedZeroInformationCalls({ log: options.log, ticketId: ticket.id }),
+  );
+  const handoff = repetition
+    ? { ...built, context: `${built.context}\n\n${repetition}` }
+    : built;
   const secrets = options.secretValues;
   const spawn: SpawnSession = secrets?.length
     ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
