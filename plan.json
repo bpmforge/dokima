@@ -13104,7 +13104,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
@@ -13112,7 +13112,9 @@
       "title": "the ladder has no way to know a rung cannot do agentic work",
       "write_scope": [
         "docs/ARCHITECTURE.md",
-        "packages/harbormaster/src/loop-land-policy.ts"
+        "packages/harbormaster/src/loop-land-policy.ts",
+        "packages/harbormaster/src/loop-land-policy.test.ts",
+        "packages/harbormaster/src/loop-land-rungs.ts"
       ],
       "notes": [
         "MEASURED, three controlled tests against an identical mid-session fixture (same tools, same conversation, the scrypt failure and the file contents already supplied):",
@@ -13123,7 +13125,14 @@
         "THE PRODUCT HAS NO WAY TO EXPRESS THIS. The ladder assumes a higher rung is BETTER, and D-018 frames escalation as cheapest-first. But \"bigger model\" and \"better at agentic tool use\" are different axes: escalating from coder-next to 3.8-27b traded a model that edits for one that browses, and cost ~4 minutes per turn to do it.",
         "The measured-turns profile (W17-03) already keys per model and could carry a mutation RATE alongside it \u2014 a model whose sessions mutate nothing is not a rung worth climbing to, and the ledger has the tool histograms to say so without a benchmark.",
         "Config changed for this project as a result: coding-agent is coder-next with NO fallback; 3.8-27b stays as code-reviewer, where reading widely and reasoning at length is the job rather than the failure.",
-        "ACCEPTANCE: a rung whose sessions repeatedly produce reads and lists with zero mutations is recorded as unable to do agentic work for this role, and the ladder skips it for later tickets with the reason on the record; a rung that mutates is unaffected; the judgement is made from recorded tool histograms, never from a model scoring another model."
+        "ACCEPTANCE: a rung whose sessions repeatedly produce reads and lists with zero mutations is recorded as unable to do agentic work for this role, and the ladder skips it for later tickets with the reason on the record; a rung that mutates is unaffected; the judgement is made from recorded tool histograms, never from a model scoring another model.",
+        "THE CONTROLLED FINDING IS NOW CONFIRMED ON WORK THAT ACTUALLY RAN, which the ticket said it could not do (\"I cannot check the real sessions the same way, so the conclusion rests on a fixture\"). W21-67, closed an hour earlier, is what made it checkable. Measured across this machine's three project ledgers on 2026-08-29: vault coder-next 341/1011 mutations (33.7%), qwen3.6-35b-a3b 169/590 (28.6%), 3.8-27b-mtplx 7/231 (3.0%), and qwen/qwen3.8-27b 0/106 \u2014 read x66, list x40 and nothing else. That last row is the fixture finding, reproduced on real work.",
+        "AND THE REAL DATA CORRECTED THE DESIGN. The SAME model, qwen/qwen3.8-27b, mutated 11 of 81 calls (13.6%) on a different project on the same machine. So \"cannot do agentic work\" is NOT a property of a model and could never be a list of names \u2014 it is what a model did on a particular body of work. The profile is therefore read per project from that project's own ledger, which is also what acceptance 2 asks for.",
+        "THE THRESHOLD IS MEASURED, NOT CHOSEN. AGENTIC_PROFILE_MIN_CALLS = 50 sits below the smallest real profile that DOES mutate (81 calls, 11 mutations) and well above noise; the condemned profile is 106 calls with 0. A floor on CALLS rather than turns, because a browsing model takes many turns to make few calls and the question is what it did.",
+        "ATTRIBUTION DIRECTION WAS WRONG IN MY FIRST DESIGN AND I CHECKED IT BEFORE WRITING. I planned to buffer tool calls and attribute them to the NEXT spend.recorded. The loop in gateway-session.ts takes the turn (which writes spend.recorded) and only THEN executes response.toolCalls \u2014 so a tool call belongs to the PRECEDING spend record. Buffering forward is invisible inside a single-model session and wrong exactly at a rung boundary, which is the only place this mechanism is used. There is a red fixture pinning the direction.",
+        "NEVER SKIPS THE LAST RUNG, and that guard is W21-63's lesson applied forward rather than rediscovered: it fixed the mirror image an hour earlier \u2014 a ladder that skipped to an unreachable rung and parked with NO session. Condemning every rung would reintroduce exactly that, so the skip only applies while a different session remains, and a one-model chain is left alone.",
+        "ESTIMATE WAS LOW: filed at 2 points, delivered as a ledger reader, a measured threshold, ladder integration with a floor, seven fixtures and an architecture section. Recorded rather than silently absorbed.",
+        "SCOPE WIDENED by loop-land-rungs.ts (the ladder integration, since the rung is resolved there) and a new loop-land-policy.test.ts. Both verified clear. docs/ARCHITECTURE.md is W21-36's in the same lane and it is todo, so P8 permits \u2014 and W21-36 is about runClaimLoop, which the doc does not mention, so the new section 10 does not touch its territory."
       ],
       "acceptance": [
         "The ladder can express that a rung is unsuitable for agentic work, rather than only that it is more expensive",

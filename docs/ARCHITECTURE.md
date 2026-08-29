@@ -335,3 +335,53 @@ on disk at all. The pipeline recorded blueprint, technical-slate and
 ticket-decomposition phases in the event log and none of it materialised as
 files — and the phase-0 gate said so ("declared deliverable(s) not found on
 disk") while the build proceeded anyway.
+
+## 10. Model size and agentic tool use are different axes (W21-66)
+
+The escalation ladder (D-018) is cheapest-first, which encodes an assumption:
+that a **higher rung is better**. For raw reasoning that holds. For *acting on
+a repository* it does not, and the product had no way to say so.
+
+**Three controlled tests**, identical mid-session fixture — same tools, same
+conversation, the failure and the file contents already supplied:
+
+| Condition | `qwen/qwen3-coder-next` | `qwen/qwen3.8-27b` |
+|---|---|---|
+| Free choice | `edit` — 529 tokens, 12s | `list, list` — 93 tokens, 14s, holding the file already |
+| Directive prompt ("ACT, do not explore; never `list` or `read` a file you have been shown") | — | `list, list` again — 43s, 960 tokens |
+| Forced (`read`/`list` removed, `tool_choice=required`) | — | `write` to the correct path with EMPTY CONTENT — a destructive no-op |
+
+So it is not a prompting problem and not a timeout problem: the model is
+exploration-biased, and compelling it to act produces degenerate output.
+
+**Confirmed against real ledgers** on 2026-08-29, across three projects on one
+machine (per-model mutation rate — tool calls that changed the worktree, over
+all tool calls):
+
+| Project | Model | Calls | Mutations | Rate |
+|---|---|---|---|---|
+| vault | `qwen/qwen3-coder-next` | 1011 | 341 | 33.7% |
+| vault | `qwen3.6-35b-a3b` | 590 | 169 | 28.6% |
+| vault | `qwen/qwen3.8-27b` | 106 | **0** | **0.0%** |
+| tally | `qwen/qwen3-coder-next` | 398 | 107 | 26.9% |
+| tally | `qwen/qwen3.8-27b` | 81 | 11 | 13.6% |
+
+The vault row reproduces the controlled finding on work that actually ran:
+`read x66, list x40` and nothing else.
+
+**The tally row is why this is measured per project and never written down as
+a list of model names.** The same model that changed nothing in one project
+mutated on 13.6% of its calls in another. "Cannot do agentic work" is not a
+property of a model; it is what a model did on a particular body of work.
+
+**What the product does with it.** `modelToolProfiles`
+(`packages/harbormaster/src/loop-land-policy.ts`) derives the rate from the
+project's own ledger — `spend.recorded` names the model, and the tool calls
+that follow it belong to that turn, because a turn completes before its
+requested calls execute. A rung whose model has made at least
+`AGENTIC_PROFILE_MIN_CALLS` calls here and mutated nothing is not escalated to,
+with the reason commented on the ticket. **The last available rung is never
+skipped** — W21-63 fixed the mirror image, a ladder that skipped to an
+unreachable rung and parked with no session at all, and condemning every rung
+would reintroduce it.
+

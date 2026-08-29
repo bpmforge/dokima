@@ -14,9 +14,13 @@ import { latestRejectionReason } from '@dokima/tickets';
 import type { SpawnSession } from '@dokima/loop';
 import type { LandAttempt, LandLoopOptions } from './loop-land.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
+import { commentTicket } from '@dokima/tickets';
 import {
+  cannotActAgentically,
   isHigherRung,
+  modelToolProfiles,
   rungForAttempt,
+  unfitRungNotice,
   type LandEscalationPolicy,
   type LandFailureReceipt,
 } from './loop-land-policy.js';
@@ -82,8 +86,45 @@ export async function beginRungAttempt(
   if (!options.rungSessions) return { options };
 
   const realAttempt = attempts.length + 1;
-  const rung = rungForAttempt(policy, realAttempt + rungOffset);
-  const rungSession = options.rungSessions.sessionForRung(rung);
+  let rung = rungForAttempt(policy, realAttempt + rungOffset);
+  let rungSession = options.rungSessions.sessionForRung(rung);
+
+  /**
+   * W21-66: do not climb to a rung that browses instead of acting.
+   *
+   * The ladder assumed a higher rung is BETTER, because D-018 frames
+   * escalation as cheapest-first. Measured on this machine's real ledgers,
+   * that is not always true: one model made 106 tool calls on a project and
+   * changed nothing — `read x66, list x40` — while the cheaper coding model
+   * mutated on a third of its calls. Escalating there traded a model that
+   * edits for one that reads.
+   *
+   * NEVER SKIPS THE LAST RUNG, and that guard is the whole lesson of W21-63,
+   * which fixed the mirror image an hour earlier: a ladder that skipped to an
+   * unreachable rung and parked with NO session at all. Condemn every rung and
+   * there is nothing left to run, which is worse than running an imperfect
+   * model. So the skip only ever applies while a different rung remains.
+   */
+  const profiles = modelToolProfiles(options.log);
+  // Three rungs at most, so three tries at most — a bound, not a while-true.
+  for (let guard = 0; guard < 3; guard += 1) {
+    if (!cannotActAgentically(profiles.get(rungSession.label ?? ''))) break;
+    const nextRung = rungForAttempt(policy, realAttempt + rungOffset + guard + 1);
+    const nextSession = options.rungSessions.sessionForRung(nextRung);
+    // The last rung, or a chain that clamps to one session: stop and use it.
+    if (nextSession.label === rungSession.label) break;
+    commentTicket(
+      options.log,
+      {
+        ticketId,
+        actorId: options.actorId,
+        body: unfitRungNotice(rungSession.label ?? rung, profiles.get(rungSession.label ?? '')!),
+      },
+      { runId: options.runId ?? null },
+    );
+    rung = nextRung;
+    rungSession = nextSession;
+  }
 
   if (attempts.length > 0) {
     const previousRung = rungForAttempt(policy, attempts.length + rungOffset);
