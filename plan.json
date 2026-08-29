@@ -14906,7 +14906,7 @@
       "id": "W22-17",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14917,7 +14917,8 @@
       "title": "loop-land-ticket.ts sits exactly on the 400-line cap \u2014 the next line of code cannot be written",
       "write_scope": [
         "packages/harbormaster/src/loop-land-ticket.ts",
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-land-preflight.ts"
       ],
       "acceptance": [
         "landClaimedTicket is split per CODE_BOOK_PROTOCOL \u2014 an index plus chapter modules, one concern each",
@@ -14928,7 +14929,15 @@
         "FILED AT THE MOMENT IT BLOCKED ME (Law 1), during W22-10. The file was at EXACTLY 400 lines before that ticket and validate-file-size fails at 401, so a two-line change could not be written. It is not near the cap; it is on it.",
         "WHAT THAT COSTS, concretely, because it already cost it once. W22-10's seeding logic and its rationale had to be relocated into loop-handoff.ts to make room, and its comment at the call site was compressed from three lines to two purely to fit \u2014 a code cap silently editing prose is the wrong pressure on the wrong thing. The relocation happened to land somewhere defensible (loop-handoff.ts owns AttemptFeedback), which is luck, not design. The next person may not be so lucky, and the cheapest way out will be to delete an explanation.",
         "NOT URGENT AND NOT COSMETIC. Nothing is broken today and no test is red. The defect is that the file is now write-locked by a mechanical rule, so any ticket touching landClaimedTicket inherits a refactor it did not ask for \u2014 the exact coupling one-ticket-at-a-time exists to prevent.",
-        "A MOVE, NOT A REWRITE. The acceptance says the existing tests pass unchanged on purpose: this file is the ladder's control flow (free-retry gate, rung advance, park reasons, conflict watch, verb mirror), and a split that also 'improves' behaviour would be unreviewable against the tests that exist."
+        "A MOVE, NOT A REWRITE. The acceptance says the existing tests pass unchanged on purpose: this file is the ladder's control flow (free-retry gate, rung advance, park reasons, conflict watch, verb mirror), and a split that also 'improves' behaviour would be unreviewable against the tests that exist.",
+        "SCOPE WIDENED AT THE READ (Law 1), and it is the obvious one I should have filed with: a split needs somewhere to split INTO, and the filed scope named only the file being emptied. packages/harbormaster/src/loop-land-preflight.ts is new and therefore unowned.",
+        "SIBLING CHAPTER, NOT A DIRECTORY. CODE_BOOK_PROTOCOL says 'an index/barrel + chapter modules', and a loop-land-ticket/ directory would force every importer to change to loop-land-ticket/index.js \u2014 Node ESM does not resolve directories. This package already answers the same question its own way: loop-land-session, loop-land-infra, loop-land-report, loop-land-board, loop-land-policy, loop-land-rungs are all chapters of this engine, with loop-land-ticket.ts as the index. One more sibling is the convention here, and it keeps every existing import valid.",
+        "THE SEAM IS 'BEFORE ANY MODEL CALL', which is a concern the file already names three times in its own comments (W21-43 'before a single model call', W21-21 provisioning, W21-52 'the third early-park path'). Moving them together is not a line-count exercise: the two early parks and the provisioning that can produce a third are one idea, and they read better beside each other than interleaved with ladder setup.",
+        "DONE. loop-land-ticket.ts 400 -> 327 lines, loop-land-preflight.ts 143. A2 asked for no chapter within ten lines of the cap: the nearest is 63 lines clear. The index keeps its name and every existing import, so no other file changed.",
+        "A3 IS THE WHOLE SAFETY ARGUMENT AND IT HELD: 4782 tests passing, the same count as before the split, with no test touched. This file is the ladder's control flow \u2014 free-retry gate, rung advance, park reasons, conflict watch, verb mirror \u2014 and the only honest way to review a move through it is that the tests that pinned the old shape still pin the new one.",
+        "THE SEAM WAS ALREADY IN THE COMMENTS, which is what made it the right cut rather than a convenient one. The file said 'before a single model call' (W21-43), described provisioning as belonging to the shared engine (W21-21), and called the provision failure 'the third early-park path, now the same shape as the other two' (W21-52). Three statements of one idea, interleaved with ladder setup. releaseUnlessTakenOver went with them because both early parks pass it.",
+        "OPTIONS COME BACK RATHER THAN BEING MUTATED, and the type says so. wrapHandoffForWorktree rebuilds the options, so a caller that ignored the return would silently run the unwrapped handoff \u2014 the exact W21-12 shape this engine already paid for once, where a step existed at one of three claim sites and a live run proved it never executed. A discriminated PreflightResult makes ignoring it a type error.",
+        "Gate: lint clean, typecheck 0, 4782 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean."
       ]
     },
     {

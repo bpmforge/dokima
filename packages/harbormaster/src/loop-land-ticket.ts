@@ -3,13 +3,18 @@
  * the 400-line CODE_BOOK_PROTOCOL cap): the attempts ladder, the close
  * gate, the park, the push, and every injected seam (rung sessions, R0
  * consult, learning hook, verb mirror) for ONE claimed ticket.
+ *
+ * W22-17: what happens BEFORE the first model call — the two early parks, the
+ * worktree provisioning that can produce a third, and the handoff wrap — is
+ * `loop-land-preflight.ts`. It moved because this file had reached exactly
+ * 400 lines and could not take another one, which made every ticket touching
+ * the ladder inherit a refactor it had not asked for.
  * `runLandLoop` (loop-land.ts) and `runBerths` (berths.ts, via
  * `landClaimedTicket`) are both thin schedulers over this same engine —
  * one sequential, one lane-aware-concurrent — so the two paths can never
  * drift apart in what a ticket run actually does.
  */
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
-import { unsatisfiableCriteria, unsatisfiableNotice } from './loop-land-satisfiable.js';
 import {
   attemptedNothingEndsTheLadder,
   latestSeq,
@@ -20,9 +25,7 @@ import {
   claimTicket,
   commentTicket,
   listTickets,
-  releaseTicket,
   startTicket,
-  TicketError,
   type Ticket,
 } from '@dokima/tickets';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
@@ -33,11 +36,6 @@ import {
   repeatedZeroInformationCalls,
   repetitionEvidenceLine,
 } from './loop-land-repetition.js';
-import { wrapHandoffForWorktree } from './loop-land-handoff-wrap.js';
-import {
-  provisionWorktree,
-  provisionFailureReason,
-} from './worktree-provision.js';
 import { pushLandedBranch, recordFailedPushes } from './land-push.js';
 import {
   attemptNumberForRung,
@@ -48,6 +46,10 @@ import {
 import { beginRungAttempt, consultRungZero } from './loop-land-rungs.js';
 import { fallBackToRememberedRung, startAttemptFor } from './loop-land-rungmemory.js';
 import { fireVerbMirror } from './loop-land-verbs.js';
+import {
+  preflightClaimedTicket,
+  releaseUnlessTakenOver,
+} from './loop-land-preflight.js';
 import {
   parkBeforeAttempting,
   requireTicket,
@@ -66,41 +68,6 @@ import type {
 import { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
 type LandPushResults = Awaited<ReturnType<typeof pushLandedBranch>>;
-
-/**
- * W21-33: release, unless another run has since claimed the ticket.
- *
- * The park path is where the live defect fired: a run whose ladder was
- * exhausted released a ticket a NEWER run had claimed fourteen seconds
- * earlier, and the newer run's close receipt was orphaned. With the guard in
- * place that release now throws, and a throw here would be no better — it
- * would crash the park and lose the park evidence that took two attempts to
- * produce. The right behaviour for a run that no longer holds the ticket is to
- * leave it alone and say so, which is what this does.
- */
-function releaseUnlessTakenOver(options: LandLoopOptions, ticketId: string): void {
-  try {
-    releaseTicket(
-      options.log,
-      { ticketId, actorId: options.actorId },
-      { runId: options.runId ?? null },
-    );
-  } catch (err) {
-    if (!(err instanceof TicketError) || err.code !== 'STALE_RUN') throw err;
-    commentTicket(
-      options.log,
-      {
-        ticketId,
-        actorId: options.actorId,
-        body:
-          `not released: another run has claimed this ticket since, so returning it ` +
-          `to ready would take it away from the run currently working it (W21-33). ` +
-          `${err.message}`,
-      },
-      { runId: options.runId ?? null },
-    );
-  }
-}
 
 export async function processTicket(
   options: LandLoopOptions,
@@ -146,52 +113,12 @@ export async function landClaimedTicket(
     ticketId: ticket.id,
     ticketTitle: ticket.title,
   });
-  /**
-   * W21-21: provisioning lives HERE, in the shared engine, because there are
-   * THREE claim sites — loop-claim's processTicket (which nothing calls),
-   * this file's processTicket, and berths' injected runTicket — each with its
-   * own resolveWorktree. W21-12 put it at one of them and a live run proved it
-   * never executed. Everything that lands a ticket funnels through this
-   * function, so this is the only place it cannot be bypassed.
-   */
-  // W21-43: before a single model call. An unsatisfiable ticket used to burn
-  // its whole ladder — two sessions, every turn — to discover a mismatch
-  // readable from the ticket record alone.
-  const unsatisfiable = unsatisfiableCriteria(ticket.acceptance ?? [], ticket.writeScope);
-  if (unsatisfiable.length > 0) {
-    return parkBeforeAttempting(
-      options,
-      ticket,
-      unsatisfiableNotice(ticket.id, unsatisfiable),
-      releaseUnlessTakenOver,
-    ) as LandLoopTicketOutcome;
-  }
-  const provision = await provisionWorktree({
-    worktreePath: worktree.path,
-    log: options.log,
-    actorId: options.actorId,
-    ticketId: ticket.id,
-    // W21-32: the option existed and this call site never passed it.
-    ...(options.runId ? { runId: options.runId } : {}),
-  });
-  const provisionFailure = provisionFailureReason(provision);
-  if (provisionFailure) {
-    // W21-52: the third early-park path, now the same shape as the other two.
-    return parkBeforeAttempting(
-      options,
-      ticket,
-      provisionFailure,
-      releaseUnlessTakenOver,
-    ) as LandLoopTicketOutcome;
-  }
-
-  /**
-   * W21-22: the agent is told what is already true of the worktree it is
-   * standing in. Wrapped locally rather than widening HandoffBuilder and every
-   * caller — the same shape this engine already uses to wrap `spawn` for
-   * redaction.
-   */
-  options = await wrapHandoffForWorktree(options, provision, worktree.path);
+  // Everything that can refuse or prepare this ticket before a token is spent
+  // — see loop-land-preflight.ts. The returned options carry the worktree-
+  // aware handoff wrap, so they must replace the ones we were called with.
+  const preflight = await preflightClaimedTicket(options, ticket, worktree);
+  if (preflight.kind === 'parked') return preflight.outcome;
+  options = preflight.options;
 
   const role = options.role ?? ROLE_CODING_AGENT;
   const policy = resolveLandEscalationPolicy(options.policyScope ?? {}, role);
