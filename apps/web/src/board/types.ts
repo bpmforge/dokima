@@ -39,7 +39,17 @@ export interface TicketManifest {
 }
 
 export interface TicketHistoryEntry {
-  verb: 'claim' | 'start' | 'close' | 'accept' | 'release' | 'comment';
+  /**
+   * `'reject'` was missing here until W22-13 while the server had been
+   * projecting it all along (packages/tickets/src/reducer.ts, `ticket.rejected`
+   * -> `pushHistory(..., 'reject', ...)`). This file is a hand-kept mirror —
+   * apps/web has no workspace dependencies, so the browser bundle never pulls
+   * in @dokima/tickets — and a mirror that omits a verb the wire sends does not
+   * merely under-describe it: TypeScript makes any component that narrows on
+   * that verb a compile error, so the rejection was unreachable in the UI by
+   * construction rather than by oversight.
+   */
+  verb: 'claim' | 'start' | 'close' | 'accept' | 'reject' | 'release' | 'comment';
   actorId: string;
   at: string;
   body?: string;

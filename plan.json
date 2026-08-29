@@ -14700,7 +14700,7 @@
     {
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14711,8 +14711,9 @@
       "points": 2,
       "title": "the Decide card shows that a close reversed an unaddressed rejection",
       "write_scope": [
-        "apps/web/src/decisions/DecisionsBoard.tsx",
-        "apps/web/src/decisions/SlateCard.tsx"
+        "apps/web/src/notifications/TicketEvidence.tsx",
+        "apps/web/src/notifications/TicketEvidence.test.tsx",
+        "apps/web/src/board/types.ts"
       ],
       "acceptance": [
         "A ticket whose close reversed an unaddressed rejection shows that fact before the accept control",
@@ -14722,7 +14723,15 @@
       "notes": [
         "DROPPED FOLLOW-UP from W21-90, filed 2026-08-29 during a completeness sweep. W21-90 retargeted its own acceptance 1 away from the Decide card because that card is apps/web/src/decisions/ and the scope was harbormaster-only, and said plainly \"the card half is a UI ticket and is not pretended to be done here\". No such ticket existed until now.",
         "THE SERVER HALF IS DONE: loop-gates-close.ts comments the notice on the ticket at the moment of the mint, naming the files the reviewer asked for and quoting the reason. This ticket surfaces that where the accepting happens.",
-        "IT MUST NOT BLOCK (C-2). The notice exists so a person overruling their own rejection sees that they are doing it \u2014 not so the card can refuse."
+        "IT MUST NOT BLOCK (C-2). The notice exists so a person overruling their own rejection sees that they are doing it \u2014 not so the card can refuse.",
+        "SCOPE ANSWERED AT THE READ, and the filed scope was the wrong SURFACE \u2014 not merely short. It named apps/web/src/decisions/DecisionsBoard.tsx and SlateCard.tsx, which render founder-fork SLATES and contain no accept control at all. The ticket accept verb is fired from the board (BoardView -> fireVerb(id, \"accept\")), and the \"Decide card\" this acceptance means is the Decide-tier notification in MorningQueue.tsx, whose evidence panel is TicketEvidence.tsx \u2014 \"the work, ON the card\" (W13-61). That is where a person decides, so that is where the warning belongs.",
+        "I INHERITED THE WRONG SURFACE FROM W21-90, which wrote \"the Decide card\" meaning the queue and I filed against a directory named decisions/. Recorded so the next reader does not repeat the guess: in this product \"Decide card\" is a notification tier, not the Decisions board.",
+        "STRUCTURAL, NOT PROSE. BoardTicket carries `history` with verb + body, so the card can tell a close reversed a rejection by ORDER \u2014 a reject with no accept after it, then a close \u2014 rather than by matching the sentence harbormaster wrote. The reviewer's own words are the reject entry's body, which is already there.",
+        "SECOND COLLISION, ANSWERED AT THE READ TOO (Law 1). apps/web keeps its own copy of the board types \u2014 it has NO workspace dependencies, so the browser bundle never pulls in @dokima/tickets \u2014 and that copy's TicketHistoryEntry union lists claim|start|close|accept|release|comment. The server's projects 'reject' as well (packages/tickets/src/reducer.ts, ticket.rejected -> pushHistory(...,'reject',...)). The mirror has been missing a verb the wire actually sends, so any component narrowing on it was silently unable to see a rejection at all. Widened by one word rather than working around it, because the workaround would have been a cast that hides the drift.",
+        "DONE. TicketEvidence now surfaces the standing reversal notice above the file list, so it is read before the Approve control the card renders underneath it. A1/A2 come from the notice itself \u2014 it quotes the reviewer verbatim and names the files they asked for \u2014 which matters because the reducer records a `reject` row with NO body: the notice is the only path those words have to the browser.",
+        "A3 IS ORDER, NOT ABSENCE. The naive read \u2014 'is there a reversal notice anywhere in history' \u2014 passes A3's simple case and fails its real one: reject, unaddressed close (notice), reject again, close that DID touch the file. No second notice is written, so a whole-history search would keep warning about a complaint answered two closes ago. The detector only looks AFTER the most recent rejection. Both cases are fixtures.",
+        "PROVEN RED FIRST: the two positive fixtures failed against the unfixed component (2 failed | 844 passed) before the render existed. Gate: lint clean, typecheck 0, 4770 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean.",
+        "IT DOES NOT BLOCK, and there is nothing here it could block with \u2014 this component renders text and no control. C-2 stands: only the gate decides done, and W21-90's own note said the notice exists so a person overruling their own rejection sees that they are doing it, not so the card can refuse. A fixture asserts the evidence panel contains zero buttons."
       ]
     },
     {

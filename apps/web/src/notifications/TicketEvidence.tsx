@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchBoardTickets } from '../board/api.js';
-import type { BoardTicket } from '../board/types.js';
+import type { BoardTicket, TicketHistoryEntry } from '../board/types.js';
 import { readInjectedToken } from '../fleet/api.js';
 
 /**
@@ -18,6 +18,55 @@ import { readInjectedToken } from '../fleet/api.js';
  * loaded says so and tells the reader where to look, rather than offering a
  * decision on nothing.
  */
+/**
+ * The opening sentence of the notice the close gate writes onto a ticket when
+ * it reverses a rejection nobody addressed (`unaddressedRejectionNotice`,
+ * packages/harbormaster/src/loop-gates-close.ts, W21-90).
+ *
+ * DUPLICATED RATHER THAN IMPORTED, deliberately. apps/web has no workspace
+ * dependencies at all — it mirrors the board types instead of importing
+ * @dokima/tickets — so pulling a server package in for one string would be a
+ * larger change than the drift it prevents. The producer side is already
+ * pinned by its own test (loop-gates-close.test.ts asserts the notice contains
+ * "REVERSES A REJECTION"), so rewording it turns a test red rather than
+ * silently blanking this warning.
+ */
+export const REVERSED_REJECTION_MARKER =
+  'THIS CLOSE REVERSES A REJECTION THAT WAS NOT ADDRESSED';
+
+/**
+ * The reversal notice that is still standing, or null.
+ *
+ * ORDER DECIDES, NOT PRESENCE. The gate writes the notice immediately after
+ * the close that reversed a rejection, so a notice sitting BEFORE the most
+ * recent rejection belongs to an earlier round that has since been answered:
+ * the reviewer rejected again, and a close that actually touched the named
+ * files writes no new notice. Searching the whole history would keep warning
+ * about a complaint fixed two closes ago — which is exactly the "shows nothing
+ * extra" case this must not break.
+ *
+ * A rejection carries its reason in the notice, not in its own history row:
+ * the reducer records `reject` with no body, so the notice — which quotes the
+ * reviewer verbatim and names the files — is the only place those words reach
+ * the browser.
+ */
+export function standingReversalNotice(
+  history: readonly TicketHistoryEntry[],
+): string | null {
+  let lastReject = -1;
+  for (let i = 0; i < history.length; i += 1) {
+    if (history[i]?.verb === 'reject') lastReject = i;
+  }
+  if (lastReject === -1) return null;
+  for (let i = history.length - 1; i > lastReject; i -= 1) {
+    const entry = history[i];
+    if (entry?.verb === 'comment' && entry.body?.includes(REVERSED_REJECTION_MARKER)) {
+      return entry.body;
+    }
+  }
+  return null;
+}
+
 export interface TicketEvidenceProps {
   projectId: string;
   ticketId: string;
@@ -65,8 +114,30 @@ export function TicketEvidence({ projectId, ticketId }: TicketEvidenceProps) {
 
   const { ticket } = state;
   const manifest = ticket.manifest;
+  const reversal = standingReversalNotice(ticket.history);
   return (
     <div className="notification-card__evidence" data-testid={`evidence-${ticketId}`}>
+      {/* W22-13. W21-90 taught the close gate to RECORD that it reversed a
+          rejection nobody addressed. Recording it on the ticket is not the
+          same as showing it to the person about to accept, and this card is
+          where they decide — so it is read first, above the file list, and
+          not found underneath it. It does not block, and there is nothing
+          here it could block with: only the gate decides done (C-2), and the
+          notice exists so someone overruling their own rejection sees that
+          they are doing it. */}
+      {reversal && (
+        <p
+          className="notification-card__evidence-reversal"
+          data-testid={`reversal-${ticketId}`}
+        >
+          {/* `state--refused` is the existing danger token (styles.css), so
+              this needs no new rule of its own — and the weight of <strong>
+              carries it for a reader who cannot see the colour, which colour
+              alone would not. */}
+          <strong className="state state--refused">This close overrules a rejection.</strong>{' '}
+          {reversal}
+        </p>
+      )}
       {manifest ? (
         <>
           <p>

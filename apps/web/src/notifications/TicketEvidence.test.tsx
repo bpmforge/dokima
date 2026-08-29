@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import * as boardApi from '../board/api.js';
-import type { BoardTicket } from '../board/types.js';
+import type { BoardTicket, TicketHistoryEntry } from '../board/types.js';
 import { TicketEvidence } from './TicketEvidence.js';
 
 vi.mock('../board/api.js', async () => {
@@ -97,5 +97,115 @@ describe('TicketEvidence (W13-61)', () => {
 
     const missing = await screen.findByTestId('evidence-missing-gone');
     expect(missing.textContent).toContain("open the project's board");
+  });
+});
+
+/**
+ * W22-13. W21-90 made the close RECORD that it reversed a rejection nobody
+ * addressed; recording it on the ticket is not showing it to the person about
+ * to accept. These pin the other half: the fact reaches the Decide card,
+ * before the accept control, in the reviewer's own words — and it goes away
+ * when the rejection was actually addressed.
+ */
+const NOTICE =
+  'THIS CLOSE REVERSES A REJECTION THAT WAS NOT ADDRESSED. The reviewer asked ' +
+  'for .gitignore, and this close changes none of them. The rejection said: ' +
+  '"the .gitignore entry is still missing". The gate did not block on this — ' +
+  'only the gate decides done (C-2) — but accepting now overrules that ' +
+  'rejection, so read it before you do.';
+
+function entry(
+  verb: TicketHistoryEntry['verb'],
+  body?: string,
+  at = '2026-08-29T00:00:00.000Z',
+): TicketHistoryEntry {
+  return body === undefined ? { verb, actorId: 'a', at } : { verb, actorId: 'a', at, body };
+}
+
+describe('TicketEvidence — a close that reversed a rejection (W22-13)', () => {
+  it('RED FIXTURE: the reversal is on the card, in the reviewer own words, with the files they named', async () => {
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({
+      ok: true,
+      data: [ticket({ history: [entry('reject'), entry('close'), entry('comment', NOTICE)] })],
+    });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" />);
+
+    const warning = await screen.findByTestId('reversal-PLAN-auth-setup');
+    const text = warning.textContent ?? '';
+    // A2: the reviewer's words, and the file they named.
+    expect(text).toContain('the .gitignore entry is still missing');
+    expect(text).toContain('.gitignore');
+  });
+
+  it('A1: it renders before the accept control — inside the evidence, which the card puts above the buttons', async () => {
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({
+      ok: true,
+      data: [ticket({ history: [entry('reject'), entry('close'), entry('comment', NOTICE)] })],
+    });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" />);
+
+    const evidence = await screen.findByTestId('evidence-PLAN-auth-setup');
+    const warning = screen.getByTestId('reversal-PLAN-auth-setup');
+    expect(evidence.contains(warning)).toBe(true);
+    // C-2, and W21-90's own note: the notice exists so a person overruling
+    // their own rejection sees that they are doing it — not so the card can
+    // refuse. This component offers no control of its own to disable.
+    expect(evidence.querySelectorAll('button')).toHaveLength(0);
+    // It comes before the manifest, so it is read first rather than found
+    // underneath the file list.
+    expect(warning.compareDocumentPosition(evidence.querySelector('ul')!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('A3: a close that addressed the rejection shows nothing extra', async () => {
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({
+      ok: true,
+      data: [ticket({ history: [entry('reject'), entry('close')] })],
+    });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" />);
+
+    await screen.findByTestId('evidence-PLAN-auth-setup');
+    expect(screen.queryByTestId('reversal-PLAN-auth-setup')).toBeNull();
+  });
+
+  it('A3, the round-two case: a notice answered by a later rejection is history, not a live warning', async () => {
+    // reject -> close (unaddressed, notice) -> reject again -> close that DID
+    // touch the file. No new notice is written, and the old one must not be
+    // dredged up: searching the whole history would warn about a complaint
+    // that was answered two closes ago.
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({
+      ok: true,
+      data: [
+        ticket({
+          history: [
+            entry('reject'),
+            entry('close'),
+            entry('comment', NOTICE),
+            entry('reject'),
+            entry('close'),
+          ],
+        }),
+      ],
+    });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" />);
+
+    await screen.findByTestId('evidence-PLAN-auth-setup');
+    expect(screen.queryByTestId('reversal-PLAN-auth-setup')).toBeNull();
+  });
+
+  it('an ordinary comment is not a reversal — the marker is the signal, not the verb', async () => {
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({
+      ok: true,
+      data: [
+        ticket({
+          history: [entry('reject'), entry('close'), entry('comment', 'looks fine to me now')],
+        }),
+      ],
+    });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" />);
+
+    await screen.findByTestId('evidence-PLAN-auth-setup');
+    expect(screen.queryByTestId('reversal-PLAN-auth-setup')).toBeNull();
   });
 });
