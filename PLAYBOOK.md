@@ -13,9 +13,21 @@ are always claimable; W1-01 (content import) may run alongside W0.
 ## Per-ticket loop (the micro-loop)
 
 ```
-claim → read design doc(s) → verify external APIs → write failing test(s)
-     → implement → acceptance green → full gate green → commit → close
+scope read → claim → read design doc(s) → verify external APIs
+     → write failing test(s) → implement → acceptance green
+     → full gate green → commit → close
 ```
+
+- **Scope read comes FIRST, and it is where collisions get answered.** Read
+  the acceptance against the `write_scope` before claiming: can these files
+  satisfy these criteria? On this board they often cannot — the filed scope
+  named a parser that builds nothing (W21-69, W21-73), a file that had been
+  dead since W10-74 (W22-01), a surface in `apps/web` from a server-only scope
+  (W21-90). Answer it **now**, both ways: widen when the file is unowned and
+  this acceptance needs it, or file the ticket when the work is beyond this
+  acceptance. Not at close — five deferrals written at close in one session
+  were filed nowhere (L-57), and the close note is the moment of least
+  remaining attention.
 
 - **Tests first where testable-first**: ticket-lifecycle invariants,
   lane/glob collision, receipt verification, calibration clamp, hash chain,

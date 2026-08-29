@@ -8,6 +8,19 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    and `depends_on`. Claim = set `in_progress` + commit. Same-lane tickets
    never run in parallel; cross-lane write-scope overlap is a schema bug —
    report it, don't work around it.
+   **A scope collision is ANSWERED WHEN IT IS FOUND, never in a closing
+   note.** Finding work this ticket may not do is the commonest event on this
+   board — 45 tickets record one — and it has exactly two honest answers:
+   **widen**, when the file is unowned and this ticket's own acceptance needs
+   it; or **file a ticket**, when the work is beyond this acceptance or the
+   file belongs to another one. The two are not equally reliable today and the
+   asymmetry is the whole defect: widening is an ACTION and gets done, while
+   deferring has been a SENTENCE written at close — the moment of least
+   remaining attention. Five in one session (2026-08-29) were written down
+   honestly, in the right place, and filed nowhere; one had been flagged at
+   pre-claim a full day earlier and still never became a ticket (L-57). So:
+   *a follow-up that names no ticket id is not a deferral, it is a dropped
+   finding.* `validate-plan`'s P13 reports the ones that slip.
 2. **Verify every external API** against real docs/node_modules before use
    (Context7 or `node -e "import ..."` export checks). Versions live in
    `docs/TECH_STACK.md`; upgrade only in lockstep and record it there.
