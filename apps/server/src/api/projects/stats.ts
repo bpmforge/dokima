@@ -99,10 +99,29 @@ export function sumSpendToday(log: EventLog, now: () => Date = () => new Date())
   return total;
 }
 
+/**
+ * Injectable existence probe (W21-77).
+ *
+ * The defect this function has is a RACE — the check passes, the directory is
+ * removed, the open fails — and a test that deletes the directory up front
+ * does not reproduce it: the early return below fires first and nothing is
+ * logged either way. The first fixture written for this passed against the
+ * unfixed code, which is a test that proves nothing.
+ *
+ * One seam makes the race deterministic: a probe that answers yes and then no.
+ */
+export interface ProjectStatsProbe {
+  readonly exists?: (candidate: string) => Promise<boolean>;
+}
+
 /** Reads live stats straight from the project's own `state.db` — never cached (DATABASE.md §7). */
-export async function computeProjectStats(projectPath: string): Promise<ProjectStats> {
+export async function computeProjectStats(
+  projectPath: string,
+  probe: ProjectStatsProbe = {},
+): Promise<ProjectStats> {
+  const exists = probe.exists ?? pathExists;
   const dbPath = path.join(projectPath, STATE_DB_RELATIVE);
-  if (!(await pathExists(dbPath))) return EMPTY_STATS;
+  if (!(await exists(dbPath))) return EMPTY_STATS;
 
   // The open itself throws on an unreadable file (verified: chmod 000 →
   // SQLITE_CANTOPEN at `new Database`, before any query) — it must degrade
@@ -112,6 +131,21 @@ export async function computeProjectStats(projectPath: string): Promise<ProjectS
   try {
     db = openEventLogReader(dbPath);
   } catch (err) {
+    // A PROJECT THAT VANISHED IS ABSENT, NOT BROKEN (W21-77).
+    //
+    // The Fleet reads every registered project on every card render, so a
+    // directory being deleted while that read is in flight is an ordinary
+    // race, not a fault: `pathExists` above says yes, the directory goes, and
+    // the open then fails with "Cannot open database because the directory
+    // does not exist". Logging that as an error is wrong twice over — it
+    // reports normal behaviour as a failure, and it trains people to ignore
+    // the line that would matter.
+    //
+    // Re-checked rather than string-matched: better-sqlite3's wording is not
+    // a contract, and the question being asked is genuinely "is it still
+    // there". A path that IS still there and would not open is a real problem
+    // (the verified chmod 000 case) and keeps its error.
+    if (!(await exists(dbPath))) return EMPTY_STATS;
     console.error(`[fleet] computeProjectStats open failed for ${dbPath}:`, err);
     return EMPTY_STATS;
   }
@@ -141,7 +175,9 @@ export async function computeProjectStats(projectPath: string): Promise<ProjectS
       spendTodayUsd: sumSpendToday(log),
     };
   } catch (err) {
-    if (!isUnmigratedSchemaError(err)) {
+    // Same reasoning as the open above: a read that fails because the project
+    // was removed mid-query is not a defect to report.
+    if (!isUnmigratedSchemaError(err) && (await exists(dbPath))) {
       console.error(`[fleet] computeProjectStats failed for ${dbPath}:`, err);
     }
     return EMPTY_STATS;

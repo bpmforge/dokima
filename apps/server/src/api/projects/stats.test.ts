@@ -212,3 +212,59 @@ describe('the phase column comes alive (W19-01)', () => {
     }
   });
 });
+
+describe('a project that vanished is absent, not broken (W21-77)', () => {
+  /** Captures console.error without letting it reach the suite's output. */
+  function captureErrors(): { lines: string[]; restore: () => void } {
+    const lines: string[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      lines.push(args.map((a) => String(a)).join(' '));
+    };
+    return { lines, restore: () => { console.error = original; } };
+  }
+
+  it('RED FIXTURE: a directory removed BETWEEN the check and the open logs nothing', async () => {
+    // The race, made deterministic. Deleting the directory up front does NOT
+    // reproduce it — the early existence check returns first and nothing is
+    // logged either way, which is how the first version of this fixture
+    // passed against the unfixed code. The probe answers yes once (as the
+    // real check did, before the directory went) and no afterwards.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2177-'));
+    await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
+    const dbPath = path.join(dir, '.dokima', 'state.db');
+    openEventLog(dbPath).close();
+    await fs.rm(path.join(dir, '.dokima'), { recursive: true, force: true });
+
+    let answered = 0;
+    const captured = captureErrors();
+    const stats = await computeProjectStats(dir, {
+      exists: async () => {
+        answered += 1;
+        return answered === 1;
+      },
+    });
+    captured.restore();
+
+    expect(answered).toBeGreaterThan(1); // the second probe is the fix
+    expect(stats.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+    expect(captured.lines).toEqual([]);
+  });
+
+  it('a path that IS still there and will not open KEEPS its error', async () => {
+    // The distinction that makes the silence safe. A real unreadable database
+    // is a genuine fault and must stay loud — this is why the fix re-checks
+    // existence rather than matching better-sqlite3's error text, whose
+    // wording is not a contract.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2177-bad-'));
+    await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
+    await fs.writeFile(path.join(dir, '.dokima', 'state.db'), 'not a database\n');
+
+    const captured = captureErrors();
+    const stats = await computeProjectStats(dir);
+    captured.restore();
+
+    expect(stats.board).toEqual({ ready: 0, blocked: 0, done: 0 });
+    expect(captured.lines.join('\n')).toMatch(/computeProjectStats/);
+  });
+});

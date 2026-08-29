@@ -13439,27 +13439,32 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 1,
       "module": "web",
       "depends_on": [],
       "id": "W21-77",
       "title": "the e2e gate fails intermittently on a teardown race, not an assertion",
       "write_scope": [
-        "apps/web/e2e/global-setup.ts",
-        "apps/web/e2e/env-paths.ts",
-        "apps/server/src/api/projects/stats.ts"
+        "apps/server/src/api/projects/stats.ts",
+        "apps/server/src/api/projects/stats.test.ts"
       ],
       "notes": [
         "Observed on an unchanged tree: `pnpm --filter @dokima/web e2e` exited 1 with 73 passed, the only failure being notifications.spec.ts:108 with \"Error: ENOTEMPTY: directory not empty, rmdir .../dokima-notifications-e2e-<uuid>/.dokima\". The spec passed alone (5 passed) and the full suite passed on re-run (74 passed).",
         "The assertion is fine and the teardown races: something still holds a handle under .dokima while the fixture rmdirs the temp project. The same run logs the other half of it \u2014 \"computeProjectStats open failed ... Cannot open database because the directory does not exist\", from stats.ts:113 via the notifications route reading every project card while a temp project is being torn down.",
         "It matters more than a flake normally would because e2e is IN the ticket gate (Law 3, since 2026-07-27). A gate that fails at random teaches everyone to re-run it, which is how a real red gets waved through \u2014 and this project already had one red e2e reach main for a related reason.",
-        "ACCEPTANCE: the full e2e suite run repeatedly on an unchanged tree produces no ENOTEMPTY teardown failure; the temp project database handles are released before the fixture removes the directory; computeProjectStats treats a project directory that vanished as absent rather than logging an error."
+        "ACCEPTANCE: the full e2e suite run repeatedly on an unchanged tree produces no ENOTEMPTY teardown failure; the temp project database handles are released before the fixture removes the directory; computeProjectStats treats a project directory that vanished as absent rather than logging an error.",
+        "CRITERION 2 HAD A WRONG PREMISE, found by reading the code before writing any: it says \"the temp project database handles are released before the fixture removes the directory\", but they already are \u2014 computeProjectStats closes in a finally, and every Fleet read is open-then-close. Nothing leaks a handle. The actual mechanism is the opposite: a NEW open lands DURING the teardown, and that open is the only thing writing files (the -wal/-shm siblings) into the temp .dokima after fs.rm has walked it. That is what makes the rmdir find a non-empty directory.",
+        "SO THE FIX IS AT THE ROOT AND FITS THE SCOPE: when the existence check has already passed and the open then fails, re-check whether the path is still there. Gone means the project was removed mid-read \u2014 ordinary, and returned as absent in silence. Still there means a genuine fault (the verified chmod 000 case) and keeps its error. Re-checked rather than string-matched, because better-sqlite3's wording is not a contract and the question really is \"is it still there\".",
+        "MY FIRST FIXTURE PROVED NOTHING AND I NEARLY SHIPPED IT. It deleted the .dokima directory up front and asserted no error was logged \u2014 which passes against the UNFIXED code, because the early existence check returns before the open. Caught by stashing the source and seeing 11 of 11 still pass. This is the exact trap docs/TESTING.md and W12-39 both record: a fixture written against the wrong seam is green in both worlds.",
+        "MADE DETERMINISTIC WITH ONE SEAM: computeProjectStats takes an optional existence probe. The fixture answers yes once \u2014 as the real check did, before the directory went \u2014 and no afterwards, which reproduces the race exactly. Proven load-bearing by removing ONLY the re-check line and watching that one test fail, then restoring.",
+        "CRITERION 3 (now 1 and 2) IS PROVEN. Criterion 1 as originally worded \u2014 \"run repeatedly ... produces no ENOTEMPTY\" \u2014 is supported but NOT proven: five consecutive full e2e runs on an unchanged tree passed 76/76. The failure was intermittent to begin with, so five clean runs are consistent with the fix and are not the same as a proof. Said plainly rather than claimed.",
+        "SCOPE NARROWED to stats.ts and its test. The filed scope also named apps/web/e2e/global-setup.ts and env-paths.ts, which turned out to be the wrong files: global-setup clears the SHARED e2e home between runs and never touches a per-test temp project, and env-paths is four path constants. The rm that failed is inline in notifications.spec.ts, and freshProjectPath is duplicated in three specs with no shared helper \u2014 a fixture-side retry would need all three, which is a different change from this one."
       ],
       "acceptance": [
-        "the full e2e suite run repeatedly on an unchanged tree produces no ENOTEMPTY teardown failure",
-        "the temp project database handles are released before the fixture removes the directory",
-        "computeProjectStats treats a project directory that vanished as absent rather than logging an error"
+        "computeProjectStats treats a project directory that vanished mid-read as absent rather than logging an error",
+        "A path that IS still there and will not open keeps its error, so the silence cannot hide a real fault",
+        "The full e2e suite runs repeatedly on an unchanged tree without the teardown failure"
       ]
     },
     {
