@@ -28,7 +28,7 @@ export type { BoardEntry } from './reflow.js';
 export { createTicketValidatingLanes } from './create.js';
 export { findDependencyCycle, retargetTicketDependencies } from './retarget.js';
 export { numberCriteria, retargetTicketAcceptance } from './acceptance.js';
-export { setTicketBrief } from './brief.js';
+export { briefToolSurfaceWarning, setTicketBrief } from './brief.js';
 export { latestRejectionReason, rejectTicket } from './reject.js';
 export type { RejectTicketInput } from './reject.js';
 export type { SetTicketBriefInput } from './brief.js';

@@ -14,7 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
-import { setTicketBrief } from './brief.js';
+import { briefToolSurfaceWarning, setTicketBrief } from './brief.js';
 import { createTicket } from './create.js';
 import { TicketError } from './errors.js';
 import { getTicket } from './query.js';
@@ -102,5 +102,52 @@ describe('setTicketBrief (W21-59)', () => {
     expect(after.writeScope).toEqual(before.writeScope);
     expect(after.verify).toEqual(before.verify);
     log.close();
+  });
+});
+
+describe('a brief cannot ask for what the maker has no tool to do (W21-68)', () => {
+  it('RED FIXTURE: the real brief that caused this warns, naming the seven tools', () => {
+    // PLAN-vault-002a brief #2, verbatim in substance. The maker guessed, and
+    // its guess was internally consistent and wrong — it landed a commit that
+    // violated both constraints stated in the document it could not read.
+    const warning = briefToolSurfaceWarning(
+      'the tests fail with ERR_CRYPTO_INVALID_SCRYPT_PARAMS — consult the node:crypto ' +
+        'documentation for the permitted relationship between N, r and maxmem.',
+    );
+    expect(warning).not.toBeNull();
+    for (const tool of ['read', 'list', 'search', 'write', 'edit', 'commit', 'verify']) {
+      expect(warning).toContain(tool);
+    }
+    expect(warning).toContain('The brief was still set');
+  });
+
+  it('the founder’s own CORRECTION passes clean — the case a looser rule breaks', () => {
+    // Brief #3, the fix for #2. It contains "look them up" and must not fire:
+    // it is stating the facts precisely BECAUSE the maker cannot look them up.
+    expect(
+      briefToolSurfaceWarning(
+        "Node's crypto.scrypt enforces two limits your current values break, and they " +
+          'are stated here because you have no way to look them up: N < 2^(128*r/8).',
+      ),
+    ).toBeNull();
+  });
+
+  it('STATING what a document says is fine; being told to go read it is not', () => {
+    // Acceptance 2. The distinction is a directive verb near an off-repo noun.
+    expect(
+      briefToolSurfaceWarning('The node:crypto documentation says N must be under 65536.'),
+    ).toBeNull();
+    expect(briefToolSurfaceWarning('Refer to the RFC for the exact framing.')).not.toBeNull();
+  });
+
+  it('ordinary in-repo instructions never fire', () => {
+    for (const brief of [
+      "Import sibling modules with an explicit .ts extension (from './argon2id.ts').",
+      "Run 'node --test src/crypto/argon2id.spec.ts' and read the output before committing.",
+      'Check the values you are passing against the ones in the test.',
+      'STOP rewriting the spec. It already passes and was accepted.',
+    ]) {
+      expect(briefToolSurfaceWarning(brief)).toBeNull();
+    }
   });
 });

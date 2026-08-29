@@ -7,6 +7,7 @@ import {
   rejectTicket,
   retargetTicketAcceptance,
   retargetTicketDependencies,
+  briefToolSurfaceWarning,
   setTicketBrief,
   widenTicketScope,
   LaneScopeError,
@@ -274,6 +275,9 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
             { now: io.now },
           );
           io.stdout(`${ticket.id} brief set — the next handoff carries it as context`);
+          // W21-68: warned, never refused — the brief is already set.
+          const briefWarning = briefToolSurfaceWarning(command.text);
+          if (briefWarning) io.stderr(briefWarning);
           return 0;
         } catch (err) {
           return reportVerbError(err, io);

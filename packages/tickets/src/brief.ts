@@ -31,6 +31,67 @@ import { TicketError } from './errors.js';
 import { loadTickets } from './query.js';
 import type { Ticket } from './types.js';
 
+
+/**
+ * The maker's ENTIRE tool surface, restated (W21-68).
+ *
+ * Reproduced rather than imported: `packages/tickets` may not depend on
+ * `packages/harbormaster` (ARCHITECTURE.md §4), and the source of truth is
+ * `AGENT_SESSION_TOOL_NAMES` in
+ * `packages/harbormaster/src/agent-session/tools.ts`. Same discipline this
+ * repo already applies to the gateway's failure-receipt shape. All seven are
+ * repo-scoped; there is no documentation channel, no fetch, no network.
+ */
+const MAKER_TOOLS = ['read', 'list', 'search', 'write', 'edit', 'commit', 'verify'];
+
+/**
+ * A brief telling the maker to consult something it cannot reach (W21-68).
+ *
+ * FOUNDER ERROR FIRST, and the ticket says so: the brief that caused this was
+ * hand-written. PLAN-vault-002a brief #2 said "consult the node:crypto
+ * documentation for the permitted relationship between N, r and maxmem". The
+ * maker has seven repo-scoped tools and no documentation channel, so it
+ * guessed — and its guess was internally consistent and wrong, landing a
+ * commit that violated both constraints stated in the document it could not
+ * read.
+ *
+ * The brief channel exists precisely to carry what the maker CANNOT discover.
+ * A brief that points at an unreachable source is therefore the one failure
+ * mode the channel is built to prevent, and it was the one thing it could not
+ * detect.
+ *
+ * A DIRECTIVE, NOT A MENTION. "The node:crypto documentation says N < 2^..." is
+ * a founder stating the fact, which is exactly the right use of a brief;
+ * "consult the node:crypto documentation" is an instruction to do something
+ * impossible. The rule requires an imperative verb close to an off-repo source
+ * noun, so the two are distinguished.
+ *
+ * MEASURED against the six real briefs on this machine before it was written:
+ * it fires on exactly one, and that one is the defect. Brief #3 — the
+ * founder's own correction, which reads "they are stated here because you have
+ * no way to look them up" — stays clean, and it is the case a looser rule
+ * would have broken.
+ *
+ * WARNS, NEVER REFUSES. A brief is a person telling a maker something true;
+ * refusing one on a regex would put a pattern match in the way of the only
+ * channel a stuck founder has. It also cannot be a gate for the reason C-2
+ * gives about model output — this is prose, and prose checks are advisory.
+ */
+const OFF_REPO_DIRECTIVE =
+  /\b(consult|refer to|look up|see|read|check|review|google|search for)\b[^.!?]{0,40}?\b(documentation|docs|spec|specification|rfc|manual|man page|manpage|mdn|website|web site|online|the internet)\b/i;
+
+export function briefToolSurfaceWarning(brief: string): string | null {
+  const match = OFF_REPO_DIRECTIVE.exec(brief);
+  if (!match) return null;
+  return (
+    `brief warning: "${match[0].trim()}" asks the maker to consult something it ` +
+    `cannot reach. Its entire tool surface is ${MAKER_TOOLS.join(', ')} — all ` +
+    `repo-scoped, with no documentation, network or search channel. State the ` +
+    `fact in the brief instead; that is what this channel is for. The brief was ` +
+    `still set.`
+  );
+}
+
 export interface SetTicketBriefInput {
   readonly ticketId: string;
   readonly actorId: string;
@@ -74,7 +135,15 @@ export function setTicketBrief(
         actorId: input.actorId,
         ticketId: ticket.id,
         runId: opts.runId ?? null,
-        payload: { from: ticket.interface, to: brief },
+        // W21-68: recorded as well as printed, so the ledger shows a brief
+        // that was flagged even when nobody was watching the terminal.
+        payload: {
+          from: ticket.interface,
+          to: brief,
+          ...(briefToolSurfaceWarning(brief) === null
+            ? {}
+            : { warning: briefToolSurfaceWarning(brief) }),
+        },
       },
       opts,
     );
