@@ -14995,7 +14995,7 @@
       "id": "W22-19",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15015,7 +15015,14 @@
         "FILED RATHER THAN LEFT AS A SENTENCE (Law 1), and filed as UNCONFIRMED on purpose \u2014 I can describe the observation but not the mechanism, and W21-88 is the precedent for downgrading rather than asserting a cause I cannot evidence.",
         "THE OBSERVATION, once, during W22-18: a full `pnpm test` run in which scripts/run-validators.test.mjs FAILED left exactly one dokima-suite-home-* behind. Two subsequent full runs, both passing, leaked none, and apps/server's suite run in isolation leaks none. So the afterAll added by W22-16 works in the ordinary case and something about that run did not reach it.",
         "MY FIRST EXPLANATION WAS WRONG and is recorded so nobody re-derives it: I assumed the directory was a live one belonging to a still-running worker, seen mid-run by a validator that should not have been running mid-run. That placement bug was real and is fixed, but it was a different bug \u2014 the same directory name was still present minutes later, so it had genuinely leaked rather than been observed in flight.",
-        "CHEAP TO TEST: add a deliberately failing test to one apps/server file, run that file, and see whether its home survives. Do that before changing anything \u2014 if it does not reproduce, close it as not reproducible and say so, because a defensive fix for a mechanism nobody has seen is how dead cleanup code like the process.on('exit') handler gets written in the first place."
+        "CHEAP TO TEST: add a deliberately failing test to one apps/server file, run that file, and see whether its home survives. Do that before changing anything \u2014 if it does not reproduce, close it as not reproducible and say so, because a defensive fix for a mechanism nobody has seen is how dead cleanup code like the process.on('exit') handler gets written in the first place.",
+        "CLOSED AS NOT REPRODUCIBLE, which is the second half of this ticket's own acceptance and not a way of dropping it. Three attempts, all negative, all written down below so a fourth starts further along than I did.",
+        "ATTEMPT 1 \u2014 a FAILING test inside apps/server. A temporary probe file printed its own DOKIMA_HOME and then failed on purpose. The home was removed. So `afterAll` runs on the failing path, which was the single most likely mechanism and is now ruled out.",
+        "ATTEMPT 2 \u2014 a full `pnpm test` run containing that failing probe, which is the shape actually observed (a failure somewhere in the run, homes created everywhere). Zero suite-homes left behind. So 'a run containing a failure leaks a home' is false as stated.",
+        "ATTEMPT 3 \u2014 the entry guard on the new validator. A guard that WRONGLY matches would run main() on import and call process.exit() inside a vitest worker, killing it before any afterAll \u2014 the inverse of the W22-01 failure, and the only mechanism I could think of that kills a worker outright. Importing scripts/validate-temp-leaks.mjs returns its exports and runs nothing. Ruled out.",
+        "WHAT IS STILL TRUE, AND IS WHY THIS WAS WORTH AN HOUR: the directory was real. Every suite-home was deleted at 13:58, the gate ran at 13:59, and dokima-suite-home-XDz1sT existed and persisted for at least three minutes after that run ended. It was not a live directory observed in flight. Something in that specific run did not reach its teardown, once, and has not happened in the six full runs since.",
+        "THE UNTESTED HYPOTHESIS, for whoever picks this up: vitest's forks pool reuses child processes ACROSS projects, and that run is the only one where a scripts-project test (run-validators.test.mjs) both failed and held a ~60s execFileSync child open while apps/server files ran in other workers. If a worker is torn down between a setup file and its afterAll, that file's home survives. Testing it means instrumenting the pool rather than the suite, which is more than a two-point ticket and more than this symptom is worth until it recurs.",
+        "NOTHING WAS CHANGED DEFENSIVELY. A fix for a mechanism nobody has observed is how the process.on('exit') handler W22-16 deleted came to exist in the first place: plausible, untested, and dead for months while the leak it was meant to stop grew to 22,978 directories. If this recurs, validate-temp-leaks will now say so \u2014 which is the actual protection, and it is already in the gate."
       ]
     }
   ]
