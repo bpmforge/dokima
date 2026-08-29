@@ -14313,7 +14313,7 @@
       "points": 2,
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14321,6 +14321,7 @@
       "title": "the Law 3 validator run enforces the ratchets it already reports",
       "write_scope": [
         "scripts/run-validators.mjs",
+        "scripts/run-validators.test.mjs",
         "conductor.config.json"
       ],
       "acceptance": [
@@ -14332,7 +14333,13 @@
         "FOUND 2026-08-28 while working W22-02. run-validators.mjs invokes `node scripts/validate-exports.mjs` with NO --max and NO --max-buried, so under `pnpm validate` \u2014 the only place Law 3 runs it \u2014 the validator always exits 0 no matter what the count is. The ratchet bites only in the per-ticket conductor gate, which reads its own numbers from conductor.config.json (--max 49, --max-buried 47).",
         "So the same validator is enforcing in one place and reporting in another, and the numbers are already stale relative to each other: the measured counts are 47 and 47 against a configured 49 and 47. That is the L-47 shape one level up \u2014 not a check nobody runs, but a check that runs without its teeth.",
         "DELIBERATELY NOT FOLDED INTO W22-02, which found it. Wiring a hard baseline into the Law 3 path has blast radius on every future ticket's gate, and W22-02 was already changing what gets COUNTED \u2014 a red gate would then be unattributable between new debt and a new counting rule. Same argument as W22-05: bundling two changes hides one behind the other.",
-        "W22-02 left the counting honest and unchanged (47/47 before and after its stripComments fix), so this ticket starts from known-good numbers."
+        "W22-02 left the counting honest and unchanged (47/47 before and after its stripComments fix), so this ticket starts from known-good numbers.",
+        "ONE PLACE MEANS READING IT, NOT COPYING IT. run-validators.mjs now parses conductor.config.json's gates array and runs each validator with the arguments the per-ticket gate uses. A second copy of the numbers here would satisfy the letter of \"one place\" and drift again the first time either moved \u2014 there is a test asserting the args are equal to the config's, so a hardcoded copy fails.",
+        "REFUSES RATHER THAN FALLING BACK if the config cannot be read. A fallback to no arguments would restore the exact defect this ticket removes, and would do it silently: every validator would pass and the output would look identical to a healthy run.",
+        "BASELINE LOWERED 49 -> 47, which is the ratchet's own instruction (\"lower it whenever the number drops\") and the direction that costs nothing to obey. The drift existed precisely BECAUSE the number was only enforced in one of its two callers, so nobody was watching it. --max-buried was already correct at 47. Recorded in conductor.config.json in the same idiom as the three notes already there.",
+        "PROVEN TO BITE, not assumed: set --max to 46, ran pnpm validate, got exit 1 with the validator's real message (\"47 exported symbol(s) are tested but called from no production code, over the baseline of 46\"), then restored. Before this ticket the same command exited 0.",
+        "THE SCRIPT IS NOW IMPORTABLE, which the drift test needs, so its body moved into main() behind the same entry guard validate-exports.mjs uses. That guard is only safe because this script is invoked directly by pnpm validate and never imported by a wrapper \u2014 the trap W22-01 hit, where cli-entry.mjs imports the bundle so argv[1] and import.meta.url never match. There is a test that runs the script as a subprocess and asserts it still does the work, which is the check that would catch a guard that never matches.",
+        "SCOPE WIDENED by scripts/run-validators.test.mjs, a new file. THIRD TIME THIS SESSION my own filing named source files without their test twins (W22-01, W22-07, this). Recording it is no longer enough \u2014 filed as W22-09, since validate-plan can check it mechanically."
       ]
     },
     {
@@ -14402,6 +14409,34 @@
         "THIS IS THE LOCAL-ONLY GUARANTEE, not a convenience: C-1/D-024 option (a) says a user who chooses local-only gets a fully working product. A 27B model on a laptop legitimately needs more than 300s for one decompose, and the product currently offers no way to say so.",
         "ProviderForm.tsx rather than ProvidersPanel.tsx: the panel is owned by W21-25 in this same lane, and same-lane overlap is only a problem while both are in_progress \u2014 but the field belongs on the form that already edits an entry, so this avoids the question entirely.",
         "CRITERION 4 OF W21-96 IS ALSO WHAT validate-plan P12 REPORTS. When this lands, that report should drop to a single entry (W21-90)."
+      ]
+    },
+    {
+      "id": "W22-09",
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "title": "a write_scope that names a source file without its test twin is reported",
+      "write_scope": [
+        "scripts/validate-plan.mjs",
+        "scripts/validate-plan.test.mjs"
+      ],
+      "acceptance": [
+        "A ticket whose write_scope names a source file but not its test file is reported when the plan is validated",
+        "A ticket that genuinely needs no test \u2014 documentation, configuration \u2014 is not reported",
+        "The report names the missing path, so the fix is a copy-paste"
+      ],
+      "notes": [
+        "FILED 2026-08-28 after making the same mistake three times in one session, all in tickets I filed myself: W22-01 (index.ts without index.test.ts), W22-07 (three gateway sources, one test twin), W22-06 (run-validators.mjs without its test). Each cost a claim-time scope widening and a note explaining it.",
+        "THIS IS THE MECHANICAL VERSION OF L-54, and unlike the P12 report it needs no prose inference: a write_scope entry is a path, and whether a sibling <name>.test.<ext> exists is a filesystem question. Precision should be far better than P12's measured 13% \u2014 MEASURE IT BEFORE WIRING IT TO AN EXIT CODE, exactly as W22-03 did, and report rather than fail if the count says so.",
+        "THE EXCLUSION THAT MATTERS: docs/**, conductor.config.json, plan.json, content/** and .json/.md entries generally have no test twin and must not be reported, or the check is noise on its first run."
       ]
     },
     {
