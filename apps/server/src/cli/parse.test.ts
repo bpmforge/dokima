@@ -135,3 +135,51 @@ describe('parseCliArgs', () => {
     );
   });
 });
+
+/**
+ * W21-91. Node's `parseArgs` throws a native TypeError on an unknown flag, and
+ * `runCli` catches only `CliUsageError` — so a typo reached the top-level
+ * handler and printed a stack trace through parse_args and dist/main.js.
+ * Measured on `dokima board --wrongflag` and `dokima claim T1 --actor me
+ * --bogus`. The neighbouring cases were already right, so only the likeliest
+ * typo of the three crashed.
+ */
+describe('a mistyped flag refuses, it does not crash (W21-91)', () => {
+  for (const argv of [
+    ['board', '--wrongflag'],
+    ['verify-chain', '--nope'],
+    ['claim', 'W9-01', '--actor', 'me', '--bogus'],
+    ['reject', 'W9-01', '--actor', 'me', '--reason', 'x', '--huh'],
+    ['comment', 'W9-01', '--actor', 'me', '--body', 'x', '--huh'],
+    ['close', 'W9-01', '--actor', 'me', '--huh'],
+  ]) {
+    it(`RED FIXTURE: ${argv[0]} names the unknown option and prints usage`, () => {
+      let caught: unknown;
+      try {
+        parseCliArgs(argv);
+      } catch (err) {
+        caught = err;
+      }
+      // A CliUsageError is what runCli turns into exit 2 with one line; a bare
+      // TypeError is what reached cli/index.ts and printed err.stack.
+      expect(caught).toBeInstanceOf(CliUsageError);
+      const message = (caught as Error).message;
+      expect(message).toMatch(/Unknown option/);
+      expect(message).toMatch(/usage: dokima/);
+      expect(message).not.toContain('    at ');
+    });
+  }
+
+  it('a KNOWN option is untouched', () => {
+    expect(parseCliArgs(['board', '--db', '/tmp/x.db'])).toMatchObject({
+      kind: 'board',
+      dbPath: '/tmp/x.db',
+    });
+    expect(parseCliArgs(['claim', 'W9-01', '--actor', 'me'])).toMatchObject({
+      kind: 'verb',
+      verb: 'claim',
+      ticketId: 'W9-01',
+      actorId: 'me',
+    });
+  });
+});

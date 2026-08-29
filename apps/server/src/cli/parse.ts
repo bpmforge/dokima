@@ -5,6 +5,43 @@ import { parseBoardEdit, requirePositional, splitCsv, type BoardEditCommand } fr
 
 export { CliUsageError } from './cli-usage-error.js';
 
+/**
+ * `parseArgs` that refuses like the rest of the CLI instead of crashing.
+ *
+ * Node's `parseArgs` throws a native TypeError with code
+ * ERR_PARSE_ARGS_UNKNOWN_OPTION on a flag it does not know. `runCli` catches
+ * only `CliUsageError`, so that reached the top-level handler in cli/index.ts
+ * and printed `err.stack` — a node stack trace through parse_args and
+ * dist/main.js. LIVE: `dokima board --wrongflag` and
+ * `dokima claim T1 --actor me --bogus` both did it.
+ *
+ * The neighbouring cases were already right — `dokima --foo` names the unknown
+ * command, a missing positional prints its usage line — so only the likeliest
+ * typo of the three crashed. Same shape as W21-81 one layer down: a refusal
+ * escaping as a crash because the handler recognised only its own error class.
+ *
+ * NOTE for whoever generalises this: `parse-board-edits.ts` has five more
+ * `parseArgs` call sites with the same exposure. It cannot import this helper
+ * from here — parse.ts already imports THAT chapter, and the reverse edge is
+ * the cycle `cli-usage-error.ts`'s own header was created to avoid. Moving the
+ * helper beside `CliUsageError` is the way, and both files are outside this
+ * ticket's write_scope.
+ */
+function parseArgsOrUsage<T>(parse: () => T, usage: string): T {
+  try {
+    return parse();
+  } catch (err) {
+    const code = (err as { code?: unknown }).code;
+    if (code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+      // Node's message names the option and then explains `--` handling at
+      // length; the first sentence is the part a person needs.
+      const first = String((err as Error).message).split('.')[0];
+      throw new CliUsageError(`${first}\n${usage}`);
+    }
+    throw err;
+  }
+}
+
 const SIMPLE_VERBS = ['claim', 'start', 'accept', 'release'] as const;
 export type SimpleVerb = (typeof SIMPLE_VERBS)[number];
 
@@ -73,24 +110,32 @@ export function parseCliArgs(argv: string[]): CliCommand {
   }
 
   if (command === 'board' || command === 'verify-chain') {
-    const { values } = parseArgs({
-      args: rest,
-      options: { db: { type: 'string' }, project: { type: 'string' } },
-      allowPositionals: false,
-    });
+    const { values } = parseArgsOrUsage(
+      () =>
+        parseArgs({
+          args: rest,
+          options: { db: { type: 'string' }, project: { type: 'string' } },
+          allowPositionals: false,
+        }),
+      `usage: dokima ${command} [--project <id> | --db <path>]`,
+    );
     return { kind: command, dbPath: values.db, projectId: values.project };
   }
 
   if (isSimpleVerb(command)) {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
+    const { values, positionals } = parseArgsOrUsage(
+      () =>
+        parseArgs({
+          args: rest,
+          options: {
+            actor: { type: 'string' },
+            db: { type: 'string' },
+            project: { type: 'string' },
+          },
+          allowPositionals: true,
+        }),
+      `usage: dokima ${command} <ticketId> --actor <actorId> [--project <id> | --db <path>]`,
+    );
     const ticketId = requirePositional(
       positionals,
       `usage: dokima ${command} <ticketId> --actor <actorId> [--project <id> | --db <path>]`,
@@ -110,16 +155,20 @@ export function parseCliArgs(argv: string[]): CliCommand {
   if (boardEdit) return boardEdit;
 
   if (command === 'reject') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        reason: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
+    const { values, positionals } = parseArgsOrUsage(
+      () =>
+        parseArgs({
+          args: rest,
+          options: {
+            actor: { type: 'string' },
+            reason: { type: 'string' },
+            db: { type: 'string' },
+            project: { type: 'string' },
+          },
+          allowPositionals: true,
+        }),
+      'usage: dokima reject <ticketId> --actor <actorId> --reason <why> [--db <path>]',
+    );
     const ticketId = requirePositional(
       positionals,
       'usage: dokima reject <ticketId> --actor <actorId> --reason <why> [--db <path>]',
@@ -137,16 +186,20 @@ export function parseCliArgs(argv: string[]): CliCommand {
   }
 
   if (command === 'comment') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        body: { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
+    const { values, positionals } = parseArgsOrUsage(
+      () =>
+        parseArgs({
+          args: rest,
+          options: {
+            actor: { type: 'string' },
+            body: { type: 'string' },
+            db: { type: 'string' },
+            project: { type: 'string' },
+          },
+          allowPositionals: true,
+        }),
+      'usage: dokima comment <ticketId> --actor <actorId> --body <text> [--db <path>]',
+    );
     const ticketId = requirePositional(
       positionals,
       'usage: dokima comment <ticketId> --actor <actorId> --body <text> [--db <path>]',
@@ -165,19 +218,23 @@ export function parseCliArgs(argv: string[]): CliCommand {
   }
 
   if (command === 'close') {
-    const { values, positionals } = parseArgs({
-      args: rest,
-      options: {
-        actor: { type: 'string' },
-        files: { type: 'string' },
-        commits: { type: 'string' },
-        'verify-cmd': { type: 'string' },
-        'verify-exit': { type: 'string' },
-        db: { type: 'string' },
-        project: { type: 'string' },
-      },
-      allowPositionals: true,
-    });
+    const { values, positionals } = parseArgsOrUsage(
+      () =>
+        parseArgs({
+          args: rest,
+          options: {
+            actor: { type: 'string' },
+            files: { type: 'string' },
+            commits: { type: 'string' },
+            'verify-cmd': { type: 'string' },
+            'verify-exit': { type: 'string' },
+            db: { type: 'string' },
+            project: { type: 'string' },
+          },
+          allowPositionals: true,
+        }),
+      'usage: dokima close <ticketId> --actor <actorId> --files <a,b> --commits <sha> --verify-cmd <cmd> [--db <path>]',
+    );
     const ticketId = requirePositional(
       positionals,
       'usage: dokima close <ticketId> --actor <id> --files <a,b> --commits <c1,c2> ' +
