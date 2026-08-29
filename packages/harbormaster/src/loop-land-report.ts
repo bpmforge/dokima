@@ -11,6 +11,7 @@
  * human, after the ladder was already spent. The maker never saw any of it,
  * which is why every retry rendered a byte-identical prompt.
  */
+import { listEvents, type EventLog } from '@dokima/events';
 import { redactString } from '@dokima/shared';
 import {
   renderDecideCard,
@@ -119,15 +120,98 @@ export function everyAttemptHitTheProvider(attempts: readonly LandAttempt[]): bo
  * as something else in the other — which is exactly how `no_progress` came to
  * print "ladder attempt cap reached" for two waves.
  */
+/**
+ * Every attempt died on a request TIMEOUT, not on a refusal (W21-64).
+ *
+ * Runs 48 and 49 died identically — reads and lists, then three
+ * `provider failure: … request timed out after 300000ms`, no writes. W21-58
+ * correctly parked them as `provider_unavailable` and told the founder to
+ * check the endpoint, which was UP and answering. Finding the real cause took
+ * hand measurement: 22 tok/s, a 4,475-token completion in the ledger, ~200s
+ * — so a slightly longer one crosses a 300s ceiling. A reasoning model emits
+ * completions that size routinely.
+ *
+ * Matched on our OWN message (`ProviderTimeoutError`), not a foreign one, so
+ * this is a contract between two files in this repo rather than a guess about
+ * a vendor's wording.
+ */
+const TIMEOUT_MARKER = /request timed out after (\d+)ms/;
+/** The queue-wait timeout wears the same words; see `asProviderTimeout`. */
+const QUEUE_WAIT_MARKER = /waiting for a request-queue slot/;
+
+export function everyAttemptTimedOut(attempts: readonly LandAttempt[]): boolean {
+  return (
+    everyAttemptHitTheProvider(attempts) &&
+    attempts.every((a) => TIMEOUT_MARKER.test(a.session.output))
+  );
+}
+
+/** The ceiling the attempts actually ran into, read back from the message. */
+export function observedTimeoutMs(attempts: readonly LandAttempt[]): number | null {
+  for (const a of attempts) {
+    const match = TIMEOUT_MARKER.exec(a.session.output);
+    if (match?.[1]) return Number(match[1]);
+  }
+  return null;
+}
+
+/**
+ * A queue-wait timeout is NOT a slow model (W21-64 note). DEFAULT_QUEUE_ACQUIRE_MS
+ * is also 300_000 and will present identically once berths > 1 put requests
+ * behind a long reasoning turn — telling that founder to raise
+ * `requestTimeoutMs` would send them to the wrong lever.
+ */
+export function timedOutWaitingForASlot(attempts: readonly LandAttempt[]): boolean {
+  return (
+    everyAttemptTimedOut(attempts) &&
+    attempts.some((a) => QUEUE_WAIT_MARKER.test(a.session.output))
+  );
+}
+
+/**
+ * The largest completion this ticket produced, in tokens, from `spend.recorded`
+ * (W21-64).
+ *
+ * One event per metered call carries `completionTokens`, so the number the
+ * founder had to derive by hand — 22 tok/s timed with a stopwatch, then the
+ * ledger read for `completion 4475` — is already recorded. Largest rather than
+ * total: the ceiling is per REQUEST, so a sum would answer a question nobody
+ * asked and make a run of many small calls look like the problem.
+ */
+export function largestCompletionTokens(
+  log: EventLog,
+  ticketId: string,
+  runId: string | null,
+): number | null {
+  let largest: number | null = null;
+  for (const event of listEvents(log)) {
+    if (event.eventType !== 'spend.recorded') continue;
+    if (event.ticketId !== ticketId) continue;
+    if (runId !== null && event.runId !== runId) continue;
+    const tokens = (event.payload as { completionTokens?: unknown }).completionTokens;
+    if (typeof tokens !== 'number' || !Number.isFinite(tokens)) continue;
+    if (largest === null || tokens > largest) largest = tokens;
+  }
+  return largest;
+}
+
 export function defaultParkReason(
   attempts: readonly LandAttempt[],
   mode: string,
 ): LandParkedReason {
+  // Checked BEFORE the refusal case: a timeout is a provider failure too, so
+  // the broader test would swallow it.
+  if (everyAttemptTimedOut(attempts)) return 'provider_timeout';
   if (everyAttemptHitTheProvider(attempts)) return 'provider_unavailable';
   return mode === 'locked' ? 'locked_ceiling_reached' : 'ladder_exhausted';
 }
 
-function parkHeader(reason: LandParkedReason, ceiling: number): string {
+function parkHeader(
+  reason: LandParkedReason,
+  ceiling: number,
+  attempts: readonly LandAttempt[] = [],
+  largestCompletionTokens: number | null = null,
+): string {
   switch (reason) {
     case 'locked_ceiling_reached':
       return `Parked with evidence — locked-mode convergence ceiling (${ceiling}) reached without a close (D-018). The ticket is back in Ready; the next run will retry it.`;
@@ -137,6 +221,36 @@ function parkHeader(reason: LandParkedReason, ceiling: number): string {
       return 'Parked with evidence — two attempts produced the IDENTICAL gaps, so the ladder stopped rather than spending the rest of it on the same failure (BLUEPRINT §3.5). The ticket is back in Ready; the gaps below are what did not move.';
     case 'attempted_nothing':
       return 'Parked with evidence — the session made tool calls and changed NOTHING, so there is no work to judge and a further attempt would carry the same information (W21-44). The ticket is back in Ready; the tool histogram below is what it actually did.';
+    case 'provider_timeout': {
+      // W21-64. The founder-facing gap: "the endpoint refused each request"
+      // sends a person to check the endpoint. When every failure is a TIMEOUT
+      // the sentence has to name the ceiling and what was observed against it,
+      // because the product already holds both numbers and the alternative is
+      // the founder measuring tokens/sec by hand — which is exactly what
+      // diagnosing runs 48 and 49 cost.
+      const limitMs = observedTimeoutMs(attempts);
+      const limit = limitMs === null ? 'the configured ceiling' : `${limitMs}ms`;
+      if (timedOutWaitingForASlot(attempts)) {
+        return (
+          `Parked — EVERY attempt timed out WAITING FOR A REQUEST SLOT, not on the model itself (${limit}). ` +
+          `Another request was holding the endpoint. This is the queue-acquire bound, so raising ` +
+          `\`requestTimeoutMs\` will not help; reduce concurrent berths or give the endpoint more capacity. ` +
+          `The ticket is back in Ready.`
+        );
+      }
+      const observed =
+        largestCompletionTokens === null
+          ? 'No completion size was recorded for this ticket, so the run has no measurement to offer.'
+          : `The largest completion this ticket actually produced was ${largestCompletionTokens} tokens; ` +
+            `at a local model's throughput that alone can exceed the ceiling.`;
+      return (
+        `Parked — EVERY attempt hit the request TIMEOUT (${limit}), not an endpoint refusal. ` +
+        `The endpoint answered; it did not finish in time. ${observed} ` +
+        `The lever is \`requestTimeoutMs\` on this provider's entry (Settings > Providers), ` +
+        `which is generous for cloud latency and is a throughput assumption on local hardware. ` +
+        `The ticket is back in Ready.`
+      );
+    }
     case 'provider_unavailable':
       return 'Parked with evidence — EVERY attempt failed before the model could work: the provider endpoint refused each request (W21-58). Nothing here is a judgement about this ticket or the model chosen for it. Check the endpoint is up and has a model loaded, then re-run; the ticket is back in Ready and its worktree still holds whatever earlier runs committed.';
     case 'cannot_start':
@@ -158,6 +272,13 @@ export function parkComment(
   absorbedInfraRetries = 0,
   /** W21-19: the cross-session repetition line, when there is one to report. */
   repetitionLine: string | null = null,
+  /**
+   * W21-64: the largest completion this ticket actually produced, from the
+   * ledger. Passed in rather than read here because this module is pure and
+   * the caller already holds the log — and because a park comment that had to
+   * open a database to be written would be a worse trade than one parameter.
+   */
+  largestCompletionTokens: number | null = null,
 ): string {
   /**
    * W13-63: "Parked", because that is what HAPPENS. This header said
@@ -178,7 +299,7 @@ export function parkComment(
    * A park comment is the founder's whole account of why a ticket stopped. It
    * naming the wrong mechanism is worse than it saying nothing.
    */
-  const header = parkHeader(reason, ceiling);
+  const header = parkHeader(reason, ceiling, attempts, largestCompletionTokens);
   const lines = [
     header,
     ...attempts.map((attempt) => attemptSummaryLine(attempt, ceiling)),

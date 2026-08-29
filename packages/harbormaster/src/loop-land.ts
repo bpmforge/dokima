@@ -187,6 +187,12 @@ export type LandParkedReason =
   /** W21-58: every attempt died on the provider — not a judgement about the ticket. */
   | 'provider_unavailable'
   /**
+   * W21-64: every attempt died on a request TIMEOUT, which is a different
+   * problem from an endpoint that refused. "Check the endpoint is up" sent a
+   * founder to check an endpoint that was up and answering.
+   */
+  | 'provider_timeout'
+  /**
    * W21-72: the ticket could not be STARTED — a stale worktree, an unbuildable
    * base, a scope refusal. Every one of these already has a written reason
    * that gets commented on the ticket; before this they were reported as no

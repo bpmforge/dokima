@@ -13018,16 +13018,18 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-64",
       "title": "a run that dies on timeouts does not say the ceiling is wrong for this model",
       "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
         "packages/harbormaster/src/loop-land-report.ts",
         "packages/harbormaster/src/loop-land-report.test.ts",
-        "packages/harbormaster/src/loop-land-infra.ts"
+        "packages/harbormaster/src/loop-land-ticket.ts"
       ],
       "notes": [
         "RUNS 48 AND 49 died identically: reads and lists, then three `provider failure: lm-studio: request timed out after 300000ms`, no writes, no manifest. W21-58 correctly parked them as provider_unavailable and told the founder to check the endpoint \u2014 which was UP and answering.",
@@ -13035,7 +13037,14 @@
         "DEFAULT_REQUEST_TIMEOUT_MS = 300_000 (packages/gateway/src/providers/oai-compat-types.ts) is tuned for cloud latency. On local hardware it is not a runaway guard, it is a throughput assumption \u2014 and the product has every number needed to say so: completion token counts and elapsed time are both already on spend.recorded.",
         "The founder-facing gap: \"the endpoint refused each request\" sends a person to check the endpoint. When every failure is a TIMEOUT rather than a refusal, the sentence should name the ceiling and the observed completion size instead.",
         "DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will bite the same way once berths > 1 put requests behind a long reasoning turn. Nothing has queued yet, so this is a prediction rather than an observation.",
-        "ACCEPTANCE: a run whose attempts all ended on request timeouts parks naming the timeout and the elapsed time, not \"provider unavailable\"; the park names the setting that governs it; a genuine endpoint refusal still parks as an endpoint refusal. Note DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will present identically at berths > 1."
+        "ACCEPTANCE: a run whose attempts all ended on request timeouts parks naming the timeout and the elapsed time, not \"provider unavailable\"; the park names the setting that governs it; a genuine endpoint refusal still parks as an endpoint refusal. Note DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and will present identically at berths > 1.",
+        "ALL FOUR CRITERIA MET. A new LandParkedReason \"provider_timeout\" is chosen BEFORE the refusal case (a timeout is a provider failure too, so the broader test would swallow it), its header names the ceiling read back from the message and the largest completion the ticket actually produced, it names requestTimeoutMs as the lever, and seven fixtures reproduce runs 48/49.",
+        "THE COMPLETION SIZE COMES FROM THE LEDGER, which is the half that removes the hand measurement. spend.recorded carries completionTokens per metered call with ticketId and runId, so the number the founder derived with a stopwatch on tokens/sec plus a ledger read is already recorded. LARGEST rather than total: the ceiling is per REQUEST, so a sum would answer a question nobody asked and make a run of many small calls look like the problem.",
+        "THE QUEUE-WAIT VARIANT IS HANDLED, which the ticket predicted rather than observed. DEFAULT_QUEUE_ACQUIRE_MS is also 300_000 and asProviderTimeout wears the same \"request timed out after Nms\" words, so at berths > 1 a queue wait would present identically \u2014 and telling that founder to raise requestTimeoutMs would send them to the wrong lever. A queue-wait park says so explicitly and says raising the timeout will not help.",
+        "CLASSIFIED ON OUR OWN MESSAGE, not a vendor's. The marker is ProviderTimeoutError's text, produced by this repo, so it is a contract between two files here rather than a guess about wording we do not control. Noted because string-matching an error is usually the wrong instinct \u2014 W21-77 rejected exactly that approach hours ago, and the difference is who owns the string.",
+        "A PRE-EXISTING FIXTURE WAS MISLABELLED AND MY CHANGE EXPOSED IT. loop-land.test.ts's flakyEndpointSpawn threw ProviderTimeoutError while the test using it is titled \"an endpoint that is genuinely down\" \u2014 a timeout is precisely NOT that. W21-58's assertion (provider_unavailable) was built on that mismatch. Corrected the FIXTURE to throw ProviderUnreachableError rather than relaxing the assertion, so the test now simulates what its own title claims; the timeout path has its own coverage in loop-land-report.test.ts.",
+        "THE FILE-SIZE VALIDATOR CAUGHT ME AGAIN, correctly: loop-land-ticket.ts reached 403 lines from a five-line comment and an expanded import. Trimmed to 396; the rationale lives in the helper's own doc where it is not duplicated.",
+        "RED PROVEN by stashing loop-land-report.ts and loop-land.ts: all 7 new fixtures fail."
       ],
       "acceptance": [
         "A park where every attempt failed on a TIMEOUT is distinguished from one where the endpoint refused",

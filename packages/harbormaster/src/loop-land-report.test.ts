@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { attemptSummaryLine, parkComment, defaultParkReason, everyAttemptHitTheProvider } from './loop-land-report.js';
+import { attemptSummaryLine,
+  parkComment,
+  defaultParkReason,
+  everyAttemptHitTheProvider,
+  everyAttemptTimedOut,
+  observedTimeoutMs,
+  timedOutWaitingForASlot, } from './loop-land-report.js';
 import type { SilentCompletion } from './loop-land-session-acceptance.js';
 import type { LandAttempt } from './loop-land.js';
 
@@ -267,5 +273,109 @@ describe('W21-83 — the park tells the PERSON the work is already done', () => 
     const line = attemptSummaryLine(attempt(undefined), 2);
     expect(line).toContain('no completion manifest returned');
     expect(line).not.toContain('ALREADY DONE');
+  });
+});
+
+describe('a timeout is not a refusal (W21-64)', () => {
+  /** Runs 48 and 49 exactly: three attempts, every one a request timeout. */
+  const timedOut = (attempt: number, output?: string) =>
+    ({
+      attempt,
+      session: {
+        exitCode: null,
+        output:
+          output ??
+          'provider failure: lm-studio (model qwen3.8-27b): request timed out after 300000ms',
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+        changedPaths: [],
+      },
+      closeGate: null,
+    }) as unknown as LandAttempt;
+
+  const refused = (attempt: number) =>
+    ({
+      attempt,
+      session: {
+        exitCode: null,
+        output: 'provider failure: lm-studio: endpoint unreachable — ECONNREFUSED',
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+        changedPaths: [],
+      },
+      closeGate: null,
+    }) as unknown as LandAttempt;
+
+  it('RED FIXTURE: three timeouts park as a timeout, not as an endpoint refusal', () => {
+    // W21-58 parked runs 48/49 as provider_unavailable and told the founder to
+    // check the endpoint — which was up and answering. Diagnosing it took a
+    // stopwatch on tokens/sec and a ledger read.
+    const attempts = [timedOut(1), timedOut(2), timedOut(3)];
+    expect(everyAttemptTimedOut(attempts)).toBe(true);
+    expect(defaultParkReason(attempts, 'ladder')).toBe('provider_timeout');
+  });
+
+  it('a genuine endpoint refusal still parks as an endpoint refusal', () => {
+    // The half that must not regress: W21-58's behaviour is correct when the
+    // endpoint really did refuse.
+    const attempts = [refused(1), refused(2)];
+    expect(everyAttemptTimedOut(attempts)).toBe(false);
+    expect(defaultParkReason(attempts, 'ladder')).toBe('provider_unavailable');
+  });
+
+  it('a MIX of a timeout and a refusal is not reported as all-timeouts', () => {
+    expect(everyAttemptTimedOut([timedOut(1), refused(2)])).toBe(false);
+  });
+
+  it('the evidence names the ceiling and the largest completion observed', () => {
+    // Acceptance 2: the founder should not have to measure tokens/sec by hand.
+    const body = parkComment(
+      'provider_timeout',
+      2,
+      [timedOut(1), timedOut(2)],
+      undefined,
+      0,
+      null,
+      4475,
+    );
+    expect(body).toContain('300000ms');
+    expect(body).toContain('4475');
+    expect(body).toContain('requestTimeoutMs');
+    expect(body).not.toContain('endpoint refused');
+  });
+
+  it('says plainly when no completion size was recorded, rather than inventing one', () => {
+    const body = parkComment('provider_timeout', 2, [timedOut(1)], undefined, 0, null, null);
+    expect(body).toContain('No completion size was recorded');
+    expect(body).toContain('300000ms');
+  });
+
+  it(
+    'a QUEUE-WAIT timeout names the queue, not requestTimeoutMs — the wrong ' +
+      'lever would waste the founder’s next run (DEFAULT_QUEUE_ACQUIRE_MS is ' +
+      'also 300_000 and will present identically at berths > 1)',
+    () => {
+      const queued = timedOut(
+        1,
+        'provider failure: lm-studio (waiting for a request-queue slot; 1 active, 2 queued): request timed out after 300000ms',
+      );
+      expect(timedOutWaitingForASlot([queued])).toBe(true);
+      const body = parkComment('provider_timeout', 2, [queued], undefined, 0, null, 4475);
+      expect(body).toContain('REQUEST SLOT');
+      expect(body).toContain('will not help');
+    },
+  );
+
+  it('reads the ceiling back from the message rather than assuming the default', () => {
+    const raised = timedOut(
+      1,
+      'provider failure: lm-studio (model x): request timed out after 1200000ms',
+    );
+    expect(observedTimeoutMs([raised])).toBe(1_200_000);
+    expect(parkComment('provider_timeout', 2, [raised], undefined, 0, null, 9000)).toContain(
+      '1200000ms',
+    );
   });
 });

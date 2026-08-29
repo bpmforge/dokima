@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
-import { ProviderTimeoutError } from '@dokima/gateway';
+import { ProviderTimeoutError, ProviderUnreachableError } from '@dokima/gateway';
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
 import { branchNameFor, git } from '@dokima/git';
 import type { SpawnSession } from '@dokima/loop';
@@ -618,13 +618,21 @@ describe('runLandLoop', () => {
   describe('infrastructure failures retry for free (W13-27)', () => {
     /**
      * Fails the first N sessions the way an unreachable endpoint does, then
-     * behaves. `ProviderTimeoutError` is what `runSessionAbsorbingProviderFailure`
-     * absorbs, so this is the real path rather than a simulated flag.
+     * behaves. Both classes are absorbed by
+     * `runSessionAbsorbingProviderFailure`, so either is the real path rather
+     * than a simulated flag.
+     *
+     * W21-64 CORRECTED THE ERROR THIS THROWS. It threw `ProviderTimeoutError`
+     * while the test that uses it is titled "an endpoint that is genuinely
+     * down" — a timeout is precisely NOT that, and the two now park under
+     * different reasons. The fixture was describing one thing and simulating
+     * another; W21-58's assertion was built on the mismatch. Timeouts get
+     * their own coverage in loop-land-report.test.ts.
      */
     function flakyEndpointSpawn(failures: number): SpawnSession {
       let seen = 0;
       return async (input) => {
-        if (seen++ < failures) throw new ProviderTimeoutError('studio', 1000);
+        if (seen++ < failures) throw new ProviderUnreachableError('studio', new Error('ECONNREFUSED'));
         return landingSpawn(input);
       };
     }
