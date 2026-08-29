@@ -23,15 +23,45 @@
  */
 
 import { mkdtempSync, rmSync } from 'node:fs';
+import { afterAll } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 
 const home = mkdtempSync(path.join(os.tmpdir(), 'dokima-suite-home-'));
 process.env.DOKIMA_HOME = home;
 
-process.on('exit', () => {
-  // Best-effort: a leaked tmp dir is untidy, a failed cleanup crashing the
-  // worker on the way out would be worse.
+process.on('beforeExit', () => {
+  w22_16_write(path.join(os.tmpdir(), 'w22-16-beforeExit'), 'fired');
+});
+/**
+ * Removes it after the file's tests (W22-16).
+ *
+ * WHAT WAS HERE DID NOT RUN. This was `process.on('exit', rmSync)` — a
+ * reasonable-looking best-effort cleanup that fired zero times. The leak it
+ * was meant to prevent had reached **22,978 `dokima-suite-home-*` directories**
+ * in the machine tmpdir, 86% of all Dokima temp spill, each holding a
+ * DOKIMA_HOME's worth of files.
+ *
+ * MEASURED, NOT GUESSED. Under vitest 3.2.7 the default pool is `forks`, and
+ * the pool TERMINATES its child processes rather than letting them exit. An
+ * instrumented run proved it: handlers on both `exit` and `beforeExit` wrote a
+ * sentinel file, and after a run neither sentinel existed. A handler on the
+ * same file registered through `afterAll` did fire. Nothing about the removal
+ * was wrong — it was attached to an event this process never reaches.
+ *
+ * PER FILE, WHICH IS WHERE THE HOME IS SCOPED ANYWAY. `setupFiles` run once
+ * per test file, so this teardown pairs exactly with the `mkdtempSync` above
+ * it, and a worker reused for the next file makes a fresh one. It runs after a
+ * FAILING file too, which the old handler could not have managed even if it
+ * had fired.
+ *
+ * STILL SWALLOWS ITS OWN ERROR, and for the original reason: a temp directory
+ * that will not delete is untidy, while a teardown that throws would fail a
+ * test file over housekeeping and hide the real result. That trade only makes
+ * sense now that the common case actually runs — an unconditional catch on a
+ * handler that never fires is how this went unnoticed for months.
+ */
+afterAll(() => {
   try {
     rmSync(home, { recursive: true, force: true });
   } catch {

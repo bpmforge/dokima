@@ -14873,7 +14873,7 @@
       "module": "quality",
       "lane": "quality",
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "write_scope": [
         "apps/server/vitest.setup.ts"
@@ -14888,7 +14888,14 @@
         "MEASURED 2026-08-29 on this machine: 26,760 dokima-* directories in the tmpdir, 968M. Of those, 22,978 are dokima-suite-home-* \u2014 86%. The e2e leak W22-15 was filed for is 380 (board) + 207 (estimate) + 152 (fleet) + 78 (settings) and change. The big one was invisible because W22-15's glob only looks for '-e2e-'.",
         "IT ALREADY TRIES TO CLEAN UP, which is why nobody noticed. apps/server/vitest.setup.ts mkdtemps a DOKIMA_HOME per test FILE (W10-71, correctly \u2014 see its header: two files must never see each other's global settings) and registers process.on('exit', rmSync). Roughly 270 directories appeared during one run, so the handler is not running. UNCONFIRMED root cause: vitest runs test files in worker threads, and a worker torn down by the pool may never reach an 'exit' listener. Verify that before changing anything \u2014 the candidate fix (an onTestFinished/teardown hook, or vitest's globalSetup return-teardown) depends on which it is.",
         "DO NOT 'FIX' IT BY SHARING ONE HOME ACROSS FILES. The per-file isolation is load-bearing and was itself a bug fix: W10-71 records main going red in four tests because DOKIMA_HOME was unpinned and the suite read the developer's real configuration. Cleanup must not cost isolation.",
-        "SECOND-ORDER, worth stating because it explains why this went unseen for so long: none of this ever fails a test. It fills a disk slowly, on developer machines only, and the tmpdir is swept by the OS eventually. It is a housekeeping defect, not a correctness one \u2014 which is exactly the kind that survives a green gate indefinitely."
+        "SECOND-ORDER, worth stating because it explains why this went unseen for so long: none of this ever fails a test. It fills a disk slowly, on developer machines only, and the tmpdir is swept by the OS eventually. It is a housekeeping defect, not a correctness one \u2014 which is exactly the kind that survives a green gate indefinitely.",
+        "SCOPE READ: one file, and the acceptance matches it \u2014 A1 names dokima-suite-home-* specifically, which apps/server/vitest.setup.ts is the sole producer of. Confirmed by grep across packages, apps and scripts. Reproduced small before touching anything: two test files, two directories created, zero removed.",
+        "A2 \u2014 THE DIAGNOSIS, INSTRUMENTED RATHER THAN REASONED. The ticket asked why the exit handler does not fire and offered worker-thread teardown as an UNCONFIRMED guess. Measured instead: under vitest 3.2.7 the default pool is `forks`, and the pool TERMINATES its children. Handlers registered on both `exit` and `beforeExit` each wrote a sentinel file; after a run neither sentinel existed. A handler registered through `afterAll` in the same setup file did fire. The removal was never wrong \u2014 it was attached to an event this process never reaches.",
+        "A1/A3 \u2014 MEASURED BOTH SIDES. Two test files before the change: 2 directories created, 0 removed. The same two after: 0 left. A full `pnpm test` before: roughly 270 per run against an accumulated 22,978. After: zero dokima-suite-home-* survives a full run. Marker-directory plus `find -newer`, because a total count is meaningless against a tmpdir holding months of history.",
+        "THE OLD HANDLER IS DELETED, NOT KEPT AS A BELT. It fired zero times in the measurement, so keeping it would be dead code carrying the false reassurance that made this survive: a try/catch on a handler that never runs looks exactly like a cleanup that works.",
+        "PER-FILE ISOLATION IS UNTOUCHED, which the ticket's own note warned about. W10-71 mkdtemps a DOKIMA_HOME per test FILE so no two files see each other's global settings \u2014 main went red in four tests when that was missing. `setupFiles` run once per file, so the new teardown pairs exactly with that mkdtemp and a reused worker still gets a fresh home. Cleanup cost no isolation.",
+        "NO MECHANICAL GUARD EXISTS YET, and that is the honest limit of this close: A1 is true by measurement today and nothing would notice if it stopped being true. Filed as W22-18 together with the twelve directories a run still leaks from four other test files \u2014 three tickets have now found temp leaks by hand and none was ever found by a failure.",
+        "Gate: lint clean, typecheck 0, 4782 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean."
       ],
       "role": "coding-agent",
       "stories": [
@@ -14922,6 +14929,41 @@
         "WHAT THAT COSTS, concretely, because it already cost it once. W22-10's seeding logic and its rationale had to be relocated into loop-handoff.ts to make room, and its comment at the call site was compressed from three lines to two purely to fit \u2014 a code cap silently editing prose is the wrong pressure on the wrong thing. The relocation happened to land somewhere defensible (loop-handoff.ts owns AttemptFeedback), which is luck, not design. The next person may not be so lucky, and the cheapest way out will be to delete an explanation.",
         "NOT URGENT AND NOT COSMETIC. Nothing is broken today and no test is red. The defect is that the file is now write-locked by a mechanical rule, so any ticket touching landClaimedTicket inherits a refactor it did not ask for \u2014 the exact coupling one-ticket-at-a-time exists to prevent.",
         "A MOVE, NOT A REWRITE. The acceptance says the existing tests pass unchanged on purpose: this file is the ladder's control flow (free-retry gate, rung advance, park reasons, conflict watch, verb mirror), and a split that also 'improves' behaviour would be unreviewable against the tests that exist."
+      ]
+    },
+    {
+      "id": "W22-18",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "the last twelve temp dirs a unit run leaks, and a check that would have caught all of them",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "apps/server/src/cli/handoff-context.test.ts",
+        "apps/server/src/api/projects.test.ts",
+        "scripts/validate-temp-leaks.mjs",
+        "scripts/validate-temp-leaks.test.mjs",
+        "scripts/run-validators.mjs"
+      ],
+      "acceptance": [
+        "A full `pnpm test` run leaves no dokima-* directory in the machine tmpdir",
+        "A validator reports temp directories a run left behind, and is in the `pnpm validate` set",
+        "The validator is proven by a planted leak, not only by the tree being clean"
+      ],
+      "notes": [
+        "FILED AT THE MOMENT IT WAS MEASURED, during W22-16 (Law 1). W22-16 removed the big producer \u2014 22,978 dokima-suite-home-* directories, 86% of the spill \u2014 and its acceptance named that prefix only. This is the remainder, measured on a full run immediately after that fix: 12 directories, from four test files.",
+        "THE PRODUCERS, all `mkdtemp` with no removal: packages/harbormaster/src/loop-land-session.test.ts ('dokima-w1313-', 5 per run), packages/harbormaster/src/agent-session/gateway-session.test.ts ('dokima-agent-session-cwd-/-db-/-repo-/-repo-db-/-outside-'), apps/server/src/cli/handoff-context.test.ts ('dokima-w1209-'), apps/server/src/api/projects.test.ts ('dokima-w915-home-/-gone-/-remove-/-kept-'). Each is a per-test mkdtemp, so the count scales with the tests, not the runs.",
+        "THE VALIDATOR IS THE POINT, not the twelve directories. Three separate tickets have now found temp leaks by hand \u2014 W22-12 (the e2e teardown race), W22-15 (20 per e2e run), W22-16 (270 per unit run) \u2014 and each was found because someone happened to look at a tmpdir, never because anything failed. 26,760 directories and 968M accumulated under a permanently green gate. A leak that cannot fail a check is a leak nobody will find again once this wave of attention passes; that is the L-47 shape the board keeps re-learning.",
+        "MEASUREMENT METHOD THAT WORKS, so it does not have to be rediscovered a fourth time: mkdtemp a marker directory immediately before the run, then `find $TMPDIR -maxdepth 1 -name 'dokima-*' -newer $MARKER`. Counting totals is useless \u2014 the tmpdir holds months of history \u2014 and `ls /tmp` finds nothing at all on macOS, where os.tmpdir() is under /var/folders.",
+        "PLANT A REAL LEAK for the third criterion. A validator written against an already-clean tree is a validator that has never been observed to fail, which is precisely the SAST-runner and capture-tour failure (W21-98, W21-92): a check nobody has seen say no."
       ]
     }
   ]
