@@ -41,6 +41,7 @@
     "pretest": "node scripts/check-node.mjs",
     "test": "vitest run --retry=2",
     "validate": "node scripts/run-validators.mjs",
+    "next": "node scripts/next-work.mjs",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "build": "pnpm --filter @dokima/web build && node apps/server/build.mjs",

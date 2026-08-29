@@ -10,6 +10,28 @@ no ticket from wave N+1 starts until the wave-N exit criteria in ROADMAP.md
 pass and are recorded in `docs/STATUS.md`. Exceptions: W0-* infra tickets
 are always claimable; W1-01 (content import) may run alongside W0.
 
+## Choosing the next ticket
+
+Run **`pnpm next`**. It answers the two questions a session actually has —
+what can be worked right now, and exactly what is in the way of the rest —
+and it separates them rather than collapsing them into one number.
+
+- **READY** means dependencies are satisfied and nothing must be asked first.
+  Ordered by what unblocks other tickets, then by size.
+- **NEEDS A DECISION** means the ticket says so in its own words ("BLOCKED BY
+  DESIGN", "DECIDE FIRST", "a founder decision"). Do not claim these to look
+  busy: the work cannot be honestly finished, and a loop that picks one up
+  stalls holding a ticket it must hand back.
+- **WAITING ON DEPENDENCIES** names the unfinished ticket to do first.
+
+It also reports where it DISAGREES with `validate-plan`'s P9 wave rule. On
+2026-08-29 P9 said one ticket was claimable while six were workable, because
+strict wave order puts the whole remaining board behind W12-44 — a ticket
+whose acceptance opens "BLOCKED BY DESIGN". A session closed fourteen tickets
+that day by ignoring the signal, which is how a signal stops being read at
+all (L-47). The waves and the dependency graph have drifted: W21+ are
+findings waves, filed from live use, and are not sequenced behind older ones.
+
 ## Per-ticket loop (the micro-loop)
 
 ```
