@@ -12,7 +12,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ReceiptInputFile } from '@dokima/events';
-import type { PhaseDefinition } from '@dokima/pipeline';
+import { isPathDeliverable, type PhaseDefinition } from '@dokima/pipeline';
 
 export class PhaseDeliverableMissingError extends Error {
   constructor(
@@ -27,20 +27,6 @@ export class PhaseDeliverableMissingError extends Error {
   }
 }
 
-/**
- * True for doc-shaped deliverable ids (`docs/VISION.md`, `docs/design/UX_SPEC.md`) —
- * real files, gated by the input-tree hash. False for board-shaped ids (`ticket-board`
- * on phase 4; `fix-backlog`/`release-notes` on phase 5, `packages/pipeline/src/phases/
- * topology.ts`) which have no single on-disk file to hash and are excluded from the
- * input tree instead. Every current deliverable id in the topology is unambiguous under
- * this rule: doc ids all contain a path separator, board-shaped ids never do. A future
- * wiring ticket's FR-P2 recompute must apply this identical rule, or a legitimate phase
- * 4/5 receipt would look permanently stale (input tree empty at mint, non-empty on
- * recompute, or vice versa).
- */
-export function isPathDeliverable(id: string): boolean {
-  return id.includes('/');
-}
 
 /**
  * Reads every path-shaped deliverable for a phase off `projectRoot`. Throws

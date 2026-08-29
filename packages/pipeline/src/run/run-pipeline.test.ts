@@ -148,8 +148,10 @@ describe('runPipeline (BLUEPRINT §4, phases 0-4)', () => {
     // development experience would never think to ask for.
     // W21-76: and the phase-0 documents its own gate will check for, without
     // which the project can never leave Idea however much work lands.
+    // W22-11: deliverable tickets now cover every phase that declares
+    // documents (0-3), not phase 0 alone.
     const drafted = plan.tickets.filter(
-      (t) => !t.id.startsWith('QUALITY-') && !t.id.startsWith('PHASE0-'),
+      (t) => !t.id.startsWith('QUALITY-') && !/^PHASE\d+-/.test(t.id),
     );
     expect(drafted).toHaveLength(1);
     expect(plan.tickets.map((t) => t.id)).toEqual(
@@ -316,5 +318,67 @@ describe('a board carries the documents its own phase gate checks for (W21-76)',
     // has to happen before the phase can advance.
     const plan = runPipeline(ideaInput(), fakePort().port);
     expect(plan.tickets[0]?.id).toMatch(/^PHASE0-/);
+  });
+});
+
+describe('every phase that declares documents gets tickets for them (W22-11)', () => {
+  const plan = () => runPipeline(ideaInput(), fakePort().port);
+
+  it('RED FIXTURE: phases 1 to 3 are covered, not phase 0 alone', () => {
+    // W21-76 emitted phase 0 only, because a later phase's gate is unreachable
+    // until phase 0 clears and filing work nobody can start is worse than
+    // filing none. Phase 0 clears now.
+    const ids = plan().tickets.map((t) => t.id);
+    expect(ids).toContain('PHASE0-VISION');
+    expect(ids).toContain('PHASE1-SCOPE');
+    expect(ids).toContain('PHASE2-SRS');
+    expect(ids).toContain('PHASE3-THREAT_MODEL');
+  });
+
+  it('a board-shaped deliverable gets NO ticket — there is no document to write', () => {
+    // Phase 4 declares `ticket-board` and phase 5 `fix-backlog`/`release-notes`.
+    // Those are outputs of a run, not documents anyone authors, and the phase
+    // gate applies this same rule when reading deliverables off disk.
+    const ids = plan().tickets.map((t) => t.id);
+    expect(ids.some((id) => id.startsWith('PHASE4-'))).toBe(false);
+    expect(ids.some((id) => id.startsWith('PHASE5-'))).toBe(false);
+  });
+
+  it('a nested document keeps a readable, unique id', () => {
+    // docs/design/UX_SPEC.md and docs/api/openapi.yaml both live below docs/,
+    // and two phases could otherwise yield the same bare name.
+    const ids = plan().tickets.map((t) => t.id);
+    expect(ids).toContain('PHASE3-design-UX_SPEC');
+    expect(ids).toContain('PHASE3-api-openapi');
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('deliverables that already exist gain no ticket, at any phase (A2)', () => {
+    const built = runPipeline(
+      { ...ideaInput(), existingDeliverables: ['docs/VISION.md', 'docs/SRS.md'] },
+      fakePort().port,
+    );
+    const ids = built.tickets.map((t) => t.id);
+    expect(ids).not.toContain('PHASE0-VISION');
+    expect(ids).not.toContain('PHASE2-SRS');
+    // Its phase siblings are untouched.
+    expect(ids).toContain('PHASE0-COMPETITIVE_ANALYSIS');
+    expect(ids).toContain('PHASE2-USER_STORIES');
+  });
+
+  it('they are ordered by phase, so a phase cannot be reached before its docs (A3)', () => {
+    const phaseOf = (id: string) => Number(/^PHASE(\d+)-/.exec(id)?.[1] ?? NaN);
+    const phases = plan()
+      .tickets.map((t) => t.id)
+      .filter((id) => /^PHASE\d+-/.test(id))
+      .map(phaseOf);
+    expect(phases).toEqual([...phases].sort((a, b) => a - b));
+    expect(phases[0]).toBe(0);
+  });
+
+  it('each writes exactly the path its gate looks for', () => {
+    const t = plan().tickets.find((x) => x.id === 'PHASE3-api-openapi')!;
+    expect(t.writeScope).toEqual(['docs/api/openapi.yaml']);
+    expect(t.verify).toBe('test -s docs/api/openapi.yaml');
   });
 });

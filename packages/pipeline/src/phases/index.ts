@@ -6,6 +6,7 @@ export {
   isLastPhase,
   priorPhase,
   nextPhase,
+  isPathDeliverable,
 } from './topology.js';
 export { SoftGateNotEligibleError, assertWaiverEligible } from './waiver-policy.js';
 export { decideAdvance } from './advance.js';

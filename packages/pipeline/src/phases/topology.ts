@@ -205,22 +205,24 @@ export function nextPhase(id: PhaseId): PhaseDefinition {
   return getPhase(((id as number) + 1) as PhaseId);
 }
 
+
 /**
- * The deliverables a phase's gate will look for on disk (W21-76).
+ * True for a deliverable that is a real file on disk (W22-11).
  *
- * MEASURED, live on the Tally project: the run ended with "The Idea phase (0)
- * gate refused after this run: declared deliverable(s) not found on disk:
- * docs/VISION.md, docs/COMPETITIVE_ANALYSIS.md" — and no `docs/` directory
- * existed in the project at all. The gate was working; nothing had ever been
- * ASKED to produce what it checks for. The interview produced seven
- * implementation tickets and not one that writes a phase deliverable, so the
- * gate refused on every run and the project could never leave Idea.
+ * Doc ids all contain a path separator — `docs/VISION.md`,
+ * `docs/design/UX_SPEC.md`. Board-shaped ids never do: `ticket-board` on phase
+ * 4, `fix-backlog` and `release-notes` on phase 5. Those are outputs of a run,
+ * not documents anyone authors, and they have no single file to read or hash.
  *
- * Exposed here because the topology is already the single statement of what a
- * phase owes, and a second list of the same paths anywhere else would drift
- * from it — which is the whole reason the gate reads this table rather than a
- * hardcoded set.
+ * IT LIVES HERE BECAUSE THE IDS DO. It was written in
+ * `apps/server/src/api/pipeline/phase-gate/input-files.ts`, where the phase
+ * gate reads deliverables off disk — and `packages/pipeline` may not import
+ * `apps/*` (ARCHITECTURE.md §4), so anything in this package needing the same
+ * rule had to copy it. That file's own comment names the risk: "a future
+ * wiring ticket's FR-P2 recompute must apply this identical rule, or a
+ * legitimate phase 4/5 receipt would look permanently stale". One definition
+ * beside the topology makes that impossible rather than merely documented.
  */
-export function deliverablesFor(id: PhaseId): readonly Deliverable[] {
-  return getPhase(id).deliverables;
+export function isPathDeliverable(id: string): boolean {
+  return id.includes('/');
 }

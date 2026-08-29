@@ -252,12 +252,12 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     // work, and W21-76 adds the phase-0 documents its own gate checks for, so
     // the DRAFTED feature is asserted directly rather than by total.
     const drafted = body.plan.tickets.filter(
-      (t) => !t.id.startsWith('QUALITY-') && !t.id.startsWith('PHASE0-'),
+      (t) => !t.id.startsWith('QUALITY-') && !/^PHASE\d+-/.test(t.id),
     );
     expect(drafted).toHaveLength(1);
     expect(body.plan.tickets.map((t) => t.id)).toContain('QUALITY-SECURITY-REVIEW');
     const draftedItems = body.plan_items.filter(
-      (i) => !i.ticket_id.includes('QUALITY-') && !i.ticket_id.includes('PHASE0-'),
+      (i) => !i.ticket_id.includes('QUALITY-') && !/PHASE\d+-/.test(i.ticket_id),
     );
     expect(draftedItems).toHaveLength(1);
     expect(draftedItems[0]?.ticket_created).toBe(true);

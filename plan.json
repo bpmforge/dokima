@@ -14616,7 +14616,7 @@
     {
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -14628,7 +14628,12 @@
       "title": "every phase gets tickets for the deliverables its gate checks, not only phase 0",
       "write_scope": [
         "packages/pipeline/src/run/run-pipeline.ts",
-        "packages/pipeline/src/run/run-pipeline.test.ts"
+        "packages/pipeline/src/run/run-pipeline.test.ts",
+        "packages/pipeline/src/phases/topology.ts",
+        "packages/pipeline/src/phases/index.ts",
+        "apps/server/src/api/pipeline/phase-gate/input-files.ts",
+        "apps/server/src/api/pipeline/phase-gate/index.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/index.test.ts"
       ],
       "acceptance": [
         "A board carries a ticket for each declared deliverable of the phases the project will actually be gated on",
@@ -14638,7 +14643,16 @@
       "notes": [
         "DROPPED FOLLOW-UP from W21-76, filed 2026-08-29 during a completeness sweep \u2014 its note said \"worth a follow-up once a project actually leaves Idea\" and nothing was filed.",
         "W21-76 deliberately emitted phase-0 deliverable tickets only, because a later phase gate is unreachable until phase 0 clears and filing that work would have meant tickets nobody could start. Phase 0 now clears, so the condition it named is met.",
-        "topology.ts declares deliverables for every phase (Plan wants docs/SCOPE.md, RISKS.md, CONSTRAINTS.md, USER_PERSONAS.md; Define wants SRS/USER_STORIES/USE_CASES). deliverablesFor(phaseId) already exposes them \u2014 this is a question of WHICH phases to emit for and how to order them, not of new machinery."
+        "topology.ts declares deliverables for every phase (Plan wants docs/SCOPE.md, RISKS.md, CONSTRAINTS.md, USER_PERSONAS.md; Define wants SRS/USER_STORIES/USE_CASES). deliverablesFor(phaseId) already exposes them \u2014 this is a question of WHICH phases to emit for and how to order them, not of new machinery.",
+        "SCOPE ANSWERED AT THE READ. Deciding WHICH phases get deliverable tickets needs the rule that separates a document from a board artifact: phases 0-3 declare real files (docs/VISION.md ... docs/design/UX_SPEC.md) while phase 4 declares `ticket-board` and phase 5 `fix-backlog`/`release-notes`, which are outputs of a run, not documents anyone authors up front.",
+        "THAT RULE ALREADY EXISTS AND IS IN THE WRONG PACKAGE: isPathDeliverable (id.includes(\"/\")) lives in apps/server/src/api/pipeline/phase-gate/input-files.ts, and packages/pipeline may not import apps/* (Law 6, ARCHITECTURE.md \u00a74). Its own comment asks for exactly what this ticket would otherwise do wrong: \"A future wiring ticket's FR-P2 recompute must apply this identical rule, or a legitimate phase 4/5 receipt would look permanently stale.\"",
+        "SO IT MOVES rather than being reproduced. The rule belongs next to the topology whose ids it classifies; apps/server imports it from @dokima/pipeline, which is the allowed direction. One definition instead of two, and the drift its own comment warns about becomes impossible rather than merely documented.",
+        "FILTERED BY A RULE, NOT BY A PHASE NUMBER. Every phase is walked and each deliverable is included only if isPathDeliverable says it is a real file. That excludes phase 4 (`ticket-board`) and phase 5 (`fix-backlog`, `release-notes`) \u2014 outputs of a run, not documents anyone authors \u2014 and it means a phase that later gains a document is picked up with no change here. Hardcoding 0..3 would have been a second list to keep in step with the topology.",
+        "THE RULE MOVED PACKAGE RATHER THAN BEING COPIED. isPathDeliverable lived in apps/server phase-gate/input-files.ts, and packages/pipeline may not import apps/* (Law 6), so this ticket would otherwise have reproduced it. Its own comment asked not to be: \"a future wiring ticket's FR-P2 recompute must apply this identical rule, or a legitimate phase 4/5 receipt would look permanently stale.\" It now lives beside the topology whose ids it classifies, and apps/server imports it \u2014 the allowed direction, one definition, and the drift it warned about is impossible rather than merely documented.",
+        "19 DELIVERABLE TICKETS for a fresh board: 2 for Idea, 4 for Plan, 4 for Define, 9 for Design. Ordered by phase, because PHASES is already in gate order and that is exactly acceptance 3 \u2014 a phase cannot be entered before its own documents exist.",
+        "NESTED DOCS KEEP A UNIQUE, READABLE ID: docs/design/UX_SPEC.md becomes PHASE3-design-UX_SPEC and docs/api/openapi.yaml becomes PHASE3-api-openapi. Two phases could otherwise both produce a bare ARCHITECTURE, and there is a fixture asserting every generated id is distinct.",
+        "THE VALIDATOR CAUGHT ME ORPHANING MY OWN EXPORT, one ticket after adding it. W21-76 added deliverablesFor(phaseId) for a single-phase lookup; walking PHASES makes phase.deliverables the direct access, so the accessor lost its only caller and appeared in the zero-reference list. Deleted rather than kept \u2014 an export nothing calls is the exact defect W22-02 built that category to find, and keeping it because it was mine would be the wrong reason.",
+        "RED PROVEN by stashing run-pipeline.ts: 4 fixtures fail."
       ]
     },
     {

@@ -14,7 +14,6 @@ export {
   PHASE_GATE_VERIFIER_ACTOR_ID,
 } from './identity.js';
 export {
-  isPathDeliverable,
   PhaseDeliverableMissingError,
   readPhaseInputFiles,
 } from './input-files.js';
