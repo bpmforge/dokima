@@ -13739,7 +13739,7 @@
       "phase": 21,
       "lane": "ui",
       "role": "ux-engineer",
-      "status": "todo",
+      "status": "in_progress",
       "points": 2,
       "module": "web",
       "depends_on": [],
@@ -13747,7 +13747,8 @@
       "title": "the capture tour is in no gate, so the design-review loop rots unnoticed",
       "write_scope": [
         "apps/web/scripts/capture-tour/**",
-        "apps/web/scripts/lib/**"
+        "apps/web/scripts/lib/**",
+        "apps/web/e2e/tour-contract.spec.ts"
       ],
       "acceptance": [
         "Something automated fails when the tour can no longer drive the product \u2014 a CI job, a validator, or a smoke step short of the full 39-state capture",
@@ -13758,7 +13759,8 @@
         "Found 2026-08-28: the tour had not been run since W17 and both passes were broken by shipped behaviour changes. W17-09 (create auto-opens the workspace) and W17-08 (Settings basic/Advanced tab split) each hung a pass for 30s on a locator that can no longer match. Fixed in the same session, but nothing had reported it for a whole wave.",
         "THIS IS THE THIRD TIME THE SAME CLASS HAS BITTEN. W13-54 found the harness still booting main.ts after W13-33 moved the boot \u2014 \"nothing noticed because nobody ran the tour since\", in app-harness.mjs's own comment. The e2e suite had the identical problem until it joined Law 3 on 2026-07-27, after a plans.spec.ts assertion sat silently red for days. The tour is the only surface still outside a gate.",
         "IT IS NOT COSMETIC. docs/tour/ is shipped documentation \u2014 README.md links its hero image \u2014 so a rotted tour means the pictures a new user sees are of a product that no longer behaves that way. It is also layer 1 of DESIGN_REVIEW_LOOP.md: the evidence packs the ux-audit judge reads come from here, so when the tour is dead the whole review loop is dead and reports nothing rather than failing.",
-        "NOT NECESSARILY THE FULL CAPTURE IN THE TICKET GATE \u2014 it rebuilds the SPA and boots two servers, and Law 3 is already ~30s of e2e. A cheap smoke (boot, create a project, open Settings, walk the tabs, assert the declared-state list is still reachable) would have caught both of this session's breaks. Weigh where it belongs: the ticket gate, a CI job, or a validator that fails on a stale docs/tour/ timestamp."
+        "NOT NECESSARILY THE FULL CAPTURE IN THE TICKET GATE \u2014 it rebuilds the SPA and boots two servers, and Law 3 is already ~30s of e2e. A cheap smoke (boot, create a project, open Settings, walk the tabs, assert the declared-state list is still reachable) would have caught both of this session's breaks. Weigh where it belongs: the ticket gate, a CI job, or a validator that fails on a stale docs/tour/ timestamp.",
+        "SCOPE at claim: added apps/web/e2e/tour-contract.spec.ts. The acceptance requires a check that runs WITHOUT a person remembering, and e2e is already in Law 3 \u2014 putting the assertion there means it is gated by construction rather than by adding another script somebody has to invoke. apps/web/e2e is unowned by any open ticket."
       ]
     },
     {
