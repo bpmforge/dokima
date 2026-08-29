@@ -185,6 +185,8 @@ export async function deleteProvider(
 export interface CatalogModel {
   id: string;
   contextLength?: number;
+  /** W21-93: what the provider said this model is for. Absent = unknown, never "generative". */
+  kind?: 'generative' | 'embedding';
 }
 
 export type CatalogSource = 'discovered' | 'bundled' | null;
@@ -227,6 +229,7 @@ export function removalCopy(entry: ProviderEntry): string {
 }
 
 interface WireCatalogModel {
+  kind?: 'generative' | 'embedding';
   id: string;
   context_length?: number;
 }
@@ -252,6 +255,7 @@ export async function fetchProviderModels(
     models: wire.models.map((m) => ({
       id: m.id,
       ...(m.context_length === undefined ? {} : { contextLength: m.context_length }),
+      ...(m.kind === undefined ? {} : { kind: m.kind }),
     })),
     ...(wire.reason === undefined ? {} : { reason: wire.reason }),
   };

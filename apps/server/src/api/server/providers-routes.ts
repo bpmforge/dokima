@@ -54,12 +54,19 @@ export interface ProvidersRoutesOptions {
 interface WireCatalogModel {
   id: string;
   context_length?: number;
+  /**
+   * W21-93/94: what the PROVIDER said this model is for. Absent when it said
+   * nothing, and absence must not be read as "generative" — an endpoint that
+   * does not report kinds is unknown, not confirmed.
+   */
+  kind?: 'generative' | 'embedding';
 }
 
 function toWireModel(model: CatalogModel): WireCatalogModel {
   return {
     id: model.id,
     ...(model.contextLength === undefined ? {} : { context_length: model.contextLength }),
+    ...(model.kind === undefined ? {} : { kind: model.kind }),
   };
 }
 

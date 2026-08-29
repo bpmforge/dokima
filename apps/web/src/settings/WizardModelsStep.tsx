@@ -1,3 +1,4 @@
+import { canGenerate } from './providers-model-refs.js';
 import { useEffect, useState } from 'react';
 import { putModelMatrixFromPreset, SettingsApiError } from './api.js';
 import { fetchProviderModels, type ProviderCatalog } from './providers-api.js';
@@ -72,7 +73,16 @@ export function WizardModelsStep({
     };
   }, [projectId, providerId]);
 
-  const ids = (catalog?.models ?? []).map((m) => m.id);
+  /**
+   * W21-94: only models that can actually generate. An embedding model cannot
+   * write or review code, and offering one here hands the user a setup broken
+   * by construction. `canGenerate` refuses ONLY what the provider reported as
+   * an embedding model — an endpoint that reports nothing keeps every model on
+   * offer, because absence is unknown, not disqualifying.
+   */
+  const offerable = (catalog?.models ?? []).filter(canGenerate);
+  const ids = offerable.map((m) => m.id);
+  const hiddenCount = (catalog?.models?.length ?? 0) - offerable.length;
   const unreachable = catalog?.status === 'unreachable' || loadError !== null;
   const tooFew = catalog !== null && !unreachable && ids.length < 2;
   const ready =
@@ -151,6 +161,22 @@ export function WizardModelsStep({
       {catalog?.status === 'unreachable' && catalog.reason && (
         <p className="settings__hint" data-testid="wizard-models-unreachable-reason">
           What it said: {catalog.reason}
+        </p>
+      )}
+      {/* W21-94 AC4: an empty picker after filtering must explain itself, or it
+          reads as "this endpoint serves nothing" — which would be false. */}
+      {hiddenCount > 0 && ids.length === 0 && (
+        <p role="alert" className="settings__error" data-testid="wizard-models-all-embedding">
+          That provider serves {hiddenCount} model{hiddenCount === 1 ? '' : 's'}, but{' '}
+          {hiddenCount === 1 ? 'it is an embedding model' : 'they are all embedding models'} —
+          they turn text into vectors and cannot write or review code. Load a chat or
+          instruct model on this endpoint, then reopen this step.
+        </p>
+      )}
+      {hiddenCount > 0 && ids.length > 0 && (
+        <p className="settings__hint" data-testid="wizard-models-hidden">
+          {hiddenCount} embedding model{hiddenCount === 1 ? '' : 's'} not shown — they
+          cannot write or review code.
         </p>
       )}
       {tooFew && (

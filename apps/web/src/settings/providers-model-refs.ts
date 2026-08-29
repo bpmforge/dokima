@@ -5,7 +5,7 @@
  * pushed that file past the 400-line CODE_BOOK_PROTOCOL cap. One concern: the
  * string that names a model to the resolver, and how to read one back.
  */
-import type { ProviderCatalog, ProviderEntry } from './providers-api.js';
+import type { CatalogModel, ProviderCatalog, ProviderEntry } from './providers-api.js';
 
 /**
  * W21-24: the ref the RESOLVER will accept for this model, which is not always
@@ -57,6 +57,24 @@ export function splitModelRefLocal(
   return { providerId: prefix, model: value.slice(slash + 1) };
 }
 
+/**
+ * Can this model do the work a picker is asking about? (W21-94)
+ *
+ * Only a model the provider REPORTED as an embedding model is refused. An
+ * embedding model cannot generate text at all, so offering one as "the model
+ * that writes the code" hands the user a setup broken by construction, with a
+ * failure that surfaces much later — measured 2026-08-28, LM Studio served
+ * four among 34 and the picker listed all 34.
+ *
+ * ABSENCE NEVER REMOVES A CHOICE. A provider that reports no kind (ollama, any
+ * generic OpenAI-compatible endpoint) yields `undefined`, and every one of its
+ * models stays on offer. Filtering on a guess would take working models away
+ * from people whose endpoint simply does not describe itself.
+ */
+export function canGenerate(model: CatalogModel): boolean {
+  return model.kind !== 'embedding';
+}
+
 export function combinedModelOptions(
   catalogs: Record<string, ProviderCatalog>,
   entries: readonly ProviderEntry[],
@@ -66,6 +84,7 @@ export function combinedModelOptions(
   for (const [providerId, catalog] of Object.entries(catalogs)) {
     if (!enabledIds.has(providerId)) continue;
     for (const model of catalog.models) {
+      if (!canGenerate(model)) continue;
       ids.add(modelRefFor(providerId, model.id, enabledIds.size));
     }
   }

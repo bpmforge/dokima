@@ -236,3 +236,75 @@ describe('an unreachable provider explains itself without shouting an exception'
     expect(screen.queryByTestId('wizard-models-unreachable-reason')).toBeNull();
   });
 });
+
+/**
+ * W21-94. LM Studio served 34 models, four of them embeddings, and the picker
+ * offered all 34 as "the model that writes the code". An embedding model turns
+ * text into vectors — it cannot generate — so choosing one gives a setup broken
+ * by construction whose failure surfaces much later.
+ */
+describe('the picker only offers models that can do the job', () => {
+  const catalog = (models: { id: string; kind?: string }[]) => ({
+    status: 'ok' as const,
+    source: 'discovered' as const,
+    models,
+  });
+
+  it('RED FIXTURE: an embedding model is not offered', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue(
+      catalog([
+        { id: 'qwen3.8-flash-next', kind: 'generative' },
+        { id: 'text-embedding-nomic', kind: 'embedding' },
+        { id: 'gemma-4-e4b', kind: 'generative' },
+      ]) as never,
+    );
+    renderStep();
+    // Wait for the CATALOG, not just the field: before it loads the field is
+    // the freeform input, which has no options at all.
+    await screen.findAllByRole('option', { name: 'qwen3.8-flash-next' });
+    const select = screen.getByTestId('wizard-model-work') as HTMLSelectElement;
+    // jsdom's HTMLOptionsCollection is not iterable — query the nodes.
+    const options = [...select.querySelectorAll('option')].map((o) => o.value);
+    expect(options).toContain('qwen3.8-flash-next');
+    expect(options).not.toContain('text-embedding-nomic');
+  });
+
+  it('a model of UNKNOWN kind is still offered — absence never removes a choice', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue(
+      catalog([{ id: 'mystery-a' }, { id: 'mystery-b' }]) as never,
+    );
+    renderStep();
+    await screen.findAllByRole('option', { name: 'mystery-a' });
+    const select = screen.getByTestId('wizard-model-work') as HTMLSelectElement;
+    expect([...select.querySelectorAll('option')].map((o) => o.value)).toEqual(
+      expect.arrayContaining(['mystery-a', 'mystery-b']),
+    );
+  });
+
+  it('says how many were hidden rather than quietly shrinking the list', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue(
+      catalog([
+        { id: 'a', kind: 'generative' },
+        { id: 'b', kind: 'generative' },
+        { id: 'e1', kind: 'embedding' },
+      ]) as never,
+    );
+    renderStep();
+    expect((await screen.findByTestId('wizard-models-hidden')).textContent).toMatch(
+      /1 embedding model not shown/,
+    );
+  });
+
+  it('an endpoint serving ONLY embedding models explains itself, not an empty picker', async () => {
+    mockedProviders.fetchProviderModels.mockResolvedValue(
+      catalog([
+        { id: 'e1', kind: 'embedding' },
+        { id: 'e2', kind: 'embedding' },
+      ]) as never,
+    );
+    renderStep();
+    const alert = await screen.findByTestId('wizard-models-all-embedding');
+    expect(alert.textContent).toMatch(/all embedding models/i);
+    expect(alert.textContent).toMatch(/cannot write or review code/i);
+  });
+});
