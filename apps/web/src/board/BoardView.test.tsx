@@ -394,3 +394,72 @@ describe('W21-82 — the board never claims a run is live after it has stopped',
     }
   });
 });
+
+/**
+ * W21-88. Filed as "the board re-renders and replaces the element between the
+ * click and the handler", then corrected in its own notes to UNCONFIRMED: the
+ * six observations were coordinate-targeted clicks, which is equally
+ * consistent with a target that MOVED as with one that was replaced.
+ *
+ * The ticket names the deciding evidence — "capture the element identity
+ * before and after; that distinguishes a replaced node from a moved one" —
+ * and that is decidable here without a browser or a pointer.
+ */
+describe('opening a project shows something while it loads (W21-88)', () => {
+  function renderBoard() {
+    return render(
+      <BoardView baseUrl="/api/v1" token="t" projectId="p1" wsUrl="ws://x" onSelectTicket={vi.fn()} />,
+    );
+  }
+
+  it('RED FIXTURE: a loading board says so instead of painting nothing', () => {
+    // It returned null, so opening a project showed a blank panel until the
+    // data arrived. A blank screen and a swallowed click produce the same
+    // conclusion in the same person — "this is broken".
+    mockedUseBoardData.mockReturnValue(boardData({ loading: true }));
+    renderBoard();
+    expect(screen.getByTestId('board-view-loading')).toBeDefined();
+    expect(screen.getByText(/Loading the board/)).toBeDefined();
+  });
+
+  it('THE FILED MECHANISM IS DISPROVED: the control does not exist while loading', () => {
+    // W21-88 was filed as "the board re-renders and replaces the element
+    // between the click and the handler". It does not: while loading there is
+    // no Start-a-run button at all, so no human click on a VISIBLE control can
+    // be swallowed. The six observations were coordinate-targeted clicks
+    // landing where the button was about to be — the artifact the ticket's own
+    // notes suspected.
+    mockedUseBoardData.mockReturnValue(boardData({ loading: true }));
+    renderBoard();
+    expect(screen.queryByRole('button', { name: 'Start a run' })).toBeNull();
+  });
+
+  it('once the board has data the control is present and live', () => {
+    mockedUseBoardData.mockReturnValue(
+      boardData({ loading: false, tickets: [makeBoardTicket({ id: 'W1-01' })] }),
+    );
+    renderBoard();
+    const button = screen.getByRole('button', { name: 'Start a run' });
+    expect(button.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('and the control keeps its identity across a data refresh — never replaced', () => {
+    // The evidence the ticket asked for: element identity before and after
+    // distinguishes a replaced node from a moved one. It is the same node.
+    mockedUseBoardData.mockReturnValue(
+      boardData({ loading: false, tickets: [makeBoardTicket({ id: 'W1-01' })] }),
+    );
+    const { rerender } = renderBoard();
+    const before = screen.getByRole('button', { name: 'Start a run' });
+
+    mockedUseBoardData.mockReturnValue(
+      boardData({
+        loading: false,
+        tickets: [makeBoardTicket({ id: 'W1-01' }), makeBoardTicket({ id: 'W1-02' })],
+      }),
+    );
+    rerender(<BoardView baseUrl="/api/v1" token="t" projectId="p1" wsUrl="ws://x" onSelectTicket={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Start a run' })).toBe(before);
+  });
+});

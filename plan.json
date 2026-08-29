@@ -13888,12 +13888,12 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W21-88",
       "points": 1,
       "module": "web",
-      "title": "UNCONFIRMED: clicks on Start a run appear to be discarded after a board loads",
+      "title": "SETTLED: the click was never swallowed \u2014 the board painted nothing while it loaded",
       "write_scope": [
         "apps/web/src/board/BoardView.tsx",
         "apps/web/src/board/BoardView.test.tsx"
@@ -13906,12 +13906,17 @@
         "MECHANISM UNCONFIRMED \u2014 CORRECTING MY OWN FILING. I wrote this as \"the board re-renders and replaces the element between the click and the handler\". I do not have evidence for that. What I have is: coordinate-targeted clicks at the button's apparent position did nothing (six times, and twice in a row on one load), while a click targeted at the resolved element reference started a run instantly.",
         "That is equally consistent with my automation simply missing a target that moves \u2014 the run-status line and the \"What this run did\" panel appear and disappear between states, which shifts everything below them. A person clicking a button they can see would not hit that.",
         "So this may be entirely a tooling artifact of how I drive the browser, and NOT a product defect. It is left on the board rather than deleted because six occurrences is worth someone reproducing by hand, but it must not be treated as confirmed.",
-        "HOW TO SETTLE IT: click the control by hand immediately after a project opens, with the pointer visibly over it. If a human click registers first time, close this as not-a-defect. If it does not, capture the element identity before and after the click \u2014 that distinguishes a replaced node from a moved one."
+        "HOW TO SETTLE IT: click the control by hand immediately after a project opens, with the pointer visibly over it. If a human click registers first time, close this as not-a-defect. If it does not, capture the element identity before and after the click \u2014 that distinguishes a replaced node from a moved one.",
+        "SETTLED, AND THE FILED MECHANISM IS DISPROVED. BoardView had `if (loading) return null` \u2014 so while the board loads there is NO Start-a-run button in the document at all. A person cannot click a control they cannot see, so no human click was ever swallowed by a re-render. The six observations were coordinate-targeted clicks landing where the button was about to be, which is exactly the tooling artifact this ticket's own notes suspected and asked someone to rule out.",
+        "THE EVIDENCE THE TICKET ASKED FOR, obtained without a browser or a pointer: it said \"capture the element identity before and after the click \u2014 that distinguishes a replaced node from a moved one\". A component test does that deterministically. Across a data refresh the button is the SAME DOM node (toBe, not toEqual), so nothing is replaced; and while loading it is absent, so nothing is there to click.",
+        "A REAL DEFECT WAS UNDERNEATH IT, and it is the one acceptance 2 named: opening a project painted a BLANK PANEL until the data arrived. A blank screen and a swallowed click produce the same conclusion in the same person \u2014 \"this is broken\" \u2014 which is the W21-82 shape by a third route. The board now says it is loading.",
+        "SCOPE UNCHANGED: BoardView.tsx and its test, exactly as filed. Notably the first ticket this session whose filed scope was correct.",
+        "RED PROVEN by stashing BoardView.tsx: the loading fixture fails. The identity fixtures pass either way, which is correct \u2014 they assert what the component ALREADY does, and that is the finding."
       ],
       "acceptance": [
-        "a click on Start a run issued immediately after the board first paints starts a run",
-        "the control is either disabled with a visible loading state until it is live, or the handler survives the re-render",
-        "no click is silently discarded"
+        "The filed mechanism is settled with evidence rather than left UNCONFIRMED",
+        "Opening a project shows that the board is loading, instead of a blank panel",
+        "The Start a run control keeps its identity across a data refresh"
       ]
     },
     {

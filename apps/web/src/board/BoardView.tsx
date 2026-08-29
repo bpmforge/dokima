@@ -126,7 +126,30 @@ export function BoardView({
       wsUrl,
     });
 
-  if (loading) return null;
+  /**
+   * W21-88: a VISIBLE loading state, not a blank screen.
+   *
+   * This returned `null`, so opening a project painted nothing at all until
+   * the board data arrived — and the filed report ("a click on Start a run is
+   * silently discarded") turns out to be the shape of that: the button does
+   * not exist yet, so a click aimed where it will be lands on nothing. A
+   * person cannot click a button they cannot see, which is why the filed
+   * mechanism — an element replaced between the click and the handler — is not
+   * what happened. The clicks that missed were coordinate-targeted ones from
+   * an automated driver, and the ticket's own note suspected exactly that.
+   *
+   * The real defect is the one acceptance 2 names: nothing on screen says the
+   * product is working. A blank panel and a swallowed click produce the same
+   * conclusion in the same person — "this is broken" — which is why this is
+   * worth fixing even though the click was never lost.
+   */
+  if (loading) {
+    return (
+      <div className="board-view" data-testid="board-view-loading">
+        <p className="board-view__loading">Loading the board…</p>
+      </div>
+    );
+  }
   if (tickets.length === 0) return <EmptyState onViewCurrentPhase={onViewCurrentPhase} />;
 
   const lanes = groupIntoLanes(tickets);
