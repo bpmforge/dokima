@@ -6,7 +6,9 @@
  * names.
  */
 import { describe, expect, it } from 'vitest';
-import { resolveRequiredValidators } from './run-validators.js';
+import { resolveRequiredValidators,
+  GENERATED_PROJECT_VALIDATORS,
+} from './run-validators.js';
 
 const KNOWN = [
   'secrets-scan',
@@ -63,5 +65,42 @@ describe('resolveRequiredValidators (W21-38)', () => {
     expect(resolveRequiredValidators([' secrets-scan ', '', 'validate-deps'], KNOWN)).toEqual({
       requiredValidators: ['secrets-scan', 'validate-deps'],
     });
+  });
+});
+
+/**
+ * W21-97 second half. Planning the quality work is only half an answer — a
+ * ticket a novice does not know how to perform helps nobody. A generated
+ * project's close gate now RUNS the cheap, universally-safe checks by default.
+ */
+describe('a generated project gets a real gate, not just a secrets scan', () => {
+  const known = [
+    'secrets-scan',
+    'validate-remote-parity',
+    'validate-dead-code',
+    'validate-lint',
+    'validate-code-health',
+  ];
+
+  it('RED FIXTURE: unset means dead-code and lint run too, not only secrets', () => {
+    const available = GENERATED_PROJECT_VALIDATORS.filter((n) => known.includes(n));
+    expect(available).toContain('validate-dead-code');
+    expect(available).toContain('validate-lint');
+    expect(available).toContain('secrets-scan');
+  });
+
+  it('excludes the ones measurement ruled out', () => {
+    // 27 pre-existing gaps in this repo — it would refuse every close for debt
+    // the ticket did not create, which is what W21-38 warned against.
+    expect(GENERATED_PROJECT_VALIDATORS).not.toContain('validate-code-health');
+    // Needs docs/SECURITY_CONTROLS.md, which QUALITY-SECURITY-REVIEW produces.
+    expect(GENERATED_PROJECT_VALIDATORS).not.toContain('validate-security-controls');
+    // Runs Playwright when a config exists — a full e2e run per ticket close.
+    expect(GENERATED_PROJECT_VALIDATORS).not.toContain('validate-tests');
+  });
+
+  it('a project that names its own set still wins', () => {
+    const result = resolveRequiredValidators(['secrets-scan'], known);
+    expect(result).toEqual({ requiredValidators: ['secrets-scan'] });
   });
 });

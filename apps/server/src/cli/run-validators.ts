@@ -84,13 +84,66 @@ export function resolveRequiredValidators(
  * two together. Lives here rather than in `run-build.ts` because that file
  * sits at the 400-line cap and because "which validators run" is one concern.
  */
+/**
+ * What a GENERATED project's close gate runs when nobody has said otherwise
+ * (W21-97).
+ *
+ * `DEFAULT_REQUIRED_VALIDATORS` is `['secrets-scan',
+ * 'validate-remote-parity']` — a leaked credential and a wrong git remote.
+ * Nothing asked whether the code was any good, while `content/validators/`
+ * ships 85 validators. W21-38 built the setting above and left the policy
+ * open: "which of the 83 belong in a GENERATED PRODUCT's gate is a founder
+ * decision."
+ *
+ * The founder decided: the product is for people who may have no development
+ * experience, so it should RUN the checks rather than wait to be asked.
+ * W21-97 put the quality work on the board as tickets; a ticket a novice does
+ * not know how to perform is only half an answer.
+ *
+ * SET HERE, and the seam matters. This resolution is reached only by
+ * `run-build.ts` — the product's loop working a USER's project. Raising
+ * `DEFAULT_REQUIRED_VALIDATORS` would also govern this repo's own runs, and
+ * seeding a project setting at creation would append a settings event to every
+ * new project. Both were tried and both had blast radius unrelated to the
+ * intent. This changes exactly the population it means to.
+ *
+ * CHOSEN ON MEASUREMENT, because W21-38's warning binds: "a gate that refuses
+ * for debt a ticket did not create teaches people to bypass it". Each
+ * candidate was run against a bare generated project AND this repo:
+ *
+ *   validate-dead-code         0 gaps both  (~5s)  -> IN
+ *   validate-lint              0 gaps both  (~4s)  -> IN
+ *   validate-code-health       27 gaps in THIS repo -> OUT until that
+ *                              pre-existing R-02 try-in-loop debt is paid
+ *                              (W21-98).
+ *   validate-security-controls needs docs/SECURITY_CONTROLS.md -> OUT as a
+ *                              default, but it is precisely what
+ *                              QUALITY-SECURITY-REVIEW's acceptance produces,
+ *                              so it becomes checkable once that ticket lands.
+ *   validate-tests             runs Playwright when a config exists -> OUT: a
+ *                              full e2e run on every ticket close.
+ *
+ * A project that names its own `requiredValidators` still wins — this is the
+ * floor for someone who has not thought about it, which is the whole point.
+ * Any name this install does not ship is dropped rather than refusing the run.
+ */
+export const GENERATED_PROJECT_VALIDATORS: readonly string[] = [
+  'secrets-scan',
+  'validate-remote-parity',
+  'validate-dead-code',
+  'validate-lint',
+];
+
 export async function requiredValidatorsFor(
   contentDir: string,
   read: (key: string) => JsonValue | undefined,
 ): Promise<RequiredValidatorsResult> {
   const specs = await loadValidatorPack({ contentDir });
-  return resolveRequiredValidators(
-    read(REQUIRED_VALIDATORS_SETTINGS_KEY),
-    specs.map((spec) => spec.name),
-  );
+  const known = specs.map((spec) => spec.name);
+  const configured = read(REQUIRED_VALIDATORS_SETTINGS_KEY);
+  if (configured === undefined || configured === null) {
+    const available = GENERATED_PROJECT_VALIDATORS.filter((name) => known.includes(name));
+    return { requiredValidators: available.length > 0 ? available : undefined };
+  }
+  return resolveRequiredValidators(configured, known);
 }
