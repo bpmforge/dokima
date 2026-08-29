@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   countReferences,
+  unreachedMarkers,
   findUnreferencedExports,
   isBarrel,
   isTestFile,
@@ -216,4 +217,159 @@ describe('a comment is not a caller (W12-39)', () => {
       expect(names).toContain('runClaimLoop');
     },
   );
+});
+
+describe('the three degrees of unreached (W22-02)', () => {
+  const files = ['/repo/pkg/src/thing.ts', '/repo/pkg/src/other.ts', '/repo/pkg/src/thing.test.ts'];
+  const contents = (decl, other, test) =>
+    new Map([[files[0], decl], [files[1], other], [files[2], test]]);
+
+  it('separates a caller inside the declaring file from one outside it', () => {
+    // The distinction criterion 4 asks for. `production` stays their sum, so
+    // both calibrated baselines are untouched by the split.
+    const { production, inFile, external } = countReferences(
+      'widget',
+      files,
+      contents('export function widget() {}\nwidget();', 'const x = 1;', 'const y = 1;'),
+      files[0],
+    );
+    expect(production).toBe(1);
+    expect(inFile).toBe(1);
+    expect(external).toBe(0);
+  });
+
+  it('counts an outside caller as external, not in-file', () => {
+    const { inFile, external } = countReferences(
+      'widget',
+      files,
+      contents('export function widget() {}', 'widget();', 'const y = 1;'),
+      files[0],
+    );
+    expect(inFile).toBe(0);
+    expect(external).toBe(1);
+  });
+
+  it('reports "no caller anywhere" apart from "tested but never called"', () => {
+    const { unreferenced, findings, buried } = scan();
+    // Disjoint by construction: findings/buried require tests > 0, this
+    // category requires tests === 0. If they ever overlap, the two calibrated
+    // baselines are silently counting something new.
+    const gated = new Set([...findings, ...buried].map((f) => `${f.package}:${f.symbol}`));
+    for (const u of unreferenced) expect(gated.has(`${u.package}:${u.symbol}`)).toBe(false);
+    // Two, both hand-verified: tickets:numberCriteria and
+    // harbormaster:baseProbePath, whose own docstring says it is exported so a
+    // stale probe can be recognised.
+    expect(unreferenced.length).toBe(2);
+  });
+
+  it('adding the new categories did not move either gated number', () => {
+    // The whole point of keeping them disjoint. If this fails, a baseline in
+    // conductor.config.json is now measuring a different thing than it was
+    // calibrated against.
+    const { findings, buried } = scan();
+    expect(findings.length).toBe(47);
+    expect(buried.length).toBe(47);
+  });
+});
+
+describe('the @unreached marker (W22-02)', () => {
+  const files = ['/repo/pkg/src/thing.ts', '/repo/pkg/src/other.ts', '/repo/pkg/src/thing.test.ts'];
+  const contents = (decl, other, test) =>
+    new Map([[files[0], decl], [files[1], other], [files[2], test]]);
+
+  it('parses a symbol and its reason', () => {
+    const { markers, malformed } = unreachedMarkers(
+      '// @unreached widget: kept for the published API, no internal caller by design',
+    );
+    expect(markers.get('widget')).toBe('kept for the published API, no internal caller by design');
+    expect(malformed).toEqual([]);
+  });
+
+  it('REFUSES a marker with no reason rather than honouring it', () => {
+    // A suppression with no recorded reason is indistinguishable from an
+    // accident, which is the prose-intent-as-control this validator replaces.
+    const { markers, malformed } = unreachedMarkers('// @unreached widget');
+    expect(markers.size).toBe(0);
+    expect(malformed).toEqual(['widget']);
+  });
+
+  it('survives a JSDoc block without swallowing the closing delimiter', () => {
+    const { markers } = unreachedMarkers('/**\n * @unreached widget: withheld until W99-01 wires it\n */');
+    expect(markers.get('widget')).toBe('withheld until W99-01 wires it');
+  });
+
+  it(
+    'RED FIXTURE: naming the symbol in the marker must not COUNT as a call. ' +
+      'If comments were not stripped, the marker would suppress through the ' +
+      'wrong mechanism — a false negative wearing the costume of a decision, ' +
+      'with the recorded reason doing no work at all',
+    () => {
+      const { production } = countReferences(
+        'widget',
+        files,
+        contents(
+          'export function widget() {}',
+          '// @unreached widget: withheld until the consumer exists\nconst x = 1;',
+          'const y = 1;',
+        ),
+        files[0],
+      );
+      expect(production).toBe(0);
+    },
+  );
+
+  it('this repo carries no marker yet, so the mechanism is provably inert today', () => {
+    const { suppressed, malformedMarkers } = scan();
+    expect(suppressed).toEqual([]);
+    expect(malformedMarkers).toEqual([]);
+  });
+});
+
+describe('stripComments understands code, not just delimiters (W22-02)', () => {
+  it('RED FIXTURE: a glob in a string is not a block comment', () => {
+    // packages/pipeline/src/modes/feature.ts writes deliverable('src/**', ...).
+    // The original regex read that `/*` as a comment opener and blanked
+    // nineteen lines, so FEATURE_STEPS' only real use vanished and the symbol
+    // was reported as referenced by nothing at all.
+    const text = "const steps = ['src/**'];\nexport const A = 1;\nconst use = A;\n";
+    const stripped = stripComments(text);
+    expect(stripped).toContain('src/**');
+    expect((stripped.match(/\bA\b/g) ?? []).length).toBe(2);
+  });
+
+  it('RED FIXTURE: a regex literal containing /* is not a block comment', () => {
+    // packages/pipeline/src/decompose/linter.ts:172 is `if (!/[/*.]/.test(p))`.
+    // A hand-written scanner that understood strings but not regex literals
+    // read that as a comment opener and buried lintDecomposition's body,
+    // making the three linter functions it calls look dead.
+    const text = 'if (!/[/*.]/.test(p)) { helper(); }\nconst again = helper;\n';
+    const stripped = stripComments(text);
+    expect((stripped.match(/\bhelper\b/g) ?? []).length).toBe(2);
+  });
+
+  it('still blanks real comments — the sharpening must not blind the check', () => {
+    const stripped = stripComments('// widget\n/* widget */\nconst x = 1;');
+    expect(stripped).not.toContain('widget');
+  });
+
+  it('preserves length and line count, so nothing downstream shifts', () => {
+    const text = "// a\nconst s = 'b/**c';\n/* d */ const e = /[/*]/;\n";
+    const stripped = stripComments(text);
+    expect(stripped.length).toBe(text.length);
+    expect(stripped.split('\n').length).toBe(text.split('\n').length);
+  });
+
+  it('the fix removed false positives without moving either gated number', () => {
+    // The whole reason this could be fixed inside this ticket: both ratchets
+    // in conductor.config.json are calibrated against these counts, and a
+    // counting change that moved them would need its own recalibration.
+    const { findings, buried, unreferenced } = scan();
+    expect(findings.length).toBe(47);
+    expect(buried.length).toBe(47);
+    // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
+    // stripper. Both are used in their own files; neither is a finding now.
+    const named = unreferenced.map((u) => u.symbol);
+    expect(named).not.toContain('FEATURE_STEPS');
+    expect(named).not.toContain('IMPROVE_STEPS');
+  });
 });

@@ -14162,7 +14162,7 @@
       ],
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W22-02",
       "lane": "quality",
@@ -14171,7 +14171,12 @@
       "title": "a capability with no live caller is reported, not discovered a year later",
       "write_scope": [
         "scripts/validate-exports.mjs",
-        "scripts/validate-exports.test.mjs"
+        "scripts/validate-exports.test.mjs",
+        "scripts/validate-exports/files.mjs",
+        "scripts/validate-exports/strip.mjs",
+        "scripts/validate-exports/symbols.mjs",
+        "scripts/validate-exports/find.mjs",
+        "scripts/validate-exports/report.mjs"
       ],
       "acceptance": [
         "An exported capability that nothing in the product calls is reported by name",
@@ -14183,7 +14188,17 @@
         "LESSON L-46, the product's most common defect class and the one no test catches. Eight instances found in a single session: runPhaseGate wired to a route no UI calls; \"Onboard existing repo\" registering a folder while runOnboardAnalysis sits unused; requestTimeoutMs stored, validated and threaded but dropped by the two LOCAL provider kinds; streamIdleMs governing every streamed phase with no wire surface; 85 shipped validators of which 2 ran.",
         "Each of those passed its own unit tests. Nothing asserts that a capability is REACHED, so \"built\" and \"in use\" are indistinguishable from inside the codebase.",
         "validate-exports already names ~130 candidate no-caller defects (see the no-caller-sweep memory) \u2014 it exists and is not gated. Making its output trustworthy enough to gate is the work: today a human must confirm each by bundle presence rather than grep.",
-        "FIXTURE AVAILABLE, found 2026-08-28: apps/server/src/cli/index.ts is a live orphan \u2014 a complete CLI entry with zero importers, absent from the bundle, stranded by W10-74. Filed for deletion as W22-05."
+        "FIXTURE AVAILABLE, found 2026-08-28: apps/server/src/cli/index.ts is a live orphan \u2014 a complete CLI entry with zero importers, absent from the bundle, stranded by W10-74. Filed for deletion as W22-05.",
+        "CRITERIA 1 AND 2 WERE ALREADY MET before this ticket \u2014 read first rather than rebuilt. validate-exports has reported no-caller exports by name since W12-10, and has treated a test as non-evidence since the same commit (a finding REQUIRES tests > 0 and production === 0, which is precisely \"reached only from tests is not reached\"). The work was criteria 3 and 4.",
+        "CRITERION 4, the two new degrees: countReferences now returns inFile and external alongside production (production stays their sum, so nothing downstream shifts). That yields \"referenced by NOTHING, not even a test\" \u2014 2, named in full \u2014 and \"no caller outside its own file\" \u2014 184, printed as a COUNT with names in --json, because 184 names would drown the two categories that matter. Both are kept DISJOINT from the two ratcheted sets by construction, and there is a test asserting the gated numbers did not move: findings 47, buried 47, exactly as before.",
+        "CRITERION 3: an @unreached <Symbol>: <reason> marker, inline rather than a JSON allowlist, for the reason P11 in validate-plan.mjs gives in this repo's voice \u2014 a separate list drifts from the thing it describes, while a marker beside the export is reviewed in the same diff. A marker with no reason does not suppress and FAILS the validator; that is a safe thing to fail on in the same change that introduces it, since there are zero markers today so it cannot redden an existing gate.",
+        "THE MARKER HAD A TRAP AND IT WAS CAUGHT BEFORE SHIPPING: if comments were not stripped, naming the symbol in the marker would register as a production reference, so the symbol would vanish from the report through the WRONG mechanism, with the recorded reason doing no work \u2014 a false negative wearing the costume of a decision. Comments are stripped (W12-39), so it is safe, and there is a red fixture pinning exactly that.",
+        "NO MARKER IS APPLIED TO ANY REAL SYMBOL, deliberately. The obvious first candidate is harbormaster:baseProbePath, whose own docstring says it is exported so a stale probe can be recognised \u2014 but it lives in packages/harbormaster, outside this scope, and this ticket had already widened three times. The mechanism is proven by fixtures and is provably inert on this repo today; the first real marker belongs to whoever owns that file.",
+        "THE REAL FIND, and it was not in the acceptance: stripComments could not tell a comment from a comment DELIMITER INSIDE A STRING. packages/pipeline/src/modes/feature.ts writes deliverable(\"src/**\", ...), and that /* opened a phantom block comment running nineteen lines, blanking FEATURE_STEPS' only real use so the symbol read as referenced by nothing at all. A FALSE POSITIVE \u2014 the direction this validator's own header says it must never take, because false positives get the whole check waived \u2014 and invisible, because a wrong answer here looks exactly like the finding the check exists to produce.",
+        "FIXED IT WRONG ONCE FIRST, which is worth recording. A hand-written scanner that understood strings but not REGEX LITERALS then read the /* inside decompose/linter.ts:172's `if (!/[/*.]/.test(pattern))` as a comment opener, buried lintDecomposition's body, and made the three linter functions it calls look dead. That version reported 50 gaps against a calibrated ratchet of 49 and I nearly raised the baseline for it \u2014 with a precedent note in conductor.config.json that would have justified it. The +3 was my own bug, not a reveal.",
+        "THE DISTINCTION IS NOT DECIDABLE BY SCANNING \u2014 is this / a division, a regex, or a comment? \u2014 so it is now PARSED. ts.createSourceFile (already imported) gives every string, template and regex literal's extent; comments are blanked only outside those. Verified behaviour-identical afterwards: gaps 47, buried 47, unchanged, so neither calibrated ratchet moved and no baseline needed touching. Net real effect: two false positives removed from the new zero-reference category (4 -> 2). Scan takes 5.0s.",
+        "SPLIT INTO CHAPTERS (W10-46 pattern), which was forced rather than chosen: the file was 399 lines, ONE under the CODE_BOOK_PROTOCOL cap, so no addition of any size could land without it. validate-exports.mjs stays at its exact path as a pure re-export barrel plus the CLI entry \u2014 ESM has no directory-index resolution and run-validators.mjs, conductor.config.json and the test suite all name it \u2014 so the split moved no call site. Largest chapter is 182 lines.",
+        "THE SPLIT BROKE ONE THING AND BROKE IT LOUDLY: REPO_ROOT is resolved from import.meta.url, and moving the file one directory deeper made it point at scripts/ instead of the repo root. ENOENT on scripts/packages, immediately. That is the good failure for a path constant \u2014 one that silently resolves somewhere plausible is how a scan quietly covers nothing. Counts are identical before and after the split, which is the evidence it preserved behaviour."
       ]
     },
     {

@@ -15,385 +15,46 @@
 // barrel files) because every package barrel re-exports with `export * from`,
 // so the symbol names do not appear in the barrel's own text at all.
 //
-// References are counted by word-boundary text match, which is a heuristic
-// and is stated as one: it OVER-counts (a comment mentioning a name reads as
-// a use), so a symbol this validator reports as unreferenced is unreferenced
-// under a deliberately generous test. False NEGATIVES are the acceptable
-// direction here; false positives would get the whole check waived.
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
+// References are counted by word-boundary text match, which is a heuristic and
+// is stated as one: it OVER-counts (a name in a string, or a same-named local
+// in an unrelated file, reads as a use), so a symbol this validator reports as
+// unreferenced is unreferenced under a deliberately generous test. False
+// NEGATIVES are the acceptable direction here; false positives would get the
+// whole check waived.
+//
+// COMMENTS ARE NOT PART OF THAT OVER-COUNT — this text used to say they were,
+// and it was stale for a whole wave. W12-39 moved `stripComments` inside
+// `countReferences` precisely so an explanation of why nothing calls a
+// function could not be counted as a call. It matters beyond accuracy: it is
+// what makes the `@unreached` marker below safe to write, since naming the
+// symbol in the marker cannot create a phantom reference to it.
+//
+// SPLIT INTO CHAPTERS (W22-02, following W10-46). This file was 399 lines —
+// one under the CODE_BOOK_PROTOCOL cap — so the W22-02 additions could not
+// land without it. The implementation now lives in `scripts/validate-exports/`
+// and this stays a pure re-export barrel PLUS the CLI entry.
+//
+// It keeps this exact path deliberately, for the reason conductor-lib.mjs
+// gives: ESM has no directory-index resolution, and `run-validators.mjs`,
+// `conductor.config.json` and the test suite all name `validate-exports.mjs`.
+// A barrel here means the split moved no call site.
+export {
+  REPO_ROOT,
+  SCAN_ROOTS,
+  isBarrel,
+  isTestFile,
+  isTestSupportFile,
+  walkSourceFiles,
+} from './validate-exports/files.mjs';
+export { countReferences, stripComments } from './validate-exports/strip.mjs';
+export {
+  exportsOfBarrel,
+  moduleExports,
+  unreachedMarkers,
+} from './validate-exports/symbols.mjs';
+export { findUnreferencedExports } from './validate-exports/find.mjs';
+export { BASELINE_FLAG, BURIED_BASELINE_FLAG } from './validate-exports/report.mjs';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = path.resolve(HERE, '..');
-
-const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.mjs'];
-const SCAN_ROOTS = ['apps', 'packages', 'scripts'];
-const IGNORED_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage']);
-
-/** A file whose only purpose is to exercise code cannot establish that the code is used. */
-export function isTestFile(file) {
-  return /\.(test|spec)\.(ts|tsx|mts|mjs)$/.test(file) || /(^|\/)e2e\//.test(file);
-}
-
-/** A barrel re-export is plumbing, never evidence of a consumer. */
-export function isBarrel(file) {
-  return /(^|\/)index\.ts$/.test(file);
-}
-
-export function walkSourceFiles(root, acc = []) {
-  let entries;
-  try {
-    entries = readdirSync(root);
-  } catch {
-    return acc;
-  }
-  for (const entry of entries) {
-    if (IGNORED_DIRS.has(entry)) continue;
-    const full = path.join(root, entry);
-    const stat = statSync(full);
-    if (stat.isDirectory()) walkSourceFiles(full, acc);
-    else if (SOURCE_EXTENSIONS.includes(path.extname(entry))) acc.push(full);
-  }
-  return acc;
-}
-
-/**
- * Public surface of one package: the symbols a consumer can actually import.
- * Resolved through the checker so `export * from './packer/index.js'` yields
- * the symbols behind it — the exact case W12-04 turned on.
- */
-export function exportsOfBarrel(barrelPath) {
-  const program = ts.createProgram([barrelPath], {
-    allowJs: false,
-    noEmit: true,
-    module: ts.ModuleKind.NodeNext,
-    moduleResolution: ts.ModuleResolutionKind.NodeNext,
-    target: ts.ScriptTarget.ES2022,
-    skipLibCheck: true,
-  });
-  const checker = program.getTypeChecker();
-  const source = program.getSourceFile(barrelPath);
-  if (!source) return [];
-  const moduleSymbol = checker.getSymbolAtLocation(source);
-  if (!moduleSymbol) return [];
-  return checker
-    .getExportsOfModule(moduleSymbol)
-    .filter((symbol) => {
-      // VALUE EXPORTS ONLY, and this is the calibration that makes the check
-      // usable rather than noise. The first run reported 529 findings —
-      // instantly waivable, which is how a validator dies. The overwhelming
-      // majority were interfaces and type aliases, and a type nobody names is
-      // harmless: it costs nothing at runtime and disappears at compile time.
-      // A FUNCTION nobody calls is dead code. That is the defect class, so
-      // that is what this reports. `ts.SymbolFlags.Value` is the distinction,
-      // taken from the checker rather than guessed from the name.
-      const flags = symbol.getFlags();
-      const resolved =
-        flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
-      return (resolved.getFlags() & ts.SymbolFlags.Value) !== 0;
-    })
-    .map((symbol) => {
-      const resolved =
-        symbol.getFlags() & ts.SymbolFlags.Alias
-          ? checker.getAliasedSymbol(symbol)
-          : symbol;
-      const declaration = resolved.declarations?.[0];
-      return {
-        name: symbol.getName(),
-        declFile: declaration ? declaration.getSourceFile().fileName : null,
-      };
-    })
-    .filter(
-      (entry) =>
-        entry.name !== 'default' &&
-        // Every package declares one as a scaffold marker; being uncalled is
-        // its entire nature, so reporting all twelve is pure noise.
-        entry.name !== 'PACKAGE_NAME' &&
-        /^[A-Za-z_$][\w$]*$/.test(entry.name),
-    );
-}
-
-/**
- * References to `name` in PRODUCTION source anywhere in the repo — including
- * the declaring package, which an earlier draft of this validator wrongly
- * excluded. Excluding it reported 245 symbols, most of them functions used
- * heavily inside their own package and merely re-exported for API
- * completeness; that is not dead code and reporting it is how a check gets
- * waived. What is left is the real class: exported, tested, and called from
- * NOWHERE that ships.
- *
- * Excluded: the declaration's own file (it necessarily contains the name),
- * every barrel (re-export plumbing is not use), and every test (a test
- * exercising an otherwise-uncalled mechanism is precisely the disguise this
- * defect class wears — W11-04's `secretValues` had tests and no callers).
- */
-export function countReferences(name, files, contentsByFile, declFile, cache = new Map()) {
-  // STRIPPING LIVES HERE, not in the caller (W12-39). It was in
-  // `findUnreferencedExports` first, which meant the guarantee "a comment is
-  // not a caller" held only as long as every future caller remembered to
-  // pre-strip — and a fixture written against this function passed while
-  // proving nothing. Cached so the work is still done once per file per run.
-  const code = (file) => {
-    if (!cache.has(file)) cache.set(file, stripComments(contentsByFile.get(file) ?? ''));
-    return cache.get(file);
-  };
-  const pattern = new RegExp(`\\b${name}\\b`);
-  let production = 0;
-  let tests = 0;
-  const testFiles = [];
-  const globalPattern = new RegExp(`\\b${name}\\b`, 'g');
-  for (const file of files) {
-    if (declFile && path.resolve(file) === path.resolve(declFile)) {
-      // NOT skipped outright — that was the systematic false positive. A
-      // symbol whose only production consumer is a sibling factory in its own
-      // file (`createMacKeychainCredentialStore`, called by
-      // `resolveCredentialStore` beside it) is used, not dead. The
-      // declaration itself accounts for exactly one occurrence, so more than
-      // one means something in the file actually calls it.
-      const occurrences = (code(file).match(globalPattern) ?? []).length;
-      if (occurrences > 1) production++;
-      continue;
-    }
-    if (isBarrel(file)) continue;
-    if (!pattern.test(code(file))) continue;
-    if (isTestFile(file)) {
-      tests++;
-      testFiles.push(path.relative(REPO_ROOT, file));
-    } else {
-      production++;
-    }
-  }
-  return { production, tests, testFiles };
-}
-
-/**
- * Value symbols a MODULE exports that its package barrel does not (W12-38).
- *
- * THE BLIND SPOT THIS CLOSES, in the shape of the check's own defect class:
- * `exportsOfBarrel` sees only what a barrel publishes, so a complete, tested
- * engine never added to the barrel is invisible. The instance that exposed it
- * is `runEscalationPolicy` — the D-024 option (b) state machine, tested, with
- * no caller anywhere, absent from every report while the validator printed 43
- * gaps. That is the WORSE case, not a lesser one: an uncalled export is
- * reachable and unused, while an unexported implementation cannot be adopted
- * without a separate barrel change — how W12-04's packer sat dormant.
- *
- * Parsed, not type-checked: this needs the names a file declares with
- * `export`, which `ts.createSourceFile` gives for the price of a parse. There
- * is no `export *` to resolve here — that is the barrel pass's job.
- */
-/**
- * The same text with comments blanked out (W12-38).
- *
- * The reference count is a word-boundary text match, and the module doc-block
- * this validator lives beside says plainly that it OVER-counts: "a comment
- * mentioning a name reads as a use". That was an acceptable bias for the
- * barrel pass, and it is fatal for the buried one — `runEscalationPolicy`, the
- * instance that motivated this whole check, is named twice in a prose comment
- * in `loop-land-policy.ts` explaining why that loop deliberately does NOT call
- * it. Counting an explanation of why nothing calls a function as a call is the
- * exact inversion of what is being measured.
- *
- * Blanked, not removed: two identifiers either side of a stripped comment
- * must not glue into a third word that never existed. */
-export function stripComments(text) {
-  return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) =>
-    match.replace(/[^\n]/g, ' '),
-  );
-}
-
-/**
- * Test SUPPORT in a production-shaped file. Recorded fixtures and fake
- * adapters are exported for tests and called by nothing else BY DESIGN (law
- * 9a is why they exist), so reporting them reports the testing discipline as
- * a defect — 30 of the first 90 findings. Matched on the path, not the symbol
- * name: the file's location is the author's own statement of intent.
- */
-export function isTestSupportFile(file) {
-  const base = path.basename(file.replace(/\\/g, '/'));
-  // Named on the file (`copilot-fixtures.ts`), or under a `fixtures/` dir.
-  return (
-    /(^|[-.])(fixtures?|test-helpers?|test-support)\.[cm]?tsx?$/.test(base) ||
-    /(^|\/)(fixtures?|__fixtures__)\//.test(file.replace(/\\/g, '/'))
-  );
-}
-
-export function moduleExports(file, text) {
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
-  const names = [];
-  for (const statement of source.statements) {
-    const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
-    const exported = modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
-    if (!exported) continue;
-    // `export default` has no name to search for, and re-export statements
-    // (`export { x } from ...`) are plumbing, same as a barrel.
-    if (modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)) continue;
-    if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
-      if (statement.name) names.push(statement.name.text);
-    } else if (ts.isVariableStatement(statement)) {
-      for (const decl of statement.declarationList.declarations) {
-        // VALUE exports only, matching the barrel pass's calibration: a type
-        // nobody names costs nothing at runtime; a function nobody calls is
-        // dead code.
-        if (ts.isIdentifier(decl.name)) names.push(decl.name.text);
-      }
-    }
-  }
-  return names;
-}
-
-export function findUnreferencedExports({ packagesDir = path.join(REPO_ROOT, 'packages') } = {}) {
-  const files = SCAN_ROOTS.flatMap((root) => walkSourceFiles(path.join(REPO_ROOT, root)));
-  const contentsByFile = new Map();
-  for (const file of files) {
-    try {
-      contentsByFile.set(file, readFileSync(file, 'utf8'));
-    } catch {
-      contentsByFile.set(file, '');
-    }
-  }
-
-  /** One strip per file for the whole run, shared by both passes. */
-  const stripCache = new Map();
-  const findings = [];
-  /** Names the barrel pass already judged — the buried pass must not re-report them. */
-  const published = new Set();
-  const packages = readdirSync(packagesDir).filter((entry) => {
-    try {
-      return statSync(path.join(packagesDir, entry, 'src', 'index.ts')).isFile();
-    } catch {
-      return false;
-    }
-  });
-
-  for (const pkg of packages) {
-    const barrel = path.join(packagesDir, pkg, 'src', 'index.ts');
-    for (const { name, declFile } of exportsOfBarrel(barrel)) {
-      const { production, tests, testFiles } = countReferences(
-        name,
-        files,
-        contentsByFile,
-        declFile,
-        stripCache,
-      );
-      // TESTED BUT NEVER CALLED — the signal, and the reason this is narrower
-      // than "referenced nowhere" (135 symbols, with visible false positives
-      // from sibling factories in a symbol's own file). A symbol nothing
-      // references at all is unused API surface: harmless, and too noisy to
-      // gate on. A symbol with tests proving it works and NO production
-      // caller is a mechanism someone built, verified, and never wired —
-      // exactly W11-04, W11-16, W12-04 and W12-05.
-      if (production === 0 && tests > 0) {
-        findings.push({ package: pkg, symbol: name, tests, testFiles });
-      }
-      published.add(name);
-    }
-  }
-
-  // W12-38: the same test, one layer deeper — module exports the barrel never
-  // published. Reported SEPARATELY rather than folded into `findings`, because
-  // the two have different remedies (wire it up vs. wire it up AND export it)
-  // and because merging them would silently move the calibrated 43 baseline.
-  const buried = [];
-  for (const file of files) {
-    if (isTestFile(file) || isBarrel(file) || isTestSupportFile(file)) continue;
-    const rel = path.relative(REPO_ROOT, file);
-    if (!rel.startsWith(`packages${path.sep}`)) continue;
-    const pkg = rel.split(path.sep)[1];
-    for (const name of moduleExports(file, contentsByFile.get(file))) {
-      // Already judged by the barrel pass; reporting it twice would double-count
-      // the debt and make the two numbers impossible to read against each other.
-      if (published.has(name)) continue;
-      const { production, tests } = countReferences(name, files, contentsByFile, file, stripCache);
-      if (production === 0 && tests > 0) buried.push({ package: pkg, symbol: name, file: rel });
-    }
-  }
-
-  return { findings, buried, scanned: files.length, packages: packages.length };
-}
-
-/**
- * A RATCHET, not a clean-zero gate. The measured baseline is real debt this
- * repo already carries; failing every ticket for it is the mistake
- * `conductor.config.json`'s own `repoWide` note warns about ("only honest
- * while it reports ZERO — otherwise every ticket fails for debt it did not
- * create"). A baseline the count may not EXCEED gives the property that
- * actually matters: the next mechanism wired to nothing fails the gate that
- * files it, while the existing backlog stays visible and non-blocking.
- * Lower it whenever the count drops; never raise it to make a ticket pass.
- */
-export const BASELINE_FLAG = '--max';
-/** W12-38's own baseline. Separate flag, separate number: the two passes have different remedies and merging them would silently move the calibrated 43. */
-export const BURIED_BASELINE_FLAG = '--max-buried';
-
-function main() {
-  const jsonOnly = process.argv.includes('--json');
-  const maxIndex = process.argv.indexOf(BASELINE_FLAG);
-  const max = maxIndex === -1 ? null : Number(process.argv[maxIndex + 1]);
-  const buriedIndex = process.argv.indexOf(BURIED_BASELINE_FLAG);
-  const maxBuried = buriedIndex === -1 ? null : Number(process.argv[buriedIndex + 1]);
-  const { findings, buried, scanned, packages } = findUnreferencedExports();
-
-  if (!jsonOnly) {
-    const byPackage = new Map();
-    for (const finding of findings) {
-      if (!byPackage.has(finding.package)) byPackage.set(finding.package, []);
-      byPackage.get(finding.package).push(finding.symbol);
-    }
-    for (const [pkg, symbols] of [...byPackage].sort()) {
-      console.log(`  ${pkg}: ${symbols.length} unreferenced export(s)`);
-      for (const symbol of symbols.sort()) console.log(`    - ${symbol}`);
-    }
-    const buriedByPackage = new Map();
-    for (const finding of buried) {
-      if (!buriedByPackage.has(finding.package)) buriedByPackage.set(finding.package, []);
-      buriedByPackage.get(finding.package).push(`${finding.symbol}  (${finding.file})`);
-    }
-    for (const [pkg, symbols] of [...buriedByPackage].sort()) {
-      console.log(`  ${pkg}: ${symbols.length} module export(s) the barrel never published`);
-      for (const symbol of symbols.sort()) console.log(`    - ${symbol}`);
-    }
-    console.log(
-      `Inventory: ${packages} package barrels - ${scanned} source files scanned - ` +
-        `${findings.length} export(s) with no non-test caller outside their own package - ` +
-        `${buried.length} tested module export(s) with no caller AND no barrel entry`,
-    );
-  }
-  const over = max !== null && Number.isFinite(max) && findings.length > max;
-  const overBuried =
-    maxBuried !== null && Number.isFinite(maxBuried) && buried.length > maxBuried;
-  console.log(
-    JSON.stringify({
-      validator: 'validate-exports',
-      gaps: findings.length,
-      buried: buried.length,
-      exit: over || overBuried ? 1 : 0,
-      items: findings.map((f) => `${f.package}: ${f.symbol}`),
-      buriedItems: buried.map((f) => `${f.package}: ${f.symbol}`),
-    }),
-  );
-  if (overBuried) {
-    console.error(
-      `FAIL: ${buried.length} module export(s) are tested, called by no production ` +
-        `code, and absent from their package barrel, over the baseline of ` +
-        `${maxBuried}. That is the WORSE shape of the defect: not merely unused, ` +
-        `but unreachable without a separate barrel change — how W12-04's packer ` +
-        `and W12-09's code index each stayed dormant for waves. Wire it up, or ` +
-        `stop exporting it; do not raise the baseline.`,
-    );
-    process.exit(1);
-  }
-  if (over) {
-    console.error(
-      `FAIL: ${findings.length} exported symbol(s) are tested but called from no ` +
-        `production code, over the baseline of ${max}. Something was built, ` +
-        `verified, and wired to nothing — the defect class W12-10 exists to catch. ` +
-        `Wire it up or stop exporting it; do not raise the baseline.`,
-    );
-    process.exit(1);
-  }
-}
+import { main } from './validate-exports/report.mjs';
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
