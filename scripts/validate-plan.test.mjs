@@ -182,3 +182,51 @@ describe('P12 acceptance-vs-write_scope report (W22-03)', () => {
     expect(out).not.toContain('P12');
   });
 });
+
+describe('P13 deferred-work report (2026-08-29)', () => {
+  const deferral = 'the cross-run half is worth a follow-up';
+
+  it('reports a ticket that defers work and names no ticket to carry it', () => {
+    // Found by being caught: across one session five deferrals were written
+    // down honestly, in the right place, and filed nowhere.
+    const { code, out } = runValidator([ticket({ notes: [deferral] })]);
+    expect(code).toBe(0); // report, never a failure
+    expect(out).toContain('REPORT: P13');
+    expect(out).toContain('W1-01');
+  });
+
+  it('is silent once the note names an OPEN ticket that carries it', () => {
+    const { out } = runValidator([
+      ticket({ id: 'W1-01', notes: [deferral, 'CARRIED FORWARD as W1-02'] }),
+      ticket({ id: 'W1-02', title: 'the carrier', notes: [] }),
+    ]);
+    expect(out).not.toContain('W1-01 defers work');
+  });
+
+  it('a DONE ticket is not a carrier — history is not somewhere for work to live', () => {
+    // "Mentions any ticket" matched almost everything, because this repo's
+    // notes cite W-ids constantly, and the check reported zero — the L-47
+    // failure it exists to prevent.
+    const { out } = runValidator([
+      ticket({ id: 'W1-01', notes: [deferral, 'see W1-02'] }),
+      ticket({ id: 'W1-02', title: 'already done', status: 'done', notes: [] }),
+    ]);
+    expect(out).toContain('W1-01 defers work');
+  });
+
+  it('looks across ALL of a ticket’s notes, not just the deferring one', () => {
+    // A deferral in one note and its carrier in another is how a ticket SHOULD
+    // read. An earlier draft checked per-note and reported all five deferrals
+    // it had just been given carriers for.
+    const { out } = runValidator([
+      ticket({ id: 'W1-01', notes: ['unrelated', deferral, 'filed as W1-02'] }),
+      ticket({ id: 'W1-02', title: 'the carrier', notes: [] }),
+    ]);
+    expect(out).not.toContain('W1-01 defers work');
+  });
+
+  it('says nothing about a ticket that defers nothing', () => {
+    const { out } = runValidator([ticket({ notes: ['ordinary evidence'] })]);
+    expect(out).not.toContain('REPORT: P13');
+  });
+});
