@@ -10,9 +10,10 @@ export { CliUsageError } from './cli-usage-error.js';
  *
  * Node's `parseArgs` throws a native TypeError with code
  * ERR_PARSE_ARGS_UNKNOWN_OPTION on a flag it does not know. `runCli` catches
- * only `CliUsageError`, so that reached the top-level handler in cli/index.ts
- * and printed `err.stack` — a node stack trace through parse_args and
- * dist/main.js. LIVE: `dokima board --wrongflag` and
+ * only `CliUsageError`, so that reached the top-level handler in
+ * `bootstrap/main.ts` and printed `err.stack` — a node stack trace through
+ * parse_args and dist/main.js. (This comment said `cli/index.ts` until W22-05;
+ * that file was a W10-74 orphan no user ever ran.) LIVE: `dokima board --wrongflag` and
  * `dokima claim T1 --actor me --bogus` both did it.
  *
  * The neighbouring cases were already right — `dokima --foo` names the unknown

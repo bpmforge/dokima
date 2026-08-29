@@ -340,8 +340,8 @@ describe('runPackagedCli', () => {
   /**
    * W10-74. The lifecycle verbs were fully implemented in `cli/run.ts` and
    * reachable from nothing: `build.mjs` bundles only `bootstrap/main.ts`, no
-   * package.json declared a bin for `cli/index.ts`, and this dispatch answered
-   * `unknown command` for every one of them. An installed user could create a
+   * package.json declared a bin for `cli/index.ts` (an orphan since deleted in
+   * W22-05), and this dispatch answered `unknown command` for every one of them. An installed user could create a
    * board through the product and never advance a single ticket on it.
    *
    * Reachability alone is not the fix, so this asserts the JOURNEY: address a

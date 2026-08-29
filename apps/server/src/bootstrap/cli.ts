@@ -246,7 +246,10 @@ function readVersion(): string {
  * The board/ticket lifecycle (W10-74). These were fully implemented in
  * `cli/run.ts` and reachable from NOTHING: `build.mjs` bundles only
  * `bootstrap/main.ts`, no package.json declared a bin for `cli/index.ts`, and
- * this dispatch answered `unknown command` for every one of them. So an
+ * this dispatch answered `unknown command` for every one of them. (That entry
+ * file survived the fold as an orphan and was deleted in W22-05, so the path
+ * named here no longer exists — the history is why this dispatch looks the way
+ * it does.) So an
  * installed user could create a board and never advance a ticket on it —
  * measured, and the reason FR-C7 was unmet in the shipped artifact.
  */

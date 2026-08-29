@@ -14250,14 +14250,18 @@
       "points": 1,
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
       "depends_on": [],
       "title": "delete the orphaned CLI entry W10-74 stranded",
       "write_scope": [
-        "apps/server/src/cli/index.ts"
+        "apps/server/src/cli/index.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/parse.test.ts",
+        "apps/server/src/bootstrap/cli.ts",
+        "apps/server/src/bootstrap/cli.test.ts"
       ],
       "acceptance": [
         "apps/server/src/cli/index.ts is gone, and the packaged CLI still answers every verb it answered before",
@@ -14265,7 +14269,10 @@
       ],
       "notes": [
         "W10-74 folded runCli into bootstrap/cli.ts and left this file behind. It has no importers, is not an entryPoint in build.mjs, and is not the root bin target \u2014 but it reads like the CLI entry, and it cost W22-01 a claim and a scope correction because three ticket notes and a LESSONS row all named it as the site of a defect that was really in bootstrap/main.ts.",
-        "Deliberately its own ticket rather than folded into W22-01: deleting a file is not the same change as fixing an error default, and bundling them would hide one behind the other."
+        "Deliberately its own ticket rather than folded into W22-01: deleting a file is not the same change as fixing an error default, and bundling them would hide one behind the other.",
+        "SCOPE WIDENED at claim time, and this time the L-54 read caught it BEFORE the claim rather than after. Criterion 2 (no comment still points at the orphan as the place errors surface) cannot be met by deleting a file: the two comments that made that false claim live in cli/parse.ts and cli/parse.test.ts. Both were verified UNOWNED by any open ticket, as were the two bootstrap files. Deleting alone would have left the misinformation that cost W22-01 a claim.",
+        "FOUR POINTERS, TWO KINDS. parse.ts and parse.test.ts asserted that a parseArgs TypeError \"reached the top-level handler in cli/index.ts\" \u2014 false, it reached bootstrap/main.ts; corrected, with the correction dated so the next reader knows why. bootstrap/cli.ts and cli.test.ts name the file accurately, in the past tense, recording W10-74; those keep their history and gain one clause saying the path no longer exists, so a future grep that finds nothing is not left wondering.",
+        "PROVEN NOT INERT: rebuilt and drove all eight lifecycle verbs through the real bin (cli-entry.mjs). Each answers \"Unknown option --help\" \u2014 an unknown OPTION, meaning the command was recognised and dispatched \u2014 rather than \"unknown command\", which is what W10-74 was filed to fix. Bundle size unchanged at 1056 KB, which is the expected result: the deleted file was never in it."
       ]
     },
     {

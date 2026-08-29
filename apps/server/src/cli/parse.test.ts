@@ -161,7 +161,8 @@ describe('a mistyped flag refuses, it does not crash (W21-91)', () => {
         caught = err;
       }
       // A CliUsageError is what runCli turns into exit 2 with one line; a bare
-      // TypeError is what reached cli/index.ts and printed err.stack.
+      // TypeError is what reached the top-level catch in bootstrap/main.ts and
+      // printed err.stack. W22-01 made that catch refuse by default.
       expect(caught).toBeInstanceOf(CliUsageError);
       const message = (caught as Error).message;
       expect(message).toMatch(/Unknown option/);
