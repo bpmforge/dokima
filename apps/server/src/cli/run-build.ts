@@ -37,6 +37,7 @@ import {
   type LandRungSessions,
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
+import { ensureSessionActor } from './identity.js';
 import { assertSandboxOrWaiver } from './sandbox-preflight.js';
 import { signingKeyOrRefusal } from './signing-key.js';
 
@@ -109,6 +110,7 @@ import {
  * engine it needed (`runLandLoop`: claim -> session -> close gate -> land)
  * was implemented in W3-01a/b/c and exported from nothing until W10-78.
  */
+
 export async function executeBuildRun(
   log: EventLog,
   command: BuildRunCommand,
@@ -282,9 +284,13 @@ export async function executeBuildRun(
     return 2;
   }
 
+  // W21-70: the SESSION verbs run as the machine, not as whoever launched
+  // the run. `conflictWatch.humanActorId` below keeps the human where a human
+  // is genuinely meant — the split this line completes.
+  const sessionActorId = ensureSessionActor(log, io.now);
   const landOptions = {
       log,
-      actorId: command.actorId,
+      actorId: sessionActorId,
       projectId: command.projectId,
       // W21-32: in scope here all along, never passed — hence run=null events.
       runId,

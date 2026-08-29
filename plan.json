@@ -13214,23 +13214,30 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-70",
       "title": "run start hands the maker the launching human\u2019s identity, so that human can never accept the work",
       "write_scope": [
-        "apps/server/src/cli/run-cmd.ts",
         "apps/server/src/cli/run-build.ts",
-        "apps/server/src/cli/run-build.test.ts"
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/cli/identity.ts"
       ],
       "notes": [
         "LIVE: PLAN-vault-002a landed on the first attempt of run 54, and `dokima accept PLAN-vault-002a --actor founder` was refused [SELF_ACCEPT]: \"reviewer founder is also the owner (maker != verifier)\". The ledger shows why \u2014 ticket.claimed (seq 4209), ticket.started (4210) and ticket.closed (4432) all carry actor_id=founder, because the run was started with `run start --actor founder`. The bookkeeping actor for the RUN (FR-C7) is propagated into the SESSION lifecycle verbs.",
         "C-4 says reviewer identities are distinct BY CONSTRUCTION. Here distinctness depends on the operator remembering to type an --actor that is not their own id \u2014 distinct by convention, which is the thing C-4 exists to forbid. The failure mode is silent until the first ticket actually lands, which is why fifteen runs of parking never surfaced it.",
         "Note what was NOT broken, so the fix does not overreach: the machine review DID have mechanically distinct identities (review.verdict seq 4434: reviewerModel qwen/qwen3.8-27b, makerModel qwen/qwen3-coder-next). Only the human accept step collides.",
         "CANDIDATE FIX: run start derives a machine actor for the session lifecycle verbs regardless of the bookkeeping actor, or refuses an --actor that is also a registered human reviewer. Prefer the former; a refusal still leaves distinctness to the operator.",
-        "ACCEPTANCE: a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it; that human can accept the resulting ticket; the run bookkeeping still records who launched it."
+        "ACCEPTANCE: a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it; that human can accept the resulting ticket; the run bookkeeping still records who launched it.",
+        "FIXED with the candidate the ticket preferred: the session verbs derive a machine actor regardless of the bookkeeping actor. A stable SESSION_ACTOR_ID (\"dokima-agent\", kind machine) rather than one per run \u2014 the agent is one actor, and per-event provenance is already carried by runId (W21-32). The refusal alternative was rejected for the reason the ticket gives: it still leaves distinctness to the operator.",
+        "EVERY actorId SITE WAS CLASSIFIED BEFORE ANY WAS CHANGED, because most of them are correct. run-build.ts passes command.actorId to eleven places: sandbox waiver, MCP preload, forge mirror, approval notifications, model preflight, the R0 consult hook, the review pass, post-run consolidation and the run bookkeeping all legitimately mean the human who launched the run. Exactly ONE \u2014 landOptions.actorId, which loop-claim.ts hands to claimTicket/startTicket/releaseTicket \u2014 is the session lifecycle, and only that one moved.",
+        "THE SPLIT WAS ALREADY ANTICIPATED IN THE CODE: the line immediately below reads conflictWatch: { humanActorId: command.actorId } (W16-10). Somebody had already needed to say \"the human specifically\" here; this change completes that distinction rather than inventing it.",
+        "kind: \"machine\" IS LOAD-BEARING, not decoration. mint.ts and waiver-policy.ts both refuse a non-human signer (FR-P2), so declaring the kind is what stops this identity from quietly acquiring powers that belong to a person. There is a fixture asserting the kind.",
+        "MY FIXTURE ALMOST PROVED NOTHING, AND ITS OWN GUARD CAUGHT IT. The first run found ZERO ticket.claimed/started events and failed on expect(rows.length).toBeGreaterThan(0) \u2014 an assertion added precisely because \"no rows\" would pass a \"not founder\" check while proving nothing. The cause was mine twice over: I queried a column named type (the schema calls it event_type) and then filtered EventRecord.type (the record calls it eventType). The run had landed the ticket correctly the whole time.",
+        "RED PROVEN by stashing run-build.ts: 2 of 38 fail, with the defect stated exactly \u2014 \"expected 'founder' not to be 'founder'\".",
+        "THE HELPER LIVES IN identity.ts, and not by preference. Putting it in run-build.ts took that file to 422 lines, over the 400-line CODE_BOOK_PROTOCOL cap, and the repo-wide file-size validator failed \u2014 correctly. run-cmd.ts already imports run-build.ts, so hosting it there would have been an import cycle. identity.ts already owns ensureActorIdentity, so identity provisioning is now in one place; run-build.ts is back to 390 lines."
       ],
       "acceptance": [
         "a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it",

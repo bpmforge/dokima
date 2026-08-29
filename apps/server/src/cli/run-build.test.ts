@@ -3,7 +3,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createIdentity, type EventLog } from '@dokima/events';
+import { createIdentity, listEvents, type EventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import { git } from '@dokima/git';
 import {
@@ -13,6 +13,7 @@ import {
 } from '@dokima/shared';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { executeBuildRun, tokenizeAgentCommand } from './run-build.js';
+import { SESSION_ACTOR_ID } from './identity.js';
 import { createWatchedExternalSpawn } from './run-build-spawn.js';
 import { resolvePolicyScope,
   MAX_TOOL_ITERATIONS_CEILING,
@@ -822,3 +823,104 @@ describe('resolveRunLimits (W13-47)', () => {
     });
   });
 }, SUBPROCESS_TIMEOUT_MS);
+
+describe('the session runs as the machine, not as whoever launched it (W21-70, C-4)', () => {
+  let project: TempProject;
+
+  afterEach(async () => {
+    await project?.cleanup();
+  });
+
+  it(
+    'RED FIXTURE: a run started with a HUMAN --actor claims and starts the ' +
+      'ticket under a machine identity. Before this, `run start --actor founder` ' +
+      'made founder the OWNER, and `dokima accept --actor founder` was then ' +
+      'refused SELF_ACCEPT — C-4 distinctness left to whoever typed the flag',
+    async () => {
+      project = await gitRepoProject();
+      const log = openWritableLog(resolveDbPath(project.cwd));
+      seedTicket(log);
+      createIdentity(log, { id: 'founder', name: 'founder', kind: 'human' });
+      const agent = await writeCapturingAgent(project.cwd, `${project.cwd}/captured.txt`);
+      await writeProjectSetting(project.cwd, {
+        key: AGENT_RUNNER_SETTINGS_KEY,
+        value: { kind: 'external', command: agent },
+        actorId: 'test',
+      });
+      const io = collectIO();
+      try {
+        await withSigningKey(() =>
+          executeBuildRun(log, { projectId: 'p', actorId: 'founder' }, 'run-1', {
+            cwd: project.cwd,
+            ...io.io,
+            now: NOW,
+          }),
+        );
+
+        const rows = listEvents(log).filter(
+          (e) => e.eventType === 'ticket.claimed' || e.eventType === 'ticket.started',
+        );
+
+        // The whole ticket in one assertion: the lifecycle verbs must not be
+        // the human, and there must BE lifecycle verbs (an empty result would
+        // pass a "not founder" check while proving nothing).
+        expect(rows.length).toBeGreaterThan(0);
+        for (const row of rows) {
+          expect(row.actorId).not.toBe('founder');
+          expect(row.actorId).toBe(SESSION_ACTOR_ID);
+        }
+      } finally {
+        log.close();
+      }
+    },
+    SUBPROCESS_TIMEOUT_MS,
+  );
+
+  it('the machine identity is kind "machine", so it cannot sign a human-only receipt', async () => {
+    // Not decoration. mint.ts and waiver-policy.ts both refuse a non-human
+    // signer, so declaring the kind is what stops this identity from quietly
+    // acquiring powers that belong to a person (FR-P2).
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    seedTicket(log);
+    createIdentity(log, { id: 'founder', name: 'founder', kind: 'human' });
+    const io = collectIO();
+    try {
+      await withSigningKey(() =>
+        executeBuildRun(log, { projectId: 'p', actorId: 'founder' }, 'run-1', {
+          cwd: project.cwd,
+          ...io.io,
+          now: NOW,
+        }),
+      );
+      const identity = log.db
+        .prepare(`SELECT kind FROM identities WHERE id = ?`)
+        .get(SESSION_ACTOR_ID) as { kind: string } | undefined;
+      expect(identity?.kind).toBe('machine');
+    } finally {
+      log.close();
+    }
+  }, SUBPROCESS_TIMEOUT_MS);
+
+  it('the run bookkeeping still records the human who launched it', async () => {
+    // Acceptance 3. The split must not lose the answer to "who started this".
+    project = await gitRepoProject();
+    const log = openWritableLog(resolveDbPath(project.cwd));
+    seedTicket(log);
+    createIdentity(log, { id: 'founder', name: 'founder', kind: 'human' });
+    const io = collectIO();
+    try {
+      await withSigningKey(() =>
+        executeBuildRun(log, { projectId: 'p', actorId: 'founder' }, 'run-1', {
+          cwd: project.cwd,
+          ...io.io,
+          now: NOW,
+        }),
+      );
+      const byFounder = listEvents(log).filter((e) => e.actorId === 'founder');
+      expect(byFounder.length).toBeGreaterThan(0);
+    } finally {
+      log.close();
+    }
+  }, SUBPROCESS_TIMEOUT_MS);
+});
