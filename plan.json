@@ -14339,7 +14339,8 @@
         "BASELINE LOWERED 49 -> 47, which is the ratchet's own instruction (\"lower it whenever the number drops\") and the direction that costs nothing to obey. The drift existed precisely BECAUSE the number was only enforced in one of its two callers, so nobody was watching it. --max-buried was already correct at 47. Recorded in conductor.config.json in the same idiom as the three notes already there.",
         "PROVEN TO BITE, not assumed: set --max to 46, ran pnpm validate, got exit 1 with the validator's real message (\"47 exported symbol(s) are tested but called from no production code, over the baseline of 46\"), then restored. Before this ticket the same command exited 0.",
         "THE SCRIPT IS NOW IMPORTABLE, which the drift test needs, so its body moved into main() behind the same entry guard validate-exports.mjs uses. That guard is only safe because this script is invoked directly by pnpm validate and never imported by a wrapper \u2014 the trap W22-01 hit, where cli-entry.mjs imports the bundle so argv[1] and import.meta.url never match. There is a test that runs the script as a subprocess and asserts it still does the work, which is the check that would catch a guard that never matches.",
-        "SCOPE WIDENED by scripts/run-validators.test.mjs, a new file. THIRD TIME THIS SESSION my own filing named source files without their test twins (W22-01, W22-07, this). Recording it is no longer enough \u2014 filed as W22-09, since validate-plan can check it mechanically."
+        "SCOPE WIDENED by scripts/run-validators.test.mjs, a new file. THIRD TIME THIS SESSION my own filing named source files without their test twins (W22-01, W22-07, this). Recording it is no longer enough \u2014 filed as W22-09, since validate-plan can check it mechanically.",
+        "CORRECTION, 2026-08-28: this ticket's note and commit message say the missing-test-twin mistake had happened three times this session. It was twice \u2014 this ticket and W22-07. W22-01's filed write_scope included index.test.ts; its widening was because the file was dead, a different defect. Verified against commit fcd6a51. W22-09 measured the proposed mechanical check and closed without building it."
       ]
     },
     {
@@ -14418,25 +14419,31 @@
       "points": 2,
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
       "depends_on": [],
-      "title": "a write_scope that names a source file without its test twin is reported",
+      "title": "MEASURED AND NOT BUILT: a missing test twin is not mechanically distinguishable from a normal scope",
       "write_scope": [
         "scripts/validate-plan.mjs",
         "scripts/validate-plan.test.mjs"
       ],
       "acceptance": [
-        "A ticket whose write_scope names a source file but not its test file is reported when the plan is validated",
-        "A ticket that genuinely needs no test \u2014 documentation, configuration \u2014 is not reported",
-        "The report names the missing path, so the fix is a copy-paste"
+        "The precision of the proposed check is measured against the whole board before any of it is wired to an exit code",
+        "If the measurement says the check would be noise, that finding is recorded and the check is not built"
       ],
       "notes": [
         "FILED 2026-08-28 after making the same mistake three times in one session, all in tickets I filed myself: W22-01 (index.ts without index.test.ts), W22-07 (three gateway sources, one test twin), W22-06 (run-validators.mjs without its test). Each cost a claim-time scope widening and a note explaining it.",
         "THIS IS THE MECHANICAL VERSION OF L-54, and unlike the P12 report it needs no prose inference: a write_scope entry is a path, and whether a sibling <name>.test.<ext> exists is a filesystem question. Precision should be far better than P12's measured 13% \u2014 MEASURE IT BEFORE WIRING IT TO AN EXIT CODE, exactly as W22-03 did, and report rather than fail if the count says so.",
-        "THE EXCLUSION THAT MATTERS: docs/**, conductor.config.json, plan.json, content/** and .json/.md entries generally have no test twin and must not be reported, or the check is noise on its first run."
+        "THE EXCLUSION THAT MATTERS: docs/**, conductor.config.json, plan.json, content/** and .json/.md entries generally have no test twin and must not be reported, or the check is noise on its first run.",
+        "CLOSED WITH A FINDING RATHER THAN AN IMPLEMENTATION, following the precedent W12-22 sets in its own acceptance: if verification shows there is no supported path, close the ticket with that finding rather than building something that works by accident.",
+        "THE MEASUREMENT, across all 474 tickets: a rule of \"write_scope names a concrete source file but not its <name>.test.<ext> sibling\" (globs in the same scope resolved, so a scope covering the twin by pattern is not counted) fires 17 times on open tickets and 420 times on DONE ones. Of those 420, the twin actually exists on disk in 204 cases \u2014 meaning the ticket edited a source file whose tests it could not touch, and shipped anyway.",
+        "SANITY-CHECKED rather than trusted, because 420 looked like a script bug: W3-12 lists packages/git/src/glob.ts without glob.test.ts, which exists. W4-02 lists apps/server/src/api/server.ts without server.test.ts, which exists. Both shipped. That is the normal case, not a defect \u2014 a ticket often changes a source file without needing to change its tests, and a shared composition file like server.ts is edited by many tickets whose tests live elsewhere.",
+        "NO HIGH-PRECISION VARIANT SURVIVED EITHER. \"Twin exists on disk but is out of scope\" is 204 done / 12 open. \"Twin does not exist at all\" is 5 open, and every one is legitimate: two e2e helpers, a types-and-constants module, and two loop-land chapters whose tests aggregate into a sibling suite. The chapter pattern this repo uses (W10-46) means a source file frequently has no twin BY DESIGN.",
+        "SO THE CHECK WOULD BE NOISE, and adding a noisy report is not neutral \u2014 L-47 says a check nobody trusts decays into a check nobody reads, and P12 already spends the board's attention budget on one report. Two would devalue both.",
+        "CORRECTION TO THIS TICKET'S OWN PREMISE, which was wrong when I filed it an hour ago. I wrote that the same mistake had been made three times this session. It was TWICE \u2014 W22-07 (three gateway sources, one test twin) and W22-06 (run-validators.mjs without its test). W22-01 was NOT an instance: its filed write_scope was [\"apps/server/src/cli/index.ts\",\"apps/server/src/cli/index.test.ts\"], twin included; its widening happened because the file turned out to be DEAD. Verified against the filing commit fcd6a51. The same overstatement is in W22-06's commit message, which cannot be rewritten, so the correction is recorded here and on W22-06.",
+        "WHAT ACTUALLY GUARDS THIS: reading acceptance against write_scope before claiming (L-54), which caught both real instances at claim time and cost a note each. That is a habit rather than a gate, and this measurement says a gate is not available at acceptable precision. Recorded so the next person does not re-derive it."
       ]
     },
     {
