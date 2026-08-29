@@ -12022,12 +12022,11 @@
         "SEPARATE DEFECT THE CRASH EXPOSED, worth its own ticket: a worktree-creation failure killed the run and appended NOTHING to the ledger. Same class as W21-32`s refused close \u2014 the diagnosis came from a stack trace in a terminal log, not from the event log."
       ],
       "acceptance": [
-        "A ticket whose dependencies are accepted branches from their work, not from the run`s current branch",
+        "A ticket whose dependencies are accepted branches from their work, not from the run`s current branch, and a ticket with no dependencies behaves exactly as today",
         "Only accepted (done) dependencies are used \u2014 an in_review dependency does not become a base",
         "Several accepted dependencies compose into one base, and a composition that conflicts reaches the founder as a decision rather than crashing",
         "A dependency whose branch is missing refuses with that named as the reason",
         "A worktree left on a stale base is recreated when it holds no agent commits, and refuses when it does",
-        "A ticket with no dependencies behaves exactly as today",
         "A red fixture reproduces run 17: ticket B depends on accepted ticket A, and B`s worktree contains A`s files"
       ]
     },
@@ -12039,7 +12038,7 @@
       "lane": "orchestrator",
       "role": "coding-agent",
       "status": "done",
-      "module": "server",
+      "module": "cli",
       "depends_on": [],
       "id": "W21-38",
       "points": 3,
@@ -12315,10 +12314,9 @@
       "acceptance": [
         "A session that ends having made no successful mutating tool call is recorded as having attempted nothing, from the ledger`s own tool calls",
         "A second attempt is not spent when the first attempted nothing \u2014 the ladder stops and the ticket reaches the founder",
-        "A session that mutated and still failed is unaffected \u2014 this stops empty attempts, not failing ones",
+        "A session that mutated and still failed is unaffected, and the check only fires while a further attempt would otherwise be spent \u2014 at the ladder ceiling the existing refusal already covers it",
         "The founder item says what the session actually did (the tool histogram), not that it \"failed\"",
         "A red fixture reproduces run 23: 6 list, 7 read, 2 verify, 0 writes across two attempts does not spend a second attempt",
-        "The check only fires while a further attempt would otherwise be spent \u2014 at the ladder ceiling the existing reason stands",
         "A session that changed nothing ESCALATES when a higher rung exists, and parks only when there is nowhere to climb"
       ]
     },
@@ -12487,7 +12485,7 @@
       "role": "coding-agent",
       "status": "done",
       "points": 5,
-      "module": "server",
+      "module": "pipeline",
       "depends_on": [],
       "id": "W21-49",
       "title": "the onboard pipeline emits a board that violates the lane invariant",
@@ -13172,6 +13170,11 @@
         "The maker guessed, and its guess is internally consistent and wrong: run 52 landed 75892cf \"fix scrypt parameters to use valid N, r, p values\", which derives N from the memory cost (N = memoryKb*8/(r*p) = 524288 at r=1). Node requires N < 2^(128*r/8), which is 65536 at r=1, and 128*N*r = 67MB exceeds the 32MB default maxmem. Two constraints, both violated, both stated in the doc I told it to read. Its own source comment says \"there are constraints between N, r, p\" \u2014 it knew a constraint existed and could not find out what it was.",
         "THE PRODUCT DEFECT: setTicketBrief (W21-59) accepts free text and nothing checks it against the tool surface. The brief channel exists precisely to carry what the maker cannot discover, so a brief that points at an unreachable source is the one failure mode the channel is built to prevent, and it is the one it cannot detect. NOT \"give makers a fetch tool\" \u2014 that puts an untrusted network surface inside the trust boundary (C-2/C-3) and live calls near the loop (Law 9a). The fix is to refuse or warn at the moment the brief is written: flag imperatives that direct the maker outside its tools (\"consult the documentation\", \"look up\", \"check online\", \"see the spec\"), naming the tool surface in the refusal.",
         "ACCEPTANCE: setTicketBrief warns (with the seven tool names) when a brief contains a directive to consult a source outside the tool surface; a brief that states the fact instead passes clean; the warning text names what the maker actually has."
+      ],
+      "acceptance": [
+        "setTicketBrief warns (with the seven tool names) when a brief contains a directive to consult a source outside the tool surface",
+        "a brief that states the fact instead passes clean",
+        "the warning text names what the maker actually has"
       ]
     },
     {
@@ -13197,6 +13200,11 @@
         "W21-19 chose to REPORT and not stop, and that decision is still right \u2014 an absorbed infra retry legitimately re-reads. But report-to-the-founder is not the only alternative to stopping. The run holds a fact the session would act on and never hands it over: the next session starts with no idea that the file it is about to read has been read 61 times with the same bytes. The knowledge is written down and not consulted where it would pay, which is the same shape as W21-45 and W21-46.",
         "Evidence that the session would have used it: run 52 SESSION_CHECKPOINT reads {\"remaining\":[\"add type: module to package.json to fix ES module error\"]} while the actual failure is ERR_CRYPTO_INVALID_SCRYPT_PARAMS. The maker re-read its way to a diagnosis the repetition record contradicts.",
         "ACCEPTANCE: buildHandoff carries the cross-session repeated-call summary for the ticket when there is one; the session prompt renders it as fact, not instruction; no change to the report-not-stop behaviour of W21-19."
+      ],
+      "acceptance": [
+        "buildHandoff carries the cross-session repeated-call summary for the ticket when there is one",
+        "the session prompt renders it as fact, not instruction",
+        "no change to the report-not-stop behaviour of W21-19"
       ]
     },
     {
@@ -13223,6 +13231,11 @@
         "Note what was NOT broken, so the fix does not overreach: the machine review DID have mechanically distinct identities (review.verdict seq 4434: reviewerModel qwen/qwen3.8-27b, makerModel qwen/qwen3-coder-next). Only the human accept step collides.",
         "CANDIDATE FIX: run start derives a machine actor for the session lifecycle verbs regardless of the bookkeeping actor, or refuses an --actor that is also a registered human reviewer. Prefer the former; a refusal still leaves distinctness to the operator.",
         "ACCEPTANCE: a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it; that human can accept the resulting ticket; the run bookkeeping still records who launched it."
+      ],
+      "acceptance": [
+        "a run started with --actor <human> produces ticket.claimed/started/closed under a machine actor distinct from it",
+        "that human can accept the resulting ticket",
+        "the run bookkeeping still records who launched it"
       ]
     },
     {
@@ -13234,7 +13247,7 @@
       "role": "coding-agent",
       "status": "done",
       "points": 2,
-      "module": "server",
+      "module": "cli",
       "depends_on": [],
       "id": "W21-71",
       "title": "the product tells the founder to change an acceptance criterion and gives them no verb to change it",
@@ -13251,6 +13264,12 @@
         "The founder is therefore left with no in-product move: they cannot amend the criterion, cannot delete the ticket, and re-filing under a new id orphans the comments and the ledger history. The product diagnosed the problem precisely and then offered no exit \u2014 which is the shape W21-45/46 keep recurring in: knowledge the product holds and cannot act on.",
         "Same guard rails as the sibling verbs: an amended criterion is an event (ticket.acceptance_retargeted), it must be refused on a done ticket, and it must clear rung memory the way ticket.brief_set now does (W21-62) \u2014 a ticket whose criterion changed is not the ticket that defeated the cheap rung.",
         "ACCEPTANCE: `dokima retarget-acceptance <id> --actor <id> --set <text> --reason <why>` amends the criterion via an appended event; refused on a done ticket; the new criterion appears in the next handoff; TICKET_CHANGED includes the new event type."
+      ],
+      "acceptance": [
+        "`dokima retarget-acceptance <id> --actor <id> --set <text> --reason <why>` amends the criterion via an appended event",
+        "refused on a done ticket",
+        "the new criterion appears in the next handoff",
+        "TICKET_CHANGED includes the new event type"
       ]
     },
     {
@@ -13275,6 +13294,11 @@
         "So the reason was known, well-written, and correct \u2014 the W21-52 StaleWorktreeError park doing its job. Only the run summary lost it. defaultParkReason() (W21-58) covers the paths that park AFTER an attempt; a park raised before attempt 1 never reaches it and falls through to the \"unknown\" default.",
         "Why it matters more than a cosmetic string: \"unknown after 0 attempts\" reads as the product malfunctioning, and it is the line a founder sees first. It sent me to the ledger to find out whether anything had happened at all. W21-64 is the same disease on the timeout path \u2014 a park whose printed reason does not match the reason the product actually has.",
         "ACCEPTANCE: a ticket parked before its first attempt reports the park reason from the event that caused it; the \"unknown\" default is unreachable for any park the product itself raised; regression test covers the pre-attempt stale-worktree path."
+      ],
+      "acceptance": [
+        "a ticket parked before its first attempt reports the park reason from the event that caused it",
+        "the \"unknown\" default is unreachable for any park the product itself raised",
+        "regression test covers the pre-attempt stale-worktree path"
       ]
     },
     {
@@ -13302,6 +13326,11 @@
         "THE FIX IS THE ONE I HAVE BEEN APPLYING BY HAND. Every one of these three was resolved by a founder brief that simply stated the observed failure, and each was resolved on the NEXT attempt: 002a landed first-try after brief #4, 002b and 002c are briefed the same way. A brief is a person pasting the acceptance output next to the diagnosis. The product can do that itself.",
         "NOT \"validate the diagnosis\" \u2014 the loop cannot judge whether a sentence about code is true, and a model scoring another model\u2019s guess is a worse gate than none. Attach the evidence and let the model see the contradiction: the handoff already carries the checkpoint, so carry the last acceptance-command output beside it, verbatim and labelled as observed fact rather than instruction.",
         "ACCEPTANCE: when a handoff carries a SESSION_CHECKPOINT, it also carries the most recent acceptance-criterion output for that ticket (command, exit code, and the failing lines); a ticket with no prior run carries no such block and the handoff is unchanged; the evidence is rendered as observation, never as a step to perform."
+      ],
+      "acceptance": [
+        "when a handoff carries a SESSION_CHECKPOINT, it also carries the most recent acceptance-criterion output for that ticket (command, exit code, and the failing lines)",
+        "a ticket with no prior run carries no such block and the handoff is unchanged",
+        "the evidence is rendered as observation, never as a step to perform"
       ]
     },
     {
@@ -13329,6 +13358,12 @@
         "So every new project fails on its first ticket, forever, the same way. This is the release blocker for a start-to-finish journey.",
         "The fix keeps SC-18/D-023 intact \u2014 nothing here takes input from a model, the command is still derived from the lockfile on disk. It only changes WHEN the harness looks: re-check for a manifest after the session ends and before the close gate re-runs verify, and provision then if one appeared. Ledger it exactly as the pre-session provision is ledgered, so it is never silent.",
         "ACCEPTANCE: a session that creates package.json in a worktree that had none gets its dependencies provisioned before the close gate re-runs verify; a worktree whose manifest is unchanged provisions once, as today; the post-session provision emits worktree.provisioned with its own reason; the agent tool set is unchanged (toolSetHasNoInstallTool still pins it)."
+      ],
+      "acceptance": [
+        "a session that creates package.json in a worktree that had none gets its dependencies provisioned before the close gate re-runs verify",
+        "a worktree whose manifest is unchanged provisions once, as today",
+        "the post-session provision emits worktree.provisioned with its own reason",
+        "the agent tool set is unchanged (toolSetHasNoInstallTool still pins it)"
       ]
     },
     {
@@ -13355,6 +13390,12 @@
         "It happened to resolve only because the maker invented matching scripts, including \"test\": \"echo 'Tests passed' || true\" \u2014 a vacuously green test script written to satisfy a command the product imposed. The default did not just fail; it taught the maker to fake a pass.",
         "This is squarely the \"works across the board\" problem: the default assumes every generated project is a pnpm TypeScript monorepo shaped like Dokima. NOT a fix by moving the string to config \u2014 a greenfield project has no config yet. Derive it from what is actually on disk (lockfile kind picks the runner, package.json scripts pick the verbs) and fall back to the ticket's own acceptance criterion, which is the only command the founder actually saw.",
         "ACCEPTANCE: a ticket with no verify command gets one derived from the worktree (package-lock.json -> npm, pnpm-lock.yaml -> pnpm, yarn.lock -> yarn; only scripts that exist are included); a project with no manifest at all falls back to the ticket's acceptance criteria rather than a pnpm string; the literal is defined once, not twice."
+      ],
+      "acceptance": [
+        "a ticket with no verify command gets one derived from the worktree (package-lock.json -> npm, pnpm-lock.yaml -> pnpm, yarn.lock -> yarn",
+        "only scripts that exist are included)",
+        "a project with no manifest at all falls back to the ticket's acceptance criteria rather than a pnpm string",
+        "the literal is defined once, not twice"
       ]
     },
     {
@@ -13368,7 +13409,7 @@
       "depends_on": [],
       "id": "W21-76",
       "points": 3,
-      "module": "server",
+      "module": "pipeline",
       "title": "decomposition produces no phase-0 deliverables, so the phase gate can never clear",
       "write_scope": [
         "packages/pipeline/src/run/run-pipeline.ts",
@@ -13384,6 +13425,11 @@
         "SCOPE CORRECTED, AND THE BOARD PROVED ITS OWN POINT: this ticket was filed against apps/server/src/api/pipeline/decompose-tickets.ts, which does not exist. As filed it was unsatisfiable within its own write_scope \u2014 precisely the defect class W21-80 was built to detect, produced by me, on this board, hours after shipping the detector.",
         "ROOT CAUSE HAS MOVED, DO NOT BUILD THE FILED FIX YET. runPipeline DOES synthesize the blueprint (synthesizeBlueprint, run-pipeline.ts:69) and nothing writes it to disk; only docs/DECISIONS.md has a read/write path (apps/server/src/api/decisions/ledger-file.ts). So the gap may be \"the deliverable is produced and never persisted\", which is far cheaper than \"decomposition must emit deliverable tickets\".",
         "AND PHASE 0 IS waiverEligible: true (packages/pipeline/src/phases/topology.ts). If the product intends a small project to waive Idea, then \"no project can leave Idea\" is wrong as stated and the real defect is that the waiver is not discoverable from the Fleet card or the phase-gate notification. Establish which of the three it is \u2014 persist the blueprint, emit deliverable tickets, or surface the waiver \u2014 before writing code."
+      ],
+      "acceptance": [
+        "a board built from the interview contains a ticket for each phase-0 deliverable the gate requires",
+        "running that board to completion clears the Idea gate and advances the project phase",
+        "a project whose deliverables already exist gains no duplicate ticket"
       ]
     },
     {
@@ -13409,6 +13455,11 @@
         "The assertion is fine and the teardown races: something still holds a handle under .dokima while the fixture rmdirs the temp project. The same run logs the other half of it \u2014 \"computeProjectStats open failed ... Cannot open database because the directory does not exist\", from stats.ts:113 via the notifications route reading every project card while a temp project is being torn down.",
         "It matters more than a flake normally would because e2e is IN the ticket gate (Law 3, since 2026-07-27). A gate that fails at random teaches everyone to re-run it, which is how a real red gets waved through \u2014 and this project already had one red e2e reach main for a related reason.",
         "ACCEPTANCE: the full e2e suite run repeatedly on an unchanged tree produces no ENOTEMPTY teardown failure; the temp project database handles are released before the fixture removes the directory; computeProjectStats treats a project directory that vanished as absent rather than logging an error."
+      ],
+      "acceptance": [
+        "the full e2e suite run repeatedly on an unchanged tree produces no ENOTEMPTY teardown failure",
+        "the temp project database handles are released before the fixture removes the directory",
+        "computeProjectStats treats a project directory that vanished as absent rather than logging an error"
       ]
     },
     {
@@ -13420,7 +13471,7 @@
       "role": "coding-agent",
       "status": "done",
       "points": 2,
-      "module": "server",
+      "module": "pipeline",
       "depends_on": [],
       "id": "W21-78",
       "title": "a run starts on whatever model is configured without ever checking the provider serves it",
@@ -13435,6 +13486,12 @@
         "This is the \"any LLM they want to use\" problem in miniature: the moment a user picks a model the product cannot reach, the failure should be a refusal at the start with the model name in it, not a session that burns its budget and parks as something else (see W21-63, W21-64).",
         "NOT a blocklist of model names \u2014 that is unmaintainable and would not have caught this. Check the configured model against the provider's own listModels() before the first ticket is claimed, and refuse the run naming the model, the provider, and what the provider does serve.",
         "ACCEPTANCE: starting a run whose configured model is not in the provider's listModels() refuses before any ticket is claimed, naming the model and the provider; the refusal names at least one model the provider does serve; a provider that cannot be reached at all refuses distinctly from one that is reachable but lacks the model; a run whose model IS served proceeds unchanged."
+      ],
+      "acceptance": [
+        "starting a run whose configured model is not in the provider's listModels() refuses before any ticket is claimed, naming the model and the provider",
+        "the refusal names at least one model the provider does serve",
+        "a provider that cannot be reached at all refuses distinctly from one that is reachable but lacks the model",
+        "a run whose model IS served proceeds unchanged"
       ]
     },
     {
@@ -13460,6 +13517,10 @@
         "LIVE (Tally, PLAN-tally-01, created through the UI): parked at the default 12 with that exact sentence, while MAX_TOOL_ITERATIONS_CEILING is 40 and raising maxToolIterations was precisely the right move. The advice sent the founder away from the one lever that would have helped.",
         "It hid because Vault has maxToolIterations set to 40 by hand \u2014 which IS the ceiling \u2014 so every message I had read all session was accidentally correct. The bug only shows on a project that has configured nothing, which is every new one.",
         "Fixed by passing options.progressBudget?.ceiling. Found while sweeping for hardcoded qwen3.6-35b-a3b at the founder's request: the sweep cleared production code, and this turned up in the same park evidence."
+      ],
+      "acceptance": [
+        "A budget park names the ceiling that was actually in force, not the starting budget",
+        "The number shown matches the number the run was judged against"
       ]
     },
     {
@@ -13487,6 +13548,11 @@
         "The product does hold the disproof. The acceptance output says TS18003 and names the include pattern; the write_scope is on the ticket. After an attempt fails, the run can ask: does the failing command name, or imply, a path outside write_scope? Then park with THAT sentence \u2014 \"this ticket cannot satisfy `npm run build` within its write_scope; it needs src/**/*.ts, which it may not write. Widen it or split it\" \u2014 instead of the generic ladder-exhausted park that sent me to read 61 tool calls to find out.",
         "Same family as W21-50 (a criterion that proves nothing) and W21-73 (the product holds the evidence and does not hand it over). This one is worse than a wasted run: it is unwinnable, and it re-parks forever.",
         "ACCEPTANCE: a ticket whose acceptance command fails naming a path its write_scope excludes parks with a reason that names the command, the path, and widen-scope as the move; a ticket whose failure is ordinary work still parks as it does today; the check reads the acceptance output already captured, and adds no new command execution."
+      ],
+      "acceptance": [
+        "a ticket whose acceptance command fails naming a path its write_scope excludes parks with a reason that names the command, the path, and widen-scope as the move",
+        "a ticket whose failure is ordinary work still parks as it does today",
+        "the check reads the acceptance output already captured, and adds no new command execution"
       ]
     },
     {
@@ -13500,7 +13566,7 @@
       "depends_on": [],
       "id": "W21-81",
       "points": 1,
-      "module": "server",
+      "module": "cli",
       "title": "widen-scope prints a raw stack trace when the lane invariant refuses it",
       "write_scope": [
         "apps/server/src/cli/run.ts",
@@ -13511,6 +13577,11 @@
         "THE REFUSAL ITSELF IS CORRECT AND VALUABLE \u2014 src/**/*.ts would have collided with PLAN-tally-02..06, which own src/models/, src/cli/ and src/commands/. Law 1: cross-lane overlap is always a violation. The product was right and I was wrong, and I narrowed the widen to src/index.ts on the strength of it.",
         "But every other verb refusal in this CLI arrives as one explained line \u2014 \"refused [SELF_ACCEPT]: accept refused: reviewer founder is also the owner (maker != verifier)\". This one escapes reportVerbError and reaches the user as an unhandled throw. A person told to widen a scope, who then gets a stack trace, reasonably concludes the product broke rather than that it protected them.",
         "ACCEPTANCE: a lane-invariant refusal from widen-scope (and add-ticket, which shares the check) prints one refusal line naming the overlapping tickets and their lanes, with no stack trace and no JSON dump; the exit code stays non-zero; the underlying violation list is still available in the ledger/verbose path."
+      ],
+      "acceptance": [
+        "a lane-invariant refusal from widen-scope (and add-ticket, which shares the check) prints one refusal line naming the overlapping tickets and their lanes, with no stack trace and no JSON dump",
+        "the exit code stays non-zero",
+        "the underlying violation list is still available in the ledger/verbose path"
       ]
     },
     {
@@ -13536,6 +13607,10 @@
         "Four minutes is not an edge case for this product: a local model working a real ticket routinely runs longer, and EVERY run in this session did. So the normal path for the target user was a board that permanently looked busy.",
         "Fixed by following the run for as long as one plausibly lives, and on any exit that is not a terminal status returning to idle instead of lying. Idle is the honest state: the outcome map behind the poll is in-memory by design (W12-20) and the ticket cards carry the durable truth, so \"this page is no longer following that run\" is true where \"it finished\" would not be.",
         "Red fixture verified both ways: the new test fails against the old loop (button stays disabled) and passes against the fix."
+      ],
+      "acceptance": [
+        "The board stops showing \"Run in progress\" once the run has ended",
+        "A run that ended is distinguishable from one still working, without a refresh"
       ]
     },
     {
@@ -13563,6 +13638,12 @@
         "This is the last thing standing between a project created in the browser and its first receipt, and it is cheap to fix: when a session ends at its budget WITHOUT a manifest, run the acceptance criteria once \u2014 the same run the gate would have made \u2014 and if they pass, say so in the park evidence and carry it into the next handoff: \"AC-1 already passes; the next attempt needs only to return a Completion Manifest.\"",
         "Sibling of W21-73 (the handoff carries the diagnosis and not the evidence). W21-73 assumed a prior gate run existed to quote; this is the case where none ever did, so the evidence has to be produced rather than recalled. That is one command execution the gate would have run anyway, not a new class of work.",
         "ACCEPTANCE: a session that ends without a manifest has its acceptance criteria evaluated once; when they pass, the park evidence says so and names returning the manifest as the remaining step, and the next handoff carries that line; when they fail, behaviour is unchanged; the criteria are run in the same sandbox the close gate uses, never a new one."
+      ],
+      "acceptance": [
+        "a session that ends without a manifest has its acceptance criteria evaluated once",
+        "when they pass, the park evidence says so and names returning the manifest as the remaining step, and the next handoff carries that line",
+        "when they fail, behaviour is unchanged",
+        "the criteria are run in the same sandbox the close gate uses, never a new one"
       ]
     },
     {
@@ -13574,7 +13655,7 @@
       "role": "coding-agent",
       "status": "done",
       "points": 2,
-      "module": "scripts",
+      "module": "infra",
       "depends_on": [],
       "id": "W21-84",
       "title": "the history-secrets gate failed once the repo outgrew its buffer",
@@ -13589,6 +13670,11 @@
         "Raising the constant would only move the date, and the failure mode is bad: an ENOBUFS crash reads as a broken tool, not as a repo that grew, so the honest response is to stop reading history in one gulp. Objects are now read in 128 MiB chunks planned from the sizes `--batch-check` was already returning and throwing away.",
         "The planner is pure and tested for the property that matters: every object appears exactly once and in order, an object larger than the cap gets its own chunk rather than being skipped, and an empty input yields no chunks so git is never handed an empty batch. Coverage must never silently shrink \u2014 that is the one way this fix could be worse than the crash.",
         "ACCEPTANCE (met): the gate passes on this repo \u2014 9004 objects scanned, 27 shapes, 27 baselined, 0 gating; planChunks covers every object exactly once; a single oversized object still gets scanned."
+      ],
+      "acceptance": [
+        "(met): the gate passes on this repo \u2014 9004 objects scanned, 27 shapes, 27 baselined, 0 gating",
+        "planChunks covers every object exactly once",
+        "a single oversized object still gets scanned"
       ]
     },
     {
@@ -13618,6 +13704,10 @@
         "The premise died when W13-63 landed and nobody told the badge \u2014 the same staleness W13-63 itself was written to fix (\"that premise went stale weeks ago... and nobody rewired the reader\"). The reader got rewired; its label did not.",
         "This is an honesty control (C-1) pointing the wrong way, which is the dangerous direction. A badge that marks fixture data as fixture protects a person. A badge that marks REAL evidence as fixture teaches them to discount exactly the thing they must read \u2014 and I nearly filed it as \"demo content leaking into a real project\", the opposite diagnosis, before checking which way round it was.",
         "Fixed by marking the fixture stream at source (both hand-mirrored copies) and rendering the badge only for it. ACCEPTANCE (met): a thread from the real projection carries no Sample badge; the unregistered preview still does; the fixture copies stay in sync."
+      ],
+      "acceptance": [
+        "Evidence from a real project is not labelled \"Sample\"",
+        "A genuine sample is still labelled as one, so the word keeps its meaning"
       ]
     },
     {
@@ -13644,6 +13734,10 @@
         "The GATE already reasons correctly about this class \u2014 it checks committedFiles rather than the raw diff precisely because the raw diff \"mixes the session's real work with the GATE'S OWN build/telemetry side effects\". The earlier out-of-session SC-01 sweep reads the working tree, and MUST keep doing so: catching an agent that writes outside scope without committing is that control's entire purpose.",
         "So the sweep is not weakened. The noise in front of it is removed, with git's own mechanism, exactly as W21-23 did for node_modules/ after the identical failure (\"the session was refused for a violation the harness itself had just created\"). HARNESS_ARTIFACTS is deliberately short and unambiguous \u2014 a tool's own cache or install output, never source. Anything that could name real work belongs in write_scope instead.",
         "ACCEPTANCE (met): provisioning ignores *.tsbuildinfo alongside node_modules/; an existing project .gitignore is appended to, never overwritten."
+      ],
+      "acceptance": [
+        "(met): provisioning ignores *.tsbuildinfo alongside node_modules/",
+        "an existing project .gitignore is appended to, never overwritten"
       ]
     },
     {
@@ -13672,6 +13766,12 @@
         "AND IT COMPOUNDS: the derived verify command (W21-75) includes every script that exists, so once a project has a no-op `test` script, every later ticket in it inherits a weakened gate.",
         "NOT a general lying-script detector \u2014 that is undecidable. A narrow refusal on the obvious no-op shapes (a script whose whole body is echo/true/exit 0, or that runs no command at all) is cheap, explainable, and would have caught this exact one.",
         "ACCEPTANCE: the verify re-run is checked for vacuity the way acceptance criteria already are; a package script whose body is a bare echo/true/exit-0 is refused as a verify component with a reason naming the script; a real runner is unaffected; the refusal names the script rather than failing the ticket opaquely."
+      ],
+      "acceptance": [
+        "the verify re-run is checked for vacuity the way acceptance criteria already are",
+        "a package script whose body is a bare echo/true/exit-0 is refused as a verify component with a reason naming the script",
+        "a real runner is unaffected",
+        "the refusal names the script rather than failing the ticket opaquely"
       ]
     },
     {
@@ -13700,6 +13800,11 @@
         "That is equally consistent with my automation simply missing a target that moves \u2014 the run-status line and the \"What this run did\" panel appear and disappear between states, which shifts everything below them. A person clicking a button they can see would not hit that.",
         "So this may be entirely a tooling artifact of how I drive the browser, and NOT a product defect. It is left on the board rather than deleted because six occurrences is worth someone reproducing by hand, but it must not be treated as confirmed.",
         "HOW TO SETTLE IT: click the control by hand immediately after a project opens, with the pointer visibly over it. If a human click registers first time, close this as not-a-defect. If it does not, capture the element identity before and after the click \u2014 that distinguishes a replaced node from a moved one."
+      ],
+      "acceptance": [
+        "a click on Start a run issued immediately after the board first paints starts a run",
+        "the control is either disabled with a visible loading state until it is live, or the handler survives the re-render",
+        "no click is silently discarded"
       ]
     },
     {
@@ -13730,6 +13835,11 @@
         "ACCEPTANCE: a receipt minted while an unanswered rejection stands records that fact, with the rejection reason, and the Decide card shows it before the accept control; a close that DOES address the rejection is unaffected; nothing gains a veto over the close gate (C-2).",
         "SCOPE DEFECT, found 2026-08-28 during a pre-claim check, not yet resolved: this ticket cannot be worked as filed. Its acceptance says \"the Decide card shows it before the accept control\", but the Decide card is a web surface \u2014 apps/web/src/decisions/DecisionsBoard.tsx and SlateCard.tsx \u2014 while write_scope is three packages/harbormaster files and nothing else. The receipt half (recording that a close reverses an unanswered rejection) is in scope; the UI half is not. Either widen write_scope to the decisions surface, or split the UI half into a ui-lane ticket that depends on this one. NOTE it would then overlap nothing today, so this is a narrow scope, not the cross-lane schema bug W21-89 was.",
         "RELATED, verified while landing W21-87: a non-empty `reasons` array from runGateChecks does block the mint (loop-gates.ts returns ok:false when reasons.length > 0), so a gate-side refusal here would have real teeth. The W21-80 comment calling its notice \"advisory only\" is not a general property of the array \u2014 that notice is advisory because it only fires when reasons are already non-empty."
+      ],
+      "acceptance": [
+        "a receipt minted while an unanswered rejection stands records that fact, with the rejection reason, and the Decide card shows it before the accept control",
+        "a close that DOES address the rejection is unaffected",
+        "nothing gains a veto over the close gate (C-2)"
       ]
     },
     {

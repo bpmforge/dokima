@@ -12,9 +12,17 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    (Context7 or `node -e "import ..."` export checks). Versions live in
    `docs/TECH_STACK.md`; upgrade only in lockstep and record it there.
 3. **Full gate before closing any ticket**:
-   `pnpm lint && pnpm typecheck && pnpm test` (workspace-wide) **and
-   `pnpm --filter @dokima/web e2e`**, plus the ticket's own acceptance
-   criteria. Report test counts in commit bodies.
+   `pnpm lint && pnpm typecheck && pnpm test` (workspace-wide), **`pnpm
+   --filter @dokima/web e2e`**, and **`pnpm validate`** (the six repo
+   validators), plus the ticket's own acceptance criteria. Report test counts
+   in commit bodies.
+   *`pnpm validate` joined the gate 2026-08-28. The six validators — plan,
+   traceability, ui-copy, exports, volatile-paths, history-secrets — existed
+   and gated nothing, so `validate-plan` sat RED for a whole session at 53
+   violations: acceptance criteria written into `notes`, where no mechanical
+   check and no close gate could see them. Same shape as the capture tour
+   (W21-92) and the SAST runner (W21-98) — a real check nobody runs decays
+   into a check nobody can trust.*
    **Run everything on Node 22** (`.nvmrc`, `engines.node`): the
    `better-sqlite3` native binary is built for it, and Node 24 fails ~50
    `apps/server` tests with a `NODE_MODULE_VERSION 127 vs 137` mismatch
