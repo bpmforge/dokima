@@ -21,6 +21,9 @@
 //       is not a verifier role (C-4), and fails BY NAME rather than falling
 //       back to coding-agent — a typo that silently routes to the default is
 //       the whole defect this field was added to fix
+//   P12 REPORT ONLY (never fails): acceptance criteria that name a rendered UI
+//        surface on a ticket whose write_scope cannot reach apps/web. See the
+//        block at the bottom for the measurement that decided report-vs-fail.
 //   P10 ARCHITECTURE.md §4 dependency matrix must agree, row for row, with each
 //       row-package's declared `@dokima/*` dependencies (dependencies field only) —
 //       exact-set match, not just "no forbidden import": the matrix is a live
@@ -259,6 +262,67 @@ console.log(`Claimable now: ${claimable.join(', ') || '(none)'}`);
       if (missing.length) err(`P10 ${rowName}: matrix allows but package.json dependencies omit: ${missing.join(', ')}`);
       if (extra.length) err(`P10 ${rowName}: package.json dependencies declare but matrix forbids: ${extra.join(', ')}`);
     }
+  }
+}
+
+// ---- P12 acceptance-vs-write_scope: a REPORT, deliberately not a failure (W22-03)
+/**
+ * Catches the shape that cost this board six claims: a ticket whose acceptance
+ * requires a rendered surface to change, scoped to packages that cannot reach
+ * `apps/web`. W21-89 needed the Settings panel from a server-only scope; W21-90
+ * needs the Decide card from a harbormaster scope; W21-96 says the timeout is
+ * "settable from the Providers panel" while scoped to two route files.
+ *
+ * WHY THIS PRINTS INSTEAD OF FAILING — measured, not assumed. The ticket asked
+ * for a refusal at filing time. The data says a refusal would be wrong:
+ *
+ *   - Inferring a required path from prose: 92 hits across the whole plan,
+ *     essentially ALL references rather than write targets ("MEASURED: four
+ *     files exceed the cap — <list>", "calls redactDeep (packages/shared/...)").
+ *   - This widget lexicon, unfiltered: 44 hits on tickets that SHIPPED fine
+ *     with server-only scope. Hand-sampling 25 of them found 1 genuine
+ *     mismatch — roughly 4% precision.
+ *   - With the length cap below: 15 retrospective hits, 2 genuine. ~13%.
+ *
+ * A validator that is wrong six times out of seven teaches people to ignore it,
+ * which is the failure D-014 and W21-38 both warn about and the exact reason
+ * this ticket's own third criterion says silence beats a false positive. So it
+ * reports, in the manner of P9's wave report, and `pnpm validate` (Law 3) puts
+ * that report in front of a human on every gate run.
+ *
+ * ONE-DIRECTIONAL ON PURPOSE: it catches a non-web scope that needs the web,
+ * never a web scope that needs the server. The reverse has no comparable
+ * lexicon — server surfaces are not named with a shared vocabulary of nouns.
+ *
+ * The length cap is not arbitrary: criteria over ~200 characters in this plan
+ * are evidence narrative ("MEASURED 2026-08-03: …"), which mentions surfaces
+ * in passing. Real criteria are terse.
+ */
+{
+  // Unambiguously-rendered widgets only. Deliberately NOT "board", "view",
+  // "screen" or "page": all four are domain nouns here — "the board" is the
+  // ticket graph, not only its rendering.
+  const WIDGETS = ['card', 'cards', 'panel', 'drawer', 'banner', 'wizard', 'button', 'dialog', 'modal', 'tooltip', 'checkbox', 'dropdown', 'toggle'];
+  const WIDGET_RE = new RegExp(`\\b(${WIDGETS.join('|')})\\b`, 'i');
+  const MAX_CRITERION_LEN = 200;
+  const notes = [];
+  for (const t of T) {
+    if (t.status === 'done') continue;
+    if ((t.write_scope ?? []).some((g) => g.startsWith('apps/web/'))) continue;
+    for (const a of t.acceptance ?? []) {
+      if (a.length > MAX_CRITERION_LEN) continue;
+      const m = WIDGET_RE.exec(a);
+      if (!m) continue;
+      notes.push(`${t.id} names a "${m[1]}" but no write_scope entry reaches apps/web/\n      criterion: ${a}`);
+    }
+  }
+  if (notes.length) {
+    // REPORT:/REPORT-CONT: is the contract run-validators.mjs forwards from a
+    // PASSING validator. Without the prefix this prints into a void under
+    // `pnpm validate`, which is the only place Law 3 runs it.
+    console.log(`REPORT: P12 (${notes.length}) — acceptance names a UI surface the write_scope cannot reach:`);
+    for (const n of notes) for (const line of ('- ' + n).split('\n')) console.log('REPORT-CONT: ' + line);
+    console.log('REPORT-CONT: (report only; widen the scope, reword the criterion, or ignore if the surface already exists)');
   }
 }
 

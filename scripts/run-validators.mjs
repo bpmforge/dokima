@@ -31,6 +31,18 @@ for (const name of VALIDATORS) {
   const result = spawnSync('node', [`scripts/${name}.mjs`], { encoding: 'utf8' });
   const ok = result.status === 0;
   process.stdout.write(`${ok ? '  ok  ' : ' FAIL '} ${name}\n`);
+  // A PASSING validator can still have something to say. `validate-plan`'s P12
+  // reports acceptance criteria naming a UI surface their write_scope cannot
+  // reach — measured at ~13% precision, far too noisy to fail a build on, but
+  // worth a human's eyes. Without this, that report printed into a void: a
+  // check nobody sees is the L-46/L-47 failure it was written to prevent.
+  // The contract is one line: prefix a line with REPORT: and it survives success.
+  if (ok) {
+    for (const line of (result.stdout ?? '').split('\n')) {
+      if (line.startsWith('REPORT:')) process.stdout.write(`       ${line.slice(7).trim()}\n`);
+      else if (line.startsWith('REPORT-CONT:')) process.stdout.write(`         ${line.slice(12)}\n`);
+    }
+  }
   if (!ok) {
     failed += 1;
     // The failing validator's own words, not a generic "it failed" — these

@@ -113,3 +113,72 @@ describe('P11 role validation (W12-06)', () => {
     expect(out).toContain('unknown key nonsense');
   });
 });
+
+describe('P12 acceptance-vs-write_scope report (W22-03)', () => {
+  it('names the ticket, the widget and the criterion when a non-web scope needs the web', () => {
+    const { code, out } = runValidator([
+      ticket({ acceptance: ['the Decide card shows the rejection reason'] }),
+    ]);
+    // REPORT, NOT FAILURE. Measured precision is ~13%: a validator wrong six
+    // times out of seven teaches people to ignore it (D-014, W21-38), which is
+    // why this ticket's own third criterion says silence beats a false
+    // positive. The exit code is the assertion that matters most here.
+    expect(code).toBe(0);
+    // The REPORT:/REPORT-CONT: prefix is not cosmetic — it is the contract
+    // run-validators.mjs forwards from a PASSING validator. Drop it and this
+    // report prints into a void under `pnpm validate`, which is the only place
+    // Law 3 runs it: a check nobody sees, the exact failure it exists to catch.
+    expect(out).toContain('REPORT: P12');
+    expect(out).toContain('REPORT-CONT:');
+    expect(out).toContain('W1-01');
+    expect(out).toContain('card');
+    expect(out).toContain('the Decide card shows the rejection reason');
+  });
+
+  it('is silent when the write_scope can actually reach the surface', () => {
+    const { out } = runValidator([
+      ticket({
+        module: 'web',
+        lane: 'ui',
+        write_scope: ['apps/web/src/decisions/**'],
+        acceptance: ['the Decide card shows the rejection reason'],
+      }),
+    ]);
+    expect(out).not.toContain('P12');
+  });
+
+  it('is silent on a criterion that names no rendered surface', () => {
+    const { out } = runValidator([
+      ticket({ acceptance: ['the receipt records the rejection reason'] }),
+    ]);
+    expect(out).not.toContain('P12');
+  });
+
+  it('is silent on evidence narrative, which mentions surfaces in passing', () => {
+    // The 44 retrospective hits were overwhelmingly this shape — a long
+    // past-tense finding that happens to name a panel. Capping the length is
+    // what took precision from ~4% to ~13%.
+    const narrative =
+      'MEASURED 2026-08-03 with the Canvas open: a project was configured through the ' +
+      'Providers and Models panel, LM Studio registered and reachable with 23 models ' +
+      'discovered, and the run still died at the old ceiling despite the raised setting, ' +
+      'which is what makes this a defect rather than a tuning preference.';
+    expect(narrative.length).toBeGreaterThan(200);
+    const { out } = runValidator([ticket({ acceptance: [narrative] })]);
+    expect(out).not.toContain('P12');
+  });
+
+  it('says nothing at all about a done ticket — it reports the live surface only', () => {
+    const { out } = runValidator([
+      ticket({ status: 'done', acceptance: ['the Decide card shows the rejection reason'] }),
+    ]);
+    expect(out).not.toContain('P12');
+  });
+
+  it('does not treat "board" as a widget — it is this product\'s central domain noun', () => {
+    const { out } = runValidator([
+      ticket({ acceptance: ['the board reflows dependants to Ready'] }),
+    ]);
+    expect(out).not.toContain('P12');
+  });
+});

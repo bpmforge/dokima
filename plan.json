@@ -14192,16 +14192,17 @@
       ],
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W22-03",
       "lane": "quality",
       "module": "quality",
       "points": 2,
-      "title": "a ticket whose acceptance its own write_scope cannot satisfy is refused at filing",
+      "title": "report tickets whose acceptance names a surface their write_scope cannot reach",
       "write_scope": [
         "scripts/validate-plan.mjs",
-        "scripts/validate-plan.test.mjs"
+        "scripts/validate-plan.test.mjs",
+        "scripts/run-validators.mjs"
       ],
       "acceptance": [
         "A ticket whose acceptance names a surface outside its write_scope is reported when the plan is validated, not discovered at claim time",
@@ -14213,7 +14214,17 @@
         "LESSON L-54. Reading acceptance against write_scope before claiming caught SIX unworkable tickets in one session: W21-89 (needed apps/web/src/settings/** against a server-only scope), W21-90 (Decide card in apps/web/src/decisions/), W21-93 (declared catalog/** when the data originates in the provider adapter), W21-97 (named a file that does not exist), and two cross-lane overlaps that validate-plan already flags.",
         "The check is currently a habit, which means it works until somebody is in a hurry. Every one of those cost a claim, a scope correction and a commit that had to explain itself.",
         "DELIBERATELY CONSERVATIVE: acceptance is prose, and inferring paths from prose will produce false positives that teach people to ignore the validator \u2014 the failure mode D-014 and W21-38 both warn about. Report only where a criterion names something path-shaped that no scope entry could match.",
-        "FIXTURE AVAILABLE, found 2026-08-28: apps/server/src/cli/index.ts is a live orphan \u2014 a complete CLI entry with zero importers, absent from the bundle, stranded by W10-74. Filed for deletion as W22-05."
+        "FIXTURE AVAILABLE, found 2026-08-28: apps/server/src/cli/index.ts is a live orphan \u2014 a complete CLI entry with zero importers, absent from the bundle, stranded by W10-74. Filed for deletion as W22-05.",
+        "DELIVERED AS A REPORT, NOT A REFUSAL \u2014 a deliberate reduction of this ticket's own title, forced by measurement rather than by taste. Two mechanical routes from acceptance prose to a required scope were built and measured against the whole plan before either was wired to an exit code.",
+        "ROUTE 1, infer a path from the prose: 92 hits across 474 tickets, of which 0 on open tickets and essentially ALL references rather than write targets \u2014 \"MEASURED 2026-08-03: four source files already exceed the cap\" followed by the list, or \"calls redactDeep (packages/shared/src/secrets)\". The zero on open tickets is luck about what today's open set happens to cite, not precision. Discarded.",
+        "ROUTE 2, a lexicon of rendered widgets (card, panel, drawer, wizard, button...) on a ticket whose scope cannot reach apps/web: 44 retrospective hits on tickets that SHIPPED FINE with server-only scope. Hand-sampled 25 of them: 1 genuine mismatch (W12-23, \"make the Providers panel SAY SO\" scoped to docs/TECH_STACK.md) against 24 references \u2014 \"the approval card flow\", \"through chat cards\", \"the ticket drawer renders the prose\". About 4% precision. Capping criterion length at 200 characters cuts it to 15 hits with 2 genuine, about 13%: criteria longer than that are evidence narrative, which names surfaces in passing, while real criteria are terse.",
+        "A VALIDATOR WRONG SIX TIMES OUT OF SEVEN TEACHES PEOPLE TO IGNORE IT. That is the failure D-014 and W21-38 both warn about, and it is what this ticket's own third criterion anticipated when it said silence beats a false positive. So P12 prints in the manner of P9's wave report and never touches the exit code, and pnpm validate (Law 3 since 2026-08-28) puts it in front of a human every gate run. The measurement is in the rule header so the next person does not \"improve\" it into a gate without redoing the count.",
+        "ON THE TENSION BETWEEN CRITERIA 2 AND 3, since a later reader will notice it: criterion 2 wants the report to name \"the path it implies\", criterion 3 forbids guessing at a criterion that names no path. Inferring apps/web from the word \"card\" IS inference from prose. The report resolves it by naming the widget word and quoting the criterion verbatim rather than asserting a path, and by never failing on the inference.",
+        "ONE-DIRECTIONAL, stated in the header rather than left for someone to discover: it catches a non-web scope that needs the web, never a web scope that needs the server. There is no comparable lexicon for server surfaces \u2014 they are not named with a shared vocabulary of nouns the way widgets are.",
+        "LIVE OUTPUT on the current plan: exactly two, both genuine. W21-90 (\"the Decide card shows it before the accept control\", scoped to harbormaster) and W21-96 (\"settable from the Providers panel\", scoped to two route files). W21-96 was a find \u2014 I had not caught it by hand. Neither is fixed here; telling the next claimer before the claim is the whole deliverable.",
+        "RED FIXTURE proven by stashing the rule: exactly 1 of 12 tests fails, the detection one. The five silence tests pass with or without P12, which is correct \u2014 they assert an absence, and a test that only passes when the feature is present would be asserting the wrong thing.",
+        "SCOPE WIDENED, and the reason is this ticket committing its own defect. P12 was written, tested and passing \u2014 and invisible: run-validators.mjs discards a PASSING validator's stdout, so the report printed into a void under pnpm validate, which is the only place Law 3 runs it. A check nobody sees is L-46/L-47, the exact failure this report exists to surface. Caught by running pnpm validate and reading the output rather than trusting the six ok lines.",
+        "FIXED WITH A ONE-LINE CONTRACT rather than a special case: a line prefixed REPORT: (or REPORT-CONT: for its continuation lines) survives success and is forwarded indented under the validator's ok line. Any future validator with something to say that is not worth failing a build over can now say it. scripts/run-validators.mjs was verified unowned by any open ticket."
       ]
     },
     {
