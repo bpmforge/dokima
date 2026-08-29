@@ -13804,7 +13804,7 @@
       "phase": 21,
       "lane": "ui",
       "role": "ux-engineer",
-      "status": "todo",
+      "status": "in_progress",
       "points": 2,
       "module": "web",
       "depends_on": [
@@ -13813,7 +13813,9 @@
       "id": "W21-94",
       "title": "the model picker stops offering models that cannot do the job",
       "write_scope": [
-        "apps/web/src/settings/**"
+        "apps/web/src/settings/**",
+        "apps/server/src/api/server/providers-routes.ts",
+        "apps/server/src/api/server/providers-routes.test.ts"
       ],
       "acceptance": [
         "A model the provider reported as an embedding model is not offered as the model that writes the code, nor as the model that reviews it",
@@ -13827,7 +13829,8 @@
         "DO NOT FIX THIS WITH A NAME HEURISTIC. All four embedding models here start with \"text-embedding-\", which makes a prefix match look cheap. That prefix is LM Studio's normalization: an Ollama user sees \"nomic-embed-text:latest\" with no prefix, so a prefix rule protects one provider and silently fails another \u2014 worse than no rule, because the gap is invisible. verify-command.ts states the house rule: derived from disk, never guessed.",
         "NOT A DUPLICATE of W21-78 (refuse a model the provider does not serve). An embedding model IS served, so existence checks pass it. This is capability, not presence.",
         "CONSUMES W21-93, which carries the provider-reported kind out to the web. Blocked until it lands: without that field this ticket can only guess, and guessing is the thing to avoid.",
-        "Same-lane with W21-25, which also holds apps/web/src/settings/** \u2014 legal while only one of them is active (FR-T3 same-lane rule), so do not run them in parallel."
+        "Same-lane with W21-25, which also holds apps/web/src/settings/** \u2014 legal while only one of them is active (FR-T3 same-lane rule), so do not run them in parallel.",
+        "SCOPE at claim time, 2026-08-28: added providers-routes.ts, where toWireModel serialises catalog models onto the wire \u2014 without it the kind W21-93 produces never reaches the browser and this ticket cannot be met. W21-25 also holds that file, but in the SAME ui lane and at status todo, so FR-T3 permits the overlap while only one of them is active. Do not claim W21-25 until this lands."
       ]
     },
     {
