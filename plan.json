@@ -13139,16 +13139,18 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 2,
       "module": "harbormaster",
       "depends_on": [],
       "id": "W21-67",
       "title": "the ledger cannot say how a turn ended",
       "write_scope": [
-        "packages/gateway/src/providers/oai-compat-types.ts",
-        "packages/harbormaster/src/agent-session/gateway-session.ts",
-        "packages/harbormaster/src/agent-session/session-limits.test.ts"
+        "packages/harbormaster/src/agent-session/session-stream.ts",
+        "packages/harbormaster/src/agent-session/session-stream.test.ts",
+        "packages/harbormaster/src/loop-land-report.ts",
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts"
       ],
       "notes": [
         "ASKED BY THE FOUNDER AND I COULD NOT ANSWER IT FROM THE LEDGER: \"is a thinking model being cut off before it does the work?\" That is a good question about every 3.8-27b session in this project, which showed reads and lists with zero mutations and completions of 4,475-5,405 tokens.",
@@ -13157,7 +13159,15 @@
         "This is the same shape as W21-32 (lifecycle events carried no run id) and W21-64 (a timeout park could not name the ceiling): the evidence needed to answer a real question exists when it happens and is not kept.",
         "It also blocks W21-66 from being settled honestly. I have controlled evidence that 3.8-27b explores rather than acts \u2014 free choice gave list,list at 93 tokens with finish_reason tool_calls, a NATURAL stop \u2014 but I cannot check the real sessions the same way, so the conclusion rests on a fixture rather than on what actually ran.",
         "SIDE OBSERVATION worth keeping: LM Studio cannot load a second model while one is serving \u2014 \"Failed to load model \u2026 Operation canceled\" reproduced while a run held coder-next. That is memory contention, and it probably explains the earlier load failures I attributed to the linked machine being away.",
-        "ACCEPTANCE: spend.recorded carries the provider-reported finish/stop reason alongside its token counts; a provider that reports none records that explicitly rather than omitting the field; the founder can tell a turn that hit the token cap from one that stopped on its own from one the provider truncated, without reading a fixture. This is a prerequisite for any cross-model run (see the model-agnosticism note in W21-78)."
+        "ACCEPTANCE: spend.recorded carries the provider-reported finish/stop reason alongside its token counts; a provider that reports none records that explicitly rather than omitting the field; the founder can tell a turn that hit the token cap from one that stopped on its own from one the provider truncated, without reading a fixture. This is a prerequisite for any cross-model run (see the model-agnosticism note in W21-78).",
+        "SCOPE CORRECTED AT CLAIM. The filed scope named oai-compat-types.ts, gateway-session.ts and session-limits.test.ts; none of them is where spend.recorded is written. The event is appended in agent-session/session-stream.ts, and `turn.response.finishReason` is already in hand at that exact line \u2014 the value was being dropped one statement after it was available. All five files verified clear.",
+        "NO NEW PLUMBING WAS NEEDED, which is the shape of the defect: the provider already normalizes finish_reason, ChatResponse already carries it, W21-18's turnTokenStop already reads it LIVE to tell reasoning truncation from a runaway model, and the ledger threw it away immediately afterwards. Same as W21-32 (lifecycle events carried no run id) and W21-64 (a timeout park could not name its own ceiling).",
+        "ALWAYS WRITTEN, never omitted (acceptance 2 of the notes). A provider that reports nothing normalizes to \"unknown\", which is a different and honest claim from a missing field \u2014 absent means \"this record predates the field\", and there is a fixture for each.",
+        "LAW 8 HELD: the payload gains an enum member, not text. A spend record still carries numbers, a model id and categories \u2014 never a prompt, a completion or a credential.",
+        "ACCEPTANCE 3 IS WIRED, not just possible. The park comment reports \"N turn(s) were CUT OFF at the token ceiling (finish_reason: length), not ended by the model\" for EVERY park reason rather than only the timeout one \u2014 a session whose turns were all truncated looks, from outside, exactly like a model that could not do the job.",
+        "THE TWO LEDGER READS WERE MERGED INTO ONE. W21-64 added largestCompletionTokens an hour ago; this needs the length-stop count from the same scan. They now return together as TicketLedgerEvidence, because they answer one question BETWEEN them: large completions WITH length stops is a model cut off mid-thought, while large completions with natural stops is a model that simply thinks a lot. Returning them separately invited a caller to report one and imply the wrong cause. It also kept loop-land-ticket.ts at exactly 400 lines rather than 401.",
+        "AN OLDER RECORD IS NOT READ AS TRUNCATION, with a fixture: a spend event written before this field counts as no length stop, never as one.",
+        "RED PROVEN by stashing session-stream.ts and loop-land-report.ts: 8 fixtures fail, including both of W21-64's that now flow through the merged evidence object."
       ],
       "acceptance": [
         "spend.recorded (or a sibling event) carries the turn`s finish_reason",

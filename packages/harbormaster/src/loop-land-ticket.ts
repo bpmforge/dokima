@@ -27,7 +27,7 @@ import {
 } from '@dokima/tickets';
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
-import { defaultParkReason, largestCompletionTokens, parkComment } from './loop-land-report.js';
+import { defaultParkReason, ledgerEvidenceFor, parkComment } from './loop-land-report.js';
 import { attemptOnce, nextFeedback } from './loop-land-session.js';
 import {
   repeatedZeroInformationCalls,
@@ -361,8 +361,8 @@ export async function landClaimedTicket(
       repetitionEvidenceLine(
         repeatedZeroInformationCalls({ log: options.log, ticketId: ticket.id }),
       ),
-      // W21-64: from the ledger, like the line above it.
-      largestCompletionTokens(options.log, ticket.id, options.runId ?? null),
+      // W21-64/67: from the ledger, like the line above it.
+      ledgerEvidenceFor(options.log, ticket.id, options.runId ?? null),
     );
     commentTicket(options.log, {
       ticketId: ticket.id,

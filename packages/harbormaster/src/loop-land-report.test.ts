@@ -1,11 +1,18 @@
-import { describe, expect, it } from 'vitest';
-import { attemptSummaryLine,
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { appendEvent, createIdentity, openEventLog, type EventLog } from '@dokima/events';
+import {
+  attemptSummaryLine,
   parkComment,
   defaultParkReason,
   everyAttemptHitTheProvider,
   everyAttemptTimedOut,
+  ledgerEvidenceFor,
   observedTimeoutMs,
-  timedOutWaitingForASlot, } from './loop-land-report.js';
+  timedOutWaitingForASlot,
+} from './loop-land-report.js';
 import type { SilentCompletion } from './loop-land-session-acceptance.js';
 import type { LandAttempt } from './loop-land.js';
 
@@ -338,7 +345,7 @@ describe('a timeout is not a refusal (W21-64)', () => {
       undefined,
       0,
       null,
-      4475,
+      { largestCompletionTokens: 4475, lengthStops: 0 },
     );
     expect(body).toContain('300000ms');
     expect(body).toContain('4475');
@@ -347,7 +354,10 @@ describe('a timeout is not a refusal (W21-64)', () => {
   });
 
   it('says plainly when no completion size was recorded, rather than inventing one', () => {
-    const body = parkComment('provider_timeout', 2, [timedOut(1)], undefined, 0, null, null);
+    const body = parkComment('provider_timeout', 2, [timedOut(1)], undefined, 0, null, {
+      largestCompletionTokens: null,
+      lengthStops: 0,
+    });
     expect(body).toContain('No completion size was recorded');
     expect(body).toContain('300000ms');
   });
@@ -362,7 +372,10 @@ describe('a timeout is not a refusal (W21-64)', () => {
         'provider failure: lm-studio (waiting for a request-queue slot; 1 active, 2 queued): request timed out after 300000ms',
       );
       expect(timedOutWaitingForASlot([queued])).toBe(true);
-      const body = parkComment('provider_timeout', 2, [queued], undefined, 0, null, 4475);
+      const body = parkComment('provider_timeout', 2, [queued], undefined, 0, null, {
+        largestCompletionTokens: 4475,
+        lengthStops: 0,
+      });
       expect(body).toContain('REQUEST SLOT');
       expect(body).toContain('will not help');
     },
@@ -374,8 +387,118 @@ describe('a timeout is not a refusal (W21-64)', () => {
       'provider failure: lm-studio (model x): request timed out after 1200000ms',
     );
     expect(observedTimeoutMs([raised])).toBe(1_200_000);
-    expect(parkComment('provider_timeout', 2, [raised], undefined, 0, null, 9000)).toContain(
+    expect(parkComment('provider_timeout', 2, [raised], undefined, 0, null, {
+      largestCompletionTokens: 9000,
+      lengthStops: 0,
+    })).toContain(
       '1200000ms',
     );
+  });
+});
+
+
+/** A throwaway log for the ledger-reading helpers (W21-67). */
+function reportLedger(): EventLog {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dokima-report-ledger-'));
+  reportDirs.push(dir);
+  const log = openEventLog(path.join(dir, 'state.db'));
+  reportLogs.push(log);
+  createIdentity(log, { id: 'agent', name: 'Agent', kind: 'machine' });
+  return log;
+}
+
+function spend(
+  log: EventLog,
+  payload: Record<string, unknown>,
+  ticketId = 'T-1',
+  runId = 'run-1',
+): void {
+  appendEvent(log, { eventType: 'spend.recorded', actorId: 'agent', ticketId, runId, payload });
+}
+
+const reportDirs: string[] = [];
+const reportLogs: EventLog[] = [];
+afterEach(() => {
+  for (const log of reportLogs.splice(0)) log.close();
+  for (const dir of reportDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+describe('the park can say the model was cut off mid-thought (W21-67)', () => {
+  const attempt0 = () =>
+    ({
+      attempt: 1,
+      session: {
+        exitCode: 1,
+        output: 'no completion manifest returned',
+        manifest: null,
+        manifestParseTier: null,
+        scopeViolations: [],
+        changedPaths: [],
+      },
+      closeGate: null,
+    }) as unknown as LandAttempt;
+
+  it('RED FIXTURE: length stops are reported, so truncation is not read as a bad model', () => {
+    // The founder's question — "is a thinking model being cut off before it
+    // does the work?" — which the ledger could not answer at all. A session
+    // whose every turn was truncated looks, from outside, exactly like a model
+    // that could not do the job.
+    const body = parkComment('ladder_exhausted', 2, [attempt0()], undefined, 0, null, {
+      largestCompletionTokens: 4475,
+      lengthStops: 3,
+    });
+    expect(body).toContain('3 turn(s) were CUT OFF');
+    expect(body).toContain('finish_reason: length');
+    expect(body).toContain('maxTurnTokens');
+  });
+
+  it('says nothing when every turn ended naturally — silence is the honest default', () => {
+    const body = parkComment('ladder_exhausted', 2, [attempt0()], undefined, 0, null, {
+      largestCompletionTokens: 93,
+      lengthStops: 0,
+    });
+    expect(body).not.toContain('CUT OFF');
+  });
+
+  it('reports truncation for ANY park reason, not just the timeout one', () => {
+    const body = parkComment('attempted_nothing', 2, [attempt0()], undefined, 0, null, {
+      largestCompletionTokens: 5405,
+      lengthStops: 1,
+    });
+    expect(body).toContain('CUT OFF');
+  });
+});
+
+describe('ledgerEvidenceFor reads both numbers together (W21-67)', () => {
+  it('takes the LARGEST completion and counts length stops', () => {
+    const log = reportLedger();
+    spend(log, { completionTokens: 93, finishReason: 'tool_calls' });
+    spend(log, { completionTokens: 4475, finishReason: 'length' });
+    spend(log, { completionTokens: 5405, finishReason: 'length' });
+
+    const evidence = ledgerEvidenceFor(log, 'T-1', 'run-1');
+    expect(evidence.largestCompletionTokens).toBe(5405);
+    expect(evidence.lengthStops).toBe(2);
+  });
+
+  it('ignores other tickets and other runs', () => {
+    const log = reportLedger();
+    spend(log, { completionTokens: 9999, finishReason: 'length' }, 'T-2', 'run-1');
+    spend(log, { completionTokens: 8888, finishReason: 'length' }, 'T-1', 'run-2');
+    spend(log, { completionTokens: 42, finishReason: 'stop' });
+
+    const evidence = ledgerEvidenceFor(log, 'T-1', 'run-1');
+    expect(evidence.largestCompletionTokens).toBe(42);
+    expect(evidence.lengthStops).toBe(0);
+  });
+
+  it('an older record with no finishReason counts as no length stop, not as one', () => {
+    // The field is new. A record written before it must not be read as
+    // evidence of truncation that was never observed.
+    const log = reportLedger();
+    spend(log, { completionTokens: 4475 });
+    const evidence = ledgerEvidenceFor(log, 'T-1', 'run-1');
+    expect(evidence.largestCompletionTokens).toBe(4475);
+    expect(evidence.lengthStops).toBe(0);
   });
 });

@@ -280,6 +280,32 @@ export async function takeMeteredTurn(args: {
         costUsd: turn.response.usage.costUsd,
         promptTokens: turn.response.usage.promptTokens,
         completionTokens: turn.response.usage.completionTokens,
+        /**
+         * W21-67: HOW the turn ended, not just how big it was.
+         *
+         * The founder asked "is a thinking model being cut off before it does
+         * the work?" and the ledger could not answer it. A turn the model
+         * chose to end was indistinguishable, after the fact, from one cut off
+         * at a ceiling — the only recourse was inferring from token counts
+         * against DEFAULT_MAX_TURN_TOKENS, which is weaker than a ledger
+         * should require.
+         *
+         * The value is already in hand at this exact line: `turn.response`
+         * carries it, W21-18's `turnTokenStop` reads it live to tell reasoning
+         * truncation from a runaway model, and it was dropped immediately
+         * afterwards. Same shape as W21-32 (lifecycle events carried no run
+         * id) and W21-64 (a timeout park could not name its own ceiling):
+         * evidence that exists when it happens and is not kept.
+         *
+         * ALWAYS WRITTEN, never omitted. A provider that reports nothing
+         * normalizes to 'unknown' (see `normalizeFinishReason`), which is a
+         * different and honest claim from a missing field — absent would mean
+         * "this record predates the field".
+         *
+         * An enum member, so law 8 / FR-S2 still holds: numbers, a model id
+         * and a category, never a prompt or a completion.
+         */
+        finishReason: turn.response.finishReason,
         streamed: turn.streamed,
         at: args.now(),
       },

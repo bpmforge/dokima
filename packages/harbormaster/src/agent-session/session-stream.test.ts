@@ -386,6 +386,68 @@ describe('runStreamedTurn (W13-16)', () => {
       },
     );
 
+    /**
+     * W21-67. The founder asked "is a thinking model being cut off before it
+     * does the work?" and the ledger could not answer it: a turn the model
+     * chose to end looked identical, afterwards, to one cut off at a ceiling.
+     */
+    async function spendPayloadFor(response: ChatResponse): Promise<Record<string, unknown>> {
+      const opened = await openLog3();
+      await takeMeteredTurn({
+        route: async () => ({ chain: ['m'] }),
+        resolveProvider: () => streamingProvider([{ type: 'final', response }]),
+        messages: [{ role: 'user', content: 'hi' }] as never,
+        tools: undefined,
+        ledger: ledger(),
+        projectId: 'p1',
+        runId: 'run-1',
+        ticketId: 'T-1',
+        berthId: 'b1',
+        log: opened,
+        actorId: 'agent',
+        role: 'coding-agent',
+        now: () => '2026-08-19T12:00:00.000Z',
+      });
+      const spend = listEvents(opened).filter((e) => e.eventType === 'spend.recorded');
+      return spend[0]?.payload as Record<string, unknown>;
+    }
+
+    it('RED FIXTURE: a NATURAL stop is recorded as one — the model chose to end', async () => {
+      const payload = await spendPayloadFor({
+        message: { role: 'assistant', content: '' },
+        usage: { promptTokens: 40, completionTokens: 93, costUsd: 0 },
+        finishReason: 'tool_calls',
+      } as unknown as ChatResponse);
+      expect(payload.finishReason).toBe('tool_calls');
+    });
+
+    it(
+      'RED FIXTURE: a LENGTH stop with empty content is recorded as one — the ' +
+        'shape of a reasoning model cut off mid-thought, which is exactly the ' +
+        'case token counts alone could not distinguish',
+      async () => {
+        const payload = await spendPayloadFor({
+          message: { role: 'assistant', content: '' },
+          usage: { promptTokens: 5235, completionTokens: 4475, costUsd: 0 },
+          finishReason: 'length',
+        } as unknown as ChatResponse);
+        expect(payload.finishReason).toBe('length');
+        expect(payload.completionTokens).toBe(4475);
+      },
+    );
+
+    it('a provider that reports NOTHING records "unknown", rather than omitting the field', async () => {
+      // Absent would mean "this record predates the field", which is a
+      // different and weaker claim than "the provider did not say".
+      const payload = await spendPayloadFor({
+        message: { role: 'assistant', content: 'done' },
+        usage: { promptTokens: 11, completionTokens: 7, costUsd: 0.25 },
+        finishReason: 'unknown',
+      } as unknown as ChatResponse);
+      expect('finishReason' in payload).toBe(true);
+      expect(payload.finishReason).toBe('unknown');
+    });
+
     it(
       'and carries NUMBERS ONLY — never a prompt, a completion or a credential ' +
         '(law 8, FR-S2). A spend record is the wrong place to leak one',

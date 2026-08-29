@@ -169,30 +169,51 @@ export function timedOutWaitingForASlot(attempts: readonly LandAttempt[]): boole
 }
 
 /**
- * The largest completion this ticket produced, in tokens, from `spend.recorded`
- * (W21-64).
+ * What the ledger can say about this ticket's turns (W21-64, W21-67).
  *
- * One event per metered call carries `completionTokens`, so the number the
- * founder had to derive by hand — 22 tok/s timed with a stopwatch, then the
- * ledger read for `completion 4475` — is already recorded. Largest rather than
- * total: the ceiling is per REQUEST, so a sum would answer a question nobody
- * asked and make a run of many small calls look like the problem.
+ * `spend.recorded` carries one event per metered call: token counts since
+ * W13-24, and since W21-67 the provider-reported finish reason. Both numbers
+ * a founder would otherwise derive by hand — a stopwatch on tokens/sec, then
+ * a ledger read — are already written down.
+ *
+ * Read together because they answer one question between them: a park with
+ * large completions AND length stops is a model being cut off mid-thought,
+ * while large completions with natural stops is a model that simply thinks a
+ * lot. Returning them separately invited a caller to report one without the
+ * other and imply the wrong cause.
  */
-export function largestCompletionTokens(
+export interface TicketLedgerEvidence {
+  /**
+   * LARGEST rather than total: the request ceiling is per CALL, so a sum would
+   * answer a question nobody asked and make a run of many small calls look
+   * like the problem.
+   */
+  readonly largestCompletionTokens: number | null;
+  /** Turns the provider ended with `length` — cut off, not finished. */
+  readonly lengthStops: number;
+}
+
+export function ledgerEvidenceFor(
   log: EventLog,
   ticketId: string,
   runId: string | null,
-): number | null {
-  let largest: number | null = null;
+): TicketLedgerEvidence {
+  let largestCompletionTokens: number | null = null;
+  let lengthStops = 0;
   for (const event of listEvents(log)) {
     if (event.eventType !== 'spend.recorded') continue;
     if (event.ticketId !== ticketId) continue;
     if (runId !== null && event.runId !== runId) continue;
-    const tokens = (event.payload as { completionTokens?: unknown }).completionTokens;
-    if (typeof tokens !== 'number' || !Number.isFinite(tokens)) continue;
-    if (largest === null || tokens > largest) largest = tokens;
+    const payload = event.payload as { completionTokens?: unknown; finishReason?: unknown };
+    const tokens = payload.completionTokens;
+    if (typeof tokens === 'number' && Number.isFinite(tokens)) {
+      if (largestCompletionTokens === null || tokens > largestCompletionTokens) {
+        largestCompletionTokens = tokens;
+      }
+    }
+    if (payload.finishReason === 'length') lengthStops += 1;
   }
-  return largest;
+  return { largestCompletionTokens, lengthStops };
 }
 
 export function defaultParkReason(
@@ -273,12 +294,12 @@ export function parkComment(
   /** W21-19: the cross-session repetition line, when there is one to report. */
   repetitionLine: string | null = null,
   /**
-   * W21-64: the largest completion this ticket actually produced, from the
-   * ledger. Passed in rather than read here because this module is pure and
-   * the caller already holds the log — and because a park comment that had to
-   * open a database to be written would be a worse trade than one parameter.
+   * W21-64/W21-67: what the ledger says about this ticket's turns. Passed in
+   * rather than read here because this module is pure and the caller already
+   * holds the log — a park comment that had to open a database to be written
+   * would be a worse trade than one parameter.
    */
-  largestCompletionTokens: number | null = null,
+  evidence: TicketLedgerEvidence = { largestCompletionTokens: null, lengthStops: 0 },
 ): string {
   /**
    * W13-63: "Parked", because that is what HAPPENS. This header said
@@ -299,7 +320,7 @@ export function parkComment(
    * A park comment is the founder's whole account of why a ticket stopped. It
    * naming the wrong mechanism is worse than it saying nothing.
    */
-  const header = parkHeader(reason, ceiling, attempts, largestCompletionTokens);
+  const header = parkHeader(reason, ceiling, attempts, evidence.largestCompletionTokens);
   const lines = [
     header,
     ...attempts.map((attempt) => attemptSummaryLine(attempt, ceiling)),
@@ -307,6 +328,22 @@ export function parkComment(
   // W21-15: visible, because a ticket that took five passes to reach two
   // judged attempts should say so — but never folded into the attempt number,
   // which is what made the evidence read "attempt 5/2".
+  /**
+   * W21-67: "is a thinking model being cut off before it does the work?" — the
+   * question that could not be answered from the ledger at all. It is reported
+   * for EVERY park reason, not just the timeout one: a session that produced
+   * no manifest because each turn was truncated mid-thought looks identical,
+   * from the outside, to a model that simply could not do the job.
+   */
+  if (evidence.lengthStops > 0) {
+    lines.push(
+      `${evidence.lengthStops} turn(s) were CUT OFF at the token ceiling ` +
+        `(finish_reason: length), not ended by the model. A turn that stops ` +
+        `mid-thought cannot produce a completion manifest, so this may be a ` +
+        `budget symptom rather than a verdict on the ticket — see ` +
+        `maxTurnTokens.`,
+    );
+  }
   if (absorbedInfraRetries > 0) {
     lines.push(
       `${absorbedInfraRetries} infrastructure retry(s) were absorbed and did NOT ` +
