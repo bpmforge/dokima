@@ -80,7 +80,11 @@ export function runPipeline(input: RunPipelineInput, port: PipelinePort): Decomp
   port.emit({ kind: 'decisions-decided', slateTitle: technicalSlate.title });
 
   const ticketDrafts = port.model.ticketDraftsFrom(blueprint, technicalSlate);
-  const plan = decompose(ticketDrafts);
+  // W21-97: a plan built from someone's IDEA carries its quality work. This is
+  // the call site that serves a person who may have no development experience
+  // and would never think to ask for a security review — unlike
+  // `buildFixBacklog`, whose input is already findings.
+  const plan = decompose(ticketDrafts, { includeQualityWork: true });
   port.emit({ kind: 'decomposed', ticketCount: plan.tickets.length });
 
   return plan;

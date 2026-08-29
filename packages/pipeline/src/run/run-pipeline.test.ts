@@ -143,7 +143,14 @@ describe('runPipeline (BLUEPRINT §4, phases 0-4)', () => {
       port,
     );
 
-    expect(plan.tickets).toHaveLength(1);
+    // W21-97: a board built from someone's idea carries its quality work too —
+    // the drafted feature, plus the standard checks a person with no
+    // development experience would never think to ask for.
+    const drafted = plan.tickets.filter((t) => !t.id.startsWith('QUALITY-'));
+    expect(drafted).toHaveLength(1);
+    expect(plan.tickets.map((t) => t.id)).toEqual(
+      expect.arrayContaining(['QUALITY-SECURITY-REVIEW', 'QUALITY-RELEASE-READINESS']),
+    );
     expect(plan.tickets[0]?.id).toBe('T1');
     expect(plan.mermaid.startsWith('flowchart TD')).toBe(true);
     expect(plan.violations).toEqual([]);

@@ -245,13 +245,18 @@ describe('POST /api/v1/projects/:id/pipeline/run', () => {
     expect(res.statusCode).toBe(201);
     const body = res.json() as {
       run_id: string;
-      plan: { tickets: unknown[] };
+      plan: { tickets: { id: string }[] };
       plan_items: { ticket_created: boolean; ticket_id: string }[];
     };
-    expect(body.plan.tickets).toHaveLength(1);
-    expect(body.plan_items).toHaveLength(1);
-    expect(body.plan_items[0]?.ticket_created).toBe(true);
-    expect(body.plan_items[0]?.ticket_id).toBe('PLAN-T-DEMO-1');
+    // W21-97: a board built from an idea now also carries the standard quality
+    // work, so the DRAFTED feature is asserted directly rather than by total.
+    const drafted = body.plan.tickets.filter((t) => !t.id.startsWith('QUALITY-'));
+    expect(drafted).toHaveLength(1);
+    expect(body.plan.tickets.map((t) => t.id)).toContain('QUALITY-SECURITY-REVIEW');
+    const draftedItems = body.plan_items.filter((i) => !i.ticket_id.includes('QUALITY-'));
+    expect(draftedItems).toHaveLength(1);
+    expect(draftedItems[0]?.ticket_created).toBe(true);
+    expect(draftedItems[0]?.ticket_id).toBe('PLAN-T-DEMO-1');
 
     const dbPath = stateDbPath(projectDir);
     const log = openEventLog(dbPath);
