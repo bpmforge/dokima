@@ -12,6 +12,7 @@
  * driving the installed binary.
  */
 import { runPackagedCli } from './cli.js';
+import { reportFatal } from './fatal.js';
 
 async function main(): Promise<void> {
   const code = await runPackagedCli(process.argv.slice(2), {
@@ -24,6 +25,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error(err);
+  // W22-01: `console.error(err)` printed a stack for every failure that no
+  // inner handler recognised. See fatal.ts for why the default is now a
+  // refusal. Exit stays 1 — 2 is this CLI's "refused by a gate" code
+  // (run-build.ts), and an unrecognised failure is not that.
+  reportFatal(err, (line) => console.error(line));
   process.exitCode = 1;
 });

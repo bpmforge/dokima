@@ -14127,7 +14127,7 @@
       ],
       "phase": 22,
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "id": "W22-01",
       "lane": "orchestrator",
@@ -14135,8 +14135,9 @@
       "points": 2,
       "title": "the CLI refuses by default \u2014 a stack trace becomes the exception, not the fallback",
       "write_scope": [
-        "apps/server/src/cli/index.ts",
-        "apps/server/src/cli/index.test.ts"
+        "apps/server/src/bootstrap/fatal.ts",
+        "apps/server/src/bootstrap/fatal.test.ts",
+        "apps/server/src/bootstrap/main.ts"
       ],
       "acceptance": [
         "An unhandled error from any command prints one refusal line naming what failed, not a stack trace",
@@ -14147,7 +14148,12 @@
       "notes": [
         "LESSON L-48. The same defect was fixed three times in one session, each time by teaching one more error type to one more handler: LaneScopeError escaping reportVerbError (W21-81), a native parseArgs TypeError escaping runCli (W21-91), SqliteError escaping both (W21-99). Every one reached the top-level catch in cli/index.ts, which prints err.stack.",
         "Three instances is a class, not a coincidence. The durable fix is at that catch: make a refusal the DEFAULT and a stack trace the exception, so the fourth error type does not need a fourth ticket.",
-        "NOT a blanket swallow. A stack trace is the right output for a genuine bug \u2014 the change is which case is the default. Keep the stack behind a flag and say it is there."
+        "NOT a blanket swallow. A stack trace is the right output for a genuine bug \u2014 the change is which case is the default. Keep the stack behind a flag and say it is there.",
+        "SCOPE RETARGETED at claim time, 2026-08-28. The filed write_scope was apps/server/src/cli/index.ts \u2014 which is DEAD. W10-74 folded runCli into bootstrap/cli.ts to fix an unreachable-CLI defect and left the old node-shebang entry behind: nothing imports it, build.mjs has one entryPoint (bootstrap/main.ts), and the root bin points at bootstrap/cli-entry.mjs. Every stack trace a user actually saw came from bootstrap/main.ts, whose catch was console.error(err). Fixing cli/index.ts would have satisfied nobody and been provable by no test. bootstrap/* is unowned by any open ticket, so no Law 1 overlap.",
+        "THIS TICKET IS ITSELF AN L-54 INSTANCE \u2014 filed to catch tickets whose scope cannot satisfy their acceptance, and filed with a scope that could not satisfy its own. Left on the record rather than quietly corrected.",
+        "A GUARD I ALMOST SHIPPED WAS WRONG: to make the entry importable for tests I added an isProcessEntry() check comparing process.argv[1] to import.meta.url. cli-entry.mjs IMPORTS the bundle rather than exec-ing it, so argv[1] is cli-entry.mjs while import.meta.url is dist/main.js \u2014 they never match, and the CLI would have exited 0 doing nothing. Running dist/main.js directly is the one invocation where they DO match, and that was exactly what I had probed with. Discarded; reportFatal lives in its own module and takes the stderr sink as a parameter, matching the io.stderr idiom used everywhere else in the CLI.",
+        "PROVEN LIVE against the packaged binary through the real bin, not only through vitest: verify-chain --db pointed at a text file printed a four-frame SqliteError stack through dist/main.js, and now prints \"refused: file is not a database\" plus the DOKIMA_STACK=1 hint, exit 1; DOKIMA_STACK=1 still yields the full stack; --help still answers, which is the check that would have caught the guard bug. That SqliteError is a FOURTH instance of the L-48 class, caught by the class fix instead of a fourth ticket.",
+        "OUT OF SCOPE, deliberately: cli-entry.mjs rethrows a non-ABI bundle-import failure as a raw trace, and its own comment argues for that \u2014 a crash while LOADING the product is not a command refusal. bootstrap/cli.ts already reports err.message rather than a stack."
       ]
     },
     {
@@ -14176,7 +14182,8 @@
       "notes": [
         "LESSON L-46, the product's most common defect class and the one no test catches. Eight instances found in a single session: runPhaseGate wired to a route no UI calls; \"Onboard existing repo\" registering a folder while runOnboardAnalysis sits unused; requestTimeoutMs stored, validated and threaded but dropped by the two LOCAL provider kinds; streamIdleMs governing every streamed phase with no wire surface; 85 shipped validators of which 2 ran.",
         "Each of those passed its own unit tests. Nothing asserts that a capability is REACHED, so \"built\" and \"in use\" are indistinguishable from inside the codebase.",
-        "validate-exports already names ~130 candidate no-caller defects (see the no-caller-sweep memory) \u2014 it exists and is not gated. Making its output trustworthy enough to gate is the work: today a human must confirm each by bundle presence rather than grep."
+        "validate-exports already names ~130 candidate no-caller defects (see the no-caller-sweep memory) \u2014 it exists and is not gated. Making its output trustworthy enough to gate is the work: today a human must confirm each by bundle presence rather than grep.",
+        "FIXTURE AVAILABLE, found 2026-08-28: apps/server/src/cli/index.ts is a live orphan \u2014 a complete CLI entry with zero importers, absent from the bundle, stranded by W10-74. Filed for deletion as W22-05."
       ]
     },
     {
@@ -14205,7 +14212,8 @@
       "notes": [
         "LESSON L-54. Reading acceptance against write_scope before claiming caught SIX unworkable tickets in one session: W21-89 (needed apps/web/src/settings/** against a server-only scope), W21-90 (Decide card in apps/web/src/decisions/), W21-93 (declared catalog/** when the data originates in the provider adapter), W21-97 (named a file that does not exist), and two cross-lane overlaps that validate-plan already flags.",
         "The check is currently a habit, which means it works until somebody is in a hurry. Every one of those cost a claim, a scope correction and a commit that had to explain itself.",
-        "DELIBERATELY CONSERVATIVE: acceptance is prose, and inferring paths from prose will produce false positives that teach people to ignore the validator \u2014 the failure mode D-014 and W21-38 both warn about. Report only where a criterion names something path-shaped that no scope entry could match."
+        "DELIBERATELY CONSERVATIVE: acceptance is prose, and inferring paths from prose will produce false positives that teach people to ignore the validator \u2014 the failure mode D-014 and W21-38 both warn about. Report only where a criterion names something path-shaped that no scope entry could match.",
+        "FIXTURE AVAILABLE, found 2026-08-28: apps/server/src/cli/index.ts is a live orphan \u2014 a complete CLI entry with zero importers, absent from the bundle, stranded by W10-74. Filed for deletion as W22-05."
       ]
     },
     {
@@ -14233,6 +14241,31 @@
         "LESSON L-50. \"Settable and inert\" recurred one layer up each time it was fixed. W10-57 added requestTimeoutMs to the registry with validation and a comment explaining why it exists. providers-wire.ts omitted it from BOTH directions \u2014 the failure its own module header names. Once that was wired, providerForConfig dropped it for exactly the two LOCAL kinds the field was added for. Each layer had tests; none asserted the value arrived.",
         "It was caught only by setting the value over HTTP against a live daemon and watching the run still die at the old ceiling. A unit test at any single layer would have passed.",
         "Cheap to state, hard to remember unattended \u2014 which is why it belongs in TESTING.md beside the other planted-defect discipline rather than in a reviewer's head."
+      ]
+    },
+    {
+      "id": "W22-05",
+      "lane": "orchestrator",
+      "module": "cli",
+      "points": 1,
+      "phase": 22,
+      "role": "coding-agent",
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "title": "delete the orphaned CLI entry W10-74 stranded",
+      "write_scope": [
+        "apps/server/src/cli/index.ts"
+      ],
+      "acceptance": [
+        "apps/server/src/cli/index.ts is gone, and the packaged CLI still answers every verb it answered before",
+        "No comment, doc or ticket note still points at it as the place errors surface"
+      ],
+      "notes": [
+        "W10-74 folded runCli into bootstrap/cli.ts and left this file behind. It has no importers, is not an entryPoint in build.mjs, and is not the root bin target \u2014 but it reads like the CLI entry, and it cost W22-01 a claim and a scope correction because three ticket notes and a LESSONS row all named it as the site of a defect that was really in bootstrap/main.ts.",
+        "Deliberately its own ticket rather than folded into W22-01: deleting a file is not the same change as fixing an error default, and bundling them would hide one behind the other."
       ]
     },
     {
