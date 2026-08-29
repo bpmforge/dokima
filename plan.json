@@ -13768,7 +13768,7 @@
       "phase": 21,
       "lane": "gateway",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "in_progress",
       "points": 3,
       "module": "gateway",
       "depends_on": [],
@@ -13781,10 +13781,10 @@
         "apps/server/src/api/server/providers-wire.test.ts"
       ],
       "acceptance": [
-        "A discovered model carries what the provider said about its kind \u2014 generative or embedding \u2014 through the catalog and out of the providers route",
+        "A discovered model carries what the provider said about its kind \u2014 generative or embedding \u2014 from the provider adapter through the catalog",
         "The value comes from the provider response, never from the model id",
-        "A provider that reports no kind yields no kind, rather than a guess, and nothing downstream is allowed to treat absence as \"generative\"",
-        "Ollama degrades honestly on its own shape rather than being assumed to match LM Studio"
+        "A provider that reports no kind yields no kind rather than a guess, and absence is never treated as \"generative\"",
+        "Ollama and generic OpenAI-compatible endpoints degrade honestly on their own shapes rather than being assumed to match LM Studio"
       ],
       "notes": [
         "LIVE 2026-08-28, walking the setup wizard as a novice on this machine: step 4 \"Which of your models should do the work?\" listed all 34 models LM Studio serves, including text-embedding-nomic-embed-text-v1.5, text-embedding-embeddinggemma-300m, text-embedding-embeddinggemma-300m-qat and text-embedding-qwen3-embedding-8b. An embedding model cannot generate text at all, so a novice who picks one has a setup broken by construction, and the failure arrives later as an obscure run error rather than at the moment of choosing.",
@@ -13792,7 +13792,9 @@
         "DO NOT FIX THIS WITH A NAME HEURISTIC. All four embedding models here start with \"text-embedding-\", which makes a prefix match look cheap. That prefix is LM Studio's normalization: an Ollama user sees \"nomic-embed-text:latest\" with no prefix, so a prefix rule protects one provider and silently fails another \u2014 worse than no rule, because the gap is invisible. verify-command.ts states the house rule: derived from disk, never guessed.",
         "NOT A DUPLICATE of W21-78 (refuse a model the provider does not serve). An embedding model IS served, so existence checks pass it. This is capability, not presence.",
         "THE DATA HALF ONLY. The picker that consumes it is W21-94, in the ui lane \u2014 apps/web/src/settings/** belongs to that lane (W21-25 holds it), and taking it here would be the cross-lane write_scope overlap Law 1 calls a schema bug. Filed as two tickets so each is satisfiable inside its own scope, which W21-89 and W21-90 were not.",
-        "WORTH TAKING WHILE THE ENDPOINT IS OPEN: `capabilities: [\"tool_use\"]` rides the same response, and a maker that cannot call tools is a second way to pick a model that cannot do the job \u2014 the same defect one step less obvious."
+        "WORTH TAKING WHILE THE ENDPOINT IS OPEN: `capabilities: [\"tool_use\"]` rides the same response, and a maker that cannot call tools is a second way to pick a model that cannot do the job \u2014 the same defect one step less obvious.",
+        "ACCEPTANCE RETARGETED at claim time, 2026-08-28, because it overreached this ticket's own scope. It said the kind must arrive \"out of the providers route\", but `toWireModel` \u2014 the function that serialises catalog models onto the wire \u2014 lives in apps/server/src/api/server/providers-routes.ts, which W21-25 owns in the UI lane. Putting it in this gateway-lane ticket would be the cross-lane overlap Law 1 calls a schema bug, and avoiding exactly that is why this ticket was split from W21-94 in the first place. The criteria now stop at the catalog, which is what this scope can honestly deliver.",
+        "CONSEQUENCE, stated plainly: landing this alone changes nothing a user can see. It is the data layer W21-94 consumes, and W21-94 (ui lane) must carry both the route serialisation and the picker. That is the honest shape of the split, not a gap."
       ]
     },
     {
