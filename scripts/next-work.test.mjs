@@ -105,4 +105,25 @@ describe('next-work: what can be worked, and why the rest cannot', () => {
     const out = run([ticket({ phase: 9 }), ticket({ id: 'W1-02', phase: 1, status: 'todo' })]);
     expect(out).toMatch(/NOTE: strict wave order/);
   });
+
+  it('RED FIXTURE: a ticket parked by an ANSWERED decision is HELD, not still asking', () => {
+    // The signal must not keep requesting an answer that has been given. Once
+    // a founder records the decision and the ticket goes to `blocked`, the
+    // text markers still match — "BLOCKED BY DESIGN" is still in its notes —
+    // so keying on the words alone would ask forever.
+    const out = run([
+      ticket({ id: 'W1-01', status: 'blocked', notes: ['BLOCKED BY DESIGN until a plugin exists'] }),
+      ticket({ id: 'W1-02' }),
+    ]);
+    expect(out).toContain('NEXT: W1-02');
+    expect(out).toContain('needs a decision: 0');
+    expect(out).toContain('held: 1');
+    expect(out).toContain('HELD');
+  });
+
+  it('a held ticket is never offered as NEXT even when nothing else is ready', () => {
+    const out = run([ticket({ id: 'W1-01', status: 'blocked' })]);
+    expect(out).not.toContain('NEXT:');
+    expect(out).toContain('held: 1');
+  });
 });

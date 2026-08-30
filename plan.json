@@ -7104,7 +7104,7 @@
       "module": "gateway",
       "lane": "gateway",
       "points": 8,
-      "status": "todo",
+      "status": "blocked",
       "role": "llm-integration-engineer",
       "write_scope": [
         "packages/gateway/src/plugins/loader.ts",
@@ -7124,7 +7124,8 @@
         "Consent is ledgered in the D-019 shape and default-off. No signature requirement \u2014 PLUGIN_SEAM.md \u00a73.3 records why signing here would be an endorsement of the exact use the vendor prohibits."
       ],
       "notes": [
-        "Filed by W12-27, which docs/design/PLUGIN_SEAM.md \u00a77 names. Do not start this without a plugin in hand \u2014 the ticket exists to hold the decision, not to schedule the work."
+        "Filed by W12-27, which docs/design/PLUGIN_SEAM.md \u00a77 names. Do not start this without a plugin in hand \u2014 the ticket exists to hold the decision, not to schedule the work.",
+        "BLOCKED 2026-08-30 by founder direction, recorded as D-031. Not a change of mind and not a deferral \u2014 the ticket's own acceptance already said BLOCKED BY DESIGN until a concrete plugin exists. What changes is the STATUS, because `todo` had a mechanical cost: validate-plan's P9 gates strict wave order behind this ticket, so the board's legacy priority signal reported exactly one claimable ticket through a wave in which fourteen were closed. `pnpm next` already routed around it; this makes the two agree instead of leaving a signal that has to be known to be wrong."
       ]
     },
     {
@@ -8033,7 +8034,7 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "todo",
+      "status": "blocked",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/breakpoints-clarifications.ts",
@@ -8052,7 +8053,8 @@
         "RED FIXTURE: a project set to auto takes the documented default at a non-NEVER-AUTO site and ledgers it; the same project still ASKS at a NEVER-AUTO site."
       ],
       "notes": [
-        "Filed by W13-26, which shipped the honest surface only. Today nothing reads the dial and every gated pause blocks, so the current state is conservative \u2014 there is no urgency here, and real risk in wiring it without the defaults review."
+        "Filed by W13-26, which shipped the honest surface only. Today nothing reads the dial and every gated pause blocks, so the current state is conservative \u2014 there is no urgency here, and real risk in wiring it without the defaults review.",
+        "BLOCKED 2026-08-30 by founder direction, recorded as D-032. A1 asked for the decision to be made and recorded FIRST, and this is that decision: not yet, and not until the per-pause-site defaults review happens. Recording 'no' is answering A1, not dodging it \u2014 the ticket stays open because the wiring is still wanted, and the review is now its named precondition rather than an assumption inside it."
       ]
     },
     {

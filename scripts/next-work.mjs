@@ -72,9 +72,24 @@ const rows = open.map((t) => {
     ticket: t,
     unmetDeps,
     decision,
-    // Dependencies come first: a ticket waiting on another cannot start even
-    // if someone answers its question.
-    state: unmetDeps.length > 0 ? 'waiting' : decision ? 'needs-decision' : 'ready',
+    /**
+     * `blocked` OUTRANKS EVERYTHING, INCLUDING THE DECISION MARKERS.
+     *
+     * A ticket parked deliberately has had its decision ANSWERED — the answer
+     * was "not now", recorded in docs/DECISIONS.md — and its notes still
+     * contain the words that made it look unanswered ("BLOCKED BY DESIGN" is
+     * still true of W12-44 and always will be). Keying on the text alone
+     * would ask the founder forever for a decision they had already made,
+     * which is the same defect as P9's: a signal you have to know is wrong.
+     */
+    state:
+      t.status === 'blocked'
+        ? 'held'
+        : unmetDeps.length > 0
+          ? 'waiting'
+          : decision
+            ? 'needs-decision'
+            : 'ready',
     dependents: dependentCount(t.id),
   };
 });
@@ -85,12 +100,16 @@ const ready = rows
   // work that other tickets are waiting on.
   .sort((a, b) => b.dependents - a.dependents || a.ticket.points - b.ticket.points);
 const needsDecision = rows.filter((r) => r.state === 'needs-decision');
+const held = rows.filter((r) => r.state === 'held');
 const waiting = rows.filter((r) => r.state === 'waiting');
 
 const line = (r) =>
   `  ${r.ticket.id.padEnd(8)} ${String(r.ticket.points).padStart(2)}pt  ${r.ticket.lane.padEnd(13)} ${r.ticket.title.slice(0, 62)}`;
 
-console.log(`open: ${open.length}   ready: ${ready.length}   needs a decision: ${needsDecision.length}   waiting on deps: ${waiting.length}`);
+console.log(
+  `open: ${open.length}   ready: ${ready.length}   needs a decision: ${needsDecision.length}   ` +
+    `held: ${held.length}   waiting on deps: ${waiting.length}`,
+);
 console.log('');
 
 if (ready.length > 0) {
@@ -109,6 +128,12 @@ if (needsDecision.length > 0) {
     console.log(line(r));
     console.log(`             why: ${r.decision}`);
   }
+  console.log('');
+}
+
+if (held.length > 0) {
+  console.log('HELD — the decision was made and recorded; nothing to answer:');
+  held.forEach((r) => console.log(line(r)));
   console.log('');
 }
 
