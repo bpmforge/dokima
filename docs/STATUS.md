@@ -1717,3 +1717,281 @@ Two findings from that run are filed and open: **W21-34** (the review pass
 never calls `acceptTicket` at all, so a run can land every ticket in a project
 and reach done on none of them while reporting "1 landed" each time) and
 **W21-35** (two event types still unattributed to a run).
+
+## W21 continued — 2026-08-25 → 2026-08-29: the live-run wave
+
+The section above stops at W21-33. What follows is the other 86 tickets of the
+founder wave, plus the whole of W22, reconstructed from `plan.json` and the
+commit record. **This backfill was written 2026-08-30, nine days and 199
+commits after the ledger's previous entry** — the gap is itself worth
+recording, because the file's own header says it "is how humans resume the
+project cold" and for nine days it could not have done that.
+
+**Almost none of this wave was designed.** These are defects found by running
+the loop against real projects and watching what it did, which is why so many
+of them read as sentences about behaviour rather than as features. The same
+class kept being rediscovered from different directions, so the useful way to
+read the list is by arc:
+
+- **Attempt and rung accounting** (W21-13, -15, -46, -55, -56, -57, -61, -63,
+  -64, -66, -79). The ladder's counter, its cap, and its notion of which rung
+  failed were each wrong in a different way; several of these were found only
+  because a park printed a number a person could check.
+- **Park advice that was untrue** (W21-16, -53, -58, -72). W21-53 is the one to
+  read: it fixed the *opposite* case from W21-16, on the same advice line.
+- **Run lifecycle and ownership** (W21-40, -42, -45, -82, -83). A dead run
+  stranding its ticket; a finished run that still read as live; a session that
+  finished the work and never found out.
+- **Worktree provisioning** (W21-12, -21, -22, -74, -86). Provisioning existed
+  at one of three claim sites, and a live run proved it never executed — the
+  same shape that later made W21-36 a founder decision rather than a cleanup.
+- **Scope against acceptance** (W21-27, -29, -31, -41, -43, -47, -50, -80). A
+  ticket whose acceptance cannot be satisfied inside its own `write_scope`
+  now reaches the founder before it burns a ladder.
+- **The maker↔founder seam** (W21-59, -71, -73, -90). What the founder can see,
+  what they can say back, and what the next session is handed.
+- **Checks that gated nothing** (W21-87, -92, -98) — the theme W22 then took
+  as its whole subject.
+
+
+**undated (plan-only or folded into another commit)**
+
+- `W21-14` (2pt, orchestrator) — PLAN ONLY: a dead run leaves its ticket claimed by nobody
+- `W21-16` (1pt, orchestrator) — the park advice stops being wrong in its commonest case
+- `W21-22` (2pt, engine) — tell the agent its environment is already prepared
+
+**2026-08-25**
+
+- `W21-07` (1pt, infra) — the subprocess-spawning suites get a timeout that matches what they do
+- `W21-08` (1pt, infra) — the rest of the process-spawning suites, chosen by measurement
+- `W21-09` (1pt, quality) — write down how to tell a slow test from a starved one
+- `W21-10` (3pt, orchestrator) — a spin with one call interleaved is still a spin
+- `W21-11` (1pt, quality) — the validator fixtures budget for a sandbox that has to boot
+- `W21-12` (5pt, orchestrator) — a fresh worktree can satisfy its own verify command
+
+**2026-08-26**
+
+- `W21-13` (1pt, orchestrator) — an infra retry says WHY, not just that it happened
+- `W21-15` (1pt, orchestrator) — the attempt counter cannot exceed its own cap
+- `W21-17` (2pt, quality) — a validator pack cannot starve its own sandboxes
+- `W21-18` (3pt, gateway) — a truncated reasoning model is not an empty answer
+- `W21-19` (2pt, orchestrator) — a spin that spans sessions is still a spin
+- `W21-20` (2pt, ui) — the last four pages get the shell
+- `W21-21` (2pt, orchestrator) — provisioning is wired into the loop the product actually runs
+- `W21-23` (2pt, orchestrator) — installing dependencies must not look like a scope violation
+- `W21-24` (3pt, ui) — a second provider must not make the product unconfigurable
+- `W21-26` (3pt, orchestrator) — a ticket that parked at its cap reaches the founder instead of looping forever
+- `W21-27` (5pt, core) — the founder can answer the question the product just asked
+- `W21-28` (3pt, orchestrator) — the agent is not refused for changes the harness made
+- `W21-29` (2pt, orchestrator) — the scope sweep judges the agent, not the product
+- `W21-30` (3pt, orchestrator) — a session is told when it is running out of turns
+- `W21-31` (2pt, orchestrator) — the close gate judges the commit set the agent made
+- `W21-37` (3pt, orchestrator) — a ticket starts from its dependencies, not from an empty repo
+- `W21-41` (5pt, orchestrator) — a ticket closes without its acceptance criteria ever being run
+- `W21-43` (3pt, orchestrator) — a ticket whose acceptance cannot be satisfied inside its own scope reaches the founder first
+- `W21-44` (3pt, orchestrator) — a session that changes nothing has not attempted the work
+- `W21-45` (5pt, orchestrator) — a refusal a ticket already earned does not survive to the next run
+
+**2026-08-27**
+
+- `W21-38` (3pt, orchestrator) — nothing checks that a generated project used the stack it designed
+- `W21-39` (5pt, orchestrator) — attest-parity controls: the pack ships 83 validators and a generated build runs 2
+- `W21-40` (3pt, orchestrator) — a run that dies strands its ticket, and the next run calls that idle
+- `W21-42` (3pt, orchestrator) — the reviewer may approve and may not reject
+- `W21-46` (3pt, orchestrator) — an exhausted ladder starts again from the bottom on the next run
+- `W21-47` (3pt, orchestrator) — a ticket whose verify and acceptance contradict each other burns the whole ladder
+- `W21-48` (5pt, orchestrator) — a board that turns out to be missing a ticket cannot be corrected
+- `W21-49` (5pt, orchestrator) — the onboard pipeline emits a board that violates the lane invariant
+- `W21-50` (3pt, orchestrator) — a founder-authored ticket can state an acceptance that cannot fail
+- `W21-51` (3pt, orchestrator) — a ticket nothing can depend on is not on the DAG
+- `W21-52` (2pt, orchestrator) — a stale worktree is a founder decision, not a crashed run
+- `W21-53` (3pt, orchestrator) — the park advice is now wrong in the opposite case from the one W21-16 fixed
+- `W21-54` (2pt, orchestrator) — the composed base was not a pure function of its inputs
+- `W21-55` (2pt, orchestrator) — the rung skip moved the loop counter instead of the rung
+- `W21-56` (2pt, orchestrator) — advice that names a lever with nothing left in it
+- `W21-57` (2pt, orchestrator) — the ceiling advice says SPLIT without knowing the worktree accumulates
+- `W21-58` (3pt, orchestrator) — a run whose every attempt died on the endpoint parks as if the ticket were wrong
+- `W21-59` (3pt, orchestrator) — the founder can see what the maker needs to know and cannot tell it
+- `W21-60` (2pt, orchestrator) — a commit that stages nothing throws instead of refusing
+- `W21-61` (1pt, orchestrator) — the ceiling check never ran for the case it was built for
+- `W21-62` (1pt, orchestrator) — a brief did not give the cheap rung another go
+- `W21-65` (3pt, orchestrator) — a maker can spend a whole session writing and never commit
+- `W21-70` (2pt, orchestrator) — run start hands the maker the launching human’s identity, so that human can never accept the work
+- `W21-71` (2pt, orchestrator) — the product tells the founder to change an acceptance criterion and gives them no verb to change it
+- `W21-74` (3pt, orchestrator) — provisioning runs before the session, so the ticket whose job is to create package.json can never install it
+- `W21-75` (2pt, orchestrator) — every generated project inherits Dokima’s own gate command as its verify default
+- `W21-77` (1pt, orchestrator) — the e2e gate fails intermittently on a teardown race, not an assertion
+- `W21-78` (2pt, orchestrator) — a run starts on whatever model is configured without ever checking the provider serves it
+- `W21-79` (1pt, orchestrator) — every budget park claimed the turn ceiling was already reached
+- `W21-80` (3pt, orchestrator) — a ticket whose acceptance command needs a file its write_scope forbids parks forever, and the product cannot say why
+- `W21-82` (2pt, orchestrator) — the board claims a run is still live after it has finished, so no further run can be started
+- `W21-83` (3pt, orchestrator) — a session can finish the work and never find out, so the ticket parks with its acceptance already passing
+- `W21-84` (2pt, orchestrator) — the history-secrets gate failed once the repo outgrew its buffer
+- `W21-85` (2pt, orchestrator) — a real project’s parks and manifests were labelled "Sample — not real telemetry"
+- `W21-86` (2pt, orchestrator) — a session was discarded for the build artifact its own acceptance command produced
+- `W21-87` (2pt, orchestrator) — a script that prints a pass without running anything defeats the vacuous-check
+- `W21-88` (1pt, orchestrator) — SETTLED: the click was never swallowed — the board painted nothing while it loaded
+- `W21-90` (3pt, orchestrator) — a rejection is advisory only — the maker can ignore it and the gate mints anyway
+
+**2026-08-28**
+
+- `W21-25` (3pt, ui) — discovered models survive a restart, or the UI says they did not
+- `W21-81` (1pt, orchestrator) — widen-scope prints a raw stack trace when the lane invariant refuses it
+- `W21-91` (1pt, orchestrator) — a mistyped flag on any ticket verb prints a node stack trace
+- `W21-92` (2pt, ui) — the capture tour is in no gate, so the design-review loop rots unnoticed
+- `W21-93` (3pt, gateway) — the catalog throws away the model capability the provider already reports
+- `W21-94` (2pt, ui) — the model picker stops offering models that cannot do the job
+- `W21-96` (3pt, orchestrator) — the per-entry model timeout is served by the API and ignored by the run
+- `W21-97` (5pt, orchestrator) — the plan it writes for a customer is feature-only — no security, accessibility, performance or release work
+- `W21-98` (5pt, quality) — the first real SAST run: 0 true HIGH, one rule producing 62% noise, and 63 catches that cannot tell empty from broken
+- `W21-99` (1pt, orchestrator) — a bad --db path prints a raw SqliteError stack instead of a refusal
+
+**2026-08-29**
+
+- `W21-63` (2pt, orchestrator) — rung memory cannot tell a rung that failed from one that cannot be reached
+- `W21-64` (2pt, orchestrator) — a run that dies on timeouts does not say the ceiling is wrong for this model
+- `W21-66` (2pt, orchestrator) — the ladder has no way to know a rung cannot do agentic work
+- `W21-67` (2pt, orchestrator) — the ledger cannot say how a turn ended
+- `W21-68` (2pt, orchestrator) — a brief can instruct a maker to do what it has no tool to do
+- `W21-69` (2pt, orchestrator) — the run knows a session is spinning and never tells the session
+- `W21-72` (2pt, orchestrator) — a park that happens before the first attempt reports its reason as "unknown"
+- `W21-73` (3pt, orchestrator) — the handoff carries the last session’s diagnosis and not the evidence that disproves it
+- `W21-76` (3pt, orchestrator) — decomposition produces no phase-0 deliverables, so the phase gate can never clear
+
+## W22 — 2026-08-28 → 2026-08-29: the checks that gated nothing
+
+W21 kept finding real checks that no gate invoked, and W22 is that observation
+turned into a wave. `pnpm validate` had joined Law 3 on 2026-08-28; this wave
+is what happened when the same question was asked of everything else.
+
+- **Reporting what nobody could see** — W22-02 (a capability with no live
+  caller is reported, not found a year later), W22-03 (tickets whose acceptance
+  names a surface their `write_scope` cannot reach), W22-06 (the Law 3
+  validator run enforces the ratchets it was already printing, which had
+  drifted to a configured 49 against a measured 47).
+- **Temp-directory leaks** — W22-12, -15, -16, -18, -19. Three tickets found
+  leaks BY HAND before anyone built a check: 26,760 directories and 968M had
+  accumulated under a permanently green gate, because a leak costs nothing a
+  test can observe. W22-16 is the sharpest: the cleanup handler was attached to
+  `process.on('exit')`, which under vitest's `forks` pool never fires, so it
+  had run zero times since it was written. W22-18 added
+  `scripts/validate-temp-leaks.mjs` and put it in `pnpm validate`.
+- **Limits sitting exactly on their boundary** — W22-17 split
+  `loop-land-ticket.ts`, which was at precisely 400 lines and could not take
+  another one; W22-10 had already had to relocate its own logic to fit.
+- **Honest negatives** — W22-09 was MEASURED AND NOT BUILT, and W22-19 closed
+  as not reproducible with its three attempts written down. Both are recorded
+  as work, because deciding not to build something on evidence is work.
+
+
+**2026-08-28**
+
+- `W22-01` (2pt, orchestrator) — the CLI refuses by default — a stack trace becomes the exception, not the fallback
+- `W22-02` (3pt, quality) — a capability with no live caller is reported, not discovered a year later
+- `W22-03` (2pt, quality) — report tickets whose acceptance names a surface their write_scope cannot reach
+- `W22-04` (2pt, quality) — a settings field ships with proof it reaches the call, not merely the store
+- `W22-05` (1pt, orchestrator) — delete the orphaned CLI entry W10-74 stranded
+- `W22-06` (2pt, quality) — the Law 3 validator run enforces the ratchets it already reports
+- `W22-07` (3pt, gateway) — a model timeout says which model ran long, not only which provider
+- `W22-08` (3pt, ui) — the request ceiling is settable where a user would look for it
+- `W22-09` (2pt, quality) — MEASURED AND NOT BUILT: a missing test twin is not mechanically distinguishable from a normal scope
+
+**2026-08-29**
+
+- `W22-10` (3pt, orchestrator) — the last gate output survives across runs, not just across attempts
+- `W22-11` (2pt, pipeline) — every phase gets tickets for the deliverables its gate checks, not only phase 0
+- `W22-12` (1pt, quality) — the e2e temp-project teardown retries instead of racing
+- `W22-13` (2pt, ui) — the Decide card shows that a close reversed an unaddressed rejection
+- `W22-14` (1pt, orchestrator) — baseProbePath was a wire never connected, not an export awaiting a marker
+- `W22-15` (2pt, quality) — every e2e suite removes the temp project it made
+- `W22-16` (3pt, quality) — the unit suite leaks a temp home per test file — 23k directories, 86% of the tmpdir spill
+- `W22-17` (3pt, orchestrator) — loop-land-ticket.ts sits exactly on the 400-line cap — the next line of code cannot be written
+- `W22-18` (3pt, quality) — the last twelve temp dirs a unit run leaks, and a check that would have caught all of them
+- `W22-19` (2pt, quality) — UNCONFIRMED: a run containing a FAILING test may leak one temp home
+
+## 2026-08-29/30 — board drained to decisions; process changes; gate evidence
+
+**The board is 484 of 488 done (99%).** The four that remain are open because
+each needs a founder answer, not because anything blocks them mechanically:
+`W12-44` (plugin loader, blocked by design), `W13-32` (autonomy dial — which
+unattended defaults are acceptable is not a coding question), `W21-36`
+(`runClaimLoop`: delete or wire), `W21-95` ("Onboard existing repo" registers
+the folder and never reads the repo).
+
+**Process changes made during this wave**, each because the board's own
+behaviour exposed a gap:
+
+- **Law 1 gained a clause** (CLAUDE.md): a scope collision is answered when it
+  is found, never in a closing note. Measured cause — of five deferrals in one
+  session, 5/5 were written at close, the moment of least remaining attention,
+  and all five were filed nowhere. Recorded as **L-57**.
+- **`pnpm next`** (`scripts/next-work.mjs`): the board's priority signal.
+  `validate-plan`'s P9 reported one claimable ticket while six were workable,
+  because strict wave order gates everything behind a BLOCKED-BY-DESIGN ticket.
+  A signal that is ignored is worse than none.
+- **`validate-plan` P13**: reports deferred work naming no carrier ticket
+  (report-only). 22 such notes remain — the backlog that predates the rule.
+- **PLAYBOOK micro-loop** now begins with `scope read`, before the claim.
+- **L-56, measure before gating**: applied three times, including once to
+  decline building something.
+
+**Gate, re-run in full on 2026-08-30 against `ea1333a`:** lint clean,
+typecheck 0 errors, **4792 tests passing** (561 files, 1 skipped), **76 e2e
+passing**, all 6 validators clean plus `validate-temp-leaks` OK. `main` in sync
+with both remotes.
+
+**Known-weak, all green-gate-compatible — which is why they are written down:**
+
+- The export ratchets sit at exactly 47/47 and 47/47. Zero headroom: the next
+  export without a non-test caller fails the gate, the same shape as the
+  400-line cap that forced W22-17.
+- SAST is baselined and gated by nothing. 729 findings over 120 rules and 2062
+  files, triaged in `docs/security/SAST_BASELINE.md`; Law 3 does not invoke it,
+  and the rule producing 62% of the output cannot be scoped from this repo.
+- 11 partial parses persist — an opengrep bug verified against semgrep, 21
+  lines, all type signatures.
+
+
+## Earlier ledger gaps, closed 2026-08-30
+
+Bringing W21/W22 current surfaced an OLDER hole: 28 tickets that
+were closed and never recorded here at all, from W10 through W20. They are
+listed below from `plan.json` rather than reconstructed as narrative — I did
+not do this work and will not invent an account of it. What each one was is in
+its own `notes` on the board; what matters for resuming cold is that the
+ledger no longer silently omits them.
+
+That the gap existed at all is the finding. The 2026-08-21 entry above is
+itself titled LEDGER BACKFILL, so this is the second time the file has fallen
+behind the work — a ledger nobody is required to update drifts exactly the way
+a check nobody runs decays (L-47). Worth a mechanical check of its own, which
+does not exist today.
+
+- `W10-56` (3pt, ui) — First-run UX: a mislabeled phase button and someone else’s sample data in your new product
+- `W13-08` (2pt, infra) — the Node-version guard covers the CLI and not the test runner, which is where it actually bites
+- `W13-12` (5pt, core) — a killed run strands its ticket in in_progress forever — the watchdog that would recover it has no caller
+- `W13-13` (5pt, core) — a provider timeout crashes the whole run — ProviderTimeoutError is caught nowhere in the loop
+- `W13-14` (3pt, core) — seven different limits can stop a run and nothing documents them together
+- `W13-17` (3pt, content) — the importer cannot tell a Dokima-native expert from one upstream deleted
+- `W13-34` (5pt, core) — a fresh install cannot build a board — it guesses a model that does not exist and reports the failure unreadably
+- `W13-39` (5pt, ui) — Describe does not recognise a run that is still running — only one that has paused
+- `W13-43` (5pt, gateway) — a runaway generation streams forever — nothing bounds one turn, so the run never ends
+- `W13-44` (8pt, orchestrator) — the watchdog is built, tested, and has never run — nothing wires it into the claim or land loop
+- `W13-50` (5pt, ui) — Plan presents the user's own features as "findings" with meaningless identical scores and two IDs per card
+- `W13-51` (3pt, ui) — the product contradicts its own instructions — Settings tab names, error copy, and quiet-state copy disagree with VOCABULARY.md
+- `W13-52` (5pt, ui) — board cards carry no state in form — Blocked and Ready are pixel-identical, plus three unlabeled glyphs
+- `W13-53` (5pt, ui) — composition: Fleet and the Morning queue are islands in a void, and the review timer is an unlabeled countdown
+- `W13-55` (8pt, pipeline) — the end-user-simulator judges the evidence pack through the gateway, citations re-verified before findings enter the funnel
+- `W13-56` (5pt, quality) — mechanical comprehension validators: instruction↔surface cross-check and the vocabulary law, no model, in the gate
+- `W13-60` (8pt, ui) — run and recover: blocked is a dead end and the trace speaks wire ids to the person it exists to inform
+- `W13-61` (8pt, ui) — review and accept: the morning queue asks for merge approval without showing the work
+- `W13-62` (5pt, ui) — multiple projects: global inheritance is invisible and the fleet strip is an unlabeled aggregate
+- `W13-63` (8pt, ui) — the run outcome is invisible: parked returns to Ready unmarked, the banner says finished, and Chat stays silent
+- `W13-64` (5pt, ui) — the guided sample writes user data to /tmp — and the e2e suite deletes every such folder on the machine
+- `W17-11` (1pt, ui) — the morning queue says why review fell to you — a one-model install skips machine review out loud
+- `W17-12` (1pt, ui) — the interview finishes as strongly as it starts — progress while Continuing, and a header that notices you are done
+- `W18-07` (1pt, ui) — park reason on the card face clamps on a word with an ellipsis and carries the full text
+- `W20-04` (2pt, ui) — handoffs are visible moments — work moving between people
+- `W20-05` (3pt, ui) — delegation by conversation — you talk to the team, the right member answers
+- `W20-10` (3pt, ui) — the waiting room — asks sit in your office, in queue order
+- `W20-12` (2pt, ui) — the whole roster is on the floor, seated by what they actually do
