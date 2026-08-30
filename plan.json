@@ -15088,7 +15088,7 @@
       "id": "W22-20",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15101,7 +15101,9 @@
         "packages/harbormaster/src/watchdog.ts",
         "packages/harbormaster/src/watchdog.test.ts",
         "packages/harbormaster/src/watchdog-process.ts",
-        "conductor.config.json"
+        "conductor.config.json",
+        "docs/ARCHITECTURE.md",
+        "scripts/validate-exports.test.mjs"
       ],
       "acceptance": [
         "deadLetterAndBlock is deleted, or given a live caller, with the decision recorded the way W21-36 recorded its own",
@@ -15112,7 +15114,17 @@
         "FOUND BY W21-36's DELETION, filed at that moment rather than in its closing note (Law 1). Deleting runWatchdogSession dropped it out of the buried list and put deadLetterAndBlock in \u2014 because runWatchdogSession WAS its only non-test caller (watchdog-session.ts:22 and :78, verifiable in git at the commit before the deletion).",
         "THE INTERESTING PART IS NOT THE FUNCTION, IT IS THE COUNTING. deadLetterAndBlock has been dead for as long as its caller was, and both ratchets reported it as reached the whole time, because 'has a caller' was true \u2014 the caller was simply also dead. A reachability check that does not ask whether the CALLER is reachable will miss every chain like this, and the buried count staying at 47 across a deletion of two dead exports is that blind spot showing itself in one number.",
         "SO THE REAL QUESTION IS WHETHER THE RATCHET SHOULD BE TRANSITIVE, and that is worth deciding before deleting anything: a one-line deletion here fixes one instance, while asking validate-exports to compute reachability from live entry points would find the rest of the chain at once. Measure how many symbols that reclassifies before choosing (L-56) \u2014 if it is one, delete the function and move on.",
-        "watchdog-process.ts:14 currently says 'Callers wire it straight to deadLetterAndBlock', which is now a description of nothing. That sentence is the only remaining non-test reference, and a comment that names a wiring nobody performs is exactly what made runClaimLoop survive for months."
+        "watchdog-process.ts:14 currently says 'Callers wire it straight to deadLetterAndBlock', which is now a description of nothing. That sentence is the only remaining non-test reference, and a comment that names a wiring nobody performs is exactly what made runClaimLoop survive for months.",
+        "SCOPE WIDENED AT THE READ (Law 1): A1 asks for the decision to be recorded 'the way W21-36 recorded its own', and W21-36 recorded its own in docs/ARCHITECTURE.md \u00a711. Putting this one anywhere else would defeat the comparison the acceptance is asking for. Unowned.",
+        "DELETE, AND FOR A REASON BEYOND 'IT IS DEAD'. Both live paths turn a watchdog breach into a session OUTCOME \u2014 the external CLI forces a non-zero exit through onBreach (run-build-spawn.ts), the built-in agent returns a SpawnSessionOutput from watchdogStop (session-limits.ts) \u2014 so the breach flows into the ladder's ordinary attempt handling and the LADDER decides whether to retry, park or release. deadLetterAndBlock decided unilaterally: mint session.dead_letter, comment, and STEAL the claim back. Keeping both would leave two answers to one question, and the surviving one is the design W21-33's ownership guard was built around.",
+        "NOTHING CONSUMES THE EVENT: session.dead_letter is emitted only here and referenced only by its own tests and a 2026-07-16 STATUS entry. No trace label, no projection, no UI depends on it, so deleting the emitter leaves no surface describing an event that can never occur.",
+        "SCOPE WIDENED (Law 1): scripts/validate-exports.test.mjs pins the buried count against the real repo in two places, so lowering the ratchet necessarily reds it \u2014 the same coupling W21-36 hit, and the same reason it is part of this change rather than a follow-up.",
+        "A1 DONE \u2014 deleted, with the reasoning in docs/ARCHITECTURE.md \u00a711a beside W21-36's \u00a711, which is what 'recorded the way W21-36 recorded its own' asked for. The reason is not that it was dead: it was a SECOND answer to a question the product already answers, and it answered unilaterally by stealing the claim while both live paths hand a breach to the ladder as an ordinary attempt outcome.",
+        "A2 DONE \u2014 watchdog-process.ts said 'Callers wire it straight to deadLetterAndBlock', a description of nothing. It now says what callers actually do: turn a breach into a forced non-zero exit. That sentence was the ONLY remaining non-test reference, which is precisely the shape that let runClaimLoop survive for months.",
+        "A3 DONE \u2014 --max-buried 47 -> 46, verified biting at 45 (exit 1). The test file pins the count against the real repo in two places and was updated with it.",
+        "THE TRANSITIVITY QUESTION IS ANSWERED, AND THE ANSWER IS NO. This ticket was filed asking whether validate-exports should compute reachability from live entry points instead of counting callers, and said to MEASURE how many symbols that reclassifies before choosing (L-56). Measured: deleting deadLetterAndBlock revealed no replacement, so the chain was exactly one link deep and a transitive pass would have reclassified exactly one symbol. Not worth building. The honest summary \u2014 recorded in \u00a711a rather than left in a ticket \u2014 is that the ratchet cannot see that a caller is itself dead, so it reveals a chain one link per deletion: slower than real reachability, and enough.",
+        "THE FIXTURES WENT WITH THE FUNCTION, including a real SQLite temp log that existed only to exercise it. A green suite over a dead path is the trap this pair of tickets exists to remove, not evidence worth preserving.",
+        "Gate: lint clean, typecheck 0, 4783 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     },
     {

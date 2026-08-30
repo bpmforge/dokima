@@ -11,7 +11,7 @@
  *
  * `onBreach` fires synchronously the instant the threshold is crossed —
  * before SIGTERM/SIGKILL finish tearing the tree down or stdout/stderr
- * finish draining. Callers wire it straight to `deadLetterAndBlock` so
+ * finish draining. Callers turn it into a session OUTCOME — a forced non-zero exit — so
  * the ticket flips within seconds independent of teardown time (FR-H2).
  *
  * Produces a plain `SpawnSession` — the exact `@dokima/loop` contract

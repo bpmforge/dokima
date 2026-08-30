@@ -278,7 +278,7 @@ describe('the three degrees of unreached (W22-02)', () => {
     // calibrated against.
     const { findings, buried } = scan();
     expect(findings.length).toBe(46);
-    expect(buried.length).toBe(47);
+    expect(buried.length).toBe(46);
   });
 });
 
@@ -375,7 +375,7 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // counting change that moved them would need its own recalibration.
     const { findings, buried, unreferenced } = scan();
     expect(findings.length).toBe(46);
-    expect(buried.length).toBe(47);
+    expect(buried.length).toBe(46);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.
     const named = unreferenced.map((u) => u.symbol);

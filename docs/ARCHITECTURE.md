@@ -437,3 +437,32 @@ symbol. And it is not transitive: deleting `runWatchdogSession` immediately
 revealed `deadLetterAndBlock`, whose only non-test caller *was*
 `runWatchdogSession` — dead code propping up dead code, reported as reached the
 entire time. Filed as W22-20.
+
+### 11a. A breach is an outcome, not a verdict (W22-20)
+
+`deadLetterAndBlock` was deleted 2026-08-30, one commit after `runClaimLoop`,
+and for a reason beyond being dead: it was a **second answer to a question the
+product already answers**.
+
+It minted a `session.dead_letter` event, commented evidence, and *stole the
+claim back* — deciding a ticket's fate at the moment a watchdog fired. Both
+live paths do the opposite: the external CLI forces a non-zero exit through
+`onBreach` (`run-build-spawn.ts`) and the built-in agent returns a
+`SpawnSessionOutput` from `watchdogStop` (`session-limits.ts`). A breach
+becomes an ordinary attempt outcome, and the **ladder** decides whether to
+retry, park or release — which is the design W21-33's ownership guard was built
+around. Keeping both would have left two mechanisms racing to release the same
+ticket.
+
+**Its only caller was `runWatchdogSession`, itself deleted the same day.** Dead
+code propping up dead code: both ratchets reported it as *reached* the entire
+time, because "has a caller" was true — the caller was simply also dead.
+
+**This pair answers a question worth recording: the ratchet is not transitive,
+and it is not worth making so.** W22-20 was filed asking whether
+`validate-exports` should compute reachability from live entry points rather
+than counting callers. Measured instead of assumed (L-56): deleting
+`deadLetterAndBlock` revealed **no** replacement, so the chain was exactly one
+link deep and a transitive analysis would have reclassified exactly one symbol.
+The honest summary is that the ratchet works and reveals a chain one link per
+deletion — slower than a real reachability pass, and enough.
