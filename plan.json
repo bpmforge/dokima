@@ -15167,7 +15167,7 @@
       "id": "W22-22",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15179,7 +15179,9 @@
       "write_scope": [
         "apps/server/src/api/projects/registry-verbs.ts",
         "apps/server/src/api/projects/routes.ts",
-        "apps/server/src/api/projects.test.ts"
+        "apps/server/src/api/projects.test.ts",
+        "apps/server/src/api/projects/types.ts",
+        "apps/server/src/api/projects/cards.ts"
       ],
       "acceptance": [
         "The project record persists which mode created it, and the projects API returns it",
@@ -15190,7 +15192,14 @@
         "FILED FROM W21-95's SCOPE READ, at the moment the gap was found, and it is the second ticket that ticket's own scope note anticipated: 'if wiring it turns out to need a server route change, that is a second ticket rather than a widen'.",
         "THE GAP, verified: registerProject takes `mode: ProjectMode` and consults it ONLY to decide whether the directory must already exist ('new' creates it, onboard/import require it). ProjectRecord never stores it, so ProjectCard cannot carry it and no client can tell an onboarded project from a new one \u2014 which is exactly what W21-95 observed live, where the two workspaces were byte-identical.",
         "UNKNOWN IS NOT 'new', and that is the whole risk in this ticket. Every project registered before this lands has no recorded mode, and defaulting them to 'new' would assert something false about repositories somebody onboarded months ago. A nullable field read as unknown is the honest shape; a default is the tempting one.",
-        "THE UN-ARCHIVE PATH IS THE FIXTURE THAT MATTERS: registerProject reactivates an existing record in place rather than duplicating it, so POSTing an archived project's path with mode `new` must not overwrite a mode recorded as `onboard`."
+        "THE UN-ARCHIVE PATH IS THE FIXTURE THAT MATTERS: registerProject reactivates an existing record in place rather than duplicating it, so POSTing an archived project's path with mode `new` must not overwrite a mode recorded as `onboard`.",
+        "SCOPE WIDENED AT THE READ (Law 1): ProjectRecord is declared in projects/types.ts and the wire shape is built field-by-field in projects/cards.ts's wireCard \u2014 neither was in the filed scope, and the acceptance ('the projects API returns it') cannot be met without both. wireCard enumerates every field explicitly rather than spreading, which is why adding one to the record is not enough on its own. Both unowned.",
+        "A1 DONE \u2014 ProjectRecord.createdMode is written at creation and returned as created_mode. wireCard enumerates every field explicitly rather than spreading the record, so adding the field to the type was NOT enough on its own; that is why cards.ts had to be in scope and why a record-only change would have shipped a field no client could see.",
+        "A2 DONE, AND IT IS THE REASON THE FIELD IS OPTIONAL. Every project on every existing machine has no recorded mode. Defaulting them to 'new' would assert something false about a repository somebody onboarded months ago, so absent stays absent and the wire sends null \u2014 a reader can tell 'made fresh' from 'we do not know how this got here'. The fixture deletes the field from the registry file on disk and asserts it reads back undefined, which is the real migration case rather than a simulated one.",
+        "A3 DONE \u2014 the un-archive fixture is the one that would have caught a careless implementation. registerProject reactivates an existing record in place, so writing createdMode on BOTH branches would let someone reopening an archived onboarded repo through the New project form silently rewrite its history. The reactivation branch deliberately leaves the field alone, and the test asserts the id is the same, the archive flag cleared, and the mode still 'onboard'.",
+        "PROVEN RED FIRST: 4 fixtures failed before the change. One of them failed for MY error rather than the product's \u2014 it assumed the registry file was {projects:[...]} when registry-store.ts writes a bare array \u2014 which is the fixture checking the author as much as the code.",
+        "W21-95 CAN NOW BE FINISHED PROPERLY by whoever wants the durable half: the workspace can distinguish an onboarded project from a new one, which is the A2 that ticket had to defer. This does not do that itself \u2014 no web code reads the field yet \u2014 and saying so is the point, because a field nothing consumes is exactly the buried-capability shape W22-02 exists to report.",
+        "Gate: lint clean, typecheck 0, 4787 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     }
   ]

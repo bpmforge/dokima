@@ -19,6 +19,20 @@ export interface ProjectRecord {
   archived: boolean;
   createdAt: string;
   lastOpenedAt: string;
+  /**
+   * Which Fleet action created this project (W22-22).
+   *
+   * OPTIONAL, AND THAT IS THE POINT. `registerProject` has always taken a
+   * `mode` and used it only to decide whether the directory had to exist
+   * already; nothing wrote it down, so W21-95 found the workspace after
+   * "Onboard existing repo" byte-identical to the one after "New project".
+   *
+   * Every project registered before this landed has no recorded mode, and
+   * `undefined` is the honest answer for them. Defaulting to `'new'` would
+   * assert something false about a repository somebody onboarded months ago —
+   * a reader must be able to tell "made fresh" from "we do not know".
+   */
+  createdMode?: ProjectMode;
 }
 
 export interface ProjectBoardStats {

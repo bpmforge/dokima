@@ -65,6 +65,11 @@ export async function registerProject(
   if (existing) {
     existing.archived = false;
     existing.lastOpenedAt = nowIso;
+    // W22-22: `createdMode` is NOT rewritten here. This branch is the
+    // documented un-archive route, and someone reopening an onboarded repo
+    // through the New project form has not changed how it was created. A
+    // record that predates the field keeps no mode rather than acquiring a
+    // wrong one.
     record = existing;
   } else {
     record = {
@@ -74,6 +79,7 @@ export async function registerProject(
       archived: false,
       createdAt: nowIso,
       lastOpenedAt: nowIso,
+      createdMode: input.mode,
     };
     records.push(record);
   }

@@ -299,6 +299,86 @@ describe('registerProject / archiveProject / listProjectCards', () => {
   });
 });
 
+/**
+ * W22-22. `registerProject` took a `mode` and used it only to decide whether
+ * the directory had to exist already — nothing recorded WHICH button made the
+ * project. W21-95 found the consequence live: the workspace after "Onboard
+ * existing repo" was byte-identical to the one after "New project", and no
+ * client could tell them apart because the fact was never written down.
+ */
+describe('the registry records how a project was created (W22-22)', () => {
+  const dirs: string[] = [];
+  afterEach(async () => {
+    await Promise.all(dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
+  });
+
+  async function freshRegistry(): Promise<string> {
+    const home = await tmpDir('dokima-w2222-home-');
+    dirs.push(home);
+    return computeFleetRegistryPath(home);
+  }
+
+  it('RED FIXTURE: an onboarded project records that it was onboarded', async () => {
+    const registryPath = await freshRegistry();
+    const dir = await tmpDir('dokima-w2222-repo-');
+    dirs.push(dir);
+
+    const record = await registerProject(registryPath, { path: dir, mode: 'onboard' });
+    expect(record.createdMode).toBe('onboard');
+
+    // And it survives the round-trip through the registry file, which is the
+    // only thing a later process can read.
+    const [reloaded] = await listProjectCards(registryPath);
+    expect(reloaded?.createdMode).toBe('onboard');
+  });
+
+  it('a new project records "new", so the two are distinguishable at all', async () => {
+    const registryPath = await freshRegistry();
+    const dir = path.join(await tmpDir('dokima-w2222-parent-'), 'fresh');
+    dirs.push(path.dirname(dir));
+    const record = await registerProject(registryPath, { path: dir, mode: 'new' });
+    expect(record.createdMode).toBe('new');
+  });
+
+  it('A PROJECT REGISTERED BEFORE THIS LANDS READS AS UNKNOWN, NEVER AS "new"', async () => {
+    // Every project on every existing machine has no recorded mode. Defaulting
+    // them to "new" would assert something false about a repository somebody
+    // onboarded months ago — the field is absent, and absent is the answer.
+    const registryPath = await freshRegistry();
+    const dir = await tmpDir('dokima-w2222-legacy-');
+    dirs.push(dir);
+    await registerProject(registryPath, { path: dir, mode: 'onboard' });
+
+    // The registry file is a bare array of records (registry-store.ts).
+    const raw = JSON.parse(await fs.readFile(registryPath, 'utf8')) as Record<
+      string,
+      unknown
+    >[];
+    delete raw[0]!.createdMode;
+    await fs.writeFile(registryPath, JSON.stringify(raw));
+
+    const [card] = await listProjectCards(registryPath);
+    expect(card?.createdMode).toBeUndefined();
+  });
+
+  it('RED FIXTURE: re-registering an ARCHIVED project does not rewrite how it was created', async () => {
+    // registerProject reactivates an existing record in place (the documented
+    // un-archive route). Someone reopening an onboarded repo through the New
+    // project form must not turn it into a project that was never onboarded.
+    const registryPath = await freshRegistry();
+    const dir = await tmpDir('dokima-w2222-unarchive-');
+    dirs.push(dir);
+
+    const first = await registerProject(registryPath, { path: dir, mode: 'onboard' });
+    await archiveProject(registryPath, first.id);
+    const again = await registerProject(registryPath, { path: dir, mode: 'new' });
+
+    expect(again.id).toBe(first.id);
+    expect(again.archived).toBe(false);
+    expect(again.createdMode).toBe('onboard');
+  });
+});
+
 describe('W9-15 — a vanished directory is visible as gone, and removable', () => {
   const dirs: string[] = [];
 

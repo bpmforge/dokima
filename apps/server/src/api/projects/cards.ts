@@ -37,6 +37,10 @@ export function wireCard(card: ProjectCard) {
     archived: card.archived,
     available: card.available,
     created_at: card.createdAt,
+    // W22-22. Absent for every project registered before the field existed,
+    // and absent is the answer — a client must be able to tell "made fresh"
+    // from "we do not know how this got here".
+    created_mode: card.createdMode ?? null,
     last_opened_at: card.lastOpenedAt,
     phase: card.phase,
     board: card.board,
