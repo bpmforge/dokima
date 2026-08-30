@@ -11,7 +11,7 @@ describe('@dokima/harbormaster placeholder', () => {
 /**
  * W10-77 RED FIXTURE. This file used to assert one thing — that the package
  * name was the string 'harbormaster' — while the execution engine sat
- * unexported behind it. `runLandLoop`, `runClaimLoop` and `runCloseGate` were
+ * unexported behind it. `runLandLoop` and `runCloseGate` were
  * implemented and tested across W3-01a/b/c, and `apps/server` could not reach
  * a single one of them: `package.json`'s exports map has one `.` entry, so a
  * deep import is not available, and `index.ts` re-exported only run
@@ -23,10 +23,12 @@ describe('@dokima/harbormaster placeholder', () => {
  */
 describe('@dokima/harbormaster public surface (W10-77)', () => {
   it.each([
-    // The full claim -> session -> close-gate -> land path (W3-01c).
+    // The full claim -> session -> close-gate -> land path (W3-01c). This is
+    // now the ONLY execution engine: W3-01a's `runClaimLoop` was deleted by
+    // W21-36 after months in which nothing outside its own tests called it,
+    // and this list asserted its reachability the whole time — a public
+    // surface can be a contract and still be a contract with nobody.
     'runLandLoop',
-    // The claim loop on its own (W3-01a) — sessions without landing.
-    'runClaimLoop',
     // Out-of-session gate execution (W3-01b): the only thing that may close.
     'runCloseGate',
     // The pieces a caller cannot construct the above without.

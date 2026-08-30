@@ -1,259 +1,40 @@
 /**
- * The Harbormaster claim loop (BLUEPRINT §3.6, FR-H1/H2, F1 split 1/3):
- * claim the lowest-id claimable ticket (WIP=1 per worker, enforced by
- * `@dokima/tickets`' `claimTicket`), give it a fresh git worktree, and
- * dispatch up to `maxSessionsPerTicket` fresh agent sessions through
- * W1-06's session runner. A session never mutates ticket state itself
- * (SC-02) — out-of-session gate execution and `close` are W3-01b's job;
- * this loop only re-reads the ticket after each session to notice whether
- * something else (a `close`, once b is wired in) already resolved it, and
- * stops retrying either way.
+ * loop-claim.ts — the abandoned-claim sweep, and the tombstone of a loop that
+ * was never on a live path.
  *
- * When the session cap is exhausted with the ticket still `in_progress`,
- * the ticket is auto-blocked with evidence: no tickets verb produces a
- * stored `blocked` status or writes `evidence[]` (that's a reflow/UI
- * concern — BLUEPRINT §10 "blocked-with-evidence is a badge on a blocked
- * card, not a distinct status"), so evidence is attached via a real
- * `commentTicket` and the ticket is `releaseTicket`'d back to `ready` —
- * required by WIP=1 itself (an unreleased owned ticket would deadlock this
- * worker's next claim). An in-run skip set stops the loop from
- * immediately re-claiming the ticket it just gave up on.
+ * WHAT WAS HERE. `runClaimLoop` was F1's claim engine (BLUEPRINT §3.6): claim
+ * the lowest-id claimable ticket, give it a worktree, dispatch sessions,
+ * auto-block with evidence when the cap ran out. It was real, it was tested,
+ * and `apps/*` never called it — `runLandLoop` is the only wired execution
+ * engine, and had been for months. Its own docstring said so.
  *
- * `canClaimNewTicket` is the real W2-07 `policyForLevel` output, checked
- * once per outer-loop iteration (a breaker never interrupts an in-flight
- * ticket — BudgetPolicy's own contract); the kill-file/pause `StopSwitch`
- * is checked at the same boundary (FR-H2: "checked between tickets").
+ * DELETED 2026-08-30 by founder decision (W21-36); reasoning in
+ * docs/ARCHITECTURE.md. Documented-dead code is worse than either live code
+ * or absent code, because it passes every mechanical check a live path passes
+ * and nothing distinguishes the two except a comment somebody has to happen
+ * to read. That is not hypothetical here: W21-12 put worktree provisioning
+ * into this file, the full gate went green because these tests exercised it,
+ * and a live run then proved the code had never executed.
+ *
+ * WHAT SURVIVES, AND WHY THE FILE DID NOT GO WITH THE FUNCTION. The
+ * abandoned-claim sweep below is LIVE — `loop-land-reclaim.ts` imports both
+ * symbols and `loop-land.ts` calls it at every idle turn — and
+ * `DEFAULT_MAX_SESSIONS_PER_TICKET` is the land ladder's own ceiling. Deleting
+ * the file would have deleted the sweep that W21-36's acceptance required to
+ * survive the deletion.
  */
+import type { Ticket } from '@dokima/tickets';
 
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import {
-  branchNameFor,
-  createWorktree,
-  listWorktrees,
-  type CreateWorktreeOptions,
-  type WorktreeHandle,
-} from '@dokima/git';
-import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
-import { runSession, type SessionResult, type SpawnSession } from '@dokima/loop';
-import { redactDeep } from '@dokima/shared';
-import {
-  claimTicket,
-  commentTicket,
-  getTicket,
-  isClaimable,
-  listTickets,
-  releaseTicket,
-  startTicket,
-  type Ticket,
-} from '@dokima/tickets';
-import type { EventLog } from '@dokima/events';
-import type { HandoffBuilder } from './loop-handoff.js';
-import type { StopSwitch } from './loop-killswitch.js';
-import { provisionWorktree, provisionFailureReason } from './worktree-provision.js';
-
+/**
+ * The land ladder's default attempt ceiling per ticket.
+ *
+ * Named for the claim loop that no longer exists and kept under that name
+ * deliberately: `loop-land-ticket.ts` reads it, and renaming a number that
+ * appears in park evidence and in tests would be a second change wearing the
+ * clothes of this one.
+ */
 export const DEFAULT_MAX_SESSIONS_PER_TICKET = 2;
 
-export interface ClaimLoopOptions {
-  readonly log: EventLog;
-  /** This worker/berth's identity (must already exist — events.actor_id is FK-enforced). */
-  readonly actorId: string;
-  /** The real repo root a ticket worktree branches from (FR-I1: `sw/<ticket-id>-<slug>`). */
-  readonly repoRoot: string;
-  readonly spawn: SpawnSession;
-  readonly buildHandoff: HandoffBuilder;
-  /** Commit-ish each ticket's worktree branches from. Defaults to HEAD (git's own default). */
-  readonly baseRef?: CreateWorktreeOptions['baseRef'];
-  /** Checked once per outer-loop iteration, before claiming the next ticket. Defaults to never stopping. */
-  readonly stopSwitch?: StopSwitch;
-  /** Checked once per outer-loop iteration; the resulting level is fed through the real W2-07 `policyForLevel`. Defaults to 'ok' (unlimited). */
-  readonly breakerLevel?: () => BreakerLevel | Promise<BreakerLevel>;
-  readonly maxSessionsPerTicket?: number;
-  /** Extra secret values (W11-16/W11-17, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `processTicket`). Omit for pattern-only redaction. Not on this package's live path today — see `runClaimLoop`'s own docstring. */
-  readonly secretValues?: readonly string[];
-}
-
-export type ClaimLoopStopReason = 'idle' | 'stopped' | 'budget';
-
-export interface TicketAttempt {
-  readonly attempt: number;
-  readonly session: SessionResult;
-}
-
-export interface ClaimLoopTicketOutcome {
-  readonly ticketId: string;
-  readonly attempts: readonly TicketAttempt[];
-  readonly autoBlocked: boolean;
-  readonly finalStatus: Ticket['status'];
-}
-
-export interface ClaimLoopResult {
-  readonly processed: readonly ClaimLoopTicketOutcome[];
-  readonly stopReason: ClaimLoopStopReason;
-}
-
-function requireTicket(log: EventLog, ticketId: string): Ticket {
-  const ticket = getTicket(log, ticketId);
-  if (!ticket) {
-    throw new Error(`ticket ${ticketId} vanished mid-loop (event log is append-only)`);
-  }
-  return ticket;
-}
-
-/** Lowest-id claimable ticket, excluding this run's skip set (auto-blocked or otherwise already handled). */
-function pickNextTicket(
-  tickets: readonly Ticket[],
-  skip: ReadonlySet<string>,
-): Ticket | undefined {
-  const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
-  return tickets
-    .filter((ticket) => !skip.has(ticket.id) && isClaimable(ticket, byId))
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
-}
-
-function evidenceComment(
-  attempts: readonly TicketAttempt[],
-  maxSessions: number,
-): string {
-  const lines = attempts.map(
-    ({ attempt, session }) =>
-      `attempt ${attempt}/${maxSessions}: exitCode=${session.exitCode} ` +
-      `manifest=${session.manifest ? 'present' : 'absent'} ` +
-      `scopeViolations=[${session.scopeViolations.join(', ')}]`,
-  );
-  return [
-    `auto-blocked with evidence: session cap (${maxSessions}) reached without a close (FR-H2).`,
-    ...lines,
-  ].join('\n');
-}
-
-/**
- * A ticket that hit the session cap is auto-blocked and released back to `ready`
- * (see below) — its worktree/branch is deliberately left on disk as seed material
- * for the next attempt, mirroring this project's own kept-branch convention for
- * exhausted tickets. That means a reclaim (same run, once a future ticket adds
- * unlimited retries, or a fresh `runClaimLoop` process run after this one exits)
- * must reuse that worktree rather than call `createWorktree` again: `git worktree
- * add -b <branch>` fails outright when the branch/directory already exist.
- */
-async function resolveWorktree(
-  options: ClaimLoopOptions,
-  ticket: Ticket,
-): Promise<WorktreeHandle> {
-  const worktreePath = path.join(options.repoRoot, '.dokima', 'worktrees', ticket.id);
-  // `git worktree list --porcelain` reports symlink-resolved paths (matters on macOS,
-  // where the default tmpdir sits behind /var -> /private/var); resolve ours the same
-  // way before comparing. A missing directory can't be an existing worktree.
-  const resolvedWorktreePath = await fs.realpath(worktreePath).catch(() => undefined);
-  const existing = await listWorktrees(options.repoRoot);
-  const found = resolvedWorktreePath
-    ? existing.find((entry) => entry.path === resolvedWorktreePath)
-    : undefined;
-  if (found) {
-    return {
-      repoRoot: options.repoRoot,
-      path: worktreePath,
-      branch: found.branch ?? branchNameFor(ticket.id, ticket.title),
-      ticketId: ticket.id,
-    };
-  }
-  return createWorktree({
-    repoRoot: options.repoRoot,
-    ticketId: ticket.id,
-    slug: ticket.title,
-    baseRef: options.baseRef,
-  });
-}
-
-async function processTicket(
-  options: ClaimLoopOptions,
-  ticket: Ticket,
-  maxSessions: number,
-): Promise<ClaimLoopTicketOutcome> {
-  claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-  startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-
-  const worktree = await resolveWorktree(options, ticket);
-
-  // W21-12: a fresh worktree cannot satisfy its own verify command until its
-  // dependencies exist, and NOTHING else in the system can install them — the
-  // agent's tool set forbids it (SC-18) and the verify sandbox has no network
-  // (SC-07). The harness provisions here, exactly as it provisioned the git
-  // worktree above, from the lockfile on disk and never from model output.
-  const provision = await provisionWorktree({
-    worktreePath: worktree.path,
-    log: options.log,
-    actorId: options.actorId,
-    ticketId: ticket.id,
-  });
-  const provisionFailure = provisionFailureReason(provision);
-  if (provisionFailure) {
-    // Refuse loudly instead of spending attempts on a ticket whose verify
-    // command cannot pass for a reason that has nothing to do with the work.
-    commentTicket(options.log, {
-      ticketId: ticket.id,
-      actorId: options.actorId,
-      body: provisionFailure,
-    });
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-    return {
-      ticketId: ticket.id,
-      attempts: [],
-      autoBlocked: false,
-      finalStatus: requireTicket(options.log, ticket.id).status,
-    };
-  }
-
-  // `secretValues` (W11-17) wraps `spawn` to redact the rendered prompt
-  // before it leaves the process, since `runSession` has no redaction hook
-  // of its own (mirrors `loop-land.ts`'s `attemptOnce`).
-  const secrets = options.secretValues;
-  const spawn: SpawnSession = secrets?.length
-    ? (input) => options.spawn({ ...input, prompt: redactDeep(input.prompt, secrets) })
-    : options.spawn;
-
-  const attempts: TicketAttempt[] = [];
-  let current = requireTicket(options.log, ticket.id);
-
-  for (
-    let attempt = 1;
-    attempt <= maxSessions && current.status === 'in_progress';
-    attempt++
-  ) {
-    // Awaited per attempt (W12-08): a builder may be async, and this loop
-    // re-renders the HANDOFF on every retry — an unawaited promise would
-    // reach `runSession` on each one, not just the first.
-    const handoff = await options.buildHandoff(current);
-    const session = await runSession({ handoff, cwd: worktree.path, spawn });
-    attempts.push({ attempt, session });
-    current = requireTicket(options.log, ticket.id);
-  }
-
-  const autoBlocked = current.status === 'in_progress' && attempts.length >= maxSessions;
-  if (autoBlocked) {
-    commentTicket(options.log, {
-      ticketId: ticket.id,
-      actorId: options.actorId,
-      body: evidenceComment(attempts, maxSessions),
-    });
-    releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId });
-    current = requireTicket(options.log, ticket.id);
-  }
-
-  return { ticketId: ticket.id, attempts, autoBlocked, finalStatus: current.status };
-}
-
-/**
- * Runs the claim loop until idle (nothing claimable), stopped (kill-file/
- * pause), or budget-stopped (W2-07 hard_stop).
- *
- * NOT ON A LIVE PATH TODAY (checked at W11-17, re-verify before citing this
- * as coverage): `apps/server`'s only wired execution engine is
- * `runLandLoop` (`loop-land.ts`, called from `run-build.ts`). Nothing in
- * `apps/*` calls `runClaimLoop` — its only callers are its own tests. The
- * `secretValues` redaction wired in here therefore has no live caller
- * either, exactly like `watchdog-session.ts`'s `runWatchdogSession`.
- */
 /**
  * How long a ticket may show NO activity before its claim is treated as
  * abandoned (W13-12).
@@ -302,29 +83,4 @@ export function findAbandonedTickets(
     // so treat it as abandoned rather than immortal.
     return seen === undefined || now - seen > staleMs;
   });
-}
-
-export async function runClaimLoop(options: ClaimLoopOptions): Promise<ClaimLoopResult> {
-  const maxSessions = options.maxSessionsPerTicket ?? DEFAULT_MAX_SESSIONS_PER_TICKET;
-  const skip = new Set<string>();
-  const processed: ClaimLoopTicketOutcome[] = [];
-
-  for (;;) {
-    if (options.stopSwitch && (await options.stopSwitch())) {
-      return { processed, stopReason: 'stopped' };
-    }
-
-    const level = options.breakerLevel ? await options.breakerLevel() : 'ok';
-    if (!policyForLevel(level).canClaimNewTicket) {
-      return { processed, stopReason: 'budget' };
-    }
-
-    const next = pickNextTicket(listTickets(options.log), skip);
-    if (!next) {
-      return { processed, stopReason: 'idle' };
-    }
-
-    processed.push(await processTicket(options, next, maxSessions));
-    skip.add(next.id);
-  }
 }

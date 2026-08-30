@@ -209,12 +209,18 @@ describe('a comment is not a caller (W12-39)', () => {
   });
 
   it(
-    'and the real repo proves the composition, not just the helper: runClaimLoop ' +
-      'is reported now. Its own docstring says its only callers are its own ' +
-      'tests, and that sentence is what used to count as the caller',
+    'and the real repo proves the composition, not just the helper: gateDecision ' +
+      'is reported. Every non-test reference to it is prose, and under W12-10 ' +
+      'counting that prose read as a call',
     () => {
+      // W21-36 deleted runClaimLoop, which was this assertion's original
+      // subject — it was reported here for months, which is precisely how the
+      // deletion became a decision someone could make. `gateDecision` is the
+      // other symbol W12-39 hand-verified as comment-only, so the case keeps
+      // testing the real repo rather than retreating to a fixture.
       const names = scan().findings.map((f) => f.symbol);
-      expect(names).toContain('runClaimLoop');
+      expect(names).toContain('gateDecision');
+      expect(names).not.toContain('runClaimLoop');
     },
   );
 });
@@ -271,7 +277,7 @@ describe('the three degrees of unreached (W22-02)', () => {
     // conductor.config.json is now measuring a different thing than it was
     // calibrated against.
     const { findings, buried } = scan();
-    expect(findings.length).toBe(47);
+    expect(findings.length).toBe(46);
     expect(buried.length).toBe(47);
   });
 });
@@ -368,7 +374,7 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // in conductor.config.json are calibrated against these counts, and a
     // counting change that moved them would need its own recalibration.
     const { findings, buried, unreferenced } = scan();
-    expect(findings.length).toBe(47);
+    expect(findings.length).toBe(46);
     expect(buried.length).toBe(47);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.

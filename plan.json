@@ -11972,7 +11972,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "harbormaster",
       "depends_on": [],
@@ -11981,14 +11981,34 @@
       "write_scope": [
         "packages/harbormaster/src/loop-claim.ts",
         "packages/harbormaster/src/loop-claim.test.ts",
-        "docs/ARCHITECTURE.md"
+        "docs/ARCHITECTURE.md",
+        "packages/harbormaster/src/watchdog-session.ts",
+        "packages/harbormaster/src/watchdog-session.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "packages/harbormaster/src/index.test.ts",
+        "conductor.config.json",
+        "scripts/validate-exports.test.mjs"
       ],
       "notes": [
         "loop-claim.ts:245 says it plainly: \"NOT ON A LIVE PATH TODAY (checked at W11-17, re-verify before citing this as coverage): apps/server's only wired execution engine is runLandLoop. Nothing in apps/* calls runClaimLoop \u2014 its only callers are its own tests.\"",
         "THIS ALREADY COST A LIVE RUN. W21-12 put worktree provisioning into it, the full gate passed because its tests exercise it, and the live run proved the code never executed. The docstring was there and I did not read it. That is the failure mode of documented-dead code: it passes every mechanical check a live path passes, so nothing distinguishes them except a comment somebody has to happen to read.",
         "The export ratchet has flagged this for several waves and it keeps being deferred, which is its own signal.",
         "NOT filed as a cleanup because it is not one. runClaimLoop carries real behaviour runLandLoop may or may not have \u2014 the WIP=1 claim protocol, the abandoned-claim sweep, secretValues redaction wired in and equally dead. Deleting it might drop a capability; keeping it keeps a trap. Which one is right is an architecture call, and the same is true of watchdog-session.ts runWatchdogSession, named in the same docstring as the other dead twin.",
-        "Whichever way it goes, the mechanical follow-up is the same: a check that fails when an exported orchestration entry point has no non-test caller, so the next one cannot sit for waves behind a comment."
+        "Whichever way it goes, the mechanical follow-up is the same: a check that fails when an exported orchestration entry point has no non-test caller, so the next one cannot sit for waves behind a comment.",
+        "FOUNDER DIRECTION 2026-08-30 (Brad): DELETE. Recorded before any code moved, because this ticket's A1 says the decision is the deliverable either way.",
+        "A2 VERIFIED BEFORE DELETING, NOT ASSERTED AFTER \u2014 the acceptance demands runLandLoop demonstrably cover both halves, and it does. ABANDONED-CLAIM SWEEP: loop-land-reclaim.ts's reclaimAbandoned imports findAbandonedTickets and STALE_CLAIM_MS from loop-claim.ts and is called at loop-land.ts:290, on the live path. WIP=1: pickNextTicket lives in loop-land-board.ts and is called at loop-land.ts:292, and loop-land.ts's own header discusses WIP=1 explicitly at lines 12 and 25. Both halves already moved across; nothing has to move now.",
+        "SO THE FILE IS NOT THE UNIT. loop-claim.ts also holds STALE_CLAIM_MS, findAbandonedTickets and DEFAULT_MAX_SESSIONS_PER_TICKET \u2014 all three have live callers (the first two in loop-land-reclaim, the third in loop-land-ticket.ts:128). Deleting the file would delete the sweep this ticket's own acceptance requires to survive. What goes is runClaimLoop and the private helpers that exist only for it.",
+        "A4 \u2014 runWatchdogSession GETS THE SAME VERDICT, and it earned it independently rather than by analogy. Its only callers are its own tests. Both live watchdog paths compose the pieces directly and neither goes through it: the built-in agent checks cooperatively at a turn boundary via checkWatchdogBreach (session-limits.ts, W13-44) and the external CLI wraps createWatchdogChildProcessSpawn itself (run-build-spawn.ts:293, W13-47). Deleting it orphans NOTHING \u2014 checked, because that was the risk: createWatchdogChildProcessSpawn keeps its live caller in run-build-spawn.ts.",
+        "SCOPE WIDENED AT THE READ (Law 1) to watchdog-session.ts and its test (A4 names them), packages/harbormaster/src/index.ts and index.test.ts (the barrel exports both symbols and the test asserts runClaimLoop is exported, so a deletion that skipped them would not compile), and conductor.config.json (A5's ratchet lives there \u2014 W22-06 made it the single place those numbers are written). All unowned.",
+        "SCOPE WIDENED AGAIN (Law 1): scripts/validate-exports.test.mjs pins the ratchet counts against the REAL repo \u2014 expect(findings.length).toBe(47) in two places \u2014 and uses runClaimLoop itself as its worked example of 'a comment is not a caller'. Deleting the symbol necessarily reds those three tests, so they are part of this change and not a follow-up. That the ratchet has real-repo fixtures at all is the reason this deletion could be made with confidence.",
+        "A1 DONE \u2014 docs/ARCHITECTURE.md \u00a711 records the decision and, more usefully, the reasoning: documented-dead code is worse than either live or absent code because it passes every mechanical check a live path passes, and W21-12 is the proof rather than the illustration.",
+        "A2 DONE AND VERIFIED BEFORE THE DELETE, not asserted after. loop-claim.ts SURVIVES its own headline function: findAbandonedTickets and STALE_CLAIM_MS are live via loop-land-reclaim.ts (called at loop-land.ts:290) and DEFAULT_MAX_SESSIONS_PER_TICKET is the land ladder's ceiling. Deleting the file \u2014 the obvious reading of 'delete it' \u2014 would have deleted the abandoned-claim sweep this acceptance required to survive.",
+        "A4 DONE \u2014 runWatchdogSession deleted on its own evidence: only test callers, and both live watchdog paths compose the pieces directly (checkWatchdogBreach cooperatively at a turn boundary per W13-44; createWatchdogChildProcessSpawn wrapped directly by run-build-spawn.ts per W13-47). Checked that it orphaned nothing before deleting \u2014 the real spawner keeps its live caller.",
+        "A5 DONE, with its limits stated rather than glossed. --max 47 -> 46 in conductor.config.json, so the next export left with no non-test caller EXCEEDS the baseline and fails the gate; verified by running at --max 45 (exit 1) and --max 46 (exit 0). It is a count: it cannot tell an orchestration entry point from any other symbol, and it is the ratcheting DOWN that turns a report into a guard.",
+        "THE RATCHET IS NOT TRANSITIVE, and this ticket produced the proof. --max-buried stayed at 47 across the deletion of two dead exports, because removing runWatchdogSession revealed deadLetterAndBlock \u2014 whose only non-test caller WAS runWatchdogSession. Dead code propping up dead code, counted as reached the entire time. Filed as W22-20 rather than folded in.",
+        "THE PUBLIC-SURFACE TEST HAD ASSERTED runClaimLoop's REACHABILITY THE WHOLE TIME (index.test.ts, W10-77: 'the engine is reachable, not merely built'). It was true and it meant nothing \u2014 a public surface can be a contract and still be a contract with nobody. Left a note there saying so.",
+        "Gate: lint clean, typecheck 0, 4780 tests passing across 560 files (1 skipped) \u2014 down from 4794 because the eleven runClaimLoop cases and the watchdog-session suite went with their subjects \u2014 76 e2e passing, all 6 validators clean plus temp-leaks OK.",
+        "UNRELATED FINDING DURING THE GATE, filed as W22-21: validate-temp-leaks (added yesterday) failed on a leaked suite home, and chasing it REPRODUCED the intermittent leak W22-19 could not \u2014 adding a test file leaks exactly one home, every time; a failing test leaks none. W22-19's premise was wrong and is annotated as superseded. The check found a real defect within a day of existing."
       ],
       "acceptance": [
         "The decision is recorded in docs/ARCHITECTURE.md with its reasoning, either way",
@@ -15041,7 +15061,68 @@
         "ATTEMPT 3 \u2014 the entry guard on the new validator. A guard that WRONGLY matches would run main() on import and call process.exit() inside a vitest worker, killing it before any afterAll \u2014 the inverse of the W22-01 failure, and the only mechanism I could think of that kills a worker outright. Importing scripts/validate-temp-leaks.mjs returns its exports and runs nothing. Ruled out.",
         "WHAT IS STILL TRUE, AND IS WHY THIS WAS WORTH AN HOUR: the directory was real. Every suite-home was deleted at 13:58, the gate ran at 13:59, and dokima-suite-home-XDz1sT existed and persisted for at least three minutes after that run ended. It was not a live directory observed in flight. Something in that specific run did not reach its teardown, once, and has not happened in the six full runs since.",
         "THE UNTESTED HYPOTHESIS, for whoever picks this up: vitest's forks pool reuses child processes ACROSS projects, and that run is the only one where a scripts-project test (run-validators.test.mjs) both failed and held a ~60s execFileSync child open while apps/server files ran in other workers. If a worker is torn down between a setup file and its afterAll, that file's home survives. Testing it means instrumenting the pool rather than the suite, which is more than a two-point ticket and more than this symptom is worth until it recurs.",
-        "NOTHING WAS CHANGED DEFENSIVELY. A fix for a mechanism nobody has observed is how the process.on('exit') handler W22-16 deleted came to exist in the first place: plausible, untested, and dead for months while the leak it was meant to stop grew to 22,978 directories. If this recurs, validate-temp-leaks will now say so \u2014 which is the actual protection, and it is already in the gate."
+        "NOTHING WAS CHANGED DEFENSIVELY. A fix for a mechanism nobody has observed is how the process.on('exit') handler W22-16 deleted came to exist in the first place: plausible, untested, and dead for months while the leak it was meant to stop grew to 22,978 directories. If this recurs, validate-temp-leaks will now say so \u2014 which is the actual protection, and it is already in the gate.",
+        "SUPERSEDED IN PREMISE 2026-08-30 by W22-21, and the correction is worth keeping visible on this ticket rather than only on the new one. The symptom is REAL and now reproduces on demand \u2014 but not for the reason this ticket's title asserts. A deliberately failing test leaks nothing (this ticket's own attempt 1 got that right); a changed test FILE SET leaks exactly one home, every time. The three attempts recorded here were sound and the not-reproducible conclusion was correct AS THE QUESTION WAS ASKED. The defect was the question: it was framed from a single observation whose only remarkable feature happened to be the wrong one."
+      ]
+    },
+    {
+      "id": "W22-20",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 2,
+      "title": "deadLetterAndBlock was reachable only from dead code, and the ratchet counted it as reached",
+      "write_scope": [
+        "packages/harbormaster/src/watchdog.ts",
+        "packages/harbormaster/src/watchdog.test.ts",
+        "packages/harbormaster/src/watchdog-process.ts",
+        "conductor.config.json"
+      ],
+      "acceptance": [
+        "deadLetterAndBlock is deleted, or given a live caller, with the decision recorded the way W21-36 recorded its own",
+        "watchdog-process.ts stops describing a wiring that does not exist",
+        "The buried ratchet is lowered to the measured number afterwards"
+      ],
+      "notes": [
+        "FOUND BY W21-36's DELETION, filed at that moment rather than in its closing note (Law 1). Deleting runWatchdogSession dropped it out of the buried list and put deadLetterAndBlock in \u2014 because runWatchdogSession WAS its only non-test caller (watchdog-session.ts:22 and :78, verifiable in git at the commit before the deletion).",
+        "THE INTERESTING PART IS NOT THE FUNCTION, IT IS THE COUNTING. deadLetterAndBlock has been dead for as long as its caller was, and both ratchets reported it as reached the whole time, because 'has a caller' was true \u2014 the caller was simply also dead. A reachability check that does not ask whether the CALLER is reachable will miss every chain like this, and the buried count staying at 47 across a deletion of two dead exports is that blind spot showing itself in one number.",
+        "SO THE REAL QUESTION IS WHETHER THE RATCHET SHOULD BE TRANSITIVE, and that is worth deciding before deleting anything: a one-line deletion here fixes one instance, while asking validate-exports to compute reachability from live entry points would find the rest of the chain at once. Measure how many symbols that reclassifies before choosing (L-56) \u2014 if it is one, delete the function and move on.",
+        "watchdog-process.ts:14 currently says 'Callers wire it straight to deadLetterAndBlock', which is now a description of nothing. That sentence is the only remaining non-test reference, and a comment that names a wiring nobody performs is exactly what made runClaimLoop survive for months."
+      ]
+    },
+    {
+      "id": "W22-21",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "REPRODUCED: adding a test file leaks exactly one temp home \u2014 W22-19 blamed the wrong thing",
+      "write_scope": [
+        "apps/server/vitest.setup.ts"
+      ],
+      "acceptance": [
+        "Adding a test file and running the suite leaves no dokima-suite-home-* behind",
+        "The mechanism is written down \u2014 which worker creates a home it never tears down, and why afterAll does not cover it",
+        "The reproduction below is a regression test or is explained why it cannot be one"
+      ],
+      "notes": [
+        "THE RECIPE, and it works first time: create any trivial passing test file under apps/server/src, run `pnpm test`, and exactly one dokima-suite-home-* survives the run. Delete the file, run again, zero survive. Measured 2026-08-30 with a marker directory and `find -newer`.",
+        "IT IS NOT ABOUT FAILURE, which is what W22-19 assumed and could not reproduce. Three consecutive all-passing runs with an unchanged file set leaked nothing; the run immediately after a file-set change leaked one; a deliberately FAILING test (W22-19 attempt 1) leaked nothing at all. The variable is the test FILE SET changing, not a test failing. W22-19's three attempts were sound and its conclusion \u2014 not reproducible AS STATED \u2014 was correct; the premise it inherited from a single observation was wrong.",
+        "BOTH ORIGINAL OBSERVATIONS FIT THE CORRECTED PREMISE, which is why this is worth trusting rather than re-deriving: the 2026-08-29 leak followed adding scripts/validate-temp-leaks.test.mjs, and the 2026-08-30 leak followed deleting watchdog-session.test.ts and rewriting loop-claim.test.ts. Both were file-set changes. Neither run's failure status mattered.",
+        "LIKELIEST MECHANISM, UNCONFIRMED and stated as such: apps/server/vitest.setup.ts mkdtemps a DOKIMA_HOME per test FILE, and the removal is an `afterAll` (W22-16, after `process.on('exit')` was proven never to fire under the forks pool). A worker that runs the setup file and is then terminated WITHOUT executing a test file would create a home and never reach any afterAll. A changed file set is exactly when the pool would size differently and retire a child. Verify that before changing anything \u2014 the fix depends on whether the home is created by a worker that never runs a file.",
+        "IT IS ALREADY CAUGHT, which is the one cheerful part: validate-temp-leaks (W22-18) failed the gate on this the first time it happened, in the same session it was written. The check found a real, reproducible defect within a day of existing, against the person who wrote it."
       ]
     }
   ]

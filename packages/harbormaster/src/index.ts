@@ -51,14 +51,7 @@ export type {
  * component mounted nowhere) and W10-74 (a CLI bundled into nothing), one
  * layer down and load-bearing for the product's entire premise.
  */
-export { runClaimLoop, DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
-export type {
-  ClaimLoopOptions,
-  ClaimLoopResult,
-  ClaimLoopStopReason,
-  ClaimLoopTicketOutcome,
-  TicketAttempt,
-} from './loop-claim.js';
+export { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
 export { runLandLoop } from './loop-land.js';
 /**

@@ -385,3 +385,55 @@ skipped** — W21-63 fixed the mirror image, a ladder that skipped to an
 unreachable rung and parked with no session at all, and condemning every rung
 would reintroduce it.
 
+
+## 11. One execution engine, not two (W21-36)
+
+**`runLandLoop` is the only engine. `runClaimLoop` was deleted 2026-08-30.**
+
+F1 built two. `runClaimLoop` (W3-01a) claimed a ticket, gave it a worktree and
+dispatched sessions; `runLandLoop` (W3-01c) did that and landed the result.
+Both were real, both were tested, and `apps/*` only ever called the second —
+for months. `loop-claim.ts`'s own docstring said so, and the package's
+public-surface test asserted `runClaimLoop`'s reachability the whole time,
+which is worth stating plainly: a public surface can be a contract and still be
+a contract with nobody.
+
+**Why delete rather than keep with a marker.** Documented-dead code is worse
+than either live code or absent code. It passes every mechanical check a live
+path passes — it compiles, its tests are green, it is exported and importable —
+and nothing distinguishes it from a live path except a comment somebody has to
+happen to read. That is not a hypothetical cost here. W21-12 put worktree
+provisioning into `runClaimLoop`, the full gate went green because its tests
+exercised it, and a live run then proved the code had never executed. The
+docstring was already there; it was not read, because nothing required reading
+it.
+
+**What moved across, and what never had to.** The deletion was conditional on
+`runLandLoop` covering both capabilities `runClaimLoop` uniquely carried, and
+it already did:
+
+- **The abandoned-claim sweep** (W13-12) — `findAbandonedTickets` and
+  `STALE_CLAIM_MS` stay in `loop-claim.ts`; `loop-land-reclaim.ts` imports them
+  and `loop-land.ts` calls `reclaimAbandoned` at every idle turn.
+- **The WIP=1 protocol** — `pickNextTicket` lives in `loop-land-board.ts` and
+  `loop-land.ts` calls it; WIP=1 itself is enforced by `@dokima/tickets`'
+  `claimTicket`, not by either loop.
+
+So `loop-claim.ts` survives its own headline function. Deleting the file would
+have deleted the sweep the deletion was conditional on.
+
+**`runWatchdogSession` went in the same pass**, on its own evidence rather than
+by analogy: its only callers were its own tests, and both live watchdog paths
+compose the pieces directly without it — the built-in agent checks
+cooperatively at a turn boundary (`session-limits.ts`, W13-44) and the external
+CLI wraps `createWatchdogChildProcessSpawn` itself (`run-build-spawn.ts`,
+W13-47). The real spawner keeps its live caller and is untouched.
+
+**The guard against recurrence is a ratchet, and its limits are worth naming.**
+`validate-exports`' `--max` dropped 47 → 46 with the deletion, so the next
+export left with no non-test caller now exceeds the baseline and fails the
+gate. It counts; it cannot tell an orchestration entry point from any other
+symbol. And it is not transitive: deleting `runWatchdogSession` immediately
+revealed `deadLetterAndBlock`, whose only non-test caller *was*
+`runWatchdogSession` — dead code propping up dead code, reported as reached the
+entire time. Filed as W22-20.
