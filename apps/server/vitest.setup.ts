@@ -62,10 +62,24 @@ process.on('beforeExit', () => {
  * handler that never fires is how this went unnoticed for months.
  */
 afterAll(() => {
+  // RETRIED, THEN SAID OUT LOUD (W22-21). The bare `catch {}` this replaces was
+  // the last place a leak could hide: `afterAll` demonstrably runs for every
+  // home — an instrumented run counted 129 setups against 129 teardowns — so a
+  // directory that survives anyway did so because the REMOVAL failed and
+  // nothing said which one or why.
+  //
+  // The retries are the same shape as the e2e helper's (W22-12): a temp
+  // directory that loses a race with a checkpoint being written under it is
+  // ordinary and worth retrying, while one that still will not go is a real
+  // failure. `force` already absorbs "already gone".
   try {
-    rmSync(home, { recursive: true, force: true });
-  } catch {
-    /* ignore */
+    rmSync(home, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });
+  } catch (err) {
+    // Deliberately not a throw: failing a test FILE over housekeeping would
+    // trade a leak for a red suite, and the leak is the lesser fault. But it is
+    // no longer silent — validate-temp-leaks will fail the gate on the
+    // directory, and this line is how the next reader learns why it is there.
+    console.error(`[test-setup] could not remove ${home}:`, err);
   }
 });
 
