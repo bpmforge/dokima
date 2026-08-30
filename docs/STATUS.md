@@ -1995,3 +1995,54 @@ does not exist today.
 - `W20-05` (3pt, ui) — delegation by conversation — you talk to the team, the right member answers
 - `W20-10` (3pt, ui) — the waiting room — asks sit in your office, in queue order
 - `W20-12` (2pt, ui) — the whole roster is on the floor, seated by what they actually do
+
+## 2026-08-30 — the four decisions answered, and the board drained
+
+**489 of 491 done.** The two that remain are `blocked` by recorded founder
+decision, not by anything mechanical: `W12-44` (plugin loader, D-031) and
+`W13-32` (autonomy dial, D-032). `pnpm next` reports 0 ready, 0 needing a
+decision, 2 held.
+
+**D-031 / D-032 — two "not now"s, recorded rather than deferred.** The loader
+stays unbuilt until a concrete plugin exists; the autonomy dial stays unwired
+until the per-pause-site defaults review. Both moved to `blocked`, which had a
+mechanical payoff: `validate-plan`'s P9 gates strict wave order behind W12-44,
+so the board's legacy signal had reported one claimable ticket through a wave
+in which fourteen were closed. Then `pnpm next` needed the same lesson — a
+ticket parked by an ANSWERED decision still matched the text markers, so it
+would have asked forever for an answer already given. `blocked` now outranks
+the markers and reports HELD.
+
+**W21-36 — one execution engine, not two.** `runClaimLoop` deleted, with
+`runWatchdogSession` in the same pass. Reasoning in ARCHITECTURE.md §11: the
+deletion was conditional on `runLandLoop` already covering the abandoned-claim
+sweep and WIP=1, verified before anything moved. `loop-claim.ts` survives its
+own headline function, because deleting the file would have deleted the sweep
+the acceptance required to survive.
+
+**W22-20 — a breach is an outcome, not a verdict.** `deadLetterAndBlock`
+deleted (§11a). Its only caller had been `runWatchdogSession`: dead code
+propping up dead code, which both ratchets counted as *reached* the whole time.
+That pair answered a question worth keeping — measured rather than assumed, the
+chain was exactly one link deep, so making `validate-exports` transitive would
+reclassify exactly one symbol and is not worth building. Ratchets: `--max`
+47→46, `--max-buried` 47→46.
+
+**W21-95 — the empty board offers to read the code.** The onboard analysis has
+been reachable over HTTP since the onboard pipeline landed and the web was
+never one of its callers. The empty state now names both ways in and admits it
+has not read the folder. `W22-22` then made the durable half possible by
+recording `createdMode` on the project record — optional, because defaulting
+old projects to "new" would lie about repositories onboarded months ago.
+
+**W22-21 — the leak that disproved its own ticket.** `validate-temp-leaks`,
+one day old, failed the gate twice during this wave. Chasing it reproduced what
+W22-19 could not, and ruled out the mechanism W22-21 itself had filed: 128
+setups against 128 teardowns, so every teardown runs and a surviving directory
+means the *removal* failed. It stopped reproducing the moment it was
+instrumented — a race, not a logic error. The teardown now retries and, more
+importantly, says so instead of swallowing the error.
+
+**Gate at close:** lint clean, typecheck 0, **4787 tests passing** (561 files,
+1 skipped), **76 e2e passing**, all 6 validators clean plus `temp-leaks`. `main`
+in sync with both remotes.
