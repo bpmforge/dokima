@@ -14101,7 +14101,7 @@
       "phase": 21,
       "lane": "orchestrator",
       "role": "coding-agent",
-      "status": "todo",
+      "status": "done",
       "points": 3,
       "module": "web",
       "depends_on": [],
@@ -14109,7 +14109,14 @@
       "title": "\"Onboard existing repo\" registers the folder and never reads the repo",
       "write_scope": [
         "apps/web/src/fleet/**",
-        "apps/web/src/App/**"
+        "apps/web/src/App/**",
+        "apps/web/src/board/emptyState.ts",
+        "apps/web/src/board/BoardEmptyState.tsx",
+        "apps/web/src/board/BoardEmptyState.test.tsx",
+        "apps/web/src/board/api.ts",
+        "apps/web/src/board/api.test.ts",
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/e2e/board.spec.ts"
       ],
       "acceptance": [
         "Onboarding a real repository either runs the analysis the product already has, or says plainly that it has not yet looked at the code and what would make it",
@@ -14123,7 +14130,19 @@
         "SO THE VERB IS THE PROMISE AND THE PRODUCT DOES NOT KEEP IT. \"Onboard existing repo\" reads as \"read my code and get started\"; what it does is register a path. This is the buried-machinery class the W16 audit catalogued (runPhaseGate uncalled, the buried-exports list): real, tested capability with no live caller from the surface that should have one.",
         "A FOUNDER DECISION SITS INSIDE THIS, which is why it is filed rather than fixed: should the button RUN the analysis (it needs a model, and may be slow), OFFER it as the workspace's first suggested action, or simply be honest that it has not looked yet? The third is cheap and would already stop the product overpromising. The first is what the label implies.",
         "THE CHEAP HONEST INTERIM, if the full wiring is deferred: the post-onboard empty board must not reuse the new-project copy. Someone who just pointed at fifty thousand lines being told the board fills \"once you describe your idea\" is being told something false about their own situation.",
-        "Scope note: apps/web/src/fleet/** and App/** only. The pipeline side already exists and needs no change to be called; if wiring it turns out to need a server route change, that is a second ticket rather than a widen \u2014 apps/server is not in this scope."
+        "Scope note: apps/web/src/fleet/** and App/** only. The pipeline side already exists and needs no change to be called; if wiring it turns out to need a server route change, that is a second ticket rather than a widen \u2014 apps/server is not in this scope.",
+        "FOUNDER DIRECTION 2026-08-30 (Brad): option (b) \u2014 the workspace OFFERS the analysis as its first action, rather than running it on the button (needs a model, may be slow) or merely confessing it has not looked.",
+        "SCOPE WIDENED AT THE READ (Law 1), and the filed scope contained NOT ONE file that could satisfy the acceptance. A3 is about the board's empty state, whose copy lives in apps/web/src/board/emptyState.ts; the call needs apps/web/src/board/api.ts. The ticket named apps/web/src/fleet/** and App/**, which is where the ONBOARD BUTTON lives \u2014 but the defect is in what the person sees AFTER it, and that is the board. All widened files are apps/web and unowned; the note's actual prohibition, apps/server, is respected.",
+        "A2 CANNOT BE FULLY MET FROM THE WEB, and this was checked rather than assumed: nothing persists that a project was onboarded. registerProject takes `mode` and uses it only to decide whether the directory must already exist; ProjectRecord does not store it and ProjectCard does not carry it. So 'the workspace after onboarding is distinguishable from the workspace after New project' has no durable signal to read. Filed as W22-22, which is exactly the second ticket this ticket's own scope note said to file if the wiring needed a server change.",
+        "WHAT IS DELIVERABLE IS BETTER THAN THE FLAG ANYWAY, which is why this is not a consolation prize. The empty board currently asserts one path \u2014 'fills once you describe your idea' \u2014 and that sentence is false for anyone who pointed at existing code, WHICHEVER button they used. Offering both paths from the empty state is true for every project, survives a reload, needs no flag, and answers A1's first branch by actually running the analysis the product already has.",
+        "SCOPE WIDENED ONCE MORE (Law 1): apps/web/e2e/board.spec.ts asserts the OLD empty-state sentence verbatim, so changing the copy necessarily reds it. That is the e2e suite doing its job \u2014 the copy is a contract and a spec pins it \u2014 and updating the assertion is part of this change rather than a follow-up. Unowned.",
+        "DONE. The empty board now names BOTH ways it can be filled and admits which has not happened: 'It fills either from a product you describe, or from code that is already here \u2014 Dokima has not read this folder yet.' The second control, Analyse this repository, POSTs to /api/v1/projects/:id/pipeline/onboard-run \u2014 the route runOnboardAnalysis has served since the onboard pipeline landed, whose own header named the HTTP route and the CLI as its callers and never the web. The button existed, the machinery existed, and nothing connected them.",
+        "SAID FOR EVERY PROJECT, NOT ONLY ONBOARDED ONES, and that is a decision rather than a shortcut. Nothing persists which button created a project (W22-22), so a mode-conditional message would have had nothing to read \u2014 but the sentence is true either way: an empty board can be filled from an idea or from code, and Dokima has read neither until told. It survives a reload, needs no flag, and is right for someone who used New project and then dropped a repo in.",
+        "A4 IS THE ONE MOST EASILY FAKED, so it is a fixture: the refusal is RETURNED rather than thrown, and rendered in the product's own words. A swallowed failure would leave the board looking exactly like a successful analysis that found nothing \u2014 the same shape as the defect being fixed, one level in. 'no model is configured' reaches the panel verbatim.",
+        "A2 IS PARTLY DEFERRED AND SAID SO: the workspace IS now distinguishable from a bare new project by what it offers, but not by anything durable that records HOW it was created. That needs the project record to keep its mode, which is apps/server and explicitly outside this ticket's scope note. Filed as W22-22 \u2014 the second ticket that note anticipated.",
+        "NOTHING IS REFRESHED ON SUCCESS, deliberately: useBoardData is websocket-driven, so tickets the analysis proposes arrive on the live projection and the panel unmounts when the board stops being empty. Calling a refresh that does not exist was the first draft and typecheck caught it.",
+        "PROVEN RED FIRST: 4 of 5 fixtures failed against the old panel; the fifth (no analysis handler offered) passed before and after, which is what makes the other four mean something. The e2e board spec pinned the old sentence verbatim and went red too \u2014 the copy is a contract and the suite treated it as one.",
+        "Gate: lint clean, typecheck 0, 4785 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     },
     {
@@ -15122,7 +15141,38 @@
         "IT IS NOT ABOUT FAILURE, which is what W22-19 assumed and could not reproduce. Three consecutive all-passing runs with an unchanged file set leaked nothing; the run immediately after a file-set change leaked one; a deliberately FAILING test (W22-19 attempt 1) leaked nothing at all. The variable is the test FILE SET changing, not a test failing. W22-19's three attempts were sound and its conclusion \u2014 not reproducible AS STATED \u2014 was correct; the premise it inherited from a single observation was wrong.",
         "BOTH ORIGINAL OBSERVATIONS FIT THE CORRECTED PREMISE, which is why this is worth trusting rather than re-deriving: the 2026-08-29 leak followed adding scripts/validate-temp-leaks.test.mjs, and the 2026-08-30 leak followed deleting watchdog-session.test.ts and rewriting loop-claim.test.ts. Both were file-set changes. Neither run's failure status mattered.",
         "LIKELIEST MECHANISM, UNCONFIRMED and stated as such: apps/server/vitest.setup.ts mkdtemps a DOKIMA_HOME per test FILE, and the removal is an `afterAll` (W22-16, after `process.on('exit')` was proven never to fire under the forks pool). A worker that runs the setup file and is then terminated WITHOUT executing a test file would create a home and never reach any afterAll. A changed file set is exactly when the pool would size differently and retire a child. Verify that before changing anything \u2014 the fix depends on whether the home is created by a worker that never runs a file.",
-        "IT IS ALREADY CAUGHT, which is the one cheerful part: validate-temp-leaks (W22-18) failed the gate on this the first time it happened, in the same session it was written. The check found a real, reproducible defect within a day of existing, against the person who wrote it."
+        "IT IS ALREADY CAUGHT, which is the one cheerful part: validate-temp-leaks (W22-18) failed the gate on this the first time it happened, in the same session it was written. The check found a real, reproducible defect within a day of existing, against the person who wrote it.",
+        "THIRD INDEPENDENT CONFIRMATION, unplanned: W21-95 added apps/web/src/board/BoardEmptyState.test.tsx \u2014 a new test file \u2014 and the very next full run leaked exactly one dokima-suite-home-*, failing the gate. Three for three on the corrected premise, and it has now blocked a close gate twice, which is the argument for fixing it rather than clearing the directory each time."
+      ]
+    },
+    {
+      "id": "W22-22",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "core",
+      "module": "cli",
+      "points": 2,
+      "title": "nothing records that a project was onboarded from an existing repo",
+      "write_scope": [
+        "apps/server/src/api/projects/registry-verbs.ts",
+        "apps/server/src/api/projects/routes.ts",
+        "apps/server/src/api/projects.test.ts"
+      ],
+      "acceptance": [
+        "The project record persists which mode created it, and the projects API returns it",
+        "An existing project with no recorded mode reads as unknown, never as \"new\"",
+        "A red fixture covers the un-archive path, where a record is reactivated rather than created"
+      ],
+      "notes": [
+        "FILED FROM W21-95's SCOPE READ, at the moment the gap was found, and it is the second ticket that ticket's own scope note anticipated: 'if wiring it turns out to need a server route change, that is a second ticket rather than a widen'.",
+        "THE GAP, verified: registerProject takes `mode: ProjectMode` and consults it ONLY to decide whether the directory must already exist ('new' creates it, onboard/import require it). ProjectRecord never stores it, so ProjectCard cannot carry it and no client can tell an onboarded project from a new one \u2014 which is exactly what W21-95 observed live, where the two workspaces were byte-identical.",
+        "UNKNOWN IS NOT 'new', and that is the whole risk in this ticket. Every project registered before this lands has no recorded mode, and defaulting them to 'new' would assert something false about repositories somebody onboarded months ago. A nullable field read as unknown is the honest shape; a default is the tempting one.",
+        "THE UN-ARCHIVE PATH IS THE FIXTURE THAT MATTERS: registerProject reactivates an existing record in place rather than duplicating it, so POSTing an archived project's path with mode `new` must not overwrite a mode recorded as `onboard`."
       ]
     }
   ]

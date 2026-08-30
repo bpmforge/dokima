@@ -10,6 +10,7 @@ import {
 } from './api.js';
 import './board.css';
 import { EmptyState } from './BoardEmptyState.js';
+import { startOnboardAnalysis } from './api.js';
 import { ClaimNowStrip } from './ClaimNowStrip.js';
 import { openBlockers } from './badges.js';
 import { groupIntoLanes } from './lanes.js';
@@ -150,7 +151,26 @@ export function BoardView({
       </div>
     );
   }
-  if (tickets.length === 0) return <EmptyState onViewCurrentPhase={onViewCurrentPhase} />;
+  if (tickets.length === 0) {
+    /**
+     * W21-95: the empty board offers the analysis the product already has.
+     *
+     * The refusal is returned rather than thrown so the panel can print it.
+     * A problem response here is the honest answer to "why is my board still
+     * empty" — most often no model configured for the analysis role — and
+     * swallowing it would leave the board looking exactly as it did before,
+     * which is the defect this replaces.
+     */
+    const analyse = async (): Promise<string | undefined> => {
+      const result = await startOnboardAnalysis(apiOpts, projectId);
+      // Nothing to refresh on success: `useBoardData` is websocket-driven, so
+      // the tickets the analysis proposes arrive on the live projection and
+      // this panel unmounts when the board stops being empty.
+      if (result.ok) return undefined;
+      return result.problem.detail ?? result.problem.title ?? 'the analysis could not run';
+    };
+    return <EmptyState onViewCurrentPhase={onViewCurrentPhase} onAnalyseRepository={analyse} />;
+  }
 
   const lanes = groupIntoLanes(tickets);
   const blockedDeps = new Map(

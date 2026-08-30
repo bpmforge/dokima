@@ -90,11 +90,14 @@ test('board empty state renders when no tickets exist yet (UX_SPEC §2b)', async
 
   const board = page.getByTestId('pane-board');
   await expect(board.getByTestId('board-empty')).toBeVisible();
-  await expect(
-    board.getByText(
-      'The board fills once you describe your idea and it is broken into tickets.',
-    ),
-  ).toBeVisible();
+  // W21-95: the copy used to name ONE way in — "fills once you describe your
+  // idea" — which was false for anyone who had just pointed Dokima at an
+  // existing codebase, and the workspace they got was byte-identical to a new
+  // project's. Both ways in are named now, and the panel admits the code has
+  // not been read.
+  await expect(board.getByText(/Dokima has not read this folder yet/)).toBeVisible();
+  await expect(board.getByRole('button', { name: 'Describe your product' })).toBeVisible();
+  await expect(board.getByRole('button', { name: 'Analyse this repository' })).toBeVisible();
 });
 
 test('dragging a ready card to Claimed fires claim and the card moves column (FR-T4)', async ({

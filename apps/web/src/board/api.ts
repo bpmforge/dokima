@@ -156,6 +156,37 @@ export async function startBuildRun(
   return { ok: true, data: { runId: wire.run_id, status: 'running' } };
 }
 
+/**
+ * Runs the onboard analysis on a project's existing code (W21-95).
+ *
+ * `POST /api/v1/projects/:id/pipeline/onboard-run` has existed and been tested
+ * since the onboard pipeline landed; its own header names its callers as the
+ * HTTP route and the CLI, and the WEB was never one of them. That is the whole
+ * defect W21-95 recorded: "Onboard existing repo" read as "read my code and
+ * get started" and did nothing but register a path.
+ *
+ * Returns the count of plan items the analysis proposed, so the caller can say
+ * something true about what happened rather than merely that it finished.
+ */
+export async function startOnboardAnalysis(
+  opts: BoardApiOptions,
+  projectId: string,
+): Promise<BoardResult<{ runId: string; planItemCount: number }>> {
+  const instance = `/projects/${projectId}/pipeline/onboard-run`;
+  const doFetch = opts.fetchImpl ?? fetch;
+  const res = await doFetch(`${opts.baseUrl}${instance}`, {
+    method: 'POST',
+    headers: { ...authHeaders(opts), 'content-type': 'application/json' },
+  });
+  const body = await parseJson(res);
+  if (!res.ok) return { ok: false, problem: asProblem(res.status, body, instance) };
+  const wire = body as { run_id: string; plan_items?: unknown[] };
+  return {
+    ok: true,
+    data: { runId: wire.run_id, planItemCount: Array.isArray(wire.plan_items) ? wire.plan_items.length : 0 },
+  };
+}
+
 /** The human outcome line the CLI prints ("0 landed, 1 parked (stop: idle)"), pulled from a finished run's stdout (W13-63). */
 export function runOutcome(run: BuildRunOutcome): string | null {
   if (run.status !== 'finished') return null;
