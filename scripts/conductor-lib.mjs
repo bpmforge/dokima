@@ -32,7 +32,17 @@ export {
   alwaysOkPatterns,
 } from './conductor-lib/config.mjs';
 
-export { wave, nonWildPrefix, globToRegex, parseJson, isInfraFailure, infraGap } from './conductor-lib/parsing.mjs';
+export {
+  wave,
+  nonWildPrefix,
+  globToRegex,
+  parseJson,
+  isInfraFailure,
+  infraGap,
+  TERMINAL_STATES,
+  classifyTerminal,
+  terminalNote,
+} from './conductor-lib/parsing.mjs';
 
 export { claimableTickets } from './conductor-lib/claim.mjs';
 
@@ -44,7 +54,12 @@ export {
   boardUnreadableGap,
 } from './conductor-lib/lint-rules.mjs';
 
-export { planPath, loadPlanFrom, serializePlan, writePlan } from './conductor-lib/board.mjs';
+export {
+  planPath,
+  loadPlanFrom,
+  serializePlan,
+  writePlan,
+} from './conductor-lib/board.mjs';
 
 export { codingPrompt } from './conductor-lib/prompts.mjs';
 
