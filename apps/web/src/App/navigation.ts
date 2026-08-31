@@ -19,6 +19,14 @@ export type View =
   // was imported by nothing outside its own directory — built, never mounted —
   // so a run paused on a decision had no surface anywhere to answer it.
   | 'decisions'
+  /**
+   * W22-25: the learning loop's human surface. `TriageQueue.tsx` shipped in
+   * W7-05 and was imported by nothing outside its own directory — built,
+   * tested, and with no route, so no URL could render it and the capture tour
+   * declared it WAIVED as unreachable. That waiver was the only thing in the
+   * product that knew.
+   */
+  | 'lessons'
   | null;
 
 /** `?project=`/`?view=` are the URL's source of truth (no router lib yet) — absent project means Fleet is the entry view (UX_SPEC §2); `view=settings`/`view=wizard`/`view=roster`/`view=notifications`/`view=plans`/`view=trace` layer over either Fleet or a project. */
@@ -36,6 +44,7 @@ const VALID_VIEWS = [
   'trace',
   'interview',
   'decisions',
+  'lessons',
 ];
 
 function readView(): View {

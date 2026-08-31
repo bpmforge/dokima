@@ -9,18 +9,10 @@
     "Lessons",
     "Roster",
     "Morning queue",
+    "2",
     "Settings",
     "Light",
-    "Improvement plan",
-    "1 found → 1 planned → 0 accepted → 0 done · 0 regressed",
-    "PC-001",
-    "Proposed",
-    "Re-verify the 2 stale receipt(s) so downstream phases aren't gating on invalidated evidence",
-    "Done when every receipt still matches the work it vouches for.",
-    "receipts.staleCount == 0",
-    "Accept",
-    "Dismiss",
-    "Accept creates a ticket on the board in the lane you choose. Dismiss records your reason and sets the suggestion aside — nothing on the board changes."
+    "No field reports awaiting triage."
   ],
   "interactive": [
     {
@@ -29,7 +21,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 519,
+        "x": 518,
         "y": 12,
         "w": 69,
         "h": 36
@@ -41,7 +33,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 592,
+        "x": 591,
         "y": 12,
         "w": 65,
         "h": 36
@@ -53,7 +45,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 661,
+        "x": 660,
         "y": 12,
         "w": 91,
         "h": 36
@@ -65,9 +57,9 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 755,
+        "x": 754,
         "y": 12,
-        "w": 59,
+        "w": 57,
         "h": 36
       }
     },
@@ -77,7 +69,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 818,
+        "x": 815,
         "y": 12,
         "w": 96,
         "h": 36
@@ -89,9 +81,9 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 919,
+        "x": 916,
         "y": 12,
-        "w": 85,
+        "w": 88,
         "h": 36
       }
     },
@@ -110,7 +102,7 @@
     {
       "tag": "button",
       "role": null,
-      "name": "Morning queue, 0 awaiting a decision",
+      "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
         "x": 1093,
@@ -144,27 +136,15 @@
       }
     },
     {
-      "tag": "button",
-      "role": null,
-      "name": "Accept",
+      "tag": "p",
+      "role": "status",
+      "name": "No field reports awaiting triage.",
       "disabled": false,
       "rect": {
-        "x": 41,
-        "y": 313,
-        "w": 77,
-        "h": 36
-      }
-    },
-    {
-      "tag": "button",
-      "role": null,
-      "name": "Dismiss",
-      "disabled": false,
-      "rect": {
-        "x": 126,
-        "y": 313,
-        "w": 82,
-        "h": 36
+        "x": 0,
+        "y": 77,
+        "w": 1440,
+        "h": 18
       }
     }
   ],
@@ -184,6 +164,7 @@
   "classHistogram": {
     "app-shell": 1,
     "app-shell__bell-label": 1,
+    "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
@@ -191,21 +172,7 @@
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,
-    "page": 1,
-    "plan-item": 1,
-    "plan-item__actions": 1,
-    "plan-item__catalog-id": 1,
-    "plan-item__consequence": 1,
-    "plan-item__header": 1,
-    "plan-item__recommendation": 1,
-    "plan-item__state": 1,
-    "plan-item__state--proposed": 1,
-    "plan-item__verify": 1,
-    "plan-item__verify-expr": 1,
-    "plan-view": 1,
-    "plan-view__funnel": 1,
-    "plan-view__header": 1,
-    "plan-view__list": 1,
-    "theme-toggle": 1
+    "theme-toggle": 1,
+    "triage-queue__empty": 1
   }
 }

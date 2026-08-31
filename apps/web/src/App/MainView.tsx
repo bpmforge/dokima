@@ -4,6 +4,7 @@ import { BoardView } from '../board/BoardView.js';
 import { TicketDrawer } from '../board/drawer/index.js';
 import { ChatView } from '../chat/ChatView.js';
 import { DecisionsBoard } from '../decisions/DecisionsBoard.js';
+import { TriageQueue } from '../lessons/TriageQueue.js';
 import { FleetHome } from '../fleet/FleetHome.js';
 import { SplitPaneWorkspace } from '../layout/SplitPaneWorkspace.js';
 import { NotificationsView } from '../notifications/NotificationsView.js';
@@ -103,6 +104,12 @@ export function MainView({
   // one and for coming back to a decision later.
   if (view === 'decisions' && projectId && token) {
     return <DecisionsBoard projectId={projectId} token={token} />;
+  }
+  // W22-25: the learning loop's human surface, reachable at last. `actorId`
+  // is the web's own convention for a founder action (board/api.ts defaults
+  // the same way) — promoting/dismissing a field report is a person's call.
+  if (view === 'lessons' && projectId && apiOpts) {
+    return <TriageQueue apiOpts={apiOpts} projectId={projectId} actorId="operator" />;
   }
   if (view === 'trace' && projectId && apiOpts && traceTicketId) {
     return (

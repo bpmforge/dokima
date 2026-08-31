@@ -65,103 +65,115 @@ The signature screen (UX_SPEC §7): Decide items get inline **Approve/Reject** w
 
 ![Morning queue](img/09-morning-queue.png)
 
-## Step 10 — Expert roster
+## Step 10 — Founder decisions
+
+Slates raised outside a paused run, and the way back to a decision later (W10-72).
+
+![Founder decisions](img/decisions.png)
+
+## Step 11 — Lessons triage
+
+Field reports waiting on a person — the human end of the learning loop (BLUEPRINT §12.6).
+
+![Lessons triage](img/lessons.png)
+
+## Step 12 — Expert roster
 
 The imported expert library (`content/experts/`) — the specialist roles the pipeline dispatches, with their provenance.
 
 ![Expert roster](img/10-roster.png)
 
-## Step 11 — Settings (no project open)
+## Step 13 — Settings (no project open)
 
 Global Settings is deliberately thin: model matrix, autonomy dial, budgets, and scopes are per-project — this view is just the Setup Wizard entry point.
 
 ![Settings (no project open)](img/11-settings-no-project.png)
 
-## Step 12 — Command palette (⌘K)
+## Step 14 — Command palette (⌘K)
 
 Pressing **⌘K**/**Ctrl+K** anywhere opens the palette: the "What are we doing today?" mode picker, with no results because nothing has been typed yet.
 
 ![Command palette (⌘K)](img/12-palette-no-query.png)
 
-## Step 13 — Command palette — query results
+## Step 15 — Command palette — query results
 
 Typing **E2E-1** jumps straight to the exact-id match; every result is keyboard-reachable (WCAG 2.2 combobox pattern).
 
 ![Command palette — query results](img/13-palette-query.png)
 
-## Step 14 — Settings — Models
+## Step 16 — Settings — Models
 
 The **Models** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Models](img/14-settings-model-matrix.png)
 
-## Step 15 — Settings — Autonomy · Budget · Berths
+## Step 17 — Settings — Autonomy · Budget · Berths
 
 The **Autonomy · Budget · Berths** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Autonomy · Budget · Berths](img/15-settings-autonomy-budget.png)
 
-## Step 16 — Settings — Cost Estimate
+## Step 18 — Settings — Cost Estimate
 
 The **Cost Estimate** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Cost Estimate](img/16-settings-estimate.png)
 
-## Step 17 — Settings — Effective Settings
+## Step 19 — Settings — Effective Settings
 
 The **Effective Settings** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Effective Settings](img/17-settings-effective.png)
 
-## Step 18 — Settings — MCP Servers
+## Step 20 — Settings — MCP Servers
 
 The **MCP Servers** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — MCP Servers](img/18-settings-mcp.png)
 
-## Step 19 — Settings — Validator Packs
+## Step 21 — Settings — Validator Packs
 
 The **Validator Packs** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Validator Packs](img/19-settings-validators.png)
 
-## Step 20 — Settings — Expert Overrides
+## Step 22 — Settings — Expert Overrides
 
 The **Expert Overrides** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Expert Overrides](img/20-settings-experts.png)
 
-## Step 21 — Settings — Rule Lifecycle
+## Step 23 — Settings — Rule Lifecycle
 
 The **Rule Lifecycle** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Rule Lifecycle](img/21-settings-rules.png)
 
-## Step 22 — Settings — Suppressions
+## Step 24 — Settings — Suppressions
 
 The **Suppressions** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Suppressions](img/22-settings-suppressions.png)
 
-## Step 23 — Settings — Escalation Policy
+## Step 25 — Settings — Escalation Policy
 
 The **Escalation Policy** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Escalation Policy](img/23-settings-escalation.png)
 
-## Step 24 — Settings — Copilot
+## Step 26 — Settings — Copilot
 
 The **Copilot** tab of the Settings surface (UX_SPEC §6/§6a).
 
 ![Settings — Copilot](img/24-settings-copilot.png)
 
-## Step 25 — Keyboard shortcuts overlay
+## Step 27 — Keyboard shortcuts overlay
 
 Press **?** anywhere for the shortcut map; Escape closes it.
 
 ![Keyboard shortcuts overlay](img/25-shortcuts.png)
 
-## Step 26 — Theme toggle
+## Step 28 — Theme toggle
 
 One click switches light/dark; the choice persists across reloads.
 
@@ -299,5 +311,5 @@ that reaches them yet; see the reason column.
 | `dark/11-settings-suppressions` | DONE |  |
 | `dark/12-settings-escalation` | DONE |  |
 | `dark/13-settings-copilot` | DONE |  |
-| `decisions` | WAIVED | DecisionsBoard.tsx is built and unit-tested but never mounted in App.tsx (plan.json W5-14 HANDOFF) — wiring it is out of this write_scope (apps/web/src/** is not in W10-37's write_scope). |
-| `lessons` | WAIVED | TriageQueue.tsx is built and unit-tested but never mounted in App.tsx (plan.json W7-05 HANDOFF, "TriageQueue.tsx mount remains the one open HONEST GAP") — same out-of-scope constraint as Decisions. |
+| `decisions` | DONE |  |
+| `lessons` | DONE |  |

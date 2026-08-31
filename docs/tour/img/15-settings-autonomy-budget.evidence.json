@@ -6,6 +6,7 @@
     "Describe",
     "Plan",
     "Decisions",
+    "Lessons",
     "Roster",
     "Morning queue",
     "2",
@@ -69,7 +70,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 610,
+        "x": 520,
         "y": 12,
         "w": 69,
         "h": 36
@@ -81,7 +82,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 683,
+        "x": 593,
         "y": 12,
         "w": 65,
         "h": 36
@@ -93,7 +94,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 752,
+        "x": 663,
         "y": 12,
         "w": 91,
         "h": 36
@@ -105,7 +106,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 847,
+        "x": 757,
         "y": 12,
         "w": 57,
         "h": 36
@@ -117,9 +118,21 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 908,
+        "x": 818,
         "y": 12,
         "w": 96,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Lessons",
+      "disabled": false,
+      "rect": {
+        "x": 919,
+        "y": 12,
+        "w": 85,
         "h": 36
       }
     },
@@ -468,7 +481,7 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 6,
+    "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
     "btn-quiet": 1,
     "icon": 2,

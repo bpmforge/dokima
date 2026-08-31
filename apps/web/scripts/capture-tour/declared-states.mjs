@@ -45,12 +45,9 @@ export const SETTINGS_TABS = [
  * The full denominator this sweep signs off on (W10-37 AC3/AC4): 11
  * project-scoped Settings tabs + the no-project Settings state = the
  * ticket's "twelve tabs", each walked in light, plus the two states the
- * mis-slug bug was found in and every Settings tab again in dark. Decisions
- * and Lessons are real, tested components (`decisions/DecisionsBoard.tsx`,
- * `lessons/TriageQueue.tsx`) that no ticket has ever mounted into
- * `App.tsx` — W5-14 and W7-05 both left this as an explicit HANDOFF, and
- * `apps/web/src/**` sits outside this ticket's write_scope, so they're
- * declared WAIVED rather than faked or silently dropped.
+ * mis-slug bug was found in and every Settings tab again in dark, plus
+ * Decisions and Lessons (W22-25 — both reachable and captured; see the note
+ * beside them below for what their waivers used to claim).
  */
 export const DECLARED_STATES = [
   ...[
@@ -76,14 +73,12 @@ export const DECLARED_STATES = [
   ...SETTINGS_TABS.map((t, i) => ({
     id: `dark/${String(3 + i).padStart(2, '0')}-${t.slug}`,
   })),
-  {
-    id: 'decisions',
-    waiver:
-      "DecisionsBoard.tsx is built and unit-tested but never mounted in App.tsx (plan.json W5-14 HANDOFF) — wiring it is out of this write_scope (apps/web/src/** is not in W10-37's write_scope).",
-  },
-  {
-    id: 'lessons',
-    waiver:
-      'TriageQueue.tsx is built and unit-tested but never mounted in App.tsx (plan.json W7-05 HANDOFF, "TriageQueue.tsx mount remains the one open HONEST GAP") — same out-of-scope constraint as Decisions.',
-  },
+  // W22-25: both were WAIVED here as "built and never mounted", and by
+  // 2026-08-31 neither waiver was true in the same way. Decisions had been
+  // mounted since W10-72 and this table never caught up — a reachability
+  // instrument asserting a live surface was unreachable. Lessons genuinely had
+  // no route, and nothing but this waiver knew. Both are captured now, so the
+  // table states what the product does rather than what it did.
+  { id: 'decisions' },
+  { id: 'lessons' },
 ];

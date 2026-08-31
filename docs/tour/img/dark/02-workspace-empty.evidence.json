@@ -6,6 +6,7 @@
     "Describe",
     "Plan",
     "Decisions",
+    "Lessons",
     "Roster",
     "Morning queue",
     "Settings",
@@ -31,7 +32,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 610,
+        "x": 521,
         "y": 12,
         "w": 71,
         "h": 36
@@ -43,7 +44,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 685,
+        "x": 596,
         "y": 12,
         "w": 65,
         "h": 36
@@ -55,7 +56,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 754,
+        "x": 665,
         "y": 12,
         "w": 91,
         "h": 36
@@ -67,7 +68,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 849,
+        "x": 760,
         "y": 12,
         "w": 57,
         "h": 36
@@ -79,9 +80,21 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 910,
+        "x": 821,
         "y": 12,
         "w": 96,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Lessons",
+      "disabled": false,
+      "rect": {
+        "x": 921,
+        "y": 12,
+        "w": 85,
         "h": 36
       }
     },
@@ -298,7 +311,7 @@
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
     "app-shell__nav": 1,
-    "app-shell__nav-item": 6,
+    "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
     "artifact-empty-state": 1,
     "artifact-viewer": 1,

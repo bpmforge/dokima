@@ -206,6 +206,40 @@ export async function runLightPass(browser, app, ctx) {
     ctx,
   );
 
+  // ── Decisions & Lessons ──────────────────────────────────────────────
+  // W22-25: both were declared WAIVED here as "built and never mounted". One
+  // had been mounted since W10-72 and the waiver never caught up; the other
+  // genuinely had no route until this ticket gave it one. A reachability
+  // instrument that is wrong in both directions is worse than none, so they
+  // are captured now rather than excused.
+  await page.goto(`${app.base}/?project=${projectId}&view=decisions`);
+  await page
+    .getByTestId('decisions-board')
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
+  await shoot(
+    page,
+    'decisions',
+    'Founder decisions',
+    'Slates raised outside a paused run, and the way back to a decision later (W10-72).',
+    undefined,
+    ctx,
+  );
+
+  await page.goto(`${app.base}/?project=${projectId}&view=lessons`);
+  await page
+    .getByTestId('triage-queue-empty')
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
+  await shoot(
+    page,
+    'lessons',
+    'Lessons triage',
+    'Field reports waiting on a person — the human end of the learning loop (BLUEPRINT §12.6).',
+    undefined,
+    ctx,
+  );
+
   // ── Roster & settings ────────────────────────────────────────────────
   await page.goto(`${app.base}/?view=roster`);
   await page

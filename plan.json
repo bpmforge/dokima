@@ -15291,7 +15291,7 @@
       "id": "W22-25",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15303,7 +15303,9 @@
       "write_scope": [
         "apps/web/src/App/navigation.ts",
         "apps/web/src/App/MainView.tsx",
-        "apps/web/scripts/capture-tour/declared-states.mjs"
+        "apps/web/scripts/capture-tour/declared-states.mjs",
+        "apps/web/src/App/Header.tsx",
+        "apps/web/scripts/capture-tour/light-pass.mjs"
       ],
       "acceptance": [
         "TriageQueue is reachable from the running product, or its waiver says something that is currently true",
@@ -15313,7 +15315,13 @@
         "FOUND BY REGENERATING THE TOUR 2026-08-31. The capture declares 41 states and waives two: `decisions` and `lessons`. Only one waiver is still true.",
         "`lessons` IS UNREACHABLE: TriageQueue.tsx is imported by nothing outside its own directory, `lessons` is not in navigation.ts's view union, and it is not in VALID_VIEWS. There is no URL that renders it. This is the learning loop's human surface (BLUEPRINT \u00a712.6) and no user can open it.",
         "`decisions` IS NOT: the waiver says DecisionsBoard 'is built and unit-tested but never mounted in App.tsx', and W10-72 mounted it \u2014 MainView.tsx:105 renders it for view `decisions`, which is in VALID_VIEWS, and e2e covers reaching it. The tour is carrying a stale claim about the product's own reachability, which is the one thing a reachability instrument must not do.",
-        "BOTH HALVES MATTER AND THEY PULL OPPOSITE WAYS: one surface is missing, and the instrument that is supposed to report missing surfaces is itself out of date in the other direction. Fixing only the route would leave the tour still lying."
+        "BOTH HALVES MATTER AND THEY PULL OPPOSITE WAYS: one surface is missing, and the instrument that is supposed to report missing surfaces is itself out of date in the other direction. Fixing only the route would leave the tour still lying.",
+        "SCOPE WIDENED AT THE READ (Law 1): a view needs a way in (Header.tsx's nav list) as well as a route, and the tour's two waivers can only stop lying by being CAPTURED \u2014 which needs a step in light-pass.mjs. A capture step is about twelve lines, so capturing is cheaper than writing a truthful excuse for not capturing. Both unowned.",
+        "A1 DONE \u2014 `lessons` is a declared view, a routed surface and a header entry, so TriageQueue is reachable at /?project=<id>&view=lessons. It shipped in W7-05, was imported by nothing outside its own directory, and had no URL that could render it: the human end of the learning loop (BLUEPRINT \u00a712.6) was unreachable for waves.",
+        "A2 DONE, AND IT WAS WRONG IN BOTH DIRECTIONS. The tour waived two states as 'built and never mounted'. Decisions had been mounted since W10-72 and the table never caught up \u2014 a reachability instrument asserting that a live surface could not be reached. Lessons genuinely had no route, and that waiver was the only thing in the product that knew. Both are captured now: the tour reports 41 declared states, 0 waived, where it previously reported 2 waived.",
+        "CAPTURED RATHER THAN RE-EXCUSED, which was the cheaper honest option: a capture step is about twelve lines, so writing a truthful reason NOT to capture would have cost more than capturing. A waiver is for something that cannot be shown; neither of these was that any more.",
+        "actorId is 'operator' \u2014 the web's own convention, matching board/api.ts's default. Promoting or dismissing a field report is a person's call, so the surface is a founder action, not an agent one.",
+        "Gate: lint clean, typecheck 0, 4792 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK; tour regenerated at 28 light + 13 dark steps."
       ]
     },
     {

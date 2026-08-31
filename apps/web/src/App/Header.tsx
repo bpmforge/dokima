@@ -62,6 +62,9 @@ const DESTINATIONS: ReadonlyArray<{
   { label: 'Describe', view: 'interview', needsProject: true },
   { label: 'Plan', view: 'plans', needsProject: true },
   { label: 'Decisions', view: 'decisions', needsProject: true },
+  // W22-25: the triage queue for field reports — the human end of the
+  // learning loop (BLUEPRINT §12.6). Built in W7-05 and unreachable until now.
+  { label: 'Lessons', view: 'lessons', needsProject: true },
   { label: 'Roster', view: 'roster', needsProject: false },
 ];
 
