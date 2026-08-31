@@ -11,33 +11,54 @@
 
 ---
 
-## 1. The defect, named
+## 1. The defect, named — and it is two defects, not one
 
-Per-ticket expert fan-out is a **scan-scheduling defect**, not a quality feature. The pipeline runs the
-expensive assurance layer at the wrong granularity (every candidate) and in the wrong shape (sequentially,
-one model, full re-run on every fix).
+> Corrected 2026-08-31 by the verification pass (`PIPELINE_PLAN_VERIFICATION.md`, C-05). The first draft
+> applied one diagnosis to both pipelines. Their own logs disagree.
 
-Measured, from the incident doc's durable event log:
+**Two conductors exist, with different dominant defects.** Treating them as one problem mis-orders the work.
 
-| Measure | Observed |
-|---|---:|
-| Coding attempts | 181 |
-| Expert review sessions | 861 (4.8 per coding attempt) |
-| Fix sessions | 212 |
-| Expert-review wall time | 1,900.8 min |
-| Latest window | 134 expert sessions → 109 `CHANGES REQUESTED`, 25 approvals |
-| Worst single ticket | 32 expert sessions, 111.8 min, then exhausted |
-| Median 4-expert sequential pass | ~8.8 min before any fix or runtime |
+| Measure | attest / Marauder conductor | Dokima conductor (this repo) |
+|---|---:|---:|
+| Unit | 181 coding attempts | 282 ticket starts |
+| **Review sessions per unit** | **4.76** | **0.93** |
+| Approve rate | 18.7% (25 of 134) | 48.3% |
+| Expert-review wall time | 1,900.8 min | — |
+| Worst single ticket | 32 expert sessions, 111.8 min, then exhausted | — |
+| Median 4-expert sequential pass | ~8.8 min before any fix | n/a (one reviewer) |
+| Retries per unit | — | 0.72 |
+| Deterministic gate failures per unit | — | 0.63 |
+| **Block rate** | — | **39.4%** (done 45.4%) |
 
-Three compounding causes:
+Marauder figures: `LOCAL_EXHAUSTION_INCIDENT_LESSONS.md`. Dokima figures: computed from this repo's
+`docs/work/conductor-log.jsonl`, 3,610 rows, 2026-07-11 → 2026-08-07.
+
+**Defect A — over-gating (Marauder).** Per-ticket expert fan-out is a **scan-scheduling defect**, not a
+quality feature: the expensive assurance runs at the wrong granularity (every candidate), in the wrong shape
+(sequentially, one model, full re-run on every fix).
+
+**Defect B — failure mis-routing (Dokima).** Fan-out is not the problem here; **two of every five tickets
+block**. Distinct `conductor.fatal` causes in the log: `spawnSync git ENOBUFS`, `ENOSPC: no space left on
+device`, `row.notes.push is not a function`, `testSiblingWarning is not defined`, a failed `git merge
+--no-ff`. Four of five are infrastructure or executor defects — the exact class the incident doc says must
+never consume a feature attempt. `gates.fail` messages are visibly truncated mid-stream
+(`"pnpm test failed: eout\"."`), so the operator often cannot see the real cause.
+
+**This reorders the plan: T2 (failure accounting) lands before T3 (the wave gate),** because Defect B is
+what costs *this* repo throughput, and Defect A is what costs Marauder's.
+
+Three compounding causes of Defect A:
 
 1. **Wrong granularity.** Security, performance, and UX experts run per ticket, then again between waves,
    then again at release. The same assurance is bought three times.
-2. **Wrong triggers.** Any loop / `.map` / `.filter` / `.reduce` recruits a performance expert; common
-   validation vocabulary recruits security; any `.tsx` or `.css` recruits UX. In `attest`,
-   `agents/sdlc-init-phase-4.md:129-138` states these as prose conditions ("if DB queries/loops/caching
-   touched", "if any UI file touched"). Broad text patterns are fine for a cheap deterministic scanner and
-   far too broad to justify an expensive specialist *process*.
+2. **Wrong triggers — and they are executable code, not prose.** `attest/scripts/lib/review-triggers.mjs:29-45`
+   contains literally `\.map\(|\.filter\(|\.reduce\(` (perf) and `validate|escape|sanitiz` (security), regex-tested
+   against the **diff text** — so the word `validate` in a comment recruits a security expert and any `.map(`
+   recruits a performance expert. `agents/sdlc/PARALLEL_WAVE_PROTOCOL.md:58-62` and
+   `agents/sdlc-init-phase-4.md:129-138` are the prose twins; all three must change together. The file's own
+   rationale — *"Biased toward firing: a false positive costs one review session; a false negative ships
+   unreviewed auth"* — was sound when the cost was unmeasured. At 4.76 sessions per attempt and 1,900.8
+   minutes it is falsified: a false positive costs a session *and* an 8.8-minute serial pass, repeatedly.
 3. **Wrong failure accounting.** Formatter defects, provider errors, reviewer-process errors, and a
    pre-existing red baseline all consume the same feature retry budget, so tickets exhaust for reasons no
    coding retry can repair.
@@ -54,6 +75,17 @@ Verified 2026-08-31, not assumed:
 | Expert system (canonical) | `~/Code/attest` v3.5.4 | 45 skills, `agents/sdlc-init-phase-4.md` (815 lines) holds the Round 1/2/3 per-module policy |
 | Claude target (generated) | `~/Code/attest-claude` | regenerate with `npm run build:claude` from attest; **never hand-edit** |
 | Product / factory | `~/Code/shipwright` (**Dokima**) | `scripts/conductor.mjs` + `scripts/conductor/` chapters + `scripts/conductor-lib/` |
+
+**There are THREE conductors, not one** (corrected 2026-08-31, verification C-01):
+
+| Conductor | Path | Role |
+|---|---|---|
+| attest's M28 reference conductor | `attest/scripts/conductor/conductor.mjs` (1,159 lines) + `resume.mjs` + `supervise.sh` + `scripts/jira/` | The lineage the incident doc describes; ported *from* the Shipwright build 2026-07-11/12, then adapted. Carries the reviewer fan-out. |
+| Dokima's dogfood conductor | `shipwright/scripts/conductor*.mjs` | Portable 2-file import surface; one reviewer per ticket |
+| Dokima's product pipeline | `shipwright/packages/pipeline`, `packages/loop` | Where `decompose`, `challenger`, the findings ledger and loop policy actually live — **and the dogfood conductor does not import any of it** |
+
+That third row is itself a finding: the seam linter and the findings ledger exist in `packages/`, while the
+board the conductor runs comes from a hand-written `plan.json` that carries none of those fields.
 
 **OPT-01..OPT-05 are NOT here.** The incident doc records them in executor commit `e73f668`, in an isolated
 local JIRA-conductor worktree on the work machine, deliberately not pushed upstream. In this repo's conductor:
@@ -94,33 +126,51 @@ which runs four *personas* (code/security/perf/UX) on one model, sequentially. L
 opposite: fewer passes, more models, concurrent, with an explicit dismissal category — which is also the
 answer to 109-of-134 `CHANGES REQUESTED`. Findings that no second model reproduces are `Noted`, not blockers.
 
+**What attest already has here (verification C-09).** v3.5.0 shipped `/gauntlet` + `gauntlet-lead` +
+`GAUNTLET_LOOP.md`: builders never grade their own work, and a critic that saw a previous draft never grades
+the retry — blind, fresh-context critics against a named real exemplar. So *blindness* and *maker≠verifier*
+are solved. `GAUNTLET_LOOP.md:115` draws the boundary explicitly: for "are these claims true," use the
+challenger, not the gauntlet. **The genuine gap is narrower than the first draft implied: model diversity and
+consensus weighting.** T1-07 adds those to the existing challenger/gauntlet layer; it does not replace them.
+
 Grokbot (standing per-domain agents with their own memory/skills/rules, messaging each other, trigger-driven)
 is the end state, not the starting point. It is Phase T5 below.
 
-## 4. Net-new: the Interaction Map
+## 4. The seam model — extend what exists, do not rebuild it
 
-**Nothing in the incident doc addresses this, and it is the user's actual complaint:** every ticket codes its
-own slice correctly, and at the end nothing is wired together.
+> Corrected 2026-08-31 (verification C-02). The first draft called this "net-new." **It is not.** Dokima
+> already has a seam model in code, derived from this repo's own field report §10.
 
-Today the SDLC produces user stories → tickets. The seams *between* tickets are never written down, so no gate
-can check them. Insert one artifact between decomposition and the board.
+What exists today, verified:
 
-**Artifact:** `docs/design/INTERACTION_MAP.md` (+ machine-readable `docs/design/seams.json`)
-**Producer:** `attest` `agents/task-decomposer.md` + `skills/architect`, at Phase 3.5/4 boundary.
-**Rule:** a ticket board may not be admitted to the conductor unless every ticket's declared inputs and
-outputs resolve against the seam table.
+| Layer | State | Citation |
+|---|---|---|
+| Seam declaration on a ticket | **Implemented** — `providesInterfaces`, `consumesInterfaces`, `importsWorkspacePackages`, `ownPackage` | `packages/pipeline/src/decompose/types.ts:20-56` |
+| Plan-time seam lint | **Implemented** — `findUnownedInterfaces`: *"consumes X but no ticket in the DAG owns its public re-export"*, plus cycle and writeScope checks | `packages/pipeline/src/decompose/linter.ts:45-65, 111+` |
+| The originating lesson | W0-05 built `mintReceipt`, W1-02 consumed it, neither owned re-exporting it — *"the function existed and was invisible"* | `linter.ts:38-44` |
+| Same concept in attest | Interface-contract module pattern specified… **and explicitly unenforced**: *"is a manual check — nothing in `tickets.mjs` enforces it today"* | `attest/agents/task-decomposer.md:137-145, 218` |
+| Hand-written instance | "a new UI page must also hold its route + nav files" | `scripts/conductor-lib/lint-rules.mjs` |
 
-Each seam row declares:
+So the concept, the schema, and a linter are all present. **The real gap is four narrower things:**
 
-| Field | Meaning |
-|---|---|
-| `seam_id` | stable ID, e.g. `SEAM-07` |
-| `kind` | interface · shared type · route registration · DI/container binding · event topic · DB table/column · config key · nav/menu entry · feature flag |
-| `symbol` | the exact importable/addressable thing (`packages/tickets/src/api.ts::claimTicket`, `POST /v1/waves`, `waves.status`) |
-| `producer` | the ONE ticket that creates it |
-| `consumers` | tickets that must reference it |
-| `wiring_evidence` | the deterministic assertion that proves it was wired (import exists, route resolves, migration applied, registry entry present) |
-| `contract_test` | the test that must exist and pass at Level 2 |
+1. **Plan-time only.** `findUnownedInterfaces` checks that *some ticket claims ownership* of a re-export. It
+   never checks that the export **actually exists on the built head**. A ticket can declare
+   `providesInterfaces` and simply not write the re-export — and the lint stays green. **The missing
+   assertion is build-time wiring evidence at Level 2.**
+2. **Only one seam kind.** `InterfaceRef` is `{packageName, exportName}`. Routes, DB columns, DI bindings,
+   event topics, nav entries, config keys, and feature flags are seams that break the same way and are
+   unmodelled.
+3. **The dogfood conductor does not use it.** `scripts/conductor*.mjs` reads a hand-written `plan.json` whose
+   tickets carry no `providesInterfaces`/`consumesInterfaces` at all. The linter lives in
+   `packages/pipeline`, which that code path never imports.
+4. **attest declares the same idea and enforces nothing.**
+
+**The work is therefore:** extend `InterfaceRef` to a tagged `Seam` union (kinds above); add a
+`wiring_evidence` field naming the deterministic assertion (import resolves, route registered, migration
+applied, registry entry present) and an optional `contract_test`; run those assertions against the synthetic
+wave head at Level 2; and teach both conductors and attest's `task-decomposer` to emit and consume the same
+records. `docs/design/INTERACTION_MAP.md` is the human-readable projection of `packages/pipeline`'s data —
+not a second source of truth.
 
 Three consumers make it pay for itself:
 
@@ -148,6 +198,12 @@ and **consumes zero coding attempts**.
 | 3 | **Seams resolve.** Every ticket's declared inputs and outputs resolve against `seams.json`, and each ticket's `write_scope` can physically reach the symbols its seams name | T1-09 board lint | `blocked_on_scope` (at lint, before claim) |
 | 4 | **Verify profile is available.** Browser, E2E, database, and external-service requirements of the ticket's verify command are present and reachable | T3-07 | `blocked_on_infrastructure` |
 | 5 | **External evidence is declared.** Work needing a sandbox, production data, owner attestation, or unavailable credentials is marked as external-evidence work *before* coding | T3-08 | `blocked_on_scope` |
+| 6 | **Risk tier admits the ticket.** Only bounded, evidence-based work with known acceptance criteria is claimable unattended; ambiguous, large, or judgment-requiring tickets are held for a human pass | T2-09 (M-02) | `held_for_human` |
+
+**Condition 6 is the empirically strongest one.** `CONDUCTOR_PILOT_REPORT_REDACTED_2026-08-03.md:325-333`
+(lesson 8) records that using exactly this filter — the same bounded, known-acceptance shape that had already
+succeeded repeatedly — produced **6 tickets attempted, 6 landed correctly**. Dokima's unfiltered board lands
+45.4% and blocks 39.4%. Admission control, not agent capability, is the difference.
 
 When all five hold, the conductor runs the board without supervision: claim → Level 1 → wave admission →
 Level 2 → merge train. When one fails, it stops at a named boundary with the candidate and evidence preserved
@@ -161,7 +217,16 @@ attribution stay exact. What changes is where the expensive assurance runs.
 
 ### Level 1 — Fast per-ticket gate (deterministic, minutes, no expert session)
 
-1. Write-scope and forbidden-file enforcement
+0. **Untrusted verify receipts (M-01, ships first).** A wrapper — *never the agent* — runs the project's
+   declared verify commands and writes `docs/work/receipts/<ticket>-<sha>.json`: each command, its exit code,
+   captured tail, and the `git rev-parse HEAD` it ran at. The completion manifest **cites** the receipt; the
+   validator asserts the receipt's SHA matches the pushed commit and every exit code is zero. The agent cannot
+   claim "tsc clean" because it never writes that field. No prose is re-executed, so the injection objection
+   in `validate-completion-manifest.sh` does not apply. Source: `field-report-marauder-delegation-2026-07-27.md:52-68`
+   — closes the most-repeated failure (false "tests clean" in 4 of 5 named tickets), ranked **P1, ship first
+   if only one ships**. Everything below Level 1 is untrustworthy until this exists.
+1. Write-scope and forbidden-file enforcement — **scoped to tracked paths only**; scope validation must never
+   traverse an untracked tree (`ISSUE12.md`: 120s timeout against 64,540 untracked paths)
 2. Acceptance tests + the ticket's configured verify command
 3. Formatting, affected-package type check, affected-package build
 4. Diff-scoped secret detection and SAST (bpm-rulepacks / Opengrep)
@@ -172,6 +237,12 @@ attribution stay exact. What changes is where the expensive assurance runs.
 8. **Seam check:** every seam this ticket produces or consumes has its `wiring_evidence` present
 
 **A failed Level 1 never consumes an expert review session.**
+
+**Precondition — red-fixture calibration.** No check is promoted from advisory to gating until it has a red
+fixture proving it fails on the defect and passes on clean code. `CONDUCTOR_FIELD_REPORT.md:86` records the
+imported grep validators flagging `256` inside "AES-256-GCM" *in a comment*, HTTP `429`, and model-ID strings
+as magic numbers, plus 20 bogus "unreachable" hits on passing code. An uncalibrated gate imports the exact
+false-block problem Level 1 exists to remove.
 
 An expert runs *before* wave admission only for intrinsic high risk: authn/authz, cryptography, secrets,
 unsafe deserialization, DB schema or query shape, public API compatibility, concurrency, or a material
@@ -184,21 +255,53 @@ Synthetic validation branch = fresh `main` + the candidate commits of 4–8 comp
 is ever authored on it. Composition budgets: prefer one subsystem, disjoint write scopes, ≤ ~1,000 changed
 production lines; 1–3 tickets for auth, persistence, migrations, or parsers.
 
-Run once against the combined diff, **concurrently, each reviewer in its own context window on its own model**
-(`interrogate` shape):
+> **Who holds the gate (corrected 2026-08-31, verification C-06).** `CONDUCTOR_FIELD_REPORT.md:76-88` records
+> LLM-review-as-a-hard-gate failing **in both directions in one session**: a false negative (the hash-forgery
+> bug merged) and, after stickiness was added, false positives that blocked three *completed* tickets —
+> **75% of the last four blocks were false**. The resolution is already adopted and wired in
+> `conductor.config.json`: **deterministic validators own the gate; the LLM review is advisory and grounded
+> by validator findings.** This plan does not re-open that. Level 2 therefore has two tiers.
+
+**Tier D — deterministic, and these hold the gate:**
 
 1. Full build, type check, unit + integration tests
 2. Full SAST, secret, dependency, license
-3. Code-health and anti-slop across the aggregate diff
-4. Security review — when the wave contains a security surface
-5. Performance review + benchmarks — when it changes a measured hot path
-6. UX / a11y / browser E2E — when it changes user-visible behavior
-7. **Cross-ticket contract + seam checks** — the class a per-ticket branch physically cannot expose
+3. **Cross-ticket seam assertions** against the synthetic head — every declared seam's `wiring_evidence`
+   resolves. This is the class a per-ticket branch physically cannot expose, and it is deterministic, so it
+   gates.
 
-Synthesis follows `interrogate`: consensus (2+ models) = highest signal; lone-model findings are isolated;
-the lead categorizes **Act On / Consider / Noted / Dismissed** with an agreement map. Every finding gets a
-stable ID and is attributed to the ticket and lines that introduced it. **Only the owning ticket reopens.**
-After its fix, re-run that ticket's Level 1 and only the *failed* wave checks against the new synthetic head.
+**Tier A — advisory, run once, concurrently, each reviewer in its own context window on its own model**
+(`interrogate` shape): code-health and anti-slop across the aggregate diff; security review when the wave
+carries a security surface; performance review and benchmarks when it changes a measured hot path; UX / a11y
+when it changes user-visible behavior.
+
+Tier A **cannot block a merge by itself.** Its output is findings, ranked by consensus. What it can do is
+open a ticket, demand a Tier-D check be added, or escalate to the human review checkpoint below.
+
+**Synthesis** follows `interrogate`: consensus (2+ models) = highest signal; lone-model findings isolated; the
+lead categorizes **Act On / Consider / Noted / Dismissed** with an agreement map. Every finding gets a stable
+ID — `packages/loop/src/findings-ledger.ts:100` already mints `F-<ticket>-<n>` with fingerprints and signed
+suppressions, so this reuses the ledger rather than inventing IDs — and is attributed to the ticket and lines
+that introduced it. **Only the owning ticket reopens.** After its fix, re-run that ticket's Level 1 and only
+the *failed* wave checks against the new synthetic head.
+
+**Reviewer-citation gate (M-05, required before any fan-out).** A reviewer finding must cite evidence that
+resolves — a file:line that exists, a command whose output is in a receipt. Findings whose citation does not
+resolve are discarded before synthesis. This is the direct control on the recorded failure of a reviewer
+**fabricating a REJECT** citing a wiring omission independently confirmed present at every commit
+(`field-report-marauder-delegation-2026-07-27.md:31, 86-95`).
+
+**Why this is not "more AI review layers."** That same field report explicitly declines that remedy
+(`:103-107`). The distinction: this plan **reduces the number of review passes** (per-wave, not per-ticket —
+4.76 → ≤1.5 sessions per unit) while **increasing model diversity inside the one remaining pass**, and it
+strips those reviewers of gate authority. More models in one advisory pass is the opposite of more blocking
+layers.
+
+**Human checkpoint (M-03).** Each passing wave emits a **bounded** review HANDOFF — a curated diff plus that
+wave's delegation-log slice, sized for a 2–4 hour session, never "read the repo"
+(`AI_PROCESS_REVIEW_2026-07-27.md:227-234`). This is the machine-stop line, the counterpart to §4b's
+machine-start line. It is also the reason wave size is capped: §4b of that report frames large per-wave change
+as the real reviewability objection.
 
 Expected effect, using the doc's own medians: a four-expert pass drops from ~8.8 min (sum) to ~2.7 min
 (slowest) — a **3.3× duration reduction**, which is the defensible half and stands on its own. Moving the pass
@@ -222,6 +325,22 @@ merges until the applicable aggregate reviews are green. Security- and performan
 individual specialist review *in addition to* wave checks. Release still requires the full launch gates and a
 final complete security / performance / anti-slop / test / runtime pass on the release candidate.
 **The zero-exit close gate is never weakened.**
+
+### Policy is already on this plan's side
+
+Two of the additions the verification pass found missing are **already Dokima law**, just unimplemented in
+the executor path — which raises their priority rather than lowering it:
+
+- `CLAUDE.md` Law 4: *"agent sessions are untrusted; every durable state change goes through the
+  verbs/receipts APIs… never let a component verify its own output. When a ticket touches gates, its red
+  fixtures are part of acceptance."* That is M-01 (untrusted verify receipts) and M-04 (red-fixture
+  calibration), stated as law. The shell conductor and the Marauder pipeline simply do not honour it.
+- `CLAUDE.md` Law 5: maker ≠ verifier is mechanical — the constraint T1-07's model diversity extends.
+
+A third law is direct evidence for the seam work: Law 1 records that **45 tickets on this board logged a
+scope collision**, and that five in one session (2026-08-29) were written down honestly and filed nowhere —
+*"a follow-up that names no ticket id is not a deferral, it is a dropped finding."* Seam records with
+build-time assertions are how that stops depending on the moment of least remaining attention.
 
 ## 6. Getting unstuck: the failure-accounting rebuild
 
@@ -303,15 +422,17 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 | T1-04 | Convert the broad prose triggers to path + semantic-risk classification expressed as rules (OPT-08) | attest |
 | T1-05 | New skill `wave` — compose, run, and synthesize a Level 2 integration gate | attest |
 | T1-06 | New skill `goal` — bounded objective loop with measurable exit condition | attest |
-| T1-07 | Rewrite `review`/`challenge` synthesis to the `interrogate` shape: concurrent multi-model, consensus weighting, Act On / Consider / Noted / Dismissed, agreement map | attest |
+| T1-07 | **Add model diversity + consensus weighting to the existing challenger/gauntlet layer** (blindness and maker≠verifier already ship in v3.5.0): concurrent multi-model, 2+-model consensus, Act On / Consider / Noted / Dismissed, agreement map. Not a replacement of `/gauntlet` or `/challenge`. | attest |
+| T1-07b | State in policy that **LLM review is advisory; deterministic validators own the gate** — aligning attest with what `conductor.config.json` already does (`CONDUCTOR_FIELD_REPORT.md:76-88`) | attest |
 | T1-08 | Structured verdict contract for runtime expert: `PASS` / `FAIL_CANDIDATE` / `BLOCKED_BASELINE_CONFIRMED` / `BLOCKED_BASELINE_SUSPECTED` / `BLOCKED_INFRASTRUCTURE`; a nonzero configured verify **always** produces FAIL | attest |
-| T1-09 | `task-decomposer` + `architect` emit `INTERACTION_MAP.md` + `seams.json`; add a validator that fails a board whose tickets do not resolve against the seam table | attest |
+| T1-09 | `task-decomposer` emits the seam records `packages/pipeline` already models, and its interface-contract rule stops being "a manual check" (`task-decomposer.md:218`) — add the validator that enforces it | attest |
 | T1-10 | `npm run build:claude`; commit both repos; push both remotes | attest + attest-claude |
 
-### T2 — Executor: failure accounting (unblocks throughput without touching policy)
+### T2 — Executor: trust + failure accounting (**now ordered first — this is Defect B**)
 
 | ID | Work | Maps to |
 |---|---|---|
+| **T2-00** | **Untrusted verify receipts** — `.sdlc/verify.json` declares commands; a wrapper runs them and writes `docs/work/receipts/<ticket>-<sha>.json`; the validator asserts SHA match + all exit codes zero | **M-01 / P1 — highest value, ship first** |
 | T2-01 | Stage 0 cached baseline preflight in a clean detached worktree | doc Stage 0 |
 | T2-02 | Structured failure fingerprints + normalization | Stage 1 |
 | T2-03 | Deterministic base-vs-candidate differential classifier | Stage 2 |
@@ -320,6 +441,10 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 | T2-06 | Six terminal states with separate retry budgets | Stage 5 |
 | T2-07 | Terminal report: latest blocker first, no destructive truncation | Stage 5 |
 | T2-08 | Port OPT-01..OPT-05 (concurrency, no-change abort, carry exact blocking excerpts, continue after nonzero coder exit with a real diff, parse complete reports despite nonzero exit) — **re-derive here; `e73f668` is not on this machine** | OPT-01..05 |
+| **T2-09** | **Risk-tier admission filter** — only bounded, known-acceptance work is claimable unattended; `held_for_human` for the rest | M-02, §4b condition 6 |
+| **T2-10** | **Scope validation scoped to tracked paths**; never traverse an untracked tree; time-box with a distinct `blocked_on_infrastructure` exit | M-06 |
+| **T2-11** | **Red-fixture calibration harness** — no check promoted advisory→gating without a red fixture | M-04 |
+| **T2-12** | Fix the four executor/infra fatal classes seen in the log (`ENOBUFS`, `ENOSPC`, `row.notes.push`, `testSiblingWarning`) and route them to `blocked_on_infrastructure` | §1 Defect B |
 
 ### T3 — Executor: the wave gate
 
@@ -327,9 +452,12 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 |---|---|---|
 | T3-01 | Synthetic validation branch builder from N compatible PR heads | OPT-09 |
 | T3-02 | Wave composition from `seams.json` + disjoint write scopes + changed-line/risk budgets | OPT-12 |
-| T3-03 | Concurrent multi-model reviewer fan-out; each writes a distinct immutable report | OPT-01 + multitask |
-| T3-04 | Stable finding IDs, ticket/line attribution, failed-check-only delta re-review | OPT-10 |
-| T3-05 | Seam wiring assertions as blocking Level 2 checks (generalize `lint-rules.mjs`) | §4 |
+| T3-03 | Concurrent multi-model reviewer fan-out (**Tier A, advisory only**); each writes a distinct immutable report | OPT-01 + multitask |
+| **T3-03b** | **Reviewer-citation gate** — a finding whose citation does not resolve is discarded before synthesis | M-05 / P4 |
+| T3-04 | Ticket/line attribution + failed-check-only delta re-review, **reusing `packages/loop`'s existing finding ledger** (`F-<ticket>-<n>`, fingerprints, signed suppressions) rather than minting new IDs | OPT-10 — *partly already built* |
+| **T3-05a** | Extend `InterfaceRef` → a tagged `Seam` union (route, DB column, DI binding, event topic, nav entry, config key, feature flag) with `wiring_evidence` + optional `contract_test` | §4 gap 2 |
+| **T3-05b** | **Build-time** seam assertions against the synthetic wave head — Tier D, gating (today's `findUnownedInterfaces` is plan-time only) | §4 gap 1 |
+| **T3-05c** | Teach both conductors to read/emit seam records; `plan.json` boards currently carry none | §4 gap 3 |
 | T3-06 | Merge train: ancestor-compatibility recheck before each merge, post-merge smoke, Done only on verified `main` ancestry | Level 3 |
 | T3-07 | Verify-profile preflight (browser/E2E/DB/external service) before claim | OPT-06 |
 | T3-08 | Mark external-evidence work (sandbox, prod data, owner attestation, credentials) before coding | OPT-07 |
@@ -376,15 +504,50 @@ New, for this plan:
 14. A wave that exceeds the changed-line or risk budget is split, not run.
 15. A reviewer finding reproduced by no second model is categorized `Noted`, not a blocker.
 16. Level 1 failure consumes zero expert sessions (assert on the event log, not on prose).
+17. A completion manifest citing a receipt whose SHA does not match the pushed commit is rejected; an agent
+    cannot produce a passing manifest without the wrapper's receipt (M-01).
+18. A receipt containing a nonzero exit code fails the gate even when the manifest prose claims success —
+    the RDSAD-235 shape, where a genuine-looking report claimed "no TypeScript errors" beside two real ones.
+19. A Tier-A (LLM) finding alone never blocks a merge; only Tier-D deterministic checks gate.
+20. A reviewer finding whose citation does not resolve is discarded before synthesis and never reaches
+    `Act On` (M-05).
+21. A check with no red fixture cannot be promoted from advisory to gating (M-04).
+22. A ticket outside the admitted risk tier is never claimed unattended; it lands in `held_for_human` (M-02).
+23. Scope validation on a worktree with a large untracked tree completes or exits `blocked_on_infrastructure`
+    within its time box — it never hangs the ticket (M-06).
+24. A seam declared `provides` whose export is absent from the built synthetic head fails Level 2, even
+    though plan-time lint passed — the gap `findUnownedInterfaces` cannot see today.
 
 ## 10. Targets
 
-- Expert review sessions per coding attempt: **4.8 → ≤ 1.5**
-- Median four-expert pass: **8.8 min → ~2.7 min** (concurrency), at **per-wave** rather than per-ticket frequency
+Split by defect, because the two pipelines start from different numbers.
+
+**Defect A — Marauder / attest conductor (over-gating):**
+
+| Measure | Now | Target |
+|---|---:|---:|
+| Expert review sessions per coding attempt | 4.76 | **≤ 1.5** |
+| Median four-expert pass | 8.8 min | **~2.7 min** (concurrency), at per-wave frequency |
+| Approve : changes-requested | 25 : 109 | measured post-consensus, with `Dismissed` counted separately |
+
+**Defect B — Dokima conductor (failure mis-routing):**
+
+| Measure | Now | Target |
+|---|---:|---:|
+| Block rate | 39.4% | **≤ 15%** |
+| Done rate | 45.4% | **≥ 75%** |
+| Fatals from infrastructure/executor defects | 4 of 5 distinct causes | **0 consuming a feature attempt** |
+| Terminal summaries whose reason matches the last failing gate | truncated mid-stream today | **100%** |
+
+**Both:**
+
 - Feature attempts consumed by confirmed baseline failures: **→ 0**
 - Reviewed candidates lost to a non-candidate gate: **→ 0**
-- Approve : changes-requested ratio (post-consensus filtering): **25:109 → measured, with `Dismissed` counted separately**
-- Integration defects found after wave merge rather than at Level 2: **tracked from zero baseline**
+- Integration defects found after wave merge rather than at Level 2: tracked from a zero baseline
+- **Published reliability metric (M-07).** The 76% / 24% correction rate becomes a running, trending tally
+  rather than a per-ticket anecdote — `field-report-marauder-delegation-2026-07-27.md:96-101` (P5) and
+  `AI_PROCESS_REVIEW_2026-07-27.md:235-239` (rec 2) both ask for this. Drift becomes visible before it is a
+  crisis, and it is the number that answers "do you trust AI-authored code" with evidence.
 
 ## 11. Risks
 
