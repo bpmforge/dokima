@@ -384,7 +384,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 13,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31 (isolated-worktree subagent; orchestrator merged+gated). packages/pipeline/src/assembler/: requirement ledger with the RE-DERIVED denominator (deriveRequirementIds from real SRS text — a requirement in the SRS but absent from every ticket surfaces as `uncovered`, the A-1 class; tickets-without-proving-test = `coded-not-done`); missingAssemblyTickets + generateAssemblyTickets (assembly_for rows, acceptance = wiring evidence); generateLongTailWave (6 named classes, long_tail tag) + longTailGaps; assemblyGate — pass ONLY when ledger closed AND assembly tickets present AND every seam assertion ok AND long-tail wave done — five fixtures prove each condition blocks INDEPENDENTLY. Reuses P3-02's Seam union, no parallel model (L4). Ratchet handled via the sanctioned @unreached reasoned markers (4 mechanisms awaiting their conductor caller — the wiring ticket deletes the markers). 29 tests. Merged-head full gate 4970 green. FOLLOW-UP (named, not dropped): conductor bridge feeding SeamAssertion rows + docs/work/requirement-ledger.json into assemblyGate at release time."
     },
     {
       "id": "P4-01",
