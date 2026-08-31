@@ -434,6 +434,8 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 | T1-07 | **Add model diversity + consensus weighting to the existing challenger/gauntlet layer** (blindness and maker≠verifier already ship in v3.5.0): concurrent multi-model, 2+-model consensus, Act On / Consider / Noted / Dismissed, agreement map. Not a replacement of `/gauntlet` or `/challenge`. | attest |
 | T1-07b | State in policy that **LLM review is advisory; deterministic validators own the gate** — aligning attest with what `conductor.config.json` already does (`CONDUCTOR_FIELD_REPORT.md:76-88`) | attest |
 | T1-08 | Structured verdict contract for runtime expert: `PASS` / `FAIL_CANDIDATE` / `BLOCKED_BASELINE_CONFIRMED` / `BLOCKED_BASELINE_SUSPECTED` / `BLOCKED_INFRASTRUCTURE`; a nonzero configured verify **always** produces FAIL | attest |
+| T1-11 | **Conductor-first Phase 4** — when a board and conductor are present, Phase 4 dispatches through the conductor; HANDOFF prose becomes the interactive fallback (§12) | attest |
+| T1-12 | Requirement coverage ledger + assembly tickets + long-tail wave emitted at decomposition (§14) | attest |
 | T1-09 | `task-decomposer` emits the seam records `packages/pipeline` already models, and its interface-contract rule stops being "a manual check" (`task-decomposer.md:218`) — add the validator that enforces it | attest |
 | T1-10 | `npm run build:claude`; commit both repos; push both remotes | attest + attest-claude |
 
@@ -454,6 +456,8 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 | **T2-10** | **Scope validation scoped to tracked paths**; never traverse an untracked tree; time-box with a distinct `blocked_on_infrastructure` exit | M-06 |
 | **T2-11** | **Red-fixture calibration harness** — no check promoted advisory→gating without a red fixture | M-04 |
 | **T2-12** | Fix the four executor/infra fatal classes seen in the log (`ENOBUFS`, `ENOSPC`, `row.notes.push`, `testSiblingWarning`) and route them to `blocked_on_infrastructure` | §1 Defect B |
+| **T2-14** | Risk/size-based model routing generalized from `cheapLanes`/`cheapMaxPoints`, exposed as a project setting (§15) | §15.1 |
+| **T2-15** | Self-healing escalation ladder rungs 1-8, incl. **split-on-stall** and `[PARTIAL]` resume (§13) | §13 |
 | **T2-13** | Failure/scope evidence is written **beside** the worktree, outside the target repo; never `git add -f` from the main checkout (`attest/scripts/conductor/conductor.mjs:508`) | M-08 |
 
 ### T3 — Executor: the wave gate
@@ -527,6 +531,22 @@ New, for this plan:
     within its time box — it never hangs the ticket (M-06).
 24. A seam declared `provides` whose export is absent from the built synthetic head fails Level 2, even
     though plan-time lint passed — the gap `findUnownedInterfaces` cannot see today.
+25. Phase 4 with a board and a conductor present dispatches through the conductor; no HANDOFF document is
+    emitted asking a human to open a session (§12).
+26. A ticket STALLED twice at one tier is **split by the decomposer** and its pieces attempted, before any
+    terminal state is reached (§13 rung 6).
+27. An infra event (`ENOBUFS`, `ENOSPC`, timeout, provider error) consumes no coding attempt and opens no
+    finding row — asserted on the event log (§13 rung 2).
+28. A `[PARTIAL]` return resumes from the specialist's phase files; work the ledger shows finished is never
+    re-run (§13).
+29. A requirement with tickets closed but no passing E2E on `main` is reported as *coded*, not *done*, and
+    blocks the assembly gate (§14.1).
+30. A seam whose producer and consumers are in different tickets generates an assembly ticket automatically;
+    a board missing one fails plan lint (§14.2).
+31. The long-tail wave exists at decomposition time, not at the end, and includes the first-run/empty-state
+    class explicitly (§14.3).
+32. Every lever in §15.1 names a project-level setting that exposes it to a customer project; a lever that
+    only speeds our own build fails this check (§15.2).
 
 ## 10. Targets
 
@@ -577,3 +597,173 @@ Split by defect, because the two pipelines start from different numbers.
 ---
 
 **Next decision (founder):** approve the T1 policy rewrite scope, since every downstream wave is gated on it.
+
+---
+
+## 12. Why it gets stuck — the root cause, in the user's own words
+
+From the Cursor session transcript, unprompted, describing this exact system:
+
+> *"Where OpenCode fails still is one agent. If you create a specialized agent and it knows about the
+> other specialized agents next in the path that needs to do — it can't call it. It could call it, but the
+> timeout is set so low on calling the next skill. It doesn't really do it as a child process, so you can't
+> wait for it to come back. So automation fails with OpenCode. You kind of have to babysit OpenCode still."*
+
+That is the defect, and it is architectural, not behavioural. **attest's Phase 4 is human-mediated by
+construction.** `agents/shared/HANDOFF_TEMPLATES.md:44` — *"Print a short pointer to the user — which agent
+to open, the exact line to paste"*; `:281` — *"tell the user to open the N agents (`/<skill>` each)"*. Every
+Round 1 → Round 2 → Round 3 transition requires a human to open a session. The field report names the cost
+directly: *"the copy-paste HANDOFF tax is real and compounds over a long engagement"*
+(`attest/issues/field-report-mode1-sdlc-run-2026-07.md:114`).
+
+So "the coding portion gets stuck and is constantly confused" is not a prompting problem to be solved with
+better agent instructions. **The HANDOFF is a message to a human. A conductor is a child process.**
+
+**Therefore: automating Phase 4 means routing Phase 4 through a conductor, not through HANDOFF prose.** The
+mechanism already exists in both repos — it spawns sessions from *outside*, holds the gates itself, and never
+asks a human to relay a message. What is missing is that the SDLC's own Phase 4 does not use it; it still
+emits HANDOFF documents. Cursor's answer to the same problem is `multitask` — the orchestrator spawns
+subagents and blocks on their return. We have the equivalent and do not point Phase 4 at it.
+
+**T1-11 (new, and it belongs in the first wave):** `sdlc-init-phase-4.md` gains a conductor-first execution
+mode — when a board and a conductor are present, Phase 4 dispatches through the conductor and HANDOFF prose
+becomes the fallback for the interactive case, not the default path.
+
+## 13. Self-healing — what happens when a ticket will not move
+
+Today both conductors respond to a stuck ticket the same way: **retry the same ticket shape on a stronger
+model, then block.** That is one move. attest's own doctrine already describes a richer ladder and neither
+executor implements it.
+
+**Stall classification already exists** — `attest/agents/shared/FIX_VERIFY_LOOP.md:153-157`, per-row verdicts
+(CLOSED / STILL-OPEN / NEW / REGRESSED) rolled into iteration classes:
+
+| Class | Signature | Doctrine |
+|---|---|---|
+| **STALLED** | a row is STILL-OPEN after an iteration that explicitly targeted it | 2 targeted iterations at the same tier, never 3 — *"the third identical attempt is the worst spend in the system"* |
+| **PROGRESSED** | prior rows CLOSED, NEW rows opened | Healthy. Let it loop while NEW-row count strictly decreases. Ceiling 6 metered / 12 local |
+| **OSCILLATING** | a previously-CLOSED row returns | Zero tolerance. First regression escalate, second stop |
+| **Infra event** | verify truncated / tooling crashed | *"Consumes no iteration and opens no row. Never charge the fixer for infrastructure"* |
+
+Two of these are load-bearing and unimplemented:
+
+1. **"Hitting any ceiling while still PROGRESSED is a *decomposition signal* (the change is too big — split
+   it), not a fix failure."** (`FIX_VERIFY_LOOP.md:156`) **Splitting the ticket is the missing self-heal
+   move.** A conductor that stalls twice should hand the ticket to the decomposer and try the pieces — not
+   retry the same shape on a bigger model, and not give up.
+2. **"Never charge the fixer for infrastructure."** Dokima's log violates this on four of five distinct
+   fatal classes (§1 Defect B).
+
+**The escalation ladder, in order.** Each rung is attempted once; falling off the bottom is the only path to
+a terminal state:
+
+| # | Trigger | Action | Consumes a coding attempt? |
+|---|---|---|---|
+| 1 | Deterministic gate fails, autofixable | Bounded mechanical remediation in scope | No |
+| 2 | Infra event (`ENOBUFS`, `ENOSPC`, timeout, provider error) | Re-run; route to `blocked_on_infrastructure` if persistent | No |
+| 3 | Candidate fails, base also fails identically | `blocked_on_baseline`; file the repair ticket | No |
+| 4 | Candidate-only failure, first time | Retry with exact blocking evidence carried forward | Yes (1) |
+| 5 | STALLED twice at one tier | Escalate tier — the current ladder's only move | Yes (1) |
+| 6 | Still STALLED, or PROGRESSED into the ceiling | **Decompose: split the ticket, re-plan the pieces, run them** | No — this is a planning act |
+| 7 | Scope wall — the fix needs a file outside `write_scope` | Widen with recorded justification if the file is unowned, else **file a linked ticket** (`CLAUDE.md` Law 1) | No |
+| 8 | Two consecutive failures of the same class after 6 and 7 | `held_for_human` with the candidate and all evidence preserved | No |
+
+Rung 8 matches the automation pattern Cursor described at Amplitude — *CI fails twice, bring in a human* —
+and rung 7 is already Dokima law: *"a follow-up that names no ticket id is not a deferral, it is a dropped
+finding."*
+
+**The `[PARTIAL]` contract is the return channel for this** (attest v3.5.4, `BOUNDED_TASK_CONTRACT.md`
+Rule 8): a specialist that hits its own cap returns `[PARTIAL]` plus a task ledger and phase files on disk.
+A conductor receiving `[PARTIAL]` must **resume from the phase files**, never blind-re-dispatch and never
+restart finished work. Neither conductor reads that channel today.
+
+**Stuck must be observable, not inferred.** Every rung emits a typed event; a ticket that changes rung
+without changing state twice is itself a signal. The operator's question is *"what is it stuck on"*, and the
+answer must come from the event log, not from reading a session transcript.
+
+## 14. The Assembler — so "done" means a working product, not 495 closed tickets
+
+The board says 495 of 497 done. That is a statement about tickets, not about the product. The gap between
+those two has a name in the field reports: **"module/task completion silently diverges from requirement
+completion"** (`attest/issues/field-report-mode1-sdlc-run-2026-07.md:56`, finding A-1). Every ticket can be
+green while the thing does not work, and nothing in the pipeline is responsible for noticing.
+
+Three artifacts close it. None exist today.
+
+### 14.1 Requirement coverage ledger (the real denominator)
+
+Tickets are the wrong denominator. **User stories and acceptance criteria are.** The ledger maps every
+requirement → the tickets claiming to implement it → the end-to-end test that proves it on `main`.
+
+- A requirement with tickets but no passing E2E is **not done** — it is *coded*.
+- A requirement with no tickets at all is the silent case A-1 describes, and only a re-derivation from the
+  SRS catches it. attest already has the discipline (`includes/denominator-discipline.md`: re-derive the
+  requirement list from the SRS, *never* from the node list you just wrote) and no artifact carries it into
+  Phase 4.
+- This is the Ralph Wiggum loop applied to requirements rather than to documents — same inventory / verify /
+  gap / repeat, same objective coverage instead of a feeling.
+
+### 14.2 Assembly tickets are first-class
+
+Wiring is work, and it is currently nobody's ticket. Every seam whose producer and consumers sit in
+different tickets gets an **assembly ticket** whose acceptance is the wiring evidence itself — the route
+registered, the export re-exported, the migration applied, the nav entry present, the flag read. Dokima's own
+originating lesson is exactly this shape: *"W0-05 built `mintReceipt`, W1-02 consumed it, but neither ticket
+owned re-exporting it — the function existed and was invisible"* (`decompose/linter.ts:38-44`).
+
+The planner emits these automatically from the seam graph. They are the tickets nobody writes by hand
+because they are not features.
+
+### 14.3 The long tail is a named, planned wave — not what is left over
+
+The last 10% is not "polish." It is a specific and **recurring, un-hunted** defect class the field report
+already names: **first-run / empty-state / bootstrap deadlocks**
+(`attest/issues/field-report-mode1-sdlc-run-2026-07.md:252`, finding B-1). The planner emits a long-tail wave
+at decomposition time, not at the end, covering:
+
+first run on an empty database · empty states for every list and table · the unauthenticated and
+expired-session paths · every error path a happy-path ticket declared but never exercised · migration from
+the previous version · uninstall and reset · the first-run bootstrap deadlock class specifically.
+
+Because these are planned tickets with acceptance criteria, they are subject to the same gates. Because they
+are planned *up front*, they are budgeted rather than discovered at the point of maximum schedule pressure.
+
+### 14.4 The assembly gate
+
+A release candidate passes only when: every requirement in the ledger has a passing E2E on `main`; every
+seam's wiring evidence resolves; the long-tail wave is closed; and the launch gates already in
+`CLAUDE.md` Law 3 are green. **Ticket completion is an input to this gate, never a substitute for it.**
+
+## 15. Usage optimization — and the same optimization for the projects we build
+
+Two requirements, and the second is the one that makes this a product rather than a private harness tuning.
+
+### 15.1 Make the pipeline cheaper and faster
+
+| Lever | Mechanism | Status |
+|---|---|---|
+| Run reviewers concurrently | Slowest-reviewer cost instead of the sum: 8.8 → ~2.7 min | OPT-01, T3-03 |
+| Stop re-reviewing an unchanged patch | Abort the fix loop when the coder produced no diff | OPT-02, T2-08 |
+| Cache the baseline | Keyed by base SHA + command + lockfile + runtime fingerprint; one suite run serves every ticket on that base | T2-01 |
+| Cache dependency install + build | Keyed by main SHA + lockfile hash | OPT-11, T3-09 |
+| Route by risk and size, not by habit | Cheap tier for mechanical work, escalate only on evidence — `cheapLanes` / `cheapMaxPoints` already exist in `conductor.config.json` and are the seed | T2-14 (new) |
+| Summaries, not transcripts | A subagent returns its finding set; the orchestrator never ingests the subagent's context. Cursor's framing, and Brad's in the meeting: *"the main agent doesn't need to know about all the things it did — it just needs that finalized report"* | T1-05 |
+| Load rules by glob, not always | Cursor: *"don't have too many always-apply, that brings context bloat to every chat."* attest's shared protocol set is always-on and growing | T1-03 |
+| Stop paying for false triggers | `.map(` and the word `validate` currently recruit specialists (§1) | OPT-08, T1-04 |
+
+### 15.2 Dogfood symmetry — every lever above ships as a project-level capability
+
+**Rule: no optimization lands as a private tuning of our own harness.** Each one is configured per project
+and applied by Dokima to the codebases it builds, because the customer's project has the same economics —
+that is the product. Concretely, each lever gets a project-level configuration surface and a default:
+
+- Gate levels, wave budgets, and risk tiers are declared per project, not compiled in.
+- The baseline and build caches are keyed per project.
+- Model routing policy is a project setting — and per `CLAUDE.md` Law 9(b) it is **the user's choice**,
+  asked at setup, never silently defaulted, with local-only remaining fully functional.
+- The requirement ledger, seam graph, assembly tickets, and long-tail wave are generated for the customer's
+  project the same way they are for ours.
+- The self-healing ladder (§13) is the conductor's behaviour on any board it runs.
+
+**The test of this section is mechanical:** every lever in 15.1 must name the project-level setting that
+exposes it. A lever that only makes *our* build faster is an incomplete ticket.
