@@ -147,7 +147,14 @@ export function runPipeline(input: RunPipelineInput, port: PipelinePort): Decomp
 
   const blueprintInput = port.model.blueprintInputFrom(drafts, input.blueprintTitle);
   const blueprint = synthesizeBlueprint(blueprintInput);
-  port.emit({ kind: 'blueprint-synthesized', version: blueprint.document.version });
+  port.emit({
+    kind: 'blueprint-synthesized',
+    version: blueprint.document.version,
+    // W22-26: the document itself, not just its version. Everything downstream
+    // of here — the maker writing docs/VISION.md most of all — needs to know
+    // what product this is, and this emit is the only moment it is available.
+    markdown: blueprint.document.markdown,
+  });
 
   assertDecisionComplete(
     blueprint.document.markdown,

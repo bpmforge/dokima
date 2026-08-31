@@ -34,7 +34,29 @@ import type { Ticket } from '@dokima/tickets';
  * `api/pipeline/onboard-repo-context.ts`, which is this repo's existing
  * precedent for putting a project's own rules in front of a model.
  */
-export const CORE_BLOCK_FILE_CANDIDATES = ['CLAUDE.md', 'AGENTS.md'] as const;
+/**
+ * What gets pinned into every handoff, in preference order (W22-26).
+ *
+ * THE BLUEPRINT COMES FIRST, and it is the entry that makes this list work for
+ * a project Dokima generated. A live run proved the gap: asked to write
+ * `docs/VISION.md` for a personal expense tracker, the maker produced a
+ * document about "a clear, maintainable, well-documented codebase" that never
+ * mentioned expenses — because its whole context was the built-in invariants,
+ * an empty repo map and the ticket's own title. A generated project has no
+ * CLAUDE.md and no AGENTS.md, so this list previously matched nothing at all
+ * and the pinned block was the generic invariants alone.
+ *
+ * The ticket's own acceptance had already asked for what it could not get:
+ * every deliverable draft carries "It reflects what the interview actually
+ * established, not a template", while its verify command is `test -s <path>`.
+ * The board demanded grounding the maker was never given and the gate could
+ * not check.
+ */
+export const CORE_BLOCK_FILE_CANDIDATES = [
+  '.dokima/blueprint.md',
+  'CLAUDE.md',
+  'AGENTS.md',
+] as const;
 
 /** Matches `onboard-repo-context.ts`'s KEY_FILE_BYTE_LIMIT. */
 export const CORE_BLOCK_BYTE_LIMIT = 4_000;

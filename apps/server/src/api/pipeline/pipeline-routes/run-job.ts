@@ -43,6 +43,38 @@ export interface ExecuteRunArgs {
  * dead job behind it is exactly the "no progress, no resume" opacity this
  * ticket exists to remove.
  */
+/**
+ * Writes the synthesized blueprint into the project (W22-26).
+ *
+ * THE DOCUMENT USED TO EVAPORATE. `runPipeline` synthesized it, built the
+ * technical slate and the ticket drafts from it, emitted its VERSION NUMBER,
+ * and dropped the markdown. So the board it produced asked a maker to "Write
+ * docs/VISION.md" for a product the maker was never told about — a live run
+ * duly produced a VISION.md about "a clear, maintainable codebase" for someone
+ * who had asked for an expense tracker.
+ *
+ * `.dokima/blueprint.md`, not `docs/BLUEPRINT.md`, on purpose: `docs/` belongs
+ * to the board — deliverable tickets own those paths in their write_scope, and
+ * dropping a file the agent did not write into a scope it is judged against
+ * would make its diff look like work it did not do.
+ *
+ * Best-effort, and it says so when it fails. The board is already built and
+ * persisted by this point; refusing the whole run because a context file could
+ * not be written would trade a working board for a missing convenience. But it
+ * is not silent — a maker writing generic boilerplate is exactly what this
+ * prevents, and a reader needs to know which one they are looking at.
+ */
+async function persistBlueprint(projectPath: string, markdown: string): Promise<void> {
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  try {
+    await mkdir(join(projectPath, '.dokima'), { recursive: true });
+    await writeFile(join(projectPath, '.dokima', 'blueprint.md'), markdown, 'utf8');
+  } catch (err) {
+    console.error(`[pipeline] could not write the blueprint for ${projectPath}:`, err);
+  }
+}
+
 export async function executeRun(args: ExecuteRunArgs): Promise<void> {
   const { projectPath, runId, body, now, resolvePort, request } = args;
   try {
@@ -81,6 +113,8 @@ export async function executeRun(args: ExecuteRunArgs): Promise<void> {
     }
 
     let plan: DecomposedPlan;
+    // Awaited after the pipeline returns: `emit` is synchronous by contract.
+    let blueprintWrite: Promise<void> | undefined;
     const log = openEventLog(stateDbPath(projectPath));
     try {
       ensureOperatorIdentity(log, now);
@@ -90,7 +124,15 @@ export async function executeRun(args: ExecuteRunArgs): Promise<void> {
           technicalSlateInputFrom: () => preflight.technicalSlateInput,
           ticketDraftsFrom: () => preflight.ticketDrafts,
         },
-        emit: (event) => emitPhaseEvent(log, { runId, now }, event),
+        emit: (event) => {
+          emitPhaseEvent(log, { runId, now }, event);
+          // W22-26: the one moment the blueprint exists. Persisted here so the
+          // handoff's core block can pin it (handoff-context.ts) and so the
+          // person who described the idea can read what Dokima made of it.
+          if (event.kind === 'blueprint-synthesized') {
+            blueprintWrite = persistBlueprint(projectPath, event.markdown);
+          }
+        },
       };
       plan = runPipeline(
         {
@@ -103,6 +145,7 @@ export async function executeRun(args: ExecuteRunArgs): Promise<void> {
     } finally {
       log.close();
     }
+    await blueprintWrite;
 
     const accepted = await persistDecomposedPlan(projectPath, plan, { runId, now });
     const finishedAt = now();

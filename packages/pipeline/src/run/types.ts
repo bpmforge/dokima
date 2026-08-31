@@ -90,7 +90,19 @@ export interface PipelineModelPort {
  * (Law 7); this package only defines the shape. */
 export type PipelineRunEvent =
   | { readonly kind: 'interview-complete'; readonly topicCount: number }
-  | { readonly kind: 'blueprint-synthesized'; readonly version: number }
+  /**
+   * W22-26: the MARKDOWN travels with the version, so a caller can persist the
+   * blueprint instead of watching it evaporate. It used to carry the version
+   * number alone — the document that knew what product the user asked for
+   * lived for the length of one function and was then discarded, which is why
+   * every maker wrote generic boilerplate and why the user could never read
+   * what Dokima understood their idea to be.
+   */
+  | {
+      readonly kind: 'blueprint-synthesized';
+      readonly version: number;
+      readonly markdown: string;
+    }
   | { readonly kind: 'decisions-decided'; readonly slateTitle: string }
   | { readonly kind: 'decomposed'; readonly ticketCount: number };
 

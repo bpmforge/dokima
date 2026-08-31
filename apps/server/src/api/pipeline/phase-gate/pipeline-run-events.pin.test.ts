@@ -18,7 +18,10 @@ import { ensureOperatorIdentity } from '../../server/board-actor.js';
 
 const SAMPLE_EVENTS: readonly PipelineRunEvent[] = [
   { kind: 'interview-complete', topicCount: 4 },
-  { kind: 'blueprint-synthesized', version: 1 },
+  // W22-26: the event now carries the document, which makes this pin MORE
+  // load-bearing rather than less — model-authored content of any size must
+  // still never earn a receipt.
+  { kind: 'blueprint-synthesized', version: 1, markdown: '# Sample\n\nA product.' },
   { kind: 'decisions-decided', slateTitle: 'Technical Slate v1' },
   { kind: 'decomposed', ticketCount: 12 },
 ];

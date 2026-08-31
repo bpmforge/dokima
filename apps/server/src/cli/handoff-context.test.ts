@@ -109,6 +109,37 @@ describe('packed HANDOFF context (W12-04, FR-L5)', () => {
   });
 
   it(
+    'RED FIXTURE: the project BLUEPRINT is pinned, so a maker knows what product ' +
+      'it is writing about. Without it the whole context for "Write docs/VISION.md" ' +
+      'is generic invariants and the ticket title, and a live run duly produced a ' +
+      'VISION.md about "a clear, maintainable codebase" that never mentioned the ' +
+      "user's expense tracker (W22-26)",
+    async () => {
+      const sections = await collectCoreBlockSections('/repo', async (path) =>
+        path.endsWith('.dokima/blueprint.md')
+          ? '# Expense Ledger\n\nA personal expense tracker with monthly summaries.'
+          : null,
+      );
+
+      expect(sections.join('\n')).toContain('expense tracker');
+    },
+  );
+
+  it(
+    'the blueprint wins over a rules file — a generated project has no CLAUDE.md, ' +
+      'and what it does have is the product it was asked for',
+    async () => {
+      const sections = await collectCoreBlockSections('/repo', async (path) =>
+        path.endsWith('.dokima/blueprint.md')
+          ? '# Expense Ledger\n\nTracks spending.'
+          : '# Laws\n\n1. One ticket at a time.',
+      );
+
+      expect(sections.join('\n')).toContain('Tracks spending');
+    },
+  );
+
+  it(
     'an oversized rules file is DROPPED WHOLE, never truncated, and the built-in ' +
       'invariants survive — the core block is never empty and never over its ceiling',
     async () => {
