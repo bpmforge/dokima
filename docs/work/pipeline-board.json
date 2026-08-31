@@ -277,7 +277,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31 (implemented by isolated-worktree subagent, gated+merged by orchestrator). check-validator-fixtures.mjs reads conductor.config.json gate[]/advisory[]: gate validators require behaving red+green fixtures and may NEVER be grandfathered; advisory without fixtures must sit on GRANDFATHERED.json which may only shrink vs the committed copy. Hand-verified fixture exits (file-size red 410-line file -> 1, green -> 0; circular-deps red alpha<->beta -> 1, green -> 0; EXPERTS_TELEMETRY=0 so _lib.sh can't dirty fixture trees). pnpm check:fixtures; 7 tests incl. defused-red and grandfather-growth negatives. Checker clean on the real tree. Full gate 4839 green. FILED FINDING: scripts/validate-visual.test.mjs depends on UNTRACKED docs/acceptance/runs/w13-noise-b — fails in any fresh clone; needs its own ticket."
     },
     {
       "id": "P3-01",
