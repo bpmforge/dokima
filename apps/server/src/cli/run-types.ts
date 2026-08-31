@@ -8,6 +8,14 @@ export interface RunCliIO {
   stdout: (line: string) => void;
   stderr: (line: string) => void;
   now?: () => string;
+  /**
+   * W22-23: `--project <id>` resolves through the fleet registry under this
+   * env's DOKIMA_HOME, exactly as `CliIO` documents. `runCli` has always handed
+   * `executeRunCommand` its full `CliIO`, so the value was already arriving —
+   * this is the type catching up with what it was being given, not a new
+   * capability.
+   */
+  env?: NodeJS.ProcessEnv;
 }
 
 /** The subset of `run start` a build-mode run actually reads. */

@@ -4,6 +4,8 @@ import { createIdentity, listEvents, mintReceipt, type EventLog } from '@dokima/
 import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
 import { createWorktree, git } from '@dokima/git';
 import { openWritableLog, resolveDbPath } from './db.js';
+import { registerProject } from '../api/projects/registry-verbs.js';
+import { computeFleetRegistryPath } from '../api/projects/registry-store.js';
 import { runCli } from './run.js';
 import { collectIO, createTempProject, type TempProject } from './test-helpers.js';
 
@@ -85,6 +87,51 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     ).toBe(0);
     expect(stop.stdout[0]).toBe(`${runId} stop -> stopped`);
   });
+
+  it(
+    'RED FIXTURE: `--project <id>` addresses the PROJECT, from any directory. It ' +
+      'used to be a label only: executeRunCommand opened its log with ' +
+      'resolveDbPath(io.cwd), so a run started from anywhere else wrote itself ' +
+      "into the current directory's event log and worked that repo — every other " +
+      'CLI verb resolves the id through the fleet registry (W22-23)',
+    async () => {
+      project = await createTempProject();
+      const elsewhere = await createTempProject();
+      const home = await createTempProject();
+      const previousKey = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key';
+      try {
+        const record = await registerProject(computeFleetRegistryPath(home.cwd), {
+          path: project.cwd,
+          mode: 'new',
+          name: 'addressed',
+        });
+
+        const out = collectIO();
+        const code = await runCli(
+          ['run', 'start', '--project', record.id, '--mode', 'feature',
+           '--breakpoint', 'wave', '--berths', '1', '--actor', 'operator-1'],
+          // Standing somewhere that is NOT the project — which is the whole
+          // point of the flag, per `--help`: "address a project with --project
+          // <id> from the Fleet".
+          { cwd: elsewhere.cwd, now: NOW, env: { DOKIMA_HOME: home.cwd }, ...out.io },
+        );
+        expect(code).toBe(0);
+
+        // The run belongs to the project, not to wherever the shell happened
+        // to be standing.
+        const projectEvents = listEvents(openWritableLog(resolveDbPath(project.cwd)));
+        expect(projectEvents.some((e) => e.eventType === 'run.created')).toBe(true);
+        const strayDb = resolveDbPath(elsewhere.cwd);
+        await expect(fs.stat(strayDb)).rejects.toThrow();
+      } finally {
+        if (previousKey === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+        else process.env.DOKIMA_SIGNING_KEY = previousKey;
+        await elsewhere.cleanup();
+        await home.cleanup();
+      }
+    },
+  );
 
   it('rejects a bad --breakpoint with a usage error (exit 2), never touching the DB', async () => {
     project = await createTempProject();

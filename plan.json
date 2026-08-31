@@ -15206,7 +15206,7 @@
       "id": "W22-23",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15218,7 +15218,10 @@
       "write_scope": [
         "apps/server/src/cli/run-build-spawn.ts",
         "apps/server/src/cli/run-build-support.ts",
-        "apps/server/src/cli/run-build.test.ts"
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/cli/run-cmd.ts",
+        "apps/server/src/cli/run-cmd.test.ts",
+        "apps/server/src/cli/run-types.ts"
       ],
       "acceptance": [
         "`dokima run start --project <id>` resolves providers and the model matrix from the NAMED project, from any working directory",
@@ -15230,7 +15233,17 @@
         "MECHANISM, PINNED: run-build-spawn.ts:97 and run-build-support.ts:78 both call the resolver with `projectPath: io.cwd` / `input.cwd` \u2014 the PROCESS'S WORKING DIRECTORY, not the path of the project `--project` names. Run from the Dokima repo it resolves against Dokima's own directory, finds nothing, and takes the branch that throws noModelConfigured().",
         "PROVED THREE WAYS, so the diagnosis is not an inference: (1) the identical command run from INSIDE the project directory succeeds; (2) the identical command with DOKIMA_MODEL_ID set succeeds from anywhere, because that is the env branch the resolver falls to when it has no project path; (3) the project's stores were confirmed populated on disk \u2014 providers in .dokima/settings.json with a correct camelCase baseUrl, six rows in the model_matrix table of state.db.",
         "THE FLAG EXISTS TO MAKE THIS UNNECESSARY. `--help` says 'address a project with --project <id> from the Fleet, or --db <path>', so the documented contract is that you do not have to be standing in the directory. Today you do, and the error blames the user's configuration instead.",
-        "SAME CLASS AS W10-62, which is why it is worth naming: a settings scope written by one surface and read from another. That one was the Settings panel writing per-project while the CLI read global; this is the CLI reading per-CWD while the user configured per-project."
+        "SAME CLASS AS W10-62, which is why it is worth naming: a settings scope written by one surface and read from another. That one was the Settings panel writing per-project while the CLI read global; this is the CLI reading per-CWD while the user configured per-project.",
+        "THE DEFECT IS BIGGER THAN FILED, and the filed scope points one level below it. I filed this as 'the model is resolved from cwd'. The truth: `executeRunCommand` opens its log with `resolveDbPath(io.cwd, command.dbPath)` \u2014 the CWD \u2014 while every other CLI verb uses `resolveDbPathForProject`, which resolves `--project <id>` through the fleet registry. So on `run start`, `--project` is only a LABEL written onto the run record (`projectId: command.projectId`); it never locates anything.",
+        "WHICH MEANS THE WHOLE RUN RUNS AGAINST THE WRONG PROJECT, not just the model. run-cmd.ts's own header says '`io.cwd` doubles as both runSession's repo', and run-build.ts uses io.cwd for the vault, the collected secrets, the effective settings, the worktree root and the repo root. Run from anywhere but the project directory, `dokima run start --project <id>` writes its run into the CWD's event log and works that repo. In my live test that was Dokima's own repository.",
+        "SCOPE WIDENED AT THE READ (Law 1) to run-cmd.ts and its test. Threading a projectPath into the two model-resolution call sites \u2014 the filed scope \u2014 would fix the symptom I happened to notice and leave the run still pointed at the wrong repo. Both files unowned.",
+        "SCOPE WIDENED for run-types.ts: RunCliIO lacks `env`, which resolving --project through the fleet registry needs (computeDokimaHome reads it, and CliIO already carries it). The value was already being passed at runtime \u2014 runCli hands executeRunCommand its full CliIO \u2014 so this adds the field to the type that was already receiving it, rather than adding a capability.",
+        "DONE, and the fix is one level above where I filed it. `run start` now resolves `--project <id>` through the fleet registry like every other verb, derives the project root from the resolved database path, and hands THAT to the build run as its cwd \u2014 so the vault, the collected secrets, the effective settings, the worktree root, the repo root and the model matrix all follow the project rather than the shell.",
+        "DERIVED, NOT LOOKED UP TWICE: the project root comes from dirname(dirname(dbPath)) rather than a second registry lookup, because two resolutions of one id are two chances to disagree.",
+        "AN UNREGISTERED ID IS NOT FATAL, and the parser forces that answer: `run start` REQUIRES --project, so a CLI-only user standing in their own repository must pass one even when nothing has registered it. Making it fatal would break the flow the flag is mandatory for. It is not silent either \u2014 the fallback prints which id failed and which directory it is using instead, because a run that quietly works somewhere else is the defect being fixed.",
+        "THE EXISTING SUITE FOUND THAT CONSTRAINT, which is the part worth recording. My first version resolved strictly and reddened seven passing tests, all of which stand inside a project and pass an unregistered label. That is not a test problem: it is the documented CLI flow, and the suite was right to refuse.",
+        "PROVEN RED FIRST: a fixture that registers a project, stands somewhere else entirely, and asserts the run lands in the PROJECT's log while no stray database appears in the working directory. It failed before the change ('expected false to be true') and passes after, alongside the eight flows that were already there.",
+        "Gate: lint clean, typecheck 0, 4791 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     },
     {

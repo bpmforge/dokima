@@ -23,6 +23,7 @@
  * writer, a pre-existing narrowing this ticket does not widen.
  */
 
+import path from 'node:path';
 import { parseArgs } from 'node:util';
 import {
   createRun,
@@ -40,7 +41,12 @@ import {
 import { runOnboardAnalysis } from '../api/pipeline/index.js';
 import { executeBuildRun } from './run-build.js';
 import type { RunCliIO } from './run-types.js';
-import { openWritableLog, resolveDbPath } from './db.js';
+import {
+  openWritableLog,
+  resolveDbPath,
+  resolveDbPathForProject,
+  UnknownProjectError,
+} from './db.js';
 import { ensureActorIdentity } from './identity.js';
 import { CliUsageError } from './parse.js';
 
@@ -215,7 +221,64 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
     throw err;
   }
 
-  const dbPath = resolveDbPath(io.cwd, command.dbPath);
+  /**
+   * ADDRESS THE PROJECT, NOT THE SHELL (W22-23).
+   *
+   * This used to be `resolveDbPath(io.cwd, command.dbPath)`, so `--project
+   * <id>` was written onto the run record as a label and never used to find
+   * anything. Every other CLI verb resolves it through the fleet registry, and
+   * `--help` promises it: "address a project with --project <id> from the
+   * Fleet, or --db <path>".
+   *
+   * The consequence was not only a misplaced log. This module's own header
+   * notes that "`io.cwd` doubles as both `runSession`'s repo", and run-build
+   * derives the vault, the collected secrets, the effective settings, the
+   * worktree root and the model matrix from it — so a run started outside the
+   * project directory worked whatever repository the shell was standing in.
+   * A configured project was told "no model is configured for this project
+   * yet", naming the settings surface that had just been used successfully.
+   *
+   * `--db` still wins, unchanged: it is the explicit escape hatch, and a
+   * caller who names a file means that file.
+   */
+  /**
+   * AN UNREGISTERED ID IS NOT FATAL, and that is forced by the parser: `run
+   * start` REQUIRES `--project <id>`, so a CLI-only user standing in their own
+   * repository must pass one even when nothing has ever registered it. Making
+   * it fatal would break the flow the flag is mandatory for.
+   *
+   * It is not silent either. Falling back to the current directory without
+   * saying so is how the original defect read from the outside — a run that
+   * quietly worked somewhere else.
+   */
+  let dbPath: string;
+  if (command.kind === 'start') {
+    try {
+      dbPath = await resolveDbPathForProject(io.cwd, {
+        ...(command.dbPath ? { db: command.dbPath } : {}),
+        projectId: command.projectId,
+        ...(io.env ? { env: io.env } : {}),
+      });
+    } catch (err) {
+      if (!(err instanceof UnknownProjectError)) throw err;
+      dbPath = resolveDbPath(io.cwd, command.dbPath);
+      io.stderr(
+        `no project registered with id ${command.projectId} — running against ` +
+          `the current directory (${io.cwd}) instead`,
+      );
+    }
+  } else {
+    // pause/resume/stop carry no --project; they address the log the way they
+    // always have, and `--db` remains their explicit escape hatch.
+    dbPath = resolveDbPath(io.cwd, command.dbPath);
+  }
+  /**
+   * Everything downstream reads the repo from `cwd`, so it has to BE the
+   * project. Derived from the resolved database path rather than looked up a
+   * second time: two resolutions of the same id are two chances to disagree.
+   */
+  const projectRoot = path.dirname(path.dirname(dbPath));
+  const projectIo: RunCliIO = { ...io, cwd: projectRoot };
   const log = openWritableLog(dbPath);
   try {
     ensureActorIdentity(log, command.actorId, io.now);
@@ -244,7 +307,7 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
         const outcome = await runOnboardAnalysis({
           log,
           runId: run.id,
-          projectPath: io.cwd,
+          projectPath: projectRoot,
           now: io.now,
         });
         io.stdout(
@@ -260,7 +323,7 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
       // log.close() }`, and returning the pending promise lets the finally
       // close the connection out from under the loop — "The database
       // connection is not open", thrown from the loop's first getTicket.
-      const buildCode = await executeBuildRun(log, command, run.id, io);
+      const buildCode = await executeBuildRun(log, command, run.id, projectIo);
       return buildCode;
     }
 
