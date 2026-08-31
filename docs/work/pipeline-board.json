@@ -130,7 +130,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. baseline.mjs (baselineKey sha256 over baseSha+commands+lockfileHash+node-major; ensureBaseline runs verifyCommands via mintReceipt in a clean DETACHED worktree, caches red AND green verdicts, cleans up even on install crash, never caches an infra crash); conductor.mjs Stage 0 before any claim — red base exits 3 (blocked_on_baseline, zero attempts) with per-gap log rows; supervise.sh treats exit 3 as deterministic stop, not crash-restart. 6 tests (key stability/invalidation, green+cache-hit, red-cached-red, sha invalidation, worktree cleanup on ENOSPC, self-gitignore). Full gate green."
     },
     {
       "id": "P2-02",

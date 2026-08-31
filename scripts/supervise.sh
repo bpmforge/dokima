@@ -141,6 +141,10 @@ while :; do
   log "conductor exited code=$code"
 
   [ "$code" -eq 0 ] && { log "clean exit — board drained or breakpoint; done"; break; }
+  # P2-01: exit 3 = blocked_on_baseline — a deterministic gate verdict, not a
+  # crash. Restarting would re-run the same red suite forever; a human (or a
+  # repair ticket) fixes the base, then relaunches.
+  [ "$code" -eq 3 ] && { log "baseline RED (exit 3) — blocked_on_baseline; NOT restarting. Fix the base, then relaunch."; break; }
   [ -f STOP ] && { log "STOP present after crash — exiting"; break; }
   n=$((n+1))
   [ "$n" -ge "$MAX" ] && { log "hit MAX=$MAX restarts — giving up, needs a human"; break; }
