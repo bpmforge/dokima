@@ -428,8 +428,8 @@
         "pnpm lint && pnpm typecheck && pnpm test green"
       ],
       "points": 8,
-      "status": "in_progress",
-      "notes": "Filed 2026-08-31 from founder direction: 'take the user stories, create a product from that, not just tickets — goal loop it as a product.' Vendor research (Cursor/Anthropic/OpenAI full-cycle mechanisms) running in parallel; findings fold into the module header."
+      "status": "done",
+      "notes": "Landed 2026-08-31. THE PRODUCT GOAL LOOP: scripts/conductor/product-loop.mjs (pure core, injected ports) + scripts/product-loop.mjs CLI (--status = measure-only). INVENTORY re-derived from SRS/USER_STORIES text every iteration; VERIFY = assemblyGate + green receipt on main (receipts outrank bookkeeping — tested); EXIT = both, 'done meaning done'; GAP -> PRD-/PRF- proposals + assembly + long-tail rows, tagged proposed_by=product-loop, dedup'd, subject to every conductor gate; BUDGET = iteration cap 5 + byte-identical-gap no-progress halt (a class shift uncovered->coded-not-done IS progress and correctly does not halt — tested both ways). Goal artifact = docs/work/requirement-ledger.json carrying {success, non_goals, acceptance, sourcesSha} + per-iteration history — the Cherny doctrine: done is a PREDICATE, the goal has NON-GOALS, and it survives compaction in a FILE. Vendor research (Cursor/Anthropic/OpenAI) confirmed the three universal mechanisms and all three are this module's skeleton (header cites them). WIRED THE PROMISED CALLERS: all four P3-05 @unreached markers deleted, zero-marker fixture assertion restored, ratchet unchanged at 46/45 with ZERO suppressions. 10 tests (9 unit w/ stub assembler + 1 real-assembler integration proving the long-tail wave is proposed and blocks DONE). Full gate 4979 green."
     }
   ]
 }

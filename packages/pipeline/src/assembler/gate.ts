@@ -41,7 +41,6 @@ export interface AssemblyGateResult {
   readonly gaps: readonly string[];
 }
 
-// @unreached assemblyGate: P3-05 lands the gate; its production caller is the conductor release-candidate check (scripts/conductor, orchestrator-owned this hour) — the wiring ticket deletes this marker.
 export function assemblyGate(input: AssemblyGateInput): AssemblyGateResult {
   const gaps: string[] = [];
 
