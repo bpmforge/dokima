@@ -115,14 +115,19 @@ describe('conductor-lib: configurable boardPath (W9-10)', () => {
 
   it('planPath resolves relative to a configurable boardPath, defaulting to plan.json at dir root', () => {
     expect(planPath('/repo')).toBe(path.resolve('/repo', 'plan.json'));
-    expect(planPath('/repo', 'docs/board/plan.json')).toBe(path.resolve('/repo', 'docs/board/plan.json'));
+    expect(planPath('/repo', 'docs/board/plan.json')).toBe(
+      path.resolve('/repo', 'docs/board/plan.json'),
+    );
   });
 
   it('loadPlanFrom reads a board that is NOT at the repo root when boardPath points into a subdirectory (Kryptkeeper-shaped fixture)', async () => {
     const dir = await scratchDir();
     const plan = { version: 1, tickets: [{ id: 'KK-01', status: 'todo' }] };
     await fs.mkdir(path.join(dir, 'docs', 'board'), { recursive: true });
-    await fs.writeFile(path.join(dir, 'docs', 'board', 'plan.json'), JSON.stringify(plan));
+    await fs.writeFile(
+      path.join(dir, 'docs', 'board', 'plan.json'),
+      JSON.stringify(plan),
+    );
     // no plan.json at dir root at all — the pre-W9-10 loader has nothing to find here.
 
     const loaded = loadPlanFrom(dir, 'docs/board/plan.json');
@@ -153,7 +158,9 @@ describe('conductor-lib: configurable boardPath (W9-10)', () => {
   });
 
   it('doneCheckGap names the configured boardPath in the gate-failure message, not a hardcoded plan.json', () => {
-    expect(doneCheckGap('todo', 'plan.json')).toBe("plan.json status is 'todo', expected 'done'");
+    expect(doneCheckGap('todo', 'plan.json')).toBe(
+      "plan.json status is 'todo', expected 'done'",
+    );
     expect(doneCheckGap('blocked', 'docs/board/plan.json')).toBe(
       "docs/board/plan.json status is 'blocked', expected 'done'",
     );
@@ -215,7 +222,9 @@ describe('conductor-lib: byte-preserving board writes (W9-11)', () => {
 
     const naive = `${JSON.stringify(plan, null, 2)}\n`;
 
-    const delta = Math.abs(Buffer.byteLength(naive, 'utf8') - Buffer.byteLength(original, 'utf8'));
+    const delta = Math.abs(
+      Buffer.byteLength(naive, 'utf8') - Buffer.byteLength(original, 'utf8'),
+    );
     expect(delta).toBeGreaterThan(2000);
   });
 
@@ -228,7 +237,7 @@ describe('conductor-lib: byte-preserving board writes (W9-11)', () => {
     expect(out).toBe(original);
   });
 
-  it('changing exactly one ticket status produces a diff touching only that ticket\'s status line', () => {
+  it("changing exactly one ticket status produces a diff touching only that ticket's status line", () => {
     const original = readFileSync(REAL_PLAN_PATH, 'utf8');
     const plan = JSON.parse(original);
     const row = plan.tickets.find((t) => t.id === 'W9-09');
@@ -248,7 +257,7 @@ describe('conductor-lib: byte-preserving board writes (W9-11)', () => {
     expect(outLines[changedLineIdxs[0]]).toBe('      "status": "blocked",');
   });
 
-  it('preserves the file\'s existing convention: ASCII-only source (real plan.json\'s \\u00a7-style escaping) stays ASCII-escaped, even for brand-new non-ASCII content not previously in the file', () => {
+  it("preserves the file's existing convention: ASCII-only source (real plan.json's \\u00a7-style escaping) stays ASCII-escaped, even for brand-new non-ASCII content not previously in the file", () => {
     const original = '{\n  "version": 1,\n  "note": "no unicode here"\n}';
     const plan = JSON.parse(original);
     plan.note = 'now has § and —';
@@ -261,7 +270,7 @@ describe('conductor-lib: byte-preserving board writes (W9-11)', () => {
     expect(out).not.toContain('—');
   });
 
-  it('preserves the file\'s existing convention: a source that already writes literal UTF-8 is NOT forced into ASCII-escaping', () => {
+  it("preserves the file's existing convention: a source that already writes literal UTF-8 is NOT forced into ASCII-escaping", () => {
     const original = '{\n  "version": 1,\n  "note": "§ literal — utf8"\n}';
     const plan = JSON.parse(original);
 
@@ -322,7 +331,7 @@ describe('conductor-lib: writePlan — the conductor board write is byte-preserv
     return dir;
   }
 
-  it('a board write through writePlan changes only the touched ticket\'s status line, on a fixture using the real plan.json\'s own convention (ASCII-escaped, no trailing newline)', async () => {
+  it("a board write through writePlan changes only the touched ticket's status line, on a fixture using the real plan.json's own convention (ASCII-escaped, no trailing newline)", async () => {
     const dir = await scratchDir();
     const original =
       '{\n' +
@@ -350,7 +359,9 @@ describe('conductor-lib: writePlan — the conductor board write is byte-preserv
     const origLines = original.split('\n');
     const outLines = out.split('\n');
     expect(outLines.length).toBe(origLines.length);
-    const changedLineIdxs = origLines.map((line, i) => (line === outLines[i] ? -1 : i)).filter((i) => i !== -1);
+    const changedLineIdxs = origLines
+      .map((line, i) => (line === outLines[i] ? -1 : i))
+      .filter((i) => i !== -1);
     expect(changedLineIdxs).toHaveLength(1);
     expect(outLines[changedLineIdxs[0]]).toBe('      "status": "in_progress",');
     // convention preserved: still ASCII-escaped, still no trailing newline
@@ -362,7 +373,8 @@ describe('conductor-lib: writePlan — the conductor board write is byte-preserv
   it('writePlan honours a configured boardPath (W9-10), not just the root plan.json default', async () => {
     const dir = await scratchDir();
     await fs.mkdir(path.join(dir, 'docs', 'board'), { recursive: true });
-    const original = '{\n  "tickets": [\n    {\n      "id": "KK-01",\n      "status": "todo"\n    }\n  ]\n}';
+    const original =
+      '{\n  "tickets": [\n    {\n      "id": "KK-01",\n      "status": "todo"\n    }\n  ]\n}';
     const boardFile = path.join(dir, 'docs', 'board', 'plan.json');
     await fs.writeFile(boardFile, original);
 
@@ -371,13 +383,18 @@ describe('conductor-lib: writePlan — the conductor board write is byte-preserv
     writePlan(dir, plan, 'docs/board/plan.json');
 
     const out = await fs.readFile(boardFile, 'utf8');
-    expect(out).toBe('{\n  "tickets": [\n    {\n      "id": "KK-01",\n      "status": "done"\n    }\n  ]\n}');
+    expect(out).toBe(
+      '{\n  "tickets": [\n    {\n      "id": "KK-01",\n      "status": "done"\n    }\n  ]\n}',
+    );
   });
 });
 
 describe('conductor-lib: config merge', () => {
   it('mergeConfig overrides only the keys present in the override, keeping defaults for the rest', () => {
-    const merged = mergeConfig(DEFAULT_CONFIG, { branchPrefix: 'kk/', gateTimeoutMin: 30 });
+    const merged = mergeConfig(DEFAULT_CONFIG, {
+      branchPrefix: 'kk/',
+      gateTimeoutMin: 30,
+    });
 
     expect(merged.branchPrefix).toBe('kk/');
     expect(merged.gateTimeoutMin).toBe(30);
@@ -407,7 +424,13 @@ describe('conductor-lib: model routing config (W9-12)', () => {
   });
 
   it('validateModels accepts a fully-specified models object', () => {
-    const models = { maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: 'opus' };
+    const models = {
+      maker: 'sonnet',
+      cheap: 'haiku',
+      reviewer: 'sonnet',
+      security: 'sonnet',
+      escalate: 'opus',
+    };
     expect(validateModels(models)).toEqual([]);
   });
 
@@ -421,7 +444,13 @@ describe('conductor-lib: model routing config (W9-12)', () => {
   });
 
   it('validateModels rejects an empty-string role (present key, useless value)', () => {
-    const models = { maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: '   ' };
+    const models = {
+      maker: 'sonnet',
+      cheap: 'haiku',
+      reviewer: 'sonnet',
+      security: 'sonnet',
+      escalate: '   ',
+    };
     const errors = validateModels(models);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('models.escalate');
@@ -435,7 +464,14 @@ describe('conductor-lib: model routing config (W9-12)', () => {
 
   it('mergeConfig folds a project\'s "models" override in like any other config key (full replace, not deep-merge) — conductor.config.json is the one place model routing lives', () => {
     const merged = mergeConfig(DEFAULT_CONFIG, {
-      models: { maker: 'sonnet', cheap: 'haiku', reviewer: 'sonnet', security: 'sonnet', escalate: 'opus', cheapLanes: ['content'] },
+      models: {
+        maker: 'sonnet',
+        cheap: 'haiku',
+        reviewer: 'sonnet',
+        security: 'sonnet',
+        escalate: 'opus',
+        cheapLanes: ['content'],
+      },
     });
     expect(merged.models.cheapLanes).toEqual(['content']);
     expect(validateModels(merged.models)).toEqual([]);
@@ -470,7 +506,10 @@ describe('conductor-lib: loadConfigFile — malformed conductor.config.json fail
 
   it('merges a valid conductor.config.json over the defaults', async () => {
     const dir = await tmpDir();
-    await fs.writeFile(path.join(dir, 'conductor.config.json'), JSON.stringify({ branchPrefix: 'kk/' }));
+    await fs.writeFile(
+      path.join(dir, 'conductor.config.json'),
+      JSON.stringify({ branchPrefix: 'kk/' }),
+    );
     const merged = loadConfigFile(dir, DEFAULT_CONFIG);
     expect(merged.branchPrefix).toBe('kk/');
     expect(merged.models).toEqual(DEFAULT_CONFIG.models);
@@ -487,7 +526,10 @@ describe('conductor-lib: loadConfigFile — malformed conductor.config.json fail
 
   it('malformed JSON in conductor.config.json throws an Error naming the file and the parser reason, not a bare SyntaxError', async () => {
     const dir = await tmpDir();
-    await fs.writeFile(path.join(dir, 'conductor.config.json'), '{ "boardPath": "plan.json", }');
+    await fs.writeFile(
+      path.join(dir, 'conductor.config.json'),
+      '{ "boardPath": "plan.json", }',
+    );
 
     let caught;
     try {
@@ -560,7 +602,9 @@ describe('conductor-lib: Node version pin is project-configurable (W3-15 portabi
   });
 
   it('lets a project relocate the pin, or opt out entirely', () => {
-    expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: 'ui/.nvmrc' }).nvmrcPath).toBe('ui/.nvmrc');
+    expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: 'ui/.nvmrc' }).nvmrcPath).toBe(
+      'ui/.nvmrc',
+    );
     expect(mergeConfig(DEFAULT_CONFIG, { nvmrcPath: null }).nvmrcPath).toBeNull();
   });
 });
@@ -568,18 +612,30 @@ describe('conductor-lib: Node version pin is project-configurable (W3-15 portabi
 describe('conductor-lib: claimableTickets — --no-merge must terminate', () => {
   const plan = (...tickets) => ({ tickets });
   const T = (id, over = {}) => ({
-    id, title: id, lane: id.split('-')[0], status: 'todo', depends_on: [], write_scope: [], acceptance: [], ...over,
+    id,
+    title: id,
+    lane: id.split('-')[0],
+    status: 'todo',
+    depends_on: [],
+    write_scope: [],
+    acceptance: [],
+    ...over,
   });
 
   it('returns claimable tickets in id order', () => {
-    expect(claimableTickets(plan(T('S-02'), T('S-01'))).map((t) => t.id)).toEqual(['S-01', 'S-02']);
+    expect(claimableTickets(plan(T('S-02'), T('S-01'))).map((t) => t.id)).toEqual([
+      'S-01',
+      'S-02',
+    ]);
   });
 
   it('excludes a parked ticket so the run does not re-claim it forever', () => {
     const p = plan(T('S-01'), T('W8-03'));
     // The board still says todo — that is exactly the --no-merge situation.
     expect(claimableTickets(p).map((t) => t.id)).toEqual(['S-01', 'W8-03']);
-    expect(claimableTickets(p, { excluded: ['S-01'] }).map((t) => t.id)).toEqual(['W8-03']);
+    expect(claimableTickets(p, { excluded: ['S-01'] }).map((t) => t.id)).toEqual([
+      'W8-03',
+    ]);
   });
 
   it('drains to empty once every claimable ticket has been parked — the loop terminates', () => {
@@ -597,17 +653,23 @@ describe('conductor-lib: claimableTickets — --no-merge must terminate', () => 
       T('W6-01', { lane: 'busy' }),
       T('X-99', { lane: 'busy', status: 'in_progress' }),
     );
-    const got = claimableTickets(p, { waves: ['S', 'W8', 'W6'], hold: ['S-05'] }).map((t) => t.id);
+    const got = claimableTickets(p, { waves: ['S', 'W8', 'W6'], hold: ['S-05'] }).map(
+      (t) => t.id,
+    );
     expect(got).toEqual(['S-01', 'W8-03']); // S-05 held, W7 out of wave, W8-04 dep unmet, W6-01 lane busy
   });
 
   it('a satisfied dependency unblocks its dependent', () => {
-    const p = plan(T('W8-03', { status: 'done' }), T('W8-04', { lane: 'ui', depends_on: ['W8-03'] }));
+    const p = plan(
+      T('W8-03', { status: 'done' }),
+      T('W8-04', { lane: 'ui', depends_on: ['W8-03'] }),
+    );
     expect(claimableTickets(p).map((t) => t.id)).toEqual(['W8-04']);
   });
 
   it('tolerates a ticket with no depends_on field', () => {
-    const t = T('S-01'); delete t.depends_on;
+    const t = T('S-01');
+    delete t.depends_on;
     expect(claimableTickets(plan(t)).map((x) => x.id)).toEqual(['S-01']);
   });
 });
@@ -623,9 +685,15 @@ describe('conductor-lib: testSiblingWarning — a ticket must be able to write i
   });
 
   it('is quiet once the test sibling is in scope', () => {
-    expect(testSiblingWarning(
-      T(['internal/bootstrap/ha_coordinator.go', 'internal/bootstrap/ha_coordinator_test.go']), GO,
-    )).toBeNull();
+    expect(
+      testSiblingWarning(
+        T([
+          'internal/bootstrap/ha_coordinator.go',
+          'internal/bootstrap/ha_coordinator_test.go',
+        ]),
+        GO,
+      ),
+    ).toBeNull();
   });
 
   it('is quiet for a docs- or config-only ticket', () => {
@@ -633,7 +701,9 @@ describe('conductor-lib: testSiblingWarning — a ticket must be able to write i
   });
 
   it('is quiet for a test-only ticket', () => {
-    expect(testSiblingWarning(T(['internal/bootstrap/ha_coordinator_test.go']), GO)).toBeNull();
+    expect(
+      testSiblingWarning(T(['internal/bootstrap/ha_coordinator_test.go']), GO),
+    ).toBeNull();
   });
 
   it('is off entirely when the project sets no testSibling config', () => {
@@ -652,27 +722,46 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
   const M = (n, name) => `internal/db/migrations/postgres/${n}_${name}.up.sql`;
 
   it('flags two open tickets claiming the same version', () => {
-    const out = migrationCollisions([T('S-25','todo',M('000030','a')), T('W6-02','blocked',M('000030','b'))], CFG);
+    const out = migrationCollisions(
+      [T('S-25', 'todo', M('000030', 'a')), T('W6-02', 'blocked', M('000030', 'b'))],
+      CFG,
+    );
     expect(out).toHaveLength(1);
     expect(out[0]).toContain('000030');
     expect(out[0]).toContain('silently overwrite');
   });
 
   it('flags an open ticket claiming a version already on disk', () => {
-    const out = migrationCollisions([T('W5-05','todo',M('000027','x'))], CFG, ['000027']);
+    const out = migrationCollisions([T('W5-05', 'todo', M('000027', 'x'))], CFG, [
+      '000027',
+    ]);
     expect(out[0]).toContain('already exists on disk');
   });
 
   it('does NOT flag a done ticket whose migration is legitimately on disk', () => {
-    expect(migrationCollisions([T('W9-04','done',M('000027','x'))], CFG, ['000027'])).toEqual([]);
+    expect(
+      migrationCollisions([T('W9-04', 'done', M('000027', 'x'))], CFG, ['000027']),
+    ).toEqual([]);
   });
 
   it('does NOT flag several done tickets sharing a historical version', () => {
-    expect(migrationCollisions([T('S-20','done',M('000027','x')), T('W9-04','done',M('000027','y'))], CFG, ['000027'])).toEqual([]);
+    expect(
+      migrationCollisions(
+        [T('S-20', 'done', M('000027', 'x')), T('W9-04', 'done', M('000027', 'y'))],
+        CFG,
+        ['000027'],
+      ),
+    ).toEqual([]);
   });
 
   it('is quiet when every open ticket has its own free version', () => {
-    expect(migrationCollisions([T('A-1','todo',M('000033','a')), T('B-2','todo',M('000034','b'))], CFG, ['000029'])).toEqual([]);
+    expect(
+      migrationCollisions(
+        [T('A-1', 'todo', M('000033', 'a')), T('B-2', 'todo', M('000034', 'b'))],
+        CFG,
+        ['000029'],
+      ),
+    ).toEqual([]);
   });
 
   // Regression, Kryptkeeper 2026-07-29: the rule keyed only on the version number,
@@ -682,7 +771,10 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
   // dangerous when it resolves to more than one distinct migration FILE.
   it('does NOT flag two tickets that share one migration file (same version, same name)', () => {
     const out = migrationCollisions(
-      [T('W9-04','todo',M('000027','ca_key_rotations')), T('S-20','todo',M('000027','ca_key_rotations'))],
+      [
+        T('W9-04', 'todo', M('000027', 'ca_key_rotations')),
+        T('S-20', 'todo', M('000027', 'ca_key_rotations')),
+      ],
       CFG,
     );
     expect(out).toEqual([]);
@@ -690,7 +782,10 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
 
   it('still flags two tickets at one version when the filenames differ', () => {
     const out = migrationCollisions(
-      [T('W9-04','todo',M('000027','ca_key_rotations')), T('S-20','todo',M('000027','something_else'))],
+      [
+        T('W9-04', 'todo', M('000027', 'ca_key_rotations')),
+        T('S-20', 'todo', M('000027', 'something_else')),
+      ],
       CFG,
     );
     expect(out).toHaveLength(1);
@@ -702,27 +797,44 @@ describe('conductor-lib: migrationCollisions — two tickets must not share a ve
       `internal/db/migrations/postgres/${n}_${name}.up.sql`,
       `internal/db/migrations/postgres/${n}_${name}.down.sql`,
     ];
-    expect(migrationCollisions([T('A-1','todo',...pair('000030','a'))], CFG)).toEqual([]);
+    expect(migrationCollisions([T('A-1', 'todo', ...pair('000030', 'a'))], CFG)).toEqual(
+      [],
+    );
   });
 
   it('ignores non-migration paths and is off without config', () => {
-    expect(migrationCollisions([T('A-1','todo','internal/x.go')], CFG)).toEqual([]);
-    expect(migrationCollisions([T('A-1','todo',M('000030','a')), T('B','todo',M('000030','b'))], null)).toEqual([]);
+    expect(migrationCollisions([T('A-1', 'todo', 'internal/x.go')], CFG)).toEqual([]);
+    expect(
+      migrationCollisions(
+        [T('A-1', 'todo', M('000030', 'a')), T('B', 'todo', M('000030', 'b'))],
+        null,
+      ),
+    ).toEqual([]);
   });
 });
 
 describe('conductor-lib: migrationScopeWarning — a schema-change ticket must scope its own migration (W11-08)', () => {
   const CFG = {
-    trigger: '\\b(new|adds?|adding|added|creates?|creating)\\b[\\s\\S]{0,60}\\b(column|table)\\b|\\b(column|table)\\b[\\s\\S]{0,60}\\b(new|adds?|adding|added|creates?|creating)\\b',
+    trigger:
+      '\\b(new|adds?|adding|added|creates?|creating)\\b[\\s\\S]{0,60}\\b(column|table)\\b|\\b(column|table)\\b[\\s\\S]{0,60}\\b(new|adds?|adding|added|creates?|creating)\\b',
     dir: '^packages/events/migrations/',
   };
-  const T = (status, scope, acceptance) => ({ id: 'W10-68', status, write_scope: scope, acceptance });
+  const T = (status, scope, acceptance) => ({
+    id: 'W10-68',
+    status,
+    write_scope: scope,
+    acceptance,
+  });
 
   // The W10-68 shape: a synthetic ticket whose acceptance demands a new
   // column, scoped to application files only.
   it('warns when acceptance demands a schema change but no migrations glob is in scope', () => {
     const w = migrationScopeWarning(
-      T('todo', ['apps/server/src/api/pipeline/model-resolution.ts'], ['add a `provider_id` column to model_matrix']),
+      T(
+        'todo',
+        ['apps/server/src/api/pipeline/model-resolution.ts'],
+        ['add a `provider_id` column to model_matrix'],
+      ),
       CFG,
     );
     expect(w).toContain('W10-68');
@@ -730,32 +842,50 @@ describe('conductor-lib: migrationScopeWarning — a schema-change ticket must s
   });
 
   it('is quiet once a migrations glob is added to the same ticket', () => {
-    expect(migrationScopeWarning(
-      T('todo', [
-        'apps/server/src/api/pipeline/model-resolution.ts',
-        'packages/events/migrations/*model_matrix*',
-      ], ['add a `provider_id` column to model_matrix']),
-      CFG,
-    )).toBeNull();
+    expect(
+      migrationScopeWarning(
+        T(
+          'todo',
+          [
+            'apps/server/src/api/pipeline/model-resolution.ts',
+            'packages/events/migrations/*model_matrix*',
+          ],
+          ['add a `provider_id` column to model_matrix'],
+        ),
+        CFG,
+      ),
+    ).toBeNull();
   });
 
   it('is quiet for a done ticket in the first (unscoped) shape', () => {
-    expect(migrationScopeWarning(
-      T('done', ['apps/server/src/api/pipeline/model-resolution.ts'], ['add a `provider_id` column to model_matrix']),
-      CFG,
-    )).toBeNull();
+    expect(
+      migrationScopeWarning(
+        T(
+          'done',
+          ['apps/server/src/api/pipeline/model-resolution.ts'],
+          ['add a `provider_id` column to model_matrix'],
+        ),
+        CFG,
+      ),
+    ).toBeNull();
   });
 
   it('is quiet when acceptance mentions neither a new column nor a new table', () => {
-    expect(migrationScopeWarning(
-      T('todo', ['apps/server/src/api/foo.ts'], ['fix the retry backoff timer']),
-      CFG,
-    )).toBeNull();
+    expect(
+      migrationScopeWarning(
+        T('todo', ['apps/server/src/api/foo.ts'], ['fix the retry backoff timer']),
+        CFG,
+      ),
+    ).toBeNull();
   });
 
   it('is off entirely when the project sets no migrationScope config', () => {
-    expect(migrationScopeWarning(T('todo', ['x.ts'], ['add a new column']), null)).toBeNull();
-    expect(migrationScopeWarning(T('todo', ['x.ts'], ['add a new column']), {})).toBeNull();
+    expect(
+      migrationScopeWarning(T('todo', ['x.ts'], ['add a new column']), null),
+    ).toBeNull();
+    expect(
+      migrationScopeWarning(T('todo', ['x.ts'], ['add a new column']), {}),
+    ).toBeNull();
   });
 
   it('handles a ticket with no acceptance or write_scope', () => {
@@ -765,7 +895,7 @@ describe('conductor-lib: migrationScopeWarning — a schema-change ticket must s
 
 describe('conductor-lib: reviewDecision — a FIX verdict with no blockers must not spin', () => {
   const HIGH = { severity: 'HIGH', file: 'a.ts', issue: 'boom', fix: 'do x' };
-  const MED  = { severity: 'MEDIUM', file: 'b.ts', issue: 'meh', fix: 'maybe' };
+  const MED = { severity: 'MEDIUM', file: 'b.ts', issue: 'meh', fix: 'maybe' };
 
   // Kryptkeeper S-30, 2026-07-29: reviewer returned FIX, raised nothing above
   // MEDIUM, so blockers came out empty. The loop retried the agent with an empty
@@ -794,7 +924,11 @@ describe('conductor-lib: reviewDecision — a FIX verdict with no blockers must 
   });
 
   it('still blocks on a prior finding the reviewer marks STILL PRESENT, even on APPROVE', () => {
-    const d = reviewDecision({ verdict: 'APPROVE', findings: [], prior_status: [{ status: 'PRESENT', finding: 'old leak', evidence: 'line 9' }] });
+    const d = reviewDecision({
+      verdict: 'APPROVE',
+      findings: [],
+      prior_status: [{ status: 'PRESENT', finding: 'old leak', evidence: 'line 9' }],
+    });
     expect(d.approve).toBe(false);
     expect(d.blockers[0]).toContain('STILL-PRESENT');
   });
@@ -870,41 +1004,69 @@ describe('conductor-lib: pageMountWarning — a new UI page must be mountable', 
   // both blocked for the same reason. The first fix lived in a note, so it
   // taught nobody and the second ticket repeated it.
   it('flags a lone page file with no route or nav', () => {
-    const w = pageMountWarning({ id: 'W8-07', write_scope: ['ui/src/pages/RenewalPolicy.tsx'] }, CFG);
+    const w = pageMountWarning(
+      { id: 'W8-07', write_scope: ['ui/src/pages/RenewalPolicy.tsx'] },
+      CFG,
+    );
     expect(w).toContain('ui/src/App.tsx');
     expect(w).toContain('ui/src/lib/nav.ts');
   });
 
   it('is silent once route and nav are in scope', () => {
-    expect(pageMountWarning({
-      id: 'W8-07',
-      write_scope: ['ui/src/pages/RenewalPolicy.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
-    }, CFG)).toBeNull();
+    expect(
+      pageMountWarning(
+        {
+          id: 'W8-07',
+          write_scope: [
+            'ui/src/pages/RenewalPolicy.tsx',
+            'ui/src/App.tsx',
+            'ui/src/lib/nav.ts',
+          ],
+        },
+        CFG,
+      ),
+    ).toBeNull();
   });
 
   it('additionally demands the API client when the page writes', () => {
-    const w = pageMountWarning({
-      id: 'W8-07',
-      write_scope: ['ui/src/pages/RenewalPolicy.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
-      acceptance: ['set auto-renew threshold per target in-app'],
-    }, CFG);
+    const w = pageMountWarning(
+      {
+        id: 'W8-07',
+        write_scope: [
+          'ui/src/pages/RenewalPolicy.tsx',
+          'ui/src/App.tsx',
+          'ui/src/lib/nav.ts',
+        ],
+        acceptance: ['set auto-renew threshold per target in-app'],
+      },
+      CFG,
+    );
     expect(w).toContain('ui/src/lib/api.ts');
   });
 
   it('does not demand the API client for a read-only page', () => {
-    expect(pageMountWarning({
-      id: 'X-1',
-      write_scope: ['ui/src/pages/Report.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
-      acceptance: ['renders a chart of issuance over time'],
-    }, CFG)).toBeNull();
+    expect(
+      pageMountWarning(
+        {
+          id: 'X-1',
+          write_scope: ['ui/src/pages/Report.tsx', 'ui/src/App.tsx', 'ui/src/lib/nav.ts'],
+          acceptance: ['renders a chart of issuance over time'],
+        },
+        CFG,
+      ),
+    ).toBeNull();
   });
 
   it('ignores a ticket that touches no page', () => {
-    expect(pageMountWarning({ id: 'S-34', write_scope: ['internal/bootstrap/auth.go'] }, CFG)).toBeNull();
+    expect(
+      pageMountWarning({ id: 'S-34', write_scope: ['internal/bootstrap/auth.go'] }, CFG),
+    ).toBeNull();
   });
 
   it('is off when the project sets no config, and survives a scopeless ticket', () => {
-    expect(pageMountWarning({ id: 'X', write_scope: ['ui/src/pages/A.tsx'] }, null)).toBeNull();
+    expect(
+      pageMountWarning({ id: 'X', write_scope: ['ui/src/pages/A.tsx'] }, null),
+    ).toBeNull();
     expect(pageMountWarning({ id: 'X' }, CFG)).toBeNull();
   });
 });
@@ -919,28 +1081,44 @@ describe('conductor-lib: pageMountWarning — must not cry wolf', () => {
   // The rule fired on 12 Kryptkeeper tickets on first run, nearly all of them
   // editing an EXISTING page (which needs no route or nav) or already done.
   it('is silent for a ticket editing a page that already exists', () => {
-    expect(pageMountWarning({
-      id: 'W3-02',
-      status: 'todo',
-      write_scope: ['ui/src/pages/CryptoPosture.tsx'],
-    }, CFG, ON_DISK)).toBeNull();
+    expect(
+      pageMountWarning(
+        {
+          id: 'W3-02',
+          status: 'todo',
+          write_scope: ['ui/src/pages/CryptoPosture.tsx'],
+        },
+        CFG,
+        ON_DISK,
+      ),
+    ).toBeNull();
   });
 
   it('still flags a genuinely new page alongside an edited one', () => {
-    const w = pageMountWarning({
-      id: 'X-1',
-      status: 'todo',
-      write_scope: ['ui/src/pages/CryptoPosture.tsx', 'ui/src/pages/Brand.tsx'],
-    }, CFG, ON_DISK);
+    const w = pageMountWarning(
+      {
+        id: 'X-1',
+        status: 'todo',
+        write_scope: ['ui/src/pages/CryptoPosture.tsx', 'ui/src/pages/Brand.tsx'],
+      },
+      CFG,
+      ON_DISK,
+    );
     expect(w).toContain('ui/src/App.tsx');
   });
 
   it('is silent for a done ticket regardless', () => {
-    expect(pageMountWarning({
-      id: 'W8-02',
-      status: 'done',
-      write_scope: ['ui/src/pages/Totally.tsx'],
-    }, CFG, [])).toBeNull();
+    expect(
+      pageMountWarning(
+        {
+          id: 'W8-02',
+          status: 'done',
+          write_scope: ['ui/src/pages/Totally.tsx'],
+        },
+        CFG,
+        [],
+      ),
+    ).toBeNull();
   });
 });
 
@@ -956,8 +1134,9 @@ describe('conductor-lib: boardUnreadableGap — a vanished worktree fails the ti
   });
 
   it('says explicitly that this is a ticket failure, not a run failure', () => {
-    expect(boardUnreadableGap('plan.json', new Error('boom')))
-      .toContain('not a run failure');
+    expect(boardUnreadableGap('plan.json', new Error('boom'))).toContain(
+      'not a run failure',
+    );
   });
 
   it('is distinguishable from doneCheckGap, which means something different', () => {
@@ -983,21 +1162,29 @@ describe('conductor-lib: testSiblingWarning — per-file, not "any test anywhere
   // integration test passed clean while neither impl file could get a sibling.
   // The agent found it by hitting it.
   it('flags impl files whose directory has no scoped test, despite a test elsewhere in scope', () => {
-    const w = testSiblingWarning({
-      id: 'S-05',
-      write_scope: [
-        'cmd/kryptkeeper-agent/installers/iis.go',
-        'cmd/kryptkeeper-agent/installers/haproxy.go',
-        'tests/integration/apache_e2e_test.go',
-      ],
-    }, GO);
+    const w = testSiblingWarning(
+      {
+        id: 'S-05',
+        write_scope: [
+          'cmd/kryptkeeper-agent/installers/iis.go',
+          'cmd/kryptkeeper-agent/installers/haproxy.go',
+          'tests/integration/apache_e2e_test.go',
+        ],
+      },
+      GO,
+    );
     expect(w).toContain('iis.go');
     expect(w).toContain('haproxy.go');
     expect(w).not.toContain('apache_e2e_test.go');
   });
 
   it('is silent for a proper sibling', () => {
-    expect(testSiblingWarning({ id: 'X', write_scope: ['internal/a/foo.go', 'internal/a/foo_test.go'] }, GO)).toBeNull();
+    expect(
+      testSiblingWarning(
+        { id: 'X', write_scope: ['internal/a/foo.go', 'internal/a/foo_test.go'] },
+        GO,
+      ),
+    ).toBeNull();
   });
 
   // Deliberately looser than exact-sibling naming: Go allows package-level test
@@ -1005,17 +1192,29 @@ describe('conductor-lib: testSiblingWarning — per-file, not "any test anywhere
   // would warn on legitimate layouts — the false-positive trap that got
   // pageMountWarning narrowed.
   it('accepts one package-level test covering several impl files in the same directory', () => {
-    expect(testSiblingWarning({
-      id: 'Y',
-      write_scope: ['internal/a/foo.go', 'internal/a/bar.go', 'internal/a/pkg_test.go'],
-    }, GO)).toBeNull();
+    expect(
+      testSiblingWarning(
+        {
+          id: 'Y',
+          write_scope: [
+            'internal/a/foo.go',
+            'internal/a/bar.go',
+            'internal/a/pkg_test.go',
+          ],
+        },
+        GO,
+      ),
+    ).toBeNull();
   });
 
   it('flags only the uncovered directory when scope spans two', () => {
-    const w = testSiblingWarning({
-      id: 'Z',
-      write_scope: ['internal/a/foo.go', 'internal/a/foo_test.go', 'internal/b/bar.go'],
-    }, GO);
+    const w = testSiblingWarning(
+      {
+        id: 'Z',
+        write_scope: ['internal/a/foo.go', 'internal/a/foo_test.go', 'internal/b/bar.go'],
+      },
+      GO,
+    );
     expect(w).toContain('internal/b/bar.go');
     expect(w).not.toContain('internal/a/foo.go');
   });
@@ -1026,10 +1225,20 @@ describe('conductor-lib: testSiblingWarning — silent on settled tickets', () =
   // 27 of 29 warnings on Kryptkeeper's board were on done tickets. Noise that
   // buries the two actionable ones is how a linter stops being read.
   it('is silent for a done ticket', () => {
-    expect(testSiblingWarning({ id: 'W1-04', status: 'done', write_scope: ['internal/a/foo.go'] }, GO)).toBeNull();
+    expect(
+      testSiblingWarning(
+        { id: 'W1-04', status: 'done', write_scope: ['internal/a/foo.go'] },
+        GO,
+      ),
+    ).toBeNull();
   });
   it('still warns for an open one', () => {
-    expect(testSiblingWarning({ id: 'W5-12', status: 'todo', write_scope: ['internal/a/foo.go'] }, GO)).toContain('foo.go');
+    expect(
+      testSiblingWarning(
+        { id: 'W5-12', status: 'todo', write_scope: ['internal/a/foo.go'] },
+        GO,
+      ),
+    ).toContain('foo.go');
   });
 });
 
@@ -1055,11 +1264,17 @@ describe('conductor chapter split (W10-46)', () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     const scripts = path.join(root, 'scripts');
     const over = [];
-    for (const dir of [scripts, path.join(scripts, 'conductor'), path.join(scripts, 'conductor-lib')]) {
+    for (const dir of [
+      scripts,
+      path.join(scripts, 'conductor'),
+      path.join(scripts, 'conductor-lib'),
+    ]) {
       // Same exemption the real validator applies (validate-file-size.sh:46
       // excludes `*.test.*`), rather than a rule invented here — this very
       // file is over the cap and is legitimately exempt.
-      for (const f of readdirSync(dir).filter((n) => n.endsWith('.mjs') && !n.includes('.test.'))) {
+      for (const f of readdirSync(dir).filter(
+        (n) => n.endsWith('.mjs') && !n.includes('.test.'),
+      )) {
         const full = path.join(dir, f);
         const lines = readFileSync(full, 'utf8').split('\n').length;
         if (lines > 400) over.push(`${path.relative(root, full)} (${lines})`);
@@ -1076,7 +1291,8 @@ describe('conductor chapter split (W10-46)', () => {
 describe('repo-wide validator scoping (W10-49)', () => {
   const scratchDirs = [];
   afterEach(async () => {
-    for (const dir of scratchDirs.splice(0)) await fs.rm(dir, { recursive: true, force: true });
+    for (const dir of scratchDirs.splice(0))
+      await fs.rm(dir, { recursive: true, force: true });
   });
 
   // Drives the REAL runValidators from scripts/conductor/session.mjs, against a
@@ -1101,7 +1317,8 @@ describe('repo-wide validator scoping (W10-49)', () => {
     // 450 lines: over the 400 cap, and NOT in the ticket's changed list below.
     await fs.writeFile(
       path.join(dir, 'src', 'untouched-by-this-ticket.ts'),
-      Array.from({ length: 450 }, (_, i) => `export const v${i} = ${i};`).join('\n') + '\n',
+      Array.from({ length: 450 }, (_, i) => `export const v${i} = ${i};`).join('\n') +
+        '\n',
     );
     return dir;
   }
@@ -1143,7 +1360,9 @@ describe('repo-wide validator scoping (W10-49)', () => {
   }, 30_000);
 
   it('the real config opts in file-size and ONLY file-size, and records why', () => {
-    const cfg = JSON.parse(readFileSync(path.join(repoRoot, 'conductor.config.json'), 'utf8'));
+    const cfg = JSON.parse(
+      readFileSync(path.join(repoRoot, 'conductor.config.json'), 'utf8'),
+    );
     expect(cfg.validators.repoWide).toEqual(['validate-file-size']);
     expect(cfg.validators.gate).toContain('validate-file-size');
     // A future reader inheriting a red gate needs the invariant it rests on.
@@ -1222,7 +1441,9 @@ describe('the two write_scope glob dialects agree (W10-53)', () => {
       const enforcer = globToRegex(glob).test(target);
       const validator = globOverlaps(glob, target);
       if (enforcer !== validator) {
-        diverged.push(`${glob} vs ${target}: enforcer=${enforcer} boardValidator=${validator}`);
+        diverged.push(
+          `${glob} vs ${target}: enforcer=${enforcer} boardValidator=${validator}`,
+        );
       }
     }
     expect(diverged).toEqual([]);
@@ -1238,13 +1459,23 @@ describe('the two write_scope glob dialects agree (W10-53)', () => {
     // `apps/web/src/styles.css`, and each silently worked around it by listing
     // that file explicitly. An enforcement boundary narrower than it reads is
     // the dangerous direction — it trains operators to widen scopes by hand.
-    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/styles.css')).toBe(true);
+    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/styles.css')).toBe(
+      true,
+    );
     // …without over-widening: still one segment deep, still extension-bound,
     // still anchored at the start.
-    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/board/board.css')).toBe(true);
-    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/a/b/c.css')).toBe(true);
-    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/board/board.tsx')).toBe(false);
-    expect(globToRegex('apps/web/src/**/*.css').test('other/apps/web/src/x.css')).toBe(false);
+    expect(
+      globToRegex('apps/web/src/**/*.css').test('apps/web/src/board/board.css'),
+    ).toBe(true);
+    expect(globToRegex('apps/web/src/**/*.css').test('apps/web/src/a/b/c.css')).toBe(
+      true,
+    );
+    expect(
+      globToRegex('apps/web/src/**/*.css').test('apps/web/src/board/board.tsx'),
+    ).toBe(false);
+    expect(globToRegex('apps/web/src/**/*.css').test('other/apps/web/src/x.css')).toBe(
+      false,
+    );
     // `?` still means exactly one non-separator character. The fix reorders the
     // `?` expansion, so this is the case that would break if it regressed.
     expect(globToRegex('a/?/c.ts').test('a/b/c.ts')).toBe(true);
@@ -1284,7 +1515,9 @@ describe('the two write_scope glob dialects agree (W10-53)', () => {
         const enforcer = globToRegex(glob).test(target);
         const validator = globOverlaps(glob, target);
         if (enforcer !== validator) {
-          diverged.push(`${glob} vs ${target}: enforcer=${enforcer} boardValidator=${validator}`);
+          diverged.push(
+            `${glob} vs ${target}: enforcer=${enforcer} boardValidator=${validator}`,
+          );
         }
       }
     }
@@ -1309,7 +1542,8 @@ describe('isInfraFailure (P0-02)', () => {
       'Command timed out after 2700000ms',
       'request rate limit exceeded, retry later',
       'server overloaded (529)',
-    ]) expect(isInfraFailure(new Error(msg)), msg).toBe(true);
+    ])
+      expect(isInfraFailure(new Error(msg)), msg).toBe(true);
   });
 
   it('never classifies executor code defects as infra — those must fail loud', () => {
@@ -1318,7 +1552,8 @@ describe('isInfraFailure (P0-02)', () => {
       'testSiblingWarning is not defined',
       "Cannot read properties of undefined (reading 'status')",
       'Command failed: git merge --no-ff -q -m Merge sw/w4-01',
-    ]) expect(isInfraFailure(new Error(msg)), msg).toBe(false);
+    ])
+      expect(isInfraFailure(new Error(msg)), msg).toBe(false);
   });
 
   it('infraGap names the class greppably and states the zero-attempt rule', () => {
@@ -1337,7 +1572,10 @@ describe('P0-02 regression pins', () => {
     for (const [input, want] of [
       ['a string note', ['a string note']],
       [undefined, []],
-      [['already', 'array'], ['already', 'array']],
+      [
+        ['already', 'array'],
+        ['already', 'array'],
+      ],
     ]) {
       const row = { notes: input };
       if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
@@ -1349,9 +1587,94 @@ describe('P0-02 regression pins', () => {
 
   it('lintPlan reaches testSiblingWarning through the real import path', async () => {
     const { lintPlan } = await import('./conductor/lint.mjs');
-    const { warnings } = lintPlan({ tickets: [{ id: 'X-1', title: 't', lane: 'l', status: 'todo', depends_on: [], acceptance: ['a'], write_scope: ['packages/foo/src/thing.ts'] }] });
+    const { warnings } = lintPlan({
+      tickets: [
+        {
+          id: 'X-1',
+          title: 't',
+          lane: 'l',
+          status: 'todo',
+          depends_on: [],
+          acceptance: ['a'],
+          write_scope: ['packages/foo/src/thing.ts'],
+        },
+      ],
+    });
     // testSibling config demands a test beside source edits — the warning
     // firing proves the function resolved through the barrel (no ReferenceError).
     expect(Array.isArray(warnings)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// P2-04 — six terminal states with separate budgets (Law L6). RED provenance:
+// pre-ticket every non-landing ticket ended in one overloaded 'blocked', and
+// the founding incident's ticket "exhausted" on a red baseline it never caused.
+import { TERMINAL_STATES, classifyTerminal, terminalNote } from './conductor-lib.mjs';
+
+describe('TERMINAL_STATES + classifyTerminal (P2-04)', () => {
+  it('exactly six states; only the two code-side ones consume the budget', () => {
+    expect(Object.keys(TERMINAL_STATES).sort()).toEqual([
+      'blocked_on_baseline',
+      'blocked_on_infrastructure',
+      'blocked_on_scope',
+      'code_attempts_exhausted',
+      'provider_attempts_exhausted',
+      'review_fix_iterations_exhausted',
+    ]);
+    const consuming = Object.entries(TERMINAL_STATES)
+      .filter(([, v]) => v.consumesBudget)
+      .map(([k]) => k)
+      .sort();
+    expect(consuming).toEqual([
+      'code_attempts_exhausted',
+      'review_fix_iterations_exhausted',
+    ]);
+  });
+
+  it('provider exhaustion outranks everything — a coder retry cannot fix the provider', () => {
+    expect(
+      classifyTerminal({
+        providerExhausted: true,
+        diffClassification: 'blocked_on_baseline',
+      }),
+    ).toBe('provider_attempts_exhausted');
+  });
+
+  it('the differential verdict routes to blocked_on_baseline', () => {
+    expect(
+      classifyTerminal({ diffClassification: 'blocked_on_baseline', gaps: ['x'] }),
+    ).toBe('blocked_on_baseline');
+  });
+
+  it('an infra gap routes to blocked_on_infrastructure', () => {
+    expect(
+      classifyTerminal({ gaps: ['blocked_on_infrastructure: ENOSPC — environmental'] }),
+    ).toBe('blocked_on_infrastructure');
+  });
+
+  it('pure scope-wall gaps route to blocked_on_scope', () => {
+    expect(classifyTerminal({ gaps: ['out-of-scope edits: apps/web/src/a.tsx'] })).toBe(
+      'blocked_on_scope',
+    );
+  });
+
+  it('a review-exhausted ladder spends the REVIEW budget, not the code budget', () => {
+    expect(classifyTerminal({ reviewExhausted: true, gaps: ['[HIGH] x: y'] })).toBe(
+      'review_fix_iterations_exhausted',
+    );
+  });
+
+  it('the default is code_attempts_exhausted — the only honest fallback', () => {
+    expect(classifyTerminal({ gaps: ['pnpm test failed: real candidate defect'] })).toBe(
+      'code_attempts_exhausted',
+    );
+  });
+
+  it('terminalNote marks non-budget states as consuming no retry budget', () => {
+    expect(terminalNote('blocked_on_baseline')).toContain(
+      'consumed no implementation retry budget',
+    );
+    expect(terminalNote('code_attempts_exhausted')).not.toContain('consumed no');
   });
 });

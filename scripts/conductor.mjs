@@ -214,7 +214,7 @@ async function main() {
     } catch (e) {
       if (!isInfraFailure(e)) throw e; // genuine executor defect: fail loud, fix the executor
       log('ticket.infra', { ticket: next.id, msg: infraGap(e) });
-      markBlocked(next, [infraGap(e)], null, null);
+      markBlocked(next, [infraGap(e)], null, null, 'blocked_on_infrastructure');
       log('ticket.blocked', { ticket: next.id });
       if (lastWasInfra) {
         log('conductor.stop', {
@@ -235,7 +235,13 @@ async function main() {
         break;
       }
     } else {
-      markBlocked(next, res.gaps ?? ['unknown'], res.branch, res.wt);
+      markBlocked(
+        next,
+        res.gaps ?? ['unknown'],
+        res.branch,
+        res.wt,
+        res.terminal ?? null,
+      );
       log('ticket.blocked', { ticket: next.id });
     }
   }

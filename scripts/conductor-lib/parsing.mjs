@@ -4,7 +4,6 @@
 // behaviour. scripts/conductor-lib.mjs remains the barrel every caller imports,
 // so no call site moved.
 
-
 // ---------- misc pure helpers ----------
 export const wave = (id) => id.split('-')[0];
 
@@ -89,9 +88,20 @@ export function parseJson(text) {
  * executor defect should stop the process.
  */
 const INFRA_PATTERNS = [
-  /ENOBUFS/, /ENOSPC/, /ENOMEM/, /EAGAIN/, /ETIMEDOUT/, /ECONNRESET/, /ECONNREFUSED/, /EPIPE/,
-  /spawnSync .* ETIMEDOUT/, /timed? ?out/i, /SIGKILL|SIGTERM/,
-  /rate.?limit/i, /overloaded/i, /529|503/,
+  /ENOBUFS/,
+  /ENOSPC/,
+  /ENOMEM/,
+  /EAGAIN/,
+  /ETIMEDOUT/,
+  /ECONNRESET/,
+  /ECONNREFUSED/,
+  /EPIPE/,
+  /spawnSync .* ETIMEDOUT/,
+  /timed? ?out/i,
+  /SIGKILL|SIGTERM/,
+  /rate.?limit/i,
+  /overloaded/i,
+  /529|503/,
 ];
 export function isInfraFailure(err) {
   const msg = String(err?.message ?? err ?? '');
@@ -101,4 +111,49 @@ export function isInfraFailure(err) {
 /** The gap string an infra event records on the board — greppable class prefix. */
 export function infraGap(err) {
   return `blocked_on_infrastructure: ${String(err?.message ?? err).slice(0, 500)} — environmental; consumed no coding attempt (L6)`;
+}
+
+/**
+ * P2-04 (Law L6): the six terminal states that replace the overloaded
+ * `exhausted`. Only the first two consume the feature's implementation retry
+ * budget — every other terminal reason names an actor a coding retry cannot
+ * substitute for (the repo's base, the machine, the provider, the scope).
+ */
+export const TERMINAL_STATES = Object.freeze({
+  code_attempts_exhausted: { consumesBudget: true },
+  review_fix_iterations_exhausted: { consumesBudget: true },
+  blocked_on_baseline: { consumesBudget: false },
+  blocked_on_infrastructure: { consumesBudget: false },
+  provider_attempts_exhausted: { consumesBudget: false },
+  blocked_on_scope: { consumesBudget: false },
+});
+
+/**
+ * Classify why a ticket ended without landing. Deterministic and total: every
+ * input maps to exactly one state, most-specific first. `gaps` is the final
+ * gap ledger; the flags come from the attempt loop's own bookkeeping.
+ */
+export function classifyTerminal({
+  gaps = [],
+  diffClassification = null,
+  providerExhausted = false,
+  reviewExhausted = false,
+  selfBlocked = false,
+} = {}) {
+  if (providerExhausted) return 'provider_attempts_exhausted';
+  if (diffClassification === 'blocked_on_baseline') return 'blocked_on_baseline';
+  const text = gaps.join('\n');
+  if (/blocked_on_infrastructure/.test(text)) return 'blocked_on_infrastructure';
+  if (gaps.length && gaps.every((g) => /^out-of-scope edits:/.test(g)))
+    return 'blocked_on_scope';
+  if (selfBlocked && /outside .*scope|write[_-]scope|out-of-scope/i.test(text))
+    return 'blocked_on_scope';
+  if (reviewExhausted) return 'review_fix_iterations_exhausted';
+  return 'code_attempts_exhausted';
+}
+
+/** Board-note prefix for a terminal state — greppable, budget-honest. */
+export function terminalNote(state) {
+  const meta = TERMINAL_STATES[state] ?? { consumesBudget: true };
+  return `[${state}]${meta.consumesBudget ? '' : ' (consumed no implementation retry budget)'}`;
 }

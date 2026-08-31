@@ -8,6 +8,7 @@ import {
   codingPrompt,
   reviewDecision,
   globToRegex,
+  classifyTerminal,
 } from '../conductor-lib.mjs';
 import {
   CONFIG,
@@ -38,13 +39,42 @@ export async function executeTicket(t) {
   // reviewer instance fails to re-mention it — the harness analogue of the Challenger gate.
   const sticky = [];
   let mechanicalTried = false; // P2-03: one bounded pass per ticket, never more
+  // P2-04 terminal bookkeeping — WHY the ladder ended decides which budget
+  // (if any) was spent; the states and their budget semantics live in
+  // conductor-lib/parsing.mjs TERMINAL_STATES.
+  let lastDiffClass = null;
+  let lastWasReview = false;
+  let lastSelfBlocked = false;
   for (let i = 0; i < attempts.length; i++) {
     const model = attempts[i];
     if (i > 0) {
       log('ticket.retry', { ticket: t.id, msg: `attempt ${i + 1} on ${model}` });
       resetStatus(wt, t.id);
     }
-    await runSession(codingPrompt(t, gaps, CONFIG.boardPath), model, `code:${t.id}`, wt);
+    try {
+      await runSession(
+        codingPrompt(t, gaps, CONFIG.boardPath),
+        model,
+        `code:${t.id}`,
+        wt,
+      );
+    } catch (e) {
+      // P2-04: the session runner already spent ITS OWN retry budget (12
+      // limit-pauses). Exhausting it is a provider event, not feature-code
+      // failure — never launch a second feature coding attempt for it.
+      if (/limit retries exhausted/.test(String(e.message))) {
+        return {
+          ok: false,
+          branch,
+          wt,
+          terminal: 'provider_attempts_exhausted',
+          gaps: [
+            `provider_attempts_exhausted: ${e.message} after the session runner's own retry budget — no coding attempt consumed`,
+          ],
+        };
+      }
+      throw e; // STOP file / infra: the main loop's classifier owns it
+    }
     let g = runGates(t, branch, wt);
     // P2-03 — bounded mechanical remediation, ONCE per ticket: when every
     // failed verify command has an approved autofix and the failure is not
@@ -88,7 +118,10 @@ export async function executeTicket(t) {
       }
     }
     gaps = g.gaps;
+    lastDiffClass = g.diff?.classification ?? null;
+    lastWasReview = false;
     if (g.selfBlocked) {
+      lastSelfBlocked = true;
       // Deliberate, not a failure: stop the attempt ladder and let markBlocked
       // record it. The agent's own reasoning is already committed to the branch.
       log('ticket.selfblocked', {
@@ -219,13 +252,21 @@ export async function executeTicket(t) {
       msg: `${blockers.length} blocker(s): ${currentHigh.length} new + ${presentPriors.length} still-present`,
     });
     gaps = blockers;
+    lastWasReview = true; // P2-04: an exhausted ladder ending here is review-budget spend
   }
   // Block with the last pass's real blockers; if none captured, fall back to the sticky-seen list.
   const ledger =
     gaps && gaps.length
       ? gaps
       : sticky.map((s) => `[${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
-  return { ok: false, branch, wt, gaps: ledger };
+  const terminal = classifyTerminal({
+    gaps: ledger,
+    diffClassification: lastDiffClass,
+    reviewExhausted: lastWasReview,
+    selfBlocked: lastSelfBlocked,
+  });
+  log('ticket.terminal', { ticket: t.id, msg: terminal });
+  return { ok: false, branch, wt, gaps: ledger, terminal };
 }
 
 // Reset ticket status to in_progress IN THE WORKTREE (on the branch) so a stale

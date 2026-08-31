@@ -194,7 +194,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. TERMINAL_STATES (6, frozen) + classifyTerminal + terminalNote in conductor-lib/parsing.mjs; only code_attempts_exhausted and review_fix_iterations_exhausted consume the implementation budget. ticket.mjs: provider exhaustion caught at the coding session (runSession already spent its own 12-pause budget — never a second feature attempt), review-vs-gates bookkeeping, terminal in the return + ticket.terminal log row. land.mjs: row.terminal field + terminalNote leads the board note; conductor.mjs passes it through, infra path stamps blocked_on_infrastructure. Candidate branch preservation unchanged (blocked/<id> rename survives every non-success state). 8 tests. Full gate 4855 green (first run: unused-import lint from a silently no-opped replace — fixed, re-gated)."
     },
     {
       "id": "P2-05",
