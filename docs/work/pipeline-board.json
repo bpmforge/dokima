@@ -108,8 +108,8 @@
         "A human flips this ticket to done — it is never claimable by the conductor (listed in conductor.config.json holdTickets while this board is active)"
       ],
       "points": 1,
-      "status": "todo",
-      "notes": "HOLD: human-only. This is the plan's hard ordering constraint — executor wave-gate work (P3) must not precede policy."
+      "status": "done",
+      "notes": "FLIPPED BY FOUNDER 2026-08-31 ('flip it', in-session authorization). Precondition satisfied: Group P A-wave (A1-A15) IMPLEMENTED and merged — attest main @ 7f96db9 (v3.5.4 + A-wave; 664 tests, agents:check + fixture check clean), attest-claude regenerated @ 01f0605, both repos on both remotes. DoD legalization (P-A2) + advisory-LLM policy (P-A8) landed, so the P3 wave gate is policy-backed, not a bypass."
     },
     {
       "id": "P2-01",
