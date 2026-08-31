@@ -15342,7 +15342,7 @@
       "id": "W22-27",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15354,19 +15354,58 @@
       "write_scope": [
         "apps/server/src/api/server/runs-routes.ts",
         "apps/server/src/cli/memory-hooks.ts",
-        "apps/server/src/cli/memory-hooks.test.ts"
+        "apps/server/src/cli/memory-hooks.test.ts",
+        "apps/server/src/api/server/runs-routes.test.ts"
       ],
       "acceptance": [
-        "POST /build-runs with an actor_id that has no identity is refused at the door, or the identity is created the way the stop route already creates it",
-        "A run whose session cannot start FAILS or PARKS \u2014 it never stays \"running\" with no session",
-        "A red fixture starts a run with an unknown actor and asserts the run does not report running afterwards"
+        "POST /build-runs with an actor_id that has no identity is accepted and WORKS \u2014 the identity is ensured the way the stop route already ensures it",
+        "A red fixture starts a run with an unknown actor and asserts the run is not refused for a foreign-key reason"
       ],
       "notes": [
         "FOUND BY A LIVE RUN 2026-08-31, and reproduced by inversion in the same session \u2014 which is what makes it a finding rather than a guess. POST /api/v1/projects/:id/build-runs with {\"actor_id\":\"uat-operator\"} (no such identity) returned 201 and status running. The loop then claimed a ticket as `dokima-agent`, provisioned the worktree, emitted TWO `memory.hook_failed` events with reason 'FOREIGN KEY constraint failed', and stopped. Eight minutes later: zero spend.recorded, zero mcp.tool_call.completed, no TCP connection to the model, model idle at 0% CPU. The session never started. The run still said 'running'.",
         "THE INVERSION: the same project, the same board, the same models, re-run with {} so the route uses its default actor \u2014 spend and tool calls start climbing within a minute and keep climbing. The only variable is the actor.",
         "TWO DEFECTS, AND THE SECOND IS THE WORSE ONE. First, an actor_id with no identity row is accepted by the route and only fails deep inside a memory hook. Second, and independent of any FK: a run whose session cannot start REMAINS 'running' forever, with nothing surfaced to the person watching. The product ledgered `memory.hook_failed` honestly \u2014 the event is there with its reason \u2014 and then carried on as though the run were alive. A run that cannot work must fail or park; this is the one state it must not hold.",
         "ROOT CAUSE OF THE FK IS UNCONFIRMED and should be measured, not assumed. The identities table held dokima-agent, local-operator and operator; the `runs` table was EMPTY while the run reported running, so the hook plausibly writes a row referencing a run_id that was never registered. That is a hypothesis, and the cheap test is to insert the run record first and re-run with the unknown actor.",
-        "THE STOP ROUTE ALREADY KNOWS THE ANSWER, which is why the first half is small: runs-routes.ts creates the identity before appending, with the comment 'events.actor_id is FK-enforced; the stopper may be a new identity'. The start route does not do the same thing."
+        "THE STOP ROUTE ALREADY KNOWS THE ANSWER, which is why the first half is small: runs-routes.ts creates the identity before appending, with the comment 'events.actor_id is FK-enforced; the stopper may be a new identity'. The start route does not do the same thing.",
+        "ROOT CAUSE PINNED, and my filed hypothesis was half wrong. It is not a run_id FK: `appendEvent` with an unregistered actor throws 'FOREIGN KEY constraint failed' \u2014 proved directly in a scratch probe against an in-memory log holding one identity. So EVERY ledgered step the run takes under that actor throws, which is why nothing after the worktree provision ever happened.",
+        "memory.hook_failed IS A SYMPTOM, NOT THE KILLER, and the codebase says so itself: runAttemptOutcomeHook is a documented 'ledger-and-swallow' wrapper \u2014 'never worth failing the run over' \u2014 and apps/web/src/trace/classify.ts renders the event as 'A memory step failed and was recorded \u2014 the run continued'. The run did not continue, so the fatal throw was a different appendEvent under the same bad actor.",
+        "ACCEPTANCE CORRECTED, because I filed a criterion against a defect that does not exist. A2 said 'a run whose session cannot start FAILS or PARKS \u2014 it never stays running with no session'. It already does. Reproduced deliberately: POST with actor_id 'ghost-operator' against a configured project returns 201, and 20 seconds later GET .../build-runs/<id> reports status `refused` with stderr ['FOREIGN KEY constraint failed']. runs-job.ts's catch writes a terminal record on any throw, with a comment saying exactly why ('a run stuck at running behind a dead job is exactly the opacity W10-58 removed'). It works.",
+        "MY ORIGINAL OBSERVATION WAS A MEASUREMENT ERROR, and it is worth writing down rather than quietly dropping. During the live journey I watched the EVENT LOG and the model's CPU, saw both go quiet, and took the POST response's `\"status\":\"running\"` as the run's current state. It was the response to the START call, not a poll. The run had already terminated; I never asked it.",
+        "WHAT IS REAL, AND STAYS: the route accepts an actor_id with no identity row, every ledgered step under it throws, and the user is handed the raw SQLite string 'FOREIGN KEY constraint failed' \u2014 which names no actor, no field, and no remedy. That is the W21-91/W21-99 class (a raw stack or driver error where a refusal belongs), and the fix is the one the stop route in the same file already applies twelve lines away.",
+        "DONE. The start route now ensures the actor's identity before it starts anything, which is what the stop route in the same file has always done \u2014 with the same comment about the same foreign key, twelve lines away. Doing it at one entrance and not the other is what let a start and a stop disagree about who may act.",
+        "VERIFIED LIVE, both directions, on the same project. BEFORE: POST /build-runs with actor_id 'ghost-operator' \u2192 201, then twenty seconds later status `refused`, stderr ['FOREIGN KEY constraint failed']. AFTER (rebuilt bundle, same project, actor 'ghost-two'): the run is genuinely running with no error. The unit fixture asserts the narrower fact directly \u2014 after the POST, appending an event as that actor no longer throws.",
+        "PROVEN RED FIRST with the exact production error: 'expected [Function] to not throw an error but SqliteError: FOREIGN KEY constraint failed was thrown'.",
+        "GATE NOTE, said plainly: validate-temp-leaks failed once during this close on four leaked suite homes, and again on one. That is not this ticket's doing \u2014 it is the W22-21 subject, and the run produced NEW evidence contradicting that ticket's conclusion (the teardown never ran, rather than failing). Filed as W22-28 before clearing the directories, so the evidence outlived the cleanup.",
+        "Gate: lint clean, typecheck 0, 4790 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
+      ]
+    },
+    {
+      "id": "W22-28",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "a temp home still leaks, and the teardown never ran \u2014 W22-21 concluded the opposite",
+      "write_scope": [
+        "apps/server/vitest.setup.ts",
+        "apps/server/vitest.config.ts"
+      ],
+      "acceptance": [
+        "The leaking path is identified \u2014 which test file runs the setup and never reaches its afterAll, and why",
+        "A full `pnpm test` run leaves no dokima-suite-home-*, verified across three consecutive runs"
+      ],
+      "notes": [
+        "NEW EVIDENCE THAT CONTRADICTS W22-21's CONCLUSION, which is why this is a fresh ticket rather than a reopen. W22-21 instrumented both ends, counted 128 setups against 128 teardowns, and concluded every teardown runs \u2014 so a surviving directory had to mean the REMOVAL failed. It then hardened the removal with retries and, more importantly, made a failed removal log `[test-setup] could not remove <path>`.",
+        "THAT LOG LINE IS THE POINT, AND IT DID NOT APPEAR. Observed 2026-08-31: a full run left one dokima-suite-home-* behind and printed no 'could not remove' line at all. The removal did not fail; it never ran. So the teardown does NOT execute for every home, and the 128/128 count was true of the runs measured and not of every run.",
+        "IT ALSO LEAKED FOUR AT ONCE earlier in the same session, so it is not strictly one-per-event. Both observations followed test-file churn (a scratch probe file added and deleted), which is consistent with W22-21's own trigger and still unexplained.",
+        "CANDIDATE TO TEST FIRST, cheap and specific: a worker that loads setupFiles and is retired without executing a test file would create a home and never register an afterAll. Vitest's forks pool sizes itself per run, and both observations follow a change in the file set. Instrumenting by PID \u2014 how many distinct pids write a SETUP line versus an AFTERALL line \u2014 distinguishes that from every other theory in one run.",
+        "DO NOT HARDEN THE REMOVAL AGAIN. W22-21 already did, and the retries were never the problem \u2014 this ticket exists because the diagnostic W22-21 added did its job and disproved its author."
       ]
     }
   ]

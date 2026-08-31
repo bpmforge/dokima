@@ -215,6 +215,46 @@ describe('build runs (W12-20)', () => {
   }
 
   it(
+    'RED FIXTURE: a run started by an actor with no identity still WORKS. Every ' +
+      'ledgered step runs under that actor and `appendEvent` is FK-enforced, so ' +
+      'an unknown one made the run die with the raw SQLite string "FOREIGN KEY ' +
+      'constraint failed" — naming no actor, no field and no remedy. The stop ' +
+      'route twelve lines away already ensures the identity first (W22-27)',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w2227';
+      try {
+        const { app, id, dir, h } = await boot2();
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'a-brand-new-operator', run_id: 'run-w2227' },
+        });
+        expect(res.statusCode).toBe(202);
+
+        // The identity now exists, which is the whole fix: nothing the run
+        // appends can trip the foreign key.
+        const log = openEventLog(path.join(dir, '.dokima', 'state.db'));
+        try {
+          expect(() =>
+            appendEvent(log, {
+              eventType: 'run.probe',
+              actorId: 'a-brand-new-operator',
+              payload: {},
+            }),
+          ).not.toThrow();
+        } finally {
+          log.close();
+        }
+      } finally {
+        if (previous === undefined) delete process.env.DOKIMA_SIGNING_KEY;
+        else process.env.DOKIMA_SIGNING_KEY = previous;
+      }
+    },
+  );
+
+  it(
     'RED FIXTURE: a build run can be STARTED from the API. runs-routes served only ' +
       'GET .../runs and GET /runs/:id/trace — both read-only — so every ' +
       'configuration surface was a GUI and the one action that matters was a ' +

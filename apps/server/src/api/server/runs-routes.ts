@@ -91,6 +91,34 @@ export function registerRunsRoutes(
       const runId = body.run_id ?? `run-${Date.now().toString(36)}`;
 
       /**
+       * ENSURE THE ACTOR BEFORE STARTING (W22-27).
+       *
+       * `events.actor_id` is foreign-key enforced, and every ledgered step a
+       * run takes is appended under this actor. An id with no identity row
+       * therefore does not fail at the door — it fails on the run's first
+       * write, deep inside the loop, and the caller is handed the raw SQLite
+       * string "FOREIGN KEY constraint failed", which names no actor, no field
+       * and nothing to do about it. Observed live: a run claimed its ticket,
+       * provisioned a worktree, and died before the model was ever called.
+       *
+       * The stop route below already does exactly this, with the same comment
+       * about the same constraint. Doing it at one entrance and not the other
+       * is what made a start and a stop disagree about who is allowed to act.
+       */
+      try {
+        const identityLog = openEventLog(stateDbPath(projectPath));
+        try {
+          createIdentity(identityLog, { id: actorId, name: actorId, kind: 'human' });
+        } finally {
+          identityLog.close();
+        }
+      } catch {
+        // Already exists — the ordinary case, and the only other reason to be
+        // here is a log this route cannot open, which the work below reports
+        // far better than a bare throw from a precondition would.
+      }
+
+      /**
        * REFUSE BEFORE ACCEPTING (W12-40). `executeBuildRun` already declines an
        * unset `DOKIMA_SIGNING_KEY` — the close gate mints signed receipts and
        * will not mint unverifiable ones — but it declines INSIDE the job, so
