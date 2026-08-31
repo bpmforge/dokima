@@ -1,0 +1,301 @@
+{
+  "$note": "Pipeline Throughput Enhancement board — docs/work/PIPELINE_THROUGHPUT_ENHANCEMENT.md made executable. Run by scripts/conductor.mjs with conductor.config.json boardPath temporarily pointed here (founder step; see docs/work/EXECUTION_PLAN.md runbook). Wave P0 = trust floor, P2 = failure accounting + self-heal wiring, P3 = wave gate (GATED on attest policy via GATE-P1), P4 = automations. attest-side tickets (A-wave) live in the execution plan, not here — different repo.",
+  "tickets": [
+    {
+      "id": "P0-01",
+      "title": "Untrusted verify receipts: wrapper runs declared commands, writes receipt JSON, gate asserts it",
+      "lane": "scripts",
+      "write_scope": ["scripts/verify-receipts.mjs", "scripts/verify-receipts.test.mjs", "scripts/conductor/gates.mjs", "scripts/conductor/receipts.mjs", "docs/work/receipts/**", "conductor.config.json"],
+      "depends_on": [],
+      "acceptance": [
+        "conductor.config.json gains a verifyCommands list; scripts/verify-receipts.mjs runs each command in the ticket worktree and writes docs/work/receipts/<ticket>-<sha>.json with {command, exitCode, tailOfOutput, headSha, startedAt, durationMs} per command — the agent session never writes any of those fields",
+        "runGates() in scripts/conductor/gates.mjs refuses to pass a ticket whose receipt is missing, whose headSha does not match the candidate commit, or that contains any nonzero exitCode — with the failing command's captured tail in the gap message, untruncated",
+        "RED fixture test: a receipt hand-edited to claim exitCode 0 for a command that exits 1 is rejected because the wrapper re-derives, never trusts, the file when SHA mismatches; a receipt for the wrong SHA is rejected; both tests fail against the pre-ticket code (prove RED before GREEN)",
+        "pnpm lint && pnpm typecheck && pnpm test pass; new tests included in the count reported in the commit body"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P0-02",
+      "title": "Kill the 62% fatal: row.notes.push crash + testSiblingWarning import wiring, with regression tests",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/**", "scripts/conductor-lib/**", "scripts/conductor-lib.mjs", "scripts/conductor-lib.test.mjs"],
+      "depends_on": [],
+      "acceptance": [
+        "The row.notes.push is not a function crash (15 of 24 conductor.fatal rows in docs/work/conductor-log.jsonl) is root-caused and fixed: notes handling tolerates string, missing, and array shapes, with a unit test for each shape that fails on the pre-ticket code",
+        "testSiblingWarning is imported where used (the ReferenceError seen in the log cannot recur); a test imports the lint path the way conductor.mjs does and exercises it",
+        "Remaining infra-shaped fatals (ENOBUFS, ENOSPC, session timeout) are caught and logged as ticket.blocked with reason blocked_on_infrastructure instead of killing the process; a test simulates one and asserts the run continues to the next ticket",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 3,
+      "status": "todo"
+    },
+    {
+      "id": "P0-03",
+      "title": "Terminal reporting: latest blocker first, never truncated, plus a throughput report command",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/**", "scripts/conductor-report.mjs", "scripts/conductor-report.test.mjs"],
+      "depends_on": [],
+      "acceptance": [
+        "gates.fail and ticket.blocked log rows carry the full failing-command tail (no 400-char slice that currently produces fragments like 'pnpm test failed: eout'); long output is written to a per-ticket evidence file under docs/work/attempt-evidence/ and the log row names that path",
+        "Blocked-ticket board notes lead with the LATEST blocking event, then prior attempts chronologically",
+        "node scripts/conductor-report.mjs reads docs/work/conductor-log.jsonl and prints per-UNIQUE-ticket metrics (started, done, ever-blocked, recovered, still-blocked, retries and gate-failures per start event, fatal histogram) — the denominators the 2026-08-31 verification showed are the only honest ones; unit test runs it against a fixture log and asserts the counts",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 3,
+      "status": "todo"
+    },
+    {
+      "id": "P0-04",
+      "title": "Tracked git hooks: pre-commit and pre-push gate surface for both humans and conductors",
+      "lane": "hooks",
+      "write_scope": ["hooks/**", "package.json", "docs/TESTING.md"],
+      "depends_on": [],
+      "acceptance": [
+        "A tracked hooks/ directory with pre-commit (lint-staged-equivalent: format check + secrets scan on staged files, budgeted in seconds) and pre-push (pnpm validate) plus an install script wired as the prepare or a hooks:install script in package.json setting core.hooksPath",
+        "Hooks name what they skip (e2e, full test suite) so the operator knows the residual gate lives in CI and the conductor",
+        "docs/TESTING.md documents the hook surface; pnpm run hooks:install is idempotent and a test or script check proves core.hooksPath is set after it runs",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 2,
+      "status": "todo"
+    },
+    {
+      "id": "P0-05",
+      "title": "nightly.yml runs its real payload (has green-skipped since W4)",
+      "lane": "ci",
+      "write_scope": [".github/workflows/nightly.yml", "package.json"],
+      "depends_on": [],
+      "acceptance": [
+        "The nightly job executes pnpm --filter @dokima/web e2e (or a root e2e script is added that does), on Node 22, instead of gating on the nonexistent root scripts.e2e and notice-skipping",
+        "Job fails loud on e2e failure (no continue-on-error), and its name says what it runs",
+        "Workflow syntax validated (actionlint or a dry parse in a test/script)"
+      ],
+      "points": 2,
+      "status": "todo"
+    },
+    {
+      "id": "GATE-P1",
+      "title": "FOUNDER GATE: attest policy waves A1-A12 merged (three-level gates, advisory LLM review, conductor-first Phase 4)",
+      "lane": "docs",
+      "write_scope": ["docs/work/EXECUTION_PLAN.md"],
+      "depends_on": [],
+      "acceptance": [
+        "attest repo: the A-wave tickets in docs/work/EXECUTION_PLAN.md section A are filed, implemented, and merged; attest version noted here; npm run build:claude regenerated attest-claude and both repos pushed to both remotes",
+        "Definition-of-Done language in attest agrees with wave-level review (the OPT-09/OPT-12 legalization) so P3 is not a policy bypass",
+        "A human flips this ticket to done — it is never claimable by the conductor (listed in conductor.config.json holdTickets while this board is active)"
+      ],
+      "points": 1,
+      "status": "todo",
+      "notes": "HOLD: human-only. This is the plan's hard ordering constraint — executor wave-gate work (P3) must not precede policy."
+    },
+    {
+      "id": "P2-01",
+      "title": "Stage 0 cached baseline preflight in a clean detached worktree",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/baseline.mjs", "scripts/conductor/baseline.test.mjs", "scripts/conductor/context.mjs", "scripts/conductor.mjs", "conductor.config.json"],
+      "depends_on": ["P0-01"],
+      "acceptance": [
+        "Before any claim, the configured verify commands run against the exact base commit in a clean detached worktree; the result is cached keyed by {baseSha, normalized command, lockfile hash, node version} and reused across tickets sharing the base",
+        "A red baseline stops the run with a distinct blocked_on_baseline status and consumes ZERO ticket attempts; the failing suite fingerprint is recorded",
+        "Tests: green baseline claims proceed; red baseline blocks with zero attempts consumed; cache hit skips the re-run; cache invalidates on base change — each proven RED against pre-ticket code",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P2-02",
+      "title": "Structured failure fingerprints + base-vs-candidate differential classifier",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/fingerprint.mjs", "scripts/conductor/fingerprint.test.mjs", "scripts/conductor/gates.mjs", "scripts/conductor/ticket.mjs"],
+      "depends_on": ["P2-01"],
+      "acceptance": [
+        "Gate output parsed to {suite, test, file, line, errorClass} rows with volatile values (timestamps, ports, tmp paths, durations) normalized before comparison",
+        "Deterministic classifier: base green + candidate red = regression (consumes attempt); identical red fingerprints = blocked_on_baseline (consumes none, candidate preserved); mixed = only NEW failures charged; base red + candidate green = flagged for explicit review, never silently absorbed",
+        "Model prose can never override the classification — the classifier is pure code with table-driven tests covering all four rows",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P2-03",
+      "title": "Bounded mechanical remediation before a coding attempt is spent",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/remediate.mjs", "scripts/conductor/remediate.test.mjs", "scripts/conductor/ticket.mjs", "conductor.config.json"],
+      "depends_on": ["P2-02"],
+      "acceptance": [
+        "When the only gate failure is an approved formatter/autofix class, one bounded remediation pass runs: autofix, assert the diff is formatting-only and inside write_scope, re-run the original command from scratch, re-point scanners at the amended commit — consuming NO coding attempt",
+        "Remediation never touches out-of-scope files (test proves an out-of-scope autofix is rejected), never deletes tests, never weakens assertions",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 3,
+      "status": "todo"
+    },
+    {
+      "id": "P2-04",
+      "title": "Six terminal states with separate retry budgets replace the overloaded blocked",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/ticket.mjs", "scripts/conductor/land.mjs", "scripts/conductor/context.mjs", "scripts/conductor-lib/**", "scripts/conductor-lib.mjs", "scripts/conductor-lib.test.mjs"],
+      "depends_on": ["P2-02"],
+      "acceptance": [
+        "Terminal states code_attempts_exhausted, review_fix_iterations_exhausted, blocked_on_baseline, blocked_on_infrastructure, provider_attempts_exhausted, blocked_on_scope are emitted in the log and board notes; only the first two consume the implementation retry budget",
+        "Provider/session failures and infra events retry on their own budgets and never launch a second feature coding attempt (tests per state, proven RED first)",
+        "Candidate branch and all evidence survive every non-success terminal state (test asserts the branch exists after each)",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P2-05",
+      "title": "Wire packages/loop policy engine into the conductor: stall classes, budgets, split-on-stall PARK",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/ticket.mjs", "scripts/conductor/heal.mjs", "scripts/conductor/heal.test.mjs", "package.json"],
+      "depends_on": ["P2-04"],
+      "acceptance": [
+        "The conductor calls the EXISTING packages/loop exports (classifyIteration, createFindingBudgetTracker, checkProgressCeiling, checkConvergence — currently zero external callers) to classify each attempt CLEARED/STALLED/PROGRESSED/MIXED/OSCILLATING and decide RETRY_SAME_TIER/ESCALATE/BLOCK; no reimplementation, the shipped constants win (metered cap 8, local floor 12 — NOT the doctrine's 6)",
+        "PARK from checkProgressCeiling routes the ticket to a decompose step: the ticket is split into smaller board tickets (marked as children, original parked) rather than exhausted — test proves a PROGRESSED ceiling produces child tickets and consumes no further attempt",
+        "OSCILLATING escalates on first regression and stops on second; infra events consume no iteration (tests, RED first)",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 8,
+      "status": "todo"
+    },
+    {
+      "id": "P2-06",
+      "title": "LLM review verdict becomes advisory; deterministic gates own the block",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/ticket.mjs", "scripts/conductor/gates.mjs", "scripts/conductor-lib/review.mjs", "scripts/conductor-lib.test.mjs", "conductor.config.json"],
+      "depends_on": ["P0-01", "P2-04"],
+      "acceptance": [
+        "reviewDecision blockers no longer drive the retry ladder or markBlocked by themselves (today ticket.mjs lines ~51-73 do exactly that); a reviewer CRITICAL/HIGH finding instead (a) files a finding row with a citation, and (b) can demand a deterministic check — the merge gate is receipts + validators + tests only",
+        "A reviewer finding whose citation does not resolve (file:line absent, or command output not in a receipt) is discarded and logged — the fabricated-REJECT control",
+        "Sticky-findings bookkeeping cannot false-block an APPROVE-with-no-blockers ticket (regression test recreating the W0-05/W1-01/W1-03 false-block shape)",
+        "Field-report metric preserved: the two real catches (hash-chain forgery class) remain caught by a deterministic red-fixture test added here, proving the advisory demotion did not lose the win",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P2-07",
+      "title": "Risk-tier admission + scope validation hardening (tracked paths only, time-boxed)",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/context.mjs", "scripts/conductor/lint.mjs", "scripts/conductor/worktree.mjs", "scripts/conductor-lib/**", "scripts/conductor-lib.mjs", "scripts/conductor-lib.test.mjs", "conductor.config.json"],
+      "depends_on": ["P2-04"],
+      "acceptance": [
+        "Tickets carry a risk tier (derived: points, write_scope breadth, security-surface globs from config); only bounded known-acceptance tiers are claimable unattended, others land in held_for_human — the 6/6 pilot filter as code, with tests",
+        "Scope validation walks git ls-files output only, never the untracked tree, and is time-boxed; on timeout it exits blocked_on_infrastructure with a named cause (the ISSUE12 120s/64k-untracked class), test simulates a huge untracked dir via fixture",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P2-08",
+      "title": "Red-fixture harness ported from attest; fixtures for every gating validator",
+      "lane": "packages",
+      "write_scope": ["packages/validators/**", "content/validators/fixtures/**", "scripts/check-validator-fixtures.mjs", "package.json"],
+      "depends_on": [],
+      "acceptance": [
+        "attest's check-validator-fixtures.mjs pattern is ported: every validator named in conductor.config.json gate[] MUST have a red fixture proving it fails on the planted defect and a green fixture proving it passes clean code; currently gate[] has 2 validators and 0 fixtures exist under content/",
+        "The check runs in pnpm test (a vitest wrapper executes it); adding a validator to gate[] without fixtures fails the suite",
+        "A GRANDFATHERED list (may only shrink, enforced by test) covers advisory validators not yet fixtured",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P3-01",
+      "title": "Synthetic wave branch builder + wave composition from seams and budgets",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/wave.mjs", "scripts/conductor/wave.test.mjs", "scripts/conductor.mjs", "conductor.config.json"],
+      "depends_on": ["GATE-P1", "P2-04"],
+      "acceptance": [
+        "A synthetic validation branch is built from fresh main plus 4-8 compatible candidate branches chosen by disjoint write_scope, dependency order, and a changed-production-line budget from config (default ~1000; 1-3 tickets for high-risk globs); no feature work is ever authored on it and a test asserts the builder refuses a dirty synthetic tree",
+        "On a member ticket changing after wave pass, only that ticket and downstream synthetic results invalidate (test)",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 8,
+      "status": "todo"
+    },
+    {
+      "id": "P3-02",
+      "title": "Seam union + build-time wiring assertions as Tier-D wave checks",
+      "lane": "packages",
+      "write_scope": ["packages/pipeline/src/decompose/**", "packages/pipeline/src/seams/**", "scripts/conductor/wave.mjs"],
+      "depends_on": ["P3-01"],
+      "acceptance": [
+        "InterfaceRef generalizes to a tagged Seam union (export, route, db-column, di-binding, event-topic, nav-entry, config-key, feature-flag) with wiring_evidence naming a deterministic assertion and optional contract_test — extending the EXISTING types in packages/pipeline/src/decompose/types.ts, not a parallel model",
+        "Wave gate executes wiring_evidence against the BUILT synthetic head (the gap findUnownedInterfaces cannot see: declared-but-absent exports); a seam whose evidence fails blocks the wave attributed to the consumer ticket — red fixture proves a declared-unwritten export fails",
+        "findMissingPackageJsonScope and findUnownedInterfaces keep passing their existing tests unchanged",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 8,
+      "status": "todo"
+    },
+    {
+      "id": "P3-03",
+      "title": "Tier-A concurrent multi-model advisory reviewers with consensus synthesis and citation gate",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/wave-review.mjs", "scripts/conductor/wave-review.test.mjs", "scripts/conductor/prompts.mjs", "conductor.config.json"],
+      "depends_on": ["P3-01", "P2-06"],
+      "acceptance": [
+        "Wave reviewers run concurrently, each in its own session on its own configured model, each writing a distinct immutable report; synthesis marks 2-plus-model consensus findings highest signal and categorizes Act On / Consider / Noted / Dismissed with an agreement map (the interrogate shape)",
+        "Findings reuse the packages/loop findings-ledger ID scheme (F-<ticket>-<n> + fingerprint) and are attributed to the introducing ticket and lines; only the owning ticket reopens, and re-review runs only the failed checks against the new synthetic head",
+        "Citation gate enforced before synthesis (unresolvable citations discarded, logged); Tier-A findings alone can never block a merge (test)",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 8,
+      "status": "todo"
+    },
+    {
+      "id": "P3-04",
+      "title": "Merge train + per-wave bounded human review packet",
+      "lane": "scripts",
+      "write_scope": ["scripts/conductor/wave.mjs", "scripts/conductor/land.mjs", "scripts/conductor/wave-packet.mjs", "scripts/conductor/wave-packet.test.mjs"],
+      "depends_on": ["P3-01", "P3-02"],
+      "acceptance": [
+        "Members merge in dependency order; before each merge the tested synthetic head must still be ancestor-compatible with current main plus remaining heads (test covers the drift case); after the final merge one main smoke suite runs; tickets flip done only on verified main ancestry",
+        "Each passing wave emits a bounded human review packet: curated diff + that wave's delegation-log slice + findings summary, sized for a 2-4h session — the machine-stop line",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 5,
+      "status": "todo"
+    },
+    {
+      "id": "P3-05",
+      "title": "Assembler: requirement coverage ledger, generated assembly tickets, long-tail wave, assembly gate",
+      "lane": "packages",
+      "write_scope": ["packages/pipeline/src/assembler/**", "scripts/conductor/wave.mjs", "docs/work/requirement-ledger.json"],
+      "depends_on": ["P3-02"],
+      "acceptance": [
+        "Requirement ledger maps every user story / acceptance criterion to implementing tickets AND to the e2e test proving it on main; a requirement with tickets but no passing e2e reports as coded-not-done and blocks the assembly gate; a requirement with no tickets reports as uncovered (the A-1 silent-divergence class) — re-derived from the SRS source, never from the ticket list",
+        "Every cross-ticket seam generates an assembly ticket whose acceptance is the wiring evidence; plan lint fails a board missing one (red fixture)",
+        "Long-tail wave generator emits first-run/empty-DB, empty states, expired-session, declared-error-path, migration and reset tickets at decomposition time (the B-1 class), tagged long-tail",
+        "Assembly gate: release candidate passes only when ledger e2e coverage is 100%, all seam evidence resolves, long-tail wave closed, and Law 3 gates green — with a fixture proving each condition independently blocks",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 13,
+      "status": "todo"
+    },
+    {
+      "id": "P4-01",
+      "title": "Extend plan-scheduler/board-watcher into wave automations (zero Decide-tier auto-actions preserved)",
+      "lane": "packages",
+      "write_scope": ["apps/server/src/scheduler/**", "packages/harbormaster/src/**", "scripts/conductor/wave.mjs"],
+      "depends_on": ["P3-04"],
+      "acceptance": [
+        "PR/branch-diff triggered advisory review, scheduled dependency/CVE sweep producing tickets, and post-merge smoke with human escalation on second failure are wired as EXTENSIONS of the existing apps/server/src/scheduler + board-watcher layer — not a new automation layer — and the zero-Decide-tier-auto-actions constraint in plan-scheduler.ts is preserved and tested",
+        "Risk-tiered auto-merge is NOT implemented — explicitly left as a founder decision, recorded in the code comment and this ticket's close note",
+        "pnpm lint && pnpm typecheck && pnpm test pass"
+      ],
+      "points": 8,
+      "status": "todo"
+    }
+  ]
+}
