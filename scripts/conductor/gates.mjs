@@ -5,8 +5,9 @@
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { doneCheckGap, boardUnreadableGap, globToRegex, selectGates } from '../conductor-lib.mjs';
-import { CONFIG, DRY, log, sh, git, tryLoadPlan, ALWAYS_OK } from './context.mjs';
+import { CONFIG, ROOT, DRY, log, sh, git, tryLoadPlan, ALWAYS_OK } from './context.mjs';
 import { runValidators } from './session.mjs';
+import { mintReceipt, receiptGaps } from './receipts.mjs';
 
 // Parses one `git diff --name-status` line into `{ status, file }`. A rename
 // or copy line has three tab-separated fields (`R100\told\tnew`) instead of
@@ -78,6 +79,29 @@ export function runGates(t, branch, wt) {
   let advisory = [];
   if (existsSync(resolve(wt, CONFIG.toolchainMarker)) && !DRY) {
     try { sh(CONFIG.install[0], CONFIG.install[1], { cwd: wt, timeout: 10 * 60_000 }); } catch (e) { gaps.push(`install failed: ${String(e.stdout || e.message).slice(-300)}`); }
+    // Untrusted verify receipts (P0-01, Law L1): the conductor — never the
+    // agent session — runs the trust commands and mints the receipt. Any
+    // pre-existing receipt file for this ticket+sha is overwritten unread, so
+    // a hand-edited "exitCode: 0" simply gets replaced by reality. The gate
+    // then asserts the receipt: missing, stale-sha, or nonzero all gap, with
+    // the failing command's tail UNTRUNCATED (the operator must see the real
+    // cause, not a fragment).
+    if ((CONFIG.verifyCommands ?? []).length) {
+      const headSha = sh('git', ['rev-parse', 'HEAD'], { cwd: wt }).trim();
+      const { receipt, path: rPath } = mintReceipt({
+        ticketId: t.id, wt, headSha,
+        commands: CONFIG.verifyCommands,
+        receiptsDir: resolve(ROOT, 'docs/work/receipts'),
+        timeoutMin: CONFIG.gateTimeoutMin,
+      });
+      const rGaps = receiptGaps(receipt, headSha);
+      if (rGaps.length) {
+        log('gates.receipt', { ticket: t.id, msg: `receipt FAIL (${rGaps.length} gap(s)) -> ${rPath}` });
+        gaps.push(...rGaps);
+      } else {
+        log('gates.receipt', { ticket: t.id, msg: `receipt ok: ${receipt.commands.length} command(s) attested @ ${headSha.slice(0, 12)} -> ${rPath}` });
+      }
+    }
     // Scope-conditional gates: a frontend suite run for a backend-only ticket is
     // not extra safety, it is extra failure surface. See selectGates().
     const { run: gatesToRun, skipped: gatesSkipped } = selectGates(CONFIG.gates, t);

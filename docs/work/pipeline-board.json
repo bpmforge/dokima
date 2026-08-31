@@ -21,7 +21,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass; new tests included in the count reported in the commit body"
       ],
       "points": 5,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. mintReceipt/receiptGaps/loadReceipt in scripts/conductor/receipts.mjs; CLI scripts/verify-receipts.mjs (--check mode); runGates() mints+asserts before all other gates; verifyCommands (lint/typecheck/test) moved out of gates[] so trust commands run once, under attestation. 9 new tests incl. forged-receipt overwrite and untruncated-tail. Full gate: 4801 tests + pnpm validate green."
     },
     {
       "id": "P0-02",
