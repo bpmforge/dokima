@@ -55,6 +55,7 @@ const ADD_ONLY_OK = (CONFIG.alwaysOkAddOnly ?? []).map(globToRegex);
 export function runGates(t, branch, wt) {
   const gaps = [];
   let diff = null; // P2-02 differential verdict (null when no baseline/receipt failure)
+  let receipt = null; // P2-03: remediation needs the failed commands, not just prose gaps
   const { plan: wtPlan, err: wtPlanErr } = tryLoadPlan(wt);
   if (wtPlanErr) {
     log('gates.board-unreadable', {
@@ -114,7 +115,7 @@ export function runGates(t, branch, wt) {
     // cause, not a fragment).
     if ((CONFIG.verifyCommands ?? []).length) {
       const headSha = sh('git', ['rev-parse', 'HEAD'], { cwd: wt }).trim();
-      const { receipt, path: rPath } = mintReceipt({
+      const minted = mintReceipt({
         ticketId: t.id,
         wt,
         headSha,
@@ -122,6 +123,8 @@ export function runGates(t, branch, wt) {
         receiptsDir: resolve(ROOT, 'docs/work/receipts'),
         timeoutMin: CONFIG.gateTimeoutMin,
       });
+      receipt = minted.receipt;
+      const rPath = minted.path;
       const rGaps = receiptGaps(receipt, headSha);
       if (rGaps.length) {
         log('gates.receipt', {
@@ -186,5 +189,5 @@ export function runGates(t, branch, wt) {
         msg: `${advisory.length} finding(s) fed to review`,
       });
   }
-  return { gaps, advisory, selfBlocked, diff };
+  return { gaps, advisory, selfBlocked, diff, receipt };
 }
