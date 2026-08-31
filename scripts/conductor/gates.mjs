@@ -81,10 +81,28 @@ export function runGates(t, branch, wt) {
     gaps.push(doneCheckGap(row?.status, CONFIG.boardPath));
   if (Number(git('rev-list', '--count', `main..${branch}`)) < 1)
     gaps.push('no commits on ticket branch');
-  const changed = git('diff', '--name-status', `main...${branch}`)
-    .split('\n')
-    .filter(Boolean)
-    .map(parseChangedStatus);
+  // P2-07 (M-06): scope validation reads git's TRACKED diff only — it can
+  // never traverse an untracked tree (the ISSUE12 class: a 120s timeout
+  // walking 64,540 untracked paths) — and it is time-boxed. A timeout is the
+  // machine's fault, not the ticket's: blocked_on_infrastructure, never a
+  // scope failure charged to the candidate.
+  let changed;
+  try {
+    changed = sh('git', ['diff', '--name-status', `main...${branch}`], {
+      timeout: (CONFIG.scopeCheckTimeoutSec ?? 120) * 1000,
+    })
+      .split('\n')
+      .filter(Boolean)
+      .map(parseChangedStatus);
+  } catch (e) {
+    const why = /ETIMEDOUT|SIGTERM/.test(String(e.message) + String(e.signal ?? ''))
+      ? `timed out after ${CONFIG.scopeCheckTimeoutSec ?? 120}s`
+      : String(e.message).slice(0, 200);
+    gaps.push(
+      `blocked_on_infrastructure: scope validation ${why} — environmental; fix the machine, not the ticket`,
+    );
+    return { gaps, advisory: [], selfBlocked, diff: null, receipt: null };
+  }
   const changedFiles = changed.map(({ file }) => file);
   const scopeRes = t.write_scope.map(globToRegex);
   const outOfScope = changed

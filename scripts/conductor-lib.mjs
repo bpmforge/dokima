@@ -44,7 +44,7 @@ export {
   terminalNote,
 } from './conductor-lib/parsing.mjs';
 
-export { claimableTickets } from './conductor-lib/claim.mjs';
+export { claimableTickets, riskHoldReason } from './conductor-lib/claim.mjs';
 
 export {
   testSiblingWarning,

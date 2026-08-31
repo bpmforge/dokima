@@ -71,6 +71,19 @@
     ".nvmrc"
   ],
   "alwaysOkAddOnly": ["packages/events/migrations/**"],
+  "$unattendedRiskNote": "P2-07 (M-02): risk-tier admission — the 6/6 pilot filter. Tickets over maxPoints or touching a security-surface glob stay `todo` and are logged ticket.held (held_for_human) instead of being claimed unattended; allowUnattended clears a specific id after a human look. scopeCheckTimeoutSec time-boxes the tracked-diff scope check (M-06).",
+  "unattendedRisk": {
+    "maxPoints": 8,
+    "securityScopeGlobs": [
+      "^packages/events/",
+      "^packages/gateway/src/providers/",
+      "keychain",
+      "secrets",
+      "auth"
+    ],
+    "allowUnattended": []
+  },
+  "scopeCheckTimeoutSec": 120,
   "holdTickets": ["GATE-P1"],
   "models": {
     "maker": "sonnet",

@@ -260,7 +260,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. riskHoldReason (conductor-lib/claim.mjs): tickets over unattendedRisk.maxPoints or touching securityScopeGlobs are held_for_human — logged ticket.held once per run, stay todo, never ground through the ladder; allowUnattended clears an id after a human look; absent config = no gating (opt-in per project, Law L11). claimable() applies it after the structural filter. M-06: gates.mjs scope check reads git's TRACKED diff only, time-boxed by scopeCheckTimeoutSec (120s default); timeout -> blocked_on_infrastructure gap, never charged to the ticket. Live checks: node-pin refusal fired on Node 24; conductor.hold logged GATE-P1. 5 tests. Full gate 4865 green."
     },
     {
       "id": "P2-08",

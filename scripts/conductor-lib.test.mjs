@@ -1755,3 +1755,47 @@ describe('demoteReview (P2-06)', () => {
     expect(out.discarded).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// P2-07 — risk-tier admission (M-02): the 6/6 pilot filter as code, plus the
+// M-06 scope-check hardening (time-boxed tracked-diff; routing covered by the
+// P2-04 classifier tests — 'blocked_on_infrastructure' gap prefix).
+import { riskHoldReason } from './conductor-lib.mjs';
+
+describe('riskHoldReason (P2-07)', () => {
+  const cfg = {
+    maxPoints: 8,
+    securityScopeGlobs: ['^packages/events/', 'auth'],
+    allowUnattended: ['W9-99'],
+  };
+  const t = (over = {}) => ({
+    id: 'T-1',
+    points: 3,
+    write_scope: ['scripts/x.mjs'],
+    ...over,
+  });
+
+  it('bounded, known-acceptance work is admitted', () => {
+    expect(riskHoldReason(t(), cfg)).toBeNull();
+  });
+
+  it('large tickets are held — size is an ambiguity proxy, not a crime', () => {
+    const r = riskHoldReason(t({ points: 13 }), cfg);
+    expect(r).toMatch(/^held_for_human:/);
+    expect(r).toContain('13 points');
+  });
+
+  it('a security-surface write_scope is held for specialist admission', () => {
+    const r = riskHoldReason(t({ write_scope: ['packages/events/src/hash.ts'] }), cfg);
+    expect(r).toMatch(/^held_for_human:/);
+    expect(r).toContain('security surface');
+  });
+
+  it('an explicit human allowlisting clears the hold', () => {
+    expect(riskHoldReason(t({ id: 'W9-99', points: 13 }), cfg)).toBeNull();
+  });
+
+  it('no config = no gating (adoption is opt-in per project, Law L11)', () => {
+    expect(riskHoldReason(t({ points: 100 }), undefined)).toBeNull();
+  });
+});
