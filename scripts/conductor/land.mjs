@@ -63,14 +63,18 @@ export function land(t, branch, wt) {
 
 export function markBlocked(t, gaps, branch, wt) {
   // Block status is recorded on main (ROOT); the branch is kept for inspection, worktree removed.
+  // branch/wt may be NULL (P0-02): an infrastructure crash can predate worktree
+  // creation, and blocking the ticket must not itself crash on the absence.
   const plan = loadPlan();
   const row = plan.tickets.find((x) => x.id === t.id);
+  if (!row) return; // board drifted under us — nothing to record on
   row.status = 'blocked';
   // notes is historically string-or-array (review-pass tickets use strings) — normalize.
   if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
-  row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts. Branch ${branch} kept. Gaps: ${gaps.join(' | ').slice(0, 600)}`);
+  row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts.${branch ? ` Branch ${branch} kept.` : ''} Gaps: ${gaps.join(' | ').slice(0, 600)}`);
   writePlan(ROOT, plan, CONFIG.boardPath);
   git('add', CONFIG.boardPath); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
+  if (!branch && !wt) return; // infra crash before any worktree existed
   removeWorktree(wt);
   // Rename the kept evidence branch OUT of the sw/ namespace: supervise.sh's crash
   // cleanup deletes sw/* branches on every restart, which was silently destroying

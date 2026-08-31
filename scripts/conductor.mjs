@@ -43,7 +43,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { nodePinMismatch, wave } from './conductor-lib.mjs';
+import { nodePinMismatch, wave, isInfraFailure, infraGap } from './conductor-lib.mjs';
 import { ROOT, CONFIG, MODELS, STOPFILE, BREAKPOINT, WAVES, MAX_TICKETS, DRY, DO_MERGE, LINT_ONLY, log, sh, git, loadPlan, claimable, pickModel } from './conductor/context.mjs';
 import { lintPlan } from './conductor/lint.mjs';
 import { executeTicket } from './conductor/ticket.mjs';
@@ -89,6 +89,7 @@ async function main() {
   // board at ROOT. Must not be re-claimed, or the loop never terminates and
   // each re-claim resets the parked branch. See claimableTickets().
   const parkedThisRun = new Set();
+  let lastWasInfra = false;
   let currentWave = null;
   let waveBase = git('rev-parse', 'HEAD');
 
@@ -107,7 +108,25 @@ async function main() {
 
     if (DRY) { log('ticket.dry', { ticket: next.id, msg: `${next.title} [${pickModel(next)}]` }); break; }
     log('ticket.start', { ticket: next.id, msg: `${next.title} [${pickModel(next)}]` });
-    const res = await executeTicket(next);
+    // P0-02 (Law L6): an environmental crash blocks THIS ticket with a named
+    // blocked_on_infrastructure reason and the run continues to the next one —
+    // it never kills the process and never reads as the ticket's code failing.
+    // Two consecutive infra crashes = the environment itself is sick (ENOSPC
+    // does not fix itself): stop the run cleanly instead of grinding every
+    // remaining ticket into blocked.
+    let res;
+    try {
+      res = await executeTicket(next);
+    } catch (e) {
+      if (!isInfraFailure(e)) throw e; // genuine executor defect: fail loud, fix the executor
+      log('ticket.infra', { ticket: next.id, msg: infraGap(e) });
+      markBlocked(next, [infraGap(e)], null, null);
+      log('ticket.blocked', { ticket: next.id });
+      if (lastWasInfra) { log('conductor.stop', { msg: 'two consecutive infrastructure failures — environment needs a human' }); break; }
+      lastWasInfra = true;
+      continue;
+    }
+    lastWasInfra = false;
     if (res.ok) {
       if (land(next, res.branch, res.wt) === 'parked') parkedThisRun.add(next.id);
       doneCount++;
