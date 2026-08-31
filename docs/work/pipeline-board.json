@@ -405,6 +405,31 @@
       "points": 8,
       "status": "done",
       "notes": "Landed 2026-08-31. apps/server/src/scheduler/wave-automations.ts — EXTENSION of the existing plan-scheduler layer, not a new system: pollBranchAdvisoryReviews (new parked-branch head -> Tier-A advisory review recorded; cursor advances only on success, at-least-once; one branch's failure never sinks the tick), runDependencySweep (audit findings above the severity floor -> ticket PROPOSALS a human accepts — the same propose-then-accept shape evaluatePlan uses), postMergeSmoke (first failure notifies, SECOND consecutive escalates to a human — 'fails twice, bring in a human'; success resets; no auto-revert exists to call). ZERO Decide-tier auto-actions preserved and TESTED: the options types carry no accept/merge/revert capability and a source-text test pins that the Decide-tier verbs never appear as code identifiers. AUTO-MERGE DELIBERATELY NOT IMPLEMENTED — recorded in the module header as the founder decision it is (EXECUTION_PLAN decision 4). startWaveAutomations timer wiring mirrors startPlanScheduler. 5 tests. Full gate 4941 green (first run: TS2532 strict-null in the test, fixed)."
+    },
+    {
+      "id": "P5-01",
+      "title": "Product goal loop — user stories drive to a PROVEN product, not a drained board",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/product-loop.mjs",
+        "scripts/conductor/product-loop.mjs",
+        "scripts/conductor/product-loop.test.mjs",
+        "docs/work/requirement-ledger.json",
+        "conductor.config.json",
+        "package.json"
+      ],
+      "depends_on": ["P3-05", "P4-01"],
+      "acceptance": [
+        "A goal loop (the /goal skill semantics, executable): INVENTORY = requirement ids RE-DERIVED from the SRS/USER_STORIES source text (never the ticket list); VERIFY = the P3-05 assemblyGate (requirement closure + assembly tickets + seam assertions + long-tail) PLUS a real verify receipt on main; EXIT = assemblyGate.pass — the product is DONE when every story is proven by an existing test and every seam resolves, not when tickets drain",
+        "GAP step: an `uncovered` requirement proposes a story-implementation ticket; a `coded-not-done` requirement proposes a proof ticket (E2E naming the requirement id); missing assembly/long-tail tickets are generated from the P3-05 generators — proposals are appended to the board tagged proposed_by=product-loop and remain subject to riskHoldReason and every conductor gate",
+        "DRIVE step: runs the conductor as a child process with a bounded --max-tickets per iteration (injected in tests); budgets per the goal-skill contract: iteration cap (default 5) and a NO-PROGRESS HALT when the gap fingerprint set is byte-identical to the previous iteration (the run-coverage-loop exit-3 rule) — escalation report names the stuck requirements",
+        "The loop writes docs/work/requirement-ledger.json each iteration (self-documenting progress: per-requirement status uncovered/coded-not-done/done + iteration history)",
+        "Pure core with injected ports (readSources, board IO, runConductor, mintVerifyReceipt, seamResults, testExists) — table-driven tests: exit-on-pass, gap-to-proposal per class, no-progress halt, iteration cap, proposals honor the risk tier; CLI wrapper scripts/product-loop.mjs wires real implementations",
+        "pnpm lint && pnpm typecheck && pnpm test green"
+      ],
+      "points": 8,
+      "status": "in_progress",
+      "notes": "Filed 2026-08-31 from founder direction: 'take the user stories, create a product from that, not just tickets — goal loop it as a product.' Vendor research (Cursor/Anthropic/OpenAI full-cycle mechanisms) running in parallel; findings fold into the module header."
     }
   ]
 }
