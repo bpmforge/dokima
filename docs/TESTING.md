@@ -10,21 +10,21 @@ pitch is "the gates cannot be spoofed" proves it in CI, on itself. Runner: vites
 
 ## 1. Tier map (what runs at which gate)
 
-| Tier | Scope | Runs at | Blocks |
-|---|---|---|---|
-| Unit (vitest, co-located `*.test.ts`) | pure logic per package | every commit | commit |
-| Invariant/property (fast-check) | ticket lifecycle, lane collision, receipts, calibration | every commit | commit |
-| **Gate-integrity planted-defect suite (§6)** | trust boundary (FR-T2, FR-H1, FR-P2, NFR-4) | every commit from W0 | commit — never waivable |
-| Conformance suite (source-system fixtures, §4) | micro-loop, coverage tracker, ticket semantics | every commit from W1 | commit |
-| API integration (`fastify.inject` + temp SQLite) | core routes, projections, verbs | every commit | commit |
-| Event-sourcing replay | projections rebuilt from log ≡ live state | every commit from W0 | commit |
-| Playwright E2E (fake-model gateway, §7) | UC-01…UC-12 journeys over the Canvas | pre-merge on UI tickets + nightly | merge |
-| Model-fitness bench fixtures (§8) | FR-G6 harness itself | W2 gate + on bench changes | wave gate |
-| Crash/chaos matrix (kill −9, watchdog, drift) | NFR-3, FR-H2/H3 | pre-wave-gate W3+ | wave gate |
-| Offline soak (network-blocked full mini-program) | NFR-1 | W4+ wave gates, release | wave gate |
-| a11y (axe) + perf timers (NFR-2) | all routed Canvas pages | pre-merge on web tickets + W4/W8 gates | merge/gate |
-| **History secrets scan (§6a)** | every object reachable from every ref — file contents *and* commit/tag messages, i.e. what the tree scanner structurally cannot see | every push/PR (CI `history-secrets`) + release | push — never waivable |
-| Dogfood gate | Dokima runs its own pipeline on itself | W8 | 1.0 release |
+| Tier                                             | Scope                                                                                                                               | Runs at                                        | Blocks                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------- |
+| Unit (vitest, co-located `*.test.ts`)            | pure logic per package                                                                                                              | every commit                                   | commit                  |
+| Invariant/property (fast-check)                  | ticket lifecycle, lane collision, receipts, calibration                                                                             | every commit                                   | commit                  |
+| **Gate-integrity planted-defect suite (§6)**     | trust boundary (FR-T2, FR-H1, FR-P2, NFR-4)                                                                                         | every commit from W0                           | commit — never waivable |
+| Conformance suite (source-system fixtures, §4)   | micro-loop, coverage tracker, ticket semantics                                                                                      | every commit from W1                           | commit                  |
+| API integration (`fastify.inject` + temp SQLite) | core routes, projections, verbs                                                                                                     | every commit                                   | commit                  |
+| Event-sourcing replay                            | projections rebuilt from log ≡ live state                                                                                           | every commit from W0                           | commit                  |
+| Playwright E2E (fake-model gateway, §7)          | UC-01…UC-12 journeys over the Canvas                                                                                                | pre-merge on UI tickets + nightly              | merge                   |
+| Model-fitness bench fixtures (§8)                | FR-G6 harness itself                                                                                                                | W2 gate + on bench changes                     | wave gate               |
+| Crash/chaos matrix (kill −9, watchdog, drift)    | NFR-3, FR-H2/H3                                                                                                                     | pre-wave-gate W3+                              | wave gate               |
+| Offline soak (network-blocked full mini-program) | NFR-1                                                                                                                               | W4+ wave gates, release                        | wave gate               |
+| a11y (axe) + perf timers (NFR-2)                 | all routed Canvas pages                                                                                                             | pre-merge on web tickets + W4/W8 gates         | merge/gate              |
+| **History secrets scan (§6a)**                   | every object reachable from every ref — file contents _and_ commit/tag messages, i.e. what the tree scanner structurally cannot see | every push/PR (CI `history-secrets`) + release | push — never waivable   |
+| Dogfood gate                                     | Dokima runs its own pipeline on itself                                                                                              | W8                                             | 1.0 release             |
 
 Per-ticket definition of done: `pnpm lint && pnpm typecheck && pnpm test` workspace-wide
 plus the ticket's own `verify` command — which is exactly what FR-T2 re-runs at close.
@@ -36,7 +36,7 @@ plus the ticket's own `verify` command — which is exactly what FR-T2 re-runs a
   git ops. Never mock our own modules inside a package — if a unit needs three mocks, the unit
   is wrong.
 - SRS acceptance sketches appear **verbatim as named tests** (e.g. `FR-G3: a passing ticket can
-  never emit an escalation event`); wave-gate traceability check greps FR IDs in test titles.
+never emit an escalation event`); wave-gate traceability check greps FR IDs in test titles.
 - Deterministic time and IDs everywhere: injected clock, seeded RNG — receipts and event logs
   must be byte-comparable in fixtures.
 
@@ -47,8 +47,8 @@ permanent CI property, not a one-off:
 
 - **Ticket lifecycle (FR-T1/T2):** for any sequence of verbs, (a) only transitions on the
   enforced graph occur; (b) no path reaches `done` without close receipt + manifest + verify=0
-  + reviewer≠owner; (c) WIP=1 per actor holds at every step; (d) there is no API that writes
-  `status` directly (compile-time + route-walker assertion).
+  - reviewer≠owner; (c) WIP=1 per actor holds at every step; (d) there is no API that writes
+    `status` directly (compile-time + route-walker assertion).
 - **Lane collision (FR-T3, FR-H5):** for any generated plan, same-lane active tickets have
   disjoint write-scopes or the plan is rejected at load; for any berth schedule over a valid
   plan, no two concurrently-active tickets share a lane, and the union of their applied diffs
@@ -107,21 +107,21 @@ reported as its own line in CI.
 ## 6. Gate-integrity planted-defect harness (the red-team suite)
 
 A fixture set proving the trust boundary holds — every case below **must FAIL to achieve its
-goal**, and the suite fails if any spoof *succeeds*. This is the M27 gate-integrity audit
+goal**, and the suite fails if any spoof _succeeds_. This is the M27 gate-integrity audit
 turned into permanent CI, and it is the release gate's centerpiece (NFR-4/6).
 
-| Defect fixture | Attack simulated | Must be refused by |
-|---|---|---|
-| Spoofed lock/receipt | Hand-written `gates/<phase>-receipt.json` with fake exit codes, or retroactively minted after doc edits | FR-P2 input-hash recompute + validator-set currency check |
-| Fabricated manifest | Manifest claims files/commits that don't stat, or a verify result that doesn't reproduce | FR-H1 out-of-session stat + verify re-run |
-| Promise token | Agent output containing every historical completion phrase ("DONE", "all gates green", manifest-shaped prose) with no artifacts | FR-T2 — completion is receipt-existence, never string-match; grep the codebase: no completion-phrase matching exists |
-| Self-accept | Owner identity (human or agent) calling `accept` on its own ticket; reviewer manifest missing the embedded close receipt | FR-T2 reviewer≠owner + verbatim-receipt check |
-| Agent-signed waiver | Waiver receipt signed with an agent identity | FR-P2/FR-N3 blocklist |
-| Scope escape | Session diff touching paths outside `write_scope` | FR-H1 diff scope check — edits refuse to apply |
-| Credential probe | Agent session env/prompt inspected for reviewer/forge tokens | NFR-4 — assert absence in a real spawned session |
-| Ledger forgery | NEVER-AUTO ledger row without human signature; edited ledger row | FR-N3 runtime ledger validation + hash chain |
-| Risk downgrade | Model output attempting to lower an approval's rule-assigned risk class | FR-N2 raise-only rule |
-| Soft-gate on build | Waiver attempt against a phase-4 verify gate | FR-G5 hard rejection |
+| Defect fixture       | Attack simulated                                                                                                                | Must be refused by                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Spoofed lock/receipt | Hand-written `gates/<phase>-receipt.json` with fake exit codes, or retroactively minted after doc edits                         | FR-P2 input-hash recompute + validator-set currency check                                                            |
+| Fabricated manifest  | Manifest claims files/commits that don't stat, or a verify result that doesn't reproduce                                        | FR-H1 out-of-session stat + verify re-run                                                                            |
+| Promise token        | Agent output containing every historical completion phrase ("DONE", "all gates green", manifest-shaped prose) with no artifacts | FR-T2 — completion is receipt-existence, never string-match; grep the codebase: no completion-phrase matching exists |
+| Self-accept          | Owner identity (human or agent) calling `accept` on its own ticket; reviewer manifest missing the embedded close receipt        | FR-T2 reviewer≠owner + verbatim-receipt check                                                                        |
+| Agent-signed waiver  | Waiver receipt signed with an agent identity                                                                                    | FR-P2/FR-N3 blocklist                                                                                                |
+| Scope escape         | Session diff touching paths outside `write_scope`                                                                               | FR-H1 diff scope check — edits refuse to apply                                                                       |
+| Credential probe     | Agent session env/prompt inspected for reviewer/forge tokens                                                                    | NFR-4 — assert absence in a real spawned session                                                                     |
+| Ledger forgery       | NEVER-AUTO ledger row without human signature; edited ledger row                                                                | FR-N3 runtime ledger validation + hash chain                                                                         |
+| Risk downgrade       | Model output attempting to lower an approval's rule-assigned risk class                                                         | FR-N2 raise-only rule                                                                                                |
+| Soft-gate on build   | Waiver attempt against a phase-4 verify gate                                                                                    | FR-G5 hard rejection                                                                                                 |
 
 Each row is one fixture directory + one named test; new spoof classes discovered in the field
 (lessons intake, Blueprint §12.6) are added here first, fix second.
@@ -144,14 +144,14 @@ every push.
 Four properties are the point, and each has a planted-defect test in
 `scripts/validate-history-secrets.test.mjs`:
 
-| Property | Why it is the property | Planted defect that proves it |
-|---|---|---|
-| Reads history, not the tree | The whole reason the ticket exists | A PEM key committed, then deleted and gitignored: `secrets-scan.sh` — first proven to catch that same key while it is in the tree — then reads clean, while this scanner exits 1 and hands over `git log --find-object=<blob>` |
-| Reads **commit and tag messages**, not only file contents | `git rev-list --objects` prints commit objects with no path, so a parser keyed on the space separator drops them silently — and a credential pasted into a commit message is published history that no tree edit removes | A token in a commit message, and another in an annotated tag message, are each caught with a spotless working tree |
-| Baseline keys on the secret **value**, never the path | A path-scoped allowlist lets a real credential hide inside an already-baselined fixture file, and churns on every edit to one | A second, unbaselined token added to an already-baselined fixture file still fails the gate |
-| Fails **closed** | A shallow clone has no history, so reporting clean would make this a gate that cannot fail | A `--depth 1` clone exits 2, not 0; so do an empty repo, a non-repo, and an unparseable baseline |
-| Verifies its own **denominator** | The scan is `git rev-list --all`, so it is only as complete as the local ref set — and a single-ref checkout is *not shallow*, so nothing else catches it | A clone fetched with `+refs/heads/main:refs/remotes/origin/main` reports OK over a repo whose other branch carries a token; `--verify-remote-refs` exits 2 naming the missing branch, and finds the token once it is fetched |
-| Never prints a secret | A scanner must not become the leak it exists to prevent (Law 8) | Neither stream may contain the planted value — only `ghp_...REDACTED(n chars)` |
+| Property                                                  | Why it is the property                                                                                                                                                                                                   | Planted defect that proves it                                                                                                                                                                                                  |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Reads history, not the tree                               | The whole reason the ticket exists                                                                                                                                                                                       | A PEM key committed, then deleted and gitignored: `secrets-scan.sh` — first proven to catch that same key while it is in the tree — then reads clean, while this scanner exits 1 and hands over `git log --find-object=<blob>` |
+| Reads **commit and tag messages**, not only file contents | `git rev-list --objects` prints commit objects with no path, so a parser keyed on the space separator drops them silently — and a credential pasted into a commit message is published history that no tree edit removes | A token in a commit message, and another in an annotated tag message, are each caught with a spotless working tree                                                                                                             |
+| Baseline keys on the secret **value**, never the path     | A path-scoped allowlist lets a real credential hide inside an already-baselined fixture file, and churns on every edit to one                                                                                            | A second, unbaselined token added to an already-baselined fixture file still fails the gate                                                                                                                                    |
+| Fails **closed**                                          | A shallow clone has no history, so reporting clean would make this a gate that cannot fail                                                                                                                               | A `--depth 1` clone exits 2, not 0; so do an empty repo, a non-repo, and an unparseable baseline                                                                                                                               |
+| Verifies its own **denominator**                          | The scan is `git rev-list --all`, so it is only as complete as the local ref set — and a single-ref checkout is _not shallow_, so nothing else catches it                                                                | A clone fetched with `+refs/heads/main:refs/remotes/origin/main` reports OK over a repo whose other branch carries a token; `--verify-remote-refs` exits 2 naming the missing branch, and finds the token once it is fetched   |
+| Never prints a secret                                     | A scanner must not become the leak it exists to prevent (Law 8)                                                                                                                                                          | Neither stream may contain the planted value — only `ghp_...REDACTED(n chars)`                                                                                                                                                 |
 
 Known-benign shapes live in `scripts/history-secrets-baseline.json`, keyed on
 `category + sha256(value)[0:16]`. Today: 24 entries, every one a test fixture or documentation
@@ -169,13 +169,13 @@ scanner's one network call (opt-in, so local runs stay offline per Law 9).
 
 **Two limits, stated rather than buried.** It covers the same six categories as the tree
 scanner, so a credential shape nobody has a pattern for is invisible to both. And `--all` is
-*reachable*-only by design: a secret that was force-pushed away and garbage-collected reads
+_reachable_-only by design: a secret that was force-pushed away and garbage-collected reads
 clean locally while it may still be retrievable from the hosting forge's dangling objects —
 which is exactly the caveat the 2026-08-02 write-up records about what a history rewrite does
 not undo.
 
 A history hit is never fixed by deleting the file. Rotate the credential, then purge and
-force-push — the blocker write-up records what a rewrite does *not* undo.
+force-push — the blocker write-up records what a rewrite does _not_ undo.
 
 ## 6b. Starved tests vs slow tests (W20-13, W21-07, W21-08)
 
@@ -211,20 +211,20 @@ less.
 
 **Currently carrying a raised timeout**, all for this reason:
 
-| Suite | Why it is slow |
-| --- | --- |
-| `packages/harbormaster/src/loop-land.test.ts` | real land loop, git remotes |
-| `packages/harbormaster/test/berths.test.ts` | randomized berth counts |
-| `packages/harbormaster/src/transitions.property.test.ts` | fast-check property run |
-| `packages/harbormaster/src/loop-gates.test.ts` | git worktrees + a real validator |
-| `packages/harbormaster/src/agent-session/gateway-session.test.ts` | spawns agent processes |
-| `packages/validators/src/run.test.ts` | spawns a validator per case, one hangs on purpose |
-| `apps/server/src/cli/run-build.test.ts` | spawns the external agent for real |
-| `apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts` | `execFile` |
-| `apps/server/src/api/server/run-phase-progress.test.ts` | runs a real validator pack |
-| `apps/server/src/api/pipeline/pipeline-routes/advance.test.ts` | runs a real validator pack |
-| `scripts/conductor-lib.test.mjs` | repo-wide validator scoping |
-| `scripts/validate-history-secrets.test.mjs` | walks every commit ever made |
+| Suite                                                                  | Why it is slow                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------- |
+| `packages/harbormaster/src/loop-land.test.ts`                          | real land loop, git remotes                       |
+| `packages/harbormaster/test/berths.test.ts`                            | randomized berth counts                           |
+| `packages/harbormaster/src/transitions.property.test.ts`               | fast-check property run                           |
+| `packages/harbormaster/src/loop-gates.test.ts`                         | git worktrees + a real validator                  |
+| `packages/harbormaster/src/agent-session/gateway-session.test.ts`      | spawns agent processes                            |
+| `packages/validators/src/run.test.ts`                                  | spawns a validator per case, one hangs on purpose |
+| `apps/server/src/cli/run-build.test.ts`                                | spawns the external agent for real                |
+| `apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts` | `execFile`                                        |
+| `apps/server/src/api/server/run-phase-progress.test.ts`                | runs a real validator pack                        |
+| `apps/server/src/api/pipeline/pipeline-routes/advance.test.ts`         | runs a real validator pack                        |
+| `scripts/conductor-lib.test.mjs`                                       | repo-wide validator scoping                       |
+| `scripts/validate-history-secrets.test.mjs`                            | walks every commit ever made                      |
 
 There is deliberately **no validator** enforcing this. The obvious one — "a
 test importing `child_process` must declare a timeout" — would fire on all 27
@@ -250,7 +250,7 @@ with validation and a comment explaining why it exists. Then:
    constructing the provider with `{ baseUrl }` alone.
 
 Each layer's unit tests passed at every step. The defect was found by setting
-the value over HTTP against a live daemon and watching the run die at the *old*
+the value over HTTP against a live daemon and watching the run die at the _old_
 ceiling anyway — and even then it took three raises (20 min, 30 min, no change)
 before the diagnosis closed, because a fourth limit was firing (§ L-51).
 
@@ -272,7 +272,7 @@ shown `{ baseUrl }` with no `requestTimeoutMs`, in milliseconds, with no daemon
 and no live model.
 
 Do **not** substitute a live end-to-end run for this test. The live run is what
-*found* the defect, but it is slow, it needs a model, and Law 9a keeps it out of
+_found_ the defect, but it is slow, it needs a model, and Law 9a keeps it out of
 CI — so it cannot be the thing that stops the defect coming back.
 
 **Two worked examples now in the tree**, one per layer of the scar:
@@ -302,7 +302,7 @@ CI — so it cannot be the thing that stops the defect coming back.
 - Board projection lag and interaction timings asserted with timers (NFR-2: <1s, <100ms).
 - axe scan per routed page; keyboard-only pass for board verbs and the morning queue.
 - **Fixture event payloads are honest, not richer than reality (W10-41)**: a fixture may
-  seed a *subset* of a real event's payload (e.g. omitting `escalation.*`'s `receipts`/
+  seed a _subset_ of a real event's payload (e.g. omitting `escalation.*`'s `receipts`/
   `receiptId`) but never a superset and never a differently-shaped payload — inventing a
   key (`gate.receipt_minted`'s `payload.validators`, `escalation.*`'s `payload.reason` were
   both fixture-only fabrications no real appender ever wrote) creates a false contract that
@@ -364,3 +364,16 @@ The containment fixtures (SC-17/T-26) are the ones that must never be softened:
 each escape shape is asserted refused at the tool boundary **and** refused again
 by SC-01 with the pre-check disabled. A pre-check that made SC-01 redundant
 would be exactly the self-attestation Law 4 refuses.
+
+## Git hooks (P0-04, 2026-08-31)
+
+Tracked in `hooks/`; activate with `pnpm run hooks:install` (sets `core.hooksPath=hooks`, idempotent).
+
+| Hook         | Runs                                                                                                                                               | Budget  | Deliberately skips     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------- |
+| `pre-commit` | prettier `--check` on staged files · secrets scan on the staged diff (private keys, AWS `AKIA*`, `ghp_*`, `sk-ant/proj-*`, generic key=long-token) | seconds | lint, typecheck, tests |
+| `pre-push`   | `pnpm validate` (six repo validators + temp-leak check)                                                                                            | seconds | test suite, e2e        |
+
+The skipped checks are the conductor receipt gate's and CI's job — a push must not cost minutes.
+Bypass (`--no-verify`) is visible in the reflog; use only with a reason in the commit body.
+Fixture proof: `scripts/hooks-install.test.mjs` refuses a planted AWS key in a throwaway repo.
