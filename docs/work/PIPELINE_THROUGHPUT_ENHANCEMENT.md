@@ -133,6 +133,27 @@ Three consumers make it pay for itself:
    defect caught at lint time, not at the wall — the failure mode already recorded as the dominant one in the
    Conductor field reports.
 
+## 4b. The unattended-start contract — where humans stop and machines start
+
+The ask is "after the person plans it out and talks through the SDLC and the user stories, the coding portion
+should automate its way through and not get stuck." That is a **handoff contract**, and it is the single line
+this plan exists to draw. Five conditions must hold at the Phase 3.5 → Phase 4 boundary before the conductor
+may run unattended. Each is checked deterministically; failing any one stops the run with a distinct status
+and **consumes zero coding attempts**.
+
+| # | Condition | Checked by | Failure status |
+|---|---|---|---|
+| 1 | **Baseline is green.** The configured verify command exits zero on the exact base commit, in a clean detached worktree; result cached by base SHA + command + lockfile hash + runtime fingerprint | T2-01 | `blocked_on_baseline` |
+| 2 | **Remotes agree.** Every configured remote is fetched and local `main` is an ancestor; fast-forward only when all agree | T2-01 | synchronization error |
+| 3 | **Seams resolve.** Every ticket's declared inputs and outputs resolve against `seams.json`, and each ticket's `write_scope` can physically reach the symbols its seams name | T1-09 board lint | `blocked_on_scope` (at lint, before claim) |
+| 4 | **Verify profile is available.** Browser, E2E, database, and external-service requirements of the ticket's verify command are present and reachable | T3-07 | `blocked_on_infrastructure` |
+| 5 | **External evidence is declared.** Work needing a sandbox, production data, owner attestation, or unavailable credentials is marked as external-evidence work *before* coding | T3-08 | `blocked_on_scope` |
+
+When all five hold, the conductor runs the board without supervision: claim → Level 1 → wave admission →
+Level 2 → merge train. When one fails, it stops at a named boundary with the candidate and evidence preserved
+— which is the difference between "automated" and "constantly confused." **Getting stuck is not prevented by
+making the agent smarter; it is prevented by refusing to start work whose preconditions are unverified.**
+
 ## 5. Target architecture — three gate levels
 
 Per-ticket branches and PRs are **retained**. Scope, ownership, rollback, ticket ancestry, and defect
@@ -180,8 +201,9 @@ stable ID and is attributed to the ticket and lines that introduced it. **Only t
 After its fix, re-run that ticket's Level 1 and only the *failed* wave checks against the new synthetic head.
 
 Expected effect, using the doc's own medians: a four-expert pass drops from ~8.8 min (sum) to ~2.7 min
-(slowest) *and* from per-ticket to per-wave — a 4–8× reduction in the number of passes on top of the 3.3×
-reduction in each pass's duration.
+(slowest) — a **3.3× duration reduction**, which is the defensible half and stands on its own. Moving the pass
+from per-ticket to per-wave adds **up to** a 4–8× reduction in the *number* of passes, bounded by the current
+trigger rate (861 sessions across 181 attempts is 4.8 experts per attempt, not 4 experts on every ticket).
 
 ### Level 3 — Merge train + automations
 
@@ -253,6 +275,15 @@ first two, which is why the always-loaded protocol set keeps growing.
 > explicitly require per-ticket security and performance review *in addition to* wave review. Changing only the
 > executor creates a **policy bypass** even if the resulting technical checks are sound. Therefore:
 > **attest policy → validators → Dokima executor.** T2 may not start before T1 merges.
+
+**Where these land.** T0, T2, T3 and T4 are Dokima/Shipwright work and belong in `plan.json` at this repo's
+root, the board `scripts/conductor.mjs` claims from. T1 is attest work and belongs alongside the existing
+`IMPROVEMENT_BACKLOG.md` / `issues/` there. **None of these are board rows yet** — the IDs below are plan
+identifiers, not claimable tickets, and filing them is the first action after this plan is approved.
+
+**Lineage note.** The Marauder JIRA-conductor and its local executor commit `e73f668` stay separate. That work
+was deliberately kept project-local and this plan does not attempt to unify the two conductors. T2-08 means
+*re-derive these behaviors here*, not *merge that lineage into Dokima*.
 
 ### T0 — Instrumentation (no policy change, unblocks measurement)
 
