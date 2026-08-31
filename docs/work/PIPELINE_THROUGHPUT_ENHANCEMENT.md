@@ -16,7 +16,8 @@
 > Corrected 2026-08-31 by the verification pass (`PIPELINE_PLAN_VERIFICATION.md`, C-05). The first draft
 > applied one diagnosis to both pipelines. Their own logs disagree.
 
-**Two conductors exist, with different dominant defects.** Treating them as one problem mis-orders the work.
+**Two conductors run boards, and they have different dominant defects** (a third code path, Dokima's product
+pipeline, is inventoried in §2). Treating them as one problem mis-orders the work.
 
 | Measure | attest / Marauder conductor | Dokima conductor (this repo) |
 |---|---:|---:|
@@ -26,9 +27,10 @@
 | Expert-review wall time | 1,900.8 min | — |
 | Worst single ticket | 32 expert sessions, 111.8 min, then exhausted | — |
 | Median 4-expert sequential pass | ~8.8 min before any fix | n/a (one reviewer) |
-| Retries per unit | — | 0.72 |
-| Deterministic gate failures per unit | — | 0.63 |
-| **Block rate** | — | **39.4%** (done 45.4%) |
+| Retries per **start event** | — | 0.72 |
+| Deterministic gate failures per **start event** | — | 0.63 |
+| Tickets needing ≥1 block/recover cycle | — | **45.4%** (64 of 141 unique) |
+| Tickets that ultimately completed | — | **90.8%** (128 of 141 unique) |
 
 Marauder figures: `LOCAL_EXHAUSTION_INCIDENT_LESSONS.md`. Dokima figures: computed from this repo's
 `docs/work/conductor-log.jsonl`, 3,610 rows, 2026-07-11 → 2026-08-07.
@@ -37,15 +39,33 @@ Marauder figures: `LOCAL_EXHAUSTION_INCIDENT_LESSONS.md`. Dokima figures: comput
 quality feature: the expensive assurance runs at the wrong granularity (every candidate), in the wrong shape
 (sequentially, one model, full re-run on every fix).
 
-**Defect B — failure mis-routing (Dokima).** Fan-out is not the problem here; **two of every five tickets
-block**. Distinct `conductor.fatal` causes in the log: `spawnSync git ENOBUFS`, `ENOSPC: no space left on
-device`, `row.notes.push is not a function`, `testSiblingWarning is not defined`, a failed `git merge
---no-ff`. Four of five are infrastructure or executor defects — the exact class the incident doc says must
-never consume a feature attempt. `gates.fail` messages are visibly truncated mid-stream
-(`"pnpm test failed: eout\"."`), so the operator often cannot see the real cause.
+**Defect B — rework cost, not failure rate (Dokima).** *Corrected 2026-08-31 after an independent challenge.
+The first version of this section was a measurement defect, and the correction matters more than the original
+claim.*
 
-**This reorders the plan: T2 (failure accounting) lands before T3 (the wave gate),** because Defect B is
-what costs *this* repo throughput, and Defect A is what costs Marauder's.
+The first draft read event ratios as outcomes: 111 `ticket.blocked` events ÷ 282 `ticket.start` events =
+"39.4% block rate." **Per unique ticket the picture inverts:** 141 tickets started, **128 completed (90.8%)**;
+64 ever blocked, but **51 of those later completed** — only 13 were still blocked at the window's end. The
+board itself reads 495 done / 2 blocked of 497. Dokima's conductor is not failing to land tickets.
+
+Two further limits, both disqualifying for the original claim:
+
+- **The log covers W0–W11 only** — 141 of the board's 497 tickets (28%), through 2026-08-07. W12–W22 left no
+  rows. It describes the board's first month, not the board.
+- Comparing that to the pilot's "6 of 6 landed" set an **event ratio against an outcome ratio**. Withdrawn.
+
+**What survives, and is still worth fixing:** the cost of reaching 90.8%. Per start event, **0.72 retries and
+0.63 deterministic gate failures**, and 45.4% of tickets need at least one block/recover cycle. Of 24
+`conductor.fatal` rows, **15 are one bug** (`row.notes.push is not a function`) — 62% of all fatals — with
+`ENOSPC` (3), `STOP file present` (3, an operator action, not a defect), `ENOBUFS`, a failed `git merge
+--no-ff`, and `testSiblingWarning is not defined` (import wiring; the function exists at
+`conductor-lib/lint-rules.mjs:8`). `gates.fail` messages are truncated mid-stream, so the operator often
+cannot see the real cause.
+
+**Defect B is therefore rework and noise, not failure**, and does not by itself justify reordering on
+throughput grounds. **T2 still precedes T3** for two narrower reasons that hold independently: T2-00
+(untrusted verify receipts) is a trust precondition for every gate above it, and one bug fix removes 62% of
+observed fatals.
 
 Three compounding causes of Defect A:
 
@@ -96,7 +116,7 @@ both places:
 | Reviewers concurrent (OPT-01) | **No** — `attest/scripts/conductor/conductor.mjs:554-556`, `runReviewRound` is a `for` loop over reviewers | **No** — one reviewer only, `shipwright/scripts/conductor/ticket.mjs:41` |
 | Baseline preflight / fingerprints | **No** — only a formatter-clean baseline string at `conductor.mjs:489`; no `blocked_on_*` states | **No** — `grep -n "unchanged\|baseline" shipwright/scripts/conductor/*.mjs` returns unrelated comments only |
 | No-change fix-loop abort (OPT-02) | **No** | **No** |
-| Mechanical remediation before a new attempt | **No** — retries escalate the model | **No** — the ladder regenerates the whole candidate on the next model |
+| Mechanical remediation before a new attempt | **No** — and attest has *no* model ladder at all: `CODER_MODEL` is fixed (`conductor.mjs:143`, unchanged at `:606`, `:737`) | **No** — Dokima *is* the one with a ladder (`ticket.mjs:16`), and it regenerates the whole candidate on the next model |
 | Partial credit | Re-reviews **only the reviewers that blocked** (`conductor.mjs:607-613`) — a fragment of OPT-10 | Sticky findings across attempts |
 
 One defect visible only in attest's conductor: `conductor.mjs:508` commits scope-violation evidence with
@@ -196,7 +216,7 @@ Three consumers make it pay for itself:
 
 The ask is "after the person plans it out and talks through the SDLC and the user stories, the coding portion
 should automate its way through and not get stuck." That is a **handoff contract**, and it is the single line
-this plan exists to draw. Five conditions must hold at the Phase 3.5 → Phase 4 boundary before the conductor
+this plan exists to draw. Six conditions must hold at the Phase 3.5 → Phase 4 boundary before the conductor
 may run unattended. Each is checked deterministically; failing any one stops the run with a distinct status
 and **consumes zero coding attempts**.
 
@@ -214,7 +234,7 @@ and **consumes zero coding attempts**.
 succeeded repeatedly — produced **6 tickets attempted, 6 landed correctly**. Dokima's unfiltered board lands
 45.4% and blocks 39.4%. Admission control, not agent capability, is the difference.
 
-When all five hold, the conductor runs the board without supervision: claim → Level 1 → wave admission →
+When all six hold, the conductor runs the board without supervision: claim → Level 1 → wave admission →
 Level 2 → merge train. When one fails, it stops at a named boundary with the candidate and evidence preserved
 — which is the difference between "automated" and "constantly confused." **Getting stuck is not prevented by
 making the agent smarter; it is prevented by refusing to start work whose preconditions are unverified.**
@@ -269,7 +289,15 @@ production lines; 1–3 tickets for auth, persistence, migrations, or parsers.
 > bug merged) and, after stickiness was added, false positives that blocked three *completed* tickets —
 > **75% of the last four blocks were false**. The resolution is already adopted and wired in
 > `conductor.config.json`: **deterministic validators own the gate; the LLM review is advisory and grounded
-> by validator findings.** This plan does not re-open that. Level 2 therefore has two tiers.
+> by validator findings.**
+>
+> **But that principle is only half-wired, and the first draft of this plan wrongly recorded it as done.**
+> `conductor.config.json`'s `gate[]`/`advisory[]` split governs **grep validators only** — its own `$note`
+> says so. The **LLM reviewer is still authoritative**: `scripts/conductor/ticket.mjs:51-73` turns
+> `reviewDecision(verdict).blockers` into `gaps`, and `gaps` drives the retry ladder and `markBlocked`. The
+> log shows it operating — 130 `verdict=FIX`, 138 `review.fix`. So the single change the field report says
+> matters most for Dokima is **unbuilt**, and this plan now files it as **T2-16**. Level 2's two tiers below
+> are the target state, not the current one.
 
 **Tier D — deterministic, and these hold the gate:**
 
@@ -343,7 +371,10 @@ the executor path — which raises their priority rather than lowering it:
 - `CLAUDE.md` Law 4: *"agent sessions are untrusted; every durable state change goes through the
   verbs/receipts APIs… never let a component verify its own output. When a ticket touches gates, its red
   fixtures are part of acceptance."* That is M-01 (untrusted verify receipts) and M-04 (red-fixture
-  calibration), stated as law. The shell conductor and the Marauder pipeline simply do not honour it.
+  calibration), stated as law. **Policy support is not implementation:** `docs/work/receipts/` does not
+  exist, and no conductor file mentions a receipt outside two prompt strings
+  (`scripts/conductor/prompts.mjs:13,25`). T2-00 is greenfield in the executor — budget it as build, not
+  as wiring.
 - `CLAUDE.md` Law 5: maker ≠ verifier is mechanical — the constraint T1-07's model diversity extends.
 
 A third law is direct evidence for the seam work: Law 1 records that **45 tickets on this board logged a
@@ -390,7 +421,7 @@ Plus the missing layer:
 | Primitive | attest today | Action |
 |---|---|---|
 | **rules** (scoped, glob + description, dynamically loaded) | — (only always-loaded shared protocol `.md`) | **Net-new.** `rules/*.mdc` with `description` / `globs` / `alwaysApply`. This is how OPT-08 replaces prose triggers, and how always-on context stops bloating every session |
-| **hooks** (must-run lifecycle) | `plugins/expert-hooks.ts`, validators | Keep; extend to Level 1 enforcement |
+| **hooks** (must-run lifecycle) | `plugins/expert-hooks.ts`, validators | Keep for the OpenCode path — but see §16.3: these **cannot reach Dokima's conductor**, which spawns `claude`. Level 1 enforcement there lands in the conductor's gate chain and in git hooks (which do not exist yet in either repo) |
 | **skills** (repeatable workflow) | 45 skills | Keep |
 
 The rules/skills/hooks separation is worth adopting verbatim as vocabulary: **skills are workflows, rules are
@@ -457,7 +488,9 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 | **T2-11** | **Red-fixture calibration harness** — no check promoted advisory→gating without a red fixture | M-04 |
 | **T2-12** | Fix the four executor/infra fatal classes seen in the log (`ENOBUFS`, `ENOSPC`, `row.notes.push`, `testSiblingWarning`) and route them to `blocked_on_infrastructure` | §1 Defect B |
 | **T2-14** | Risk/size-based model routing generalized from `cheapLanes`/`cheapMaxPoints`, exposed as a project setting (§15) | §15.1 |
-| **T2-15** | Self-healing escalation ladder rungs 1-8, incl. **split-on-stall** and `[PARTIAL]` resume (§13) | §13 |
+| **T2-15** | **Wire** the existing `packages/loop` policy engine (`classifyIteration`, budget, convergence, ledger — 0 external callers today) into the conductor/harbormaster land loop; implement rungs 1-8 incl. split-on-stall and `[PARTIAL]` resume (§13) | §13 |
+| **T2-16** | **Make the LLM verdict advisory in Dokima** — `scripts/conductor/ticket.mjs:51-73` turns reviewer blockers into `gaps` that drive retry and `markBlocked`. This is the change `CONDUCTOR_FIELD_REPORT.md` §5 says matters most, and it was previously unfiled | C-06 |
+| **T2-17** | Fix `row.notes.push is not a function` — **15 of 24 fatals (62%)** — and the `testSiblingWarning` import wiring; route the rest to `blocked_on_infrastructure`. Supersedes the four-equal-causes framing of T2-12 | §1 Defect B |
 | **T2-13** | Failure/scope evidence is written **beside** the worktree, outside the target repo; never `git add -f` from the main checkout (`attest/scripts/conductor/conductor.mjs:508`) | M-08 |
 
 ### T3 — Executor: the wave gate
@@ -568,10 +601,17 @@ Split by defect, because the two pipelines start from different numbers.
 
 | Measure | Now | Target |
 |---|---:|---:|
-| Block rate | 39.4% | **≤ 15%** |
-| Done rate | 45.4% | **≥ 75%** |
-| Fatals from infrastructure/executor defects | 4 of 5 distinct causes | **0 consuming a feature attempt** |
+| Retries per start event | 0.72 | **≤ 0.35** |
+| Deterministic gate failures per start event | 0.63 | **≤ 0.30** |
+| Tickets needing ≥1 block/recover cycle | 45.4% (64/141) | **≤ 20%** |
+| Tickets ultimately completing | 90.8% (128/141) | **hold ≥ 90%** — this is already good; do not regress it |
+| `conductor.fatal` rows charged to a ticket | 21 of 24 (excl. operator STOP) | **0** |
 | Terminal summaries whose reason matches the last failing gate | truncated mid-stream today | **100%** |
+
+*All Defect-B rates are per unique ticket except where the row says "per start event." Rates keyed to
+`ticket.start` events are gameable by emitting fewer of them, so the unique-ticket denominator governs
+acceptance; the event ratios are cost indicators only. Baseline window: W0–W11, 141 of 497 tickets — re-derive
+against a current window before grading.*
 
 **Both:**
 
@@ -631,9 +671,18 @@ becomes the fallback for the interactive case, not the default path.
 
 ## 13. Self-healing — what happens when a ticket will not move
 
-Today both conductors respond to a stuck ticket the same way: **retry the same ticket shape on a stronger
-model, then block.** That is one move. attest's own doctrine already describes a richer ladder and neither
-executor implements it.
+> **Corrected 2026-08-31 after an independent mechanism audit — this section was wrong in the direction that
+> changes the ticket.** The first draft said the stall ladder is attest doctrine that *"neither executor
+> implements."* It is **implemented and tested in TypeScript in `packages/loop`, and wired to nothing.**
+> `classifyIteration`, `createFindingBudgetTracker`, `checkConvergence` and `checkProgressCeiling` have
+> **zero callers** outside `packages/loop` (verified by grep across `apps/`, `packages/`, `scripts/`);
+> `createFindingLedger` has one. `apps/server/src/scheduler/snapshot.ts:18-21` admits it in its own source.
+> **The correct ticket is "call it from harbormaster's land loop," not "build the classifier."** This is the
+> same built-but-never-mounted family as §2's third-conductor row.
+
+Both conductors respond to a stuck ticket the same way: **retry the same ticket shape on a stronger model,
+then block.** That is one move. The richer ladder exists twice over — as attest doctrine, and as shipped
+Dokima code — and the executors call neither.
 
 **Stall classification already exists** — `attest/agents/shared/FIX_VERIFY_LOOP.md:153-157`, per-row verdicts
 (CLOSED / STILL-OPEN / NEW / REGRESSED) rolled into iteration classes:
@@ -645,12 +694,27 @@ executor implements it.
 | **OSCILLATING** | a previously-CLOSED row returns | Zero tolerance. First regression escalate, second stop |
 | **Infra event** | verify truncated / tooling crashed | *"Consumes no iteration and opens no row. Never charge the fixer for infrastructure"* |
 
-Two of these are load-bearing and unimplemented:
+**And it is already TypeScript, with tests** (`packages/loop/src/`):
+
+| Module | What it decides | Constant |
+|---|---|---|
+| `loop-policy-classify.ts:6` | `CLEARED · STALLED · PROGRESSED · MIXED · OSCILLATING` — and `ReviewSignalAction` has **no FAIL variant**, so by construction it cannot auto-fail a passing gate | — |
+| `loop-policy-budget.ts:11-13` | `RETRY_SAME_TIER · ESCALATE · BLOCK · CLEARED`, reasons `stall · regression · post_escalation_stall · second_oscillation` | 2 attempts/tier, +1 post-escalation |
+| `loop-policy-convergence.ts:12-14` | `CONTINUE · PARK`; `CONVERGING · DIVERGED` on a sliding window. Its `:39` comment already says *"Hitting the ceiling while still PROGRESSED is a park, not a failure… split it"* | **metered cap 8, local floor 12** |
+| `micro-loop.ts:126-127` | `DONE · BLOCKED · PARTIAL` | 3 passes, 4 evidence actions |
+
+⚠ **Constant conflict — do not land the prose over the code.** `FIX_VERIFY_LOOP.md:156` says the metered
+PROGRESSED ceiling is **6**; `loop-policy-convergence.ts:12` ships **8**. The shipped, tested constant wins
+unless someone deliberately changes it with a reason. Landing the doctrine as written would silently regress
+a committed value — exactly the failure this plan exists to prevent.
+
+Two doctrine items are load-bearing and reach no executor:
 
 1. **"Hitting any ceiling while still PROGRESSED is a *decomposition signal* (the change is too big — split
-   it), not a fix failure."** (`FIX_VERIFY_LOOP.md:156`) **Splitting the ticket is the missing self-heal
-   move.** A conductor that stalls twice should hand the ticket to the decomposer and try the pieces — not
-   retry the same shape on a bigger model, and not give up.
+   it), not a fix failure."** (`FIX_VERIFY_LOOP.md:156`, and `loop-policy-convergence.ts:39` already
+   implements the PARK.) **Splitting the ticket is the missing self-heal move** — the classifier decides
+   PARK, and nothing acts on it. A conductor that stalls twice should hand the ticket to the decomposer and
+   try the pieces.
 2. **"Never charge the fixer for infrastructure."** Dokima's log violates this on four of five distinct
    fatal classes (§1 Defect B).
 
@@ -767,3 +831,55 @@ that is the product. Concretely, each lever gets a project-level configuration s
 
 **The test of this section is mechanical:** every lever in 15.1 must name the project-level setting that
 exposes it. A lever that only makes *our* build faster is an incomplete ticket.
+
+## 16. The mechanism inventory — what already runs, and what genuinely does not
+
+An independent mechanism audit (2026-08-31) enumerated the deterministic-check and automation surface of both
+repos against this plan. **The plan's recurring error is proposing to build things that exist and are
+unwired.** Four times now: the seam model (§4), the findings ledger (§5), the loop-policy engine (§13), and
+the automation layer below. The default assumption for any new ticket should be *find the existing
+implementation first*.
+
+### 16.1 Already built — extend or wire, do not rebuild
+
+| Surface | Evidence | Consequence for this plan |
+|---|---|---|
+| Loop policy engine | `packages/loop/src/loop-policy-{classify,budget,convergence}.ts`, `micro-loop.ts` — tested, **0 external callers** | §13 is a wiring ticket (T2-15) |
+| Trigger-driven automation | `apps/server/src/scheduler/plan-scheduler.ts` (`pollRunCompletions`, `runNightlyVerify`), `api/server/board-watcher.ts`, `packages/forge/src/mirror/queue.ts`, `packages/gateway/src/providers/request-queue.ts` | **T4 is an extension, not a new layer.** Its header records a deliberate constraint worth keeping: *zero Decide-tier auto-actions* |
+| Loop safety rails | `packages/harbormaster`: `loop-killswitch.ts` (kill/pause file, effective at the next ticket boundary, never mid-session), `limit-pause.ts` (12 attempts, 5-min backoff → 60-min cap), `watchdog-process.ts`, `berths-scheduler.ts`, `conflict-watcher.ts`, `loop-claim.ts` (2 sessions/ticket, 30-min stale claim) | §13's ladder plugs into these; the STOP-at-boundary semantics are already right |
+| Reviewer-citation gate (M-05) | `attest/scripts/delegation-gate.mjs --citations` — **already written** | Wire it, do not design it |
+| Red-fixture harness | `attest/scripts/check-validator-fixtures.mjs`, enforced in `npm test` Pass 7 | Port to Dokima (T2-11) rather than inventing |
+| Supervision / until-done | `attest/scripts/{conductor/supervise.sh,run-until-done.sh,soak-monitor.mjs}`; `shipwright/scripts/{autorun.sh,supervise.sh}` | §12's conductor-first Phase 4 has a runner already |
+
+### 16.2 Genuinely absent — and three are load-bearing
+
+| # | Gap | Evidence |
+|---|---|---|
+| 1 | **No git hooks in either repo.** `core.hooksPath` empty, no tracked `hooks/`, no `hooks:install`. `attest/plugins/expert-hooks.ts:38` explicitly punts commit validation to *"a git pre-commit hook in the user's repo"* — nobody wrote one | Level 1's "must-run" enforcement has **no pre-commit/pre-push surface**; every deterministic check is opt-in, run only when a human types a command or a conductor spawns a gate |
+| 2 | **Dokima red fixtures: 0 of 78.** The vendored `content/validators` pack came without its fixtures, and `check-validator-fixtures.mjs` was not vendored either. attest itself is 22 of 57 chained validators fixtured, 35 grandfathered | M-04/T2-11 is **building the harness from zero** on the Dokima side, not a calibration pass |
+| 3 | **Dokima's gate is two checks wide.** `conductor.config.json` `gate[]` = `validate-file-size`, `validate-circular-deps`; `advisory[]` = 3; **73 of 78 vendored validators are inert** | §5's "deterministic validators own the gate" is aspirational today. Level 1 needs the promotion pipeline (`$note` in that file already states the rule: *promote once red-fixture-calibrated*) |
+| 4 | **The only scheduled job in either repo has never run its payload.** `nightly.yml` gates on root `package.json` `scripts.e2e`, which is `undefined` — the real command is `pnpm --filter @dokima/web e2e` (Law 3). Green-skipping since W4 | Any §10 target assuming a nightly signal is unfounded until fixed. Same shape as this repo's own lesson: *a check nobody runs decays into a check nobody can trust* |
+| 5 | **`TESTING.md` §6's named planted-defect suite does not exist as a suite.** It tabulates 5 attack fixtures; `ci.yml`'s `gate-integrity` job instead re-runs five whole packages | `CLAUDE.md` Law 4 makes those fixtures acceptance for any gate-touching ticket, and nothing enumerates them or fails when one goes missing |
+| 6 | **`validate-scope.sh` and `validate-tracker-fresh.sh` gate every HANDOFF with no red fixture and no grandfather entry** — `check-validator-fixtures.mjs:29` parses only `validate-phase-gate.sh`, missing `run-handoff-gates.sh` | The scope gate M-06 is about is one of the two unproven ones |
+| 7 | **attest CI runs no validator and has no scheduled job** — 4 steps: `npm ci`, `npm test`, `agents:check`, `build:claude:check` | The policy repo's own gates are local-only |
+
+### 16.3 The plugin-reach asymmetry — a real constraint on §7
+
+`attest/plugins/expert-hooks.ts` intercepts `tool.execute.before` (blocks dangerous bash and writes to
+credential paths) and `tool.execute.after` (format + lint + typecheck + secret-scan on every edited file).
+It is an `@opencode-ai/plugin`. **attest's conductor spawns `OPENCODE_BIN run`, so the hooks fire. Dokima's
+conductor spawns `claude -p … --dangerously-skip-permissions` (`scripts/conductor/session.mjs:31`), so they
+never fire — not once, for any Dokima conductor session.**
+
+So §7's "extend hooks to Level 1 enforcement" is unimplementable on the executor where Defect B lives.
+**Corrected direction:** Level 1 enforcement on the Dokima side belongs in the conductor's own gate chain and
+in git hooks (16.2 #1), not in the OpenCode plugin. Any constraint that must bind both executors travels as a
+**verify command in the packet**, per attest's own v3.5.2 doctrine — *"if the executor loaded nothing but
+this packet, would this still bind?"*
+
+**New tickets from this audit:** T2-18 install tracked git hooks in both repos · T2-19 port
+`check-validator-fixtures.mjs` and build Dokima red fixtures · T2-20 validator promotion pipeline
+(advisory → gate, gated on a red fixture) · T2-21 fix `nightly.yml`'s payload · T2-22 enumerate
+`TESTING.md` §6's five planted-defect fixtures as a real suite · T3-10 wire `delegation-gate.mjs --citations`
+as the reviewer-citation gate · T4-05 extend `plan-scheduler`/`board-watcher` rather than building a new
+automation layer, preserving its zero-Decide-tier-auto-action constraint.

@@ -111,3 +111,62 @@ terminal-reporting truncation defect from the incident doc, live in Dokima today
 is wrong for Dokima and right for Marauder. §1 must be split accordingly, and Dokima's wave (T2) should be
 ordered ahead of the fan-out work (T3) because its failure-accounting problems are the ones actually
 costing this repo throughput.
+
+
+---
+
+# Part 4 — Independent challenge (fresh context, 2026-08-31)
+
+Two agents with no prior context were run against the plan: an adversarial **challenger** (33 claims) and a
+**mechanism coverage auditor**. Both were told to find what is wrong. Both did. Every finding below was
+re-verified by the author before being applied.
+
+## The self-audit over-corrected twice
+
+| Self-audit verdict | What the independent pass found | Re-verified |
+|---|---|---|
+| **C-06** — "LLM review is advisory; already wired in `conductor.config.json`; this plan does not re-open that" | **Half true, and the half that matters is false.** That config splits *grep validators* only (its own `$note` says so). The LLM reviewer still gates: `scripts/conductor/ticket.mjs:51-73` turns `reviewDecision(verdict).blockers` into `gaps`, which drive the retry ladder and `markBlocked`. So the change the field report calls most important was recorded as done and filed as **no ticket at all** | Confirmed by reading `ticket.mjs:51-73` and `conductor.config.json`. Now **T2-16** |
+| **C-05** — "Dokima block rate 39.4%, done rate 45.4%" | **A measurement defect.** Those are event ratios. Per unique ticket: 141 started, **128 done (90.8%)**, 64 ever blocked of which **51 later completed**, 13 still blocked. Board: 495/497. Worse, the log covers **W0–W11 only** — 141 of 497 tickets — and was compared against a pilot's *outcome* ratio | Recomputed: `unique started 141 / done 128 = 90.8%`; `waves in log: W0-W11`; board waves W0–W22. §1 rewritten, §10 targets replaced |
+
+Both are the same failure my own memory already names — a conclusion built on the wrong denominator, and a
+partial wiring fact promoted to "solved." A self-challenge cannot catch what it would verify the same wrong
+way twice; these took a second reader.
+
+## The largest single finding — and the plan's recurring error
+
+**§13's self-healing ladder is implemented, tested, and wired to nothing.** `packages/loop/src/loop-policy-*.ts`
+exports `classifyIteration`, `createFindingBudgetTracker`, `checkConvergence`, `checkProgressCeiling` —
+**zero callers outside `packages/loop`**, verified by grep across `apps/`, `packages/`, `scripts/`. The
+correct ticket is *call it*, not *build it*.
+
+That is now the **fourth** time this plan proposed building something that already exists:
+
+1. the seam model (`packages/pipeline/src/decompose/`) — C-02
+2. the findings ledger (`packages/loop/src/findings-ledger.ts`) — C-04
+3. the loop-policy engine (`packages/loop/src/loop-policy-*.ts`) — this pass
+4. the trigger-driven automation layer (`apps/server/src/scheduler/`, `packages/harbormaster/`) — this pass
+
+Plus `delegation-gate.mjs --citations`, which is M-05 already written. **Standing rule adopted into the plan
+(§16): the default assumption for any new ticket is that the implementation already exists and is unwired.**
+
+## Other confirmed corrections
+
+| Finding | Evidence | Action |
+|---|---|---|
+| attest has **no model ladder**; `CODER_MODEL` is fixed (`conductor.mjs:143`, `:606`, `:737`). Dokima is the one with the ladder (`ticket.mjs:16`) | §2's table justification had the two conductors inverted | Table corrected |
+| §4b said "five conditions"; the table has six | plan `:199`, `:217` vs the table | Corrected to six |
+| §1 "two conductors" vs §2 "three conductors" | plan `:20` vs `:79` | Reconciled |
+| Concurrency is **already attest policy** — `sdlc-init-phase-4.md:129`: *"Round 2 — Review (always parallel… open N sessions concurrently)"* | The gap is executor-only, not policy | T1-01 scope narrowed |
+| `docs/work/receipts/` does not exist; no conductor mentions receipts outside two prompt strings | T2-00 is greenfield, not wiring | §5 note added |
+| 15 of 24 `conductor.fatal` rows are one bug (`row.notes.push`); `STOP file present` (3) is an operator action, not a defect | Recomputed from the log | T2-17 replaces the four-equal-causes framing |
+| `findMissingPackageJsonScope` (`linter.ts:16-36`) already implements write-scope reachability for the package.json seam | §4's table omitted it | Added |
+| Ceiling constant: doctrine says 6 (`FIX_VERIFY_LOOP.md:156`), shipped code says 8 (`loop-policy-convergence.ts:12`) | Landing the prose would silently regress a tested constant | Flagged in §13; shipped constant wins |
+| No git hooks in either repo; Dokima red fixtures 0/78; Dokima's `gate[]` is 2 checks wide; `nightly.yml` has never run its payload (root `scripts.e2e` is `undefined`) | Verified live | §16.2, tickets T2-18…T2-22 |
+| `expert-hooks.ts` can never fire for a Dokima conductor session — it spawns `claude`, not `opencode` (`session.mjs:31`) | §7's "extend hooks to Level 1" is unimplementable there | §16.3, §7 row corrected |
+
+## Standing on the numbers
+
+The Defect-A figures (4.76 sessions/attempt, 1,900.8 min, 8.8 min median) remain **UNVERIFIABLE from this
+machine** and are now explicitly caveated in §10. The Defect-B figures are re-derived per unique ticket and
+carry their window (W0–W11, 28% of the board). Any target keyed to `ticket.start` events is gameable by
+emitting fewer of them; the unique-ticket denominator governs acceptance.
