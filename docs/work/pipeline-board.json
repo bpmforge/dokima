@@ -69,11 +69,7 @@
       "id": "P0-04",
       "title": "Tracked git hooks: pre-commit and pre-push gate surface for both humans and conductors",
       "lane": "hooks",
-      "write_scope": [
-        "hooks/**",
-        "package.json",
-        "docs/TESTING.md"
-      ],
+      "write_scope": ["hooks/**", "package.json", "docs/TESTING.md"],
       "depends_on": [],
       "acceptance": [
         "A tracked hooks/ directory with pre-commit (lint-staged-equivalent: format check + secrets scan on staged files, budgeted in seconds) and pre-push (pnpm validate) plus an install script wired as the prepare or a hooks:install script in package.json setting core.hooksPath",
@@ -82,16 +78,14 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 2,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. Tracked hooks/: pre-commit (prettier --check + secrets scan on staged diff, seconds budget), pre-push (pnpm validate); hooks:install sets core.hooksPath, idempotent; skips named in the hooks and docs/TESTING.md. RED-proven live (planted AKIA key refused in a format-clean file — first manual proof was mislabeled, redone honestly) and in a throwaway-repo fixture test (3 tests). Active in this checkout. Full gate 4815 green."
     },
     {
       "id": "P0-05",
       "title": "nightly.yml runs its real payload (has green-skipped since W4)",
       "lane": "ci",
-      "write_scope": [
-        ".github/workflows/nightly.yml",
-        "package.json"
-      ],
+      "write_scope": [".github/workflows/nightly.yml", "package.json"],
       "depends_on": [],
       "acceptance": [
         "The nightly job executes pnpm --filter @dokima/web e2e (or a root e2e script is added that does), on Node 22, instead of gating on the nonexistent root scripts.e2e and notice-skipping",
@@ -105,9 +99,7 @@
       "id": "GATE-P1",
       "title": "FOUNDER GATE: attest policy waves A1-A12 merged (three-level gates, advisory LLM review, conductor-first Phase 4)",
       "lane": "docs",
-      "write_scope": [
-        "docs/work/EXECUTION_PLAN.md"
-      ],
+      "write_scope": ["docs/work/EXECUTION_PLAN.md"],
       "depends_on": [],
       "acceptance": [
         "attest repo: the A-wave tickets in docs/work/EXECUTION_PLAN.md section A are filed, implemented, and merged; attest version noted here; npm run build:claude regenerated attest-claude and both repos pushed to both remotes",
@@ -129,9 +121,7 @@
         "scripts/conductor.mjs",
         "conductor.config.json"
       ],
-      "depends_on": [
-        "P0-01"
-      ],
+      "depends_on": ["P0-01"],
       "acceptance": [
         "Before any claim, the configured verify commands run against the exact base commit in a clean detached worktree; the result is cached keyed by {baseSha, normalized command, lockfile hash, node version} and reused across tickets sharing the base",
         "A red baseline stops the run with a distinct blocked_on_baseline status and consumes ZERO ticket attempts; the failing suite fingerprint is recorded",
@@ -151,9 +141,7 @@
         "scripts/conductor/gates.mjs",
         "scripts/conductor/ticket.mjs"
       ],
-      "depends_on": [
-        "P2-01"
-      ],
+      "depends_on": ["P2-01"],
       "acceptance": [
         "Gate output parsed to {suite, test, file, line, errorClass} rows with volatile values (timestamps, ports, tmp paths, durations) normalized before comparison",
         "Deterministic classifier: base green + candidate red = regression (consumes attempt); identical red fingerprints = blocked_on_baseline (consumes none, candidate preserved); mixed = only NEW failures charged; base red + candidate green = flagged for explicit review, never silently absorbed",
@@ -173,9 +161,7 @@
         "scripts/conductor/ticket.mjs",
         "conductor.config.json"
       ],
-      "depends_on": [
-        "P2-02"
-      ],
+      "depends_on": ["P2-02"],
       "acceptance": [
         "When the only gate failure is an approved formatter/autofix class, one bounded remediation pass runs: autofix, assert the diff is formatting-only and inside write_scope, re-run the original command from scratch, re-point scanners at the amended commit — consuming NO coding attempt",
         "Remediation never touches out-of-scope files (test proves an out-of-scope autofix is rejected), never deletes tests, never weakens assertions",
@@ -196,9 +182,7 @@
         "scripts/conductor-lib.mjs",
         "scripts/conductor-lib.test.mjs"
       ],
-      "depends_on": [
-        "P2-02"
-      ],
+      "depends_on": ["P2-02"],
       "acceptance": [
         "Terminal states code_attempts_exhausted, review_fix_iterations_exhausted, blocked_on_baseline, blocked_on_infrastructure, provider_attempts_exhausted, blocked_on_scope are emitted in the log and board notes; only the first two consume the implementation retry budget",
         "Provider/session failures and infra events retry on their own budgets and never launch a second feature coding attempt (tests per state, proven RED first)",
@@ -218,9 +202,7 @@
         "scripts/conductor/heal.test.mjs",
         "package.json"
       ],
-      "depends_on": [
-        "P2-04"
-      ],
+      "depends_on": ["P2-04"],
       "acceptance": [
         "The conductor calls the EXISTING packages/loop exports (classifyIteration, createFindingBudgetTracker, checkProgressCeiling, checkConvergence — currently zero external callers) to classify each attempt CLEARED/STALLED/PROGRESSED/MIXED/OSCILLATING and decide RETRY_SAME_TIER/ESCALATE/BLOCK; no reimplementation, the shipped constants win (metered cap 8, local floor 12 — NOT the doctrine's 6)",
         "PARK from checkProgressCeiling routes the ticket to a decompose step: the ticket is split into smaller board tickets (marked as children, original parked) rather than exhausted — test proves a PROGRESSED ceiling produces child tickets and consumes no further attempt",
@@ -241,10 +223,7 @@
         "scripts/conductor-lib.test.mjs",
         "conductor.config.json"
       ],
-      "depends_on": [
-        "P0-01",
-        "P2-04"
-      ],
+      "depends_on": ["P0-01", "P2-04"],
       "acceptance": [
         "reviewDecision blockers no longer drive the retry ladder or markBlocked by themselves (today ticket.mjs lines ~51-73 do exactly that); a reviewer CRITICAL/HIGH finding instead (a) files a finding row with a citation, and (b) can demand a deterministic check — the merge gate is receipts + validators + tests only",
         "A reviewer finding whose citation does not resolve (file:line absent, or command output not in a receipt) is discarded and logged — the fabricated-REJECT control",
@@ -268,9 +247,7 @@
         "scripts/conductor-lib.test.mjs",
         "conductor.config.json"
       ],
-      "depends_on": [
-        "P2-04"
-      ],
+      "depends_on": ["P2-04"],
       "acceptance": [
         "Tickets carry a risk tier (derived: points, write_scope breadth, security-surface globs from config); only bounded known-acceptance tiers are claimable unattended, others land in held_for_human — the 6/6 pilot filter as code, with tests",
         "Scope validation walks git ls-files output only, never the untracked tree, and is time-boxed; on timeout it exits blocked_on_infrastructure with a named cause (the ISSUE12 120s/64k-untracked class), test simulates a huge untracked dir via fixture",
@@ -309,10 +286,7 @@
         "scripts/conductor.mjs",
         "conductor.config.json"
       ],
-      "depends_on": [
-        "GATE-P1",
-        "P2-04"
-      ],
+      "depends_on": ["GATE-P1", "P2-04"],
       "acceptance": [
         "A synthetic validation branch is built from fresh main plus 4-8 compatible candidate branches chosen by disjoint write_scope, dependency order, and a changed-production-line budget from config (default ~1000; 1-3 tickets for high-risk globs); no feature work is ever authored on it and a test asserts the builder refuses a dirty synthetic tree",
         "On a member ticket changing after wave pass, only that ticket and downstream synthetic results invalidate (test)",
@@ -330,9 +304,7 @@
         "packages/pipeline/src/seams/**",
         "scripts/conductor/wave.mjs"
       ],
-      "depends_on": [
-        "P3-01"
-      ],
+      "depends_on": ["P3-01"],
       "acceptance": [
         "InterfaceRef generalizes to a tagged Seam union (export, route, db-column, di-binding, event-topic, nav-entry, config-key, feature-flag) with wiring_evidence naming a deterministic assertion and optional contract_test — extending the EXISTING types in packages/pipeline/src/decompose/types.ts, not a parallel model",
         "Wave gate executes wiring_evidence against the BUILT synthetic head (the gap findUnownedInterfaces cannot see: declared-but-absent exports); a seam whose evidence fails blocks the wave attributed to the consumer ticket — red fixture proves a declared-unwritten export fails",
@@ -352,10 +324,7 @@
         "scripts/conductor/prompts.mjs",
         "conductor.config.json"
       ],
-      "depends_on": [
-        "P3-01",
-        "P2-06"
-      ],
+      "depends_on": ["P3-01", "P2-06"],
       "acceptance": [
         "Wave reviewers run concurrently, each in its own session on its own configured model, each writing a distinct immutable report; synthesis marks 2-plus-model consensus findings highest signal and categorizes Act On / Consider / Noted / Dismissed with an agreement map (the interrogate shape)",
         "Findings reuse the packages/loop findings-ledger ID scheme (F-<ticket>-<n> + fingerprint) and are attributed to the introducing ticket and lines; only the owning ticket reopens, and re-review runs only the failed checks against the new synthetic head",
@@ -375,10 +344,7 @@
         "scripts/conductor/wave-packet.mjs",
         "scripts/conductor/wave-packet.test.mjs"
       ],
-      "depends_on": [
-        "P3-01",
-        "P3-02"
-      ],
+      "depends_on": ["P3-01", "P3-02"],
       "acceptance": [
         "Members merge in dependency order; before each merge the tested synthetic head must still be ancestor-compatible with current main plus remaining heads (test covers the drift case); after the final merge one main smoke suite runs; tickets flip done only on verified main ancestry",
         "Each passing wave emits a bounded human review packet: curated diff + that wave's delegation-log slice + findings summary, sized for a 2-4h session — the machine-stop line",
@@ -396,9 +362,7 @@
         "scripts/conductor/wave.mjs",
         "docs/work/requirement-ledger.json"
       ],
-      "depends_on": [
-        "P3-02"
-      ],
+      "depends_on": ["P3-02"],
       "acceptance": [
         "Requirement ledger maps every user story / acceptance criterion to implementing tickets AND to the e2e test proving it on main; a requirement with tickets but no passing e2e reports as coded-not-done and blocks the assembly gate; a requirement with no tickets reports as uncovered (the A-1 silent-divergence class) — re-derived from the SRS source, never from the ticket list",
         "Every cross-ticket seam generates an assembly ticket whose acceptance is the wiring evidence; plan lint fails a board missing one (red fixture)",
@@ -418,9 +382,7 @@
         "packages/harbormaster/src/**",
         "scripts/conductor/wave.mjs"
       ],
-      "depends_on": [
-        "P3-04"
-      ],
+      "depends_on": ["P3-04"],
       "acceptance": [
         "PR/branch-diff triggered advisory review, scheduled dependency/CVE sweep producing tickets, and post-merge smoke with human escalation on second failure are wired as EXTENSIONS of the existing apps/server/src/scheduler + board-watcher layer — not a new automation layer — and the zero-Decide-tier-auto-actions constraint in plan-scheduler.ts is preserved and tested",
         "Risk-tiered auto-merge is NOT implemented — explicitly left as a founder decision, recorded in the code comment and this ticket's close note",
