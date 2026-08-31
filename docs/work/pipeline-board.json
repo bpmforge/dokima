@@ -215,7 +215,7 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 8,
-      "status": "todo"
+      "status": "in_progress"
     },
     {
       "id": "P2-06",
