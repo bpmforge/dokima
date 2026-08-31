@@ -134,8 +134,12 @@ describe('the buried-export pass (W12-38)', () => {
       'called by nothing else BY DESIGN — law 9a is why they exist — so reporting ' +
       'them reports the testing discipline as a defect (30 of the first 90)',
     () => {
-      expect(isTestSupportFile('packages/gateway/src/providers/copilot-fixtures.ts')).toBe(true);
-      expect(isTestSupportFile('packages/forge/src/mirror/mirror-test-helpers.ts')).toBe(true);
+      expect(
+        isTestSupportFile('packages/gateway/src/providers/copilot-fixtures.ts'),
+      ).toBe(true);
+      expect(isTestSupportFile('packages/forge/src/mirror/mirror-test-helpers.ts')).toBe(
+        true,
+      );
       expect(isTestSupportFile('packages/gateway/src/escalation/policy.ts')).toBe(false);
     },
   );
@@ -164,7 +168,11 @@ describe('the buried-export pass (W12-38)', () => {
 });
 
 describe('a comment is not a caller (W12-39)', () => {
-  const files = ['/repo/pkg/src/thing.ts', '/repo/pkg/src/other.ts', '/repo/pkg/src/thing.test.ts'];
+  const files = [
+    '/repo/pkg/src/thing.ts',
+    '/repo/pkg/src/other.ts',
+    '/repo/pkg/src/thing.test.ts',
+  ];
 
   /** Constructed, not hunted for: this must still hold after today's real instances get wired up. */
   function contents(otherFile) {
@@ -193,8 +201,13 @@ describe('a comment is not a caller (W12-39)', () => {
   );
 
   it('a block comment and a JSDoc mention are equally not calls', () => {
-    for (const text of ['/* widget */ const x = 1;', '/**\n * See widget.\n */\nconst x = 1;']) {
-      expect(countReferences('widget', files, contents(text), files[0]).production).toBe(0);
+    for (const text of [
+      '/* widget */ const x = 1;',
+      '/**\n * See widget.\n */\nconst x = 1;',
+    ]) {
+      expect(countReferences('widget', files, contents(text), files[0]).production).toBe(
+        0,
+      );
     }
   });
 
@@ -226,9 +239,17 @@ describe('a comment is not a caller (W12-39)', () => {
 });
 
 describe('the three degrees of unreached (W22-02)', () => {
-  const files = ['/repo/pkg/src/thing.ts', '/repo/pkg/src/other.ts', '/repo/pkg/src/thing.test.ts'];
+  const files = [
+    '/repo/pkg/src/thing.ts',
+    '/repo/pkg/src/other.ts',
+    '/repo/pkg/src/thing.test.ts',
+  ];
   const contents = (decl, other, test) =>
-    new Map([[files[0], decl], [files[1], other], [files[2], test]]);
+    new Map([
+      [files[0], decl],
+      [files[1], other],
+      [files[2], test],
+    ]);
 
   it('separates a caller inside the declaring file from one outside it', () => {
     // The distinction criterion 4 asks for. `production` stays their sum, so
@@ -260,8 +281,11 @@ describe('the three degrees of unreached (W22-02)', () => {
     // Disjoint by construction: findings/buried require tests > 0, this
     // category requires tests === 0. If they ever overlap, the two calibrated
     // baselines are silently counting something new.
-    const gated = new Set([...findings, ...buried].map((f) => `${f.package}:${f.symbol}`));
-    for (const u of unreferenced) expect(gated.has(`${u.package}:${u.symbol}`)).toBe(false);
+    const gated = new Set(
+      [...findings, ...buried].map((f) => `${f.package}:${f.symbol}`),
+    );
+    for (const u of unreferenced)
+      expect(gated.has(`${u.package}:${u.symbol}`)).toBe(false);
     // ONE now, and the drop is the point. This was two: tickets:numberCriteria
     // and harbormaster:baseProbePath. W22-14 set out to mark baseProbePath as
     // deliberately unreached and found the opposite — it was a wire that had
@@ -278,20 +302,30 @@ describe('the three degrees of unreached (W22-02)', () => {
     // calibrated against.
     const { findings, buried } = scan();
     expect(findings.length).toBe(46);
-    expect(buried.length).toBe(46);
+    expect(buried.length).toBe(45);
   });
 });
 
 describe('the @unreached marker (W22-02)', () => {
-  const files = ['/repo/pkg/src/thing.ts', '/repo/pkg/src/other.ts', '/repo/pkg/src/thing.test.ts'];
+  const files = [
+    '/repo/pkg/src/thing.ts',
+    '/repo/pkg/src/other.ts',
+    '/repo/pkg/src/thing.test.ts',
+  ];
   const contents = (decl, other, test) =>
-    new Map([[files[0], decl], [files[1], other], [files[2], test]]);
+    new Map([
+      [files[0], decl],
+      [files[1], other],
+      [files[2], test],
+    ]);
 
   it('parses a symbol and its reason', () => {
     const { markers, malformed } = unreachedMarkers(
       '// @unreached widget: kept for the published API, no internal caller by design',
     );
-    expect(markers.get('widget')).toBe('kept for the published API, no internal caller by design');
+    expect(markers.get('widget')).toBe(
+      'kept for the published API, no internal caller by design',
+    );
     expect(malformed).toEqual([]);
   });
 
@@ -304,7 +338,9 @@ describe('the @unreached marker (W22-02)', () => {
   });
 
   it('survives a JSDoc block without swallowing the closing delimiter', () => {
-    const { markers } = unreachedMarkers('/**\n * @unreached widget: withheld until W99-01 wires it\n */');
+    const { markers } = unreachedMarkers(
+      '/**\n * @unreached widget: withheld until W99-01 wires it\n */',
+    );
     expect(markers.get('widget')).toBe('withheld until W99-01 wires it');
   });
 
@@ -375,7 +411,7 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // counting change that moved them would need its own recalibration.
     const { findings, buried, unreferenced } = scan();
     expect(findings.length).toBe(46);
-    expect(buried.length).toBe(46);
+    expect(buried.length).toBe(45);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.
     const named = unreferenced.map((u) => u.symbol);

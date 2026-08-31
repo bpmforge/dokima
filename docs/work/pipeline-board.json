@@ -342,7 +342,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 8,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. wave-review.mjs: waveReviewers (code always; security/perf/ux by aggregate-diff surface), waveReviewPrompt per lens (advisory framing baked in), runWaveReview — CONCURRENT sessions each on its OWN model (test proves 3x20ms < 55ms wall + distinct models), immutable per-reviewer JSON reports written BEFORE synthesis. synthesizeWaveFindings = interrogate shape: 2+-model consensus -> Act On; lone CRITICAL/HIGH on a security surface NEVER auto-dismissed; citation gate (P2-06 citedFindings) discards unresolvable findings pre-synthesis; blocking:[] BY CONSTRUCTION (Law L2). ledgerize reuses @dokima/loop createFindingLedger (real F-<ticket>-<n>+fingerprints; lazy TS import, heal-style vendored fallback). Attribution via memberByFile — only the owning ticket reopens; checksToRerun = failed-checks-only delta (OPT-10). Ratchet event: importing citedFindings un-buried one export — buried pin 46->45 (findings stays 46); first blind edit lowered both and validate-exports itself refused (the ratchet catching its maintainer), corrected after measuring. 9 tests. Full gate 4892 green."
     },
     {
       "id": "P3-04",
