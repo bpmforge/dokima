@@ -472,7 +472,7 @@
         "pnpm lint && typecheck && test green"
       ],
       "points": 8,
-      "status": "todo"
+      "status": "in_progress"
     },
     {
       "id": "P6-03",
