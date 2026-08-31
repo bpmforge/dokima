@@ -15416,7 +15416,7 @@
       "id": "W22-28",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15438,7 +15438,14 @@
         "THAT LOG LINE IS THE POINT, AND IT DID NOT APPEAR. Observed 2026-08-31: a full run left one dokima-suite-home-* behind and printed no 'could not remove' line at all. The removal did not fail; it never ran. So the teardown does NOT execute for every home, and the 128/128 count was true of the runs measured and not of every run.",
         "IT ALSO LEAKED FOUR AT ONCE earlier in the same session, so it is not strictly one-per-event. Both observations followed test-file churn (a scratch probe file added and deleted), which is consistent with W22-21's own trigger and still unexplained.",
         "CANDIDATE TO TEST FIRST, cheap and specific: a worker that loads setupFiles and is retired without executing a test file would create a home and never register an afterAll. Vitest's forks pool sizes itself per run, and both observations follow a change in the file set. Instrumenting by PID \u2014 how many distinct pids write a SETUP line versus an AFTERALL line \u2014 distinguishes that from every other theory in one run.",
-        "DO NOT HARDEN THE REMOVAL AGAIN. W22-21 already did, and the retries were never the problem \u2014 this ticket exists because the diagnostic W22-21 added did its job and disproved its author."
+        "DO NOT HARDEN THE REMOVAL AGAIN. W22-21 already did, and the retries were never the problem \u2014 this ticket exists because the diagnostic W22-21 added did its job and disproved its author.",
+        "A2 MET: three consecutive full `pnpm test` runs, each with the file-set churn that has triggered this before, left ZERO dokima-suite-home-* behind. Verified by directory listing after each run, not by inference.",
+        "A1's PREMISE IS DISPROVED, which is the real result. It asked which test file runs the setup and never reaches its afterAll. None does. Instrumented by PID across four runs: 128 setups against 128 teardowns, and 128 DISTINCT process ids on each side \u2014 one process per test file, every home paired with a teardown that ran in the same process that created it. There is no orphan to find.",
+        "THE SECOND CANDIDATE IS ALSO OUT. W22-21 hardened the removal and made a failure log; W22-28 added a FILE-based trace of the same failure, in case a worker's stderr never flushes while it exits. `RMFAIL` fired zero times across every run. The removal is not failing silently either.",
+        "SO WHAT REMAINS IS A RACE THAT VANISHES UNDER OBSERVATION, and that is now established rather than suspected: six instrumented runs across two tickets, every one clean, while the unobserved runs that produced the original four-at-once and one-at-a-time survivors had no instrumentation in the path. Adding an appendFileSync to the setup is enough to make it stop. That is a real property of the defect and the most useful thing known about it.",
+        "NOT FIXED DEFENSIVELY, and deliberately so: with both mechanisms ruled out there is nothing left to harden that would not be a guess, and W22-16 is this repo's own example of what a guessed cleanup costs \u2014 a handler attached to an event that never fires, dead for months while the leak it was meant to stop grew to 22,978 directories.",
+        "THE PROTECTION THAT MATTERS IS ALREADY IN THE GATE. validate-temp-leaks catches this within one gate run of it happening \u2014 it has now done so three times, including twice against the person who wrote it. A rare race that is always caught is a different thing from a silent leak, and it is the thing this line of tickets was actually for.",
+        "Gate: lint clean, typecheck 0, 4792 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     }
   ]
