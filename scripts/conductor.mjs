@@ -65,7 +65,7 @@ import {
 } from './conductor/context.mjs';
 import { lintPlan } from './conductor/lint.mjs';
 import { executeTicket } from './conductor/ticket.mjs';
-import { land, markBlocked } from './conductor/land.mjs';
+import { land, markBlocked, parkForSplit } from './conductor/land.mjs';
 import { waveSecurityPass } from './conductor/security.mjs';
 import { ensureBaseline } from './conductor/baseline.mjs';
 
@@ -234,6 +234,10 @@ async function main() {
         log('conductor.breakpoint', { msg: 'per-ticket breakpoint' });
         break;
       }
+    } else if (res.split) {
+      // P2-05: PARK -> mechanical split. The parent keeps its evidence branch;
+      // the children are claimable immediately — the loop continues into them.
+      parkForSplit(next, res.split, res.branch, res.wt, res.gaps ?? []);
     } else {
       markBlocked(
         next,

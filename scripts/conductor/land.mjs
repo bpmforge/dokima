@@ -153,3 +153,31 @@ export function markBlocked(t, gaps, branch, wt, terminal = null) {
   }
   pushRemotes(t.id, keepName);
 }
+
+/**
+ * P2-05 SPLIT landing: park the parent (markBlocked bookkeeping — note,
+ * evidence, kept branch) and file its mechanical split children on the board
+ * at ROOT so the very next claim can pick them up. The parent consumed no
+ * further attempt; the children are ordinary todo tickets.
+ */
+export function parkForSplit(t, children, branch, wt, gaps) {
+  markBlocked(t, gaps, branch, wt, null);
+  const plan = loadPlan();
+  const row = plan.tickets.find((x) => x.id === t.id);
+  if (row) row.terminal = 'parked_for_split';
+  for (const c of children) {
+    if (!plan.tickets.some((x) => x.id === c.id)) plan.tickets.push(c);
+  }
+  writePlan(ROOT, plan, CONFIG.boardPath);
+  git('add', CONFIG.boardPath);
+  git(
+    'commit',
+    '-q',
+    '-m',
+    `chore(${t.id}): parked at the PROGRESSED ceiling; split into ${children.map((c) => c.id).join(' + ')}`,
+  );
+  log('ticket.split', {
+    ticket: t.id,
+    msg: `parked_for_split -> ${children.map((c) => c.id).join(', ')} now claimable`,
+  });
+}

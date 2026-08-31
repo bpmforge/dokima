@@ -26,6 +26,8 @@ import { runGates } from './gates.mjs';
 import { reviewPrompt } from './prompts.mjs';
 import { saveEvidence, gapHeads } from './evidence.mjs';
 import { remediablePlan, applyRemediation } from './remediate.mjs';
+import { createHealState, assessAttempt, proposeSplit } from './heal.mjs';
+import { receiptFingerprints } from './fingerprint.mjs';
 import { runSession } from './session.mjs';
 import { existsSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
@@ -47,6 +49,9 @@ export async function executeTicket(t) {
   let lastDiffClass = null;
   let lastWasReview = false;
   let lastSelfBlocked = false;
+  // P2-05: the shipped @dokima/loop policy engine governs the ladder —
+  // stall budgets, escalation, and the split-on-PROGRESSED-ceiling PARK.
+  const heal = await createHealState(t.points, MODELS.tier ?? 'metered');
   for (let i = 0; i < attempts.length; i++) {
     const model = attempts[i];
     if (i > 0) {
@@ -168,6 +173,51 @@ export async function executeTicket(t) {
           ...newLines,
           `(${g.diff.sharedRows.length} further failure(s) are pre-existing on the base — excluded from this ticket; full verify output: ${ev0})`,
         ];
+      }
+      // P2-05 — the policy engine's verdict on this failed pass. Deterministic;
+      // it can end the ladder early (BLOCK), demand escalation, or PARK the
+      // ticket into a mechanical split when it keeps PROGRESSING into the
+      // shipped ceiling ("the change is too big, not wrong").
+      const heals = assessAttempt(heal, receiptFingerprints(g.receipt));
+      log('heal.assess', {
+        ticket: t.id,
+        msg: `${heals.iterationClass} -> ${heals.action}: ${heals.why}`,
+      });
+      if (heals.action === 'SPLIT') {
+        const children = proposeSplit(t);
+        if (children) {
+          return {
+            ok: false,
+            branch,
+            wt,
+            split: children,
+            gaps: [
+              `parked_for_split: ${heals.why} — ${children.length} child ticket(s) filed; no further attempt consumed`,
+            ],
+          };
+        }
+        log('heal.split-impossible', {
+          ticket: t.id,
+          msg: 'write_scope has a single entry — cannot split further; blocking honestly',
+        });
+        gaps = [
+          ...gaps,
+          'split-impossible: single-entry write_scope at the PROGRESSED ceiling',
+        ];
+        break;
+      }
+      if (heals.action === 'BLOCK') {
+        gaps = [...gaps, `stall-block: ${heals.why}`];
+        break;
+      }
+      if (heals.action === 'ESCALATE' && ESCALATE && i < attempts.length - 1) {
+        // Jump the ladder straight to the escalation model — two more
+        // same-tier attempts would be the worst spend in the system.
+        attempts[i + 1] = MODELS.escalate ?? attempts[i + 1];
+        log('heal.escalate', {
+          ticket: t.id,
+          msg: `next attempt jumps to ${attempts[i + 1]}`,
+        });
       }
       // P0-03: one line per gap (first line each), full text to evidence —
       // the old 400-byte slice of the join produced mid-word fragments

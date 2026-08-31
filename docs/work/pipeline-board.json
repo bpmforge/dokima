@@ -215,7 +215,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 8,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. heal.mjs wires the EXISTING @dokima/loop engine (0 external callers before this) via Node>=22.18 type-stripping — LAZY import so the W9-12 two-file vendoring contract survives (foreign repo: engine reports unavailable once, ladder ungoverned, no crash; integration tests prove it). SHIPPED CONSTANTS GOVERN: metered cap 8 / local floor 12 pinned by test against the doctrine's 6. assessAttempt: classifyIteration + per-fingerprint budget tracker (2/tier -> ESCALATE, post-escalation stall or 2nd oscillation -> BLOCK) + checkConvergence sliding window (DIVERGED -> escalate) + checkProgressCeiling (PROGRESSED into ceiling -> SPLIT). proposeSplit: mechanical write_scope partition into S1/S2 children (single-entry scope -> null -> honest BLOCK). ticket.mjs: heal.assess log per failed pass, ESCALATE jumps the ladder to the escalation model, SPLIT returns children; land.mjs parkForSplit parks parent (terminal parked_for_split, evidence branch kept) and files children claimable immediately; conductor.mjs routes res.split. 10 tests. Full gate 4874 green (first gate red: static TS import broke the vendoring integration tests — converted to lazy, contract restored)."
     },
     {
       "id": "P2-06",
