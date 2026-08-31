@@ -4,7 +4,7 @@
   "worktreeDir": "../.dokima-worktrees",
   "isolation": "worktree",
   "toolchainMarker": "package.json",
-  "boardPath": "plan.json",
+  "boardPath": "docs/work/pipeline-board.json",
   "install": [
     "pnpm",
     [
@@ -118,7 +118,7 @@
   "alwaysOkAddOnly": [
     "packages/events/migrations/**"
   ],
-  "holdTickets": [],
+  "holdTickets": ["GATE-P1"],
   "models": {
     "maker": "sonnet",
     "cheap": "haiku",
