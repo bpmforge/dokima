@@ -18,7 +18,7 @@
     "Approval",
     "Merge the demo branch",
     "Diff: +120 -4",
-    "Aug 28, 2026, 9:53 AM",
+    "Aug 31, 2026, 8:59 AM",
     "Approve",
     "Reject",
     "Either choice records your decision in the project's ledger, with your name, and clears this card. Nothing merges or is discarded by the click itself — the work stays on its branch, and the run waiting on this answer reads the ledger.",
@@ -173,7 +173,7 @@
       "name": "Reject",
       "disabled": false,
       "rect": {
-        "x": 622,
+        "x": 621,
         "y": 303,
         "w": 64,
         "h": 99
@@ -185,7 +185,7 @@
       "name": "Approve",
       "disabled": false,
       "rect": {
-        "x": 669,
+        "x": 668,
         "y": 474,
         "w": 79,
         "h": 222

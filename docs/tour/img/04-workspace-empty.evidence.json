@@ -16,8 +16,9 @@
     "«",
     "No agent activity yet.",
     "Messages, questions, findings, and Completion Manifests — the hand-back an agent writes when it finishes a ticket — appear here as agents work.",
-    "The board fills once you describe your idea and it is broken into tickets.",
+    "The board is empty. It fills either from a product you describe, or from code that is already here — Dokima has not read this folder yet.",
     "Describe your product",
+    "Analyse this repository",
     "Artifacts",
     "Docs",
     "Receipts",
@@ -199,8 +200,20 @@
       "disabled": false,
       "rect": {
         "x": 626,
-        "y": 233,
+        "y": 251,
         "w": 188,
+        "h": 36
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Analyse this repository",
+      "disabled": false,
+      "rect": {
+        "x": 624,
+        "y": 295,
+        "w": 191,
         "h": 36
       }
     },

@@ -22,16 +22,15 @@
     "The run made a pass over the ticket",
     "loop.pass",
     "agent-1",
-    "Aug 28, 2026, 9:52 AM",
+    "Aug 31, 2026, 8:59 AM",
     "Gate result",
     "A gate checked the work and minted a receipt",
     "gate.receipt_minted",
-    "Aug 28, 2026, 9:52 AM (+1ms)",
+    "Aug 31, 2026, 8:59 AM (+1ms)",
     "Escalation",
     "Escalated to a stronger model",
     "escalation.rung_advanced",
-    "rung R0 → R1",
-    "Aug 28, 2026, 9:52 AM (+0ms)"
+    "rung R0 → R1"
   ],
   "interactive": [
     {
@@ -172,7 +171,7 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 705,
+        "x": 704,
         "y": 239,
         "w": 135,
         "h": 36
@@ -184,7 +183,7 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 914,
+        "x": 912,
         "y": 301,
         "w": 135,
         "h": 36
@@ -196,7 +195,7 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 303,
+        "x": 299,
         "y": 415,
         "w": 135,
         "h": 36
