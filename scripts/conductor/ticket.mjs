@@ -2,11 +2,18 @@
 // Chapter of scripts/conductor.mjs, split under the 400-line
 // CODE_BOOK_PROTOCOL cap (W10-46). Extraction only, no behaviour change.
 
-import { parseJson, writePlan, codingPrompt, reviewDecision } from '../conductor-lib.mjs';
+import {
+  parseJson,
+  writePlan,
+  codingPrompt,
+  reviewDecision,
+  globToRegex,
+} from '../conductor-lib.mjs';
 import {
   CONFIG,
   MODELS,
   ESCALATE,
+  ALWAYS_OK,
   log,
   git,
   gitIn,
@@ -17,6 +24,7 @@ import { runGates } from './gates.mjs';
 
 import { reviewPrompt } from './prompts.mjs';
 import { saveEvidence, gapHeads } from './evidence.mjs';
+import { remediablePlan, applyRemediation } from './remediate.mjs';
 import { runSession } from './session.mjs';
 import { makeWorktree } from './worktree.mjs';
 
@@ -29,6 +37,7 @@ export async function executeTicket(t) {
   // CONFIRMED-fixed. A finding can never vanish because a later (non-deterministic)
   // reviewer instance fails to re-mention it — the harness analogue of the Challenger gate.
   const sticky = [];
+  let mechanicalTried = false; // P2-03: one bounded pass per ticket, never more
   for (let i = 0; i < attempts.length; i++) {
     const model = attempts[i];
     if (i > 0) {
@@ -36,7 +45,48 @@ export async function executeTicket(t) {
       resetStatus(wt, t.id);
     }
     await runSession(codingPrompt(t, gaps, CONFIG.boardPath), model, `code:${t.id}`, wt);
-    const g = runGates(t, branch, wt);
+    let g = runGates(t, branch, wt);
+    // P2-03 — bounded mechanical remediation, ONCE per ticket: when every
+    // failed verify command has an approved autofix and the failure is not
+    // the base's own (blocked_on_baseline goes to the differential path),
+    // run the fixer, reject any out-of-scope touch whole, commit the
+    // amendment, and re-run the gates so scanners see the amended commit.
+    // No coding attempt is consumed by the fix itself.
+    if (
+      g.gaps.length &&
+      !mechanicalTried &&
+      g.diff?.classification !== 'blocked_on_baseline'
+    ) {
+      const plan = remediablePlan(g.receipt, CONFIG.mechanicalFix ?? []);
+      if (plan) {
+        mechanicalTried = true;
+        const scopeRes = t.write_scope.map(globToRegex);
+        const res = applyRemediation({
+          wt,
+          ticketId: t.id,
+          plan,
+          scopeRes,
+          alwaysOkRes: ALWAYS_OK,
+        });
+        if (res.applied) {
+          log('ticket.remediated', {
+            ticket: t.id,
+            msg: `mechanical fix applied to ${res.changed.length} file(s) — re-running gates; no attempt consumed`,
+          });
+          g = runGates(t, branch, wt);
+        } else if (res.rejected?.length) {
+          log('ticket.remediation-rejected', {
+            ticket: t.id,
+            msg: `autofix touched out-of-scope file(s), reverted whole: ${res.rejected.join(', ')}`,
+          });
+        } else {
+          log('ticket.remediation-skipped', {
+            ticket: t.id,
+            msg: res.error ?? 'no diff',
+          });
+        }
+      }
+    }
     gaps = g.gaps;
     if (g.selfBlocked) {
       // Deliberate, not a failure: stop the attempt ladder and let markBlocked

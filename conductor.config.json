@@ -5,70 +5,30 @@
   "isolation": "worktree",
   "toolchainMarker": "package.json",
   "boardPath": "docs/work/pipeline-board.json",
-  "install": [
-    "pnpm",
-    [
-      "install",
-      "--prefer-offline"
-    ]
-  ],
+  "install": ["pnpm", ["install", "--prefer-offline"]],
   "$verifyCommandsNote": "P0-01 (EXECUTION_PLAN Law L1): the trust commands. Run by scripts/conductor/receipts.mjs mintReceipt() — never by the agent session — and written to docs/work/receipts/<ticket>-<sha12>.json with per-command exit codes. runGates() asserts the receipt; a pre-existing (possibly hand-edited) receipt is overwritten unread. Moved OUT of gates[] so they run exactly once, under attestation.",
   "verifyCommands": [
-    [
-      "pnpm",
-      [
-        "lint"
-      ]
-    ],
-    [
-      "pnpm",
-      [
-        "typecheck"
-      ]
-    ],
-    [
-      "pnpm",
-      [
-        "test"
-      ]
-    ]
+    ["pnpm", ["lint"]],
+    ["pnpm", ["typecheck"]],
+    ["pnpm", ["test"]]
+  ],
+  "$mechanicalFixNote": "P2-03: approved deterministic autofixes. When EVERY failed verify command matches a rule, ONE bounded remediation pass runs (out-of-scope touches reject the whole pass; the amendment is committed; gates re-run; no coding attempt consumed). eslint --fix and prettier --write are mechanical by construction; nothing here may waive security, delete tests, or weaken assertions.",
+  "mechanicalFix": [
+    {
+      "match": "pnpm lint",
+      "cmd": ["pnpm", ["lint", "--fix"]]
+    }
   ],
   "gates": [
-    [
-      "node",
-      [
-        "scripts/validate-plan.mjs"
-      ]
-    ],
-    [
-      "node",
-      [
-        "scripts/validate-traceability.mjs"
-      ]
-    ],
-    [
-      "node",
-      [
-        "scripts/validate-exports.mjs",
-        "--max",
-        "46",
-        "--max-buried",
-        "46"
-      ]
-    ],
+    ["node", ["scripts/validate-plan.mjs"]],
+    ["node", ["scripts/validate-traceability.mjs"]],
+    ["node", ["scripts/validate-exports.mjs", "--max", "46", "--max-buried", "46"]],
     [
       "bash",
       "-lc",
       "OUT=$(mktemp -d) && node apps/web/scripts/capture-acceptance.mjs gate --out \"$OUT\" >/dev/null && node scripts/validate-visual.mjs --run \"$OUT\"; rc=$?; rm -rf \"$OUT\"; exit $rc"
     ],
-    [
-      "pnpm",
-      [
-        "--filter",
-        "@dokima/web",
-        "e2e"
-      ]
-    ]
+    ["pnpm", ["--filter", "@dokima/web", "e2e"]]
   ],
   "gateTimeoutMin": 15,
   "testSibling": {
@@ -81,24 +41,16 @@
   },
   "validators": {
     "dir": "content/validators",
-    "gate": [
-      "validate-file-size",
-      "validate-circular-deps"
-    ],
+    "gate": ["validate-file-size", "validate-circular-deps"],
     "advisory": [
       "validate-code-health",
       "validate-dead-code",
       "validate-verification-integrity"
     ],
     "$note": "gate[] = reliable/objective validators, run diff-scoped as HARD gates. advisory[] = grep-heuristic validators (noisy on TS: magic-numbers-in-comments, bogus-unreachable) — their findings ANCHOR the LLM review instead of blocking, matching the source system's 'script floor + agent verified pass' design. Promote a validator to gate[] once red-fixture-calibrated. repoWide[] (W10-49): findings from these are NOT filtered to the ticket diff. Only honest while the validator reports ZERO repo-wide — then any finding is necessarily something this ticket introduced. validate-file-size hit zero at W10-48 (six over-cap files cleared across W10-46/47/48); if that count ever goes non-zero again, every ticket fails for debt it did not create, so remove the entry rather than waiving it.",
-    "repoWide": [
-      "validate-file-size"
-    ]
+    "repoWide": ["validate-file-size"]
   },
-  "remotes": [
-    "github",
-    "origin"
-  ],
+  "remotes": ["github", "origin"],
   "alwaysOk": [
     "plan.json",
     "docs/STATUS.md",
@@ -118,21 +70,15 @@
     ".npmrc",
     ".nvmrc"
   ],
-  "alwaysOkAddOnly": [
-    "packages/events/migrations/**"
-  ],
-  "holdTickets": [
-    "GATE-P1"
-  ],
+  "alwaysOkAddOnly": ["packages/events/migrations/**"],
+  "holdTickets": ["GATE-P1"],
   "models": {
     "maker": "sonnet",
     "cheap": "haiku",
     "reviewer": "sonnet",
     "security": "sonnet",
     "escalate": "opus",
-    "cheapLanes": [
-      "content"
-    ],
+    "cheapLanes": ["content"],
     "cheapMaxPoints": 1
   },
   "$holdNote2": "2026-08-02 UN-HELD for an authorized overnight autonomous run (founder: \"auto work through the night\"). W10-04 was held because a Providers panel built without a spec is invention at the keyboard — W10-05 removed that risk by writing UX_SPEC 6a, which names every state, both destructive-affordance copy blocks, and the verbatim refusal strings, so W10-04 now has something to conform TO. W10-28 is a scale-adoption pass whose gate (styles.test.ts) already fails on any regression. D-018 still holds: launched WITHOUT --escalate, sonnet-only ladder. Overnight output is visually verified against screenshots before it is trusted.",

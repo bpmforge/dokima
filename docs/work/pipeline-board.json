@@ -171,7 +171,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 3,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. remediate.mjs: remediablePlan (EVERY failed verify command must match an approved mechanicalFix rule — one unfixable failure disqualifies the receipt), applyRemediation (runs fixers, rejects the WHOLE pass if any touched file is out of scope and reverts it, commits the amendment so scanners see the amended commit, surfaces a crashing fixer as its own error). ticket.mjs: one bounded pass per ticket, skipped when differential says blocked_on_baseline, gates re-run after an applied fix — no coding attempt consumed. conductor.config.json mechanicalFix: pnpm lint -> pnpm lint --fix. 8 tests incl. whole-pass revert on the out-of-scope sneaky edit. Full gate 4847 green."
     },
     {
       "id": "P2-04",
