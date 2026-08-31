@@ -66,6 +66,7 @@ import {
 import { lintPlan } from './conductor/lint.mjs';
 import { executeTicket } from './conductor/ticket.mjs';
 import { land, markBlocked, parkForSplit } from './conductor/land.mjs';
+import { tryFeatureLandings } from './conductor/feature-landing-wiring.mjs';
 import { waveSecurityPass } from './conductor/security.mjs';
 import { ensureBaseline } from './conductor/baseline.mjs';
 
@@ -228,6 +229,14 @@ async function main() {
     lastWasInfra = false;
     if (res.ok) {
       if (land(next, res.branch, res.wt) === 'parked') parkedThisRun.add(next.id);
+      // P6-02: in per-feature mode, every park is a chance a FEATURE just
+      // completed — try to land any feature whose tickets are all parked-done
+      // as ONE merge. Landed members leave parkedThisRun so the loop's
+      // bookkeeping matches the board.
+      if (CONFIG.landing === 'per-feature') {
+        const landedIds = await tryFeatureLandings();
+        for (const id of landedIds) parkedThisRun.delete(id);
+      }
       doneCount++;
       log('ticket.done', { ticket: next.id, msg: `${doneCount} landed this run` });
       if (BREAKPOINT === 'ticket') {

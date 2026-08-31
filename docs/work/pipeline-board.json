@@ -472,7 +472,8 @@
         "pnpm lint && typecheck && test green"
       ],
       "points": 8,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. feature-landing.mjs (pure policy) + feature-landing-wiring.mjs (production composition) + land() park path + main-loop hook. landing='per-feature' (SET for this board): done tickets PARK; a feature lands as EXACTLY ONE --no-ff merge of its synthetic wave branch once every member is parked-done — real-git test asserts first-parent count +1 and both members' files on main. Guards, all reused not reimplemented: composeWave whole-or-nothing, buildSyntheticBranch conflict = whole-feature refusal, Tier-D verify receipt on the synthetic head (same mintReceipt wrapper), seam gate computed ON THE SYNTHETIC HEAD via async seamGapsFor (first draft had seamGaps:[] with a lying comment — caught in self-review, made honest), waveInvalidation member drift + main-advanced check both refuse with main untouched (tested). featureOf: board features[] wins, wave-prefix cohort fallback (proven against the real board). 8 tests. Full gate 4987 green."
     },
     {
       "id": "P6-03",

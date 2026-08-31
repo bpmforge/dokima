@@ -41,6 +41,19 @@ export function pushRemotes(ticket, extraBranch = null) {
 }
 
 export function land(t, branch, wt) {
+  // P6-02: per-feature landing parks EVERY done ticket — the merge happens
+  // once per FEATURE via feature-landing.mjs when the whole feature is
+  // parked-done. The worktree is removed (the branch carries the work); the
+  // branch is pushed so the parked state survives a crash.
+  if (CONFIG.landing === 'per-feature') {
+    removeWorktree(wt);
+    log('parked', {
+      ticket: t.id,
+      msg: `parked on ${branch} for feature landing (landing=per-feature)`,
+    });
+    pushRemotes(t.id, branch);
+    return 'parked';
+  }
   // ROOT stays on main throughout — just merge the branch and clean up the worktree.
   if (DO_MERGE) {
     try {

@@ -85,6 +85,8 @@
   },
   "scopeCheckTimeoutSec": 120,
   "$waveNote": "P3-01 (OPT-09/OPT-12): Level-2 synthetic wave composition budgets, consumed by scripts/conductor/wave.mjs. maxChangedLines is the ~1000-line reviewability budget; highRiskGlobs reuses the unattendedRisk surface; highRiskMax keeps risk work on small waves (1-3).",
+  "$landingNote": "P6-02: 'per-ticket' (default, back-compat) merges each done ticket; 'per-feature' PARKS done tickets and lands a feature as ONE --no-ff merge of its synthetic wave branch once every ticket of the feature is parked-done — Tier-D verify + seam gate + drift checks first. Measured motive: 22 of 30 first-parent commits were per-ticket merges.",
+  "landing": "per-feature",
   "wave": {
     "maxTickets": 8,
     "maxChangedLines": 1000,
