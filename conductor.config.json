@@ -84,6 +84,19 @@
     "allowUnattended": []
   },
   "scopeCheckTimeoutSec": 120,
+  "$waveNote": "P3-01 (OPT-09/OPT-12): Level-2 synthetic wave composition budgets, consumed by scripts/conductor/wave.mjs. maxChangedLines is the ~1000-line reviewability budget; highRiskGlobs reuses the unattendedRisk surface; highRiskMax keeps risk work on small waves (1-3).",
+  "wave": {
+    "maxTickets": 8,
+    "maxChangedLines": 1000,
+    "highRiskGlobs": [
+      "^packages/events/",
+      "^packages/gateway/src/providers/",
+      "keychain",
+      "secrets",
+      "auth"
+    ],
+    "highRiskMax": 3
+  },
   "holdTickets": ["GATE-P1"],
   "models": {
     "maker": "sonnet",
