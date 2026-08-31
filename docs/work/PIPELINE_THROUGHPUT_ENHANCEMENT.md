@@ -87,13 +87,22 @@ Verified 2026-08-31, not assumed:
 That third row is itself a finding: the seam linter and the findings ledger exist in `packages/`, while the
 board the conductor runs comes from a hand-written `plan.json` that carries none of those fields.
 
-**OPT-01..OPT-05 are NOT here.** The incident doc records them in executor commit `e73f668`, in an isolated
-local JIRA-conductor worktree on the work machine, deliberately not pushed upstream. In this repo's conductor:
+**OPT-01..OPT-05 are in NEITHER conductor.** The incident doc records them in executor commit `e73f668`, in
+an isolated local JIRA-conductor worktree on the work machine, deliberately not pushed upstream. Checked in
+both places:
 
-- reviewers run **one reviewer, sequentially** (`scripts/conductor/ticket.mjs:41`) — no concurrency, no model diversity;
-- there is **no no-change fix-loop abort** and **no baseline preflight** (grep for `unchanged|baseline` in
-  `scripts/conductor/*.mjs` returns only unrelated comments);
-- the retry ladder **regenerates the whole candidate on the next model** rather than repairing mechanically.
+| | attest's conductor | Dokima's conductor |
+|---|---|---|
+| Reviewers concurrent (OPT-01) | **No** — `attest/scripts/conductor/conductor.mjs:554-556`, `runReviewRound` is a `for` loop over reviewers | **No** — one reviewer only, `shipwright/scripts/conductor/ticket.mjs:41` |
+| Baseline preflight / fingerprints | **No** — only a formatter-clean baseline string at `conductor.mjs:489`; no `blocked_on_*` states | **No** — `grep -n "unchanged\|baseline" shipwright/scripts/conductor/*.mjs` returns unrelated comments only |
+| No-change fix-loop abort (OPT-02) | **No** | **No** |
+| Mechanical remediation before a new attempt | **No** — retries escalate the model | **No** — the ladder regenerates the whole candidate on the next model |
+| Partial credit | Re-reviews **only the reviewers that blocked** (`conductor.mjs:607-613`) — a fragment of OPT-10 | Sticky findings across attempts |
+
+One defect visible only in attest's conductor: `conductor.mjs:508` commits scope-violation evidence with
+`git add -f` from the target checkout. The incident doc lists that exact force-add-and-commit fallback as a
+defect it fixed locally, and it can commit runtime evidence into a repo whose policy is PR-only. Tracked as
+T2-13.
 
 Two useful seeds already exist and should be generalized rather than rebuilt:
 
@@ -445,6 +454,7 @@ was deliberately kept project-local and this plan does not attempt to unify the 
 | **T2-10** | **Scope validation scoped to tracked paths**; never traverse an untracked tree; time-box with a distinct `blocked_on_infrastructure` exit | M-06 |
 | **T2-11** | **Red-fixture calibration harness** — no check promoted advisory→gating without a red fixture | M-04 |
 | **T2-12** | Fix the four executor/infra fatal classes seen in the log (`ENOBUFS`, `ENOSPC`, `row.notes.push`, `testSiblingWarning`) and route them to `blocked_on_infrastructure` | §1 Defect B |
+| **T2-13** | Failure/scope evidence is written **beside** the worktree, outside the target repo; never `git add -f` from the main checkout (`attest/scripts/conductor/conductor.mjs:508`) | M-08 |
 
 ### T3 — Executor: the wave gate
 
@@ -521,6 +531,10 @@ New, for this plan:
 ## 10. Targets
 
 Split by defect, because the two pipelines start from different numbers.
+
+> **Baseline caveat.** The Defect-A figures come from the work machine's event log and are **not verifiable
+> from this machine** (verification C-10). Re-measure them there before grading progress against them — do
+> not treat 4.76 → ≤1.5 as a settled baseline on this evidence.
 
 **Defect A — Marauder / attest conductor (over-gating):**
 
