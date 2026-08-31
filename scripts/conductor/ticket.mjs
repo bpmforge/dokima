@@ -6,7 +6,7 @@ import {
   parseJson,
   writePlan,
   codingPrompt,
-  reviewDecision,
+  demoteReview,
   globToRegex,
   classifyTerminal,
 } from '../conductor-lib.mjs';
@@ -27,6 +27,8 @@ import { reviewPrompt } from './prompts.mjs';
 import { saveEvidence, gapHeads } from './evidence.mjs';
 import { remediablePlan, applyRemediation } from './remediate.mjs';
 import { runSession } from './session.mjs';
+import { existsSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { makeWorktree } from './worktree.mjs';
 
 // ---------- per-ticket flow ----------
@@ -187,72 +189,70 @@ export async function executeTicket(t) {
       wt,
     );
     const verdict = parseJson(r.out) ?? {
-      verdict: 'FIX',
-      findings: [
-        {
-          severity: 'HIGH',
-          file: '-',
-          issue: 'review output unparseable',
-          fix: 're-run review',
-        },
-      ],
+      verdict: 'UNPARSEABLE',
+      findings: [],
       prior_status: [],
     };
 
-    // Findings the CURRENT pass raises fresh, and prior findings the reviewer — who is
-    // shown every prior finding — explicitly says are STILL PRESENT. Those are the real
-    // blockers. A prior finding that the reviewer neither re-raises nor marks PRESENT,
-    // on an APPROVE verdict, is treated as resolved: an informed reviewer that has seen
-    // the finding and approves is the authority, not my bookkeeping. (The earlier gate —
-    // "APPROVE && zero-unresolved-sticky" with brittle text-matched resolution — false-
-    // blocked W0-05/W1-01/W1-03: the reviewer APPROVED but the sticky rows never cleared.)
-    const decision = reviewDecision(verdict);
-    const { currentHigh, presentPriors, blockers, advisory } = decision;
-    for (const f of currentHigh) {
-      const key = `${f.file}:${f.issue}`;
-      if (!sticky.some((s) => s.key === key))
+    // P2-06 (Law L2) — THE LLM VERDICT IS ADVISORY. The field report proved
+    // review-as-a-hard-gate fails both ways (a hash-forgery merged; 75% of
+    // one stretch's blocks were false). Deterministic gates — receipts,
+    // validators, tests — already passed above and OWN the merge. The
+    // reviewer may label, rank, and demand a deterministic check; it cannot
+    // block, and its findings must survive the citation gate first:
+    // an unresolvable file citation is the fabricated-REJECT shape and is
+    // discarded unread (RDSAD-234).
+    const review = demoteReview(verdict, (f) => existsSync(resolvePath(wt, f)));
+    for (const d of review.discarded) {
+      log('review.discarded', {
+        ticket: t.id,
+        msg: `citation does not resolve — dropped: [${d?.severity ?? '?'}] ${d?.file ?? '(no file)'}: ${String(d?.issue ?? '').slice(0, 160)}`,
+      });
+    }
+    for (const a of review.advisory) {
+      const key = `${a.file}:${a.issue}`;
+      if (!sticky.some((x) => x.key === key))
         sticky.push({
           key,
-          severity: f.severity,
-          file: f.file,
-          issue: f.issue,
-          fix: f.fix,
+          severity: a.severity,
+          file: a.file,
+          issue: a.issue,
+          fix: a.fix,
         });
+      log('review.advisory', {
+        ticket: t.id,
+        msg: `[${a.severity}] ${a.file}: ${a.issue}`,
+      });
+    }
+    for (const c of review.demandedChecks) {
+      log('review.demand', {
+        ticket: t.id,
+        msg: `reviewer demands deterministic check: ${c} — record for promotion via the red-fixture pipeline, not an inline block`,
+      });
+    }
+    if (review.advisory.length || review.discarded.length) {
+      saveEvidence(
+        t.id,
+        'review-findings',
+        JSON.stringify(
+          {
+            verdict: review.verdict,
+            advisory: review.advisory,
+            discarded: review.discarded,
+          },
+          null,
+          2,
+        ),
+      );
     }
     log('review.result', {
       ticket: t.id,
-      msg: `verdict=${verdict.verdict} newHigh=${currentHigh.length} priorsStillPresent=${presentPriors.length} (sticky-seen ${sticky.length})`,
+      msg: `verdict=${review.verdict} (advisory — deterministic gates already green): ${review.advisory.length} cited finding(s), ${review.discarded.length} discarded, ${review.demandedChecks.length} demanded check(s)`,
     });
-
-    // See reviewDecision() in conductor-lib.mjs: the presence of blockers is the
-    // decision, not the verdict string. A FIX verdict with nothing above MEDIUM
-    // used to retry on an empty gap list and could block a ticket with an empty
-    // ledger — "blocked" with no recorded reason.
-    if (decision.approve) {
-      if (decision.verdictOverridden) {
-        log('review.approve', {
-          ticket: t.id,
-          msg: `verdict=${verdict.verdict} but no CRITICAL/HIGH findings and no still-present priors — treating as APPROVE; ${advisory.length} advisory finding(s) recorded, not blocking`,
-        });
-      } else {
-        log('review.approve', {
-          ticket: t.id,
-          msg: `informed APPROVE; ${sticky.length} prior finding(s) not re-raised${advisory.length ? `; ${advisory.length} advisory` : ''}`,
-        });
-      }
-      for (const a of advisory)
-        log('review.advisory', {
-          ticket: t.id,
-          msg: `[${a.severity}] ${a.file}: ${a.issue}`,
-        });
-      return { ok: true, branch, wt };
-    }
-    log('review.fix', {
-      ticket: t.id,
-      msg: `${blockers.length} blocker(s): ${currentHigh.length} new + ${presentPriors.length} still-present`,
-    });
-    gaps = blockers;
-    lastWasReview = true; // P2-04: an exhausted ladder ending here is review-budget spend
+    // Deterministic gates green + evidence recorded -> land. An APPROVE with
+    // stale sticky rows can no longer false-block (the W0-05/W1-01/W1-03
+    // shape): sticky is a ledger for humans and later prompts, not a gate.
+    return { ok: true, branch, wt };
   }
   // Block with the last pass's real blockers; if none captured, fall back to the sticky-seen list.
   const ledger =

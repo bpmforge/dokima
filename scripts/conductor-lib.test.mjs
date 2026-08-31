@@ -1678,3 +1678,80 @@ describe('TERMINAL_STATES + classifyTerminal (P2-04)', () => {
     expect(terminalNote('code_attempts_exhausted')).not.toContain('consumed no');
   });
 });
+
+// ---------------------------------------------------------------------------
+// P2-06 — advisory review + citation gate (Law L2). RED provenance: the field
+// report's two-way failure of review-as-a-gate (a hash-forgery merged; 75% of
+// one stretch's blocks were false) and RDSAD-234's fabricated REJECT. The
+// forgery catch itself stays deterministic: packages/events/src/hash.test.ts
+// ("has no field-boundary collisions") is the red fixture — verified present,
+// cited here rather than duplicated.
+import { citedFindings, demoteReview } from './conductor-lib.mjs';
+
+describe('citedFindings (P2-06)', () => {
+  const exists = (f) => f === 'src/real.ts';
+  const finding = (file, issue = 'x') => ({ severity: 'HIGH', file, issue, fix: 'y' });
+
+  it('keeps findings whose file resolves; discards the rest unread', () => {
+    const { cited, discarded } = citedFindings(
+      [
+        finding('src/real.ts'),
+        finding('src/never-existed.ts'),
+        finding('-'),
+        finding(''),
+      ],
+      exists,
+    );
+    expect(cited).toHaveLength(1);
+    expect(discarded).toHaveLength(3);
+  });
+
+  it('the fabricated-REJECT shape (confident issue, unresolvable file) is discarded', () => {
+    const { cited, discarded } = citedFindings(
+      [finding('apps/api/wiring.ts', 'route never mounted — REJECT')],
+      () => false,
+    );
+    expect(cited).toHaveLength(0);
+    expect(discarded[0].issue).toContain('REJECT');
+  });
+});
+
+describe('demoteReview (P2-06)', () => {
+  it('has NO blocking field by construction — the return type cannot fail a ticket', () => {
+    const out = demoteReview(
+      {
+        verdict: 'FIX',
+        findings: [
+          { severity: 'CRITICAL', file: 'src/real.ts', issue: 'bad', fix: 'do' },
+        ],
+      },
+      () => true,
+    );
+    expect(Object.keys(out).sort()).toEqual([
+      'advisory',
+      'demandedChecks',
+      'discarded',
+      'verdict',
+    ]);
+    expect(out.advisory).toHaveLength(1);
+  });
+
+  it('a finding may DEMAND a deterministic check; the demand is recorded, not a block', () => {
+    const out = demoteReview(
+      {
+        verdict: 'FIX',
+        findings: [
+          { severity: 'HIGH', file: 'a', issue: 'x', check: 'validate-dead-code' },
+        ],
+      },
+      () => true,
+    );
+    expect(out.demandedChecks).toEqual(['validate-dead-code']);
+  });
+
+  it('an APPROVE with stale sticky history cannot be blocked here — there is nothing to block with (the W0-05/W1-01/W1-03 false-block shape)', () => {
+    const out = demoteReview({ verdict: 'APPROVE', findings: [] }, () => true);
+    expect(out.advisory).toHaveLength(0);
+    expect(out.discarded).toHaveLength(0);
+  });
+});

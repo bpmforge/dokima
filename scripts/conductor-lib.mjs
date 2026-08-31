@@ -63,4 +63,9 @@ export {
 
 export { codingPrompt } from './conductor-lib/prompts.mjs';
 
-export { reviewDecision, selectGates } from './conductor-lib/review.mjs';
+export {
+  reviewDecision,
+  selectGates,
+  citedFindings,
+  demoteReview,
+} from './conductor-lib/review.mjs';

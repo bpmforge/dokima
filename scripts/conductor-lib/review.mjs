@@ -56,9 +56,15 @@ export function selectGates(gates, ticket, globToRegexFn = globToRegex) {
   const run = [];
   const skipped = [];
   for (const g of gates ?? []) {
-    if (Array.isArray(g)) { run.push(g); continue; }          // legacy tuple: always
+    if (Array.isArray(g)) {
+      run.push(g);
+      continue;
+    } // legacy tuple: always
     const entry = [g.cmd, g.args ?? []];
-    if (!g.when || !g.when.length) { run.push(entry); continue; }
+    if (!g.when || !g.when.length) {
+      run.push(entry);
+      continue;
+    }
     const res = g.when.map(globToRegexFn);
     const applies = scope.some((p) => res.some((r) => r.test(p)));
     if (applies) run.push(entry);
@@ -87,3 +93,51 @@ export function selectGates(gates, ticket, globToRegexFn = globToRegex) {
  * acceptance implies mutation also needs the API client, because forking a
  * request helper duplicates whatever auth/tenant headers it centralises.
  */
+
+/**
+ * P2-06 (Law L2) — the reviewer-citation gate. A finding must point at a file
+ * that actually exists in the candidate worktree, or it is DISCARDED before it
+ * reaches anyone: the Marauder field report records a reviewer fabricating a
+ * REJECT citing a wiring omission independently confirmed present at every
+ * commit. Unresolvable citation = no finding, logged, never argued with.
+ *
+ * @param {Array} findings   verdict.findings
+ * @param {(file: string) => boolean} fileExists  injected for tests
+ */
+export function citedFindings(findings, fileExists) {
+  const cited = [];
+  const discarded = [];
+  for (const f of findings ?? []) {
+    const file = String(f?.file ?? '').trim();
+    // '-' and '' are the reviewer's own "no specific file" markers — a
+    // severity-bearing finding with no locus is exactly the unfalsifiable
+    // shape the gate exists to refuse.
+    if (!file || file === '-' || !fileExists(file)) discarded.push(f);
+    else cited.push(f);
+  }
+  return { cited, discarded };
+}
+
+/**
+ * P2-06 — advisory demotion. The LLM's verdict can label, demand, and rank;
+ * it can never block. Deterministic gates (receipts + validators + tests)
+ * own the merge. Returns what the caller should LOG and RECORD; there is no
+ * blocking field in this return type by construction (the same move as
+ * packages/loop's ReviewSignalAction having no FAIL variant).
+ */
+export function demoteReview(verdict, fileExists) {
+  const { cited, discarded } = citedFindings(verdict?.findings, fileExists);
+  const advisory = cited.map((f) => ({
+    severity: f.severity ?? 'MEDIUM',
+    file: f.file,
+    issue: f.issue ?? '',
+    fix: f.fix ?? '',
+    demandsCheck: f.check ?? null, // a finding may demand a deterministic check
+  }));
+  return {
+    verdict: verdict?.verdict ?? 'NONE',
+    advisory,
+    discarded,
+    demandedChecks: advisory.filter((a) => a.demandsCheck).map((a) => a.demandsCheck),
+  };
+}

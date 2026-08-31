@@ -237,7 +237,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. THE change the field report ranks most important: reviewDecision no longer drives retry or markBlocked — demoteReview (conductor-lib/review.mjs) returns a type with NO blocking field by construction; deterministic gates (receipts+validators+tests) own the merge. Citation gate: a finding whose file does not resolve in the worktree is discarded unread (the RDSAD-234 fabricated-REJECT control), logged review.discarded. Cited CRITICAL/HIGH -> advisory rows + sticky ledger + review-findings evidence; a finding may DEMAND a deterministic check (review.demand, feeds the red-fixture promotion pipeline). False-block regression: APPROVE-with-stale-sticky cannot block (nothing blocks). Hash-forgery catch stays deterministic — packages/events/src/hash.test.ts field-boundary-collision red fixture VERIFIED PRESENT and cited, not duplicated. 5 tests. Full gate 4860 green."
     },
     {
       "id": "P2-07",
