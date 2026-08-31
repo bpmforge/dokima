@@ -15,3 +15,4 @@ export type {
   PlanSchedulerOptions,
   PlanScheduleOptions,
 } from './plan-scheduler.js';
+export * from './wave-automations.js';

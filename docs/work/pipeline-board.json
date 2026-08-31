@@ -402,7 +402,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 8,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. apps/server/src/scheduler/wave-automations.ts — EXTENSION of the existing plan-scheduler layer, not a new system: pollBranchAdvisoryReviews (new parked-branch head -> Tier-A advisory review recorded; cursor advances only on success, at-least-once; one branch's failure never sinks the tick), runDependencySweep (audit findings above the severity floor -> ticket PROPOSALS a human accepts — the same propose-then-accept shape evaluatePlan uses), postMergeSmoke (first failure notifies, SECOND consecutive escalates to a human — 'fails twice, bring in a human'; success resets; no auto-revert exists to call). ZERO Decide-tier auto-actions preserved and TESTED: the options types carry no accept/merge/revert capability and a source-text test pins that the Decide-tier verbs never appear as code identifiers. AUTO-MERGE DELIBERATELY NOT IMPLEMENTED — recorded in the module header as the founder decision it is (EXECUTION_PLAN decision 4). startWaveAutomations timer wiring mirrors startPlanScheduler. 5 tests. Full gate 4941 green (first run: TS2532 strict-null in the test, fixed)."
     }
   ]
 }
