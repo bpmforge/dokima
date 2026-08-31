@@ -3,7 +3,16 @@
 // CODE_BOOK_PROTOCOL cap (W10-46). Extraction only, no behaviour change.
 
 import { parseJson, writePlan, codingPrompt, reviewDecision } from '../conductor-lib.mjs';
-import { CONFIG, MODELS, ESCALATE, log, git, gitIn, tryLoadPlan, pickModel } from './context.mjs';
+import {
+  CONFIG,
+  MODELS,
+  ESCALATE,
+  log,
+  git,
+  gitIn,
+  tryLoadPlan,
+  pickModel,
+} from './context.mjs';
 import { runGates } from './gates.mjs';
 
 import { reviewPrompt } from './prompts.mjs';
@@ -32,22 +41,80 @@ export async function executeTicket(t) {
     if (g.selfBlocked) {
       // Deliberate, not a failure: stop the attempt ladder and let markBlocked
       // record it. The agent's own reasoning is already committed to the branch.
-      log('ticket.selfblocked', { ticket: t.id, msg: `agent set status=blocked on attempt ${i + 1} — honouring it, not retrying` });
-      gaps = [`agent set status=blocked deliberately on attempt ${i + 1}; its reasoning is in the ticket's notes on the evidence branch`];
+      log('ticket.selfblocked', {
+        ticket: t.id,
+        msg: `agent set status=blocked on attempt ${i + 1} — honouring it, not retrying`,
+      });
+      gaps = [
+        `agent set status=blocked deliberately on attempt ${i + 1}; its reasoning is in the ticket's notes on the evidence branch`,
+      ];
       break;
     }
     if (gaps.length) {
+      // P2-02: the differential owns the causal call. A candidate whose only
+      // failures are the base's own failures is NOT a failed candidate — it is
+      // blocked_on_baseline: stop the ladder, preserve the branch, charge
+      // nothing. Deterministic code decides; no prose can override it.
+      if (g.diff?.classification === 'blocked_on_baseline') {
+        gaps = [
+          `blocked_on_baseline: every candidate failure fingerprint (${g.diff.sharedRows.length}) already fails on the base — ` +
+            `zero coding attempts charged; candidate preserved for resume after the base repair. ` +
+            `Shared: ${g.diff.sharedRows
+              .map((r) => `${r.errorClass}@${r.suite}`)
+              .slice(0, 5)
+              .join(', ')}`,
+        ];
+        log('ticket.baseline-blocked', { ticket: t.id, msg: gaps[0] });
+        break;
+      }
+      // P2-02 mixed: only the NEW failures are the candidate's to fix — the
+      // retry prompt must not send the coder chasing the base's debt.
+      if (g.diff?.classification === 'mixed') {
+        const newLines = g.diff.newRows.map(
+          (r) =>
+            `NEW failure: [${r.errorClass}] ${r.suite}${r.test ? ` > ${r.test}` : ''}`,
+        );
+        const ev0 = saveEvidence(
+          t.id,
+          `mixed-differential-attempt${i + 1}`,
+          gaps.join('\n\n---\n\n'),
+        );
+        gaps = [
+          ...newLines,
+          `(${g.diff.sharedRows.length} further failure(s) are pre-existing on the base — excluded from this ticket; full verify output: ${ev0})`,
+        ];
+      }
       // P0-03: one line per gap (first line each), full text to evidence —
       // the old 400-byte slice of the join produced mid-word fragments
       // ("pnpm test failed: eout") that hid the terminal cause.
-      const ev = saveEvidence(t.id, `gates-fail-attempt${i + 1}`, gaps.join('\n\n---\n\n'));
+      const ev = saveEvidence(
+        t.id,
+        `gates-fail-attempt${i + 1}`,
+        gaps.join('\n\n---\n\n'),
+      );
       log('gates.fail', { ticket: t.id, msg: `${gapHeads(gaps)} [full: ${ev}]` });
       continue;
     }
 
     const diff = git('diff', `main...${branch}`).slice(0, 180_000);
-    const r = await runSession(reviewPrompt(t, diff, sticky, g.advisory), MODELS.reviewer, `review:${t.id}`, wt);
-    const verdict = parseJson(r.out) ?? { verdict: 'FIX', findings: [{ severity: 'HIGH', file: '-', issue: 'review output unparseable', fix: 're-run review' }], prior_status: [] };
+    const r = await runSession(
+      reviewPrompt(t, diff, sticky, g.advisory),
+      MODELS.reviewer,
+      `review:${t.id}`,
+      wt,
+    );
+    const verdict = parseJson(r.out) ?? {
+      verdict: 'FIX',
+      findings: [
+        {
+          severity: 'HIGH',
+          file: '-',
+          issue: 'review output unparseable',
+          fix: 're-run review',
+        },
+      ],
+      prior_status: [],
+    };
 
     // Findings the CURRENT pass raises fresh, and prior findings the reviewer — who is
     // shown every prior finding — explicitly says are STILL PRESENT. Those are the real
@@ -60,9 +127,19 @@ export async function executeTicket(t) {
     const { currentHigh, presentPriors, blockers, advisory } = decision;
     for (const f of currentHigh) {
       const key = `${f.file}:${f.issue}`;
-      if (!sticky.some((s) => s.key === key)) sticky.push({ key, severity: f.severity, file: f.file, issue: f.issue, fix: f.fix });
+      if (!sticky.some((s) => s.key === key))
+        sticky.push({
+          key,
+          severity: f.severity,
+          file: f.file,
+          issue: f.issue,
+          fix: f.fix,
+        });
     }
-    log('review.result', { ticket: t.id, msg: `verdict=${verdict.verdict} newHigh=${currentHigh.length} priorsStillPresent=${presentPriors.length} (sticky-seen ${sticky.length})` });
+    log('review.result', {
+      ticket: t.id,
+      msg: `verdict=${verdict.verdict} newHigh=${currentHigh.length} priorsStillPresent=${presentPriors.length} (sticky-seen ${sticky.length})`,
+    });
 
     // See reviewDecision() in conductor-lib.mjs: the presence of blockers is the
     // decision, not the verdict string. A FIX verdict with nothing above MEDIUM
@@ -70,18 +147,34 @@ export async function executeTicket(t) {
     // ledger — "blocked" with no recorded reason.
     if (decision.approve) {
       if (decision.verdictOverridden) {
-        log('review.approve', { ticket: t.id, msg: `verdict=${verdict.verdict} but no CRITICAL/HIGH findings and no still-present priors — treating as APPROVE; ${advisory.length} advisory finding(s) recorded, not blocking` });
+        log('review.approve', {
+          ticket: t.id,
+          msg: `verdict=${verdict.verdict} but no CRITICAL/HIGH findings and no still-present priors — treating as APPROVE; ${advisory.length} advisory finding(s) recorded, not blocking`,
+        });
       } else {
-        log('review.approve', { ticket: t.id, msg: `informed APPROVE; ${sticky.length} prior finding(s) not re-raised${advisory.length ? `; ${advisory.length} advisory` : ''}` });
+        log('review.approve', {
+          ticket: t.id,
+          msg: `informed APPROVE; ${sticky.length} prior finding(s) not re-raised${advisory.length ? `; ${advisory.length} advisory` : ''}`,
+        });
       }
-      for (const a of advisory) log('review.advisory', { ticket: t.id, msg: `[${a.severity}] ${a.file}: ${a.issue}` });
+      for (const a of advisory)
+        log('review.advisory', {
+          ticket: t.id,
+          msg: `[${a.severity}] ${a.file}: ${a.issue}`,
+        });
       return { ok: true, branch, wt };
     }
-    log('review.fix', { ticket: t.id, msg: `${blockers.length} blocker(s): ${currentHigh.length} new + ${presentPriors.length} still-present` });
+    log('review.fix', {
+      ticket: t.id,
+      msg: `${blockers.length} blocker(s): ${currentHigh.length} new + ${presentPriors.length} still-present`,
+    });
     gaps = blockers;
   }
   // Block with the last pass's real blockers; if none captured, fall back to the sticky-seen list.
-  const ledger = (gaps && gaps.length) ? gaps : sticky.map((s) => `[${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
+  const ledger =
+    gaps && gaps.length
+      ? gaps
+      : sticky.map((s) => `[${s.severity}] ${s.file}: ${s.issue} — fix: ${s.fix}`);
   return { ok: false, branch, wt, gaps: ledger };
 }
 
@@ -92,13 +185,23 @@ export function resetStatus(wt, id) {
   // for a retry, and failing to prepare is a reason to skip the retry, not to
   // abort every remaining ticket.
   const { plan, err } = tryLoadPlan(wt);
-  if (err) { log('reset.skipped', { ticket: id, msg: `board unreadable in worktree (${String(err.code || err.message)})` }); return; }
+  if (err) {
+    log('reset.skipped', {
+      ticket: id,
+      msg: `board unreadable in worktree (${String(err.code || err.message)})`,
+    });
+    return;
+  }
   const row = plan.tickets.find((x) => x.id === id);
   if (!row || row.status === 'in_progress') return;
   row.status = 'in_progress';
   writePlan(wt, plan, CONFIG.boardPath);
   // Best-effort: if nothing changed to commit (e.g. status was already reset
   // on a prior pass), git exits non-zero — not an error worth surfacing here.
-  try { gitIn(wt, 'add', CONFIG.boardPath); gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`); } catch { /* intentional: nothing to commit */ }
+  try {
+    gitIn(wt, 'add', CONFIG.boardPath);
+    gitIn(wt, 'commit', '-q', '-m', `chore(${id}): conductor resets status before retry`);
+  } catch {
+    /* intentional: nothing to commit */
+  }
 }
-

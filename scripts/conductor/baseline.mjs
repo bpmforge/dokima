@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { mintReceipt, receiptGaps } from './receipts.mjs';
+import { receiptFingerprints } from './fingerprint.mjs';
 
 /** Stable cache key over every input that could change the verdict. */
 export function baselineKey({ baseSha, commands, lockfileHash, nodeVersion }) {
@@ -63,7 +64,14 @@ export function ensureBaseline({
   const key = baselineKey({ baseSha, commands, lockfileHash, nodeVersion });
   const cached = loadCachedBaseline(cacheDir, key);
   if (cached && cached.baseSha === baseSha) {
-    return { green: cached.green, gaps: cached.gaps ?? [], cached: true, key };
+    writeCurrent(cacheDir, cached); // P2-02: keep the pointer fresh on cache hits too
+    return {
+      green: cached.green,
+      gaps: cached.gaps ?? [],
+      rows: cached.rows ?? [],
+      cached: true,
+      key,
+    };
   }
 
   mkdirSync(cacheDir, { recursive: true });
@@ -100,6 +108,9 @@ export function ensureBaseline({
     result = {
       green: gaps.length === 0,
       gaps,
+      // P2-02: fingerprinted failure rows — the base half of the
+      // base-vs-candidate differential. Empty when green.
+      rows: receiptFingerprints(receipt),
       baseSha,
       key,
       verifiedAt: new Date().toISOString(),
@@ -118,5 +129,43 @@ export function ensureBaseline({
   }
 
   writeFileSync(cachePath(cacheDir, key), JSON.stringify(result, null, 2) + '\n');
-  return { green: result.green, gaps: result.gaps, cached: false, key };
+  writeCurrent(cacheDir, result);
+  return {
+    green: result.green,
+    gaps: result.gaps,
+    rows: result.rows,
+    cached: false,
+    key,
+  };
+}
+
+/**
+ * CURRENT.json — the pointer runGates() reads to get the base half of the
+ * differential without re-deriving the cache key (it lacks the lockfile-hash
+ * context the conductor start-up has). Always the most recent verdict.
+ */
+export function writeCurrent(cacheDir, result) {
+  writeFileSync(
+    resolve(cacheDir, 'CURRENT.json'),
+    JSON.stringify(
+      {
+        key: result.key,
+        baseSha: result.baseSha,
+        green: result.green,
+        rows: result.rows ?? [],
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+}
+
+export function loadCurrentBaseline(cacheDir) {
+  const p = resolve(cacheDir, 'CURRENT.json');
+  if (!existsSync(p)) return null;
+  try {
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
 }
