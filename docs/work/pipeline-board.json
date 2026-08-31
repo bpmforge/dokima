@@ -93,7 +93,7 @@
         "Workflow syntax validated (actionlint or a dry parse in a test/script)"
       ],
       "points": 2,
-      "status": "todo"
+      "status": "in_progress"
     },
     {
       "id": "GATE-P1",
