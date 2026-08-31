@@ -322,7 +322,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 8,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31 (isolated-worktree subagent; orchestrator merged+gated). packages/pipeline/src/seams/: tagged Seam union (8 kinds) with kind-discriminated wiring_evidence + contract_test; assertSeams (injected fs, invalid regex = failed assertion not crash); parse (malformed rows named beside good ones); fromInterfaceRef adapter — decompose untouched, its tests unchanged (L4). scripts/conductor/wave-seams.mjs bridge: seamGapsForWave, heal-style lazy import of INDIVIDUAL TS modules (found in-flight: Node type-stripping cannot load the barrel's runtime .js re-exports — verified under plain Node, not just vitest); legacy interface_ref rows lifted; vendored = one loud FAIL-CLOSED gap ('an unchecked seam is not a passed seam'). Red case proven: declared-but-unwritten export fails with file+export named. Ratchet kept honest with a real caller, not a suppression. 38 tests. Merged-head full gate 4930 green (ratchet 46/45 exit 0). WIRING NOTE: seamGapsForWave is consumed by the wave Tier-D gate in P3-04's flow."
     },
     {
       "id": "P3-03",
