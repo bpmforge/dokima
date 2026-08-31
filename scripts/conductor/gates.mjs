@@ -8,6 +8,7 @@ import { doneCheckGap, boardUnreadableGap, globToRegex, selectGates } from '../c
 import { CONFIG, ROOT, DRY, log, sh, git, tryLoadPlan, ALWAYS_OK } from './context.mjs';
 import { runValidators } from './session.mjs';
 import { mintReceipt, receiptGaps } from './receipts.mjs';
+import { saveEvidence } from './evidence.mjs';
 
 // Parses one `git diff --name-status` line into `{ status, file }`. A rename
 // or copy line has three tab-separated fields (`R100\told\tnew`) instead of
@@ -110,7 +111,13 @@ export function runGates(t, branch, wt) {
     }
     for (const [cmd, cmdArgs] of gatesToRun) {
       try { sh(cmd, cmdArgs, { cwd: wt, timeout: CONFIG.gateTimeoutMin * 60_000 }); }
-      catch (e) { gaps.push(`${cmd} ${cmdArgs[0]} failed: ${String(e.stdout || e.message).slice(-800)}`); }
+      catch (e) {
+        // Full output to evidence, tail inline (P0-03): the operator sees the
+        // real terminal cause and has the whole thing on disk, not a fragment.
+        const full = String(e.stdout || '') + String(e.stderr || '') || String(e.message);
+        const ev = saveEvidence(t.id, `gate-${cmd}-${cmdArgs[0] ?? ''}`, full);
+        gaps.push(`${cmd} ${cmdArgs[0] ?? ''} failed (full output: ${ev}): ${full.slice(-800)}`);
+      }
     }
     // deterministic validator gates (diff-scoped) — hard gaps
     const vGaps = runValidators(wt, changedFiles, CONFIG.validators?.gate);

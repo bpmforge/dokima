@@ -7,6 +7,7 @@ import { CONFIG, MODELS, ESCALATE, log, git, gitIn, tryLoadPlan, pickModel } fro
 import { runGates } from './gates.mjs';
 
 import { reviewPrompt } from './prompts.mjs';
+import { saveEvidence, gapHeads } from './evidence.mjs';
 import { runSession } from './session.mjs';
 import { makeWorktree } from './worktree.mjs';
 
@@ -35,7 +36,14 @@ export async function executeTicket(t) {
       gaps = [`agent set status=blocked deliberately on attempt ${i + 1}; its reasoning is in the ticket's notes on the evidence branch`];
       break;
     }
-    if (gaps.length) { log('gates.fail', { ticket: t.id, msg: gaps.join(' | ').slice(0, 400) }); continue; }
+    if (gaps.length) {
+      // P0-03: one line per gap (first line each), full text to evidence —
+      // the old 400-byte slice of the join produced mid-word fragments
+      // ("pnpm test failed: eout") that hid the terminal cause.
+      const ev = saveEvidence(t.id, `gates-fail-attempt${i + 1}`, gaps.join('\n\n---\n\n'));
+      log('gates.fail', { ticket: t.id, msg: `${gapHeads(gaps)} [full: ${ev}]` });
+      continue;
+    }
 
     const diff = git('diff', `main...${branch}`).slice(0, 180_000);
     const r = await runSession(reviewPrompt(t, diff, sticky, g.advisory), MODELS.reviewer, `review:${t.id}`, wt);

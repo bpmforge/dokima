@@ -5,6 +5,7 @@
 import { ROOT, CONFIG, DO_MERGE, DO_PUSH, ESCALATE, now, log, sh, git, loadPlan } from './context.mjs';
 import { writePlan } from '../conductor-lib.mjs';
 import { removeWorktree } from './worktree.mjs';
+import { saveEvidence, gapHeads } from './evidence.mjs';
 
 export function pushRemotes(ticket, extraBranch = null) {
   if (!DO_PUSH) return;
@@ -71,7 +72,10 @@ export function markBlocked(t, gaps, branch, wt) {
   row.status = 'blocked';
   // notes is historically string-or-array (review-pass tickets use strings) — normalize.
   if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
-  row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts.${branch ? ` Branch ${branch} kept.` : ''} Gaps: ${gaps.join(' | ').slice(0, 600)}`);
+  // P0-03: the note leads with the LATEST blocker's head; the complete gap
+  // text (all attempts, untruncated) lives in evidence and is pointed to.
+  const evPath = saveEvidence(t.id, 'blocked-gaps', gaps.join('\n\n---\n\n'));
+  row.notes.push(`CONDUCTOR ${now()}: blocked after ${ESCALATE ? 3 : 2} attempts.${branch ? ` Branch ${branch} kept.` : ''} Latest blocker: ${gapHeads(gaps.slice(0, 3))} [full: ${evPath}]`);
   writePlan(ROOT, plan, CONFIG.boardPath);
   git('add', CONFIG.boardPath); git('commit', '-q', '-m', `chore(${t.id}): conductor marks blocked with evidence`);
   if (!branch && !wt) return; // infra crash before any worktree existed

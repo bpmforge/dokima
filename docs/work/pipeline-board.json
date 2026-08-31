@@ -62,7 +62,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 3,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. evidence.mjs saveEvidence/gapHeads; the three truncation sites patched (gates.mjs full-output evidence + tail, ticket.mjs gap-heads log line, land.mjs latest-blocker-first note with evidence pointer); conductor-report.mjs prints per-UNIQUE-ticket metrics with window+waves named and event ratios labeled gameable — reproduces the verified 141/128/90.8% numbers on the real log. 6 fixture tests. Full gate green."
     },
     {
       "id": "P0-04",
