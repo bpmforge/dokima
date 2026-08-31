@@ -71,7 +71,6 @@ export const LONG_TAIL_CLASSES: readonly LongTailClass[] = [
  * each. `write_scope` is empty — the planner narrows it per project; the
  * gate cares about the wave existing and closing, not its scope.
  */
-// @unreached generateLongTailWave: P3-05 lands the generator; its caller is decompose-time wave emission onto the board, a later wiring ticket outside this write_scope.
 export function generateLongTailWave(prefix: string): BoardTicketRow[] {
   return LONG_TAIL_CLASSES.map((cls, i) => ({
     id: `${prefix}-LT-${String(i + 1).padStart(2, '0')}`,

@@ -75,7 +75,6 @@ export interface GenerateAssemblyTicketsOptions {
  * wiring-evidence statement (+ contract-test existence), points 2 when a
  * contract test must be written alongside the wiring, else 1.
  */
-// @unreached generateAssemblyTickets: P3-05 lands the generator; the board-writing caller (decompose-time assembly wave emission) is a later wiring ticket — emitting rows onto the live board is outside this ticket's write_scope.
 export function generateAssemblyTickets(
   seams: readonly Seam[],
   opts: GenerateAssemblyTicketsOptions = {},

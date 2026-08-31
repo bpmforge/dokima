@@ -52,7 +52,6 @@ const US_OR_FR = /\b(US-\d+|FR-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b/g;
  * USER_STORIES document text, deduplicated, in order of first appearance.
  * This — not the board — is where the gap check's denominator comes from.
  */
-// @unreached deriveRequirementIds: P3-05 lands the mechanism; its production caller is the conductor assembly-gate bridge that reads the real SRS, a later wiring ticket (scripts/conductor is orchestrator-owned this hour).
 export function deriveRequirementIds(srsText: string): string[] {
   const seen = new Set<string>();
   const ids: string[] = [];
