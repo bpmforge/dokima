@@ -93,7 +93,8 @@
         "Workflow syntax validated (actionlint or a dry parse in a test/script)"
       ],
       "points": 2,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. nightly.yml now runs pnpm --filter @dokima/web e2e directly (playwright chromium install, 30-min timeout, report artifact on failure, no continue-on-error) — the scripts.e2e green-skip gate that had silently no-opped the job since W4 is gone. Payload proven locally: 76/76 e2e in 45.7s. Full gate green."
     },
     {
       "id": "GATE-P1",
