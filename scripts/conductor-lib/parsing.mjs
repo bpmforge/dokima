@@ -76,3 +76,29 @@ export function parseJson(text) {
  * how that authority is expressed. Sub-blocking findings are returned as
  * `advisory` so they are recorded rather than silently dropped.
  */
+
+/**
+ * P0-02 (Law L6): classify an executor crash as infrastructure or code.
+ *
+ * The W0-W11 log's fatal histogram: 15 of 24 fatals were one (since-fixed)
+ * executor bug, and of the rest ENOBUFS/ENOSPC/timeouts were environmental —
+ * yet every one killed the whole run via main().catch and, worse, could be
+ * read as the TICKET's failure. "Never charge the fixer for infrastructure"
+ * (FIX_VERIFY_LOOP.md): an infra event blocks the ticket with a named
+ * blocked_on_infrastructure reason and the run continues; only a genuine
+ * executor defect should stop the process.
+ */
+const INFRA_PATTERNS = [
+  /ENOBUFS/, /ENOSPC/, /ENOMEM/, /EAGAIN/, /ETIMEDOUT/, /ECONNRESET/, /ECONNREFUSED/, /EPIPE/,
+  /spawnSync .* ETIMEDOUT/, /timed? ?out/i, /SIGKILL|SIGTERM/,
+  /rate.?limit/i, /overloaded/i, /529|503/,
+];
+export function isInfraFailure(err) {
+  const msg = String(err?.message ?? err ?? '');
+  return INFRA_PATTERNS.some((re) => re.test(msg));
+}
+
+/** The gap string an infra event records on the board — greppable class prefix. */
+export function infraGap(err) {
+  return `blocked_on_infrastructure: ${String(err?.message ?? err).slice(0, 500)} — environmental; consumed no coding attempt (L6)`;
+}

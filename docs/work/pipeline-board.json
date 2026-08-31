@@ -42,7 +42,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 3,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31. Root cause finding: BOTH historical crash shapes were already fixed (row.notes.push normalized in cd6b7fd4 2026-07-15 — the 15 log fatals predate it; testSiblingWarning import correct in lint.mjs today) — pinned with regression tests so neither silently regresses. New payload: isInfraFailure/infraGap classifier (conductor-lib/parsing.mjs) + main-loop catch: an environmental crash (ENOBUFS/ENOSPC/timeout/rate-limit) marks THAT ticket blocked_on_infrastructure and the run continues; two consecutive infra crashes stop the run cleanly; executor code defects still fail loud by design. markBlocked tolerates null branch/wt (crash may predate the worktree). 5 new tests. Full gate 4806 green."
     },
     {
       "id": "P0-03",

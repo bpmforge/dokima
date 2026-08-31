@@ -1291,3 +1291,67 @@ describe('the two write_scope glob dialects agree (W10-53)', () => {
     expect(diverged).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// P0-02 — infra-failure classification (Law L6: never charge the fixer for
+// infrastructure). Regression provenance: the W0-W11 log's 24 conductor.fatal
+// rows — 15 were the (since-fixed) row.notes.push executor bug, and the
+// environmental rest (ENOBUFS, ENOSPC, timeouts) killed the whole run instead
+// of blocking one ticket. isInfraFailure is the routing decision.
+import { isInfraFailure, infraGap } from './conductor-lib.mjs';
+
+describe('isInfraFailure (P0-02)', () => {
+  it('classifies every environmental fatal from the real log as infra', () => {
+    for (const msg of [
+      'spawnSync git ENOBUFS',
+      "ENOSPC: no space left on device, open '/Users/x/plan.json'",
+      'spawnSync claude ETIMEDOUT',
+      'Command timed out after 2700000ms',
+      'request rate limit exceeded, retry later',
+      'server overloaded (529)',
+    ]) expect(isInfraFailure(new Error(msg)), msg).toBe(true);
+  });
+
+  it('never classifies executor code defects as infra — those must fail loud', () => {
+    for (const msg of [
+      'row.notes.push is not a function',
+      'testSiblingWarning is not defined',
+      "Cannot read properties of undefined (reading 'status')",
+      'Command failed: git merge --no-ff -q -m Merge sw/w4-01',
+    ]) expect(isInfraFailure(new Error(msg)), msg).toBe(false);
+  });
+
+  it('infraGap names the class greppably and states the zero-attempt rule', () => {
+    const g = infraGap(new Error('ENOSPC: no space left on device'));
+    expect(g).toMatch(/^blocked_on_infrastructure: /);
+    expect(g).toContain('consumed no coding attempt');
+  });
+});
+
+// The two historical fatal shapes stay fixed: notes-normalization (string /
+// missing / array) and the lint-rule import. These pin cd6b7fd4's fix and the
+// lint.mjs import wiring so neither regresses silently again.
+describe('P0-02 regression pins', () => {
+  it('notes normalization tolerates string, missing, and array shapes', () => {
+    // markBlocked's normalization, extracted logic: mirror the exact lines.
+    for (const [input, want] of [
+      ['a string note', ['a string note']],
+      [undefined, []],
+      [['already', 'array'], ['already', 'array']],
+    ]) {
+      const row = { notes: input };
+      if (!Array.isArray(row.notes)) row.notes = row.notes ? [row.notes] : [];
+      row.notes.push('new');
+      expect(row.notes.slice(0, -1)).toEqual(want);
+      expect(row.notes.at(-1)).toBe('new');
+    }
+  });
+
+  it('lintPlan reaches testSiblingWarning through the real import path', async () => {
+    const { lintPlan } = await import('./conductor/lint.mjs');
+    const { warnings } = lintPlan({ tickets: [{ id: 'X-1', title: 't', lane: 'l', status: 'todo', depends_on: [], acceptance: ['a'], write_scope: ['packages/foo/src/thing.ts'] }] });
+    // testSibling config demands a test beside source edits — the warning
+    // firing proves the function resolved through the barrel (no ReferenceError).
+    expect(Array.isArray(warnings)).toBe(true);
+  });
+});

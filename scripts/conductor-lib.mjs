@@ -32,7 +32,7 @@ export {
   alwaysOkPatterns,
 } from './conductor-lib/config.mjs';
 
-export { wave, nonWildPrefix, globToRegex, parseJson } from './conductor-lib/parsing.mjs';
+export { wave, nonWildPrefix, globToRegex, parseJson, isInfraFailure, infraGap } from './conductor-lib/parsing.mjs';
 
 export { claimableTickets } from './conductor-lib/claim.mjs';
 
