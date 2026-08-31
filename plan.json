@@ -15290,6 +15290,35 @@
         "`decisions` IS NOT: the waiver says DecisionsBoard 'is built and unit-tested but never mounted in App.tsx', and W10-72 mounted it \u2014 MainView.tsx:105 renders it for view `decisions`, which is in VALID_VIEWS, and e2e covers reaching it. The tour is carrying a stale claim about the product's own reachability, which is the one thing a reachability instrument must not do.",
         "BOTH HALVES MATTER AND THEY PULL OPPOSITE WAYS: one surface is missing, and the instrument that is supposed to report missing surfaces is itself out of date in the other direction. Fixing only the route would leave the tour still lying."
       ]
+    },
+    {
+      "id": "W22-26",
+      "role": "coding-agent",
+      "phase": 22,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "pipeline",
+      "module": "pipeline",
+      "points": 3,
+      "title": "UNCONFIRMED: the first deliverable a run writes does not mention the product the user described",
+      "write_scope": [
+        "packages/pipeline/src/run/run-pipeline.ts",
+        "packages/pipeline/src/run/run-pipeline.test.ts"
+      ],
+      "acceptance": [
+        "Either a deliverable written by a run demonstrably uses the interview answers, or it is established that the handoff carries them and the gap is model capability",
+        "The finding is settled with evidence either way \u2014 a fixture showing the answers reach the writer, or a recorded comparison across two models"
+      ],
+      "notes": [
+        "FOUND BY A FULL LIVE JOURNEY 2026-08-31, driven through the real UI end to end: interview answered, board built (28 tickets, ~7.5 min on a local model), run started, agent claimed tickets in isolated worktrees, wrote files, committed, verified, and the close gate minted 2 receipts. The MACHINERY worked. This is about what it wrote.",
+        "THE OBSERVATION: the user described 'a simple personal expense tracker that records spending and shows a monthly summary', with explicit in/out scope. The docs/VISION.md the run produced opens 'This project aims to deliver a clear, maintainable, and well-documented codebase that serves as a foundation for future development' and never mentions expenses, spending, or a ledger. It is plausible boilerplate about software in general.",
+        "IT IS NOT OBVIOUSLY THE PIPELINE'S FAULT, which is why this is filed UNCONFIRMED. The ticket the agent claimed says only 'Write docs/VISION.md' with write_scope ['docs/VISION.md'] \u2014 and the interview answers are captured somewhere else. So the question to answer FIRST is whether the maker's handoff carries the blueprint at all, or whether it carries it and a 27B local model simply ignored it. Those have opposite fixes and the evidence to tell them apart is cheap: read one handoff prompt.",
+        "MEASURE BEFORE FIXING (L-56): if the answers do reach the prompt, this is a model-capability finding for the local tier and belongs in the bench, not in the pipeline. If they do not, it is the W12-04 shape one level out \u2014 the context layer built and not reaching the writer.",
+        "WHY IT MATTERS MORE THAN IT LOOKS: the whole product thesis is that a novice describes an idea and gets their product. A board of 28 correctly-shaped tickets whose first deliverable is about no particular product is the difference between a working pipeline and a useful one."
+      ]
     }
   ]
 }
