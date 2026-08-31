@@ -151,7 +151,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. fingerprint.mjs: normalizeLine (ts/dur/port/tmp/hex/ANSI), parseFailures (vitest FAIL lines + assertion classes; unparseable degrades to one command-level row so a failure is never dropped), fingerprint (sha256/16 over normalized suite|test|file|errorClass), receiptFingerprints, classifyDifferential — the incident-review 4-row table as code (green/candidate_regression/blocked_on_baseline/mixed/candidate_repairs_baseline; chargeAttempt only for regression+mixed). Wired: baseline cache stores rows + CURRENT.json pointer (scope WIDENED to baseline.mjs — unowned, needed for the base half); gates.mjs computes+logs the differential on receipt failure; ticket.mjs breaks the ladder on blocked_on_baseline (zero charge, branch preserved) and on mixed sends the coder ONLY the NEW rows. 11 new tests incl. the volatile-noise twin-match hazard. Full gate 4832 green (first run failed eslint no-control-regex — fixed via charCode-built ANSI_RE, re-gated)."
     },
     {
       "id": "P2-03",
