@@ -364,9 +364,23 @@ describe('the @unreached marker (W22-02)', () => {
     },
   );
 
-  it('this repo carries no marker yet, so the mechanism is provably inert today', () => {
+  it('the first real markers are P3-05 assembler exports awaiting their wiring ticket — every suppression names a reason, none is malformed', () => {
+    // Until P3-05 this asserted suppressed === [] ("provably inert today").
+    // The assembler landed four mechanisms whose production caller is the
+    // conductor bridge, a later wiring ticket — exactly the deliberate,
+    // on-the-record non-caller the marker exists for. The wiring ticket
+    // deletes the markers and shrinks this list back.
     const { suppressed, malformedMarkers } = scan();
-    expect(suppressed).toEqual([]);
+    expect(suppressed.map((s) => s.symbol).sort()).toEqual([
+      'assemblyGate',
+      'deriveRequirementIds',
+      'generateAssemblyTickets',
+      'generateLongTailWave',
+    ]);
+    for (const s of suppressed) {
+      expect(s.at).toMatch(/^packages\/pipeline\/src\/assembler\//);
+      expect(s.reason.length).toBeGreaterThan(0);
+    }
     expect(malformedMarkers).toEqual([]);
   });
 });
