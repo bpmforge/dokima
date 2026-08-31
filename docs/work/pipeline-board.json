@@ -302,7 +302,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 8,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. wave.mjs: composeWave (dep-order greedy; disjoint write_scope via prefix+glob overlap; changed-line budget default 1000; high-risk cap from wave.highRiskGlobs — every exclusion carries its reason), buildSyntheticBranch (fresh-base worktree, merges members in order; a CONFLICTING member is excluded and merge-aborted, never hand-resolved — no feature work on the synthetic branch; a dirty tree after any merge ABORTS the build), waveInvalidation (one moved member invalidates only itself + the synthetic; intact members stay tested assets). conductor.config.json wave{} budgets. 9 tests incl. real-git conflict-exclusion, dirty-tree refusal, single-member invalidation. Full gate 4883 green."
     },
     {
       "id": "P3-02",
