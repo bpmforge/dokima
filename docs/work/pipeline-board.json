@@ -363,7 +363,8 @@
         "pnpm lint && pnpm typecheck && pnpm test pass"
       ],
       "points": 5,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. wave-packet.mjs: trainPreamble (WIRES P3-02 — an open Tier-D seam gap refuses the whole train: 'an unchecked seam is not a passed seam'), trainStepCheck + runMergeTrain (dependency order; BEFORE each merge the member head must equal the tested head AND main must equal base-or-last-train-merge — a moved member or main-advanced-under-train HALTS before the merge, downstream never skipped; real-git test asserts main untouched after halt), writeWavePacket (the bounded 2-4h human packet: members, excluded-with-reason, Act On/Consider/Noted/Dismissed tiers, aggregate diff stat, wave log slice — the machine-stop line, never 'read the repo'), verifyMainAncestry (Done transitions only on merge-base --is-ancestor proof). 6 tests. Full gate 4936 green (first run: 2 unused-var lint errors, fixed, re-gated)."
     },
     {
       "id": "P3-05",
