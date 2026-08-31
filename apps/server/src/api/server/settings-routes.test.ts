@@ -488,6 +488,62 @@ describe('settings routes', () => {
    * scopes `DOKIMA_HOME` to a temp dir first (settings-scope.test.ts's own
    * precedent for this), never touching the developer's real config.
    */
+  it(
+    'RED FIXTURE: settings/global refuses a provider registry it cannot read. ' +
+      'The PROJECT providers route validates and normalises the same payload — ' +
+      'it rejects a missing `enabled` with rule invalid-enabled — while this ' +
+      'route stored anything under the key. So one payload was correct on one ' +
+      'route and silently broken on the other, and the failure surfaced minutes ' +
+      'later from `providers refresh` as a raw URL parser error (W22-24)',
+    async () => {
+      const { app } = await boot();
+      const previousDokimaHome = process.env.DOKIMA_HOME;
+      const home = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-global-prov-'));
+      dirs.push(home);
+      process.env.DOKIMA_HOME = home;
+      try {
+        const bad = await app.inject({
+          method: 'PUT',
+          url: '/api/v1/settings/global',
+          headers: authHeaders(),
+          // Snake_case: the shape the project route accepts and normalises,
+          // and the shape that leaves `baseUrl` undefined if stored verbatim.
+          payload: {
+            providers: [
+              { id: 'local', kind: 'oai-compat', base_url: 'http://127.0.0.1:1234/v1', enabled: true },
+            ],
+          },
+        });
+        expect(bad.statusCode).toBe(400);
+        expect(String(bad.json().detail)).toContain('baseUrl');
+
+        // And nothing was stored — a refused write must not half-land.
+        const after = await app.inject({
+          method: 'GET',
+          url: '/api/v1/settings/global',
+          headers: authHeaders(),
+        });
+        expect(after.json().providers).toBeUndefined();
+
+        // The canonical shape still goes through.
+        const good = await app.inject({
+          method: 'PUT',
+          url: '/api/v1/settings/global',
+          headers: authHeaders(),
+          payload: {
+            providers: [
+              { id: 'local', kind: 'oai-compat', baseUrl: 'http://127.0.0.1:1234/v1', enabled: true },
+            ],
+          },
+        });
+        expect(good.statusCode).toBe(200);
+      } finally {
+        if (previousDokimaHome === undefined) delete process.env.DOKIMA_HOME;
+        else process.env.DOKIMA_HOME = previousDokimaHome;
+      }
+    },
+  );
+
   it('PUT settings/global and PUT projects/:id/settings both reject an unknown defaultModelMatrixPreset with 400 rule: unknown-preset', async () => {
     const { app, projectId } = await boot();
     const previousDokimaHome = process.env.DOKIMA_HOME;

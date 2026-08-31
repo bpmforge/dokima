@@ -152,16 +152,20 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
               providerKind,
             }
           : { mode: chosen.policy },
-        providers: [
-          {
-            kind: providerKind,
-            baseUrl: hasFixedEndpoint(providerKind) ? undefined : baseUrl,
-            credentialRef: credentialRef.trim() === '' ? undefined : credentialRef.trim(),
-            ...(needsProjectScope(providerKind)
-              ? { project: project.trim(), location: location.trim() }
-              : {}),
-          },
-        ],
+        /**
+         * W22-24: the `providers` key is NOT sent here any more.
+         *
+         * It never did anything: PUT /settings/global dropped the key, which
+         * this file's own header records as the reason the wizard's
+         * `lmstudio`/`lm-studio` spelling mismatch (W10-55) went unvalidated
+         * for waves. The real registration is the `putProviders` call below,
+         * added by W13-35 for exactly that reason.
+         *
+         * That route now VALIDATES the key rather than dropping it, so sending
+         * a half-built entry with no `id` is refused instead of ignored —
+         * correctly, and it is the reason this dead payload had to go rather
+         * than be quietly repaired.
+         */
       });
       /**
        * W13-35: register HERE when we can. `savePresetAndProvider` above sends

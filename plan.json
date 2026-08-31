@@ -15250,7 +15250,7 @@
       "id": "W22-24",
       "role": "coding-agent",
       "phase": 22,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -15261,7 +15261,9 @@
       "title": "PUT /api/v1/settings/global stores an unvalidated provider registry, and the error surfaces somewhere else entirely",
       "write_scope": [
         "apps/server/src/api/server/scope-routes.ts",
-        "apps/server/src/api/server/scope-routes.test.ts"
+        "apps/server/src/api/server/scope-routes.test.ts",
+        "apps/web/src/settings/FirstRunWizard.tsx",
+        "apps/server/src/api/server/scope-refusals.ts"
       ],
       "acceptance": [
         "A provider registry written to the global settings route is validated on the same terms as the project route",
@@ -15272,7 +15274,17 @@
         "FOUND BY THE SAME UAT RUN. `PUT /api/v1/projects/:id/providers` validates: sending an entry without `enabled` earns a 400 problem naming the field and the rule `invalid-enabled`, and it normalises the wire's snake_case `base_url` into the canonical `baseUrl`. `PUT /api/v1/settings/global` accepts the same JSON verbatim under the `providers` key with NO validation and NO normalisation.",
         "SO THE SAME PAYLOAD IS CORRECT ON ONE ROUTE AND SILENTLY BROKEN ON THE OTHER. Written globally with `base_url`, the registry stores a provider whose canonical `baseUrl` is undefined. Nothing complains at write time. The failure appears later, from a different command, as `providers refresh: local (oai-compat) \u2014 unreachable: endpoint unreachable \u2014 TypeError: Failed to parse URL from /models <- TypeError: Invalid URL [ERR_INVALID_URL]` \u2014 a raw parser error about a relative path, for a mistake made minutes earlier in another surface.",
         "VERIFIED BOTH DIRECTIONS: the identical registry written with `baseUrl` discovers 35 models and warms up cleanly. The only difference is the key, and one route knows about it while the other does not.",
-        "IT IS THE VALIDATION, NOT THE CASING, that matters here. Deciding whether the global route should also accept snake_case is a smaller question than the fact that it accepts ANYTHING \u2014 validateProviderRegistry already exists and the project route already calls it."
+        "IT IS THE VALIDATION, NOT THE CASING, that matters here. Deciding whether the global route should also accept snake_case is a smaller question than the fact that it accepts ANYTHING \u2014 validateProviderRegistry already exists and the project route already calls it.",
+        "SCOPE READ: scope-routes.ts already has the exact shape to copy \u2014 refuseConsentGatedKey, refuseUnknownPreset and refuseUnconfirmedAgentRunner all guard the same two PUTs and return a 400 problem naming the field and a rule id. The providers key simply has no such guard, so this is adding a fourth of a kind that already exists rather than inventing a mechanism.",
+        "THE E2E CAUGHT A REAL REGRESSION, and it is the most interesting thing in this ticket. Adding the guard broke the FIRST-RUN WIZARD: two specs went red because FirstRunWizard posts a `providers` array to PUT /settings/global that has no `id` at all \u2014 and its own comments say why, twice. 'which ignores a `providers` key entirely, so the string was never validated by anything' and 'which that route has never handled \u2014 so before this, step 2 collected provider details and dropped them'. It is DEAD PAYLOAD the caller relies on being discarded; the real registration happens on the next line via putProviders.",
+        "SO THE FIX IS BOTH HALVES, not a retreat from the guard. A route that silently drops a key is what let the wizard's own W10-55 spelling mismatch (lmstudio vs lm-studio) go unvalidated for waves \u2014 the comment says exactly that. Validating the key is right; the wizard must stop sending something it documents as ignored. Widened to FirstRunWizard.tsx for that.",
+        "SCOPE WIDENED for scope-refusals.ts too: the guard took scope-routes.ts to 417 lines, over the 400-line CODE_BOOK_PROTOCOL cap \u2014 the same wall W22-17 hit. The four settings refusals are one concern ('what a settings write may not do') and move together.",
+        "DONE. `refuseUnreadableProviders` runs validateProviderRegistry on both settings PUTs \u2014 global and per-project \u2014 and returns a 400 problem with rule `invalid-provider-registry` naming what the validator objected to. The same guard on both doors, in the shape the three refusals beside it already use.",
+        "THE E2E EARNED ITS KEEP, and this is the note worth keeping. The guard broke the FIRST-RUN WIZARD: FirstRunWizard posts a providers array with no `id` to PUT /settings/global, and its own comments say why \u2014 'which ignores a providers key entirely, so the string was never validated by anything' and 'which that route has never handled \u2014 so step 2 collected provider details and dropped them'. Dead payload the caller relied on being discarded, with the real registration on the next line via putProviders (W13-35).",
+        "BOTH HALVES, NOT A RETREAT. A route that silently drops a key is precisely what let the wizard's own lmstudio/lm-studio mismatch (W10-55) go unvalidated for waves \u2014 that file says so. So the key is validated AND the wizard stops sending something it documents as ignored. Repairing the dead payload instead would have kept a caller pretending to configure something.",
+        "THE 400-LINE CAP AGAIN: the guard took scope-routes.ts to 417. The four settings refusals moved to scope-refusals.ts as one concern \u2014 'what a settings write may not do' \u2014 leaving 179 and 266. Third time this cap has forced a split (W22-17, W22-26's relocation, now this), which is worth noticing as a pattern rather than an accident.",
+        "PROVEN RED FIRST: the fixture asserts snake_case `base_url` is refused with a detail naming baseUrl, that nothing is stored by a refused write, and that the canonical shape still succeeds.",
+        "Gate: lint clean, typecheck 0, 4792 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
     },
     {
