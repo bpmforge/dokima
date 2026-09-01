@@ -11,6 +11,10 @@ import { resolve } from 'node:path';
 
 /** Read-only board snapshot from the product DB, mapped to the loop's row shape. */
 export async function readProductBoard({ root, dbPath }) {
+  // P6-10 live run: same plain-node .js-specifier class as P6-09 —
+  // db.ts imports ./migrate.js at runtime. Loader first, then import.
+  const { ensureTsLoader } = await import('./ts-loader.mjs');
+  await ensureTsLoader();
   const { openEventLog } = await import('../../packages/events/src/db.ts');
   const { listTickets } = await import('../../packages/tickets/src/query.ts');
   const log = openEventLog(resolve(root, dbPath));

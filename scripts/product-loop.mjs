@@ -43,6 +43,11 @@ const ENGINE = String(opt('engine', 'conductor')); // conductor|berths — makeD
 // stays this repo: the dogfood target is the same product, different board.
 const DB_PATH = ENGINE === 'berths' ? String(opt('db', '.dokima.db')) : null;
 const AGENT_CMD = opt('agent-command', undefined);
+// P6-10: the measurement plane can target ANY repo — SRS/stories, the
+// proving-test grep, the verify command, and the board DB all resolve
+// against REPO. Defaults unchanged: this repo, CONFIG.verifyCommands.
+const REPO = resolve(ROOT, String(opt('repo', '.')));
+const VERIFY_CMD = opt('verify-cmd', undefined);
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, {
@@ -73,8 +78,8 @@ async function seamResultsFor(seams) {
 
 function readSources() {
   const parts = [];
-  for (const f of ['docs/SRS.md', 'docs/USER_STORIES.md']) {
-    const p = resolve(ROOT, f);
+  for (const f of ['docs/SRS.md', 'docs/USER_STORIES.md', 'SRS.md']) {
+    const p = resolve(REPO, f);
     if (existsSync(p)) parts.push(readFileSync(p, 'utf8'));
   }
   if (!parts.length) {
@@ -88,7 +93,9 @@ function readSources() {
 
 function provingTestsFor(id) {
   try {
-    return sh('git', ['grep', '-l', '--', id, '--', '*.test.*', '*.spec.*', 'e2e/'])
+    return sh('git', ['grep', '-l', '--', id, '--', '*.test.*', '*.spec.*'], {
+      cwd: REPO,
+    })
       .trim()
       .split('\n')
       .filter(Boolean);
@@ -119,10 +126,26 @@ const ports = {
       JSON.stringify(l, null, 2) + '\n',
     ),
   provingTestsFor,
-  testExists: (p) => existsSync(resolve(ROOT, p)),
+  testExists: (p) => existsSync(resolve(REPO, p)),
   seams: () => loadPlanFrom(ROOT, BOARD).seams ?? [],
   seamResults: () => [], // filled below (async seam assertion)
   verifyMain: () => {
+    // P6-10: a target repo brings its OWN gate. One command, run in the
+    // target, exit code = the verdict — the receipt is the run itself.
+    if (VERIFY_CMD) {
+      const r = spawnSync('sh', ['-c', String(VERIFY_CMD)], {
+        cwd: REPO,
+        encoding: 'utf8',
+        timeout: (CONFIG.gateTimeoutMin ?? 30) * 60_000,
+      });
+      return {
+        green: r.status === 0,
+        detail:
+          r.status === 0
+            ? ''
+            : `${VERIFY_CMD} exit ${r.status}: ${(r.stderr || r.stdout || '').trim().slice(0, 160)}`,
+      };
+    }
     const baseSha = sh('git', ['rev-parse', 'HEAD']).trim();
     const lockfile = resolve(ROOT, 'pnpm-lock.yaml');
     const lockfileHash = existsSync(lockfile)
@@ -153,11 +176,16 @@ const ports = {
     engine: ENGINE,
     projectId: opt('project-id', undefined),
     berths: Number(opt('berths', 2)),
-    dbPath: DB_PATH ? resolve(ROOT, DB_PATH) : undefined,
+    dbPath: DB_PATH ? resolve(REPO, DB_PATH) : undefined,
     agentCommand: AGENT_CMD,
     spawn: (cmd, args) => {
       if (STATUS_ONLY) return;
-      const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
+      // args[0] is the CLI entry relative to THIS repo; the run executes in
+      // the TARGET repo (worktrees, verify, manifest paths are cwd-relative).
+      const r = spawnSync(cmd, [resolve(ROOT, args[0]), ...args.slice(1)], {
+        cwd: REPO,
+        stdio: 'inherit',
+      });
       if (ENGINE === 'conductor' && r.status === 3)
         console.error('conductor: blocked_on_baseline — the loop will re-measure');
       else if (r.status !== 0)
@@ -179,10 +207,10 @@ ports.seamResults = () => seamRows;
 // refreshed after every drive (the core AWAITS runConductor for exactly this).
 if (ENGINE === 'berths') {
   const boardCfg = {
-    root: ROOT,
+    root: REPO,
     dbPath: DB_PATH,
-    cliEntry: 'apps/server/src/bootstrap/cli-entry.mjs',
-    spawn: (cmd, args) => spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8' }),
+    cliEntry: resolve(ROOT, 'apps/server/src/bootstrap/cli-entry.mjs'),
+    spawn: (cmd, args) => spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }),
     verify: (CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test',
   };
   let boardSnapshot = await readProductBoard(boardCfg);
