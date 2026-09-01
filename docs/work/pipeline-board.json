@@ -682,6 +682,51 @@
       "points": 3,
       "status": "done",
       "notes": "FILED 2026-08-31 by the wave-2 honesty pass (Challenger F12 + demo observation). CLOSED 2026-09-01. (a) Second writer: persistDecomposedPlan records plan.features via recordBoardFeatures inside withPlanWriter (operator identity; ticket ids mapped to the PLAN- board ids acceptPlanItem mints); readBoardFeatures round-trip tested + absence-is-not-an-empty-map test. (b) PRF retirement: the loop NAMES redundant PRF rows (requirement closed: implementing ticket + proving test both present) every iteration via product.redundant — it holds no verb and flips no state (C-2); test pins a closed-requirement PRF named, a still-needed one not named, and the board unmutated. Never re-proposed was already true by dedup. Gate 5056 green."
+    },
+    {
+      "id": "P6-13",
+      "title": "The 7th unwired: Tier-A review panel gets its production caller; server boots the wave automations; merge train retired",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/conductor/feature-landing-wiring.mjs",
+        "scripts/conductor/feature-landing.mjs",
+        "scripts/conductor/wave-packet.mjs",
+        "scripts/conductor/wave-packet.test.mjs",
+        "apps/server/src/api/server.ts",
+        "apps/server/src/scheduler/wave-automations.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.test.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "depends_on": ["P6-02"],
+      "acceptance": [
+        "feature landings run the Tier-A ADVISORY review on the synthetic head (waveReviewers/runWaveReview/synthesizeWaveFindings/ledgerize with the conductor's real runSession) and its tiers flow into the wave packet; a review failure SKIPS loudly and never blocks (L2 — only deterministic gates hold)",
+        "the server boots startWaveAutomations beside startPlanScheduler with a REAL pollBranchAdvisoryReviews tick over the fleet's parked branches (model-routed advisory; unroutable model = loud skip); dependency sweep + post-merge smoke either wired the same tick or their header text corrected to UNSTARTED with the follow-up ticket named",
+        "the dead P3-04 merge train (runMergeTrain/trainStepCheck/trainPreamble/verifyMainAncestry) is DELETED per the W21-36 doctrine, ratchet pins re-measured; the stale run-build.ts:329 'still lands per-ticket' comment is corrected",
+        "gate green"
+      ],
+      "points": 5,
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-09-01 by the final make-sure Challenger: wave-review had ZERO production callers and startWaveAutomations was never started — the trigger->advisory pipeline was built on both ends and connected by a comment (F1+F2, the 7th built-but-unwired). F3: the superseded merge train was retired-but-unnamed; F4: a stale load-bearing comment said berths still lands per-ticket. CLOSED 2026-09-01. (F1) tierAReview composed in feature-landing-wiring: waveReviewers/runWaveReview with the conductor's REAL runSession on the synthetic diff, synthesizeWaveFindings + ledgerize, tiers into the wave packet; ADVISORY guaranteed twice — the wiring catches + says every failure, and landFeature guards a throwing reviewer (test: a crash never un-lands a gated feature). (F2) wave-automations-wiring.ts: startFleetWaveAutomations booted in server.ts beside startPlanScheduler + stopped onClose (source-pinned test); the tick polls every fleet project's parkedBranches through pollBranchAdvisoryReviews with the role-routed reviewer model, unroutable = loud skip; empty-fleet no-op test. Sweep + smoke honestly UNSTARTED in the header, wiring named as P6-14. (F3) merge train DELETED per W21-36 (writeWavePacket kept, its test preserved standalone); ratchet unchanged 46/45. (F4) run-build.ts comment corrected. Gate 5057 green."
+    },
+    {
+      "id": "P6-14",
+      "title": "Start the remaining two automations: dependency sweep + post-merge smoke",
+      "lane": "server",
+      "write_scope": [
+        "apps/server/src/scheduler/wave-automations-wiring.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.test.ts",
+        "apps/server/src/scheduler/wave-automations.ts"
+      ],
+      "depends_on": ["P6-13"],
+      "acceptance": [
+        "runDependencySweep composed into the fleet tick with a real audit source and the propose-only writer (proposals, never merges)",
+        "postMergeSmoke composed with a real merge-event source and the project's own verify as the smoke; second consecutive failure escalates to a human",
+        "header text updated; gate green incl. red fixtures"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-09-01 by P6-13's close: only the advisory poll is started; these two remain header-honest UNSTARTED."
     }
   ]
 }

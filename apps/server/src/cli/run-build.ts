@@ -326,7 +326,7 @@ export async function executeBuildRun(
     conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)
     now: io.now,
     // P6-05: chosen landing mode; omitted when per-ticket (pre-P6-05 shape).
-    // Wired on the sequential path; the berth engine still lands per-ticket.
+    // Wired on BOTH paths since P6-11: runLandLoop and the berth engine park + sweep.
     ...(landingRaw === 'per-feature' ? { landing: 'per-feature' as const } : {}),
   };
   let result!: Omit<LandLoopResult, 'stopReason'> & { stopReason: string };

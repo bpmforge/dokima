@@ -291,3 +291,78 @@ describe('P6-06 — restart semantics across the real modules', () => {
     for (const f of ['a/f.txt', 'b/f.txt', 'c/f.txt']) g(['show', `HEAD:${f}`]);
   });
 });
+
+describe('P6-13 — the Tier-A panel is CALLED at landing, and stays advisory', () => {
+  let repo, wtBase;
+  const g = (args, opts = {}) =>
+    execFileSync('git', args, {
+      cwd: opts.cwd ?? repo,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  const commit = (msg) =>
+    execFileSync(
+      'git',
+      ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', msg],
+      { cwd: repo },
+    );
+  beforeEach(() => {
+    repo = mkdtempSync(join(tmpdir(), 'p613-'));
+    wtBase = mkdtempSync(join(tmpdir(), 'p613-wt-'));
+    g(['init', '-q', '-b', 'main']);
+    writeFileSync(join(repo, 'base.txt'), 'base\n');
+    g(['add', '.']);
+    commit('base');
+  });
+  afterEach(() => {
+    for (const d of [repo, wtBase]) rmSync(d, { recursive: true, force: true });
+  });
+
+  async function landWith(tierAReview, packets) {
+    g(['checkout', '-q', '-b', 'sw/a', 'main']);
+    mkdirSync(join(repo, 'a'), { recursive: true });
+    writeFileSync(join(repo, 'a/f.txt'), 'A\n');
+    g(['add', '.']);
+    commit('a');
+    const sha = g(['rev-parse', 'HEAD']).trim();
+    g(['checkout', '-q', 'main']);
+    return landFeature({
+      featureId: 'W:F1',
+      members: [{ id: 'A', branch: 'sw/a', headSha: sha }],
+      boardTickets: [T('A', { write_scope: ['a/**'] })],
+      deps: {
+        composeWave,
+        buildSyntheticBranch,
+        waveInvalidation,
+        verifySynthetic: () => ({ green: true }),
+        waveCfg: { maxTickets: 8, maxChangedLines: 10000 },
+        worktreeDir: wtBase,
+        gitRun: (a, o) => g(a, o),
+        tierAReview,
+        writeWavePacket: (p) => (packets.push(p), 'packet.md'),
+      },
+    });
+  }
+
+  it('review tiers flow into the packet (the panel has a production caller at last)', async () => {
+    const packets = [];
+    const tiers = {
+      actOn: [{ file: 'a/f.txt' }],
+      consider: [],
+      noted: [],
+      dismissed: [],
+    };
+    const r = await landWith(async () => tiers, packets);
+    expect(r.landed).toBe(true);
+    expect(packets[0].tiers).toBe(tiers);
+  });
+
+  it('a THROWING reviewer never un-lands the feature — advisory by law L2', async () => {
+    const packets = [];
+    const r = await landWith(async () => {
+      throw new Error('reviewer outage');
+    }, packets);
+    expect(r.landed).toBe(true);
+    expect(packets[0].tiers.actOn).toEqual([]); // empty tiers, said in the log
+  });
+});
