@@ -18,6 +18,7 @@ import {
   ProviderUnreachableError,
 } from './errors.js';
 import { RequestQueue } from './request-queue.js';
+import { createLongCallDispatcherCache } from './oai-compat-dispatch.js';
 import {
   asProviderTimeout,
   createIdleAbort,
@@ -92,6 +93,8 @@ export class OaiCompatProvider implements Provider {
     };
   }
 
+  private readonly dispatcherFor = createLongCallDispatcherCache(); // P6-15: escapes undici's 300s clamp — see oai-compat-dispatch.ts
+
   private async fetchRaw(
     path: string,
     init: RequestInit,
@@ -112,7 +115,8 @@ export class OaiCompatProvider implements Provider {
         // `AbortSignal.timeout` here silently overwrote the idle signal
         // `streamEvents` builds, so streams stayed on a 300s clock.
         signal: init.signal ?? AbortSignal.timeout(timeoutMs),
-      });
+        dispatcher: await this.dispatcherFor(timeoutMs),
+      } as RequestInit);
     } catch (err) {
       if (err instanceof Error && err.name === 'TimeoutError') {
         throw new ProviderTimeoutError(this.id, timeoutMs, model);
@@ -204,9 +208,9 @@ export class OaiCompatProvider implements Provider {
   async *chatStream(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     await this.ensureWarm();
     // W13-22: mapAbortsToTimeout names a mid-body stall so a session absorbs it.
-    yield* runQueuedStream(this.queue, () =>
-      mapAbortsToTimeout(this.streamEvents(request), this.id, this.streamIdleMs, request.model),
-    );
+    // Kept one-line so this chapter stays under the 400 cap (P6-15).
+    // prettier-ignore
+    yield* runQueuedStream(this.queue, () => mapAbortsToTimeout(this.streamEvents(request), this.id, this.streamIdleMs, request.model));
   }
 
   private async *streamEvents(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {

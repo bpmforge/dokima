@@ -744,8 +744,8 @@
         "gate green"
       ],
       "points": 2,
-      "status": "in_progress",
-      "notes": "FILED+CLAIMED 2026-09-01 by the guided-sample LIVE run: with requestTimeoutMs=900000 set via the settings API, a 27b review call still died at ~5 minutes with 'fetch failed <- HeadersTimeoutError' — Node's undici client enforces its own 300s headers cap beneath the app-level AbortSignal, so the W10-57 knob was silently ceilinged. Local models grinding big contexts legitimately need >5m."
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-09-01 by the guided-sample LIVE run: with requestTimeoutMs=900000 set via the settings API, a 27b review call still died at ~5 minutes with 'fetch failed <- HeadersTimeoutError' — Node's undici client enforces its own 300s headers cap beneath the app-level AbortSignal, so the W10-57 knob was silently ceilinged. Local models grinding big contexts legitimately need >5m. CLOSED 2026-09-01. oai-compat-dispatch.ts (chapter split — the inline version blew the 400 cap, twice, before landing): createLongCallDispatcherCache — above undici's 300s default the chat call carries a lazily-created, provider-cached undici Agent with headersTimeout/bodyTimeout tracking the configured value; at/below it, no dispatcher (warm-up/discovery calls stay clean). undici added as an explicit gateway dep. Tests: no-dispatcher at the boundary; the CHAT call (the one that grinds) carries the Agent and it is cached across calls — asserted on /chat/completions specifically after discovering warm-up calls ride first. Gate 5062 green."
     }
   ]
 }
