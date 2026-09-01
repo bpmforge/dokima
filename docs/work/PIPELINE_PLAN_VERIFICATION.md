@@ -199,3 +199,25 @@ what shipped — or to the honest gap:
   port seam (argv pinned by test against the real parseStart flags) but has
   not driven a live project end-to-end from this repo; the conductor engine
   remains the default.
+
+### Part 5b — Challenger verdict on the P6 wave (fresh agent, 2026-08-31)
+
+9 findings; 3 claims survived attack (one-merge mechanics, verifySynthetic's
+receipt surface, deriveFeatures). Disposition:
+
+| F   | Severity | Finding                                                                          | Disposition                                                                |
+| --- | -------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | CRITICAL | Park deadlock: 'done' never reaches ROOT, no feature could EVER land             | **FIXED** — park writes durable status 'parked' at ROOT + commit           |
+| 2   | CRITICAL | Restart re-claims parked tickets and branch-D's reviewed work                    | **FIXED** — 'parked' is not claimable; survives restart                    |
+| 3   | HIGH     | berths engine cannot see the goal loop's board (data-plane severed)              | **P6-07 filed**; P6-03 note de-overclaimed; conductor stays default engine |
+| 4   | HIGH     | productMap computed then dropped; prompts never emit US-/FR- ids                 | **P6-08 filed**; P6-04 note de-overclaimed                                 |
+| 5   | MEDIUM   | blocked counted as closed → half a feature lands                                 | **FIXED** + test                                                           |
+| 6   | MEDIUM   | board-file self-conflict wedges every multi-ticket feature                       | **P6-06 filed**; mode OFF (config per-ticket) until it lands               |
+| 7   | MEDIUM   | refusals leak synthetic worktree/branch; final merge could strand ROOT mid-merge | **FIXED** — refusal cleanup + merge --abort guard                          |
+| 8   | LOW      | parks reported as "landed"                                                       | **FIXED** — processed/parked/landed distinguished                          |
+| 9   | LOW      | berths spawn failures silent                                                     | **FIXED** — any nonzero exit logged                                        |
+
+Plus one hazard the Challenger did not raise, found while fixing: intra-feature
+`depends_on` chains deadlock under per-feature parking (the dependency's code
+is not on main when the dependent claims) — folded into P6-06's stacking
+acceptance. Verdict honored: `landing` is back to `per-ticket` until P6-06.

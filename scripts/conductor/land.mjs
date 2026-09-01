@@ -47,9 +47,29 @@ export function land(t, branch, wt) {
   // branch is pushed so the parked state survives a crash.
   if (CONFIG.landing === 'per-feature') {
     removeWorktree(wt);
+    // Challenger finding 1/2 (2026-08-31): parking must be DURABLE at ROOT.
+    // 'done' only ever lives on the branch board and reaches ROOT via the
+    // merge this mode defers — so without this write, parkedCandidates saw
+    // nothing forever and a restart re-claimed the ticket and ran
+    // `branch -D` on the parked, reviewed branch. status='parked' at ROOT
+    // is not claimable (claimableTickets takes only 'todo') and is exactly
+    // what featuresReadyToLand looks for.
+    const plan = loadPlan();
+    const row = plan.tickets.find((x) => x.id === t.id);
+    if (row && row.status !== 'parked') {
+      row.status = 'parked';
+      writePlan(ROOT, plan, CONFIG.boardPath);
+      git('add', CONFIG.boardPath);
+      git(
+        'commit',
+        '-q',
+        '-m',
+        `chore(board): park ${t.id} on ${branch} (per-feature landing)`,
+      );
+    }
     log('parked', {
       ticket: t.id,
-      msg: `parked on ${branch} for feature landing (landing=per-feature)`,
+      msg: `parked on ${branch} for feature landing (landing=per-feature); board row parked at ROOT`,
     });
     pushRemotes(t.id, branch);
     return 'parked';

@@ -8,16 +8,17 @@
 import { resolve } from 'node:path';
 import { rmSync } from 'node:fs';
 import { CONFIG, ROOT, log, sh, git, loadPlan } from './context.mjs';
+import { writePlan } from '../conductor-lib.mjs';
 import { featuresReadyToLand, landFeature } from './feature-landing.mjs';
 import { composeWave, buildSyntheticBranch, waveInvalidation } from './wave.mjs';
 import { mintReceipt, receiptGaps } from './receipts.mjs';
 import { writeWavePacket } from './wave-packet.mjs';
 
-/** Parked candidates: sw/* branches whose board row is done. */
+/** Parked candidates: sw/* branches whose ROOT board row is 'parked' (durable, written at park time). */
 function parkedCandidates(plan) {
   const out = [];
   for (const t of plan.tickets) {
-    if (t.status !== 'done') continue;
+    if (t.status !== 'parked') continue;
     const branch = `${CONFIG.branchPrefix}${t.id.toLowerCase()}`;
     try {
       const headSha = git('rev-parse', '--verify', branch);
@@ -107,6 +108,29 @@ export async function tryFeatureLandings() {
     });
     if (result.landed) {
       landedIds.push(...r.members.map((m) => m.id));
+      // The truth the merge may not have carried: mark the members done at
+      // ROOT. (The synthetic merge brings each branch's own done-row when it
+      // merges clean; this write is the deterministic backstop and is what
+      // un-parks the rows either way.)
+      const rootPlan = loadPlan();
+      let changed = false;
+      for (const m of r.members) {
+        const row = rootPlan.tickets.find((x) => x.id === m.id);
+        if (row && row.status !== 'done') {
+          row.status = 'done';
+          changed = true;
+        }
+      }
+      if (changed) {
+        writePlan(ROOT, rootPlan, CONFIG.boardPath);
+        sh('git', ['add', CONFIG.boardPath]);
+        sh('git', [
+          'commit',
+          '-q',
+          '-m',
+          `chore(board): feature ${r.featureId} landed — ${r.members.map((m) => m.id).join(', ')} done`,
+        ]);
+      }
       // Cleanup: member branches + the synthetic worktree/branch.
       for (const m of r.members) {
         try {
@@ -132,6 +156,25 @@ export async function tryFeatureLandings() {
       }
     } else {
       log('feature.refused', { msg: result.reason });
+      // Challenger finding 7: a refusal must not leak the synthetic worktree
+      // and branch. Member branches stay — they are the parked assets.
+      if (result.record) {
+        try {
+          git('worktree', 'remove', '--force', result.record.wt);
+        } catch {
+          /* best effort */
+        }
+        try {
+          rmSync(result.record.wt, { recursive: true, force: true });
+        } catch {
+          /* best effort */
+        }
+        try {
+          git('branch', '-D', result.record.branch);
+        } catch {
+          /* best effort */
+        }
+      }
     }
   }
   return landedIds;

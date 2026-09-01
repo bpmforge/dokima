@@ -53,11 +53,22 @@ describe('featuresReadyToLand (P6-02)', () => {
     expect(waiting[0]).toMatchObject({ featureId: 'W:W1', openTickets: ['W1-02'] });
   });
 
-  it('done/blocked non-parked members do not hold a feature hostage', () => {
+  it('an already-DONE non-parked member does not hold a feature hostage', () => {
     const boardTickets = [T('W1-01'), T('W1-02', { status: 'done' })];
     const parked = [{ id: 'W1-01', branch: 'sw/w1-01', headSha: 'a'.repeat(40) }];
     const { ready } = featuresReadyToLand({ parked, boardTickets });
     expect(ready.map((r) => r.featureId)).toEqual(['W:W1']);
+  });
+
+  it('a BLOCKED member holds the whole feature in WAITING — half a feature never lands (Challenger finding 5)', () => {
+    const boardTickets = [T('W1-01'), T('W1-02', { status: 'blocked' }), T('W1-03')];
+    const parked = [
+      { id: 'W1-01', branch: 'sw/w1-01', headSha: 'a'.repeat(40) },
+      { id: 'W1-03', branch: 'sw/w1-03', headSha: 'b'.repeat(40) },
+    ];
+    const { ready, waiting } = featuresReadyToLand({ parked, boardTickets });
+    expect(ready).toHaveLength(0);
+    expect(waiting[0].openTickets).toContain('W1-02');
   });
 });
 

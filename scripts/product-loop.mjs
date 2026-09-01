@@ -150,6 +150,10 @@ const ports = {
       const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
       if (ENGINE === 'conductor' && r.status === 3)
         console.error('conductor: blocked_on_baseline — the loop will re-measure');
+      else if (r.status !== 0)
+        console.error(
+          `${ENGINE} engine exited ${r.status ?? 'null'} — the loop re-measures rather than trusts the drive`,
+        );
     },
   }),
   log: (kind, data) =>

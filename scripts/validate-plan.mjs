@@ -43,7 +43,7 @@ const plan = JSON.parse(readFileSync(join(root, 'plan.json'), 'utf8'));
 
 const MODULES = ['infra', 'shared', 'events', 'tickets', 'loop', 'validators', 'gateway', 'harbormaster', 'pipeline', 'git', 'forge', 'mcp', 'memory', 'content', 'cli', 'web', 'quality'];
 const LANES = ['infra', 'core', 'engine', 'gateway', 'orchestrator', 'ui', 'pipeline', 'integrations', 'memory', 'content', 'quality'];
-const STATUSES = ['todo', 'in_progress', 'blocked', 'done'];
+const STATUSES = ['todo', 'in_progress', 'blocked', 'done', 'parked'];
 const POINTS = [1, 2, 3, 5, 8];
 const TICKET_KEYS = ['id', 'title', 'phase', 'module', 'lane', 'write_scope', 'depends_on', 'acceptance', 'points', 'status', 'notes', 'stories'];
 const OPTIONAL_KEYS = ['scaffold', 'role'];

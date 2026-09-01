@@ -63,8 +63,12 @@ export function featuresReadyToLand({ parked, boardTickets, features = [] }) {
 }
 
 function isClosed(boardTickets, id) {
+  // Challenger finding 5: 'blocked' must NOT count as closed — a feature with
+  // a blocked member landing without that member's work is exactly the "half
+  // a feature on main" this module forswears. A blocked member holds the
+  // whole feature in WAITING until a human unblocks or re-scopes it.
   const row = boardTickets.find((t) => t.id === id);
-  return row?.status === 'done' || row?.status === 'blocked';
+  return row?.status === 'done';
 }
 
 /**
@@ -109,6 +113,7 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
   if (record.conflicted.length) {
     return {
       landed: false,
+      record,
       reason: `feature ${featureId}: member(s) conflicted on the synthetic branch — ${record.conflicted
         .map((c) => c.id)
         .join(', ')}; a feature does not land in pieces`,
@@ -118,6 +123,7 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
   if (!verify.green) {
     return {
       landed: false,
+      record,
       reason: `feature ${featureId}: Tier-D verify RED on the synthetic head — ${verify.detail ?? ''}`,
     };
   }
@@ -128,6 +134,7 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
   if (seamGaps.length) {
     return {
       landed: false,
+      record,
       reason: `feature ${featureId}: Tier-D seam gate open — ${String(seamGaps[0]).split('\n')[0]}`,
     };
   }
@@ -142,6 +149,7 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
   if (!inv.syntheticValid) {
     return {
       landed: false,
+      record,
       reason: `feature ${featureId}: member(s) moved after the wave passed — ${inv.invalidMembers
         .map((i) => i.id)
         .join(', ')}; intact members remain tested assets`,
@@ -151,21 +159,38 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
   if (mainNow !== record.baseSha) {
     return {
       landed: false,
+      record,
       reason: `feature ${featureId}: main advanced under the landing (${record.baseSha.slice(0, 8)} -> ${mainNow.slice(0, 8)}) — the tested head no longer describes main + this feature`,
     };
   }
-  deps.gitRun([
-    'merge',
-    '--no-ff',
-    '-q',
-    '-m',
-    `Merge feature ${featureId}: ${members.length} ticket(s) as one landing (${members
-      .map((m) => m.id)
-      .join(
-        ', ',
-      )})\n\nTier-D verified on synthetic ${record.headSha.slice(0, 12)}; seam gate clean; drift checks green.`,
-    record.branch,
-  ]);
+  try {
+    deps.gitRun([
+      'merge',
+      '--no-ff',
+      '-q',
+      '-m',
+      `Merge feature ${featureId}: ${members.length} ticket(s) as one landing (${members
+        .map((m) => m.id)
+        .join(
+          ', ',
+        )})\n\nTier-D verified on synthetic ${record.headSha.slice(0, 12)}; seam gate clean; drift checks green.`,
+      record.branch,
+    ]);
+  } catch (e) {
+    // Challenger finding 7b: an unexpected merge failure (untracked-file
+    // collision, board-file conflict — the P6-06 class) must not leave ROOT
+    // mid-merge and crash the conductor. Abort, refuse whole, keep the assets.
+    try {
+      deps.gitRun(['merge', '--abort']);
+    } catch {
+      /* no in-progress merge to abort */
+    }
+    return {
+      landed: false,
+      record,
+      reason: `feature ${featureId}: final merge failed and was aborted — ${String(e.message ?? e).slice(0, 200)}`,
+    };
+  }
   const packet = deps.writeWavePacket
     ? deps.writeWavePacket({
         record,

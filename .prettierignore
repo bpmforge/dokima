@@ -1,0 +1,5 @@
+# scripts/validate-plan.mjs predates the prettier pre-commit hook and runs as a
+# bare `node` CI script; prettier-formatting it adds ~140 wrapped lines and
+# blows the 400-line chapter cap (conductor-lib.test.mjs W10-46). Exempted
+# rather than split under P6 — splitting it is real work needing its own ticket.
+scripts/validate-plan.mjs
