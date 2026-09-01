@@ -725,8 +725,8 @@
         "header text updated; gate green incl. red fixtures"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "FILED 2026-09-01 by P6-13's close: only the advisory poll is started; these two remain header-honest UNSTARTED."
+      "status": "done",
+      "notes": "FILED 2026-09-01 by P6-13's close: only the advisory poll is started; these two remain header-honest UNSTARTED. CLOSED 2026-09-01. The fleet tick now composes ALL THREE automations per project. Sweep: real audit source = the project's own `pnpm/npm audit --json` by lockfile (both output shapes parsed; non-zero exit WITH a report is findings, empty stdout is a LOUD skip — never a silent all-clear; at most daily per project so the network call doesn't ride every 5-minute tick); proposals land as Review-tier 'suggestion' NOTIFICATIONS (deterministic ids, idempotent) a human accepts — never a board write, never a merge. Smoke: triggered by NEW feature.landed events past a per-project high-water mark; runSmoke = the landing's own deriveVerifyCommand + SC-07-sandboxed reRunVerify (barrel-exported — registration, now with a production caller); first failure notifies, second consecutive raises a Decide-tier 'blocked' notification — never a revert. Source-pinned test proves all three composed (the P6-13 lesson: a comment is not a caller) and that no merge verb exists in the wiring. Headers updated to STARTED. Gate 5060 green (one vitest worker RPC-timeout flake with all tests passed, rerun clean)."
     }
   ]
 }

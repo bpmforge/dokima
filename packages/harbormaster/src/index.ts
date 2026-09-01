@@ -58,10 +58,14 @@ export { runLandLoop } from './loop-land.js';
 export { landReadyFeatures, parkLandedTicketBranch } from './loop-land-feature-run.js';
 // P6-12: the decompose board-lifecycle is the features[] second writer.
 export {
+  FEATURE_LANDED_EVENT,
   parkedBranches,
   readBoardFeatures,
   recordBoardFeatures,
 } from './loop-land-feature.js';
+// P6-14: the post-merge smoke re-uses the landing's own verify derivation.
+export { deriveVerifyCommand } from './verify-command.js';
+export { reRunVerify } from './loop-gates-verify.js';
 export type { FeatureLandingReport } from './loop-land-feature-run.js';
 /**
  * W12-18: the land-loop policy types were never re-exported, so `run-build.ts`
