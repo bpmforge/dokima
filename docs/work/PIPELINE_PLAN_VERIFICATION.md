@@ -262,3 +262,28 @@ gate count all survived. Disposition:
 | 10  | MED  | /autopilot names 2 of 7 NEVER-AUTO rows; conductor-merge NA-3 tension unstated                            | **FIXED in attest** (docs commit): full list + explicit NA-3 stance                                                                                      |
 | 11  | LOW  | README arithmetic/quotes unsupported                                                                      | **FIXED** — corrected to preserved logs; DB refusal rows exported                                                                                        |
 | 12  | LOW  | follow-ups named no ticket id (the board's own Law 1)                                                     | **FIXED** — P6-11, P6-12 filed                                                                                                                           |
+
+---
+
+## Part 7 — Final make-sure pass (founder ask, 2026-09-01): "is it all wired?"
+
+Wiggum half (mechanical): tree clean, main identical on all three remotes,
+`landing: per-feature` ON, board fully done, validators 6/6 + temp-leaks 0,
+every local `sw/*` branch merged except `sw/w9-08` (the founder-key re-sign,
+correctly preserved).
+
+Challenger half: **found the 7th built-but-unwired** — the Tier-A review
+panel had ZERO production callers and `startWaveAutomations` was never
+booted; the trigger→advisory pipeline existed on both ends, connected by a
+comment. Also: the superseded P3-04 merge train sat retired-but-unnamed, and
+one stale comment claimed berths still landed per-ticket. Everything else —
+both landing stacks, the goal loop, the product-map chain, the full
+receipts/differential/heal/citation/seam/assembler trust floor — survived
+with named call sites.
+
+Disposition (P6-13, shipped): the panel now runs at every feature landing
+(advisory by construction — a reviewer crash is said twice and can never
+un-land a gated feature); the server boots the fleet advisory poll and stops
+it on close; the merge train is DELETED per W21-36; the comment corrected.
+Dependency sweep + post-merge smoke are honestly UNSTARTED in their own
+header, wiring filed as **P6-14** — the one open ticket on the board.
