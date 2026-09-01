@@ -382,3 +382,26 @@ describe('every phase that declares documents gets tickets for them (W22-11)', (
     expect(t.verify).toBe('test -s docs/api/openapi.yaml');
   });
 });
+
+describe('the plan carries the product map (P6-04)', () => {
+  it('a blueprint that cites stories yields features and a rendered map — wired at the product call site, not only in decompose()', () => {
+    const { port } = fakePort({
+      blueprintInputFrom: () => ({
+        title: 'T',
+        sections: [{ heading: 'Stories', body: 'US-1: a user signs in.' }],
+        openQuestions: [],
+      }),
+      ticketDraftsFrom: () =>
+        ticketDrafts().map((d) => ({ ...d, acceptance: ['implements US-1 sign-in'] })),
+    });
+    const plan = runPipeline(ideaInput(), port);
+    expect(plan.features?.some((f) => f.id === 'F-US-1')).toBe(true);
+    expect(plan.productMap).toContain('F-US-1');
+  });
+
+  it('a story-less blueprint still gets the map, with the work shouting Unmapped — absence is reported, never silent', () => {
+    const plan = runPipeline(ideaInput(), fakePort().port);
+    expect(plan.features).toBeDefined();
+    expect(plan.productMap).toContain('Unmapped');
+  });
+});

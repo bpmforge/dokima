@@ -495,6 +495,43 @@
       "points": 5,
       "status": "done",
       "notes": "Landed 2026-08-31. makeDrivePort(engine, spawn, projectId, berths) in conductor/product-loop.mjs: conductor -> scripts/conductor.mjs --max-tickets N; berths -> the PRODUCT's own engine (apps/server cli-entry run start --breakpoint never --berths N --actor product-loop, i.e. executeBuildRun -> runBerths + GlobalBerthGovernor + landClaimedTicket). maxTickets is deliberately NOT repurposed as a berths dial (a cap silently meaning something else is the A-1 class) — the governor + budget bound the iteration; test pins '8' absent from the berths argv. Test proves BOTH engines receive the drive call UNCHANGED ({maxTickets:8} asserted inside the port for each engine, through the full productLoop). Unknown engine + berths-without-project refuse loudly (tested + CLI-smoked). CLI: --engine conductor|berths, --project-id, --berths. docs/ARCHITECTURE.md §12: canonical role table (GOAL=product-loop exit predicate; ORCHESTRATOR=conductor/land-loop decides sequence never doneness; BOTS=berths untrusted by construction; REVIEW PANEL=wave-review advisory-by-L2; HONESTY LOOPS=Wiggum coverage + Challenger veracity) + the two-stack rule: scripts/conductor is BOOTSTRAP, the server engine is the PRODUCT, new capability lands in the product first or names the port ticket (L11 dogfood symmetry). Gate: 4991 passed."
+    },
+    {
+      "id": "P6-04",
+      "title": "Wire the feature map into the product's own planning path (L4 catch from the P6 Wiggum pass)",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/run/run-pipeline.ts",
+        "packages/pipeline/src/run/run-pipeline.test.ts"
+      ],
+      "depends_on": ["P6-01"],
+      "acceptance": [
+        "run-pipeline's decompose() call passes the blueprint-derived requirement denominator so plan.features/productMap materialize in the PRODUCT pipeline, not only in the bootstrap",
+        "test: a story-citing blueprint yields F-US-* and a rendered map; a story-less one still gets the map with Unmapped shouting",
+        "gate green"
+      ],
+      "points": 1,
+      "status": "done",
+      "notes": "Found and fixed in the same Wiggum pass that P6 mandated: P6-01 shipped deriveFeatures/renderProductMap and the ONLY production decompose() call (run-pipeline.ts:179, the path serving an end user's idea) passed no requirementIds — the map could never materialize for a real project. Law L4, 6th instance of built-but-unwired. Fix: deriveRequirementIds(blueprint.document.markdown) at the call site; seams do not exist at blueprint time (recorded in the comment — edges join when declared). +2 tests (story-citing blueprint -> F-US-1 in plan.features + productMap; story-less -> map still present, Unmapped shouting). Gate 5014 green."
+    },
+    {
+      "id": "P6-05",
+      "title": "Port feature-grouped landing into the PRODUCT engine (the two-stack rule's named port ticket for P6-02)",
+      "lane": "harbormaster",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-board.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "depends_on": ["P6-02"],
+      "acceptance": [
+        "landClaimedTicket gains a per-feature park mode equivalent to scripts/conductor's landing='per-feature': done tickets park their branches; a feature whose members are all parked-done lands as ONE merge of a synthetic branch verified whole (receipt on the synthetic head, drift + seam refusals leave main untouched)",
+        "the product board schema carries features[] (P6-01's map is the source) and the run CLI exposes the landing mode as a per-project setting (Law L11)",
+        "gate green incl. red fixtures for the refusal paths"
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": "FILED (not implemented) 2026-08-31 by the P6 honesty pass. ARCHITECTURE.md §12's two-stack rule says new capability lands in the product first OR names the port ticket — P6-02 landed feature-grouped landing in the bootstrap conductor only, so this is the named port. Design questions a claimant must answer before coding: how the product board declares features (decompose() now emits them — persist to the board schema), where parked branches live per-berth, and how the governor treats a berth idling on a waiting feature. Founder priority call: this reworks the product's landing path."
     }
   ]
 }
