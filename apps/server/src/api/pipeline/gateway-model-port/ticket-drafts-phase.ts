@@ -7,7 +7,12 @@
 
 import type { TicketDraftInput } from '@dokima/pipeline';
 import { MalformedModelOutputError } from '../errors.js';
-import { requireObject, requireArray, requireOptionalArray, requireString } from '../json-shape.js';
+import {
+  requireObject,
+  requireArray,
+  requireOptionalArray,
+  requireString,
+} from '../json-shape.js';
 
 export const TICKET_DRAFTS_SYSTEM_PROMPT =
   'You are the Dokima task decomposer specialist. Given the blueprint ' +
@@ -33,7 +38,13 @@ export const TICKET_DRAFTS_SYSTEM_PROMPT =
   '"apps/web/package.json". "acceptance" is the list of criteria a human ' +
   'would check, in plain language. "verify" is a single executable shell ' +
   'command, and belongs nowhere else. "dependsOn" entries must reference ' +
-  'another ticket id in this same list.';
+  'another ticket id in this same list. ' +
+  // P6-08: deriveFeatures groups tickets into features by the US-/FR- ids
+  // cited in title/acceptance; an uncited ticket lands in F-unmapped.
+  'Each ticket must cite the story id(s) it serves — the "US-<n>"/"FR-..." ' +
+  'ids from the blueprint — verbatim in its "title" or an "acceptance" entry ' +
+  '(for example "implements US-3"). A ticket serving no story is allowed ' +
+  'but will be reported as Unmapped on the product map.';
 
 export function parseInterfaceRefs(
   raw: unknown,
@@ -49,7 +60,9 @@ export function parseInterfaceRefs(
   });
 }
 
-export function parseTicketDrafts(raw: Record<string, unknown>): readonly TicketDraftInput[] {
+export function parseTicketDrafts(
+  raw: Record<string, unknown>,
+): readonly TicketDraftInput[] {
   const phase = 'ticket-drafts';
   return requireArray(raw.tickets, phase, 'tickets').map((t, i) => {
     const draft = requireObject(t, phase, `tickets[${i}]`);
@@ -106,4 +119,3 @@ export function parseTicketDrafts(raw: Record<string, unknown>): readonly Ticket
     };
   });
 }
-

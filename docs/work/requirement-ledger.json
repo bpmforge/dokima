@@ -1,0 +1,1428 @@
+{
+  "goal": {
+    "success": "every SRS-derived requirement closed by an existing proving test; every seam resolves; verify green on main",
+    "non_goals": "this loop never removes or weakens a test, never merges past a red gate, never widens the SRS",
+    "acceptance": "assemblyGate.pass && verifyMain.green — evidence, not assertion",
+    "sourcesSha": "ed3cb56df3147ba7"
+  },
+  "requirementIds": [
+    "FR-E1",
+    "FR-F1",
+    "FR-S1",
+    "FR-T5",
+    "FR-H5",
+    "FR-G1",
+    "FR-I2",
+    "FR-I3",
+    "FR-CANVAS",
+    "FR-C1",
+    "FR-C2",
+    "FR-C3",
+    "FR-C4",
+    "FR-C5",
+    "FR-C6",
+    "FR-S4",
+    "FR-C7",
+    "FR-C8",
+    "FR-P3",
+    "FR-PIPE",
+    "FR-P1",
+    "FR-P2",
+    "FR-P4",
+    "FR-P5",
+    "FR-P6",
+    "FR-P7",
+    "FR-P8",
+    "FR-TICK",
+    "FR-T1",
+    "FR-T2",
+    "FR-T3",
+    "FR-T4",
+    "FR-T6",
+    "FR-GW",
+    "FR-G2",
+    "FR-G3",
+    "FR-L7",
+    "FR-N2",
+    "FR-G4",
+    "FR-G5",
+    "FR-G6",
+    "FR-G7",
+    "FR-G8",
+    "FR-LOOP",
+    "FR-L1",
+    "FR-L2",
+    "FR-L3",
+    "FR-L4",
+    "FR-L5",
+    "FR-L6",
+    "FR-L8",
+    "FR-HM",
+    "FR-H1",
+    "FR-H2",
+    "FR-H3",
+    "FR-H4",
+    "FR-HITL",
+    "FR-N1",
+    "FR-N3",
+    "FR-N4",
+    "FR-INT",
+    "FR-I1",
+    "FR-I4",
+    "FR-MEM",
+    "FR-M1",
+    "FR-M2",
+    "FR-M3",
+    "FR-M4",
+    "FR-SET",
+    "FR-S2",
+    "FR-S3",
+    "FR-FLEET",
+    "FR-F2",
+    "FR-F3",
+    "FR-F4",
+    "FR-F5",
+    "FR-EXP",
+    "FR-E2",
+    "FR-RL",
+    "FR-RL1",
+    "FR-RL2",
+    "FR-RL3",
+    "FR-RL4",
+    "FR-PLAN",
+    "FR-PLAN1",
+    "FR-PLAN2",
+    "FR-PLAN3",
+    "FR-PLAN4",
+    "FR-G9",
+    "FR-H6",
+    "US-101",
+    "US-102",
+    "US-103",
+    "US-104",
+    "US-105",
+    "US-106",
+    "US-107",
+    "US-108",
+    "US-109",
+    "US-201",
+    "US-202",
+    "US-203",
+    "US-204",
+    "US-205",
+    "US-206",
+    "US-301",
+    "US-302",
+    "US-303",
+    "US-304",
+    "US-305",
+    "US-306",
+    "US-307",
+    "US-308",
+    "US-309",
+    "US-310",
+    "US-401",
+    "US-402",
+    "US-403",
+    "US-404",
+    "US-405",
+    "US-406",
+    "US-407",
+    "US-408",
+    "US-409",
+    "US-410",
+    "US-501",
+    "US-502",
+    "US-503",
+    "US-504",
+    "US-505",
+    "US-601",
+    "US-602",
+    "US-603",
+    "US-604",
+    "US-701",
+    "US-702",
+    "US-703",
+    "US-704",
+    "US-801",
+    "US-802",
+    "US-803",
+    "US-804",
+    "US-805",
+    "US-806",
+    "FR-S",
+    "FR-F",
+    "FR-E"
+  ],
+  "ledger": {
+    "FR-E1": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-F1": {
+      "implementingTickets": [],
+      "provingTests": ["apps/web/e2e/fleet.spec.ts"],
+      "status": "uncovered"
+    },
+    "FR-S1": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/server/src/api/roster-resolve.test.ts",
+        "apps/server/src/api/server/settings-scope.test.ts",
+        "packages/gateway/src/pool/governor.test.ts",
+        "packages/gateway/src/routing/matrix.test.ts",
+        "packages/harbormaster/test/berths-dial.test.ts",
+        "packages/shared/src/config/settings.test.ts",
+        "packages/validators/src/pack.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-T5": {
+      "implementingTickets": [],
+      "provingTests": ["apps/server/src/cli/forge-mirror.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-H5": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/budget/breakers.test.ts",
+        "packages/gateway/src/budget/ledger.test.ts",
+        "packages/harbormaster/src/berths.test.ts",
+        "packages/harbormaster/test/berths-scheduler.property.test.ts",
+        "packages/harbormaster/test/berths.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-G1": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/pool/gateway-pool.test.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/src/providers/request-queue.test.ts",
+        "packages/gateway/src/providers/usage.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-I2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/forge/src/generic-git.test.ts",
+        "packages/forge/src/gitea-issues.test.ts",
+        "packages/forge/src/gitea-pr.test.ts",
+        "packages/forge/src/gitea-protection.test.ts",
+        "packages/forge/src/gitea-repo.test.ts",
+        "packages/forge/src/gitea-status.test.ts",
+        "packages/forge/src/gitea.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-I3": {
+      "implementingTickets": [],
+      "provingTests": ["apps/server/src/cli/mcp-session-tools.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-CANVAS": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-C1": {
+      "implementingTickets": [],
+      "provingTests": ["apps/web/e2e/split-pane.spec.ts"],
+      "status": "uncovered"
+    },
+    "FR-C2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/chat-projection.test.ts",
+        "apps/web/e2e/chat.spec.ts",
+        "apps/web/e2e/first-run.spec.ts",
+        "apps/web/src/chat/reduceChatEvents.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-C3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts",
+        "apps/web/e2e/artifacts.spec.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-C4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/board-routes.test.ts",
+        "apps/web/e2e/board.spec.ts",
+        "apps/web/src/board/projection.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-C5": {
+      "implementingTickets": [],
+      "provingTests": ["apps/server/src/api/server/receipts-routes.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-C6": {
+      "implementingTickets": [],
+      "provingTests": ["apps/web/src/fleet/FleetHome.test.tsx"],
+      "status": "uncovered"
+    },
+    "FR-S4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx"
+      ],
+      "status": "uncovered"
+    },
+    "FR-C7": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/cli/run-cmd.test.ts",
+        "packages/harbormaster/src/breakpoints-runs.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-C8": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/artifacts-routes/artifacts-routes.test.ts",
+        "apps/web/e2e/artifacts.spec.ts",
+        "packages/pipeline/src/phases/revision.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P3": {
+      "implementingTickets": [],
+      "provingTests": ["packages/pipeline/src/phases/staleness.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-PIPE": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-P1": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/events/src/receipts.test.ts",
+        "packages/pipeline/src/phases/advance.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/export-bundle-receipt-triage.test.ts",
+        "apps/server/src/api/pipeline/phase-gate/runner.test.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/advance.test.ts",
+        "apps/server/src/cli/run-build.test.ts",
+        "packages/events/src/receipts.test.ts",
+        "packages/pipeline/src/phases/advance.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/pipeline-routes/research-gate.test.ts",
+        "packages/pipeline/src/challenger/claims.test.ts",
+        "packages/pipeline/src/challenger/report.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P5": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/pipeline/src/modes/improve.test.ts",
+        "packages/pipeline/src/modes/onboard.test.ts",
+        "packages/pipeline/src/modes/registry.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P6": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/decisions/routes.test.ts",
+        "apps/server/src/api/decisions/store.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P7": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/resume.test.ts",
+        "packages/pipeline/src/blueprint/gate.test.ts",
+        "packages/pipeline/src/blueprint/synth.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-P8": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/pipeline-routes/advance.test.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/research-gate.test.ts",
+        "packages/pipeline/src/assembler/ledger.test.ts",
+        "packages/pipeline/src/research/challenger-gate.test.ts",
+        "packages/pipeline/src/research/citations.test.ts",
+        "packages/pipeline/src/research/depth.test.ts",
+        "packages/pipeline/src/research/fact-bank.test.ts",
+        "packages/pipeline/src/research/report.test.ts",
+        "packages/pipeline/src/research/templates.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-TICK": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-T1": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/pipeline/src/assembler/gate.test.ts",
+        "packages/pipeline/src/assembler/ledger.test.ts",
+        "packages/tickets/src/transitions.property.test.ts",
+        "packages/tickets/src/verbs.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-T2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/web/src/board/RefusalPopover.test.tsx",
+        "apps/web/src/board/api.test.ts",
+        "apps/web/src/board/refusal.test.ts",
+        "packages/tickets/src/transitions.property.test.ts",
+        "packages/tickets/src/verbs.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-T3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/cli/run.test.ts",
+        "packages/harbormaster/src/berths.test.ts",
+        "packages/harbormaster/test/berths-scheduler.property.test.ts",
+        "packages/harbormaster/test/berths-scheduler.test.ts",
+        "packages/harbormaster/test/berths.test.ts",
+        "packages/shared/src/glob/overlap.test.ts",
+        "packages/tickets/src/lanes.property.test.ts",
+        "packages/tickets/src/lanes.test.ts",
+        "packages/tickets/src/reflow.property.test.ts",
+        "packages/tickets/src/reflow.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-T4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/board-routes.test.ts",
+        "apps/web/e2e/board.spec.ts",
+        "apps/web/src/board/api.test.ts",
+        "apps/web/src/board/dragOptimistic.test.ts",
+        "apps/web/src/board/refusal.test.ts",
+        "apps/web/src/board/transitions.test.ts",
+        "packages/tickets/src/verbs.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-T6": {
+      "implementingTickets": [],
+      "provingTests": ["packages/harbormaster/src/loop-land.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-GW": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-G2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/matrix-routes.test.ts",
+        "packages/gateway/src/escalation/policy.test.ts",
+        "packages/gateway/src/routing/maker-verifier.test.ts",
+        "packages/gateway/src/routing/matrix.test.ts",
+        "packages/gateway/src/routing/presets.test.ts",
+        "packages/gateway/src/routing/router.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-G3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/escalation/ladder.test.ts",
+        "packages/gateway/src/escalation/policy.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/memory/src/playbook/r0-hook.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-L7": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/escalation/policy.test.ts",
+        "packages/loop/src/loop-policy.test.ts",
+        "packages/loop/test/findings.fixture.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-N2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/escalation/policy.test.ts",
+        "packages/harbormaster/src/review-queue-classifier.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-G4": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-G5": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/pipeline-routes/advance.test.ts",
+        "apps/server/src/cli/forge-mirror.test.ts",
+        "apps/server/src/cli/handoff-context.test.ts",
+        "apps/server/src/cli/model-preflight.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/pipeline/src/phases/advance.test.ts",
+        "packages/pipeline/src/phases/topology.test.ts",
+        "packages/pipeline/src/phases/waiver-policy.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-G6": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/settings-events.test.ts",
+        "packages/gateway/src/fitness/assignment.test.ts",
+        "packages/gateway/src/routing/router.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-G7": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/estimate-routes.test.ts",
+        "apps/web/e2e/estimate.spec.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-G8": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/limits/classify.test.ts",
+        "packages/harbormaster/src/limit-pause.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-LOOP": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-L1": {
+      "implementingTickets": [],
+      "provingTests": ["packages/loop/src/micro-loop.conformance.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-L2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/loop/src/anchors.test.ts",
+        "scripts/validate-exports.test.mjs"
+      ],
+      "status": "uncovered"
+    },
+    "FR-L3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/cli/memory-hooks.test.ts",
+        "apps/server/src/cli/run-build-spawn.calibration.test.ts",
+        "packages/loop/src/calibration.property.test.ts",
+        "packages/loop/src/calibration.test.ts",
+        "packages/memory/src/store/anti-jarvis-gap.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-L4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/loop/src/coverage.conformance.test.ts",
+        "packages/loop/src/coverage.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-L5": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/cli/handoff-context.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-L6": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/loop/src/findings.test.ts",
+        "packages/loop/src/loop-policy.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-L8": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/memory/src/packer/budget.test.ts",
+        "packages/memory/src/packer/pack.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-HM": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-H1": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/chat-projection.test.ts",
+        "e2e/toy-project/harbormaster-lite.ts",
+        "e2e/toy-project/toy-project.e2e.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/tickets/src/verbs.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-H2": {
+      "implementingTickets": [],
+      "provingTests": ["packages/harbormaster/src/agent-session/gateway-session.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-H3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/harbormaster/src/breakpoints-runs.test.ts",
+        "packages/harbormaster/src/breakpoints.test.ts",
+        "packages/harbormaster/src/index.test.ts",
+        "packages/harbormaster/src/resume.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-H4": {
+      "implementingTickets": [],
+      "provingTests": ["packages/harbormaster/src/review-queue-classifier.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-HITL": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-N1": {
+      "implementingTickets": [],
+      "provingTests": ["packages/harbormaster/src/breakpoints-clarifications.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-N3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/pipeline-routes/advance.test.ts",
+        "packages/events/src/receipts.test.ts",
+        "packages/harbormaster/src/autonomy-ledger.test.ts",
+        "packages/harbormaster/src/autonomy.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-N4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/notifications/notifications.test.ts",
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts",
+        "apps/web/e2e/notifications.spec.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-INT": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-I1": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-I4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/harbormaster/src/sandbox/container.test.ts",
+        "packages/harbormaster/src/sandbox/index.test.ts",
+        "packages/harbormaster/src/sandbox/process.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-MEM": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-M1": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-M2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/memory/src/playbook/playbook.test.ts",
+        "packages/memory/src/playbook/r0-hook.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-M3": {
+      "implementingTickets": [],
+      "provingTests": ["packages/memory/src/consolidation/consolidate.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-M4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/memory/src/code-index/search.test.ts",
+        "packages/memory/src/code-index/tool.test.ts",
+        "packages/memory/src/packer/pack.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-SET": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-S2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/server/src/api/server/settings-routes.test.ts",
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/cli/run-cmd.test.ts",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "packages/events/src/receipts.property.test.ts",
+        "packages/events/src/receipts.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/harbormaster/src/agent-session/git-tools.test.ts",
+        "packages/harbormaster/src/agent-session/session-anchors.test.ts",
+        "packages/harbormaster/src/agent-session/session-stream.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/loop/src/session.test.ts",
+        "packages/shared/src/config/settings-files.test.ts",
+        "scripts/hooks-install.test.mjs"
+      ],
+      "status": "uncovered"
+    },
+    "FR-S3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/server/src/api/server/settings-events.test.ts",
+        "apps/server/src/api/server/settings-routes.test.ts",
+        "packages/gateway/src/routing/presets.test.ts",
+        "packages/shared/src/config/settings-service.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-FLEET": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-F2": {
+      "implementingTickets": [],
+      "provingTests": ["apps/server/src/api/projects.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-F3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/model-matrix-store.test.ts",
+        "packages/gateway/src/pool/fair-scheduler.test.ts",
+        "packages/gateway/src/pool/gateway-pool.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-F4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts",
+        "apps/web/e2e/notifications.spec.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-F5": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/cli/memory-hooks.test.ts",
+        "packages/memory/src/playbook/consult.test.ts",
+        "packages/memory/src/playbook/promote.test.ts",
+        "packages/memory/src/playbook/r0-global-promotion.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-EXP": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-E2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/roster-content.test.ts",
+        "apps/server/src/api/roster.test.ts",
+        "apps/web/e2e/roster.spec.ts",
+        "apps/web/src/roster/api.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-RL": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/suppression-store.test.ts",
+        "apps/web/e2e/plans.spec.ts",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/src/plans/format.test.ts",
+        "packages/loop/src/findings.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-RL1": {
+      "implementingTickets": [],
+      "provingTests": ["packages/loop/src/findings.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-RL2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/web/e2e/settings.spec.ts",
+        "packages/loop/src/findings.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-RL3": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/suppression-store.test.ts",
+        "packages/loop/src/findings.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-RL4": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/web/e2e/plans.spec.ts",
+        "apps/web/src/plans/format.test.ts",
+        "packages/loop/src/findings.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-PLAN": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/plans-store.test.ts",
+        "apps/web/e2e/plans.spec.ts",
+        "packages/pipeline/src/assembler/ledger.test.ts",
+        "packages/pipeline/src/plans/catalog.test.ts",
+        "packages/pipeline/src/plans/lifecycle.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-PLAN1": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/pipeline/src/assembler/ledger.test.ts",
+        "packages/pipeline/src/plans/catalog.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-PLAN2": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/plans-store.test.ts",
+        "apps/web/e2e/plans.spec.ts",
+        "packages/pipeline/src/plans/lifecycle.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-PLAN3": {
+      "implementingTickets": [],
+      "provingTests": ["packages/pipeline/src/plans/lifecycle.test.ts"],
+      "status": "uncovered"
+    },
+    "FR-PLAN4": {
+      "implementingTickets": [],
+      "provingTests": ["apps/web/e2e/plans.spec.ts"],
+      "status": "uncovered"
+    },
+    "FR-G9": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/providers/anthropic.test.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/src/providers/openai.test.ts",
+        "packages/gateway/src/providers/vertex-chat.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-H6": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/settings-types.test.ts",
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/web/src/settings/AgentRunnerPanel.test.tsx",
+        "packages/harbormaster/src/agent-session/fs-tools.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-101": {
+      "implementingTickets": [],
+      "provingTests": ["packages/pipeline/src/assembler/ledger.test.ts"],
+      "status": "uncovered"
+    },
+    "US-102": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-103": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-104": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-105": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/pipeline-routes/advance.test.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/research-gate.test.ts",
+        "packages/pipeline/src/assembler/ledger.test.ts",
+        "packages/pipeline/src/research/challenger-gate.test.ts",
+        "packages/pipeline/src/research/depth.test.ts",
+        "packages/pipeline/src/research/fact-bank.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-106": {
+      "implementingTickets": [],
+      "provingTests": ["packages/pipeline/src/modes/feature.test.ts"],
+      "status": "uncovered"
+    },
+    "US-107": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-108": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-109": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-201": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-202": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-203": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/pipeline/src/assembler/gate.test.ts",
+        "packages/pipeline/src/assembler/ledger.test.ts",
+        "packages/pipeline/src/decompose/decompose.test.ts",
+        "packages/pipeline/src/decompose/mermaid.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-204": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-205": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-206": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-301": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-302": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-303": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-304": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-305": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-306": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-307": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/estimate-routes.test.ts",
+        "apps/web/e2e/estimate.spec.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-308": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-309": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/estimate-routes.test.ts",
+        "apps/web/e2e/estimate.spec.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-310": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/notifications/notifications.test.ts",
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-401": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-402": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-403": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-404": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-405": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/pipeline/src/challenger/claims.test.ts",
+        "packages/pipeline/src/challenger/report.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-406": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-407": {
+      "implementingTickets": [],
+      "provingTests": ["apps/server/src/api/pipeline/pipeline-routes/advance.test.ts"],
+      "status": "uncovered"
+    },
+    "US-408": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-409": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-410": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/loop/src/loop-policy.test.ts",
+        "packages/pipeline/src/challenger/score.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-501": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-502": {
+      "implementingTickets": [],
+      "provingTests": ["packages/forge/src/github-issues.test.ts"],
+      "status": "uncovered"
+    },
+    "US-503": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/harbormaster/src/agent-session/mcp-wiring.test.ts",
+        "packages/mcp/src/register.test.ts",
+        "packages/mcp/src/tool-call.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-504": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-505": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-601": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-602": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/cli/memory-hooks.test.ts",
+        "packages/memory/src/consolidation/error-first-recall.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-603": {
+      "implementingTickets": [],
+      "provingTests": ["packages/memory/src/consolidation/consolidate.test.ts"],
+      "status": "uncovered"
+    },
+    "US-604": {
+      "implementingTickets": [],
+      "provingTests": ["packages/memory/src/store/retrieval.test.ts"],
+      "status": "uncovered"
+    },
+    "US-701": {
+      "implementingTickets": [],
+      "provingTests": ["packages/harbormaster/src/breakpoints-clarifications.test.ts"],
+      "status": "uncovered"
+    },
+    "US-702": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-703": {
+      "implementingTickets": [],
+      "provingTests": ["packages/harbormaster/src/autonomy-ledger.test.ts"],
+      "status": "uncovered"
+    },
+    "US-704": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/notifications/notifications.test.ts",
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-801": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-802": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-803": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-804": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "US-805": {
+      "implementingTickets": [],
+      "provingTests": [
+        "packages/gateway/src/pool/fair-scheduler.test.ts",
+        "packages/gateway/src/pool/gateway-pool.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "US-806": {
+      "implementingTickets": [],
+      "provingTests": [],
+      "status": "uncovered"
+    },
+    "FR-S": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/pipeline/model-resolution.test.ts",
+        "apps/server/src/api/roster-resolve.test.ts",
+        "apps/server/src/api/server/providers-routes.test.ts",
+        "apps/server/src/api/server/settings-events.test.ts",
+        "apps/server/src/api/server/settings-routes.test.ts",
+        "apps/server/src/api/server/settings-scope.test.ts",
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/cli/run-cmd.test.ts",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/web/src/onboarding/FirstRunWizard.test.tsx",
+        "apps/web/src/settings/ProvidersPanel.test.tsx",
+        "packages/events/src/receipts.property.test.ts",
+        "packages/events/src/receipts.test.ts",
+        "packages/gateway/src/pool/governor.test.ts",
+        "packages/gateway/src/routing/matrix.test.ts",
+        "packages/gateway/src/routing/presets.test.ts",
+        "packages/harbormaster/src/agent-session/gateway-session.test.ts",
+        "packages/harbormaster/src/agent-session/git-tools.test.ts",
+        "packages/harbormaster/src/agent-session/session-anchors.test.ts",
+        "packages/harbormaster/src/agent-session/session-stream.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/test/berths-dial.test.ts",
+        "packages/loop/src/session.test.ts",
+        "packages/shared/src/config/settings-files.test.ts",
+        "packages/shared/src/config/settings-service.test.ts",
+        "packages/shared/src/config/settings.test.ts",
+        "packages/validators/src/pack.test.ts",
+        "scripts/hooks-install.test.mjs"
+      ],
+      "status": "uncovered"
+    },
+    "FR-F": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/projects.test.ts",
+        "apps/server/src/api/server/model-matrix-store.test.ts",
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts",
+        "apps/server/src/cli/memory-hooks.test.ts",
+        "apps/web/e2e/fleet.spec.ts",
+        "apps/web/e2e/notifications.spec.ts",
+        "packages/gateway/src/pool/fair-scheduler.test.ts",
+        "packages/gateway/src/pool/gateway-pool.test.ts",
+        "packages/memory/src/playbook/consult.test.ts",
+        "packages/memory/src/playbook/promote.test.ts",
+        "packages/memory/src/playbook/r0-global-promotion.test.ts"
+      ],
+      "status": "uncovered"
+    },
+    "FR-E": {
+      "implementingTickets": [],
+      "provingTests": [
+        "apps/server/src/api/roster-content.test.ts",
+        "apps/server/src/api/roster.test.ts",
+        "apps/web/e2e/roster.spec.ts",
+        "apps/web/src/roster/api.test.ts"
+      ],
+      "status": "uncovered"
+    }
+  },
+  "gaps": [
+    "requirement FR-E1 is uncovered: FR-E1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-F1 is uncovered: FR-F1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-S1 is uncovered: FR-S1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-T5 is uncovered: FR-T5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-H5 is uncovered: FR-H5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G1 is uncovered: FR-G1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-I2 is uncovered: FR-I2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-I3 is uncovered: FR-I3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-CANVAS is uncovered: FR-CANVAS is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C1 is uncovered: FR-C1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C2 is uncovered: FR-C2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C3 is uncovered: FR-C3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C4 is uncovered: FR-C4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C5 is uncovered: FR-C5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C6 is uncovered: FR-C6 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-S4 is uncovered: FR-S4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C7 is uncovered: FR-C7 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-C8 is uncovered: FR-C8 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P3 is uncovered: FR-P3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-PIPE is uncovered: FR-PIPE is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P1 is uncovered: FR-P1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P2 is uncovered: FR-P2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P4 is uncovered: FR-P4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P5 is uncovered: FR-P5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P6 is uncovered: FR-P6 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P7 is uncovered: FR-P7 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-P8 is uncovered: FR-P8 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-TICK is uncovered: FR-TICK is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-T1 is uncovered: FR-T1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-T2 is uncovered: FR-T2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-T3 is uncovered: FR-T3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-T4 is uncovered: FR-T4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-T6 is uncovered: FR-T6 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-GW is uncovered: FR-GW is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G2 is uncovered: FR-G2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G3 is uncovered: FR-G3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L7 is uncovered: FR-L7 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-N2 is uncovered: FR-N2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G4 is uncovered: FR-G4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G5 is uncovered: FR-G5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G6 is uncovered: FR-G6 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G7 is uncovered: FR-G7 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G8 is uncovered: FR-G8 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-LOOP is uncovered: FR-LOOP is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L1 is uncovered: FR-L1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L2 is uncovered: FR-L2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L3 is uncovered: FR-L3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L4 is uncovered: FR-L4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L5 is uncovered: FR-L5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L6 is uncovered: FR-L6 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-L8 is uncovered: FR-L8 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-HM is uncovered: FR-HM is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-H1 is uncovered: FR-H1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-H2 is uncovered: FR-H2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-H3 is uncovered: FR-H3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-H4 is uncovered: FR-H4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-HITL is uncovered: FR-HITL is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-N1 is uncovered: FR-N1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-N3 is uncovered: FR-N3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-N4 is uncovered: FR-N4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-INT is uncovered: FR-INT is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-I1 is uncovered: FR-I1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-I4 is uncovered: FR-I4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-MEM is uncovered: FR-MEM is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-M1 is uncovered: FR-M1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-M2 is uncovered: FR-M2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-M3 is uncovered: FR-M3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-M4 is uncovered: FR-M4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-SET is uncovered: FR-SET is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-S2 is uncovered: FR-S2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-S3 is uncovered: FR-S3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-FLEET is uncovered: FR-FLEET is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-F2 is uncovered: FR-F2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-F3 is uncovered: FR-F3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-F4 is uncovered: FR-F4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-F5 is uncovered: FR-F5 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-EXP is uncovered: FR-EXP is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-E2 is uncovered: FR-E2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-RL is uncovered: FR-RL is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-RL1 is uncovered: FR-RL1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-RL2 is uncovered: FR-RL2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-RL3 is uncovered: FR-RL3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-RL4 is uncovered: FR-RL4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-PLAN is uncovered: FR-PLAN is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-PLAN1 is uncovered: FR-PLAN1 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-PLAN2 is uncovered: FR-PLAN2 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-PLAN3 is uncovered: FR-PLAN3 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-PLAN4 is uncovered: FR-PLAN4 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-G9 is uncovered: FR-G9 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-H6 is uncovered: FR-H6 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-101 is uncovered: US-101 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-102 is uncovered: US-102 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-103 is uncovered: US-103 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-104 is uncovered: US-104 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-105 is uncovered: US-105 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-106 is uncovered: US-106 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-107 is uncovered: US-107 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-108 is uncovered: US-108 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-109 is uncovered: US-109 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-201 is uncovered: US-201 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-202 is uncovered: US-202 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-203 is uncovered: US-203 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-204 is uncovered: US-204 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-205 is uncovered: US-205 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-206 is uncovered: US-206 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-301 is uncovered: US-301 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-302 is uncovered: US-302 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-303 is uncovered: US-303 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-304 is uncovered: US-304 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-305 is uncovered: US-305 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-306 is uncovered: US-306 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-307 is uncovered: US-307 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-308 is uncovered: US-308 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-309 is uncovered: US-309 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-310 is uncovered: US-310 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-401 is uncovered: US-401 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-402 is uncovered: US-402 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-403 is uncovered: US-403 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-404 is uncovered: US-404 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-405 is uncovered: US-405 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-406 is uncovered: US-406 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-407 is uncovered: US-407 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-408 is uncovered: US-408 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-409 is uncovered: US-409 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-410 is uncovered: US-410 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-501 is uncovered: US-501 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-502 is uncovered: US-502 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-503 is uncovered: US-503 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-504 is uncovered: US-504 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-505 is uncovered: US-505 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-601 is uncovered: US-601 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-602 is uncovered: US-602 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-603 is uncovered: US-603 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-604 is uncovered: US-604 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-701 is uncovered: US-701 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-702 is uncovered: US-702 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-703 is uncovered: US-703 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-704 is uncovered: US-704 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-801 is uncovered: US-801 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-802 is uncovered: US-802 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-803 is uncovered: US-803 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-804 is uncovered: US-804 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-805 is uncovered: US-805 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement US-806 is uncovered: US-806 is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-S is uncovered: FR-S is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-F is uncovered: FR-F is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "requirement FR-E is uncovered: FR-E is in the SRS but no ticket implements it (A-1 silent divergence)",
+    "board has no ticket tagged long_tail: true — the B-1 wave (first-run/empty-DB, empty states, expired-session, declared-error-paths, migration, reset/uninstall) was never generated",
+    "verify RED on main: verify command failed (exit 1): pnpm test"
+  ],
+  "history": [
+    {
+      "iteration": 1,
+      "requirements": 147,
+      "gaps": 149
+    }
+  ],
+  "iteration": 1
+}

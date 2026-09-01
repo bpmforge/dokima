@@ -288,3 +288,33 @@ describe('makeDrivePort (P6-03) — one loop, two engines, same call', () => {
     );
   });
 });
+
+describe('P6-09 — the loop runs under PLAIN node, not only vitest', () => {
+  it('a spawned plain-node process loads the REAL assembler (red = assembler-unavailable, the first live run)', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const script = `
+      const { productLoop } = await import('./scripts/conductor/product-loop.mjs');
+      const r = await productLoop({
+        readSources: () => 'Only US-1 exists.',
+        readBoard: () => [],
+        appendTickets: () => {},
+        writeLedger: () => {},
+        provingTestsFor: () => [],
+        testExists: () => false,
+        seams: () => [],
+        seamResults: () => [],
+        verifyMain: () => ({ green: false, detail: 'x' }),
+        runConductor: () => {},
+        log: () => {},
+      }, { maxIterations: 1 });
+      console.log(JSON.stringify({ halt: r.halt ?? null }));
+    `;
+    const out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      cwd: new URL('../..', import.meta.url).pathname,
+      encoding: 'utf8',
+    });
+    const { halt } = JSON.parse(out.trim().split('\n').pop());
+    expect(halt).not.toBe('assembler-unavailable');
+    expect(halt).toBe('iteration-cap'); // the real assembler measured a real gap set
+  }, 30_000);
+});

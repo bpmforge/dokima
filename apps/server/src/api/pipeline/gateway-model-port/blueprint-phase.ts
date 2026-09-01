@@ -37,7 +37,16 @@ export const BLUEPRINT_SYSTEM_PROMPT =
   '"deployment-shape". Put the human-readable wording in the slate\'s ' +
   '"title" instead. "recommendedId" must be one of the option ids you listed ' +
   'and must not be empty. Never fabricate a resolution — this endpoint has no ' +
-  'authority to mark a question decided.';
+  'authority to mark a question decided. ' +
+  // P6-08: the requirement DENOMINATOR is derived from this markdown
+  // (deriveRequirementIds). Without inline ids the product map renders
+  // all-Unmapped and requirement coverage cannot be measured at all.
+  'Every user-facing capability in "sections" MUST carry a stable story id ' +
+  'written inline where the capability is described: "US-1", "US-2", ... in ' +
+  'order of appearance; cross-cutting requirements may instead use ' +
+  '"FR-<AREA>-<n>" (for example "FR-AUTH-1"). These ids are the product\'s ' +
+  'requirement denominator — every later coverage measure counts against ' +
+  'them, so never renumber an id once used.';
 
 export function parseFounderSlateInput(
   raw: unknown,

@@ -44,6 +44,11 @@ import { createHash } from 'node:crypto';
 let assembler; // lazy TS import (heal.mjs pattern) | 'unavailable'
 async function loadAssembler() {
   if (assembler) return assembler;
+  // P6-09: under plain node, gate.ts's runtime .js specifiers need the
+  // workspace tsx loader; under vitest this is a no-op. Best-effort — a
+  // vendored install still degrades loudly below.
+  const { ensureTsLoader } = await import('./ts-loader.mjs');
+  await ensureTsLoader();
   try {
     const [ledger, gate, assembly, longtail] = await Promise.all([
       import('../../packages/pipeline/src/assembler/ledger.ts'),

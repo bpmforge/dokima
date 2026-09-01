@@ -507,9 +507,9 @@ describe('gateway-model-port — one bounded retry with the gap fed back (W10-65
       model: 'local-model',
     });
 
-    await expect(port.resolveBlueprintInput([], 'Demo Project')).rejects.not.toBeInstanceOf(
-      MalformedModelOutputError,
-    );
+    await expect(
+      port.resolveBlueprintInput([], 'Demo Project'),
+    ).rejects.not.toBeInstanceOf(MalformedModelOutputError);
   });
 });
 
@@ -534,9 +534,7 @@ describe('gateway-model-port — open-question keys are slugs, and a bad one is 
   const withKey = (key: string): string =>
     JSON.stringify({
       ...VALID_BLUEPRINT_INPUT,
-      openQuestions: [
-        { ...VALID_BLUEPRINT_INPUT.openQuestions[0], key },
-      ],
+      openQuestions: [{ ...VALID_BLUEPRINT_INPUT.openQuestions[0], key }],
     });
 
   const TITLE_KEY = 'Offline Sync & Conflict Resolution Strategy';
@@ -547,10 +545,7 @@ describe('gateway-model-port — open-question keys are slugs, and a bad one is 
   });
 
   it('recovers from the real failure: a human-readable key, corrected on retry', async () => {
-    server = await startFakeGatewayServer([
-      withKey(TITLE_KEY),
-      withKey('offline-sync'),
-    ]);
+    server = await startFakeGatewayServer([withKey(TITLE_KEY), withKey('offline-sync')]);
     const port = await createRealGatewayPort({
       baseUrl: server.url,
       model: 'local-model',
@@ -612,5 +607,25 @@ describe('gateway-model-port — open-question keys are slugs, and a bad one is 
 
     expect(result.openQuestions[0]?.key).toBe('deployment-shape');
     expect(server.requests).toHaveLength(1);
+  });
+});
+
+describe('P6-08 — the prompts carry the requirement denominator', () => {
+  it('the blueprint prompt REQUIRES inline US-/FR- story ids — without them the product map is all-Unmapped', async () => {
+    const { BLUEPRINT_SYSTEM_PROMPT } =
+      await import('./gateway-model-port/blueprint-phase.js');
+    expect(BLUEPRINT_SYSTEM_PROMPT).toMatch(/US-1.*US-2/s);
+    expect(BLUEPRINT_SYSTEM_PROMPT).toContain('requirement denominator');
+    expect(BLUEPRINT_SYSTEM_PROMPT).toContain('never renumber');
+  });
+
+  it('the ticket-drafts prompt requires citing the story id verbatim in title or acceptance', async () => {
+    const mod = await import('./gateway-model-port/ticket-drafts-phase.js');
+    const prompt = Object.values(mod).find(
+      (v) => typeof v === 'string' && v.includes('writeScope'),
+    ) as string;
+    expect(prompt).toContain('cite the story id');
+    expect(prompt).toContain('implements US-3');
+    expect(prompt).toContain('Unmapped');
   });
 });
