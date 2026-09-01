@@ -33,7 +33,10 @@ import { GlobalBerthGovernor } from '@dokima/gateway';
 import { resolveCurrentBranch } from '@dokima/git';
 import {
   landClaimedTicket,
+  landReadyFeatures,
+  parkLandedTicketBranch,
   runBerths,
+  type FeatureLandingReport,
   type LandLoopOptions,
   type LandLoopTicketOutcome,
 } from '@dokima/harbormaster';
@@ -41,6 +44,8 @@ import {
 export interface BerthsRunSummary {
   readonly processed: readonly LandLoopTicketOutcome[];
   readonly stopReason: string;
+  /** P6-11: per-feature mode — the idle-time feature sweep's reports. */
+  readonly featureLandings?: readonly FeatureLandingReport[];
 }
 
 const STOP_PRIORITY = ['error', 'budget', 'stopped', 'breakpoint', 'idle'] as const;
@@ -91,7 +96,14 @@ export async function executeBerthsRun(opts: {
           worktree,
           await resolveBaseRef(),
         );
-        processed.push(outcome);
+        // P6-11: the SAME park runLandLoop applies — a berth's landed ticket
+        // parks its branch under per-feature landing; a park is not a landing.
+        if (opts.landOptions.landing === 'per-feature' && outcome.landed) {
+          await parkLandedTicketBranch({ ...opts.landOptions, actorId }, ticket);
+          processed.push({ ...outcome, parkedForFeatureLanding: true });
+        } else {
+          processed.push(outcome);
+        }
       });
     },
   });
@@ -108,5 +120,14 @@ export async function executeBerthsRun(opts: {
     STOP_PRIORITY.find((reason) =>
       result.berths.some((berth) => berth.stopReason === reason),
     ) ?? 'idle';
+  // P6-11: the idle moment is when features land (the runLandLoop rule) —
+  // a stopped/budget/error exit skips the sweep; parks are durable.
+  if (opts.landOptions.landing === 'per-feature' && stopReason === 'idle') {
+    return {
+      processed,
+      stopReason,
+      featureLandings: await landReadyFeatures(opts.landOptions, await resolveBaseRef()),
+    };
+  }
   return { processed, stopReason };
 }

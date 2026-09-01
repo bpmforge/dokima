@@ -54,6 +54,9 @@ export type {
 export { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
 export { runLandLoop } from './loop-land.js';
+// P6-11: the berths CLI applies the SAME park + idle-time feature sweep.
+export { landReadyFeatures, parkLandedTicketBranch } from './loop-land-feature-run.js';
+export type { FeatureLandingReport } from './loop-land-feature-run.js';
 /**
  * W12-18: the land-loop policy types were never re-exported, so `run-build.ts`
  * could not name the `policyScope` it needs to pass — which is part of why
@@ -201,11 +204,19 @@ export {
 export type { UnfalsifiableCriterion } from './loop-gates-unfalsifiable.js';
 
 /** W21-46: a rung that already failed this ticket is not re-run from scratch. */
-export { rungMemoryFor, rungSkipNotice, startAttemptFor } from './loop-land-rungmemory.js';
+export {
+  rungMemoryFor,
+  rungSkipNotice,
+  startAttemptFor,
+} from './loop-land-rungmemory.js';
 export type { RungMemory } from './loop-land-rungmemory.js';
 
 /** W21-40: a claim held by a run that has ended needs no waiting period. */
-export { heldTicketsNotice, orphanedClaimNotice, orphanedClaims } from './loop-land-orphan.js';
+export {
+  heldTicketsNotice,
+  orphanedClaimNotice,
+  orphanedClaims,
+} from './loop-land-orphan.js';
 export type { OrphanedClaim } from './loop-land-orphan.js';
 
 /** W21-44: a session that made tool calls and changed nothing has not attempted the work. */
@@ -263,9 +274,7 @@ export type {
 export { landClaimedTicket } from './loop-land-ticket.js';
 
 /** W17-03: the measured turns profile — observations emitted per session, multiplier computed by the composing caller. */
-export {
-  measuredTurnsMultiplier,
-} from './agent-session/session-progress.js';
+export { measuredTurnsMultiplier } from './agent-session/session-progress.js';
 export type { TurnsObservation } from './agent-session/session-progress.js';
 
 /** W20-09 (D-030): Otto's funnel — a total order over the founder's queue, computed never judged. */
