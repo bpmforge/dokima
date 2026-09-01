@@ -538,12 +538,15 @@
       "title": "Harden per-feature landing to production trust (Challenger F1/F2/F6 + dependency stacking)",
       "lane": "scripts",
       "write_scope": [
-        "scripts/conductor/wave.mjs",
-        "scripts/conductor/feature-landing.mjs",
+        "scripts/conductor-lib/claim.mjs",
         "scripts/conductor/feature-landing-wiring.mjs",
+        "scripts/conductor/feature-landing.mjs",
         "scripts/conductor/feature-landing.test.mjs",
-        "scripts/conductor/worktree.mjs",
-        "scripts/conductor-lib/claim.mjs"
+        "scripts/conductor/gates.mjs",
+        "scripts/conductor/ticket.mjs",
+        "scripts/conductor/wave.mjs",
+        "scripts/conductor/wave.test.mjs",
+        "scripts/conductor/worktree.mjs"
       ],
       "depends_on": ["P6-02"],
       "acceptance": [
@@ -553,8 +556,8 @@
         "only after all three: conductor.config.json landing may be set to 'per-feature'"
       ],
       "points": 8,
-      "status": "todo",
-      "notes": "FILED 2026-08-31 by the P6 Challenger pass. The mechanical defects (durable park, restart safety, blocked=waiting, refusal cleanup, merge abort) are already fixed on sw/p6; these three are the remaining hazards that make the mode untrustworthy in production, so the config ships per-ticket until this lands. F6 detail: composeWave's disjoint write_scope cannot cover the board file every branch must edit; without the carve-out the very first multi-ticket feature wedges permanently."
+      "status": "in_progress",
+      "notes": "FILED 2026-08-31 by the P6 Challenger pass. The mechanical defects (durable park, restart safety, blocked=waiting, refusal cleanup, merge abort) are already fixed on sw/p6; these three are the remaining hazards that make the mode untrustworthy in production, so the config ships per-ticket until this lands. F6 detail: composeWave's disjoint write_scope cannot cover the board file every branch must edit; without the carve-out the very first multi-ticket feature wedges permanently. SCOPE WIDENED at claim: gates.mjs + ticket.mjs must diff against the stacked base (main...branch reads a dependency's files as out-of-scope after stacking) and wave.test.mjs carries the carve-out fixtures. Named per Law 1."
     },
     {
       "id": "P6-07",
