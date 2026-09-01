@@ -55,6 +55,19 @@ export type { LandVerbEvent, LandVerbMirror } from './loop-land-verbs.js';
 import { pickNextTicket } from './loop-land-board.js';
 import { processTicket } from './loop-land-ticket.js';
 export { landClaimedTicket } from './loop-land-ticket.js';
+// P6-05: per-feature landing — the park step and the idle-time feature sweep.
+import {
+  landReadyFeatures,
+  parkLandedTicketBranch,
+  type FeatureLandingReport,
+} from './loop-land-feature-run.js';
+import type { BoardFeature, LandingMode } from './loop-land-feature.js';
+import type {
+  SyntheticBranchRecord,
+  SyntheticVerifyResult,
+} from './loop-land-feature-merge.js';
+export type { FeatureLandingReport } from './loop-land-feature-run.js';
+export type { BoardFeature, LandingMode } from './loop-land-feature.js';
 
 export type { LandPushRemoteResult, PushToRemotesFn } from './land-push.js';
 type LandPushResults = Awaited<ReturnType<typeof pushLandedBranch>>;
@@ -158,6 +171,22 @@ export interface LandLoopOptions {
   readonly conflictWatch?: { readonly humanActorId: string };
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
+  /**
+   * P6-05 (Law L11): the per-project landing mode. `'per-feature'` PARKS every
+   * close-gate-green ticket (branch kept, park ledgered durably; the status
+   * stays whatever `closeTicket` produced — `in_review`, a human still
+   * accepts) and lands each COMPLETE feature as ONE verified merge at idle
+   * time. Default `'per-ticket'`: byte-identical to the pre-P6-05 loop.
+   */
+  readonly landing?: LandingMode;
+  /** P6-05: feature-map override; defaults to the board's recorded features (`readBoardFeatures`), then id-prefix cohorts. */
+  readonly features?: readonly BoardFeature[];
+  /** P6-05: board-plane metadata paths whose synthetic-branch conflicts resolve to the base's version. Code conflicts always refuse whole. Default none. */
+  readonly featureMetadataPaths?: readonly string[];
+  /** P6-05: Tier-D verify on the synthetic head. Defaults to provision + a disk-derived verify command under the SC-07 sandbox; nothing derivable REFUSES the landing. */
+  readonly verifyFeature?: (
+    record: SyntheticBranchRecord,
+  ) => Promise<SyntheticVerifyResult>;
 }
 
 export type LandLoopStopReason = 'idle' | 'stopped' | 'budget';
@@ -221,10 +250,19 @@ export interface LandLoopTicketOutcome {
    */
   readonly parkedDetail?: string;
   readonly finalStatus: Ticket['status'];
+  /**
+   * P6-05: true when `landing: 'per-feature'` recorded this close as a PARK —
+   * the checkpoint was reached, but the branch merged NOWHERE yet; it lands
+   * with its feature. A park is not a landing, and any output built from this
+   * outcome must not call it one.
+   */
+  readonly parkedForFeatureLanding?: boolean;
 }
 export interface LandLoopResult {
   readonly processed: readonly LandLoopTicketOutcome[];
   readonly stopReason: LandLoopStopReason;
+  /** P6-05: the idle-time feature sweep's report lines (per-feature mode only). */
+  readonly featureLandings?: readonly FeatureLandingReport[];
 }
 
 /**
@@ -240,7 +278,11 @@ function refuseTicketBase(
   reason: string,
 ): LandLoopTicketOutcome {
   const opts = { runId: options.runId ?? null };
-  commentTicket(options.log, { ticketId: ticket.id, actorId: options.actorId, body: reason }, opts);
+  commentTicket(
+    options.log,
+    { ticketId: ticket.id, actorId: options.actorId, body: reason },
+    opts,
+  );
   releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, opts);
   return {
     ticketId: ticket.id,
@@ -276,6 +318,7 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
     (resolvedBaseRef ??= await resolveCurrentBranch(options.repoRoot));
   const skip = new Set<string>();
   const processed: LandLoopTicketOutcome[] = [];
+  const landing = options.landing ?? 'per-ticket';
 
   for (;;) {
     if (options.stopSwitch && (await options.stopSwitch())) {
@@ -291,6 +334,20 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
 
     const next = pickNextTicket(listTickets(options.log), skip);
     if (!next) {
+      /**
+       * P6-05: the idle moment is when features land — every claimable ticket
+       * has been driven to a park or a park refusal, so any feature that can
+       * be complete IS complete now. A `stopped`/`budget` exit deliberately
+       * skips the sweep (a kill-file or a hard budget stop means stop; the
+       * parks are durable and the next idle run lands them).
+       */
+      if (landing === 'per-feature') {
+        return {
+          processed,
+          stopReason: 'idle',
+          featureLandings: await landReadyFeatures(options, await baseRefFor()),
+        };
+      }
       return { processed, stopReason: 'idle' };
     }
 
@@ -308,7 +365,14 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
       skip.add(next.id);
       continue;
     }
-    processed.push(await processTicket(options, next, base.ref));
+    const outcome = await processTicket(options, next, base.ref);
+    if (landing === 'per-feature' && outcome.landed) {
+      // The PARK (durable, append-only) — the branch merged nowhere yet.
+      await parkLandedTicketBranch(options, next);
+      processed.push({ ...outcome, parkedForFeatureLanding: true });
+    } else {
+      processed.push(outcome);
+    }
     skip.add(next.id);
   }
 }
