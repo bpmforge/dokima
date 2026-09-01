@@ -24,7 +24,9 @@ describe('generateLongTailWave', () => {
     for (const row of wave) {
       expect(row.long_tail).toBe(true);
       expect(row.status).toBe('todo');
-      expect(row.lane).toBe('long-tail');
+      // P6-10 live lesson: overlapping scopes must SHARE a lane (FR-T3) —
+      // 'long-tail' as a lane was refused by the verb on a real board.
+      expect(row.lane).toBe('product');
       expect(row.points).toBe(1);
       expect(row.id).toMatch(/^P9-LT-\d{2}$/);
       expect(row.acceptance.length).toBeGreaterThan(0);

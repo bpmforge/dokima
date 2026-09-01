@@ -640,8 +640,8 @@
         "gate green"
       ],
       "points": 3,
-      "status": "in_progress",
-      "notes": "FILED+CLAIMED 2026-08-31 (founder: 'loop until the goals are complete... a complete running product... automate this until we have automation running'). The loop measured only THIS repo; a target flag is the L11 wiring that makes it a product capability."
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-08-31 (founder: 'loop until the goals are complete... a complete running product... automate this until we have automation running'). The loop measured only THIS repo; a target flag is the L11 wiring that makes it a product capability. CLOSED 2026-08-31: PRODUCT PROVEN, exit 0 — the closing measure's own verdict on the demo product (2 requirements closed by tracked tests naming their ids, long-tail wave landed, verify green). 14 tickets driven through the REAL berths engine with a REAL claude -p (Haiku) agent; the trust boundary refused untrusted manifests/uncommitted files/stale bases exactly as designed; human verbs (accept + integration) performed by hand and recorded. Evidence: docs/work/attempt-evidence/p6-10-demo/. Five live-caught defects fixed on this branch (plain-node imports in the bridge, wrong verify command on proposals, LT rows with empty write_scope then FR-T3 lane overlap, dropped long_tail mapping). The hand-integration pain (add/add conflicts, helper drift, one parked branch merged early) is the measured argument for finishing the product-side feature landing chain (P6-05 follow-ups)."
     }
   ]
 }

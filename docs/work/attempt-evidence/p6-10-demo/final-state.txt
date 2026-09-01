@@ -1,0 +1,35 @@
+# Demo final state
+
+## git log --oneline --first-parent main
+2673479 integrate LT-LT-01 (accepted)
+122cdfc integrate: unify the two agent-generations of the runCli helper (.stdout call sites)
+81bbc9d integrate LT-LT-06: combined CLI — reset/uninstall + all prior paths
+06fa4a0 integrate sw/LT-LT-05-long-tail-migration-from-the-previous-released-version (accepted)
+7967c6d integrate sw/LT-LT-04-long-tail-every-declared-error-path-is-exercised (accepted)
+1744dd4 integrate LT-LT-03: combine --list and --secure paths
+1928a9b integrate sw/LT-LT-02-long-tail-every-list-collection-view-has-a-designed-empty-state (accepted)
+af08ef3 integrate sw/LT-LT-01-long-tail-first-run-against-an-empty-database (accepted)
+04c17b1 integrate: resolve add/add — US-1 branch already implements both stories per SRS
+e4ea8ac integrate PRD-US-1 (accepted)
+3422610 init: SRS with US-1, US-2
+
+## node --test apps/
+[32m✔ US-1 prints 42 [90m(24.64225ms)[39m[39m
+[32m✔ US-2 --name prints answer-cli [90m(20.625333ms)[39m[39m
+[32m✔ LT-LT-01 first run against empty database works [90m(20.6255ms)[39m[39m
+[32m✔ LT-LT-03: missing session returns 401 without stack trace [90m(20.11975ms)[39m[39m
+[32m✔ LT-LT-03: expired session (empty string) returns 401 [90m(19.882583ms)[39m[39m
+[32m✔ LT-LT-03: valid session succeeds [90m(20.062667ms)[39m[39m
+[32m✔ LT-LT-02 --list shows empty state when no items [90m(20.231542ms)[39m[39m
+[32m✔ US-1 with unrecognized flag prints 42 [90m(19.882083ms)[39m[39m
+[32m✔ US-1 with positional argument prints 42 [90m(20.309959ms)[39m[39m
+[32m✔ US-2 with --name and extra arguments prints answer-cli [90m(20.728042ms)[39m[39m
+[32m✔ LT-LT-05 migrates previous-version fixture [90m(0.131708ms)[39m[39m
+[32m✔ LT-LT-06 --reset returns to first-run state [90m(40.146459ms)[39m[39m
+[32m✔ LT-LT-06 --uninstall removes all artifacts [90m(41.0575ms)[39m[39m
+[34mℹ pass 13[39m
+[34mℹ fail 0[39m
+
+## the product itself
+$ node apps/cli.mjs -> 42
+$ node apps/cli.mjs --name -> answer-cli

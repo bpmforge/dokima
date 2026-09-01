@@ -32,6 +32,10 @@ export async function readProductBoard({ root, dbPath }) {
       // (maker != verifier, a human accepts) and deliberately stays open here.
       status: t.status === 'done' ? 'done' : t.status === 'blocked' ? 'blocked' : 'todo',
       product_status: t.status,
+      // The DB ticket schema carries no long_tail flag; the loop's LT- id
+      // prefix IS the convention (gapsToProposals mints them) — without this
+      // the long-tail gate is unsatisfiable on a berths board.
+      long_tail: /^LT-/.test(t.id) || undefined,
     }));
   } finally {
     log.close?.();
