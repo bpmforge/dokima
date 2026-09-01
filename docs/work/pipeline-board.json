@@ -587,8 +587,12 @@
       "title": "The product map must SURVIVE planning: persist + serve it, and make the prompts emit story ids (Challenger F4)",
       "lane": "pipeline",
       "write_scope": [
-        "packages/pipeline/src/run/run-job.ts",
         "apps/server/src/api/pipeline/board-lifecycle.ts",
+        "apps/server/src/api/pipeline/gateway-model-port.test.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/blueprint-phase.ts",
+        "apps/server/src/api/pipeline/gateway-model-port/ticket-drafts-phase.ts",
+        "apps/server/src/api/pipeline/pipeline-routes/run-job.test.ts",
+        "packages/pipeline/src/run/run-job.ts",
         "packages/pipeline/src/run/run-pipeline.ts"
       ],
       "depends_on": ["P6-04"],
@@ -598,8 +602,27 @@
         "gate green"
       ],
       "points": 3,
-      "status": "in_progress",
-      "notes": "FILED 2026-08-31. F4: the map is computed at decompose() then dropped — run-job persists tickets/violations/mermaid only, and no prompt asks the model for US-/FR- ids, so real runs would render an all-Unmapped map even after P6-04. Two halves, one outcome: a user must be able to SEE how their product connects."
+      "status": "done",
+      "notes": "FILED 2026-08-31. F4: the map is computed at decompose() then dropped — run-job persists tickets/violations/mermaid only, and no prompt asks the model for US-/FR- ids, so real runs would render an all-Unmapped map even after P6-04. Two halves, one outcome: a user must be able to SEE how their product connects. SCOPE WIDENED at claim: the prompts live in gateway-model-port/*-phase.ts and the fixtures in their sibling tests. Named per Law 1. CLOSED 2026-08-31. (1) Persisted: run record result.plan gains features/feature_gaps/product_map (snake_case wire fields), and the rendered map lands at .dokima/product-map.md beside the blueprint (docs/ belongs to deliverable tickets — run-job's own W-lesson). (2) Prompts: BLUEPRINT_SYSTEM_PROMPT now REQUIRES inline US-<n>/FR-<AREA>-<n> ids in sections ('requirement denominator', 'never renumber'); ticket-drafts prompt requires citing the story id verbatim in title/acceptance with the Unmapped consequence stated. (3) Fixtures: run-job E2E fake blueprint cites US-1 + ticket cites it -> asserts F-US-1 on the persisted plan AND in the on-disk map (the acceptance's 'synthesized blueprint yields >=1 mapped feature'); prompt source pins in gateway-model-port.test. Gate 5027 green."
+    },
+    {
+      "id": "P6-09",
+      "title": "The product loop must run under PLAIN node — first live run halted assembler-unavailable (vitest-only imports)",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/conductor/product-loop.mjs",
+        "scripts/conductor/ts-loader.mjs",
+        "scripts/conductor/product-loop.test.mjs"
+      ],
+      "depends_on": ["P5-01"],
+      "acceptance": [
+        "node scripts/product-loop.mjs (no vitest) loads the real assembler — the tsx loader registers from the workspace when a lazy TS import needs .js->.ts resolution, and degrades loudly as before when truly absent",
+        "a red/green fixture spawns PLAIN node (not vitest) and asserts the loop does not halt assembler-unavailable",
+        "gate green"
+      ],
+      "points": 2,
+      "status": "done",
+      "notes": "FILED 2026-08-31 by the FIRST LIVE RUN of the arc (product-loop --status on this repo): halt=assembler-unavailable. Root cause probed, not guessed: gate.ts carries runtime imports with .js specifiers (./assembly.js), which plain-node type stripping does not resolve to .ts — the W9-12 constraint — while vitest transforms them, so every test was green and the CLI was broken. The catch swallowed the reason exactly as designed (loud degrade), and the live run surfaced it in minutes. Fix: register the workspace's own tsx loader (apps/server/node_modules/tsx) before the lazy imports; probed OK under plain node. CLOSED 2026-08-31. ts-loader.mjs registers the workspace tsx loader (root or apps/server node_modules) before the lazy assembler imports; loadAssembler calls ensureTsLoader() best-effort — vendored installs keep the loud degrade. Red/green fixture spawns PLAIN node (not vitest) and drives the real productLoop: RED proven (halt=assembler-unavailable with the loader disabled), GREEN = iteration-cap (the real assembler measured a real gap set). LIVE PROOF: product-loop --status on this repo now completes — 147 requirements derived from the SRS, ledger written. Live finding recorded: CONFIG.boardPath points at the 27-ticket pipeline board, so coverage reads all-uncovered against the product SRS — measuring DOKIMA-the-product needs boardPath=plan.json (a config choice per board, not a defect). Gate 5027 green."
     }
   ]
 }

@@ -97,7 +97,9 @@ export async function executeRun(args: ExecuteRunArgs): Promise<void> {
           ...(stage === 'technical-slate' ? { technicalSlateInput: value } : {}),
           ...(stage === 'ticket-drafts' ? { ticketDrafts: value } : {}),
         }));
-        withEventLog(projectPath, now, (log) => emitStageEvent(log, { runId, now }, stage));
+        withEventLog(projectPath, now, (log) =>
+          emitStageEvent(log, { runId, now }, stage),
+        );
       },
     });
 
@@ -147,6 +149,19 @@ export async function executeRun(args: ExecuteRunArgs): Promise<void> {
     }
     await blueprintWrite;
 
+    // P6-08: the rendered map lands beside the blueprint (`.dokima/`, not
+    // docs/ — docs/ belongs to deliverable tickets, the run-job lesson above).
+    if (plan.productMap) {
+      const { mkdir, writeFile } = await import('node:fs/promises');
+      const { join } = await import('node:path');
+      await mkdir(join(projectPath, '.dokima'), { recursive: true });
+      await writeFile(
+        join(projectPath, '.dokima', 'product-map.md'),
+        plan.productMap,
+        'utf8',
+      );
+    }
+
     const accepted = await persistDecomposedPlan(projectPath, plan, { runId, now });
     const finishedAt = now();
     await patchRunRecord(projectPath, runId, (current) => ({
@@ -160,6 +175,11 @@ export async function executeRun(args: ExecuteRunArgs): Promise<void> {
           tickets: plan.tickets,
           violations: plan.violations,
           mermaid: plan.mermaid,
+          // P6-08: the product map SURVIVES planning — computed by decompose()
+          // since P6-04 and previously dropped right here (Challenger F4).
+          features: plan.features ?? [],
+          feature_gaps: plan.featureGaps ?? [],
+          product_map: plan.productMap ?? null,
         },
         plan_items: accepted.map(wireAcceptedItem),
       },

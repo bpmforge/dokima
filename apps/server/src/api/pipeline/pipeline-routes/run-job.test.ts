@@ -58,7 +58,11 @@ function completeSession(): InterviewSession {
 }
 
 const BLUEPRINT_INPUT = {
-  sections: [{ heading: 'Overview', body: 'A demo project, no open forks.' }],
+  // P6-08: the section cites a story id — the requirement denominator the
+  // product map is measured against.
+  sections: [
+    { heading: 'Overview', body: 'US-1: a user builds the thing. No open forks.' },
+  ],
   openQuestions: [],
 };
 
@@ -88,7 +92,7 @@ const TICKET_DRAFTS = {
       title: 'Build the thing',
       writeScope: ['apps/demo/**'],
       dependsOn: [],
-      acceptance: ['It works'],
+      acceptance: ['It works — implements US-1'],
       verify: 'pnpm test',
       ownPackage: 'apps/demo',
       importsWorkspacePackages: [],
@@ -193,7 +197,7 @@ async function pollUntil(
 describe('the creation run is a job, not a held request (W10-58)', () => {
   it('THE RED FIXTURE: responds with a run id while the provider is still blocked', async () => {
     const slow = slowPort();
-    const { app, projectId } = await harness(slow.port);
+    const { app, projectId, projectDir } = await harness(slow.port);
 
     const res = await start(app, projectId);
 
@@ -235,6 +239,20 @@ describe('the creation run is a job, not a held request (W10-58)', () => {
       'board',
     ]);
     expect(finished.result.plan_items.length).toBeGreaterThan(0);
+
+    // P6-08: the product map SURVIVED — on the run record and on disk.
+    const plan = (
+      finished as unknown as {
+        result: {
+          plan: { features: { id: string }[]; product_map: string | null };
+        };
+      }
+    ).result.plan;
+    expect(plan.features.some((f) => f.id === 'F-US-1')).toBe(true);
+    expect(plan.product_map).toContain('F-US-1');
+    const { readFile } = await import('node:fs/promises');
+    const onDisk = await readFile(`${projectDir}/.dokima/product-map.md`, 'utf8');
+    expect(onDisk).toContain('F-US-1');
   });
 
   it('appends a hash-chained progress event per model-authored stage', async () => {
