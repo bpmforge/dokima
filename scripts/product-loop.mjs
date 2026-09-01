@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { makeDrivePort, productLoop } from './conductor/product-loop.mjs';
 import { loadPlanFrom, writePlan } from './conductor-lib.mjs';
 import { ensureBaseline } from './conductor/baseline.mjs';
+import { readProductBoard, appendProductTickets } from './conductor/berths-board.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG = JSON.parse(readFileSync(resolve(ROOT, 'conductor.config.json'), 'utf8'));
@@ -35,6 +36,13 @@ function opt(name, dflt) {
 }
 const STATUS_ONLY = process.argv.includes('--status');
 const ENGINE = String(opt('engine', 'conductor')); // conductor|berths — makeDrivePort refuses others
+// P6-07: in berths mode the BOARD PLANE is the product's event-log DB — reads
+// go straight to listTickets (read-only; C-2 forbids untrusted WRITES, not
+// reads), and every write goes through the EXISTING add-ticket verb, never a
+// direct DB write. The MEASUREMENT plane (SRS, proving tests, verify receipt)
+// stays this repo: the dogfood target is the same product, different board.
+const DB_PATH = ENGINE === 'berths' ? String(opt('db', '.dokima.db')) : null;
+const AGENT_CMD = opt('agent-command', undefined);
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, {
@@ -145,6 +153,8 @@ const ports = {
     engine: ENGINE,
     projectId: opt('project-id', undefined),
     berths: Number(opt('berths', 2)),
+    dbPath: DB_PATH ? resolve(ROOT, DB_PATH) : undefined,
+    agentCommand: AGENT_CMD,
     spawn: (cmd, args) => {
       if (STATUS_ONLY) return;
       const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
@@ -163,6 +173,33 @@ const ports = {
 // Async seam results need a resolved value before the sync loop reads them.
 const seamRows = await seamResultsFor(ports.seams());
 ports.seamResults = () => seamRows;
+
+// P6-07: berths mode swaps the BOARD plane onto the product DB. The loop's
+// readBoard port is sync-shaped, so the async DB read is snapshotted here and
+// refreshed after every drive (the core AWAITS runConductor for exactly this).
+if (ENGINE === 'berths') {
+  const boardCfg = {
+    root: ROOT,
+    dbPath: DB_PATH,
+    cliEntry: 'apps/server/src/bootstrap/cli-entry.mjs',
+    spawn: (cmd, args) => spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8' }),
+    verify: (CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test',
+  };
+  let boardSnapshot = await readProductBoard(boardCfg);
+  ports.readBoard = () => boardSnapshot;
+  ports.appendTickets = (rows) => {
+    for (const msg of appendProductTickets(rows, boardCfg)) console.error(msg);
+  };
+  const drive = ports.runConductor;
+  ports.runConductor = (call) => {
+    drive(call);
+    // refresh the snapshot after the engine ran, so the next iteration
+    // measures the board the engine just changed
+    return readProductBoard(boardCfg).then((b) => {
+      boardSnapshot = b;
+    });
+  };
+}
 
 if (STATUS_ONLY) {
   ports.appendTickets = () => {};

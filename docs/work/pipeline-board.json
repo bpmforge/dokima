@@ -561,9 +561,13 @@
       "title": "Bridge the goal loop's board to the berths engine (Challenger F3 — the data plane behind --engine berths)",
       "lane": "pipeline",
       "write_scope": [
-        "scripts/product-loop.mjs",
         "apps/server/src/api/pipeline/board-lifecycle.ts",
-        "apps/server/src/cli/run-build.ts"
+        "apps/server/src/cli/run-build.ts",
+        "scripts/conductor/berths-board.mjs",
+        "scripts/conductor/product-loop.mjs",
+        "scripts/conductor/product-loop.test.mjs",
+        "scripts/product-loop-berths.test.mjs",
+        "scripts/product-loop.mjs"
       ],
       "depends_on": ["P6-03"],
       "acceptance": [
@@ -572,8 +576,8 @@
         "gate green"
       ],
       "points": 5,
-      "status": "in_progress",
-      "notes": "FILED 2026-08-31. F3: berths claims listTickets(log) from the event-log DB seeded by persistDecomposedPlan; the goal loop measures and appends on CONFIG.boardPath JSON. GAP->proposal->drive is severed at the data plane, so --engine berths currently no-progress-halts. Until this lands, §12's 'the bootstrap can retire without the goal layer noticing' is aspiration, and the conductor engine stays the default."
+      "status": "done",
+      "notes": "FILED 2026-08-31. F3: berths claims listTickets(log) from the event-log DB seeded by persistDecomposedPlan; the goal loop measures and appends on CONFIG.boardPath JSON. GAP->proposal->drive is severed at the data plane, so --engine berths currently no-progress-halts. Until this lands, §12's 'the bootstrap can retire without the goal layer noticing' is aspiration, and the conductor engine stays the default. SCOPE WIDENED at claim-time work (not close): the drive port must be awaited by the core loop (a berths drive refreshes the board snapshot asynchronously) and makeDrivePort must carry --db/--agent-command — both live in conductor/product-loop.mjs; the integration test is a new file. All three named here per Law 1. CLOSED 2026-08-31. berths-board.mjs: readProductBoard (read-only listTickets via lazy TS import — C-2 forbids untrusted WRITES, not reads; statuses mapped: only accepted 'done' counts as done for the loop, in_review stays open — maker != verifier) + appendProductTickets (every write through the EXISTING add-ticket verb via the CLI; a LANE_SCOPE refusal is a loud gap, never a crash or a workaround). makeDrivePort berths gains --db/--agent-command passthrough; the core loop now AWAITS the drive so the berths snapshot refresh lands before the next measure. PROBED LIVE before coding: 4 iterations to a landed ticket (git identity, completion-manifest contract from run-build.test.ts's agent, stub outside the repo — untracked files park, and IN write_scope — the scope gate refused src/ against apps/**). Integration test is fully real on the board plane: uncovered story -> PRD-US-1 through the verb -> run start --berths 1 claims + lands the stub manifest -> asserted in_review on the PRODUCT board + loop exits done. Gate 5016 green."
     },
     {
       "id": "P6-08",

@@ -246,7 +246,11 @@ export async function productLoop(ports, budget = {}) {
     log('product.drive', {
       msg: `iteration ${iteration}: running the conductor against the gapped board`,
     });
-    ports.runConductor({ maxTickets: budget.ticketsPerIteration ?? 8 });
+    // AWAITED (P6-07): a berths drive refreshes its board snapshot after the
+    // engine returns; the next iteration must measure the board the engine
+    // just changed, not the one it started from. (await on a sync port's
+    // undefined return is a no-op.)
+    await ports.runConductor({ maxTickets: budget.ticketsPerIteration ?? 8 });
   }
   log('product.halt', {
     msg: `iteration cap (${maxIterations}) reached with gaps open — goal-skill escalation, not a silent 6th lap`,
@@ -280,6 +284,8 @@ export function makeDrivePort({
   mode = 'feature',
   berths = 2,
   actorId = 'product-loop',
+  dbPath,
+  agentCommand,
 } = {}) {
   if (engine === 'conductor') {
     return ({ maxTickets }) =>
@@ -307,6 +313,11 @@ export function makeDrivePort({
         String(berths),
         '--actor',
         actorId,
+        // P6-07: the board plane — the same DB the loop's add-ticket verb
+        // writes proposals into — and the agent the berths spawn (a real
+        // project configures this; tests pass a stub).
+        ...(dbPath ? ['--db', dbPath] : []),
+        ...(agentCommand ? ['--agent-command', agentCommand] : []),
       ]);
     };
   }
