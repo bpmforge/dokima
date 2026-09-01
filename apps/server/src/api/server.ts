@@ -28,8 +28,17 @@ import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
 import { registerBrowseRoutes } from './server/browse-routes.js';
 import { registerInterviewRoutes } from './server/interview-routes.js';
-import { registerArtifactRoutes, registerBoardRoutes, registerEstimateRoutes, registerFounderQueueRoute,
-  registerModelsBenchRoute, registerNotificationRoutes, registerReceiptRoutes, registerRunsRoutes, registerTicketEditRoutes } from './server/index.js';
+import {
+  registerArtifactRoutes,
+  registerBoardRoutes,
+  registerEstimateRoutes,
+  registerFounderQueueRoute,
+  registerModelsBenchRoute,
+  registerNotificationRoutes,
+  registerReceiptRoutes,
+  registerRunsRoutes,
+  registerTicketEditRoutes,
+} from './server/index.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
 import { createBoardWatcher } from './server/board-watcher.js';
@@ -39,6 +48,7 @@ import { handleUpgrade } from './server/ws-upgrade.js';
 import { registerStatic } from './server/static-assets.js';
 
 import { startPlanScheduler, type PlanSchedulerOptions } from '../scheduler/index.js';
+import { startFleetWaveAutomations } from '../scheduler/wave-automations-wiring.js';
 
 export interface BuildApiServerOptions {
   token: string;
@@ -79,7 +89,6 @@ export interface ApiServer {
   app: FastifyInstance;
   wsHub: WsHub;
 }
-
 
 // W10-48: three unrelated feature bodies used to sit inline below
 // `buildApiServer` — a 143-line hardcoded chat fixture, WS upgrade dispatch,
@@ -150,10 +159,14 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
     fleetHome: opts.fleetHome,
     ...opts.planScheduler,
   });
+  // P6-13: the P4-01 automations finally START — before this line they had
+  // zero callers and the trigger->advisory-review pipeline never executed.
+  const waveAutomations = startFleetWaveAutomations({ fleetHome: opts.fleetHome });
 
   app.addHook('onClose', async () => {
     boardWatcher.stop();
     planScheduler.stop();
+    waveAutomations.stop();
     wsHub.close();
   });
 

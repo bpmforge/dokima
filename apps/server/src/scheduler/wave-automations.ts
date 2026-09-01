@@ -6,11 +6,14 @@
  *   - `pollBranchAdvisoryReviews`: when a parked candidate branch gains a new
  *     head, run the Tier-A advisory review (injected — the wave-review path)
  *     and RECORD the findings. Nothing is merged, accepted, or reverted.
- *   - `runDependencySweep`: on a schedule, turn an audit result into ticket
+ *     STARTED at server boot since P6-13 (wave-automations-wiring.ts).
+ *   - `runDependencySweep` (NOT YET STARTED — wiring is P6-14): on a
+ *     schedule, turn an audit result into ticket
  *     PROPOSALS (injected writer) — the same propose-then-human-accepts shape
  *     `evaluatePlan` already uses. Producing prose instead of proposals is how
  *     sweeps rot; producing merges instead of proposals would be Decide-tier.
- *   - `postMergeSmoke`: after a merge event, run the injected smoke command;
+ *   - `postMergeSmoke` (NOT YET STARTED — wiring is P6-14): after a merge
+ *     event, run the injected smoke command;
  *     the FIRST failure notifies (Review-tier), the SECOND consecutive failure
  *     escalates to a human — the Amplitude pattern the design doc cites
  *     ("fails twice, bring in a human"). Never an auto-revert.

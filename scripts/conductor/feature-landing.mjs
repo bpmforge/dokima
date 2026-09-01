@@ -194,10 +194,25 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
       reason: `feature ${featureId}: final merge failed and was aborted — ${String(e.message ?? e).slice(0, 200)}`,
     };
   }
+  // P6-13: Tier-A ADVISORY review on the tested synthetic head — after the
+  // deterministic gates passed, before the packet. Null tiers = review
+  // skipped (said by the wiring); the landing already happened either way.
+  let tiers = deps.tiers ?? null;
+  if (deps.tierAReview) {
+    try {
+      tiers = await deps.tierAReview(record, members);
+    } catch (e) {
+      // Advisory by law L2: a reviewer crash can never un-land a feature the
+      // deterministic gates already passed — but it is SAID, never swallowed.
+      log('wave.review.error', {
+        msg: `Tier-A advisory threw (landing stands): ${String(e.message ?? e).slice(0, 160)}`,
+      });
+    }
+  }
   const packet = deps.writeWavePacket
     ? deps.writeWavePacket({
         record,
-        tiers: deps.tiers ?? { actOn: [], consider: [], noted: [], dismissed: [] },
+        tiers: tiers ?? { actOn: [], consider: [], noted: [], dismissed: [] },
         logRows: [],
         outDir: deps.packetDir,
         gitRun: deps.gitRun,

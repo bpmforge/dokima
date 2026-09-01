@@ -706,8 +706,27 @@
         "gate green"
       ],
       "points": 5,
-      "status": "in_progress",
-      "notes": "FILED+CLAIMED 2026-09-01 by the final make-sure Challenger: wave-review had ZERO production callers and startWaveAutomations was never started — the trigger->advisory pipeline was built on both ends and connected by a comment (F1+F2, the 7th built-but-unwired). F3: the superseded merge train was retired-but-unnamed; F4: a stale load-bearing comment said berths still lands per-ticket."
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-09-01 by the final make-sure Challenger: wave-review had ZERO production callers and startWaveAutomations was never started — the trigger->advisory pipeline was built on both ends and connected by a comment (F1+F2, the 7th built-but-unwired). F3: the superseded merge train was retired-but-unnamed; F4: a stale load-bearing comment said berths still lands per-ticket. CLOSED 2026-09-01. (F1) tierAReview composed in feature-landing-wiring: waveReviewers/runWaveReview with the conductor's REAL runSession on the synthetic diff, synthesizeWaveFindings + ledgerize, tiers into the wave packet; ADVISORY guaranteed twice — the wiring catches + says every failure, and landFeature guards a throwing reviewer (test: a crash never un-lands a gated feature). (F2) wave-automations-wiring.ts: startFleetWaveAutomations booted in server.ts beside startPlanScheduler + stopped onClose (source-pinned test); the tick polls every fleet project's parkedBranches through pollBranchAdvisoryReviews with the role-routed reviewer model, unroutable = loud skip; empty-fleet no-op test. Sweep + smoke honestly UNSTARTED in the header, wiring named as P6-14. (F3) merge train DELETED per W21-36 (writeWavePacket kept, its test preserved standalone); ratchet unchanged 46/45. (F4) run-build.ts comment corrected. Gate 5057 green."
+    },
+    {
+      "id": "P6-14",
+      "title": "Start the remaining two automations: dependency sweep + post-merge smoke",
+      "lane": "server",
+      "write_scope": [
+        "apps/server/src/scheduler/wave-automations-wiring.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.test.ts",
+        "apps/server/src/scheduler/wave-automations.ts"
+      ],
+      "depends_on": ["P6-13"],
+      "acceptance": [
+        "runDependencySweep composed into the fleet tick with a real audit source and the propose-only writer (proposals, never merges)",
+        "postMergeSmoke composed with a real merge-event source and the project's own verify as the smoke; second consecutive failure escalates to a human",
+        "header text updated; gate green incl. red fixtures"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-09-01 by P6-13's close: only the advisory poll is started; these two remain header-honest UNSTARTED."
     }
   ]
 }

@@ -57,7 +57,11 @@ export { runLandLoop } from './loop-land.js';
 // P6-11: the berths CLI applies the SAME park + idle-time feature sweep.
 export { landReadyFeatures, parkLandedTicketBranch } from './loop-land-feature-run.js';
 // P6-12: the decompose board-lifecycle is the features[] second writer.
-export { readBoardFeatures, recordBoardFeatures } from './loop-land-feature.js';
+export {
+  parkedBranches,
+  readBoardFeatures,
+  recordBoardFeatures,
+} from './loop-land-feature.js';
 export type { FeatureLandingReport } from './loop-land-feature-run.js';
 /**
  * W12-18: the land-loop policy types were never re-exported, so `run-build.ts`

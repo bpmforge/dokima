@@ -6,8 +6,8 @@
 // out of feature-landing.mjs so the policy stays injectable.
 
 import { resolve } from 'node:path';
-import { rmSync } from 'node:fs';
-import { CONFIG, ROOT, log, sh, git, loadPlan } from './context.mjs';
+import { rmSync, existsSync } from 'node:fs';
+import { CONFIG, ROOT, MODELS, log, sh, git, loadPlan } from './context.mjs';
 import { writePlan } from '../conductor-lib.mjs';
 import { featuresReadyToLand, landFeature } from './feature-landing.mjs';
 import { composeWave, buildSyntheticBranch, waveInvalidation } from './wave.mjs';
@@ -54,6 +54,64 @@ function verifySynthetic(record) {
   }
 }
 
+/**
+ * P6-13: the Tier-A REVIEW PANEL, finally called in production. ADVISORY by
+ * law L2 — its tiers land in the wave packet and the finding ledger; only the
+ * deterministic gates (receipt, seams, drift) can refuse a landing, so every
+ * failure path here SKIPS LOUDLY and returns null tiers, never a block.
+ */
+async function tierAReview(record, members) {
+  try {
+    const { runWaveReview, synthesizeWaveFindings, ledgerize } =
+      await import('./wave-review.mjs');
+    const { runSession } = await import('./session.mjs');
+    const diff = sh('git', ['diff', `${record.baseSha}...${record.headSha}`]).slice(
+      0,
+      180_000,
+    );
+    const touchedFiles = sh('git', [
+      'diff',
+      '--name-only',
+      `${record.baseSha}...${record.headSha}`,
+    ])
+      .split('\n')
+      .filter(Boolean);
+    const waveId = record.branch.split('/').pop();
+    const reports = await runWaveReview({
+      waveId,
+      diff,
+      memberIds: members.map((m) => m.id),
+      touchedFiles,
+      cfg: CONFIG.wave ?? {},
+      models: MODELS,
+      runSession,
+      wt: record.wt,
+      evidenceDir: resolve(ROOT, `docs/work/attempt-evidence/${waveId}/review`),
+      fileExists: (f) => existsSync(resolve(record.wt, f)),
+      memberByFile: (f) =>
+        members.find((m) =>
+          (m.write_scope ?? []).some((g) => f.startsWith(g.split('*')[0])),
+        )?.id ?? null,
+    });
+    const tiers = synthesizeWaveFindings(reports, {
+      fileExists: (f) => existsSync(resolve(record.wt, f)),
+      memberByFile: () => null,
+    });
+    await ledgerize(waveId, tiers);
+    log('wave.review', {
+      msg: `Tier-A advisory on ${waveId}: actOn=${tiers.actOn.length} consider=${tiers.consider.length} noted=${tiers.noted.length} dismissed=${tiers.dismissed.length}`,
+    });
+    return tiers;
+  } catch (e) {
+    // Advisory means advisory: a reviewer outage cannot hold a landing, but
+    // it must be SAID — an unreviewed landing that looks reviewed is worse.
+    log('wave.review.skipped', {
+      msg: `Tier-A advisory SKIPPED (landing proceeds on deterministic gates alone): ${String(e.message ?? e).slice(0, 160)}`,
+    });
+    return null;
+  }
+}
+
 async function seamGapsFor(plan, wt) {
   const seams = plan.seams ?? [];
   if (!seams.length) return [];
@@ -92,6 +150,7 @@ export async function tryFeatureLandings() {
       members: r.members,
       boardTickets: plan.tickets,
       deps: {
+        tierAReview,
         composeWave,
         buildSyntheticBranch,
         waveInvalidation,
