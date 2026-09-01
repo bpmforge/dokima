@@ -1,0 +1,30 @@
+{
+  "goal": {
+    "success": "every SRS-derived requirement closed by an existing proving test; every seam resolves; verify green on main",
+    "non_goals": "this loop never removes or weakens a test, never merges past a red gate, never widens the SRS",
+    "acceptance": "assemblyGate.pass && verifyMain.green — evidence, not assertion",
+    "sourcesSha": "7fd4a106b88621df"
+  },
+  "requirementIds": ["US-1", "US-2"],
+  "ledger": {
+    "US-1": {
+      "implementingTickets": ["PRD-US-1", "PRF-US-1"],
+      "provingTests": ["apps/cli.test.mjs"],
+      "status": "uncovered"
+    },
+    "US-2": {
+      "implementingTickets": ["PRD-US-2", "PRF-US-2"],
+      "provingTests": ["apps/cli.test.mjs"],
+      "status": "uncovered"
+    }
+  },
+  "gaps": [],
+  "history": [
+    {
+      "iteration": 1,
+      "requirements": 2,
+      "gaps": 0
+    }
+  ],
+  "iteration": 1
+}

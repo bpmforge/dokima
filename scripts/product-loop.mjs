@@ -13,7 +13,7 @@
 // describe provably works, not that the board drained.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,6 +43,28 @@ const ENGINE = String(opt('engine', 'conductor')); // conductor|berths — makeD
 // stays this repo: the dogfood target is the same product, different board.
 const DB_PATH = ENGINE === 'berths' ? String(opt('db', '.dokima.db')) : null;
 const AGENT_CMD = opt('agent-command', undefined);
+// P6-10: the measurement plane can target ANY repo — SRS/stories, the
+// proving-test grep, the verify command, and the board DB all resolve
+// against REPO. Defaults unchanged: this repo, CONFIG.verifyCommands.
+const REPO = resolve(ROOT, String(opt('repo', '.')));
+const VERIFY_CMD = opt('verify-cmd', undefined);
+const TARGET_MODE = REPO !== ROOT;
+// Challenger F3/F4 (2026-08-31): the cross-plane combos REFUSE. A target
+// without its own gate would be judged by THIS repo's cached baseline, and
+// the conductor engine reads/writes THIS repo's JSON board — silently
+// committing another product's proposals here. Both were proven live.
+if (TARGET_MODE && !VERIFY_CMD) {
+  console.error(
+    '--repo requires --verify-cmd: a target is judged by ITS OWN gate, never by this repo\u2019s baseline',
+  );
+  process.exit(2);
+}
+if (TARGET_MODE && ENGINE !== 'berths') {
+  console.error(
+    "--repo requires --engine berths: the conductor engine drives THIS repo's JSON board only",
+  );
+  process.exit(2);
+}
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, {
@@ -73,8 +95,8 @@ async function seamResultsFor(seams) {
 
 function readSources() {
   const parts = [];
-  for (const f of ['docs/SRS.md', 'docs/USER_STORIES.md']) {
-    const p = resolve(ROOT, f);
+  for (const f of ['docs/SRS.md', 'docs/USER_STORIES.md', 'SRS.md']) {
+    const p = resolve(REPO, f);
     if (existsSync(p)) parts.push(readFileSync(p, 'utf8'));
   }
   if (!parts.length) {
@@ -88,7 +110,9 @@ function readSources() {
 
 function provingTestsFor(id) {
   try {
-    return sh('git', ['grep', '-l', '--', id, '--', '*.test.*', '*.spec.*', 'e2e/'])
+    return sh('git', ['grep', '-l', '--', id, '--', '*.test.*', '*.spec.*'], {
+      cwd: REPO,
+    })
       .trim()
       .split('\n')
       .filter(Boolean);
@@ -113,16 +137,47 @@ const ports = {
       `chore(product-loop): propose ${rows.map((r) => r.id).join(', ')}`,
     ]);
   },
-  writeLedger: (l) =>
+  writeLedger: (l) => {
+    // The goal artifact belongs to the MEASURED repo (Challenger F6: target
+    // runs were clobbering this repo's tracked ledger).
+    const dir = resolve(REPO, 'docs/work');
+    mkdirSync(dir, { recursive: true });
     writeFileSync(
-      resolve(ROOT, 'docs/work/requirement-ledger.json'),
-      JSON.stringify(l, null, 2) + '\n',
-    ),
+      resolve(dir, 'requirement-ledger.json'),
+      JSON.stringify(
+        {
+          ...l,
+          verify_command: VERIFY_CMD ?? '(this repo\u2019s verifyCommands baseline)',
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  },
   provingTestsFor,
-  testExists: (p) => existsSync(resolve(ROOT, p)),
-  seams: () => loadPlanFrom(ROOT, BOARD).seams ?? [],
+  testExists: (p) => existsSync(resolve(REPO, p)),
+  // Target mode: the DB board plane carries no seam model yet — an empty
+  // seam set means the seam clause is VACUOUS there, and the ledger's goal
+  // line says so (Challenger F6: the demo's "seams resolve" was vacuous).
+  seams: () => (TARGET_MODE ? [] : (loadPlanFrom(ROOT, BOARD).seams ?? [])),
   seamResults: () => [], // filled below (async seam assertion)
   verifyMain: () => {
+    // P6-10: a target repo brings its OWN gate. One command, run in the
+    // target, exit code = the verdict — the receipt is the run itself.
+    if (VERIFY_CMD) {
+      const r = spawnSync('sh', ['-c', String(VERIFY_CMD)], {
+        cwd: REPO,
+        encoding: 'utf8',
+        timeout: (CONFIG.gateTimeoutMin ?? 30) * 60_000,
+      });
+      return {
+        green: r.status === 0,
+        detail:
+          r.status === 0
+            ? ''
+            : `${VERIFY_CMD} exit ${r.status}: ${(r.stderr || r.stdout || '').trim().slice(0, 160)}`,
+      };
+    }
     const baseSha = sh('git', ['rev-parse', 'HEAD']).trim();
     const lockfile = resolve(ROOT, 'pnpm-lock.yaml');
     const lockfileHash = existsSync(lockfile)
@@ -153,11 +208,16 @@ const ports = {
     engine: ENGINE,
     projectId: opt('project-id', undefined),
     berths: Number(opt('berths', 2)),
-    dbPath: DB_PATH ? resolve(ROOT, DB_PATH) : undefined,
+    dbPath: DB_PATH ? resolve(REPO, DB_PATH) : undefined,
     agentCommand: AGENT_CMD,
     spawn: (cmd, args) => {
       if (STATUS_ONLY) return;
-      const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
+      // args[0] is the CLI entry relative to THIS repo; the run executes in
+      // the TARGET repo (worktrees, verify, manifest paths are cwd-relative).
+      const r = spawnSync(cmd, [resolve(ROOT, args[0]), ...args.slice(1)], {
+        cwd: REPO,
+        stdio: 'inherit',
+      });
       if (ENGINE === 'conductor' && r.status === 3)
         console.error('conductor: blocked_on_baseline — the loop will re-measure');
       else if (r.status !== 0)
@@ -179,11 +239,15 @@ ports.seamResults = () => seamRows;
 // refreshed after every drive (the core AWAITS runConductor for exactly this).
 if (ENGINE === 'berths') {
   const boardCfg = {
-    root: ROOT,
+    root: REPO,
     dbPath: DB_PATH,
-    cliEntry: 'apps/server/src/bootstrap/cli-entry.mjs',
-    spawn: (cmd, args) => spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8' }),
-    verify: (CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test',
+    cliEntry: resolve(ROOT, 'apps/server/src/bootstrap/cli-entry.mjs'),
+    spawn: (cmd, args) => spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }),
+    // The TARGET's gate, never this repo's: a proposal's verify command runs
+    // in the target worktree (the engine re-runs it, untrusted).
+    verify: TARGET_MODE
+      ? VERIFY_CMD // guaranteed by the startup refusal — the TARGET's gate
+      : (VERIFY_CMD ?? ((CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test')),
   };
   let boardSnapshot = await readProductBoard(boardCfg);
   ports.readBoard = () => boardSnapshot;

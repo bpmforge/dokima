@@ -5,18 +5,13 @@
  * `validate-file-size` enforces repo-wide since W10-49.
  *
  * W11-04 (FR-H6, D-023): the agent that works the board is no longer a
- * required CLI flag with no default. `resolveAgentRunner` below picks it —
- * `--agent-command` (explicit, run-scoped, unchanged shape) first, then the
- * project/global `agentRunner` setting (Settings UI, same generic key/value
- * surface `mcpServers`/`escalationPolicy` use), defaulting to `built-in`:
- * Dokima's own gateway-backed agent session (D-023) when nothing was
- * configured at all — never a refusal for that case. This is that
- * session's first live production caller — `createGatewaySpawnSession`
- * (W11-02/03/11/12/14/16) existed only behind its own tests until now.
- * W11-18 (FR-H6): an explicitly-chosen `external` runner with an
- * empty/missing `command` is a different case — a misconfiguration, not an
- * absence — and `executeBuildRun` below refuses on it rather than silently
- * substituting the built-in agent.
+ * required CLI flag with no default. `resolveAgentRunner` picks it —
+ * `--agent-command` first, then the project/global `agentRunner` setting,
+ * defaulting to `built-in`: Dokima's own gateway-backed agent session
+ * (D-023, `createGatewaySpawnSession`'s first live production caller).
+ * W11-18 (FR-H6): an explicitly-chosen `external` runner with an empty
+ * `command` is a misconfiguration, not an absence — `executeBuildRun`
+ * refuses on it rather than silently substituting the built-in agent.
  */
 
 import type { EventLog } from '@dokima/events';
@@ -33,7 +28,7 @@ import {
   DEFAULT_MAX_SESSION_SECONDS,
   orphanedClaims,
   runLandLoop,
-  type LandLoopTicketOutcome,
+  type LandLoopResult,
   type LandRungSessions,
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
@@ -62,15 +57,11 @@ import { ModelResolutionError } from '../api/pipeline/model-resolution.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
 
 /**
- * `--agent-command` (run-scoped, explicit) wins outright over any stored
- * setting — the same "most specific wins" shape `SCOPE_PRECEDENCE` uses one
- * level up. Absent, the effective project/global `agentRunner` setting
- * decides; absent THAT, `parseAgentRunnerSetting(undefined)` is the
- * built-in default. This function only resolves — it never itself refuses,
- * even when the resolved row is `external` with an empty `command`
- * (`parseAgentRunnerSetting` preserves that misconfiguration rather than
- * degrading it, W11-18); `executeBuildRun` below is what turns that row
- * into a refusal.
+ * `--agent-command` (run-scoped, explicit) wins outright over the stored
+ * `agentRunner` setting ("most specific wins", like `SCOPE_PRECEDENCE`);
+ * absent both, built-in is the default. Resolution never itself refuses —
+ * even an `external` row with an empty `command` (W11-18); `executeBuildRun`
+ * below is what turns that row into a refusal.
  */
 // Chapter of this file (W14-02, 400-line cap): a pure move, re-exported.
 import { tokenizeAgentCommand } from './agent-command.js';
@@ -91,7 +82,6 @@ import {
 } from './consolidation.js';
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
-
 import { resolveVaultOrRefusal } from './run-vault.js';
 import {
   countReceipts,
@@ -102,15 +92,10 @@ import {
 
 /**
  * The build-mode run (W10-77): claim work off the board and actually do it.
- *
- * Until W10-77 this existed, `run start --mode new_product` minted a run
- * record and returned — measured at under a second on a box whose local
- * model takes ~30s for one call, with the board unchanged and no session
- * anywhere. `--berths` was validated, stored, and read by nothing. The
- * engine it needed (`runLandLoop`: claim -> session -> close gate -> land)
- * was implemented in W3-01a/b/c and exported from nothing until W10-78.
+ * Until W10-77, `run start --mode new_product` minted a run record and
+ * returned — board unchanged, no session anywhere; the engine it needed
+ * (`runLandLoop`, W3-01a/b/c) was exported from nothing until W10-78.
  */
-
 export async function executeBuildRun(
   log: EventLog,
   command: BuildRunCommand,
@@ -149,6 +134,17 @@ export async function executeBuildRun(
   }
 
   const pin = resolvePinnedModel(policyRaw, ROLE_CODING_AGENT);
+
+  // P6-05 (Law L11): per-project landing mode, same generic settings surface
+  // as `agentRunner`/`escalationPolicy`; default per-ticket (unchanged).
+  const landingRaw = resolveEffectiveValue('landingMode', policyScoped)?.value;
+  if (landingRaw != null && landingRaw !== 'per-ticket' && landingRaw !== 'per-feature') {
+    io.stderr(
+      `${runId} did not start: settings key "landingMode" must be "per-ticket" or ` +
+        `"per-feature" (got ${JSON.stringify(landingRaw)}); nothing was claimed`,
+    );
+    return 2;
+  }
 
   // W13-11/43/47: the run's numeric bounds, resolved together and refused
   // rather than clamped — see `resolveRunLimits`.
@@ -289,44 +285,53 @@ export async function executeBuildRun(
   // is genuinely meant — the split this line completes.
   const sessionActorId = ensureSessionActor(log, io.now);
   const landOptions = {
-      log,
-      actorId: sessionActorId,
-      projectId: command.projectId,
-      // W21-32: in scope here all along, never passed — hence run=null events.
-      runId,
+    log,
+    actorId: sessionActorId,
+    projectId: command.projectId,
+    // W21-32: in scope here all along, never passed — hence run=null events.
+    runId,
+    repoRoot: io.cwd,
+    contentDir: resolveAsset('content', 'validators'),
+    signingKey,
+    spawn,
+    // W12-04: the packed builder — FR-L5's Context Packer, live.
+    policyScope: policyResult.scope,
+    ...(validators.requiredValidators
+      ? { requiredValidators: validators.requiredValidators }
+      : {}),
+    buildHandoff: await createPackedHandoffBuilder({
       repoRoot: io.cwd,
-      contentDir: resolveAsset('content', 'validators'),
-      signingKey,
-      spawn,
-      // W12-04: the packed builder — FR-L5's Context Packer, live.
-      policyScope: policyResult.scope,
-      ...(validators.requiredValidators
-        ? { requiredValidators: validators.requiredValidators }
-        : {}),
-      buildHandoff: await createPackedHandoffBuilder({
-        repoRoot: io.cwd,
-        modelWindowTokens: contextWindowTokens ?? 0,
-        // W12-09: the run already holds the event log, and its `db` is the
-        // sanctioned handle `packages/memory` expects a caller to supply — so
-        // the code index lives in the project's own SQLite file rather than a
-        // second store nobody backs up.
-        codeIndexHandle: log.db,
-      }),
-      pushToRemotes: localFirstPushToRemotes,
-      // W16-01: present only on the built-in path — each real attempt runs
-      // the session bound to its rung, and climbs are ledgered (FR-G3).
-      ...(rungSessions ? { rungSessions } : {}),
+      modelWindowTokens: contextWindowTokens ?? 0,
+      // W12-09: the run already holds the event log, and its `db` is the
+      // sanctioned handle `packages/memory` expects a caller to supply — so
+      // the code index lives in the project's own SQLite file rather than a
+      // second store nobody backs up.
+      codeIndexHandle: log.db,
+    }),
+    pushToRemotes: localFirstPushToRemotes,
+    // W16-01: present only on the built-in path — each real attempt runs
+    // the session bound to its rung, and climbs are ledgered (FR-G3).
+    ...(rungSessions ? { rungSessions } : {}),
+    secretValues,
+    // W14-05 + W16-03: learning producer + R0 consult, composed here (§4).
+    attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
+    r0Consult: createR0ConsultHook({
+      log,
+      actorId: command.actorId,
       secretValues,
-      // W14-05 + W16-03: learning producer + R0 consult, composed here (§4).
-      attemptOutcome: createLearningHook({ log, secretValues, makerModel }),
-      r0Consult: createR0ConsultHook({ log, actorId: command.actorId, secretValues, runId }),
-      ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
-      ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
-      conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)
-      now: io.now,
-    };
-  // W16-02: N>1 = berth engine, N=1 = runLandLoop, same one-ticket engine.
-  let result!: { processed: readonly LandLoopTicketOutcome[]; stopReason: string };
+      runId,
+    }),
+    ...(forgeMirror ? { verbMirror: forgeMirror.verbMirror } : {}),
+    ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
+    conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)
+    now: io.now,
+    // P6-05: chosen landing mode; omitted when per-ticket (pre-P6-05 shape).
+    // Wired on the sequential path; the berth engine still lands per-ticket.
+    ...(landingRaw === 'per-feature' ? { landing: 'per-feature' as const } : {}),
+  };
+  if (landingRaw === 'per-feature' && (command.berths ?? 1) > 1)
+    io.stderr('per-feature awaits P6-11 on berths — landing PER-TICKET');
+  let result!: Omit<LandLoopResult, 'stopReason'> & { stopReason: string };
   try {
     result =
       (command.berths ?? 1) > 1
@@ -385,6 +390,11 @@ export async function executeBuildRun(
     [...listTickets(log).values()].filter((t) => t.status === 'in_review').length,
     orphanedClaims(log, runId).map((o) => o.ticket.id), // W21-40: still held.
   );
+  // P6-05: one honest line per feature — a park is never printed as a landing.
+  for (const f of result.featureLandings ?? []) {
+    io.stdout(
+      `feature ${f.featureId}: ${f.landed ? f.detail : `NOT landed — ${f.detail}`}`,
+    );
+  }
   return 0;
 }
-

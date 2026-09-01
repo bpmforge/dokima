@@ -152,3 +152,99 @@ describe('P6-07 — the goal loop drives the PRODUCT engine against the PRODUCT 
     expect(row.status).toBe('todo'); // landed-but-unaccepted stays open for the loop
   }, 120_000);
 });
+
+describe('Challenger wave-2 fixes (F3/F4/F5/F7)', () => {
+  const CLI_LOOP = resolve(REPO, 'scripts/product-loop.mjs');
+
+  it('F3: --repo without --verify-cmd REFUSES — a target is judged by its own gate', () => {
+    const r = spawnSync(process.execPath, [CLI_LOOP, '--repo', '/tmp', '--status'], {
+      cwd: REPO,
+      encoding: 'utf8',
+    });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('ITS OWN gate');
+  });
+
+  it('F4: --repo with the conductor engine REFUSES — that engine drives THIS repo only', () => {
+    const r = spawnSync(
+      process.execPath,
+      [CLI_LOOP, '--repo', '/tmp', '--verify-cmd', 'true', '--status'],
+      { cwd: REPO, encoding: 'utf8' },
+    );
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('--engine berths');
+  });
+
+  it('F5+F7: proposals carry the given verify command, and long_tail rides as the DECLARED tag', async () => {
+    const { LONG_TAIL_TAG } = await import('./conductor/berths-board.mjs');
+    const calls = [];
+    appendProductTickets(
+      [
+        {
+          id: 'LT-01',
+          title: 'x',
+          lane: 'product',
+          write_scope: ['a/**'],
+          acceptance: ['b1'],
+          long_tail: true,
+        },
+        {
+          id: 'PRD-US-9',
+          title: 'y',
+          lane: 'product',
+          write_scope: ['a/**'],
+          acceptance: ['c'],
+        },
+      ],
+      {
+        root: '/x',
+        dbPath: 'db',
+        cliEntry: 'cli',
+        verify: 'node --test target/',
+        spawn: (cmd, args) => (calls.push(args), { status: 0 }),
+      },
+    );
+    const lt = calls[0];
+    expect(lt[lt.indexOf('--verify') + 1]).toBe('node --test target/');
+    expect(lt[lt.indexOf('--acceptance') + 1]).toContain(LONG_TAIL_TAG);
+    const prd = calls[1];
+    expect(prd[prd.indexOf('--acceptance') + 1]).not.toContain(LONG_TAIL_TAG);
+  });
+
+  it('F7 read side, through the REAL verb and reader: the tag classifies, an LT-named impostor stays ordinary', async () => {
+    const { LONG_TAIL_TAG } = await import('./conductor/berths-board.mjs');
+    const dir = mkdtempSync(join(tmpdir(), 'p6-f7-'));
+    try {
+      const db = join(dir, 'f7.db');
+      const add = (id, lane, acceptance) =>
+        spawnSync(
+          process.execPath,
+          [
+            CLI,
+            'add-ticket',
+            id,
+            '--actor',
+            'a',
+            '--lane',
+            lane,
+            '--title',
+            id,
+            '--write-scope',
+            `${lane}/**`,
+            '--acceptance',
+            acceptance,
+            '--db',
+            db,
+          ],
+          { cwd: dir, encoding: 'utf8' },
+        );
+      expect(add('LT-FAKE-1', 'x', 'totally not long tail').status).toBe(0);
+      expect(add('ANY-1', 'y', `real one ${LONG_TAIL_TAG}`).status).toBe(0);
+      const board = await readProductBoard({ root: dir, dbPath: 'f7.db' });
+      expect(board.find((t) => t.id === 'LT-FAKE-1').long_tail).toBeUndefined();
+      expect(board.find((t) => t.id === 'ANY-1').long_tail).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 30_000);
+});

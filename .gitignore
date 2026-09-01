@@ -5,6 +5,8 @@ apps/server/dist/
 coverage/
 .dokima/
 *.log
+# evidence logs are the point — they are kept (P6-10 Challenger F2)
+!docs/work/attempt-evidence/**/*.log
 .DS_Store
 .env
 docs/work/conductor-log.jsonl

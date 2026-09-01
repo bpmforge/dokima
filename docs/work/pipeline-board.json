@@ -530,8 +530,8 @@
         "gate green incl. red fixtures for the refusal paths"
       ],
       "points": 8,
-      "status": "todo",
-      "notes": "FILED (not implemented) 2026-08-31 by the P6 honesty pass. ARCHITECTURE.md §12's two-stack rule says new capability lands in the product first OR names the port ticket — P6-02 landed feature-grouped landing in the bootstrap conductor only, so this is the named port. Design questions a claimant must answer before coding: how the product board declares features (decompose() now emits them — persist to the board schema), where parked branches live per-berth, and how the governor treats a berth idling on a waiting feature. Founder priority call: this reworks the product's landing path."
+      "status": "done",
+      "notes": "FILED (not implemented) 2026-08-31 by the P6 honesty pass. ARCHITECTURE.md §12's two-stack rule says new capability lands in the product first OR names the port ticket — P6-02 landed feature-grouped landing in the bootstrap conductor only, so this is the named port. Design questions a claimant must answer before coding: how the product board declares features (decompose() now emits them — persist to the board schema), where parked branches live per-berth, and how the governor treats a berth idling on a waiting feature. Founder priority call: this reworks the product's landing path. CLOSED 2026-08-31 (subagent on sw/p6-05 @ b9f27fc2, merged via sw/p6-10; gate in the MAIN checkout 5048 green — the worktree's 2 reds were the known /tmp environmental class). packages/harbormaster: loop-land-feature.ts (durable park = append-only land.branch_parked event beside ticket.closed; status stays in_review via the existing verb — maker!=verifier untouched, no direct DB writes; feature.landed retires parks so restart cannot re-land; features[] persisted/read via board.features_recorded, id-prefix cohort fallback), loop-land-feature-merge.ts (synthetic branch, metadata carve-out to BASE, code conflicts refuse whole, verify re-run on synthetic head, drift + base-advanced refusals, ONE --no-ff merge, refusals clean up), loop-land-feature-run.ts (park step + idle sweep, blocked member holds feature, SC-07 sandboxed default verify — nothing derivable = REFUSE never vacuous green). run-build.ts: per-project landingMode setting (L11), invalid value refuses. +21 tests; RED proven on the drift guard. NAMED FOLLOW-UPS (subagent, out of scope): berths path still lands per-ticket (run-build-berths.ts:88 — the park is applied by runLandLoop's caller); decompose board-lifecycle as recordBoardFeatures' second writer (plans-store.ts:199 area). Both belong to the next wave ticket."
     },
     {
       "id": "P6-06",
@@ -623,6 +623,62 @@
       "points": 2,
       "status": "done",
       "notes": "FILED 2026-08-31 by the FIRST LIVE RUN of the arc (product-loop --status on this repo): halt=assembler-unavailable. Root cause probed, not guessed: gate.ts carries runtime imports with .js specifiers (./assembly.js), which plain-node type stripping does not resolve to .ts — the W9-12 constraint — while vitest transforms them, so every test was green and the CLI was broken. The catch swallowed the reason exactly as designed (loud degrade), and the live run surfaced it in minutes. Fix: register the workspace's own tsx loader (apps/server/node_modules/tsx) before the lazy imports; probed OK under plain node. CLOSED 2026-08-31. ts-loader.mjs registers the workspace tsx loader (root or apps/server node_modules) before the lazy assembler imports; loadAssembler calls ensureTsLoader() best-effort — vendored installs keep the loud degrade. Red/green fixture spawns PLAIN node (not vitest) and drives the real productLoop: RED proven (halt=assembler-unavailable with the loader disabled), GREEN = iteration-cap (the real assembler measured a real gap set). LIVE PROOF: product-loop --status on this repo now completes — 147 requirements derived from the SRS, ledger written. Live finding recorded: CONFIG.boardPath points at the 27-ticket pipeline board, so coverage reads all-uncovered against the product SRS — measuring DOKIMA-the-product needs boardPath=plan.json (a config choice per board, not a defect). Gate 5027 green."
+    },
+    {
+      "id": "P6-10",
+      "title": "The goal loop drives a TARGET repo end-to-end: --repo/--verify-cmd + a live demo product built by the real engine",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/product-loop.mjs",
+        "scripts/conductor/berths-board.mjs",
+        "docs/work/attempt-evidence/p6-10-demo/**"
+      ],
+      "depends_on": ["P6-07", "P6-09"],
+      "acceptance": [
+        "product-loop gains --repo <path> (measurement plane: SRS/stories, proving-test grep, verify, board DB all against the target) and --verify-cmd <cmd> (the target's own gate) — defaults unchanged (this repo)",
+        "LIVE DEMO, evidence committed: a scratch product with its own SRS (US-ids) is driven by `product-loop --engine berths` — gap -> proposal -> add-ticket verb -> run start claims + lands -> loop reaches done or a named halt; the run log + final ledger land in docs/work/attempt-evidence/p6-10-demo/",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-08-31 (founder: 'loop until the goals are complete... a complete running product... automate this until we have automation running'). The loop measured only THIS repo; a target flag is the L11 wiring that makes it a product capability. CLOSED 2026-08-31: PRODUCT PROVEN, exit 0 — the closing measure's own verdict on the demo product (2 requirements closed by tracked tests naming their ids, long-tail wave landed, verify green). 14 tickets driven through the REAL berths engine with a REAL claude -p (Haiku) agent; the trust boundary refused untrusted manifests/uncommitted files/stale bases exactly as designed; human verbs (accept + integration) performed by hand and recorded. Evidence: docs/work/attempt-evidence/p6-10-demo/. Five live-caught defects fixed on this branch (plain-node imports in the bridge, wrong verify command on proposals, LT rows with empty write_scope then FR-T3 lane overlap, dropped long_tail mapping). The hand-integration pain (add/add conflicts, helper drift, one parked branch merged early) is the measured argument for finishing the product-side feature landing chain (P6-05 follow-ups). AMENDED by the wave-2 Challenger (12 findings): Measure A's verdict stands as HISTORY but its seam clause was vacuous and its long-tail clause name-satisfiable — both now impossible (fixes on this branch), and Measure B's stricter NOT-DONE verdict is preserved beside it in closing-measures.txt. Cross-plane refusals added (--repo without --verify-cmd; conductor engine with --repo); target ledger writes to the TARGET; long_tail is a declared acceptance tag round-tripped through the real verb (tautology test replaced with a real-DB fixture); evidence logs un-gitignored; README numbers corrected to the preserved logs (9 landings, 2 stories)."
+    },
+    {
+      "id": "P6-11",
+      "title": "Berths path honors landing='per-feature' (the P6-05 port's named remainder)",
+      "lane": "harbormaster",
+      "write_scope": [
+        "apps/server/src/cli/run-build-berths.ts",
+        "packages/harbormaster/src/loop-land.ts"
+      ],
+      "depends_on": ["P6-05"],
+      "acceptance": [
+        "executeBerthsRun reads landOptions.landing and parks per-feature exactly as runLandLoop does; the F8 stderr warning is deleted the same commit",
+        "red fixture: berths>1 + per-feature parks instead of landing",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-08-31 (Challenger wave-2 F12: a follow-up naming no ticket id is a dropped finding). Site: run-build-berths.ts:88; today an honest stderr line says the run degrades to per-ticket."
+    },
+    {
+      "id": "P6-12",
+      "title": "Loop hygiene: retire redundant PRF rows; decompose persists features[] to the board (second writer)",
+      "lane": "pipeline",
+      "write_scope": [
+        "scripts/conductor/product-loop.mjs",
+        "packages/pipeline/src/decompose/decompose.ts",
+        "apps/server/src/api/pipeline/board-lifecycle.ts"
+      ],
+      "depends_on": ["P6-10"],
+      "acceptance": [
+        "a PRF- proposal whose requirement is CLOSED (proving test exists on main) is retired/never re-proposed — the demo left two parked-in-Ready forever",
+        "persistDecomposedPlan records plan.features via recordBoardFeatures so the engine groups without hand-fed maps",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-08-31 by the wave-2 honesty pass (Challenger F12 + demo observation)."
     }
   ]
 }

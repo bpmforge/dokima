@@ -9,8 +9,15 @@
 
 import { resolve } from 'node:path';
 
+/** The declared long-tail marker carried through the DB board's acceptance text. */
+export const LONG_TAIL_TAG = '[long-tail:B-1]';
+
 /** Read-only board snapshot from the product DB, mapped to the loop's row shape. */
 export async function readProductBoard({ root, dbPath }) {
+  // P6-10 live run: same plain-node .js-specifier class as P6-09 —
+  // db.ts imports ./migrate.js at runtime. Loader first, then import.
+  const { ensureTsLoader } = await import('./ts-loader.mjs');
+  await ensureTsLoader();
   const { openEventLog } = await import('../../packages/events/src/db.ts');
   const { listTickets } = await import('../../packages/tickets/src/query.ts');
   const log = openEventLog(resolve(root, dbPath));
@@ -28,6 +35,13 @@ export async function readProductBoard({ root, dbPath }) {
       // (maker != verifier, a human accepts) and deliberately stays open here.
       status: t.status === 'done' ? 'done' : t.status === 'blocked' ? 'blocked' : 'todo',
       product_status: t.status,
+      // The DB ticket schema carries no long_tail column, so the flag rides
+      // as a DECLARED acceptance tag written by appendProductTickets below —
+      // Challenger F7 proved the earlier LT- id-prefix guess lets any ticket
+      // named LT-* satisfy the long-tail gate by naming alone.
+      long_tail:
+        (t.acceptance ?? []).some((a) => (a?.text ?? '').includes(LONG_TAIL_TAG)) ||
+        undefined,
     }));
   } finally {
     log.close?.();
@@ -56,7 +70,7 @@ export function appendProductTickets(rows, { root, dbPath, cliEntry, spawn, veri
       '--write-scope',
       (r.write_scope ?? []).join(','),
       '--acceptance',
-      (r.acceptance ?? []).join('; '),
+      [...(r.acceptance ?? []), ...(r.long_tail ? [LONG_TAIL_TAG] : [])].join('; '),
       '--verify',
       r.verify ?? verify ?? 'pnpm test',
       '--db',

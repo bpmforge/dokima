@@ -221,3 +221,44 @@ Plus one hazard the Challenger did not raise, found while fixing: intra-feature
 `depends_on` chains deadlock under per-feature parking (the dependency's code
 is not on main when the dependent claims) — folded into P6-06's stacking
 acceptance. Verdict honored: `landing` is back to `per-ticket` until P6-06.
+
+---
+
+## Part 6 — Second-wave Wiggum coverage pass (2026-08-31, founder message "loop until the goals are complete…")
+
+The founder's asks, decomposed, each mapped to delivery or the honest gap:
+
+| #   | Ask                                                                                                          | Delivered                                                                                                                                                                                                                                                                               | Evidence                     |
+| --- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| 1   | "loop until the goals are complete with enhancements ACTUALLY WIRED IN"                                      | P6-07 (board bridge), P6-09 (plain-node — the loop now runs OUTSIDE vitest), P6-04→P6-08 (map persisted + prompts), P6-05 (product-engine feature landing), P6-06 (mode hardened + ON) — every one closed with the wiring proven by a live run or a plain-node fixture, not only vitest | board notes; live runs       |
+| 2   | "a complete running product"                                                                                 | **PRODUCT PROVEN, exit 0** — demo product built by the real berths engine + a real claude -p agent, human accepts recorded as human, the loop's own closing verdict                                                                                                                     | attempt-evidence/p6-10-demo/ |
+| 3   | "automate this until we have automation running"                                                             | The automation IS what ran: gap→propose(verb)→drive(engine)→land→halt-with-names; 14 tickets driven, 5 defects found BY the runs and fixed                                                                                                                                              | run logs 4–8                 |
+| 4   | "opencode as an orchestrator and auto run to completion… a skill for what's left / path forward / auto-heal" | attest **/autopilot** (ASSESS→DECIDE→DRIVE→HEAL→EXIT, no-progress halt, park-with-evidence), released **v3.7.0**; drives EXISTING conductor/run-until-done, never new machinery                                                                                                         | attest 725 tests; GH release |
+| 5   | "keep things honest — wiggum and challenge loop"                                                             | This pass + a second fresh Challenger over the wave (verdict appended as Part 6b)                                                                                                                                                                                                       | Part 6b                      |
+
+**Gaps this pass names (not hidden):**
+
+- The product-side feature-landing chain has two NAMED open ends (berths call-site park at run-build-berths.ts:88; decompose board-lifecycle as features[] second writer) — recorded on P6-05's board note, next wave.
+- PRF proposals become redundant when PRD work carries its own tests — the loop should retire a PRF row whose requirement closed (small ticket, filed as part of the Challenger disposition if confirmed).
+- attest gitea remote unreachable at release time (off-LAN): v3.7.0 owed a `git push gitea main --tags` when back on the LAN. GitHub carries both releases.
+- The reviewer model was unrouted in the demo (external-agent mode skips machine review by design) — a routed reviewer demo is future evidence, not claimed.
+
+### Part 6b — Challenger verdict on the second wave (fresh agent, 2026-08-31)
+
+12 findings; P6-05's core, the P6-07/08/09 notes, the lane change, and the
+gate count all survived. Disposition:
+
+| F   | Sev  | Finding                                                                                                   | Disposition                                                                                                                                              |
+| --- | ---- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | HIGH | verify verdict is operator-trust (`--verify-cmd true` ⇒ PROVEN over a red test); closure never runs tests | Ledger now RECORDS `verify_command`; README states the limit; a pinned per-target gate is future work (named in P6-12's neighborhood, not claimed fixed) |
+| 2   | HIGH | evidence pack lacked the verdict; logs gitignored; ledger contradicted README                             | **FIXED** — closing-measures.txt (both measures, verbatim commands), logs un-gitignored, README rewritten to the preserved facts                         |
+| 3   | HIGH | `--repo` w/o `--verify-cmd` judged the target by SHIPWRIGHT's baseline                                    | **FIXED** — refuses, exit 2 + test                                                                                                                       |
+| 4   | HIGH | conductor engine + `--repo` commits foreign proposals onto THIS board                                     | **FIXED** — refuses, exit 2 + test                                                                                                                       |
+| 5   | MED  | proposal-verify fallback was shipwright's `pnpm lint`                                                     | **FIXED** — target mode always uses the target gate + test                                                                                               |
+| 6   | MED  | seams vacuous / ledger clobbered this repo                                                                | **FIXED** — seams honest-empty in target mode; ledger writes to the TARGET with `verify_command`                                                         |
+| 7   | MED  | LT- name-prefix satisfied the long-tail gate                                                              | **FIXED** — declared `[long-tail:B-1]` tag, real-DB round-trip test (impostor stays ordinary)                                                            |
+| 8   | MED  | per-feature + berths degraded SILENTLY                                                                    | **FIXED** — honest stderr line naming P6-11                                                                                                              |
+| 9   | MED  | attest "725 green" env-dependent (knip/ts-prune absent ⇒ Pass 7 red)                                      | Reproduced only in tool-less env; noted to attest as a follow-up (eval must skip-with-reason when a tool is absent)                                      |
+| 10  | MED  | /autopilot names 2 of 7 NEVER-AUTO rows; conductor-merge NA-3 tension unstated                            | **FIXED in attest** (docs commit): full list + explicit NA-3 stance                                                                                      |
+| 11  | LOW  | README arithmetic/quotes unsupported                                                                      | **FIXED** — corrected to preserved logs; DB refusal rows exported                                                                                        |
+| 12  | LOW  | follow-ups named no ticket id (the board's own Law 1)                                                     | **FIXED** — P6-11, P6-12 filed                                                                                                                           |

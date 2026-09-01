@@ -75,8 +75,13 @@ export function generateLongTailWave(prefix: string): BoardTicketRow[] {
   return LONG_TAIL_CLASSES.map((cls, i) => ({
     id: `${prefix}-LT-${String(i + 1).padStart(2, '0')}`,
     title: cls.title,
-    lane: 'long-tail',
-    write_scope: [],
+    // P6-10 live runs, two LANE_SCOPE refusals in a row: an empty
+    // write_scope is refused outright, and a scope overlapping the product
+    // lane's is refused as cross-lane-overlap (FR-T3) — overlapping scopes
+    // must SHARE a lane. Long-tail work edits the same surfaces the product
+    // lane does, so it belongs to the same lane.
+    lane: 'product',
+    write_scope: ['apps/**', 'packages/**', 'e2e/**'],
     acceptance: [...cls.acceptance],
     points: 1,
     status: 'todo' as const,
