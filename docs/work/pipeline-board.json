@@ -641,7 +641,44 @@
       ],
       "points": 3,
       "status": "done",
-      "notes": "FILED+CLAIMED 2026-08-31 (founder: 'loop until the goals are complete... a complete running product... automate this until we have automation running'). The loop measured only THIS repo; a target flag is the L11 wiring that makes it a product capability. CLOSED 2026-08-31: PRODUCT PROVEN, exit 0 — the closing measure's own verdict on the demo product (2 requirements closed by tracked tests naming their ids, long-tail wave landed, verify green). 14 tickets driven through the REAL berths engine with a REAL claude -p (Haiku) agent; the trust boundary refused untrusted manifests/uncommitted files/stale bases exactly as designed; human verbs (accept + integration) performed by hand and recorded. Evidence: docs/work/attempt-evidence/p6-10-demo/. Five live-caught defects fixed on this branch (plain-node imports in the bridge, wrong verify command on proposals, LT rows with empty write_scope then FR-T3 lane overlap, dropped long_tail mapping). The hand-integration pain (add/add conflicts, helper drift, one parked branch merged early) is the measured argument for finishing the product-side feature landing chain (P6-05 follow-ups)."
+      "notes": "FILED+CLAIMED 2026-08-31 (founder: 'loop until the goals are complete... a complete running product... automate this until we have automation running'). The loop measured only THIS repo; a target flag is the L11 wiring that makes it a product capability. CLOSED 2026-08-31: PRODUCT PROVEN, exit 0 — the closing measure's own verdict on the demo product (2 requirements closed by tracked tests naming their ids, long-tail wave landed, verify green). 14 tickets driven through the REAL berths engine with a REAL claude -p (Haiku) agent; the trust boundary refused untrusted manifests/uncommitted files/stale bases exactly as designed; human verbs (accept + integration) performed by hand and recorded. Evidence: docs/work/attempt-evidence/p6-10-demo/. Five live-caught defects fixed on this branch (plain-node imports in the bridge, wrong verify command on proposals, LT rows with empty write_scope then FR-T3 lane overlap, dropped long_tail mapping). The hand-integration pain (add/add conflicts, helper drift, one parked branch merged early) is the measured argument for finishing the product-side feature landing chain (P6-05 follow-ups). AMENDED by the wave-2 Challenger (12 findings): Measure A's verdict stands as HISTORY but its seam clause was vacuous and its long-tail clause name-satisfiable — both now impossible (fixes on this branch), and Measure B's stricter NOT-DONE verdict is preserved beside it in closing-measures.txt. Cross-plane refusals added (--repo without --verify-cmd; conductor engine with --repo); target ledger writes to the TARGET; long_tail is a declared acceptance tag round-tripped through the real verb (tautology test replaced with a real-DB fixture); evidence logs un-gitignored; README numbers corrected to the preserved logs (9 landings, 2 stories)."
+    },
+    {
+      "id": "P6-11",
+      "title": "Berths path honors landing='per-feature' (the P6-05 port's named remainder)",
+      "lane": "harbormaster",
+      "write_scope": [
+        "apps/server/src/cli/run-build-berths.ts",
+        "packages/harbormaster/src/loop-land.ts"
+      ],
+      "depends_on": ["P6-05"],
+      "acceptance": [
+        "executeBerthsRun reads landOptions.landing and parks per-feature exactly as runLandLoop does; the F8 stderr warning is deleted the same commit",
+        "red fixture: berths>1 + per-feature parks instead of landing",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-08-31 (Challenger wave-2 F12: a follow-up naming no ticket id is a dropped finding). Site: run-build-berths.ts:88; today an honest stderr line says the run degrades to per-ticket."
+    },
+    {
+      "id": "P6-12",
+      "title": "Loop hygiene: retire redundant PRF rows; decompose persists features[] to the board (second writer)",
+      "lane": "pipeline",
+      "write_scope": [
+        "scripts/conductor/product-loop.mjs",
+        "packages/pipeline/src/decompose/decompose.ts",
+        "apps/server/src/api/pipeline/board-lifecycle.ts"
+      ],
+      "depends_on": ["P6-10"],
+      "acceptance": [
+        "a PRF- proposal whose requirement is CLOSED (proving test exists on main) is retired/never re-proposed — the demo left two parked-in-Ready forever",
+        "persistDecomposedPlan records plan.features via recordBoardFeatures so the engine groups without hand-fed maps",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-08-31 by the wave-2 honesty pass (Challenger F12 + demo observation)."
     }
   ]
 }

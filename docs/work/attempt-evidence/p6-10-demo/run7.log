@@ -1,0 +1,25 @@
+[2026-09-01T02:04:59.878Z] product.proposed — iteration 1: 1 gap(s) -> 6 proposal(s): LT-LT-01, LT-LT-02, LT-LT-03, LT-LT-04, LT-LT-05, LT-LT-06
+[2026-09-01T02:04:59.879Z] product.drive — iteration 1: running the conductor against the gapped board
+run-2026-09-01T02:05:00.013Z started -> running (breakpoint=never berths=1)
+An external agent CLI runs outside Dokima's gateway, so its tokens are spent somewhere Dokima cannot see. Choosing it gives up: the role→model matrix (FR-G2), the escalation ladder (D-018), the budget breakers (FR-G4), and the spend ledger — none of them apply to what an external CLI does.
+[review] no reviewer model could be resolved — machine review skipped (no route for role 'code-reviewer' (task type 'verification') and no 'default' role fallback is defined in any scope). Tickets stay in In Review for your own read.
+LT-LT-01: parked (ladder_exhausted) after 2 attempt(s)
+LT-LT-02: landed after 1 attempt(s)
+LT-LT-03: landed after 1 attempt(s)
+LT-LT-04: landed after 1 attempt(s)
+LT-LT-05: landed after 1 attempt(s)
+LT-LT-06: landed after 1 attempt(s)
+PRF-US-1: parked (PRF-US-1 cannot start: its worktree was created from a different base and its branch sw/PRF-US-1-prove-us-1-implemented-but-no-existing-test-names-it-coded-n...) after 0 attempt(s)
+PRF-US-2: parked (PRF-US-2 cannot start: its worktree was created from a different base and its branch sw/PRF-US-2-prove-us-2-implemented-but-no-existing-test-names-it-coded-n...) after 0 attempt(s)
+run-2026-09-01T02:05:00.013Z finished: 5 landed, 3 parked (stop: idle)
+5 tickets are finished and waiting on YOU — nothing in the product will move them further, because accepting work is a human verb (maker != verifier). Review them on the Decide card, or accept one from here with: dokima accept <ticketId> --actor <your-id>
+[2026-09-01T02:10:34.650Z] product.drive — iteration 2: running the conductor against the gapped board
+run-2026-09-01T02:10:34.807Z started -> running (breakpoint=never berths=1)
+An external agent CLI runs outside Dokima's gateway, so its tokens are spent somewhere Dokima cannot see. Choosing it gives up: the role→model matrix (FR-G2), the escalation ladder (D-018), the budget breakers (FR-G4), and the spend ledger — none of them apply to what an external CLI does.
+[review] no reviewer model could be resolved — machine review skipped (no route for role 'code-reviewer' (task type 'verification') and no 'default' role fallback is defined in any scope). Tickets stay in In Review for your own read.
+LT-LT-01: parked (ladder_exhausted) after 2 attempt(s)
+PRF-US-1: parked (PRF-US-1 cannot start: its worktree was created from a different base and its branch sw/PRF-US-1-prove-us-1-implemented-but-no-existing-test-names-it-coded-n...) after 0 attempt(s)
+PRF-US-2: parked (PRF-US-2 cannot start: its worktree was created from a different base and its branch sw/PRF-US-2-prove-us-2-implemented-but-no-existing-test-names-it-coded-n...) after 0 attempt(s)
+run-2026-09-01T02:10:34.807Z finished: 0 landed, 3 parked (stop: idle)
+5 tickets are finished and waiting on YOU — nothing in the product will move them further, because accepting work is a human verb (maker != verifier). Review them on the Decide card, or accept one from here with: dokima accept <ticketId> --actor <your-id>
+[2026-09-01T02:11:24.220Z] product.halt — no-progress halt (iteration 3): the gap set is byte-identical to the previous iteration — iterating again is futile. A human chooses: waiver / re-scope / specialist.

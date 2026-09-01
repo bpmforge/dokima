@@ -1,0 +1,15 @@
+# Closing measures — exact command lines and verbatim output
+
+## Measure A (2026-09-01T02:18Z, code as of sw/p6-10@9107ed33)
+$ DOKIMA_SIGNING_KEY=demo-signing-key node /Users/bmatthews/Code/shipwright/scripts/product-loop.mjs --status --engine berths --repo /tmp/dokima-demo-answer --db .dokima.db --project-id demo --verify-cmd "node --test apps/"
+-> [captured live in-session] product.done — PRODUCT PROVEN in 1 iteration(s): 2 requirement(s) closed, every seam resolves, verify green
+-> PRODUCT PROVEN — every requirement closed, seams resolve, verify green ; EXIT=0
+
+## Measure B (post-Challenger F7 fix — long-tail must be DECLARED, not name-guessed)
+$ DOKIMA_SIGNING_KEY=demo-signing-key node /Users/bmatthews/Code/shipwright/scripts/product-loop.mjs --status --engine berths --repo /tmp/dokima-demo-answer --db .dokima.db --project-id demo --verify-cmd "node --test apps/"
+[2026-09-01T02:36:51.720Z] product.drive — iteration 1: running the conductor against the gapped board
+[2026-09-01T02:36:51.723Z] product.halt — iteration cap (1) reached with gaps open — goal-skill escalation, not a silent 6th lap
+NOT DONE — see docs/work/requirement-ledger.json (halt: iteration-cap)
+EXIT=0
+gaps: ['board has no ticket tagged long_tail: true — the B-1 wave (first-run/empty-DB, empty states, expired-session, declared-error-paths, migration, reset/uninstall) was never generated']
+verify_command: node --test apps/

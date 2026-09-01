@@ -1,0 +1,32 @@
+add-ticket LT-LT-01 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-02 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-03 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-04 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-05 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-06 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+[2026-09-01T01:48:01.244Z] product.proposed — iteration 1: 4 gap(s) -> 8 proposal(s): PRD-US-1, PRD-US-2, LT-LT-01, LT-LT-02, LT-LT-03, LT-LT-04, LT-LT-05, LT-LT-06
+[2026-09-01T01:48:01.245Z] product.drive — iteration 1: running the conductor against the gapped board
+run-2026-09-01T01:48:01.378Z started -> running (breakpoint=never berths=1)
+An external agent CLI runs outside Dokima's gateway, so its tokens are spent somewhere Dokima cannot see. Choosing it gives up: the role→model matrix (FR-G2), the escalation ladder (D-018), the budget breakers (FR-G4), and the spend ledger — none of them apply to what an external CLI does.
+[review] no reviewer model could be resolved — machine review skipped (no route for role 'code-reviewer' (task type 'verification') and no 'default' role fallback is defined in any scope). Tickets stay in In Review for your own read.
+PRD-US-1: parked (ladder_exhausted) after 2 attempt(s)
+PRD-US-2: landed after 1 attempt(s)
+run-2026-09-01T01:48:01.378Z finished: 1 landed, 1 parked (stop: idle)
+1 ticket is finished and waiting on YOU — nothing in the product will move them further, because accepting work is a human verb (maker != verifier). Review them on the Decide card, or accept one from here with: dokima accept <ticketId> --actor <your-id>
+add-ticket LT-LT-01 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-02 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-03 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-04 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-05 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+add-ticket LT-LT-06 refused (exit 2): add-ticket requires --write-scope <glob,glob>
+[2026-09-01T01:54:07.627Z] product.proposed — iteration 2: 4 gap(s) -> 8 proposal(s): PRF-US-1, PRF-US-2, LT-LT-01, LT-LT-02, LT-LT-03, LT-LT-04, LT-LT-05, LT-LT-06
+[2026-09-01T01:54:07.627Z] product.drive — iteration 2: running the conductor against the gapped board
+run-2026-09-01T01:54:07.764Z started -> running (breakpoint=never berths=1)
+An external agent CLI runs outside Dokima's gateway, so its tokens are spent somewhere Dokima cannot see. Choosing it gives up: the role→model matrix (FR-G2), the escalation ladder (D-018), the budget breakers (FR-G4), and the spend ledger — none of them apply to what an external CLI does.
+[review] no reviewer model could be resolved — machine review skipped (no route for role 'code-reviewer' (task type 'verification') and no 'default' role fallback is defined in any scope). Tickets stay in In Review for your own read.
+PRD-US-1: landed after 1 attempt(s)
+PRF-US-1: parked (ladder_exhausted) after 2 attempt(s)
+PRF-US-2: parked (ladder_exhausted) after 2 attempt(s)
+run-2026-09-01T01:54:07.764Z finished: 1 landed, 2 parked (stop: idle)
+2 tickets are finished and waiting on YOU — nothing in the product will move them further, because accepting work is a human verb (maker != verifier). Review them on the Decide card, or accept one from here with: dokima accept <ticketId> --actor <your-id>
+[2026-09-01T02:02:28.249Z] product.halt — iteration cap (2) reached with gaps open — goal-skill escalation, not a silent 6th lap

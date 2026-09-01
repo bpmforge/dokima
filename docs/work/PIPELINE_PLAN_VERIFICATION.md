@@ -242,3 +242,23 @@ The founder's asks, decomposed, each mapped to delivery or the honest gap:
 - PRF proposals become redundant when PRD work carries its own tests — the loop should retire a PRF row whose requirement closed (small ticket, filed as part of the Challenger disposition if confirmed).
 - attest gitea remote unreachable at release time (off-LAN): v3.7.0 owed a `git push gitea main --tags` when back on the LAN. GitHub carries both releases.
 - The reviewer model was unrouted in the demo (external-agent mode skips machine review by design) — a routed reviewer demo is future evidence, not claimed.
+
+### Part 6b — Challenger verdict on the second wave (fresh agent, 2026-08-31)
+
+12 findings; P6-05's core, the P6-07/08/09 notes, the lane change, and the
+gate count all survived. Disposition:
+
+| F   | Sev  | Finding                                                                                                   | Disposition                                                                                                                                              |
+| --- | ---- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | HIGH | verify verdict is operator-trust (`--verify-cmd true` ⇒ PROVEN over a red test); closure never runs tests | Ledger now RECORDS `verify_command`; README states the limit; a pinned per-target gate is future work (named in P6-12's neighborhood, not claimed fixed) |
+| 2   | HIGH | evidence pack lacked the verdict; logs gitignored; ledger contradicted README                             | **FIXED** — closing-measures.txt (both measures, verbatim commands), logs un-gitignored, README rewritten to the preserved facts                         |
+| 3   | HIGH | `--repo` w/o `--verify-cmd` judged the target by SHIPWRIGHT's baseline                                    | **FIXED** — refuses, exit 2 + test                                                                                                                       |
+| 4   | HIGH | conductor engine + `--repo` commits foreign proposals onto THIS board                                     | **FIXED** — refuses, exit 2 + test                                                                                                                       |
+| 5   | MED  | proposal-verify fallback was shipwright's `pnpm lint`                                                     | **FIXED** — target mode always uses the target gate + test                                                                                               |
+| 6   | MED  | seams vacuous / ledger clobbered this repo                                                                | **FIXED** — seams honest-empty in target mode; ledger writes to the TARGET with `verify_command`                                                         |
+| 7   | MED  | LT- name-prefix satisfied the long-tail gate                                                              | **FIXED** — declared `[long-tail:B-1]` tag, real-DB round-trip test (impostor stays ordinary)                                                            |
+| 8   | MED  | per-feature + berths degraded SILENTLY                                                                    | **FIXED** — honest stderr line naming P6-11                                                                                                              |
+| 9   | MED  | attest "725 green" env-dependent (knip/ts-prune absent ⇒ Pass 7 red)                                      | Reproduced only in tool-less env; noted to attest as a follow-up (eval must skip-with-reason when a tool is absent)                                      |
+| 10  | MED  | /autopilot names 2 of 7 NEVER-AUTO rows; conductor-merge NA-3 tension unstated                            | **FIXED in attest** (docs commit): full list + explicit NA-3 stance                                                                                      |
+| 11  | LOW  | README arithmetic/quotes unsupported                                                                      | **FIXED** — corrected to preserved logs; DB refusal rows exported                                                                                        |
+| 12  | LOW  | follow-ups named no ticket id (the board's own Law 1)                                                     | **FIXED** — P6-11, P6-12 filed                                                                                                                           |

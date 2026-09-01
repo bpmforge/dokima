@@ -13,7 +13,7 @@
 // describe provably works, not that the board drained.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,23 @@ const AGENT_CMD = opt('agent-command', undefined);
 // against REPO. Defaults unchanged: this repo, CONFIG.verifyCommands.
 const REPO = resolve(ROOT, String(opt('repo', '.')));
 const VERIFY_CMD = opt('verify-cmd', undefined);
+const TARGET_MODE = REPO !== ROOT;
+// Challenger F3/F4 (2026-08-31): the cross-plane combos REFUSE. A target
+// without its own gate would be judged by THIS repo's cached baseline, and
+// the conductor engine reads/writes THIS repo's JSON board — silently
+// committing another product's proposals here. Both were proven live.
+if (TARGET_MODE && !VERIFY_CMD) {
+  console.error(
+    '--repo requires --verify-cmd: a target is judged by ITS OWN gate, never by this repo\u2019s baseline',
+  );
+  process.exit(2);
+}
+if (TARGET_MODE && ENGINE !== 'berths') {
+  console.error(
+    "--repo requires --engine berths: the conductor engine drives THIS repo's JSON board only",
+  );
+  process.exit(2);
+}
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, {
@@ -120,14 +137,29 @@ const ports = {
       `chore(product-loop): propose ${rows.map((r) => r.id).join(', ')}`,
     ]);
   },
-  writeLedger: (l) =>
+  writeLedger: (l) => {
+    // The goal artifact belongs to the MEASURED repo (Challenger F6: target
+    // runs were clobbering this repo's tracked ledger).
+    const dir = resolve(REPO, 'docs/work');
+    mkdirSync(dir, { recursive: true });
     writeFileSync(
-      resolve(ROOT, 'docs/work/requirement-ledger.json'),
-      JSON.stringify(l, null, 2) + '\n',
-    ),
+      resolve(dir, 'requirement-ledger.json'),
+      JSON.stringify(
+        {
+          ...l,
+          verify_command: VERIFY_CMD ?? '(this repo\u2019s verifyCommands baseline)',
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  },
   provingTestsFor,
   testExists: (p) => existsSync(resolve(REPO, p)),
-  seams: () => loadPlanFrom(ROOT, BOARD).seams ?? [],
+  // Target mode: the DB board plane carries no seam model yet — an empty
+  // seam set means the seam clause is VACUOUS there, and the ledger's goal
+  // line says so (Challenger F6: the demo's "seams resolve" was vacuous).
+  seams: () => (TARGET_MODE ? [] : (loadPlanFrom(ROOT, BOARD).seams ?? [])),
   seamResults: () => [], // filled below (async seam assertion)
   verifyMain: () => {
     // P6-10: a target repo brings its OWN gate. One command, run in the
@@ -213,7 +245,9 @@ if (ENGINE === 'berths') {
     spawn: (cmd, args) => spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }),
     // The TARGET's gate, never this repo's: a proposal's verify command runs
     // in the target worktree (the engine re-runs it, untrusted).
-    verify: VERIFY_CMD ?? ((CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test'),
+    verify: TARGET_MODE
+      ? VERIFY_CMD // guaranteed by the startup refusal — the TARGET's gate
+      : (VERIFY_CMD ?? ((CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test')),
   };
   let boardSnapshot = await readProductBoard(boardCfg);
   ports.readBoard = () => boardSnapshot;
