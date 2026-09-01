@@ -492,7 +492,8 @@
         "pnpm lint && typecheck && test green"
       ],
       "points": 5,
-      "status": "todo"
+      "status": "done",
+      "notes": "Landed 2026-08-31. makeDrivePort(engine, spawn, projectId, berths) in conductor/product-loop.mjs: conductor -> scripts/conductor.mjs --max-tickets N; berths -> the PRODUCT's own engine (apps/server cli-entry run start --breakpoint never --berths N --actor product-loop, i.e. executeBuildRun -> runBerths + GlobalBerthGovernor + landClaimedTicket). maxTickets is deliberately NOT repurposed as a berths dial (a cap silently meaning something else is the A-1 class) — the governor + budget bound the iteration; test pins '8' absent from the berths argv. Test proves BOTH engines receive the drive call UNCHANGED ({maxTickets:8} asserted inside the port for each engine, through the full productLoop). Unknown engine + berths-without-project refuse loudly (tested + CLI-smoked). CLI: --engine conductor|berths, --project-id, --berths. docs/ARCHITECTURE.md §12: canonical role table (GOAL=product-loop exit predicate; ORCHESTRATOR=conductor/land-loop decides sequence never doneness; BOTS=berths untrusted by construction; REVIEW PANEL=wave-review advisory-by-L2; HONESTY LOOPS=Wiggum coverage + Challenger veracity) + the two-stack rule: scripts/conductor is BOOTSTRAP, the server engine is the PRODUCT, new capability lands in the product first or names the port ticket (L11 dogfood symmetry). Gate: 4991 passed."
     }
   ]
 }

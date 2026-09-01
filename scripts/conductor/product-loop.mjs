@@ -253,3 +253,62 @@ export async function productLoop(ports, budget = {}) {
   });
   return { done: false, halt: 'iteration-cap', iterations: maxIterations, history };
 }
+
+/**
+ * Drive-port factory (P6-03): the loop is ENGINE-AGNOSTIC — it always calls
+ * `runConductor({ maxTickets })`, and which engine answers is wired here,
+ * once, at the CLI seam. Two engines, one call shape:
+ *
+ *   conductor — the bootstrap harness (scripts/conductor.mjs); maxTickets
+ *               maps to its --max-tickets dial.
+ *   berths    — the PRODUCT's own engine: `dokima run start` composing
+ *               runBerths + GlobalBerthGovernor + landClaimedTicket
+ *               (apps/server/src/cli/run-build-berths.ts). Its dials are
+ *               berth count + budget; maxTickets is deliberately NOT
+ *               repurposed as either — a cap silently meaning something
+ *               else is the A-1 class. The governor and budget bound the
+ *               iteration instead.
+ *
+ * spawn is injected: (cmd, args) => {status} in production, a recorder in
+ * tests — which is how the test proves both engines receive the drive call
+ * unchanged.
+ */
+export function makeDrivePort({
+  engine = 'conductor',
+  spawn,
+  projectId,
+  mode = 'feature',
+  berths = 2,
+  actorId = 'product-loop',
+} = {}) {
+  if (engine === 'conductor') {
+    return ({ maxTickets }) =>
+      spawn('node', ['scripts/conductor.mjs', '--max-tickets', String(maxTickets)]);
+  }
+  if (engine === 'berths') {
+    if (!projectId) {
+      throw new Error(
+        "engine 'berths' requires a project id — the product engine addresses boards by fleet id, not by cwd",
+      );
+    }
+    return (call) => {
+      void call; // same call shape arrives; the engine's own dials bound the work
+      return spawn('node', [
+        'apps/server/src/bootstrap/cli-entry.mjs',
+        'run',
+        'start',
+        '--project',
+        projectId,
+        '--mode',
+        mode,
+        '--breakpoint',
+        'never',
+        '--berths',
+        String(berths),
+        '--actor',
+        actorId,
+      ]);
+    };
+  }
+  throw new Error(`unknown engine '${engine}' — expected conductor|berths`);
+}

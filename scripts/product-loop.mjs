@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { productLoop } from './conductor/product-loop.mjs';
+import { makeDrivePort, productLoop } from './conductor/product-loop.mjs';
 import { loadPlanFrom, writePlan } from './conductor-lib.mjs';
 import { ensureBaseline } from './conductor/baseline.mjs';
 
@@ -34,6 +34,7 @@ function opt(name, dflt) {
     : dflt;
 }
 const STATUS_ONLY = process.argv.includes('--status');
+const ENGINE = String(opt('engine', 'conductor')); // conductor|berths — makeDrivePort refuses others
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, {
@@ -137,19 +138,20 @@ const ports = {
     });
     return { green: bl.green, detail: bl.gaps?.[0]?.split('\n')[0] ?? '' };
   },
-  runConductor: ({ maxTickets }) => {
-    if (STATUS_ONLY) return;
-    const r = spawnSync(
-      'node',
-      ['scripts/conductor.mjs', '--max-tickets', String(maxTickets)],
-      {
-        cwd: ROOT,
-        stdio: 'inherit',
-      },
-    );
-    if (r.status === 3)
-      console.error('conductor: blocked_on_baseline — the loop will re-measure');
-  },
+  // P6-03: the loop is engine-agnostic — the same runConductor({maxTickets})
+  // call drives either the bootstrap harness (conductor) or the PRODUCT's own
+  // berths engine (dokima run start), selected once at this seam.
+  runConductor: makeDrivePort({
+    engine: ENGINE,
+    projectId: opt('project-id', undefined),
+    berths: Number(opt('berths', 2)),
+    spawn: (cmd, args) => {
+      if (STATUS_ONLY) return;
+      const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
+      if (ENGINE === 'conductor' && r.status === 3)
+        console.error('conductor: blocked_on_baseline — the loop will re-measure');
+    },
+  }),
   log: (kind, data) =>
     console.log(`[${new Date().toISOString()}] ${kind} — ${data.msg ?? ''}`),
 };

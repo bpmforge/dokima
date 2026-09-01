@@ -57,18 +57,19 @@ it produces files, commits, and a Completion Manifest inside a scoped worktree. 
 that changes durable state is performed by the **Harbormaster** from outside the session,
 after independently re-running the gates (BLUEPRINT §2.2).
 
-| Action | Agent session | Harbormaster (out-of-session) |
-|---|---|---|
-| Edit files | ✅ inside its write-scope worktree only | — |
-| Model calls | ✅ via gateway (its role's models only) | routes + meters every call |
-| Ticket verbs (claim/close/accept…) | ❌ never | ✅ sole caller of `tickets` mutations |
-| Mint gate/close receipts | ❌ receipts require a real validator run | ✅ runs validators, mints receipts |
-| Phase advancement | ❌ | ✅ after receipt re-verification |
-| Forge writes (PR, mirror, merge) | ❌ no forge token in agent env | ✅ maker token; reviewer token isolated (SC-03) |
-| MCP tool execution | request only | ✅ executes under permission matrix |
-| Waivers / NEVER-AUTO actions | ❌ agent identities blocklisted | ❌ human only (SC-05, SC-10) |
+| Action                             | Agent session                            | Harbormaster (out-of-session)                   |
+| ---------------------------------- | ---------------------------------------- | ----------------------------------------------- |
+| Edit files                         | ✅ inside its write-scope worktree only  | —                                               |
+| Model calls                        | ✅ via gateway (its role's models only)  | routes + meters every call                      |
+| Ticket verbs (claim/close/accept…) | ❌ never                                 | ✅ sole caller of `tickets` mutations           |
+| Mint gate/close receipts           | ❌ receipts require a real validator run | ✅ runs validators, mints receipts              |
+| Phase advancement                  | ❌                                       | ✅ after receipt re-verification                |
+| Forge writes (PR, mirror, merge)   | ❌ no forge token in agent env           | ✅ maker token; reviewer token isolated (SC-03) |
+| MCP tool execution                 | request only                             | ✅ executes under permission matrix             |
+| Waivers / NEVER-AUTO actions       | ❌ agent identities blocklisted          | ❌ human only (SC-05, SC-10)                    |
 
 Consequences, mechanically enforced:
+
 1. An agent cannot flip its ticket to `done`; `close` is refused unless the manifest is
    truth-checked (files stat'd, `verify` re-run exit 0, commits present) — SC-02.
 2. Completion is never a string an agent can type: no promise-token greps anywhere; the
@@ -104,51 +105,51 @@ the log; a rebuild command exists and is the recovery of last resort.
 
 ## 4. Module map (pnpm monorepo) and dependency law
 
-| Module | Lives in | Responsibility | Blueprint |
-|---|---|---|---|
-| shared | packages/shared | zod contracts, config, logger, typed errors, id/hash utils | (all) |
-| events | packages/events | event log, hash chain, projections, receipts primitive, migrations | §2.3 |
-| tickets | packages/tickets | ticket contract schema, six lifecycle verbs, lane/write-scope invariants, reflow | §3.4 |
-| loop | packages/loop | micro-loop engine, anchors (tool/memory/challenger/adaptive), coverage tracker, calibration | §3.5 |
-| validators | packages/validators | validator-pack runner (exit 0/1 + JSON gaps), receipt minting inputs | §3.2 |
-| gateway | packages/gateway | provider adapters (Anthropic/OpenAI/Copilot/Vertex/LM Studio/Ollama/OpenAI-compat), role matrix, escalation ladder R0–R4, budget breakers, spend metering, warm-up/queueing | §3.3, D-007 |
-| agent-session | packages/harbormaster (`src/agent-session/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, commits on the ticket branch, and iterates to a Completion Manifest. Lives in harbormaster because it already declares BOTH `@dokima/gateway` and `@dokima/loop` and already owns the claim loop that consumes a `SpawnSession`. Tool allowlisting, approval and audit reuse `packages/mcp` (W6-04) rather than a parallel mechanism — that import is now **declared and permitted** (founder decision 2026-08-05): `@dokima/mcp` is in `harbormaster`'s `package.json` and carries its ✅ in the §4 matrix below, made as one change so `scripts/validate-plan.mjs` P10 stays green. It is a safe edge, not merely a convenient one: `@dokima/mcp` itself declares only `@dokima/events`, which `harbormaster` already had, so the graph gains no cycle and no new leaf. W11-02 therefore consumes an existing dependency rather than amending the architecture mid-ticket | §3.6, D-023 |
-| harbormaster | packages/harbormaster | out-of-session orchestrator: claim loop, gate re-execution, berths, breakpoints, watchdog, morning queue, resume | §3.6 |
-| pipeline | packages/pipeline | phase state machine 0–5, discovery interview, decision slates + Blueprint stage, research path, Challenger, task decomposer | §3.2, §4 |
-| git | packages/git | worktrees, ticket branches, explicit-path staging, diff-based scope check, landing | §3.9 |
-| forge | packages/forge | GitHub/Gitea adapters: issue mirror, PR lifecycle, branch protection, identity/token mgmt | §3.4, §3.9, D-004 |
-| mcp | packages/mcp | MCP client host, per-role tool allowlists, requiresApproval, audited tool-call events | §3.9 |
-| memory | packages/memory | working + long-term memory, FTS5/BM25 (+ optional embeddings), ACE playbook, consolidation, error-first recall | §3.8 |
-| apps/server | apps/server | Fastify core: REST + WS, auth middleware (D-005), wires all packages, agent session spawner | §2.1 |
-| apps/web | apps/web | React/Vite Canvas: three-pane UI over projections | §3.1 |
-| content/ | content/ | imported expert definitions + validator packs (markdown/scripts, provenance headers, signed — D-006/D-008) | §11.2/.4 |
+| Module        | Lives in                                       | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Blueprint         |
+| ------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| shared        | packages/shared                                | zod contracts, config, logger, typed errors, id/hash utils                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | (all)             |
+| events        | packages/events                                | event log, hash chain, projections, receipts primitive, migrations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | §2.3              |
+| tickets       | packages/tickets                               | ticket contract schema, six lifecycle verbs, lane/write-scope invariants, reflow                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §3.4              |
+| loop          | packages/loop                                  | micro-loop engine, anchors (tool/memory/challenger/adaptive), coverage tracker, calibration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | §3.5              |
+| validators    | packages/validators                            | validator-pack runner (exit 0/1 + JSON gaps), receipt minting inputs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | §3.2              |
+| gateway       | packages/gateway                               | provider adapters (Anthropic/OpenAI/Copilot/Vertex/LM Studio/Ollama/OpenAI-compat), role matrix, escalation ladder R0–R4, budget breakers, spend metering, warm-up/queueing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | §3.3, D-007       |
+| agent-session | packages/harbormaster (`src/agent-session/**`) | **the tool-using ticket session (D-023)**: renders the HANDOFF, sends it with a tool schema through `gateway`, executes returned tool calls against the ticket worktree under `write_scope`, commits on the ticket branch, and iterates to a Completion Manifest. Lives in harbormaster because it already declares BOTH `@dokima/gateway` and `@dokima/loop` and already owns the claim loop that consumes a `SpawnSession`. Tool allowlisting, approval and audit reuse `packages/mcp` (W6-04) rather than a parallel mechanism — that import is now **declared and permitted** (founder decision 2026-08-05): `@dokima/mcp` is in `harbormaster`'s `package.json` and carries its ✅ in the §4 matrix below, made as one change so `scripts/validate-plan.mjs` P10 stays green. It is a safe edge, not merely a convenient one: `@dokima/mcp` itself declares only `@dokima/events`, which `harbormaster` already had, so the graph gains no cycle and no new leaf. W11-02 therefore consumes an existing dependency rather than amending the architecture mid-ticket | §3.6, D-023       |
+| harbormaster  | packages/harbormaster                          | out-of-session orchestrator: claim loop, gate re-execution, berths, breakpoints, watchdog, morning queue, resume                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §3.6              |
+| pipeline      | packages/pipeline                              | phase state machine 0–5, discovery interview, decision slates + Blueprint stage, research path, Challenger, task decomposer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | §3.2, §4          |
+| git           | packages/git                                   | worktrees, ticket branches, explicit-path staging, diff-based scope check, landing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | §3.9              |
+| forge         | packages/forge                                 | GitHub/Gitea adapters: issue mirror, PR lifecycle, branch protection, identity/token mgmt                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | §3.4, §3.9, D-004 |
+| mcp           | packages/mcp                                   | MCP client host, per-role tool allowlists, requiresApproval, audited tool-call events                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | §3.9              |
+| memory        | packages/memory                                | working + long-term memory, FTS5/BM25 (+ optional embeddings), ACE playbook, consolidation, error-first recall                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | §3.8              |
+| apps/server   | apps/server                                    | Fastify core: REST + WS, auth middleware (D-005), wires all packages, agent session spawner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | §2.1              |
+| apps/web      | apps/web                                       | React/Vite Canvas: three-pane UI over projections                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | §3.1              |
+| content/      | content/                                       | imported expert definitions + validator packs (markdown/scripts, provenance headers, signed — D-006/D-008)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | §11.2/.4          |
 
 ### Declared-dependency matrix (row imports column; blank = not currently declared)
 
 A cell records what a package **currently declares** in its `package.json`
 `dependencies` — not a lifetime ceiling nobody is using yet. What's
-permanently *forbidden* regardless of what's declared is Laws 1–6 below
+permanently _forbidden_ regardless of what's declared is Laws 1–6 below
 (ESLint-enforced from W3-10); this table is the narrower, live "who imports
 whom today" fact, and `scripts/validate-plan.mjs` (P10) parses it and fails
 if any row disagrees with that package's declared `@dokima/*` dependencies,
 in either direction (W11-05). Growing into a new import means declaring it
 in `package.json` **and** adding the ✅ here in the same change.
 
-| imports → | shared | events | tickets | validators | gateway | memory | git | forge | mcp | loop | pipeline |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| **events** | ✅ | | | | | | | | | | |
-| **tickets** | ✅ | ✅ | | | | | | | | | |
-| **validators** | | ✅ | | | | | | | | | |
-| **gateway** | ✅ | ✅ | | | | | | | | | |
-| **memory** | | | | | | | | | | | |
-| **git** | ✅ | | | | | | | | | | |
-| **forge** | | | | | | | | | | | |
-| **mcp** | | ✅ | | | | | | | | | |
-| **loop** | ✅ | | | | | | | | | | |
-| **pipeline** | | | | | | | | | | | |
-| **harbormaster** | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ | | ✅ | ✅ | |
-| **apps/server** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (+harbormaster) |
-| **apps/web** | | | | | | | | | | | |
+| imports →        | shared | events | tickets | validators | gateway | memory | git | forge | mcp | loop | pipeline           |
+| ---------------- | ------ | ------ | ------- | ---------- | ------- | ------ | --- | ----- | --- | ---- | ------------------ |
+| **events**       | ✅     |        |         |            |         |        |     |       |     |      |                    |
+| **tickets**      | ✅     | ✅     |         |            |         |        |     |       |     |      |                    |
+| **validators**   |        | ✅     |         |            |         |        |     |       |     |      |                    |
+| **gateway**      | ✅     | ✅     |         |            |         |        |     |       |     |      |                    |
+| **memory**       |        |        |         |            |         |        |     |       |     |      |                    |
+| **git**          | ✅     |        |         |            |         |        |     |       |     |      |                    |
+| **forge**        |        |        |         |            |         |        |     |       |     |      |                    |
+| **mcp**          |        | ✅     |         |            |         |        |     |       |     |      |                    |
+| **loop**         | ✅     |        |         |            |         |        |     |       |     |      |                    |
+| **pipeline**     |        |        |         |            |         |        |     |       |     |      |                    |
+| **harbormaster** | ✅     | ✅     | ✅      | ✅         | ✅      |        | ✅  |       | ✅  | ✅   |                    |
+| **apps/server**  | ✅     | ✅     | ✅      | ✅         | ✅      | ✅     | ✅  | ✅    | ✅  | ✅   | ✅ (+harbormaster) |
+| **apps/web**     |        |        |         |            |         |        |     |       |     |      |                    |
 
 `memory`, `forge` and `pipeline` each ship real, tested code (BLUEPRINT
 §3.5/§3.2/§3.9) but declare **no** `@dokima/*` dependency today — they are
@@ -161,6 +162,7 @@ instead, per file-level comments across `apps/web/src/**`, e.g.
 exclusively over REST/WS (§1 diagram).
 
 Laws (each gets a lint rule or validator — W3-10 wires them; review-enforced until then):
+
 1. **No package ever imports `apps/*`.** Domain logic is UI/transport-agnostic.
 2. **All model calls go through `gateway`.** `loop`, `tickets`, `pipeline` never import a
    provider SDK or open a socket to a model endpoint — the escalation ladder, budget
@@ -236,7 +238,7 @@ WIP=1 per actor holds per berth; the claim step re-checks lane occupancy atomica
 
 Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute**.
 
-1. Every intent is an event *before* its effect: `ticket.claimed` lands before the agent
+1. Every intent is an event _before_ its effect: `ticket.claimed` lands before the agent
    session spawns; `approval.requested` before any pause; `model.call_completed` is
    written from the gateway response handler before results propagate.
 2. **Orphan sweep on boot:** any ticket claimed-but-unclosed is re-verified from its
@@ -252,21 +254,21 @@ Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute*
 
 ## 8. Failure modes
 
-| Failure | Detection | Behavior | User-visible |
-|---|---|---|---|
-| Core crash mid-loop | boot orphan sweep | re-verify from receipts; resume or `ready` | activity feed note |
-| Agent session hang | watchdog heartbeat stall | kill, dead-letter, `blocked-with-evidence` | card flips within seconds |
-| Local model cold/one-at-a-time | gateway warm-up ping / queue depth | queue + warm-up retry; never parallel-thrash | model chip shows "queued" |
-| Gate fails after ladder R1–R3 | failure receipts | ticket parked R4 blocked-with-evidence | Decide card only when idle-blocked |
-| Budget 70/85/100% | ledger thresholds | warn / downshift / hard stop at ticket boundary | spend meter + Decide card at 100% |
-| Forge unreachable | adapter error | verbs queue in ticket history[], flush on reconnect | mirror status chip |
-| Human edits leased file | file watcher | checkpoint → rebase → re-ground; park on material conflict | Decide card: take mine / agent's / merge |
-| Event log tamper | hash chain break | `audit verify` fails, names first bad seq | audit error, refuse silent repair |
-| Review output truncated/unparseable | manifest/verdict parse failure | infra event: free retry of the review; zero finding-ledger writes, zero attempts charged (FR-L6) | Record-tier note on the card |
-| Provider limit window | 429/529/quota classify (FR-G8) | park affected berths, `limit.pause` event, auto-resume at reset/backoff | Record tier; model chip "paused until HH:MM" |
-| Oversized session output/diff (ENOBUFS class) | bounded buffers on session/git pipes | truncate-with-marker + summarize; never a process crash; oversized tool results spill to disk (FR-L8) | card note "output summarized (N MB)" |
-| Reviewer bookkeeping vs verdict divergence | fresh APPROVE with stale sticky findings | fresh explicit verdict wins; block only on freshly-raised or explicitly STILL-PRESENT findings (field report §5) | history shows the superseded findings |
-| Resume state drift | event log vs receipts vs disk disagree | resume REFUSES with a drift report; never guesses (FR-H3) | drift report card, human decides |
+| Failure                                       | Detection                                | Behavior                                                                                                         | User-visible                                 |
+| --------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Core crash mid-loop                           | boot orphan sweep                        | re-verify from receipts; resume or `ready`                                                                       | activity feed note                           |
+| Agent session hang                            | watchdog heartbeat stall                 | kill, dead-letter, `blocked-with-evidence`                                                                       | card flips within seconds                    |
+| Local model cold/one-at-a-time                | gateway warm-up ping / queue depth       | queue + warm-up retry; never parallel-thrash                                                                     | model chip shows "queued"                    |
+| Gate fails after ladder R1–R3                 | failure receipts                         | ticket parked R4 blocked-with-evidence                                                                           | Decide card only when idle-blocked           |
+| Budget 70/85/100%                             | ledger thresholds                        | warn / downshift / hard stop at ticket boundary                                                                  | spend meter + Decide card at 100%            |
+| Forge unreachable                             | adapter error                            | verbs queue in ticket history[], flush on reconnect                                                              | mirror status chip                           |
+| Human edits leased file                       | file watcher                             | checkpoint → rebase → re-ground; park on material conflict                                                       | Decide card: take mine / agent's / merge     |
+| Event log tamper                              | hash chain break                         | `audit verify` fails, names first bad seq                                                                        | audit error, refuse silent repair            |
+| Review output truncated/unparseable           | manifest/verdict parse failure           | infra event: free retry of the review; zero finding-ledger writes, zero attempts charged (FR-L6)                 | Record-tier note on the card                 |
+| Provider limit window                         | 429/529/quota classify (FR-G8)           | park affected berths, `limit.pause` event, auto-resume at reset/backoff                                          | Record tier; model chip "paused until HH:MM" |
+| Oversized session output/diff (ENOBUFS class) | bounded buffers on session/git pipes     | truncate-with-marker + summarize; never a process crash; oversized tool results spill to disk (FR-L8)            | card note "output summarized (N MB)"         |
+| Reviewer bookkeeping vs verdict divergence    | fresh APPROVE with stale sticky findings | fresh explicit verdict wins; block only on freshly-raised or explicitly STILL-PRESENT findings (field report §5) | history shows the superseded findings        |
+| Resume state drift                            | event log vs receipts vs disk disagree   | resume REFUSES with a drift report; never guesses (FR-H3)                                                        | drift report card, human decides             |
 
 ## 9. Controls on generated projects (W21-39)
 
@@ -278,17 +280,17 @@ from attest; a generated project's close gate ran two of them.
 The comparison, measured rather than asserted (every "Dokima" row was observed
 on the vault project during W21):
 
-| Control | attest | Dokima on a generated project | Gap |
-| --- | --- | --- | --- |
-| Write-scope containment | `run-handoff-gates.sh` gate 1, in-session | SC-01, **out of session** against the real worktree diff | none — Dokima is stronger, the agent cannot influence it |
-| Manifest checked against disk | gate 2, in-session | close gate re-stats every claimed file (FR-H1) | none — stronger, same reason |
-| Verify re-run | gate 5 (`--runtime`) | close gate re-runs it in a sandbox (SC-07) and never trusts the manifest's claim | none — stronger |
-| Ticket acceptance criteria executed | n/a (HANDOFF-shaped) | W21-41: executable criteria are run; zero-test runs refuse; W21-50: a criterion that also passes at BASE certifies nothing | Dokima-only |
-| Dependency ↔ designed stack | `validate-tech-stack.sh` | ships, and was **never required** until W21-38 | closed as a mechanism; see the skip note below |
-| Supply-chain / CVE | `validate-deps.sh` | ships, never required | as above |
-| Dead code, duplication, complexity | 6 code-health validators | ship, never required | as above |
-| ANTI_SLOP R-01…R-31 | `ANTI_SLOP_RULES.md` + anti-slop auditor, dispatched | **ship in `content/protocols/` and `content/experts/` and nothing reads them** | open — no code path injects a protocol into a handoff or dispatches that auditor |
-| Domain coverage / tracker freshness | gates 3 and 4 | not run | open, and likely correct to leave open — see below |
+| Control                             | attest                                               | Dokima on a generated project                                                                                              | Gap                                                                              |
+| ----------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Write-scope containment             | `run-handoff-gates.sh` gate 1, in-session            | SC-01, **out of session** against the real worktree diff                                                                   | none — Dokima is stronger, the agent cannot influence it                         |
+| Manifest checked against disk       | gate 2, in-session                                   | close gate re-stats every claimed file (FR-H1)                                                                             | none — stronger, same reason                                                     |
+| Verify re-run                       | gate 5 (`--runtime`)                                 | close gate re-runs it in a sandbox (SC-07) and never trusts the manifest's claim                                           | none — stronger                                                                  |
+| Ticket acceptance criteria executed | n/a (HANDOFF-shaped)                                 | W21-41: executable criteria are run; zero-test runs refuse; W21-50: a criterion that also passes at BASE certifies nothing | Dokima-only                                                                      |
+| Dependency ↔ designed stack         | `validate-tech-stack.sh`                             | ships, and was **never required** until W21-38                                                                             | closed as a mechanism; see the skip note below                                   |
+| Supply-chain / CVE                  | `validate-deps.sh`                                   | ships, never required                                                                                                      | as above                                                                         |
+| Dead code, duplication, complexity  | 6 code-health validators                             | ship, never required                                                                                                       | as above                                                                         |
+| ANTI_SLOP R-01…R-31                 | `ANTI_SLOP_RULES.md` + anti-slop auditor, dispatched | **ship in `content/protocols/` and `content/experts/` and nothing reads them**                                             | open — no code path injects a protocol into a handoff or dispatches that auditor |
+| Domain coverage / tracker freshness | gates 3 and 4                                        | not run                                                                                                                    | open, and likely correct to leave open — see below                               |
 
 ### Which of the 83 belong in a generated product's gate
 
@@ -339,17 +341,17 @@ disk") while the build proceeded anyway.
 ## 10. Model size and agentic tool use are different axes (W21-66)
 
 The escalation ladder (D-018) is cheapest-first, which encodes an assumption:
-that a **higher rung is better**. For raw reasoning that holds. For *acting on
-a repository* it does not, and the product had no way to say so.
+that a **higher rung is better**. For raw reasoning that holds. For _acting on
+a repository_ it does not, and the product had no way to say so.
 
 **Three controlled tests**, identical mid-session fixture — same tools, same
 conversation, the failure and the file contents already supplied:
 
-| Condition | `qwen/qwen3-coder-next` | `qwen/qwen3.8-27b` |
-|---|---|---|
-| Free choice | `edit` — 529 tokens, 12s | `list, list` — 93 tokens, 14s, holding the file already |
-| Directive prompt ("ACT, do not explore; never `list` or `read` a file you have been shown") | — | `list, list` again — 43s, 960 tokens |
-| Forced (`read`/`list` removed, `tool_choice=required`) | — | `write` to the correct path with EMPTY CONTENT — a destructive no-op |
+| Condition                                                                                   | `qwen/qwen3-coder-next`  | `qwen/qwen3.8-27b`                                                   |
+| ------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------- |
+| Free choice                                                                                 | `edit` — 529 tokens, 12s | `list, list` — 93 tokens, 14s, holding the file already              |
+| Directive prompt ("ACT, do not explore; never `list` or `read` a file you have been shown") | —                        | `list, list` again — 43s, 960 tokens                                 |
+| Forced (`read`/`list` removed, `tool_choice=required`)                                      | —                        | `write` to the correct path with EMPTY CONTENT — a destructive no-op |
 
 So it is not a prompting problem and not a timeout problem: the model is
 exploration-biased, and compelling it to act produces degenerate output.
@@ -358,13 +360,13 @@ exploration-biased, and compelling it to act produces degenerate output.
 machine (per-model mutation rate — tool calls that changed the worktree, over
 all tool calls):
 
-| Project | Model | Calls | Mutations | Rate |
-|---|---|---|---|---|
-| vault | `qwen/qwen3-coder-next` | 1011 | 341 | 33.7% |
-| vault | `qwen3.6-35b-a3b` | 590 | 169 | 28.6% |
-| vault | `qwen/qwen3.8-27b` | 106 | **0** | **0.0%** |
-| tally | `qwen/qwen3-coder-next` | 398 | 107 | 26.9% |
-| tally | `qwen/qwen3.8-27b` | 81 | 11 | 13.6% |
+| Project | Model                   | Calls | Mutations | Rate     |
+| ------- | ----------------------- | ----- | --------- | -------- |
+| vault   | `qwen/qwen3-coder-next` | 1011  | 341       | 33.7%    |
+| vault   | `qwen3.6-35b-a3b`       | 590   | 169       | 28.6%    |
+| vault   | `qwen/qwen3.8-27b`      | 106   | **0**     | **0.0%** |
+| tally   | `qwen/qwen3-coder-next` | 398   | 107       | 26.9%    |
+| tally   | `qwen/qwen3.8-27b`      | 81    | 11        | 13.6%    |
 
 The vault row reproduces the controlled finding on work that actually ran:
 `read x66, list x40` and nothing else.
@@ -384,7 +386,6 @@ with the reason commented on the ticket. **The last available rung is never
 skipped** — W21-63 fixed the mirror image, a ladder that skipped to an
 unreachable rung and parked with no session at all, and condemning every rung
 would reintroduce it.
-
 
 ## 11. One execution engine, not two (W21-36)
 
@@ -434,7 +435,7 @@ W13-47). The real spawner keeps its live caller and is untouched.
 export left with no non-test caller now exceeds the baseline and fails the
 gate. It counts; it cannot tell an orchestration entry point from any other
 symbol. And it is not transitive: deleting `runWatchdogSession` immediately
-revealed `deadLetterAndBlock`, whose only non-test caller *was*
+revealed `deadLetterAndBlock`, whose only non-test caller _was_
 `runWatchdogSession` — dead code propping up dead code, reported as reached the
 entire time. Filed as W22-20.
 
@@ -444,8 +445,8 @@ entire time. Filed as W22-20.
 and for a reason beyond being dead: it was a **second answer to a question the
 product already answers**.
 
-It minted a `session.dead_letter` event, commented evidence, and *stole the
-claim back* — deciding a ticket's fate at the moment a watchdog fired. Both
+It minted a `session.dead_letter` event, commented evidence, and _stole the
+claim back_ — deciding a ticket's fate at the moment a watchdog fired. Both
 live paths do the opposite: the external CLI forces a non-zero exit through
 `onBreach` (`run-build-spawn.ts`) and the built-in agent returns a
 `SpawnSessionOutput` from `watchdogStop` (`session-limits.ts`). A breach
@@ -455,7 +456,7 @@ around. Keeping both would have left two mechanisms racing to release the same
 ticket.
 
 **Its only caller was `runWatchdogSession`, itself deleted the same day.** Dead
-code propping up dead code: both ratchets reported it as *reached* the entire
+code propping up dead code: both ratchets reported it as _reached_ the entire
 time, because "has a caller" was true — the caller was simply also dead.
 
 **This pair answers a question worth recording: the ratchet is not transitive,
@@ -466,3 +467,30 @@ than counting callers. Measured instead of assumed (L-56): deleting
 link deep and a transitive analysis would have reclassified exactly one symbol.
 The honest summary is that the ratchet works and reveals a chain one link per
 deletion — slower than a real reachability pass, and enough.
+
+## 12. Roles, and the two-stack rule (P6-03)
+
+The pipeline's moving parts have accumulated names from four waves of work.
+This table is the canonical mapping — when a design conversation says "the
+orchestrator" or "the bots", it means these, and nothing else:
+
+| Role              | Component                                                                                                                                                                                      | Exit / authority                                                                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **GOAL**          | `scripts/product-loop.mjs` → `productLoop`                                                                                                                                                     | The only exit is a predicate: `assemblyGate.pass && verifyMain.green` — every SRS-derived requirement closed by an existing proving test, every seam resolves, receipt green on main. A drained board proves nothing. |
+| **ORCHESTRATOR**  | `scripts/conductor.mjs` (bootstrap) / `runLandLoop` + `landClaimedTicket` (product)                                                                                                            | Claims, scopes, gates, and lands one ticket at a time; owns the attempt ladder and the parking lot. Decides _sequence_, never _doneness_.                                                                             |
+| **BOTS**          | `runBerths` — N workers, per-berth machine identity (FR-H5), admissions through `GlobalBerthGovernor` (§3.11)                                                                                  | Do the work. Untrusted by construction (C-2/C-3): every durable state change goes through verbs/receipts.                                                                                                             |
+| **REVIEW PANEL**  | `wave-review` Tier-A — concurrent multi-model reviewers, consensus tiers (Act On / Consider / Noted / Dismissed)                                                                               | Advisory by law L2: a reviewer can hold a landing only through the deterministic citation gate, never by prose.                                                                                                       |
+| **HONESTY LOOPS** | **Wiggum** (coverage: the requirement ledger IS the inventory, re-derived from the SRS every iteration) + **Challenger** (veracity: citation gate + adversarial review; maker ≠ verifier, C-4) | Neither authors work; both exist to make "done" falsifiable.                                                                                                                                                          |
+
+**The two-stack rule.** Two execution stacks exist and that is deliberate,
+but they are not peers: `scripts/conductor` is the BOOTSTRAP harness — the
+scaffolding this repo uses to build itself — and the server engine
+(`run start` → `executeBuildRun` → `runBerths`/`runLandLoop`) is the
+PRODUCT. New pipeline capability lands in the product first, or the ticket
+that adds it to the bootstrap names the follow-up ticket that ports it —
+a capability that exists only in the scaffolding is a capability Dokima's
+users never get (Law L11, dogfood symmetry). The goal loop honors this by
+being engine-agnostic: `product-loop --engine berths` drives the product's
+own engine through the same injected port as the bootstrap conductor
+(`makeDrivePort`, P6-03), so the bootstrap can retire without the goal
+layer noticing.
