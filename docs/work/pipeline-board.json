@@ -727,6 +727,25 @@
       "points": 3,
       "status": "done",
       "notes": "FILED 2026-09-01 by P6-13's close: only the advisory poll is started; these two remain header-honest UNSTARTED. CLOSED 2026-09-01. The fleet tick now composes ALL THREE automations per project. Sweep: real audit source = the project's own `pnpm/npm audit --json` by lockfile (both output shapes parsed; non-zero exit WITH a report is findings, empty stdout is a LOUD skip — never a silent all-clear; at most daily per project so the network call doesn't ride every 5-minute tick); proposals land as Review-tier 'suggestion' NOTIFICATIONS (deterministic ids, idempotent) a human accepts — never a board write, never a merge. Smoke: triggered by NEW feature.landed events past a per-project high-water mark; runSmoke = the landing's own deriveVerifyCommand + SC-07-sandboxed reRunVerify (barrel-exported — registration, now with a production caller); first failure notifies, second consecutive raises a Decide-tier 'blocked' notification — never a revert. Source-pinned test proves all three composed (the P6-13 lesson: a comment is not a caller) and that no merge verb exists in the wiring. Headers updated to STARTED. Gate 5060 green (one vitest worker RPC-timeout flake with all tests passed, rerun clean)."
+    },
+    {
+      "id": "P6-15",
+      "title": "requestTimeoutMs above 300s is a silent lie — undici's headersTimeout clamps every long local-model call",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/providers/oai-compat.ts",
+        "packages/gateway/src/providers/oai-compat.test.ts",
+        "packages/gateway/package.json"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "a provider entry with requestTimeoutMs > 300000 actually gets that long: the oai-compat fetch carries an undici dispatcher whose headersTimeout/bodyTimeout track the configured timeout",
+        "unit tests: no dispatcher at/below the undici default; dispatcher present and cached above it; the dispatcher reaches the injected fetch",
+        "gate green"
+      ],
+      "points": 2,
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-09-01 by the guided-sample LIVE run: with requestTimeoutMs=900000 set via the settings API, a 27b review call still died at ~5 minutes with 'fetch failed <- HeadersTimeoutError' — Node's undici client enforces its own 300s headers cap beneath the app-level AbortSignal, so the W10-57 knob was silently ceilinged. Local models grinding big contexts legitimately need >5m. CLOSED 2026-09-01. oai-compat-dispatch.ts (chapter split — the inline version blew the 400 cap, twice, before landing): createLongCallDispatcherCache — above undici's 300s default the chat call carries a lazily-created, provider-cached undici Agent with headersTimeout/bodyTimeout tracking the configured value; at/below it, no dispatcher (warm-up/discovery calls stay clean). undici added as an explicit gateway dep. Tests: no-dispatcher at the boundary; the CHAT call (the one that grinds) carries the Agent and it is cached across calls — asserted on /chat/completions specifically after discovering warm-up calls ride first. Gate 5062 green."
     }
   ]
 }

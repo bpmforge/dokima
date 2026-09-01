@@ -28,6 +28,7 @@
   "dependencies": {
     "@dokima/events": "workspace:*",
     "@dokima/shared": "workspace:*",
-    "google-auth-library": "^10.7.0"
+    "google-auth-library": "^10.7.0",
+    "undici": "^7.29.0"
   }
 }

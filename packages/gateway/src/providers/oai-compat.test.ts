@@ -18,13 +18,8 @@ import {
   serverErrorFixture,
 } from './fixtures.js';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from './oai-compat-types.js';
-import {
-  createOaiCompatProvider,
-} from './oai-compat.js';
-import {
-  createLmStudioProvider,
-  createOllamaProvider,
-} from './oai-compat-presets.js';
+import { createOaiCompatProvider } from './oai-compat.js';
+import { createLmStudioProvider, createOllamaProvider } from './oai-compat-presets.js';
 import {
   streamNoUsageSse,
   streamSuccessSse,
@@ -1219,7 +1214,13 @@ describe('per-endpoint request extras (W13-10)', () => {
       return new Response(
         JSON.stringify({
           id: 'x',
-          choices: [{ index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'ok' },
+              finish_reason: 'stop',
+            },
+          ],
           usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } },
@@ -1346,11 +1347,15 @@ describe('streaming carries requestExtras too (W13-15)', () => {
           if (i < chunks) {
             await new Promise((r) => setTimeout(r, gapMs));
             if (signal?.aborted) {
-              controller.error(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+              controller.error(
+                Object.assign(new Error('aborted'), { name: 'AbortError' }),
+              );
               return;
             }
             controller.enqueue(
-              enc.encode(`data: {"model":"m","choices":[{"delta":{"content":"${i}"}}]}\n\n`),
+              enc.encode(
+                `data: {"model":"m","choices":[{"delta":{"content":"${i}"}}]}\n\n`,
+              ),
             );
             i += 1;
             return;
@@ -1488,7 +1493,8 @@ describe('streaming carries requestExtras too (W13-15)', () => {
           model: 'm',
           messages: [{ role: 'user', content: 'hi' }],
         })) {
-          if (event.type === 'tool_call') announced.push({ index: event.index, name: event.name });
+          if (event.type === 'tool_call')
+            announced.push({ index: event.index, name: event.name });
           else if (event.type === 'final') final = event.response;
         }
 
@@ -1500,7 +1506,10 @@ describe('streaming carries requestExtras too (W13-15)', () => {
         ]);
         // And the assembled call is unchanged: this surfaces what was already
         // being parsed, it does not re-parse it.
-        expect(final?.toolCalls?.map((t: { name: string }) => t.name)).toEqual(['read', 'verify']);
+        expect(final?.toolCalls?.map((t: { name: string }) => t.name)).toEqual([
+          'read',
+          'verify',
+        ]);
         expect(final?.toolCalls?.[0]?.arguments).toEqual({ path: 'a.ts' });
       },
     );
@@ -1531,7 +1540,10 @@ describe('a timed-out call names the model it was for (W22-07)', () => {
       });
 
       await expect(
-        provider.chat({ model: 'qwen3.8-flash-next', messages: [{ role: 'user', content: 'hi' }] }),
+        provider.chat({
+          model: 'qwen3.8-flash-next',
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
       ).rejects.toThrow(/qwen3\.8-flash-next/);
     },
   );
@@ -1575,5 +1587,56 @@ describe('a timed-out call names the model it was for (W22-07)', () => {
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ProviderTimeoutError);
     expect((err as ProviderTimeoutError).model).toBeUndefined();
+  });
+});
+
+describe('P6-15 — long local calls escape the undici 300s headers clamp', () => {
+  function providerWith(timeoutMs: number, captured: RequestInit[]) {
+    return createOaiCompatProvider({
+      id: 'lm-studio',
+      baseUrl: 'http://127.0.0.1:9',
+      requestTimeoutMs: timeoutMs,
+      fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+        captured.push(init ?? {});
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      }) as typeof fetch,
+    });
+  }
+
+  it('at or below the undici default no dispatcher rides the request', async () => {
+    const captured: RequestInit[] = [];
+    await providerWith(300_000, captured).listModels();
+    expect(captured.length).toBeGreaterThan(0);
+    expect((captured[0] as { dispatcher?: unknown }).dispatcher).toBeUndefined();
+  });
+
+  it('above it, the CHAT call (the one that grinds) carries a dispatcher — and it is cached across calls', async () => {
+    const captured: RequestInit[] = [];
+    const p = createOaiCompatProvider({
+      id: 'lm-studio',
+      baseUrl: 'http://127.0.0.1:9',
+      requestTimeoutMs: 900_000,
+      fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
+        captured.push({ ...(init ?? {}), _url: String(url) } as RequestInit);
+        return new Response(JSON.stringify(chatCompletionSuccessFixture), {
+          status: 200,
+        });
+      }) as typeof fetch,
+    });
+    const req = {
+      model: 'qwen/qwen3.8-27b',
+      messages: [{ role: 'user' as const, content: 'hi' }],
+    };
+    await p.chat(req);
+    await p.chat(req);
+    // warm-up/discovery calls ride short timeouts with NO dispatcher; the
+    // chat completions — the calls that grind — must carry the Agent.
+    const chats = captured.filter((c) =>
+      String((c as { _url?: string })._url).includes('/chat/completions'),
+    );
+    expect(chats.length).toBe(2);
+    const dispatchers = chats.map((c) => (c as { dispatcher?: unknown }).dispatcher);
+    expect(dispatchers[0]).toBeDefined();
+    expect(dispatchers[0]).toBe(dispatchers[1]);
   });
 });
