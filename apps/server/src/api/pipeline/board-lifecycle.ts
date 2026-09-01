@@ -44,6 +44,7 @@
  * most one connection to the project's `state.db` is ever open at a time.
  */
 import { appendEvent } from '@dokima/events';
+import { recordBoardFeatures } from '@dokima/harbormaster';
 import {
   proposeFromMatches,
   type CatalogMatch,
@@ -160,5 +161,24 @@ export async function persistDecomposedPlan(
   opts: PlanItemsFromDecomposedPlanOptions,
 ): Promise<readonly AcceptedDecomposedPlanItem[]> {
   const { created } = await proposePlanItemsFromDecomposedPlan(projectPath, plan, opts);
-  return acceptDecomposedPlanItems(projectPath, created, plan, opts);
+  const accepted = await acceptDecomposedPlanItems(projectPath, created, plan, opts);
+  // P6-12: the SECOND WRITER the P6-05 close report named — the feature map
+  // decompose() computed persists to the board's own event log, so the
+  // engine groups landings without a caller hand-feeding maps. Ticket ids
+  // are mapped to the BOARD ids acceptPlanItem mints (PLAN-<id>).
+  if (plan.features?.length) {
+    await withPlanWriter(projectPath, (log) => {
+      ensureOperatorIdentity(log);
+      recordBoardFeatures(log, {
+        actorId: OPERATOR_ACTOR_ID,
+        runId: opts.runId ?? null,
+        features: plan.features!.map((f) => ({
+          id: f.id,
+          title: f.title,
+          tickets: f.tickets.map(planTicketId),
+        })),
+      });
+    });
+  }
+  return accepted;
 }

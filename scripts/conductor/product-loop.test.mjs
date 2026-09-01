@@ -318,3 +318,25 @@ describe('P6-09 — the loop runs under PLAIN node, not only vitest', () => {
     expect(halt).toBe('iteration-cap'); // the real assembler measured a real gap set
   }, 30_000);
 });
+
+describe('P6-12 — redundant PRF rows are NAMED for retirement, never silently kept', () => {
+  it('a PRF whose requirement closed is named; one still needed is not; the loop flips no state itself', async () => {
+    const h = makePorts({
+      srs: 'US-1 and US-2 exist.',
+      board: [
+        ticket('T-1', { acceptance: ['implements US-1'] }),
+        ticket('PRF-US-1', { status: 'todo' }), // redundant: US-1 closed below
+        ticket('T-2', { acceptance: ['implements US-2'] }),
+        ticket('PRF-US-2', { status: 'todo' }), // still needed: US-2 has no test
+      ],
+      provingTestsFor: (id) => (id === 'US-1' ? ['e2e/us1.spec.ts'] : []),
+      testExists: (p) => p === 'e2e/us1.spec.ts',
+    });
+    await productLoop(h.ports, { maxIterations: 1 });
+    const named = h.logs.find((l) => l.kind === 'product.redundant');
+    expect(named.msg).toContain('PRF-US-1');
+    expect(named.msg).not.toContain('PRF-US-2');
+    // the loop holds no verb: the board rows were not mutated
+    expect(h.ports.readBoard().find((t) => t.id === 'PRF-US-1').status).toBe('todo');
+  });
+});

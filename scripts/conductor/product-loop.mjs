@@ -219,6 +219,25 @@ export async function productLoop(ports, budget = {}) {
       iteration,
     });
 
+    // P6-12: a PRF- row whose requirement CLOSED while it waited is
+    // redundant — the demo left two parked-in-Ready forever. The loop never
+    // re-proposes them (dedup), and here it NAMES them for retirement every
+    // iteration so a human (or an autopilot with the reject verb) can act;
+    // the loop itself holds no verb that flips board state (C-2).
+    const redundant = tickets
+      .filter((t) => /^PRF-/.test(t.id) && t.status !== 'done')
+      .filter((t) => {
+        const reqId = t.id.slice(4);
+        const e = ledger[reqId];
+        return e && e.implementingTickets.length > 0 && e.provingTests.length > 0;
+      })
+      .map((t) => t.id);
+    if (redundant.length) {
+      log('product.redundant', {
+        msg: `retire candidates (requirement already closed): ${redundant.join(', ')} — reject or close them; they will never be re-proposed`,
+      });
+    }
+
     if (gate.pass && verify.green) {
       log('product.done', {
         msg: `PRODUCT PROVEN in ${iteration} iteration(s): ${requirementIds.length} requirement(s) closed, every seam resolves, verify green — this is done meaning done`,
