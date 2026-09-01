@@ -623,6 +623,25 @@
       "points": 2,
       "status": "done",
       "notes": "FILED 2026-08-31 by the FIRST LIVE RUN of the arc (product-loop --status on this repo): halt=assembler-unavailable. Root cause probed, not guessed: gate.ts carries runtime imports with .js specifiers (./assembly.js), which plain-node type stripping does not resolve to .ts — the W9-12 constraint — while vitest transforms them, so every test was green and the CLI was broken. The catch swallowed the reason exactly as designed (loud degrade), and the live run surfaced it in minutes. Fix: register the workspace's own tsx loader (apps/server/node_modules/tsx) before the lazy imports; probed OK under plain node. CLOSED 2026-08-31. ts-loader.mjs registers the workspace tsx loader (root or apps/server node_modules) before the lazy assembler imports; loadAssembler calls ensureTsLoader() best-effort — vendored installs keep the loud degrade. Red/green fixture spawns PLAIN node (not vitest) and drives the real productLoop: RED proven (halt=assembler-unavailable with the loader disabled), GREEN = iteration-cap (the real assembler measured a real gap set). LIVE PROOF: product-loop --status on this repo now completes — 147 requirements derived from the SRS, ledger written. Live finding recorded: CONFIG.boardPath points at the 27-ticket pipeline board, so coverage reads all-uncovered against the product SRS — measuring DOKIMA-the-product needs boardPath=plan.json (a config choice per board, not a defect). Gate 5027 green."
+    },
+    {
+      "id": "P6-10",
+      "title": "The goal loop drives a TARGET repo end-to-end: --repo/--verify-cmd + a live demo product built by the real engine",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/product-loop.mjs",
+        "scripts/conductor/berths-board.mjs",
+        "docs/work/attempt-evidence/p6-10-demo/**"
+      ],
+      "depends_on": ["P6-07", "P6-09"],
+      "acceptance": [
+        "product-loop gains --repo <path> (measurement plane: SRS/stories, proving-test grep, verify, board DB all against the target) and --verify-cmd <cmd> (the target's own gate) — defaults unchanged (this repo)",
+        "LIVE DEMO, evidence committed: a scratch product with its own SRS (US-ids) is driven by `product-loop --engine berths` — gap -> proposal -> add-ticket verb -> run start claims + lands -> loop reaches done or a named halt; the run log + final ledger land in docs/work/attempt-evidence/p6-10-demo/",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "in_progress",
+      "notes": "FILED+CLAIMED 2026-08-31 (founder: 'loop until the goals are complete... a complete running product... automate this until we have automation running'). The loop measured only THIS repo; a target flag is the L11 wiring that makes it a product capability."
     }
   ]
 }
