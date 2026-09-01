@@ -211,7 +211,9 @@ if (ENGINE === 'berths') {
     dbPath: DB_PATH,
     cliEntry: resolve(ROOT, 'apps/server/src/bootstrap/cli-entry.mjs'),
     spawn: (cmd, args) => spawnSync(cmd, args, { cwd: REPO, encoding: 'utf8' }),
-    verify: (CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test',
+    // The TARGET's gate, never this repo's: a proposal's verify command runs
+    // in the target worktree (the engine re-runs it, untrusted).
+    verify: VERIFY_CMD ?? ((CONFIG.verifyCommands?.[0] ?? []).join(' ') || 'pnpm test'),
   };
   let boardSnapshot = await readProductBoard(boardCfg);
   ports.readBoard = () => boardSnapshot;
