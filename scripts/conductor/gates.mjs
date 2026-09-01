@@ -52,7 +52,10 @@ function parseChangedStatus(line) {
 const ADD_ONLY_OK = (CONFIG.alwaysOkAddOnly ?? []).map(globToRegex);
 
 // ---------- gates (run OUTSIDE the session, in the ticket's worktree) ----------
-export function runGates(t, branch, wt) {
+// P6-06: scopeBase — under per-feature landing a claim can be STACKED on a
+// parked dependency's branch; diffs must start at the post-stack base or the
+// dependency's files read as this ticket's out-of-scope edits.
+export function runGates(t, branch, wt, scopeBase = 'main') {
   const gaps = [];
   let diff = null; // P2-02 differential verdict (null when no baseline/receipt failure)
   let receipt = null; // P2-03: remediation needs the failed commands, not just prose gaps
@@ -79,7 +82,7 @@ export function runGates(t, branch, wt) {
   const selfBlocked = row?.status === 'blocked';
   if (!row || row.status !== 'done')
     gaps.push(doneCheckGap(row?.status, CONFIG.boardPath));
-  if (Number(git('rev-list', '--count', `main..${branch}`)) < 1)
+  if (Number(git('rev-list', '--count', `${scopeBase}..${branch}`)) < 1)
     gaps.push('no commits on ticket branch');
   // P2-07 (M-06): scope validation reads git's TRACKED diff only — it can
   // never traverse an untracked tree (the ISSUE12 class: a 120s timeout
@@ -88,7 +91,7 @@ export function runGates(t, branch, wt) {
   // scope failure charged to the candidate.
   let changed;
   try {
-    changed = sh('git', ['diff', '--name-status', `main...${branch}`], {
+    changed = sh('git', ['diff', '--name-status', `${scopeBase}...${branch}`], {
       timeout: (CONFIG.scopeCheckTimeoutSec ?? 120) * 1000,
     })
       .split('\n')

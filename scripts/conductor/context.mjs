@@ -200,6 +200,7 @@ export function claimable(plan, excluded = []) {
     waves: WAVES,
     hold: CONFIG.holdTickets ?? [],
     excluded: [...excluded, ...parked],
+    parkedSatisfiesDeps: CONFIG.landing === 'per-feature',
   });
   // P2-07 (M-02): risk-tier admission — the 6/6 pilot filter. A ticket the
   // tier holds is not blocked and not failed; it simply is not claimable

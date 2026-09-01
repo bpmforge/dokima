@@ -538,12 +538,15 @@
       "title": "Harden per-feature landing to production trust (Challenger F1/F2/F6 + dependency stacking)",
       "lane": "scripts",
       "write_scope": [
-        "scripts/conductor/wave.mjs",
-        "scripts/conductor/feature-landing.mjs",
+        "scripts/conductor-lib/claim.mjs",
         "scripts/conductor/feature-landing-wiring.mjs",
+        "scripts/conductor/feature-landing.mjs",
         "scripts/conductor/feature-landing.test.mjs",
-        "scripts/conductor/worktree.mjs",
-        "scripts/conductor-lib/claim.mjs"
+        "scripts/conductor/gates.mjs",
+        "scripts/conductor/ticket.mjs",
+        "scripts/conductor/wave.mjs",
+        "scripts/conductor/wave.test.mjs",
+        "scripts/conductor/worktree.mjs"
       ],
       "depends_on": ["P6-02"],
       "acceptance": [
@@ -553,8 +556,8 @@
         "only after all three: conductor.config.json landing may be set to 'per-feature'"
       ],
       "points": 8,
-      "status": "todo",
-      "notes": "FILED 2026-08-31 by the P6 Challenger pass. The mechanical defects (durable park, restart safety, blocked=waiting, refusal cleanup, merge abort) are already fixed on sw/p6; these three are the remaining hazards that make the mode untrustworthy in production, so the config ships per-ticket until this lands. F6 detail: composeWave's disjoint write_scope cannot cover the board file every branch must edit; without the carve-out the very first multi-ticket feature wedges permanently."
+      "status": "done",
+      "notes": "FILED 2026-08-31 by the P6 Challenger pass. The mechanical defects (durable park, restart safety, blocked=waiting, refusal cleanup, merge abort) are already fixed on sw/p6; these three are the remaining hazards that make the mode untrustworthy in production, so the config ships per-ticket until this lands. F6 detail: composeWave's disjoint write_scope cannot cover the board file every branch must edit; without the carve-out the very first multi-ticket feature wedges permanently. SCOPE WIDENED at claim: gates.mjs + ticket.mjs must diff against the stacked base (main...branch reads a dependency's files as out-of-scope after stacking) and wave.test.mjs carries the carve-out fixtures. Named per Law 1. CLOSED 2026-08-31, all three acceptance items + the flip. (1) Board-file hazard fixed BY CONSTRUCTION, stronger than the ticket asked: mergeWithMetadataCarveOut resolves conflicts confined to metadataPaths, AND buildSyntheticBranch resets metadata to the BASE's version after composing — the first fixture draft exposed that a CLEAN member merge still carries a stale board onto main and silently reverts OTHER features' parked rows; reset-by-construction kills both shapes. Code conflicts still refuse (fixture: base.txt conflict excludes the member and names the file). (2) Stacking: stackParkedDeps merges parked dependency branches onto the claim base (same board rule), returns post-stack scopeBase; claimableTickets gains parkedSatisfiesDeps (per-feature only); makeWorktree stacks + logs; a stack CODE conflict refuses the claim with evidence, nothing charged; gates.mjs + review diff cut at scopeBase — fixture asserts the diff from scopeBase is EMPTY so a dep's files can never read as the claimant's out-of-scope edits. (3) Restart fixture across the REAL modules: 2 of 3 parked + fresh process state -> only the todo member claimable (F2 pin: parked is never claimable), feature WAITS at 2/3, third parks -> EXACTLY ONE first-parent merge lands all three files. landing='per-feature' FLIPPED ON as the acceptance gates. +9 tests. Gate 5024 green (first run exit 1 was a vitest worker RPC timeout with all tests passed — infra, rerun clean)."
     },
     {
       "id": "P6-07",
