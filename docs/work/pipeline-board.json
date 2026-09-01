@@ -680,8 +680,8 @@
         "gate green"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "FILED 2026-08-31 by the wave-2 honesty pass (Challenger F12 + demo observation)."
+      "status": "done",
+      "notes": "FILED 2026-08-31 by the wave-2 honesty pass (Challenger F12 + demo observation). CLOSED 2026-09-01. (a) Second writer: persistDecomposedPlan records plan.features via recordBoardFeatures inside withPlanWriter (operator identity; ticket ids mapped to the PLAN- board ids acceptPlanItem mints); readBoardFeatures round-trip tested + absence-is-not-an-empty-map test. (b) PRF retirement: the loop NAMES redundant PRF rows (requirement closed: implementing ticket + proving test both present) every iteration via product.redundant — it holds no verb and flips no state (C-2); test pins a closed-requirement PRF named, a still-needed one not named, and the board unmutated. Never re-proposed was already true by dedup. Gate 5056 green."
     }
   ]
 }

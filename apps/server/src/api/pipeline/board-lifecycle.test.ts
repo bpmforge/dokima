@@ -131,3 +131,55 @@ describe('board-lifecycle — decompose output through the plans lifecycle', () 
     }
   });
 });
+
+describe('P6-12 — the feature map persists with the plan (second writer)', () => {
+  const dirs: string[] = [];
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  it('persistDecomposedPlan records plan.features with BOARD ticket ids; the engine reads them back', async () => {
+    const projectDir = await tmpProjectDir();
+    dirs.push(projectDir);
+    const plan: DecomposedPlan = {
+      ...fixturePlan([fixtureTicket({ id: 'T-1' }), fixtureTicket({ id: 'T-2' })]),
+      features: [
+        {
+          id: 'F-US-1',
+          title: 'Auth core',
+          tickets: ['T-1', 'T-2'],
+          stories: ['US-1'],
+          seams: [],
+          connects_to: [],
+        },
+      ],
+    };
+    await persistDecomposedPlan(projectDir, plan, { runId: 'run-1' });
+    const { readBoardFeatures } = await import('@dokima/harbormaster');
+    const db = openEventLog(stateDbPath(projectDir));
+    try {
+      expect(readBoardFeatures(db)).toEqual([
+        { id: 'F-US-1', title: 'Auth core', tickets: ['PLAN-T-1', 'PLAN-T-2'] },
+      ]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('a plan without features records nothing — absence is not an empty map', async () => {
+    const projectDir = await tmpProjectDir();
+    dirs.push(projectDir);
+    await persistDecomposedPlan(projectDir, fixturePlan([fixtureTicket()]), {
+      runId: 'run-1',
+    });
+    const { readBoardFeatures } = await import('@dokima/harbormaster');
+    const db = openEventLog(stateDbPath(projectDir));
+    try {
+      expect(readBoardFeatures(db)).toEqual([]);
+    } finally {
+      db.close();
+    }
+  });
+});
