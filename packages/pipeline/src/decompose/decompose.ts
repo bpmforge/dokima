@@ -1,7 +1,10 @@
 import { deriveLanes } from './lanes.js';
 import { qualityTicketsFor } from './quality-tickets.js';
 import { lintDecomposition } from './linter.js';
+import { deriveFeatures, featureGaps } from './features.js';
+import { renderProductMap } from './product-map.js';
 import { renderMermaid } from './mermaid.js';
+import type { Seam } from '../seams/types.js';
 import type { DecomposedPlan, DecomposedTicket, TicketDraftInput } from './types.js';
 
 /**
@@ -23,6 +26,15 @@ export interface DecomposeOptions {
    * security findings is noise. The build pipeline opts in; nobody else does.
    */
   readonly includeQualityWork?: boolean;
+  /**
+   * P6-01: the SRS-derived requirement denominator (`deriveRequirementIds`
+   * over SRS/USER_STORIES text). When present, the plan gains `features` —
+   * the product's SHAPE — grouped by shared story citation. Absent, the plan
+   * shape is unchanged (additive; every existing caller is untouched).
+   */
+  readonly requirementIds?: readonly string[];
+  /** Seams to express as feature-to-feature connections (with reasons). */
+  readonly seams?: readonly Seam[];
 }
 
 export function decompose(
@@ -65,5 +77,14 @@ export function decompose(
   const violations = lintDecomposition(withQuality);
   const mermaid = renderMermaid(tickets);
 
-  return { tickets, violations, mermaid };
+  if (options.requirementIds === undefined) return { tickets, violations, mermaid };
+  const features = deriveFeatures(tickets, options.requirementIds, options.seams);
+  return {
+    tickets,
+    violations,
+    mermaid,
+    features,
+    featureGaps: featureGaps(features, options.requirementIds),
+    productMap: renderProductMap(features, options.seams ?? []),
+  };
 }

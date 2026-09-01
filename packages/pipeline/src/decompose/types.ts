@@ -92,8 +92,54 @@ export interface LintViolation {
   readonly detail: string;
 }
 
+/** One directed feature-to-feature edge with a stated reason (P6-01: story
+ * connection is expressed at the feature plane, never left implicit). */
+export interface FeatureConnection {
+  readonly feature: string;
+  readonly reason: string;
+}
+
+/**
+ * A feature: the product-shape grouping decomposition was missing (P6-01).
+ * Tickets that serve the same user stories are ONE feature; a seam whose
+ * producer and consumer live in different features is a CONNECTION between
+ * them, never a merge — a connection is not an identity. Field name
+ * `connects_to` is snake_case deliberately: features are board-plane data,
+ * the same plane as `write_scope`/`depends_on`.
+ */
+export interface Feature {
+  readonly id: string;
+  readonly title: string;
+  /** US-nnn / FR-… requirement ids this feature serves. */
+  readonly stories: readonly string[];
+  readonly tickets: readonly string[];
+  /** Seam ids touching any ticket in this feature. */
+  readonly seams: readonly string[];
+  readonly connects_to: readonly FeatureConnection[];
+}
+
+export type FeatureGapKind = 'ticket-serves-no-story' | 'story-has-no-feature';
+
+/** One feature-map gap (P6-01) — the A-1 class in both directions: a ticket
+ * serving no story, or a story no feature picked up. */
+export interface FeatureGap {
+  readonly kind: FeatureGapKind;
+  /** Ticket id (ticket-serves-no-story) or requirement id (story-has-no-feature). */
+  readonly subject: string;
+  readonly detail: string;
+}
+
 export interface DecomposedPlan {
   readonly tickets: readonly DecomposedTicket[];
   readonly violations: readonly LintViolation[];
   readonly mermaid: string;
+  /** The product's SHAPE (P6-01): present when `decompose()` was given the
+   * SRS-derived requirement ids to group against; absent otherwise. */
+  readonly features?: readonly Feature[];
+  /** Feature-map gaps (P6-01) — surfaced with the plan, never thrown away,
+   * the same treatment `violations` gets. Present alongside `features`. */
+  readonly featureGaps?: readonly FeatureGap[];
+  /** PRODUCT_MAP.md content (P6-01) — the rendered shape. Present alongside
+   * `features`. */
+  readonly productMap?: string;
 }
