@@ -598,7 +598,7 @@
         "gate green"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-08-31. F4: the map is computed at decompose() then dropped — run-job persists tickets/violations/mermaid only, and no prompt asks the model for US-/FR- ids, so real runs would render an all-Unmapped map even after P6-04. Two halves, one outcome: a user must be able to SEE how their product connects."
     }
   ]
