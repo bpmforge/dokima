@@ -451,7 +451,8 @@
         "Existing decompose tests unchanged; pnpm lint && typecheck && test green"
       ],
       "points": 5,
-      "status": "in_progress"
+      "status": "done",
+      "notes": "Landed 2026-08-31 (subagent on sw/p6-01 @ 83614b8, merged into sw/p6). packages/pipeline/src/decompose/: types.ts (Feature/FeatureConnection/FeatureGap; DecomposedPlan additively gains features?/featureGaps?/productMap?; connects_to snake_case), features.ts (deriveFeatures: story citations extracted by IMPORTING deriveRequirementIds from assembler/ledger — no second regex — restricted to the SRS denominator; union-find over shared citation; cross-feature seams become directed connects_to edges with 'seam <id>: producer -> consumer' reason — connect, never merge; feature id F-<lowest story> numeric-aware; storyless tickets land in F-unmapped, never dropped), featureGaps(features, requirementIds) reports ticket-serves-no-story AND story-has-no-feature (denominator passed explicitly — the ticket sketch's one-arg shape could not see dropped stories), product-map.ts renderProductMap (pure, deterministic, shouting Unmapped section + seam legend + connection table). decompose() consumes all of it when requirementIds/seams are passed — wiring REQUIRED by the validate-exports ratchet (46 -> 46). +21 tests. Wave gate after merge with P6-02/03: 5012 passed | 1 skipped (585 files)."
     },
     {
       "id": "P6-02",
