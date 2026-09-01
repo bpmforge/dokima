@@ -572,7 +572,7 @@
         "gate green"
       ],
       "points": 5,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-08-31. F3: berths claims listTickets(log) from the event-log DB seeded by persistDecomposedPlan; the goal loop measures and appends on CONFIG.boardPath JSON. GAP->proposal->drive is severed at the data plane, so --engine berths currently no-progress-halts. Until this lands, §12's 'the bootstrap can retire without the goal layer noticing' is aspiration, and the conductor engine stays the default."
     },
     {
