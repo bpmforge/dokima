@@ -648,7 +648,10 @@
       "title": "Berths path honors landing='per-feature' (the P6-05 port's named remainder)",
       "lane": "harbormaster",
       "write_scope": [
+        "apps/server/src/cli/run-build-berths.test.ts",
         "apps/server/src/cli/run-build-berths.ts",
+        "apps/server/src/cli/run-build.ts",
+        "packages/harbormaster/src/index.ts",
         "packages/harbormaster/src/loop-land.ts"
       ],
       "depends_on": ["P6-05"],
@@ -658,8 +661,8 @@
         "gate green"
       ],
       "points": 3,
-      "status": "todo",
-      "notes": "FILED 2026-08-31 (Challenger wave-2 F12: a follow-up naming no ticket id is a dropped finding). Site: run-build-berths.ts:88; today an honest stderr line says the run degrades to per-ticket."
+      "status": "done",
+      "notes": "FILED 2026-08-31 (Challenger wave-2 F12: a follow-up naming no ticket id is a dropped finding). Site: run-build-berths.ts:88; today an honest stderr line says the run degrades to per-ticket. SCOPE WIDENED at claim: the barrel must export the park/sweep for the CLI (registration, not new machinery); run-build.ts only to DELETE the F8 degrade line per acceptance; new test sibling. CLOSED 2026-09-01. executeBerthsRun now applies the SAME parkLandedTicketBranch after a berth's landClaimedTicket (per-feature only; outcome carries parkedForFeatureLanding) and runs landReadyFeatures at the idle exit — stopped/budget/error exits skip the sweep, parks are durable. Barrel exports the park/sweep (registration, now with a non-test caller). The F8 degrade line in run-build.ts is DELETED per acceptance. Red-capable fixture: berths=2, two lanes, one feature — both outcomes parked, featureLandings [F-1 landed], main first-parent delta EXACTLY 1 (per-ticket would be 2); RED proven by disabling the park (expected undefined to be true), restored green. Gate 5053."
     },
     {
       "id": "P6-12",

@@ -329,8 +329,6 @@ export async function executeBuildRun(
     // Wired on the sequential path; the berth engine still lands per-ticket.
     ...(landingRaw === 'per-feature' ? { landing: 'per-feature' as const } : {}),
   };
-  if (landingRaw === 'per-feature' && (command.berths ?? 1) > 1)
-    io.stderr('per-feature awaits P6-11 on berths — landing PER-TICKET');
   let result!: Omit<LandLoopResult, 'stopReason'> & { stopReason: string };
   try {
     result =
