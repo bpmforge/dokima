@@ -658,7 +658,7 @@
         "gate green"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": "FILED 2026-08-31 (Challenger wave-2 F12: a follow-up naming no ticket id is a dropped finding). Site: run-build-berths.ts:88; today an honest stderr line says the run degrades to per-ticket."
     },
     {
