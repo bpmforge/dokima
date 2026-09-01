@@ -66,6 +66,7 @@ import {
 import { lintPlan } from './conductor/lint.mjs';
 import { executeTicket } from './conductor/ticket.mjs';
 import { land, markBlocked, parkForSplit } from './conductor/land.mjs';
+import { tryFeatureLandings } from './conductor/feature-landing-wiring.mjs';
 import { waveSecurityPass } from './conductor/security.mjs';
 import { ensureBaseline } from './conductor/baseline.mjs';
 
@@ -227,9 +228,25 @@ async function main() {
     }
     lastWasInfra = false;
     if (res.ok) {
-      if (land(next, res.branch, res.wt) === 'parked') parkedThisRun.add(next.id);
+      const landOutcome = land(next, res.branch, res.wt);
+      if (landOutcome === 'parked') parkedThisRun.add(next.id);
+      // P6-02: in per-feature mode, every park is a chance a FEATURE just
+      // completed — try to land any feature whose tickets are all parked-done
+      // as ONE merge. Landed members leave parkedThisRun so the loop's
+      // bookkeeping matches the board.
+      if (CONFIG.landing === 'per-feature') {
+        const landedIds = await tryFeatureLandings();
+        for (const id of landedIds) parkedThisRun.delete(id);
+      }
       doneCount++;
-      log('ticket.done', { ticket: next.id, msg: `${doneCount} landed this run` });
+      // Challenger finding 8: a park is not a landing — say which it was.
+      log('ticket.done', {
+        ticket: next.id,
+        msg:
+          landOutcome === 'parked'
+            ? `${doneCount} processed this run (this one PARKED for feature landing — not on main yet)`
+            : `${doneCount} processed this run (landed on main)`,
+      });
       if (BREAKPOINT === 'ticket') {
         log('conductor.breakpoint', { msg: 'per-ticket breakpoint' });
         break;
@@ -253,7 +270,9 @@ async function main() {
     (m, t) => ((m[t.status] = (m[t.status] || 0) + 1), m),
     {},
   );
-  log('conductor.end', { msg: `landed=${doneCount} board=${JSON.stringify(counts)}` });
+  log('conductor.end', {
+    msg: `processed=${doneCount} still_parked=${parkedThisRun.size} board=${JSON.stringify(counts)}`,
+  });
 }
 
 main().catch((e) => {

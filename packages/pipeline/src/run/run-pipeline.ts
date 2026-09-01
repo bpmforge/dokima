@@ -32,6 +32,7 @@ import { isPathDeliverable, PHASES } from '../phases/topology.js';
 import type { TicketDraftInput } from '../decompose/types.js';
 import { buildTechnicalSlate } from '../decisions/technical-slate.js';
 import { decompose } from '../decompose/decompose.js';
+import { deriveRequirementIds } from '../assembler/ledger.js';
 import type { DecomposedPlan } from '../decompose/types.js';
 import { collectDrafts, isInterviewComplete } from '../interview/session.js';
 import type { PipelinePort, RunPipelineInput } from './types.js';
@@ -90,9 +91,7 @@ export class IncompleteInterviewSessionError extends Error {
  * it now lives once, beside the topology. A phase that later gains a document
  * is picked up here with no change.
  */
-function deliverableDrafts(
-  existing: readonly string[],
-): readonly TicketDraftInput[] {
+function deliverableDrafts(existing: readonly string[]): readonly TicketDraftInput[] {
   const have = new Set(existing);
   const drafts: TicketDraftInput[] = [];
   // PHASES is already in gate order, which is the order these must appear in:
@@ -176,7 +175,18 @@ export function runPipeline(input: RunPipelineInput, port: PipelinePort): Decomp
   // the call site that serves a person who may have no development experience
   // and would never think to ask for a security review — unlike
   // `buildFixBacklog`, whose input is already findings.
-  const plan = decompose(ticketDrafts, { includeQualityWork: true });
+  // P6-04: the feature map is not optional here. This is the product's own
+  // planning path, and a plan whose tickets carry no connection to the
+  // stories they serve is exactly the "bunch of tickets, no product shape"
+  // defect P6-01 built the map to prevent — built and unwired is our house
+  // failure mode (Law L4), so the denominator is passed at the ONLY call
+  // site that serves an end user's idea. Seams do not exist yet at
+  // blueprint time; the map records story-connections and F-unmapped now,
+  // and the seam edges join it when seams are declared.
+  const plan = decompose(ticketDrafts, {
+    includeQualityWork: true,
+    requirementIds: deriveRequirementIds(blueprint.document.markdown),
+  });
   port.emit({ kind: 'decomposed', ticketCount: plan.tickets.length });
 
   return plan;

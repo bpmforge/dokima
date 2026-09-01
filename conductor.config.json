@@ -85,6 +85,8 @@
   },
   "scopeCheckTimeoutSec": 120,
   "$waveNote": "P3-01 (OPT-09/OPT-12): Level-2 synthetic wave composition budgets, consumed by scripts/conductor/wave.mjs. maxChangedLines is the ~1000-line reviewability budget; highRiskGlobs reuses the unattendedRisk surface; highRiskMax keeps risk work on small waves (1-3).",
+  "$landingNote": "P6-02: 'per-ticket' (default) merges each done ticket; 'per-feature' PARKS done tickets (durable status 'parked' at ROOT) and lands a feature as ONE --no-ff merge of its synthetic wave branch once every ticket of the feature is parked — Tier-D verify + seam gate + drift checks first. SET BACK TO per-ticket 2026-08-31 by the P6 Challenger pass: the mode is mechanically fixed (durable park, restart-safe, blocked=waiting, refusal cleanup, merge-abort) but NOT yet production-trusted — P6-06 must land first (board-file self-conflict carve-out, intra-feature depends_on stacking + scope-gate interaction, restart e2e fixture). Measured motive stands: 22 of 30 first-parent commits were per-ticket merges.",
+  "landing": "per-ticket",
   "wave": {
     "maxTickets": 8,
     "maxChangedLines": 1000,

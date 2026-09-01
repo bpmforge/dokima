@@ -1,4 +1,6 @@
 export { decompose } from './decompose.js';
+export { deriveFeatures, featureGaps, UNMAPPED_FEATURE_ID } from './features.js';
+export { renderProductMap } from './product-map.js';
 export { deriveLanes, globOverlaps, writeScopesOverlap } from './lanes.js';
 export {
   findDependencyCycles,
@@ -10,6 +12,10 @@ export {
 export { renderMermaid } from './mermaid.js';
 export type {
   DecomposedAcceptanceCriterion,
+  Feature,
+  FeatureConnection,
+  FeatureGap,
+  FeatureGapKind,
   DecomposedPlan,
   DecomposedTicket,
   InterfaceRef,

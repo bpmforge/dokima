@@ -4,7 +4,12 @@
 // never model prose; the two halts are the goal-skill budget rules.
 
 import { describe, it, expect } from 'vitest';
-import { buildLedger, gapsToProposals, productLoop } from './product-loop.mjs';
+import {
+  buildLedger,
+  gapsToProposals,
+  makeDrivePort,
+  productLoop,
+} from './product-loop.mjs';
 
 const SRS =
   'The app shall let users sign in (US-1). Admins export data (US-2). FR-AUTH-1 governs sessions.';
@@ -220,5 +225,66 @@ describe('productLoop with the REAL assembler (integration)', () => {
     expect(r.done).toBe(true);
     expect(h.appended.flat().some((t) => t.long_tail === true)).toBe(true);
     expect(driven).toBe(1);
+  });
+});
+
+describe('makeDrivePort (P6-03) — one loop, two engines, same call', () => {
+  const recorder = () => {
+    const calls = [];
+    return { calls, spawn: (cmd, args) => void calls.push({ cmd, args }) };
+  };
+
+  it('conductor engine maps maxTickets to the bootstrap harness dial', () => {
+    const r = recorder();
+    makeDrivePort({ engine: 'conductor', spawn: r.spawn })({ maxTickets: 8 });
+    expect(r.calls).toEqual([
+      { cmd: 'node', args: ['scripts/conductor.mjs', '--max-tickets', '8'] },
+    ]);
+  });
+
+  it("berths engine drives the PRODUCT's own run-start path with its own dials", () => {
+    const r = recorder();
+    makeDrivePort({ engine: 'berths', spawn: r.spawn, projectId: 'proj-1', berths: 3 })({
+      maxTickets: 8,
+    });
+    const [{ cmd, args }] = r.calls;
+    expect(cmd).toBe('node');
+    expect(args[0]).toBe('apps/server/src/bootstrap/cli-entry.mjs');
+    expect(args.slice(1, 3)).toEqual(['run', 'start']);
+    expect(args).toContain('--project');
+    expect(args[args.indexOf('--berths') + 1]).toBe('3');
+    expect(args[args.indexOf('--breakpoint') + 1]).toBe('never');
+    // maxTickets is deliberately NOT smuggled into a berths dial
+    expect(args).not.toContain('8');
+  });
+
+  it('BOTH engines receive the drive call UNCHANGED from the loop', async () => {
+    for (const engine of ['conductor', 'berths']) {
+      let pass = 0;
+      const r = recorder();
+      const h = makePorts({
+        srs: 'Only US-1 exists.',
+        board: [],
+        provingTestsFor: () => (pass > 0 ? ['e2e/us1.spec.ts'] : []),
+        testExists: () => pass > 0,
+      });
+      h.ports.runConductor = (call) => {
+        pass++;
+        expect(call).toEqual({ maxTickets: 8 }); // identical shape either engine
+        makeDrivePort({ engine, spawn: r.spawn, projectId: 'p' })(call);
+      };
+      const res = await productLoop(h.ports);
+      expect(res.done).toBe(true);
+      expect(r.calls).toHaveLength(1); // the engine was actually driven
+    }
+  });
+
+  it('unknown engine and berths-without-project both refuse loudly', () => {
+    expect(() => makeDrivePort({ engine: 'warp', spawn: () => {} })).toThrow(
+      /conductor\|berths/,
+    );
+    expect(() => makeDrivePort({ engine: 'berths', spawn: () => {} })).toThrow(
+      /project id/,
+    );
   });
 });

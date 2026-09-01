@@ -430,6 +430,169 @@
       "points": 8,
       "status": "done",
       "notes": "Landed 2026-08-31. THE PRODUCT GOAL LOOP: scripts/conductor/product-loop.mjs (pure core, injected ports) + scripts/product-loop.mjs CLI (--status = measure-only). INVENTORY re-derived from SRS/USER_STORIES text every iteration; VERIFY = assemblyGate + green receipt on main (receipts outrank bookkeeping — tested); EXIT = both, 'done meaning done'; GAP -> PRD-/PRF- proposals + assembly + long-tail rows, tagged proposed_by=product-loop, dedup'd, subject to every conductor gate; BUDGET = iteration cap 5 + byte-identical-gap no-progress halt (a class shift uncovered->coded-not-done IS progress and correctly does not halt — tested both ways). Goal artifact = docs/work/requirement-ledger.json carrying {success, non_goals, acceptance, sourcesSha} + per-iteration history — the Cherny doctrine: done is a PREDICATE, the goal has NON-GOALS, and it survives compaction in a FILE. Vendor research (Cursor/Anthropic/OpenAI) confirmed the three universal mechanisms and all three are this module's skeleton (header cites them). WIRED THE PROMISED CALLERS: all four P3-05 @unreached markers deleted, zero-marker fixture assertion restored, ratchet unchanged at 46/45 with ZERO suppressions. 10 tests (9 unit w/ stub assembler + 1 real-assembler integration proving the long-tail wave is proposed and blocks DONE). Full gate 4979 green."
+    },
+    {
+      "id": "P6-01",
+      "title": "Feature map — stories connect to features, flows, and each other; the product has a SHAPE before tickets exist",
+      "lane": "packages",
+      "write_scope": [
+        "packages/pipeline/src/decompose/features.ts",
+        "packages/pipeline/src/decompose/features.test.ts",
+        "packages/pipeline/src/decompose/types.ts",
+        "packages/pipeline/src/decompose/index.ts",
+        "packages/pipeline/src/decompose/product-map.ts",
+        "packages/pipeline/src/decompose/product-map.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "DecomposedPlan gains features[]: {id, title, stories: [US/FR ids], tickets: [ids], seams: [ids], connects_to: [feature ids with a stated reason]} — every ticket belongs to exactly ONE feature (a lint gap otherwise), every story maps to >=1 feature, and story-to-story connection is expressed as feature edges with reasons",
+        "deriveFeatures(tickets, requirementIds): groups tickets into features by shared story citation + seam producer/consumer edges; a ticket citing no story lands in an explicit 'unmapped' feature that LINTS as a gap (a ticket serving no story is the A-1 class inverted)",
+        "renderProductMap(features, seams): docs artifact (PRODUCT_MAP.md content) — per feature: its stories, its tickets, its seams, and WHICH FEATURES IT CONNECTS TO and why (the 'how it all connects' plan) — pure renderer, deterministic, tested against a fixture",
+        "Existing decompose tests unchanged; pnpm lint && typecheck && test green"
+      ],
+      "points": 5,
+      "status": "done",
+      "notes": "Landed 2026-08-31 (subagent on sw/p6-01 @ 83614b8, merged into sw/p6). packages/pipeline/src/decompose/: types.ts (Feature/FeatureConnection/FeatureGap; DecomposedPlan additively gains features?/featureGaps?/productMap?; connects_to snake_case), features.ts (deriveFeatures: story citations extracted by IMPORTING deriveRequirementIds from assembler/ledger — no second regex — restricted to the SRS denominator; union-find over shared citation; cross-feature seams become directed connects_to edges with 'seam <id>: producer -> consumer' reason — connect, never merge; feature id F-<lowest story> numeric-aware; storyless tickets land in F-unmapped, never dropped), featureGaps(features, requirementIds) reports ticket-serves-no-story AND story-has-no-feature (denominator passed explicitly — the ticket sketch's one-arg shape could not see dropped stories), product-map.ts renderProductMap (pure, deterministic, shouting Unmapped section + seam legend + connection table). decompose() consumes all of it when requirementIds/seams are passed — wiring REQUIRED by the validate-exports ratchet (46 -> 46). +21 tests. Wave gate after merge with P6-02/03: 5012 passed | 1 skipped (585 files)."
+    },
+    {
+      "id": "P6-02",
+      "title": "Feature-grouped landing — ONE merge per feature via the wave train, not one PR per ticket",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/conductor/land.mjs",
+        "scripts/conductor/feature-landing.mjs",
+        "scripts/conductor/feature-landing.test.mjs",
+        "scripts/conductor.mjs",
+        "conductor.config.json"
+      ],
+      "depends_on": ["P3-01", "P3-04"],
+      "acceptance": [
+        "conductor.config.json gains landing: 'per-ticket'|'per-feature' (default per-ticket for back-compat; per-feature is the optimized path). In per-feature mode, a done ticket PARKS its branch instead of merging; when every ticket of its feature is parked-done, the feature lands as ONE wave: composeWave over the feature's branches -> buildSyntheticBranch -> Tier-D verify receipt on the synthetic head -> runMergeTrain -> writeWavePacket — one no-ff merge per feature on main",
+        "A feature with a still-open ticket never partially lands; a member that moved after the feature wave passed halts the train (P3-04 semantics reused, not reimplemented)",
+        "featureOf(ticket, features) resolves from the board's features[] when present, falling back to the wave prefix — measured on the real board in a test",
+        "pnpm lint && typecheck && test green"
+      ],
+      "points": 8,
+      "status": "done",
+      "notes": "Landed 2026-08-31. feature-landing.mjs (pure policy) + feature-landing-wiring.mjs (production composition) + land() park path + main-loop hook. landing='per-feature' (SET for this board): done tickets PARK; a feature lands as EXACTLY ONE --no-ff merge of its synthetic wave branch once every member is parked-done — real-git test asserts first-parent count +1 and both members' files on main. Guards, all reused not reimplemented: composeWave whole-or-nothing, buildSyntheticBranch conflict = whole-feature refusal, Tier-D verify receipt on the synthetic head (same mintReceipt wrapper), seam gate computed ON THE SYNTHETIC HEAD via async seamGapsFor (first draft had seamGaps:[] with a lying comment — caught in self-review, made honest), waveInvalidation member drift + main-advanced check both refuse with main untouched (tested). featureOf: board features[] wins, wave-prefix cohort fallback (proven against the real board). 8 tests. Full gate 4987 green. AMENDED by the 2026-08-31 Challenger pass (9 findings, 2 CRITICAL): parking was NOT durable — 'done' lives only on the branch board, so parkedCandidates saw nothing forever (F1) and a restart re-claimed + branch-D'd parked reviewed work (F2). FIXED: park now writes status='parked' at ROOT + commits (not claimable, survives restart); blocked members hold the feature in WAITING (F5); refusals clean up the synthetic worktree/branch and the final merge aborts safely on failure (F7); reporting says parked vs landed (F8). MODE SET BACK TO per-ticket until P6-06 lands the remaining production hazards (board-file self-conflict, intra-feature depends_on stacking)."
+    },
+    {
+      "id": "P6-03",
+      "title": "One execution stack: the product goal loop drives Dokima's OWN engine (berths), and the roles get their names",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/product-loop.mjs",
+        "scripts/conductor/product-loop.mjs",
+        "scripts/conductor/product-loop.test.mjs",
+        "docs/ARCHITECTURE.md"
+      ],
+      "depends_on": ["P5-01"],
+      "acceptance": [
+        "product-loop CLI gains --engine conductor|berths: berths drives the PRODUCT's own engine (node apps/server CLI run-build path / run-build-berths) as the DRIVE step instead of the shell conductor — the goal loop is engine-agnostic through the same injected port (test proves both engines receive the drive call unchanged)",
+        "docs/ARCHITECTURE.md names the role mapping in one table: GOAL = product-loop (exit predicate: assemblyGate + receipt) · ORCHESTRATOR = conductor / land-loop · BOTS = berths (N workers, per-berth identity, governor-admitted) · REVIEW PANEL = wave-review Tier-A · HONESTY LOOPS = Wiggum (coverage: the requirement ledger IS the inventory) + Challenger (veracity: citation gate + adversarial review), and states the two-stack rule: scripts/conductor is the BOOTSTRAP harness, the product engine is the PRODUCT — new capability lands in the product first or names the follow-up ticket",
+        "pnpm lint && typecheck && test green"
+      ],
+      "points": 5,
+      "status": "done",
+      "notes": "Landed 2026-08-31. makeDrivePort(engine, spawn, projectId, berths) in conductor/product-loop.mjs: conductor -> scripts/conductor.mjs --max-tickets N; berths -> the PRODUCT's own engine (apps/server cli-entry run start --breakpoint never --berths N --actor product-loop, i.e. executeBuildRun -> runBerths + GlobalBerthGovernor + landClaimedTicket). maxTickets is deliberately NOT repurposed as a berths dial (a cap silently meaning something else is the A-1 class) — the governor + budget bound the iteration; test pins '8' absent from the berths argv. Test proves BOTH engines receive the drive call UNCHANGED ({maxTickets:8} asserted inside the port for each engine, through the full productLoop). Unknown engine + berths-without-project refuse loudly (tested + CLI-smoked). CLI: --engine conductor|berths, --project-id, --berths. docs/ARCHITECTURE.md §12: canonical role table (GOAL=product-loop exit predicate; ORCHESTRATOR=conductor/land-loop decides sequence never doneness; BOTS=berths untrusted by construction; REVIEW PANEL=wave-review advisory-by-L2; HONESTY LOOPS=Wiggum coverage + Challenger veracity) + the two-stack rule: scripts/conductor is BOOTSTRAP, the server engine is the PRODUCT, new capability lands in the product first or names the port ticket (L11 dogfood symmetry). Gate: 4991 passed. AMENDED by the Challenger (F3): the argv is runnable and the port contract holds, but the berths engine claims from the event-log DB seeded by persistDecomposedPlan — it CANNOT see the JSON conductor board the goal loop measures and appends proposals to, so a berths-driven iteration currently changes nothing and the loop no-progress-halts. §12's 'bootstrap can retire' is aspiration until P6-07 bridges the boards."
+    },
+    {
+      "id": "P6-04",
+      "title": "Wire the feature map into the product's own planning path (L4 catch from the P6 Wiggum pass)",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/run/run-pipeline.ts",
+        "packages/pipeline/src/run/run-pipeline.test.ts"
+      ],
+      "depends_on": ["P6-01"],
+      "acceptance": [
+        "run-pipeline's decompose() call passes the blueprint-derived requirement denominator so plan.features/productMap materialize in the PRODUCT pipeline, not only in the bootstrap",
+        "test: a story-citing blueprint yields F-US-* and a rendered map; a story-less one still gets the map with Unmapped shouting",
+        "gate green"
+      ],
+      "points": 1,
+      "status": "done",
+      "notes": "Found and fixed in the same Wiggum pass that P6 mandated: P6-01 shipped deriveFeatures/renderProductMap and the ONLY production decompose() call (run-pipeline.ts:179, the path serving an end user's idea) passed no requirementIds — the map could never materialize for a real project. Law L4, 6th instance of built-but-unwired. Fix: deriveRequirementIds(blueprint.document.markdown) at the call site; seams do not exist at blueprint time (recorded in the comment — edges join when declared). +2 tests (story-citing blueprint -> F-US-1 in plan.features + productMap; story-less -> map still present, Unmapped shouting). Gate 5014 green. AMENDED by the Challenger (F4): the map is computed then DROPPED — run-job persists only tickets/violations/mermaid and nothing serves productMap; and no pipeline prompt instructs the model to emit US-/FR- ids, so the real-run denominator is likely empty. P6-08 covers persistence + prompt emission. The wiring itself is correct and tested."
+    },
+    {
+      "id": "P6-05",
+      "title": "Port feature-grouped landing into the PRODUCT engine (the two-stack rule's named port ticket for P6-02)",
+      "lane": "harbormaster",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-board.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "depends_on": ["P6-02"],
+      "acceptance": [
+        "landClaimedTicket gains a per-feature park mode equivalent to scripts/conductor's landing='per-feature': done tickets park their branches; a feature whose members are all parked-done lands as ONE merge of a synthetic branch verified whole (receipt on the synthetic head, drift + seam refusals leave main untouched)",
+        "the product board schema carries features[] (P6-01's map is the source) and the run CLI exposes the landing mode as a per-project setting (Law L11)",
+        "gate green incl. red fixtures for the refusal paths"
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": "FILED (not implemented) 2026-08-31 by the P6 honesty pass. ARCHITECTURE.md §12's two-stack rule says new capability lands in the product first OR names the port ticket — P6-02 landed feature-grouped landing in the bootstrap conductor only, so this is the named port. Design questions a claimant must answer before coding: how the product board declares features (decompose() now emits them — persist to the board schema), where parked branches live per-berth, and how the governor treats a berth idling on a waiting feature. Founder priority call: this reworks the product's landing path."
+    },
+    {
+      "id": "P6-06",
+      "title": "Harden per-feature landing to production trust (Challenger F1/F2/F6 + dependency stacking)",
+      "lane": "scripts",
+      "write_scope": [
+        "scripts/conductor/wave.mjs",
+        "scripts/conductor/feature-landing.mjs",
+        "scripts/conductor/feature-landing-wiring.mjs",
+        "scripts/conductor/feature-landing.test.mjs",
+        "scripts/conductor/worktree.mjs",
+        "scripts/conductor-lib/claim.mjs"
+      ],
+      "depends_on": ["P6-02"],
+      "acceptance": [
+        "board-file carve-out: member branches all edit docs/work/pipeline-board.json adjacent rows — buildSyntheticBranch resolves conflicts confined to the board file deterministically (ROOT's version wins; the post-land board write is the truth), any other conflict still refuses; real-git fixture with two members editing adjacent board rows lands as one merge",
+        "intra-feature depends_on: a claimant whose dependency is 'parked' bases its worktree on (or merges) the parked branch, and the scope/differential gates diff against the stacked base so the dependency's files do not read as out-of-scope",
+        "restart e2e fixture: park 2 of 3 members, kill, restart — parked branches survive, no re-claim, third member completes, feature lands as ONE merge",
+        "only after all three: conductor.config.json landing may be set to 'per-feature'"
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": "FILED 2026-08-31 by the P6 Challenger pass. The mechanical defects (durable park, restart safety, blocked=waiting, refusal cleanup, merge abort) are already fixed on sw/p6; these three are the remaining hazards that make the mode untrustworthy in production, so the config ships per-ticket until this lands. F6 detail: composeWave's disjoint write_scope cannot cover the board file every branch must edit; without the carve-out the very first multi-ticket feature wedges permanently."
+    },
+    {
+      "id": "P6-07",
+      "title": "Bridge the goal loop's board to the berths engine (Challenger F3 — the data plane behind --engine berths)",
+      "lane": "pipeline",
+      "write_scope": [
+        "scripts/product-loop.mjs",
+        "apps/server/src/api/pipeline/board-lifecycle.ts",
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "depends_on": ["P6-03"],
+      "acceptance": [
+        "product-loop proposals (PRD-/PRF-/assembly/long-tail rows) reach the board the berths engine actually claims from (the event-log DB via the EXISTING board verbs — never a direct DB write), or the loop reads/writes THAT board natively when --engine berths",
+        "an integration test drives one loop iteration against a seeded product DB and shows a proposal claimed by the engine",
+        "gate green"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": "FILED 2026-08-31. F3: berths claims listTickets(log) from the event-log DB seeded by persistDecomposedPlan; the goal loop measures and appends on CONFIG.boardPath JSON. GAP->proposal->drive is severed at the data plane, so --engine berths currently no-progress-halts. Until this lands, §12's 'the bootstrap can retire without the goal layer noticing' is aspiration, and the conductor engine stays the default."
+    },
+    {
+      "id": "P6-08",
+      "title": "The product map must SURVIVE planning: persist + serve it, and make the prompts emit story ids (Challenger F4)",
+      "lane": "pipeline",
+      "write_scope": [
+        "packages/pipeline/src/run/run-job.ts",
+        "apps/server/src/api/pipeline/board-lifecycle.ts",
+        "packages/pipeline/src/run/run-pipeline.ts"
+      ],
+      "depends_on": ["P6-04"],
+      "acceptance": [
+        "plan.features/featureGaps/productMap persist onto the run record and the generated project receives docs/PRODUCT_MAP.md (or equivalent surfaced artifact)",
+        "the blueprint/ticket-draft prompts instruct the model to cite US-/FR- ids so the real-run denominator is non-empty; a fixture proves a synthesized blueprint yields at least one mapped feature",
+        "gate green"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": "FILED 2026-08-31. F4: the map is computed at decompose() then dropped — run-job persists tickets/violations/mermaid only, and no prompt asks the model for US-/FR- ids, so real runs would render an all-Unmapped map even after P6-04. Two halves, one outcome: a user must be able to SEE how their product connects."
     }
   ]
 }
