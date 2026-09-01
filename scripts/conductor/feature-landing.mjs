@@ -109,6 +109,9 @@ export async function landFeature({ featureId, members, boardTickets, deps }) {
     worktreeDir: deps.worktreeDir,
     name: `wave/feature-${featureId.toLowerCase().replace(/[^a-z0-9-]+/g, '-')}`,
     gitRun: deps.gitRun,
+    // P6-06: conflicts confined to the board file resolve to the base's
+    // version (ROOT's park/done writes are the truth); code conflicts refuse.
+    metadataPaths: deps.metadataPaths ?? [],
   });
   if (record.conflicted.length) {
     return {

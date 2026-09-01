@@ -4,7 +4,8 @@
 
 import { resolve } from 'node:path';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
-import { CONFIG, WT_BASE, DRY, log, sh, git } from './context.mjs';
+import { CONFIG, WT_BASE, DRY, log, sh, git, loadPlan } from './context.mjs';
+import { stackParkedDeps } from './wave.mjs';
 
 // ---------- worktree lifecycle ----------
 export function makeWorktree(t) {
@@ -12,11 +13,58 @@ export function makeWorktree(t) {
   const wt = resolve(WT_BASE, t.id);
   // Best-effort pre-clean of a stale worktree/branch left by a prior crashed
   // run; the common case is that none of these exist yet, which is fine.
-  try { git('worktree', 'remove', '--force', wt); } catch { /* intentional: no prior worktree to remove */ }
-  try { rmSync(wt, { recursive: true, force: true }); } catch { /* intentional: no prior worktree dir on disk */ }
-  try { git('branch', '-D', branch); } catch { /* intentional: no prior branch to delete */ }
+  try {
+    git('worktree', 'remove', '--force', wt);
+  } catch {
+    /* intentional: no prior worktree to remove */
+  }
+  try {
+    rmSync(wt, { recursive: true, force: true });
+  } catch {
+    /* intentional: no prior worktree dir on disk */
+  }
+  try {
+    git('branch', '-D', branch);
+  } catch {
+    /* intentional: no prior branch to delete */
+  }
   mkdirSync(WT_BASE, { recursive: true });
   git('worktree', 'add', '-q', '-b', branch, wt, 'main');
+  // P6-06: per-feature landing stacks PARKED dependencies onto the claim
+  // base so the dependent can build on work that is not on main yet. The
+  // post-stack HEAD becomes scopeBase — every scope/review diff uses it, or
+  // the dependency's files would read as this ticket's out-of-scope edits.
+  let scopeBase = 'main';
+  if (CONFIG.landing === 'per-feature' && (t.depends_on ?? []).length) {
+    const stackRes = stackParkedDeps({
+      ticket: t,
+      plan: loadPlan(),
+      wt,
+      branchPrefix: CONFIG.branchPrefix,
+      gitRun: (args, opts) => sh('git', args, opts).toString(),
+      boardPath: CONFIG.boardPath,
+    });
+    if (stackRes.failed) {
+      try {
+        git('worktree', 'remove', '--force', wt);
+      } catch {
+        /* best effort */
+      }
+      try {
+        git('branch', '-D', branch);
+      } catch {
+        /* best effort */
+      }
+      return { branch, wt, scopeBase: null, stackFailed: stackRes.failed };
+    }
+    if (stackRes.stacked.length) {
+      scopeBase = stackRes.scopeBase;
+      log('worktree.stacked', {
+        ticket: t.id,
+        msg: `parked dep(s) ${stackRes.stacked.join(', ')} stacked; scopeBase ${scopeBase.slice(0, 12)}`,
+      });
+    }
+  }
   // Provision the tree the AGENT works in.
   //
   // CONFIG.install also runs in runGates(), but that is the conductor's own
@@ -34,17 +82,30 @@ export function makeWorktree(t) {
   if (!DRY && existsSync(resolve(wt, CONFIG.toolchainMarker))) {
     try {
       sh(CONFIG.install[0], CONFIG.install[1], { cwd: wt, timeout: 10 * 60_000 });
-      log('worktree.install', { ticket: t.id, msg: 'dependencies installed for the agent session' });
+      log('worktree.install', {
+        ticket: t.id,
+        msg: 'dependencies installed for the agent session',
+      });
     } catch (e) {
-      log('worktree.install.warn', { ticket: t.id, msg: String(e.stdout || e.message).slice(-300) });
+      log('worktree.install.warn', {
+        ticket: t.id,
+        msg: String(e.stdout || e.message).slice(-300),
+      });
     }
   }
-  return { branch, wt };
+  return { branch, wt, scopeBase };
 }
 export function removeWorktree(wt) {
   // Best-effort teardown after landing/blocking a ticket; the worktree may
   // already be gone (e.g. a re-run after a partial failure).
-  try { git('worktree', 'remove', '--force', wt); } catch { /* intentional: worktree already removed */ }
-  try { rmSync(wt, { recursive: true, force: true }); } catch { /* intentional: dir already gone */ }
+  try {
+    git('worktree', 'remove', '--force', wt);
+  } catch {
+    /* intentional: worktree already removed */
+  }
+  try {
+    rmSync(wt, { recursive: true, force: true });
+  } catch {
+    /* intentional: dir already gone */
+  }
 }
-

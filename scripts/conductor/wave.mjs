@@ -114,6 +114,7 @@ export function buildSyntheticBranch({
   worktreeDir,
   name,
   gitRun,
+  metadataPaths = [],
 }) {
   const stamp = createHash('sha256')
     .update(members.map((m) => `${m.id}@${m.headSha}`).join('|'))
@@ -142,13 +143,20 @@ export function buildSyntheticBranch({
   const merged = [];
   const conflicted = [];
   for (const m of members) {
-    try {
-      gitRun(['merge', '--no-ff', '-q', '-m', `wave: ${m.id}`, m.branch], { cwd: wt });
-    } catch {
-      gitRun(['merge', '--abort'], { cwd: wt });
+    // P6-06: conflicts confined to metadataPaths (the board file) resolve
+    // deterministically to the base's version; ANY other conflict still
+    // excludes the member — feature work is never auto-resolved.
+    const mres = mergeWithMetadataCarveOut({
+      gitRun,
+      cwd: wt,
+      branch: m.branch,
+      message: `wave: ${m.id}`,
+      metadataPaths,
+    });
+    if (!mres.merged) {
       conflicted.push({
         id: m.id,
-        reason: `merge conflict vs ${merged.length ? 'earlier wave members' : base} — excluded, not hand-resolved (no feature work on the synthetic branch)`,
+        reason: `merge conflict vs ${merged.length ? 'earlier wave members' : base} (${mres.conflictFiles.join(', ') || 'unknown files'}) — excluded, not hand-resolved (no feature work on the synthetic branch)`,
       });
       continue;
     }
@@ -161,6 +169,27 @@ export function buildSyntheticBranch({
       );
     }
     merged.push({ id: m.id, headSha: m.headSha });
+  }
+  // P6-06: metadata files are reset to the BASE'S version by construction —
+  // not only on conflict. A member whose stale board merges CLEAN would
+  // otherwise carry it onto main and silently revert OTHER features' rows
+  // (parked/done written at ROOT after the member forked). Board truth is
+  // written at ROOT; the branch copies are bookkeeping history.
+  if (metadataPaths.length && merged.length) {
+    gitRun(['checkout', base, '--', ...metadataPaths], { cwd: wt });
+    const metaDirty = gitRun(['status', '--porcelain'], { cwd: wt }).trim();
+    if (metaDirty) {
+      gitRun(['add', '--', ...metadataPaths], { cwd: wt });
+      gitRun(
+        [
+          'commit',
+          '-q',
+          '-m',
+          `wave: metadata reset to ${base} (ROOT board is the truth)`,
+        ],
+        { cwd: wt },
+      );
+    }
   }
   const headSha = gitRun(['rev-parse', 'HEAD'], { cwd: wt }).trim();
   return {
@@ -191,4 +220,96 @@ export function waveInvalidation(waveRecord, currentHeads) {
       .filter((m) => !invalid.some((i) => i.id === m.id))
       .map((m) => m.id),
   };
+}
+
+/**
+ * P6-06: merge `branch` into the tree at `cwd`, with ONE deterministic
+ * carve-out — a conflict confined entirely to `metadataPaths` (the board
+ * file every ticket branch must edit) resolves to OURS: the base/ROOT
+ * version wins, because board truth is written at ROOT by park/land and the
+ * branch's copy is bookkeeping history, not work. Any conflict touching a
+ * non-metadata file aborts and reports — feature work is NEVER auto-resolved.
+ * Returns { merged: bool, conflictFiles: [] } — conflictFiles only on abort.
+ */
+export function mergeWithMetadataCarveOut({
+  gitRun,
+  cwd,
+  branch,
+  message,
+  metadataPaths = [],
+}) {
+  try {
+    gitRun(['merge', '--no-ff', '-q', '-m', message, branch], { cwd });
+    return { merged: true, conflictFiles: [] };
+  } catch {
+    let conflictFiles = [];
+    try {
+      conflictFiles = gitRun(['diff', '--name-only', '--diff-filter=U'], { cwd })
+        .split('\n')
+        .filter(Boolean);
+    } catch {
+      /* diff unavailable — treat as non-metadata conflict below */
+    }
+    const meta = new Set(metadataPaths);
+    if (conflictFiles.length && conflictFiles.every((f) => meta.has(f))) {
+      gitRun(['checkout', '--ours', '--', ...conflictFiles], { cwd });
+      gitRun(['add', '--', ...conflictFiles], { cwd });
+      gitRun(['commit', '-q', '--no-edit'], { cwd });
+      return { merged: true, conflictFiles: [] };
+    }
+    try {
+      gitRun(['merge', '--abort'], { cwd });
+    } catch {
+      /* no in-progress merge */
+    }
+    return { merged: false, conflictFiles };
+  }
+}
+
+/**
+ * P6-06: intra-feature dependency stacking. Under per-feature landing a
+ * dependency that is PARKED is done-on-its-branch but absent from main, so a
+ * dependent claimed off main cannot build on it. This merges every parked
+ * dependency's branch onto the fresh claim worktree BEFORE the agent runs,
+ * and returns the post-stack HEAD as `scopeBase` — the base every scope and
+ * review diff must use, or the dependency's files read as out-of-scope work.
+ * A stack conflict refuses the CLAIM (human integrates); nothing is charged.
+ */
+export function stackParkedDeps({ ticket, plan, wt, branchPrefix, gitRun, boardPath }) {
+  const stacked = [];
+  const preStackSha = gitRun(['rev-parse', 'HEAD'], { cwd: wt }).trim();
+  for (const depId of ticket.depends_on ?? []) {
+    const row = plan.tickets.find((t) => t.id === depId);
+    if (row?.status !== 'parked') continue;
+    const depBranch = `${branchPrefix}${depId.toLowerCase()}`;
+    const res = mergeWithMetadataCarveOut({
+      gitRun,
+      cwd: wt,
+      branch: depBranch,
+      message: `stack: parked dependency ${depId} (per-feature landing)`,
+      metadataPaths: boardPath ? [boardPath] : [],
+    });
+    if (!res.merged) {
+      return {
+        stacked,
+        scopeBase: null,
+        failed: `stack conflict: parked dependency ${depId} (${depBranch}) does not merge onto the claim base (conflicts: ${res.conflictFiles.join(', ') || 'unknown'}) — human integrates; nothing charged to this ticket`,
+      };
+    }
+    stacked.push(depId);
+  }
+  // Same rule as the synthetic build: the CLAIM BASE's board survives the
+  // stack by construction — the dep's branch-board is history, ROOT's park
+  // rows are the truth the agent must start from.
+  if (boardPath && stacked.length) {
+    gitRun(['checkout', preStackSha, '--', boardPath], { cwd: wt });
+    if (gitRun(['status', '--porcelain'], { cwd: wt }).trim()) {
+      gitRun(['add', '--', boardPath], { cwd: wt });
+      gitRun(['commit', '-q', '-m', 'stack: board reset to claim base (ROOT truth)'], {
+        cwd: wt,
+      });
+    }
+  }
+  const scopeBase = gitRun(['rev-parse', 'HEAD'], { cwd: wt }).trim();
+  return { stacked, scopeBase, failed: null };
 }

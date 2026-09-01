@@ -100,6 +100,7 @@ export async function tryFeatureLandings() {
         // Seam gaps computed against the SYNTHETIC head landFeature builds.
         seamGapsFor: (record) => seamGapsFor(plan, record.wt),
         waveCfg: CONFIG.wave ?? {},
+        metadataPaths: [CONFIG.boardPath],
         worktreeDir: resolve(ROOT, CONFIG.worktreeDir ?? '../.shipwright-worktrees'),
         packetDir: resolve(ROOT, `docs/work/attempt-evidence/${r.featureId}`),
         gitRun: (a, o) => sh('git', a, o).toString(),

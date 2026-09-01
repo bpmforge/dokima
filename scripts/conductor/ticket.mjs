@@ -35,7 +35,13 @@ import { makeWorktree } from './worktree.mjs';
 
 // ---------- per-ticket flow ----------
 export async function executeTicket(t) {
-  const { branch, wt } = makeWorktree(t);
+  const { branch, wt, scopeBase, stackFailed } = makeWorktree(t);
+  if (stackFailed) {
+    // P6-06: a parked dependency's branch does not merge onto the claim base.
+    // Nothing ran, nothing is charged — the ticket blocks with the evidence
+    // and a human integrates (the same posture as land()'s conflict path).
+    return { ok: false, branch, wt, gaps: [stackFailed], terminal: null };
+  }
   const attempts = [pickModel(t), pickModel(t), ...(ESCALATE ? [MODELS.escalate] : [])];
   let gaps = null;
   // Sticky findings: every HIGH/CRITICAL ever raised on this ticket, tracked to
@@ -82,7 +88,7 @@ export async function executeTicket(t) {
       }
       throw e; // STOP file / infra: the main loop's classifier owns it
     }
-    let g = runGates(t, branch, wt);
+    let g = runGates(t, branch, wt, scopeBase);
     // P2-03 — bounded mechanical remediation, ONCE per ticket: when every
     // failed verify command has an approved autofix and the failure is not
     // the base's own (blocked_on_baseline goes to the differential path),
@@ -110,7 +116,7 @@ export async function executeTicket(t) {
             ticket: t.id,
             msg: `mechanical fix applied to ${res.changed.length} file(s) — re-running gates; no attempt consumed`,
           });
-          g = runGates(t, branch, wt);
+          g = runGates(t, branch, wt, scopeBase);
         } else if (res.rejected?.length) {
           log('ticket.remediation-rejected', {
             ticket: t.id,
@@ -231,7 +237,7 @@ export async function executeTicket(t) {
       continue;
     }
 
-    const diff = git('diff', `main...${branch}`).slice(0, 180_000);
+    const diff = git('diff', `${scopeBase ?? 'main'}...${branch}`).slice(0, 180_000);
     const r = await runSession(
       reviewPrompt(t, diff, sticky, g.advisory),
       MODELS.reviewer,

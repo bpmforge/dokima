@@ -6,8 +6,21 @@
 
 import { wave } from './parsing.mjs';
 
-export function claimableTickets(plan, { waves = null, hold = [], excluded = [] } = {}) {
-  const done = new Set(plan.tickets.filter((t) => t.status === 'done').map((t) => t.id));
+export function claimableTickets(
+  plan,
+  { waves = null, hold = [], excluded = [], parkedSatisfiesDeps = false } = {},
+) {
+  // P6-06: under per-feature landing a PARKED dependency is done-on-its-branch
+  // and the claimant's worktree STACKS that branch (stackParkedDeps), so the
+  // dependency's code is present. Without the flag, parked never satisfies —
+  // the dependent would build against a main that lacks the work.
+  const done = new Set(
+    plan.tickets
+      .filter(
+        (t) => t.status === 'done' || (parkedSatisfiesDeps && t.status === 'parked'),
+      )
+      .map((t) => t.id),
+  );
   const busyLanes = new Set(
     plan.tickets.filter((t) => t.status === 'in_progress').map((t) => t.lane),
   );

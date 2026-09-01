@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { featureOf, featuresReadyToLand, landFeature } from './feature-landing.mjs';
+import { claimableTickets } from '../conductor-lib.mjs';
 import { composeWave, buildSyntheticBranch, waveInvalidation } from './wave.mjs';
 
 const T = (id, over = {}) => ({
@@ -197,5 +198,96 @@ describe('landFeature on a real repo (P6-02) — ONE merge per feature', () => {
     });
     expect(r.landed).toBe(false);
     expect(r.reason).toContain('seam gate open');
+  });
+});
+
+describe('P6-06 — restart semantics across the real modules', () => {
+  let repo, wtBase;
+  const g = (args, opts = {}) =>
+    execFileSync('git', args, {
+      cwd: opts.cwd ?? repo,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  const commit = (msg, cwd = repo) =>
+    execFileSync(
+      'git',
+      ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', msg],
+      { cwd },
+    );
+  const mkBranch = (name, file) => {
+    g(['checkout', '-q', '-b', name, 'main']);
+    mkdirSync(join(repo, file.split('/')[0]), { recursive: true });
+    writeFileSync(join(repo, file), `${name}\n`);
+    g(['add', '.']);
+    commit(name);
+    const sha = g(['rev-parse', 'HEAD']).trim();
+    g(['checkout', '-q', 'main']);
+    return sha;
+  };
+
+  beforeEach(() => {
+    repo = mkdtempSync(join(tmpdir(), 'p606-restart-'));
+    wtBase = mkdtempSync(join(tmpdir(), 'p606-restart-wt-'));
+    g(['init', '-q', '-b', 'main']);
+    writeFileSync(join(repo, 'base.txt'), 'base\n');
+    g(['add', '.']);
+    commit('base');
+  });
+  afterEach(() => {
+    for (const d of [repo, wtBase]) rmSync(d, { recursive: true, force: true });
+  });
+
+  it('park 2 of 3 → "restart" (fresh in-memory state) → no re-claim, feature WAITS; third parks → ONE merge lands all three', async () => {
+    // Two members parked before the crash: durable 'parked' rows + live branches.
+    const shaA = mkBranch('sw/f-01', 'a/f.txt');
+    const shaB = mkBranch('sw/f-02', 'b/f.txt');
+    const board = [
+      T('F-01', { status: 'parked', write_scope: ['a/**'] }),
+      T('F-02', { status: 'parked', write_scope: ['b/**'] }),
+      T('F-03', { write_scope: ['c/**'] }), // still todo at the crash
+    ];
+
+    // RESTART: a fresh process has NO parkedThisRun memory — only the board.
+    // The parked rows are not claimable (a re-claim would branch -D the
+    // reviewed work); the todo member is.
+    const claimables = claimableTickets({ tickets: board });
+    expect(claimables.map((t) => t.id)).toEqual(['F-03']);
+
+    // And the feature WAITS rather than landing 2/3.
+    const parked = [
+      { id: 'F-01', branch: 'sw/f-01', headSha: shaA },
+      { id: 'F-02', branch: 'sw/f-02', headSha: shaB },
+    ];
+    const wait = featuresReadyToLand({ parked, boardTickets: board });
+    expect(wait.ready).toEqual([]);
+    expect(wait.waiting[0].openTickets).toEqual(['F-03']);
+
+    // The third member completes and parks; NOW the feature is whole.
+    const shaC = mkBranch('sw/f-03', 'c/f.txt');
+    board[2].status = 'parked';
+    const all = [...parked, { id: 'F-03', branch: 'sw/f-03', headSha: shaC }];
+    const { ready } = featuresReadyToLand({ parked: all, boardTickets: board });
+    expect(ready).toHaveLength(1);
+
+    const before = Number(g(['rev-list', '--count', '--first-parent', 'main']).trim());
+    const result = await landFeature({
+      featureId: ready[0].featureId,
+      members: ready[0].members,
+      boardTickets: board,
+      deps: {
+        composeWave,
+        buildSyntheticBranch,
+        waveInvalidation,
+        verifySynthetic: () => ({ green: true }),
+        waveCfg: { maxTickets: 8, maxChangedLines: 10000 },
+        worktreeDir: wtBase,
+        gitRun: (a, o) => g(a, o),
+      },
+    });
+    expect(result.landed).toBe(true);
+    const after = Number(g(['rev-list', '--count', '--first-parent', 'main']).trim());
+    expect(after - before).toBe(1); // EXACTLY ONE merge for all three survivors
+    for (const f of ['a/f.txt', 'b/f.txt', 'c/f.txt']) g(['show', `HEAD:${f}`]);
   });
 });
