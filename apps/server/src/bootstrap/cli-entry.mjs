@@ -47,6 +47,18 @@ if (unsupported) {
 }
 
 if (existsSync(bundle)) {
+  // P6-16: preference is doctrine (W9-13); silence is not. A bundle older
+  // than this checkout's history says so before any command runs.
+  try {
+    const { staleBundleNotice } = await import('./bundle-age.mjs');
+    const notice = staleBundleNotice({
+      bundlePath: bundle,
+      repoRoot: path.resolve(here, '..', '..', '..', '..'),
+    });
+    if (notice) console.error(notice);
+  } catch {
+    /* the notice must never break the boot it decorates */
+  }
   try {
     await import(pathToFileURL(bundle).href);
   } catch (err) {
