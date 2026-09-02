@@ -762,8 +762,26 @@
         "gate green with a red-capable fixture"
       ],
       "points": 2,
-      "status": "in_progress",
-      "notes": "FILED+CLAIMED 2026-09-02 from the live UI proof: an Aug-31 dist/main.js served three shipped fixes' worth of stale code across four runs — cli-entry prefers the bundle BY DESIGN (W9-13: the person most likely to notice a broken bundle must exercise it), and that doctrine is kept; the defect is the SILENCE. Cost measured: four parks, one model reload cycle, an evening."
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-09-02 from the live UI proof: an Aug-31 dist/main.js served three shipped fixes' worth of stale code across four runs — cli-entry prefers the bundle BY DESIGN (W9-13: the person most likely to notice a broken bundle must exercise it), and that doctrine is kept; the defect is the SILENCE. Cost measured: four parks, one model reload cycle, an evening. CLOSED 2026-09-02. bundle-age.mjs: staleBundleNotice — in a git checkout, a bundle with newer commits behind it announces itself (build date, age, commits-behind, the exact rebuild command) on stderr before any command; fresh bundles and real installs (no .git) stay silent; a broken git degrades to silence, never a broken boot. Wired into cli-entry ahead of the bundle import. 4 red-capable unit tests + LIVE proof both ways: backdated bundle -> '126 newer commit(s)... pnpm build'; rebuilt -> quiet."
+    },
+    {
+      "id": "P6-17",
+      "title": "--db with a flat path derives the WRONG project root (the parent directory)",
+      "lane": "server",
+      "write_scope": [
+        "apps/server/src/cli/run-cmd.ts",
+        "scripts/product-loop-berths.test.mjs"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "projectRoot honors both layouts: <project>/.dokima/state.db -> project; a flat --db <project>/x.db -> the db's own directory — never the project's parent",
+        "the P6-07 berths integration test (the red fixture that exposed this) is green on the CURRENT bundle",
+        "gate green"
+      ],
+      "points": 1,
+      "status": "done",
+      "notes": "FILED+CLAIMED 2026-09-02. Exposed the moment the stale Aug-31 bundle was rebuilt (P6-16's sibling): dirname(dirname(dbPath)) is only right for the canonical .dokima/ layout; with the flat --db shape the run indexed and scanned the SHARED TMPDIR (rg hit com.apple.* TemporaryItems, run start refused exit 1). Real users on the canonical layout were unaffected; every --db-style integration (tests, the P6-10 demo driver) ran with a mis-derived root. CLOSED 2026-09-02. run-cmd derives projectRoot as the db's directory unless that directory IS .dokima (canonical layout unchanged). The P6-07 berths integration test was the red fixture — failed on the fresh bundle with rg walking com.apple.* in the shared tmpdir, green after the fix (5 pass). Gate 5066 green."
     }
   ]
 }

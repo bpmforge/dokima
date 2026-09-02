@@ -277,7 +277,13 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
    * project. Derived from the resolved database path rather than looked up a
    * second time: two resolutions of the same id are two chances to disagree.
    */
-  const projectRoot = path.dirname(path.dirname(dbPath));
+  // P6-17: dirname(dirname(db)) is only right for the canonical
+  // <project>/.dokima/state.db layout. A flat `--db <project>/x.db` made the
+  // root the project's PARENT — the run then indexed the shared tmpdir
+  // (rg walked com.apple.* TemporaryItems) and refused. The db's directory
+  // is the project unless that directory IS the .dokima folder.
+  const dbDir = path.dirname(dbPath);
+  const projectRoot = path.basename(dbDir) === '.dokima' ? path.dirname(dbDir) : dbDir;
   const projectIo: RunCliIO = { ...io, cwd: projectRoot };
   const log = openWritableLog(dbPath);
   try {
