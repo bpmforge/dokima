@@ -746,6 +746,24 @@
       "points": 2,
       "status": "done",
       "notes": "FILED+CLAIMED 2026-09-01 by the guided-sample LIVE run: with requestTimeoutMs=900000 set via the settings API, a 27b review call still died at ~5 minutes with 'fetch failed <- HeadersTimeoutError' — Node's undici client enforces its own 300s headers cap beneath the app-level AbortSignal, so the W10-57 knob was silently ceilinged. Local models grinding big contexts legitimately need >5m. CLOSED 2026-09-01. oai-compat-dispatch.ts (chapter split — the inline version blew the 400 cap, twice, before landing): createLongCallDispatcherCache — above undici's 300s default the chat call carries a lazily-created, provider-cached undici Agent with headersTimeout/bodyTimeout tracking the configured value; at/below it, no dispatcher (warm-up/discovery calls stay clean). undici added as an explicit gateway dep. Tests: no-dispatcher at the boundary; the CHAT call (the one that grinds) carries the Agent and it is cached across calls — asserted on /chat/completions specifically after discovering warm-up calls ride first. Gate 5062 green."
+    },
+    {
+      "id": "P6-16",
+      "title": "A stale bundle serves silently — the entry must SAY what it runs and how old it is",
+      "lane": "server",
+      "write_scope": [
+        "apps/server/src/bootstrap/cli-entry.mjs",
+        "apps/server/src/bootstrap/cli-entry.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "when the packaged bundle runs from a git source checkout, the boot line names it AND its age vs the checkout (commits behind HEAD or newer-source-file count), with the exact rebuild command — a bundle older than the source announces itself before any command executes",
+        "source-fallback path unchanged; non-git installs unchanged (no noise for real installs)",
+        "gate green with a red-capable fixture"
+      ],
+      "points": 2,
+      "status": "in_progress",
+      "notes": "FILED+CLAIMED 2026-09-02 from the live UI proof: an Aug-31 dist/main.js served three shipped fixes' worth of stale code across four runs — cli-entry prefers the bundle BY DESIGN (W9-13: the person most likely to notice a broken bundle must exercise it), and that doctrine is kept; the defect is the SILENCE. Cost measured: four parks, one model reload cycle, an evening."
     }
   ]
 }
