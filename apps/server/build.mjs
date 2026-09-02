@@ -37,6 +37,11 @@ const EXTERNAL = [
   'execa',
   'fastify',
   'google-auth-library',
+  // P6-15b: undici is CJS with dynamic require of node builtins — inlined
+  // into the ESM bundle it dies at runtime ('Dynamic require of
+  // "node:assert" is not supported'), which took a live run down before any
+  // model call. It ships as a real dependency like the rest of this list.
+  'undici',
   'zod',
 ];
 
