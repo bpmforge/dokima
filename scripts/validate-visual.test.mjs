@@ -4,7 +4,15 @@
  * style guards green.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, copyFileSync, mkdirSync, readdirSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdtempSync,
+  rmSync,
+  copyFileSync,
+  mkdirSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -138,7 +146,12 @@ describe('accepting an intended change is explicit and recorded (W13-07)', () =>
 
 describe('the baseline is real (W13-07)', () => {
   it('every captured frame has a baseline, and the run this shipped with matches it', () => {
-    const results = compareRun(path.join('docs', 'acceptance', 'runs', 'w13-noise-b'));
+    // The run this shipped with is a tracked fixture, NOT under the gitignored
+    // docs/acceptance/runs/ (per-run artifacts) — the assertion had only ever
+    // passed on the one machine that captured it (P6-21).
+    const results = compareRun(
+      path.join('docs', 'acceptance', 'shipped-run', 'w13-noise-b'),
+    );
     expect(results.length).toBe(21);
     for (const r of results) {
       expect(r.missing, `${r.frame} has no baseline`).toBeFalsy();

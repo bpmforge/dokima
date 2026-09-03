@@ -19,6 +19,13 @@ permissions:
 
 env:
   PNPM_VERSION: '11.11.0'
+  # Hosted runners ship no git identity; the conductor's landing merges and
+  # several script fixtures commit without `-c user.*`, and fail with
+  # 'empty ident name' — the one thing every developer machine has (P6-21).
+  GIT_AUTHOR_NAME: dokima-ci
+  GIT_AUTHOR_EMAIL: ci@dokima.invalid
+  GIT_COMMITTER_NAME: dokima-ci
+  GIT_COMMITTER_EMAIL: ci@dokima.invalid
 
 jobs:
   gate:
@@ -26,6 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # validate-history-secrets.test.mjs scans THIS repo and refuses a
+          # shallow clone by design (exit 2, never a vacuous pass).
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -44,6 +55,8 @@ jobs:
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           unshare --net -r -- true && echo "SC-07 process sandbox available"
+      - name: Install ripgrep (code-index tests use the real binary)
+        run: sudo apt-get install -y -q ripgrep >/dev/null && rg --version | head -1
       - name: Lint
         run: pnpm lint
       - name: Typecheck
@@ -110,6 +123,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # validate-history-secrets.test.mjs scans THIS repo and refuses a
+          # shallow clone by design (exit 2, never a vacuous pass).
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -128,6 +145,8 @@ jobs:
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           unshare --net -r -- true && echo "SC-07 process sandbox available"
+      - name: Install ripgrep (code-index tests use the real binary)
+        run: sudo apt-get install -y -q ripgrep >/dev/null && rg --version | head -1
       # The red-team fixtures (spoofed receipt, self-accept, agent-signed waiver,
       # promise-token close, scope escape...) live inline in their owning
       # gate-bearing ticket's own package tests (PLAYBOOK.md), not a separate
@@ -166,12 +185,17 @@ jobs:
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           unshare --net -r -- true && echo "SC-07 process sandbox available"
+      - name: Install ripgrep (code-index tests use the real binary)
+        run: sudo apt-get install -y -q ripgrep >/dev/null && rg --version | head -1
       # @vitest/coverage-v8 is not yet a devDependency (see plan.json W0-09
       # notes HANDOFF) — this job green-skips with a loud warning until a
       # follow-up ticket adds it, then enforces TESTING.md §9's thresholds:
       # trust core >=90% line / >=85% branch, gateway/adapters >=80%.
       - name: Enforce per-package coverage thresholds
         run: |
+          # The job shell is `bash -e`: without +e, a red `out=$(...)` aborts the
+          # step before `code=$?` runs and the missing-provider branch is dead code.
+          set +e
           set -uo pipefail
           missing=0
           status=0

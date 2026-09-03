@@ -853,7 +853,10 @@
         ".github/workflows/ci.yml",
         ".github/workflows/nightly.yml",
         "pnpm-workspace.yaml",
-        "pnpm-lock.yaml"
+        "pnpm-lock.yaml",
+        "apps/server/src/cli/run-build.test.ts",
+        "scripts/validate-visual.test.mjs",
+        "docs/acceptance/shipped-run/**"
       ],
       "depends_on": [],
       "acceptance": [
@@ -862,7 +865,7 @@
         "a CI run on main is green for the first time in the 25-run window"
       ],
       "verify": "gh run list --workflow ci.yml -L 1 --json conclusion",
-      "notes": "Found 2026-09-03 sizing the release. No green ci.yml run existed in the last 25; the gate of record had silently become the local machine. Two causes, both environmental: (1) run-build/run-cmd/berths tests returned exit 2 only on Linux \u2014 SC-07's assertSandboxOrWaiver refusing because Ubuntu 24.04's apparmor_restrict_unprivileged_userns=1 makes the Linux probe (`unshare --net -r`) fail; the product was right, the runner could not sandbox. Fixed in CI, NOT by DOKIMA_ALLOW_UNSANDBOXED_VERIFY \u2014 waiving would stop exercising SC-07 in the one place it runs on Linux. (2) pnpm audit --audit-level high: fast-uri overrides pinned at >=3.1.4 / >=4.1.1 while GHSA patched versions are >=3.1.6 / >=4.1.2 (five advisories: host confusion x2, IDN, SSRF x2). Nightly e2e W13-39 (decisions resume) failed once on the runner and passes locally in 7s \u2014 watched, not changed."
+      "notes": "Found 2026-09-03 sizing the release. No green ci.yml run existed in the last 25; the gate of record had silently become the local machine. Two causes, both environmental: (1) run-build/run-cmd/berths tests returned exit 2 only on Linux \u2014 SC-07's assertSandboxOrWaiver refusing because Ubuntu 24.04's apparmor_restrict_unprivileged_userns=1 makes the Linux probe (`unshare --net -r`) fail; the product was right, the runner could not sandbox. Fixed in CI, NOT by DOKIMA_ALLOW_UNSANDBOXED_VERIFY \u2014 waiving would stop exercising SC-07 in the one place it runs on Linux. (2) pnpm audit --audit-level high: fast-uri overrides pinned at >=3.1.4 / >=4.1.1 while GHSA patched versions are >=3.1.6 / >=4.1.2 (five advisories: host confusion x2, IDN, SSRF x2). Nightly e2e W13-39 (decisions resume) failed once on the runner and passes locally in 7s \u2014 watched, not changed. SECOND WAVE (run 33806790068, first with a working sandbox): supply-chain green; gate-integrity 1118/1119 \u2014 the one failure (W12-02 encrypted-file fallback) was a FIXTURE gap, not a product bug: it never seeded createIdentity('worker-1'), and on macOS the patched platform made the sandbox probe refuse before consolidation could append as that actor. Remaining gate-job failures were all runner-shaped: hosted runners have NO git identity ('empty ident name' in remediate.test; the conductor's landing merges and wave tests silently produced nothing) -> workflow-level GIT_AUTHOR/COMMITTER env; gate/gate-integrity checkouts were shallow so validate-history-secrets.test and run-validators.test hit the script's own exit-2 refusal -> fetch-depth: 0; memory/code-index ripgrep tests need the real binary -> apt ripgrep; the coverage step runs under `bash -e`, so `out=$(vitest --coverage)` aborted before `code=$?` and its missing-provider branch was dead code -> set +e (it now warns honestly that @vitest/coverage-v8 is absent, W0-09); validate-visual.test asserted against docs/acceptance/runs/w13-noise-b, which .gitignore excludes as per-run artifacts \u2014 a test that only ever passed on the laptop that captured it -> the 22-frame run (1.3 MB) is now a tracked fixture at docs/acceptance/shipped-run/."
     }
   ]
 }

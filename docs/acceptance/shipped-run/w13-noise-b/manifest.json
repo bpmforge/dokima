@@ -1,0 +1,116 @@
+{
+  "runId": "w13-noise-b",
+  "capturedAt": "2026-08-18T21:34:25.824Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "checklist": "docs/acceptance/CHECKLIST.md",
+  "frames": [
+    {
+      "checkId": "A-01",
+      "file": "01-A-01.png",
+      "action": "Loaded / — Fleet empty state"
+    },
+    {
+      "checkId": "A-02",
+      "file": "02-A-02.png",
+      "action": "Opened New project form, filled name + location"
+    },
+    {
+      "checkId": "A-03",
+      "file": "03-A-03.png",
+      "action": "Submitted form — project card on Fleet"
+    },
+    {
+      "checkId": "A-04",
+      "file": "04-A-04.png",
+      "action": "Opened project — three-pane workspace, unseeded"
+    },
+    {
+      "checkId": "A-05",
+      "file": "05-A-05.png",
+      "action": "Clicked Receipts tab in the Artifacts pane"
+    },
+    {
+      "checkId": "A-06",
+      "file": "06-A-06.png",
+      "action": "Seeded board via real event log, reloaded"
+    },
+    {
+      "checkId": "A-07",
+      "file": "07-A-07.png",
+      "action": "Clicked card E2E-1 — ticket drawer open"
+    },
+    {
+      "checkId": "A-08",
+      "file": "08-A-08.png",
+      "action": "Opened session trace — runs list for E2E-1"
+    },
+    {
+      "checkId": "A-09",
+      "file": "09-A-09.png",
+      "action": "Selected run-tour-1 — event replay"
+    },
+    {
+      "checkId": "A-10",
+      "file": "10-A-10.png",
+      "action": "Evaluated snapshot — PC-001 proposed in plan view"
+    },
+    {
+      "checkId": "A-11",
+      "file": "11-A-11.png",
+      "action": "Clicked Accept — lane form open, filled \"pipeline\""
+    },
+    {
+      "checkId": "A-12",
+      "file": "12-A-12.png",
+      "action": "Confirmed accept — item Accepted with minted ticket ref"
+    },
+    {
+      "checkId": "A-13",
+      "file": "13-A-13.png",
+      "action": "Morning queue — Decide card + Review digest"
+    },
+    {
+      "checkId": "A-14",
+      "file": "14-A-14.png",
+      "action": "Switched to the All notifications tab"
+    },
+    {
+      "checkId": "A-15",
+      "file": "15-A-15.png",
+      "action": "Clicked Approve on the Decide card"
+    },
+    {
+      "checkId": "A-16",
+      "file": "16-A-16.png",
+      "action": "Roster view"
+    },
+    {
+      "checkId": "A-17",
+      "file": "17-A-17.png",
+      "action": "Global settings view"
+    },
+    {
+      "checkId": "A-18",
+      "file": "18-A-18.png",
+      "action": "First-run wizard view"
+    },
+    {
+      "checkId": "A-19",
+      "file": "19-A-19.png",
+      "action": "Pressed ? — shortcuts overlay"
+    },
+    {
+      "checkId": "A-20",
+      "file": "20-A-20.png",
+      "action": "Toggled dark theme — Fleet"
+    },
+    {
+      "checkId": "A-21",
+      "file": "21-A-21.png",
+      "action": "Dark theme — seeded three-pane workspace"
+    }
+  ]
+}

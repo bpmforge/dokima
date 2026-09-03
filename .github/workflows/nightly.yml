@@ -16,6 +16,12 @@ on:
 permissions:
   contents: read
 
+env:
+  GIT_AUTHOR_NAME: dokima-ci
+  GIT_AUTHOR_EMAIL: ci@dokima.invalid
+  GIT_COMMITTER_NAME: dokima-ci
+  GIT_COMMITTER_EMAIL: ci@dokima.invalid
+
 jobs:
   e2e:
     name: e2e (fake-model gateway, TESTING.md §7)
@@ -41,6 +47,8 @@ jobs:
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           unshare --net -r -- true && echo "SC-07 process sandbox available"
+      - name: Install ripgrep (code-index tests use the real binary)
+        run: sudo apt-get install -y -q ripgrep >/dev/null && rg --version | head -1
       - name: Install Playwright chromium
         run: pnpm --filter @dokima/web exec playwright install --with-deps chromium
       - name: Run e2e (builds web, boots server via playwright webServer)
