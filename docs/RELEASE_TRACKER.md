@@ -31,13 +31,13 @@ Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal 
 
 ## Release milestones
 
-| Tag                   | Scope                                           | Gate                                                                                | Status               |
-| --------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------- |
-| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged     |
-| v0.2.0                | + W4 Canvas/Fleet                               | Playwright E2E over fake-model gateway                                              | ✅ met, untagged     |
-| v0.3.0                | + W5 Pipeline/PM                                | sample idea runs <15 min on a local model                                           | ✅ met, untagged     |
-| v0.9.0                | + W6 integrations, W7 memory                    | forge-mirror reconciliation + anti-Jarvis-gap recall test                           | ✅ met, untagged     |
-| **v1.0.0**            | W8 dogfood: Dokima audits itself                | own security cluster passes; receipts in `docs/dogfood/`                            | ✅ **met**, untagged |
+| Tag                   | Scope                                           | Gate                                                                                | Status                                                                                                                    |
+| --------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged                                                                                                          |
+| v0.2.0                | + W4 Canvas/Fleet                               | Playwright E2E over fake-model gateway                                              | ✅ met, untagged                                                                                                          |
+| v0.3.0                | + W5 Pipeline/PM                                | sample idea runs <15 min on a local model                                           | ✅ met, untagged                                                                                                          |
+| v0.9.0                | + W6 integrations, W7 memory                    | forge-mirror reconciliation + anti-Jarvis-gap recall test                           | ✅ met, untagged                                                                                                          |
+| **v1.0.0**            | W8 dogfood: Dokima audits itself                | own security cluster passes; receipts in `docs/dogfood/`                            | ✅ **met** — **`release/v1.0.0` prepared 2026-09-03** (1.0.0 bump + CHANGELOG entry); tag `v1.0.0` on merge, then publish |
 
 Every milestone gate has been met. Nothing has been tagged, because the
 pre-public checklist below was never finished.
