@@ -200,7 +200,13 @@ async function reviewOne(
 
   // THE CORE re-runs verify in the ticket's own worktree (C-2/SC-12).
   const worktreePath = path.join(options.repoRoot, '.dokima', 'worktrees', ticket.id);
-  const command = ticket.verify ?? DEFAULT_VERIFY_COMMAND;
+  // P6-18: the close gate already re-ran and validated the manifest's verify
+  // command — for a ticket with no verify of its own, that proven command
+  // outranks the workspace default (which is Node-shaped and simply cannot
+  // pass in, say, a Rust worktree; the verdict it produced was CONTRADICTED
+  // by the review's own command choice, not by the work).
+  const command =
+    ticket.verify ?? ticket.manifest?.verify.command ?? DEFAULT_VERIFY_COMMAND;
   const run = await reRunVerify(
     worktreePath,
     command,

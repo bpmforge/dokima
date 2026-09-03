@@ -26,7 +26,10 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0)) await fn();
 });
 
-async function fixture(verify: string): Promise<{ log: EventLog; repoRoot: string }> {
+async function fixture(
+  verify: string,
+  ticketVerify: string | null = verify,
+): Promise<{ log: EventLog; repoRoot: string }> {
   const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-review-repo-'));
   await git(repoRoot, ['init', '-b', 'main']);
   await git(repoRoot, ['config', 'user.name', 'Dokima Test']);
@@ -44,7 +47,7 @@ async function fixture(verify: string): Promise<{ log: EventLog; repoRoot: strin
     title: 'Ship the fixture',
     lane: 'core',
     writeScope: ['src/**'],
-    verify,
+    verify: ticketVerify,
     acceptance: [{ id: 'AC-1', text: 'the fixture ships', done: false }],
   });
   claimTicket(log, { ticketId: 'T-1', actorId: 'worker-1' });
@@ -98,6 +101,18 @@ const events = (log: EventLog, type: string) =>
   listEvents(log).filter((e) => e.eventType === type);
 
 describe('runReviewPass (W15-01)', () => {
+  it('P6-18: with no ticket verify, the re-run uses the close manifest command the gate already proved — not the workspace default', async () => {
+    const { log, repoRoot } = await fixture('printf "2 tests passed\\n"', null);
+    const outcomes = await runReviewPass(options(log, repoRoot));
+
+    expect(outcomes[0]).toMatchObject({ status: 'recorded', verdict: 'CONFIRMED' });
+    const comment = getTicket(log, 'T-1')!
+      .history.filter((h) => h.verb === 'comment')
+      .at(-1)!;
+    expect(comment.body).toContain('re-ran independently: printf');
+    expect(comment.body).not.toContain('pnpm lint');
+  });
+
   it('RED FIXTURE: a passing ticket gets a CONFIRMED verdict whose comment carries the re-ran-independently line — executed by the core, not claimed by the model', async () => {
     const { log, repoRoot } = await fixture('printf "3 tests passed\\n"');
     const outcomes = await runReviewPass(options(log, repoRoot));
@@ -125,8 +140,13 @@ describe('runReviewPass (W15-01)', () => {
     const outcomes = await runReviewPass(
       options(log, repoRoot, { reviewerModel: 'local-coder' }),
     );
-    expect(outcomes[0]).toMatchObject({ status: 'skipped', reason: 'same model as maker' });
-    const comment = getTicket(log, 'T-1')!.history.filter((h) => h.verb === 'comment').at(-1)!;
+    expect(outcomes[0]).toMatchObject({
+      status: 'skipped',
+      reason: 'same model as maker',
+    });
+    const comment = getTicket(log, 'T-1')!
+      .history.filter((h) => h.verb === 'comment')
+      .at(-1)!;
     expect(comment.body).toContain('never reviews its own work');
     expect(comment.body).toContain('review this ticket yourself');
     expect(events(log, 'review.verdict')).toHaveLength(0);
@@ -144,7 +164,10 @@ describe('runReviewPass (W15-01)', () => {
       }),
     );
     expect(calls).toBe(2);
-    expect(outcomes[0]).toMatchObject({ status: 'bounced', reason: 'unparseable verdict' });
+    expect(outcomes[0]).toMatchObject({
+      status: 'bounced',
+      reason: 'unparseable verdict',
+    });
     expect(events(log, 'review.bounced').length).toBeGreaterThanOrEqual(2);
     expect(events(log, 'review.verdict')).toHaveLength(0);
   });
@@ -153,7 +176,9 @@ describe('runReviewPass (W15-01)', () => {
     const { log, repoRoot } = await fixture('exit 1');
     const outcomes = await runReviewPass(options(log, repoRoot));
     expect(outcomes[0]).toMatchObject({ status: 'recorded', verdict: 'CONTRADICTED' });
-    const comment = getTicket(log, 'T-1')!.history.filter((h) => h.verb === 'comment').at(-1)!;
+    const comment = getTicket(log, 'T-1')!
+      .history.filter((h) => h.verb === 'comment')
+      .at(-1)!;
     expect(comment.body).toContain('CONTRADICTED by construction');
     expect(comment.body).toContain('exit 1');
   });
@@ -195,7 +220,7 @@ describe('calibration reaches the verdict (W15-02)', () => {
     updatedAt: '2026-08-20T00:00:00.000Z',
   };
 
-  it("RED FIXTURE: a borderline score from a chronic over-claimer escalates to a person, and the comment says why — the same score from a clean maker stays bounded polish", async () => {
+  it('RED FIXTURE: a borderline score from a chronic over-claimer escalates to a person, and the comment says why — the same score from a clean maker stays bounded polish', async () => {
     const borderline = async () =>
       '{"verdict":"CONFIRMED","score":6,"reasoning":"Looks fine but thin tests."}';
 
@@ -238,7 +263,10 @@ describe('the C-4 refusal set covers every rung (W16-01)', () => {
         reviewerModel: 'frontier',
       }),
     );
-    expect(outcomes[0]).toMatchObject({ status: 'skipped', reason: 'same model as maker' });
+    expect(outcomes[0]).toMatchObject({
+      status: 'skipped',
+      reason: 'same model as maker',
+    });
     expect(events(log, 'review.verdict')).toHaveLength(0);
   });
 });
