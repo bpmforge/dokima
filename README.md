@@ -1,7 +1,7 @@
 # Dokima
 
 **Idea → secure, working product.** A local-first workbench where AI agents do
-the building and *the platform* holds the gates — not the agents.
+the building and _the platform_ holds the gates — not the agents.
 
 You describe what you want. Dokima interviews you, writes the blueprint,
 decomposes it into a ticket board, and works the board with expert agents:
@@ -55,14 +55,14 @@ doctor: OK
 Shown as `dokima <cmd>` — that's the name after `npm link`; from a plain
 checkout it's `node apps/server/src/bootstrap/cli-entry.mjs <cmd>`.
 
-| Command | What it does |
-|---|---|
-| `dokima` | Boot the workbench and open the Canvas |
-| `dokima doctor` | Six health checks: port, DB integrity, keychain, providers, content signatures, orphaned worktrees |
-| `dokima providers refresh` | Re-run model discovery against your configured endpoints |
-| `dokima packs update` | Verify and install the bundled expert/validator library |
-| `dokima backup` | Online SQLite backup with retention pruning |
-| `dokima service install`\|`status`\|`stop` | Run it as a background service for overnight work |
+| Command                                    | What it does                                                                                       |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `dokima`                                   | Boot the workbench and open the Canvas                                                             |
+| `dokima doctor`                            | Six health checks: port, DB integrity, keychain, providers, content signatures, orphaned worktrees |
+| `dokima providers refresh`                 | Re-run model discovery against your configured endpoints                                           |
+| `dokima packs update`                      | Verify and install the bundled expert/validator library                                            |
+| `dokima backup`                            | Online SQLite backup with retention pruning                                                        |
+| `dokima service install`\|`status`\|`stop` | Run it as a background service for overnight work                                                  |
 
 ---
 
@@ -92,13 +92,13 @@ signature — not prompts invented on the fly.
 
 ## How it fits together
 
-| Piece | What it is |
-|---|---|
-| **Fleet** | Every project you're running, with phase, ready/blocked counts, and today's spend |
-| **Canvas** | Three panes per project — Chat (what the agents are saying), Board (Kanban with real lanes and write-scopes), Artifacts (what they produced) |
-| **Harbormaster** | Runs the board unattended: claims tickets, enforces one-per-lane, kills hung sessions, parks on provider limits and resumes |
-| **Morning queue** | One review for everything that happened overnight — Decide, Review, Record |
-| **Improvement plans** | Run receipts compose into ranked, verifiable proposals; accepting one mints a ticket |
+| Piece                 | What it is                                                                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fleet**             | Every project you're running, with phase, ready/blocked counts, and today's spend                                                            |
+| **Canvas**            | Three panes per project — Chat (what the agents are saying), Board (Kanban with real lanes and write-scopes), Artifacts (what they produced) |
+| **Harbormaster**      | Runs the board unattended: claims tickets, enforces one-per-lane, kills hung sessions, parks on provider limits and resumes                  |
+| **Morning queue**     | One review for everything that happened overnight — Decide, Review, Record                                                                   |
+| **Improvement plans** | Run receipts compose into ranked, verifiable proposals; accepting one mints a ticket                                                         |
 
 Under the hood: a pnpm monorepo — `apps/server` (Fastify core + CLI),
 `apps/web` (React canvas), and twelve packages (events, tickets, loop,
@@ -107,26 +107,30 @@ TypeScript, ESM, SQLite.
 
 ---
 
-## Status — pre-release
+## Status — release candidate
 
-The build is complete through wave W9: **116 of 118 tickets done**, the v1.0
-dogfood gate passed (Dokima onboards itself, runs its own security
-cluster, and publishes receipts under [`docs/dogfood/`](docs/dogfood/)), and
-the packaged CLI is verified to install and run on a clean machine.
+The build is complete: **495 of 497 tickets done** on [`plan.json`](plan.json)
+(the two left are deliberately held for founder calls — a plugin loader with
+no plugin to load, and the unattended-autonomy dial). The v1.0 dogfood gate
+passed (Dokima onboards itself, runs its own security cluster, and publishes
+receipts under [`docs/dogfood/`](docs/dogfood/)); the packaged CLI installs
+and runs on a clean machine; and a guided sample project has been driven from
+the setup wizard through interview, blueprint, founder decisions, board, build
+runs, machine review and acceptance on local models only, end to end.
 
-**It is not tagged yet, and there is honest work left before it should be:**
+The gaps an earlier version of this section listed are closed, each with a
+ticket behind it: provider/model selection is wired to every model call, per
+role (W10-03/45); the visual design has a token system and no raw hexes
+(W10-06/28/30/32); the bundled expert library is at upstream `attest` v3.5.1
+(W12-07); `dokima --help` prints help and no command boots a server by
+accident (W10-44/W13-33); and the name is Dokima, shipping as
+`@bpmforge/dokima` (D-021).
 
-- Provider and model selection is editable in the UI but not yet wired to the
-  pipeline's model calls — the engine is built and tested, the wire is missing
-- The visual design is unfinished — the layout and token system need a pass
-- The bundled expert library is a few upstream releases behind
-- `dokima --help` boots the server instead of printing help — as does any
-  mistyped command
-- The npm name is taken, so there's no `npx` install yet (D-001)
-
-Those are tracked in [`docs/work/W10_PLAN.md`](docs/work/W10_PLAN.md) with
-measurements behind each one. Progress ledger:
-[`docs/STATUS.md`](docs/STATUS.md).
+**What remains before the first tag is not build work:** the npm package is
+prepared and verified (`npm pack` → install into a clean project → boot), and
+publishing it is an authenticated operator step. Until then, install from
+source as above. Progress ledger: [`docs/STATUS.md`](docs/STATUS.md);
+release checklist: [`docs/RELEASE_TRACKER.md`](docs/RELEASE_TRACKER.md).
 
 See the full [screenshot tour](docs/tour/TOUR.md) for what's built today.
 
@@ -134,12 +138,12 @@ See the full [screenshot tour](docs/tour/TOUR.md) for what's built today.
 
 ## Documentation
 
-| | |
-|---|---|
-| Design | [BLUEPRINT](docs/BLUEPRINT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [DECISIONS](docs/DECISIONS.md) |
-| Contracts | [SRS](docs/SRS.md) · [API_DESIGN](docs/API_DESIGN.md) · [DATABASE](docs/DATABASE.md) |
-| Security | [THREAT_MODEL](docs/THREAT_MODEL.md) · [SECURITY_CONTROLS](docs/SECURITY_CONTROLS.md) |
-| Operating it | [DEPLOYMENT](docs/DEPLOYMENT.md) · [TESTING](docs/TESTING.md) · [ROADMAP](docs/ROADMAP.md) |
+|              |                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------ |
+| Design       | [BLUEPRINT](docs/BLUEPRINT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [DECISIONS](docs/DECISIONS.md) |
+| Contracts    | [SRS](docs/SRS.md) · [API_DESIGN](docs/API_DESIGN.md) · [DATABASE](docs/DATABASE.md)                   |
+| Security     | [THREAT_MODEL](docs/THREAT_MODEL.md) · [SECURITY_CONTROLS](docs/SECURITY_CONTROLS.md)                  |
+| Operating it | [DEPLOYMENT](docs/DEPLOYMENT.md) · [TESTING](docs/TESTING.md) · [ROADMAP](docs/ROADMAP.md)             |
 
 Contributing agents start at [`MASTER_PROMPT.md`](MASTER_PROMPT.md) →
 [`plan.json`](plan.json) → [`PLAYBOOK.md`](PLAYBOOK.md), and the house rules
