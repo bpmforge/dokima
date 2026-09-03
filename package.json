@@ -1,6 +1,6 @@
 {
   "name": "@bpmforge/dokima",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Local-first agentic development platform: agent sessions are untrusted, every durable state change goes through verbs and hash-chained receipts, and no gate can be talked past.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Bradford Matthews",

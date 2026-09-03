@@ -28,7 +28,7 @@ the macOS keychain). Full notes on the board ticket.
 
 ## The three steps left — in order
 
-### 1. Decide the version (founder)
+### 1. Decide the version (founder) — **DECIDED 2026-09-03: 1.0.0**
 
 `package.json` says `0.1.0`. The tracker's milestone table records the
 **v1.0.0** gate as met (W8 dogfood: Dokima audits itself, receipts in
@@ -36,7 +36,7 @@ the macOS keychain). Full notes on the board ticket.
 contradicts the project's own tracker. The pre-public checklist applies to
 any tag ≥ 0.3, and it is complete.
 
-### 2. Prepare the release commit (agent, once the number is chosen)
+### 2. Prepare the release commit (agent) — **DONE: branch `release/v1.0.0`, pushed to both remotes**
 
 On a branch `release/v<version>`:
 

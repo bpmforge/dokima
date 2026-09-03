@@ -13,6 +13,64 @@ name what a change means for that boundary, not just what moved.
 
 Nothing yet.
 
+## [1.0.0] — 2026-09-03
+
+The first public release. Every milestone gate in `docs/RELEASE_TRACKER.md`
+(v0.1 foundation through v1.0 dogfood) was met before this tag; the
+pre-public checklist — license, README, history-secrets scan, naming
+clearance, package verification on a clean machine — is complete.
+
+### The trust boundary
+
+- Agent sessions are untrusted by construction. Every durable state change
+  goes through a verb that mints a hash-chained receipt; a session cannot
+  flip a ticket, approve its own work, or talk a gate into passing.
+- Maker ≠ verifier is mechanical: reviewer identities, models and tokens are
+  distinct from maker ones, and the machine review refuses honestly when the
+  only available reviewer is a model that made work in the same run.
+- The close gate re-runs a ticket's verify command itself and never trusts
+  the manifest's claimed exit code; the machine review re-runs the manifest's
+  own verify command independently before a verdict is recorded.
+- Verify commands and validator packs run inside a process sandbox
+  (`sandbox-exec` on macOS, user namespaces on Linux) and the build refuses,
+  rather than degrades silently, on a host that cannot sandbox.
+- The bundled expert library (89 agents, 83 validators, 26 protocols) ships
+  signed; the signing key was rotated and purged from history before this
+  release, and history scanning is part of the gate so a committed-then-deleted
+  credential can never again read as clean.
+
+### What ships
+
+- A local-first workbench: Fleet, a three-pane project Canvas (Chat, Board,
+  Artifacts), the Morning queue (Decide, Review, Record) and improvement plans
+  whose accepted proposals mint tickets.
+- The guided pipeline from idea to board: setup wizard, interview, blueprint,
+  founder decisions, decomposition into a ticket board with lanes and write
+  scopes — resumable after a pause, rejoinable after navigating away.
+- Harbormaster, the unattended build loop: claims tickets one per lane,
+  runs Dokima's own tool-using agent sessions through the gateway, enforces
+  tool-iteration and token budgets, parks on provider limits and resumes,
+  lands per ticket or per feature, and hands a person an honest park note
+  when a ticket cannot close.
+- Model policy is the user's choice, asked once at setup and never defaulted:
+  local-only (a guaranteed configuration — nothing contacts a network), one
+  pinned model, cheapest-first escalation, or approval-gated escalation.
+  Providers: LM Studio/Ollama and any OpenAI-compatible endpoint, OpenAI,
+  Anthropic, Google Vertex, GitHub Copilot device flow. Credentials live in the
+  OS keychain (or an encrypted file vault on headless hosts) as references.
+- `dokima` CLI: `doctor`, `backup`/`restore`, `packs update`,
+  `providers refresh`, `service install|status|stop`, and the board verbs
+  (`claim`, `start`, `close`, `accept`, `reject`, `comment`, `widen-scope`,
+  `add-ticket`, `depends-on`, `retarget-acceptance`).
+
+### License
+
+- Dokima's own source is under the Functional Source License 1.1 with an
+  Apache-2.0 future license (D-022). The bundled `content/` library remains
+  Apache-2.0 with notices preserved.
+
+[1.0.0]: https://github.com/bpmforge/dokima/releases/tag/v1.0.0
+
 ## [0.1.0] — 2026-08-03
 
 First public release. Every milestone gate through the v1.0 dogfood criterion
@@ -21,7 +79,7 @@ trademark review.
 
 > The `v0.1.0` tag was re-pointed once before release, after verification of the
 > packaged artifact found that the shipped validator pack could not run at all
-> (see *Fixed* below). Nothing had been published or released against the
+> (see _Fixed_ below). Nothing had been published or released against the
 > earlier tag. Recorded here rather than quietly retagged.
 
 ### Licensing
