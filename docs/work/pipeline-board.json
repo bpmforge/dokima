@@ -888,6 +888,26 @@
       ],
       "verify": "pnpm --filter @dokima/web exec playwright test -g W13-39",
       "notes": "Seen 2026-09-03: nightly runs 33737203375 and 33808772637 red at decisions-resume.spec.ts:279 (rejoined poll never reached interview-awaiting-decisions in 20s; the earlier 'Building the board\u2026' assertion PASSED, so recovery found a running run), then 33809438510 green with the test untouched. Local repeat-each is NOT a valid probe \u2014 the spec starts a fresh fake gateway per test while the suite shares one server, so iterations 2+ fail for harness reasons. Candidates: on a slower runner the run fails/completes after rejoin and the panel shows an error/done state the test never checks; or the per-run status route lacks the awaiting payload for a rejoined run. The nightly's failure upload was a no-op until 4709ec0e (it pointed at a report dir the list reporter never writes), so the next red will carry the DOM snapshot."
+    },
+    {
+      "id": "P6-23",
+      "type": "defect",
+      "lane": "infra",
+      "status": "open",
+      "title": "docs/STATUS.md cannot be committed through the hooks: HEAD fails prettier, and the fix trips the secrets scan",
+      "write_scope": [
+        "docs/STATUS.md",
+        "hooks/pre-commit",
+        "scripts/history-secrets-baseline.json"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "appending one line to docs/STATUS.md commits through pre-commit without --no-verify",
+        "the AWS doc-example access key in the 2026-08-03 W10-27 entry (already baselined for the history scanner) is not re-flagged by the staged-diff scan when prettier re-wraps its line",
+        "no ledger line other than the appended one changes in that commit"
+      ],
+      "verify": "printf '\\n2026-09-03 test\\n' >> docs/STATUS.md && git add docs/STATUS.md && git commit -m test && git reset --soft HEAD~1",
+      "notes": "Found 2026-09-03 writing the release handoff. The 2026-08-03 W10-27 ledger entry was committed with *blind* / *broken invocation* italics that prettier rewrites to _blind_ / _broken invocation_ \u2014 so HEAD already fails `prettier --check`, and any commit touching the file fails step 1 of pre-commit. Running prettier --write makes step 1 pass but rewrites that old line, and the staged diff then re-adds AWS's published doc-example access key from that entry (already in the history-secrets baseline by value) \u2014 step 2's `AKIA[0-9A-Z]{16}` grep refuses it. Net: the progress ledger is append-only in spirit and unwritable in practice. Fix candidates: format-fix that one line in a --no-verify commit that changes nothing else (visible in reflog, as the hook's own header allows), and teach the staged-diff scan the same value-baseline the history scanner uses so a known doc example cannot block every future STATUS entry."
     }
   ]
 }
