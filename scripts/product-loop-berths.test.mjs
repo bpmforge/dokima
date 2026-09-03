@@ -102,7 +102,15 @@ describe('P6-07 — the goal loop drives the PRODUCT engine against the PRODUCT 
         const r = spawnSync(cmd, [resolve(REPO, args[0]), ...args.slice(1)], {
           cwd: proj,
           encoding: 'utf8',
-          env: { ...process.env, DOKIMA_SIGNING_KEY: 'test-signing-key' },
+          env: {
+            ...process.env,
+            DOKIMA_SIGNING_KEY: 'test-signing-key',
+            // A hosted Linux runner has no OS keychain; without the W12-02
+            // encrypted-file vault the CLI refuses ("vault is unreadable") —
+            // the one refusal this test cannot see through a spawn (P6-21).
+            DOKIMA_NO_KEYCHAIN: '1',
+            DOKIMA_VAULT_KEY: 'test-vault-key',
+          },
         });
         if (r.status !== 0 || !/1 landed/.test(r.stdout ?? '')) {
           console.error('run start stdout:', r.stdout);
