@@ -2,7 +2,7 @@
 
 **State 2026-08-13:** board **208 / 216 done — 8 open, 35 points.** Every
 milestone gate through v1.0.0 is met. **Still not tagged**, and what stands
-between here and a public tag is now mostly *not code*: the registry
+between here and a public tag is now mostly _not code_: the registry
 publication itself (needs an authenticated operator), formal trademark
 clearance (needs a lawyer), and one supervised run against a real model that
 nobody has yet performed (W11 exit 2/3 — see §Unproven). The open board is
@@ -31,26 +31,27 @@ Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal 
 
 ## Release milestones
 
-| Tag | Scope | Gate | Status |
-|---|---|---|---|
-| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged |
-| v0.2.0 | + W4 Canvas/Fleet | Playwright E2E over fake-model gateway | ✅ met, untagged |
-| v0.3.0 | + W5 Pipeline/PM | sample idea runs <15 min on a local model | ✅ met, untagged |
-| v0.9.0 | + W6 integrations, W7 memory | forge-mirror reconciliation + anti-Jarvis-gap recall test | ✅ met, untagged |
-| **v1.0.0** | W8 dogfood: Dokima audits itself | own security cluster passes; receipts in `docs/dogfood/` | ✅ **met**, untagged |
+| Tag                   | Scope                                           | Gate                                                                                | Status               |
+| --------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------- |
+| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged     |
+| v0.2.0                | + W4 Canvas/Fleet                               | Playwright E2E over fake-model gateway                                              | ✅ met, untagged     |
+| v0.3.0                | + W5 Pipeline/PM                                | sample idea runs <15 min on a local model                                           | ✅ met, untagged     |
+| v0.9.0                | + W6 integrations, W7 memory                    | forge-mirror reconciliation + anti-Jarvis-gap recall test                           | ✅ met, untagged     |
+| **v1.0.0**            | W8 dogfood: Dokima audits itself                | own security cluster passes; receipts in `docs/dogfood/`                            | ✅ **met**, untagged |
 
 Every milestone gate has been met. Nothing has been tagged, because the
 pre-public checklist below was never finished.
 
 ## Pre-public checklist (required for any tag ≥0.3)
 
-| Item | Status |
-|---|---|
-| LICENSE file | ✅ **done 2026-08-02, CORRECTED 2026-08-13** — **FSL-1.1-ALv2** (Functional Source License, ALv2 future license) per **D-022**, verified against the shipped `LICENSE` file. This row read "Apache-2.0 per D-017" until 2026-08-13; D-017 is marked superseded in DECISIONS.md and the license changed before any public release. `package.json` carries `"license": "SEE LICENSE IN LICENSE"`. |
-| README quickstart | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified |
-| History secrets scan | ✅ **done 2026-08-02** — found a CRITICAL leak; see below. **No longer a manual item as of 2026-08-03 (W10-27)**: `node scripts/validate-history-secrets.mjs` runs on every push as CI's `history-secrets` job. Re-running it by hand before a tag is now a confirmation, not the control. |
+| Item                        | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LICENSE file                | ✅ **done 2026-08-02, CORRECTED 2026-08-13** — **FSL-1.1-ALv2** (Functional Source License, ALv2 future license) per **D-022**, verified against the shipped `LICENSE` file. This row read "Apache-2.0 per D-017" until 2026-08-13; D-017 is marked superseded in DECISIONS.md and the license changed before any public release. `package.json` carries `"license": "SEE LICENSE IN LICENSE"`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| README quickstart           | ✅ **done 2026-08-02** — rewritten from the end-user's POV; every documented command executed and verified                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| History secrets scan        | ✅ **done 2026-08-02** — found a CRITICAL leak; see below. **No longer a manual item as of 2026-08-03 (W10-27)**: `node scripts/validate-history-secrets.mjs` runs on every push as CI's `history-secrets` job. Re-running it by hand before a tag is now a confirmation, not the control.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | npm name `@bpmforge/dokima` | 🟡 **prepared 2026-08-03, not yet published** — name confirmed free; root `package.json` now carries the scoped name, `0.1.0`, `publishConfig.access: public`, license/repo/description metadata, and a `prepublishOnly` build so a tarball can never ship without `apps/server/dist/main.js` or `apps/web/dist`. Packing and installing the tarball into a clean project surfaced a **release blocker** (W10-43) — `distributionRoot()` identified the distribution by the literal package name `dokima`, so scoping it made every asset unreachable and the CLI died on startup. Fixed and re-verified end to end: the installed binary boots, serves the built web dist, materializes `packs/` in `DOKIMA_HOME`, and answers `GET /api/v1/projects` → `200 {"projects":[]}` with a real bearer token. **The publish step itself needs an authenticated operator** — log in to npm, then run the publish command from the repo root. |
-| D-001 naming pass | ✅ **done 2026-08-02 — renamed to Dokima (D-021).** The old name had two collisions: `shipwright.io`, CNCF's container-image build framework, whose trademarks were donated to the **Linux Foundation** — an adjacent market, not the "different domain" D-001 assumed; and npm `shipwright`, held since 2015 by `hellofloat/shipwright` ("DigitalOcean CLI control"), declaring the same `bin`. Ships as `@bpmforge/dokima`, home `dokima.sh`. **Formal trademark clearance is still open and needs a lawyer.** |
+| CI green on `main`          | ✅ **done 2026-09-03** — run [33808312531](https://github.com/bpmforge/dokima/actions/runs/33808312531) on `df882a89`, all 7 jobs. Before P6-21 no green run existed in the 25-run window: SC-07 refused every build run on Ubuntu 24.04 (unprivileged user namespaces restricted), the `fast-uri` overrides sat one patch short, runners have no git identity, gate checkouts were shallow, ripgrep was absent, the coverage step aborted under `bash -e`, and two tests depended on this laptop (a gitignored capture run; the macOS keychain). Each is named in the P6-21 board notes. The gate of record is CI again, not one machine.                                                                                                                                                                                                                                                                                             |
+| D-001 naming pass           | ✅ **done 2026-08-02 — renamed to Dokima (D-021).** The old name had two collisions: `shipwright.io`, CNCF's container-image build framework, whose trademarks were donated to the **Linux Foundation** — an adjacent market, not the "different domain" D-001 assumed; and npm `shipwright`, held since 2015 by `hellofloat/shipwright` ("DigitalOcean CLI control"), declaring the same `bin`. Ships as `@bpmforge/dokima`, home `dokima.sh`. **Formal trademark clearance is still open and needs a lawyer.**                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ### The secrets scan found a real one
 
@@ -60,18 +61,18 @@ proven forgeable against the real `content/manifest.json`.
 
 **Remediated 2026-08-02**: key rotated (old key proven dead), history purged
 across all six branches, force-pushed to both remotes. Full write-up, including
-what the rewrite does *not* undo:
+what the rewrite does _not_ undo:
 [`docs/work/SECURITY_RELEASE_BLOCKER_2026-08-02.md`](work/SECURITY_RELEASE_BLOCKER_2026-08-02.md).
 
 Durable fix **landed 2026-08-03 as W10-27**: `secrets-scan.sh` scans the working
 **tree**, so a gitignored, tree-removed key reads clean while history is
 compromised — which is exactly how this survived thirteen days. History scanning
 is now part of the gate: `scripts/validate-history-secrets.mjs` reads every object
-reachable from every ref — file contents *and* commit/tag messages (no external
+reachable from every ref — file contents _and_ commit/tag messages (no external
 scanning binary, ~1.3s), CI runs it on every push with `fetch-depth: 0`, and it
 exits **2 rather than 0** on a shallow clone so it can never pass vacuously. CI
 also fetches every branch explicitly and runs with `--verify-remote-refs`,
-because a single-ref checkout is *not* shallow and would silently shrink the
+because a single-ref checkout is _not_ shallow and would silently shrink the
 scan's denominator. Two stated limits: it covers the same six categories as the
 tree scanner, so an unpatterned credential shape is invisible to both; and
 `--all` is reachable-only, so a force-pushed, garbage-collected secret reads
@@ -123,7 +124,7 @@ Not release blockers by themselves, but a reader deserves them stated:
   gets billed.
 - **The Providers panel still says cloud kinds are unusable** (W12-15).
   `providers-routes.ts` holds an independent hardcoded copy of the refusal
-  W12-11 removed, on the model-*listing* path, so the UI now contradicts the
+  W12-11 removed, on the model-_listing_ path, so the UI now contradicts the
   product. Stated because a reader deserves it: the full suite passes with that
   message asserted, since the assertion tests the duplicate.
 - **D-024 is recorded but not fully implemented.** Model policy is the user's
@@ -157,7 +158,7 @@ option nothing ever set (**W13-11**).
 
 **W11 exit criterion 3 is still unproven.** Every call metered, ledger non-zero
 and attributable per role, became genuinely testable only with W12-11 — but both
-models tested so far are local, so a `$0` ledger is *correct* rather than the
+models tested so far are local, so a `$0` ledger is _correct_ rather than the
 old defect. It needs one ticket on a paid provider: minutes, and cents.
 
 **A first model-fitness result, worth recording:** `qwen/qwen3-coder-next`
