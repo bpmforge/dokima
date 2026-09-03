@@ -800,6 +800,48 @@
       ],
       "verify": "npx vitest run packages/harbormaster/src/loop-review.test.ts",
       "notes": "Found live on the dokima-sample Rust project: first real machine review (nemotron on qwen work) returned CONTRADICTED 2/10 because the core re-ran 'pnpm lint && pnpm typecheck && pnpm test' in a Rust worktree (ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND) \u2014 the ticket had no verify of its own and the fallback skipped the close manifest's gate-proven 'cargo test --package link_shortener_auth'. Fix: ticket.verify ?? ticket.manifest?.verify.command ?? DEFAULT_VERIFY_COMMAND. The verdict was contradicted by the review's own command choice, not by the work."
+    },
+    {
+      "id": "P6-19",
+      "type": "defect",
+      "lane": "harbormaster",
+      "status": "open",
+      "title": "Manifest-emission wall: green worktree, no Completion Manifest, attempts burned asking for it",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/harbormaster/src/loop-gates*.ts",
+        "packages/harbormaster/src/loop-gates*.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "DESIGN DECISION FIRST (founder, D-0xx): may the harness mint the Completion Manifest from evidence it already holds (in-scope diff, commits on the ticket branch, its OWN out-of-session verify run) when the session ends without one? C-2 says sessions are untrusted; the harness's own verify is not the session's claim \u2014 state whether that keeps the trust boundary intact",
+        "if yes: a session that ends with exit 0/budget-exhausted, a green out-of-session verify, and an in-scope diff closes via a harness-minted manifest marked provenance:'harness-evidence' (distinct from agent manifests in the ledger and Decide card)",
+        "if no: the attempt ladder must not spend attempt 2 re-asking for the manifest \u2014 park immediately with the 'THE WORK IS ALREADY DONE' evidence so the human exit is one click",
+        "red fixture: a session that returns no manifest over a green worktree; today it burns the cap"
+      ],
+      "verify": "npx vitest run packages/harbormaster/src/loop-land-session.test.ts",
+      "notes": "Found live 2026-09-03 on dokima-sample (5 Rust tickets, qwen3-coder-next + nemotron on LM Studio): 5 of 5 tickets parked at the ladder cap WITHOUT a Completion Manifest while the harness's own out-of-session verify was green \u2014 the park note itself printed 'THE WORK IS ALREADY DONE THOUGH \u2014 every acceptance criterion passes in the worktree right now'. Every ticket needed the human exit (`dokima close` with a hand manifest; gate re-verified and accepted all 5). Repeated-call signal was present too: agent-session.list called 47-50x with identical args across sessions. The wall is model-side (local models cannot reliably emit the T-27 JSON inside 40 iterations) but the harness holds enough evidence to decide without the model. Ledger: dokima-sample state.db events 2043, 2211, 2607, 2795, 2948 (ticket.released with cap evidence)."
+    },
+    {
+      "id": "P6-20",
+      "type": "defect",
+      "lane": "harbormaster",
+      "status": "open",
+      "title": "Literal-\\n file corruption from local models is accepted at the write tool boundary",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/fs-tools.ts",
+        "packages/harbormaster/src/agent-session/fs-tools.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "a write whose content has <=1 real newline and >=10 literal two-character '\\\\n' sequences (or '\\\\\"' runs) is REFUSED with a named reason the model can act on ('content is escaped, not raw \u2014 resend with real newlines'), not written",
+        "a legitimate file containing a few escaped sequences in string literals is NOT refused (threshold + ratio, tests on both sides)",
+        "the refusal is a session.tool_refused ledger event so a per-ticket view can show how often a model hits it",
+        "red fixture: today the corrupted content is written and committed, and the ticket fails downstream with a rustc/tsc error that names nothing about the cause"
+      ],
+      "verify": "npx vitest run packages/harbormaster/src/agent-session/fs-tools.test.ts",
+      "notes": "Found live 2026-09-03 on dokima-sample, twice: src/auth/password.rs (auth ticket) and tests/integration/mod.rs (integration ticket) were each written as ONE line \u2014 the whole file body as literal \\\\n and \\\\\" escapes. Both compiled to errors that named nothing about the cause ('this doc comment doesn't document anything'); both were only diagnosed by a human reading the file. Same failure class as the heredoc-escape trap already in the operator notes. Cheap to detect at fs-tools write time; the model can usually resend correctly when told exactly what was wrong."
     }
   ]
 }
