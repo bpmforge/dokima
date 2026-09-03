@@ -35,6 +35,15 @@ jobs:
           cache: 'pnpm'
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
+      - name: Enable the SC-07 process sandbox on the runner
+        # Ubuntu 24.04 images ship kernel.apparmor_restrict_unprivileged_userns=1,
+        # so `unshare --net -r` fails and every build run REFUSES (exit 2) —
+        # exactly what SC-07 requires on a host that cannot sandbox (W13-25).
+        # Lift the restriction, then prove the probe passes, so a runner-image
+        # change fails HERE by name instead of as nineteen opaque test failures.
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          unshare --net -r -- true && echo "SC-07 process sandbox available"
       - name: Lint
         run: pnpm lint
       - name: Typecheck
@@ -110,6 +119,15 @@ jobs:
           cache: 'pnpm'
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
+      - name: Enable the SC-07 process sandbox on the runner
+        # Ubuntu 24.04 images ship kernel.apparmor_restrict_unprivileged_userns=1,
+        # so `unshare --net -r` fails and every build run REFUSES (exit 2) —
+        # exactly what SC-07 requires on a host that cannot sandbox (W13-25).
+        # Lift the restriction, then prove the probe passes, so a runner-image
+        # change fails HERE by name instead of as nineteen opaque test failures.
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          unshare --net -r -- true && echo "SC-07 process sandbox available"
       # The red-team fixtures (spoofed receipt, self-accept, agent-signed waiver,
       # promise-token close, scope escape...) live inline in their owning
       # gate-bearing ticket's own package tests (PLAYBOOK.md), not a separate
@@ -139,6 +157,15 @@ jobs:
           cache: 'pnpm'
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
+      - name: Enable the SC-07 process sandbox on the runner
+        # Ubuntu 24.04 images ship kernel.apparmor_restrict_unprivileged_userns=1,
+        # so `unshare --net -r` fails and every build run REFUSES (exit 2) —
+        # exactly what SC-07 requires on a host that cannot sandbox (W13-25).
+        # Lift the restriction, then prove the probe passes, so a runner-image
+        # change fails HERE by name instead of as nineteen opaque test failures.
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          unshare --net -r -- true && echo "SC-07 process sandbox available"
       # @vitest/coverage-v8 is not yet a devDependency (see plan.json W0-09
       # notes HANDOFF) — this job green-skips with a loud warning until a
       # follow-up ticket adds it, then enforces TESTING.md §9's thresholds:

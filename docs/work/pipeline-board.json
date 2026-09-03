@@ -842,6 +842,27 @@
       ],
       "verify": "npx vitest run packages/harbormaster/src/agent-session/fs-tools.test.ts",
       "notes": "Found live 2026-09-03 on dokima-sample, twice: src/auth/password.rs (auth ticket) and tests/integration/mod.rs (integration ticket) were each written as ONE line \u2014 the whole file body as literal \\\\n and \\\\\" escapes. Both compiled to errors that named nothing about the cause ('this doc comment doesn't document anything'); both were only diagnosed by a human reading the file. Same failure class as the heredoc-escape trap already in the operator notes. Cheap to detect at fs-tools write time; the model can usually resend correctly when told exactly what was wrong."
+    },
+    {
+      "id": "P6-21",
+      "type": "defect",
+      "lane": "infra",
+      "status": "done",
+      "title": "CI red since W13-25: the Ubuntu runner cannot sandbox, so every build run refuses; audit override one patch short",
+      "write_scope": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/nightly.yml",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "gate, gate-integrity and coverage jobs enable unprivileged user namespaces and PROVE `unshare --net -r -- true` before running vitest",
+        "supply-chain job green: fast-uri overrides at the advisories' patched versions (3.1.6 / 4.1.2)",
+        "a CI run on main is green for the first time in the 25-run window"
+      ],
+      "verify": "gh run list --workflow ci.yml -L 1 --json conclusion",
+      "notes": "Found 2026-09-03 sizing the release. No green ci.yml run existed in the last 25; the gate of record had silently become the local machine. Two causes, both environmental: (1) run-build/run-cmd/berths tests returned exit 2 only on Linux \u2014 SC-07's assertSandboxOrWaiver refusing because Ubuntu 24.04's apparmor_restrict_unprivileged_userns=1 makes the Linux probe (`unshare --net -r`) fail; the product was right, the runner could not sandbox. Fixed in CI, NOT by DOKIMA_ALLOW_UNSANDBOXED_VERIFY \u2014 waiving would stop exercising SC-07 in the one place it runs on Linux. (2) pnpm audit --audit-level high: fast-uri overrides pinned at >=3.1.4 / >=4.1.1 while GHSA patched versions are >=3.1.6 / >=4.1.2 (five advisories: host confusion x2, IDN, SSRF x2). Nightly e2e W13-39 (decisions resume) failed once on the runner and passes locally in 7s \u2014 watched, not changed."
     }
   ]
 }
