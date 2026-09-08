@@ -35,6 +35,12 @@ import {
   type ReviewSignalAction,
 } from '@dokima/loop';
 import { reRunVerify } from './loop-gates-verify.js';
+import {
+  collectReviewEvidence,
+  evidenceStillCurrent,
+  reviewEvidenceSection,
+  type ReviewEvidenceBundle,
+} from './review-evidence.js';
 // W21-75: the literal that used to sit further down was Dokima's own gate,
 // duplicated; the ticket's verify command is resolved in loop-gates.ts now.
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
@@ -90,6 +96,7 @@ function reviewPrompt(
   ticket: Ticket,
   rerun: RerunEvidence,
   rerunOutputHead: string,
+  evidence: ReviewEvidenceBundle,
 ): string {
   const acceptance = ticket.acceptance
     .map((criterion) => `- ${criterion.text}`)
@@ -98,7 +105,12 @@ function reviewPrompt(
   return [
     `You are reviewing finished work on ticket ${ticket.id}: ${ticket.title}`,
     `Acceptance criteria:\n${acceptance || '- (none recorded)'}`,
-    `Files changed: ${files}`,
+    // W23-03: the DIFF, not a list of filenames. Before this the reviewer was
+    // shown which files moved and asked whether the work was correct — a
+    // question no reader of a file list can answer, and one a passing test
+    // suite answers wrongly for any change that is insecure rather than broken.
+    reviewEvidenceSection(evidence),
+    `Files changed (manifest): ${files}`,
     `Commits: ${(ticket.manifest?.commits ?? []).join(', ') || '(none)'}`,
     `The core re-ran the verify command independently: ${formatRerunLine(rerun)}`,
     `Verify output (head): ${rerunOutputHead}`,
@@ -223,10 +235,22 @@ async function reviewOne(
     return { ticketId: ticket.id, status: 'bounced', reason: 'invalid rerun' };
   }
 
+  // W23-03: the actual source change, collected by the CORE from the ticket's
+  // own worktree. Incomplete evidence (dirty, oversized, unreadable, empty) is
+  // carried into the prompt as an explicit "you are not looking at the code"
+  // and, below, makes CONFIRMED impossible — a review of a diff nobody showed
+  // the reviewer is worse than no review, because it arrives with a verdict.
+  const evidenceInput = {
+    ticketId: ticket.id,
+    worktreePath,
+    secretValues: options.secretValues ?? [],
+  };
+  const evidence = await collectReviewEvidence(evidenceInput);
+
   // One bounce allowed (R-B2: INCOMPLETE is bounced, not counted). A
   // reviewer endpoint that is down or refused skips HONESTLY — a run that
   // landed real work must never crash over its reviewer's availability.
-  const prompt = reviewPrompt(ticket, rerun, output.slice(0, 800));
+  const prompt = reviewPrompt(ticket, rerun, output.slice(0, 800), evidence);
   let raw: string;
   try {
     raw = await options.reviewChat(prompt);
@@ -249,10 +273,24 @@ async function reviewOne(
     return { ticketId: ticket.id, status: 'bounced', reason: 'unparseable verdict' };
   }
 
+  // W23-03: the source must still be the source that was reviewed. A model
+  // turn takes seconds to minutes and nothing stops the session, a person or a
+  // concurrent berth from committing during it, so the head is re-read AFTER
+  // the answer rather than trusted from before it.
+  const stillCurrent =
+    evidence.complete && (await evidenceStillCurrent(evidence, evidenceInput));
+
   // Ground truth out-votes the model: a failing core re-run IS a
   // contradiction, whatever the reviewer said (C-2).
   const gatePassed = run.exitCode === 0;
-  const verdict: ReviewVerdictKind = gatePassed ? parsed.verdict : 'CONTRADICTED';
+  // W23-03: and a CONFIRMED that rests on evidence the reviewer never saw, or
+  // on a tree that has since moved, is downgraded to UNVERIFIABLE rather than
+  // recorded as a confirmation. Never upgraded — a CONTRADICTED stays
+  // contradicted whatever the evidence looked like.
+  const evidenceUsable = evidence.complete && stillCurrent;
+  const modelVerdict: ReviewVerdictKind =
+    parsed.verdict === 'CONFIRMED' && !evidenceUsable ? 'UNVERIFIABLE' : parsed.verdict;
+  const verdict: ReviewVerdictKind = gatePassed ? modelVerdict : 'CONTRADICTED';
   // Advisory score classifies only over a PASSING deterministic gate
   // (classifySubjectiveScore's own contract) — over a failing one the
   // verdict alone speaks. W15-02: a chronically over-claiming maker's
@@ -291,6 +329,15 @@ async function reviewOne(
       `The core's independent re-run FAILED (exit ${run.exitCode}) — the verdict is CONTRADICTED by construction; the model's opinion cannot out-vote the gate.`,
     );
   }
+  if (!evidenceUsable) {
+    lines.splice(
+      1,
+      0,
+      !evidence.complete
+        ? `The reviewer was NOT shown the source change: ${evidence.reason}. A CONFIRMED on this evidence is recorded as UNVERIFIABLE.`
+        : `The worktree changed while the review was running, so the verdict describes code that is no longer there; recorded as UNVERIFIABLE.`,
+    );
+  }
   commentTicket(options.log, {
     ticketId: ticket.id,
     actorId: options.actorId,
@@ -306,6 +353,16 @@ async function reviewOne(
       makerModel: options.makerModel,
       gatePassed,
       overclaiming,
+      // W23-03: what this verdict is ABOUT. A verdict with no head and no
+      // digest cannot be checked for staleness later, which is how a stale
+      // approval gets reused (IMPLEMENTATION_PLAN §6).
+      reviewedHead: evidence.headCommit,
+      reviewedBase: evidence.baseCommit,
+      sourceDigest: evidence.sourceDigest,
+      evidenceComplete: evidence.complete,
+      evidenceReason: evidence.reason,
+      evidenceStillCurrent: stillCurrent,
+      modelVerdict: parsed.verdict,
     },
     'review.verdict',
   );

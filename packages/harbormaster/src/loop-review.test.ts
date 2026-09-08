@@ -270,3 +270,78 @@ describe('the C-4 refusal set covers every rung (W16-01)', () => {
     expect(events(log, 'review.verdict')).toHaveLength(0);
   });
 });
+
+describe('W23-03: the reviewer sees the source change, and a verdict is bound to it', () => {
+  it('RED FIXTURE: the prompt carries the planted LINE, not merely the filename', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    // The worktree the fixture built has one commit on top of main. Plant a
+    // line inside it that a filename could never reveal.
+    const worktree = path.join(repoRoot, '.dokima', 'worktrees', 'T-1');
+    await fs.writeFile(
+      path.join(worktree, 'auth.ts'),
+      'export const isAdmin = () => true; // PLANTED-BYPASS\n',
+    );
+    await git(worktree, ['add', '--', 'auth.ts']);
+    await git(worktree, ['commit', '-m', 'T-1: bypass']);
+
+    const prompts: string[] = [];
+    await runReviewPass(
+      options(log, repoRoot, {
+        reviewChat: async (prompt: string) => {
+          prompts.push(prompt);
+          return '{"verdict":"CONFIRMED","score":8,"reasoning":"looks fine to me."}';
+        },
+      }),
+    );
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain('PLANTED-BYPASS');
+    expect(prompts[0]).toContain('+export const isAdmin = () => true;');
+  });
+
+  it('the verdict event names the head, base and digest it was given', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    await runReviewPass(options(log, repoRoot));
+    const verdict = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    expect(verdict.reviewedHead).toMatch(/^[0-9a-f]{40}$/);
+    expect(verdict.sourceDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(verdict.evidenceComplete).toBe(true);
+    expect(verdict.evidenceStillCurrent).toBe(true);
+  });
+
+  it('RED FIXTURE: a model CONFIRMED on evidence it was never shown is recorded as UNVERIFIABLE', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    // A dirty worktree: there is no settled tree, so there is no diff to show.
+    await fs.writeFile(
+      path.join(repoRoot, '.dokima', 'worktrees', 'T-1', 'work.txt'),
+      'edited after the commit\n',
+    );
+
+    const outcomes = await runReviewPass(options(log, repoRoot));
+    expect(outcomes[0]).toMatchObject({ status: 'recorded', verdict: 'UNVERIFIABLE' });
+
+    const verdict = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    expect(verdict.evidenceComplete).toBe(false);
+    expect(verdict.modelVerdict).toBe('CONFIRMED');
+    expect(String(verdict.evidenceReason)).toMatch(/uncommitted changes/);
+
+    const comment = getTicket(log, 'T-1')!
+      .history.filter((h) => h.verb === 'comment')
+      .at(-1)!;
+    expect(comment.body).toContain('NOT shown the source change');
+  });
+
+  it('RED FIXTURE: a failing core re-run still out-votes a model CONFIRMED, diff or no diff', async () => {
+    const { log, repoRoot } = await fixture(
+      'sh -c "printf \'1 tests failed\\n\'; exit 1"',
+    );
+    const outcomes = await runReviewPass(options(log, repoRoot));
+    expect(outcomes[0]).toMatchObject({ verdict: 'CONTRADICTED' });
+  });
+});

@@ -15536,7 +15536,8 @@
       "notes": [
         "FOUND AT THE AB-00 BASELINE, 2026-09-08. pnpm validate exited 1 on /var/folders/.../dokima-suite-home-3dXsuZ, holding one global.db, with no vitest, playwright or conductor process alive. A second full run immediately afterwards left none, so it is intermittent \u2014 the same shape W22-28 itself recorded (four at once once, none at other times, around test-file churn).",
         "W22-28 IS DONE AND ITS SECOND CRITERION IS NOT MET: \"a full pnpm test run leaves no dokima-suite-home-*, verified across three consecutive runs\". A fresh ticket rather than a reopen, which is exactly what W22-28 did to W22-21 on the same defect.",
-        "COSTS A GATE, NOT A TEST: this is why an AB card can see a red pnpm validate it did not cause. Check whether the only violation is a suite home from the preceding run before treating it as a regression."
+        "COSTS A GATE, NOT A TEST: this is why an AB card can see a red pnpm validate it did not cause. Check whether the only violation is a suite home from the preceding run before treating it as a regression.",
+        "FREQUENCY MEASURED, 2026-09-08: three of the four full gate runs in the W23-00..W23-03 session left exactly one dokima-suite-home-* behind. Not rare \u2014 roughly one run in two on this machine, always exactly one, always after a full pnpm test. That is a much better reproduction handle than W22-28 had."
       ]
     },
     {
@@ -15601,6 +15602,39 @@
       "notes": [
         "FOUND AT W23-02, 2026-09-08. Adding a single preflight call plus its import took the file from 398 to 402 and reddened conductor-lib.test.mjs\u2019s repo-wide validate-file-size check. It now sits at EXACTLY 400 because the explanatory comment had to become a trailing `// W23-02` and the preflight body was moved into approved-build.ts. That fits, and it is not a good place to leave the file: the next card that touches executeBuildRun has zero lines of budget and will be tempted to do what this one nearly did.",
         "NOT DONE HERE ON PURPOSE (START_HERE rule 7): a file-size rule must not trigger an unrelated refactor inside someone else\u2019s card. The extraction is real work \u2014 six or seven read-check-refuse blocks that each return 2 \u2014 and deserves its own ticket rather than being smuggled into an approval ticket."
+      ]
+    },
+    {
+      "id": "W23-03",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-02"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "the reviewer was never shown the code \u2014 give it the diff, and bind the verdict to it",
+      "write_scope": [
+        "packages/harbormaster/src/review-evidence.ts",
+        "packages/harbormaster/src/review-evidence.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review.test.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A fake reviewer captures a prompt containing the planted changed LINE, not merely its filename, through the real runReviewPass \u2014 not a second helper with no caller",
+        "A change that passes its tests and is insecure is fully visible in the evidence bundle",
+        "Secrets are redacted before the diff reaches a model or a ledger summary; oversized, dirty, stale or unreadable evidence is INCOMPLETE with a reason and carries no partial diff",
+        "A model CONFIRMED on incomplete or stale evidence is recorded as UNVERIFIABLE, and a nonzero independent verify result still out-votes any model verdict",
+        "Producing the diff executes nothing from the reviewed repository \u2014 an external diff program and a textconv filter configured by the repo itself both fail to run"
+      ],
+      "notes": [
+        "AB-03. THE OLD PROMPT LISTED FILENAMES AND ASKED FOR A JUDGEMENT. reviewPrompt carried acceptance, the manifest\u2019s file list, commit shas and the verify output, and no source at all \u2014 so the reviewer could only restate the gate\u2019s own result, and every change that is insecure rather than broken was invisible to it by construction. The C-4 machinery around it was real; what it protected was a review of a file list.",
+        "READING AN UNTRUSTED REPOSITORY IS AN ATTACK SURFACE, and this is the part that needed a red fixture rather than a comment: git will run a program the reviewed repository names (diff.external, a textconv filter in .gitattributes) while producing a diff. Every read passes --no-ext-diff/--no-textconv AND neutralizes the config that supplies them; the fixture configures both and asserts the marker file is never created.",
+        "INCOMPLETE IS A STATE. Oversized evidence carries NO diff rather than half of one, and the prompt says \"you are NOT looking at the code\" in words \u2014 a reviewer told nothing about a missing diff will confidently review its absence."
       ]
     }
   ]
