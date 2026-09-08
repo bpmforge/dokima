@@ -63,6 +63,7 @@ import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
 import { executeBerthsRun } from './run-build-berths.js';
 import { executeReviewPass } from './review-pass.js';
+import { executeRepairRounds } from './build-repair.js';
 import { printRunOutcomes } from './run-summary.js';
 import { requiredValidatorsFor } from './run-validators.js';
 import { listTickets } from '@dokima/tickets';
@@ -303,7 +304,7 @@ export async function executeBuildRun(
 
   // W15-01: the review pass — every in_review ticket gets a cross-model
   // verdict (or an honest skip) before a person reads the Decide card.
-  await executeReviewPass({
+  const reviewOptions = {
     log,
     actorId: command.actorId,
     runId,
@@ -315,10 +316,31 @@ export async function executeBuildRun(
     secretValues,
     stderr: io.stderr,
     projectId: command.projectId, // W23-06: fair-scheduling key inside the shared pool
-    // W23-10: only what THIS run landed — a parked ticket from last week is
-    // not this run's to re-review.
-    ticketIds: result.processed.map((entry) => entry.ticketId),
-  });
+  };
+  // W23-10: only what THIS run landed — a parked ticket from last week is
+  // not this run's to re-review.
+  const reviewedIds = result.processed.map((entry) => entry.ticketId);
+  if (command.approvedBuild === true) {
+    /**
+     * W23-11: on an APPROVED build the run does not stop at a verdict — it
+     * rejects, hands the judgement back, runs the maker again and re-reviews,
+     * at most three times. The loop reviews each ticket itself, so the pass
+     * below would be a second review of the same head; on this path it is the
+     * repair loop that runs it.
+     */
+    await executeRepairRounds({
+      log,
+      runId,
+      ticketIds: reviewedIds,
+      landOptions,
+      review: reviewOptions,
+      stderr: io.stderr,
+      secretValues,
+      ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
+    });
+  } else {
+    await executeReviewPass({ ...reviewOptions, ticketIds: reviewedIds });
+  }
 
   // W14-06: the run's end is this product's idle moment — consolidate now
   // unless the project turned it off (US-603 AC-1; ON by default, FR-M3).

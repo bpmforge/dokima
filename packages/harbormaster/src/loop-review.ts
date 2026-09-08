@@ -373,6 +373,7 @@ async function reviewOne(
     makerModels,
     reviewerModel: options.reviewerModel,
     reviewerActorId,
+    makerActorId: ticket.ownerId,
   });
 
   return {

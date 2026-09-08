@@ -286,7 +286,11 @@ export type {
   RunBerthsOptions,
   RunBerthsResult,
 } from './berths.js';
-export { landClaimedTicket } from './loop-land-ticket.js';
+export { landClaimedTicket, processTicket } from './loop-land-ticket.js';
+
+/** W23-11 (AB-11): the bounded repair loop — reject, remake, re-review, at most three rounds. */
+export { runRepairRounds } from './build-repair-loop.js';
+export type { RepairTicketInputs, RepairTicketOutcome } from './build-repair-loop.js';
 
 /** W17-03: the measured turns profile — observations emitted per session, multiplier computed by the composing caller. */
 export { measuredTurnsMultiplier } from './agent-session/session-progress.js';
@@ -373,8 +377,6 @@ export {
   type StoredEvidence,
 } from './check-evidence.js';
 
-// @unreached consolidateFindings: the repair loop that consumes a batch is W23-11 (AB-11); W23-09 is the consolidation and its proofs, and deliberately does not also drive the reject/reclaim/fix cycle.
-// @unreached groupByOwner: same — W23-11 (AB-11) runs one repair round per owning ticket.
 export {
   consolidateFindings,
   findingIdentity,

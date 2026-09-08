@@ -94,6 +94,14 @@ export interface DecisionFacts {
   readonly makerModels: readonly string[];
   readonly reviewerModel: string | null;
   readonly reviewerActorId: string;
+  /**
+   * W23-10 (identity half): the actor that OWNED the ticket while it was
+   * being made. The model comparison below is only half of C-4 — two
+   * identities can share a model and one identity can review under two — and
+   * "maker identity cannot review its own work" is the half a model check
+   * cannot see.
+   */
+  readonly makerActorId: string | null;
 }
 
 /**
@@ -103,6 +111,12 @@ export interface DecisionFacts {
  */
 export function decideReview(facts: DecisionFacts): ReviewDecision {
   const reasons: string[] = [];
+
+  if (facts.makerActorId !== null && facts.reviewerActorId === facts.makerActorId) {
+    reasons.push(
+      `the reviewer identity (${facts.reviewerActorId}) is the maker's own — an identity never reviews its own work (C-4)`,
+    );
+  }
 
   if (facts.reviewerModel === null) {
     reasons.push('no reviewer model is configured — nothing independent looked at this');

@@ -46,6 +46,7 @@ const FRESH: DecisionFacts = {
   makerModels: ['local-coder', 'bigger-coder'],
   reviewerModel: 'big-reviewer',
   reviewerActorId: REVIEWER_ACTOR_ID,
+  makerActorId: 'agent-1',
 };
 
 describe('a fresh, complete review is eligible — and says nothing is wrong with it', () => {
@@ -59,6 +60,11 @@ describe('a fresh, complete review is eligible — and says nothing is wrong wit
 
 describe('every ineligible condition, one at a time, each with its own reason', () => {
   it.each([
+    [
+      'the reviewer identity IS the maker identity — the half a model check cannot see',
+      { makerActorId: REVIEWER_ACTOR_ID },
+      /identity never reviews its own work/,
+    ],
     ['no reviewer model', { reviewerModel: null }, /nothing independent looked/],
     [
       'the reviewer is the maker’s own model',

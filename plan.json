@@ -15923,6 +15923,46 @@
         "runReviewPass carries an @unreached marker whose reason is NOT a ticket id: it is a kept compatibility surface and will never have an in-repo caller again. The marker test now asserts each symbol\u2019s reason individually rather than matching one pattern across all of them \u2014 a count would pass while a marker quietly changed its story.",
         "SCOPE WIDENED: loop-review.ts crossed the 400-line cap again, so the comment assembly became loop-review-report.ts (extraction only). A first attempt at this extraction corrupted the file by string-matching the wrong commentTicket call site; caught by tsc, reverted with git checkout, and redone against explicit anchors."
       ]
+    },
+    {
+      "id": "W23-11",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-10"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "the review wrote a verdict and a person did every repair",
+      "write_scope": [
+        "packages/harbormaster/src/build-repair-loop.ts",
+        "packages/harbormaster/src/build-repair-loop.test.ts",
+        "packages/harbormaster/src/review-decision.ts",
+        "packages/harbormaster/src/review-decision.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/build-repair.ts",
+        "apps/server/src/cli/run-build.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A planted failing check is rejected, repaired by the maker and independently re-verified into a fresh confirmed result with nobody in the room",
+        "A persistent defect ends at three automatic rounds, and a restart is granted no new ones",
+        "A maker cannot reject as the verifier, and a finding outside the ticket write scope never auto-expands it",
+        "A check that could not answer parks with the true reason instead of producing a repair round against a defect nobody has evidence of"
+      ],
+      "notes": [
+        "AB-11. THE BOUND LIVES IN THE LEDGER, NOT IN THE FUNCTION. A counter held in memory is refilled by every restart, and a budget a restart refills is a suggestion. `build.repair.round` is appended BEFORE the reject that opens the round, so a crash between the two costs the round rather than refunding it \u2014 over-counting is the safe direction for a bound. An acceptance is the one thing that resets it: reopened work is new work.",
+        "AN OUTAGE IS NOT A DEFECT (IMPLEMENTATION_PLAN \u00a77). A missing scanner, a dead endpoint or an errored check parks with the true reason. Without that ordering the loop is unreachable in exactly the wrong way: every objective check is REQUIRED for eligibility, so on a machine with no semgrep every ticket is permanently ineligible and a naive loop would send a maker after a defect nobody has evidence of. A SKIPPED machine review takes the same path \u2014 no verdict means no judgement to repair against.",
+        "NO-PROGRESS COMPARES SIGNATURES, and falls back to the blocker sentences when the origins attributed no file. The review path today names blockers and check ids, not paths, so the structured finding list handed to consolidateFindings is EMPTY in production \u2014 stated in the caller rather than faked, because inventing a path to populate the batch would put a fabricated location in front of a maker.",
+        "THE REJECTION IS THE HANDOFF. W21-42 already carries `latestRejectionReason` to rung zero, where it outranks a playbook hit, so the repair batch reaches the next attempt through the path that exists rather than a new one. The reject is signed by the machine reviewer; `rejectTicket` refuses the ticket owner, so a maker cannot reach it by impersonation.",
+        "ACTIVATION IS THE APPROVAL. The loop runs only when the run is an approved build (W23-02) \u2014 AB-16 gates turning it on for existing users, and a run nobody approved keeps the old shape: an in_review ticket and a verdict a human reads.",
+        "SCOPE WIDENED: review-decision.ts / loop-review.ts, to close the C-4 half AB-10 left open. decideReview compared the reviewer MODEL against the maker models and never compared identities, so a reviewer actor equal to the maker owner passed. Found in review before AB-11 wired acceptance to `eligible`, which is the card that would have made it load-bearing."
+      ]
     }
   ]
 }

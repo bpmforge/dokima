@@ -5,7 +5,7 @@ Durable handoff for the AB card sequence in
 observed results only. Nothing here is marked implemented before its gate ran.
 
 - **Current HEAD:** see the card row's commit column
-- **Current AB card:** AB-11 (next)
+- **Current AB card:** AB-12 (next)
 - **Branch:** `feat/automated-build`, cut from `307ed762` on `main`
 - **Policy version enabled for tests only / opted-in users:** `approved-build-v1`
   exists and is recorded/validated, but NO user is opted in: opting in requires
@@ -32,7 +32,7 @@ when its card is next**, per AB-00 step 5.
 | AB-08 | W23-08     | yes (done)              | Invalidate dependent evidence on retry                                            |
 | AB-09 | W23-09     | yes (done)              | Consolidate findings into one repair batch                                        |
 | AB-10 | W23-10     | yes (done)              | Structured, fresh review decisions                                                |
-| AB-11 | W23-11     | reserved                | Bounded automatic repair loop                                                     |
+| AB-11 | W23-11     | yes (done)              | Bounded automatic repair loop                                                     |
 | AB-12 | W23-12     | reserved                | Review/accept between tickets so dependents unlock                                |
 | AB-13 | W23-13     | reserved                | Durable run state, stop, resume                                                   |
 | AB-14 | W23-14     | reserved                | One approval and a readable build experience                                      |
@@ -53,6 +53,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit             | Focused checks                                                                                                         | Full gate                                                                                                                            | Evidence / blocker                                                                                                        |
 | ----- | ----------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)      | `node scripts/validate-plan.mjs` exit 0                                                                                | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                            |
+| AB-11 | W23-11      | done   | `14` (this commit) | `vitest run build-repair-loop.test.ts reject.test.ts --retry=0` → 26 passed                                            | lint 0 · typecheck 0 · test 0 (5271 passed / 2 skipped, 603 files) · e2e 0 (76) · validate 0                                         | reject→remake→re-review with nobody in the room; the round count lives in the ledger, so a restart is granted none        |
 | AB-10 | W23-10      | done   | `13` (this commit) | `vitest run review-decision.test.ts loop-review.test.ts --retry=0` → 36 passed                                         | lint 0 · typecheck 0 · test 0 (5259 passed / 2 skipped, 602 files) · e2e 0 (76) · validate 0                                         | machine reviewer identity; eligible computed with per-reason evidence                                                     |
 | AB-09 | W23-09      | done   | `12` (this commit) | `vitest run repair-findings.test.ts --retry=0` → 20 passed                                                             | lint 0 · typecheck 0 · test 0 (5240 passed / 2 skipped, 601 files) · e2e 0 (76) · validate 0                                         | dedup by identity both directions; W23-21 filed (validate-exports blind to `export *`)                                    |
 | AB-08 | W23-08      | done   | `11` (this commit) | `vitest run check-evidence.test.ts review-status.test.ts onboard-executor.test.ts --retry=0` → 41 passed               | lint 0 · typecheck 0 · test 0 (5220 passed / 2 skipped, 600 files) · e2e 0 (76) · validate 0                                         | transitive re-run proven through the real onboard path; STALE is its own review state                                     |
@@ -66,25 +67,30 @@ it changes no default for a project that has not opted in.
 
 ## Next session
 
-- **Completed behavior:** a per-ticket review operation returning a structured
-  decision (head, digest, check statuses, both models, both identities) whose
-  `eligible` flag is computed from those facts and carries a reason per
-  failure. Review events and comments are signed by a minted machine reviewer
-  identity. A run reviews only the tickets it processed.
-- **Exact unfinished step:** AB-11 — the bounded automatic repair loop: reject,
-  reclaim, fix, re-verify, with durable counters that a restart cannot reset.
-- **Next file/symbol:** `rejectTicket` / the reclaim path in
-  `packages/tickets`, and `consolidateFindings` / `groupByOwner`, whose
-  `@unreached` markers name W23-11.
-- **Failing command and output summary:** a first attempt at the
-  `loop-review-report.ts` extraction corrupted the file by string-matching the
-  wrong `commentTicket` call site. `tsc` caught it, `git checkout --` reverted
-  it, and the redo used explicit anchors.
-- **Actual test totals and skips:** 602 files, 5259 passed, 2 skipped.
-- **Production caller verified:** yes — `apps/server/src/cli/review-pass.ts`
-  calls `reviewTicketDecisions` and passes the run's own ticket ids from
-  `run-build.ts`.
-- **New finding and registered ticket:** none new; `runReviewPass` is now a
-  kept compatibility surface with an `@unreached` marker that says so rather
-  than naming a ticket, and the marker test asserts each reason individually.
-- **Next AB id:** AB-11.
+- **Completed behavior:** the bounded automatic repair loop. A ticket the
+  review will not confirm is rejected under the machine reviewer identity, the
+  consolidated batch reaches the next maker attempt through the rejection path
+  W21-42 already built, the maker runs again through the same engine the berth
+  layer uses, and the new head is reviewed again — at most three rounds. It
+  runs only on an approved build (W23-02); an unapproved run keeps the old
+  shape exactly.
+- **Exact unfinished step:** AB-12 — review and accept between tickets so
+  dependents unlock. `decideApprovedBuildAction` is the owed caller: its
+  `@unreached` marker names W23-12.
+- **Next file/symbol:**
+  `packages/harbormaster/src/approved-build-policy.ts` (`decideApprovedBuildAction`,
+  `decideMachineAccept`) and the post-close path in
+  `packages/harbormaster/src/loop-land-ticket.ts`.
+- **Failing command and output summary:** none. One import edit did not apply
+  (prettier had already reformatted the line it matched) and the test failed
+  with `acceptTicket is not defined`; re-anchored and green.
+- **Actual test totals and skips:** 603 files, 5271 passed, 2 skipped.
+- **Production caller verified:** yes — `apps/server/src/cli/build-repair.ts`
+  calls `runRepairRounds`, `consolidateFindings` and `groupByOwner`, and
+  `run-build.ts` calls it on the approved-build path. Both `@unreached` markers
+  that named W23-11 are deleted, not retargeted.
+- **New finding and registered ticket:** a C-4 gap left by AB-10 —
+  `decideReview` compared reviewer and maker MODELS and never their identities.
+  Fixed inside this card (scope widened, recorded on W23-11) rather than filed,
+  because AB-11 is the card that makes `eligible` load-bearing.
+- **Next AB id:** AB-12.
