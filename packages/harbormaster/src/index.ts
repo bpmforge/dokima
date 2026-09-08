@@ -354,3 +354,17 @@ export {
   type SecurityToolAdapter,
   type ToolRunResult,
 } from './security-checks.js';
+
+// W23-07: the bounded-group scheduler. Generic over nodes and an injected
+// execute callback — it knows nothing about security, models or routing,
+// because a package may not import an app. apps/server points it at
+// @dokima/pipeline's SECURITY_PLAN.
+export {
+  runCheckSchedule,
+  type NodeOutcome,
+  type NodeRecord,
+  type SchedulableNode,
+  type ScheduleOptions,
+  type ScheduleResult,
+  type SchedulerEvent,
+} from './check-scheduler.js';

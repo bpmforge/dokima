@@ -15749,6 +15749,45 @@
         "ENDPOINT IDENTITY WAS `${providerId}:${baseUrl ?? \"\"}` \u2014 a raw concatenation, so http://localhost:1234 and http://localhost:1234/ were two endpoints with two limits. Normalized now, with credentials and query strings stripped because a pool key is logged, surfaced through queueStats, and lives as long as the process (FR-S2).",
         "ONLY chat IS QUEUED. FairScheduler is not reentrant, so a health probe taken from inside a queued chat would wait on the slot that chat is holding, forever. There is a test that would hang if that were ever changed."
       ]
+    },
+    {
+      "id": "W23-07",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-06"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "run the security graph in bounded groups, and never let a failure look clean",
+      "write_scope": [
+        "packages/harbormaster/src/check-scheduler.ts",
+        "packages/harbormaster/src/check-scheduler.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "packages/pipeline/src/modes/security-plan.ts",
+        "packages/pipeline/src/modes/security-plan.test.ts",
+        "packages/pipeline/src/index.ts",
+        "apps/server/src/api/pipeline/onboard-executor.ts",
+        "apps/server/src/api/pipeline/onboard-executor.test.ts",
+        "apps/server/src/api/pipeline/onboard-security-schedule.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Deferred-promise tests prove independent nodes overlap and dependents wait, with no wall-clock assertion anywhere",
+        "A thrown dispatch, a failed node, a stop request and a source that moved mid-run each produce a status that is not \"complete\"; a failure stops its dependents and not its independent siblings",
+        "Each node receives an immutable snapshot of only its declared predecessors, never the live result map",
+        "The real onboard entry point traverses the graph: synthesis is dispatched only after every stage-B specialist finished, the seven general steps still run sequentially first, and the synthesis node is told which categories were skipped"
+      ],
+      "notes": [
+        "AB-07. THE SCHEDULER KNOWS NOTHING ABOUT SECURITY: it takes nodes and an injected execute callback, because model routing lives in apps/server and a package may not import an app. apps/server\u2019s onboard-security-schedule.ts is the seam where the generic scheduler meets @dokima/pipeline\u2019s SECURITY_PLAN.",
+        "A REAL BUG THE TESTS CAUGHT: the first draft tracked only settled outcomes, so a node still in flight had no outcome, read as ready on the next pass, and was started a SECOND time \u2014 the worker-limit test observed [a, b, b]. A separate `started` set fixes it; the comment on that set names the test that found it.",
+        "THE MARKER MECHANISM RESOLVED IN ALL THREE DIRECTIONS. W23-05 exported four symbols marked @unreached \"caller is W23-07\". Two got real callers (classifySecurityApplicability, skippedCategories). One stopped being barrel-published (inventoryDigest, already stamped into every classification). And readySecurityNodes was DELETED: runCheckSchedule computes readiness itself, from the same edges, because it also has to know what is in flight and what has failed \u2014 facts a pure function over (completed, applicability) cannot see. Two implementations of \"what may start now\" is exactly the drift the marker exists to surface, and the honest resolution of a marker is sometimes a deletion.",
+        "TOOL NODES STAY IN THE GRAPH even though stage A already ran them: deleting a completed node from a dependency graph is how a specialist ends up looking independent of the tool whose output it reads."
+      ]
     }
   ]
 }

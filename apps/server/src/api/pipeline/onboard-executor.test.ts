@@ -120,7 +120,9 @@ describe('the RALPH_WIGGUM coverage loop runs the preflight (W15-03, R-B5)', () 
     expect(landscapeAttempts).toBe(2);
     expect(stepArtifacts.landscape!.session.exitCode).toBe(0);
 
-    const iterations = listEvents(log).filter((e) => e.eventType === 'coverage.iteration');
+    const iterations = listEvents(log).filter(
+      (e) => e.eventType === 'coverage.iteration',
+    );
     expect(iterations.length).toBeGreaterThanOrEqual(2);
     const first = iterations[0]!.payload as { uncovered: string[] };
     expect(first.uncovered).toEqual(['landscape']);
@@ -159,5 +161,67 @@ describe('the RALPH_WIGGUM coverage loop runs the preflight (W15-03, R-B5)', () 
     };
     expect(last.uncovered).toEqual(['landscape']);
     expect(last.gapChecksum).not.toBeNull();
+  });
+});
+
+describe('W23-07: the security portion runs against the declared graph', () => {
+  let log: EventLog | undefined;
+  afterEach(() => {
+    log?.close();
+    log = undefined;
+  });
+
+  it('RED FIXTURE: synthesis is dispatched only after EVERY stage-B specialist has finished', async () => {
+    log = openEventLog(':memory:');
+    const finished: string[] = [];
+    const startedWhenChainsBegan: string[] = [];
+
+    const dispatch: RealOnboardDispatch = async (role, context) => {
+      if (context.stepId === 'security-attack-chains')
+        startedWhenChainsBegan.push(...finished);
+      // Yield, so a scheduler that started synthesis early would be observed
+      // doing it rather than accidentally serialized by synchronous returns.
+      await new Promise((resolve) => setImmediate(resolve));
+      finished.push(context.stepId);
+      return fakeArtifact(role, context.stepId);
+    };
+
+    await runOnboardExecution(
+      { seedContext: { repoRoot: '/tmp/target' } },
+      { log, runId: 'run-graph', now: () => '2026-09-08T00:00:00.000Z', dispatch },
+    );
+
+    const stageB = [
+      'security-sast',
+      'security-secrets',
+      'security-deps',
+      'security-owasp-web',
+      'security-owasp-llm',
+      'security-cloud',
+      'security-iac',
+    ];
+    for (const id of stageB) expect(startedWhenChainsBegan).toContain(id);
+    // And the refresh is last of all.
+    expect(finished.at(-1)).toBe('threat-model-refresh');
+  });
+
+  it('the seven GENERAL onboarding steps still run sequentially, before any security step', async () => {
+    log = openEventLog(':memory:');
+    const order: string[] = [];
+    const dispatch: RealOnboardDispatch = async (role, context) => {
+      order.push(context.stepId);
+      await new Promise((resolve) => setImmediate(resolve));
+      return fakeArtifact(role, context.stepId);
+    };
+
+    await runOnboardExecution(
+      { seedContext: { repoRoot: '/tmp/target' } },
+      { log, runId: 'run-seq', now: () => '2026-09-08T00:00:00.000Z', dispatch },
+    );
+
+    const firstSecurity = order.findIndex((id) => id.startsWith('security-'));
+    const generalSteps = order.slice(0, firstSecurity);
+    expect(generalSteps.length).toBeGreaterThanOrEqual(7);
+    for (const id of generalSteps) expect(id.startsWith('security-')).toBe(false);
   });
 });

@@ -78,15 +78,15 @@ export type { ClaimVerdict, ClaimVerdictResult } from './challenger/claims.js';
 // applicability, and the structural validation that runs before any model or
 // tool call. `runOnboard` calls `validateSecurityPlan` itself; the rest is the
 // representation AB-07's scheduler consumes.
-// @unreached classifySecurityApplicability: the scheduler that consumes it is W23-07 (AB-07); W23-05 declares the graph and proves the classification, and deliberately does not also build the concurrent runner.
-// @unreached readySecurityNodes: same — W23-07 (AB-07) is the bounded-group scheduler that asks which nodes may start.
-// @unreached skippedCategories: same — W23-07 (AB-07) hands the skipped list to the synthesis node.
-// @unreached inventoryDigest: same — W23-07 (AB-07) stamps it onto the run's recorded evidence.
+// W23-07 arrived and wired both: `classifySecurityApplicability` decides what
+// the scheduler may skip, and `skippedCategories` is what the synthesis node is
+// told so it cannot read an absent category as an absence of findings.
+// `readySecurityNodes` was DELETED rather than wired — see security-plan.ts.
+// `inventoryDigest` stays module-internal; it is stamped into every
+// classification already and needs no second caller.
 export {
   SECURITY_PLAN,
   classifySecurityApplicability,
-  inventoryDigest,
-  readySecurityNodes,
   skippedCategories,
   validateSecurityPlan,
   type ApplicabilityStatus,

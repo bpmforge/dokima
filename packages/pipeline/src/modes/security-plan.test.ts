@@ -9,7 +9,6 @@ import {
   SECURITY_PLAN,
   classifySecurityApplicability,
   inventoryDigest,
-  readySecurityNodes,
   skippedCategories,
   validateSecurityPlan,
   type SecurityInventory,
@@ -172,22 +171,6 @@ describe('applicability is measured, and its third answer is "we could not tell"
     expect(cloud.reason).toMatch(/stays required/);
   });
 
-  it('an unresolved predecessor does NOT satisfy a dependency; a not_applicable one does', () => {
-    const unresolved = classifySecurityApplicability({ ...FULL, usesCloudSdk: null });
-    const completed = new Set(
-      SECURITY_PLAN.filter(
-        (n) => n.id !== 'security-cloud' && n.stage !== 'C' && n.stage !== 'D',
-      ).map((n) => n.id),
-    );
-    // Everything but security-cloud is done. Synthesis must still wait.
-    expect(readySecurityNodes(completed, unresolved)).not.toContain(
-      'security-attack-chains',
-    );
-
-    const skipped = classifySecurityApplicability({ ...FULL, usesCloudSdk: false });
-    expect(readySecurityNodes(completed, skipped)).toContain('security-attack-chains');
-  });
-
   it('nothing about a project can make a secrets scan inapplicable', () => {
     const nothing: SecurityInventory = {
       servesHttp: false,
@@ -213,10 +196,5 @@ describe('applicability is measured, and its third answer is "we could not tell"
       'security-owasp-llm',
     ]);
     for (const entry of skipped) expect(entry.reason).not.toBe('no reason recorded');
-  });
-
-  it('the ready set starts with the tool nodes and nothing else', () => {
-    const ready = readySecurityNodes(new Set(), classifySecurityApplicability(FULL));
-    expect(ready).toEqual(['tool-sast', 'tool-secrets', 'tool-deps']);
   });
 });

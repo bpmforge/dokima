@@ -322,24 +322,16 @@ export function validateSecurityPlan(
 }
 
 /**
- * The nodes that may start now: every predecessor has produced a result, or is
- * a documented NOT_APPLICABLE. An UNRESOLVED predecessor does NOT satisfy a
- * dependency — it is required, and required means waited for.
+ * `readySecurityNodes` USED TO LIVE HERE and was deleted by W23-07, which is
+ * the ticket its own @unreached marker named as its future caller. When that
+ * caller arrived it turned out not to want it: `runCheckSchedule` computes
+ * readiness itself, from the same edges, because it also has to know what is
+ * in flight and what has failed — facts a pure function over
+ * (completed, applicability) cannot see. Two implementations of "what may
+ * start now" is exactly the drift the marker mechanism exists to surface, and
+ * the honest resolution of a marker is sometimes a deletion rather than a
+ * wiring.
  */
-export function readySecurityNodes(
-  completed: ReadonlySet<string>,
-  applicability: readonly NodeApplicability[],
-  plan: readonly SecurityPlanNode[] = SECURITY_PLAN,
-): readonly string[] {
-  const statusOf = new Map(applicability.map((a) => [a.nodeId, a.status]));
-  const satisfied = (id: string): boolean =>
-    completed.has(id) || statusOf.get(id) === 'not_applicable';
-  return plan
-    .filter((node) => !completed.has(node.id))
-    .filter((node) => statusOf.get(node.id) !== 'not_applicable')
-    .filter((node) => node.dependsOn.every(satisfied))
-    .map((node) => node.id);
-}
 
 /**
  * What the synthesis node must be told. Attack-chain synthesis that does not
