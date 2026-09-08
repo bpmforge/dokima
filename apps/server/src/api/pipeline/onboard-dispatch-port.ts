@@ -53,6 +53,7 @@ import {
   type GatewayConfig,
 } from './gateway-model-port.js';
 import { parseOnboardCompletion, type OnboardStepArtifact } from './onboard-types.js';
+import { endpointIdFor, pooledProvider } from '../../cli/shared-gateway-pool.js';
 
 interface LoopModule {
   readonly runSession: (input: {
@@ -216,6 +217,19 @@ export function createRealOnboardDispatch(
       ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
     });
 
+    // W23-06: the specialist's chat shares the process-wide endpoint limit
+    // with maker sessions and the review pass. Before this, an onboard
+    // analysis running beside a build put a second concurrent request on an
+    // endpoint whose whole point is that it serves one.
+    const pooled = pooledProvider(
+      provider,
+      endpointIdFor({
+        providerId: config.providerId ?? 'onboard-run',
+        baseUrl: config.baseUrl,
+      }),
+      opts.repoRoot,
+    );
+
     const result = await runSession({
       handoff: {
         role,
@@ -231,7 +245,7 @@ export function createRealOnboardDispatch(
       },
       cwd: opts.repoRoot,
       spawn: async (input) => {
-        const response = await provider.chat({
+        const response = await pooled.chat({
           model: config.model,
           messages: [
             { role: 'system', content: ONBOARD_SPECIALIST_SYSTEM_PROMPT },

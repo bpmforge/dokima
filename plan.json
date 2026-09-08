@@ -15585,7 +15585,7 @@
       "id": "W23-20",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "core",
@@ -15601,7 +15601,8 @@
       ],
       "notes": [
         "FOUND AT W23-02, 2026-09-08. Adding a single preflight call plus its import took the file from 398 to 402 and reddened conductor-lib.test.mjs\u2019s repo-wide validate-file-size check. It now sits at EXACTLY 400 because the explanatory comment had to become a trailing `// W23-02` and the preflight body was moved into approved-build.ts. That fits, and it is not a good place to leave the file: the next card that touches executeBuildRun has zero lines of budget and will be tempted to do what this one nearly did.",
-        "NOT DONE HERE ON PURPOSE (START_HERE rule 7): a file-size rule must not trigger an unrelated refactor inside someone else\u2019s card. The extraction is real work \u2014 six or seven read-check-refuse blocks that each return 2 \u2014 and deserves its own ticket rather than being smuggled into an approval ticket."
+        "NOT DONE HERE ON PURPOSE (START_HERE rule 7): a file-size rule must not trigger an unrelated refactor inside someone else\u2019s card. The extraction is real work \u2014 six or seven read-check-refuse blocks that each return 2 \u2014 and deserves its own ticket rather than being smuggled into an approval ticket.",
+        "DONE INSIDE W23-06, 2026-09-08, and that is exactly the moment this ticket predicted: W23-06 added one field to the executeReviewPass call and run-build.ts went from 400 to 401 lines. The prediction was \"the next card that touches executeBuildRun has zero lines of budget and will be tempted to do what this one nearly did.\" Rather than shave a comment again, the preflight sequence became run-build-preflight.ts \u2014 extraction only, same order, same messages, same exit codes, with a refusal returned as a value instead of a `return 2` in the middle of a 400-line function. run-build.ts is 347 lines now."
       ]
     },
     {
@@ -15712,6 +15713,41 @@
         "THE THIRD APPLICABILITY ANSWER IS THE POINT: an observation of null \u2014 the runtime could not classify this project \u2014 leaves the node UNRESOLVED, which callers must treat as required. \"We could not tell whether this app talks to a cloud\" is not \"this app does not talk to a cloud\", and silently skipping the unmeasured is how a scan nobody ran becomes a clean security result.",
         "VALIDATION RUNS BEFORE ANY DISPATCH (step 5): runOnboard calls validateSecurityPlan and throws SecurityPlanInvalidError rather than starting. Nothing else about the sequential onboarding walk changed \u2014 this release declares the topology AB-07 will schedule against.",
         "FOUR EXPORTS CARRY @unreached MARKERS NAMING W23-07: the classification, the ready-set, the skipped list and the inventory digest have no production caller until the bounded-group scheduler exists. validate-exports.test.mjs asserts every marker names W23-07 or W23-12."
+      ]
+    },
+    {
+      "id": "W23-06",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-05"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 5,
+      "title": "the endpoint limit covered one third of the traffic",
+      "write_scope": [
+        "apps/server/src/cli/shared-gateway-pool.ts",
+        "apps/server/src/cli/shared-gateway-pool.test.ts",
+        "apps/server/src/cli/run-build-spawn.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build-preflight.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Two SEPARATELY CONSTRUCTED providers on one endpoint never exceed one active request; two distinct endpoints overlap freely",
+        "A failed or rejected request releases its slot and the endpoint still serves the next request \u2014 a leaked active count cannot wedge it",
+        "Endpoint identity normalizes trailing slashes and host case, keeps two provider kinds on one host distinct, and carries no credential or query token",
+        "The coding, review and onboard production paths all import the one shared pool instance; only chat is queued, so a health probe from inside a queued chat cannot deadlock"
+      ],
+      "notes": [
+        "AB-06. THE LIMIT WAS REAL AND COVERED ONE THIRD OF THE TRAFFIC: run-build-spawn.ts held a module-level GatewayPool that every maker session, rung and berth shared, while review-pass.ts and onboard-dispatch-port.ts each constructed a provider and called chat directly. A local endpoint that serves one request at a time could therefore be asked for three the moment a review or an analysis overlapped a build.",
+        "ENDPOINT IDENTITY WAS `${providerId}:${baseUrl ?? \"\"}` \u2014 a raw concatenation, so http://localhost:1234 and http://localhost:1234/ were two endpoints with two limits. Normalized now, with credentials and query strings stripped because a pool key is logged, surfaced through queueStats, and lives as long as the process (FR-S2).",
+        "ONLY chat IS QUEUED. FairScheduler is not reentrant, so a health probe taken from inside a queued chat would wait on the slot that chat is holding, forever. There is a test that would hang if that were ever changed."
       ]
     }
   ]

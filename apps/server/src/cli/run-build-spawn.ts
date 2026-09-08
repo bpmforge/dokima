@@ -11,7 +11,6 @@ import type { EventLog } from '@dokima/events';
 import {
   CostLedger,
   FitnessCardStore,
-  GatewayPool,
   ROLE_CODING_AGENT,
   type Provider,
 } from '@dokima/gateway';
@@ -36,8 +35,8 @@ import {
 } from '../api/pipeline/model-resolution.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
 import { sizedBaseIterations } from './run-build-budget.js';
+import { endpointIdFor, pooledProvider } from './shared-gateway-pool.js';
 import { MAX_TOOL_ITERATIONS_CEILING } from './run-build-policy.js';
-
 
 /**
  * Builds the built-in agent's `SpawnSession` (D-023): resolves the
@@ -58,8 +57,14 @@ import { MAX_TOOL_ITERATIONS_CEILING } from './run-build-policy.js';
  * cannot report a window — the packer treats that as its documented 32k
  * floor rather than guessing.
  */
-/** W16-02: ONE pool per process (FR-F3's "process-wide" is literal) — every session, every rung, every berth shares it. */
-const SHARED_GATEWAY_POOL = new GatewayPool();
+/**
+ * W16-02: ONE pool per process (FR-F3's "process-wide" is literal) — every
+ * session, every rung, every berth shares it. W23-06 moved the instance itself
+ * into `shared-gateway-pool.ts` so the review pass and the onboard dispatch
+ * share it too: a module-level pool here limited maker traffic and nothing
+ * else, which meant a local endpoint serving one request at a time could be
+ * asked for three the moment a review overlapped a build.
+ */
 
 export interface BuiltInSpawn {
   readonly spawn: SpawnSession;
@@ -113,17 +118,13 @@ export async function buildBuiltInSpawn(
     // one FairScheduler per endpoint, fair by project, so N concurrent
     // berths cannot starve a local endpoint that serves one request at a
     // time (FR-G1) and a second project's calls interleave fairly.
-    const endpointId = `${target.providerId}:${target.baseUrl ?? ''}`;
-    const provider: Provider = {
-      id: raw.id,
-      chat: (request) =>
-        SHARED_GATEWAY_POOL.run(endpointId, command.projectId, () => raw.chat(request)),
-      listModels: () => raw.listModels(),
-      getContextLength: (model) => raw.getContextLength(model),
-      health: () => raw.health(),
-      warmUp: () => raw.warmUp(),
-      queueStats: () => raw.queueStats(),
-    };
+    // W23-06: normalized, so two roles spelling one endpoint differently
+    // (trailing slash, host case) share its limit rather than each getting one.
+    const provider: Provider = pooledProvider(
+      raw,
+      endpointIdFor(target),
+      command.projectId,
+    );
     // W21-78: ask the provider whether it actually serves this model, before
     // anything is claimed. The eager loop below already exists so a ladder
     // that fails to BIND refuses at run start; a model the provider does not

@@ -16,6 +16,7 @@ import { getCalibration } from '@dokima/memory';
 import type { EventLog } from '@dokima/events';
 import { resolveModelTarget } from '../api/pipeline/model-resolution.js';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
+import { endpointIdFor, pooledProvider } from './shared-gateway-pool.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
 
 const REVIEW_MAX_TOKENS = 2_000;
@@ -30,6 +31,8 @@ export interface ExecuteReviewPassOptions {
   readonly makerModels?: readonly string[];
   readonly secretValues: readonly string[];
   readonly stderr: (line: string) => void;
+  /** W23-06: the fair-scheduling key inside one endpoint's queue. Falls back to the repo root, which is stable and unique per project. */
+  readonly projectId?: string;
 }
 
 export async function executeReviewPass(
@@ -44,7 +47,14 @@ export async function executeReviewPass(
       taskType: 'verification',
       actorId: options.actorId,
     });
-    const provider = await providerForConfig(targetToConfig(target, process.env));
+    // W23-06: through the SAME process-wide pool the maker sessions use. Before
+    // this the review pass called `chat` directly, so a review overlapping a
+    // build could put two concurrent requests on an endpoint that serves one.
+    const provider = pooledProvider(
+      await providerForConfig(targetToConfig(target, process.env)),
+      endpointIdFor(target),
+      options.projectId ?? options.repoRoot,
+    );
     reviewerModel = target.model;
     chat = async (prompt: string) => {
       const response = await provider.chat({

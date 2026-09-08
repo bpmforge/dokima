@@ -16,8 +16,6 @@
 
 import type { EventLog } from '@dokima/events';
 import {
-  collectSecretValues,
-  getEffectiveSettings,
   resolveAsset,
   resolveEffectiveValue,
   SECRET_PATTERNS,
@@ -25,7 +23,6 @@ import {
 } from '@dokima/shared';
 import { type SpawnSession } from '@dokima/loop';
 import {
-  DEFAULT_MAX_SESSION_SECONDS,
   orphanedClaims,
   runLandLoop,
   type LandLoopResult,
@@ -33,21 +30,14 @@ import {
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import { ensureSessionActor } from './identity.js';
-import { assertSandboxOrWaiver } from './sandbox-preflight.js';
-import { approvedBuildPreflight } from './approved-build.js';
-import { signingKeyOrRefusal } from './signing-key.js';
+import { runBuildPreflight } from './run-build-preflight.js';
 
 import {
   announceRungSessions,
   buildBuiltInSpawn,
   createWatchedExternalSpawn,
 } from './run-build-spawn.js';
-import {
-  ESCALATION_POLICY_SETTINGS_KEY,
-  resolveRunLimits,
-  resolvePinnedModel,
-  resolvePolicyScope,
-} from './run-build-policy.js';
+import {} from './run-build-policy.js';
 
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import {
@@ -83,9 +73,7 @@ import {
 } from './consolidation.js';
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
-import { resolveVaultOrRefusal } from './run-vault.js';
 import {
-  countReceipts,
   localFirstPushToRemotes,
   preflightBuiltInModel,
   resolveAgentRunner,
@@ -103,63 +91,21 @@ export async function executeBuildRun(
   runId: string,
   io: RunCliIO,
 ): Promise<number> {
-  // W12-43: minted on a fresh install rather than demanded — see signing-key.ts.
-  const keyResult = await signingKeyOrRefusal(countReceipts(log), runId, io.stderr);
-  if ('refused' in keyResult) return 2;
-  const signingKey = keyResult.key;
-
-  // W12-02: refuse rather than run with nothing to redact.
-  const vault = resolveVaultOrRefusal(io.cwd);
-  if (!vault.ok) {
-    io.stderr(
-      `${runId} did not start: the secrets vault is unreadable, so registered ` +
-        `project secrets cannot be enumerated and would reach the model ` +
-        `unredacted (FR-S2/SC-06). Nothing was claimed. ${vault.reason}`,
-    );
-    return 2;
-  }
-
-  const secretValues = await collectSecretValues(vault.vault, io.cwd);
-
-  // W13-25: SC-07 fails closed — see `sandbox-preflight.ts`.
-  if (!assertSandboxOrWaiver(log, command.actorId, runId, io)) return 2;
-
-  // W12-18: the policy the user chose, read for the first time.
-  const policyScoped = await getEffectiveSettings({ projectDir: io.cwd });
-  const policyRaw = resolveEffectiveValue(ESCALATION_POLICY_SETTINGS_KEY, policyScoped)
-    ?.value as JsonValue | undefined;
-  const policyResult = resolvePolicyScope(policyRaw, ROLE_CODING_AGENT);
-  if ('refusal' in policyResult) {
-    io.stderr(`${runId} did not start: ${policyResult.refusal}`);
-    return 2;
-  }
-
-  const pin = resolvePinnedModel(policyRaw, ROLE_CODING_AGENT);
-
-  // P6-05 (Law L11): per-project landing mode, same generic settings surface
-  // as `agentRunner`/`escalationPolicy`; default per-ticket (unchanged).
-  const landingRaw = resolveEffectiveValue('landingMode', policyScoped)?.value;
-  if (landingRaw != null && landingRaw !== 'per-ticket' && landingRaw !== 'per-feature') {
-    io.stderr(
-      `${runId} did not start: settings key "landingMode" must be "per-ticket" or ` +
-        `"per-feature" (got ${JSON.stringify(landingRaw)}); nothing was claimed`,
-    );
-    return 2;
-  }
-
-  // W13-11/43/47: the run's numeric bounds, resolved together and refused
-  // rather than clamped — see `resolveRunLimits`.
-  const limitsResult = resolveRunLimits(
-    (key: string) =>
-      resolveEffectiveValue(key, policyScoped)?.value as JsonValue | undefined,
-    DEFAULT_MAX_SESSION_SECONDS,
-  );
-  if ('refusal' in limitsResult) {
-    io.stderr(`${runId} did not start: ${limitsResult.refusal}`);
-    return 2;
-  }
-  const limits = limitsResult.limits;
-  if (approvedBuildPreflight(log, command, runId, io).refused) return 2; // W23-02
+  // W23-20: the whole read-check-refuse sequence, one chapter. Every entry
+  // returns an exit code or the values the run needs; nothing here decides
+  // anything the original inline blocks did not.
+  const pre = await runBuildPreflight(log, command, runId, io);
+  if ('refused' in pre) return pre.refused;
+  const {
+    signingKey,
+    vault,
+    secretValues,
+    policyScoped,
+    pin,
+    limits,
+    policyScope,
+    landingMode,
+  } = pre;
 
   // W14-02: preload configured MCP servers — see mcp-preload.ts.
   const mcp = await preloadMcpFromSettings({
@@ -297,7 +243,7 @@ export async function executeBuildRun(
     signingKey,
     spawn,
     // W12-04: the packed builder — FR-L5's Context Packer, live.
-    policyScope: policyResult.scope,
+    policyScope,
     ...(validators.requiredValidators
       ? { requiredValidators: validators.requiredValidators }
       : {}),
@@ -329,7 +275,7 @@ export async function executeBuildRun(
     now: io.now,
     // P6-05: chosen landing mode; omitted when per-ticket (pre-P6-05 shape).
     // Wired on BOTH paths since P6-11: runLandLoop and the berth engine park + sweep.
-    ...(landingRaw === 'per-feature' ? { landing: 'per-feature' as const } : {}),
+    ...(landingMode === 'per-feature' ? { landing: 'per-feature' as const } : {}),
   };
   let result!: Omit<LandLoopResult, 'stopReason'> & { stopReason: string };
   try {
@@ -368,6 +314,7 @@ export async function executeBuildRun(
     makerModels: [makerModel, ...usedModels()],
     secretValues,
     stderr: io.stderr,
+    projectId: command.projectId, // W23-06: fair-scheduling key inside the shared pool
   });
 
   // W14-06: the run's end is this product's idle moment — consolidate now
