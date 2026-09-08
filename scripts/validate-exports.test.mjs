@@ -391,14 +391,12 @@ describe('the @unreached marker (W22-02)', () => {
     // owes it a caller, or says plainly that it is a kept compatibility
     // surface and will never have one.
     const reasons = new Map(suppressed.map((s) => [s.symbol, s.reason]));
-    // W23-11 landed the repair loop, so consolidateFindings and groupByOwner
-    // have the callers their markers promised and both markers are gone —
-    // deleted, not retargeted, which is the only honest way a marker ends.
-    expect([...reasons.keys()].sort()).toEqual([
-      'decideApprovedBuildAction',
-      'runReviewPass',
-    ]);
-    expect(reasons.get('decideApprovedBuildAction')).toMatch(/W23-12/);
+    // W23-11 landed the repair loop and W23-12 the post-close accept, so
+    // consolidateFindings, groupByOwner and decideApprovedBuildAction all have
+    // the callers their markers promised. Every one of those markers is
+    // DELETED rather than retargeted, which is the only honest way a marker
+    // ends. What is left is the one that never claimed to be waiting.
+    expect([...reasons.keys()].sort()).toEqual(['runReviewPass']);
     expect(reasons.get('runReviewPass')).toMatch(/compatibility surface/);
     expect(malformedMarkers).toEqual([]);
   });

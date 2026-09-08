@@ -15963,6 +15963,47 @@
         "ACTIVATION IS THE APPROVAL. The loop runs only when the run is an approved build (W23-02) \u2014 AB-16 gates turning it on for existing users, and a run nobody approved keeps the old shape: an in_review ticket and a verdict a human reads.",
         "SCOPE WIDENED: review-decision.ts / loop-review.ts, to close the C-4 half AB-10 left open. decideReview compared the reviewer MODEL against the maker models and never compared identities, so a reviewer actor equal to the maker owner passed. Found in review before AB-11 wired acceptance to `eligible`, which is the card that would have made it load-bearing."
       ]
+    },
+    {
+      "id": "W23-12",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-11"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "a dependent waited for the morning, not for its predecessor",
+      "write_scope": [
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "packages/harbormaster/src/verified-ticket-decision.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/build-verify.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build-preflight.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Three dependent tickets build, verify and become done in order in ONE run with no per-ticket human acceptance, under an opted-in approved policy",
+        "The same run leaves the trunk unchanged, and each dependent forks from its accepted predecessor rather than the trunk",
+        "A red, stale, unreviewed or infrastructure-blocked ticket stays in_review and blocks its dependent, while an unrelated ticket proceeds",
+        "The sequential and berth paths accept identically, and the final review pass reviews only what the post-close seam did not"
+      ],
+      "notes": [
+        "AB-12. THE ANSWER WAS NOT TO RELAX depsDone. A dependent waited for a person because depsDone requires done and nothing became done until the Decide card was opened; treating in_review as accepted would make the demo finish and destroy the meaning of the state. done still means accepted \u2014 what changed is that a machine can supply the acceptance under D-020, and the dependent unlocks through the reflow that already exists.",
+        "THE SEAM IS INSIDE THE ONE-TICKET ENGINE, not after the run loop returns. landClaimedTicket is what runLandLoop and the berth engine share, so both paths get it from one place and the berth path \u2014 which spreads the same options object \u2014 is equivalent by construction rather than by a second copy.",
+        "THE JUDGEMENT IS THE POLICY\u2019S. decideMachineAccept (W23-01) finally has its production caller: this module\u2019s whole job is to put TRUE facts in front of it, folded from the ledger and read from the tree, and to re-read the two that can move underneath it \u2014 head and source digest \u2014 immediately before the accept. A verdict followed by a re-close or a rejection is reported inconclusive, because a digest comparison alone cannot see a re-close.",
+        "EVERY DECISION LEAVES A ROW (build.accept.decided) with the rule id that produced it. A refusal that leaves no row is a ticket that silently sat there, which is the shape the Decide card cannot explain.",
+        "THE POST-CLOSE FAILURE PATH NEVER UNDOES A CLOSE. A reviewer that throws leaves the ticket in_review and a person reads it \u2014 the behaviour of every run before this card.",
+        "SCOPE WIDENED: run-build.ts crossed the 400-line cap again, so the review options + seam composition became createRunReviewSeams in build-verify.ts. makerModel/makerModels are read through getters: the ladder records which models ran as the run goes, and a snapshot taken at composition time would make C-4\u2019s refusal set wrong for any ticket that landed on a higher rung."
+      ]
     }
   ]
 }

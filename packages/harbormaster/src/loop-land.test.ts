@@ -14,7 +14,13 @@ import { ProviderTimeoutError, ProviderUnreachableError } from '@dokima/gateway'
 import { BudgetBreakerTracker, CostLedger } from '@dokima/gateway';
 import { branchNameFor, git } from '@dokima/git';
 import type { SpawnSession } from '@dokima/loop';
-import { commentTicket, createTicket, getTicket, type Ticket } from '@dokima/tickets';
+import {
+  acceptTicket,
+  commentTicket,
+  createTicket,
+  getTicket,
+  type Ticket,
+} from '@dokima/tickets';
 import type { PushToRemotesFn } from './land-push.js';
 import type { CompletionManifest } from './loop-gates.js';
 import { formatFailureComment } from './loop-gates-secrets.js';
@@ -194,6 +200,98 @@ describe('runLandLoop', () => {
     expect(ticket1.status).toBe('in_review');
     expect(ticket1.ownerId).toBe('worker-1');
     expect(ticket1.manifest?.closeReceipt).toBeDefined();
+  });
+
+  /**
+   * W23-12 (AB-12). The claim this card makes is that a dependent unlocks
+   * DURING the run, and the only place that can be true is inside the
+   * one-ticket engine — after the close, before the loop picks the next
+   * ticket. Asserted here, at the engine, rather than only at the decision
+   * module, because "the seam is wired" and "the chain finishes" are two
+   * different claims and the first has been mistaken for the second before.
+   */
+  it('a landed ticket goes through postClose, and accepting there unlocks its dependent mid-run (W23-12)', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    createIdentity(log, { id: 'reviewer-1', name: 'Reviewer', kind: 'machine' });
+    seedTicket(log, 'W9-01');
+    seedTicket(log, 'W9-02', { dependsOn: ['W9-01'] });
+
+    const seen: string[] = [];
+    /**
+     * A distinct file per ticket, and the assertion that makes acceptance 2
+     * real: when the SECOND ticket's session starts, its worktree already
+     * contains the first ticket's file. The dependent forked from its accepted
+     * predecessor's branch (W21-37's `resolveTicketBase`), not from the trunk —
+     * and the trunk itself is never touched.
+     */
+    let nth = 0;
+    const sawPredecessorSource: boolean[] = [];
+    const perTicketSpawn: SpawnSession = async (input) => {
+      nth += 1;
+      sawPredecessorSource.push(
+        await fs
+          .access(path.join(input.cwd, 'packages/example/file-1.ts'))
+          .then(() => true)
+          .catch(() => false),
+      );
+      const relative = `packages/example/file-${nth}.ts`;
+      const filePath = path.join(input.cwd, relative);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, `export const x = ${nth};\n`);
+      await git(input.cwd, ['add', '--', relative]);
+      await git(input.cwd, ['commit', '-m', `feat: add file ${nth}`]);
+      return {
+        stdout: JSON.stringify(buildManifest({ files: [relative] })),
+        stderr: '',
+        exitCode: 0,
+      };
+    };
+    const trunkBefore = (
+      await git(fixture.repoRoot, ['rev-parse', 'HEAD'])
+    ).stdout.trim();
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, perTicketSpawn),
+      postClose: async ({ ticketId, worktreePath }) => {
+        seen.push(ticketId);
+        // The seam runs while the ticket is in review and its worktree exists.
+        expect(getTicket(log, ticketId)?.status).toBe('in_review');
+        expect(worktreePath).toContain(ticketId);
+        acceptTicket(log, { ticketId, actorId: 'reviewer-1' });
+      },
+    });
+
+    // W9-02 depends on W9-01 and `depsDone` requires `done`. It was claimable
+    // in this run ONLY because the seam accepted its predecessor mid-run —
+    // nothing here relaxed that rule.
+    expect(seen).toEqual(['W9-01', 'W9-02']);
+    expect(result.processed.map((p) => p.ticketId)).toEqual(['W9-01', 'W9-02']);
+    expect(getTicket(log, 'W9-01')?.status).toBe('done');
+    expect(getTicket(log, 'W9-02')?.status).toBe('done');
+    // The dependent saw its predecessor's source; the first ticket did not.
+    expect(sawPredecessorSource).toEqual([false, true]);
+    // And main is exactly where it was: an acceptance is not a merge.
+    expect((await git(fixture.repoRoot, ['rev-parse', 'HEAD'])).stdout.trim()).toBe(
+      trunkBefore,
+    );
+  });
+
+  it('RED FIXTURE: a postClose that refuses to accept leaves the dependent blocked and unbuilt (W23-12)', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01');
+    seedTicket(log, 'W9-02', { dependsOn: ['W9-01'] });
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, landingSpawn),
+      // The shape of a red or stale review: the seam ran and accepted nothing.
+      postClose: async () => undefined,
+    });
+
+    expect(result.processed.map((p) => p.ticketId)).toEqual(['W9-01']);
+    expect(getTicket(log, 'W9-01')?.status).toBe('in_review');
+    expect(getTicket(log, 'W9-02')?.status).toBe('ready');
   });
 
   /**
@@ -639,7 +737,8 @@ describe('runLandLoop', () => {
     function flakyEndpointSpawn(failures: number): SpawnSession {
       let seen = 0;
       return async (input) => {
-        if (seen++ < failures) throw new ProviderUnreachableError('studio', new Error('ECONNREFUSED'));
+        if (seen++ < failures)
+          throw new ProviderUnreachableError('studio', new Error('ECONNREFUSED'));
         return landingSpawn(input);
       };
     }
@@ -875,55 +974,49 @@ describe('the last gate output survives across runs (W22-10)', () => {
     fixture = undefined;
   });
 
-  it(
-    'RED FIXTURE: a FIRST session in a new run is shown what the gate last observed — no attempt in this run reached it',
-    async () => {
-      fixture = await setupFixture();
-      const { log } = fixture;
-      seedTicket(log, 'W9-01', {});
+  it('RED FIXTURE: a FIRST session in a new run is shown what the gate last observed — no attempt in this run reached it', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01', {});
 
-      // A previous run's refusal, written the way runCloseGate writes it.
-      // Nothing else about that run survives — which is the point.
-      commentTicket(log, {
-        ticketId: 'W9-01',
-        // 'worker-1' is the fixture's registered identity; the events table
-        // has a foreign key on the actor, so an invented one is refused.
-        actorId: 'worker-1',
-        body: formatFailureComment(['GHOST-EDGE-4713: expected 2 received 3']),
-      });
+    // A previous run's refusal, written the way runCloseGate writes it.
+    // Nothing else about that run survives — which is the point.
+    commentTicket(log, {
+      ticketId: 'W9-01',
+      // 'worker-1' is the fixture's registered identity; the events table
+      // has a foreign key on the actor, so an invented one is refused.
+      actorId: 'worker-1',
+      body: formatFailureComment(['GHOST-EDGE-4713: expected 2 received 3']),
+    });
 
-      const prompts: string[] = [];
-      const spawn: SpawnSession = async (input) => {
-        prompts.push(input.prompt);
-        return { stdout: '', stderr: '', exitCode: 1 };
-      };
-      await runLandLoop({ ...baseOptions(fixture, spawn), maxLadderAttempts: 1 });
+    const prompts: string[] = [];
+    const spawn: SpawnSession = async (input) => {
+      prompts.push(input.prompt);
+      return { stdout: '', stderr: '', exitCode: 1 };
+    };
+    await runLandLoop({ ...baseOptions(fixture, spawn), maxLadderAttempts: 1 });
 
-      // The FIRST prompt — not the second. There is no second.
-      expect(prompts[0]).toContain('OBSERVED when this ticket was last checked');
-      expect(prompts[0]).toContain('GHOST-EDGE-4713: expected 2 received 3');
-      // A2: observation, not instruction, and no attempt is claimed.
-      expect(prompts[0]).toContain('verbatim output, not a step to perform');
-      expect(prompts[0]).not.toContain('PREVIOUS ATTEMPT');
-    },
-  );
+    // The FIRST prompt — not the second. There is no second.
+    expect(prompts[0]).toContain('OBSERVED when this ticket was last checked');
+    expect(prompts[0]).toContain('GHOST-EDGE-4713: expected 2 received 3');
+    // A2: observation, not instruction, and no attempt is claimed.
+    expect(prompts[0]).toContain('verbatim output, not a step to perform');
+    expect(prompts[0]).not.toContain('PREVIOUS ATTEMPT');
+  });
 
-  it(
-    'A3: a ticket whose gate has never run carries no such block',
-    async () => {
-      fixture = await setupFixture();
-      seedTicket(fixture.log, 'W9-01', {});
+  it('A3: a ticket whose gate has never run carries no such block', async () => {
+    fixture = await setupFixture();
+    seedTicket(fixture.log, 'W9-01', {});
 
-      const prompts: string[] = [];
-      const spawn: SpawnSession = async (input) => {
-        prompts.push(input.prompt);
-        return { stdout: '', stderr: '', exitCode: 1 };
-      };
-      await runLandLoop({ ...baseOptions(fixture, spawn), maxLadderAttempts: 1 });
+    const prompts: string[] = [];
+    const spawn: SpawnSession = async (input) => {
+      prompts.push(input.prompt);
+      return { stdout: '', stderr: '', exitCode: 1 };
+    };
+    await runLandLoop({ ...baseOptions(fixture, spawn), maxLadderAttempts: 1 });
 
-      expect(prompts[0]).not.toContain('OBSERVED when this ticket');
-    },
-  );
+    expect(prompts[0]).not.toContain('OBSERVED when this ticket');
+  });
 });
 
 /**
@@ -1297,7 +1390,7 @@ describe('the conflict watch (W16-10)', () => {
     fixture = undefined;
   });
 
-  it('RED FIXTURE: a human edit inside the in-progress ticket\'s lease is detected at the next ATTEMPT boundary; an edit outside every lease is an ordinary human.file_edited with no conflict', async () => {
+  it("RED FIXTURE: a human edit inside the in-progress ticket's lease is detected at the next ATTEMPT boundary; an edit outside every lease is an ordinary human.file_edited with no conflict", async () => {
     fixture = await setupFixture();
     const { log, repoRoot } = fixture;
     createIdentity(log, { id: 'brad', name: 'Brad', kind: 'human' });
@@ -1308,7 +1401,10 @@ describe('the conflict watch (W16-10)', () => {
     // still in_progress, its lease live — must flag exactly the collision.
     const spawn: SpawnSession = async (input) => {
       await fs.mkdir(path.join(repoRoot, 'packages/example'), { recursive: true });
-      await fs.writeFile(path.join(repoRoot, 'packages/example/human-edit.ts'), 'human\n');
+      await fs.writeFile(
+        path.join(repoRoot, 'packages/example/human-edit.ts'),
+        'human\n',
+      );
       await fs.writeFile(path.join(repoRoot, 'NOTES.md'), 'unrelated\n');
       return spoofedSpawn(input);
     };
@@ -1337,7 +1433,9 @@ describe('the conflict watch (W16-10)', () => {
     const { log } = fixture;
     seedTicket(log, 'W9-01');
     await runLandLoop({ ...baseOptions(fixture, landingSpawn), maxLadderAttempts: 1 });
-    expect(listEvents(log).filter((e) => e.eventType === 'human.file_edited')).toHaveLength(0);
+    expect(
+      listEvents(log).filter((e) => e.eventType === 'human.file_edited'),
+    ).toHaveLength(0);
   });
 });
 
@@ -1401,7 +1499,7 @@ describe('checkpoint continuity across attempts (W17-02)', () => {
     fixture = undefined;
   });
 
-  it('RED FIXTURE: attempt 2\'s prompt carries attempt 1\'s checkpoint (remaining work + next step) — fails if the handoff is a fresh start', async () => {
+  it("RED FIXTURE: attempt 2's prompt carries attempt 1's checkpoint (remaining work + next step) — fails if the handoff is a fresh start", async () => {
     fixture = await setupFixture();
     seedTicket(fixture.log, 'W9-01');
 
@@ -1461,7 +1559,9 @@ describe('an unreachable rung falls back rather than parking with no session (W2
         payload: {
           fromRung: 'R1',
           toRung: 'R2',
-          receipts: [{ name: 'session', exitCode: 1, gapCount: 1, gaps: ['no manifest'] }],
+          receipts: [
+            { name: 'session', exitCode: 1, gapCount: 1, gaps: ['no manifest'] },
+          ],
         },
       });
 
@@ -1474,7 +1574,10 @@ describe('an unreachable rung falls back rather than parking with no session (W2
             spawn: (async (input) => {
               // R2 is the model that could not load; R1 is serving fine.
               if (rung !== 'R1') {
-                throw new ProviderUnreachableError('studio', new Error('Failed to load model'));
+                throw new ProviderUnreachableError(
+                  'studio',
+                  new Error('Failed to load model'),
+                );
               }
               return landingSpawn(input);
             }) as SpawnSession,
@@ -1483,7 +1586,11 @@ describe('an unreachable rung falls back rather than parking with no session (W2
       };
 
       const options = baseOptions(fixture, spoofedSpawn);
-      const result = await runLandLoop({ ...options, maxLadderAttempts: 2, rungSessions: seam });
+      const result = await runLandLoop({
+        ...options,
+        maxLadderAttempts: 2,
+        rungSessions: seam,
+      });
 
       const outcome = result.processed[0]!;
       // The point of the ticket: a session RAN. "A session that runs is worth
@@ -1492,7 +1599,9 @@ describe('an unreachable rung falls back rather than parking with no session (W2
       expect(outcome.landed).toBe(true);
 
       const comments = listEvents(log).filter((e) => e.eventType === 'ticket.commented');
-      expect(JSON.stringify(comments.map((c) => c.payload))).toContain('falling back to R1');
+      expect(JSON.stringify(comments.map((c) => c.payload))).toContain(
+        'falling back to R1',
+      );
     },
   );
 
@@ -1510,7 +1619,9 @@ describe('an unreachable rung falls back rather than parking with no session (W2
         payload: {
           fromRung: 'R1',
           toRung: 'R2',
-          receipts: [{ name: 'session', exitCode: 1, gapCount: 1, gaps: ['no manifest'] }],
+          receipts: [
+            { name: 'session', exitCode: 1, gapCount: 1, gaps: ['no manifest'] },
+          ],
         },
       });
 

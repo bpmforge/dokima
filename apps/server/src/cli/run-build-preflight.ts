@@ -43,6 +43,7 @@ import {
   type RunLimits,
 } from './run-build-policy.js';
 import type { BuildRunCommand, RunCliIO } from './run-types.js';
+import type { ApprovedBuildPolicy } from '@dokima/harbormaster';
 
 export type BuildPreflight =
   | { readonly refused: number }
@@ -61,6 +62,8 @@ export type BuildPreflight =
       >['scope'];
       /** P6-05: the per-project landing mode, validated here and applied by the caller. */
       readonly landingMode: 'per-ticket' | 'per-feature';
+      /** W23-12: the reconstructed approval, or null on a run nobody approved. */
+      readonly approvedPolicy: ApprovedBuildPolicy | null;
     };
 
 export async function runBuildPreflight(
@@ -125,9 +128,13 @@ export async function runBuildPreflight(
     return { refused: 2 };
   }
   const limits = limitsResult.limits;
-  if (approvedBuildPreflight(log, command, runId, io).refused) return { refused: 2 }; // W23-02
+  const approved = approvedBuildPreflight(log, command, runId, io); // W23-02
+  if (approved.refused) return { refused: 2 };
 
   return {
+    // W23-12: the reconstructed approval, carried rather than discarded — the
+    // post-close accept seam is built only when there is one.
+    approvedPolicy: approved.policy,
     signingKey,
     vault,
     secretValues,

@@ -271,10 +271,9 @@ export type {
 } from './loop-review.js';
 
 /**
- * W16-02: the berth concurrency layer, exported for its first production
- * caller (apps/server's run-build berths path). `runBerths` was complete,
- * lane-aware, and unreachable; `landClaimedTicket` is the shared one-ticket
- * engine both it and `runLandLoop` now drive.
+ * W16-02: the berth concurrency layer, exported for its first production caller
+ * (apps/server's run-build berths path). `runBerths` was complete, lane-aware and
+ * unreachable; `landClaimedTicket` is the one-ticket engine it and `runLandLoop` share.
  */
 export { berthIdOf, runBerths } from './berths.js';
 export type {
@@ -287,7 +286,9 @@ export type {
   RunBerthsResult,
 } from './berths.js';
 export { landClaimedTicket, processTicket } from './loop-land-ticket.js';
-
+/** W23-12 (AB-12): the post-close verify/review/accept operation, injected into the one-ticket engine. */
+export { currentSourceOf, verifyAndAcceptTicket } from './verified-ticket-decision.js';
+export type { VerifiedTicketOutcome } from './verified-ticket-decision.js';
 /** W23-11 (AB-11): the bounded repair loop — reject, remake, re-review, at most three rounds. */
 export { REPAIR_STOPPED_EVENT, runRepairRounds } from './build-repair-loop.js';
 export type { RepairTicketInputs, RepairTicketOutcome } from './build-repair-loop.js';
@@ -332,7 +333,6 @@ export {
 // reasoning; the contract and its @unreached markers must stay IN THIS FILE,
 // because validate-exports does not follow `export * from` and a chapter would
 // hide these symbols from the ratchet rather than tidy them (W23-21).
-// @unreached decideApprovedBuildAction: still no production caller. W23-02 wired the APPROVAL it reads, not the per-action decision itself; the caller is W23-12 (AB-12), where a ticket's post-close path asks whether it may accept. Retargeted rather than deleted — a marker that names a ticket which has landed is a suppression nobody revisits.
 export {
   decideApprovedBuildAction,
   APPROVED_BUILD_POLICY_VERSION,

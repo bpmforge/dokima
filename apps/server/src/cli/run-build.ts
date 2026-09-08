@@ -25,6 +25,7 @@ import { type SpawnSession } from '@dokima/loop';
 import {
   orphanedClaims,
   runLandLoop,
+  type LandLoopOptions,
   type LandLoopResult,
   type LandRungSessions,
 } from '@dokima/harbormaster';
@@ -63,7 +64,7 @@ import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
 import { executeBerthsRun } from './run-build-berths.js';
 import { executeReviewPass } from './review-pass.js';
-import { executeRepairRounds } from './build-repair.js';
+import { createRunReviewSeams } from './build-verify.js';
 import { printRunOutcomes } from './run-summary.js';
 import { requiredValidatorsFor } from './run-validators.js';
 import { listTickets } from '@dokima/tickets';
@@ -106,6 +107,7 @@ export async function executeBuildRun(
     limits,
     policyScope,
     landingMode,
+    approvedPolicy,
   } = pre;
 
   // W14-02: preload configured MCP servers — see mcp-preload.ts.
@@ -233,6 +235,22 @@ export async function executeBuildRun(
   // the run. `conflictWatch.humanActorId` below keeps the human where a human
   // is genuinely meant — the split this line completes.
   const sessionActorId = ensureSessionActor(log, io.now);
+
+  // W15-01/W23-12: the review options, the post-close accept seam and the
+  // record of what it decided — composed in build-verify.ts, because this file
+  // is at the 400-line chapter cap and that is one concern, not a fragment of
+  // the run loop.
+  const seams = createRunReviewSeams({
+    log,
+    runId,
+    command,
+    repoRoot: io.cwd,
+    makerModel: () => makerModel,
+    usedModels: () => usedModels(),
+    policy: approvedPolicy,
+    secretValues,
+    stderr: io.stderr,
+  });
   const landOptions = {
     log,
     actorId: sessionActorId,
@@ -277,7 +295,12 @@ export async function executeBuildRun(
     // P6-05: chosen landing mode; omitted when per-ticket (pre-P6-05 shape).
     // Wired on BOTH paths since P6-11: runLandLoop and the berth engine park + sweep.
     ...(landingMode === 'per-feature' ? { landing: 'per-feature' as const } : {}),
+    // W23-12: review, repair and (policy permitting) accept the moment a
+    // ticket lands, so a dependent unlocks mid-run. Absent unless this run is
+    // an approved build.
+    ...(seams.postClose ? { postClose: seams.postClose } : {}),
   };
+  seams.useLandOptions(landOptions as LandLoopOptions);
   let result!: Omit<LandLoopResult, 'stopReason'> & { stopReason: string };
   try {
     result =
@@ -302,44 +325,22 @@ export async function executeBuildRun(
     }
   }
 
-  // W15-01: the review pass — every in_review ticket gets a cross-model
-  // verdict (or an honest skip) before a person reads the Decide card.
-  const reviewOptions = {
-    log,
-    actorId: command.actorId,
-    runId,
-    repoRoot: io.cwd,
-    makerModel,
-    // W16-01: every model a rung session actually ran this run — the reviewer
-    // must not match ANY of them (C-4 stays true when a ticket landed on R2).
-    makerModels: [makerModel, ...usedModels()],
-    secretValues,
-    stderr: io.stderr,
-    projectId: command.projectId, // W23-06: fair-scheduling key inside the shared pool
-  };
-  // W23-10: only what THIS run landed — a parked ticket from last week is
-  // not this run's to re-review.
-  const reviewedIds = result.processed.map((entry) => entry.ticketId);
-  if (command.approvedBuild === true) {
-    /**
-     * W23-11: on an APPROVED build the run does not stop at a verdict — it
-     * rejects, hands the judgement back, runs the maker again and re-reviews,
-     * at most three times. The loop reviews each ticket itself, so the pass
-     * below would be a second review of the same head; on this path it is the
-     * repair loop that runs it.
-     */
-    await executeRepairRounds({
-      log,
-      runId,
-      ticketIds: reviewedIds,
-      landOptions,
-      review: reviewOptions,
-      stderr: io.stderr,
-      secretValues,
-      ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
-    });
-  } else {
-    await executeReviewPass({ ...reviewOptions, ticketIds: reviewedIds });
+  /**
+   * W15-01: the review pass — every in_review ticket gets a cross-model
+   * verdict (or an honest skip) before a person reads the Decide card.
+   *
+   * W23-12 step 5: only the tickets the post-close seam did NOT decide. On an
+   * approved run that is the legacy remainder — a ticket that landed before
+   * the seam existed, or one whose post-close verification threw. Reviewing
+   * the rest again would spend a model turn to re-reach a verdict that is
+   * already in the ledger, and would record a second one beside it.
+   */
+  const decidedIds = new Set(seams.decided.map((entry) => entry.ticketId));
+  const unreviewed = result.processed
+    .map((entry) => entry.ticketId)
+    .filter((id) => !decidedIds.has(id));
+  if (unreviewed.length > 0) {
+    await executeReviewPass({ ...seams.reviewOptions, ticketIds: unreviewed });
   }
 
   // W14-06: the run's end is this product's idle moment — consolidate now
