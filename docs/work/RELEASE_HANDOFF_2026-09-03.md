@@ -6,16 +6,16 @@ carried from memory.
 
 ## Where it stands
 
-| Item                 | State                                                                                                                          | Evidence                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| Build                | **495 of 497** tickets done on `plan.json`                                                                                     | W12-44 (plugin loader) and W13-32 (autonomy dial) are deliberately held for founder calls    |
-| CI on `main`         | **green, 7/7 jobs** — first green run in the 25-run window                                                                     | [run 33808312531](https://github.com/bpmforge/dokima/actions/runs/33808312531) on `df882a89` |
-| Nightly E2E          | **green, 76/76** on the Ubuntu runner                                                                                          | [run 33809438510](https://github.com/bpmforge/dokima/actions/runs/33809438510)               |
-| Pre-public checklist | all ✅ except the registry release                                                                                             | `docs/RELEASE_TRACKER.md` §Pre-public                                                        |
-| Package              | `@bpmforge/dokima` — name free (registry returns 404), `0.1.0`, `publishConfig.access: public`, `prepublishOnly` builds `dist` | `npm pack --dry-run`: 268 files, 1.3 MB packed, 4.5 MB unpacked                              |
-| Milestone gates      | v0.1 … **v1.0.0 all met, none tagged**                                                                                         | `docs/RELEASE_TRACKER.md` §Release milestones                                                |
-| README               | "Status — release candidate" (rewritten `56dedc0f`)                                                                            | lists the closed gaps by ticket                                                              |
-| CHANGELOG            | `## [Unreleased]` — "Nothing yet"                                                                                              | **needs the first real entry before the tag**                                                |
+| Item                 | State                                                                                                                                | Evidence                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Build                | **495 of 497** tickets done on `plan.json`                                                                                           | W12-44 (plugin loader) and W13-32 (autonomy dial) are deliberately held for founder calls    |
+| CI on `main`         | **green, 7/7 jobs** — first green run in the 25-run window                                                                           | [run 33808312531](https://github.com/bpmforge/dokima/actions/runs/33808312531) on `df882a89` |
+| Nightly E2E          | **green, 76/76** on the Ubuntu runner                                                                                                | [run 33809438510](https://github.com/bpmforge/dokima/actions/runs/33809438510)               |
+| Pre-public checklist | all ✅ except the registry release                                                                                                   | `docs/RELEASE_TRACKER.md` §Pre-public                                                        |
+| Package              | `@bpmforge/dokima` — name free (registry returns 404), `0.1.0`, `publishConfig.access: public`, `prepublishOnly` builds `dist`       | `npm pack --dry-run`: 268 files, 1.3 MB packed, 4.5 MB unpacked                              |
+| Milestone gates      | v0.1 … **v1.0.0 all met**; the only tag is `v0.1.0` (4331e9fe, never published) — 2026-09-08 correction, this row read "none tagged" | `docs/RELEASE_TRACKER.md` §Release milestones                                                |
+| README               | "Status — release candidate" (rewritten `56dedc0f`)                                                                                  | lists the closed gaps by ticket                                                              |
+| CHANGELOG            | `## [Unreleased]` — "Nothing yet"                                                                                                    | **needs the first real entry before the tag**                                                |
 
 What made CI green today is one ticket, **P6-21** (`25ca5efd`, `ddd4d5e8`,
 `df882a89`, `5f9c70ff`): none of it was product breakage. SC-07 was
