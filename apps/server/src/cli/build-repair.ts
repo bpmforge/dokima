@@ -57,9 +57,13 @@ export async function executeRepairRounds(
       ? [{ ticketId, writeScope: [...ticket.writeScope] }]
       : [{ ticketId, writeScope: [] }];
     // A ticket that is not in review has nothing for this loop to do — it
-    // parked, or a person already accepted it.
+    // parked, or a person already accepted it. Said as its own thing rather
+    // than as `eligible`: most runs land at least one parked ticket, and
+    // "the review confirmed this work" is not a sentence to write into an
+    // append-only log about work no reviewer ever saw.
     if (!ticket || ticket.status !== 'in_review') {
       return {
+        notReviewable: `${ticketId} is ${ticket?.status ?? 'gone'}, not in review — there is no verdict to repair against`,
         eligible: true,
         blockers: [],
         infrastructure: [],
@@ -137,6 +141,7 @@ export async function executeRepairRounds(
   });
 
   for (const outcome of outcomes) {
+    if (outcome.stop === 'not-reviewed') continue;
     if (outcome.stop === 'confirmed' && outcome.rounds === 0) continue;
     options.stderr(
       `[repair] ${outcome.ticketId}: ${outcome.stop} after ${outcome.rounds} round(s) — ${outcome.reason}`,

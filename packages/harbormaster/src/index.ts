@@ -289,7 +289,7 @@ export type {
 export { landClaimedTicket, processTicket } from './loop-land-ticket.js';
 
 /** W23-11 (AB-11): the bounded repair loop — reject, remake, re-review, at most three rounds. */
-export { runRepairRounds } from './build-repair-loop.js';
+export { REPAIR_STOPPED_EVENT, runRepairRounds } from './build-repair-loop.js';
 export type { RepairTicketInputs, RepairTicketOutcome } from './build-repair-loop.js';
 
 /** W17-03: the measured turns profile — observations emitted per session, multiplier computed by the composing caller. */

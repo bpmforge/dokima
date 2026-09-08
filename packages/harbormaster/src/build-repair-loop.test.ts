@@ -23,6 +23,7 @@ import {
 import {
   DEFAULT_MAX_REPAIR_ROUNDS,
   REPAIR_ROUND_EVENT,
+  REPAIR_STOPPED_EVENT,
   decideRepairAction,
   recordedRepairRounds,
   repairReason,
@@ -317,6 +318,31 @@ describe('an outage is not a defect, and a scope conflict is not a licence', () 
       });
       expect(outcomes[0]?.stop).toBe('stopped');
       expect(getTicket(log, 'T-1')?.status).toBe('in_review');
+    } finally {
+      log.close();
+    }
+  });
+});
+
+describe('a ticket nobody reviewed is not a confirmation', () => {
+  it('RED FIXTURE: a PARKED ticket records no verdict of any kind', async () => {
+    const log = reviewed();
+    try {
+      const outcomes = await runRepairRounds({
+        log,
+        runId: 'run-1',
+        ticketIds: ['T-1'],
+        inspect: async () => ({
+          ...INPUTS(),
+          notReviewable: 'T-1 parked — there is no verdict to repair against',
+        }),
+        remake: async () => undefined,
+      });
+      expect(outcomes[0]?.stop).toBe('not-reviewed');
+      // The whole point: nothing in the append-only log claims a review
+      // confirmed work that no reviewer ever looked at.
+      const stopped = listEvents(log).filter((e) => e.eventType === REPAIR_STOPPED_EVENT);
+      expect(stopped).toEqual([]);
     } finally {
       log.close();
     }

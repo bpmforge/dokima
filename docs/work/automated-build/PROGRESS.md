@@ -53,7 +53,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit             | Focused checks                                                                                                         | Full gate                                                                                                                            | Evidence / blocker                                                                                                        |
 | ----- | ----------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)      | `node scripts/validate-plan.mjs` exit 0                                                                                | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                            |
-| AB-11 | W23-11      | done   | `14` (this commit) | `vitest run build-repair-loop.test.ts reject.test.ts --retry=0` → 26 passed                                            | lint 0 · typecheck 0 · test 0 (5271 passed / 2 skipped, 603 files) · e2e 0 (76) · validate 0                                         | reject→remake→re-review with nobody in the room; the round count lives in the ledger, so a restart is granted none        |
+| AB-11 | W23-11      | done   | `14` (this commit) | `vitest run build-repair-loop.test.ts build-repair.test.ts reject.test.ts --retry=0` → 22 passed                       | lint 0 · typecheck 0 · test 0 (5271 passed / 2 skipped, 603 files) · e2e 0 (76) · validate 0                                         | reject→remake→re-review with nobody in the room; the round count lives in the ledger, so a restart is granted none        |
 | AB-10 | W23-10      | done   | `13` (this commit) | `vitest run review-decision.test.ts loop-review.test.ts --retry=0` → 36 passed                                         | lint 0 · typecheck 0 · test 0 (5259 passed / 2 skipped, 602 files) · e2e 0 (76) · validate 0                                         | machine reviewer identity; eligible computed with per-reason evidence                                                     |
 | AB-09 | W23-09      | done   | `12` (this commit) | `vitest run repair-findings.test.ts --retry=0` → 20 passed                                                             | lint 0 · typecheck 0 · test 0 (5240 passed / 2 skipped, 601 files) · e2e 0 (76) · validate 0                                         | dedup by identity both directions; W23-21 filed (validate-exports blind to `export *`)                                    |
 | AB-08 | W23-08      | done   | `11` (this commit) | `vitest run check-evidence.test.ts review-status.test.ts onboard-executor.test.ts --retry=0` → 41 passed               | lint 0 · typecheck 0 · test 0 (5220 passed / 2 skipped, 600 files) · e2e 0 (76) · validate 0                                         | transitive re-run proven through the real onboard path; STALE is its own review state                                     |
@@ -84,13 +84,28 @@ it changes no default for a project that has not opted in.
 - **Failing command and output summary:** none. One import edit did not apply
   (prettier had already reformatted the line it matched) and the test failed
   with `acceptTicket is not defined`; re-anchored and green.
-- **Actual test totals and skips:** 603 files, 5271 passed, 2 skipped.
-- **Production caller verified:** yes — `apps/server/src/cli/build-repair.ts`
+- **Actual test totals and skips:** 604 files, 5273 passed, 2 skipped.
+- **Production caller verified:** yes as WIRING — `apps/server/src/cli/build-repair.ts`
   calls `runRepairRounds`, `consolidateFindings` and `groupByOwner`, and
-  `run-build.ts` calls it on the approved-build path. Both `@unreached` markers
-  that named W23-11 are deleted, not retargeted.
+  `run-build.ts` calls it on the approved-build path; both `@unreached` markers
+  that named W23-11 are deleted, not retargeted. Stated precisely, because the
+  two halves are not the same claim: acceptance 1 (planted check → rejection →
+  maker fix → independent rerun → fresh confirmed) is proven AT THE LOOP, with
+  the review and maker seams injected. Driving it through the real entry point
+  with a real model is AB-16's, and AB-16 owes it.
+- **Card step 2 (retain the worktree and verified base) verified, not assumed:**
+  `remake` goes through `processTicket` → `resolveWorktree`, which reuses an
+  existing worktree that contains the base, recreates only one carrying no
+  agent commits, and REFUSES to a park when real work sits on a wrong base
+  (`StaleWorktreeError`, W21-52). The repair loop deletes nothing itself.
 - **New finding and registered ticket:** a C-4 gap left by AB-10 —
   `decideReview` compared reviewer and maker MODELS and never their identities.
   Fixed inside this card (scope widened, recorded on W23-11) rather than filed,
-  because AB-11 is the card that makes `eligible` load-bearing.
+  because AB-11 is the card that makes `eligible` load-bearing. And a second,
+  caught in review of this card: the caller reported a ticket that was never
+  reviewed (a parked one — `run-build.ts` hands the loop every processed id) as
+  `confirmed`, which appended `build.repair.stopped {stop:'confirmed'}` to the
+  hash-chained log for work no reviewer had looked at. `not-reviewed` is now
+  its own terminal kind and records no event at all; red fixtures at both the
+  loop and the caller.
 - **Next AB id:** AB-12.
