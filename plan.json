@@ -15447,6 +15447,91 @@
         "THE PROTECTION THAT MATTERS IS ALREADY IN THE GATE. validate-temp-leaks catches this within one gate run of it happening \u2014 it has now done so three times, including twice against the person who wrote it. A rare race that is always caught is a different thing from a silent leak, and it is the thing this line of tickets was actually for.",
         "Gate: lint clean, typecheck 0, 4792 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
+    },
+    {
+      "id": "W23-00",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "automated-build baseline: capture the gate honestly and put wave 23 on the board",
+      "write_scope": [
+        "docs/work/automated-build/BASELINE.md",
+        "docs/work/automated-build/PROGRESS.md",
+        "docs/work/automated-build-handoff/**",
+        ".prettierignore"
+      ],
+      "acceptance": [
+        "BASELINE.md records the checkout, every gate command with its OWN exit code (not a pipe status), test totals and skips, and every pre-existing non-green fact a later session could misread as AB damage",
+        "PROGRESS.md maps AB-00..AB-18 to reserved wave-23 ticket ids, states which are actually registered on the board, and marks nothing implemented",
+        "No source file, dependency or conductor state changed by this card"
+      ],
+      "notes": [
+        "DONE 2026-09-08. Gate as observed: lint 0 (5s), typecheck 0 (7s), test 0 (592 files / 5065 passed / 3 skipped, 30s), e2e 0 (76 passed, 45s), validate 1 (11s) then 0 on a re-run.",
+        "THE ONE RED IS NOT THIS CARD AND NOT NEW: validate-temp-leaks failed on a single dokima-suite-home-* left by the preceding pnpm test. W22-28 is done and its acceptance says a full run leaves none across three consecutive runs; it does not hold. Filed as W23-19 rather than written down as a sentence (Law 1).",
+        "Work lives on feat/automated-build, NOT main: main is the v1.0.0 tag target and the tag is not cut yet, so landing AB work there would move the commit the CHANGELOG and RELEASE_TRACKER evidence point at.",
+        "SCOPE WIDENED (Law 1), answered when found: staging plan.json tripped the pre-commit prettier hook, because HEAD plan.json ALREADY fails prettier --check. Running prettier on it would overwrite the very byte conventions writePlan preserves (W9-11: ASCII-escaped, no trailing newline) and turn every status change into a thousands-of-bytes diff. The board format has an owner and it is not prettier, so plan.json joins .prettierignore with that reason recorded in the file. docs/work/automated-build-handoff/ joins it too: it is an input artifact delivered whole, and reformatting it would edit someone else\u2019s document in place. Same shape as P6-23 (docs/STATUS.md cannot pass the hooks)."
+      ]
+    },
+    {
+      "id": "W23-01",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "approved-build-v1: a pure pause decision function that no model field can authorize",
+      "write_scope": [
+        "packages/harbormaster/src/approved-build-policy.ts",
+        "packages/harbormaster/src/approved-build-policy.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "packages/harbormaster/src/index.test.ts",
+        "docs/work/automated-build/PAUSE_SITES.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A pure decision function covers every row of the IMPLEMENTATION_PLAN pause table, table-driven, in BOTH approved-build-v1 and legacy interactive modes",
+        "Authorization comes only from runtime-owned facts: an unknown pause kind, a model-supplied safe flag, a missing approval, a changed scope, a raised budget and a protected action can none of them auto-proceed",
+        "Routine implementation inside an already-approved scope proceeds with no extra clarification",
+        "isNeverAutoPauseSite is consulted on the same path and its protected set is unchanged (C-5)",
+        "PAUSE_SITES.md records the REAL callers of askClarification and resolvePauseAction found by rg, including the ones that do not exist, rather than the callers the handoff expected"
+      ],
+      "notes": [
+        "LINKED CHILD OF W13-32, NOT A DUPLICATE OF IT. W13-32 stays blocked and keeps wiring the dial for existing projects; its own first acceptance criterion says the decision about which defaults are acceptable unattended must be made and recorded BEFORE any wiring. This ticket builds that recorded decision as a versioned, testable function and changes no default for a project that has not opted in.",
+        "D-032 / C-5: legacy autonomy=auto projects keep legacy interactive behaviour. Opting in is explicit and versioned (approved-build-v1); an unenumerated pause kind fails closed."
+      ]
+    },
+    {
+      "id": "W23-19",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "the suite home still leaks after W22-28 \u2014 one in a run, not every run",
+      "write_scope": [
+        "apps/server/vitest.setup.ts",
+        "apps/server/vitest.config.ts"
+      ],
+      "acceptance": [
+        "The surviving home is explained: which worker or test file creates a dokima-suite-home-* whose afterAll never runs, with instrumentation output rather than a theory",
+        "Three consecutive full pnpm test runs leave zero dokima-suite-home-* directories, and pnpm validate exits 0 immediately after each"
+      ],
+      "notes": [
+        "FOUND AT THE AB-00 BASELINE, 2026-09-08. pnpm validate exited 1 on /var/folders/.../dokima-suite-home-3dXsuZ, holding one global.db, with no vitest, playwright or conductor process alive. A second full run immediately afterwards left none, so it is intermittent \u2014 the same shape W22-28 itself recorded (four at once once, none at other times, around test-file churn).",
+        "W22-28 IS DONE AND ITS SECOND CRITERION IS NOT MET: \"a full pnpm test run leaves no dokima-suite-home-*, verified across three consecutive runs\". A fresh ticket rather than a reopen, which is exactly what W22-28 did to W22-21 on the same defect.",
+        "COSTS A GATE, NOT A TEST: this is why an AB card can see a red pnpm validate it did not cause. Check whether the only violation is a suite home from the preceding run before treating it as a regression."
+      ]
     }
   ]
 }
