@@ -35,12 +35,9 @@ import {
   type ReviewSignalAction,
 } from '@dokima/loop';
 import { reRunVerify } from './loop-gates-verify.js';
-import {
-  collectReviewEvidence,
-  evidenceStillCurrent,
-  reviewEvidenceSection,
-  type ReviewEvidenceBundle,
-} from './review-evidence.js';
+import { collectTicketSecurityChecks, securityChecksSection } from './review-security.js';
+import { countsFrom, parseVerdict, reviewPrompt } from './loop-review-prompt.js';
+import { collectReviewEvidence, evidenceStillCurrent } from './review-evidence.js';
 // W21-75: the literal that used to sit further down was Dokima's own gate,
 // duplicated; the ticket's verify command is resolved in loop-gates.ts now.
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
@@ -78,78 +75,11 @@ export interface ReviewPassOptions {
   readonly now?: () => string;
   /** W15-02 (FR-L3): the maker's calibration record, injected — the store lives in memory, which harbormaster may not import. */
   readonly makerCalibration?: () => CalibrationRecord | undefined;
+  /** W23-04: where the bundled secrets scanner lives in THIS installation — apps/server resolves it; the package must not guess. */
+  readonly secretsValidatorPath?: string | null;
 }
 
 export const DEFAULT_REVIEW_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
-
-/** Test-count extraction is best-effort; the contract only demands a non-empty counts record, and `commandsRun` is always true. */
-function countsFrom(output: string): Record<string, number> {
-  const counts: Record<string, number> = { commandsRun: 1 };
-  const passed = /(\d+)\s+(?:tests? )?pass(?:ed|ing)/i.exec(output);
-  if (passed) counts.passed = Number(passed[1]);
-  const failed = /(\d+)\s+(?:tests? )?fail(?:ed|ing)/i.exec(output);
-  if (failed) counts.failed = Number(failed[1]);
-  return counts;
-}
-
-function reviewPrompt(
-  ticket: Ticket,
-  rerun: RerunEvidence,
-  rerunOutputHead: string,
-  evidence: ReviewEvidenceBundle,
-): string {
-  const acceptance = ticket.acceptance
-    .map((criterion) => `- ${criterion.text}`)
-    .join('\n');
-  const files = (ticket.manifest?.files ?? []).join(', ') || '(none listed)';
-  return [
-    `You are reviewing finished work on ticket ${ticket.id}: ${ticket.title}`,
-    `Acceptance criteria:\n${acceptance || '- (none recorded)'}`,
-    // W23-03: the DIFF, not a list of filenames. Before this the reviewer was
-    // shown which files moved and asked whether the work was correct — a
-    // question no reader of a file list can answer, and one a passing test
-    // suite answers wrongly for any change that is insecure rather than broken.
-    reviewEvidenceSection(evidence),
-    `Files changed (manifest): ${files}`,
-    `Commits: ${(ticket.manifest?.commits ?? []).join(', ') || '(none)'}`,
-    `The core re-ran the verify command independently: ${formatRerunLine(rerun)}`,
-    `Verify output (head): ${rerunOutputHead}`,
-    '',
-    'Judge whether the work satisfies its acceptance criteria. Respond with',
-    'ONLY a JSON object: {"verdict": "CONFIRMED"|"CONTRADICTED"|"UNVERIFIABLE",',
-    '"score": 1-10, "reasoning": "<two sentences naming specific evidence>"}',
-  ].join('\n');
-}
-
-function parseVerdict(
-  raw: string,
-): { verdict: ReviewVerdictKind; score: number; reasoning: string } | null {
-  const match = /\{[\s\S]*\}/.exec(raw);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    const verdict = parsed.verdict;
-    const score = parsed.score;
-    if (
-      (verdict === 'CONFIRMED' ||
-        verdict === 'CONTRADICTED' ||
-        verdict === 'UNVERIFIABLE') &&
-      typeof score === 'number' &&
-      Number.isInteger(score) &&
-      score >= 1 &&
-      score <= 10
-    ) {
-      return {
-        verdict,
-        score,
-        reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : '',
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 export async function runReviewPass(
   options: ReviewPassOptions,
@@ -247,10 +177,29 @@ async function reviewOne(
   };
   const evidence = await collectReviewEvidence(evidenceInput);
 
+  // W23-04: the SAME registry the onboard path runs, pointed at this ticket's
+  // worktree. Local-only by default here: the review path has no settings
+  // reader of its own, and reaching a network by default is the one mistake a
+  // default must not make (Law 9b).
+  const security = await collectTicketSecurityChecks({
+    worktreePath,
+    sourceDigest: evidence.sourceDigest,
+    networkPolicy: 'local-only',
+    secretsValidatorPath: options.secretsValidatorPath ?? null,
+    hasNodeManifest: true,
+    hasLockfile: false,
+  });
+
   // One bounce allowed (R-B2: INCOMPLETE is bounced, not counted). A
   // reviewer endpoint that is down or refused skips HONESTLY — a run that
   // landed real work must never crash over its reviewer's availability.
-  const prompt = reviewPrompt(ticket, rerun, output.slice(0, 800), evidence);
+  const prompt = reviewPrompt(
+    ticket,
+    rerun,
+    output.slice(0, 800),
+    evidence,
+    securityChecksSection(security),
+  );
   let raw: string;
   try {
     raw = await options.reviewChat(prompt);
@@ -363,6 +312,15 @@ async function reviewOne(
       evidenceReason: evidence.reason,
       evidenceStillCurrent: stillCurrent,
       modelVerdict: parsed.verdict,
+      // W23-04: what the CORE executed, beside what the model said about it.
+      securityChecks: security.evidence.map((c) => ({
+        checkId: c.checkId,
+        status: c.status,
+        exitCode: c.exitCode,
+        findingCount: c.findingCount,
+        reason: c.reason,
+      })),
+      securityChecksEligible: security.eligible,
     },
     'review.verdict',
   );

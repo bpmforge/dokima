@@ -345,3 +345,63 @@ describe('W23-03: the reviewer sees the source change, and a verdict is bound to
     expect(outcomes[0]).toMatchObject({ verdict: 'CONTRADICTED' });
   });
 });
+
+describe('W23-04: the build path runs the real registry, and the reviewer sees what it found', () => {
+  it('the prompt carries a status line per objective check — including the ones that did not run', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    const prompts: string[] = [];
+    await runReviewPass(
+      options(log, repoRoot, {
+        reviewChat: async (prompt: string) => {
+          prompts.push(prompt);
+          return '{"verdict":"CONFIRMED","score":8,"reasoning":"fine."}';
+        },
+      }),
+    );
+    expect(prompts[0]).toContain('Objective security checks, executed by the core');
+    // ASSERTED WITHOUT A REGEX, and not by preference: SC-04's lint guard
+    // forbids regex literals over completion words anywhere in this package,
+    // and it fired on the first draft of this very assertion. The rule cannot
+    // tell a prompt-content check from a completion-by-string-match, and the
+    // conservative reading is the right one — so the status set is compared as
+    // data instead.
+    const firstPrompt = prompts[0] ?? '';
+    const statusLine = firstPrompt
+      .split('\n')
+      .find((line) => line.startsWith('- tool-sast: '));
+    expect(statusLine).toBeDefined();
+    const statuses = ['PASSED', 'FINDINGS', 'ERROR', 'UNAVAILABLE', 'NOT_APPLICABLE'];
+    expect(statuses.some((status) => statusLine!.includes(status))).toBe(true);
+    // The sentence that stops a missing scanner reading as a clean one.
+    const verdictSentences = [
+      'Every required check ran and passed',
+      'A tool that could not run is NOT a clean result',
+    ];
+    expect(verdictSentences.some((sentence) => prompts[0]!.includes(sentence))).toBe(
+      true,
+    );
+  });
+
+  it('the verdict event records what the CORE executed, beside what the model said', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    await runReviewPass(options(log, repoRoot));
+    const payload = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    const checks = payload.securityChecks as { checkId: string; status: string }[];
+    expect(checks.map((c) => c.checkId)).toEqual([
+      'tool-sast',
+      'tool-secrets',
+      'tool-deps',
+    ]);
+    // Whatever this host has installed, no check may report a status the
+    // registry does not define, and none may be silently absent.
+    for (const check of checks) {
+      expect(['passed', 'findings', 'error', 'unavailable', 'not_applicable']).toContain(
+        check.status,
+      );
+    }
+    expect(typeof payload.securityChecksEligible).toBe('boolean');
+  });
+});

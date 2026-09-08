@@ -22,6 +22,7 @@ import {
 } from './onboard-dispatch-port.js';
 import { runOnboardExecution } from './onboard-executor.js';
 import { gatherOnboardRepoContext } from './onboard-repo-context.js';
+import { runOnboardSecurityChecks } from './onboard-security-checks.js';
 import type { PlanItemRow } from '../plans-types.js';
 
 export interface RunOnboardAnalysisOptions {
@@ -78,7 +79,24 @@ export async function runOnboardAnalysis(
   // write_scope) rather than relying on the specialist to read the repo
   // itself — a bare `{ repoRoot }` path string gave it nothing to analyze.
   const repoContext = await gatherOnboardRepoContext(opts.projectPath);
-  const input: RunOnboardInput = { seedContext: { ...repoContext } };
+
+  /**
+   * W23-04: REAL TOOL RESULTS, before any specialist speaks. Until this, a
+   * step named `security-sast` was one `provider.chat()` turn and nothing
+   * executed a scanner anywhere — the specialist's description of a SAST run
+   * WAS the evidence. The registry runs the tools in the sandbox and the
+   * specialists now interpret actual output; a model that invents a finding
+   * is contradicted by an artifact, and one that invents a clean scan is
+   * contradicted by a status the model never produced.
+   */
+  const securityChecks = await runOnboardSecurityChecks(
+    opts.projectPath,
+    opts.log,
+    opts.runId,
+  );
+  const input: RunOnboardInput = {
+    seedContext: { ...repoContext, securityChecks: securityChecks.evidence },
+  };
   const { result, stepArtifacts } = await runOnboardExecution(input, {
     log: opts.log,
     runId: opts.runId,

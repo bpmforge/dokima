@@ -337,3 +337,20 @@ export {
   type ApprovedBuildReviewFacts,
   type ApprovedBuildSituationKind,
 } from './approved-build-policy.js';
+
+// W23-04: the security tool registry — checks that actually EXECUTE. Exported
+// because both entry paths that need it live outside this package: onboard
+// analysis (apps/server's pipeline) and the build's review path.
+export {
+  checksPermitAutomaticCompletion,
+  executableIsInstalled,
+  runSecurityChecks,
+  sandboxedToolRunner,
+  SECURITY_TOOLS,
+  type CheckEvidence,
+  type CheckStatus,
+  type NetworkPolicy,
+  type ProjectProfile,
+  type SecurityToolAdapter,
+  type ToolRunResult,
+} from './security-checks.js';
