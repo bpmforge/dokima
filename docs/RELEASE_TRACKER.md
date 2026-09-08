@@ -29,6 +29,30 @@ Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal 
 
 ---
 
+## Automated build (wave 23) — evidence state, 2026-09-08
+
+The approved-build feature (`approved-build-v1`: machine review, bounded
+repair, machine acceptance) is implemented and proven **on fixtures**. It is
+**not** private-beta evidence, and no release claim may be made from it beyond
+what was observed.
+
+| Threshold (AB-17 step 5)                      | State                                                |
+| --------------------------------------------- | ---------------------------------------------------- |
+| Every mechanical red test passing             | MET                                                  |
+| A reproducible supported configuration        | PARTIAL — Dokima pinned, no model named as supported |
+| Zero false automatic acceptances, bounded set | NOT MEASURED — the benchmark is written and unrun    |
+| One observed novice finishing the journey     | NOT MET                                              |
+
+- What may be claimed, because it was observed: `docs/work/automated-build/ACCEPTANCE_REPORT.md`.
+- What may not, and why: `docs/work/automated-build/EVALUATION_RESULTS.md`.
+- The unrun benchmark, written before any result: `docs/work/automated-build/EVALUATION_PROTOCOL.md`.
+
+**No user is opted in.** An approved build requires a per-run approval over a
+specification the person read; a project's stored autonomy dial cannot set it
+(D-032), and merging to a main branch and publishing remain separate decisions.
+
+---
+
 ## Release milestones
 
 | Tag                   | Scope                                           | Gate                                                                                | Status                                                                                                                    |

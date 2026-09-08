@@ -16214,6 +16214,39 @@
         "ALSO FIXED: a run that parked everything was recorded verified \u2014 \"every ticket this run landed was verified and accepted\", true only because it landed none. A parked ticket is released to ready, so counting only in_review missed it.",
         "FILED: W23-23, the telemetry-into-the-audited-project defect W21-28 wrote down and could not fix (the content pack is signed). This card is the third check to work around it."
       ]
+    },
+    {
+      "id": "W23-17",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-16"
+      ],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "a wave of work with no measurement, and a release that could claim anything",
+      "write_scope": [
+        "docs/work/automated-build/EVALUATION_PROTOCOL.md",
+        "docs/work/automated-build/EVALUATION_RESULTS.md",
+        "docs/RELEASE_TRACKER.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "The protocol is executable as written: named configuration, five tasks with hidden acceptance and planted ground truth, two arms, three repeats, scoring fixed in advance",
+        "The results file distinguishes not-run, fixture-only, live-model and novice-observed evidence, and records that the benchmark was not run and why",
+        "The release tracker states which private-beta thresholds are met and which are not, so no release claim can be made from the wave merely existing",
+        "No runtime implementation changed: this card is documentation, and says so"
+      ],
+      "notes": [
+        "AB-17. DOCUMENTATION ONLY \u2014 no runtime code changed; the full gate was run to prove that (lint 0, typecheck 0, test 0 with 5326 passed / 2 skipped over 610 files, e2e 0 with 76, validate 0), and the counts are identical to W23-16\u2019s.",
+        "THE PROTOCOL IS WRITTEN BEFORE ANY RESULT, which is the whole point: a scoring rule invented after seeing the numbers is not a measurement. It fixes the configuration, the five tasks with their hidden acceptance tests and planted ground truth, the two arms (guarded vs the same model with no gate, no re-run, no review), three repeats, and the ten recorded quantities. Infrastructure failures stay in the denominator with their own label \u2014 dropping them would inflate every rate, and \"the model could not\" vs \"the machine could not\" is the distinction this product exists to make visible.",
+        "IT WAS NOT RUN, AND THAT IS THE RESULT. Live model evaluation is a separate evidence class (START_HERE 9) and AB-17 step 4 forbids launching paid models or recruiting users from a coding session. Two of the four private-beta thresholds are unmet \u2014 zero-false-acceptances is NOT MEASURED (there is no bounded test set yet) and no novice has been observed \u2014 so this is not private-beta evidence, stated in those words.",
+        "THE RELEASE TRACKER NOW CARRIES THE SAME SENTENCE, because a release document that says nothing about a feature\u2019s evidence is how a claim gets made from the feature merely existing. It names what may be claimed (the observed fixture workflow) and what may not (any lift number, any recall rate, any statement about being safe unattended).",
+        "AB-18 IS OUT OF SCOPE FOR THIS REPOSITORY: it targets Attest, and START_HERE says to work in Dokima, not Attest \u2014 and that it must not delay a proven Dokima private beta. Recorded in PROGRESS rather than attempted."
+      ]
     }
   ]
 }
