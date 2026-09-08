@@ -64,6 +64,32 @@ export interface ApprovedBuildRunInputs {
 }
 
 /**
+ * The run inputs, built ONCE from the command (W23-13).
+ *
+ * Two call sites need this digest — the preflight that validates the approval,
+ * and the acceptance that re-checks it against the current inputs — and until
+ * this function they each constructed the object by hand from the same two
+ * fields. Two hand-built copies of a digest input is a drift class, not a
+ * duplication nit: the day they disagree, every machine acceptance refuses as
+ * stale for a reason nobody can see, or worse, one of them approves against a
+ * specification the other never validated.
+ */
+export function approvedBuildRunInputs(command: {
+  readonly projectId: string;
+  readonly budgetUsd?: number | null;
+}): ApprovedBuildRunInputs {
+  return {
+    projectId: command.projectId,
+    // Null rather than a guess: a wrong value would make an approval invalid
+    // for a reason nobody could see.
+    modelPolicy: null,
+    // Cents, because a float dollar amount is not a stable digest input.
+    budgetCents: Math.round((command.budgetUsd ?? 0) * 100),
+    maxRepairRounds: DEFAULT_APPROVED_BUILD_REPAIR_ROUNDS,
+  };
+}
+
+/**
  * The specification of one ticket, reduced to the fields a person approved.
  * Built by hand rather than by deleting keys from `Ticket`, so a new mutable
  * field added to `Ticket` later cannot silently join the digest and start
@@ -284,14 +310,7 @@ export function approvedBuildPreflight(
   | { readonly refused: false; readonly policy: ApprovedBuildPolicy | null } {
   const result = validateApprovedBuild(log, {
     optedIn: command.approvedBuild === true,
-    projectId: command.projectId,
-    // The model policy digest is the run's resolved policy where one exists.
-    // Null here rather than a guess: a wrong value would make an approval
-    // invalid for a reason nobody could see.
-    modelPolicy: null,
-    // Cents, because a float dollar amount is not a stable digest input.
-    budgetCents: Math.round((command.budgetUsd ?? 0) * 100),
-    maxRepairRounds: DEFAULT_APPROVED_BUILD_REPAIR_ROUNDS,
+    ...approvedBuildRunInputs(command),
   });
 
   if (result.status === 'refused') {

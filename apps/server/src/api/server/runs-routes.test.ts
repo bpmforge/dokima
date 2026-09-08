@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { appendEvent, createIdentity, listEvents, openEventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import { registerProject } from '../projects.js';
+import { buildRunStopped, startBuildRun } from './approved-build-run-state.js';
 import { buildApiServer, type ApiServer } from '../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -488,6 +489,83 @@ describe('run stop (W17-06)', () => {
       h: { host: `127.0.0.1:${PORT3}`, authorization: `Bearer ${TOKEN3}` },
     };
   }
+
+  /**
+   * W23-13 (AB-13) acceptance 3. The stop route used to answer from a Map that
+   * a fresh process leaves empty, so stopping a run the core had been
+   * restarted under returned 404 — and the run, whose own switch was the same
+   * dead flag, carried on. Here nothing in this process ever started the run:
+   * only the ledger knows it exists, which is exactly the position a restarted
+   * core is in.
+   */
+  it('a run started before this process can still be stopped, and the stop is durable (W23-13)', async () => {
+    const { app, id, dir, h } = await boot3();
+    const log = openEventLog(path.join(dir, '.dokima', 'state.db'));
+    try {
+      createIdentity(log, { id: 'operator', name: 'Operator', kind: 'human' });
+      startBuildRun(log, {
+        runId: 'run-before-restart',
+        projectId: id,
+        actorId: 'operator',
+        approvedBuild: true,
+      });
+    } finally {
+      log.close();
+    }
+
+    const stop = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${id}/build-runs/run-before-restart/stop`,
+      headers: h,
+      payload: { actor_id: 'operator' },
+    });
+    expect(stop.statusCode).toBe(202);
+
+    const after = openEventLog(path.join(dir, '.dokima', 'state.db'));
+    try {
+      expect(buildRunStopped(after, 'run-before-restart')).toBe(true);
+    } finally {
+      after.close();
+    }
+
+    // And the status route reports it from the ledger rather than 404ing on a
+    // run this process never executed.
+    const status = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/build-runs/run-before-restart`,
+      headers: h,
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({ stop_requested: true });
+  });
+
+  it('RED FIXTURE: a run id belonging to ANOTHER project is a 404, never another project’s run', async () => {
+    const { app, id, dir, h } = await boot3();
+    const log = openEventLog(path.join(dir, '.dokima', 'state.db'));
+    try {
+      createIdentity(log, { id: 'operator', name: 'Operator', kind: 'human' });
+      startBuildRun(log, {
+        runId: 'someone-elses-run',
+        projectId: 'a-different-project',
+        actorId: 'operator',
+        approvedBuild: true,
+      });
+    } finally {
+      log.close();
+    }
+    for (const url of [
+      `/api/v1/projects/${id}/build-runs/someone-elses-run`,
+      `/api/v1/projects/${id}/build-runs/someone-elses-run/stop`,
+    ]) {
+      const res = await app.inject({
+        method: url.endsWith('/stop') ? 'POST' : 'GET',
+        url,
+        headers: h,
+        ...(url.endsWith('/stop') ? { payload: { actor_id: 'operator' } } : {}),
+      });
+      expect(res.statusCode).toBe(404);
+    }
+  });
 
   it('RED FIXTURE: a running build run can be STOPPED from the API — 202 stopping, ledgered with who asked; a second stop is a clean 409; an unknown run is 404', async () => {
     const previous = process.env.DOKIMA_SIGNING_KEY;

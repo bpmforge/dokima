@@ -23,10 +23,7 @@ import type { EventLog } from '@dokima/events';
 import type { ApprovedBuildPolicy } from '@dokima/harbormaster';
 import { executeRepairRounds, type ExecuteRepairRoundsOptions } from './build-repair.js';
 import type { ExecuteReviewPassOptions } from './review-pass.js';
-import {
-  approvedBuildDigest,
-  DEFAULT_APPROVED_BUILD_REPAIR_ROUNDS,
-} from './approved-build.js';
+import { approvedBuildDigest, approvedBuildRunInputs } from './approved-build.js';
 
 export interface PostCloseVerificationOptions {
   readonly log: EventLog;
@@ -148,13 +145,11 @@ export function createRunReviewSeams(options: RunReviewSeamsOptions): RunReviewS
     log: options.log,
     runId: options.runId,
     policy: options.policy,
+    // W23-13: the SAME construction the preflight validated against. Two
+    // hand-built copies of a digest input is how an approval silently stops
+    // matching itself.
     currentInputDigest: () =>
-      approvedBuildDigest(options.log, {
-        projectId: options.command.projectId,
-        modelPolicy: null,
-        budgetCents: Math.round((options.command.budgetUsd ?? 0) * 100),
-        maxRepairRounds: DEFAULT_APPROVED_BUILD_REPAIR_ROUNDS,
-      }),
+      approvedBuildDigest(options.log, approvedBuildRunInputs(options.command)),
     repair: {
       log: options.log,
       runId: options.runId,

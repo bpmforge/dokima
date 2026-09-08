@@ -8,8 +8,17 @@ import { openEventLog } from '@dokima/events';
 import { resolveAsset } from '@dokima/shared';
 import { resolveSigningKey } from '../../cli/signing-key.js';
 import { executeBuildRun } from '../../cli/run-build.js';
+import { listTickets } from '@dokima/tickets';
 import { stateDbPath } from './board-project.js';
 import { attemptPhaseProgress } from './run-phase-progress.js';
+import {
+  buildRunStopped,
+  classifyRunOutcome,
+  finishBuildRun,
+  startBuildRun,
+  sweepInterruptedRuns,
+  type BuildRunState,
+} from './approved-build-run-state.js';
 
 /**
  * A build run, executed OFF the request (W12-20).
@@ -55,14 +64,29 @@ const buildRuns = new Map<string, BuildRunOutcome | 'running'>();
  */
 const stopRequests = new Map<string, { stopped: boolean; by: string }>();
 
-/** Exposed for the stop route and tests. */
+/**
+ * W23-13: which runs THIS process is actually executing. A `running` record
+ * with no entry here is an orphan of a dead process, and only a live process
+ * can tell the two apart — a later reader sees the same row either way.
+ */
+const liveRuns = new Set<string>();
+
+/**
+ * Exposed for the stop route and tests.
+ *
+ * W23-13: the durable state decides, and the map is only a cache in front of
+ * it. Before this, a stop for a run this process did not start was `unknown` —
+ * so restarting the core made every stopped run stoppable again, and the
+ * caller was told the run did not exist.
+ */
 export function requestBuildRunStop(
   runId: string,
   by: string,
+  durable?: { readonly state: BuildRunState | undefined },
 ): 'ok' | 'already' | 'unknown' {
-  if (!buildRuns.has(runId)) return 'unknown';
-  const existing = stopRequests.get(runId);
-  if (existing?.stopped) return 'already';
+  const known = buildRuns.has(runId) || durable?.state !== undefined;
+  if (!known) return 'unknown';
+  if (stopRequests.get(runId)?.stopped || durable?.state?.stopRequested) return 'already';
   stopRequests.set(runId, { stopped: true, by });
   return 'ok';
 }
@@ -84,17 +108,65 @@ export async function executeBuildRunJob(args: {
 }): Promise<void> {
   const stdout: string[] = [];
   const stderr: string[] = [];
-  buildRuns.set(args.runId, 'running');
   let exitCode = 1;
+  /**
+   * W23-13: false only when this call decided it is NOT the writer — a
+   * duplicate start for a run already in flight. Writing a terminal record
+   * there would report the live run as finished, which is the opposite of
+   * what the duplicate check exists to prevent.
+   */
+  let thisCallOwnsTheRun = true;
   try {
     const log = openEventLog(stateDbPath(args.projectPath));
     try {
+      /**
+       * W23-13 step 2: the accepted start is DURABLE BEFORE ANYTHING IS
+       * DISPATCHED. A start recorded after the work begins cannot answer the
+       * question a crash asks, because the crash can happen first.
+       */
+      const start = startBuildRun(log, {
+        runId: args.runId,
+        projectId: args.projectId,
+        actorId: args.actorId,
+        approvedBuild: args.approvedBuild === true,
+      });
+      if (start.kind === 'refused') {
+        stderr.push(start.reason);
+        exitCode = 2;
+        return;
+      }
+      if (start.kind === 'duplicate' && liveRuns.has(args.runId)) {
+        // One writer. A repeated start for a run already going is not an
+        // error and must not become a second worker on the same board.
+        stderr.push(`run ${args.runId} is already running — this start did nothing`);
+        thisCallOwnsTheRun = false;
+        return;
+      }
+      /**
+       * Orphans first: any run this project recorded as started, that no live
+       * process is executing, died with its process. Recorded as interrupted
+       * before this run begins, so the board never shows two live runs when
+       * one of them is a ghost.
+       */
+      for (const orphan of sweepInterruptedRuns(log, {
+        projectId: args.projectId,
+        actorId: args.actorId,
+        liveRunIds: liveRuns,
+      })) {
+        stderr.push(`run ${orphan} was interrupted by a process exit and is not live`);
+      }
+      liveRuns.add(args.runId);
+      buildRuns.set(args.runId, 'running');
       exitCode = await executeBuildRun(
         log,
         {
           projectId: args.projectId,
           actorId: args.actorId,
-          stopSwitch: () => stopRequests.get(args.runId)?.stopped === true,
+          // W23-13: the in-memory flag OR the ledger. A stop requested before
+          // a restart is still a stop.
+          stopSwitch: () =>
+            stopRequests.get(args.runId)?.stopped === true ||
+            buildRunStopped(log, args.runId),
           approvedBuild: args.approvedBuild === true,
           budgetUsd: args.budgetUsd ?? null,
         },
@@ -128,7 +200,26 @@ export async function executeBuildRunJob(args: {
           );
         }
       }
+      /**
+       * W23-13 step 3: exit 0 is not completion. A run that landed work and
+       * left tickets waiting for a person finished its work and did not
+       * finish the build.
+       */
+      const outcome = classifyRunOutcome({
+        exitCode,
+        stopRequested: buildRunStopped(log, args.runId),
+        ticketsAwaitingDecision: listTickets(log).filter((t) => t.status === 'in_review')
+          .length,
+      });
+      finishBuildRun(log, {
+        runId: args.runId,
+        actorId: args.actorId,
+        kind: outcome.kind,
+        detail: outcome.detail,
+        exitCode,
+      });
     } finally {
+      if (thisCallOwnsTheRun) liveRuns.delete(args.runId);
       log.close();
     }
   } catch (err) {
@@ -136,6 +227,8 @@ export async function executeBuildRunJob(args: {
     // dead job is exactly the opacity W10-58 removed from the creation path.
     stderr.push(err instanceof Error ? err.message : String(err));
   } finally {
-    buildRuns.set(args.runId, { runId: args.runId, exitCode, stdout, stderr });
+    if (thisCallOwnsTheRun) {
+      buildRuns.set(args.runId, { runId: args.runId, exitCode, stdout, stderr });
+    }
   }
 }

@@ -28,6 +28,7 @@ import { resolveSigningKey } from '../../cli/signing-key.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
 import { buildRunStatus, executeBuildRunJob, requestBuildRunStop } from './runs-job.js';
+import { readBuildRunState } from './approved-build-run-state.js';
 import { stopRun } from '@dokima/harbormaster';
 
 export interface RunsRoutesOptions {
@@ -206,7 +207,26 @@ export function registerRunsRoutes(
       const body = (request.body ?? {}) as { actor_id?: string };
       const actorId = body.actor_id ?? 'operator';
 
-      const outcome = requestBuildRunStop(runId, actorId);
+      /**
+       * W23-13: the durable record, so a stop works after a restart. Before
+       * this the answer came from a Map that a fresh process leaves empty, so
+       * stopping a run the core had been restarted under returned 404 — and
+       * the run, whose own switch was also a dead flag, carried on.
+       */
+      const durableLog = openEventLog(stateDbPath(projectPath));
+      let durableState;
+      try {
+        durableState = readBuildRunState(durableLog, runId);
+      } finally {
+        durableLog.close();
+      }
+      if (durableState && durableState.projectId !== id) {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(notFound(request, `no build run ${runId}`));
+      }
+      const outcome = requestBuildRunStop(runId, actorId, { state: durableState });
       if (outcome === 'unknown') {
         return reply
           .code(404)
@@ -270,10 +290,34 @@ export function registerRunsRoutes(
       if (!projectPath) return reply;
       const outcome = buildRunStatus(runId);
       if (outcome === undefined) {
-        return reply
-          .code(404)
-          .type(PROBLEM_CONTENT_TYPE)
-          .send(notFound(request, `no build run ${runId}`));
+        /**
+         * W23-13: this process did not run it — which is not the same as it
+         * never having existed. The ledger knows, and after a restart it is
+         * the only thing that does.
+         */
+        const durableLog = openEventLog(stateDbPath(projectPath));
+        let state;
+        try {
+          state = readBuildRunState(durableLog, runId);
+        } finally {
+          durableLog.close();
+        }
+        if (!state || state.projectId !== id) {
+          return reply
+            .code(404)
+            .type(PROBLEM_CONTENT_TYPE)
+            .send(notFound(request, `no build run ${runId}`));
+        }
+        return reply.send({
+          run_id: runId,
+          // A run with no recorded outcome and no live worker in THIS process
+          // is not running here; saying `running` would be the lie this card
+          // exists to remove.
+          status: state.outcome ?? 'interrupted',
+          detail: state.detail,
+          exit_code: state.exitCode,
+          stop_requested: state.stopRequested,
+        });
       }
       if (outcome === 'running') return reply.send({ run_id: runId, status: 'running' });
       return reply.send({

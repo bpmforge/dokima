@@ -5,7 +5,7 @@ Durable handoff for the AB card sequence in
 observed results only. Nothing here is marked implemented before its gate ran.
 
 - **Current HEAD:** see the card row's commit column
-- **Current AB card:** AB-13 (next)
+- **Current AB card:** AB-14 (next)
 - **Branch:** `feat/automated-build`, cut from `307ed762` on `main`
 - **Policy version enabled for tests only / opted-in users:** `approved-build-v1`
   exists and is recorded/validated, but NO user is opted in: opting in requires
@@ -34,7 +34,7 @@ when its card is next**, per AB-00 step 5.
 | AB-10 | W23-10     | yes (done)              | Structured, fresh review decisions                                                |
 | AB-11 | W23-11     | yes (done)              | Bounded automatic repair loop                                                     |
 | AB-12 | W23-12     | yes (done)              | Review/accept between tickets so dependents unlock                                |
-| AB-13 | W23-13     | reserved                | Durable run state, stop, resume                                                   |
+| AB-13 | W23-13     | yes (done)              | Durable run state, stop, resume                                                   |
 | AB-14 | W23-14     | reserved                | One approval and a readable build experience                                      |
 | AB-15 | W23-15     | reserved                | Remove duplicate developer gates                                                  |
 | AB-16 | W23-16     | reserved                | Prove the workflow through real entry points                                      |
@@ -53,6 +53,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit             | Focused checks                                                                                                         | Full gate                                                                                                                            | Evidence / blocker                                                                                                                |
 | ----- | ----------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)      | `node scripts/validate-plan.mjs` exit 0                                                                                | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                                    |
+| AB-13 | W23-13      | done   | `16` (this commit) | `vitest run approved-build-run-state.test.ts runs-routes.test.ts --retry=0` → 26 passed                                | lint 0 · typecheck 0 · test 0 (5299 passed / 2 skipped, 606 files) · e2e 0 (76) · validate 1 then 0 (a W23-19 leak)                  | status and stop both survive a restart, proven through the HTTP routes; exit 0 no longer reads as completion                      |
 | AB-12 | W23-12      | done   | `15` (this commit) | `vitest run verified-ticket-decision.test.ts loop-land.test.ts loop-land-base.test.ts --retry=0` → 63 passed           | lint 0 · typecheck 0 · test 0 (5285 passed / 2 skipped, 605 files) · e2e 0 (76) · validate 0                                         | three dependents done in ONE run, trunk unchanged, dependent forked from its accepted predecessor; 7 red fixtures block the chain |
 | AB-11 | W23-11      | done   | `14` (this commit) | `vitest run build-repair-loop.test.ts build-repair.test.ts reject.test.ts --retry=0` → 22 passed                       | lint 0 · typecheck 0 · test 0 (5271 passed / 2 skipped, 603 files) · e2e 0 (76) · validate 0                                         | reject→remake→re-review with nobody in the room; the round count lives in the ledger, so a restart is granted none                |
 | AB-10 | W23-10      | done   | `13` (this commit) | `vitest run review-decision.test.ts loop-review.test.ts --retry=0` → 36 passed                                         | lint 0 · typecheck 0 · test 0 (5259 passed / 2 skipped, 602 files) · e2e 0 (76) · validate 0                                         | machine reviewer identity; eligible computed with per-reason evidence                                                             |
@@ -68,29 +69,35 @@ it changes no default for a project that has not opted in.
 
 ## Next session
 
-- **Completed behavior:** review, repair and acceptance now happen the moment a
-  ticket lands, inside the one-ticket engine both the sequential and berth
-  paths drive, so a dependent unlocks mid-run. `depsDone` is untouched — `done`
-  still means accepted; a machine now supplies the acceptance under D-020, and
-  `decideMachineAccept` has its first production caller. Every decision leaves
-  a `build.accept.decided` row naming the rule that produced it. The final
-  review pass now reviews only the tickets the seam did not decide.
-- **Exact unfinished step:** AB-13 — durable run state, stop and resume: a run
-  that is stopped or killed must come back knowing what it had already done.
-- **Next file/symbol:** `.dokima/runs/<id>.json` and the pipeline run records
-  (`apps/server/src/api/pipeline/`), plus `executeBuildRun` in
-  `apps/server/src/cli/run-build.ts`.
-- **Failing command and output summary:** the first engine-level test failed
-  with `nothing to commit, working tree clean` — the dependent's worktree
-  already contained its predecessor's identical file. That was the base
-  composition working, not a defect; the test now writes a distinct file per
-  ticket and asserts the predecessor's source IS visible.
-- **Actual test totals and skips:** 605 files, 5285 passed, 2 skipped.
-- **Production caller verified:** yes — `apps/server/src/cli/build-verify.ts`
-  builds the seam and `run-build.ts` puts it in `landOptions`, which the berth
-  path spreads unchanged. Acceptance 4 (sequential ≡ berths) holds BY
-  CONSTRUCTION — one engine, one options object — and is stated as the
-  mechanism claim it is: driving a real multi-berth run is AB-16's.
-- **New finding and registered ticket:** none new. `decideApprovedBuildAction`'s
-  `@unreached` marker is deleted: W23-12 was the ticket it named, and it landed.
-- **Next AB id:** AB-13.
+- **Completed behavior:** a build run's accepted start, its stop and its
+  terminal outcome are durable. A restarted core reports a dead run as
+  `interrupted` rather than `running` or 404; a stop requested before a restart
+  still blocks work after it; a repeated start makes no second writer and a run
+  id from another project can neither be read nor stopped. `exit 0` is no
+  longer read as completion — a clean run with tickets still in review is
+  `awaiting_decision`, which after AB-12 is the ordinary case.
+- **Exact unfinished step:** AB-14 — one approval and a readable build
+  experience: the single approval surface plus a progress view a person can act
+  on.
+- **Next file/symbol:** `apps/web/src/board/` (the run/Decide surfaces) and
+  `recordApprovedBuild` in `apps/server/src/cli/approved-build.ts`, which has no
+  UI entrance yet.
+- **Failing command and output summary:** the SQLite table rebuild that would
+  have widened `runs.status` was refused by a local safety hook that blocks
+  destructive database statements — correctly, since that rebuild would touch
+  the table holding every historical run. The outcomes live in append-only
+  events instead, which is where C-6 already puts the truth; `runs` keeps its
+  coarse lifecycle row. Also `validate-plan` P4 refused `module: server` (not in
+  MODULES); the ticket is `cli`.
+- **Actual test totals and skips:** 606 files, 5299 passed, 2 skipped.
+- **Production caller verified:** yes — `runs-job.ts` records the start before
+  dispatch, sweeps orphans, reads the durable stop in its `stopSwitch` and
+  records the classified outcome; `runs-routes.ts` answers both the status and
+  the stop route from the ledger when this process holds nothing.
+- **New finding and registered ticket:** the approval digest inputs were
+  hand-built at two call sites (the preflight that validates the approval and
+  the acceptance that re-checks it). They agreed, but the drift would have been
+  silent; `approvedBuildRunInputs()` is now the one construction, fixed here
+  and recorded on W23-13. W23-19's leak was seen once more and its frequency is
+  now recorded on the ticket.
+- **Next AB id:** AB-14.
