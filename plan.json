@@ -16086,6 +16086,68 @@
         "AUTONOMY COPY UPDATED LAST (step 5), and not to \"now it is enforced\": the dial still does not make a run unattended. The per-run approval does, over a specification the person read, and a project that chose Auto months ago chose the old meaning (D-032).",
         "SCOPE WIDENED: BoardView.tsx handleStartRun swallowed nothing \u2014 a fetch REJECTION (core down, bad base URL) escaped as an unhandled rejection instead of reaching the person as a refusal. Found because mounting the new panel changed the timing enough for the existing suite to surface it as a hard error."
       ]
+    },
+    {
+      "id": "W23-22",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "CI never runs `pnpm validate`, so three of the six validators are gated only on a laptop",
+      "write_scope": [
+        ".github/workflows/ci.yml"
+      ],
+      "acceptance": [
+        "CI runs the same `pnpm validate` the local Law 3 gate runs, with the same ratchet arguments, so no validator is enforced in only one of the two places",
+        "The existing traceability and history-secrets jobs either call it or are folded into it \u2014 the same check must not be configured twice with different arguments"
+      ],
+      "notes": [
+        "FOUND AT W23-15, 2026-09-08, while inventorying duplicate gate executions for AB-15. CI runs validate-plan and validate-traceability in a `traceability` job and validate-history-secrets in another, and never runs `pnpm validate` at all \u2014 so validate-ui-copy, validate-exports and validate-volatile-paths are enforced ONLY by a person running the local gate.",
+        "THIS IS THE W22-06 SHAPE ONE LEVEL UP: that ticket found the same validator ENFORCING in one place and merely reporting in another, with the two numbers already drifted. Here the second place does not run it at all, which is the same failure with a worse denominator: a green CI is not evidence those three passed.",
+        "Deliberately not fixed inside AB-15: that card is a repository-development optimisation with its own acceptance, and editing CI to close a coverage gap is a different change from parallelising a local command. Evidence and measurements in docs/work/automated-build/GATE_TIMINGS.md \u00a71 row 4."
+      ]
+    },
+    {
+      "id": "W23-15",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-14"
+      ],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "six independent read-only checks took turns",
+      "write_scope": [
+        "scripts/gate-plan.mjs",
+        "scripts/gate-plan.test.mjs",
+        "scripts/gate-plan.suite.test.mjs",
+        "scripts/vitest.config.ts",
+        "package.json",
+        "CLAUDE.md",
+        "docs/work/automated-build/GATE_TIMINGS.md",
+        "apps/server/src/api/server/approved-build-routes.test.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A deliberately failing validator fails the whole gate, and every group keeps its own output in the configured order",
+        "The ratchet arguments are the serial baseline\u2019s, read from conductor.config.json rather than copied, and the temp-leak check runs only after everything else has exited",
+        "Before/after timings are measured on the same tree with the same check set, and the serial runner is kept so the comparison can be repeated",
+        "No check was removed, no ratchet weakened, no timeout raised, and no affected-check selection was introduced"
+      ],
+      "notes": [
+        "AB-15. THE SERIAL RUNNER\u2019S OWN REASON WAS HALF RIGHT: \"a serial run means the first failure is the one you read\". That is a property of the OUTPUT, not of the scheduling \u2014 so the six run concurrently under a bound and are printed in configured order whatever order they finish in. ~10.95s \u2192 ~6.38s, measured twice each on the same tree.",
+        "EQUIVALENCE WAS DEMONSTRATED BEFORE THE INSTRUCTIONS CHANGED (step 5). Byte-identical output apart from the elapsed-time suffix, and a real planted failure (process.exit(3) at the top of validate-ui-copy.mjs, reverted) fails both runners with exit 1 while the parallel one keeps all six group lines and the failing child\u2019s words.",
+        "THE NODE:TEST FILE IS STILL IN pnpm test. AB-15\u2019s focused verification is `node --test scripts/gate-plan.test.mjs`, which vitest cannot execute \u2014 so it is excluded from the vitest project and gate-plan.suite.test.mjs runs it as a child and fails with it. A check that runs only when someone remembers the command is the L-46/L-47 decay this repo has been bitten by twice.",
+        "FOUND AND FILED: CI never runs `pnpm validate` \u2014 validate-ui-copy, validate-exports and validate-volatile-paths are gated only by the local Law 3 gate. Filed as W23-22 rather than fixed here: editing CI to close a coverage gap is a different change from parallelising a local command.",
+        "ALSO FIXED HERE: a typecheck error committed with W23-14 (an acceptance criterion fixture missing `done`). `pnpm --filter @dokima/server typecheck` was run after that file was written and the workspace-wide one was not; recorded rather than quietly corrected."
+      ]
     }
   ]
 }

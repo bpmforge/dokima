@@ -62,7 +62,7 @@ describe('the approved-build routes (W23-14)', () => {
         title: 'Add the login form',
         lane: 'core',
         writeScope: ['src/login/**'],
-        acceptance: [{ id: 'AC-1', text: 'a person can log in' }],
+        acceptance: [{ id: 'AC-1', text: 'a person can log in', done: false }],
       });
     } finally {
       log.close();
