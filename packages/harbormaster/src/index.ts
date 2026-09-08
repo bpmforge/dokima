@@ -318,3 +318,22 @@ export {
   CROSS_SESSION_REPEAT_THRESHOLD,
   type RepeatedCall,
 } from './loop-land-repetition.js';
+
+// W23-01: the recorded approved-build-v1 decision — what an approved build may
+// do unattended, as a pure function rather than prose (W13-32's first
+// acceptance criterion). Exported ahead of its caller on purpose: the runtime
+// wiring is W23-02's, and the marker below is what says so out loud instead of
+// letting the export sit silently unreached.
+// @unreached decideApprovedBuildAction: the production caller is W23-02 (AB-02), which persists the approval this reads; W23-01 is deliberately the pure decision only, per its card.
+// @unreached APPROVED_BUILD_POLICY_VERSION: same — W23-02 stamps this version onto the recorded approval event.
+export {
+  decideApprovedBuildAction,
+  APPROVED_BUILD_POLICY_VERSION,
+  type ApprovedBuildAction,
+  type ApprovedBuildDecision,
+  type ApprovedBuildFacts,
+  type ApprovedBuildPolicy,
+  type ApprovedBuildRequest,
+  type ApprovedBuildReviewFacts,
+  type ApprovedBuildSituationKind,
+} from './approved-build-policy.js';

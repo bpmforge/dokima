@@ -15481,7 +15481,7 @@
       "id": "W23-01",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "core",
@@ -15494,7 +15494,10 @@
         "packages/harbormaster/src/index.ts",
         "packages/harbormaster/src/index.test.ts",
         "docs/work/automated-build/PAUSE_SITES.md",
-        "docs/work/automated-build/PROGRESS.md"
+        "docs/work/automated-build/PROGRESS.md",
+        "conductor.config.json",
+        "scripts/validate-exports.test.mjs",
+        "packages/harbormaster/src/approved-build-accept.ts"
       ],
       "acceptance": [
         "A pure decision function covers every row of the IMPLEMENTATION_PLAN pause table, table-driven, in BOTH approved-build-v1 and legacy interactive modes",
@@ -15505,7 +15508,10 @@
       ],
       "notes": [
         "LINKED CHILD OF W13-32, NOT A DUPLICATE OF IT. W13-32 stays blocked and keeps wiring the dial for existing projects; its own first acceptance criterion says the decision about which defaults are acceptable unattended must be made and recorded BEFORE any wiring. This ticket builds that recorded decision as a versioned, testable function and changes no default for a project that has not opted in.",
-        "D-032 / C-5: legacy autonomy=auto projects keep legacy interactive behaviour. Opting in is explicit and versioned (approved-build-v1); an unenumerated pause kind fails closed."
+        "D-032 / C-5: legacy autonomy=auto projects keep legacy interactive behaviour. Opting in is explicit and versioned (approved-build-v1); an unenumerated pause kind fails closed.",
+        "SCOPE WIDENED (Law 1), answered when found: exporting decideApprovedBuildAction gave resolvePauseAction its first non-test caller, so validate-exports\u2019 buried count dropped 45 -> 44. The baseline\u2019s own standing instruction is to lower the ratchet whenever the measured number drops, and scripts/validate-exports.test.mjs pins that number in two places (W22-20 warned it would). conductor.config.json (--max-buried 45 -> 44) and that test are unowned by any live ticket, and W23-01 cannot be green without them.",
+        "THE @unreached MARKER IS THE HONEST FORM OF \"no caller yet\". decideApprovedBuildAction and APPROVED_BUILD_POLICY_VERSION are exported ahead of the runtime that calls them, each marked with the ticket that owes the wiring (W23-02). validate-exports.test.mjs now asserts both markers name W23-02, so the card that wires them and forgets to delete them reds a test rather than leaving a suppression nobody revisits.",
+        "DONE 2026-09-08. resolvePauseAction and askClarification had ZERO production callers \u2014 verified with rg across apps, packages, scripts and content, and recorded in docs/work/automated-build/PAUSE_SITES.md. The autonomy dial is not wired to anything; C-5 holds today because nothing ever reaches a pause site to test it. W13-32\u2019s four files were not touched."
       ]
     },
     {

@@ -302,7 +302,7 @@ describe('the three degrees of unreached (W22-02)', () => {
     // calibrated against.
     const { findings, buried } = scan();
     expect(findings.length).toBe(46);
-    expect(buried.length).toBe(45);
+    expect(buried.length).toBe(44);
   });
 });
 
@@ -364,15 +364,23 @@ describe('the @unreached marker (W22-02)', () => {
     },
   );
 
-  it('the repo carries no @unreached markers again — P5-01 wired the four P3-05 mechanisms and deleted them, as the markers themselves promised', () => {
+  it('every @unreached marker in the repo names a real wiring ticket, and this list shrinks when that ticket lands', () => {
     // History: pre-P3-05 this asserted suppressed === []; P3-05 landed four
     // marked mechanisms awaiting a caller; P5-01 (the product loop) IS that
     // caller — productLoop/gapsToProposals call all four — so the markers
-    // are gone and the list shrank back to empty, the direction the marker
-    // contract demands. A future marker must carry a reason and a named
-    // wiring ticket, and this assertion grows with it, then shrinks again.
+    // went away and the list shrank back to empty, the direction the marker
+    // contract demands. W23-01 grows it again by two, exactly as the previous
+    // version of this comment said a future marker would: the approved-build
+    // decision function is exported ahead of the runtime that calls it, and
+    // W23-02 is the ticket that must delete both markers when it wires them.
+    // The assertion is on the SYMBOLS AND THEIR TICKET, not a count, so a
+    // third marker added quietly still reds this test.
     const { suppressed, malformedMarkers } = scan();
-    expect(suppressed).toEqual([]);
+    expect(suppressed.map((s) => s.symbol).sort()).toEqual([
+      'APPROVED_BUILD_POLICY_VERSION',
+      'decideApprovedBuildAction',
+    ]);
+    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-02/);
     expect(malformedMarkers).toEqual([]);
   });
 });
@@ -417,7 +425,7 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // counting change that moved them would need its own recalibration.
     const { findings, buried, unreferenced } = scan();
     expect(findings.length).toBe(46);
-    expect(buried.length).toBe(45);
+    expect(buried.length).toBe(44);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.
     const named = unreferenced.map((u) => u.symbol);

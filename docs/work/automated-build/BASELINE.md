@@ -82,8 +82,13 @@ regression. Filed as **W23-19** rather than left as a sentence here.
   `validate-plan` still exits `ok`. This count is the baseline. AB cards must
   not add to it — a deferral names a registered ticket id or it is not a
   deferral (CLAUDE.md Law 1).
-- **3 skipped tests** in `pnpm test`, by design (the real-macOS-keychain test
-  and its kin are opt-in via `DOKIMA_TEST_REAL_KEYCHAIN=1`).
+- **The skip count moves with the machine, and is not a regression signal.**
+  The baseline run reported 3 skips: 1 in `packages/shared/src/config/credential-store.test.ts`
+  (the real-macOS-keychain test, opt-in via `DOKIMA_TEST_REAL_KEYCHAIN=1`) and 2
+  in `packages/harbormaster/src/sandbox/container.test.ts`, which skips when
+  `isContainerRuntimeAvailable()` is false. Later the same day, with a container
+  runtime up, the same commit reported **1 skip and two more passes**. Compare
+  skip _names_, never skip _counts_.
 - **`validate-exports` ratchets** stand at `--max 46 --max-buried 45`. Lowering
   is allowed; raising is a regression.
 - **Nightly E2E history**: failed 2026-09-07 (run 34104530858), succeeded
