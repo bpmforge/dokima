@@ -315,6 +315,9 @@ export async function executeBuildRun(
     secretValues,
     stderr: io.stderr,
     projectId: command.projectId, // W23-06: fair-scheduling key inside the shared pool
+    // W23-10: only what THIS run landed — a parked ticket from last week is
+    // not this run's to re-review.
+    ticketIds: result.processed.map((entry) => entry.ticketId),
   });
 
   // W14-06: the run's end is this product's idle moment — consolidate now

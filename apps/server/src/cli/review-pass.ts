@@ -11,7 +11,11 @@
  */
 
 import { ROLE_CODE_REVIEWER } from '@dokima/gateway';
-import { runReviewPass, type ReviewOutcome } from '@dokima/harbormaster';
+import {
+  reviewTicketDecisions,
+  type ReviewDecision,
+  type ReviewOutcome,
+} from '@dokima/harbormaster';
 import { getCalibration } from '@dokima/memory';
 import type { EventLog } from '@dokima/events';
 import { resolveModelTarget } from '../api/pipeline/model-resolution.js';
@@ -33,11 +37,18 @@ export interface ExecuteReviewPassOptions {
   readonly stderr: (line: string) => void;
   /** W23-06: the fair-scheduling key inside one endpoint's queue. Falls back to the repo root, which is stable and unique per project. */
   readonly projectId?: string;
+  /**
+   * W23-10: the tickets THIS run landed. Without it the pass reviews every
+   * `in_review` ticket on the board, including ones a person parked weeks ago
+   * whose worktree may no longer exist.
+   */
+  readonly ticketIds?: readonly string[];
 }
 
-export async function executeReviewPass(
-  options: ExecuteReviewPassOptions,
-): Promise<ReviewOutcome[]> {
+export async function executeReviewPass(options: ExecuteReviewPassOptions): Promise<{
+  readonly outcomes: readonly ReviewOutcome[];
+  readonly decisions: readonly (ReviewDecision | null)[];
+}> {
   let reviewerModel: string | null = null;
   let chat: ((prompt: string) => Promise<string>) | null = null;
   try {
@@ -72,7 +83,7 @@ export async function executeReviewPass(
     );
   }
 
-  return runReviewPass({
+  const results = await reviewTicketDecisions({
     log: options.log,
     actorId: options.actorId,
     runId: options.runId,
@@ -86,5 +97,16 @@ export async function executeReviewPass(
     // person, never toward acceptance (FR-L3 asymmetry).
     makerCalibration: () =>
       getCalibration(options.log.db, options.makerModel, 'coding-agent'),
+    ...(options.ticketIds ? { ticketIds: options.ticketIds } : {}),
   });
+
+  /**
+   * W23-10: the decisions are returned to the caller as well as the outcomes,
+   * because the eligibility question ("may this be accepted without a person?")
+   * is answered by the decision and nothing else can re-derive it honestly.
+   */
+  return {
+    outcomes: results.map((r) => r.outcome),
+    decisions: results.map((r) => r.decision),
+  };
 }

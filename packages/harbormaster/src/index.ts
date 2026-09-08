@@ -258,7 +258,12 @@ export type { TicketBase, TicketBaseInput } from './loop-land-base.js';
 export type { ReviewState, TicketReviewStatus } from './review-status.js';
 
 /** W15-01: the review pass — cross-model verdicts over in_review tickets, composed by apps/server. */
-export { DEFAULT_REVIEW_VERIFY_TIMEOUT_MS, runReviewPass } from './loop-review.js';
+// @unreached runReviewPass: a deliberately KEPT compatibility surface, not a symbol awaiting a caller. W23-10 moved this repo's own call to reviewTicketDecisions, which returns the structured decision; runReviewPass stays because AB-10 step 1 asks for it and because an external caller of the published package may still use it.
+export {
+  DEFAULT_REVIEW_VERIFY_TIMEOUT_MS,
+  reviewTicketDecisions,
+  runReviewPass,
+} from './loop-review.js';
 export type {
   ReviewOutcome,
   ReviewPassOptions,
@@ -319,14 +324,10 @@ export {
   type RepeatedCall,
 } from './loop-land-repetition.js';
 
-// ---------------------------------------------------------------------------
 // The automated-build surface (wave 23). Each module's own header carries the
-// reasoning; what lives here is the contract and the @unreached markers, which
-// must stay IN THIS FILE: validate-exports reads markers from source but does
-// not follow `export * from` when it collects a package's barrel entries, so
-// moving these into a chapter would hide them from the ratchet rather than
-// tidy them (found while splitting this file, filed as W23-21).
-// ---------------------------------------------------------------------------
+// reasoning; the contract and its @unreached markers must stay IN THIS FILE,
+// because validate-exports does not follow `export * from` and a chapter would
+// hide these symbols from the ratchet rather than tidy them (W23-21).
 // @unreached decideApprovedBuildAction: still no production caller. W23-02 wired the APPROVAL it reads, not the per-action decision itself; the caller is W23-12 (AB-12), where a ticket's post-close path asks whether it may accept. Retargeted rather than deleted — a marker that names a ticket which has landed is a suppression nobody revisits.
 export {
   decideApprovedBuildAction,
@@ -388,3 +389,9 @@ export {
   type RepairFinding,
   type TicketScope,
 } from './repair-findings.js';
+
+// Only the decision TYPE is published: `decideReview` and the reviewer
+// identity have their caller inside this package, and publishing a symbol no
+// app calls is how an export ratchet fills with things used perfectly well
+// where they are.
+export type { ReviewCheckStatus, ReviewDecision } from './review-decision.js';

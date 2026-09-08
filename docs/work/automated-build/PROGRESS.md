@@ -5,7 +5,7 @@ Durable handoff for the AB card sequence in
 observed results only. Nothing here is marked implemented before its gate ran.
 
 - **Current HEAD:** see the card row's commit column
-- **Current AB card:** AB-10 (next)
+- **Current AB card:** AB-11 (next)
 - **Branch:** `feat/automated-build`, cut from `307ed762` on `main`
 - **Policy version enabled for tests only / opted-in users:** `approved-build-v1`
   exists and is recorded/validated, but NO user is opted in: opting in requires
@@ -31,7 +31,7 @@ when its card is next**, per AB-00 step 5.
 | AB-07 | W23-07     | yes (done)              | Bounded-group security execution                                                  |
 | AB-08 | W23-08     | yes (done)              | Invalidate dependent evidence on retry                                            |
 | AB-09 | W23-09     | yes (done)              | Consolidate findings into one repair batch                                        |
-| AB-10 | W23-10     | reserved                | Structured, fresh review decisions                                                |
+| AB-10 | W23-10     | yes (done)              | Structured, fresh review decisions                                                |
 | AB-11 | W23-11     | reserved                | Bounded automatic repair loop                                                     |
 | AB-12 | W23-12     | reserved                | Review/accept between tickets so dependents unlock                                |
 | AB-13 | W23-13     | reserved                | Durable run state, stop, resume                                                   |
@@ -53,6 +53,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit             | Focused checks                                                                                                         | Full gate                                                                                                                            | Evidence / blocker                                                                                                        |
 | ----- | ----------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)      | `node scripts/validate-plan.mjs` exit 0                                                                                | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                            |
+| AB-10 | W23-10      | done   | `13` (this commit) | `vitest run review-decision.test.ts loop-review.test.ts --retry=0` → 36 passed                                         | lint 0 · typecheck 0 · test 0 (5259 passed / 2 skipped, 602 files) · e2e 0 (76) · validate 0                                         | machine reviewer identity; eligible computed with per-reason evidence                                                     |
 | AB-09 | W23-09      | done   | `12` (this commit) | `vitest run repair-findings.test.ts --retry=0` → 20 passed                                                             | lint 0 · typecheck 0 · test 0 (5240 passed / 2 skipped, 601 files) · e2e 0 (76) · validate 0                                         | dedup by identity both directions; W23-21 filed (validate-exports blind to `export *`)                                    |
 | AB-08 | W23-08      | done   | `11` (this commit) | `vitest run check-evidence.test.ts review-status.test.ts onboard-executor.test.ts --retry=0` → 41 passed               | lint 0 · typecheck 0 · test 0 (5220 passed / 2 skipped, 600 files) · e2e 0 (76) · validate 0                                         | transitive re-run proven through the real onboard path; STALE is its own review state                                     |
 | AB-07 | W23-07      | done   | `10` (this commit) | `vitest run check-scheduler.test.ts onboard-executor.test.ts --retry=0` → 18 passed                                    | lint 0 · typecheck 0 · test 0 (5189 passed / 2 skipped, 599 files) · e2e 0 (76) · validate 0                                         | deferred-promise overlap/ordering proofs; real onboard entry point traversed                                              |
@@ -65,26 +66,25 @@ it changes no default for a project that has not opted in.
 
 ## Next session
 
-- **Completed behavior:** one repair batch built from scanner output,
-  specialist readings and reviewer judgement — deduplicated by rule + path +
-  location + evidence, never by title; origins all retained; hypotheses kept
-  distinct from tool-confirmed defects; out-of-scope repairs parked as
-  proposals; escaping paths refused rather than normalized.
-- **Exact unfinished step:** AB-10 — make review return a structured, fresh
-  decision object (verdict + findings + freshness) rather than prose the caller
-  parses.
-- **Next file/symbol:** `packages/harbormaster/src/loop-review-prompt.ts`
-  (`parseVerdict`) and `loop-review.ts`'s verdict recording.
-- **Failing command and output summary:** the barrel crossed the 400-line cap
-  and the obvious split made things worse — see the new finding below.
-- **Actual test totals and skips:** 601 files, 5240 passed, 2 skipped.
-- **Production caller verified:** none yet, deliberately. `consolidateFindings`
-  and `groupByOwner` carry `@unreached` markers naming **W23-11**, the repair
-  loop that consumes a batch.
-- **New finding and registered ticket:** **W23-21** — `validate-exports` does
-  not follow `export * from`, so splitting a barrel into a chapter drops those
-  symbols from the ratchet. Moving three wave-23 blocks out made the gap count
-  fall by three and the suppression list go empty, with nothing actually wired.
-  The split was reverted; `packages/harbormaster/src/index.ts` is at 390 lines
-  with ten to spare.
-- **Next AB id:** AB-10.
+- **Completed behavior:** a per-ticket review operation returning a structured
+  decision (head, digest, check statuses, both models, both identities) whose
+  `eligible` flag is computed from those facts and carries a reason per
+  failure. Review events and comments are signed by a minted machine reviewer
+  identity. A run reviews only the tickets it processed.
+- **Exact unfinished step:** AB-11 — the bounded automatic repair loop: reject,
+  reclaim, fix, re-verify, with durable counters that a restart cannot reset.
+- **Next file/symbol:** `rejectTicket` / the reclaim path in
+  `packages/tickets`, and `consolidateFindings` / `groupByOwner`, whose
+  `@unreached` markers name W23-11.
+- **Failing command and output summary:** a first attempt at the
+  `loop-review-report.ts` extraction corrupted the file by string-matching the
+  wrong `commentTicket` call site. `tsc` caught it, `git checkout --` reverted
+  it, and the redo used explicit anchors.
+- **Actual test totals and skips:** 602 files, 5259 passed, 2 skipped.
+- **Production caller verified:** yes — `apps/server/src/cli/review-pass.ts`
+  calls `reviewTicketDecisions` and passes the run's own ticket ids from
+  `run-build.ts`.
+- **New finding and registered ticket:** none new; `runReviewPass` is now a
+  kept compatibility surface with an `@unreached` marker that says so rather
+  than naming a ticket, and the marker test asserts each reason individually.
+- **Next AB id:** AB-11.

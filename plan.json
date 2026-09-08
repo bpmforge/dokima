@@ -15885,6 +15885,44 @@
         "A FINDING NO RUNTIME CHECK CAN VERIFY DOES NOT ENTER THE BATCH. Model-suggested commands are suggestions; the verification check ids come from the runtime\u2019s own list (AB-09 step 4).",
         "SCOPE WIDENED: scripts/validate-exports.test.mjs, for the two new @unreached markers naming W23-11. Also filed W23-21 \u2014 validate-exports does not follow `export * from`, so splitting a barrel into a chapter silently removes its symbols from the ratchet."
       ]
+    },
+    {
+      "id": "W23-10",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-09"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "the machine review was signed by the human who started the build",
+      "write_scope": [
+        "packages/harbormaster/src/review-decision.ts",
+        "packages/harbormaster/src/review-decision.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review-report.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/cli/run-build.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A maker identity or model cannot review its own work, including a model used only during escalation",
+        "A fresh, complete review returns an eligible decision; every unavailable, stale, incomplete or inconclusive condition returns an ineligible one, each with its own reason",
+        "Review events and comments are signed by a dedicated machine reviewer identity, never by the human who started the build",
+        "A run reviews only the tickets it processed; runReviewPass stays as a compatibility wrapper over the per-ticket operation"
+      ],
+      "notes": [
+        "AB-10. THE IDENTITY DEFECT IS THE ONE WORTH NAMING: review events and the C-4 refusal comment were appended under options.actorId \u2014 the human who started the build \u2014 which reads, in an append-only log, as that person having reviewed the work. A machine review is the machine\u2019s claim (C-4/SC-05), so it is signed by a minted `machine-reviewer` identity distinct from the human who will later accept.",
+        "ELIGIBLE IS COMPUTED FROM FACTS AND CARRIES ITS REASONS. Each precondition contributes its own sentence to ineligibleBecause, because \"not eligible\" with one reason is actionable and with none is a shrug. A NOT_APPLICABLE required check does not block \u2014 nothing was skipped that could have been looked at.",
+        "AN INDEPENDENT CHECK DOMINATES THE MODEL, and that ordering is not a preference: a scanner exit code is a fact about the code and a verdict is an opinion about it. Freshness can only downgrade a CONFIRMED; nothing turns a CONTRADICTED into something better.",
+        "runReviewPass carries an @unreached marker whose reason is NOT a ticket id: it is a kept compatibility surface and will never have an in-repo caller again. The marker test now asserts each symbol\u2019s reason individually rather than matching one pattern across all of them \u2014 a count would pass while a marker quietly changed its story.",
+        "SCOPE WIDENED: loop-review.ts crossed the 400-line cap again, so the comment assembly became loop-review-report.ts (extraction only). A first attempt at this extraction corrupted the file by string-matching the wrong commentTicket call site; caught by tsc, reverted with git checkout, and redone against explicit anchors."
+      ]
     }
   ]
 }

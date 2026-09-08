@@ -385,12 +385,22 @@ describe('the @unreached marker (W22-02)', () => {
     // real callers, one export was DELETED because the caller did not want it,
     // and one stopped being barrel-published. That is the contract working in
     // all three directions.
-    expect(suppressed.map((s) => s.symbol).sort()).toEqual([
+    // Asserted symbol BY symbol, with the reason each one must give. A count
+    // would pass while a marker quietly changed its story, and the story is
+    // the entire value of the mechanism: a marker either names the ticket that
+    // owes it a caller, or says plainly that it is a kept compatibility
+    // surface and will never have one.
+    const reasons = new Map(suppressed.map((s) => [s.symbol, s.reason]));
+    expect([...reasons.keys()].sort()).toEqual([
       'consolidateFindings',
       'decideApprovedBuildAction',
       'groupByOwner',
+      'runReviewPass',
     ]);
-    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-(11|12)/);
+    expect(reasons.get('consolidateFindings')).toMatch(/W23-11/);
+    expect(reasons.get('groupByOwner')).toMatch(/W23-11/);
+    expect(reasons.get('decideApprovedBuildAction')).toMatch(/W23-12/);
+    expect(reasons.get('runReviewPass')).toMatch(/compatibility surface/);
     expect(malformedMarkers).toEqual([]);
   });
 });

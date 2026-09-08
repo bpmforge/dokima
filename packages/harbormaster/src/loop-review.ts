@@ -36,6 +36,12 @@ import {
 } from '@dokima/loop';
 import { reRunVerify } from './loop-gates-verify.js';
 import { collectTicketSecurityChecks, securityChecksSection } from './review-security.js';
+import { reviewCommentBody } from './loop-review-report.js';
+import {
+  decideReview,
+  ensureReviewerIdentity,
+  type ReviewDecision,
+} from './review-decision.js';
 import { countsFrom, parseVerdict, reviewPrompt } from './loop-review-prompt.js';
 import { collectReviewEvidence, evidenceStillCurrent } from './review-evidence.js';
 // W21-75: the literal that used to sit further down was Dokima's own gate,
@@ -77,34 +83,58 @@ export interface ReviewPassOptions {
   readonly makerCalibration?: () => CalibrationRecord | undefined;
   /** W23-04: where the bundled secrets scanner lives in THIS installation — apps/server resolves it; the package must not guess. */
   readonly secretsValidatorPath?: string | null;
+  /**
+   * W23-10: review only these tickets. A run that lands three tickets must not
+   * also re-review a ticket someone parked last week merely because it is
+   * still `in_review` — that ticket's worktree may be gone and nobody asked.
+   * Omitted, every `in_review` ticket is reviewed, exactly as before.
+   */
+  readonly ticketIds?: readonly string[];
 }
 
 export const DEFAULT_REVIEW_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
+/** W23-10: kept as the compatibility wrapper — existing callers keep their outcomes. */
 export async function runReviewPass(
   options: ReviewPassOptions,
 ): Promise<ReviewOutcome[]> {
-  const outcomes: ReviewOutcome[] = [];
-  const inReview = listTickets(options.log).filter(
-    (ticket) => ticket.status === 'in_review' && ticket.manifest !== null,
-  );
+  return (await reviewTicketDecisions(options)).map((entry) => entry.outcome);
+}
 
+/** The per-ticket review operation, with the structured decision beside each outcome. */
+export async function reviewTicketDecisions(
+  options: ReviewPassOptions,
+): Promise<readonly { outcome: ReviewOutcome; decision: ReviewDecision | null }[]> {
+  const results: { outcome: ReviewOutcome; decision: ReviewDecision | null }[] = [];
+  const selected = options.ticketIds ? new Set(options.ticketIds) : null;
+  const inReview = listTickets(options.log).filter(
+    (ticket) =>
+      ticket.status === 'in_review' &&
+      ticket.manifest !== null &&
+      (selected === null || selected.has(ticket.id)),
+  );
   for (const ticket of inReview) {
-    outcomes.push(await reviewOne(options, ticket));
+    results.push(await reviewOne(options, ticket));
   }
-  return outcomes;
+  return results;
 }
 
 async function reviewOne(
   options: ReviewPassOptions,
   ticket: Ticket,
-): Promise<ReviewOutcome> {
+): Promise<{ outcome: ReviewOutcome; decision: ReviewDecision | null }> {
+  /**
+   * W23-10: THE MACHINE SIGNS ITS OWN REVIEW. These events were appended under
+   * `options.actorId` — the human who started the build — which reads, in an
+   * append-only log, as that person having reviewed the work (C-4, SC-05).
+   */
+  const reviewerActorId = ensureReviewerIdentity(options.log);
   const record = (payload: Record<string, unknown>, eventType: string) =>
     appendEvent(
       options.log,
       {
         eventType,
-        actorId: options.actorId,
+        actorId: reviewerActorId,
         ticketId: ticket.id,
         runId: options.runId,
         payload,
@@ -114,7 +144,10 @@ async function reviewOne(
 
   if (options.reviewerModel === null) {
     record({ reason: 'no reviewer model configured' }, 'review.skipped');
-    return { ticketId: ticket.id, status: 'skipped', reason: 'no reviewer model' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'skipped', reason: 'no reviewer model' },
+      decision: null,
+    };
   }
 
   const makerModels = options.makerModels ?? [options.makerModel];
@@ -130,14 +163,17 @@ async function reviewOne(
       `code-reviewer role, or review this ticket yourself from the Decide card.`;
     commentTicket(options.log, {
       ticketId: ticket.id,
-      actorId: options.actorId,
+      actorId: reviewerActorId,
       body: sentence,
     });
     record(
       { reason: 'same model as maker', model: options.reviewerModel },
       'review.skipped',
     );
-    return { ticketId: ticket.id, status: 'skipped', reason: 'same model as maker' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'skipped', reason: 'same model as maker' },
+      decision: null,
+    };
   }
 
   // THE CORE re-runs verify in the ticket's own worktree (C-2/SC-12).
@@ -162,7 +198,10 @@ async function reviewOne(
   };
   if (!isValidRerun(rerun)) {
     record({ reason: 'rerun evidence invalid' }, 'review.bounced');
-    return { ticketId: ticket.id, status: 'bounced', reason: 'invalid rerun' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'bounced', reason: 'invalid rerun' },
+      decision: null,
+    };
   }
 
   // W23-03: the actual source change, collected by the CORE from the ticket's
@@ -204,7 +243,10 @@ async function reviewOne(
   } catch (err) {
     const reason = `reviewer unavailable: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`;
     record({ reason }, 'review.skipped');
-    return { ticketId: ticket.id, status: 'skipped', reason };
+    return {
+      outcome: { ticketId: ticket.id, status: 'skipped', reason },
+      decision: null,
+    };
   }
   let parsed = parseVerdict(raw);
   if (!parsed) {
@@ -217,7 +259,10 @@ async function reviewOne(
   }
   if (!parsed) {
     record({ attempt: 2, reason: 'unparseable verdict — not counted' }, 'review.bounced');
-    return { ticketId: ticket.id, status: 'bounced', reason: 'unparseable verdict' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'bounced', reason: 'unparseable verdict' },
+      decision: null,
+    };
   }
 
   // W23-03: the source must still be the source that was reviewed. A model
@@ -255,40 +300,25 @@ async function reviewOne(
   }
 
   const rerunLine = formatRerunLine(rerun);
-  const lines = [
-    `Review verdict: ${verdict} (score ${parsed.score}/10${
-      action ? ` — ${action}` : ''
-    }) — reviewed by ${options.reviewerModel}; maker ${options.makerModel}`,
+  const body = reviewCommentBody({
+    verdict,
+    score: parsed.score,
+    action,
+    reasoning: parsed.reasoning,
     rerunLine,
-    parsed.reasoning,
-  ];
-  if (overclaiming && action === 'ESCALATE_TO_HUMAN') {
-    lines.splice(
-      1,
-      0,
-      `Escalated to you: this maker (${options.makerModel}) has historically claimed done more often than the gate confirmed, so its borderline work gets a person's eyes (FR-L3).`,
-    );
-  }
-  if (!gatePassed) {
-    lines.splice(
-      1,
-      0,
-      `The core's independent re-run FAILED (exit ${run.exitCode}) — the verdict is CONTRADICTED by construction; the model's opinion cannot out-vote the gate.`,
-    );
-  }
-  if (!evidenceUsable) {
-    lines.splice(
-      1,
-      0,
-      !evidence.complete
-        ? `The reviewer was NOT shown the source change: ${evidence.reason}. A CONFIRMED on this evidence is recorded as UNVERIFIABLE.`
-        : `The worktree changed while the review was running, so the verdict describes code that is no longer there; recorded as UNVERIFIABLE.`,
-    );
-  }
+    reviewerModel: options.reviewerModel,
+    makerModel: options.makerModel,
+    overclaiming,
+    gatePassed,
+    rerunExitCode: run.exitCode,
+    evidenceUsable,
+    evidenceComplete: evidence.complete,
+    evidenceReason: evidence.reason,
+  });
   commentTicket(options.log, {
     ticketId: ticket.id,
-    actorId: options.actorId,
-    body: lines.filter(Boolean).join('\n'),
+    actorId: reviewerActorId,
+    body,
   });
   record(
     {
@@ -322,11 +352,37 @@ async function reviewOne(
     },
     'review.verdict',
   );
-  return {
+  const decision = decideReview({
     ticketId: ticket.id,
-    status: 'recorded',
-    verdict,
+    modelVerdict: parsed.verdict,
     score: parsed.score,
-    action,
+    reviewedHead: evidence.headCommit,
+    sourceDigest: evidence.sourceDigest,
+    evidenceComplete: evidence.complete,
+    evidenceStillCurrent: stillCurrent,
+    gatePassed,
+    // Every objective check is REQUIRED for an automated acceptance: a check
+    // the runtime chose to run and then treats as optional exists to be
+    // ignored.
+    checks: security.evidence.map((check) => ({
+      checkId: check.checkId,
+      status: check.status,
+      required: true,
+    })),
+    makerModel: options.makerModel,
+    makerModels,
+    reviewerModel: options.reviewerModel,
+    reviewerActorId,
+  });
+
+  return {
+    outcome: {
+      ticketId: ticket.id,
+      status: 'recorded',
+      verdict,
+      score: parsed.score,
+      action,
+    },
+    decision,
   };
 }
