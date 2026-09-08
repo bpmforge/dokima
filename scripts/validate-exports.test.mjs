@@ -385,8 +385,12 @@ describe('the @unreached marker (W22-02)', () => {
     // real callers, one export was DELETED because the caller did not want it,
     // and one stopped being barrel-published. That is the contract working in
     // all three directions.
-    expect(suppressed.map((s) => s.symbol).sort()).toEqual(['decideApprovedBuildAction']);
-    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-12/);
+    expect(suppressed.map((s) => s.symbol).sort()).toEqual([
+      'consolidateFindings',
+      'decideApprovedBuildAction',
+      'groupByOwner',
+    ]);
+    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-(11|12)/);
     expect(malformedMarkers).toEqual([]);
   });
 });

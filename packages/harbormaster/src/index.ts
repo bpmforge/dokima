@@ -319,13 +319,15 @@ export {
   type RepeatedCall,
 } from './loop-land-repetition.js';
 
-// W23-01: the recorded approved-build-v1 decision — what an approved build may
-// do unattended, as a pure function rather than prose (W13-32's first
-// acceptance criterion). Exported ahead of its caller on purpose: the runtime
-// wiring is W23-02's, and the marker below is what says so out loud instead of
-// letting the export sit silently unreached.
+// ---------------------------------------------------------------------------
+// The automated-build surface (wave 23). Each module's own header carries the
+// reasoning; what lives here is the contract and the @unreached markers, which
+// must stay IN THIS FILE: validate-exports reads markers from source but does
+// not follow `export * from` when it collects a package's barrel entries, so
+// moving these into a chapter would hide them from the ratchet rather than
+// tidy them (found while splitting this file, filed as W23-21).
+// ---------------------------------------------------------------------------
 // @unreached decideApprovedBuildAction: still no production caller. W23-02 wired the APPROVAL it reads, not the per-action decision itself; the caller is W23-12 (AB-12), where a ticket's post-close path asks whether it may accept. Retargeted rather than deleted — a marker that names a ticket which has landed is a suppression nobody revisits.
-// APPROVED_BUILD_POLICY_VERSION needs no marker any more: apps/server/src/cli/approved-build.ts stamps it onto every recorded approval and reads it back, which is exactly the wiring its marker promised (W23-02).
 export {
   decideApprovedBuildAction,
   APPROVED_BUILD_POLICY_VERSION,
@@ -338,9 +340,6 @@ export {
   type ApprovedBuildSituationKind,
 } from './approved-build-policy.js';
 
-// W23-04: the security tool registry — checks that actually EXECUTE. Exported
-// because both entry paths that need it live outside this package: onboard
-// analysis (apps/server's pipeline) and the build's review path.
 export {
   checksPermitAutomaticCompletion,
   executableIsInstalled,
@@ -355,10 +354,6 @@ export {
   type ToolRunResult,
 } from './security-checks.js';
 
-// W23-07: the bounded-group scheduler. Generic over nodes and an injected
-// execute callback — it knows nothing about security, models or routing,
-// because a package may not import an app. apps/server points it at
-// @dokima/pipeline's SECURITY_PLAN.
 export {
   runCheckSchedule,
   type NodeOutcome,
@@ -369,15 +364,6 @@ export {
   type SchedulerEvent,
 } from './check-scheduler.js';
 
-// W23-08: evidence keys and transitive invalidation. `invalidatedDescendants`
-// is what a retry throws away; the reuse decision is used by the check runner
-// and by anything that wants to know whether a stored result still describes
-// the world it is about to be quoted in.
-// Only `invalidatedDescendants` is published: it is the one an app needs, to
-// decide what a retry throws away. The key builder and the reuse decision have
-// their caller inside this package (`security-checks.ts`), and publishing a
-// symbol no app calls is how the export ratchet fills up with things that are
-// used perfectly well where they are.
 export {
   invalidatedDescendants,
   type DependencyEdge,
@@ -385,3 +371,20 @@ export {
   type ReuseDecision,
   type StoredEvidence,
 } from './check-evidence.js';
+
+// @unreached consolidateFindings: the repair loop that consumes a batch is W23-11 (AB-11); W23-09 is the consolidation and its proofs, and deliberately does not also drive the reject/reclaim/fix cycle.
+// @unreached groupByOwner: same — W23-11 (AB-11) runs one repair round per owning ticket.
+export {
+  consolidateFindings,
+  findingIdentity,
+  groupByOwner,
+  normalizeFindingPath,
+  type ConfidenceKind,
+  type ConsolidateInput,
+  type FindingSeverity,
+  type RawFinding,
+  type RejectedFinding,
+  type RepairBatch,
+  type RepairFinding,
+  type TicketScope,
+} from './repair-findings.js';

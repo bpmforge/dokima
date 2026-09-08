@@ -15827,6 +15827,64 @@
         "STALE IS ITS OWN REVIEW STATE. \"A model looked and then the code changed\" and \"nothing has ever looked\" ask different things of the person about to accept, so `stale` carries what it used to be (staleFrom) and why it stopped being that (staleReason). A verdict recorded before W23-03 has no digest and is NOT called stale for lacking one \u2014 absence of evidence is not evidence of change.",
         "REUSE IS EXACT AND CURRENTLY NEVER FIRES for the SAST adapter, because its ruleDigest and configDigest are unknown and an unknown component makes a key incomplete. That is the conservative direction and it is asserted by a test rather than left as a surprise."
       ]
+    },
+    {
+      "id": "W23-21",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "validate-exports does not follow `export * from`, so a barrel chapter hides its symbols from the ratchet",
+      "write_scope": [
+        "scripts/validate-exports/symbols.mjs",
+        "scripts/validate-exports.test.mjs"
+      ],
+      "acceptance": [
+        "A package barrel that re-exports a chapter with `export * from` has that chapter\u2019s symbols counted exactly as if they were listed in the barrel directly \u2014 proven by a fixture barrel with both shapes",
+        "The gated numbers are re-measured after the change and the ratchets move to the measured values, in whichever direction they move"
+      ],
+      "notes": [
+        "FOUND AT W23-09, 2026-09-08, while splitting packages/harbormaster/src/index.ts under the 400-line cap. Moving three wave-23 export blocks into a chapter re-exported with `export * from \"./automated-build.js\"` made the gap count DROP by three and the suppression list go empty \u2014 not because anything got wired, but because the validator stopped seeing those symbols at all.",
+        "THAT IS THE DANGEROUS DIRECTION FOR A RATCHET: the honest response to a file-size cap made the guard weaker and looked like an improvement in the numbers. The split was reverted and the exports re-inlined with terser comments (index.ts is 390 lines, 10 to spare), so the markers stay where the validator reads them.",
+        "THE SAME BLIND SPOT APPLIES TO EVERY PACKAGE, not just this one. Any barrel that grows past the cap will be split the same way, and each split silently removes its symbols from the count."
+      ]
+    },
+    {
+      "id": "W23-09",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-08"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "one repair batch: deduplicate by identity, never by resemblance",
+      "write_scope": [
+        "packages/harbormaster/src/repair-findings.ts",
+        "packages/harbormaster/src/repair-findings.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Two origins reporting one finding produce a single repair carrying both origin ids; similar titles at a different path, location, rule or evidence stay separate",
+        "A repair outside every approved write scope is parked as an explicit proposal with its evidence, never silently claimed",
+        "A path that escapes the worktree, an absolute path, a missing rule id or a missing evidence fingerprint is refused rather than normalized into something plausible",
+        "A review hypothesis is never promoted to a tool-confirmed defect \u2014 including when two models agree \u2014 and is never silently erased"
+      ],
+      "notes": [
+        "AB-09. IDENTITY IS rule + normalized path + location + evidence fingerprint, and deliberately NOT the title: titles are prose written by whichever model spoke last. The failure of a deduplicator is always the merge you cannot see, so both directions are asserted.",
+        "AGREEMENT BETWEEN MODELS IS NOT EVIDENCE, IT IS CORRELATION BETWEEN MODELS. Two review hypotheses about one line merge into one hypothesis, not into a confirmed defect. A merge raises severity and never lowers it (the same \"raise never lower\" direction FR-N2 uses) and raises confidence never.",
+        "A FINDING NO RUNTIME CHECK CAN VERIFY DOES NOT ENTER THE BATCH. Model-suggested commands are suggestions; the verification check ids come from the runtime\u2019s own list (AB-09 step 4).",
+        "SCOPE WIDENED: scripts/validate-exports.test.mjs, for the two new @unreached markers naming W23-11. Also filed W23-21 \u2014 validate-exports does not follow `export * from`, so splitting a barrel into a chapter silently removes its symbols from the ratchet."
+      ]
     }
   ]
 }
