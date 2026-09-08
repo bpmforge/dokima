@@ -27,11 +27,7 @@ import { conflict } from './settings-route-helpers.js';
 import { resolveSigningKey } from '../../cli/signing-key.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
-import {
-  buildRunStatus,
-  executeBuildRunJob,
-  requestBuildRunStop,
-} from './runs-job.js';
+import { buildRunStatus, executeBuildRunJob, requestBuildRunStop } from './runs-job.js';
 import { stopRun } from '@dokima/harbormaster';
 
 export interface RunsRoutesOptions {
@@ -50,7 +46,6 @@ function wireEvent(record: EventRecord) {
     created_at: record.createdAt,
   };
 }
-
 
 export function registerRunsRoutes(
   app: FastifyInstance,
@@ -86,9 +81,22 @@ export function registerRunsRoutes(
       const { id } = request.params as { id: string };
       const projectPath = await projectPathOr404(request, reply, id);
       if (!projectPath) return reply;
-      const body = (request.body ?? {}) as { actor_id?: string; run_id?: string };
+      const body = (request.body ?? {}) as {
+        actor_id?: string;
+        run_id?: string;
+        /**
+         * W23-02: opting THIS run into approved-build-v1. Explicit and
+         * per-request; a project's stored autonomy dial cannot set it, because
+         * a user who chose `auto` months ago chose the old meaning (D-032).
+         * The body only ASKS — `executeBuildRun` reconstructs the policy from
+         * the recorded approval event and refuses if the specification moved.
+         */
+        approved_build?: boolean;
+        budget_usd?: number;
+      };
       const actorId = body.actor_id ?? 'operator';
       const runId = body.run_id ?? `run-${Date.now().toString(36)}`;
+      const approvedBuild = body.approved_build === true;
 
       /**
        * ENSURE THE ACTOR BEFORE STARTING (W22-27).
@@ -172,6 +180,8 @@ export function registerRunsRoutes(
       // sessions and re-runs gates. Holding the request open for that is the
       // shape W10-58 removed from the creation path.
       void executeBuildRunJob({
+        approvedBuild,
+        budgetUsd: typeof body.budget_usd === 'number' ? body.budget_usd : null,
         projectPath,
         projectId: id,
         actorId,
@@ -208,7 +218,11 @@ export function registerRunsRoutes(
           .code(409)
           .type(PROBLEM_CONTENT_TYPE)
           .send(
-            conflict(request, `build run ${runId} is already stopping`, 'already-stopping'),
+            conflict(
+              request,
+              `build run ${runId} is already stopping`,
+              'already-stopping',
+            ),
           );
       }
 

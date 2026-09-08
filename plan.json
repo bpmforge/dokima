@@ -15538,6 +15538,70 @@
         "W22-28 IS DONE AND ITS SECOND CRITERION IS NOT MET: \"a full pnpm test run leaves no dokima-suite-home-*, verified across three consecutive runs\". A fresh ticket rather than a reopen, which is exactly what W22-28 did to W22-21 on the same defect.",
         "COSTS A GATE, NOT A TEST: this is why an AB card can see a red pnpm validate it did not cause. Check whether the only violation is a suite home from the preceding run before treating it as a regression."
       ]
+    },
+    {
+      "id": "W23-02",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-01"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 5,
+      "title": "record and validate the approved build inputs, at both entrances, before anything is claimed",
+      "write_scope": [
+        "apps/server/src/cli/approved-build.ts",
+        "apps/server/src/cli/approved-build.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-types.ts",
+        "apps/server/src/cli/run-cmd.ts",
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "apps/server/src/api/server/runs-job.ts",
+        "packages/harbormaster/src/index.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md",
+        "apps/server/src/cli/run-cmd.test.ts"
+      ],
+      "acceptance": [
+        "A canonical digest covers the approved SPECIFICATION \u2014 ticket acceptance text, write scopes, dependencies, roles, verify commands, model policy and budget \u2014 and deliberately excludes mutable execution status (ticket status, owner, claim, manifest, per-criterion done flags), so progress never invalidates an approval and a specification edit always does",
+        "The approval is a versioned event carrying the human actor and the digest, with no credential material; the runtime reconstructs the policy from it rather than from any request body",
+        "One shared validation function is called from executeBuildRun, so the HTTP route and the CLI cannot disagree, and an opted-in run with a missing or stale approval refuses BEFORE any ticket is claimed",
+        "Opting in is explicit at both entrances (a CLI flag and a request field); a legacy autonomy=auto project with no approval runs exactly as it did before"
+      ],
+      "notes": [
+        "AB-02. Reuses @dokima/mcp digestOf/stableStringify rather than writing a second canonical-JSON hasher (CLAUDE.md rule 4) \u2014 the helper is already barrel-published and already used for exactly this purpose, an args/result digest that must be stable across key order.",
+        "THE SPECIFICATION IS THE EVENT-LOG BOARD, not plan.json: plan.json is Dokima\u2019s own dev board, while a product project\u2019s tickets live in state.db and are read with loadTickets. Digesting the wrong board would have produced an approval that never changed for any user.",
+        "SCOPE WIDENED (Law 1): apps/server/src/cli/run-cmd.test.ts, for the CLI half of acceptance criterion 3 \u2014 a `run start --approved-build` with no approval must exit 2 and leave the ticket unclaimed. Proving the shared function and not both entrances would have been exactly the gap this ticket exists to close.",
+        "THE @unreached MARKERS MOVED, WHICH IS THE MECHANISM WORKING. APPROVED_BUILD_POLICY_VERSION now has a production caller (this ticket stamps and reads it), so its marker is gone; decideApprovedBuildAction still has none and its marker was RETARGETED to W23-12, the card where a ticket\u2019s post-close path actually asks it. scripts/validate-exports.test.mjs asserts the surviving marker names W23-12.",
+        "DONE 2026-09-08. run-build.ts is at exactly 400 lines as a result; filed as W23-20 rather than refactored inside this card (START_HERE rule 7)."
+      ]
+    },
+    {
+      "id": "W23-20",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "core",
+      "module": "cli",
+      "points": 3,
+      "title": "run-build.ts sits at exactly 400 lines \u2014 the next preflight cannot be added without a chapter",
+      "write_scope": [
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "acceptance": [
+        "executeBuildRun\u2019s preflight sequence is extracted into one cohesive chapter with the same behaviour and the same refusal exit codes, verified by the existing run-build and run-cmd tests unchanged",
+        "run-build.ts has real headroom under the 400-line cap \u2014 not one or two lines"
+      ],
+      "notes": [
+        "FOUND AT W23-02, 2026-09-08. Adding a single preflight call plus its import took the file from 398 to 402 and reddened conductor-lib.test.mjs\u2019s repo-wide validate-file-size check. It now sits at EXACTLY 400 because the explanatory comment had to become a trailing `// W23-02` and the preflight body was moved into approved-build.ts. That fits, and it is not a good place to leave the file: the next card that touches executeBuildRun has zero lines of budget and will be tempted to do what this one nearly did.",
+        "NOT DONE HERE ON PURPOSE (START_HERE rule 7): a file-size rule must not trigger an unrelated refactor inside someone else\u2019s card. The extraction is real work \u2014 six or seven read-check-refuse blocks that each return 2 \u2014 and deserves its own ticket rather than being smuggled into an approval ticket."
+      ]
     }
   ]
 }

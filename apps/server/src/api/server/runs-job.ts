@@ -56,7 +56,10 @@ const buildRuns = new Map<string, BuildRunOutcome | 'running'>();
 const stopRequests = new Map<string, { stopped: boolean; by: string }>();
 
 /** Exposed for the stop route and tests. */
-export function requestBuildRunStop(runId: string, by: string): 'ok' | 'already' | 'unknown' {
+export function requestBuildRunStop(
+  runId: string,
+  by: string,
+): 'ok' | 'already' | 'unknown' {
   if (!buildRuns.has(runId)) return 'unknown';
   const existing = stopRequests.get(runId);
   if (existing?.stopped) return 'already';
@@ -74,6 +77,10 @@ export async function executeBuildRunJob(args: {
   readonly actorId: string;
   readonly runId: string;
   readonly now: () => string;
+  /** W23-02: the caller opted this run into approved-build-v1 (`approved_build` in the POST body). */
+  readonly approvedBuild?: boolean;
+  /** W23-02: part of the approved specification's digest. */
+  readonly budgetUsd?: number | null;
 }): Promise<void> {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -88,6 +95,8 @@ export async function executeBuildRunJob(args: {
           projectId: args.projectId,
           actorId: args.actorId,
           stopSwitch: () => stopRequests.get(args.runId)?.stopped === true,
+          approvedBuild: args.approvedBuild === true,
+          budgetUsd: args.budgetUsd ?? null,
         },
         args.runId,
         {

@@ -27,4 +27,14 @@ export interface BuildRunCommand {
   readonly berths?: number;
   /** W17-06: injected stop signal — the loop checks it at every ticket boundary; the web stop route flips it. */
   readonly stopSwitch?: () => boolean | Promise<boolean>;
+  /**
+   * W23-02: this caller asked for an approved build (`approved-build-v1`).
+   * EXPLICIT AND PER-RUN, never read from stored settings: a project whose
+   * autonomy dial says `auto` chose that before this existed, and inheriting
+   * it here would opt existing users into unattended completion they never
+   * agreed to (D-032). Absent/false is the legacy path, unchanged.
+   */
+  readonly approvedBuild?: boolean;
+  /** W23-02: the run's approved spend, digested with the rest of the specification. */
+  readonly budgetUsd?: number | null;
 }

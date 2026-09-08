@@ -295,7 +295,20 @@ describe('build runs (W12-20)', () => {
               verify_command, verify_exit, signed_by, payload, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run('r-1', 'close', 'p', null, null, '[]', 'hash', 'true', 0, 'mac', '{}', '2026-08-19T00:00:00.000Z');
+        .run(
+          'r-1',
+          'close',
+          'p',
+          null,
+          null,
+          '[]',
+          'hash',
+          'true',
+          0,
+          'mac',
+          '{}',
+          '2026-08-19T00:00:00.000Z',
+        );
     } finally {
       log.close();
     }
@@ -361,6 +374,66 @@ describe('build runs (W12-20)', () => {
       } finally {
         if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
         if (previousHome !== undefined) process.env.DOKIMA_HOME = previousHome;
+      }
+    },
+    30_000,
+  );
+
+  it(
+    'W23-02: a run that opts into approved-build-v1 with NO recorded approval ' +
+      'refuses BEFORE it claims anything, and says so where a user can read it',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w2302';
+      try {
+        const { app, id, h } = await boot2();
+        const start = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-w2302', approved_build: true },
+        });
+        // 202: the route promises to TRY. The refusal is the job's, because
+        // the approval lives in the project's event log and the shared
+        // preflight in executeBuildRun is the only place both entrances agree.
+        expect(start.statusCode).toBe(202);
+
+        const outcome = await pollUntilSettled(app, id, h, 'run-w2302');
+        expect(outcome.status).toBe('refused');
+        expect(outcome.exit_code).toBe(2);
+        expect(outcome.stderr.join('\n')).toMatch(/recorded no approval/);
+        expect(outcome.stderr.join('\n')).toMatch(/Nothing was claimed/);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+        else delete process.env.DOKIMA_SIGNING_KEY;
+      }
+    },
+    30_000,
+  );
+
+  it(
+    'W23-02: the same run WITHOUT the opt-in is not refused by the approval gate — ' +
+      'a legacy start keeps its legacy behaviour, whatever it goes on to do',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w2302b';
+      try {
+        const { app, id, h } = await boot2();
+        const start = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-w2302-legacy' },
+        });
+        expect(start.statusCode).toBe(202);
+        const outcome = await pollUntilSettled(app, id, h, 'run-w2302-legacy');
+        // It may still fail for its own unrelated reasons (there is no agent
+        // configured in this fixture). What it must never say is that an
+        // approval it never asked for is missing.
+        expect(outcome.stderr.join('\n')).not.toMatch(/recorded no approval/);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+        else delete process.env.DOKIMA_SIGNING_KEY;
       }
     },
     30_000,
@@ -457,9 +530,7 @@ describe('run stop (W17-06)', () => {
       // Ledgered with who asked.
       const db = openEventLog(path.join(dir, '.dokima', 'state.db'));
       try {
-        const events = listEvents(db).filter(
-          (e) => e.eventType === 'run.stop_requested',
-        );
+        const events = listEvents(db).filter((e) => e.eventType === 'run.stop_requested');
         expect(events).toHaveLength(1);
         expect((events[0] as { actorId: string }).actorId).toBe('brad');
       } finally {
@@ -471,3 +542,33 @@ describe('run stop (W17-06)', () => {
     }
   });
 });
+
+/**
+ * Polls the build-run status route until the job settles. The job runs OFF the
+ * request (the route returns 202), so a status read taken immediately is a
+ * race — and asserting on `running` would pass for a run that never refused.
+ */
+async function pollUntilSettled(
+  app: ApiServer['app'],
+  projectId: string,
+  headers: Record<string, string>,
+  runId: string,
+): Promise<{ status: string; exit_code: number; stderr: string[] }> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/build-runs/${runId}`,
+      headers,
+    });
+    const body = res.json() as { status: string; exit_code?: number; stderr?: string[] };
+    if (body.status !== 'running') {
+      return {
+        status: body.status,
+        exit_code: body.exit_code ?? -1,
+        stderr: body.stderr ?? [],
+      };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`build run ${runId} never settled`);
+}

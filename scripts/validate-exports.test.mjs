@@ -376,11 +376,13 @@ describe('the @unreached marker (W22-02)', () => {
     // The assertion is on the SYMBOLS AND THEIR TICKET, not a count, so a
     // third marker added quietly still reds this test.
     const { suppressed, malformedMarkers } = scan();
-    expect(suppressed.map((s) => s.symbol).sort()).toEqual([
-      'APPROVED_BUILD_POLICY_VERSION',
-      'decideApprovedBuildAction',
-    ]);
-    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-02/);
+    // W23-02 landed and the list SHRANK, which is the whole contract:
+    // APPROVED_BUILD_POLICY_VERSION is stamped onto every recorded approval
+    // now, so its marker is gone. decideApprovedBuildAction is still unreached
+    // and its marker was retargeted to W23-12, the card where a ticket's
+    // post-close path actually asks it whether it may accept.
+    expect(suppressed.map((s) => s.symbol).sort()).toEqual(['decideApprovedBuildAction']);
+    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-12/);
     expect(malformedMarkers).toEqual([]);
   });
 });

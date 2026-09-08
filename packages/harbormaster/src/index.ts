@@ -324,8 +324,8 @@ export {
 // acceptance criterion). Exported ahead of its caller on purpose: the runtime
 // wiring is W23-02's, and the marker below is what says so out loud instead of
 // letting the export sit silently unreached.
-// @unreached decideApprovedBuildAction: the production caller is W23-02 (AB-02), which persists the approval this reads; W23-01 is deliberately the pure decision only, per its card.
-// @unreached APPROVED_BUILD_POLICY_VERSION: same — W23-02 stamps this version onto the recorded approval event.
+// @unreached decideApprovedBuildAction: still no production caller. W23-02 wired the APPROVAL it reads, not the per-action decision itself; the caller is W23-12 (AB-12), where a ticket's post-close path asks whether it may accept. Retargeted rather than deleted — a marker that names a ticket which has landed is a suppression nobody revisits.
+// APPROVED_BUILD_POLICY_VERSION needs no marker any more: apps/server/src/cli/approved-build.ts stamps it onto every recorded approval and reads it back, which is exactly the wiring its marker promised (W23-02).
 export {
   decideApprovedBuildAction,
   APPROVED_BUILD_POLICY_VERSION,

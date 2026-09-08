@@ -34,6 +34,7 @@ import {
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import { ensureSessionActor } from './identity.js';
 import { assertSandboxOrWaiver } from './sandbox-preflight.js';
+import { approvedBuildPreflight } from './approved-build.js';
 import { signingKeyOrRefusal } from './signing-key.js';
 
 import {
@@ -158,6 +159,7 @@ export async function executeBuildRun(
     return 2;
   }
   const limits = limitsResult.limits;
+  if (approvedBuildPreflight(log, command, runId, io).refused) return 2; // W23-02
 
   // W14-02: preload configured MCP servers — see mcp-preload.ts.
   const mcp = await preloadMcpFromSettings({
