@@ -13,6 +13,8 @@
  * onboarding model sessions for every ticket.
  */
 
+import { access } from 'node:fs/promises';
+import path from 'node:path';
 import {
   checksPermitAutomaticCompletion,
   executableIsInstalled,
@@ -20,6 +22,7 @@ import {
   sandboxedToolRunner,
   type CheckEvidence,
   type NetworkPolicy,
+  type ProjectProfile,
 } from './security-checks.js';
 
 export interface TicketSecurityChecksInput {
@@ -28,8 +31,6 @@ export interface TicketSecurityChecksInput {
   readonly sourceDigest: string;
   readonly networkPolicy: NetworkPolicy;
   readonly secretsValidatorPath?: string | null;
-  readonly hasNodeManifest: boolean;
-  readonly hasLockfile: boolean;
   readonly timeoutMs?: number;
 }
 
@@ -39,17 +40,46 @@ export interface TicketSecurityChecks {
   readonly blockedBy: readonly string[];
 }
 
+const exists = async (candidate: string): Promise<boolean> => {
+  try {
+    await access(candidate);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * MEASURED FROM THE WORKTREE, NEVER ASSERTED BY THE CALLER. The first draft of
+ * this module took `hasNodeManifest`/`hasLockfile` as arguments and the review
+ * path passed the literals `true` and `false` — which made `tool-deps` resolve
+ * to NOT_APPLICABLE ("no lockfile") for every ticket on every project forever,
+ * including projects with a lockfile sitting beside the manifest. That is the
+ * precise defect this whole card exists to remove: a status derived from a
+ * guess, wearing a runtime-derived reason. Applicability is a fact about the
+ * tree, so it is read from the tree.
+ */
+async function profileOf(worktreePath: string): Promise<ProjectProfile> {
+  const [manifest, npmLock, pnpmLock, yarnLock] = await Promise.all([
+    exists(path.join(worktreePath, 'package.json')),
+    exists(path.join(worktreePath, 'package-lock.json')),
+    exists(path.join(worktreePath, 'pnpm-lock.yaml')),
+    exists(path.join(worktreePath, 'yarn.lock')),
+  ]);
+  return {
+    hasNodeManifest: manifest,
+    hasLockfile: npmLock || pnpmLock || yarnLock,
+    hasInfrastructureAsCode: false,
+  };
+}
+
 export async function collectTicketSecurityChecks(
   input: TicketSecurityChecksInput,
 ): Promise<TicketSecurityChecks> {
   const evidence = await runSecurityChecks({
     cwd: input.worktreePath,
     sourceDigest: input.sourceDigest,
-    profile: {
-      hasNodeManifest: input.hasNodeManifest,
-      hasLockfile: input.hasLockfile,
-      hasInfrastructureAsCode: false,
-    },
+    profile: await profileOf(input.worktreePath),
     networkPolicy: input.networkPolicy,
     secretsValidatorPath: input.secretsValidatorPath ?? null,
     ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),

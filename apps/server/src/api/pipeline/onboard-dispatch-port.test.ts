@@ -94,6 +94,50 @@ describe('createRealOnboardDispatch (W8-09 AC1 — real gateway + real runSessio
     expect(body.messages[1]?.content).toContain('health');
   });
 
+  it(
+    'W23-04: a specialist RECEIVES the real tool results — asserted on the prompt the ' +
+      'gateway was actually sent, not on the fact that a field was assembled',
+    async () => {
+      repo = await createTempRepo();
+      server = await startFakeGatewayServer([JSON.stringify(VALID_COMPLETION)]);
+
+      const dispatch = createRealOnboardDispatch({
+        repoRoot: repo.repoRoot,
+        config: { baseUrl: server.url, model: 'local-model', fetchImpl: fetch },
+      });
+
+      await dispatch('security-sast', {
+        stepId: 'security-sast',
+        seedContext: {
+          repoRoot: repo.repoRoot,
+          securityChecks: [
+            {
+              checkId: 'tool-sast',
+              status: 'findings',
+              exitCode: 1,
+              findingCount: 2,
+              reason: null,
+            },
+          ],
+        },
+        priorArtifacts: {},
+        deliverables: [{ id: 'docs/security/SAST.md', producingRole: 'security-sast' }],
+      });
+
+      // THE OUTCOME, NOT THE MECHANISM. seedContext being populated proves
+      // nothing about what the model was shown — this repo has already been
+      // caught by that exact gap once, where a handoff carried a field the
+      // maker never saw. So the assertion is on the body the fake gateway
+      // received.
+      const body = server.requests[0] as {
+        messages: { role: string; content: string }[];
+      };
+      const prompt = body.messages[1]?.content ?? '';
+      expect(prompt).toContain('tool-sast');
+      expect(prompt).toContain('findings');
+    },
+  );
+
   it('throws MalformedModelOutputError on a non-JSON specialist completion', async () => {
     repo = await createTempRepo();
     server = await startFakeGatewayServer(['not json at all']);
@@ -177,7 +221,12 @@ describe('createRealOnboardDispatch model resolution (W10-45)', () => {
     ]);
     // `<providerId>/<model>` is the binding convention model-resolution.ts uses.
     await putModelMatrix(repo.repoRoot, [
-      { role: 'security-auditor', taskType: 'reasoning', model: 'beta/chosen-model', fallback: [] },
+      {
+        role: 'security-auditor',
+        taskType: 'reasoning',
+        model: 'beta/chosen-model',
+        fallback: [],
+      },
     ]);
 
     await dispatchOnce(repo.repoRoot, 'security-auditor');
@@ -199,8 +248,18 @@ describe('createRealOnboardDispatch model resolution (W10-45)', () => {
       { id: 'beta', kind: 'oai-compat', baseUrl: providerB.url, enabled: true },
     ]);
     await putModelMatrix(repo.repoRoot, [
-      { role: 'landscape-mapper', taskType: 'reasoning', model: 'alpha/map-model', fallback: [] },
-      { role: 'security-auditor', taskType: 'reasoning', model: 'beta/audit-model', fallback: [] },
+      {
+        role: 'landscape-mapper',
+        taskType: 'reasoning',
+        model: 'alpha/map-model',
+        fallback: [],
+      },
+      {
+        role: 'security-auditor',
+        taskType: 'reasoning',
+        model: 'beta/audit-model',
+        fallback: [],
+      },
     ]);
 
     // Resolving once at construction — the obvious wrong fix — would send both
@@ -242,7 +301,12 @@ describe('createRealOnboardDispatch model resolution (W10-45)', () => {
       { id: 'beta', kind: 'oai-compat', baseUrl: providerB.url, enabled: true },
     ]);
     await putModelMatrix(repo.repoRoot, [
-      { role: 'security-auditor', taskType: 'reasoning', model: 'beta/ignored', fallback: [] },
+      {
+        role: 'security-auditor',
+        taskType: 'reasoning',
+        model: 'beta/ignored',
+        fallback: [],
+      },
     ]);
 
     await createRealOnboardDispatch({

@@ -404,4 +404,30 @@ describe('W23-04: the build path runs the real registry, and the reviewer sees w
     }
     expect(typeof payload.securityChecksEligible).toBe('boolean');
   });
+  it('RED FIXTURE: applicability is MEASURED from the worktree, not asserted by the caller', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    // A real Node project inside the ticket's own worktree: manifest AND
+    // lockfile. The first draft of this wiring passed `hasLockfile: false` as a
+    // literal, so tool-deps read NOT_APPLICABLE ("no lockfile") for every
+    // ticket on every project forever — a status derived from a guess while
+    // wearing a runtime-derived reason.
+    const worktree = path.join(repoRoot, '.dokima', 'worktrees', 'T-1');
+    await fs.writeFile(path.join(worktree, 'package.json'), '{"name":"fixture"}\n');
+    await fs.writeFile(
+      path.join(worktree, 'package-lock.json'),
+      '{"lockfileVersion":3}\n',
+    );
+    await git(worktree, ['add', '--', 'package.json', 'package-lock.json']);
+    await git(worktree, ['commit', '-m', 'T-1: a real node project']);
+
+    await runReviewPass(options(log, repoRoot));
+    const payload = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    const deps = (payload.securityChecks as { checkId: string; status: string }[]).find(
+      (c) => c.checkId === 'tool-deps',
+    )!;
+    expect(deps.status).not.toBe('not_applicable');
+  });
 });

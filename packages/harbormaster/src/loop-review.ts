@@ -186,8 +186,6 @@ async function reviewOne(
     sourceDigest: evidence.sourceDigest,
     networkPolicy: 'local-only',
     secretsValidatorPath: options.secretsValidatorPath ?? null,
-    hasNodeManifest: true,
-    hasLockfile: false,
   });
 
   // One bounce allowed (R-B2: INCOMPLETE is bounced, not counted). A

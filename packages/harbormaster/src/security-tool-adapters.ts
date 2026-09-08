@@ -24,7 +24,14 @@ const SAST: SecurityToolAdapter = {
   checkId: 'tool-sast',
   executable: 'semgrep',
   args: ['--config', 'auto', '--json', '--quiet', '--metrics=off', '--error', '.'],
-  requiresNetwork: false,
+  // TRUE, AND THE ARGUMENTS ARE WHY. `--config auto` fetches its ruleset from
+  // Semgrep's registry, so declaring this check network-free would have let
+  // the policy allow it under local-only and then watched it fail inside a
+  // sandbox that correctly denied the network — an ERROR whose cause lived in
+  // a field that disagreed with the command beside it. Declaring it honestly
+  // means a local-only project sees UNAVAILABLE with a reason, which is the
+  // true state until a pinned local ruleset ships.
+  requiresNetwork: true,
   applicable: () => ({ applicable: true, reason: null }),
   interpret: (run) => {
     if (run.timedOut) {

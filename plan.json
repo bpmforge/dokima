@@ -15661,7 +15661,8 @@
         "packages/harbormaster/src/index.ts",
         "apps/server/src/api/pipeline/onboard-security-checks.ts",
         "apps/server/src/api/pipeline/onboard-run.ts",
-        "docs/work/automated-build/PROGRESS.md"
+        "docs/work/automated-build/PROGRESS.md",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.test.ts"
       ],
       "acceptance": [
         "Fixtures distinguish clean scan, findings, timeout, unavailable tool and malformed output, and none of the failure shapes resolves to PASSED",
@@ -15673,7 +15674,10 @@
         "AB-04. THE DEFECT IN ONE SENTENCE: onboard-dispatch-port.ts runs each security specialist as a single provider.chat() turn with verify: \"true\", so a step named security-sast produced a model\u2019s DESCRIPTION of a SAST run and nothing anywhere executed a scanner.",
         "EVERY SCANNER BLURS \"found something\" WITH \"failed to run\", which is why each adapter interprets its own exit code: semgrep exits 1 for findings and 2 for a bad rule file; npm audit exits 1 both for advisories and for an unreachable registry; the bundled scanner exits 2 for its own failure. Exit 0 with unparseable output is the dangerous case and is ERROR, not a clean scan.",
         "TWO CLASSES OF PROOF, KEPT APART (START_HERE rule 9): fixture tests inject process results and prove orchestration; one opt-in smoke test runs the real bundled secrets-scan.sh against a planted AWS-shaped key and asserts exit 1. Verified by hand this session \u2014 DOKIMA_TEST_REAL_SCANNERS=1 gives 14 passed, 0 skipped.",
-        "SCOPE WIDENED (Law 1): loop-review.ts crossed the 400-line cap when the checks section joined the prompt, so reviewPrompt/parseVerdict/countsFrom became loop-review-prompt.ts \u2014 one cohesive chapter (a prompt and the only parser of its reply), extraction only."
+        "SCOPE WIDENED (Law 1): loop-review.ts crossed the 400-line cap when the checks section joined the prompt, so reviewPrompt/parseVerdict/countsFrom became loop-review-prompt.ts \u2014 one cohesive chapter (a prompt and the only parser of its reply), extraction only.",
+        "FIXED AFTER REVIEW, SAME CARD: the review path was PASSING hasNodeManifest/hasLockfile as the literals true/false, which made tool-deps resolve to NOT_APPLICABLE (\"no lockfile\") for every ticket on every project forever \u2014 a status derived from a guess while wearing a runtime-derived reason, which is the exact defect this card exists to remove. Applicability is now measured from the worktree, and a red fixture puts a real package.json + package-lock.json in the ticket worktree and asserts tool-deps is NOT not_applicable.",
+        "MECHANISM CLAIM UPGRADED TO OUTCOME CLAIM: seedContext carrying the checks proves nothing about what a model was shown, and this repo has been caught by that exact gap before. onboard-dispatch-port.test.ts now asserts the PROMPT THE FAKE GATEWAY RECEIVED contains the tool-sast row.",
+        "semgrep --config auto fetches its ruleset, so the adapter declares requiresNetwork: true. Declaring it false would have let a local-only policy allow the check and then watched the sandbox correctly deny its network \u2014 an ERROR whose cause lived in a field that disagreed with the command beside it."
       ]
     }
   ]
