@@ -69,39 +69,32 @@ clearance, package verification on a clean machine — is complete.
   Apache-2.0 future license (D-022). The bundled `content/` library remains
   Apache-2.0 with notices preserved.
 
-[1.0.0]: https://github.com/bpmforge/dokima/releases/tag/v1.0.0
+### Known gaps
+
+- The bundled expert library is ~133 upstream commits behind. The import is
+  one-time by design (D-008, no umbilical); the importer is fixed, the
+  re-import has not run.
+- Two features are deliberately held for a founder decision and do not ship:
+  the plugin loader (W12-44) and the autonomy dial (W13-32).
+- Local models routinely finish a ticket's work and then fail to emit the
+  Completion Manifest, burning the remaining iterations; the ticket is real
+  and its evidence is real, but a person has to run `dokima close` to record
+  it (P6-19). The gate is doing its job here — nothing mints a receipt from an
+  unverified claim — but the exit is manual more often than it should be.
+- A file written with literal `\n` sequences instead of newlines has twice
+  been accepted at the write-tool boundary (P6-20).
 
 ## [0.1.0] — 2026-08-03
 
-First public release. Every milestone gate through the v1.0 dogfood criterion
-is met; the version is deliberately conservative while the name clears
-trademark review.
+Tagged 2026-08-03 and never published. Every milestone gate through the v1.0
+dogfood criterion was met; the version was deliberately conservative while the
+name cleared trademark review. The 1.0.0 entry above is the first release to
+reach a registry — this section is kept for the history it records.
 
 > The `v0.1.0` tag was re-pointed once before release, after verification of the
 > packaged artifact found that the shipped validator pack could not run at all
 > (see _Fixed_ below). Nothing had been published or released against the
 > earlier tag. Recorded here rather than quietly retagged.
-
-### Licensing
-
-- **FSL-1.1-ALv2** (D-022). Use, modification, internal and client use are all
-  permitted; offering Dokima as a competing product or service is not. Each
-  release becomes Apache-2.0 two years after it ships. Bundled `content/`
-  remains Apache-2.0 (imported from `attest`).
-
-### Known gaps
-
-- The bundled expert library is ~133 upstream commits behind. The importer is
-  fixed; the re-import itself has not run.
-- Cloud provider kinds (`anthropic`, `openai`, `vertex`, `copilot`) throw a
-  named `kind-not-constructible` refusal rather than falling back to localhost
-  or fabricating a $0 cost. Local kinds work today.
-
-## [0.1.0] — 2026-08-03
-
-First public release. Every milestone gate through the v1.0 dogfood criterion
-is met; the version is deliberately conservative while the name clears
-trademark review.
 
 ### Added
 
@@ -157,5 +150,21 @@ trademark review.
 - `**/` in a `write_scope` glob required at least one directory segment, so a
   scope the board accepted could be rejected by the enforcer.
 
-[Unreleased]: https://github.com/bpmforge/dokima/compare/v0.1.0...HEAD
+### Licensing
+
+- **FSL-1.1-ALv2** (D-022). Use, modification, internal and client use are all
+  permitted; offering Dokima as a competing product or service is not. Each
+  release becomes Apache-2.0 two years after it ships. Bundled `content/`
+  remains Apache-2.0 (imported from `attest`).
+
+### Known gaps
+
+- The bundled expert library is ~133 upstream commits behind. The importer is
+  fixed; the re-import itself has not run.
+- Cloud provider kinds (`anthropic`, `openai`, `vertex`, `copilot`) throw a
+  named `kind-not-constructible` refusal rather than falling back to localhost
+  or fabricating a $0 cost. Local kinds work today.
+
+[Unreleased]: https://github.com/bpmforge/dokima/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/bpmforge/dokima/releases/tag/v1.0.0
 [0.1.0]: https://github.com/bpmforge/dokima/releases/tag/v0.1.0

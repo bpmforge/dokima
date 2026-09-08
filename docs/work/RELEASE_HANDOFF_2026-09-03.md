@@ -74,8 +74,14 @@ npx dokima doctor
 ```
 
 `doctor: OK` from the installed package is the definition of "out the door".
-Record the run in `docs/RELEASE_TRACKER.md` (npm row → ✅ with the version and
-date) and note it in `docs/STATUS.md`.
+Then, in one commit:
+
+- flip the README's "Not on the registry yet" callout to the
+  `npm i -g @bpmforge/dokima` form (it is deliberately still the
+  install-from-source wording — the merge lands before the publish, and the
+  README must not claim a package that does not exist yet)
+- record the run in `docs/RELEASE_TRACKER.md` (npm row → ✅ with the version and
+  date) and note it in `docs/STATUS.md`
 
 ## Not release blockers — open, filed, waiting on a call
 

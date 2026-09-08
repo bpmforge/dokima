@@ -39,8 +39,12 @@ Board = `plan.json` · progress ledger = `docs/STATUS.md` · next wave proposal 
 | v0.9.0                | + W6 integrations, W7 memory                    | forge-mirror reconciliation + anti-Jarvis-gap recall test                           | ✅ met, untagged                                                                                                          |
 | **v1.0.0**            | W8 dogfood: Dokima audits itself                | own security cluster passes; receipts in `docs/dogfood/`                            | ✅ **met** — **`release/v1.0.0` prepared 2026-09-03** (1.0.0 bump + CHANGELOG entry); tag `v1.0.0` on merge, then publish |
 
-Every milestone gate has been met. Nothing has been tagged, because the
-pre-public checklist below was never finished.
+Every milestone gate has been met. The only tag that exists is **`v0.1.0`**
+(`4331e9fe`, 2026-08-03, on both remotes) — cut when the pre-public checklist
+was still open, and never published to any registry. This file and
+`docs/work/RELEASE_HANDOFF_2026-09-03.md` both read "nothing has been tagged"
+until 2026-09-08; corrected here against `git tag -l` rather than assumed.
+No milestone tag above has been cut.
 
 ## Pre-public checklist (required for any tag ≥0.3)
 

@@ -30,9 +30,10 @@ node apps/server/src/bootstrap/cli-entry.mjs
 That boots the workbench and opens the Canvas at `http://127.0.0.1:4317`.
 Run it inside a project directory and it opens (or creates) that project.
 
-> **From the registry:** `npm i -g @bpmforge/dokima` (v1.0.0 and later) puts a
-> `dokima` command on your PATH — no clone needed. From a checkout,
-> `npm link` at the repo root does the same.
+> **Not on the registry yet.** Dokima ships as `@bpmforge/dokima`; 1.0.0 is
+> tagged and prepared, and the publish itself is the last step. Until it lands,
+> install from source as above — `npm link` at the repo root puts a `dokima`
+> command on your PATH. Step 3 of the release handoff flips this line.
 
 Before you trust it with anything, ask it how it's doing:
 
