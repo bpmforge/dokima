@@ -15679,6 +15679,40 @@
         "MECHANISM CLAIM UPGRADED TO OUTCOME CLAIM: seedContext carrying the checks proves nothing about what a model was shown, and this repo has been caught by that exact gap before. onboard-dispatch-port.test.ts now asserts the PROMPT THE FAKE GATEWAY RECEIVED contains the tool-sast row.",
         "semgrep --config auto fetches its ruleset, so the adapter declares requiresNetwork: true. Declaring it false would have let a local-only policy allow the check and then watched the sandbox correctly deny its network \u2014 an ERROR whose cause lived in a field that disagreed with the command beside it."
       ]
+    },
+    {
+      "id": "W23-05",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-04"
+      ],
+      "lane": "core",
+      "module": "pipeline",
+      "points": 5,
+      "title": "an ordered list is not a dependency graph \u2014 declare the security topology",
+      "write_scope": [
+        "packages/pipeline/src/modes/security-plan.ts",
+        "packages/pipeline/src/modes/security-plan.test.ts",
+        "packages/pipeline/src/run/run-onboard.ts",
+        "packages/pipeline/src/index.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "The graph has no duplicate ids, no unknown predecessors, no cycles and no two nodes writing one output \u2014 each proven by a red fixture, and the whole plan validates clean",
+        "Attack-chain synthesis depends on EVERY stage-B specialist, and the threat-model refresh on synthesis",
+        "An absent surface is NOT_APPLICABLE with a runtime-derived reason and the inventory digest; an UNCLASSIFIABLE surface stays required and never satisfies a dependency",
+        "The seven existing onboarding steps and the existing security step ids are unchanged, and runOnboard still returns the same shape"
+      ],
+      "notes": [
+        "AB-05. SECURITY_STEPS IS AN ORDERED LIST AND AN ORDER IS NOT A GRAPH: reading it you cannot tell whether attack-chains must WAIT for owasp-web or merely follows it, and the only way to find out was to run it and watch. The moment anything runs two steps at once that order stops being documentation and becomes a race.",
+        "THE THIRD APPLICABILITY ANSWER IS THE POINT: an observation of null \u2014 the runtime could not classify this project \u2014 leaves the node UNRESOLVED, which callers must treat as required. \"We could not tell whether this app talks to a cloud\" is not \"this app does not talk to a cloud\", and silently skipping the unmeasured is how a scan nobody ran becomes a clean security result.",
+        "VALIDATION RUNS BEFORE ANY DISPATCH (step 5): runOnboard calls validateSecurityPlan and throws SecurityPlanInvalidError rather than starting. Nothing else about the sequential onboarding walk changed \u2014 this release declares the topology AB-07 will schedule against.",
+        "FOUR EXPORTS CARRY @unreached MARKERS NAMING W23-07: the classification, the ready-set, the skipped list and the inventory digest have no production caller until the bounded-group scheduler exists. validate-exports.test.mjs asserts every marker names W23-07 or W23-12."
+      ]
     }
   ]
 }

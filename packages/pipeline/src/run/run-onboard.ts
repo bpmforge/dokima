@@ -27,6 +27,7 @@ import { buildOnboardCoverageManifest } from '../modes/coverage-manifest.js';
 import { ONBOARD_STEPS } from '../modes/onboard.js';
 import { SECURITY_STEPS } from '../modes/security-cluster.js';
 import type { ModeStep } from '../modes/types.js';
+import { validateSecurityPlan } from '../modes/security-plan.js';
 import type { OnboardPort, OnboardRunResult, RunOnboardInput } from './types.js';
 
 const ONBOARD_RUN_STEPS: readonly ModeStep[] = [...ONBOARD_STEPS, ...SECURITY_STEPS];
@@ -41,6 +42,16 @@ export class MixedStepRoleError extends Error {
         'single artifact back to two specialists',
     );
     this.name = 'MixedStepRoleError';
+  }
+}
+
+/** Refuses rather than running a topology nobody can schedule (W23-05). */
+export class SecurityPlanInvalidError extends Error {
+  constructor(public readonly errors: readonly string[]) {
+    super(
+      `the security execution graph is invalid, so no security step was dispatched: ${errors.join('; ')}`,
+    );
+    this.name = 'SecurityPlanInvalidError';
   }
 }
 
@@ -61,6 +72,17 @@ function stepRole(step: ModeStep): string {
  * no trailing event — if any step's `port.dispatch` call throws.
  */
 export function runOnboard(input: RunOnboardInput, port: OnboardPort): OnboardRunResult {
+  /**
+   * W23-05, AB-05 step 5: the security graph is validated BEFORE any model or
+   * tool call. A cycle or a dangling predecessor found mid-run is a race that
+   * has already started; found here it costs nothing and names itself. The
+   * ordered walk below is unchanged — this release keeps the seven onboarding
+   * steps sequential (AB-05 step 1) and only declares the topology that the
+   * concurrent path in AB-07 will schedule against.
+   */
+  const planErrors = validateSecurityPlan();
+  if (planErrors.length > 0) throw new SecurityPlanInvalidError(planErrors);
+
   const stepArtifacts: Record<string, unknown> = {};
 
   for (const step of ONBOARD_RUN_STEPS) {

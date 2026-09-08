@@ -5,7 +5,7 @@ Durable handoff for the AB card sequence in
 observed results only. Nothing here is marked implemented before its gate ran.
 
 - **Current HEAD:** see the card row's commit column
-- **Current AB card:** AB-05 (next)
+- **Current AB card:** AB-06 (next)
 - **Branch:** `feat/automated-build`, cut from `307ed762` on `main`
 - **Policy version enabled for tests only / opted-in users:** `approved-build-v1`
   exists and is recorded/validated, but NO user is opted in: opting in requires
@@ -26,7 +26,7 @@ when its card is next**, per AB-00 step 5.
 | AB-02 | W23-02     | yes (done)              | Persist approval of the exact build inputs                                        |
 | AB-03 | W23-03     | yes (done)              | Give the reviewer the actual source change                                        |
 | AB-04 | W23-04     | yes (done)              | Run real security tools, preserve results                                         |
-| AB-05 | W23-05     | reserved                | Security dependencies and applicability                                           |
+| AB-05 | W23-05     | yes (done)              | Security dependencies and applicability                                           |
 | AB-06 | W23-06     | reserved                | Share endpoint limits across roles                                                |
 | AB-07 | W23-07     | reserved                | Bounded-group security execution                                                  |
 | AB-08 | W23-08     | reserved                | Invalidate dependent evidence on retry                                            |
@@ -53,6 +53,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit            | Focused checks                                                                                                         | Full gate                                                                                                                            | Evidence / blocker                                                                                                        |
 | ----- | ----------- | ------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)     | `node scripts/validate-plan.mjs` exit 0                                                                                | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                            |
+| AB-05 | W23-05      | done   | `7` (this commit) | `vitest run security-plan.test.ts run-onboard.test.ts validate-exports.test.mjs --retry=0` → 51 passed                 | lint 0 · typecheck 0 · test 0 (5166 passed / 2 skipped, 597 files) · e2e 0 (76) · validate 0                                         | declared edges + 4 red fixtures; UNRESOLVED never satisfies a dependency                                                  |
 | AB-04 | W23-04      | done   | `5` (this commit) | `vitest run security-checks.test.ts --retry=0` → 13 passed / 1 skipped; with `DOKIMA_TEST_REAL_SCANNERS=1` → 14 passed | lint 0 · typecheck 0 · test 0 (5150 passed / 2 skipped, 596 files) · e2e 0 (76) · validate 0                                         | the bundled scanner really detects a planted AWS-shaped key; both onboard and review paths call one registry              |
 | AB-03 | W23-03      | done   | `4` (this commit) | `vitest run review-evidence.test.ts loop-review.test.ts --retry=0` → 24 passed                                         | lint 0 · typecheck 0 · test 0 (5135 passed / 1 skipped, 595 files) · e2e 0 (76) · validate 0 after clearing a W23-19 leak            | the prompt carries the planted line; verdicts bind head+digest; repo-supplied diff programs cannot run                    |
 | AB-02 | W23-02      | done   | `3` (this commit) | `vitest run approved-build.test.ts runs-routes.test.ts run-cmd.test.ts --retry=0` → 36 passed                          | lint 0 · typecheck 0 · test 0 (5121 passed / 1 skipped, 594 files) · e2e 0 (76) · validate 0 after clearing a W23-19 suite-home leak | digest excludes execution status; both entrances refuse; W23-20 filed (run-build.ts at exactly 400 lines)                 |
@@ -60,29 +61,21 @@ it changes no default for a project that has not opted in.
 
 ## Next session
 
-- **Completed behavior:** a security tool registry whose adapters own their own
-  exit codes, run inside the existing sandbox with constant argument lists, and
-  report ERROR / UNAVAILABLE / NOT_APPLICABLE rather than PASSED when they
-  cannot look. Both the onboard analysis and the build review path call it, and
-  both ledger what the core executed beside what a model said.
-- **Exact unfinished step:** AB-05 — declare the security dependencies and
-  applicability as a graph (stage A tools → stage B specialists → C synthesis →
-  D threat-model refresh), so a specialist cannot run before the tool result it
-  interprets.
-- **Next file/symbol:** `packages/pipeline`'s security cluster step lists
-  (`SECURITY_CLUSTER_STEPS`, `SECURITY_SPECIALIST_ROLES`) and
-  `apps/server/src/api/pipeline/onboard-executor.ts`'s serial dispatch.
-- **Failing command and output summary:** the SC-04 lint guard rejected a test
-  assertion whose regex contained `PASSED`. It cannot tell a prompt-content
-  check from a completion-by-string-match and the conservative reading is
-  right, so the assertion compares a status list as data instead. No temp leak
-  this run.
-- **Actual test totals and skips:** 596 files, 5150 passed, 2 skipped (the
-  keychain skip plus the opt-in scanner smoke test).
-- **Production caller verified:** yes, both. `runOnboardSecurityChecks` is
-  called by `runOnboardAnalysis` before any specialist dispatch;
-  `collectTicketSecurityChecks` is called by `reviewOne`, and a test asserts
-  the verdict event lists all three tool results.
-- **New finding and registered ticket:** none new; the smoke path is opt-in by
-  design and is not counted as evidence that Semgrep or npm audit work here.
-- **Next AB id:** AB-05.
+- **Completed behavior:** the security topology is declared rather than
+  implied — tool nodes, the specialists that read each one, synthesis waiting
+  on every stage-B result, and the threat-model refresh last. Applicability is
+  measured with three answers, and the third (unresolved) stays required.
+  `runOnboard` validates the graph before dispatching anything.
+- **Exact unfinished step:** AB-06 — one shared endpoint limit across coding,
+  analysis and review. `run-build-spawn.ts` owns a pool for maker sessions
+  only; the review and onboard paths open their own provider calls.
+- **Next file/symbol:** `apps/server/src/cli/run-build-spawn.ts` (the existing
+  pool) and the provider call sites in `onboard-dispatch-port.ts` and the
+  review chat.
+- **Failing command and output summary:** none this card.
+- **Actual test totals and skips:** 597 files, 5166 passed, 2 skipped.
+- **Production caller verified:** `validateSecurityPlan` is called by
+  `runOnboard` before any dispatch. The other four exports have no caller yet
+  and carry `@unreached` markers naming **W23-07**; the marker test asserts it.
+- **New finding and registered ticket:** none new.
+- **Next AB id:** AB-06.

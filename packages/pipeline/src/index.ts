@@ -73,3 +73,25 @@ export type {
 /** The recorded challenge artifact the gate reads verdicts from (FR-P4) — types only; `buildChallengeReport` stays unexported until a producer path exists. */
 export type { ChallengeReport } from './challenger/report.js';
 export type { ClaimVerdict, ClaimVerdictResult } from './challenger/claims.js';
+
+// W23-05: the security execution graph — declared edges, measured
+// applicability, and the structural validation that runs before any model or
+// tool call. `runOnboard` calls `validateSecurityPlan` itself; the rest is the
+// representation AB-07's scheduler consumes.
+// @unreached classifySecurityApplicability: the scheduler that consumes it is W23-07 (AB-07); W23-05 declares the graph and proves the classification, and deliberately does not also build the concurrent runner.
+// @unreached readySecurityNodes: same — W23-07 (AB-07) is the bounded-group scheduler that asks which nodes may start.
+// @unreached skippedCategories: same — W23-07 (AB-07) hands the skipped list to the synthesis node.
+// @unreached inventoryDigest: same — W23-07 (AB-07) stamps it onto the run's recorded evidence.
+export {
+  SECURITY_PLAN,
+  classifySecurityApplicability,
+  inventoryDigest,
+  readySecurityNodes,
+  skippedCategories,
+  validateSecurityPlan,
+  type ApplicabilityStatus,
+  type NodeApplicability,
+  type SecurityInventory,
+  type SecurityPlanNode,
+  type SecurityStage,
+} from './modes/security-plan.js';

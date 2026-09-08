@@ -381,8 +381,15 @@ describe('the @unreached marker (W22-02)', () => {
     // now, so its marker is gone. decideApprovedBuildAction is still unreached
     // and its marker was retargeted to W23-12, the card where a ticket's
     // post-close path actually asks it whether it may accept.
-    expect(suppressed.map((s) => s.symbol).sort()).toEqual(['decideApprovedBuildAction']);
-    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-12/);
+    expect(suppressed.map((s) => s.symbol).sort()).toEqual([
+      'classifySecurityApplicability',
+      'decideApprovedBuildAction',
+      'inventoryDigest',
+      'readySecurityNodes',
+      'skippedCategories',
+    ]);
+    // Each names the ticket that owes it a caller, and nothing else may.
+    for (const marker of suppressed) expect(marker.reason).toMatch(/W23-(07|12)/);
     expect(malformedMarkers).toEqual([]);
   });
 });
