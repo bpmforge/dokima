@@ -36,6 +36,11 @@
 import { spawnSync } from 'node:child_process';
 import { runSandboxed } from './sandbox/index.js';
 import {
+  decideReuse,
+  type EvidenceKeyParts,
+  type StoredEvidence,
+} from './check-evidence.js';
+import {
   SECRETS_CHECK_ID,
   SECURITY_TOOLS,
   digestOfText as digest,
@@ -129,6 +134,17 @@ export interface RunSecurityChecksOptions {
   /** Whether the executable exists on this host. Missing is UNAVAILABLE, never NOT_APPLICABLE. */
   readonly isInstalled: (executable: string) => boolean | Promise<boolean>;
   readonly toolVersion?: (executable: string) => Promise<string | null>;
+  /**
+   * W23-08: evidence from earlier in THIS run, keyed by check id. Reuse is
+   * run-scoped on purpose — a cross-project cache is a later optimization and
+   * a much larger trust question (IMPLEMENTATION_PLAN §7).
+   */
+  readonly previousEvidence?: ReadonlyMap<string, StoredEvidence>;
+  /** Whether a recorded artifact is still there and still hashes the same. */
+  readonly artifactState?: (checkId: string) => {
+    readonly present: boolean;
+    readonly digest: string | null;
+  };
 }
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -215,6 +231,42 @@ export async function runSecurityChecks(
         }),
       );
       continue;
+    }
+
+    /**
+     * W23-08: reuse, but only on an exact key with its artifact intact. The
+     * decision lives in `check-evidence.ts` and is deliberately not inlined
+     * here: "may I skip this scan?" is the question that must be answerable in
+     * one place and readable when it answers wrong.
+     */
+    const version = (await options.toolVersion?.(adapter.executable)) ?? null;
+    const keyParts: EvidenceKeyParts = {
+      checkId: adapter.checkId,
+      sourceDigest: options.sourceDigest,
+      commandDigest: digest(`${adapter.executable} ${args.join(' ')}`),
+      toolVersion: version,
+      ruleDigest: null,
+      configDigest: null,
+      predecessorDigests: [],
+    };
+    const previous = options.previousEvidence?.get(adapter.checkId);
+    if (previous) {
+      const state = options.artifactState?.(adapter.checkId) ?? {
+        present: false,
+        digest: null,
+      };
+      const decision = decideReuse(previous, keyParts, state);
+      if (decision.reusable) {
+        results.push(
+          evidence(adapter, options.sourceDigest, args, {
+            status: previous.status,
+            reason: `reused: ${decision.reason}`,
+            artifactDigest: previous.artifactDigest,
+            toolVersion: version,
+          }),
+        );
+        continue;
+      }
     }
 
     if (!(await options.isInstalled(adapter.executable))) {

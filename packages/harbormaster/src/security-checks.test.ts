@@ -325,3 +325,78 @@ smoke('opt-in: the bundled secrets scanner actually detects a planted credential
     expect(stdout.toLowerCase()).toMatch(/aws|key/);
   });
 });
+
+describe('W23-08: reuse is exact, run-scoped, and never a rounding of a miss', () => {
+  const key = {
+    checkId: 'tool-sast',
+    sourceDigest: 'sha256:head',
+    commandDigest: '',
+    toolVersion: '1.0.0',
+    ruleDigest: null,
+    configDigest: null,
+    predecessorDigests: [],
+  };
+
+  it('a stored result with an incomplete key is NOT reused — unknown rules are not the same rules', async () => {
+    let ran = false;
+    const checks = await runSecurityChecks(
+      harness(
+        {},
+        {
+          toolVersion: async () => '1.0.0',
+          previousEvidence: new Map([
+            [
+              'tool-sast',
+              {
+                key: 'anything',
+                parts: key,
+                origin: 'tool' as const,
+                status: 'passed' as const,
+                artifactDigest: 'sha256:a',
+              },
+            ],
+          ]),
+          artifactState: () => ({ present: true, digest: 'sha256:a' }),
+          runTool: async () => {
+            ran = true;
+            return ok({ stdout: '{"results":[]}' });
+          },
+        },
+      ),
+    );
+    // ruleDigest and configDigest are unknown for this adapter today, so the
+    // key can never be complete and the scan always re-runs. That is the
+    // conservative direction, and it is stated rather than hidden.
+    expect(ran).toBe(true);
+    expect(byId(checks, 'tool-sast').reason ?? '').not.toContain('reused');
+  });
+
+  it('model-origin evidence is never reused as a scanner pass, whatever its key says', async () => {
+    let ran = false;
+    await runSecurityChecks(
+      harness(
+        {},
+        {
+          previousEvidence: new Map([
+            [
+              'tool-sast',
+              {
+                key: 'anything',
+                parts: key,
+                origin: 'model' as const,
+                status: 'passed' as const,
+                artifactDigest: null,
+              },
+            ],
+          ]),
+          artifactState: () => ({ present: true, digest: null }),
+          runTool: async () => {
+            ran = true;
+            return ok({ stdout: '{"results":[]}' });
+          },
+        },
+      ),
+    );
+    expect(ran).toBe(true);
+  });
+});

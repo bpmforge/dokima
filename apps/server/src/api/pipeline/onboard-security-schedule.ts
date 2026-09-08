@@ -25,6 +25,7 @@
 
 import type { NodeApplicability } from '@dokima/pipeline';
 import type { runCheckSchedule as RunCheckSchedule } from '@dokima/harbormaster';
+import { invalidatedDescendants } from '@dokima/harbormaster';
 import { SECURITY_PLAN, skippedCategories } from '@dokima/pipeline';
 import type { RealOnboardDispatch } from './onboard-dispatch-port.js';
 import type { OnboardStepArtifact } from './onboard-types.js';
@@ -37,6 +38,8 @@ interface DispatchableStep {
 
 export interface DispatchSecurityGroupInput {
   readonly steps: readonly DispatchableStep[];
+  /** Every security step this run knows about — the pool a re-run draws invalidated descendants from. */
+  readonly allSteps?: readonly DispatchableStep[];
   readonly seedContext: Readonly<Record<string, unknown>>;
   /** The shared artifact cache the coverage loop reads afterwards. Written only from the scheduler's own completion callback. */
   readonly cache: Record<string, OnboardStepArtifact>;
@@ -59,6 +62,26 @@ export async function dispatchSecurityGroup(
 ): Promise<void> {
   const stepById = new Map(input.steps.map((step) => [step.stepId, step]));
   if (stepById.size === 0) return;
+
+  /**
+   * W23-08: A RETRY INVALIDATES WHAT READ THE OLD RESULT. The coverage loop
+   * re-dispatches the rows that failed; without this, a synthesis that already
+   * succeeded stays cached and its conclusions go on citing findings from the
+   * attempt that failed. Transitive, not one hop: the specialist, then the
+   * chain synthesis that read it, then the threat-model refresh that read
+   * that. The invalidated artifacts are dropped from the cache AND re-run in
+   * this same pass, because a run that ends with a hole in it is not a
+   * completed run.
+   */
+  const invalidated = invalidatedDescendants(
+    SECURITY_PLAN.map((node) => ({ id: node.id, dependsOn: node.dependsOn })),
+    [...stepById.keys()],
+  );
+  for (const nodeId of invalidated) delete input.cache[nodeId];
+  for (const nodeId of invalidated) {
+    const step = input.allSteps?.find((candidate) => candidate.stepId === nodeId);
+    if (step && !stepById.has(nodeId)) stepById.set(nodeId, step);
+  }
 
   const notApplicable = new Set(
     input.applicability.filter((a) => a.status === 'not_applicable').map((a) => a.nodeId),

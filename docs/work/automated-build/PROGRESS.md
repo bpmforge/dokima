@@ -5,7 +5,7 @@ Durable handoff for the AB card sequence in
 observed results only. Nothing here is marked implemented before its gate ran.
 
 - **Current HEAD:** see the card row's commit column
-- **Current AB card:** AB-08 (next)
+- **Current AB card:** AB-09 (next)
 - **Branch:** `feat/automated-build`, cut from `307ed762` on `main`
 - **Policy version enabled for tests only / opted-in users:** `approved-build-v1`
   exists and is recorded/validated, but NO user is opted in: opting in requires
@@ -29,7 +29,7 @@ when its card is next**, per AB-00 step 5.
 | AB-05 | W23-05     | yes (done)              | Security dependencies and applicability                                           |
 | AB-06 | W23-06     | yes (done)              | Share endpoint limits across roles                                                |
 | AB-07 | W23-07     | yes (done)              | Bounded-group security execution                                                  |
-| AB-08 | W23-08     | reserved                | Invalidate dependent evidence on retry                                            |
+| AB-08 | W23-08     | yes (done)              | Invalidate dependent evidence on retry                                            |
 | AB-09 | W23-09     | reserved                | Consolidate findings into one repair batch                                        |
 | AB-10 | W23-10     | reserved                | Structured, fresh review decisions                                                |
 | AB-11 | W23-11     | reserved                | Bounded automatic repair loop                                                     |
@@ -53,6 +53,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit             | Focused checks                                                                                                         | Full gate                                                                                                                            | Evidence / blocker                                                                                                        |
 | ----- | ----------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)      | `node scripts/validate-plan.mjs` exit 0                                                                                | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                            |
+| AB-08 | W23-08      | done   | `11` (this commit) | `vitest run check-evidence.test.ts review-status.test.ts onboard-executor.test.ts --retry=0` → 41 passed               | lint 0 · typecheck 0 · test 0 (5220 passed / 2 skipped, 600 files) · e2e 0 (76) · validate 0                                         | transitive re-run proven through the real onboard path; STALE is its own review state                                     |
 | AB-07 | W23-07      | done   | `10` (this commit) | `vitest run check-scheduler.test.ts onboard-executor.test.ts --retry=0` → 18 passed                                    | lint 0 · typecheck 0 · test 0 (5189 passed / 2 skipped, 599 files) · e2e 0 (76) · validate 0                                         | deferred-promise overlap/ordering proofs; real onboard entry point traversed                                              |
 | AB-06 | W23-06      | done   | `9` (this commit)  | `vitest run shared-gateway-pool.test.ts gateway-pool.test.ts run-cmd.test.ts --retry=0` → 25 passed                    | lint 0 · typecheck 0 · test 0 (5177 passed / 2 skipped, 598 files) · e2e 0 (76) · validate 0                                         | one pool across all three roles; W23-20 closed inside this card                                                           |
 | AB-05 | W23-05      | done   | `7` (this commit)  | `vitest run security-plan.test.ts run-onboard.test.ts validate-exports.test.mjs --retry=0` → 51 passed                 | lint 0 · typecheck 0 · test 0 (5166 passed / 2 skipped, 597 files) · e2e 0 (76) · validate 0                                         | declared edges + 4 red fixtures; UNRESOLVED never satisfies a dependency                                                  |
@@ -63,27 +64,23 @@ it changes no default for a project that has not opted in.
 
 ## Next session
 
-- **Completed behavior:** the security portion of an onboard run executes
-  against the declared graph in bounded groups — independent specialists
-  overlap, dependents wait, a failure stops its dependents and not its
-  siblings, stop schedules nothing new and awaits what started, and a source
-  that moved mid-run cannot yield a complete status. The seven general steps
-  stay sequential.
-- **Exact unfinished step:** AB-08 — invalidate dependent evidence on retry:
-  recompute the source snapshot after a repair, invalidate checks and every
-  descendant synthesis/review, and keep unrelated exact-match run-scoped
-  evidence.
-- **Next file/symbol:** the evidence key (`CheckEvidence.sourceDigest` /
-  `inputDigest` from W23-04) and `review-status.ts`, which reads the latest
-  review events without a freshness check of its own.
-- **Failing command and output summary:** none at close. During the card the
-  worker-limit test caught a real double-start bug in the first scheduler draft.
-- **Actual test totals and skips:** 599 files, 5189 passed, 2 skipped.
-- **Production caller verified:** yes — `runOnboardExecution` dispatches the
-  security steps through `dispatchSecurityGroup`, and the ordering assertion
-  runs through that real entry point rather than the scheduler helper.
-- **New finding and registered ticket:** `readySecurityNodes` (added in W23-05
-  for this card) was **deleted** rather than wired — the scheduler computes
-  readiness itself and two implementations would drift. Recorded in
-  `security-plan.ts` where the function used to be.
-- **Next AB id:** AB-08.
+- **Completed behavior:** evidence keys that cover everything which could
+  change an answer, transitive invalidation on retry (wired into the real
+  onboard coverage loop), and a review status that reports STALE when the
+  source moved or the ticket was rejected/re-closed after the verdict.
+- **Exact unfinished step:** AB-09 — consolidate findings from every source
+  into one repair batch with stable ids, normalized paths and a
+  tool-confirmed / review-hypothesis distinction.
+- **Next file/symbol:** `packages/loop`'s finding shapes and
+  `packages/harbormaster/src/security-checks.ts`'s `CheckEvidence`, which is
+  what a consolidated finding must cite.
+- **Failing command and output summary:** none at close.
+- **Actual test totals and skips:** 600 files, 5220 passed, 2 skipped.
+- **Production caller verified:** yes — `dispatchSecurityGroup` calls
+  `invalidatedDescendants` on every pass, and the red fixture drives it through
+  `runOnboardExecution` with a specialist that fails once.
+- **New finding and registered ticket:** reuse currently never fires for the
+  SAST adapter, because its rule and config digests are unknown and an unknown
+  component makes a key incomplete. That is the conservative direction and it
+  is asserted rather than hidden; a pinned local ruleset would change it.
+- **Next AB id:** AB-09.

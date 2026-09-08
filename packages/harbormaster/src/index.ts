@@ -368,3 +368,20 @@ export {
   type ScheduleResult,
   type SchedulerEvent,
 } from './check-scheduler.js';
+
+// W23-08: evidence keys and transitive invalidation. `invalidatedDescendants`
+// is what a retry throws away; the reuse decision is used by the check runner
+// and by anything that wants to know whether a stored result still describes
+// the world it is about to be quoted in.
+// Only `invalidatedDescendants` is published: it is the one an app needs, to
+// decide what a retry throws away. The key builder and the reuse decision have
+// their caller inside this package (`security-checks.ts`), and publishing a
+// symbol no app calls is how the export ratchet fills up with things that are
+// used perfectly well where they are.
+export {
+  invalidatedDescendants,
+  type DependencyEdge,
+  type EvidenceKeyParts,
+  type ReuseDecision,
+  type StoredEvidence,
+} from './check-evidence.js';

@@ -225,3 +225,73 @@ describe('W23-07: the security portion runs against the declared graph', () => {
     for (const id of generalSteps) expect(id.startsWith('security-')).toBe(false);
   });
 });
+
+describe('W23-08: a retry invalidates what read the old result', () => {
+  let log: EventLog | undefined;
+  afterEach(() => {
+    log?.close();
+    log = undefined;
+  });
+
+  it('RED FIXTURE: a security specialist that fails once and then succeeds re-runs the synthesis AND the refresh that read it', async () => {
+    log = openEventLog(':memory:');
+    const dispatches: string[] = [];
+    let sastAttempts = 0;
+
+    const dispatch: RealOnboardDispatch = async (role, context) => {
+      dispatches.push(context.stepId);
+      if (context.stepId === 'security-sast') {
+        sastAttempts += 1;
+        if (sastAttempts === 1) {
+          return {
+            ...fakeArtifact(role, context.stepId),
+            session: { exitCode: 1, scopeViolations: [] },
+          };
+        }
+      }
+      return fakeArtifact(role, context.stepId);
+    };
+
+    await runOnboardExecution(
+      { seedContext: { repoRoot: '/tmp/target' } },
+      { log, runId: 'run-invalidate', now: () => '2026-09-08T00:00:00.000Z', dispatch },
+    );
+
+    const count = (id: string): number => dispatches.filter((d) => d === id).length;
+    // The failing step was retried...
+    expect(count('security-sast')).toBeGreaterThanOrEqual(2);
+    // ...and so was everything downstream of it, transitively. Without
+    // invalidation the synthesis stays cached and goes on citing findings from
+    // the attempt that failed.
+    expect(count('security-attack-chains')).toBeGreaterThanOrEqual(2);
+    expect(count('threat-model-refresh')).toBeGreaterThanOrEqual(2);
+  });
+
+  it('independent security work is not repeated by another node’s retry', async () => {
+    log = openEventLog(':memory:');
+    const dispatches: string[] = [];
+    let sastAttempts = 0;
+    const dispatch: RealOnboardDispatch = async (role, context) => {
+      dispatches.push(context.stepId);
+      if (context.stepId === 'security-sast') {
+        sastAttempts += 1;
+        if (sastAttempts === 1) {
+          return {
+            ...fakeArtifact(role, context.stepId),
+            session: { exitCode: 1, scopeViolations: [] },
+          };
+        }
+      }
+      return fakeArtifact(role, context.stepId);
+    };
+
+    await runOnboardExecution(
+      { seedContext: { repoRoot: '/tmp/target' } },
+      { log, runId: 'run-independent', now: () => '2026-09-08T00:00:00.000Z', dispatch },
+    );
+
+    // security-secrets reads tool-secrets, not tool-sast. Nothing about the
+    // SAST retry touches it.
+    expect(dispatches.filter((d) => d === 'security-secrets')).toHaveLength(1);
+  });
+});

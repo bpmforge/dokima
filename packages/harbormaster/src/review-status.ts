@@ -32,10 +32,22 @@ export type ReviewState =
   | 'inconclusive'
   | 'bounced'
   | 'skipped'
+  /**
+   * W23-08: a verdict that WAS given and no longer describes this ticket —
+   * the source has moved since, or the ticket was rejected or re-closed after
+   * it. Deliberately its own state rather than a downgrade to
+   * `never-reviewed`: "a model looked and then the code changed" and "nothing
+   * has ever looked" ask different things of the person about to accept.
+   */
+  | 'stale'
   | 'never-reviewed';
 
 export interface TicketReviewStatus {
   readonly state: ReviewState;
+  /** W23-08: the verdict this was BEFORE it went stale, when it is stale. */
+  readonly staleFrom?: ReviewState;
+  /** W23-08: why it is stale, in a sentence a person can act on. */
+  readonly staleReason?: string;
   /** The mechanical reason, when there is one — 'same model as maker', 'no reviewer model'. */
   readonly reason: string | null;
   /** The model that reviewed it, when one did. */
@@ -58,8 +70,22 @@ function asString(value: unknown): string | null {
  * no review pass has ever run over, and the two are kept distinct: the first
  * is a refusal with a reason, the second is an absence.
  */
-export function reviewStatusFor(log: EventLog, ticketId: string): TicketReviewStatus {
+export function reviewStatusFor(
+  log: EventLog,
+  ticketId: string,
+  /**
+   * W23-08: the digest of the source as it stands NOW. Omitted, this behaves
+   * exactly as it did before — a caller that cannot compute one is not forced
+   * to invent it, and gets the old, honest-about-less answer.
+   */
+  currentSourceDigest?: string,
+): TicketReviewStatus {
   let latest: TicketReviewStatus = NEVER_REVIEWED;
+  /** The source the latest verdict was actually about (W23-03 records it). */
+  let reviewedSourceDigest: string | null = null;
+  /** Set when something happened AFTER the verdict that invalidates it. */
+  let invalidatedBy: string | null = null;
+
   for (const event of listEvents(log)) {
     if (event.ticketId !== ticketId) continue;
     const payload = (event.payload ?? {}) as Record<string, unknown>;
@@ -81,8 +107,52 @@ export function reviewStatusFor(log: EventLog, ticketId: string): TicketReviewSt
             ? 'contradicted'
             : 'inconclusive';
       latest = { state, reason: verdict, reviewerModel };
+      reviewedSourceDigest = asString(payload.sourceDigest);
+      // A new verdict supersedes whatever invalidated the previous one.
+      invalidatedBy = null;
+    } else if (latest.state !== 'never-reviewed') {
+      /**
+       * EVENTS THAT HAPPEN AFTER A VERDICT AND OUTLIVE IT. A rejection means a
+       * person or a gate disagreed with the work the verdict described; a new
+       * close means the maker changed it and closed again. Either way the
+       * CONFIRMED sitting in the ledger is about code that is no longer what
+       * would be accepted, and the acceptance surface must not read it as
+       * current (AB-08 step 5).
+       */
+      if (event.eventType === 'ticket.rejected') {
+        invalidatedBy = 'the ticket was rejected after this verdict';
+      } else if (event.eventType === 'ticket.closed') {
+        invalidatedBy = 'the ticket was closed again after this verdict';
+      }
     }
   }
+
+  if (latest.state === 'never-reviewed') return latest;
+
+  if (invalidatedBy !== null) {
+    return {
+      state: 'stale',
+      staleFrom: latest.state,
+      staleReason: invalidatedBy,
+      reason: latest.reason,
+      reviewerModel: latest.reviewerModel,
+    };
+  }
+
+  if (
+    currentSourceDigest !== undefined &&
+    reviewedSourceDigest !== null &&
+    reviewedSourceDigest !== currentSourceDigest
+  ) {
+    return {
+      state: 'stale',
+      staleFrom: latest.state,
+      staleReason: 'the source changed after this verdict',
+      reason: latest.reason,
+      reviewerModel: latest.reviewerModel,
+    };
+  }
+
   return latest;
 }
 
@@ -103,6 +173,11 @@ export function reviewStatusSentence(status: TicketReviewStatus): string {
       return `machine review could not produce a usable verdict${status.reason ? ` (${status.reason})` : ''} — nothing has checked this but you`;
     case 'skipped':
       return `machine review was SKIPPED${status.reason ? ` (${status.reason})` : ''} — nothing has checked this but you`;
+    case 'stale':
+      return (
+        `a second model's verdict is STALE — ${status.staleReason ?? 'it no longer describes this ticket'}` +
+        `${status.reviewerModel ? ` (${status.reviewerModel})` : ''}. Nothing current has checked this but you`
+      );
     case 'never-reviewed':
       return 'no review pass has run over it — nothing has checked this but you';
   }

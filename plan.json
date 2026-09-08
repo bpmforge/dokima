@@ -15788,6 +15788,45 @@
         "THE MARKER MECHANISM RESOLVED IN ALL THREE DIRECTIONS. W23-05 exported four symbols marked @unreached \"caller is W23-07\". Two got real callers (classifySecurityApplicability, skippedCategories). One stopped being barrel-published (inventoryDigest, already stamped into every classification). And readySecurityNodes was DELETED: runCheckSchedule computes readiness itself, from the same edges, because it also has to know what is in flight and what has failed \u2014 facts a pure function over (completed, applicability) cannot see. Two implementations of \"what may start now\" is exactly the drift the marker exists to surface, and the honest resolution of a marker is sometimes a deletion.",
         "TOOL NODES STAY IN THE GRAPH even though stage A already ran them: deleting a completed node from a dependency graph is how a specialist ends up looking independent of the tool whose output it reads."
       ]
+    },
+    {
+      "id": "W23-08",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-07"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "a retry that leaves the synthesis cached is a conclusion about work that no longer exists",
+      "write_scope": [
+        "packages/harbormaster/src/check-evidence.ts",
+        "packages/harbormaster/src/check-evidence.test.ts",
+        "packages/harbormaster/src/review-status.ts",
+        "packages/harbormaster/src/review-status.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/api/pipeline/onboard-security-schedule.ts",
+        "apps/server/src/api/pipeline/onboard-executor.ts",
+        "apps/server/src/api/pipeline/onboard-executor.test.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "An upstream failure followed by success re-runs the attack-chain synthesis and the threat-model refresh, transitively, through the real onboard entry point",
+        "Unchanged independent work is not repeated by another node\u2019s retry",
+        "Changed source, command, tool version, rule set, configuration or predecessor digest invalidates reuse; an unknown component is never a wildcard; model prose is never reused as a scanner pass; a missing or altered artifact blocks reuse",
+        "reviewStatusFor reports STALE \u2014 a state of its own, not a downgrade to never-reviewed \u2014 when the source moved after the verdict, or the ticket was rejected or closed again since; a fresh verdict supersedes it"
+      ],
+      "notes": [
+        "AB-08. THE KEY IS ASSEMBLED, NOT HASHED, on purpose: when a reuse decision is wrong the reason is the whole debugging story, and a sha256 of everything tells you only that something differed. `diffKeys` names the first differing component.",
+        "WHOLE-TREE SOURCE DIGEST, DELIBERATELY (IMPLEMENTATION_PLAN \u00a77). Fine-grained affected-file caching means asking a cheap analysis to infer a perfect dependency graph across arbitrary languages, and its failure mode is silent \u2014 a check that skips because a file it secretly depended on was not in its list. First release buys correctness with re-runs.",
+        "STALE IS ITS OWN REVIEW STATE. \"A model looked and then the code changed\" and \"nothing has ever looked\" ask different things of the person about to accept, so `stale` carries what it used to be (staleFrom) and why it stopped being that (staleReason). A verdict recorded before W23-03 has no digest and is NOT called stale for lacking one \u2014 absence of evidence is not evidence of change.",
+        "REUSE IS EXACT AND CURRENTLY NEVER FIRES for the SAST adapter, because its ruleDigest and configDigest are unknown and an unknown component makes a key incomplete. That is the conservative direction and it is asserted by a test rather than left as a surprise."
+      ]
     }
   ]
 }
