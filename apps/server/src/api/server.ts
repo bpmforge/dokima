@@ -28,6 +28,7 @@ import { registerProjectRoutes } from './projects.js';
 import { registerRosterRoutes } from './roster.js';
 import { registerBrowseRoutes } from './server/browse-routes.js';
 import { registerInterviewRoutes } from './server/interview-routes.js';
+import { registerApprovedBuildRoutes } from './server/approved-build-routes.js';
 import {
   registerArtifactRoutes,
   registerBoardRoutes,
@@ -120,6 +121,9 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerArtifactRoutes(app, { home: opts.fleetHome });
   registerReceiptRoutes(app, { home: opts.fleetHome });
   registerRunsRoutes(app, { home: opts.fleetHome });
+  // W23-14: the approval a person can actually give, and the run progress a
+  // reload can read back.
+  registerApprovedBuildRoutes(app, { home: opts.fleetHome });
   registerModelsBenchRoute(app, { home: opts.fleetHome });
   registerFounderQueueRoute(app, { home: opts.fleetHome });
   registerBrowseRoutes(app, { home: opts.fleetHome });

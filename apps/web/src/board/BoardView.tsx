@@ -17,6 +17,7 @@ import { groupIntoLanes } from './lanes.js';
 import { Lane } from './Lane.js';
 import { RefusalPopover } from './RefusalPopover.js';
 import { RunSummary } from './RunSummary.js';
+import { ApprovedBuildPanel } from './ApprovedBuildPanel.js';
 import { ShippedTicker } from './ShippedTickerStrip.js';
 import { useBoardData } from './useBoardData.js';
 import { putProjectSettings } from '../settings/api.js';
@@ -67,7 +68,23 @@ export function BoardView({
    * event log the trace route already serves rather than from here.
    */
   const handleStartRun = async () => {
-    const started = await startBuildRun(apiOpts, projectId);
+    /**
+     * W23-14: a fetch that REJECTS — the core down, a bad base URL — used to
+     * escape as an unhandled rejection rather than reaching the person as a
+     * refusal. Every other failure here is already shown; this one was the
+     * only path that told them nothing.
+     */
+    const started = await startBuildRun(apiOpts, projectId).catch((err: unknown) => ({
+      ok: false as const,
+      problem: {
+        type: 'about:blank',
+        title: 'the core could not be reached',
+        status: 0,
+        detail: err instanceof Error ? err.message : String(err),
+        instance: `/projects/${projectId}/build-runs`,
+        request_id: 'unknown',
+      },
+    }));
     if (!started.ok) {
       setBuildRun({
         runId: '—',
@@ -167,9 +184,13 @@ export function BoardView({
       // the tickets the analysis proposes arrive on the live projection and
       // this panel unmounts when the board stops being empty.
       if (result.ok) return undefined;
-      return result.problem.detail ?? result.problem.title ?? 'the analysis could not run';
+      return (
+        result.problem.detail ?? result.problem.title ?? 'the analysis could not run'
+      );
     };
-    return <EmptyState onViewCurrentPhase={onViewCurrentPhase} onAnalyseRepository={analyse} />;
+    return (
+      <EmptyState onViewCurrentPhase={onViewCurrentPhase} onAnalyseRepository={analyse} />
+    );
   }
 
   const lanes = groupIntoLanes(tickets);
@@ -215,10 +236,9 @@ export function BoardView({
             unstated consequence. One line: what a run is (VOCABULARY.md) and
             the wizard-standard reassurance about what it may use. */}
         <p className="board-view__run-hint" data-testid="board-runbar-hint">
-          A run is one pass of the agent working the board: it claims Ready
-          tickets, does the work, and hands back receipts. It uses only the
-          models you chose in Settings → Models, within your Autonomy setting
-          — nothing else is contacted.
+          A run is one pass of the agent working the board: it claims Ready tickets, does
+          the work, and hands back receipts. It uses only the models you chose in Settings
+          → Models, within your Autonomy setting — nothing else is contacted.
         </p>
         {buildRun && (
           <span data-testid="board-runbar-status">
@@ -234,6 +254,14 @@ export function BoardView({
             {refusalLine}
           </p>
         )}
+        {/* W23-14: the approved-build surface. Mounted HERE, on the route
+            that owns Start run, because a panel nobody can reach approves
+            nothing — the same gap `recordApprovedBuild` had for two cards. */}
+        <ApprovedBuildPanel
+          apiOpts={apiOpts}
+          projectId={projectId}
+          onSelectTicket={onSelectTicket}
+        />
         {/* W19-04: once the run ends, one card says what it did — derived
             from the run's own event slice, nothing new to keep in sync. */}
         {buildRun && buildRun.status !== 'running' && (

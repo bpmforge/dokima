@@ -29,7 +29,10 @@ afterEach(() => {
 });
 
 function stub(mode: 'interactive' | 'auto'): void {
-  vi.mocked(settingsApi.fetchAutonomy).mockResolvedValue({ mode, neverAuto: [] } as never);
+  vi.mocked(settingsApi.fetchAutonomy).mockResolvedValue({
+    mode,
+    neverAuto: [],
+  } as never);
   vi.mocked(settingsApi.fetchBudget).mockResolvedValue({
     runLimitUsd: null,
     projectLimitUsd: null,
@@ -59,12 +62,22 @@ describe('the autonomy dial says what it actually does (W13-26)', () => {
     },
   );
 
-  it('and says so once in plain words, not only in a label', async () => {
+  /**
+   * W23-14 (AB-14 step 5). The hint used to say unattended defaults were not
+   * enforced YET, which stopped being true when the approved build landed —
+   * and the honest replacement is not "now they are": the dial still does not
+   * make a run unattended. The per-run approval does, over a specification the
+   * person read, and a project that chose Auto months ago chose the old
+   * meaning (D-032).
+   */
+  it('says in plain words what actually makes a run unattended — and that this dial does not', async () => {
     stub('interactive');
     render(<AutonomyBudgetPanel projectId="p1" />);
-    expect(
-      await screen.findByText(/Unattended defaults are not enforced yet/),
-    ).toBeTruthy();
+    const hint = await screen.findByText(/This dial does not make a run unattended/);
+    expect(hint.textContent).toContain('approve that exact build on the board');
+    expect(hint.textContent).toContain('stops applying the moment any of them changes');
+    // Merging and publishing stay visibly separate (step 5's last sentence).
+    expect(hint.textContent).toContain('separate decisions');
   });
 
   it(
@@ -83,7 +96,9 @@ describe('the autonomy dial says what it actually does (W13-26)', () => {
   it('Interactive stays selectable and is what actually happens', async () => {
     stub('interactive');
     render(<AutonomyBudgetPanel projectId="p1" />);
-    const interactive = (await screen.findByLabelText(/^Interactive — /)) as HTMLInputElement;
+    const interactive = (await screen.findByLabelText(
+      /^Interactive — /,
+    )) as HTMLInputElement;
     expect(interactive.checked).toBe(true);
     expect(interactive.disabled).toBe(false);
   });

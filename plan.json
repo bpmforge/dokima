@@ -16043,6 +16043,49 @@
         "NOTHING IS REPLAYED (step 4). The sweep records that a run stopped being live; acceptances, pushes and published artifacts are already-done external effects with their own events, and a resume reads those rather than re-deriving intent from a status.",
         "SCOPE WIDENED: approved-build.ts + build-verify.ts. The approval digest inputs were being hand-built at TWO call sites \u2014 the preflight that validates the approval and the acceptance that re-checks it. They agreed today; the day they drift, every machine acceptance refuses as stale for a reason nobody can see. approvedBuildRunInputs() is now the one construction both use. Found in review of W23-12, fixed here rather than filed, because it is four lines and the drift is silent."
       ]
+    },
+    {
+      "id": "W23-14",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-13"
+      ],
+      "lane": "ui",
+      "module": "web",
+      "points": 8,
+      "title": "the policy that lets a machine finish had no door a person could open",
+      "write_scope": [
+        "apps/web/src/board/ApprovedBuildPanel.tsx",
+        "apps/web/src/board/ApprovedBuildPanel.test.tsx",
+        "apps/web/src/board/approvedBuildApi.ts",
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.test.tsx",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/server/src/api/server/approved-build-routes.ts",
+        "apps/server/src/api/server/approved-build-routes.test.ts",
+        "apps/server/src/api/server/approved-build-summary.ts",
+        "apps/server/src/api/server.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A person can approve an exact build from the board \u2014 tickets, scopes, models, budget and what still asks them \u2014 and start it, in one confirmation",
+        "Every phase (Building, Checking, Fixing, Ready to review, Needs your decision, Stopped) is shown from durable state, and a reload restores it from the server",
+        "A ticket the machine would not accept names the policy rule that refused it, with a drill-down to the ticket\u2019s evidence",
+        "With one model, the surface says before launch that the build cannot finish without a person; the autonomy dial copy no longer implies otherwise"
+      ],
+      "notes": [
+        "AB-14. recordApprovedBuild HAD NO ENTRANCE. It landed in W23-02 and could only be written by a test, so the product shipped a policy nobody could opt into \u2014 the same shape as a check nobody runs: it exists, it is correct, and it does nothing.",
+        "THE PREVIEW IS THE APPROVAL. A button that says approve over an unstated specification is a click, not a decision, so what the digest covers is shown before the button that records it. Everything in the preview is read from the project; a preview the caller can shape is not a specification.",
+        "THE PHASE IS DERIVED ON THE SERVER, from the run\u2019s own events. The browser holds none of them, and shipping the log so it could compute the phase would be a second implementation of the same question that disagrees the first time either changes.",
+        "A FAILURE IS NOT ONE OF THE SIX PHASES. AB-14 names Building/Checking/Fixing/Ready to review/Needs your decision/Stopped, and a run that refused or died is none of them: stopped would claim a person asked for it and needs-decision would put it in a queue it does not belong to. It gets its own word.",
+        "NO LIVE PREVIEW, SAID PLAINLY (step 4). Dokima does not run the user\u2019s app and a second IDE is explicitly out; the surface says so and offers the evidence drill-down instead of an empty pane a person waits on.",
+        "AUTONOMY COPY UPDATED LAST (step 5), and not to \"now it is enforced\": the dial still does not make a run unattended. The per-run approval does, over a specification the person read, and a project that chose Auto months ago chose the old meaning (D-032).",
+        "SCOPE WIDENED: BoardView.tsx handleStartRun swallowed nothing \u2014 a fetch REJECTION (core down, bad base URL) escaped as an unhandled rejection instead of reaching the person as a refusal. Found because mounting the new panel changed the timing enough for the existing suite to surface it as a hard error."
+      ]
     }
   ]
 }
