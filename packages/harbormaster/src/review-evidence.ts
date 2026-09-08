@@ -36,6 +36,7 @@
 import { createHash } from 'node:crypto';
 import { git } from '@dokima/git';
 import { redactString } from '@dokima/shared';
+import { agentAuthoredPaths } from './worktree-harness-paths.js';
 
 /**
  * The diff budget, in characters. Chosen to sit well inside a small local
@@ -143,21 +144,51 @@ export async function collectReviewEvidence(
     );
   }
 
-  // DIRTY IS INCOMPLETE, and it is checked BEFORE the diff is taken. A
-  // worktree with uncommitted changes has no immutable tree to hash: hashing
-  // HEAD and ignoring the working copy would bind a verdict to code that is
-  // not the code that ran (IMPLEMENTATION_PLAN §6).
+  /**
+   * DIRTY IS INCOMPLETE, and it is checked BEFORE the diff is taken. A
+   * worktree with uncommitted changes has no immutable tree to hash: hashing
+   * HEAD and ignoring the working copy would bind a verdict to code that is
+   * not the code that ran (IMPLEMENTATION_PLAN §6).
+   *
+   * W23-16: except for the paths the HARNESS owns. `content/validators/_lib.sh`
+   * appends a telemetry row to `docs/work/telemetry.jsonl` on every validator
+   * run, so the CLOSE GATE dirties the worktree it just gated — and every
+   * review that followed reported incomplete evidence, capped its verdict at
+   * UNVERIFIABLE, and made machine acceptance unreachable in production. Found
+   * by driving a real run end to end (AB-16); the previous two checks that hit
+   * the same product-writes-then-blames-the-agent shape (W21-28, W21-29) share
+   * this exact list, and its own comment says a second list would drift.
+   *
+   * The better fix is for that telemetry to land in `.dokima/`, which is
+   * excluded everywhere — but `content/` is a SIGNED pack and moving it needs
+   * a re-sign with a key held outside this repo. Filed as W23-23.
+   */
   try {
-    const status = (
-      await run(input.worktreePath, [...SAFE_READ_FLAGS, 'status', '--porcelain'])
-    ).stdout.trim();
-    if (status.length > 0) {
+    const status =
+      // `-uall`, not the default: git collapses an untracked DIRECTORY to one
+      // entry ("?? docs/"), which no path list can match, so the first review
+      // of a fresh worktree saw the harness's own telemetry as unattributable
+      // dirt while every later one saw the file and filtered it.
+      (
+        await run(input.worktreePath, [
+          ...SAFE_READ_FLAGS,
+          'status',
+          '--porcelain',
+          '-uall',
+        ])
+      ).stdout
+        .split('\n')
+        .map((line) => line.slice(3).trim())
+        .filter(Boolean);
+    const agentDirt = agentAuthoredPaths(status);
+    if (agentDirt.length > 0) {
       return incomplete(
         input,
         headCommit,
         null,
-        `the worktree has uncommitted changes, so there is no settled tree to review; ` +
-          `the reviewer would be judging a commit the agent has already edited past`,
+        `the worktree has uncommitted changes (${agentDirt.slice(0, 5).join(', ')}), so ` +
+          `there is no settled tree to review; the reviewer would be judging a commit ` +
+          `the agent has already edited past`,
       );
     }
   } catch {
@@ -293,4 +324,52 @@ export function reviewEvidenceSection(bundle: ReviewEvidenceBundle): string {
     bundle.diff,
     '```',
   ].join('\n');
+}
+
+/**
+ * The newest commit that changed something the AGENT is answerable for
+ * (W23-16). Usually that is HEAD; it is not when the harness has committed
+ * since — `worktree-provision` commits its own leavings (a lockfile, the
+ * validators' telemetry row) under its own message, so HEAD moves past the
+ * commit the close receipt attested to and the receipt reads as stale.
+ *
+ * That refusal was reached on a real run: `accept-stale-receipt` on a ticket
+ * whose code had not changed at all since it closed. The question the rule
+ * means to ask is "does this receipt describe the code that is here now",
+ * and a harness commit does not change that answer.
+ *
+ * Bounded at ten commits: past that, a receipt that far behind is stale in
+ * every sense worth arguing about.
+ */
+export async function agentHeadCommit(
+  worktreePath: string,
+  runGit?: CollectReviewEvidenceInput['runGit'],
+): Promise<string | null> {
+  const run = runGit ?? ((cwd: string, args: string[]) => git(cwd, args));
+  try {
+    const log = (
+      await run(worktreePath, [...SAFE_READ_FLAGS, 'log', '-n', '10', '--format=%H'])
+    ).stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    for (const sha of log) {
+      const files = (
+        await run(worktreePath, [
+          ...SAFE_READ_FLAGS,
+          'show',
+          '--pretty=',
+          '--name-only',
+          sha,
+        ])
+      ).stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (files.length === 0 || agentAuthoredPaths(files).length > 0) return sha;
+    }
+    return log[log.length - 1] ?? null;
+  } catch {
+    return null;
+  }
 }

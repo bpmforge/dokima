@@ -4,7 +4,7 @@
  * 400-line CODE_BOOK_PROTOCOL cap. Extraction plus the W19-01 addition; the
  * routes file keeps registration and imports this state.
  */
-import { openEventLog } from '@dokima/events';
+import { listEvents, openEventLog } from '@dokima/events';
 import { resolveAsset } from '@dokima/shared';
 import { resolveSigningKey } from '../../cli/signing-key.js';
 import { executeBuildRun } from '../../cli/run-build.js';
@@ -205,11 +205,30 @@ export async function executeBuildRunJob(args: {
        * left tickets waiting for a person finished its work and did not
        * finish the build.
        */
+      /**
+       * W23-16: what still needs a person is NOT just `in_review`. A parked
+       * ticket is released back to `ready`, so a run that attempted one ticket
+       * and parked it had nothing in review and was reported `verified` —
+       * "every ticket this run landed was verified and accepted", which is
+       * true only because it landed none. Anything this run CLAIMED and did
+       * not finish needs a person too.
+       */
+      const tickets = listTickets(log);
+      const needsAPerson = new Set(
+        tickets.filter((t) => t.status === 'in_review').map((t) => t.id),
+      );
+      for (const event of listEvents(log)) {
+        if (event.runId !== args.runId || event.eventType !== 'ticket.claimed') continue;
+        const claimed = event.ticketId;
+        if (!claimed) continue;
+        if (tickets.find((t) => t.id === claimed)?.status !== 'done') {
+          needsAPerson.add(claimed);
+        }
+      }
       const outcome = classifyRunOutcome({
         exitCode,
         stopRequested: buildRunStopped(log, args.runId),
-        ticketsAwaitingDecision: listTickets(log).filter((t) => t.status === 'in_review')
-          .length,
+        ticketsAwaitingDecision: needsAPerson.size,
       });
       finishBuildRun(log, {
         runId: args.runId,

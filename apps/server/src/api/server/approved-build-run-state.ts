@@ -203,8 +203,8 @@ export function classifyRunOutcome(input: {
     return {
       kind: 'awaiting_decision',
       detail:
-        `${input.ticketsAwaitingDecision} ticket(s) are still in review — the run ` +
-        `finished its work and the build is not complete until someone decides`,
+        `${input.ticketsAwaitingDecision} ticket(s) still need you — the run finished ` +
+        `its work and the build is not complete until someone decides`,
     };
   }
   return {

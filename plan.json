@@ -16148,6 +16148,72 @@
         "FOUND AND FILED: CI never runs `pnpm validate` \u2014 validate-ui-copy, validate-exports and validate-volatile-paths are gated only by the local Law 3 gate. Filed as W23-22 rather than fixed here: editing CI to close a coverage gap is a different change from parallelising a local command.",
         "ALSO FIXED HERE: a typecheck error committed with W23-14 (an acceptance criterion fixture missing `done`). `pnpm --filter @dokima/server typecheck` was run after that file was written and the workspace-wide one was not; recorded rather than quietly corrected."
       ]
+    },
+    {
+      "id": "W23-23",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "content",
+      "module": "content",
+      "points": 3,
+      "title": "the validators write telemetry INTO the audited project, and three checks now work around it",
+      "write_scope": [
+        "content/validators/_lib.sh",
+        "content/manifest.json",
+        "scripts/sign-content.mjs"
+      ],
+      "acceptance": [
+        "Validator telemetry lands under .dokima/ (already excluded everywhere) rather than inside the audited project tree",
+        "The content pack is re-signed and verify-receipts still passes, so the change is not a silent break of the signed manifest",
+        "The three workarounds that exist only because of this \u2014 the harness-owned path list, the out-of-session scope sweep and the review evidence dirty check \u2014 are reduced to whatever is still genuinely needed"
+      ],
+      "notes": [
+        "W21-28 WROTE THIS DOWN AND COULD NOT DO IT: \"The better fix is for that telemetry to land in .dokima/ (already hard-excluded) instead of inside the audited project \u2014 but content/ is a SIGNED pack, so changing it there needs a re-sign with a key held outside this repo.\" Filed now, at W23-16, because a third check has just had to work around it.",
+        "THE THIRD WORKAROUND IS THE REASON TO FILE. content/validators/_lib.sh appends to ${ROOT}/docs/work/telemetry.jsonl on every validator run, so the CLOSE GATE dirties the worktree it just gated \u2014 and the review evidence check read that as the agent having edited past the reviewed commit, reported incomplete evidence, and capped EVERY verdict at UNVERIFIABLE. Machine acceptance was unreachable in production because a validator writes a log file.",
+        "The key lives outside the repo (see the signing-key note in the session memory); this ticket cannot close without it, which is exactly why it is a ticket and not a comment."
+      ]
+    },
+    {
+      "id": "W23-16",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-15"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 8,
+      "title": "every piece was proven at its own seam and the workflow had never been run",
+      "write_scope": [
+        "apps/server/src/cli/approved-build-e2e.test.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/api/server/runs-job.ts",
+        "apps/server/src/api/server/approved-build-run-state.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/review-evidence.ts",
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "docs/work/automated-build/ACCEPTANCE_REPORT.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A planted rejection is repaired and accepted through the real entry point with no person acting, and the trunk is unchanged afterwards",
+        "Three dependent tickets and one independent one finish in ONE run in dependency order, on both the sequential and the berth path",
+        "Every red scenario ends in its stated non-success status with its evidence retained, and the reason names the rule that produced it",
+        "The acceptance report links real commands and results and names what is not tested"
+      ],
+      "notes": [
+        "AB-16. FOUR PRODUCTION DEFECTS, none of which any unit test could see, all of which made the workflow unreachable: (1) the review path never passed secretsValidatorPath, so the bundled secrets scanner never ran during a review; (2) it hardcoded networkPolicy local-only and tool-sast needs the network, so SAST was permanently unavailable and NO TICKET COULD EVER BE MACHINE-ACCEPTED; (3) the close gate\u2019s own validator telemetry dirtied the worktree, so every review reported incomplete evidence and every verdict was capped at UNVERIFIABLE; (4) receipt freshness compared the LAST element of a manifest whose commits are newest-first, and did not tolerate a harness commit, so a repaired ticket refused with accept-stale-receipt on code that had not changed.",
+        "THIS IS THE ARGUMENT FOR THE CARD. Every piece had passing tests at its own seam; the chain had never been run. The same shape this wave has now found five times (resolvePauseAction, decideApprovedBuildAction, recordApprovedBuild, runPhaseGate, and these four).",
+        "WHAT IS FAKED IS EXACTLY WHAT THE CARD PERMITS: the model endpoint (Law 9a) and the semgrep binary (not installed here or in CI \u2014 without it nothing can be accepted anywhere, which is the honest environment fact the report states). The adapters, sandbox, gate, ladder, park, review, repair and acceptance are all real.",
+        "ALSO FIXED: a run that parked everything was recorded verified \u2014 \"every ticket this run landed was verified and accepted\", true only because it landed none. A parked ticket is released to ready, so counting only in_review missed it.",
+        "FILED: W23-23, the telemetry-into-the-audited-project defect W21-28 wrote down and could not fix (the content pack is signed). This card is the third check to work around it."
+      ]
     }
   ]
 }

@@ -22,6 +22,10 @@ import { resolveModelTarget } from '../api/pipeline/model-resolution.js';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
 import { endpointIdFor, pooledProvider } from './shared-gateway-pool.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
+import {
+  bundledSecretsScanner,
+  networkPolicyOf,
+} from '../api/pipeline/onboard-security-checks.js';
 
 const REVIEW_MAX_TOKENS = 2_000;
 
@@ -83,6 +87,18 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
     );
   }
 
+  /**
+   * W23-16: the two facts the review path could not previously reach. Both
+   * existed for the onboard path and neither was ever handed to this one, so
+   * the bundled secrets scanner never ran during a review and the SAST check
+   * was permanently unavailable. Found by driving the whole workflow through
+   * the real entrance rather than through injected seams.
+   */
+  const [secretsValidatorPath, networkPolicy] = await Promise.all([
+    bundledSecretsScanner(),
+    networkPolicyOf(options.repoRoot),
+  ]);
+
   const results = await reviewTicketDecisions({
     log: options.log,
     actorId: options.actorId,
@@ -93,6 +109,8 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
     reviewerModel,
     reviewChat: chat ?? (async () => ''),
     secretValues: options.secretValues,
+    secretsValidatorPath,
+    networkPolicy,
     // W15-02: the maker's track record biases borderline calls toward a
     // person, never toward acceptance (FR-L3 asymmetry).
     makerCalibration: () =>

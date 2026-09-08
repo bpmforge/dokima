@@ -84,6 +84,13 @@ export interface ReviewPassOptions {
   /** W23-04: where the bundled secrets scanner lives in THIS installation — apps/server resolves it; the package must not guess. */
   readonly secretsValidatorPath?: string | null;
   /**
+   * W23-16: the project's own network policy, from the settings file the
+   * onboard path reads. Hardcoded local-only here, and `tool-sast` needs the
+   * network for its ruleset — so SAST was permanently UNAVAILABLE and no
+   * ticket could ever be machine-accepted. Default stays local-only.
+   */
+  readonly networkPolicy?: 'local-only' | 'network-allowed';
+  /**
    * W23-10: review only these tickets. A run that lands three tickets must not
    * also re-review a ticket someone parked last week merely because it is
    * still `in_review` — that ticket's worktree may be gone and nobody asked.
@@ -217,13 +224,16 @@ async function reviewOne(
   const evidence = await collectReviewEvidence(evidenceInput);
 
   // W23-04: the SAME registry the onboard path runs, pointed at this ticket's
-  // worktree. Local-only by default here: the review path has no settings
-  // reader of its own, and reaching a network by default is the one mistake a
+  // worktree. W23-16: with the project's OWN network policy, resolved by the
+  // caller from the settings file the onboard path already reads — the
+  // hardcoded local-only here made tool-sast permanently unavailable and
+  // machine acceptance permanently unreachable. Local-only remains the
+  // default, because reaching a network by default is the one mistake a
   // default must not make (Law 9b).
   const security = await collectTicketSecurityChecks({
     worktreePath,
     sourceDigest: evidence.sourceDigest,
-    networkPolicy: 'local-only',
+    networkPolicy: options.networkPolicy ?? 'local-only',
     secretsValidatorPath: options.secretsValidatorPath ?? null,
   });
 

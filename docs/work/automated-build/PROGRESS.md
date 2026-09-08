@@ -5,7 +5,7 @@ Durable handoff for the AB card sequence in
 observed results only. Nothing here is marked implemented before its gate ran.
 
 - **Current HEAD:** see the card row's commit column
-- **Current AB card:** AB-16 (next)
+- **Current AB card:** AB-17 (next)
 - **Branch:** `feat/automated-build`, cut from `307ed762` on `main`
 - **Policy version enabled for tests only / opted-in users:** `approved-build-v1`
   exists and is recorded/validated, but NO user is opted in: opting in requires
@@ -19,29 +19,30 @@ Wave 23 is reserved for this feature. Ids are allocated here so a later
 session cannot collide with them; a ticket is **inserted into `plan.json` only
 when its card is next**, per AB-00 step 5.
 
-| AB id | Ticket     | Registered in plan.json | Card                                                                                          |
-| ----- | ---------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| AB-00 | W23-00     | yes                     | Baseline and registration                                                                     |
-| AB-01 | W23-01     | yes (todo)              | Approved-run policy and pause rules                                                           |
-| AB-02 | W23-02     | yes (done)              | Persist approval of the exact build inputs                                                    |
-| AB-03 | W23-03     | yes (done)              | Give the reviewer the actual source change                                                    |
-| AB-04 | W23-04     | yes (done)              | Run real security tools, preserve results                                                     |
-| AB-05 | W23-05     | yes (done)              | Security dependencies and applicability                                                       |
-| AB-06 | W23-06     | yes (done)              | Share endpoint limits across roles                                                            |
-| AB-07 | W23-07     | yes (done)              | Bounded-group security execution                                                              |
-| AB-08 | W23-08     | yes (done)              | Invalidate dependent evidence on retry                                                        |
-| AB-09 | W23-09     | yes (done)              | Consolidate findings into one repair batch                                                    |
-| AB-10 | W23-10     | yes (done)              | Structured, fresh review decisions                                                            |
-| AB-11 | W23-11     | yes (done)              | Bounded automatic repair loop                                                                 |
-| AB-12 | W23-12     | yes (done)              | Review/accept between tickets so dependents unlock                                            |
-| AB-13 | W23-13     | yes (done)              | Durable run state, stop, resume                                                               |
-| AB-14 | W23-14     | yes (done)              | One approval and a readable build experience                                                  |
-| AB-15 | W23-15     | yes (done)              | Remove duplicate developer gates                                                              |
-| AB-16 | W23-16     | reserved                | Prove the workflow through real entry points                                                  |
-| AB-17 | W23-17     | reserved                | Measure model lift, bounded pilot                                                             |
-| AB-18 | W23-18     | reserved                | Port review grouping to Attest (secondary)                                                    |
-| —     | **W23-22** | yes (todo)              | Finding from AB-15: CI never runs `pnpm validate`, so three validators are gated only locally |
-| —     | **W23-19** | yes (todo)              | Finding from AB-00: `dokima-suite-home-*` still leaks intermittently after W22-28             |
+| AB id | Ticket     | Registered in plan.json | Card                                                                                                       |
+| ----- | ---------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| AB-00 | W23-00     | yes                     | Baseline and registration                                                                                  |
+| AB-01 | W23-01     | yes (todo)              | Approved-run policy and pause rules                                                                        |
+| AB-02 | W23-02     | yes (done)              | Persist approval of the exact build inputs                                                                 |
+| AB-03 | W23-03     | yes (done)              | Give the reviewer the actual source change                                                                 |
+| AB-04 | W23-04     | yes (done)              | Run real security tools, preserve results                                                                  |
+| AB-05 | W23-05     | yes (done)              | Security dependencies and applicability                                                                    |
+| AB-06 | W23-06     | yes (done)              | Share endpoint limits across roles                                                                         |
+| AB-07 | W23-07     | yes (done)              | Bounded-group security execution                                                                           |
+| AB-08 | W23-08     | yes (done)              | Invalidate dependent evidence on retry                                                                     |
+| AB-09 | W23-09     | yes (done)              | Consolidate findings into one repair batch                                                                 |
+| AB-10 | W23-10     | yes (done)              | Structured, fresh review decisions                                                                         |
+| AB-11 | W23-11     | yes (done)              | Bounded automatic repair loop                                                                              |
+| AB-12 | W23-12     | yes (done)              | Review/accept between tickets so dependents unlock                                                         |
+| AB-13 | W23-13     | yes (done)              | Durable run state, stop, resume                                                                            |
+| AB-14 | W23-14     | yes (done)              | One approval and a readable build experience                                                               |
+| AB-15 | W23-15     | yes (done)              | Remove duplicate developer gates                                                                           |
+| AB-16 | W23-16     | yes (done)              | Prove the workflow through real entry points                                                               |
+| AB-17 | W23-17     | reserved                | Measure model lift, bounded pilot                                                                          |
+| AB-18 | W23-18     | reserved                | Port review grouping to Attest (secondary)                                                                 |
+| —     | **W23-23** | yes (todo)              | Finding from AB-16: validator telemetry is written into the audited project (signed pack, needs a re-sign) |
+| —     | **W23-22** | yes (todo)              | Finding from AB-15: CI never runs `pnpm validate`, so three validators are gated only locally              |
+| —     | **W23-19** | yes (todo)              | Finding from AB-00: `dokima-suite-home-*` still leaks intermittently after W22-28                          |
 
 **W13-32 is not duplicated.** It stays `blocked` and keeps its own
 responsibility (wiring the autonomy dial for existing projects). W23-01 is its
@@ -54,6 +55,7 @@ it changes no default for a project that has not opted in.
 | AB id | Repo ticket | Status | Commit             | Focused checks                                                                                                            | Full gate                                                                                                                            | Evidence / blocker                                                                                                                |
 | ----- | ----------- | ------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | AB-00 | W23-00      | done   | (this commit)      | `node scripts/validate-plan.mjs` exit 0                                                                                   | lint 0 · typecheck 0 · test 0 (5065 passed / 3 skipped) · e2e 0 (76) · validate 1 then 0                                             | `BASELINE.md`; the single validate failure is the intermittent temp-home leak, filed as W23-19                                    |
+| AB-16 | W23-16      | done   | `19` (this commit) | `vitest run approved-build-e2e.test.ts --retry=0` → 8 passed                                                              | lint 0 · typecheck 0 · test 0 (5326 passed / 2 skipped, 610 files) · e2e 0 (76) · validate 0                                         | four production defects found and fixed; the workflow runs end to end with nobody in the room (ACCEPTANCE_REPORT.md)              |
 | AB-15 | W23-15      | done   | `18` (this commit) | `node --test scripts/gate-plan.test.mjs` → 6 pass 0 fail                                                                  | lint 0 · typecheck 0 · test 0 (5318 passed / 2 skipped, 609 files) · e2e 0 (76) · validate 0                                         | ~10.95s → ~6.38s measured twice each; identical output; a planted failure fails both runners (GATE_TIMINGS.md)                    |
 | AB-14 | W23-14      | done   | `17` (this commit) | `vitest run ApprovedBuildPanel.test.tsx AutonomyBudgetPanel.test.tsx approved-build-routes.test.ts --retry=0` → 22 passed | lint 0 · typecheck 0 · test 0 (5317 passed / 2 skipped, 608 files) · e2e 0 (76) · validate 0                                         | the approval has a door; six phases from durable state; refusals name their policy rule                                           |
 | AB-13 | W23-13      | done   | `16` (this commit) | `vitest run approved-build-run-state.test.ts runs-routes.test.ts --retry=0` → 26 passed                                   | lint 0 · typecheck 0 · test 0 (5299 passed / 2 skipped, 606 files) · e2e 0 (76) · validate 1 then 0 (a W23-19 leak)                  | status and stop both survive a restart, proven through the HTTP routes; exit 0 no longer reads as completion                      |
@@ -72,34 +74,37 @@ it changes no default for a project that has not opted in.
 
 ## Next session
 
-- **Completed behavior:** the six read-only source validators run concurrently
-  under a bound (`scripts/gate-plan.mjs`), printed in configured order whatever
-  order they finish in, with the ratchet arguments read from
-  `conductor.config.json` rather than copied. `pnpm validate` uses it;
-  `pnpm validate:serial` keeps the old runner as the baseline the equivalence
-  claim is made against. `validate-temp-leaks` still runs last, alone, after
-  everything has exited.
-- **Exact unfinished step:** AB-16 — prove the whole workflow through the real
-  entry points, which is also the card that owes the outcome claims AB-11 and
-  AB-12 recorded as mechanism claims.
-- **Next file/symbol:** `apps/server/src/cli/run-cmd.ts` and the HTTP
-  `POST /api/v1/projects/:id/build-runs` path, driven end to end against the
-  fake-model gateway.
-- **Failing command and output summary:** none in this card's own work. It did
-  surface a typecheck error committed with AB-14 — a ticket fixture missing
-  `done` on an acceptance criterion — because `pnpm --filter @dokima/server
-typecheck` had been run after that file was written and the workspace-wide
-  one had not. Fixed here and recorded on W23-15 rather than quietly corrected.
-- **Actual test totals and skips:** 609 files, 5318 passed, 2 skipped.
-- **Production caller verified:** yes — `pnpm validate` is the Law 3 command
-  and now runs the plan; `gate-plan.suite.test.mjs` runs the `node:test` file
-  inside `pnpm test`, so the focused verification is not a command only a
-  person who remembers it will run.
-- **New finding and registered ticket:** **W23-22** — CI never runs
-  `pnpm validate`. It runs two validators in a `traceability` job and
-  `validate-history-secrets` in another, so `validate-ui-copy`,
-  `validate-exports` and `validate-volatile-paths` are enforced only by the
-  local gate. Same shape as W22-06 one level up, with a worse denominator: a
-  green CI is not evidence those three passed. Filed rather than fixed here —
-  editing CI is a different change from parallelising a local command.
-- **Next AB id:** AB-16.
+- **Completed behavior:** the whole workflow runs through the entrances a
+  person uses — `executeBuildRun` (the CLI's function) and `executeBuildRunJob`
+  (the route's) — over a real repository with real worktrees, the real gate,
+  review, security registry and acceptance policy. A rejected ticket is
+  repaired and accepted with nobody in the room; three dependent tickets and an
+  independent one finish in one run in dependency order, on both the sequential
+  and the berth path; every red scenario ends in its stated status with its
+  evidence retained. Evidence and limits in `ACCEPTANCE_REPORT.md`.
+- **Exact unfinished step:** AB-17 — measure model lift and run a bounded
+  pilot. Read it before starting: it needs a model budget and pilot
+  participants, neither of which this handoff supplies, so the honest outcome
+  is likely a written protocol plus a "not run" record rather than results.
+- **Next file/symbol:** `docs/work/automated-build-handoff/AB-17.md` first, then
+  `packages/gateway`'s fitness/bench surfaces if a measurement harness is
+  actually wanted.
+- **Failing command and output summary:** the first end-to-end attempt failed
+  four times in a row, each time for a different real defect — the bundled
+  secrets scanner was never passed to the review path; the review path
+  hardcoded local-only so SAST was permanently unavailable and no ticket could
+  ever be accepted; the close gate's own telemetry dirtied the worktree so
+  every verdict was capped at UNVERIFIABLE; and receipt freshness read the
+  wrong end of a multi-attempt manifest. All four are fixed and named in the
+  report.
+- **Actual test totals and skips:** 610 files, 5326 passed, 2 skipped.
+- **Production caller verified:** yes, and this is the card that turned "wiring
+  verified" into "workflow verified" — AB-11's acceptance 1 and AB-12's
+  acceptance 4 were recorded as mechanism claims and are now outcome claims,
+  driven with no injected `inspect`, `remake` or `reviewChat`.
+- **New finding and registered ticket:** **W23-23** — `content/validators/_lib.sh`
+  writes telemetry into the audited project tree. W21-28 wrote this down and
+  could not fix it (the content pack is signed and the key lives outside the
+  repo); this card is the third check to work around it, and the workaround is
+  what stood between the product and any machine acceptance at all.
+- **Next AB id:** AB-17.

@@ -64,23 +64,38 @@ async function profileOf(projectPath: string): Promise<ProjectProfile> {
 
 /**
  * The bundled secrets scanner, in whatever shape this installation has.
+ *
+ * W23-16: exported, because the REVIEW path needs the same answer and had no
+ * way to get it. `ReviewPassOptions.secretsValidatorPath` existed from W23-04
+ * and no production caller ever set it, so `tool-secrets` reported "could not
+ * be located in this installation" on every ticket ever reviewed — a parameter
+ * added for a caller that was never written.
  * `resolveAsset` is the same resolver the packaged CLI uses for `content/`,
  * so a scanner that is missing from a real install is reported as missing
  * instead of silently skipped — the exact class of defect the 0.1.0 changelog
  * records for the validator pack.
  */
-async function bundledSecretsScanner(): Promise<string | null> {
+export async function bundledSecretsScanner(): Promise<string | null> {
   const candidate = resolveAsset('content', 'validators', 'secrets-scan.sh');
   return (await exists(candidate)) ? candidate : null;
 }
 
 /**
- * The project's network policy. Local-only is a CHOICE a user makes and this
+ * The project's network policy.
+ *
+ * W23-16: exported for the same reason. The review path hardcoded
+ * `'local-only'` with a comment saying it had no settings reader — and since
+ * `tool-sast` requires the network for its ruleset, that made the SAST check
+ * permanently UNAVAILABLE, every required check therefore failed, and NO
+ * TICKET COULD EVER BE MACHINE-ACCEPTED. The policy is the user's choice to
+ * make, in both places, from the same file.
+ *
+ * Local-only is a CHOICE a user makes and this
  * function's job is to report it honestly, not to improve on it: under
  * local-only the dependency audit reports its missing coverage rather than
  * reaching a cloud advisory service (Law 9b).
  */
-async function networkPolicyOf(projectPath: string): Promise<NetworkPolicy> {
+export async function networkPolicyOf(projectPath: string): Promise<NetworkPolicy> {
   try {
     const raw = await readFile(
       path.join(projectPath, '.dokima', 'settings.json'),

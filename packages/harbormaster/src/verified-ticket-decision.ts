@@ -41,7 +41,7 @@ import {
 import type { AutonomyMode } from './autonomy.js';
 import { ensureReviewerIdentity } from './review-decision.js';
 import type { RepairTicketOutcome } from './build-repair-loop.js';
-import { collectReviewEvidence } from './review-evidence.js';
+import { agentHeadCommit, collectReviewEvidence } from './review-evidence.js';
 
 /** Recorded for every post-close decision, accepted or not — the audit row a Decide card reads. */
 export const VERIFIED_DECISION_EVENT = 'build.accept.decided';
@@ -59,6 +59,14 @@ export interface VerifiedTicketOutcome {
 export interface CurrentSource {
   readonly headCommit: string | null;
   readonly sourceDigest: string | null;
+  /**
+   * W23-16: the newest commit that changed something the agent is answerable
+   * for. HEAD moves when the HARNESS commits (a lockfile, the validators'
+   * telemetry row), and comparing a close receipt against that HEAD refused
+   * real work with `accept-stale-receipt` on a ticket whose code had not
+   * changed since it closed.
+   */
+  readonly agentHeadCommit?: string | null;
 }
 
 export interface VerifiedTicketOptions {
@@ -100,6 +108,7 @@ export async function currentSourceOf(
   return {
     headCommit: bundle.headCommit,
     sourceDigest: bundle.complete ? bundle.sourceDigest : null,
+    agentHeadCommit: await agentHeadCommit(worktreePath),
   };
 }
 
@@ -187,10 +196,20 @@ export function reviewFactsFor(
     reviewedSourceDigest,
     currentSourceDigest: current.sourceDigest,
     requiredChecksAllPassed,
+    /**
+     * The receipt is fresh when it attested to the code that is here now:
+     * the current head is among the commits it names. TWO WAYS THAT READS
+     * WRONG, both hit on a real run (W23-16) — a harness commit after the
+     * close moves HEAD without changing the code, so the agent-authored head
+     * counts too; and a manifest lists its commits NEWEST FIRST across
+     * attempts, so taking the last element compared against the oldest
+     * commit and refused every repaired ticket with `accept-stale-receipt`.
+     */
     receiptFresh:
-      current.headCommit !== null &&
       receiptCommits.length > 0 &&
-      receiptCommits[receiptCommits.length - 1] === current.headCommit,
+      [current.headCommit, current.agentHeadCommit ?? null]
+        .filter((c): c is string => c !== null)
+        .some((candidate) => receiptCommits.includes(candidate)),
   };
 }
 
