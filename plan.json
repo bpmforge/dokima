@@ -16252,7 +16252,7 @@
       "id": "W23-24",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16260,8 +16260,10 @@
       "points": 2,
       "title": "the pre-commit secrets scan reads REMOVED diff lines, so a line quoting an example key can never be edited again",
       "write_scope": [
-        "scripts/hooks/pre-commit",
-        "docs/TESTING.md"
+        "hooks/pre-commit",
+        "scripts/hooks-install.test.mjs",
+        "docs/STATUS.md",
+        "docs/work/automated-build/PROGRESS.md"
       ],
       "acceptance": [
         "The staged-diff secrets scan considers only added lines; a commit whose only match is on a removed line is not refused",
@@ -16271,7 +16273,8 @@
         "FOUND AT WAVE-23 CLOSEOUT, 2026-09-08, appending the wave record to docs/STATUS.md. That file is not prettier-clean at HEAD, so any edit forces a whole-file reformat; the reformat restages a 2026-08-03 line quoting AWS published example access-key id, and the hook greps the staged diff WITHOUT filtering to added lines, so the literal matched on the REMOVED side.",
         "THAT MAKES THE LINE PERMANENTLY UNEDITABLE. Every possible edit to it \u2014 including deleting the literal, which is exactly what was attempted \u2014 puts the literal on the removed side. A guard that refuses the REMOVAL of a secret is refusing the fix, which is the wrong direction for a secrets check to point.",
         "THE FIX IS ONE FILTER: keep only lines that begin with a single plus before matching. Removing a secret should always be allowed; adding one never. The history scanner (W10-27) is unaffected \u2014 it reads blobs, not diffs.",
-        "CONSEQUENCE AT CLOSE: docs/STATUS.md was left WITHOUT the wave-23 record. The prepared 39-line append is saved and lands either with this ticket or with an approved one-time --no-verify commit."
+        "CONSEQUENCE AT CLOSE: docs/STATUS.md was left WITHOUT the wave-23 record. The prepared 39-line append is saved and lands either with this ticket or with an approved one-time --no-verify commit.",
+        "PRE-CLAIM SCOPE CHECK, and the filed path was wrong: the hook is tracked at hooks/pre-commit (core.hooksPath=hooks), not scripts/hooks/pre-commit, and its fixture home is scripts/hooks-install.test.mjs, which already plants an AWS-shaped secret. docs/TESTING.md dropped from scope \u2014 the hook tier is documented by the fixture, and there is nothing new to describe. docs/STATUS.md added, because the append this ticket unblocks is the proof the fix works."
       ]
     }
   ]
