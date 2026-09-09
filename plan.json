@@ -16252,7 +16252,7 @@
       "id": "W23-24",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16274,7 +16274,11 @@
         "THAT MAKES THE LINE PERMANENTLY UNEDITABLE. Every possible edit to it \u2014 including deleting the literal, which is exactly what was attempted \u2014 puts the literal on the removed side. A guard that refuses the REMOVAL of a secret is refusing the fix, which is the wrong direction for a secrets check to point.",
         "THE FIX IS ONE FILTER: keep only lines that begin with a single plus before matching. Removing a secret should always be allowed; adding one never. The history scanner (W10-27) is unaffected \u2014 it reads blobs, not diffs.",
         "CONSEQUENCE AT CLOSE: docs/STATUS.md was left WITHOUT the wave-23 record. The prepared 39-line append is saved and lands either with this ticket or with an approved one-time --no-verify commit.",
-        "PRE-CLAIM SCOPE CHECK, and the filed path was wrong: the hook is tracked at hooks/pre-commit (core.hooksPath=hooks), not scripts/hooks/pre-commit, and its fixture home is scripts/hooks-install.test.mjs, which already plants an AWS-shaped secret. docs/TESTING.md dropped from scope \u2014 the hook tier is documented by the fixture, and there is nothing new to describe. docs/STATUS.md added, because the append this ticket unblocks is the proof the fix works."
+        "PRE-CLAIM SCOPE CHECK, and the filed path was wrong: the hook is tracked at hooks/pre-commit (core.hooksPath=hooks), not scripts/hooks/pre-commit, and its fixture home is scripts/hooks-install.test.mjs, which already plants an AWS-shaped secret. docs/TESTING.md dropped from scope \u2014 the hook tier is documented by the fixture, and there is nothing new to describe. docs/STATUS.md added, because the append this ticket unblocks is the proof the fix works.",
+        "FIXED: the staged diff is filtered to ADDED lines (a leading plus, minus the +++ header) before the six patterns run. Red fixture in scripts/hooks-install.test.mjs, proven red by reverting the filter: the removal commit is refused without it and passes with it. The existing add-a-secret refusal fixture still passes, so the guard did not get weaker in the direction that matters.",
+        "NECESSARY BUT NOT SUFFICIENT, and the original framing was wrong about that. Allowing removals did NOT let the docs/STATUS.md append through: prettier reformats that line, and a reformatted line is an ADDED line, so the AWS example literal landed on the plus side and was refused exactly as designed. The literal is therefore described instead of quoted \u2014 the redaction was still required, and the ticket bought the general rule rather than this one commit. A value-level exemption mirroring history-secrets-baseline.json would have kept the literal verbatim; not built, because it is more guard surface than the finding justifies.",
+        "PRETTIER IS NOT IDEMPOTENT ON docs/STATUS.md: --write has to run twice before --check passes, observed on two separate occasions during this work. Deliberately NOT filed, and this is the judgement rather than an oversight \u2014 it is a formatter behaviour on one very large markdown file, the whole cost is one extra command, and there is no defect for a ticket to fix. Recorded here so the next person who sees --check fail after --write knows to run it again instead of hunting.",
+        "GATE AT CLOSE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.2s) plus temp-leaks clean."
       ]
     }
   ]

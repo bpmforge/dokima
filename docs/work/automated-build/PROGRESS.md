@@ -102,9 +102,10 @@ location + evidence, never the title) and the reviewer/decision split in
   `dokima-suite-home-*` temp leak), W23-21 (validate-exports does not follow
   `export * from`), W23-22 (CI never runs `pnpm validate`), W23-23 (validator
   telemetry is written into the audited project; needs a re-signed content
-  pack), W23-24 (the pre-commit secrets scan matches removed diff lines, so a
-  line quoting an example key cannot be edited at all — it is why docs/STATUS.md
-  still carries no wave-23 record). W23-20 was closed inside AB-06.
+  pack). W23-20 was closed inside AB-06; W23-24 — the pre-commit secrets scan
+  matched removed diff lines, so a line quoting an example key could not be
+  edited at all — was filed and then fixed at closeout, which is how
+  docs/STATUS.md got its wave-23 record.
 - **Actual test totals and skips:** 610 files, 5326 passed, 2 skipped.
 - **Not merged to `main`, and that is a decision, not a stopping point.** The
   branch IS ready to merge on its own terms: the full gate is green at
