@@ -102,9 +102,21 @@ location + evidence, never the title) and the reviewer/decision split in
   `dokima-suite-home-*` temp leak), W23-21 (validate-exports does not follow
   `export * from`), W23-22 (CI never runs `pnpm validate`), W23-23 (validator
   telemetry is written into the audited project; needs a re-signed content
-  pack). W23-20 was closed inside AB-06.
+  pack), W23-24 (the pre-commit secrets scan matches removed diff lines, so a
+  line quoting an example key cannot be edited at all — it is why docs/STATUS.md
+  still carries no wave-23 record). W23-20 was closed inside AB-06.
 - **Actual test totals and skips:** 610 files, 5326 passed, 2 skipped.
-- **Not merged to `main`.** Everything above is on `feat/automated-build`.
-  `main` is the v1.0.0 tag target and the tag is not cut; tagging and
-  publishing remain the founder's, and need their npm login.
+- **Not merged to `main`, and that is a decision, not a stopping point.** The
+  branch IS ready to merge on its own terms: the full gate is green at
+  `1290cb27` (lint 0, typecheck 0, 5326 tests, 76 e2e, all validators), AB-16
+  passed before anything was wired to a user surface, no existing project is
+  opted in by default, and the four findings this wave turned up are filed
+  (W23-19, W23-21, W23-22, W23-23) rather than carried silently. What it is NOT
+  is _measured_: EVALUATION_RESULTS.md is NOT RUN, so a merge would put an
+  unevaluated automated-build path on the same branch as the v1.0.0 tag target.
+  Merging is therefore the founder's call, and the honest framing is: merge
+  when you accept an unevaluated feature behind an opt-in, or run the AB-17
+  protocol first and merge on the numbers. `main` is the tag target and the tag
+  is not cut; tagging and publishing remain the founder's, and need their npm
+  login.
 - **Next AB id:** none.
