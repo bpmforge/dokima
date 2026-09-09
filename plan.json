@@ -16339,7 +16339,7 @@
       "id": "W23-26",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16348,8 +16348,22 @@
       "title": "no tsconfig includes vitest.setup.ts, so the file that pins DOKIMA_HOME is never typechecked",
       "write_scope": [
         "apps/server/tsconfig.json",
-        "tsconfig.base.json",
-        "package.json"
+        "apps/web/tsconfig.json",
+        "packages/events/tsconfig.json",
+        "packages/forge/tsconfig.json",
+        "packages/gateway/tsconfig.json",
+        "packages/git/tsconfig.json",
+        "packages/harbormaster/tsconfig.json",
+        "packages/loop/tsconfig.json",
+        "packages/mcp/tsconfig.json",
+        "packages/memory/tsconfig.json",
+        "packages/pipeline/tsconfig.json",
+        "packages/shared/tsconfig.json",
+        "packages/tickets/tsconfig.json",
+        "packages/validators/tsconfig.json",
+        "tsconfig.root.json",
+        "package.json",
+        "scripts/tsconfig-coverage.test.mjs"
       ],
       "acceptance": [
         "pnpm typecheck covers every workspace TS file outside src/ that is executed by the test run \u2014 setup files and vitest configs included",
@@ -16357,7 +16371,8 @@
       ],
       "notes": [
         "FOUND AT W23-19, 2026-09-08. apps/server/tsconfig.json is `\"include\": [\"src\"]`, so vitest.setup.ts \u2014 the file that pins DOKIMA_HOME, DOKIMA_NO_KEYCHAIN and the model seam for the whole apps/server suite \u2014 is invisible to tsc. It contained a call to `w22_16_write`, a helper that does not exist anywhere in the repo: leftover W22-16 instrumentation that would have thrown ReferenceError the moment its beforeExit handler fired, in the one file whose failure would mis-configure every test in the package.",
-        "THE HANDLER NEVER FIRED, WHICH IS THE POINT: under the forks pool the pool terminates its children, so beforeExit is unreachable \u2014 the same fact W22-16 measured. Dead code in an unchecked file, in the suite bootstrap, is a bad place for both properties to meet. The call is removed under W23-19 (same file, same investigation); making tsc see the file is this ticket."
+        "THE HANDLER NEVER FIRED, WHICH IS THE POINT: under the forks pool the pool terminates its children, so beforeExit is unreachable \u2014 the same fact W22-16 measured. Dead code in an unchecked file, in the suite bootstrap, is a bad place for both properties to meet. The call is removed under W23-19 (same file, same investigation); making tsc see the file is this ticket.",
+        "SCOPE WIDENED AT CLAIM (Law 1): the survey found this is not one file. Every package tsconfig is `\"include\": [\"src\"]` while each package carries an unchecked vitest.config.ts; apps/web adds playwright.config.ts and vite.config.ts; and the repo root has vitest.workspace.ts and vitest.network-guard.ts with no tsconfig at all. Fourteen configs, a new root config for the two root files, and a fixture that fails when a workspace TS file executed by the test run is outside every include \u2014 otherwise this closes today and re-opens the next time someone adds a config file."
       ]
     }
   ]
