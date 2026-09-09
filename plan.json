@@ -15833,7 +15833,7 @@
       "id": "W23-21",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -15841,8 +15841,10 @@
       "points": 3,
       "title": "validate-exports does not follow `export * from`, so a barrel chapter hides its symbols from the ratchet",
       "write_scope": [
-        "scripts/validate-exports/symbols.mjs",
-        "scripts/validate-exports.test.mjs"
+        "scripts/validate-exports/strip.mjs",
+        "scripts/validate-exports/files.mjs",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
       ],
       "acceptance": [
         "A package barrel that re-exports a chapter with `export * from` has that chapter\u2019s symbols counted exactly as if they were listed in the barrel directly \u2014 proven by a fixture barrel with both shapes",
@@ -15851,7 +15853,9 @@
       "notes": [
         "FOUND AT W23-09, 2026-09-08, while splitting packages/harbormaster/src/index.ts under the 400-line cap. Moving three wave-23 export blocks into a chapter re-exported with `export * from \"./automated-build.js\"` made the gap count DROP by three and the suppression list go empty \u2014 not because anything got wired, but because the validator stopped seeing those symbols at all.",
         "THAT IS THE DANGEROUS DIRECTION FOR A RATCHET: the honest response to a file-size cap made the guard weaker and looked like an improvement in the numbers. The split was reverted and the exports re-inlined with terser comments (index.ts is 390 lines, 10 to spare), so the markers stay where the validator reads them.",
-        "THE SAME BLIND SPOT APPLIES TO EVERY PACKAGE, not just this one. Any barrel that grows past the cap will be split the same way, and each split silently removes its symbols from the count."
+        "THE SAME BLIND SPOT APPLIES TO EVERY PACKAGE, not just this one. Any barrel that grows past the cap will be split the same way, and each split silently removes its symbols from the count.",
+        "THE FILED DIAGNOSIS IS WRONG, and the fixture says so before anything was changed: exportsOfBarrel resolves through the TypeScript checker, and a probe barrel carrying both shapes \u2014 `export { alpha } from \"./named.js\"` and `export * from \"./chapter.js\"` \u2014 returns alpha, beta and gamma alike. The checker follows `export *` and always did. Scope corrected from symbols.mjs, which needs no change, to strip.mjs.",
+        "THE REAL MECHANISM IS THE REFERENCE COUNT, one layer down. isBarrel() matches src/index.ts by PATH, so a barrel CHAPTER \u2014 a file whose whole content is `export { X } from \"./x.js\"` lines \u2014 is scanned as ordinary production source, and each of those lines is a word-boundary match on X. Moving three exports into a chapter therefore gave all three a production \"caller\" and they left the report; the suppression list emptied because a symbol nobody reports is a symbol no marker suppresses. Same observed numbers, different cause, and the correct fix is narrower than the filed one: a re-export STATEMENT is plumbing wherever it lives, not only in a file named index.ts."
       ]
     },
     {
