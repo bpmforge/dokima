@@ -8,6 +8,7 @@ import {
   isTestSupportFile,
   moduleExports,
   stripComments,
+  stripReexports,
 } from './validate-exports.mjs';
 
 /**
@@ -301,8 +302,8 @@ describe('the three degrees of unreached (W22-02)', () => {
     // conductor.config.json is now measuring a different thing than it was
     // calibrated against.
     const { findings, buried } = scan();
-    expect(findings.length).toBe(46);
-    expect(buried.length).toBe(44);
+    expect(findings.length).toBe(54);
+    expect(buried.length).toBe(46);
   });
 });
 
@@ -440,13 +441,63 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // The whole reason this could be fixed inside this ticket: both ratchets
     // in conductor.config.json are calibrated against these counts, and a
     // counting change that moved them would need its own recalibration.
+    // (The numbers themselves moved later, at W23-21, when re-export
+    // statements stopped counting as calls — 46/44 -> 54/46. What this
+    // fixture asserts is unchanged: the W22-02 stripper's own two symbols
+    // are still not findings.)
     const { findings, buried, unreferenced } = scan();
-    expect(findings.length).toBe(46);
-    expect(buried.length).toBe(44);
+    expect(findings.length).toBe(54);
+    expect(buried.length).toBe(46);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.
     const named = unreferenced.map((u) => u.symbol);
     expect(named).not.toContain('FEATURE_STEPS');
     expect(named).not.toContain('IMPROVE_STEPS');
+  });
+});
+
+describe('a re-export is plumbing wherever it lives (W23-21)', () => {
+  const CHAPTER = "export { alpha } from './a.js';\nexport * from './b.js';\n";
+
+  it(
+    'RED FIXTURE: a barrel CHAPTER does not call the symbols it re-exports. ' +
+      'isBarrel matches src/index.ts by path, so a chapter split out under the ' +
+      '400-line cap was scanned as production source and its export lines read ' +
+      'as callers — three symbols left the report that way during W23-09, and ' +
+      'the suppression list emptied with them',
+    () => {
+      const files = ['/repo/packages/p/src/chapter.ts', '/repo/packages/p/src/x.ts'];
+      const contents = new Map([
+        [files[0], CHAPTER],
+        [files[1], 'export function alpha() {}\n'],
+      ]);
+      const { production } = countReferences('alpha', files, contents, files[1]);
+      expect(production).toBe(0);
+    },
+  );
+
+  it('a real call in the same chapter still counts — the fix must not blind the check', () => {
+    const files = ['/repo/packages/p/src/chapter.ts', '/repo/packages/p/src/x.ts'];
+    const contents = new Map([
+      [files[0], `${CHAPTER}alpha();\n`],
+      [files[1], 'export function alpha() {}\n'],
+    ]);
+    expect(countReferences('alpha', files, contents, files[1]).production).toBe(1);
+  });
+
+  it('blanks only the re-export statement, and keeps length and line count', () => {
+    const text = "export { alpha } from './a.js';\nalpha();\nexport const beta = 1;\n";
+    const stripped = stripReexports(text);
+    expect(stripped.length).toBe(text.length);
+    expect(stripped.split('\n').length).toBe(text.split('\n').length);
+    // The plumbing line is gone, the call is not, and a LOCAL export — which
+    // is a declaration, not a re-export — is untouched.
+    expect((stripped.match(/\balpha\b/g) ?? []).length).toBe(1);
+    expect(stripped).toContain('export const beta = 1;');
+  });
+
+  it('an import is still a call — only `export ... from` is plumbing', () => {
+    const text = "import { alpha } from './a.js';\nconst x = alpha;\n";
+    expect(stripReexports(text)).toBe(text);
   });
 });

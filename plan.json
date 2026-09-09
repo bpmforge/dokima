@@ -15833,7 +15833,7 @@
       "id": "W23-21",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -15855,7 +15855,12 @@
         "THAT IS THE DANGEROUS DIRECTION FOR A RATCHET: the honest response to a file-size cap made the guard weaker and looked like an improvement in the numbers. The split was reverted and the exports re-inlined with terser comments (index.ts is 390 lines, 10 to spare), so the markers stay where the validator reads them.",
         "THE SAME BLIND SPOT APPLIES TO EVERY PACKAGE, not just this one. Any barrel that grows past the cap will be split the same way, and each split silently removes its symbols from the count.",
         "THE FILED DIAGNOSIS IS WRONG, and the fixture says so before anything was changed: exportsOfBarrel resolves through the TypeScript checker, and a probe barrel carrying both shapes \u2014 `export { alpha } from \"./named.js\"` and `export * from \"./chapter.js\"` \u2014 returns alpha, beta and gamma alike. The checker follows `export *` and always did. Scope corrected from symbols.mjs, which needs no change, to strip.mjs.",
-        "THE REAL MECHANISM IS THE REFERENCE COUNT, one layer down. isBarrel() matches src/index.ts by PATH, so a barrel CHAPTER \u2014 a file whose whole content is `export { X } from \"./x.js\"` lines \u2014 is scanned as ordinary production source, and each of those lines is a word-boundary match on X. Moving three exports into a chapter therefore gave all three a production \"caller\" and they left the report; the suppression list emptied because a symbol nobody reports is a symbol no marker suppresses. Same observed numbers, different cause, and the correct fix is narrower than the filed one: a re-export STATEMENT is plumbing wherever it lives, not only in a file named index.ts."
+        "THE REAL MECHANISM IS THE REFERENCE COUNT, one layer down. isBarrel() matches src/index.ts by PATH, so a barrel CHAPTER \u2014 a file whose whole content is `export { X } from \"./x.js\"` lines \u2014 is scanned as ordinary production source, and each of those lines is a word-boundary match on X. Moving three exports into a chapter therefore gave all three a production \"caller\" and they left the report; the suppression list emptied because a symbol nobody reports is a symbol no marker suppresses. Same observed numbers, different cause, and the correct fix is narrower than the filed one: a re-export STATEMENT is plumbing wherever it lives, not only in a file named index.ts.",
+        "FIXED IN countReferences, not in the barrel reader: every `export ... from` STATEMENT is blanked before the word-boundary match, wherever it appears. That is stricter than adding a second path rule for chapters \u2014 a real module that re-exports one symbol beside its own code keeps every genuine reference and loses only the plumbing line \u2014 and it needs no list of which files count as barrels.",
+        "MEASURED, THEN RATCHETED: gaps 46 -> 54, buried 44 -> 46, and the ten symbols that stopped hiding are named in conductor.config.json ($ratchetRaisedW2321Note). Nothing left either list. The two files doing the hiding were themselves cap splits \u2014 packages/harbormaster/src/breakpoints.ts and packages/events/src/receipts.ts \u2014 which is the finding in one sentence: the honest response to the 400-line cap was quietly disabling the guard.",
+        "THIS IS THE $barrelCountingNote KIND OF RAISE, NOT THE FORBIDDEN ONE. Nothing was wired to nothing here; the counting got sharper and already-dead symbols became visible, exactly as at W12-39 (43 -> 62 when comments stopped counting as calls). Raising a ratchet to absorb debt a change created is the thing that is banned, and that is not what this is.",
+        "FIXTURES: a chapter re-exporting a symbol gives it production 0; a real call in that same chapter still counts 1; the blanking preserves length and line count and leaves a local `export const` alone; and an `import ... from` is still a call, because only re-export is plumbing.",
+        "GATE: lint 0, typecheck 0, 610 files / 5331 passed / 2 skipped, 76 e2e passed, six validators clean (6.8s, validate-exports now at --max 54 --max-buried 46) plus temp-leaks clean."
       ]
     },
     {
@@ -16121,7 +16126,8 @@
         "THE EXCLUSION IS THE INTERESTING PART. validate-history-secrets keeps its own job because CI runs it with --verify-remote-refs, the one network call in that scanner, and a local gate must stay offline (Law 9). Rather than run it twice with different arguments, the validators job sets DOKIMA_GATE_SKIP=validate-history-secrets and the history-secrets job is now labelled as the sole CI configuration of that check.",
         "DOKIMA_GATE_SKIP IS A DELIBERATELY POOR BYPASS: names not patterns, an unknown name FAILS instead of quietly running the full set (validate-histroy-secrets exits 1), the skip is printed and counted in the summary (all 5 validators clean, 1 skipped), and the survivors keep their ratchet arguments \u2014 asserted in three fixtures, the last of which exists because a skip that dropped arguments would restore W22-06 in a new place.",
         "NOT VERIFIED ON A RUNNER. This is a workflow change, and the only honest claim from a laptop is that the command it now runs is the command that passes here, plus a local reproduction of both the skip and the typo refusal. The first push of this branch is what proves the job itself.",
-        "GATE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.3s) plus temp-leaks clean. node --test scripts/gate-plan.test.mjs: 9 pass."
+        "GATE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.3s) plus temp-leaks clean. node --test scripts/gate-plan.test.mjs: 9 pass.",
+        "VERIFIED ON A RUNNER after all, which the closing note above could not claim: GitHub Actions run 34298504089 on this branch, job \"validators (pnpm validate \u2014 the same command Law 3 runs)\" \u2014 success, alongside the history-secrets job that still owns the scanner. The prediction in that note was right and is now discharged."
       ]
     },
     {
